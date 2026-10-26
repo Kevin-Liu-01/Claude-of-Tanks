@@ -837,7 +837,9 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+    // a typed query that matches nothing is named, so the line never blames filters the reader did not set
+    const query = $<HTMLInputElement>('#gallerySearch').value.trim();
+    vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
@@ -1065,6 +1067,10 @@ function renderOverview(record: GalleryRecord): void {
 function renderStats(record: GalleryRecord): void {
   const ranges = peerRanges(record);
   const rival = rivalId ? recordById.get(rivalId) : null;
+  // the deltas and the outlined cell are the overview's rival, named here (the switch above sets only the bars' scale)
+  const ref = $('#statRef');
+  ref.hidden = !rival;
+  if (rival) ref.innerHTML = `<i aria-hidden="true"></i>${esc(t('gallery.stats.versus', { name: rival.shortName || rival.displayName }))}`;
   $('#statGroups').innerHTML = STAT_GROUPS.map(([group, label, glyph]) => {
     const rows = STATS.filter((stat) => stat.group === group).map((stat) => {
       const value = stat.value(record);

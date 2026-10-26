@@ -225,8 +225,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* the seven times of day stand in three even columns (every name with room round it, the columns aligned row to row) */
 .st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
 .st-insp .cot-c-seg.times .cot-c-seg__opt{min-width:0;padding:0 var(--s2);white-space:nowrap}
-/* the five sun presets likewise fill their two rows */
-.cot-studio .sunPresets .cot-c-chip:last-child:nth-child(3n+2){grid-column:span 2}
 /* the map and tank pickers */
 .cot-studio .mapPick,.cot-studio .pick{position:relative;width:100%}
 .cot-studio .mapBtn{position:relative;display:block;width:100%;height:132px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);
@@ -287,8 +285,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunSide{display:grid;gap:var(--s2);min-width:0}
 .cot-studio .sunRead{display:flex;justify-content:space-between;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 .cot-studio .sunRead b{color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
-.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
-.cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);font-size:max(var(--fs-floor-11),var(--fs-11))}
+/* the sun presets are one choice, so they read as the time of day's segment above them: one frame, equal cells, the
+   chosen one filled (they wore the toggles' accent ring, and the last one spanned two cells) */
+.cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:3px;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1)}
+.cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);background:transparent;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
+.cot-studio .sunPresets .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
 /* the effects: the stack, the board, the selected layer's parameters */
 .cot-studio .fxstack{display:grid;gap:2px;max-height:188px;overflow-y:auto;scrollbar-width:thin}
 .cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:var(--s2);min-height:34px;padding:0 var(--s1) 0 var(--s2);
@@ -322,8 +324,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .planView canvas{border-radius:var(--r1);box-shadow:var(--ring-1)}
 .cot-studio .recStatus{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.4 var(--font-data)}
 .cot-studio .recStatus.on{color:var(--text-danger)}
-/* Chinese never sets in the figures' monospace (its glyphs spread unevenly there) */
-html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:var(--font-ui)}
+/* Chinese readouts: the figures keep the data monospace and the characters fall through to the UI face's Chinese (in the
+   monospace's own fallback they spread unevenly; in the UI face alone the figures lost their number style) */
+html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:var(--font-mono),var(--font-ui)}
 .cot-studio input::placeholder{color:var(--ink-3)}
 /* the film's summary wraps by whole facts (a dot or a lone word never dangles at a line's end) */
 .cot-studio .filmSummary{display:flex;flex-wrap:wrap;column-gap:var(--s3)}
@@ -395,7 +398,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:left}
 .st-tl .tp .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .st-tl .tp .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12))}
-.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:20px;grid-auto-rows:minmax(24px,1fr);min-height:0;
+.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:24px;grid-auto-rows:minmax(24px,1fr);min-height:0;
   overflow-y:auto;scrollbar-width:thin}
 .st-tl .lb{display:flex;align-items:center;gap:var(--s2);min-width:0;padding:0 var(--s3);overflow:hidden;border-bottom:1px solid var(--line-1);
   color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
@@ -405,6 +408,16 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-tl .lb .nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-tl .tk{position:relative;min-width:0;overflow:hidden;border-bottom:1px solid var(--line-1);border-left:1px solid var(--line-1);cursor:crosshair}
 .st-tl .tk--ruler{display:flex;align-items:center;padding:0 2px}
+/* the ruler: ticks and m:ss labels on the scrub thumb's travel (the playhead's), the scrub's own track hidden under them */
+.st-tl .tk--ruler .tm{position:absolute;top:0;bottom:0;left:7.5px;right:7.5px;pointer-events:none}
+.st-tl .tk--ruler .tm i{position:absolute;bottom:0;width:1px;height:4px;background:var(--line-2)}
+.st-tl .tk--ruler .tm i.mj{height:7px;background:var(--line-3)}
+.st-tl .tk--ruler .tm b{position:absolute;top:3px;padding-left:4px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
+.st-tl .tk--ruler .scrub{position:relative}
+.st-tl .tk--ruler .scrub::-webkit-slider-runnable-track{background:transparent}
+.st-tl .tk--ruler .scrub::-moz-range-track,.st-tl .tk--ruler .scrub::-moz-range-progress{background:transparent}
+/* a lane with nothing on it yet keeps one quiet rule across its track, as the sound lane's silence does */
+.st-tl .tk:not(.tk--ruler):empty::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--line-2)}
 .st-tl .scrub{width:100%}
 .st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:var(--s2);min-width:6px;padding:0 var(--s2);overflow:hidden;border:0;
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
@@ -485,6 +498,12 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio .filmVeil .fvText{color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-data);text-align:center}
 .cot-studio .cot-info-trigger{display:inline-grid;place-items:center;width:20px;height:20px;min-width:20px;min-height:20px;padding:0;border:0;
   border-radius:50%;background:transparent;box-shadow:var(--ring-2);color:var(--ink-3)}
+/* a finger's targets: the info marks (the field frames' tiles among them) and the outliner's add controls grow, and an
+   add control shows its plate (a bare 11 px plus was the whole target on a landscape phone) */
+@media (pointer:coarse){
+  :is(.cot-studio,.cot-studio-archive) .cot-info-trigger{width:28px;height:28px;min-width:28px;min-height:28px}
+  .st-out .add{width:36px;height:36px;box-shadow:var(--ring-1)}
+}
 .cot-studio-archive{--font-display:var(--font-ui);width:min(94vw,1560px);max-width:none;padding:0;border:0;border-radius:var(--r2);background:var(--surface-page);
   box-shadow:var(--e4);color:var(--ink-1);font-family:var(--font-ui)}
 .cot-studio-archive::backdrop{background:var(--scrim)}
@@ -515,6 +534,15 @@ body[data-cot-width='tablet'] .st-head .r :is(.cot-c-btn--ghost,.cot-c-btn--prim
 body[data-cot-width='tablet'] :is(.st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,
   .st-tl .tp .r .cot-c-chip__label){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-width='tablet'] .st-vpt{max-width:calc(100% - 156px);flex-wrap:wrap}
+/* a tablet's outliner is a rail of the six workspaces, each glyph over its name; their rows wait in each workspace's
+   inspector, as on a phone, and the viewport takes the width (the gauntlet 10-25: 420 px wide at 900, mostly empty rows) */
+body[data-cot-width='tablet'] .st-app{grid-template-columns:84px minmax(0,1fr) 272px}
+body[data-cot-width='tablet'] .st-out{padding:var(--s2) var(--s1)}
+body[data-cot-width='tablet'] .st-out :is(.og>:not(.gh),.add){display:none}
+body[data-cot-width='tablet'] .st-out .gh{padding:0}
+body[data-cot-width='tablet'] .st-out .gh>button:first-child{flex-direction:column;justify-content:center;gap:var(--s1);min-height:52px;padding:var(--s2) 2px;
+  text-align:center}
+body[data-cot-width='tablet'] .st-out .gh>button:first-child .nm{max-width:100%;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
   grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 128px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}

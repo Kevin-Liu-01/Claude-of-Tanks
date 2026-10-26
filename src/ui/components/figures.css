@@ -25,6 +25,8 @@
 .cot-c-empty[hidden]{display:none}
 .cot-c-empty p{margin:0;max-width:44ch}
 .cot-c-empty svg{width:24px;height:24px;color:var(--ink-4)}
+/* its one way forward reads as a secondary action (sentence case, the ring), not the page's uppercase call to action */
+.cot-c-empty .cot-c-btn{text-transform:none;letter-spacing:normal;font-family:var(--font-ui)}
 /* ---- colour swatches: a colour input as one ringed square, its colour without the browser's inner frame ---- */
 .cot-c-swatch{box-sizing:border-box;width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:none;
   box-shadow:var(--ring-2);cursor:pointer;overflow:hidden}

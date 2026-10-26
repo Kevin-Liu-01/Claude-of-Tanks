@@ -372,7 +372,7 @@ const STUDIO_GLYPHS = Object.freeze({
 
 /** The outliner's order (09-studio .out: Scene, Actors, Shots, Effects), the Director first and Export last. */
 const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
-  ['director', 'studio'], ['battlefield', 'map'], ['tanks', 'vehicle'], ['cinematics', 'toolPhoto'], ['effects', 'detonation'], ['output', 'media'],
+  ['director', 'studio'], ['battlefield', 'map'], ['tanks', 'vehicle'], ['cinematics', 'toolPhoto'], ['effects', 'detonation'], ['output', 'film'],
 ] as const);
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
@@ -559,13 +559,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const id = S._internal.selected?.spec?.id;
     window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
   });
-  const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'record');
+  const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'film');
   exportBtn.addEventListener('click', () => startFilmExport());
   const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
   exitBtn.insertAdjacentHTML('beforeend', keycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
-  const queueBtn = chipButton(t('studio.ws.queue'), 'media');
+  const queueBtn = chipButton(t('studio.ws.queue'), 'clock');
   queueBtn.classList.add('que');
   queueBtn.setAttribute('aria-haspopup', 'dialog');
   queueBtn.setAttribute('aria-expanded', 'false');
@@ -806,15 +806,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const dial = svg('svg', { viewBox: '-50 -50 100 100', class: 'sunDial', role: 'slider', tabindex: 0,
     'aria-label': t('studioPanel.light.bearingAria'), 'aria-valuemin': 0, 'aria-valuemax': 359 });
   dial.append(svg('circle', { r: 44, class: 'ring', 'stroke-width': 1 }), svg('circle', { r: 30, class: 'ring', 'stroke-width': 1 }));
-  for (let tick = 0; tick < 360; tick += 30) {
+  // north's tick is its label (the line ran through the glyph)
+  for (let tick = 30; tick < 360; tick += 30) {
     const a = tick * Math.PI / 180, r0 = tick % 90 ? 40 : 36;
     dial.appendChild(svg('line', { x1: -Math.sin(a) * r0, y1: -Math.cos(a) * r0, x2: -Math.sin(a) * 44, y2: -Math.cos(a) * 44,
       class: tick % 90 ? 'tick' : 'tick major', 'stroke-width': 1 }));
   }
-  // north reads at the rim, clear of the camera's wedge (it sat on the wedge whenever the camera faced north)
+  // north reads at the rim, and the camera's wedge stays inside the inner ring, clear of it at every bearing
   const north = svg('text', { x: 0, y: -38, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'north' });
   north.textContent = t('studioPanel.light.north');
-  const camWedge = svg('path', { d: 'M0 0 L-9 -30 A31 31 0 0 1 9 -30 Z', class: 'cam', 'stroke-width': 1 });
+  const camWedge = svg('path', { d: 'M0 0 L-7.5 -25 A26 26 0 0 1 7.5 -25 Z', class: 'cam', 'stroke-width': 1 });
   const sunRay = svg('line', { x1: 0, y1: 0, x2: 0, y2: -38, class: 'ray', 'stroke-width': 1.5 });
   const sunDot = svg('circle', { cx: 0, cy: -38, r: 6.5, class: 'sun', 'stroke-width': 1.5 });
   dial.append(north, camWedge, sunRay, sunDot);
@@ -1721,7 +1722,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- live recording, stills and the scene file ---------------------------------------------------------------
   const secLive = el('div', 'sec');
   secLive.dataset.pro = '';
-  secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'record'));
+  secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'cameraPath'));
   const fpsSel = labelledSelect(t('studio.ws.video'));
   for (const fps of [60, 30]) {
     const option = document.createElement('option');
@@ -1729,7 +1730,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
     fpsSel.select.appendChild(option);
   }
-  const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'record');
+  const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'cameraPath');
   recordBtn.classList.add('cot-c-btn--wide');
   recordBtn.setAttribute('aria-pressed', 'false');
   recordBtn.addEventListener('click', () => {
@@ -1890,6 +1891,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
+  // the ruler's marks (ticks and m:ss labels on the playhead's travel), under the scrub that seeks through them
+  const rulerMarks = el('div', 'tm');
+  rulerMarks.setAttribute('aria-hidden', 'true');
+  ruler.appendChild(rulerMarks);
   const scrub = document.createElement('input');
   scrub.type = 'range';
   scrub.className = 'scrub';
@@ -1927,6 +1932,38 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     return track;
   }
   const pct = (ms: number): string => `${Math.max(0, Math.min(100, (ms / Math.max(1, S.durationMs)) * 100))}%`;
+  const rulerClock = (sec: number): string => {
+    const minutes = Math.floor(sec / 60);
+    const rest = sec - minutes * 60;
+    return `${minutes}:${rest < 10 ? '0' : ''}${Number.isInteger(rest) ? rest : rest.toFixed(1)}`;
+  };
+  let rulerFor = -1;
+  /** A labelled tick every step (at most ten across the take) and a short one between; redrawn when the length changes. */
+  function drawRuler(): void {
+    if (S.durationMs === rulerFor) return;
+    rulerFor = S.durationMs;
+    const seconds = S.durationMs / 1000;
+    const step = [0.5, 1, 2, 5, 10, 15, 30, 60, 120].find((value) => seconds / value <= 10) ?? 300;
+    const marks: HTMLElement[] = [];
+    for (let k = 0; k * step <= seconds + 1e-6; k++) {
+      const at = k * step * 1000;
+      const tick = el('i', 'mj');
+      tick.style.left = pct(at);
+      marks.push(tick);
+      // the last label stays off the end, where it would run past the track
+      if (at < S.durationMs - step * 400) {
+        const label = el('b', null, rulerClock(k * step));
+        label.style.left = pct(at);
+        marks.push(label);
+      }
+      if (at + step * 500 < S.durationMs) {
+        const minor = el('i');
+        minor.style.left = pct(at + step * 500);
+        marks.push(minor);
+      }
+    }
+    rulerMarks.replaceChildren(...marks);
+  }
 
   // --- the production panel: the Director, and the outliner's heads, the shelf, the toggle and the frame ------------
   const productionPanel = mountStudioProductionPanel(S, root, dock, () => api.refreshAll(), {
@@ -2509,6 +2546,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   function rebuildStoryboard() {
     const board = S.getStoryboard();
+    drawRuler();
     laneHost.textContent = '';
     shotThumbSlots.clear();
     shotboard.querySelectorAll<InfoButton>('.cot-info-trigger')

@@ -91,9 +91,10 @@ export interface AnatomyHost {
 const STYLE = `
 .subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
 .subs[hidden]{display:none}
-/* one toggle look: every chip carries its ring, a pressed one the accent ring */
+/* one toggle look across the page (the flags, the list's row, these chips): a pressed one takes the accent ring and its
+   wash, over the plate here; a single choice (a segment, the layer dock, the camera rail) takes the grey fill */
 .subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate);box-shadow:var(--ring-2)}
-.subs .cot-c-chip[aria-pressed=true]{box-shadow:var(--ring-accent)}
+.subs .cot-c-chip[aria-pressed=true]{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .subs .cot-c-seg{align-items:stretch;padding:2px;background:var(--hud-plate)}
 /* the segments fill their frame when a touch row stretches it to the chips' height */
 .subs .cot-c-seg__opt{height:auto;min-height:24px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-12))}
