@@ -1774,6 +1774,12 @@ const battleAmbienceTime = () => battleAtmosphere.current?.weather?.timeOfDay ??
 function deferredPanelMasks(specId: string): void {
   console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
 }
+/** (battle-spikes-253) The panel's mask programs start linking when a covered warm starts (tankThumbs warmTopMaskPrograms). */
+function kickPanelMaskPrograms(root: THREE.Object3D | null | undefined): void {
+  if (!root) return;
+  void import('./ui/tankThumbs.ts').then(({ warmTopMaskPrograms }) => { warmTopMaskPrograms(root); })
+    .catch(() => { /* the panel's stage compiles them */ });
+}
 function currentSceneWatchdogOptions() {
   if (game.phase !== 'battle') return {};
   if (battleAtmosphere.current?.weather?.timeOfDay === 'night') return { nightRadianceScale: battleWatchdogRadianceScale };
@@ -2210,6 +2216,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
+    kickPlayerPanel: () => {
+      if (game.player?.aerial?.kind !== 'gunship') kickPanelMaskPrograms(game.player?.visual?.root);
+    },
     preparePlayerPanel: async () => {
       const player = game.player;
       if (player?.aerial?.kind === 'gunship') return;
@@ -2756,6 +2765,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
+          playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
+            kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
+          },
           playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;

@@ -971,6 +971,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/damagePanelWreckPose.selftest.mjs',
     'src/engine/rgba8Readback.selftest.mjs',
     'src/ui/topMaskProgramWarm.selftest.mjs',
+    'src/ui/topMaskEntryKick.selftest.mjs', // battle-spikes-253: the panel's mask programs link from the covered warm's start
     'src/ui/tankThumbs.selftest.mjs',
     'src/ui/topMaskCoverage.selftest.mjs',
     'src/ui/equipmentPreview.selftest.mjs',
