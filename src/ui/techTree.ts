@@ -662,17 +662,21 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     buttons.get(selectedId)?.focus({ preventScroll: true });
   }
 
-  /** Scroll a node into view; a tree opens with its selection centred where the board scrolls. */
+  /**
+   * Scroll a node into view. A tree opens with its selection centred where the board scrolls, snapped to a column's
+   * and a row's edge, so the first column and row in view open whole, as they do unscrolled.
+   */
   function reveal(id: string, centre = false): void {
     const g = geometry, node = nodeById.get(id);
     if (!g || !node) return;
     const [x, y] = px(g, { x: 2 * (node.tier - 1), y: 2 * layout.rowOf.get(id)! });
     const left = x + grid.offsetLeft, top = y + grid.offsetTop;
+    const snap = (value: number, pitch: number): number => Math.max(0, centre ? Math.round(value / pitch) * pitch : value);
     if (centre || left < board.scrollLeft + g.pad || left + g.col > board.scrollLeft + board.clientWidth - g.pad) {
-      board.scrollTo({ left: Math.max(0, left - board.clientWidth / 2 + g.col / 2), behavior: 'auto' });
+      board.scrollTo({ left: snap(left - board.clientWidth / 2 + g.col / 2, g.col + g.gapX), behavior: 'auto' });
     }
     if (centre || top < board.scrollTop || top + g.row > board.scrollTop + board.clientHeight) {
-      board.scrollTo({ top: Math.max(0, top - board.clientHeight / 2 + g.row / 2), behavior: 'auto' });
+      board.scrollTo({ top: snap(top - board.clientHeight / 2 + g.row / 2, g.row + GAP_Y), behavior: 'auto' });
     }
   }
 

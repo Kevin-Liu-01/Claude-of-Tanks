@@ -27,7 +27,10 @@
 .cot-tt .tt-flag .cot-c-flag{width:calc(48px * var(--tt-ui));height:calc(36px * var(--tt-ui));border-radius:var(--r1)}
 .cot-tt .tt-title{margin:0;font:700 calc(var(--fs-32) * var(--tt-ui))/1 var(--font-display);letter-spacing:var(--track-display);
   white-space:nowrap}
-.cot-tt .tt-rail{display:flex;align-items:center;gap:var(--s1);min-width:0;overflow-x:auto;scrollbar-width:none;margin-right:auto}
+/* The nation picker: one slate plate (the kit's single choice, like the zoom plate), the open nation lit on it. Its
+   ring is inset, so the scroll fade below never clips it; the plate stands as tall as the zoom plate's ring. */
+.cot-tt .tt-rail{display:flex;align-items:center;gap:2px;min-width:0;padding:2px;border-radius:var(--r2);
+  background:var(--surface-raised);box-shadow:var(--ring-2);overflow-x:auto;scrollbar-width:none;margin-right:auto}
 .cot-tt .tt-rail::-webkit-scrollbar{display:none}
 /* A rail wider than its space fades at the edges it scrolls toward (over one flag's width; half that on phones). */
 .cot-tt .tt-rail{--tt-rail-fade:48px}
@@ -41,14 +44,15 @@
   mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent),
     linear-gradient(270deg,var(--ink-1) calc(100% - var(--tt-rail-fade)),transparent);
   -webkit-mask-composite:source-in;mask-composite:intersect}
-/* the flags are as tall as the header's plates (a 36 px button on a 2 px pad) */
 .cot-tt .tt-rail-flag{position:relative;flex:none;display:grid;place-items:center;width:calc(44px * var(--tt-ui));
-  height:calc(40px * var(--tt-ui));padding:0;border:0;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1);
-  cursor:pointer;opacity:.6;transition:opacity var(--dur-fast),background var(--dur-fast)}
+  height:calc(40px * var(--tt-ui) - 4px);padding:0;border:0;border-radius:var(--r1);background:transparent;
+  cursor:pointer;opacity:.55;transition:opacity var(--dur-fast),background var(--dur-fast)}
 .cot-tt .tt-rail-flag .cot-c-flag{width:calc(26px * var(--tt-ui));height:calc(19px * var(--tt-ui))}
-.cot-tt .tt-rail-flag:hover{opacity:.9;background:var(--surface-hover)}
+.cot-tt .tt-rail-flag:hover{opacity:.9;background:var(--fill-scale)}
 .cot-tt .tt-rail-flag:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-tt .tt-rail-flag.is-on{opacity:1;background:var(--surface-hover);box-shadow:var(--ring-2)}
+/* the open nation: the lit slate with a light edge, at full strength among dimmed flags */
+.cot-tt .tt-rail-flag.is-on{opacity:1;background:linear-gradient(var(--fill-scale),var(--fill-scale)),var(--surface-hover);
+  box-shadow:var(--ring-3)}
 /* The header's plates (zoom; close): opaque, one height, the kit's ghost icon buttons on them, scaled with the screen. */
 .cot-tt .tt-plate{flex:none;display:flex;gap:2px;padding:2px;margin-inline:1px;border-radius:var(--r2);background:var(--surface-raised);
   box-shadow:var(--e2)}
@@ -69,11 +73,11 @@
 .cot-tt .tt-stage::before{left:0;right:0;bottom:0;height:48px;background:linear-gradient(180deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage::after{top:0;right:0;bottom:0;width:48px;background:linear-gradient(90deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage.is-more-below::before,.cot-tt .tt-stage.is-more-right::after{opacity:1}
-/* and at the edges it has scrolled past: under the pinned tier row, and on the left */
+/* and at the edges it has scrolled past: under the pinned tier row (over the bands' 12 px end) and over the left gutter */
 .cot-tt .tt-edges{position:absolute;inset:0;z-index:var(--z-lift);pointer-events:none}
 .cot-tt .tt-edges::before,.cot-tt .tt-edges::after{content:'';position:absolute;opacity:0}
-.cot-tt .tt-edges::before{left:0;right:0;top:var(--tt-head);height:32px;background:linear-gradient(180deg,var(--surface-page),transparent)}
-.cot-tt .tt-edges::after{top:0;bottom:0;left:0;width:48px;background:linear-gradient(270deg,transparent,var(--surface-page))}
+.cot-tt .tt-edges::before{left:0;right:0;top:var(--tt-head);height:12px;background:linear-gradient(180deg,var(--surface-page),transparent)}
+.cot-tt .tt-edges::after{top:0;bottom:0;left:0;width:var(--tt-gutter);background:linear-gradient(270deg,transparent,var(--surface-page))}
 .cot-tt .tt-stage.is-more-above .tt-edges::before,.cot-tt .tt-stage.is-more-left .tt-edges::after{opacity:1}
 /* pinned to the page gutter: a tree narrower than the board leaves its spare width on the right */
 .cot-tt .tt-grid{position:relative;margin:0}
@@ -126,7 +130,7 @@
 /* the selected edge grows outward, so the card's content (its name's room) keeps the size of every other card */
 .cot-tt .tt-node.is-sel{--tt-sel-grow:calc(var(--selected-edge) - 1px);border:var(--selected-edge) solid var(--accent);
   margin:calc(-1 * var(--tt-sel-grow));width:calc(var(--tt-col) + 2 * var(--tt-sel-grow));
-  height:calc(var(--tt-row) + 2 * var(--tt-sel-grow));outline:4px solid var(--accent-wash);outline-offset:0}
+  height:calc(var(--tt-row) + 2 * var(--tt-sel-grow))}
 /* the selected node is the focused one (roving focus): its ring is the selection's, with no second focus ring */
 .cot-tt .tt-node.is-sel:focus-visible{box-shadow:none}
 .cot-tt .tt-node.is-sel .tt-name{color:var(--ink-1)}
@@ -144,7 +148,8 @@
     linear-gradient(180deg,var(--surface-menu),var(--surface-page))}
 .cot-tt .tt-detail-art .hc-host{--hc-band:10cqh;--hc-share:.84;--hc-hshare:.8;--hc-cxr:.5;--hc-flag-opacity:.8}
 .cot-tt .tt-detail-id{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s3) var(--s4);min-width:0}
-.cot-tt .tt-detail-name{margin:0;font:700 calc(var(--fs-36) * var(--tt-ui))/1.05 var(--font-display);letter-spacing:var(--track-display);
+/* the vehicle's name in the cards' face (the same hyphen as its card), untracked so it sets one width in en and zh */
+.cot-tt .tt-detail-name{margin:0;font:700 calc(var(--fs-36) * var(--tt-ui))/1.05 var(--font-ui);letter-spacing:0;
   overflow-wrap:anywhere}
 .cot-tt .tt-detail-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
 .cot-tt .tt-detail-meta .cot-c-tag{height:auto;padding:calc(4px * var(--tt-ui)) calc(8px * var(--tt-ui));
@@ -200,7 +205,7 @@
   .cot-tt .tt-flag .cot-c-flag{width:36px;height:27px}
   .cot-tt .tt-title{font-size:var(--fs-24)}
   .cot-tt .tt-close-plate{grid-area:close;justify-self:end}
-  .cot-tt .tt-rail{grid-area:rail;gap:var(--s2);--tt-rail-fade:24px}
+  .cot-tt .tt-rail{grid-area:rail;--tt-rail-fade:24px}
   .cot-tt .tt-zoom{grid-area:zoom}
   .cot-tt .tt-detail{grid-template-columns:auto minmax(0,1fr);grid-template-areas:'art id' 'stats stats' 'act act';
     padding:var(--s3) var(--tt-gutter) var(--s4)}
@@ -222,17 +227,20 @@
   /* every nation fits the row beside the title (a touch screen keeps its 44 px flags, below) */
   .cot-tt .tt-rail-flag{width:36px}
   .cot-tt .tt-stage{grid-column:1;grid-row:2}
-  /* a column: the render takes the panel's spare height (up to a square), then Select sits at the panel's foot */
+  /* a column on one inset (the gutter, every side): the render takes the panel's spare height (up to a square), then
+     Select sits at the panel's foot */
   .cot-tt .tt-detail{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:stretch;gap:var(--s3);overflow-y:auto;
-    padding:var(--s3) var(--tt-gutter);border-top:0;border-left:1px solid var(--line-2)}
+    padding:var(--tt-gutter);border-top:0;border-left:1px solid var(--line-2)}
   .cot-tt .tt-detail-info{display:contents}
   .cot-tt .tt-detail-art{flex:1 0 calc(var(--tt-detail-art-w) * .52);width:100%;height:auto;
     max-height:calc(280px - 2 * var(--tt-gutter))}
   .cot-tt .tt-detail-name{font-size:var(--fs-20);line-height:1.2}
-  .cot-tt .tt-stats{grid-template-columns:minmax(0,1fr)}
-  /* Select stays at the panel's foot while the panel scrolls, and the stats it hides fade out over it */
-  .cot-tt .tt-act{position:sticky;bottom:calc(var(--s3) * -1);margin:auto calc(var(--tt-gutter) * -1) 0;
-    padding:var(--s2) var(--tt-gutter) var(--s3);background:var(--surface-raised)}
+  /* the stats start on the panel's content edge (not the tablet's foot alignment) */
+  .cot-tt .tt-stats{align-self:stretch;grid-template-columns:minmax(0,1fr)}
+  /* Select stays at the panel's foot while the panel scrolls, on the panel's inset, and the stats it hides fade out
+     over it */
+  .cot-tt .tt-act{position:sticky;bottom:calc(var(--tt-gutter) * -1);margin:auto calc(var(--tt-gutter) * -1) calc(var(--tt-gutter) * -1);
+    padding:var(--s2) var(--tt-gutter) var(--tt-gutter);background:var(--surface-raised)}
   .cot-tt .tt-detail.is-more-below .tt-act::before{content:'';position:absolute;left:0;right:0;bottom:100%;height:var(--s6);
     pointer-events:none;background:linear-gradient(180deg,transparent,var(--surface-raised))}
   .cot-tt .tt-act .tt-select{width:100%}
@@ -240,9 +248,9 @@
 /* The shortest of them (a phone on its side): the render beside the name and its tags, so all four numbers fit over
    Select (a node's builds wrap beside the render; the panel then scrolls under its fade). */
 @media (max-height:420px) and (orientation:landscape){
-  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto 1fr;
+  .cot-tt .tt-detail{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:auto auto 1fr;
     grid-template-areas:'art id' 'stats stats' 'act act';gap:var(--s2) var(--s3)}
-  .cot-tt .tt-detail-id{grid-area:id;align-self:center}
+  .cot-tt .tt-detail-id{grid-area:id;align-self:center;column-gap:var(--s2)}
   .cot-tt .tt-detail-art{grid-area:art;min-height:0;height:calc(var(--tt-detail-art-w) * .32)}
   .cot-tt .tt-stats{grid-area:stats;row-gap:var(--s2)}
   .cot-tt .tt-act{grid-area:act}
@@ -253,7 +261,7 @@
   /* a touch screen pinches to zoom: the plate keeps fit alone, and the rail gets the room */
   .cot-tt .tt-zoom [data-zoom='in'],.cot-tt .tt-zoom [data-zoom='out']{display:none}
   /* a 44 px button on its 2 px pad, plus the plate's 1 px ring */
-  .cot-tt .tt-rail-flag{width:44px;height:50px}
+  .cot-tt .tt-rail-flag{width:44px;height:46px}
 }
 @media (prefers-reduced-motion:reduce){
   .cot-tt .tt-node:hover{transform:none}
