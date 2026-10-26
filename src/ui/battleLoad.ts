@@ -155,7 +155,6 @@ const CSS = `
 /* (the grade follows the name: centred over the rosters, an even grade; the wide composition's, dark from the left under
    its name there: a left grade under a centred title left a dark band down a third of the screen, gauntlet r3) */
 ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
-.cot-bl .lb{display:none;}
 .cot-bl .briefing{position:relative;z-index:1;width:min(1180px,calc(100vw - (var(--bl-edge) * 2)));
   height:min(800px,88dvh);min-height:520px;
   display:grid;grid-template-rows:auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);align-items:stretch;
@@ -290,10 +289,10 @@ body[data-cot-height='short'] .cot-bl .row.me{outline-offset:0;}
 .cot-bl .count b{color:var(--accent-hi);font-size:var(--fs-24);}
 /* --- the wide layouts: the direction's composition ------------------------
    The name and its rules top left, the tip and the battlefield's plan top right, the rosters over the floor (a hero
-   card a tank while a side has seven or fewer), the progress under them, letterboxed. */
+   card a tank while a side has seven or fewer), the progress under them, the battlefield's art to every edge (owner
+   2026-10-26, "there are still black bars above and below the images here!!! fix that!!!": the direction's letterbox bars,
+   5.5vh a band, read as a picture fitted short of the screen). */
 ${WIDE} .cot-bl{place-items:stretch;}
-${WIDE} .cot-bl .lb{display:block;position:absolute;left:0;right:0;height:5.5vh;background:var(--surface-scene);}
-${WIDE} .cot-bl .lb.t{top:0}${WIDE} .cot-bl .lb.b{bottom:0}
 ${WIDE} .cot-bl .briefing{width:100%;height:100%;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,360px);
   grid-template-rows:auto minmax(0,1fr) auto auto;column-gap:48px;padding:14vh 64px calc(5.5vh + 22px);}
 ${WIDE} .cot-bl .cap{grid-column:1;grid-row:1;align-items:flex-start;text-align:left;gap:16px;padding:0;}
@@ -389,7 +388,9 @@ ${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;
   background-image:var(--sil-img);background-size:contain;background-position:center;filter:none;}
 /* a card's flag is its hero layer's (the sheet row's seat stays empty there) */
 ${WIDE} .cot-bl .team.cards .row.card .fl{display:none;}
-${WIDE} .cot-bl .team.cards .row.card.cot-hc .sil{display:none;}
+/* (the silhouette holds the card until its tank layer has landed: hidden once decorated, a card whose layers were still on
+   the wire read as an empty plate, live 256) */
+${WIDE} .cot-bl .team.cards .row.card.cot-hc.hc-loaded .sil{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-index:var(--battle-z-card-fade);left:0;right:0;bottom:0;height:calc(var(--hc-band) + 8px);
   background:var(--media-fade);pointer-events:none;}
 ${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:6px;right:6px;bottom:8px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.1 var(--font-ui);
@@ -553,7 +554,6 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const MORE_CUE = `<div class="bl-more" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</div>`;
   root.innerHTML =
     `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div></div>` +
-    `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
     `<main class="briefing"><div class="cap"><h1 class="mapname"${datumAttr('map-name')}></h1>` +
     `<div class="rules"><span class="cot-c-chip mode"${datumAttr('mode-name')}><span class="gi"></span><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
     `<span class="cot-c-chip sides" hidden${datumAttr('team-counts')}><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
@@ -714,7 +714,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       for (const [card, id] of cards) {
         if (!card.isConnected || card.dataset.heroFor === id) continue;
         card.dataset.heroFor = id;
-        hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px' });
+        // (at once and ahead of the battle's own downloads: lazy and low, a side the Garage never showed, live 256's
+        // Japanese enemies and their flag, sat blank at 90 % behind the battle's textures while the allies' cached layers
+        // painted)
+        hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px', priority: true });
       }
     });
   }
@@ -951,13 +954,17 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // (a battle's side with no rows yet holds the default split's seats open, never an empty bar; an entry with no
       // roster at all, a notice cover, shows no sheets)
       const named = info.allies.length + info.enemies.length > 0;
-      allySeats = info.seats?.allies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
-      foeSeats = info.seats?.enemies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
+      // (a show that names no seats over a cover already up keeps the cover's: the loading owner's first show after the
+      // press's showPending, which carried the sortie's seats a side)
+      const keep = visible && !named && info.seats == null && info.slots == null && allySeats + foeSeats > 0;
+      allySeats = keep ? allySeats : info.seats?.allies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
+      foeSeats = keep ? foeSeats : info.seats?.enemies ?? info.slots ?? (named ? PENDING_ROSTER_SLOTS : 0);
       teamsEl.hidden = Math.max(info.allies.length, allySeats) + Math.max(info.enemies.length, foeSeats) === 0;
       fillSides(info.allies, info.enemies);
       markTiers(info.allies, info.enemies);
       // (the sides from the seats where the entry knows them, a pending cover's open slots being a guess)
-      showSides(Math.max(info.allies.length, info.seats?.allies ?? 0), Math.max(info.enemies.length, info.seats?.enemies ?? 0));
+      showSides(Math.max(info.allies.length, info.seats?.allies ?? (keep ? allySeats : 0)),
+        Math.max(info.enemies.length, info.seats?.enemies ?? (keep ? foeSeats : 0)));
       seatMark();
       // (no tip: a helper sentence is the less-text rule's first cut, gauntlet r4; the battlefield's plan stands alone)
       countEl.textContent = '';

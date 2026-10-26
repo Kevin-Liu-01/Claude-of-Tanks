@@ -28,8 +28,7 @@ import type { MatchSessionOptions, MatchSessionP2pOptions, MatchSessionStats, Se
 import { NetworkStatusModel, SEAT_DROP_REASONS, closeReasonName } from './networkStatus.ts';
 import type { NetworkBanner, NetworkStatusEvent, NetworkStatusMatchSource, NetworkStatusSnapshot, NetworkStatusSummary } from './networkStatus.ts';
 import { isMultiplayerV2Session } from './playMenuAdapter.ts';
-import { isWaveMode, matchRulesetFor, seatsByRole, terrainVariantFor } from '../../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../../sim/matchModes.ts';
+import { seatsByTeamSize, terrainVariantFor } from '../../sim/matchRuleset.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import { MIN_VISIBLE_PRE_BATTLE_S } from '../../game/preBattleCountdown.ts';
@@ -79,9 +78,12 @@ export interface BrowserLoadScreen {
   show(info: {
     mapName: string; thumb?: string; biome?: string; mode?: string;
     allies: readonly BrowserRosterRow[]; enemies: readonly BrowserRosterRow[];
+    /** The seats each side fields (ui/battleLoad.ts BattleLoadSeats), where the room's settings size them. */
+    seats?: { allies: number; enemies: number };
   }): void;
   rosters(allies: readonly BrowserRosterRow[], enemies: readonly BrowserRosterRow[],
-    teams?: { allied: string | null; enemy: string | null; alliedFills: readonly string[]; enemyFills: readonly string[] } | null): void;
+    teams?: { allied: string | null; enemy: string | null; alliedFills: readonly string[]; enemyFills: readonly string[] } | null,
+    seats?: { allies: number; enemies: number } | null): void;
   progress(fraction: number, label?: string): void;
   hide(): Promise<void>;
 }
@@ -1073,9 +1075,8 @@ export function createBrowserComposition({
     // those seats from this frame, the seats its players have not named yet open, never a side of one stretched card or
     // an empty bar, owner on live 255; the role and wave modes size their sides by their rules, their rows the whole side)
     const settings = latestRoom?.settings;
-    const seatMode = normalizeGameMode(gameMode ?? settings?.gameMode);
-    const sized = !!settings?.botsFill && Number.isFinite(settings.teamSize) && settings.teamSize > 0 && !isWaveMode(seatMode)
-      && !seatsByRole(matchRulesetFor(seatMode, null, settings.arrangement ?? null));
+    const sized = !!settings?.botsFill && Number.isFinite(settings.teamSize) && settings.teamSize > 0
+      && seatsByTeamSize(gameMode ?? settings.gameMode, settings.arrangement ?? null);
     const seats = sized && settings ? { allies: settings.teamSize, enemies: settings.teamSize } : null;
     load.battleLoad.show({ mapName: map.name, thumb: map.thumb, biome: mapId ? map.biome : 'none', mode: modeLabelFor(mode, roundNumber),
       ...(gameMode ? { modeId: gameMode } : {}), allies, enemies, ...(seats ? { seats } : {}) });

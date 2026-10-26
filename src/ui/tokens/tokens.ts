@@ -358,7 +358,7 @@ export const TOKENS = {
   'battle-fs-18': '18px',
   'battle-fs-20': '20px',
   'battle-fs-28': '28px',
-  'battle-load-grade': 'linear-gradient(90deg,oklch(from #050608 l c h / .9) 0,oklch(from #050608 l c h / .55) 30%,oklch(from #050608 l c h / 0) 52%),linear-gradient(0deg,oklch(from #050608 l c h / .96) 0,oklch(from #050608 l c h / .7) 22%,oklch(from #050608 l c h / 0) 44%)',
+  'battle-load-grade': 'linear-gradient(90deg,oklch(from #050608 l c h / .9) 0,oklch(from #050608 l c h / .55) 30%,oklch(from #050608 l c h / 0) 52%),linear-gradient(0deg,oklch(from #050608 l c h / .85) 0,oklch(from #050608 l c h / .62) 22%,oklch(from #050608 l c h / 0) 44%)',
   'battle-load-grade-centred': 'linear-gradient(0deg,oklch(from #050608 l c h / .96) 0,oklch(from #050608 l c h / .72) 30%,oklch(from #050608 l c h / .5) 58%,oklch(from #050608 l c h / .78) 100%)',
   'battle-end-grade': 'linear-gradient(90deg,oklch(from #050608 l c h / .94) 0,oklch(from #050608 l c h / .78) 38%,oklch(from #050608 l c h / .35) 64%,oklch(from #050608 l c h / .55) 100%),linear-gradient(0deg,oklch(from #050608 l c h / .97) 0,oklch(from #050608 l c h / .6) 30%,oklch(from #050608 l c h / 0) 52%)',
   'battle-chip-plate': 'rgba(5,6,8,.7)',

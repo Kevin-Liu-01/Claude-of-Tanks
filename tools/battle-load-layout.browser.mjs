@@ -21,6 +21,8 @@ function measure() {
     teams:[...document.querySelectorAll('.team')].map(el=>({
       ...rect(el), cards:el.classList.contains('cards')&&getComputedStyle(el.querySelector('.rows')).gridTemplateColumns.split(' ').length>1,
       rows:[...el.querySelectorAll('.row')].map(rect), open:el.querySelectorAll('.row.slot').length, full:token(el,'--bl-row-height'), least:token(el,'--bl-row-min'),
+      // (a named card whose tank layer has not landed and whose silhouette is hidden: live 256's blank enemy plates)
+      bare:[...el.querySelectorAll('.row.card:not(.slot)')].filter(card=>!card.classList.contains('hc-loaded')&&getComputedStyle(card.querySelector('.sil')??card).display==='none').length,
       viewport:rect(el.querySelector('.rows')), scrollHeight:el.querySelector('.rows').scrollHeight,
     })),
   };
@@ -52,8 +54,9 @@ try {
     page.on('pageerror',error=>errors.push(`${name}: ${error.message}`));
     // Delay silhouettes until every roster has been measured, reproducing asset arrival.
     let release; const assets=new Promise(resolve=>{release=resolve;});
-    // (the served silhouettes only: a glob on any /icons/ path held src/ui/icons/*.ts, a module the page imports)
-    await page.route(url=>url.pathname.startsWith('/icons/'),async route=>{await assets;await route.continue();});
+    // (the served silhouettes and hero layers only: a glob on any /icons/ path held src/ui/icons/*.ts, a module the page
+    // imports; the hero manifest passes, so the cards decorate while their layers are still held)
+    await page.route(url=>url.pathname.startsWith('/icons/')&&!url.pathname.endsWith('.json'),async route=>{await assets;await route.continue();});
     await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/battle-load-layout.html`,{waitUntil:'domcontentloaded'});
     await page.waitForFunction(()=>!!window.__LOAD_LAYOUT);
     const sizes=new Map();
@@ -70,6 +73,7 @@ try {
         assert.equal(team.rows.length,count||seats[i],`${name} ${allies}v${enemies}: the named rows, a side named none its open seats`);
         assert.ok(team.rows.length>0,`${name} ${allies}v${enemies}: no side is empty`);
         assertWholeRows(team,m.area,`${name} ${allies}v${enemies} team ${i}`);
+        assert.equal(team.bare,0,`${name} ${allies}v${enemies} team ${i}: a card keeps its silhouette until its layers land`);
         assert.ok(Math.abs(team.y+team.height/2-(m.area.y+m.area.height/2))<1,`${name}: center team ${i}`);
         assert.ok(team.y>=m.cap.bottom-1 && team.bottom<=m.foot.y+1,`${name}: team must not overlap header/footer`);
         assert.ok(team.x>=0 && team.right<=width,`${name}: team stays on screen`);
@@ -116,6 +120,11 @@ try {
       filling={seats:s,boxes};
     }
     await page.evaluate(()=>window.__LOAD_LAYOUT.roster(7,7));
+    // (the cards decorated, their layers still held: each keeps its silhouette, never an empty plate)
+    if((await page.evaluate(measure)).teams[0].cards) {
+      await page.waitForFunction(()=>document.querySelectorAll('.team.foe .row.card.cot-hc').length===7,{timeout:30000});
+      for(const [i,team] of (await page.evaluate(measure)).teams.entries()) assert.equal(team.bare,0,`${name}: side ${i}'s decorated cards keep their silhouettes until their layers land`);
+    }
     const before=await page.evaluate(measure);
     release(); await page.waitForLoadState('networkidle');
     assert.deepEqual(await page.evaluate(measure),before,`${name}: late silhouettes must not shift layout`);
@@ -129,5 +138,5 @@ try {
   }
   assert.deepEqual(errors,[],'browser errors');
   await writeFile(resolve(out,'report.json'),JSON.stringify(reports,null,2));
-  console.log(`PASS: ${reports.length} roster layouts; constant row heights, independent centering, bounds, late silhouettes and countdown stability, no empty side, one form for both sides, whole rows at full height where they fit and seats filling in place.`);
+  console.log(`PASS: ${reports.length} roster layouts; constant row heights, independent centering, bounds, late silhouettes and countdown stability, no empty side, one form for both sides, whole rows at full height where they fit, no bare card while its layers load and seats filling in place.`);
 } finally { await browser.close(); }
