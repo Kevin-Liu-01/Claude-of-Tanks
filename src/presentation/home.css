@@ -49,9 +49,9 @@ img{display:block;max-width:100%}
    reel's pause on the right (owner 2026-10-25: "also add text here at the left that says stuff about this!"); the game's
    mark and name stay in the nav bar */
 .hero__card{grid-area:card;align-self:end;display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s6);margin-bottom:var(--s6)}
-.hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:calc(var(--home-h1) * 9.4)}
+.hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:max(calc(var(--home-h1) * 9.4),34rem)}
 .hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
-.hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:pretty}
+.hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:balance}
 /* the shot's caption holds the right edge, centred on the actions' row, and the pause comes in on its left when the reel
    starts; every caption shares one cell, so the longest sets the box and a turn crossfades with its clip without moving
    anything */
