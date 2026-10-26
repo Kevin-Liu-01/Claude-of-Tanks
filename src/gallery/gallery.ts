@@ -1461,14 +1461,16 @@ function renderFrame(): void {
 function savePhoto(): void {
   if (!selectedId) return;
   renderFrame();
+  // the press answers (the interaction census: Photo gave none): the file's download, or why it failed
   renderer.domElement.toBlob((blob) => {
-    if (!blob) return;
+    if (!blob) { showToast(t('gallery.photo.failed'), { severity: 'error' }); return; }
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `claude-of-tanks-${selectedId}-${activeView}.png`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(t('gallery.photo.saved'), { severity: 'success' });
   }, 'image/png');
 }
 

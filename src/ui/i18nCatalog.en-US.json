@@ -4293,6 +4293,8 @@
   "gallery.damage.reset": "Reset vehicle",
   "gallery.damage.copy": "Copy damage report",
   "gallery.damage.copied": "Damage report copied",
+  "gallery.photo.saved": "Photo saved",
+  "gallery.photo.failed": "Could not save the photo. Try again.",
   "gallery.damage.wreckNotice": "Wreck preview. Reset the vehicle to continue testing individual parts.",
   "gallery.damage.traceResult": "{count} contacts, front to back. Geometry probe only; no penetration or damage roll.",
   "gallery.damage.traceMiss": "No combat surface on this ray.",

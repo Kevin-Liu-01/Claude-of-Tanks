@@ -4317,6 +4317,8 @@
   "gallery.damage.reset": "重置车辆",
   "gallery.damage.copy": "复制损伤报告",
   "gallery.damage.copied": "损伤报告已复制",
+  "gallery.photo.saved": "照片已保存",
+  "gallery.photo.failed": "无法保存照片，请重试。",
   "gallery.damage.wreckNotice": "残骸预览。请重置车辆以继续测试各部件。",
   "gallery.damage.traceResult": "由近及远共 {count} 处接触。仅探测几何体，不计算穿透或损伤。",
   "gallery.damage.traceMiss": "此射线未接触战斗碰撞体。",
