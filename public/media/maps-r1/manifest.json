@@ -32,6 +32,58 @@
       }
     },
     {
+      "id": "desert",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/desert-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 34630
+          },
+          {
+            "path": "/media/maps-r1/desert-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 110210
+          },
+          {
+            "path": "/media/maps-r1/desert-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 262796
+          }
+        ]
+      }
+    },
+    {
+      "id": "winter",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/winter-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 38252
+          },
+          {
+            "path": "/media/maps-r1/winter-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 120646
+          },
+          {
+            "path": "/media/maps-r1/winter-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 270826
+          }
+        ]
+      }
+    },
+    {
       "id": "urban",
       "hour": "day",
       "poster": {
@@ -188,6 +240,32 @@
       }
     },
     {
+      "id": "fjord",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/fjord-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 16468
+          },
+          {
+            "path": "/media/maps-r1/fjord-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 52598
+          },
+          {
+            "path": "/media/maps-r1/fjord-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 131918
+          }
+        ]
+      }
+    },
+    {
       "id": "delta",
       "hour": "day",
       "poster": {
@@ -266,6 +344,58 @@
       }
     },
     {
+      "id": "alpine",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/alpine-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 29182
+          },
+          {
+            "path": "/media/maps-r1/alpine-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 103014
+          },
+          {
+            "path": "/media/maps-r1/alpine-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 261604
+          }
+        ]
+      }
+    },
+    {
+      "id": "caldera",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/caldera-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 23316
+          },
+          {
+            "path": "/media/maps-r1/caldera-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 80378
+          },
+          {
+            "path": "/media/maps-r1/caldera-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 189382
+          }
+        ]
+      }
+    },
+    {
       "id": "foundry",
       "hour": "day",
       "poster": {
@@ -339,6 +469,32 @@
             "width": 1920,
             "height": 1080,
             "bytes": 320416
+          }
+        ]
+      }
+    },
+    {
+      "id": "titan_gorge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/titan_gorge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 30486
+          },
+          {
+            "path": "/media/maps-r1/titan_gorge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 93338
+          },
+          {
+            "path": "/media/maps-r1/titan_gorge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 212994
           }
         ]
       }
@@ -500,6 +656,32 @@
       }
     },
     {
+      "id": "orchard",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/orchard-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40772
+          },
+          {
+            "path": "/media/maps-r1/orchard-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 135050
+          },
+          {
+            "path": "/media/maps-r1/orchard-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 325166
+          }
+        ]
+      }
+    },
+    {
       "id": "longleaf",
       "hour": "day",
       "poster": {
@@ -599,6 +781,32 @@
             "width": 1920,
             "height": 1080,
             "bytes": 317368
+          }
+        ]
+      }
+    },
+    {
+      "id": "moon",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/moon-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 16142
+          },
+          {
+            "path": "/media/maps-r1/moon-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 49482
+          },
+          {
+            "path": "/media/maps-r1/moon-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 116110
           }
         ]
       }
