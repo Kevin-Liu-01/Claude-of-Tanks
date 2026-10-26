@@ -24,18 +24,30 @@ export const MODAL_FOCUSABLE_SELECTOR = [
 
 const MODAL_SIZES = new Set(['small', 'medium', 'large', 'wide']);
 
-/** Shared keyboard boundary for the modal shell and in-battle Settings. */
+/** The kit's toasts (components/notice.ts): one shown over a contained surface stays in its Tab ring. */
+const TOAST_SELECTOR = '.cot-c-notice--toast';
+
+/** Shared keyboard boundary for the modal shell and in-battle Settings. The ring is the panel's controls, then those of
+ *  any toast shown outside it (an error's Retry raised over a modal); Tab moves natively inside each and wraps between them. */
 export function containModalTab(event: KeyboardEvent, panel: HTMLElement, fallback: HTMLElement): void {
   if (event.key !== 'Tab') return;
-  const focusable = [...panel.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
+  const reachable = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
     .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
-  const first = focusable[0] || fallback;
-  const last = focusable.at(-1) || fallback;
-  const outside = !panel.contains(document.activeElement);
-  if (outside || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
-    event.preventDefault();
-    (event.shiftKey ? last : first).focus({ preventScroll: true });
-  }
+  const toasts = [...document.querySelectorAll<HTMLElement>(TOAST_SELECTOR)].filter((toast) => !panel.contains(toast));
+  const rings = [panel, ...toasts].map((root) => ({ root, focusable: reachable(root) }))
+    .filter((ring, index) => index === 0 || ring.focusable.length);
+  const active = document.activeElement;
+  const at = rings.findIndex((ring) => ring.root.contains(active));
+  const edge = (index: number, end: boolean): HTMLElement => {
+    const { focusable } = rings[(index + rings.length) % rings.length];
+    return (end ? focusable.at(-1) : focusable[0]) || fallback;
+  };
+  let next: HTMLElement | null = null;
+  if (at < 0) next = edge(event.shiftKey ? -1 : 0, event.shiftKey);
+  else if (event.shiftKey ? active === edge(at, false) : active === edge(at, true)) next = edge(at + (event.shiftKey ? -1 : 1), event.shiftKey);
+  if (!next) return;
+  event.preventDefault();
+  next.focus({ preventScroll: true });
 }
 export type ModalSize = 'small' | 'medium' | 'large' | 'wide';
 
