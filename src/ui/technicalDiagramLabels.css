@@ -49,9 +49,12 @@
 .cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}
 /* a static overlay's anchor dot (technicalLabelsMarkup: its leaders scale with a fluid box, a circle would not stay round) */
 .cot-tdl-pin{position:absolute;left:var(--tdl-x);top:var(--tdl-y);width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--tdl-tone)}
-.cot-tdl-chip{position:absolute;left:var(--tdl-x);top:var(--tdl-y);transform:translateY(-50%);padding:1px 6px;white-space:nowrap;pointer-events:none;
-  background:var(--hud-plate);box-shadow:var(--ring-2);border-radius:var(--r1);border-inline-start:2px solid var(--tdl-tone)}
-.cot-tdl-chip--end{transform:translate(-100%,-50%);border-inline-start:0;border-inline-end:2px solid var(--tdl-tone)}
+/* a chip's tone is a swatch before its words, as the legend's are (a one-coloured edge stripe read as a single-coloured
+   border: the r18 critic, bar line 11) */
+.cot-tdl-chip{position:absolute;left:var(--tdl-x);top:var(--tdl-y);display:flex;align-items:center;gap:5px;transform:translateY(-50%);
+  padding:1px 6px;white-space:nowrap;pointer-events:none;background:var(--hud-plate);box-shadow:var(--ring-2);border-radius:var(--r1)}
+.cot-tdl-chip::before{content:'';flex:none;width:6px;height:6px;border-radius:var(--r1);background:var(--tdl-tone)}
+.cot-tdl-chip--end{transform:translate(-100%,-50%)}
 .cot-tdl-head{position:absolute;inset:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
   padding:6px 10px;background:var(--hud-plate)}
 .cot-tdl-name{font:700 max(var(--fs-floor-11),var(--fs-14))/1.1 var(--font-display)}

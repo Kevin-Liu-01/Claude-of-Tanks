@@ -264,6 +264,16 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
  * on a row cut at random (the gauntlet 10-25) and the peek, dimmed under its `can-scroll` fade (--peek), says more waits
  * below (a 16 px sliver read as a hard cut to the r16 critic). Read on a resize or a redraw, never in a scroll.
  */
+/**
+ * A picker grid in a panel anchored at its foot keeps the height its whole set gave it while a filter narrows the set (the
+ * r18 critic: the panel shrank and its chips jumped under the pointer): measured with its rows fitted, on open and on a
+ * resize, never in a scroll.
+ */
+function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): void {
+  grid.style.minHeight = '';
+  fit(grid);
+  grid.style.minHeight = `${Math.ceil(grid.getBoundingClientRect().height)}px`;
+}
 function fitWholeRows(grid: HTMLElement): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
@@ -1514,8 +1524,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<figure class="cot-technical-viewer-figure" id="cot-technical-viewer-panel" role="tabpanel" ` +
     `aria-labelledby="cot-technical-viewer-tab-armor">` +
     `<img data-technical-modal-image alt="" draggable="false" decoding="async">` +
-    `<figcaption><span data-technical-modal-caption></span>` +
-    `<small>${t('garage.dossier.anatomyGenerated')}</small></figcaption></figure>`;
+    `<figcaption data-technical-modal-caption></figcaption></figure>`;
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
   const technicalModalCaption = requiredElement<HTMLElement>(technicalModal.body, '[data-technical-modal-caption]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
@@ -1527,8 +1536,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!view || !spec) return;
     const translated = translateTechnicalView(view);
     const name = spec.label?.displayName || spec.name;
-    technicalModal.setTitle(`${name} — ${translated.label}`);
-    technicalModal.setSubtitle(translated.caption);
+    // the title names the tank and the drawing; the caption under it says what the drawing shows (once: a subtitle and
+    // a tagline said it again, the r18 critic)
+    technicalModal.setTitle(`${name} · ${translated.label}`);
     technicalModalImage.src = iconUrl(spec.id, view.assetView);
     technicalModalImage.alt = `${name} ${translated.caption.toLowerCase()}`;
     technicalModalCaption.textContent = translated.caption;
@@ -1971,12 +1981,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
-    if (cg) fitWholeRows(cg);
+    if (cg) holdGridHeight(cg, fitWholeRows);
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
     const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .cot-c-picker__grid');
-    if (grid) fitPickerGrid(grid);
+    if (grid) holdGridHeight(grid, fitPickerGrid);
   });
   // The map roster now exceeds the short-viewport column. Its flex height
   // can settle after the first animation frame (once the camo grid measures),
@@ -2354,7 +2364,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     eqShutId = null;
     renderEqReadout();
     // a picker that scrolls ends on a whole row of cards, never a sliced one
-    requestAnimationFrame(() => { const grid = eqPicker.grid(); if (grid) fitPickerGrid(grid); });
+    requestAnimationFrame(() => { const grid = eqPicker.grid(); if (grid) holdGridHeight(grid, fitPickerGrid); });
     // slot highlight on the card
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);

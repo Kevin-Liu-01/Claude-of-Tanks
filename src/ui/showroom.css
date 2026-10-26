@@ -245,8 +245,10 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel
   grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);padding:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:contents;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading>strong{display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1;flex:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{height:var(--btn-h-s);padding-block:var(--s1);}
+/* the staging choice is as wide as its name and its chevron (stretched over the head, its chevron stood 1000 px from its
+   label at 2560: the r18 critic) */
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{grid-area:1/1;flex:none;width:auto;justify-self:start;max-width:100%;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-garage-variant-trigger{width:auto;max-width:100%;height:var(--btn-h-s);padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-actions{grid-area:1/2;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-close{grid-area:1/3;margin:0;}
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{grid-area:2/1/3/4;}
@@ -549,7 +551,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-thir
 body[data-cot-panels='overlay'] .cot-lt-head{flex-direction:row;align-items:center;gap:var(--s2);}
 /* a phone's name row and band captions stand over the bright floor: the head and each caption take a glyph plate, so
    neither reads light on light (the gauntlet 10-25: the stage's shade left the orange tier and suffix at 2.4:1) */
-body[data-cot-panels='overlay'] .cot-lt-head{padding:var(--s1) var(--s2);margin:calc(-1 * var(--s1)) calc(-1 * var(--s2));
+/* the head's plate is a box of the column, edge to edge with the slots and the strip under it (pulled 8 px past the column
+   so its words lined up, it read as off the column: the r18 critic) */
+body[data-cot-panels='overlay'] .cot-lt-head{align-self:stretch;padding:var(--s1) var(--s2);margin:0;
   border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-cap{padding:1px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{min-width:0;overflow:hidden;white-space:nowrap;
