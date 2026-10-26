@@ -291,6 +291,14 @@ body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-statu
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .seg{display:block}
 /* (stacked lines with leading of their own: zh's lines touched at 13 px on 13, gauntlet r4) */
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .mv{line-height:1.3}
+/* (Main 254: on the two smallest touch windows the Frontline's objective drops its hostiles part, "LINE 2/3 · WAVE 3" on
+   one line, so DETECTED keeps its row over the sight; surfaceRegistry.ts records it) */
+@media (max-height:299px) and (orientation:landscape), (max-width:340px) and (orientation:portrait){
+  body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault'] .mv .seg:nth-child(n+3){display:none}
+  body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault'].stacked :is(.seg,.sep){display:inline}
+  /* (its sides 2 px past the plate's 12 px slant: the line needs 103 px in en, 111 in zh, of the 166 px plate) */
+  body[data-cot-battle-layout].cot-touch-layout .cot-mode-status[data-mode='frontline_assault']{padding-inline:14px}
+}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{

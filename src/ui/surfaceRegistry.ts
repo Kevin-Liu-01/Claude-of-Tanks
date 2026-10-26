@@ -99,7 +99,11 @@ export const SURFACE_REGISTRY = Object.freeze({
   },
   objective: {
     places: [
-      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv' },
+      // (on the two smallest touch windows, 320x568 and 568x256, the Frontline's objective drops its hostiles part, so
+      // DETECTED keeps its row over the sight: Main 254, battleHudLayout.css; touch hides the rosters, so the count has no
+      // other place there)
+      { screen: 'battle', owner: HUD, surface: '.cot-mode-status .mv',
+        yields: "the Frontline's hostiles part, at 320x568 and 568x256 on touch (battleHudLayout.css)" },
     ],
   },
   'mode-name': {
