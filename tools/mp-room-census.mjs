@@ -17,6 +17,8 @@
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
 //     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>] [--profile-solo] [--solo-eval=<expr>]
 //     [--gate]   (exit 4 when the leave stage logs a console warning: its budget is 0)
+//     [--max-task-ms=<ms>]   (exit 4 when either page runs a task over <ms> in the entry or the leave)
+import os from 'node:os';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -72,6 +74,9 @@ const soloEval = option('solo-eval', '');
 // --gate: the run fails (exit 4) when the leave stage logs any console warning (Main 2026-10-26: the rooms' leave has a
 // budget of 0 warnings; the stopped host's late heartbeat was refused, host_only / invalid_command)
 const gate = argv.includes('--gate');
+// --max-task-ms=<ms> (Main 2026-10-26: the rooms' entry and leave budget): the run fails (exit 4) when either page runs a
+// task longer than this in the entry (lobby-battle) or the leave (lobby-leave) stage
+const maxTaskMs = Number(argv.find((a) => a.startsWith('--max-task-ms='))?.slice(14) ?? NaN);
 const leaveFirst = option('leave-first', 'B') === 'A' ? 'A' : 'B';
 const leaveGapMs = Number(option('leave-gap-ms', '0')) || 0;
 const profiling = { armed: false, live: [], workers: [] };
@@ -235,6 +240,11 @@ function attribute(profile, windows, origin) {
 const samples = [];
 const log = { errors: [], warnings: [], csp: [], wasm: [] };
 let pagesForStage = [];
+const metricSessions = [];
+let lastMetrics = null;
+const readMetrics = () => Promise.all(metricSessions.map((cdp) => cdp.send('Performance.getMetrics')
+  .then(({ metrics }) => Object.fromEntries(metrics.filter((m) => ['ProcessTime', 'TaskDuration', 'ScriptDuration'].includes(m.name)).map((m) => [m.name, m.value])))
+  .catch(() => null)));
 const stage = async (name, startedAt) => {
   // each page's own violation events since the last stage, and the world kernels as the page reports them
   const pageState = await Promise.all(pagesForStage.map((page) => page.evaluate(() => ({ csp: (window.__cspViolations ?? []).splice(0),
@@ -245,11 +255,18 @@ const stage = async (name, startedAt) => {
     consoleWarningTexts: log.warnings.splice(0), cspReports: csp, kernels: pageState.map((p) => p?.kernels ?? null), wasmFetches: log.wasm.splice(0),
     longTasks: pageState.map((p) => { const t = p?.longTasks ?? []; return { count: t.length, totalMs: t.reduce((a, b) => a + b, 0), longestMs: t.length ? Math.max(...t) : 0 }; }),
     entryFailures: pageState.map((p) => p?.entryFailure ?? null) },
-    wallMs: Math.round(performance.now() - startedAt) });
+    wallMs: Math.round(performance.now() - startedAt), loadAvg: os.loadavg().map((n) => Math.round(n * 10) / 10) });
+  if (metricSessions.length) {
+    const now = await readMetrics();
+    samples.at(-1).cpu = now.map((m, i) => (m && lastMetrics?.[i] ? Object.fromEntries(Object.entries(m).map(([k, v]) => [k, Math.round((v - (lastMetrics[i][k] ?? 0)) * 1000)])) : null));
+    lastMetrics = now;
+  }
   const last = samples.at(-1).census;
   console.log(`lobby-${name.padEnd(8)} ${String(last.consoleErrors.length).padStart(2)} errors ${String(last.consoleWarnings).padStart(2)} warnings `
     + `${String(csp.length).padStart(2)} csp  kernels ${JSON.stringify(last.kernels)}  wasm ${JSON.stringify(last.wasmFetches)}`
     + `  longest task ${last.longTasks.map((t, i) => `${'AB'[i]} ${t.longestMs} ms (${t.count})`).join(', ')}`
+    + `${samples.at(-1).cpu ? `  cpu ${samples.at(-1).cpu.map((c, i) => `${'AB'[i]} ${c ? `${c.ProcessTime} ms process, ${c.TaskDuration} ms tasks` : '?'}`).join(', ')}` : ''}`
+    + `  load ${samples.at(-1).loadAvg.join(' ')}`
     + `${last.entryFailures.some(Boolean) ? `  ENTRY FAILED ${JSON.stringify(last.entryFailures)}` : ''}`
     + `${last.consoleErrors.length ? `\n    ${last.consoleErrors.join('\n    ')}` : ''}${csp.length ? `\n    ${csp.slice(0, 6).join('\n    ')}` : ''}`);
 };
@@ -281,6 +298,14 @@ try {
   observe(pageA, 'A', log);
   observe(pageB, 'B', log);
   pagesForStage = [pageA, pageB];
+  // (2026-10-26, Main: the A/B in CPU, since load swings wall time) each page's renderer CPU (user+sys, CDP's
+  // ProcessTime) and its main thread's task time, per stage
+  for (const page of [pageA, pageB]) {
+    const cdp = await page.createCDPSession();
+    await cdp.send('Performance.enable', { timeDomain: 'threadTicks' }).catch(() => cdp.send('Performance.enable'));
+    metricSessions.push(cdp);
+  }
+  lastMetrics = await readMetrics();
   const garage = () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage';
   const inBattle = () => window.__MULTIPLAYER_V2?.stats?.().inMatch === true && window.__DEBUG?.game?.phase === 'battle'
     && getComputedStyle(document.querySelector('.cot-bl')).display === 'none';
@@ -364,8 +389,10 @@ try {
     await pageA.waitForSelector('#cot-battle-menu.open [data-deploy-room="lan"]', { timeout: 30_000 });
     await pageA.evaluate(() => document.querySelector('#cot-battle-menu [data-deploy-room="lan"]')?.click());
   }
-  await pageA.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-  await pageA.click('.cot-play .modes [data-mode="lan"]');
+  // the room's kind: a mode button, or (from 257) the kit's segmented control
+  const lanKind = '.cot-play.show .modes [data-mode="lan"], .cot-play.show .modes [data-value="lan"]';
+  await pageA.waitForSelector(lanKind, { timeout: 30_000 });
+  await pageA.click(lanKind);
   await pageA.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';
@@ -442,10 +469,10 @@ try {
     for (const task of entryProfile.page) console.log(`host entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 20).join('\n    ')}`);
     for (const w of entryProfile.workers) console.log(`host worker ${w.url}: ${w.ms} ms profiled, ${w.samples} busy samples\n  self:\n    ${w.self.join('\n    ')}`);
   }
-  // each long task of the battle stage (300 ms or more) and the programs it made, against the nearest made before it
-  const programTasks = programLog ? await Promise.all([pageA, pageB].map((page, index) => page.evaluate((from) => {
+  // each long task of a stage (minMs or more) and the programs it made, against the nearest made before it
+  const programTasksSince = (fromPerPage, minMs) => Promise.all([pageA, pageB].map((page, index) => page.evaluate((from, min) => {
     const rows = window.__censusPrograms ?? [];
-    return (window.__censusTaskSpans ?? []).filter(([start, ms]) => start >= from && ms >= 300).map(([start, ms]) => {
+    return (window.__censusTaskSpans ?? []).filter(([start, ms]) => start >= from && ms >= min).map(([start, ms]) => {
       const made = rows.filter((r) => r.t >= start && r.t <= start + ms), prior = rows.filter((r) => r.t < start);
       const lines = made.map((r) => {
         let best = null;
@@ -460,7 +487,8 @@ try {
       });
       return { startMs: Math.round(start), ms: Math.round(ms), made: made.length, programs: lines.slice(0, 80) };
     });
-  }, stageFrom[index]).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })))) : null;
+  }, fromPerPage[index], minMs).catch((error) => ({ error: String(error?.message || error).split('\n')[0] }))));
+  const programTasks = programLog ? await programTasksSince(stageFrom, 300) : null;
   const evaluated = battleEval ? await Promise.all([pageA, pageB].map((page) => page.evaluate((expression) => {
     try { return { value: JSON.parse(JSON.stringify((0, eval)(expression) ?? null)) }; } catch (error) { return { error: String(error?.message || error) }; }
   }, battleEval).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })))) : null;
@@ -483,15 +511,14 @@ try {
   at = performance.now();
   // each page's session and its own clock at the start
   const leaveCdp = [], leaveFrom = [];
-  if (profileLeave) {
-    for (const page of [pageA, pageB]) {
-      const cdp = await page.createCDPSession();
-      await cdp.send('Profiler.enable');
-      await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
-      leaveFrom.push(await page.evaluate(() => performance.now()));
-      await cdp.send('Profiler.start');
-      leaveCdp.push(cdp);
-    }
+  for (const page of [pageA, pageB]) {
+    if (!profileLeave) { leaveFrom.push(await page.evaluate(() => performance.now())); continue; }
+    const cdp = await page.createCDPSession();
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+    leaveFrom.push(await page.evaluate(() => performance.now()));
+    await cdp.send('Profiler.start');
+    leaveCdp.push(cdp);
   }
   for (const [i, page] of (leaveFirst === 'A' ? [pageA, pageB] : [pageB, pageA]).entries()) {
     if (i > 0 && leaveGapMs) await new Promise((r) => setTimeout(r, leaveGapMs));
@@ -512,8 +539,20 @@ try {
       for (const task of leaveProfile[who]) console.log(`${who} leave task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 24).join('\n    ')}`);
     }
   }
+  // the leave's long tasks (200 ms or more) and the programs each made: a Garage frame that binds a program still
+  // linking made it, or met one made earlier
+  const leavePrograms = programLog ? await programTasksSince(leaveFrom, 200) : null;
   await stage('leave', at);
   if (leaveProfile) samples.at(-1).profile = leaveProfile;
+  if (leavePrograms) {
+    samples.at(-1).programTasks = leavePrograms;
+    for (const [i, tasks] of leavePrograms.entries()) {
+      for (const task of Array.isArray(tasks) ? tasks : [tasks]) {
+        console.log(`leave programs ${'AB'[i]}: task at ${task.startMs} ms, ${task.ms} ms: ${task.made} made${task.error ? ` (${task.error})` : ''}`);
+        for (const line of task.programs ?? []) console.log(`    ${line}`);
+      }
+    }
+  }
 } catch (error) {
   // where each page stood when the stage gave up, and the stage's console so far
   const state = await Promise.all(pages.map((page) => page.evaluate(() => {
@@ -551,5 +590,17 @@ if (gate) {
     for (const text of leave.census.consoleWarningTexts ?? []) console.error(`  ${String(text).slice(0, 240)}`);
     if (!process.exitCode) process.exitCode = 4;
   } else console.log('mp-room-census: GATE lobby-leave 0 console warnings (budget 0)');
+}
+if (Number.isFinite(maxTaskMs)) {
+  let over = false;
+  for (const kind of ['lobby-battle', 'lobby-leave']) {
+    const sample = samples.find((s) => s.kind === kind);
+    const longest = sample?.census?.longTasks?.map((t) => t.longestMs) ?? null;
+    if (!longest) { console.error(`mp-room-census: GATE ${kind} did not run`); over = true; continue; }
+    const bad = longest.map((ms, i) => [ms, 'AB'[i]]).filter(([ms]) => ms > maxTaskMs);
+    if (bad.length) { over = true; console.error(`mp-room-census: GATE ${kind}: ${bad.map(([ms, who]) => `${who} ${ms} ms`).join(', ')} over ${maxTaskMs} ms`); }
+    else console.log(`mp-room-census: GATE ${kind}: longest ${longest.map((ms, i) => `${'AB'[i]} ${ms} ms`).join(', ')} (budget ${maxTaskMs} ms)`);
+  }
+  if (over && !process.exitCode) process.exitCode = 4;
 }
 process.exit(process.exitCode ?? 0);
