@@ -7,6 +7,10 @@
 :root{
   --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;--graphite-750:#161b21;
   --graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
+  --modehue-standard:#efb258;--modehue-drone:#34eee5;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
+  --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
+  --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
+  --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
   --paper-50:#f6f3ec;--paper-100:#ece8de;--paper-300:#c9c5bb;--paper-500:#9a9a95;--paper-600:#7c8187;--paper-700:#5d636a;
   --tungsten-300:#ffd08a;--tungsten-400:#ffbd5c;--tungsten-500:#f0a030;--tungsten-600:#c97f1c;--tungsten-800:#4a2e0a;
   --sky-400:#57b8ff;--sky-200:#b8e0ff;--vermilion-400:#ff5a4e;--mint-400:#5bd69b;--yellow-400:#ffd15c;
@@ -41,6 +45,11 @@
   --line-1:rgba(246,243,236,.07);--line-2:rgba(246,243,236,.13);--line-3:rgba(246,243,236,.24);--line-control:rgba(246,243,236,.38);
   --accent:var(--tungsten-500);--accent-hi:var(--tungsten-400);--accent-lo:var(--tungsten-600);--accent-wash:rgba(240,160,48,.12);
   --focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--tungsten-400);
+  --mode-standard:var(--modehue-standard);--mode-drone:var(--modehue-drone);--mode-zone-control:var(--modehue-zone-control);
+  --mode-capture-the-flag:var(--modehue-capture-the-flag);--mode-frontline-assault:var(--modehue-frontline-assault);
+  --mode-turbo-ball:var(--modehue-turbo-ball);--mode-mars:var(--modehue-mars);--mode-endless-horde:var(--modehue-endless-horde);
+  --mode-gun-game:var(--modehue-gun-game);--mode-juggernaut:var(--modehue-juggernaut);--mode-infected:var(--modehue-infected);
+  --mode-realistic:var(--modehue-realistic);--mode-ac130:var(--modehue-ac130);--mode-proving-ground:var(--modehue-proving-ground);
   --team-own:var(--sky-400);--team-enemy:var(--vermilion-400);--team-squad:var(--mint-400);--team-neutral:var(--paper-100);
   --ok:var(--mint-400);--warn:var(--yellow-400);--danger:var(--vermilion-400);--info:var(--sky-200);
   --text-own:var(--team-own);--text-enemy:var(--team-enemy);--text-squad:var(--team-squad);--text-ok:var(--ok);

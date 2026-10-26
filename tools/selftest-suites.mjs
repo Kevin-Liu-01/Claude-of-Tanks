@@ -994,6 +994,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
     // colour-vision floors from the token values; the legacy names alias the tokens
     'src/ui/tokens/tokens.selftest.mjs',
+    'src/ui/tokens/modeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
