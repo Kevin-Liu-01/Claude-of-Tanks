@@ -819,7 +819,9 @@ body[data-cot-width='compact'] .cot-resume .rz-title,
 body[data-cot-width='phone'] .cot-resume .rz-title{font-size:var(--fs-24)}
 body[data-cot-width='phone'] .cot-resume .rz-actions{display:grid;grid-template-columns:1fr;justify-self:stretch;width:100%}
 body[data-cot-width='phone'] .cot-resume .rz-actions>.cot-c-btn{width:100%}
-body[data-cot-height='short'] .cot-resume .rz-plate{padding:var(--s4) var(--s5);gap:var(--s3)}
+/* (a short landscape's plate fits its two buttons side by side, its padding the plate's own: at the window's width it left
+   84 px of empty plate either side of them at 568x256, gauntlet r13) */
+body[data-cot-height='short'] .cot-resume .rz-plate{width:auto;padding:var(--s4) var(--s5);gap:var(--s3)}
 
 body[data-cot-width] .cot-hints{
   box-sizing:border-box;max-width:min(var(--hud-hints-width,100vw),calc(100vw - (var(--cot-edge) * 2)));justify-content:center;

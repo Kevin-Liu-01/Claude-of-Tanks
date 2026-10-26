@@ -326,7 +326,7 @@ const ES_CSS = `
 .cot-es .es-stat-grid.has-vehicle{grid-template-columns:minmax(112px,.72fr) repeat(2,minmax(0,1fr));}
 .cot-es .es-vehicle-card{position:relative;display:grid;place-items:center;min-width:0;min-height:80px;
   overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,var(--accent-wash),var(--hud-plate-strong) 72%);}
-.cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
+.cot-es .es-vehicle-card>img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
   object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px oklch(from var(--surface-scene) l c h / .72));}
 .cot-es .es-tal{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
   min-height:80px;text-align:left;padding:var(--s3) var(--s4);background:var(--hud-plate-strong);}

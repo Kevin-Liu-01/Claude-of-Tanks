@@ -26,8 +26,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-rule{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:var(--s3);font-size:max(var(--battle-fs-14),var(--fs-14));color:var(--ink-2)}
 /* the battle's facts as the direction's chips (11-end-screen .chips) */
 body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:var(--s2);flex-wrap:wrap;margin-top:14px;letter-spacing:normal;text-transform:none}
+/* (the head's chips on the report's plates, near opaque: at the rules chip's 70 % the 8:00 over a bright treeline read grey
+   beside two black ones at 320x568, gauntlet r13) */
 body[data-cot-width] .cot-es.cot-es--record .es-meta>span{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:var(--chip-radius);
-  background:var(--battle-chip-plate);box-shadow:var(--ring-2);font:500 max(var(--battle-fs-13),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
+  background:var(--hud-plate-strong);box-shadow:var(--ring-2);font:500 max(var(--battle-fs-13),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-meta>span b{font-weight:500;color:var(--ink-1)}
 /* the report's views as the kit's tabs, the report on the HUD's plate */
 /* (the views' tabs on the HUD plate, the resting one in the second ink: on the bare still it read 1.2:1, gauntlet r2) */
@@ -40,7 +42,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-dh{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 20px;gap:6px;border-bottom:1px solid var(--line-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:100px;background:transparent;border:0;box-shadow:none}
-body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{object-fit:contain;width:100%;height:100%;max-height:130px}
+/* (the packaged angle icon alone, the card's own img: the hero card's flag and tank keep their layers' fit, cover to the
+   plate's edges as on the load's cards; boxed by these, the flag stopped 4 to 8 px short of the plate's top and right,
+   gauntlet r13) */
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img{object-fit:contain;width:100%;height:100%;max-height:130px}
 /* the vehicle's name under its card, the variant in the hollow tungsten outline (the policy's end-screen card); a
    phone's card (66 px) has no room for it, and the line under the headline names the vehicle there */
 body[data-cot-width] .cot-es.cot-es--record .es-vn{display:none}
@@ -261,7 +266,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicl
 @media(min-width:1280px) and (min-height:700px){
 body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:minmax(200px,240px) repeat(3,minmax(0,1fr));gap:var(--s2);padding:18px 20px}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:156px}
-body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{max-height:150px}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img{max-height:150px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:74px;padding:10px var(--s3);gap:6px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:var(--battle-fs-28)}
 /* (the lead tile is its accent alone, on the grid with the others: a 40 px figure stood it 16 px taller, gauntlet r1) */
