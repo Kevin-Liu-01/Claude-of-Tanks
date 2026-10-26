@@ -205,7 +205,7 @@ body[data-cot-width] .cot-es.cot-es--record.es-quiet-focus .es-action:focus-visi
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debrief.teams{container-type:inline-size}
 @container (min-width:1100px){body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-rosters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* (a watched battle's ridden tank wears the spectator's glyph by its name: its highlight alone meant nothing, r7) */
-body[data-cot-width] .cot-es.cot-es--record .es-tr .nm .rode{display:inline-flex;vertical-align:-2px;margin-right:5px;color:var(--accent-hi)}
+body[data-cot-width] .cot-es.cot-es--record .es-tr .nm .rode{display:inline-flex;flex:none;align-self:center;margin-left:5px;color:var(--accent-hi)}
 /* (a Latin callsign keeps the Latin size in Chinese, whose lift is for Chinese labels: endScreen.ts marks it .lat) */
 :lang(zh-CN) .cot-es .es-tr .nm.lat{--battle-fs-12:12px}
 :lang(zh-CN) .cot-es .es-tr .vt.lat{font-size:calc(1em * 11 / 13)}

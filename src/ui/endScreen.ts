@@ -420,10 +420,13 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr.me{background:linear-gradient(90deg,oklch(from var(--accent) l c h / .18),oklch(from var(--accent) l c h / .03));
   border-left-color:${COL.amber};}
 .cot-es .es-tr .tier{display:none}.cot-es .es-tr .si{flex:0 0 44px;height:19px;}
-.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:block;min-width:0;font-size:var(--battle-fs-12);font-weight:700;color:var(--ink-1);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* (the player's tag after the callsign, never cut by its ellipsis, so every callsign starts on the name column: led by
+   the tag, the player's stood 17 to 24 px right of the others, gauntlet r13) */
+.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:flex;align-items:baseline;min-width:0;font-size:var(--battle-fs-12);font-weight:700;color:var(--ink-1);
+  white-space:nowrap;}
+.cot-es .es-tr .nm .nmt{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
-  font-size:var(--battle-fs-11);letter-spacing:.01em;margin-right:5px;vertical-align:1px;}
+  font-size:var(--battle-fs-11);letter-spacing:.01em;flex:none;margin-left:5px;vertical-align:1px;}
 /* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
 .cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
 .cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
@@ -970,7 +973,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="identity"><span class="${nameClass}"><span class="nmt">${escapeHtml(result.name || result.id)}</span>${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}</span>` +
       `<span class="veh"><span class="${vehicleClass}">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
