@@ -1,13 +1,15 @@
-/* The shared player's control (src/presentation/mediaPlayer.ts; brand-ui SPEC 8.3, BUI-F7): a pause disc on a loop
-   that runs longer than five seconds, an amber play disc when motion waits for the viewer (reduced motion, data saving,
-   a crowded-out loop). The public pages load it with the player, beside their first bytes; each page places it. */
+/* The shared player's control (src/presentation/mediaPlayer.ts; brand-ui SPEC 8.3, BUI-F7): a pause button on a loop
+   that runs longer than five seconds, a play button when motion waits for the viewer (reduced motion, data saving,
+   a crowded-out loop). It is the kit's square icon button (src/ui/components/components.css .cot-c-btn--icon, 48 px)
+   over the picture, on an opaque plate: nothing of the footage shows through it. The public pages load it with the
+   player, beside their first bytes; each page places it. Every rule names both classes, so it outranks the kit's own
+   rules whichever sheet loads first. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer components{
-.cot-media-toggle{position:absolute;z-index:var(--media-toggle-z);right:12px;bottom:12px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;box-shadow:var(--e2);transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter),color var(--dur-base) var(--ease-enter)}
-.cot-media-toggle svg{display:block;width:16px;height:16px}
-/* one plate in both states (the kit's icon button over media): the glyph says play or pause, never the accent */
-.cot-media-toggle:hover{border-color:var(--line-3);background:var(--surface-hover)}
-.cot-media-toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-media-toggle[hidden]{display:none}
-@media (prefers-reduced-motion:reduce){.cot-media-toggle{transition:none}}
+.cot-c-btn.cot-media-toggle{position:absolute;z-index:var(--media-toggle-z);right:12px;bottom:12px;background:var(--surface-raised);color:var(--ink-1)}
+.cot-c-btn.cot-media-toggle svg{display:block;width:16px;height:16px}
+/* one plate in both states: the glyph says play or pause, never the accent */
+@media (hover:hover){.cot-c-btn.cot-media-toggle:hover{background:var(--surface-hover)}}
+.cot-c-btn.cot-media-toggle[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.cot-c-btn.cot-media-toggle{transition:none}}
 }

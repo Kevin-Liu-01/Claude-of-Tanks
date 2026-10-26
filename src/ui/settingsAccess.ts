@@ -46,7 +46,7 @@ function createDefaultGear(): HTMLButtonElement {
   gear.type = 'button';
   gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = uiIconSVG('settings', 22);
-  gear.title = t('settings.gearAria');
+  gear.dataset.tip = t('settings.gearAria');
   document.body.appendChild(gear);
   return gear;
 }

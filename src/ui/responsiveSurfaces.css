@@ -169,8 +169,10 @@ body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);wh
    for a narrow phone scrolls instead of letting a label run past its plate; the first label starts on the panel's edge. */
 body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
-/* a two-character tab's box meets the touch floor; its label (and its underline) keeps the label's width */
-body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+/* a phone tab's box reaches the touch floor by its own inset (a two-character label plus 9 px a side is 44 px), so every
+   label keeps its own width and the row's gaps come out even; the row's inset puts the first and last labels on the edge */
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tabs{padding-inline:calc(var(--cot-edge) - var(--s2) - 1px)}
 /* the scrolling tab row clips below its box, so a phone's indicator stands on the row's rule inside it */
 body[data-cot-width='phone'] .cot-set-tab.sel>span::after{bottom:0}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
@@ -223,9 +225,9 @@ body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height
 /* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close) */
 body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 /* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - 4px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - var(--s2) - 1px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
 /* a phone on its side keeps the upright phone's 16 px edge, so the first tab sits on the plates' edge */
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-settings{--cot-edge:var(--s4)}
 /* touch: a plate's top inset holds its heading (i)'s 44 px hit area inside the plate */

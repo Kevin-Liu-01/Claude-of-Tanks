@@ -89,9 +89,10 @@ const SITES = [
   ['src/ui/playMenu.ts', '.cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "Rooms' Mode trigger glyph paints the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
-  ['src/ui/garage.ts', 'data-mode-tone="${id}"', "Deploy's mode tiles and rows carry their mode"],
-  ['src/ui/deploy.css', '.cot-garage .cot-battle-choice .choice-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's tile and row glyphs paint the mode"],
-  ['src/ui/garage.ts', 'setupIcon.dataset.modeTone = battleGameMode;', "Deploy's heading glyph carries its mode"],
+  ['src/ui/garage.ts', "as import('./icons/spriteIndex.ts').IconId, tone: id,", "Deploy's mode picker cards carry their mode"],
+  ['src/ui/garage.ts', 'data-proving data-mode-tone="proving_ground"', "Deploy's Proving Ground carries its mode"],
+  ['src/ui/deploy.css', '.cot-garage .cot-deploy-proving .choice-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's Proving Ground glyph paints its mode (the mode cards are the kit picker's)"],
+  ['src/ui/garage.ts', 'setupIcon.dataset.modeTone = mode;', "Deploy's heading glyph carries its mode (the chosen or the previewed one)"],
   ['src/ui/deploy.css', '.cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's heading glyph paints the mode"],
   ['src/ui/serviceRecordView.ts', '<span data-mode-tone="${battle.mode}">', "a Record battle's place line carries its mode"],
   ['src/ui/serviceRecord.css', '.cot-record-battle-what small [data-mode-tone] svg{color:var(--mode-ink,var(--ink-3))}', "a Record battle's mode glyph paints the mode"],
@@ -105,13 +106,9 @@ const SITES = [
   ['src/ui/battleLoad.ts', '.cot-bl .rules .gi{display:flex;color:var(--mode-ink,var(--accent));}', "the battle load's mode glyph paints the mode"],
   ['src/ui/endScreen.ts', '<span class="mode" data-mode-tone="${mode.id}"', "the end report's mode chip carries its mode"],
   ['src/ui/endScreen.ts', '.cot-es .es-meta svg{color:var(--mode-ink,var(--ink-3))}', "the end report's mode glyph paints the mode"],
-  ['src/ui/garage.ts', 'data-game-mode="${id}" data-mode-tone="${id}"', "every Garage Deploy choice carries its mode"],
-  ['src/ui/garage.ts', 'data-proving data-mode-tone="proving_ground"', "the Garage's proving-ground choice carries its mode"],
   ['src/ui/garage.ts', 'battleMenu.dataset.modeTone = battleGameMode;', "the Garage battle menu carries its selected mode"],
   ['src/ui/garage.css', '.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}',
     "the Garage battle menu and its choices read every mode's tone (the plate's glyph and title, the features, the chosen edge)"],
-  ['src/ui/garage.css', ".cot-garage .cot-battle-choice[data-mode-tone]:not([aria-pressed='true']) .choice-icon{color:var(--mode-color);}",
-    "a Garage Deploy choice's glyph paints its mode"],
 ];
 for (const [path, text, what] of SITES) assert.ok(read(path).includes(text), `${what} (${path})`);
 // the Garage's battle menu names no mode by hand: every mode reaches it through the kit's data-mode-tone mapping

@@ -24,9 +24,9 @@ export const STEP_PATHS = Object.freeze([
     doc: 'battle',
     steps: [
       { name: 'deploy', press: DEPLOY, shown: DEPLOY_OPEN },
-      { name: 'battlefield', press: '#cot-battle-menu [data-deploy-field]', shown: `shown('.cot-map-card .cot-map-select')` },
-      // a named map, not Random (the first card)
-      { name: 'map', press: '.cot-map-card:not(.sel) .cot-map-select', index: 1, shown: `!shown('.cot-map-card .cot-map-select')` },
+      { name: 'battlefield', press: '#cot-battle-menu [data-deploy-field]', shown: `shown('[data-deploy-bf] .cot-c-picker__opt')` },
+      // a named map, not Random (the first card): one press chooses it and closes the picker
+      { name: 'map', press: '[data-deploy-bf] .cot-c-picker__opt:not([aria-selected="true"])', index: 1, shown: `!shown('[data-deploy-bf] .cot-c-picker__opt')` },
       { name: 'launch', press: '#cot-battle-menu [data-battle-launch]', shown: `shown('.cot-bl.on')`, shownTimeoutMs: 30000 },
     ],
     done: `shown('.cot-bl.on') || !!window.__BATTLE_REVEAL`,

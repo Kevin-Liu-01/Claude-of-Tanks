@@ -85,12 +85,16 @@ export function docsIconKeys(): DocsIconKey[] {
   return Object.keys(DOCS_ICON_SPECS) as DocsIconKey[];
 }
 
+/** A placeholder draws at 24 px unless it names the set's small size (data-doc-size="16"): there the glyph takes its
+ *  16-unit optical master and stroke wherever the sprite draws one (icon.ts). */
+const sizeOf = (size: string | undefined): number => (size === '16' ? 16 : 24);
+
 /** The same fill as markup, for a page written at build time (tools/docs-prerender.mjs): its icons paint with the
  *  document, and the shared shell inlines the symbols they reference. */
 export function fillDocsIcons(html: string): string {
-  return html.replace(/<span data-doc-icon="(\w+)"><\/span>/g, (whole, key: string) => {
+  return html.replace(/<span data-doc-icon="(\w+)"( data-doc-size="(\d+)")?><\/span>/g, (whole, key: string, sizeAttr = '', size?: string) => {
     const spec = (DOCS_ICON_SPECS as Readonly<Record<string, DocsIconSpec>>)[key];
-    return spec ? `<span data-doc-icon="${key}" class="doc-icon tone-${spec.tone}" aria-hidden="true">${icon(spec.id, { size: 24 })}</span>` : whole;
+    return spec ? `<span data-doc-icon="${key}"${sizeAttr} class="doc-icon tone-${spec.tone}" aria-hidden="true">${icon(spec.id, { size: sizeOf(size) })}</span>` : whole;
   });
 }
 
@@ -103,6 +107,6 @@ export function mountDocsIcons(root: ParentNode = document): void {
     if (!spec) return;
     element.classList.add('doc-icon', `tone-${spec.tone}`);
     element.setAttribute('aria-hidden', 'true');
-    element.innerHTML = icon(spec.id, { size: 24 });
+    element.innerHTML = icon(spec.id, { size: sizeOf(element.dataset.docSize) });
   });
 }
