@@ -25,7 +25,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
-import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
+import { mountSpectateAllies, spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
@@ -357,6 +357,8 @@ interface HudHitEvent extends HitEventPresentation {
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   /** ui:minimapZoom: the map's size step to set (none: M's toggle of the large step). */
   step?: number;
+  /** spectate:begin/change: who may be watched, in the stepping order (killcam.ts; the bar's picker of allies). */
+  allies?: readonly string[];
   destroyed?: boolean;
   id?: string;
   /** tank:spotted: who lit the tank (spotting.ts), when the sim names a spotter. */
@@ -503,7 +505,7 @@ interface LiveDamageNumber {
   timer?: ReturnType<typeof setTimeout>;
 }
 interface HitMark { t0: number; bounced: boolean; blockedRapid?: boolean }
-interface SpawnFlag { x: number; z: number; color: string; fill?: string }
+interface SpawnFlag { x: number; z: number; color: string; fill?: string; side: 'own' | 'enemy' }
 
 interface ReticlePaintState {
   valid: boolean;
@@ -2598,8 +2600,20 @@ export function initHud(bus: EventBus): HudRuntime {
       || document.querySelector<HTMLButtonElement>('.cot-es [data-es-action="garage"]');
     if (btn) btn.click(); // existing endOverlayRuntime Garage handler
   });
+  // (the plate's picker of allies: the one chosen is watched, as Q and E step to it)
+  const specAllies = mountSpectateAllies(specBar, (id) => {
+    bus.emit('spectate:select', { id });
+    bus.emit('ui:click', {});
+  });
   function specPopulate(p: HudEventPayload, first: boolean): void {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
+    // (each ally by the rosters' callsign, its tier and vehicle under it, as the plate reads)
+    specAllies.update((p.allies ?? []).map((id) => {
+      const ally = (lastTanksRef || []).find((t) => t && t.id === id) || null;
+      const allyTier = ally?.spec?.id ? tierNumeral(ally.spec.id) : '';
+      const vehicle = ally?.spec?.name ?? '';
+      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle };
+    }), p.id ?? null);
     const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)
     specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
@@ -2625,6 +2639,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
   function specHide(): void {
+    specAllies.close();
     specBar.classList.remove('in');
     document.body.classList.remove('cot-spectating');
     setTimeout(() => {
@@ -6764,8 +6779,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // the ally blip cluster at spawn — the map read one-sided). The tints are
     // the team inks every blip and objective glyph shares (brand-ui H1).
     spawnFlags = [
-      { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own') },
-      { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy') },
+      { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own'), side: 'own' },
+      { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy'), side: 'enemy' },
     ];
   }
 
@@ -6865,8 +6880,9 @@ export function initHud(bus: EventBus): HudRuntime {
       const dimmed = Math.hypot(x - playerMapX, y - playerMapY) < 15;
       mmCtx.save();
       if (dimmed) mmCtx.globalAlpha = 0.55;
-      // The same tank-and-return glyph marks spawns on the map and in world.
-      drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)');
+      // The same tank-and-return glyph marks spawns on the map and in world, the enemy's on its diamond (a side is shape
+      // and colour, never colour alone: INTERACTION-REDESIGN bar line 6).
+      drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)', flag.side);
       mmCtx.restore();
     }
   }
@@ -6928,7 +6944,7 @@ export function initHud(bus: EventBus): HudRuntime {
           const reviving = marker.status === 'respawn' && marker.side === 'own' && playerDown;
           if (nearPlayer && !reviving) mmCtx.globalAlpha = 0.6;
           if (reviving) halo(12, 0.6);
-          drawSpawnGlyph(mmCtx, x, y, 8.5, color, fill);
+          drawSpawnGlyph(mmCtx, x, y, 8.5, color, fill, marker.side === 'enemy' ? 'enemy' : 'own');
           break;
         }
         case 'flagBase': {

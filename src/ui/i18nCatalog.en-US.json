@@ -1520,6 +1520,7 @@
   "perfHud.state.live": "LIVE",
   "perfHud.state.error": "PROVIDER ERROR",
   "spectator.spectating": "Spectating",
+  "spectator.chooseAlly": "Choose an ally to watch",
   "spectator.garage": "Garage",
   "spectator.garageAria": "Return to garage",
   "spectator.idxAria": "Spectator index",

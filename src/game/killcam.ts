@@ -1848,6 +1848,10 @@ export function createKillCam(deps: KillcamDeps) {
         const p = payload as { direction?: number } | null;
         spectate.cycle(p?.direction !== undefined && p.direction < 0 ? -1 : 1);
       });
+      bus.on('spectate:select', (payload) => {
+        const p = payload as { id?: unknown } | null;
+        if (p?.id != null) spectate.select(String(p.id));
+      });
       bus.on('phase:change', (payload) => {
         const p = payload as { phase?: string } | null;
         if (!p || p.phase !== 'battle') {
@@ -6128,6 +6132,8 @@ export function createKillCam(deps: KillcamDeps) {
         count: list.length,
         index: Math.max(1, list.findIndex((candidate) => candidate.id === ent.id) + 1),
         allTeams: observerAllTeams,
+        // (who may be watched, in the stepping order: the bar's picker of allies, spectatorSwitcher.ts)
+        allies: list.map((candidate) => candidate.id),
       });
     }
     function retarget(ent: KillcamEntity, list: KillcamEntity[], first: boolean): void {
@@ -6144,6 +6150,13 @@ export function createKillCam(deps: KillcamDeps) {
       if (i < 0) i = 0; // current target died — dir picks the neighbour
       else i = ((i + dir) % list.length + list.length) % list.length;
       retarget(list[i], list, false);
+    }
+    /** Watch the ally `id` (the bar's picker of allies); nothing when it has left the living list. */
+    function select(id: string): void {
+      if (!on || isBattleEntryCovered() || id === curId) return;
+      const list = livingAllies();
+      const ent = list.find((t) => t.id === id);
+      if (ent) retarget(ent, list, false);
     }
     function onKey(e: KeyboardEvent): void {
       if (!on || e.repeat) return;
@@ -6256,6 +6269,7 @@ export function createKillCam(deps: KillcamDeps) {
       },
       stop,
       cycle,
+      select,
       get active() { return on; },
       get targetId() { return on ? curId : null; },
     };

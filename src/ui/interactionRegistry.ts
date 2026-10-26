@@ -151,6 +151,8 @@ export const INTERACTION_SITES = Object.freeze({
 
   // ---- the battle (premiere-battle)
   'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
+  /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
+  'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
   // ---- the Studio (premiere-gallery-studio)
   'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], lane: 'premiere-gallery-studio' },

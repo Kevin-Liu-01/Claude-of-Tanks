@@ -1,5 +1,6 @@
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import type * as PickerModule from './components/picker.ts';
 
 const SAFE_SPEC_ID = /^[a-z0-9_]+$/;
 
@@ -30,14 +31,17 @@ export function spectatorCardModel(payload: SpectatorCardPayload = {}): Spectato
 }
 
 export function spectatorSwitcherMarkup(): string {
-  return '<div class="subject"><div class="portrait" aria-hidden="true"><img alt=""></div>' +
+  // (the plate opens the picker of allies: mountSpectateAllies)
+  return `<button type="button" class="subject" aria-haspopup="listbox" aria-expanded="false" aria-label="${t('spectator.chooseAlly')}">` +
+    '<div class="portrait" aria-hidden="true"><img alt=""></div>' +
     '<div class="identity" aria-live="polite">' +
       '<span class="spec-status">' +
         uiIconSVG('scope', 14) +
         `<span>${t('spectator.spectating')}</span>` +
       '</span>' +
       '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
-    '</div></div>' +
+    '</div>' +
+    `<span class="open" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</span></button>` +
     '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
       // (Q and E, Watch's keys: A and D here were a second pair for the same step, INTERACTION-REDESIGN C)
       '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="Q" aria-label="' + t('spectator.cyclePrevAria') + '">' +
@@ -56,6 +60,81 @@ export function spectatorSwitcherMarkup(): string {
     '</button>';
 }
 
+/** One ally the bar's picker offers: the roster's callsign, and the tier and vehicle under it. */
+export interface SpectateAlly { readonly id: string; readonly name: string; readonly vehicle: string }
+
+/**
+ * INTERACTION-REDESIGN C (the spectator bar was "a stepper, not a picker of allies"): the plate opens the kit picker
+ * over the bar, a row for each living ally with the watched one chosen; a press or Enter watches the one chosen, and Esc
+ * backs out (a moved focus restored first), as every picker does. Q and E still step. The picker loads on the first
+ * open, so a battle that never opens it carries none of it.
+ */
+export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => void): {
+  update(allies: readonly SpectateAlly[], current: string | null): void;
+  close(): void;
+} {
+  const subject = bar.querySelector<HTMLButtonElement>('.subject');
+  const pop = document.createElement('div');
+  pop.className = 'cot-spec-pick';
+  pop.hidden = true;
+  // (the picker on its own host: an Esc it spends restoring stops there, short of the back-out on the pop below)
+  const host = document.createElement('div');
+  pop.append(host);
+  bar.append(pop);
+  let allies: readonly SpectateAlly[] = [];
+  let current: string | null = null;
+  let picker: ReturnType<typeof PickerModule.createPicker> | null = null;
+  const items = (): PickerModule.PickerItem[] =>
+    allies.map((ally) => ({ id: ally.id, name: ally.name, facts: ally.vehicle ? [ally.vehicle] : [] }));
+  const outside = (event: PointerEvent): void => {
+    const target = event.target as Node;
+    if (!pop.contains(target) && !subject?.contains(target)) close();
+  };
+  function close(): void {
+    if (pop.hidden) return;
+    pop.hidden = true;
+    subject?.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+  }
+  async function open(): Promise<void> {
+    if (!allies.length) return;
+    pop.hidden = false;
+    subject?.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    if (!picker) {
+      const [{ createPicker }, { pickerText }] = await Promise.all([import('./components/picker.ts'), import('./pickerText.ts')]);
+      if (pop.hidden || picker) return;
+      picker = createPicker(host, {
+        id: 'spectate-ally', label: t('spectator.chooseAlly'), items: items(), value: current, layout: 'list', text: pickerText(),
+        // (the camera stays on the watched tank until one is chosen: hovering the rows would swing it from tank to tank)
+        onPreview: () => {},
+        onChoose: (item) => { close(); subject?.focus(); onChoose(item.id); },
+      });
+    } else picker.setItems(items(), current);
+    picker.focus();
+  }
+  subject?.addEventListener('click', () => { if (pop.hidden) void open(); else close(); });
+  // (Esc the picker leaves, once nothing is left to restore, backs out of it, never on to the pause veil)
+  pop.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    close();
+    subject?.focus();
+  });
+  return {
+    update(next, at): void {
+      allies = next;
+      current = at;
+      if (!allies.length) close();
+      if (!picker) return;
+      if (pop.hidden) picker.setValue(at);
+      else picker.setItems(items(), at);
+    },
+    close,
+  };
+}
+
 /**
  * The Premiere direction's plates (the Watch bar's language, watchHud.ts): the watched tank's own 3/4 render on the HUD
  * plate ringed all round (no edge stripe, owner 2026-10-25), its commander in the display face and its vehicle under it; the cycle pair and the
@@ -69,9 +148,22 @@ export const spectatorSwitcherStyles = `
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
 .cot-spec.show{display:grid}.cot-spec.in{opacity:1;transform:translate(-50%,0)}
-.cot-spec .subject{position:relative;display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:var(--s3);
- min-width:0;height:64px;padding:0 var(--s4) 0 var(--s2);pointer-events:auto;background:var(--hud-plate);border-radius:var(--r1);
- box-shadow:var(--ring-1);}
+.cot-spec .subject{position:relative;display:grid;grid-template-columns:66px minmax(0,1fr) auto;align-items:center;gap:var(--s3);
+ min-width:0;height:64px;margin:0;padding:0 var(--s3) 0 var(--s2);pointer-events:auto;background:var(--hud-plate);border:0;border-radius:var(--r1);
+ box-shadow:var(--ring-1);appearance:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+/* (the plate is the picker's trigger: its chevron points up to the list it opens over the bar, INTERACTION-REDESIGN C) */
+.cot-spec .subject .open{display:flex;color:var(--ink-3);transform:rotate(180deg)}.cot-spec .subject .open svg{display:block;width:14px;height:14px}
+.cot-spec .subject[aria-expanded=true] .open{transform:none;color:var(--ink-1)}
+.cot-spec .subject:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media(hover:hover){.cot-spec .subject:hover{box-shadow:var(--ring-3)}}
+/* the picker of allies over the bar, its left edge on the plate's: the kit picker's list, no favourites in a battle */
+.cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(50vh,360px);display:flex;
+ flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--ring-1);
+ pointer-events:auto;overflow:hidden}
+.cot-spec-pick[hidden]{display:none}
+.cot-spec-pick>.cot-c-picker{min-height:0;flex:1 1 auto;display:flex;flex-direction:column}
+.cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto}
+.cot-spec-pick .cot-c-picker__fav{display:none}
 .cot-spec .portrait{display:grid;place-items:center;width:66px;height:52px;border:0;background:none;}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;}
 .cot-spec .identity{position:relative;display:flex;flex-direction:column;justify-content:center;gap:var(--s1);min-width:0;padding:0}

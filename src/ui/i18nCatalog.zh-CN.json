@@ -1544,6 +1544,7 @@
   "perfHud.state.live": "运行中",
   "perfHud.state.error": "采集器错误",
   "spectator.spectating": "观战中",
+  "spectator.chooseAlly": "选择要观战的友军",
   "spectator.garage": "车库",
   "spectator.garageAria": "返回车库",
   "spectator.idxAria": "观战序号",
