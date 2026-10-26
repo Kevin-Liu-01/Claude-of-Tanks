@@ -322,9 +322,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:3px;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);background:transparent;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
-/* every pressed chip in the Studio wears the segmented control's chosen state: one selected style beside the segments (the
-   s17 critic: Headlights, Auto and Guides in amber beside Day and Map in grey) */
-.cot-studio .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
+/* the sun presets are one choice of five, so the chosen one wears the segmented control's chosen state; the Studio's
+   on/off toggles (Headlights, Auto, Guides) keep the kit's pressed chip (UI-GAUNTLET bar line 3: no one-off restyle of a
+   primitive's state; the toggle-against-choice pair is the lead's to rule on, from the s17 and g15 critics) */
+.cot-studio .sunPresets .cot-c-chip[aria-pressed=true]{background:var(--surface-hover);box-shadow:var(--seg-on-shadow);color:var(--ink-1)}
 /* the effects: the stack, the board, the selected layer's parameters */
 .cot-studio .fxstack{display:grid;gap:2px;max-height:188px;overflow-y:auto;scrollbar-width:thin}
 .cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:var(--s2);min-height:34px;padding:0 var(--s1) 0 var(--s2);
