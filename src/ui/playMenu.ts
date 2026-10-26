@@ -340,7 +340,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .field{display:grid;gap:var(--s2)}
 
 /* fields and the menu select */
-.cot-play :is(input,select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
+.cot-play :is(input:not(.cot-c-picker__search),select),.cot-play .arrange-fields :is(input,select),.cot-play .operation-picker select{width:100%;min-height:44px;
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
@@ -386,6 +386,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .vehicle-pick{box-sizing:border-box;height:min(clamp(300px,46vh,480px),calc(var(--cot-viewport-height,100dvh) - 112px));
   padding:var(--s4);border-radius:var(--plate-radius);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .vehicle-pick[hidden]{display:none}
+/* the open vehicle picker would fill a stuck foot and leave the room a strip: the foot scrolls with the room instead,
+   the picker brought under the head (Rooms r30) */
+.cot-play .lobby.show .controls:has(>.vehicle-pick:not([hidden])){position:static}
 .cot-play .vehicle-pick{container-type:inline-size}
 .cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 @container (width < 420px){.cot-play .vehicle-pick .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
