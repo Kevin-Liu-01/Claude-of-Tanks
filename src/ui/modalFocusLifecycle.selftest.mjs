@@ -5,14 +5,15 @@ class ElementFixture {
   constructor(tag = 'div') {
     this.tagName = tag; this.style = {}; this.dataset = {}; this.children = [];
     this.attributes = new Map(); this.classes = new Set(); this.hidden = false;
-    this.isConnected = true; this.focuses = 0;
+    this.isConnected = true; this.focuses = 0; this.listeners = new Map();
     this.classList = { add: (name) => this.classes.add(name), remove: (name) => this.classes.delete(name) };
   }
   append(...nodes) { this.children.push(...nodes); for (const node of nodes) node.parentElement = this; }
   appendChild(node) { this.append(node); }
   setAttribute(name, value) { this.attributes.set(name, value); }
   getAttribute(name) { return this.attributes.get(name) ?? null; }
-  addEventListener() {}
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  dispatch(type) { this.listeners.get(type)?.({ type, target: this, key: '', preventDefault() {}, stopPropagation() {} }); }
   closest(selector) { return selector === 'dialog[open]' ? this.ownerDialog ?? null : null; }
   querySelector() { return null; }
   querySelectorAll() { return []; }
@@ -77,6 +78,20 @@ try {
   modal.close({ immediate: true });
   const focusCountBeforeDispose = modal.closeButton.focuses;
 
+  // a press on the backdrop closes, unless the modal holds unsaved edits; the close button closes either way
+  let edited = false;
+  const editor = createModal({ unsaved: () => edited }); modals.push(editor);
+  const backdrop = editor.root.children[0];
+  editor.open({ trigger }); flushFrames();
+  backdrop.dispatch('pointerdown');
+  assert.equal(editor.isOpen(), false, 'a backdrop press closes a modal with nothing to lose');
+  editor.open({ trigger }); flushFrames(); edited = true;
+  backdrop.dispatch('pointerdown');
+  assert.equal(editor.isOpen(), true, 'a backdrop press leaves unsaved edits open');
+  editor.closeButton.dispatch('click');
+  assert.equal(editor.isOpen(), false, 'the close button still closes on purpose');
+  flushTimers();
+
   modal.open({ trigger }); modal.dispose(); flushFrames();
   assert.equal(modal.closeButton.focuses, focusCountBeforeDispose, 'disposed pending open never focuses');
   assert.equal(body.style.overflow, 'auto');
@@ -88,4 +103,4 @@ try {
     else delete globalThis[key];
   }
 }
-console.log('modalFocusLifecycle.selftest: actual queued focus callbacks, supersession and ordinary focus restore pass');
+console.log('modalFocusLifecycle.selftest: actual queued focus callbacks, supersession, ordinary focus restore and the unsaved backdrop guard pass');
