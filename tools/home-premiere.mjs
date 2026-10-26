@@ -96,22 +96,27 @@ function ladder(clip) {
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
 // what each clip shows (owner 2026-10-25: "also add text here at the left that says stuff about this!"): the media lane's
 // manifest names each clip's vehicles (spec ids in frame order, the lead first), its battlefield and its mode
-const SHOT_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree' };
-/** A clip's caption: the vehicles (their names are the same in every locale), the battlefield and the mode, each the
- *  catalog's own words, stacked in one cell so the longest sets the box and a turn moves nothing. */
-function shotCaption(clip, on) {
-  const key = SHOT_KEYS[clip.tanks?.length];
-  if (!key) throw new Error(`home-premiere: ${clip.id} names ${clip.tanks?.length ?? 'no'} vehicles; a caption reads two or three (manifest tanks)`);
-  const names = clip.tanks.map((id) => tank(id).name);
-  const vars = Object.fromEntries(names.map((name, i) => ['abc'[i], name]));
-  const line = names.reduce((out, name, i) => out.replace(`{${'abc'[i]}}`, name), text(key));
+// two vehicles read "A vs B", three "A vs B and C", four (a two-on-two) "A and B vs C and D"
+const MATCHUP_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree', 4: 'home.hero.shotFour' };
+/** The vehicles a clip shows, in frame order (their names are the same in every locale), as one catalog line. */
+function matchup(id, tanks) {
+  const key = MATCHUP_KEYS[tanks?.length];
+  if (!key) throw new Error(`home-premiere: ${id} names ${tanks?.length ?? 'no'} vehicles; a caption reads two to four (manifest tanks)`);
+  const names = tanks.map((spec) => tank(spec).name);
+  const vars = Object.fromEntries(names.map((name, i) => ['abcd'[i], name]));
+  const line = names.reduce((out, name, i) => out.replace(`{${'abcd'[i]}}`, name), text(key));
+  return `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`;
+}
+/** A clip's mode: its glyph in the mode's own hue, and its name. */
+function modeMark(clip) {
   const mode = GAME_MODE_DEFINITIONS[clip.mode];
   if (!mode) throw new Error(`home-premiere: ${clip.id} plays no known mode (manifest mode: ${clip.mode})`);
-  return `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">`
-    + `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`
-    + `<span class="hero__where">${t(`map.${clip.map}`)}<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}`
-    + `${t(`playMenu.matchMode.${clip.mode}.label`)}</span></span></span>`;
+  return `<span class="hero__mode" data-mode-tone="${clip.mode}">${iconMarkup(mode.icon, 16)}${t(`playMenu.matchMode.${clip.mode}.label`)}</span>`;
 }
+/** A reel clip's caption: the vehicles, the battlefield and the mode, stacked in one cell so the longest sets the box and
+ *  a turn moves nothing. */
+const shotCaption = (clip, on) => `<span class="hero__shot${on ? ' is-on' : ''}" data-reel-shot="${clip.id}">${matchup(clip.id, clip.tanks)}`
+  + `<span class="hero__where">${t(`map.${clip.map}`)}${modeMark(clip)}</span></span>`;
 /** One of the trailer's controls: a ghost icon button named for the action it takes (publicPages.ts swaps both as it plays). */
 // a toggle holds its other glyph too (homePage.ts sets data-on): the page's inline sprite carries only what the markup names
 const filmButton = (role, icon, key, alt = '') => `<button class="${btn('icon', '36')} cot-c-btn--ghost film-btn" type="button" data-film-${role}`
@@ -283,7 +288,7 @@ function bentoPicture(rungs, lead) {
 const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
   + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
 const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
-  + `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a></header>`;
+  + `${href ? `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a>` : ''}</header>`;
 function duelsBlock() {
   if (VERSUS.featured?.length !== 12) throw new Error('home-premiere: public/media/versus-r1/manifest.json features no twelve');
   const tiles = VERSUS.featured.map((id, i) => {
@@ -291,14 +296,31 @@ function duelsBlock() {
     if (!item?.rungs?.length) throw new Error(`home-premiere: versus ${id} has no rungs`);
     const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
     if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
-    const [a, b] = [tank(hero.id).name, tank(foe.id).name];
-    const name = `<b data-i18n="home.hero.shot" data-i18n-vars="${esc(JSON.stringify({ a, b }))}">${esc(text('home.hero.shot').replace('{a}', a).replace('{b}', b))}</b>`;
+    const name = matchup(id, [hero.id, foe.id]);
     return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), galleryHref(hero.id), name,
       [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
   });
   return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
     + bentoHead('duels-title', 'home.duels.title', '/media', 'publicNav.media')
     + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
+}
+// in battle: the media lane's battle clips (home-r2 clips[]), four loops two to a row, each its poster until the media
+// player gives it its file on screen (mediaPlayer.ts, the features' own player), named like the reel's shots
+function clipsBlock() {
+  const clips = REEL.clips ?? [];
+  if (clips.length !== 4) throw new Error('home-premiere: public/media/home-r2/manifest.json has no four battle clips');
+  const tiles = clips.map((clip) => {
+    const rungs = [...clip.poster.rungs].sort((a, b) => a.width - b.width);
+    const base = rungs.find((rung) => rung.width === 1280) ?? rungs.at(-1);
+    const picture = `<img src="${base.path}" srcset="${rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}"`
+      + ` sizes="(width < 768px) 86vw, (width < 1100px) 50vw, 680px" width="1280" height="720" alt="" loading="lazy" decoding="async">`;
+    const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}">${ladder(clip)}</video>`;
+    return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
+      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
+      + `<span class="bento__where">${t(`map.${clip.map}`)}${modeMark(clip)}</span></a></figcaption></figure>`;
+  });
+  return `<section class="bento bento--clips" aria-labelledby="clips-title"><div class="home-shell">`
+    + bentoHead('clips-title', 'home.clips.title') + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
 }
 function fleetBlock() {
   const strip = REEL.fleetStrip ?? [];
@@ -385,7 +407,7 @@ function fleetWall() {
 }
 const wallJson = () => `[\n${fleetWall().records.map((record) => JSON.stringify(record)).join(',\n')}\n]\n`;
 
-const BLOCKS = { hero: heroBlock, duels: duelsBlock, features: featuresBlock, play: playBlock, fleet: fleetBlock };
+const BLOCKS = { hero: heroBlock, duels: duelsBlock, features: featuresBlock, clips: clipsBlock, play: playBlock, fleet: fleetBlock };
 const PRELOAD = /<link rel="preload"[^>]*as="image"[^>]*fetchpriority="high"[^>]*>/;
 const preloadTag = () => `<link rel="preload" href="${heroDefault()}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${heroSrcset()}" imagesizes="${HERO_SIZES}">`;
 const HOME = join(ROOT, 'site/home.html');

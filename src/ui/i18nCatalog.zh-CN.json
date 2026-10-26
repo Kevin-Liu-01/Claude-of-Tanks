@@ -1776,6 +1776,8 @@
   "home.hero.lede": "与机器人或好友对战，炮弹逐发模拟，装甲逐块结算，免费且无需安装。",
   "home.hero.shot": "{a} 对阵 {b}",
   "home.hero.shotThree": "{a} 对阵 {b} 与 {c}",
+  "home.hero.shotFour": "{a} 与 {b} 对阵 {c} 与 {d}",
+  "home.clips.title": "实战",
   "home.hero.trailer": "观看预告片",
   "home.trailers.trailerAria": "播放预告片（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效",
   "home.hero.closeTrailerAria": "关闭预告片",

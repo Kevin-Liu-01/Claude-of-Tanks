@@ -157,7 +157,16 @@ for (const [name, rungsOf] of [['duels', versus.featured.map((id) => versus.item
   });
 }
 
-console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features, the versus twelve, the fleet strip and the landing-r1 picks pass`);
+// in battle: the media lane's four battle clips in its order, each its sized lazy poster and its loop on the media player
+const clipTiles = [...bento('clips').matchAll(/<figure class="bento__tile cot-c-media" data-clip="([^"]+)">([\s\S]*?)<\/figure>/g)];
+assert.deepEqual(clipTiles.map((m) => m[1]), reel.clips.map((clip) => clip.id), 'in battle: the four clips in the manifest order');
+for (const [, id, body] of clipTiles) {
+  assert.match(body, /<img [^>]*width="1280" height="720" alt="" loading="lazy" decoding="async">/, `${id}: its poster is sized and lazy`);
+  assert.match(body, /<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/, `${id}: its loop waits for the player`);
+  assert.match(body, /<figcaption class="bento__cap"><a href="\/gallery\?id=[a-z0-9_]+[^"]*"><b data-i18n="home\.hero\.shot[A-Za-z]*"/, `${id}: named, the way to its vehicle`);
+}
+
+console.log(`landing-media.selftest: the reel's ${reel.hero.length} clips, the eight features, the versus twelve, the ${reel.clips.length} battle clips, the fleet strip and the landing-r1 picks pass`);
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);

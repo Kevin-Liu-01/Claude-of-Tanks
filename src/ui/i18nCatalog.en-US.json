@@ -1752,6 +1752,8 @@
   "home.hero.lede": "Fight bots or friends with simulated shells and plate-level armor, free with no install.",
   "home.hero.shot": "{a} vs {b}",
   "home.hero.shotThree": "{a} vs {b} and {c}",
+  "home.hero.shotFour": "{a} and {b} vs {c} and {d}",
+  "home.clips.title": "In battle",
   "home.hero.trailer": "Watch Trailer",
   "home.trailers.trailerAria": "Play the trailer ({seconds} seconds), filmed in the game engine with its score and battle sound",
   "home.hero.closeTrailerAria": "Close the trailer",
