@@ -31480,28 +31480,28 @@
           "sha256": "f5075c83881d51f3db6a61fc075bd69d98eec50e405c362d0e5fb5c2d6be76a5"
         },
         "armorSide": {
-          "file": "bmp2_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 120659,
-          "sha256": "0d78fce4d8b17f2a1c8168361a27860720fa5f6b5fe2c3c44c2b8183366f9ea6"
+          "file": "bmp2_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 40148,
+          "sha256": "9aaa6ed0a446b7bea09f6612b94d841fa212b49fb91aeb294f131099c3bb8563"
         },
         "modulesSide": {
-          "file": "bmp2_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 127740,
-          "sha256": "d3ad7f088fc22484ec304ded395afd74edcacfc840ca649f14cfcff2d94d5ac8"
+          "file": "bmp2_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 37734,
+          "sha256": "8ddf36565bcd9f215b8a442092e14f0c0be6b68de51c320965c8ca6f909f955f"
         },
         "crewSide": {
-          "file": "bmp2_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 111301,
-          "sha256": "d0e4c6705c14341f3125995c45d37edc1d898e4c48ac2c6347f2138459754eb8"
+          "file": "bmp2_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 33318,
+          "sha256": "ca2e6bc72dbe166a598b46d388a9510af28d97a77ea5e1590d0bfd0feb7d39e9"
         },
         "markings": {
           "file": "bmp2_markings.png",
@@ -31510,6 +31510,12 @@
           "mime": "image/png",
           "bytes": 35802,
           "sha256": "cd817b8f02fa7632e1305014c540c67699e1617c50e98709ef3cc7f5efd66d61"
+        },
+        "technicalLabels": {
+          "file": "bmp2_technical.json",
+          "mime": "application/json",
+          "bytes": 5145,
+          "sha256": "cd394b5df331bf5fb10e8de2e774fd550ce94c2b0adcfd7b50f436f1503a8c72"
         }
       }
     },
@@ -159067,14 +159073,14 @@
             "volumeId": "C03",
             "name": "gunner",
             "min": [
-              -0.6997,
-              -0.5758,
-              -0.475
+              -0.7652,
+              0.0652,
+              -0.5012
             ],
             "max": [
-              -0.2712,
-              0.7764,
-              0.3064
+              -0.3058,
+              1.376,
+              0.2927
             ],
             "turretLocal": true
           },
@@ -159083,13 +159089,13 @@
             "name": "commander",
             "min": [
               0.2558,
-              0.1619,
-              -1.1751
+              0.2583,
+              -1.4554
             ],
             "max": [
               0.7152,
-              1.2367,
-              -0.3324
+              1.2103,
+              -0.6522
             ],
             "turretLocal": true
           },
@@ -159098,13 +159104,13 @@
             "name": "loader",
             "min": [
               0.3072,
-              -0.7758,
-              -0.2407
+              0.061,
+              -0.4057
             ],
             "max": [
               0.7666,
-              0.9977,
-              0.1988
+              1.376,
+              0.3637
             ],
             "turretLocal": true
           },
@@ -159112,21 +159118,21 @@
             "volumeId": "C06",
             "name": "assistantLoader",
             "min": [
-              0.3141,
-              -0.4758,
-              -0.6018
+              0.3641,
+              0.2024,
+              -1.0924
             ],
             "max": [
-              0.7238,
-              1.2977,
-              -0.1624
+              0.8235,
+              1.376,
+              -0.3718
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "a6573ab0",
-      "metadataHash": "712980d6",
+      "metadataHash": "ccfd044a",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.2022
@@ -159232,28 +159238,28 @@
           "sha256": "bcad3d103f12da2267cccd30b6dbcc954dcc4b73631df5c5237d7376a297c0b8"
         },
         "armorSide": {
-          "file": "kv2_armor_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 118978,
-          "sha256": "7649f799c74ea84002c08bcd3711b860de71c2059c50b9672c197bd1e3dcf0c3"
+          "file": "kv2_armor_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 37270,
+          "sha256": "48b2872d8d1e0fb8312132a38da2ac6c20af5344bec6e5bb71cfd7afe22fd978"
         },
         "modulesSide": {
-          "file": "kv2_modules_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 126816,
-          "sha256": "1722796df212c97f3d75aa74ad60abd123f56440de8aaf2c6b17ef2b45629a56"
+          "file": "kv2_modules_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 38846,
+          "sha256": "6ff5a063940f6c2e9cbdcf17e6ed950d5a93cb95ec5409aab78fa4648d9cb977"
         },
         "crewSide": {
-          "file": "kv2_crew_side.png",
-          "width": 512,
-          "height": 256,
-          "mime": "image/png",
-          "bytes": 122689,
-          "sha256": "2e1e526714e970c5bc067310a2d241fdefcd56e7126c0bfca299064bf529ae8d"
+          "file": "kv2_crew_side.webp",
+          "width": 1024,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 37778,
+          "sha256": "be162c6193233e37805bfb36ba9dcae8cd00c9c784ff995344e1fabd44a034d7"
         },
         "markings": {
           "file": "kv2_markings.png",
@@ -159262,6 +159268,12 @@
           "mime": "image/png",
           "bytes": 34765,
           "sha256": "0f473ffa7d373f7ec57aafef64b2fd962fc722e5c8dfdf63266be0ca58c9d531"
+        },
+        "technicalLabels": {
+          "file": "kv2_technical.json",
+          "mime": "application/json",
+          "bytes": 3950,
+          "sha256": "ab53348e84cec3a7f781af56f1f10dc191f0984a864428ed766980c651cac17a"
         }
       }
     },
