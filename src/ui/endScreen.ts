@@ -943,10 +943,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details = rosterRowDetails(result, revives);
+    // (a Latin callsign keeps the Latin size in zh: .lat)
+    const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
-    // (a Latin name's class, held apart from the markup: i18n-literal-lint reads a class word in the template as copy)
-    const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +

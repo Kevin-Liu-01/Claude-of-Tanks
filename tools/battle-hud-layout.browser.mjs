@@ -45,10 +45,14 @@ function clippedText(){
   const roots=[...document.querySelectorAll('.cot-hud,.cot-settings,.cot-es,.cot-end,.cot-touch,.cot-dp,.cot-minimap,.cot-si-toasthost,.cot-si-cardhost,.cot-kill-lane')];
   const seen=new Set();const found=[];
   const clips=(style)=>/(hidden|clip)/.test(style.overflowX+' '+style.overflow)||style.textOverflow==='ellipsis';
+  // (copy kept for screen readers alone, a 1 px box clipped to nothing, is not clipped copy: the score's default team
+  // names, the touch chrome's sound and settings labels, a small mouse window's alert words, brand-ui 246)
+  const readerOnly=(el)=>{for(let at=el;at&&at!==document.body;at=at.parentElement){const s=getComputedStyle(at);
+    if(/inset\(50%\)/.test(s.clipPath)&&at.getBoundingClientRect().width<=1)return true;}return false;};
   for(const root of roots)for(const el of root.querySelectorAll('*')){
     if(seen.has(el))continue;seen.add(el);
     const own=[...el.childNodes].filter(node=>node.nodeType===3&&node.nodeValue.trim()).map(node=>node.nodeValue.trim()).join(' ');
-    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})||readerOnly(el))continue;
     const style=getComputedStyle(el);
     if(clips(style)&&el.scrollWidth>el.clientWidth+1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}"`);continue;}
     const range=document.createRange();range.selectNodeContents(el);const r=range.getBoundingClientRect();
@@ -293,6 +297,8 @@ function noticeMeasure(){
   // text outside the element's six-sided frame (corner cut `cut` px at the top and bottom, 0 at mid-height)
   const clipped=(e,host,cut)=>{
     if(!e||!e.getClientRects().length)return 0;
+    // (words kept for screen readers alone: a small mouse window's alert is its glyph, brand-ui 246)
+    if(/inset\(50%\)/.test(getComputedStyle(e).clipPath)&&e.getBoundingClientRect().width<=1)return 0;
     const b=host.getBoundingClientRect(),mid=b.top+b.height/2,half=b.height/2,range=document.createRange();range.selectNodeContents(e);
     let worst=0;
     for(const r of range.getClientRects()){
@@ -349,9 +355,11 @@ function measure(state){
       if(r.width<1||r.height<1)continue;
       // (the settings tabs and header by their own room: on a short window the header and its close button sit in the
       // end padding the strip keeps for them, responsiveSurfaces.css, the header's own padding over the strip's)
-      const style=getComputedStyle(el);
-      const end=el.classList.contains('cot-set-tabs')?parseFloat(style.paddingInlineEnd)||0:0;
-      const start=el.classList.contains('cot-set-hdr')?parseFloat(style.paddingInlineStart)||0:0;
+      // (their style alone is read: the success path reads no other, battleHudLayout.selftest.mjs)
+      const tabs=!!el.classList?.contains('cot-set-tabs'),hdr=!!el.classList?.contains('cot-set-hdr');
+      const style=tabs||hdr?getComputedStyle(el):null;
+      const end=tabs?parseFloat(style.paddingInlineEnd)||0:0;
+      const start=hdr?parseFloat(style.paddingInlineStart)||0:0;
       rects.push({name:el.className,x:r.x+start,y:r.y,right:r.right-end,bottom:r.bottom});
     }
     return rects;
@@ -479,7 +487,9 @@ try {
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
           // a dropped plan fails: the detection and the alert clear the whole reticle (the plan fell back to main's places,
           // '-', or cleared less), and a shown countdown or revive count has a planned place (not the CSS defaults)
-          if((k==='d'||k==='a')&&t!==2)failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
+          // (a tier 1 place covering no ink of either sight passes: the scope's arms end short of a shown notice,
+          // sightFurniture.ts sightNoticeCuts, where the notices' gap leaves the pair over an arm's tip, 1024x600)
+          if((k==='d'||k==='a')&&t!==2&&!(t===1&&n.union===0))failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
           if((k==='c'||k==='r')&&t<0)failures.push(`the ${what} is shown without a planned place`);
           // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice, and only the pair
           // that never shows together: the countdown and the detection (nothing can spot the player before the roll-out).
