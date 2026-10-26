@@ -486,7 +486,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 /* Ready is a toggle: pressed, it wears the selection */
 .cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
-.cot-play :is(.note,[data-arrange-note],.arrange-cap){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-play :is(.note,[data-arrange-note],.arrange-cap,.brain-note){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* refusals and failures: the kit's notice (components/notice.ts), its actions under its words; the refusal runs under the
    close as wide as the room (the head keeps 64 px beside its title for the close) */
@@ -1347,6 +1347,8 @@ export function createPlayMenu({
   // ---- opponent brain (owner 2026-09-25): Classic or Jev (System One) for the solo bots ---------------
   const brainSection = root.querySelector<HTMLElement>('[data-brain]')!;
   const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
+  // what Jev is, for a pointer, is the option's hover tip; screen readers keep the note
+  requiredElement<HTMLElement>(brainSeg, '[data-value="jev"]').dataset.tip = t('playMenu.brain.note');
   const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
