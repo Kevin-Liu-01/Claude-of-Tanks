@@ -993,7 +993,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (take && fleet) {
         if (timer) { clearInterval(timer); timer = 0; }
         player ??= fleet.createFleetTakePlayer(shotEl, () => activated);
-        capEl.textContent = fleet.fleetTakeText(take, 'short');
+        // the band names the tank; its own take carries no second name, its full title in the hover tip (UI-LOCKDOWN G1)
+        capEl.textContent = '';
         shotEl.dataset.tip = fleet.fleetTakeText(take, 'title');
       } else {
         shotEl.removeAttribute('title');
@@ -3528,7 +3529,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     statsEl.innerHTML =
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       overviewSection(spec, eqM, shells) +
-      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), '', 'Performance')}` +
       magazineFigures(spec.gun, eqM.reload) +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
@@ -3548,7 +3549,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
       `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
       shellRows + `</section>` +
-      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b class="num">${spec.gun.caliberMm} mm</b></div>` +
       `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b class="num">&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
@@ -3581,7 +3582,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
-      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
+      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), '', 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');

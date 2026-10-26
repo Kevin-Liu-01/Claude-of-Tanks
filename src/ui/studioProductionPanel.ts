@@ -328,15 +328,15 @@ export function mountStudioProductionPanel(
   sequence.append(node('h3', '', productionLabel('shotlist')));
   const transport = node('div', 'production-transport');
   const play = button(productionLabel('play'), () => { if (S.playing) S.pause(); else S.play(); refresh(); }, KIT_BUTTON);
-  const clock = node('output', 'num');
   const restart = button(productionLabel('restart'), () => { S.stop(); S.seek(0); refresh(); }, KIT_BUTTON);
   transport.append(play, restart);
   const scrub = node('input', 'production-scrub');
   scrub.type = 'range'; scrub.min = '0'; scrub.step = '10'; scrub.setAttribute('aria-label', productionLabel('scrub'));
   scrub.addEventListener('input', () => { S.pause(); S.seek(Number(scrub.value)); refresh(); });
   const shots = node('div', 'production-shots');
-  const scrubRow = node('div', 'production-scrubrow');
-  scrubRow.append(scrub, clock);
+  // the scrub is named, not numbered: the playhead reads in the viewport's frame chip (UI-LOCKDOWN G14)
+  const scrubRow = node('label', 'production-scrubrow', productionLabel('scrub'));
+  scrubRow.append(scrub);
   sequence.append(transport, scrubRow, shots);
   director.append(sequence);
 
@@ -359,12 +359,11 @@ export function mountStudioProductionPanel(
   const guideCheck = node('input'); guideCheck.type = 'checkbox'; guideCheck.checked = true; guideCheck.dataset.productionGuides = '';
   guides.append(guideCheck, node('span', '', productionLabel('guides')));
   const guideLayer = node('div', 'studio-frame-guides'); guideLayer.setAttribute('aria-hidden', 'true');
-  const guide = node('div', 'studio-frame-guide'); const guideCaption = node('small'); guide.append(guideCaption); guideLayer.append(guide);
+  const guide = node('div', 'studio-frame-guide'); guideLayer.append(guide);
   if (hosts.guides) hosts.guides.prepend(guideLayer); else root.prepend(guideLayer);
   function setFormat(): void {
     format = frame.value as ProductionFormat;
     guide.style.setProperty('--frame-aspect', String(productionAspect(format)));
-    guideCaption.textContent = productionLabel(format);
   }
   frame.addEventListener('change', () => { setFormat(); S.setProductionFormat(format); }); setFormat();
   guideCheck.addEventListener('change', () => { guideLayer.hidden = !guideCheck.checked; });
@@ -467,7 +466,6 @@ export function mountStudioProductionPanel(
     video.textContent = productionLabel(recording.active ? 'stop' : 'video');
     video.disabled = staging || !recording.supported;
     video.title = recording.supported ? '' : productionLabel('unsupported');
-    clock.textContent = `${(S.fxTimeMs / 1000).toFixed(1)} / ${(S.durationMs / 1000).toFixed(1)}s`;
     scrub.max = String(S.durationMs);
     if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
     const storyboard = S.getStoryboard();

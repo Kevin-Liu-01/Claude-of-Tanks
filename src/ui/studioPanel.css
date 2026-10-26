@@ -192,9 +192,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   --hc-band:6px;--hc-share:0.7;--hc-hshare:0.78;--hc-cxr:0.5}
 .st-hero>.cot-c-sil{position:absolute;left:12%;right:12%;top:18%;width:auto;height:52%;color:var(--ink-4)}
 .st-hero.cot-hc>.cot-c-sil,.st-hero:has(.hc-host)>.cot-c-sil{visibility:hidden}
-.st-hero-name{display:flex;align-items:center;gap:var(--s2);min-width:0;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-13))/1.05 var(--font-display);
-  text-transform:uppercase;white-space:nowrap}
-.st-hero-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-insp .fld{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .st-insp .fld label{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);height:30px;padding:0 var(--s2);border-radius:var(--r1);
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
@@ -367,8 +364,9 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);text-align:center}
 /* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
 /* the sequence's scrub carries its clock, so the slider reads as the shot list's time */
-.cot-studio .production-scrubrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s3)}
-.cot-studio .production-scrubrow output{white-space:nowrap;color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
+.cot-studio .production-scrubrow{display:grid;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
+/* the header names the map from 1440 px up; the Battlefield card shows its picture there (UI-LOCKDOWN G11) */
+body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
@@ -401,8 +399,6 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
 .st-tl .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
 .st-tl .ib .cot-i{width:16px;height:16px}
 .st-tl .ib[aria-pressed=true]{color:var(--accent)}
-.st-tl .tc{font:500 var(--fs-15)/1 var(--font-data);white-space:nowrap}
-.st-tl .tc small{color:var(--ink-3);font:inherit}
 .st-tl .rate{padding:3px var(--s2);border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
 /* each slider holds its value at its own end and stands a gutter from the next control ("12 Speed" read as one) */
 .st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:var(--s2);margin-right:var(--s4);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}

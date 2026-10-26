@@ -1070,6 +1070,7 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
    muted loop cover the stills, which keep their rotation for a tank without one. */
 .cot-featured.vehicle .fdots,.cot-featured.vehicle .fnav{display:none;}
 .cot-featured .fcap{z-index:2;}
+.cot-featured .fcap:empty{display:none;}
 .cot-featured .fleet-take-video{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;
   object-fit:cover;background:transparent;}
 .cot-featured .fleet-take-toggle{position:absolute;right:4px;top:4px;z-index:3;display:grid;place-items:center;

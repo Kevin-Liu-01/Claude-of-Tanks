@@ -1128,24 +1128,26 @@ function populateRivals(): void {
     return group;
   }));
 }
-/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip); the rival's
- * silhouette faces the selection. */
-function versusSide(record: GalleryRecord, mirrored: boolean): string {
+/** The rival's side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip),
+ * the silhouette facing the selection. */
+function versusSide(record: GalleryRecord): string {
   const name = record.shortName || record.displayName;
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}`
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`
     + `<b${name === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`}>${esc(keepDesignation(name))}</b>`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
-  $('#versusOwn').innerHTML = versusSide(record, false);
+  // the selection's side is its silhouette alone: its name and flag are the dossier's head (UI-LOCKDOWN G7, G8)
+  $('#versusOwn').innerHTML = silhouette(record.id, 'left');
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
   rivalSelect.value = rival.id;
-  $('#versusRival').innerHTML = versusSide(rival, true);
-  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, hit points
+  $('#versusRival').innerHTML = versusSide(rival);
+  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, top speed in km/h (hit points are
+  // the dossier's facts, UI-LOCKDOWN G9)
   const rows: Array<[IconId, string, string, number, number, number]> = [
     ['penetration', 'gallery.stat.penetration', 'gallery.unit.mm', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
     ['reload', 'gallery.stat.reload', 'gallery.unit.s', record.metrics.reloadS, rival.metrics.reloadS, -1],
-    ['shield', 'gallery.dossier.spec.hp', 'gallery.unit.hitPoints', record.metrics.hp, rival.metrics.hp, 1],
+    ['speed', 'gallery.stat.speed', 'gallery.unit.kmh', record.metrics.topSpeedKmh, rival.metrics.topSpeedKmh, 1],
   ];
   $('#versusMid').innerHTML = rows.map(([glyph, label, unitKey, own, other, better]) => {
     const ownBetter = (own - other) * better > 0;

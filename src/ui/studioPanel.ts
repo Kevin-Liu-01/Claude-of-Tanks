@@ -576,15 +576,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const vpTop = el('div', 'st-vpt');
   const shotChip = chipButton('', 'toolPhoto');
   shotChip.addEventListener('click', () => productionPanel.activate('cinematics'));
-  const modeChip = chipButton('', 'freeLook');
-  modeChip.addEventListener('click', () => {
-    if (S.getCamera().mode === 'orbit') S.setCamera({ mode: 'fly' }); else orbitCamera();
-    api.refreshCamera();
-  });
   // Look through (09-studio .vpt): the view is the shots' camera at the playhead; navigating leaves it
   const lookChip = chipButton(t('studio.ws.lookThrough'), 'scope', true);
   lookChip.addEventListener('click', () => S.setLookThrough(!S.lookThrough));
-  vpTop.append(shotChip, lookChip, modeChip);
+  // the camera's mode and lens are the Cinematics workspace's controls, not chips beside them (UI-LOCKDOWN G17)
+  vpTop.append(shotChip, lookChip);
   const vpTools = el('div', 'st-vpb');
   const guidesChip = chipButton(t('studio.ws.guides'), 'pixels', true);
   guidesChip.addEventListener('click', () => {
@@ -594,9 +590,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     check.dispatchEvent(new Event('change'));
     guidesChip.setAttribute('aria-pressed', String(check.checked));
   });
-  const lensChip = chipButton('', 'optics');
-  lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
-  vpTools.append(guidesChip, lensChip);
+  vpTools.append(guidesChip);
   const frameCounter = markDatum(el('span', 'st-fc'), 'playhead');
   // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
   // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
@@ -658,13 +652,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     selBox.style.top = `${Math.round(f.top)}px`;
     selBox.style.width = `${Math.max(8, Math.round(f.right - f.left))}px`;
     selBox.style.height = `${Math.max(8, Math.round(f.bottom - f.top))}px`;
-    const heading = Math.round(((a.pose.facingDeg % 360) + 360) % 360);
-    const key = `${a.uid}|${heading}`;
+    // the tag names the tank; its heading is the transform's field and the facing slider (UI-LOCKDOWN G13)
+    const key = a.uid;
     selTag.hidden = false;
     if (key !== selTagKey) {
       selTagKey = key;
       selTag.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), selTagText);
-      selTagText.textContent = t('studio.ws.selTag', { name: a.spec.name, deg: heading });
+      selTagText.textContent = a.spec.name;
       selTagWidth = selTag.offsetWidth;
     }
     // above the outline, or under it when the chips leave no room above: never on the tank, never past the picture's sides
@@ -957,7 +951,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       option.setAttribute('aria-checked', String(time === light.time));
       option.tabIndex = time === light.time ? 0 : -1;
     }
-    lightRow.pick.querySelector('.d')!.textContent = `${Math.round(az)}° / ${Math.round(elev)}°`;
   }
   battlefieldGroup.body.append(secScene, secLight);
 
@@ -970,7 +963,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
-  lightRow.pick.append(el('span', 'nm', ''), el('span', 'd', ''));
+  // the row names the light; its sun's angles are the dial's (UI-LOCKDOWN G15)
+  lightRow.pick.append(el('span', 'nm', ''));
   sceneRows.append(mapRow.row, lightRow.row);
 
   let mapPreviewsHydrated = false;
@@ -1030,9 +1024,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // the card shows the tank alone; its flag and name sit on their own line under it (no text on a tank)
   const hero = el('div', 'st-hero');
   const heroSil = el('span', 'cot-c-sil');
-  const heroName = el('div', 'st-hero-name');
+  // its name and flag are the selection tag's (UI-LOCKDOWN G12)
   hero.append(heroSil);
-  secSel.append(hero, heroName);
+  secSel.append(hero);
   const transform = el('div', 'sec');
   transform.appendChild(sectionHead(t('studio.ws.transform'), 'freeLook'));
   const fields = el('div', 'fld');
@@ -1897,7 +1891,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const stepBtn = iconButton(t('studio.stepOneFrame'));
   stepBtn.innerHTML = STUDIO_GLYPHS.stepForward;
   stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
-  const clockNow = el('span', 'tc');
   // the J/K/L shuttle's rate beside the clock, only while it is not plain play or stop
   const shuttleBadge = el('span', 'rate');
   shuttleBadge.hidden = true;
@@ -1912,7 +1905,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   shotBtn.addEventListener('click', () => S.addCameraShot());
   ts.row.dataset.pro = '';
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
-  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, shuttleBadge, playKey, transportRight);
+  // the playhead reads in the frame chip alone (UI-LOCKDOWN G14)
+  transport.append(restartBtn, pauseBtn, stepBtn, shuttleBadge, playKey, transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
@@ -2805,7 +2799,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         hero.dataset.spec = a.spec.id;
         hero.querySelector('.hc-host')?.remove();
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
-        heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), el('span', null, a.spec.name));
         for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
@@ -2840,8 +2833,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       orbBtn.setAttribute('aria-checked', String(c.mode === 'orbit'));
       flyBtn.tabIndex = c.mode === 'fly' ? 0 : -1;
       orbBtn.tabIndex = c.mode === 'orbit' ? 0 : -1;
-      setLabel(modeChip, c.mode === 'orbit' ? t('studio.orbit') : t('studio.freeFly'));
-      setLabel(lensChip, `${Math.round(c.fov)}°`);
       press(lookChip, S.lookThrough && !lookChip.disabled);
     },
     refreshTime() {
@@ -2868,12 +2859,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       scrub.max = String(S.durationMs);
       if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
       scrub.style.setProperty('--fill', `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`);
-      const now = `${(S.fxTimeMs / 1000).toFixed(2).padStart(5, '0')}`;
-      if (clockNow.dataset.now !== now || clockNow.dataset.total !== String(seconds)) {
-        clockNow.dataset.now = now;
-        clockNow.dataset.total = String(seconds);
-        clockNow.replaceChildren(`00:${now} `, el('small', null, `/ 00:${seconds.toFixed(2).padStart(5, '0')}`));
-      }
       playhead.style.setProperty('--t', String(Math.max(0, Math.min(1, S.fxTimeMs / Math.max(1, S.durationMs)))));
       if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();

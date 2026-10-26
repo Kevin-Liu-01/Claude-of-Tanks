@@ -260,6 +260,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .vsc .mid .cot-i{width:14px;height:14px;justify-self:center}
 .vsc__pick{position:relative;grid-column:1/-1}
 .vsc__scale{grid-column:1/-1;display:block;width:100%;height:auto;aspect-ratio:360/72}
+/* the stage's inset carries the true scale from 768 px up; the card's is the phone's only one (UI-LOCKDOWN G10) */
+@media (width >= 768px){.vsc__scale{display:none}}
 .peer-switch,.diagram-switch{align-self:flex-start;flex-wrap:wrap}
 .stat-groups,.stat-group{display:flex;flex-direction:column;gap:var(--s3)}
 .stat-group h2{display:flex;align-items:center;gap:var(--s2);margin:var(--s2) 0 0;color:var(--ink-2);font:600 var(--fs-13)/1 var(--font-display)}
