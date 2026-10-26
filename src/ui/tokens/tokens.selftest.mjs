@@ -52,8 +52,18 @@ for (const path of Object.keys(first)) {
   assert.equal(readFileSync(path, 'utf8'), first[path],
     `${relative(ROOT, path)} drifted from tokens.json: run node tools/gen-tokens.mjs`);
 }
-for (const t of tokens) assert.equal(TOKENS[t.name], base.value(t.name), `tokens.ts --${t.name}`);
-assert.equal(Object.keys(TOKENS).length, tokens.length, 'tokens.ts carries every token once');
+// a sheet group's own module ("$module") carries its tokens' values instead of tokens.ts, so the boot carries none
+const modules = new Map();
+for (const t of tokens.filter((token) => token.module)) {
+  if (!modules.has(t.module)) modules.set(t.module, (await import(new URL(`../../../${t.module}`, import.meta.url).href)).SURFACE_TOKENS);
+  assert.equal(modules.get(t.module)[t.name], base.value(t.name), `${t.module} --${t.name}`);
+  assert.ok(!(t.name in TOKENS), `tokens.ts leaves --${t.name} to ${t.module}`);
+}
+for (const t of tokens.filter((token) => !token.module)) assert.equal(TOKENS[t.name], base.value(t.name), `tokens.ts --${t.name}`);
+assert.equal(Object.keys(TOKENS).length, tokens.filter((t) => !t.module).length, 'tokens.ts carries every token but the modules\' once');
+for (const [path, values] of modules) {
+  assert.equal(Object.keys(values).length, tokens.filter((t) => t.module === path).length, `${path} carries exactly its group`);
+}
 assert.throws(() => flattenTokens({ primitive: { a: { x: 1 } }, semantic: { b: { x: 2 } } }), /defined twice/);
 assert.throws(() => createResolver(flattenTokens({ semantic: { a: { x: '{nope}' } } })).value('x'), /undefined token/);
 // Preset closure: a translucent literal made from an overridden colour moves with it; a direct override on one axis beats
@@ -135,7 +145,7 @@ assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root bloc
 // A group's own sheet ("$sheet": the landing's, the manual's and the Gallery's tokens) is a pure token sheet in the tokens
 // layer, holds exactly its group's tokens, and tokens.css holds none of them: the game's document and the other pages load
 // none.
-const sheetPaths = Object.keys(first).filter((path) => ![TOKENS_CSS, TOKENS_TS, SELECTION_TS].includes(path));
+const sheetPaths = Object.keys(first).filter((path) => path.endsWith('.css') && path !== TOKENS_CSS);
 assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(),
   ['src/ui/tokens/surface-diagram.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css'],
   'the landing, the manual, the Gallery and the technical diagrams each have their own token sheet');
@@ -154,6 +164,8 @@ for (const path of sheetPaths) {
 assert.throws(() => generate({ ...source, component: { ...source.component, 'surface-x': { $sheet: 'src/ui/tokens/x.css', 'x-only': '1px' },
   'surface-y': { 'y-reads': '{x-only}' } } }), /--y-reads reads --x-only, which only src\/ui\/tokens\/x.css declares/,
 'a shared token cannot read a token only one surface\'s sheet declares');
+assert.throws(() => generate({ ...source, component: { ...source.component, 'surface-z': { $module: 'src/ui/tokens/z.ts', 'z-only': '1px' } } }),
+  /names the module src\/ui\/tokens\/z\.ts; a sheet group's module/, 'a module belongs to a group with its own sheet');
 
 /* 2. the SPEC 4.14 sheet -------------------------------------------------------------------------------------- */
 // Starting values for tokens.json, verbatim from SPEC 4.14 (the font families follow the owner's 2026-10-17 ruling).
@@ -543,7 +555,8 @@ for (const cvdChoice of choices('cvd')) for (const contrastChoice of choices('co
   const label = Object.entries(selection).map(([a, p]) => `${a}=${p}`).join(' ') || 'defaults';
   // The truth: every selected preset's overrides merged into one table and resolved through the reference graph.
   const truth = createResolver(tokens, Object.assign({}, ...Object.entries(selection).map(([a, p]) => presetSource(a, p))));
-  for (const t of tokens) {
+  // (a module's tokens are not tokens.ts's: no preset may move a sheet's token, and their values are checked above)
+  for (const t of tokens.filter((token) => !token.module)) {
     const css = resolveCss(decls.get(t.name), decls);
     const ts = tokenValue(t.name, selection);
     assert.equal(ts, truth.value(t.name), `${label}: tokenValue('${t.name}') must equal the merged presets`);

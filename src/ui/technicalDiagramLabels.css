@@ -9,41 +9,44 @@
 @import url('./tokens/surface-diagram.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer components{
-.cot-tdl{position:absolute;left:var(--tdl-box-x,0);top:var(--tdl-box-y,0);width:var(--tdl-box-w,100%);height:var(--tdl-box-h,100%);
-  pointer-events:none;color:var(--ink-1);--tdl-tone:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data)}
-/* the tones (a sidecar colour no tone has keeps the ink default) */
-.cot-tdl [data-tone='armor-ke-0']{--tdl-tone:var(--diagram-armor-ke-0)}
-.cot-tdl [data-tone='armor-ke-1']{--tdl-tone:var(--diagram-armor-ke-1)}
-.cot-tdl [data-tone='armor-ke-2']{--tdl-tone:var(--diagram-armor-ke-2)}
-.cot-tdl [data-tone='armor-ke-3']{--tdl-tone:var(--diagram-armor-ke-3)}
-.cot-tdl [data-tone='armor-ke-4']{--tdl-tone:var(--diagram-armor-ke-4)}
-.cot-tdl [data-tone='armor-era']{--tdl-tone:var(--diagram-armor-era)}
-.cot-tdl [data-tone='armor-spaced']{--tdl-tone:var(--diagram-armor-spaced)}
-.cot-tdl [data-tone='armor-external']{--tdl-tone:var(--diagram-armor-external)}
-.cot-tdl [data-tone='module-engine']{--tdl-tone:var(--diagram-module-engine)}
-.cot-tdl [data-tone='module-fuel-tank']{--tdl-tone:var(--diagram-module-fuel-tank)}
-.cot-tdl [data-tone='module-ammo-rack']{--tdl-tone:var(--diagram-module-ammo-rack)}
-.cot-tdl [data-tone='module-roof-gun']{--tdl-tone:var(--diagram-module-roof-gun)}
-.cot-tdl [data-tone='module-missile-rack']{--tdl-tone:var(--diagram-module-missile-rack)}
-.cot-tdl [data-tone='module-autoloader']{--tdl-tone:var(--diagram-module-autoloader)}
-.cot-tdl [data-tone='module-feed-system']{--tdl-tone:var(--diagram-module-feed-system)}
-.cot-tdl [data-tone='module-turret-ring']{--tdl-tone:var(--diagram-module-turret-ring)}
-.cot-tdl [data-tone='module-gun-mount']{--tdl-tone:var(--diagram-module-gun-mount)}
-.cot-tdl [data-tone='module-radio']{--tdl-tone:var(--diagram-module-radio)}
-.cot-tdl [data-tone='module-optics']{--tdl-tone:var(--diagram-module-optics)}
-.cot-tdl [data-tone='module-gun']{--tdl-tone:var(--diagram-module-gun)}
-.cot-tdl [data-tone='module-transmission']{--tdl-tone:var(--diagram-module-transmission)}
-.cot-tdl [data-tone='module-drivetrain']{--tdl-tone:var(--diagram-module-drivetrain)}
-.cot-tdl [data-tone='crew-driver']{--tdl-tone:var(--diagram-crew-driver)}
-.cot-tdl [data-tone='crew-gunner']{--tdl-tone:var(--diagram-crew-gunner)}
-.cot-tdl [data-tone='crew-commander']{--tdl-tone:var(--diagram-crew-commander)}
-.cot-tdl [data-tone='crew-loader']{--tdl-tone:var(--diagram-crew-loader)}
-.cot-tdl [data-tone='crew-radio-operator']{--tdl-tone:var(--diagram-crew-radio-operator)}
-.cot-tdl [data-tone='crew-assistant-driver']{--tdl-tone:var(--diagram-crew-assistant-driver)}
-.cot-tdl [data-tone='crew-assistant-loader']{--tdl-tone:var(--diagram-crew-assistant-loader)}
-.cot-tdl [data-tone='crew-weapon-operator-left']{--tdl-tone:var(--diagram-crew-weapon-operator-left)}
-.cot-tdl [data-tone='crew-weapon-operator-right']{--tdl-tone:var(--diagram-crew-weapon-operator-right)}
-.cot-tdl [data-tone='crew-other']{--tdl-tone:var(--diagram-crew-other)}
+/* (a static overlay, unmeasured, takes the raster's 2:1 from its width: the box holding the image also holds the
+   compact key under it) */
+.cot-tdl{position:absolute;left:var(--tdl-box-x,0);top:var(--tdl-box-y,0);width:var(--tdl-box-w,100%);height:var(--tdl-box-h,auto);aspect-ratio:2/1;
+  pointer-events:none;color:var(--ink-1);--tdl-tone:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-data);
+  container:tdl/inline-size}
+/* the tones, on the drawing and in its compact key (a sidecar colour no tone has keeps the ink default) */
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-0']{--tdl-tone:var(--diagram-armor-ke-0)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-1']{--tdl-tone:var(--diagram-armor-ke-1)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-2']{--tdl-tone:var(--diagram-armor-ke-2)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-3']{--tdl-tone:var(--diagram-armor-ke-3)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-ke-4']{--tdl-tone:var(--diagram-armor-ke-4)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-era']{--tdl-tone:var(--diagram-armor-era)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-spaced']{--tdl-tone:var(--diagram-armor-spaced)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='armor-external']{--tdl-tone:var(--diagram-armor-external)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-engine']{--tdl-tone:var(--diagram-module-engine)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-fuel-tank']{--tdl-tone:var(--diagram-module-fuel-tank)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-ammo-rack']{--tdl-tone:var(--diagram-module-ammo-rack)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-roof-gun']{--tdl-tone:var(--diagram-module-roof-gun)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-missile-rack']{--tdl-tone:var(--diagram-module-missile-rack)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-autoloader']{--tdl-tone:var(--diagram-module-autoloader)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-feed-system']{--tdl-tone:var(--diagram-module-feed-system)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-turret-ring']{--tdl-tone:var(--diagram-module-turret-ring)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-gun-mount']{--tdl-tone:var(--diagram-module-gun-mount)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-radio']{--tdl-tone:var(--diagram-module-radio)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-optics']{--tdl-tone:var(--diagram-module-optics)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-gun']{--tdl-tone:var(--diagram-module-gun)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-transmission']{--tdl-tone:var(--diagram-module-transmission)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='module-drivetrain']{--tdl-tone:var(--diagram-module-drivetrain)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-driver']{--tdl-tone:var(--diagram-crew-driver)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-gunner']{--tdl-tone:var(--diagram-crew-gunner)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-commander']{--tdl-tone:var(--diagram-crew-commander)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-loader']{--tdl-tone:var(--diagram-crew-loader)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-radio-operator']{--tdl-tone:var(--diagram-crew-radio-operator)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-assistant-driver']{--tdl-tone:var(--diagram-crew-assistant-driver)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-assistant-loader']{--tdl-tone:var(--diagram-crew-assistant-loader)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-weapon-operator-left']{--tdl-tone:var(--diagram-crew-weapon-operator-left)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-weapon-operator-right']{--tdl-tone:var(--diagram-crew-weapon-operator-right)}
+:is(.cot-tdl,.cot-tdl-key) [data-tone='crew-other']{--tdl-tone:var(--diagram-crew-other)}
 .cot-tdl-leaders{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .cot-tdl-leader{color:var(--tdl-tone);fill:none;stroke:currentColor;stroke-width:1}
 .cot-tdl-dot{color:var(--tdl-tone);fill:currentColor}
@@ -65,4 +68,25 @@
   padding:4px 8px;background:var(--hud-plate);color:var(--ink-2);font-family:var(--font-ui)}
 .cot-tdl-swatch{display:inline-block;width:10px;height:6px;margin-inline-end:4px;vertical-align:middle;
   border-radius:var(--r1);background:var(--tdl-tone)}
+/* the compact drawing (a box under 480 px wide, TECHNICAL_COMPACT_BELOW_PX: a phone's dialog, where ~85 px chips on both
+   rails would cover the vehicle): numbered badges on the drawing, the labels and the legend in a two-column key under it,
+   left rail then right. The live mount builds the key only then; a static page's key (cot-tdl-key--auto) shows when the
+   box holding the image, a tdl-host container, is that narrow. */
+.cot-tdl-n{display:none;place-items:center;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border-radius:8px;
+  background:var(--tdl-tone);color:var(--ink-on-accent);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
+.cot-tdl-n--pin{position:absolute;left:var(--tdl-x);top:var(--tdl-y);transform:translate(-50%,-50%)}
+.cot-tdl-key{margin-top:6px;color:var(--ink-2);--tdl-tone:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-data)}
+.cot-tdl-key--auto{display:none}
+.cot-tdl-key__list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row dense;gap:3px 12px;margin:0;padding:0;
+  list-style:none}
+.cot-tdl-key__list>li{display:flex;align-items:center;gap:6px;min-width:0}
+.cot-tdl-key__list>[data-rail='left']{grid-column:1}
+.cot-tdl-key__list>[data-rail='right']{grid-column:2}
+.cot-tdl-key .cot-tdl-n{display:inline-grid;flex:none}
+.cot-tdl-key>.cot-tdl-legend{position:static;justify-content:flex-start;margin-top:6px;padding:0;background:none}
+@container tdl (max-width:479.98px){
+  .cot-tdl-leaders,.cot-tdl-chip,.cot-tdl>.cot-tdl-legend,.cot-tdl-pin{display:none}
+  .cot-tdl-n--pin{display:inline-grid}
+}
+@container tdl-host (max-width:479.98px){.cot-tdl-key--auto{display:block}}
 }

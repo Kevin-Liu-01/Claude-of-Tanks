@@ -91,6 +91,8 @@ export interface TechnicalLayoutRow {
   readonly callout: TechnicalCallout;
   readonly text: string;
   readonly side: 'left' | 'right';
+  /** Its weight's place among its rail's labels (0: the heaviest). */
+  readonly rank: number;
   /** The label row's centre line and its chip's outer edge (px); the chip grows inward from that edge. */
   readonly y: number;
   readonly edgeX: number;
@@ -112,6 +114,13 @@ export interface TechnicalLayoutOptions {
 // The 1x composition's geometry as fractions of the box (the raster's framing keeps it): the rails' outer edges, the
 // elbows where the leaders turn, and the band the rows stay inside (between the header and the legend).
 const RAIL = Object.freeze({ leftEdge: 5 / 512, leftElbow: 90 / 512, rightEdge: 507 / 512, rightElbow: 422 / 512 });
+
+/** Under this box width (px) the chips would cover the vehicle (a phone's dialog: a ~340 px box, ~85 px chips, a side
+ * view ~80% of the width), so the drawing keeps numbered pins and the labels go to a two-column key under it; the
+ * stylesheet's container queries switch at the same width (technicalDiagramLabels.css). */
+export const TECHNICAL_COMPACT_BELOW_PX = 480;
+/** The labels a rail the compact key shows (the heaviest). */
+const COMPACT_PER_RAIL = 4;
 const ROWS = Object.freeze({ top: 56 / 256, bottom: 210 / 256 });
 
 /** Minimum-displacement isotonic packing: each label as near its anchor's height as the row pitch allows, a collision
@@ -148,15 +157,15 @@ export function layoutTechnicalCallouts(
   const perRail = Math.min(fit, options.perRail ?? Math.round(Math.min(10, Math.max(6, 6 * width / 512))));
   const rows: TechnicalLayoutRow[] = [];
   for (const side of ['left', 'right'] as const) {
-    const picked = callouts.filter((c) => (c.anchor[0] < .5) === (side === 'left'))
-      .slice().sort((a, b) => b.weight - a.weight).slice(0, perRail)
-      .sort((a, b) => a.anchor[1] - b.anchor[1]);
+    const heaviest = callouts.filter((c) => (c.anchor[0] < .5) === (side === 'left'))
+      .slice().sort((a, b) => b.weight - a.weight).slice(0, perRail);
+    const picked = heaviest.slice().sort((a, b) => a.anchor[1] - b.anchor[1]);
     const ys = packRows(picked.map((c) => c.anchor[1] * height), minY, maxY, rowPx);
     const edgeX = (side === 'left' ? RAIL.leftEdge : RAIL.rightEdge) * width;
     const elbowX = (side === 'left' ? RAIL.leftElbow : RAIL.rightElbow) * width;
     picked.forEach((callout, index) => {
       const y = ys[index]!, ax = callout.anchor[0] * width, ay = callout.anchor[1] * height;
-      rows.push({ callout, text: technicalLabelText(callout, kind), side, y, edgeX,
+      rows.push({ callout, text: technicalLabelText(callout, kind), side, rank: heaviest.indexOf(callout), y, edgeX,
         // the leader ends toward its chip, inside the box on either rail (the signed span already points inward)
         leader: [[ax, ay], [elbowX, y], [edgeX + (elbowX - edgeX) * .9, y]] });
     });
@@ -179,6 +188,9 @@ export interface TechnicalMountOptions {
   readonly legend?: boolean;
   /** The diagram image (default: the host's first <img>): the overlay covers its rendered content box. */
   readonly image?: HTMLImageElement | null;
+  /** Where a compact drawing's key goes, in flow under the image (default: the host, after the image). A host whose
+   * height is fixed passes a block below it. */
+  readonly key?: HTMLElement | null;
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -190,7 +202,9 @@ const escapeHtml = (text: string): string => text.replace(/[&<>"']/g, (c) => `&#
  * The same overlay as static HTML, for a page prerendered in Node (the Field Manual), where the image's box is fluid: the
  * rows are packed at a `reference` box (the smallest the page shows it at, so they fit there and only spread as the box
  * grows) and every place is a percentage of the box; the leaders scale with it. The markup goes inside a positioned box
- * holding the image, its stylesheet is technicalDiagramLabels.css, and the text is the active locale's. Pure.
+ * holding the image, its stylesheet is technicalDiagramLabels.css, and the text is the active locale's. A compact key
+ * follows the overlay in flow (under the image): the box's container (`container: tdl-host / inline-size`) shows it, and
+ * the overlay keeps numbered pins only, under TECHNICAL_COMPACT_BELOW_PX. Pure.
  */
 export function technicalLabelsMarkup(
   data: TechnicalLabelData, kind: TechnicalKind, reference: { readonly width: number; readonly height: number },
@@ -206,12 +220,56 @@ export function technicalLabelsMarkup(
     row.leader.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/>`).join('');
   const dots = rows.map((row) => `<span class="cot-tdl-pin"${tone(technicalToneOf(row.callout.color))} style="--tdl-x:${pct(row.leader[0]![0], width)};--tdl-y:${
     pct(row.leader[0]![1], height)}"></span>`).join('');
+  // the compact drawing (a box under TECHNICAL_COMPACT_BELOW_PX; the sheet's container query) keeps each rail's heaviest
+  // labels as numbered badges, spread so none covers another, and keys them under the image
+  const keyed = compactNumbers(rows);
+  const spots = spreadBadges([...keyed.keys()].map((row) => row.leader[0]!), BADGE_GAP_PX * width / COMPACT_MIN_BOX_PX, reference);
+  const badges = [...keyed].map(([row, n], index) => `<b class="cot-tdl-n cot-tdl-n--pin"${tone(technicalToneOf(row.callout.color))} style="--tdl-x:${
+    pct(spots[index]![0], width)};--tdl-y:${pct(spots[index]![1], height)}">${n}</b>`).join('');
   const chips = rows.map((row) => `<span class="cot-tdl-chip${row.side === 'right' ? ' cot-tdl-chip--end' : ''}"${tone(technicalToneOf(row.callout.color))} style="--tdl-x:${
     pct(row.edgeX, width)};--tdl-y:${pct(row.y, height)}">${escapeHtml(row.text)}</span>`).join('');
   const legendRow = legend ? `<div class="cot-tdl-legend">${TECHNICAL_LEGENDS[kind].map(([key, name]) =>
     `<span><i class="cot-tdl-swatch"${tone(name)}></i>${escapeHtml(t(key))}</span>`).join('')}</div>` : '';
-  return `<div class="cot-tdl" aria-hidden="true"><svg class="cot-tdl-leaders" xmlns="${SVG}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${
-    lines}</svg>${dots}${chips}${legendRow}</div>`;
+  const key = [...keyed].map(([row, n]) => `<li data-rail="${row.side}"><b class="cot-tdl-n"${tone(technicalToneOf(row.callout.color))}>${n}</b>${
+    escapeHtml(row.text)}</li>`);
+  // (the labels are the picture's, aria-hidden: a page's search index leaves the marked region out, docs/searchIndex.ts)
+  return `<!--nosearch--><div class="cot-tdl" aria-hidden="true"><svg class="cot-tdl-leaders" xmlns="${SVG}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">${
+    lines}</svg>${dots}${badges}${chips}${legendRow}</div><div class="cot-tdl-key cot-tdl-key--auto" aria-hidden="true"><ol class="cot-tdl-key__list">${
+    key.join('')}</ol>${legendRow}</div><!--/nosearch-->`;
+}
+
+/** A numbered badge's spacing (px): its 16 px disc and a hair. A static page spreads its badges at its reference box
+ * and scales them with the image, so it spaces them for the narrowest box a phone draws (COMPACT_MIN_BOX_PX). */
+const BADGE_GAP_PX = 17;
+const COMPACT_MIN_BOX_PX = 320;
+
+/** Badge centres near their callouts with none closer than `gap`: each takes the first free spot of a fan round its
+ * callout (along its row, then the rows above and below), inside the box. */
+export function spreadBadges(points: readonly (readonly [number, number])[], gap: number,
+  box: { readonly width: number; readonly height: number }): [number, number][] {
+  const offsets: [number, number][] = [];
+  for (const r of [0, -1, 1, -2, 2]) for (const c of [0, 1, -1, 2, -2, 3, -3]) offsets.push([c * gap, r * gap]);
+  const placed: [number, number][] = [];
+  const clamp = (v: number, size: number): number => Math.min(size - gap / 2, Math.max(gap / 2, v));
+  for (const [x0, y0] of points) {
+    let spot: [number, number] = [clamp(x0, box.width), clamp(y0, box.height)];
+    for (const [dx, dy] of offsets) {
+      const candidate: [number, number] = [clamp(x0 + dx, box.width), clamp(y0 + dy, box.height)];
+      if (placed.every(([x, y]) => Math.hypot(x - candidate[0], y - candidate[1]) >= gap - 1e-6)) { spot = candidate; break; }
+    }
+    placed.push(spot);
+  }
+  return placed;
+}
+
+/** The compact drawing's numbered labels: each rail's heaviest (COMPACT_PER_RAIL), numbered down the left rail then
+ * down the right, the order the two-column key lists them. */
+function compactNumbers(rows: readonly TechnicalLayoutRow[]): Map<TechnicalLayoutRow, number> {
+  const numbers = new Map<TechnicalLayoutRow, number>();
+  for (const side of ['left', 'right'] as const) {
+    for (const row of rows) if (row.side === side && row.rank < COMPACT_PER_RAIL) numbers.set(row, numbers.size + 1);
+  }
+  return numbers;
 }
 
 /** The image's rendered content box inside the host (object-fit: contain of the raster's aspect), host-relative px. */
@@ -226,9 +284,10 @@ function contentBox(host: HTMLElement, image: HTMLImageElement | null, aspect: n
 /**
  * Stand the labels over a diagram image. `host` is a positioned box (position: relative or fixed) holding the image; the
  * overlay covers the image's rendered content box and follows it: it re-lays itself out when the host or the image
- * resizes (the Gallery's zoomed figure included), when the image loads, and when the locale changes. Chips take no
- * pointer events; the image keeps its alt. Returns { refresh, dispose }: dispose removes the overlay, the observer and
- * every listener it added.
+ * resizes (the Gallery's zoomed figure included), when the image loads, and when the locale changes. Under
+ * TECHNICAL_COMPACT_BELOW_PX of image width the drawing keeps numbered pins and the labels and the legend go to a key in
+ * flow under it (`options.key`, default the host). Chips take no pointer events; the image keeps its alt. Returns
+ * { refresh, dispose }: dispose removes the overlay, the key, the observer and every listener it added.
  */
 export function mountTechnicalDiagramLabels(
   host: HTMLElement, data: TechnicalLabelData, kind: TechnicalKind, header: TechnicalHeader | null = null,
@@ -237,6 +296,7 @@ export function mountTechnicalDiagramLabels(
   sheet ??= import('./technicalDiagramLabels.css');
   const doc = host.ownerDocument, image = options.image ?? host.querySelector('img');
   const showHeader = options.header !== false && header !== null, showLegend = options.legend !== false;
+  let keyBlock: HTMLElement | null = null;
   const root = doc.createElement('div');
   root.className = 'cot-tdl';
   root.setAttribute('aria-hidden', 'true');
@@ -249,8 +309,30 @@ export function mountTechnicalDiagramLabels(
     element.style.setProperty('--tdl-x', `${x.toFixed(1)}px`);
     element.style.setProperty('--tdl-y', `${y.toFixed(1)}px`);
   };
+  const legendRow = (): HTMLElement => {
+    const legend = doc.createElement('div');
+    legend.className = 'cot-tdl-legend';
+    for (const [key, tone] of TECHNICAL_LEGENDS[kind]) {
+      const item = doc.createElement('span');
+      const swatch = doc.createElement('i');
+      swatch.className = 'cot-tdl-swatch';
+      swatch.setAttribute('data-tone', tone);
+      item.append(swatch, doc.createTextNode(t(key)));
+      legend.append(item);
+    }
+    return legend;
+  };
+  const number = (n: number, color: string): HTMLElement => {
+    const badge = doc.createElement('b');
+    badge.className = 'cot-tdl-n';
+    badge.textContent = String(n);
+    setTone(badge, color);
+    return badge;
+  };
   const render = (): void => {
     root.replaceChildren();
+    keyBlock?.remove();
+    keyBlock = null;
     const box = contentBox(host, image, data.size[0] / data.size[1]);
     if (box.width < 1 || box.height < 1) return;
     root.style.setProperty('--tdl-box-x', `${box.x.toFixed(1)}px`);
@@ -282,17 +364,33 @@ export function mountTechnicalDiagramLabels(
       root.append(head);
       headBottom = head.offsetHeight;
     }
-    if (showLegend) {
-      const legend = doc.createElement('div');
-      legend.className = 'cot-tdl-legend';
-      for (const [key, tone] of TECHNICAL_LEGENDS[kind]) {
-        const item = doc.createElement('span');
-        const swatch = doc.createElement('i');
-        swatch.className = 'cot-tdl-swatch';
-        swatch.setAttribute('data-tone', tone);
-        item.append(swatch, doc.createTextNode(t(key)));
-        legend.append(item);
+    if (box.width < TECHNICAL_COMPACT_BELOW_PX) {
+      // compact: numbered pins on the drawing, the labels and the legend in a two-column key under it
+      const rows = layoutTechnicalCallouts(data[kind], kind, box, { rowPx, perRail: COMPACT_PER_RAIL, top: 0, bottom: box.height });
+      const list = doc.createElement('ol');
+      list.className = 'cot-tdl-key__list';
+      const keyed = [...compactNumbers(rows)];
+      const spots = spreadBadges(keyed.map(([row]) => row.leader[0]!), BADGE_GAP_PX, box);
+      for (const [index, [row, n]] of keyed.entries()) {
+        const badge = number(n, row.callout.color);
+        badge.classList.add('cot-tdl-n--pin');
+        place(badge, spots[index]![0], spots[index]![1]);
+        root.append(badge);
+        const item = doc.createElement('li');
+        item.setAttribute('data-rail', row.side);
+        item.append(number(n, row.callout.color), doc.createTextNode(row.text));
+        list.append(item);
       }
+      keyBlock = doc.createElement('div');
+      keyBlock.className = 'cot-tdl-key';
+      keyBlock.setAttribute('aria-hidden', 'true');
+      keyBlock.append(list);
+      if (showLegend) keyBlock.append(legendRow());
+      (options.key ?? host).append(keyBlock);
+      return;
+    }
+    if (showLegend) {
+      const legend = legendRow();
       root.append(legend);
       legendTop = box.height - legend.offsetHeight;
     }
@@ -348,6 +446,7 @@ export function mountTechnicalDiagramLabels(
       image?.removeEventListener('load', render);
       offLocale();
       root.remove();
+      keyBlock?.remove();
     },
   };
 }
