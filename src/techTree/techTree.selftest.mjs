@@ -9,7 +9,6 @@ import { readFileSync, readdirSync } from 'node:fs';
 import '../vehicles/fleetRegistration.ts';
 import { TANK_CATALOGS, TANK_SPECS } from '../vehicles/specs.ts';
 import { layoutProblems, layoutTree } from './layout.ts';
-import { tankTier } from '../vehicles/tier.ts';
 import { displayTier, tierNumeral } from './tiers.ts';
 import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesOf } from './trees.ts';
 
@@ -69,10 +68,11 @@ assert.deepEqual(['type10', 'type10_dozer', 'type10_tk_x', 'type10b'].map(displa
 for (const [above, below] of [['k1a1', 'k1e1'], ['k1a1', 'k2b'], ['xk2_black_panther', 'k21'], ['k2_black_panther', 'k2b']]) {
   assert.ok(displayTier(above) > displayTier(below), `${above} shows above ${below}`);
 }
-// the 251 rank (tier.ts then; 257 moved the T-90 obr. 1992 and the Burlak Prototype to IX), the era breaking ties
+// the T-72 and T-80 lineages' 251 rank, the era breaking ties
 const ERA = { ww2: 0, 'cold-war': 1, modern: 2, 'next-generation': 3 };
-const AT_251 = Object.freeze({ t90_1992: 10, t90a_burlak_proto: 10 });
-const rank = (id) => [AT_251[id] ?? tankTier(id), ERA[TANK_SPECS[id].era]];
+// (258: matchmaking now reads the shown tier, so the 251 tiers these lineages compare are kept here)
+const AT_251 = Object.freeze({ t72b3m_2022: 9, t72bu_1989: 8, pt91m: 8, t80: 8, t80b: 9, t80bv: 9, t80uk: 8, t84: 9 });
+const rank = (id) => [AT_251[id], ERA[TANK_SPECS[id].era]];
 const t90Line = ['t90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90am', 't90ms_2011', 't90m_proryv'];
 t90Line.forEach((a, i) => t90Line.slice(i + 1).forEach((b) => assert.ok(displayTier(a) <= displayTier(b), `${a} never shows above ${b}`)));
 for (const line of [['t72b3m_2022', 't72bu_1989', 'pt91m'], ['t80', 't80b', 't80bv', 't80uk', 't84']]) {

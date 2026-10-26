@@ -40103,9 +40103,9 @@
           {
             "name": "3UBR8 APDS",
             "type": "APFSDS",
-            "pen100Mm": 118,
-            "pen1000Mm": 106,
-            "pen2000Mm": 94
+            "pen100Mm": 125,
+            "pen1000Mm": 112,
+            "pen2000Mm": 100
           },
           {
             "name": "9M120-1 Ataka-T",
@@ -42328,7 +42328,7 @@
         ]
       },
       "geometryHash": "d85e18b8",
-      "metadataHash": "2d954a7d",
+      "metadataHash": "60d1b6a4",
       "presentationAnchor": {
         "xM": 0.0017,
         "zM": -0.0856
@@ -674646,9 +674646,9 @@
           {
             "name": "DM63 APDS-T",
             "type": "APFSDS",
-            "pen100Mm": 72,
-            "pen1000Mm": 64,
-            "pen2000Mm": 56
+            "pen100Mm": 76,
+            "pen1000Mm": 68,
+            "pen2000Mm": 60
           },
           {
             "name": "MILAN 2",
@@ -675603,7 +675603,7 @@
         ]
       },
       "geometryHash": "f1b157c8",
-      "metadataHash": "ee4f4d5c",
+      "metadataHash": "0d8c14e9",
       "presentationAnchor": {
         "xM": 0.0495,
         "zM": -0.0337
@@ -2149555,9 +2149555,9 @@
           {
             "name": "3UBR11 APFSDS-T",
             "type": "APFSDS",
-            "pen100Mm": 146,
-            "pen1000Mm": 132,
-            "pen2000Mm": 118
+            "pen100Mm": 158,
+            "pen1000Mm": 143,
+            "pen2000Mm": 128
           },
           {
             "name": "Spike-LR",
@@ -2156225,7 +2156225,7 @@
         ]
       },
       "geometryHash": "5ec49145",
-      "metadataHash": "71027d63",
+      "metadataHash": "9d4a05c7",
       "presentationAnchor": {
         "xM": 0.0029,
         "zM": -0.08
