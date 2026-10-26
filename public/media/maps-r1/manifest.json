@@ -708,6 +708,32 @@
       }
     },
     {
+      "id": "mangrove",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/mangrove-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 19852
+          },
+          {
+            "path": "/media/maps-r1/mangrove-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 71080
+          },
+          {
+            "path": "/media/maps-r1/mangrove-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 180938
+          }
+        ]
+      }
+    },
+    {
       "id": "saltwind",
       "hour": "day",
       "poster": {
