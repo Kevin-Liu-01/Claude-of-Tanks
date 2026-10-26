@@ -3442,6 +3442,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     api.setSelected(next.id);
   }
+  /** Home and End on the roster strip: the active fleet's first or last tank (the interaction census: no Home/End). */
+  function stepToEnd(last: boolean): void {
+    if (vehicleLocked) return;
+    const pool = (specsByCountry.get(countryFilter) || []).filter((s) => facetVisible(s.id));
+    const next = pool[last ? pool.length - 1 : 0];
+    if (!next || next.id === selectedId) return;
+    emit('ui:click', {});
+    api.setSelected(next.id);
+  }
 
   function launchBattle(
     specId: string,
@@ -4466,6 +4475,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (e.defaultPrevented) return;
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
+    else if ((e.code === 'Home' || e.code === 'End') && target?.closest('.cot-cards')) { stepToEnd(e.code === 'End'); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
       // the bare screen's Enter deploys; every control keeps its own
       if (target?.closest('button,input,select,a,[role="button"]')) return;

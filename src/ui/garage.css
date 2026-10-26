@@ -482,6 +482,11 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   background:var(--scrim);color:var(--ink-3);
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),opacity var(--dur-fast);outline:none;}
 .cot-car-arrow.is-unavailable{opacity:.3;pointer-events:none;}
+/* the roster's keyboard focus shows: the focused strip rings its selected card (its active descendant), an arrow rings
+   itself (the interaction census: no ring on the strip, its cards or its arrows) */
+.cot-cards:focus-visible{outline:none;}
+.cot-cards:focus-visible>.cot-card.sel{box-shadow:var(--focus-ring);}
+.cot-car-arrow:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
 .cot-car-arrow svg{display:block;}
 .cot-car-arrow:hover{color:var(--text-accent);border-color:var(--accent);
   background:var(--surface-plate);}
