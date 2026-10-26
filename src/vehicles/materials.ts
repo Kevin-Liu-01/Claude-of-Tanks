@@ -1458,19 +1458,24 @@ function applySharedCamoVisual(
   };
 }
 
+/** The try-on's albedo carries no plate features: the worn normal map it keeps draws the panel lines, welds and bolts. */
+const TRY_ON_FEATURES: PlateFeatures = Object.freeze({ hLines: [], vLines: [], rings: [], chips: [], streaks: [] }) as PlateFeatures;
+
 /**
  * The camo try-on (INTERACTION-REDESIGN B: hovering a paint tries it on the Garage tank): `selection` painted as the
- * hull whose albedo is `texture` would wear it (its plate features, seed and recipe), into a canvas the caller owns and
- * sizes (a 256 px tile is a sixteenth to a sixty-fourth of the worn bake's paint). False when `texture` is no repaintable
- * albedo the cache holds.
+ * hull whose albedo is `texture` would wear it (its recipe and pattern stream, the picker swatch's own tile), into a
+ * canvas the caller owns and sizes. A 256 px tile paints in about the 4.5 ms of a picker swatch (camoSwatchPainter.ts;
+ * the hull's plate features tripled it, and the worn normal map shows them anyway). False when `texture` is no
+ * repaintable albedo the cache holds.
  */
 export function paintCamoTryOn(texture: THREE.Texture, selection: string, canvas: HTMLCanvasElement): boolean {
   let entry: SharedTextureEntry | null = null;
   for (const candidate of TEX_CACHE.values()) if (candidate.camoTex === texture) { entry = candidate; break; }
-  if (!entry || entry.fixedPattern || !entry.feats) return false;
+  if (!entry || entry.fixedPattern) return false;
   const patternId = resolveSelectionPattern(entry.spec.id, selection);
   const visual = { ...patternVisual(entry.spec, patternId), modernWelds: isPostwarVehicleEra(entry.spec.era) };
-  paintCamo(canvas, visual, mulberry32(camoPatternStreamSeed(visual, camoPatternIdHash(patternId))), entry.feats, entry.seed);
+  const stream = camoPatternStreamSeed(visual, camoPatternIdHash(patternId));
+  paintCamo(canvas, visual, mulberry32(stream), TRY_ON_FEATURES, stream);
   exposureTrim(canvas);
   return true;
 }
