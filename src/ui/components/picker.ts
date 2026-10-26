@@ -45,7 +45,7 @@ export interface PickerText {
   readonly clear: string;
 }
 
-export interface PickerOptions {
+interface PickerOptions {
   /** The registry id (src/ui/interactionRegistry.ts), stamped as data-picker. */
   readonly id: string;
   /** The set's name, for assistive tech. */
@@ -64,7 +64,7 @@ export interface PickerOptions {
   readonly memory?: string;
 }
 
-export interface PickerController {
+interface PickerController {
   setItems(items: readonly PickerItem[], value?: string | null): void;
   setValue(id: string | null): void;
   focus(): void;
@@ -78,7 +78,7 @@ const RECENT_MAX = 6;
 
 /* ------------------------------------------------------------------------------------------------------ the memory */
 
-export interface PickerMemory {
+interface PickerMemory {
   readonly favourites: readonly string[];
   readonly recent: readonly string[];
 }
@@ -116,7 +116,7 @@ export function toggleFavourite(memory: PickerMemory, id: string): PickerMemory 
 
 /* ------------------------------------------------------------------------------------------------------ the filter */
 
-export interface PickerQuery {
+interface PickerQuery {
   readonly text: string;
   /** Pressed filter chips: an item shows when it answers every one. */
   readonly tags: readonly string[];

@@ -17,7 +17,7 @@ export interface BattlefieldCard extends PickerItem {
   readonly hero?: string;
 }
 
-export interface BattlefieldPickerOptions {
+interface BattlefieldPickerOptions {
   /** The registry id (src/ui/interactionRegistry.ts): one per surface. */
   readonly id: string;
   readonly label: string;

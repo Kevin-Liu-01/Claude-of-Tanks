@@ -163,7 +163,10 @@ button.cot-c-chip{cursor:pointer}
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);}
 .cot-c-picker__search::placeholder{color:var(--ink-3)}
 .cot-c-picker__search:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-c-picker__chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
+/* the chips keep one row and scroll sideways, so the cards keep the height */
+.cot-c-picker__chips{display:flex;flex:1 1 100%;gap:var(--s2);min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.cot-c-picker__chips::-webkit-scrollbar{display:none}
+.cot-c-picker__chips>.cot-c-chip{flex:none}
 /* where a surface bounds the picker's height the grid scrolls in place (its padding keeps the focus ring in view) */
 .cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);flex:1 1 auto;min-height:0;
   margin:calc(-1 * var(--s1));padding:var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
@@ -217,6 +220,11 @@ button.cot-c-chip{cursor:pointer}
 @container (width >= 720px){
   .cot-bf__in{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-items:start}
   .cot-bf__cards{height:100%}
+}
+/* a narrow space (a phone, where a tap chooses and nothing previews) gives the cards the height: they show the maps */
+@container (width < 520px){
+  .cot-bf .cot-bf__preview{display:none}
+  .cot-bf__in{grid-template-rows:minmax(0,1fr)}
 }
 .cot-bf__preview{display:flex;flex-direction:column;gap:var(--s3);margin:0;min-width:0}
 .cot-bf__hero{aspect-ratio:16/9}
