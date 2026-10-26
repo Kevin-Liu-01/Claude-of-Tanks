@@ -65,7 +65,7 @@ for (const label of ['views', 'likes', 'replies', 'upvotes', 'comments']) {
   assert.match(press, new RegExp(`aria-label="[^"]+ ${label}"`), `missing accessible ${label} metric`);
 }
 
-for (const icon of ['x', 'reddit', 'view', 'like', 'comment', 'repost', 'bookmark']) {
+for (const icon of ['x', 'reddit', 'view', 'like', 'upvote', 'comment', 'repost', 'bookmark']) {
   const relative = `brand/social/${icon}.svg`;
   assert.ok(existsSync(join(ROOT, 'public', relative)), `missing social icon ${relative}`);
   assert.match(readFileSync(join(ROOT, 'public', relative), 'utf8'), /^<svg[^>]+viewBox="0 0 24 24"/, `${relative} must use the shared 24 px grid`);

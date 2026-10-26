@@ -241,6 +241,7 @@ img{display:block;max-width:100%}
 .v5-social-metric-icon{color:var(--ink-2);display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--social-metric-icon) center/contain no-repeat;mask:var(--social-metric-icon) center/contain no-repeat}
 .v5-social-metric-icon--view{--social-metric-icon:url('/brand/social/view.svg')}
 .v5-social-metric-icon--like{--social-metric-icon:url('/brand/social/like.svg')}
+.v5-social-metric-icon--upvote{--social-metric-icon:url('/brand/social/upvote.svg')}
 .v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg')}
 .v5-social-metric-icon--comment{--social-metric-icon:url('/brand/social/comment.svg')}
 .v5-social-metric-icon--repost{--social-metric-icon:url('/brand/social/repost.svg')}
