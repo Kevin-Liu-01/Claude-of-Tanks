@@ -3974,7 +3974,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   function renderDeployRules(): void {
     const facts: DeployFacts = deployFacts(battleGameMode);
-    deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
+    // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
+    const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
+    const keys = ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
+    deployRules.dataset.count = String(keys.length);
+    deployRules.innerHTML = keys.map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
       `<dd${key === 'clock' ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
@@ -4036,8 +4040,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const { operation, status } = next;
       const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
       parts.push(`<article class="cot-deploy-camp">${thumb ? `<img src="${escapeHtmlAttribute(thumb)}" alt="" decoding="async">` : ''}` +
-        `<div class="t"><div class="op" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars: ladder.filter((step) => step.status === 'cleared').length, max: ladder.length }))}">${
-          ladder.map((step) => `<i class="${step.status === 'cleared' ? 'd' : step === next ? 'c' : ''}"></i>`).join('')}</div>` +
+        `<div class="t">` +
         `<b>${t(`campaign.op.${operation.id}.title`)}</b>${rules([['map', t(`map.${operation.mapId}`)]])}` +
         `<button type="button" class="cot-c-btn cot-c-btn--36" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}"` +
         `${status === 'locked' ? ' disabled' : ''}>${uiIconSVG('deploy', 16)}${t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button></div></article>`);
@@ -4081,6 +4084,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function showDeployTab(id: string): void {
     battleMenu.dataset.deployTab = id;
     for (const panel of deployPanels) panel.hidden = panel.dataset.deployPanel !== id;
+    // a tab opens at its top (a phone's page scroll would otherwise carry the last tab's place into this one)
+    battleMenuScroll.scrollTo({ top: 0 });
     if (id === 'campaign') { renderDeployCampaign(); deployScreen?.brief(); }
   }
   wireRoving(deployTabs, (id) => { emit('ui:click', {}); showDeployTab(id); });

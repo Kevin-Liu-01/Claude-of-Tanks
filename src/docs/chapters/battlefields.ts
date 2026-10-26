@@ -29,7 +29,8 @@ function mapCard(id: string): string {
 function landscapes(): string {
   const counts = new Map<ReturnType<typeof mapRegionTags>[number], number>();
   for (const id of MAP_IDS) for (const tag of mapRegionTags(id)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-  return `<ul class="dm-chips dm-chips--icons">${[...counts].sort((a, b) => b[1] - a[1]).map(([tag, n]) => `<li>${icon(regionTagIcon(tag) as IconId, { size: 14 })}`
+  // static labels with a count: the kit's tag (chapters.css .dm-tags), not its chip, which is a multi-select control
+  return `<ul class="dm-tags">${[...counts].sort((a, b) => b[1] - a[1]).map(([tag, n]) => `<li class="cot-c-tag">${icon(regionTagIcon(tag) as IconId, { size: 14 })}`
     + `<span>${esc(t(`camoTag.${tag}`))}</span><b>${n}</b></li>`).join('')}</ul>`;
 }
 

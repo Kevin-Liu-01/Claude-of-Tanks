@@ -138,7 +138,7 @@ function overview(view: ServiceRecordView): string {
   // a figure with nothing behind it yet reads as a dash, the counts as their zero
   const figure = (value: number, text = num(value)) => (value ? text : '–');
   const career = `<div class="cot-record-overview"><div class="cot-record-outcomes">` +
-    `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}<strong>${record.matches ? `${pct}%` : '–'}</strong>` +
+    `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}${record.matches ? `<strong>${pct}%</strong>` : '<strong class="is-null">–</strong>'}` +
     `${record.matches ? splitBar(record.wins, record.draws, record.losses) : ''}</div>` +
     `<div class="cot-record-outcome${record.wins ? ' win' : ''}">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +
     `<div class="cot-record-outcome${record.losses ? ' loss' : ''}">${statLabel(t('garage.record.defeats'), 'statDefeat')}<strong>${num(record.losses)}</strong></div>` +
@@ -284,7 +284,7 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
       metric(t('garage.record.longestChain'), num(battle.bestChain), 'statChain') +
       statTile({ label: t('garage.record.tankStatus'), value: t(battle.survived ? 'garage.record.survived' : 'garage.record.destroyedStatus'),
         icon: battle.survived ? 'shield' : 'skull', className: 'cot-record-metric' }) +
-      `</div>${awards}<div class="cot-record-trace-head">${uiIconSVG('lightbulb', 13)}<strong>${t('garage.record.traceHeading')}</strong></div>` +
+      `</div>${awards}<div class="cot-record-trace-head">${uiIconSVG('lightbulb', 15)}<strong>${t('garage.record.traceHeading')}</strong></div>` +
       `${trace(battle, names)}</div></details></li>`;
   }).join('');
   return `<ol class="cot-record-history">${rows}</ol>`;

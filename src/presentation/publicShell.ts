@@ -148,15 +148,16 @@ export function symbolBlock(html: string, sprite: string, flagSvg: (code: string
 const MARKER = (name: string): RegExp => new RegExp(`<!--cot:${name}-->[\\s\\S]*?<!--/cot:${name}-->`);
 
 /** The shell's route of a document: its canonical path (the docs topic template names /docs). The missing page has no
- * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address. */
+ * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address.
+ * Every Field Manual chapter, the Filming one too, is the manual's: Media names a section of that chapter (its
+ * #library), not a page of its own, so no document is current under it. */
 export function shellPageOf(html: string): PublicShellPage {
   const canonical = /<link rel="canonical" href="https:\/\/[^/"]+(\/[^"]*)"/.exec(html)?.[1];
   if (!canonical) return { path: '/404', page: null };
   const path = canonical.replace(/\/$/, '') || '/';
   const page: PublicPageKey = path.startsWith('/gallery') ? 'gallery'
-    : path.startsWith('/docs/filming') ? 'media'
-      : path.startsWith('/docs') ? 'docs'
-        : path.startsWith('/studio') ? 'studio' : 'home';
+    : path.startsWith('/docs') ? 'docs'
+      : path.startsWith('/studio') ? 'studio' : 'home';
   return { path, page };
 }
 

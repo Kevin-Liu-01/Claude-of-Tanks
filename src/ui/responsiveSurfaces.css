@@ -209,6 +209,8 @@ body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-co
    inside the track, as on desktop) and their hit areas reach the track's edge */
 body[data-cot-input='coarse'] .cot-settings .cot-set-seg button{position:relative;height:calc(var(--cot-control-floor) - 6px)}
 body[data-cot-input='coarse'] .cot-settings .cot-set-seg button::before{content:'';position:absolute;inset:-3px 0}
+/* a picker set as a grid (the team colours) draws each cell at the full floor */
+body[data-cot-input='coarse'] .cot-settings .cot-set-seg:has(> :nth-child(5)) button{height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
@@ -221,12 +223,12 @@ body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0
 body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 /* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline-start:calc(var(--cot-edge) - 4px)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - 4px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab.sel::after{left:4px;right:4px}
 body[data-cot-height='short'] .cot-set-preview{display:none}
 /* a compact screen keeps the preview to a strip, so the rows under it stay in view */
-body[data-cot-height='compact'] .cot-set-preview{max-width:356px}
+body[data-cot-height='compact'] .cot-set-preview{max-width:356px;margin-inline:auto}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:var(--s3) var(--s4) var(--s2)}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:var(--s4)}

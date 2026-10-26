@@ -25,9 +25,35 @@ const BUILDERS: Readonly<Record<string, () => RichSection[]>> = {
   controls: controlsSections,
 };
 
+/** A table this wide or wider reflows on a narrow screen instead of scrolling columns off it (chapters.css .dm-table--stack). */
+const STACK_COLUMNS = 4;
+
+/**
+ * Every data-built table of four or more columns: marked .dm-table--stack, each body cell labelled with its column's
+ * header (data-label, which the narrow layout prints before the cell) and every part given its table role, which the
+ * reflow's block display would otherwise drop for assistive technology. Narrower tables pass unchanged.
+ */
+function stackWideTables(html: string): string {
+  return html.replace(/<div class="dm-table([^"]*)"([^>]*)><table>([\s\S]*?)<\/table><\/div>/g, (whole, modifiers: string, attributes: string, inner: string) => {
+    const head = /<thead><tr>([\s\S]*?)<\/tr><\/thead>/.exec(inner)?.[1] ?? '';
+    const labels = [...head.matchAll(/<th\b[^>]*>([\s\S]*?)<\/th>/g)].map(([, label]) => label.replace(/<[^>]+>/g, '').trim());
+    if (labels.length < STACK_COLUMNS) return whole;
+    const rows = inner
+      .replace('<thead><tr>', '<thead role="rowgroup"><tr role="row">')
+      .replace(/<th scope="col">/g, '<th scope="col" role="columnheader">')
+      .replace(/<tbody>([\s\S]*?)<\/tbody>/, (_, body: string) => `<tbody role="rowgroup">${body.replace(/<tr>([\s\S]*?)<\/tr>/g, (__, cells: string) => {
+        let column = 0;
+        const labelled = cells.replace(/<(th|td)\b([^>]*)>/g, (___, tag: string, rest: string) =>
+          `<${tag}${rest} role="${tag === 'th' ? 'rowheader' : 'cell'}" data-label="${labels[column++] ?? ''}">`);
+        return `<tr role="row">${labelled}</tr>`;
+      })}</tbody>`);
+    return `<div class="dm-table dm-table--stack${modifiers}"${attributes}><table role="table">${rows}</table></div>`;
+  });
+}
+
 /** A data-built chapter's sections, or null for a chapter written as text sections (src/docs/topics.ts). */
 export function richSections(slug: string): RichSection[] | null {
-  return BUILDERS[slug]?.() ?? null;
+  return BUILDERS[slug]?.().map((section) => ({ ...section, html: stackWideTables(section.html) })) ?? null;
 }
 
 export type { RichSection } from './types.ts';

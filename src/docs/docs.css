@@ -28,7 +28,11 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .aside-card--library{text-decoration:none}
 .aside-card--archive{width:100%;display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;padding:14px;text-align:left;color:inherit;cursor:pointer;transition:border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-fast) ease}.aside-card--archive:hover{border-color:var(--line-3);background:var(--surface-hover);transform:translateY(-1px)}.aside-card--archive:focus-visible{outline:2px solid var(--amber);outline-offset:3px}.aside-card-icon{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--line-3);background:var(--fill-soft)}.aside-card-icon :is(img,svg){display:block;width:27px;height:27px}.aside-card-content{min-width:0}.aside-card-kicker{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card--archive strong{margin:7px 0 5px;color:var(--ink)}.aside-card-action{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);text-transform:uppercase}.aside-card-action .cot-i{flex:none}
 .docs-archive-dialog{width:min(94vw,1500px);max-width:none;max-height:92dvh;padding:0;overflow:auto;border:1px solid var(--line2);background:var(--surface-page);color:var(--ink);box-shadow:var(--e2)}.docs-archive-dialog::backdrop{background:var(--surface-scene);backdrop-filter:blur(10px)}.docs-archive-dialog>header{position:sticky;z-index:var(--z-shell);top:0;display:flex;align-items:end;justify-content:space-between;gap:28px;padding:25px 28px 20px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,var(--surface-raised),var(--surface-page) 54%,var(--surface-page))}.docs-archive-dialog>header h2{margin:7px 0 4px;font-size:var(--docs-h2);line-height:.95;text-transform:uppercase}.docs-archive-dialog>header p:last-child{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}.docs-archive-dialog>header>button{flex:none;display:inline-grid;place-items:center;width:42px;height:42px;border:1px solid var(--line);background:transparent;color:var(--ink-1)}.docs-archive-dialog>header>button:hover{border-color:var(--line-3);background:var(--accent-wash)}.docs-motion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;padding:18px 18px 0;background:var(--surface-page)}.docs-motion-grid video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}.docs-motion-item{position:relative;min-width:0;background:var(--surface-scene)}.docs-motion-item video{height:100%}.docs-motion-item>.cot-info-trigger{position:absolute;z-index:var(--z-lift);right:10px;top:10px;background:var(--surface-scene)}.docs-archive-body{padding:18px 18px 24px}
-.docs-footer{border-top:1px solid var(--line);background:var(--surface-page)}.docs-footer .inner{min-height:110px;display:flex;align-items:center;justify-content:space-between}.footer-links{display:flex;align-items:center;gap:18px}.footer-links a{display:inline-flex;align-items:center;color:var(--ink-3);text-decoration:none;font-size:max(var(--fs-floor-11),var(--fs-11));text-transform:uppercase;letter-spacing:var(--track-label)}.footer-stars{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.footer-stars:has([data-github-stars-state='loading'],[data-github-stars-state='failed']){display:none}.footer-links a:hover{color:var(--ink-1)}@media (width < 1440px){
+.docs-footer{border-top:1px solid var(--line);background:var(--surface-page)}.docs-footer .inner{min-height:110px;display:flex;align-items:center;justify-content:space-between}.footer-links{display:flex;align-items:center;gap:18px}.footer-links a{display:inline-flex;align-items:center;color:var(--ink-3);text-decoration:none;font-size:max(var(--fs-floor-11),var(--fs-11));text-transform:uppercase;letter-spacing:var(--track-label)}.footer-stars{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.footer-stars:not(:has([data-github-stars-state='ready'])){display:none}.footer-links a:hover{color:var(--ink-1)}
+/* the row's visible right edge is the content edge: the last label gives back its trailing letter-space (an empty star
+   count stays out of the row until it has a count) */
+.footer-links a:last-child{margin-inline-end:calc(var(--track-label) * -1)}
+@media (width < 1440px){
 .docs-layout{grid-template-columns:220px minmax(0,1fr);gap:40px}
 .aside-card+.aside-card{margin-top:0}
 .docs-hero .shell{grid-template-columns:minmax(0,1fr) minmax(350px,.85fr);gap:38px}
@@ -168,19 +172,30 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-banner>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .dm-banner>video.has-frame{opacity:1}
 .dm-banner::after{content:'';position:absolute;inset:0;z-index:var(--z-lift);pointer-events:none;background:var(--docs-banner-fade)}
-.dm-banner__t{position:absolute;left:var(--docs-gutter);right:var(--docs-gutter);bottom:26px;z-index:var(--docs-banner-z);max-width:760px}
+.dm-banner__t{position:absolute;left:var(--docs-gutter);right:var(--docs-gutter);bottom:26px;z-index:var(--docs-banner-z);width:fit-content;max-width:760px}
+/* the title column's own scrim: the banner's fade darkens the picture's left and foot, and the title column can reach past
+   both over a bright picture, so the media scrim sits behind the trail and the title wherever they reach, feathered at its
+   open edges outside the type (large title type keeps 4.5:1 over any picture); the trail and the title are positioned, so
+   they paint over it in order */
+.dm-banner__t>*{position:relative}
+.dm-banner__t::before{content:'';position:absolute;inset:calc(var(--s7) * -1) calc(var(--s8) * -1) calc(var(--s5) * -1) calc(var(--docs-gutter) * -1);
+  background:linear-gradient(0deg,var(--scrim) calc(100% - var(--s7)),transparent);mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s8)),transparent);pointer-events:none}
 /* the trail sits on a glyph plate, so it holds its contrast over any footage */
 .dm-crumb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:fit-content;margin-bottom:14px;padding:4px var(--s2);border-radius:var(--r1);background:var(--glyph-plate);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-2)}
 .dm-crumb a{display:inline-flex;align-items:center;min-height:24px;color:inherit;text-decoration:none}
 @media (pointer:coarse){.dm-crumb a{min-height:var(--cot-control-floor,44px)}}
 .dm-crumb a:hover{color:var(--ink-1)}
 .dm-crumb i{display:inline-flex;font-style:normal;color:var(--ink-3)}
+/* a vehicle designation (T-90M, 2A7V) never breaks inside: captions wrap before it (src/docs/designations.ts) */
+.dm-nobr{white-space:nowrap}
 /* a step keeps its chevron: a long name wraps to the next line with it, never leaving a chevron dangling */
 .dm-crumb__step{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .dm-banner h1>span{display:block}
 .dm-banner h1{margin:0;font:700 var(--docs-banner-h1)/.92 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--hollow-shadow);text-wrap:balance}
 .dm-banner h1 .t-hollow{color:var(--ink-1)}
 :lang(zh-CN) .dm-banner h1 .t-hollow{color:var(--ink-1);-webkit-text-stroke:0}
+/* a Chinese title breaks only between its phrases (topics.ts ZH_TITLE_PHRASES marks them), never inside a word */
+.dm-banner h1 .dm-phrases{word-break:keep-all;line-break:strict;overflow-wrap:break-word}
 .dm-banner__cap{position:absolute;right:20px;bottom:16px;z-index:var(--docs-banner-z);max-width:min(460px,40%);margin:0;padding:7px 10px;border-radius:var(--r1);background:var(--glyph-plate)}
 .dm-banner__cap .doc-icon{width:14px;height:14px;color:var(--ink-3)}
 /* the hero's pause control stands on the content's edge, also where the hero bleeds past it */
@@ -192,7 +207,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-section{padding-top:var(--s6);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-section h2{margin:0 0 var(--s4);font:600 var(--fs-28)/1.08 var(--font-display);color:var(--ink-1)}
 .dm-section p{margin:0 0 var(--s4);font:400 var(--fs-16)/var(--lh-docs) var(--font-body);color:var(--ink-2)}
-.dm-article code{white-space:nowrap;padding:1px 5px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-data);color:var(--ink-1)}
+/* inline code: its plate is drawn outside its box (an outline in the plate's fill), so a chip that starts a line starts
+   on the column's edge like the words around it; the fill reads against the page and the cards */
+.dm-article code{white-space:nowrap;padding:0;border-radius:var(--r1);background:var(--fill-scale);outline:3px solid var(--fill-scale);font:500 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-data);color:var(--ink-1)}
 .dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1)}
 .dm-section .topic-figure img{display:block;width:100%;height:auto}
 .dm-section .topic-figure figcaption{padding:11px 12px;border-top:1px solid var(--line-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2)}
@@ -212,13 +229,19 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 }
 @media (width < 1100px){
   .dm{grid-template-columns:minmax(0,1fr)}
-  /* the topic strip fades at both ends where it scrolls on; the index link is one of its items, not a framed chip */
-  .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--s4);box-shadow:var(--docs-side-edge);
-    mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s4),var(--ink-1) calc(100% - var(--s4)),transparent)}
+  /* the topic strip: its first item, the index link (one of its items, not a framed chip), starts on the page gutter, the
+     logo's and the title's edge, and topics.ts mountShelfRow scrolls an item's start to that gutter (the scroll padding);
+     each end fades, at least 24 px, only while the strip scrolls on past it, the start's fade ending where the leading
+     item's label begins, so no cut label shows at the edge */
+  .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--docs-gutter);scroll-padding-inline:var(--docs-gutter) var(--dm-fade);box-shadow:var(--docs-side-edge);
+    --dm-fade:max(var(--s5),var(--docs-gutter));--dm-fade-clear:0px;--dm-fade-start:0px;--dm-fade-end:var(--dm-fade);
+    mask-image:linear-gradient(90deg,transparent var(--dm-fade-clear),var(--ink-1) calc(var(--dm-fade-clear) + var(--dm-fade-start)),var(--ink-1) calc(100% - var(--dm-fade-end)),transparent)}
+  .dm-side[data-scrolled]{--dm-fade-start:var(--dm-fade);--dm-fade-clear:max(0px,calc(var(--docs-gutter) + var(--s3) - var(--dm-fade)))}
+  .dm-side[data-at-end]{--dm-fade-end:0px}
   .dm-home{margin:0;flex:none;box-shadow:none}
   .dm-grp{display:none}
   .dm-search{display:none}
-  .dm-side a:not(.dm-home){flex:none;padding:4px 12px;white-space:nowrap}
+  .dm-side a:not(.dm-home){flex:none;padding:4px var(--s3);white-space:nowrap}
   .dm-body{grid-template-columns:minmax(0,1fr)}
   .dm-toc{display:none}
 }

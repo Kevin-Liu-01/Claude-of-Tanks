@@ -24,6 +24,7 @@ import { t } from '../../ui/i18n.ts';
 import { lineChart, type ChartSeries } from './charts.ts';
 import { fleetTanks, type FleetTank } from './fleet.ts';
 import type { RichSection } from './types.ts';
+import { designationHtml } from '../designations.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -116,7 +117,7 @@ export function combatSections(): RichSection[] {
     norm: String(SHELL_BEHAVIOR[type].normDeg), ricochet: String(SHELL_BEHAVIOR[type].ricochetDeg),
   });
   const diagram = (view: 'armor' | 'modules', alt: string): string => `<figure class="dm-diagram"><img src="/icons/${REFERENCE_TANK}_${view}_side.png" width="512" height="256"`
-    + ` alt="${esc(alt)}" loading="lazy" decoding="async"><figcaption>${esc(alt)}</figcaption></figure>`;
+    + ` alt="${esc(alt)}" loading="lazy" decoding="async"><figcaption>${designationHtml(alt)}</figcaption></figure>`;
   const overlayKey = DEFAULT_BINDINGS.hitboxOverlay;
   if (!overlayKey) throw new Error('docs: the armour overlay has no default key');
   // the armour overlay's key cap goes in after escaping: the copy names it as {key}

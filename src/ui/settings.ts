@@ -267,7 +267,7 @@ const SETTINGS_CSS = `
 .cot-set-group:first-child{margin-top:var(--s3);}
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
-  box-shadow:var(--e1);}
+  box-shadow:var(--e1-flush);}
 /* the heading sits on the rows' inset: its label starts at the row glyphs and its (i) ends at the controls' edge */
 .cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2);}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
@@ -460,7 +460,10 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
    label columns */
 .cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
-.cot-set-refused{flex:1 1 100%;margin:0 calc(-1 * var(--s2));padding-inline:var(--s2);}
+.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 calc(-1 * var(--s2));padding-inline:var(--s2);}
+/* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
+.cot-set-refused .cot-c-notice__glyph{width:24px;place-items:center start;}
+.cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}

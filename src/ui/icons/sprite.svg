@@ -24,7 +24,7 @@
 <symbol id="i-modeGunGame"><path d="M3 20.5h18v-17h-4.5V8H12v4.5H7.5V17H3Z"/></symbol>
 <symbol id="i-modeDrone"><path d="M6 6l3.5 3.5h5L18 6M6 18l3.5-3.5h5L18 18M9.5 9.5v5m5-5v5M9 6a3 3 0 1 1-6 0 3 3 0 1 1 6 0ZM21 6a3 3 0 1 1-6 0 3 3 0 1 1 6 0ZM9 18a3 3 0 1 1-6 0 3 3 0 1 1 6 0ZM21 18a3 3 0 1 1-6 0 3 3 0 1 1 6 0Z"/></symbol>
 <symbol id="i-modeAc130"><path d="M12 2.5l1.5 2v5l7.5 3V15l-7.5-1.5v4l2.5 2V21l-4-1-4 1v-1.5l2.5-2v-4L3 15v-2.5l7.5-3v-5ZM16.25 9.25v1.5M18.75 10.25v1.5M7.75 9.25v1.5M5.25 10.25v1.5"/></symbol>
-<symbol id="i-vehicle"><path d="M4 15h16l1.5 2.5-1.5 2.5H4l-1.5-2.5ZM3.5 15 5 13h12.5l3 2M7.5 13v-2.5L9 9h5l1.5 1.5V13M15.5 10.5h6"/><path fill="currentColor" d="M6 17h1.5v1H6ZM10 17h1.5v1H10ZM14 17h1.5v1H14ZM18 17h-1.5v1H18Z"/></symbol>
+<symbol id="i-vehicle"><path d="M3.5 15.5h17l-1.75 4H5.25ZM5 15.5 6.5 13h11l2 2.5M8.5 13v-2.5L10 9h4.5l1.5 1.5V13M16 10.5h5.5"/></symbol>
 <symbol id="i-chevronDown"><path d="M6 9l6 6 6-6"/></symbol>
 <symbol id="i-chevronLeft"><path d="M15 6l-6 6 6 6"/></symbol>
 <symbol id="i-chevronRight"><path d="M9 6l6 6-6 6"/></symbol>
@@ -147,7 +147,7 @@
 <symbol id="i-engine"><path d="M5 8.5h10l2 2h3v6h-3l-2 2H5ZM7.5 8.5v-3h5v3M2.5 11v5M5 13.5H2.5M8.5 12v3M11.5 12v3"/></symbol>
 <symbol id="i-transmission"><path d="M5.5 4v16M12 4v16M18.5 4v8M5.5 12h13"/></symbol>
 <symbol id="i-fuelTank"><path d="M5.5 5.5h7.5l5.5 4.5V21H5.5ZM8.5 5.5v-2h3.5M8.5 11.5l7 6M15.5 11.5l-7 6"/></symbol>
-<symbol id="i-ammoRack"><path d="M4.5 20.5V10l2.5-4.5L9.5 10v10.5ZM10 20.5V10l2.5-4.5L15 10v10.5ZM15.5 20.5V10L18 5.5l2.5 4.5v10.5ZM4.5 16h16"/></symbol>
+<symbol id="i-ammoRack"><path d="M3.5 18.5v-9l2-4 2 4v9ZM10 18.5v-9l2-4 2 4v9ZM16.5 18.5v-9l2-4 2 4v9ZM2.5 20.5h19"/></symbol>
 <symbol id="i-gun"><path d="M2.5 9.5h6v5h-6ZM8.5 11h9v2h-9ZM17.5 9.5h4v5h-4Z"/></symbol>
 <symbol id="i-radio"><path d="M4 10h12v10.5H4ZM11.5 10l5.5-6.5M7 14h2M7 17h6M19 6.5l2.5-1M19.5 10h2.5"/></symbol>
 <symbol id="i-optics"><path d="M20 12a8 8 0 1 1-16 0 8 8 0 1 1 16 0ZM15.5 12a3.5 3.5 0 1 1-7 0 3.5 3.5 0 1 1 7 0ZM7.5 10a5 5 0 0 1 2.5-2.5"/></symbol>
@@ -254,7 +254,7 @@
 <symbol id="i-engine-s"><path d="M3.5 5.5H10l1.5 1.5h2v4h-2L10 12.5H3.5ZM5 5.5v-2h4v2M1.5 7.5v3"/></symbol>
 <symbol id="i-transmission-s"><path d="M3.5 2.5v11M8 2.5v11M12.5 2.5V8M3.5 8h9"/></symbol>
 <symbol id="i-fuelTank-s"><path d="M3.5 3.5h5l3.5 3v7.5H3.5ZM5.5 3.5V2H8M5.5 7.5l4.5 4M10 7.5l-4.5 4"/></symbol>
-<symbol id="i-ammoRack-s"><path d="M2 13.5v-7l1.5-3 1.5 3v7ZM6.5 13.5v-7l1.5-3 1.5 3v7ZM11 13.5v-7l1.5-3 1.5 3v7Z"/></symbol>
+<symbol id="i-ammoRack-s"><path d="M1.5 14V7l1.5-3 1.5 3v7ZM6.5 14V7L8 4l1.5 3v7ZM11.5 14V7L13 4l1.5 3v7Z"/></symbol>
 <symbol id="i-gun-s"><path d="M1.5 6h4v4h-4ZM5.5 7.25h6v1.5h-6ZM11.5 6h3v4h-3Z"/></symbol>
 <symbol id="i-track-s"><path d="M2.75 5.5h10.5L14.75 8l-1.5 2.5H2.75L1.25 8ZM5.75 8a1 1 0 1 1-2 0 1 1 0 1 1 2 0ZM9 8a1 1 0 1 1-2 0 1 1 0 1 1 2 0ZM12.25 8a1 1 0 1 1-2 0 1 1 0 1 1 2 0Z"/></symbol>
 <symbol id="i-turretRing-s"><path d="M11.25 8a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 1 1 6.5 0ZM8 8h6.5M2 6a6 6 0 0 1 8-4M14 10a6 6 0 0 1-8 4"/></symbol>

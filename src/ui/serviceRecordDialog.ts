@@ -28,6 +28,7 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
     const view={...getServiceRecord(),unseen}, totals=recordSummary(names,view);plate.innerHTML=totals.plate;
     const art=battleMapArt(view.history[0]?.mapId);
     modal.root.style.setProperty('--record-map',art?`url("${art}")`:'none');
+    modal.root.classList.toggle('no-map',!art);
     for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){
       const tab=button.dataset.recordTab as RecordTab, active=tab===selected;
       const prefix=tab==='medals'?'medal:':tab==='achievements'?'achievement:':null;

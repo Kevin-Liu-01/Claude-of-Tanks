@@ -125,8 +125,12 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
-    // the mode's own settings open under the pickers: bring them into the plate's view (a compact screen scrolls it)
-    if (open) requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
+    // the mode's own settings open under the pickers and nothing above them moves (deploy.css holds the battlefield at
+    // its resting height); a phone's page scrolls them into view
+    options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
+    if (open && document.body.dataset.cotPanels === 'overlay') {
+      requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
+    }
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
 
@@ -176,8 +180,15 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   // a column that scrolls says so (deploy.css .is-scrollable fades both its ends and keeps room under each fade), so a
   // column that fits shows every edge whole
   const scrollers = [...menu.querySelectorAll<HTMLElement>('.cot-battle-details,.cot-battle-mode-list,.cot-deploy-campaign')];
+  // the battlefield's and the rules' resting heights (read here, after layout, never in a press): an open picker or the
+  // further options take exactly that room, so nothing under them moves
   const markScrollers = (): void => {
     for (const el of scrollers) el.classList.toggle('is-scrollable', el.scrollHeight > el.clientHeight + 1);
+    if (!details || details.classList.contains('is-picking') || details.classList.contains('is-more')) return;
+    const field = details.querySelector<HTMLElement>('.cot-deploy-field');
+    const rules = details.querySelector<HTMLElement>('.cot-deploy-rules');
+    if (field) details.style.setProperty('--field-rest', `${field.offsetHeight}px`);
+    if (rules) details.style.setProperty('--rules-rest', `${rules.offsetHeight}px`);
   };
   if (typeof ResizeObserver === 'function') {
     const sizes = new ResizeObserver(markScrollers);
