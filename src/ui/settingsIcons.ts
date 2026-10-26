@@ -65,7 +65,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   hideBattleUi: { id: 'graphics', tone: 'cyan' },
   isometricView: { id: 'map', tone: 'cyan' },
   showDebugHud: { id: 'telemetry', tone: 'violet' },
-  showDirectionalHitValues: { id: 'damage', tone: 'red' },
+  showDirectionalHitValues: { id: 'blocked', tone: 'red' },
   armorAimOverlay: { id: 'armorFlashlight' },
   volMaster: { id: 'sound', tone: 'cyan' },
   volEngine: { id: 'engine', tone: 'amber' },

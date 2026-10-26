@@ -10,12 +10,17 @@ environment.addEventListener('dispose', () => disposedEnvironment++);
 const originalTarget = { name: 'original framebuffer' };
 let currentTarget = originalTarget;
 let pixelRadiance = 1, readbackFailure = false;
-let measuredIntensity = 0, geometryDisposals = 0, materialDisposals = 0, targetDisposals = 0, renders = 0;
+let measuredIntensity = 0, geometryDisposals = 0, materialDisposals = 0, targetDisposals = 0, renders = 0, lastProbe = null;
+// (2026-10-26) the probe's sphere, its material (its lit program) and its target live for the session
+const probeMaterials = new Set(), probeTargets = new Set();
 const renderer = {
   getRenderTarget() { return currentTarget; },
   setRenderTarget(target) {
     currentTarget = target;
-    if (target !== originalTarget) target.addEventListener('dispose', () => targetDisposals++);
+    if (target !== originalTarget && !probeTargets.has(target)) {
+      probeTargets.add(target);
+      target.addEventListener('dispose', () => targetDisposals++);
+    }
   },
   clear() {},
   render(probe, camera) {
@@ -25,8 +30,12 @@ const renderer = {
     assert.equal(probe.children.length, 1, 'unchanged one chrome-sphere validation scene');
     const sphere = probe.children[0];
     assert.equal(sphere.material.metalness, 1); assert.equal(sphere.material.roughness, .15);
-    sphere.geometry.addEventListener('dispose', () => geometryDisposals++);
-    sphere.material.addEventListener('dispose', () => materialDisposals++);
+    if (!probeMaterials.has(sphere.material)) {
+      probeMaterials.add(sphere.material);
+      sphere.geometry.addEventListener('dispose', () => geometryDisposals++);
+      sphere.material.addEventListener('dispose', () => materialDisposals++);
+    }
+    lastProbe = probe;
     measuredIntensity = probe.environmentIntensity;
   },
   readRenderTargetPixels(_target, x, y, width, height, out) {
@@ -43,8 +52,10 @@ function probe(scale, expected, intensity) {
   assert.equal(enforceEnvValidity(renderer, scene, scale), expected);
   assert.equal(measuredIntensity, intensity);
   assert.strictEqual(currentTarget, originalTarget, 'readback always restores renderer owner');
-  assert.equal(geometryDisposals, renders); assert.equal(materialDisposals, renders);
-  assert.equal(targetDisposals, renders);
+  assert.equal(geometryDisposals, 0); assert.equal(materialDisposals, 0); assert.equal(targetDisposals, 0);
+  assert.equal(probeMaterials.size, 1, 'one probe material (one linked program) for every validation');
+  assert.equal(probeTargets.size, 1, 'one probe target for every validation');
+  assert.equal(lastProbe.environment, null, 'the probe never holds the scene environment between validations');
 }
 function fallback() {
   return scene.children.filter(child => child.isAmbientLight);
@@ -93,4 +104,4 @@ try {
   globalThis.window = previousWindow;
   environment.dispose();
 }
-console.log('deviceEnvRadiance self-test: unit-radiance night validation, unchanged threshold/default, scaled fallback reuse and probe cleanup PASS');
+console.log('deviceEnvRadiance self-test: unit-radiance night validation, unchanged threshold/default, scaled fallback reuse and one session probe PASS');

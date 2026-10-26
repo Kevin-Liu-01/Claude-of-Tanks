@@ -25,10 +25,10 @@ try{
   page.on('console',message=>{if(message.type()==='error'){console.error('browser:',message.text().slice(0,500));if(/THREE.WebGLProgram|VALIDATE_STATUS|Shader Error/.test(message.text()))errors.push(message.text());}});
   await page.click('.cot-battle-mode');
   for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130']){
-   const choice=await page.waitForSelector(`.cot-battle-menu [data-game-mode="${mode}"]`,{visible:true});
+   const choice=await page.waitForSelector(`.cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="${mode}"]`,{visible:true});
    await choice.scrollIntoView();
    if(mobile)await choice.tap();else await choice.click();
-   assert.equal(await choice.evaluate(el=>el.getAttribute('aria-pressed')),'true',`${mode} selected through the garage control`);
+   assert.equal(await choice.evaluate(el=>el.getAttribute('aria-selected')),'true',`${mode} selected through the garage control`);
   }
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');

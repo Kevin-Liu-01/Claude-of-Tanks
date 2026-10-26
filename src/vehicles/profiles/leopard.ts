@@ -41,6 +41,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
+import { remapCamoUv, type CamoUvRemap } from '../factoryGeometry.ts';
 import { chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
@@ -11665,19 +11666,25 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
   // The camo texture is one shared per-spec canvas boxUV'd at camoScale on
   // every camo bucket, so turret and hull CANNOT split scales at paint time
   // (patchK is texture-global; camoScale ≤0.5 is inert — r3 law). The split
-  // happens on the merged meshes' UV attributes instead: tankFactory merges
-  // the buckets synchronously inside createTank right after this builder
-  // returns, so a microtask sees the final meshes before anything renders
-  // (every consumer — game RAF, garage, the critic rig — crosses an event-
-  // loop turn first; the gate's mask pass renders a white override material
-  // and reads neither UVs nor vertex colors, so this is silhouette-inert).
+  // happens on the merged meshes' UV attributes instead, in the factory's
+  // post-merge step (P.postAssemble, below), so every build path draws and
+  // hashes the same UVs (the gate's mask pass renders a white override
+  // material and reads neither UVs nor vertex colors: silhouette-inert).
   // Factors from the r3 verdict: turret 51 px/7 blobs vs ref 89/2 → UV
   // x0.573 (1.75x coarser, giant sweeps); hull 36.5 px/11 vs ref 25/22 →
   // UV x1.45 (finer checker); different offsets break the hull→turret camo
   // PHASE at the moat seam; hull top-facing UVs swap axes to kill the
   // vertical-stripe read from plan (fields no longer run bow→stern).
   const buildKF51AssemblyStage3 = (): void => {
-    queueMicrotask(() => {
+    // 253: the split runs in the factory's post-merge step (postAssemble) on the merged meshes, not in a microtask. A
+    // stepped build (the Garage pedestal, the battle streamer, the Gallery) awaits between its slices, so the microtask
+    // fired mid-build and remapped whatever meshes stood there, and a synchronous build's receipts hashed the UVs before
+    // it. The meshes are the turret, gun-mount and hull buckets by name: the first hull-material mesh under the turret had
+    // become the open-yoke RWS, so the RWS took the turret's split, the turret kept the fleet projection and its tints
+    // went nowhere. The turret seat re-projects what it lifts through the recorded split (remapCamoUv).
+    const previous = P.postAssemble;
+    P.postAssemble = (rig) => {
+      previous?.(rig);
       // Each remap scales, offsets, then ROTATES the UV frame. The rotation
       // does two jobs the first cut's top-face axis swap could not: it kills
       // the bow→stern stripe read on every face at once, and it breaks the
@@ -11685,39 +11692,14 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
       // repeated its brown motif ~every 2.0 m because one v-band tiled in u
       // along the hull; rotating mixes v per repeat so no two repeats sample
       // the same band).
-      const remap = (
-        mesh: THREE.Mesh | undefined,
-        k: number,
-        du: number,
-        dv: number,
-        th: number,
-      ): void => {
-        if (!mesh || !mesh.geometry || !mesh.geometry.attributes.uv) return;
-        const uv = mesh.geometry.attributes.uv;
-        const c = Math.cos(th), s = Math.sin(th);
-        for (let i = 0; i < uv.count; i++) {
-          const U = uv.getX(i) * k + du, V = uv.getY(i) * k + dv;
-          uv.setXY(i, c * U - s * V, s * U + c * V);
-        }
-        uv.needsUpdate = true;
-      };
-      const meshes: {
-        turret?: THREE.Mesh;
-        gunMount?: THREE.Mesh;
-        hull?: THREE.Mesh;
-      } = {};
-      P.turretG.traverse((o) => {
-        if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || o.material !== P.mats.hull) return;
-        if (o.parent === P.gunG) meshes.gunMount ??= o;
-        else meshes.turret ??= o;
-      });
-      P.hullG.traverse((o) => {
-        if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || o.material !== P.mats.hull) return;
-        meshes.hull ??= o;
-      });
-      remap(meshes.turret, 0.573, 0.31, 0.17, -0.38);
-      remap(meshes.gunMount, 0.573, 0.31, 0.17, -0.38);
-      remap(meshes.hull, 1.45, 0.12, 0.55, 0.62);
+      const merged = (group: THREE.Object3D, name: string): THREE.Mesh | undefined => group.children.find(
+        (o): o is THREE.Mesh => o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.name === name
+          && o.material === P.mats.hull);
+      const meshes = { turret: merged(rig.turretG, 'turret'), gunMount: merged(rig.gunG, 'gunMount'), hull: merged(rig.hullG, 'hull') };
+      const turretSplit: CamoUvRemap = [0.573, 0.31, 0.17, -0.38], hullSplit: CamoUvRemap = [1.45, 0.12, 0.55, 0.62];
+      if (meshes.turret) remapCamoUv(meshes.turret.geometry, turretSplit);
+      if (meshes.gunMount) remapCamoUv(meshes.gunMount.geometry, turretSplit);
+      if (meshes.hull) remapCamoUv(meshes.hull.geometry, hullSplit);
       // #8 pano-lid pop: the SEOSS dome cap reads +7V lighter than the deck on
       // the ref. Vertex-color lift on the dome step/core verts only (the well
       // collar/ring are detail-bucket meshes; the parapet posts sit at r 0.298
@@ -11753,7 +11735,7 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
         }
         col.needsUpdate = true;
       }
-    });
+    };
     P.topY = 1.9;
   };
   buildKF51AssemblyStage3();

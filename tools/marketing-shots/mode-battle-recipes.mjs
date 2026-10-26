@@ -1882,15 +1882,13 @@ Object.assign(RECIPES, {
         await B.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await B.page.waitForFunction(() => (document.querySelector('.cot-play .lobby.show .players')?.children.length ?? 0) >= 2, { timeout: 60000 });
         ctx.log('guest lobby', await setLobby(B.page, 'team', 'bravo'), await setLobby(B.page, 'vehicle', 't90m_x'));
-        // the room is the authority on seats: confirm B sits on bravo, through the team list's own option if needed
+        // the room is the authority on seats: confirm B sits on bravo, through the deployment's own option if needed
         // (r14 attempts 1-2: neither client ever held the other seat)
         const code = invite.searchParams.get('room');
         const seats = () => (ctx.rooms?.room(code)?.room?.players ?? []).map((pl) => `${pl.name ?? pl.id}:${pl.team}`);
         for (let i = 0; i < 20 && !seats().some((s) => /:bravo$/.test(s)); i++) await ctx.sleep(250);
         if (!seats().some((s) => /:bravo$/.test(s))) {
-          await B.page.click('.cot-play [data-control="team"] [data-select-trigger]').catch(() => {});
-          await ctx.sleep(300);
-          await B.page.click('.cot-play [data-control="team"] .menu-select-option[data-value="bravo"]').catch(() => {});
+          await B.page.click('.cot-play [data-control="team"] [data-value="bravo"]').catch(() => {});
           for (let i = 0; i < 20 && !seats().some((s) => /:bravo$/.test(s)); i++) await ctx.sleep(250);
         }
         ctx.log('room seats', JSON.stringify(seats()), 'lobby mode', await A.page.evaluate(() => document.querySelector('.cot-play .lobby')?.dataset?.mode ?? null));

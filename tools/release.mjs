@@ -7,12 +7,16 @@
 //
 //   build <sha>    temporary git worktree of <sha>; npm ci; vercel pull --yes --environment=production;
 //                  drop the redacted VITE_*="[SENSITIVE]" lines the pull writes; vercel build --prod;
-//                  restore the lockfile the build's install rewrites; carry the previous releases' hashed
+//                  restore the lockfile the build's install rewrites; carry the deployed releases' hashed
 //                  /assets files forward from the local release cache (below); node
 //                  tools/vercel-output-immutable.mjs and its --check. The pulled .vercel/.env*.local files
-//                  are deleted in a finally block.
-//   deploy <sha>   vercel deploy --prebuilt --prod from that worktree with the git metadata of <sha>,
-//                  then verify, then remove the worktree (--keep keeps it, --no-verify skips verify).
+//                  are deleted in a finally block. A build records nothing in the cache: it writes its own
+//                  file list to .vercel/cot-release.json beside the output (never uploaded).
+//   deploy <sha>   vercel deploy --prebuilt --prod --archive=tgz from that worktree with the git metadata of
+//                  <sha>, then verify, then record the release in the cache, then remove the worktree
+//                  (--keep keeps it, --no-verify skips verify).
+//   record <sha>   record a release deployed straight with the Vercel CLI: the served stamp must name <sha>
+//                  (--no-verify skips the check), then the build's own files go into the cache.
 //   verify <sha>   the served application-version stamp names <sha> (retried while the alias moves);
 //                  --sweep also requires every chunk the served index names to answer 200 and a
 //                  missing chunk to stay uncacheable (the 2026-09-25 rule).
@@ -31,11 +35,14 @@
 // page named, and a deploy used to remove every hashed file the new build did not emit (deploy 163:
 // one tab asked for a removed chunk 33,875 times in a day, 6 % of the week's requests). `build` keeps
 // a local release cache outside git (--asset-cache=<dir>, env COT_RELEASE_ASSET_CACHE, default
-// ~/.cache/cot-release): every build records its own hashed /assets files there, and the next builds
-// copy the files of the last --carry=<N> releases (default 3, 0 disables) that the new build lacks into
-// .vercel/output/static/assets before the immutable routes are written, newest release first, up to
+// ~/.cache/cot-release): every DEPLOYED release records its own hashed /assets files there, and the next
+// builds copy the files of the last --carry=<N> releases (default 3, 0 disables) that the new build lacks
+// into .vercel/output/static/assets before the immutable routes are written, newest release first, up to
 // --carry-max-mb=<MB> (default 200). Hashed names never collide, so nothing the new build emits is
-// replaced; the cache keeps the newest N + 1 releases and prunes every file none of them names.
+// replaced; the cache keeps the newest N + 1 releases and prunes every file none of them names. Release
+// 254's trap (2026-10-26): builds used to record themselves, so a round's measuring builds pushed the live
+// release out of the carry and its chunks would have 404'd for open tabs; a release is now recorded only
+// when it is deployed (`deploy`, or `record` after a direct CLI deploy).
 import { execFileSync, spawn } from 'node:child_process';
 import { constants as fsConstants, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync,
   writeFileSync } from 'node:fs';
@@ -57,8 +64,9 @@ export const RELEASE_DEFAULTS = Object.freeze({
 export const VERCEL_CLI_MAJOR = 58;
 /** How many earlier releases' hashed /assets files a build carries forward, and the byte cap on what it copies. */
 export const ASSET_CARRY_DEFAULTS = Object.freeze({ releases: 3, maxBytes: 200 * 1024 * 1024 });
-const COMMANDS = new Set(['build', 'deploy', 'verify', 'rollback', 'workers', 'clean']);
-const NEEDS_SHA = new Set(['build', 'deploy', 'verify', 'workers', 'clean']);
+const COMMANDS = new Set(['build', 'deploy', 'record', 'verify', 'rollback', 'workers', 'clean']);
+const NEEDS_SHA = new Set(['build', 'deploy', 'record', 'verify', 'workers', 'clean']);
+const USES_CACHE = new Set(['build', 'deploy', 'record']);
 
 /** The local release cache: --asset-cache, else COT_RELEASE_ASSET_CACHE, else ~/.cache/cot-release (never in a checkout). */
 export function defaultAssetCacheDir(env = process.env, home = homedir()) {
@@ -78,7 +86,7 @@ export function parseReleaseArgs(argv, env = process.env) {
     const value = parts.join('=');
     if (!arg.startsWith('--') && !options.sha && NEEDS_SHA.has(command)) options.sha = arg;
     else if (arg === '--dry-run') options.dryRun = true;
-    else if (flag === '--asset-cache' && value && command === 'build') options.assetCache = resolve(value);
+    else if (flag === '--asset-cache' && value && USES_CACHE.has(command)) options.assetCache = resolve(value);
     else if (flag === '--carry' && /^\d+$/.test(value) && Number(value) <= 50 && command === 'build') options.carryReleases = Number(value);
     else if (flag === '--carry-max-mb' && /^[1-9]\d*$/.test(value) && command === 'build') options.carryMaxBytes = Number(value) * 1024 * 1024;
     else if (flag === '--scope' && /^[\w.-]+$/.test(value)) options.scope = value;
@@ -92,7 +100,7 @@ export function parseReleaseArgs(argv, env = process.env) {
     else if (flag === '--interval' && /^\d+$/.test(value) && command !== 'rollback') options.intervalMs = Number(value) * 1000;
     else if (arg === '--sweep' && command === 'verify') options.sweep = true;
     else if (arg === '--keep' && command === 'deploy') options.keep = true;
-    else if (arg === '--no-verify' && command === 'deploy') options.verify = false;
+    else if (arg === '--no-verify' && (command === 'deploy' || command === 'record')) options.verify = false;
     else throw new Error(`Unknown or misplaced option for ${command}: ${arg}`);
   }
   if (NEEDS_SHA.has(command) && !options.sha) throw new Error(`${command} needs the commit to release: node tools/release.mjs ${command} <sha>`);
@@ -202,29 +210,36 @@ function safeAssetPath(path) {
   return typeof path === 'string' && path.length > 0 && !path.startsWith('/') && path.split('/').every((part) => part && part !== '.' && part !== '..');
 }
 
-/**
- * Carry the hashed /assets files of the last `releases` cached releases into a fresh build output, then
- * record this build's own hashed files as the newest release and prune the cache to the newest
- * `releases + 1` releases. Newer releases are carried first; a file the build already has is never
- * replaced, and copying stops adding files once `maxBytes` would be exceeded (the oldest are dropped).
- * Only the build's own files are recorded, so a carried file ages out with the release that emitted it.
- * A rebuild of the same commit replaces that commit's entry. Returns counts and bytes; throws when
- * another build holds the cache.
- */
-export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, releases = ASSET_CARRY_DEFAULTS.releases,
-  maxBytes = ASSET_CARRY_DEFAULTS.maxBytes, now = () => new Date().toISOString() }) {
-  const assetsDir = join(staticDir, 'assets');
-  if (!existsSync(assetsDir)) throw new Error(`no ${assetsDir}: the build emitted no hashed assets`);
-  if (!/^[0-9a-f]{7,40}$/.test(String(commit))) throw new Error(`Not a commit: ${commit}`);
+/** The build's own hashed files, written beside the output (`.vercel/`, never uploaded) for `deploy`/`record`. */
+export const RELEASE_MANIFEST = 'cot-release.json';
+
+/** Run `fn` holding the cache's lock directory; throws when another release step holds it. */
+function withAssetCacheLock(cacheDir, fn) {
   mkdirSync(join(cacheDir, 'assets'), { recursive: true });
   const lock = join(cacheDir, '.lock');
   try { mkdirSync(lock); } catch (error) {
     if (error?.code === 'EEXIST') throw new Error(`another release build holds ${lock}; remove it if no build is running`);
     throw error;
   }
-  try {
-    const own = listHashedAssets(staticDir).map((path) => ({ path, bytes: statSync(join(assetsDir, path)).size }));
-    const ownPaths = new Set(own.map(({ path }) => path));
+  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+}
+
+/**
+ * Carry the hashed /assets files of the last `releases` recorded (deployed) releases into a fresh build
+ * output. Newer releases are carried first; a file the build already has is never replaced, and copying
+ * stops adding files once `maxBytes` would be exceeded (the oldest are dropped). The cache is only read:
+ * the build's own files (`ownFiles`, listed before anything is carried) are recorded by
+ * recordReleaseAssets when the build is deployed. Returns counts and bytes; throws when another release
+ * step holds the cache.
+ */
+export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, releases = ASSET_CARRY_DEFAULTS.releases,
+  maxBytes = ASSET_CARRY_DEFAULTS.maxBytes }) {
+  const assetsDir = join(staticDir, 'assets');
+  if (!existsSync(assetsDir)) throw new Error(`no ${assetsDir}: the build emitted no hashed assets`);
+  if (!/^[0-9a-f]{7,40}$/.test(String(commit))) throw new Error(`Not a commit: ${commit}`);
+  return withAssetCacheLock(cacheDir, () => {
+    const ownFiles = listHashedAssets(staticDir).map((path) => ({ path, bytes: statSync(join(assetsDir, path)).size }));
+    const ownPaths = new Set(ownFiles.map(({ path }) => path));
     const index = readAssetCacheIndex(cacheDir);
     const earlier = index.releases.filter((release) => release.commit !== commit);
     const previous = (releases > 0 ? earlier.slice(-releases) : []).reverse();
@@ -244,7 +259,33 @@ export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, release
         carriedBytes += bytes;
       }
     }
-    // Record this build's own files (content-addressed by name: an existing copy of the same size is kept).
+    return { own: ownFiles.length, ownFiles, carried: carried.size, carriedBytes, overBudget, missing,
+      fromReleases: previous.map((release) => release.commit) };
+  });
+}
+
+/**
+ * Record a deployed release: copy its own hashed files (`files`, as carryForwardReleaseAssets listed them
+ * before the carry) from the deployed output into the cache, append it as the newest release (a redeploy of
+ * the same commit replaces its entry) and prune the cache to the newest `keep` releases. A listed file the
+ * output no longer holds at its recorded size stops the record (the output is not the one that was built).
+ */
+export function recordReleaseAssets({ staticDir, cacheDir, commit, files, keep = ASSET_CARRY_DEFAULTS.releases + 1,
+  now = () => new Date().toISOString() }) {
+  const assetsDir = join(staticDir, 'assets');
+  if (!/^[0-9a-f]{7,40}$/.test(String(commit))) throw new Error(`Not a commit: ${commit}`);
+  if (!Array.isArray(files) || !files.length) throw new Error(`no own files to record for ${commit}`);
+  return withAssetCacheLock(cacheDir, () => {
+    const own = [];
+    for (const file of files) {
+      const source = join(assetsDir, String(file?.path));
+      if (!safeAssetPath(file?.path) || !existsSync(source) || statSync(source).size !== file.bytes) {
+        throw new Error(`${source} is not the ${file?.bytes}-byte file the build emitted; rebuild before recording`);
+      }
+      own.push({ path: file.path, bytes: file.bytes });
+    }
+    const index = readAssetCacheIndex(cacheDir);
+    // content-addressed by name: an existing copy of the same size is kept
     for (const { path, bytes } of own) {
       const target = join(cacheDir, 'assets', path);
       if (existsSync(target) && statSync(target).size === bytes) continue;
@@ -252,7 +293,7 @@ export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, release
       copyFileSync(join(assetsDir, path), target, fsConstants.COPYFILE_FICLONE);
     }
     const kept = [...index.releases.filter((release) => release.commit !== commit), { commit, builtAt: now(), files: own }]
-      .slice(-(Math.max(0, releases) + 1));
+      .slice(-Math.max(1, keep));
     const named = new Set(kept.flatMap((release) => (release.files ?? []).map((file) => file.path)));
     let pruned = 0;
     for (const path of listHashedAssets(cacheDir)) {
@@ -263,11 +304,8 @@ export function carryForwardReleaseAssets({ staticDir, cacheDir, commit, release
     const indexPath = join(cacheDir, ASSET_CACHE_INDEX);
     writeFileSync(`${indexPath}.tmp`, `${JSON.stringify({ version: ASSET_CACHE_VERSION, releases: kept }, null, 1)}\n`);
     renameSync(`${indexPath}.tmp`, indexPath);
-    return { own: own.length, carried: carried.size, carriedBytes, overBudget, missing, pruned,
-      fromReleases: previous.map((release) => release.commit), cachedReleases: kept.length };
-  } finally {
-    rmSync(lock, { recursive: true, force: true });
-  }
+    return { recorded: own.length, pruned, releases: kept.map((release) => release.commit) };
+  });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -330,22 +368,39 @@ function deletePulledEnvFiles(dir, runner) {
   runner.note(`deleted ${files.length} pulled environment file(s)`);
 }
 
-/** The build's carry-forward step: earlier releases' hashed files into .vercel/output/static/assets (see the header). */
+/** The build's carry-forward step: deployed releases' hashed files into .vercel/output/static/assets (see the header),
+ * then this build's own file list into .vercel/cot-release.json for `deploy`/`record`. */
 function carryReleaseAssets(options, { commit, dir, runner }) {
   const staticDir = join(dir, '.vercel', 'output', 'static');
+  const manifest = join(dir, '.vercel', RELEASE_MANIFEST);
   const cap = `${Math.round(options.carryMaxBytes / 1024 / 1024)} MB`;
-  if (options.carryReleases === 0) { runner.note('carry-forward: off (--carry=0); old tabs lose every chunk this build does not emit'); return; }
   if (runner.dryRun) {
-    runner.note(`carry-forward: copy the hashed /assets files of the last ${options.carryReleases} releases cached in ${options.assetCache} `
-      + `that this build lacks into ${join(staticDir, 'assets')} (newest first, at most ${cap}), then record this build there`);
+    runner.note(options.carryReleases === 0 ? 'carry-forward: off (--carry=0); old tabs lose every chunk this build does not emit'
+      : `carry-forward: copy the hashed /assets files of the last ${options.carryReleases} deployed releases cached in ${options.assetCache} `
+      + `that this build lacks into ${join(staticDir, 'assets')} (newest first, at most ${cap}); the cache is not written`);
+    runner.note(`write this build's own hashed files to ${manifest} (recorded in the cache only when deployed)`);
     return;
   }
   const result = carryForwardReleaseAssets({ staticDir, cacheDir: options.assetCache, commit,
     releases: options.carryReleases, maxBytes: options.carryMaxBytes });
-  runner.note(`carry-forward: ${result.carried} hashed files (${(result.carriedBytes / 1024 / 1024).toFixed(1)} MB) from `
+  writeFileSync(manifest, `${JSON.stringify({ version: ASSET_CACHE_VERSION, commit, builtAt: new Date().toISOString(), files: result.ownFiles }, null, 1)}\n`);
+  if (options.carryReleases === 0) runner.note('carry-forward: off (--carry=0); old tabs lose every chunk this build does not emit');
+  else runner.note(`carry-forward: ${result.carried} hashed files (${(result.carriedBytes / 1024 / 1024).toFixed(1)} MB) from `
     + `${result.fromReleases.length} earlier release(s) ${result.fromReleases.map((sha) => sha.slice(0, 9)).join(' ') || '(none cached yet)'}`
-    + `${result.overBudget ? `; ${result.overBudget} left out by the ${cap} cap` : ''}${result.missing ? `; ${result.missing} missing from the cache` : ''}`
-    + `; recorded ${result.own} own files; the cache holds ${result.cachedReleases} release(s), ${result.pruned} file(s) pruned`);
+    + `${result.overBudget ? `; ${result.overBudget} left out by the ${cap} cap` : ''}${result.missing ? `; ${result.missing} missing from the cache` : ''}`);
+  runner.note(`${result.own} own hashed files listed in ${manifest}; the cache records them when this build is deployed`);
+}
+
+/** Record a deployed build's own files in the release cache (deploy and record). */
+function recordRelease(options, { commit, dir, runner }) {
+  const manifestPath = join(dir, '.vercel', RELEASE_MANIFEST);
+  if (runner.dryRun) { runner.note(`record ${commit.slice(0, 12)}'s own hashed files (${manifestPath}) as the newest release in ${options.assetCache}`); return; }
+  if (!existsSync(manifestPath)) throw new Error(`no ${manifestPath}: build ${commit.slice(0, 12)} with this tools/release.mjs before recording it`);
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (manifest?.commit !== commit) throw new Error(`${manifestPath} lists ${manifest?.commit ?? 'no commit'}, not ${commit}`);
+  const result = recordReleaseAssets({ staticDir: join(dir, '.vercel', 'output', 'static'), cacheDir: options.assetCache, commit, files: manifest.files });
+  runner.note(`recorded release ${commit.slice(0, 9)} (${result.recorded} own files); the cache holds ${result.releases.length} release(s) `
+    + `${result.releases.map((sha) => sha.slice(0, 9)).join(' ')}; ${result.pruned} file(s) pruned`);
 }
 
 async function build(options, { root, runner }) {
@@ -408,11 +463,22 @@ async function deploy(options, { root, runner, fetchImpl }) {
   const metadata = deployMetadata({ commit, subject: gitText(root, 'log', '-1', '--format=%s', commit),
     author: gitText(root, 'log', '-1', '--format=%an', commit), title: options.title, ref: options.ref,
     org: slug?.org, repo: slug?.repo && slug.repo.toLowerCase() === RELEASE_DEFAULTS.githubRepo.toLowerCase() ? RELEASE_DEFAULTS.githubRepo : slug?.repo });
-  const result = await runner.run([vercelBin(), 'deploy', '--prebuilt', '--prod', '--yes', '--scope', options.scope, ...metadata], { cwd: dir, capture: true });
+  const result = await runner.run([vercelBin(), 'deploy', '--prebuilt', '--prod', '--yes', '--archive=tgz', '--scope', options.scope, ...metadata], { cwd: dir, capture: true });
   const url = /https:\/\/[\w.-]+\.vercel\.app/.exec(`${result.stdout}\n${result.stderr}`)?.[0];
   runner.note(`deployment ${url ?? '(url printed above)'}`);
   if (options.verify) await verify({ ...options, attempts: Math.max(options.attempts, 12) }, { root, runner, fetchImpl });
+  recordRelease(options, { commit, dir, runner });
   if (!options.keep) await runner.run(['git', 'worktree', 'remove', '--force', dir], { cwd: root });
+}
+
+/** A release deployed straight with the Vercel CLI (e.g. --archive=tgz by hand): verify it is live, then record it. */
+async function record(options, { root, runner, fetchImpl }) {
+  const commit = resolveCommit(root, options.sha);
+  const dir = buildDir(options, commit);
+  if (!runner.dryRun && !existsSync(join(dir, '.vercel', 'output'))) throw new Error(`no prebuilt output in ${dir}: record reads the deployed build's own files there`);
+  if (options.verify) await verify(options, { root, runner, fetchImpl });
+  else runner.note('--no-verify: recording without checking the served stamp');
+  recordRelease(options, { commit, dir, runner });
 }
 
 async function fetchText(fetchImpl, url) {
@@ -506,7 +572,7 @@ async function clean(options, { root, runner }) {
 }
 
 export async function runRelease(options, { root = REPO_ROOT, runner = createRunner({ dryRun: options.dryRun }), fetchImpl = fetch } = {}) {
-  const commands = { build, deploy, verify, rollback, workers, clean };
+  const commands = { build, deploy, record, verify, rollback, workers, clean };
   await commands[options.command](options, { root, runner, fetchImpl });
 }
 

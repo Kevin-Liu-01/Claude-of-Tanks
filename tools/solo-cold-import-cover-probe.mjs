@@ -174,7 +174,8 @@ try {
   report.graphics = await page.evaluate(readGraphics);
   await run('solo-mode-picker', async () => {
     await page.click('.cot-battle-mode');
-    await page.click('.cot-battle-choice[data-mode="solo"]');
+    await page.waitForSelector('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', { visible: true });
+    await page.click('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]');
   });
   if (hold.snapshot().targetCount !== 0) throw new Error('loading_module_was_not_cold_before_battle');
   await page.evaluate(() => window.__COLD_IMPORT_COVER.arm());

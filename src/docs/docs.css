@@ -28,7 +28,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .sequence{margin:25px 0;display:grid;gap:0;counter-reset:step}pre{margin:0;padding:17px 18px;overflow:auto;color:var(--ink-2);font:max(var(--fs-floor-11),var(--fs-11))/1.65 var(--mono);tab-size:2}code .comment{color:var(--ink-4)}
 .invariants{display:grid;gap:7px;margin:20px 0}.invariant{display:grid;grid-template-columns:31px 1fr;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface-raised)}.invariant span{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:var(--fill-faint);color:var(--ink-2);font-weight:700}.invariant strong{display:block;font-size:max(var(--fs-floor-11),var(--fs-11))}.invariant p{margin:3px 0 0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}.aside-card{padding:16px;border:1px solid var(--line);background:var(--panel)}.aside-card+.aside-card{margin-top:10px}.aside-card p:first-child{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card strong{display:block;margin:9px 0 6px;font-size:max(var(--fs-floor-12),var(--fs-12))}.aside-card p:last-child{margin:0;color:var(--ink-4);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.55}.aside-card a{color:var(--ink-1)}
 .aside-card--library{text-decoration:none}
-.aside-card--archive{width:100%;display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;padding:14px;text-align:left;color:inherit;cursor:pointer;transition:border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-fast) ease}.aside-card--archive:hover{border-color:var(--line-3);background:var(--surface-hover);transform:translateY(-1px)}.aside-card--archive:focus-visible{outline:2px solid var(--amber);outline-offset:3px}/* the boxed icon tile, one size wherever it stands (the media cards, the stat strip) */
+.aside-card--archive{width:100%;display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px;padding:15px;text-align:left;color:inherit;cursor:pointer;transition:border-color var(--dur-fast) ease,background var(--dur-fast) ease,transform var(--dur-fast) ease}.aside-card--archive:hover{border-color:var(--line-3);background:var(--surface-hover);transform:translateY(-1px)}.aside-card--archive:focus-visible{outline:2px solid var(--amber);outline-offset:3px}/* the boxed icon tile, one size wherever it stands (the media cards, the stat strip) */
 .aside-card-icon,.docs-evidence dt .doc-icon{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--line-3);background:var(--fill-soft)}.aside-card-icon :is(img,svg),.docs-evidence dt .doc-icon svg{display:block;width:27px;height:27px}.aside-card-content{min-width:0}.aside-card-kicker{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase}.aside-card--archive strong{margin:7px 0 5px;color:var(--ink)}.aside-card-action{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;margin-top:2px;padding-top:10px;border-top:1px solid var(--line);color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:var(--track-label);text-transform:uppercase}.aside-card-action .cot-i{flex:none}
 .docs-archive-dialog{width:min(94vw,1500px);max-width:none;max-height:92dvh;padding:0;overflow:auto;border:1px solid var(--line2);background:var(--surface-page);color:var(--ink);box-shadow:var(--e2)}.docs-archive-dialog::backdrop{background:var(--surface-scene);backdrop-filter:blur(10px)}.docs-archive-dialog>header{position:sticky;z-index:var(--z-shell);top:0;display:flex;align-items:end;justify-content:space-between;gap:28px;padding:25px 28px 20px;border-bottom:1px solid var(--line);background:linear-gradient(120deg,var(--surface-raised),var(--surface-page) 54%,var(--surface-page))}.docs-archive-dialog>header h2{margin:7px 0 4px;font-size:var(--docs-h2);line-height:.95;text-transform:uppercase}.docs-archive-dialog>header p:last-child{margin:0;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}.docs-archive-dialog>header>button{flex:none;display:inline-grid;place-items:center;width:42px;height:42px;border:1px solid var(--line);background:transparent;color:var(--ink-1)}.docs-archive-dialog>header>button:hover{border-color:var(--line-3);background:var(--accent-wash)}.docs-motion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;padding:18px 18px 0;background:var(--surface-page)}.docs-motion-grid video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}.docs-motion-item{position:relative;min-width:0;background:var(--surface-scene)}.docs-motion-item video{height:100%}.docs-motion-item>.cot-info-trigger{position:absolute;z-index:var(--z-lift);right:10px;top:10px;background:var(--surface-scene)}.docs-archive-body{padding:18px 18px 24px}
 .docs-footer{border-top:1px solid var(--line);background:var(--surface-page)}.docs-footer .inner{min-height:110px;display:flex;align-items:center;justify-content:space-between}.footer-links{display:flex;align-items:center;gap:18px}.footer-links a{display:inline-flex;align-items:center;color:var(--ink-3);text-decoration:none;font-size:max(var(--fs-floor-11),var(--fs-11));text-transform:uppercase;letter-spacing:var(--track-label)}.footer-stars{display:inline-flex;align-items:center;gap:4px;margin-left:6px}.footer-stars:not(:has([data-github-stars-state='ready'])){display:none}.footer-links a:hover{color:var(--ink-1)}
@@ -137,21 +137,27 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm{display:grid;grid-template-columns:var(--docs-side-w) minmax(0,1fr);max-width:calc(var(--shell-max) + var(--shell-gutter) * 2);margin-inline:auto;align-items:start;min-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 .dm-side{position:sticky;top:var(--shell-nav-h);display:flex;flex-direction:column;gap:4px;height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h));overflow:auto;
   padding:18px 16px var(--s6) var(--shell-gutter);background:var(--side-plate);box-shadow:var(--docs-side-edge);scrollbar-width:thin}
-.dm-home{display:flex;align-items:center;gap:9px;height:36px;padding:0;margin-bottom:10px;border-radius:var(--control-radius);color:var(--ink-2);
+/* the shelf's one text edge: the index link and the group heads lead with a glyph at the set's small size (16 px, its
+   16-unit master where the sprite draws one: data-doc-size) and one gap, and a chapter's label starts on that edge */
+.dm-side{--dm-glyph:16px;--dm-glyph-gap:9px}
+.dm-home .doc-icon,.dm-grp .doc-icon{width:var(--dm-glyph);height:var(--dm-glyph)}
+.dm-home{display:flex;align-items:center;gap:var(--dm-glyph-gap);height:36px;padding:0;margin-bottom:10px;border-radius:var(--control-radius);color:var(--ink-2);
   font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);text-decoration:none}
 .dm-home:hover{color:var(--ink-1)}
-.dm-grp{display:flex;align-items:center;gap:9px;height:34px;margin:6px 0 0;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
-.dm-grp .doc-icon{width:16px;height:16px;color:var(--ink-3)}
-.dm-side a:not(.dm-home){display:flex;align-items:center;min-height:30px;padding:4px 10px 4px 26px;border-radius:var(--control-radius);color:var(--ink-3);
+.dm-grp{display:flex;align-items:center;gap:var(--dm-glyph-gap);height:34px;margin:6px 0 0;font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-display);color:var(--ink-1)}
+.dm-grp .doc-icon{color:var(--ink-3)}
+.dm-side a:not(.dm-home){display:flex;align-items:center;min-height:30px;padding:4px 10px 4px calc(var(--dm-glyph) + var(--dm-glyph-gap));border-radius:var(--control-radius);color:var(--ink-3);
   font:400 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);text-decoration:none}
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
 /* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
    take the shelf's place in the column */
 .dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+/* both fields (the shelf's and the index's) keep one inline inset on both sides: the magnifier gives back its 2 px side
+   bearing, so its ink starts on the inset as the last key cap's edge ends on it */
+.dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
 .dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.dm-search__field:has(input:focus-visible){outline:2px solid var(--amber);outline-offset:2px}.dm-main:focus{outline:none}
-.dm-search__field .doc-icon{width:16px;height:16px}
+.dm-search__field .doc-icon{width:16px;height:16px;margin-inline-start:-2px}
 .dm-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
 .dm-search input::placeholder{color:var(--ink-3)}
 .dm-search input::-webkit-search-cancel-button{display:none}
@@ -201,24 +207,35 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-banner h1 .dm-phrases{word-break:keep-all;line-break:strict;overflow-wrap:break-word}
 .dm-banner__cap{position:absolute;right:20px;bottom:16px;z-index:var(--docs-banner-z);max-width:min(460px,40%);margin:0;padding:7px 10px;border-radius:var(--r1);background:var(--glyph-plate)}
 .dm-banner__cap .doc-icon{width:16px;height:16px;color:var(--ink-3)}
-/* the hero ends at the content container's edge (the shelf's plate starts at its other edge), so a wide screen keeps the
-   page centred; its pause control stands on the content's edge, the header's and the contents rail's */
-.dm-banner>.cot-media-toggle{z-index:var(--docs-banner-z);top:16px;right:var(--docs-gutter);bottom:auto}
-.dm-body{display:grid;grid-template-columns:minmax(0,var(--measure-docs)) var(--docs-toc-w);justify-content:space-between;gap:var(--s7);padding:var(--s3) var(--docs-gutter) var(--s8)}
+/* beside the shelf (1100 px and up) the hero ends on the content edge at every width, the header's (Play now) and the
+   contents rail's, a gutter short of the page container's edge. The stacked layout (under 1100 px) keeps the hero a
+   full-bleed band. Its pause control (mediaPlayer.css: the kit's square icon button on its opaque plate) stands inside
+   the picture, one inset (16 px) from its top and right edges at every width. */
+.dm-banner>.cot-media-toggle{z-index:var(--docs-banner-z);top:var(--s4);right:var(--s4);bottom:auto}
+@media (width >= 1100px){
+  .dm-banner{margin-right:var(--docs-gutter)}
+}
+/* one block edge in every chapter: the article takes the width to the contents rail, so its figures, charts, tables and
+   cards end on one edge, and its prose paragraphs keep the reading measure. The two columns align on their first
+   baselines: the contents rail's first entry stands on the first heading's baseline in every chapter and locale, wherever
+   that heading's type and leading put it */
+.dm-body{display:grid;grid-template-columns:minmax(0,1fr) var(--docs-toc-w);align-items:baseline;gap:var(--s7);padding:var(--s3) var(--docs-gutter) var(--s8)}
 .dm-article{min-width:0}
 .dm-meta{display:flex;align-items:center;gap:6px;margin:0 0 var(--s5);font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3)}
 .dm-meta .doc-icon{width:16px;height:16px}
 .dm-section{padding-top:var(--s6);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-section h2{margin:0 0 var(--s4);font:600 var(--fs-28)/1.08 var(--font-display);color:var(--ink-1)}
 .dm-section p{margin:0 0 var(--s4);font:400 var(--fs-16)/var(--lh-docs) var(--font-body);color:var(--ink-2)}
+.dm-section>p{max-width:var(--measure-docs)}
 /* inline code, in the reading column and its cards: the mono face in the prose's ink and weight, no plate (a plate
    abutted the words beside it and stood past the column); a token moves to the next line whole and wraps inside only
    when it is wider than the column */
 .dm-article code{display:inline-block;max-width:100%;overflow-wrap:anywhere;vertical-align:baseline;font-family:var(--font-data);font-size:max(var(--fs-floor-12),var(--fs-14));font-weight:400;color:inherit}
-.dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1)}
+/* a figure's frame is drawn inside its box, so the figure ends on the block edge with the tables and cards */
+.dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1-flush)}
 .dm-section .topic-figure img{display:block;width:100%;height:auto}
 .dm-section .topic-figure figcaption{padding:11px 12px;border-top:1px solid var(--line-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1.4 var(--font-body);color:var(--ink-2)}
-.dm-toc{position:sticky;top:calc(var(--shell-nav-h) + var(--s5));align-self:start;display:flex;flex-direction:column;gap:14px;padding-top:var(--s5)}
+.dm-toc{position:sticky;top:calc(var(--shell-nav-h) + var(--s5));display:flex;flex-direction:column;gap:14px;padding-top:var(--s5)}
 .dm-toc nav{display:flex;flex-direction:column;border-left:1px solid var(--line-2)}
 .dm-toc a{padding:7px 0 7px 14px;font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);text-decoration:none}
 .dm-toc a:hover{color:var(--ink-1)}
@@ -229,9 +246,6 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* a long neighbour's name wraps inside its button on a phone instead of pushing the page sideways */
 .dm-pager .cot-c-btn{min-width:0;max-width:100%;height:auto;min-height:var(--btn-h-m);white-space:normal;text-align:start}
 :lang(zh-CN) .dm-banner h1{line-height:1.15}
-@media (width < 1440px){
-  .dm-body{grid-template-columns:minmax(0,1fr) var(--docs-toc-w)}
-}
 @media (width < 1100px){
   .dm{grid-template-columns:minmax(0,1fr)}
   /* the topic strip: its first item, the index link (one of its items, not a framed chip), sets its glyph on the page
@@ -246,8 +260,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   .dm-side[data-at-end]{--dm-fade-end:0px}
   .dm-grp{display:none}
   .dm-search{display:none}
-  /* every item, the index link too, keeps one horizontal padding, so the selected plate has the same gap on both sides */
-  .dm-side a.dm-home,.dm-side a:not(.dm-home){flex:none;margin:0;padding:4px var(--s3);white-space:nowrap}
+  /* every item, the index link too, keeps one horizontal padding, so the selected plate has the same gap on both sides,
+     and one type size and leading, so the index link's label stands on the chips' baseline */
+  .dm-side a.dm-home,.dm-side a:not(.dm-home){flex:none;margin:0;padding:4px var(--s3);white-space:nowrap;font-size:max(var(--fs-floor-12),var(--fs-14));line-height:1.25}
   .dm-home{box-shadow:none}
   .dm-body{grid-template-columns:minmax(0,1fr)}
   .dm-toc{display:none}
@@ -379,7 +394,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 
 .docs-chapters h2{font:700 var(--docs-h2)/.94 var(--font-display)}
 .docs-chapter-grid{gap:10px;background:none}
-.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1)}
+/* a card's frame is drawn inside its box, so the cards start on the search field's and the stat strip's edge */
+.docs-chapter-grid a{overflow:hidden;border-radius:var(--control-radius);box-shadow:var(--e1-flush)}
 /* the manual's index: the search, the two shelves (tools/docs-prerender.mjs shelves the cards), the battle takes and
    the archive */
 .docs-index{display:grid;gap:var(--s7);padding-top:var(--s6);padding-bottom:var(--s8)}
@@ -389,9 +405,10 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (width < 1100px){.docs-index-search{width:100%}}
 /* the topic shelf folds its search away under 1100 px; the index keeps its own */
 .docs-index-search.dm-search{display:flex}
-.docs-index-search .dm-search__field{height:48px;padding:0 10px 0 14px}
+.docs-index-search .dm-search__field{height:48px}
 .docs-index-search input{font-size:var(--fs-16)}
-.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + 6px);left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2)}
+/* the results panel drops from the field on its edges: its ring is drawn inside its box, as the field's is */
+.docs-index-search .dm-search__hits{position:absolute;z-index:var(--z-menu);top:calc(100% + 6px);left:0;right:0;max-height:min(60vh,480px);overflow:auto;padding:6px;border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e2-flush)}
 .docs-index-search a.dm-hit{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:var(--r1);color:var(--ink-3);text-decoration:none}
 .docs-index-search a.dm-hit:hover,.docs-index-search a.dm-hit:focus-visible{color:var(--ink-2);background:var(--accent-wash)}
 .docs-shelf{display:grid;gap:var(--s4);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
@@ -408,6 +425,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 @media (height < 520px){.dm-banner__cap{display:none}}
 :lang(zh) .docs-evidence :is(dt,dd){line-break:strict}
 .dm-keys .cot-c-kbd{vertical-align:middle}
+/* a key cap holds Latin legends only, never Chinese: in a Chinese document, where the label tokens step up to 13 px
+   (tokens.css, src/ui/zhTypeFloor.ts), it keeps the Latin scale on the figure token, which holds in every locale */
+:lang(zh-CN) .cot-c-kbd{--fs-floor-11:var(--battle-fs-fig-11);--fs-11:calc(var(--battle-fs-fig-11) * var(--cot-type-scale))}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
 }
