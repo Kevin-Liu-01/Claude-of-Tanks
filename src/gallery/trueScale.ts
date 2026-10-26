@@ -9,6 +9,7 @@
  */
 import { iconUrl } from '../ui/icons.ts';
 import { formatNumber, t } from '../ui/i18n.ts';
+import { scratchCanvas, uiCanvas, type UiCanvas } from '../ui/uiCanvas.ts';
 
 interface TrueScaleEntry {
   readonly id: string;
@@ -22,8 +23,8 @@ interface TrueScaleEntry {
 interface TrueScaleOptions {
   /** 'apart': side by side; 'overlay': from one origin, the later entries over the earlier ones. */
   readonly layout: 'apart' | 'overlay';
-  /** A 1.75 m figure at the left edge. */
-  readonly human?: boolean;
+  /** A 1.75 m figure at the left edge, its height written into this caption over the canvas (UI text is DOM). */
+  readonly human?: HTMLElement;
   /** The drawing's accessible name. */
   readonly label: string;
 }
@@ -33,24 +34,13 @@ interface Mask { readonly image: HTMLImageElement; readonly x: number; readonly 
 const HUMAN_M = 1.75;
 const masks = new Map<string, Promise<Mask | null>>();
 const draws = new WeakMap<HTMLCanvasElement, number>();
-// (2026-10-25, lockdown-251) a canvas with no CSS box (the stage's inset, hidden on a phone) keeps its latest drawing
-// here until it gets one. Its width used to fall back to the backing store's, which the device ratio then doubled at
-// every selection: 268 px to 17 152 px in six picks, and a 49 s task on the 4x phone census.
-const deferred = new WeakMap<HTMLCanvasElement, () => void>();
-let boxes: ResizeObserver | null = null;
-function drawWhenBoxed(canvas: HTMLCanvasElement, redraw: () => void): void {
-  deferred.set(canvas, redraw);
-  boxes ??= new ResizeObserver((records) => {
-    for (const record of records) {
-      const target = record.target as HTMLCanvasElement;
-      const pending = record.contentRect.width > 0 ? deferred.get(target) : undefined;
-      if (!pending) continue;
-      deferred.delete(target);
-      pending();
-    }
-  });
-  boxes.observe(canvas);
-}
+/** What each canvas shows: its latest entries with their loaded masks. */
+interface Scene { readonly items: readonly { entry: TrueScaleEntry; mask: Mask }[]; readonly options: TrueScaleOptions }
+const scenes = new WeakMap<HTMLCanvasElement, Scene>();
+// (2026-10-25, lockdown-251, then UI-LOCKDOWN A) the canvas is a uiCanvas: its store is its CSS box (the page's width and
+// aspect-ratio) × min(DPR, 2), redrawn from its scene at every box and ratio change; with no box (the stage's inset,
+// hidden on a phone) it holds 1 px and draws when one returns. Its width used to fall back to the backing store's,
+// which the device ratio then doubled at every selection: 268 px to 17 152 px in six picks, a 49 s task on the 4x phone.
 
 function loadMask(id: string): Promise<Mask | null> {
   let pending = masks.get(id);
@@ -62,9 +52,7 @@ function loadMask(id: string): Promise<Mask | null> {
     image.onerror = reject;
     image.src = iconUrl(id, 'side_silhouette');
   }).then((image) => {
-    const probe = document.createElement('canvas');
-    probe.width = image.naturalWidth;
-    probe.height = image.naturalHeight;
+    const probe = scratchCanvas(image.naturalWidth, image.naturalHeight);
     const context = probe.getContext('2d', { willReadFrequently: true });
     if (!context || !probe.width || !probe.height) return null;
     context.drawImage(image, 0, 0);
@@ -93,29 +81,29 @@ export async function drawTrueScale(canvas: HTMLCanvasElement, entries: readonly
   canvas.setAttribute('aria-label', options.label);
   const loaded = await Promise.all(entries.map((entry) => loadMask(entry.id)));
   if (draws.get(canvas) !== draw) return; // a newer drawing replaced this one
-  const aspect = Number(canvas.dataset.aspect) || canvas.height / Math.max(1, canvas.width);
-  canvas.dataset.aspect = String(aspect);
-  const cssWidth = canvas.clientWidth;
-  if (!cssWidth) {
-    drawWhenBoxed(canvas, () => { void drawTrueScale(canvas, entries, options); });
-    return;
+  const items = entries.map((entry, index) => ({ entry, mask: loaded[index] }))
+    .filter((item): item is { entry: TrueScaleEntry; mask: Mask } => !!item.mask && item.entry.lengthM > 0);
+  scenes.set(canvas, { items, options });
+  if (options.human) {
+    const caption = `${formatNumber(HUMAN_M)} ${t('gallery.unit.m')}`;
+    if (options.human.textContent !== caption) options.human.textContent = caption;
+    options.human.hidden = !items.length;
   }
-  deferred.delete(canvas);
-  const cssHeight = cssWidth * aspect;
-  const ratio = Math.min(2, globalThis.devicePixelRatio || 1);
-  canvas.width = Math.max(1, Math.round(cssWidth * ratio));
-  canvas.height = Math.max(1, Math.round(cssHeight * ratio));
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  uiCanvas(canvas, { draw: paintScene }).redraw();
+}
+
+/** One scene into its canvas's box (CSS px; uiCanvas has sized the store and set the ratio's transform). */
+function paintScene(context: CanvasRenderingContext2D, cssWidth: number, cssHeight: number, surface: UiCanvas): void {
   context.clearRect(0, 0, cssWidth, cssHeight);
-  const style = getComputedStyle(canvas);
+  const scene = scenes.get(surface.canvas);
+  if (!scene) return;
+  const { items, options } = scene;
+  const ratio = surface.ratio;
+  const style = getComputedStyle(surface.canvas);
   const colour = (token: string): string => style.getPropertyValue(token).trim();
   const pad = 6;
   const gap = 14;
   const humanWidth = options.human ? 34 : 0;
-  const items = entries.map((entry, index) => ({ entry, mask: loaded[index] }))
-    .filter((item): item is { entry: TrueScaleEntry; mask: Mask } => !!item.mask && item.entry.lengthM > 0);
   if (!items.length) return;
   const heightM = (item: { entry: TrueScaleEntry; mask: Mask }): number => item.entry.lengthM * (item.mask.h / item.mask.w);
   const spanM = options.layout === 'apart' ? items.reduce((sum, item) => sum + item.entry.lengthM, 0)
@@ -126,7 +114,7 @@ export async function drawTrueScale(canvas: HTMLCanvasElement, entries: readonly
   const ground = cssHeight - pad;
   context.fillStyle = colour('--line-2');
   context.fillRect(pad, ground, cssWidth - pad * 2, 1);
-  const tint = document.createElement('canvas');
+  const tint = scratchCanvas(1, 1);
   let x = pad + humanWidth;
   if (options.layout === 'apart') x += (cssWidth - pad * 2 - humanWidth - gaps - spanM * scale) / 2;
   for (const item of items) {
@@ -152,7 +140,7 @@ export async function drawTrueScale(canvas: HTMLCanvasElement, entries: readonly
     if (options.layout === 'apart') x += width + gap;
   }
   if (options.human) {
-    // the 1.75 m figure: a head and a body, and its height beside it
+    // the 1.75 m figure: a head and a body (its height is the caption over the canvas)
     const tall = HUMAN_M * scale;
     const cx = pad + 8;
     const head = Math.max(1.5, tall * 0.07);
@@ -161,9 +149,5 @@ export async function drawTrueScale(canvas: HTMLCanvasElement, entries: readonly
     context.arc(cx, ground - tall + head, head, 0, Math.PI * 2);
     context.fill();
     context.fillRect(cx - head * 0.8, ground - tall + head * 2.3, head * 1.6, tall - head * 2.3);
-    context.fillStyle = colour('--ink-3');
-    context.font = `500 11px ${colour('--font-mono') || 'monospace'}`;
-    context.textBaseline = 'top';
-    context.fillText(`${formatNumber(HUMAN_M)} ${t('gallery.unit.m')}`, pad, pad);
   }
 }

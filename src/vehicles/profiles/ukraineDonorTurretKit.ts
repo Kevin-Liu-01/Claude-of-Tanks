@@ -25,6 +25,7 @@ import {NATIONAL_ROOF_LOADOUTS,type NationalRoofLoadout} from '../nationalRoofCo
 import {vehicleMarkingSeats} from '../vehicleMarkingSeatRegistry.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
 const {box,cylX,cylY,cylZ,torus}=KIT;
 type UkraineDonorId='t72b3m_hetman'|'t72b3_sich'|'t72b3m_hetman_ii';
@@ -843,17 +844,20 @@ function turretUpArmour(P:TankBuilderPort,id:UkraineDonorId):void {
 }
 
 /** Hetman and Sich: their unchanged Ukrainian hull package, then the turret fit. */
-export function buildUkraineDonorKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
+export function* buildUkraineDonorKit(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuild {
   ukrainianDonorHull(P,c);
-  fitUkraineDonorTurret(P,c.id as UkraineDonorId);
+  yield 'ukrainian-hull';
+  yield* fitUkraineDonorTurret(P,c.id as UkraineDonorId);
 }
 
 /** Hetman II: its own heavy hull package, then the turret fit. */
-export function buildHetmanIIDonorKit(P:TankBuilderPort):void {
+export function* buildHetmanIIDonorKit(P:TankBuilderPort):TankProfileBuild {
   hetmanIIHullPackage(P);
+  yield 'hetman-ii-hull';
   // Release 227: the framed chevron glacis, nose sill with its LED bars, lower-plate aprons and bow modules.
   hetmanIIGlacis(P);
-  fitUkraineDonorTurret(P,'t72b3m_hetman_ii');
+  yield 'hetman-ii-glacis';
+  yield* fitUkraineDonorTurret(P,'t72b3m_hetman_ii');
 }
 
 /** The suit a donor-turret concept wears: the national hull half and this kit's turret half (undefined otherwise). */
@@ -861,11 +865,13 @@ export function ukraineDonorSuit(id:string):GhillieConfig|undefined {
   return id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():id==='t72b3_sich'?sichNet():undefined;
 }
 
-function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
+function* fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):TankProfileBuild {
   turretUpArmour(P,id);
+  yield 'turret-up-armour';
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
   // Hetman II's bow modules (ukraineFrontEra.ts) take the place of the two forward skirt-return cassettes per side.
   addNationalUkraineProtection(P,id,{turretScreens:false,frontReturnEra:id!=='t72b3m_hetman_ii'});
+  yield 'protection';
   // Release 230 (UA/PL round 11): Hetman II's Nizh-L side band on the banks' upper face, clear of the cage just laid.
   if(id==='t72b3m_hetman_ii')hetmanIISideBand(P);
   addVehicleGhillieSuit(P,ukraineDonorSuit(id)!);

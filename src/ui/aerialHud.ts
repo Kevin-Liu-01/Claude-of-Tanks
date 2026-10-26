@@ -10,6 +10,7 @@ import { markDatum } from './dom.ts';
 import { t, getLocale } from './i18n.ts';
 import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
+import { scratchCanvas } from './uiCanvas.ts';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
@@ -56,7 +57,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
   signal.setAttribute('role','status');signal.textContent=t('flight.signalLost');
   const transition=createDroneFeedTransition();
-  const grain=document.createElement('canvas');grain.width=grain.height=64;
+  const grain=scratchCanvas(64,64);
   const context=grain.getContext('2d');if(context){const pixels=context.createImageData(64,64);let seed=593;for(let i=0;i<pixels.data.length;i+=4){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const n=seed>>>24;pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=n;pixels.data[i+3]=180;}context.putImageData(pixels,0,0);signal.style.setProperty('--signal-noise',`url(${grain.toDataURL()})`);}
   const scopeView=node('button','cot-scope-vision',parent);scopeView.type='button';scopeView.hidden=true;
   const scopeGlyph=icon(scopeView,'timeDay','scope-vision-emblem');

@@ -42404,9 +42404,9 @@
           {
             "name": "30 mm APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 210,
-            "pen1000Mm": 192,
-            "pen2000Mm": 174
+            "pen100Mm": 185,
+            "pen1000Mm": 170,
+            "pen2000Mm": 155
           },
           {
             "name": "Spike LR",
@@ -44553,7 +44553,7 @@
         ]
       },
       "geometryHash": "d8395d7c",
-      "metadataHash": "63ca16e5",
+      "metadataHash": "be572843",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.001
@@ -114412,9 +114412,9 @@
           {
             "name": "50 mm XM1204 APFSDS-T",
             "type": "APFSDS",
-            "pen100Mm": 290,
-            "pen1000Mm": 266,
-            "pen2000Mm": 242
+            "pen100Mm": 280,
+            "pen1000Mm": 258,
+            "pen2000Mm": 236
           },
           {
             "name": "Spike ER2",
@@ -115683,7 +115683,7 @@
         ]
       },
       "geometryHash": "785caea5",
-      "metadataHash": "90404442",
+      "metadataHash": "5877608d",
       "presentationAnchor": {
         "xM": -0.0004,
         "zM": -0.1596
@@ -139919,9 +139919,9 @@
           {
             "name": "35 mm APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 240,
-            "pen1000Mm": 220,
-            "pen2000Mm": 200
+            "pen100Mm": 210,
+            "pen1000Mm": 192,
+            "pen2000Mm": 174
           },
           {
             "name": "35 mm HE",
@@ -141464,7 +141464,7 @@
         ]
       },
       "geometryHash": "d49b78e7",
-      "metadataHash": "7c730c6c",
+      "metadataHash": "151e1f15",
       "presentationAnchor": {
         "xM": 0.0005,
         "zM": 0.0361
@@ -219581,9 +219581,9 @@
           {
             "name": "30 mm APFSDS",
             "type": "APFSDS",
-            "pen100Mm": 225,
-            "pen1000Mm": 207,
-            "pen2000Mm": 189
+            "pen100Mm": 185,
+            "pen1000Mm": 170,
+            "pen2000Mm": 155
           },
           {
             "name": "30 mm HE",
@@ -221162,7 +221162,7 @@
         ]
       },
       "geometryHash": "8244ef02",
-      "metadataHash": "edeca8bf",
+      "metadataHash": "0b0d36f8",
       "presentationAnchor": {
         "xM": 0.0022,
         "zM": 0.0647
@@ -2035159,9 +2035159,9 @@
           {
             "name": "KDE 35 mm APFSDS-T",
             "type": "APFSDS",
-            "pen100Mm": 240,
-            "pen1000Mm": 220,
-            "pen2000Mm": 200
+            "pen100Mm": 185,
+            "pen1000Mm": 170,
+            "pen2000Mm": 155
           },
           {
             "name": "Type 79 Jyu-MAT",
@@ -2037892,7 +2037892,7 @@
         ]
       },
       "geometryHash": "b34b3d52",
-      "metadataHash": "b327c418",
+      "metadataHash": "964a2883",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.0001

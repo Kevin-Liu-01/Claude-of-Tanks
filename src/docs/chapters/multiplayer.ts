@@ -72,7 +72,7 @@ function seatsSection(): string {
 /** The modes a room plays, each a chip that opens its card in the modes chapter. */
 function modesSection(): string {
   const modes = hrefForLocale('/docs/modes', getLocale());
-  const chip = (mode: GameModeId): string => `<li><a href="${modes}#${modeAnchor(mode)}">${icon(GAME_MODE_DEFINITIONS[mode].icon as IconId, { size: 14 })}`
+  const chip = (mode: GameModeId): string => `<li><a href="${modes}#${modeAnchor(mode)}" data-mode-tone="${mode}">${icon(GAME_MODE_DEFINITIONS[mode].icon as IconId, { size: 18, className: 'dm-mode-glyph' })}`
     + `<span>${esc(t(`playMenu.matchMode.${mode}.label`))}</span></a></li>`;
   const coop = BATTLE_MODE_IDS.filter((mode) => isCoopGameMode(mode)).map((mode) => t(`playMenu.matchMode.${mode}.label`));
   return p('docs.mp.modesLede') + `<ul class="dm-chips dm-chips--icons dm-chips--links">${BATTLE_MODE_IDS.map((mode) => chip(mode as GameModeId)).join('')}</ul>`

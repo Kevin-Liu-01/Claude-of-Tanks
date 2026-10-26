@@ -26,56 +26,56 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // T-62 to T-72B3
-    node({ id: 'kv2', tier: 1, line: 't72', lane: 2, parents: [], slot: 'line' }),
-    node({ id: 't62_1975', tier: 2, line: 't72', lane: 2, parents: ['kv2'], slot: 'line' }),
-    node({ id: 't62mv1', tier: 3, line: 't72', lane: 2, parents: ['t62_1975'], slot: 'line' }),
-    node({ id: 't72b_1987', tier: 4, line: 't72', lane: 2, parents: ['t62mv1'], slot: 'line' }),
-    node({ id: 't72bu_1989', tier: 5, line: 't72', lane: 2, parents: ['t72b_1987'], slot: 'line', builds: ['t72bu'] }),
-    node({ id: 't72b3', tier: 7, line: 't72', lane: 2, parents: ['t72bu_1989'], slot: 'line' }),
-    node({ id: 't72b3m_2016', tier: 8, line: 't72', lane: 2, parents: ['t72b3'], slot: 'line' }),
-    node({ id: 't72b3m_2022', tier: 9, line: 't72', lane: 2, parents: ['t72b3m_2016'], slot: 'line' }),
+    node({ id: 'kv2', tier: 1, line: 't72', lane: 0, parents: [], slot: 'line' }),
+    node({ id: 't62_1975', tier: 2, line: 't72', lane: 0, parents: ['kv2'], slot: 'line' }),
+    node({ id: 't62mv1', tier: 3, line: 't72', lane: 0, parents: ['t62_1975'], slot: 'line' }),
+    node({ id: 't72b_1987', tier: 5, line: 't72', lane: 0, parents: ['t62mv1'], slot: 'line' }),
+    node({ id: 't72bu_1989', tier: 5, line: 't72', lane: 1, parents: ['t72b_1987'], slot: 'line', builds: ['t72bu'] }),
+    node({ id: 't72b3', tier: 5, line: 't72', lane: 2, parents: ['t72bu_1989'], slot: 'line' }),
+    node({ id: 't72b3m_2016', tier: 7, line: 't72', lane: 6, parents: ['t72b3'], slot: 'line' }),
+    node({ id: 't72b3m_2022', tier: 7, line: 't72', lane: 7, parents: ['t72b3m_2016'], slot: 'line' }),
     // T-64 and T-80
-    node({ id: 't64bv1', tier: 3, line: 't80', lane: 0, parents: ['t62mv1'], slot: 'line' }),
-    node({ id: 't80', tier: 4, line: 't80', lane: 0, parents: ['t64bv1'], slot: 'line' }),
-    node({ id: 't80bv', tier: 5, line: 't80', lane: 0, parents: ['t80'], slot: 'line' }),
+    node({ id: 't64bv1', tier: 3, line: 't80', lane: 6, parents: ['t62_1975'], slot: 'line' }),
+    node({ id: 't80', tier: 4, line: 't80', lane: 6, parents: ['t64bv1'], slot: 'line' }),
+    node({ id: 't80bv', tier: 5, line: 't80', lane: 5, parents: ['t80'], slot: 'line' }),
     // T-80 variants
-    node({ id: 't80b', tier: 4, line: 't80_side', lane: 1, parents: ['t80'], slot: 'line' }),
-    node({ id: 't80u', tier: 5, line: 't80_side', lane: 1, parents: ['t80b'], slot: 'line', builds: ['t80uk'] }),
+    node({ id: 't80b', tier: 5, line: 't80_side', lane: 6, parents: ['t80'], slot: 'line' }),
+    node({ id: 't80u', tier: 5, line: 't80_side', lane: 7, parents: ['t80b'], slot: 'line', builds: ['t80uk'] }),
     // T-90
-    node({ id: 't90_1992', tier: 6, line: 't90', lane: 3, parents: ['t72bu_1989'], slot: 'line', builds: ['t90'] }),
+    node({ id: 't90_1992', tier: 7, line: 't90', lane: 1, parents: ['t72bu_1989'], slot: 'line', builds: ['t90'] }),
     node({
-      id: 't90a_2006', tier: 7, line: 't90', lane: 3, parents: ['t90_1992'], slot: 'line', builds: ['t90a_vladimir'],
+      id: 't90a_2006', tier: 7, line: 't90', lane: 3, parents: ['t90a_2004'], slot: 'line', builds: ['t90a_vladimir'],
     }),
     node({ id: 't90m', tier: 8, line: 't90', lane: 3, parents: ['t90a_2006'], slot: 'line' }),
     node({ id: 't90m_proryv', tier: 10, line: 't90', lane: 3, parents: ['t90m'], slot: 'line' }),
     // T-90 variants
     node({
-      id: 't90a_2004', tier: 6, line: 't90_side', lane: 4, parents: ['t90_1992'], slot: 'line', builds: ['t90a'],
+      id: 't90a_2004', tier: 7, line: 't90_side', lane: 2, parents: ['t90_1992'], slot: 'line', builds: ['t90a'],
     }),
-    node({ id: 't90am', tier: 7, line: 't90_side', lane: 4, parents: ['t90a_2004'], slot: 'line' }),
-    node({ id: 't90sm_2013', tier: 8, line: 't90_side', lane: 4, parents: ['t90am'], slot: 'line', builds: ['t90sm'] }),
+    node({ id: 't90am', tier: 7, line: 't90_side', lane: 4, parents: ['t90a_2006'], slot: 'line' }),
+    node({ id: 't90sm_2013', tier: 7, line: 't90_side', lane: 5, parents: ['t90am'], slot: 'line', builds: ['t90sm'] }),
     // T-90MS, Burlak and Object 695
     node({
-      id: 't90ms_2011', tier: 7, line: 't90_late', lane: 5, parents: ['t90a_2004'], slot: 'line',
+      id: 't90ms_2011', tier: 8, line: 't90_late', lane: 2, parents: ['t90a_2004'], slot: 'line',
       builds: ['t90ms_tagil'],
     }),
     node({
-      id: 't90a_burlak', tier: 8, line: 't90_late', lane: 5, parents: ['t90ms_2011'], slot: 'line',
+      id: 't90a_burlak', tier: 8, line: 't90_late', lane: 1, parents: ['t90ms_2011'], slot: 'line',
       builds: ['t90a_burlak_proto'],
     }),
-    node({ id: 'object695', tier: 9, line: 't90_late', lane: 5, parents: ['t90a_burlak'], slot: 'line' }),
+    node({ id: 'object695', tier: 10, line: 't90_late', lane: 1, parents: ['t90a_burlak'], slot: 'line' }),
     // BMP and Kurganets
-    node({ id: 'bmp2', tier: 3, line: 'bmp', lane: 6, parents: ['t62mv1'], slot: 'line' }),
-    node({ id: 'bmp3', tier: 6, line: 'bmp', lane: 6, parents: ['bmp2'], slot: 'line' }),
-    node({ id: 'bmp3m_dragun125', tier: 8, line: 'bmp', lane: 6, parents: ['bmp3'], slot: 'line' }),
-    node({ id: 'kurganets25', tier: 9, line: 'bmp', lane: 6, parents: ['bmp3m_dragun125'], slot: 'line' }),
+    node({ id: 'bmp2', tier: 3, line: 'bmp', lane: 8, parents: ['t62_1975'], slot: 'line' }),
+    node({ id: 'bmp3', tier: 5, line: 'bmp', lane: 8, parents: ['bmp2'], slot: 'line' }),
+    node({ id: 'bmp3m_dragun125', tier: 10, line: 'bmp', lane: 8, parents: ['bmp3'], slot: 'line' }),
+    node({ id: 'kurganets25', tier: 10, line: 'bmp', lane: 9, parents: ['bmp3m_dragun125'], slot: 'line' }),
     // TOS and BMPT
-    node({ id: 'tos1a_tagil', tier: 5, line: 'support', lane: 7, parents: ['bmp2'], slot: 'line' }),
-    node({ id: 'bmpt_terminator2', tier: 9, line: 'support', lane: 7, parents: ['tos1a_tagil'], slot: 'line' }),
-    node({ id: 'bmpt_t90', tier: 10, line: 'support', lane: 7, parents: ['bmpt_terminator2'], slot: 'line' }),
+    node({ id: 'tos1a_tagil', tier: 7, line: 'support', lane: 9, parents: ['bmp3'], slot: 'line' }),
+    node({ id: 'bmpt_terminator2', tier: 7, line: 'support', lane: 10, parents: ['tos1a_tagil'], slot: 'line' }),
+    node({ id: 'bmpt_t90', tier: 10, line: 'support', lane: 10, parents: ['bmpt_terminator2'], slot: 'line' }),
     // Special
     node({
-      id: 't14_armata', tier: 7, line: 'special', lane: 0, parents: [], slot: 'special', builds: ['object148_proto'],
+      id: 't14_armata', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special', builds: ['object148_proto'],
     }),
     node({ id: 't80u_bars_m', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
     node({

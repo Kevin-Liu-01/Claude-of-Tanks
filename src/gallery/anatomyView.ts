@@ -57,6 +57,8 @@ const ROLE_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
 /** Callout geometry in px: the first leader, each deeper step, and the label box the separation pass keeps apart. */
 const CALLOUT_LEADER_PX = 56;
 const CALLOUT_STEP_PX = 22;
+/** The clear space between two stacked callout plates (the --s3 step). */
+const CALLOUT_GAP_PX = 12;
 const CALLOUT_MIN_PX = 14;
 const CALLOUT_WIDTH_PX = 150;
 const CALLOUT_HEIGHT_PX = 28;
@@ -89,26 +91,35 @@ export interface AnatomyHost {
 const STYLE = `
 .subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
 .subs[hidden]{display:none}
-.subs .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
-.subs .cot-c-seg{padding:2px;background:var(--hud-plate)}
-.subs .cot-c-seg__opt{height:24px;padding:0 10px;font-size:var(--fs-12)}
+/* one toggle look: every chip carries its ring, a pressed one the accent ring */
+.subs .cot-c-chip{height:28px;font-size:max(var(--fs-floor-11),var(--fs-12));background:var(--hud-plate);box-shadow:var(--ring-2)}
+.subs .cot-c-chip[aria-pressed=true]{box-shadow:var(--ring-accent)}
+.subs .cot-c-seg{align-items:stretch;padding:2px;background:var(--hud-plate)}
+/* the segments fill their frame when a touch row stretches it to the chips' height */
+.subs .cot-c-seg__opt{height:auto;min-height:24px;padding:0 10px;font-size:max(var(--fs-floor-11),var(--fs-12))}
 #viewport .legend.anatomy-legend{gap:6px}
 #viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(160px,260px);align-items:center;gap:8px}
-#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+/* a stacked stage is a third of the window's height: the ramp keeps to the size of a chip row so it stays off the model */
+@media (width < 1100px){#viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(96px,140px)}}
+#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body);white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:8px;box-shadow:var(--ring-1)}
 #viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:4px}
-#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);
   white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
-#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
+/* the ramp names its two ends only: a middle figure ran into the last one on a narrow ramp */
+#viewport .anatomy-legend .anatomy-ramp-ticks span:not(:first-child):not(:last-child){display:none}
+#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
+/* a short stage sets the legend's keys in a row beside the ramp, so the plate stays low and every key shows */
+@media (height < 520px){#viewport .legend.anatomy-legend{flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:var(--s3)}}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
 #viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
 .co,.co-crew{position:absolute;left:0;top:0;padding:0;border:0;pointer-events:auto;will-change:transform}
 .co{display:flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e1);
-  color:var(--ink-1);font:600 var(--fs-12)/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
+  color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
 .co svg{width:15px;height:15px;color:var(--co-tone)}
 .co::before{content:'';position:absolute;left:50%;top:100%;width:1px;height:var(--co-len);background:var(--ink-3)}
 .co::after{content:'';position:absolute;left:50%;top:calc(100% + var(--co-len));width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
@@ -119,13 +130,13 @@ const STYLE = `
 .co[aria-pressed="true"]{background:var(--gallery-callout-on);box-shadow:var(--ring-accent)}
 .co[aria-pressed="true"]::after{background:var(--accent)}
 .co-crew{display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--co-tone);border-radius:50%;
-  background:var(--hud-plate);color:var(--co-tone);font:500 var(--fs-11)/1 var(--font-data)}
+  background:var(--hud-plate);color:var(--co-tone);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .co-crew[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-hi);color:var(--ink-on-accent)}
 .co.is-off,.co-crew.is-off{display:none}
 @media (pointer:coarse){.subs .cot-c-chip{height:40px}.co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
 @media (width < 768px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}
   #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);width:100%}
-  #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}}
+}
 `;
 
 // Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
@@ -269,7 +280,14 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   let visiblePickables: THREE.Object3D[] = [];
   const hidden = new Map<THREE.Object3D, { mask: number; visible: boolean }>();
   // `length` is the callout's leader in px as last written (0: not yet), so a frame only writes the ones that move
-  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number }> = [];
+  // `width` is the plate's measured width (0 until it first shows), read once, never in a frame's layout
+  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number; width: number }> = [];
+  // the stage's toolbar foot (the layer chips), read again only when the stage changes size: no label stands above it
+  let toolbarFoot = 0, footFor = '';
+  let toolsBox: { left: number; right: number; top: number } | null = null, stageFoot = Infinity;
+  // a label below its anchor that would sit on the turntable and photo buttons, or run past the stage's foot
+  const crossesTools = (x: number, y: number, length: number, width: number): boolean => y + length + CALLOUT_HEIGHT_PX > stageFoot
+    || (!!toolsBox && x + width / 2 > toolsBox.left && x - width / 2 < toolsBox.right && y + length + CALLOUT_HEIGHT_PX > toolsBox.top);
   const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
 
   function hideExterior(root: THREE.Object3D): void {
@@ -439,14 +457,15 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       barElement.style.background = `linear-gradient(90deg, ${armorRampGradient()})`;
       const ticks = document.createElement('div');
       ticks.className = 'anatomy-ramp-ticks';
-      // the last tick sits right-aligned at the bar's end; a tick within 9 % of it would print into it (900 under 2,000+)
+      // the major ticks alone (the UI gauntlet: 650, 900 and 1,200+ printed into each other on a 260 px bar); the last
+      // sits right-aligned at the bar's end, and a tick within 12 % of it would print into it
       const lastAt = armorRampPosition(ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1]);
       for (const mm of ARMOR_RAMP_TICKS) {
-        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.09) continue;
+        if (![0, 100, 300, 650, 1200].includes(mm)) continue;
+        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.12) continue;
         const tick = document.createElement('span');
         tick.style.left = `${(armorRampPosition(mm) * 100).toFixed(1)}%`;
         tick.textContent = mm >= 1200 ? `${formatNumber(mm)}+` : formatNumber(mm);
-        if (![0, 100, 300, 650, 1200].includes(mm)) tick.dataset.minor = '';
         ticks.append(tick);
       }
       scale.append(barElement, ticks);
@@ -506,12 +525,14 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         // A second crew member in one role (assistant loader, second weapon operator) reads L2, G2.
         const count = (roleCount.get(pick.station.role) || 0) + 1;
         roleCount.set(pick.station.role, count);
-        element.textContent = `${CREW_ROLE_LETTERS[pick.station.role]}${count > 1 ? count : ''}`;
+        // the seat's mark in the page's language (zh: 长 炮 装 驾 通), the letter where a catalog has none
+        const mark = t(`gallery.crew.mark.${pick.station.role}`);
+        element.textContent = `${mark.startsWith('gallery.') ? CREW_ROLE_LETTERS[pick.station.role] : mark}${count > 1 ? count : ''}`;
         element.setAttribute('aria-label', crewName(pick.station.crew));
         element.title = crewName(pick.station.crew);
       }
       badges.append(element);
-      badgeItems.push({ element, anchor, kind: pick.kind, length: 0 });
+      badgeItems.push({ element, anchor, kind: pick.kind, length: 0, width: 0 });
     }
   }
 
@@ -657,6 +678,15 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       }
       if (badges.hidden) return;
       const width = host.renderer.domElement.clientWidth, height = host.renderer.domElement.clientHeight;
+      if (footFor !== `${width}x${height}`) {
+        footFor = `${width}x${height}`;
+        toolbarFoot = bar.offsetHeight ? bar.offsetTop + bar.offsetHeight + CALLOUT_GAP_PX : 0;
+        const tools = host.viewport.querySelector<HTMLElement>('.tools');
+        const box = tools?.offsetHeight ? tools.getBoundingClientRect() : null, canvas = host.renderer.domElement.getBoundingClientRect();
+        toolsBox = box ? { left: box.left - canvas.left - CALLOUT_GAP_PX, right: box.right - canvas.left + CALLOUT_GAP_PX, top: box.top - canvas.top - CALLOUT_GAP_PX } : null;
+        stageFoot = height - CALLOUT_GAP_PX / 2;
+        for (const item of badgeItems) item.width = 0;
+      }
       placed.length = 0;
       let callout = 0;
       for (const item of badgeItems) {
@@ -668,22 +698,52 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         const x = (scratch.x + 1) / 2 * width, y = (1 - scratch.y) / 2 * height;
         item.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         if (item.kind !== 'module') continue;
-        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep
-        const up = callout % 2 === 0;
-        placed.push({ item, x, y, up, length: CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX });
+        if (!item.width) item.width = item.element.offsetWidth;
+        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep; one that would
+        // reach over the layer chips stands below its anchor instead
+        let up = callout % 2 === 0;
+        const length = CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX;
+        if (up && y - length - CALLOUT_HEIGHT_PX < toolbarFoot) up = false;
+        if (!up && crossesTools(x, y, length, item.width) && y - length - CALLOUT_HEIGHT_PX >= toolbarFoot) up = true;
+        placed.push({ item, x, y, up, length });
         callout++;
       }
       // and its greedy separation, top to bottom: a label that would overlap one placed above it moves down (a label above
-      // its anchor shortens its leader, one below lengthens it)
+      // its anchor shortens its leader, one below lengthens it); a label above that cannot shorten enough turns below its
+      // anchor, so two plates never touch
       const labelY = (entry: typeof placed[number]): number => entry.y + (entry.up ? -1 : 1) * (entry.length + CALLOUT_HEIGHT_PX / 2);
+      const clear = CALLOUT_HEIGHT_PX + CALLOUT_GAP_PX;
       placed.sort((a, b) => labelY(a) - labelY(b));
       for (let i = 0; i < placed.length; i++) {
         for (let j = 0; j < i; j++) {
           const dy = labelY(placed[i]) - labelY(placed[j]);
-          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= CALLOUT_HEIGHT_PX + 6) continue;
-          const push = CALLOUT_HEIGHT_PX + 6 - dy;
-          placed[i].length = placed[i].up ? Math.max(CALLOUT_MIN_PX, placed[i].length - push) : placed[i].length + push;
+          const reach = placed[i].item.width && placed[j].item.width
+            ? (placed[i].item.width + placed[j].item.width) / 2 + CALLOUT_GAP_PX : CALLOUT_WIDTH_PX;
+          if (Math.abs(placed[i].x - placed[j].x) >= reach || dy >= clear) continue;
+          const push = clear - dy;
+          if (!placed[i].up) placed[i].length += push;
+          else if (placed[i].length - push >= CALLOUT_MIN_PX) placed[i].length -= push;
+          else {
+            placed[i].up = false;
+            placed[i].length = Math.max(CALLOUT_MIN_PX, labelY(placed[j]) + clear - placed[i].y - CALLOUT_HEIGHT_PX / 2);
+          }
         }
+        // a label pushed down onto the turntable and photo buttons stands above its anchor on the shortest leader, when
+        // that spot is clear of the chips and of every label already placed
+        if (!placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width)) {
+          const liftY = placed[i].y - CALLOUT_MIN_PX - CALLOUT_HEIGHT_PX / 2;
+          let free = liftY - CALLOUT_HEIGHT_PX / 2 >= toolbarFoot;
+          for (let j = 0; free && j < i; j++) {
+            const reach = placed[i].item.width && placed[j].item.width
+              ? (placed[i].item.width + placed[j].item.width) / 2 + CALLOUT_GAP_PX : CALLOUT_WIDTH_PX;
+            if (Math.abs(placed[i].x - placed[j].x) < reach && Math.abs(liftY - labelY(placed[j])) < clear) free = false;
+          }
+          if (free) { placed[i].up = true; placed[i].length = CALLOUT_MIN_PX; }
+        }
+        // one that still has no place clear of the bar and inside the stage is left out this frame (a small stage shows
+        // fewer callouts), never drawn under the buttons
+        const blocked = !placed[i].up && crossesTools(placed[i].x, placed[i].y, placed[i].length, placed[i].item.width);
+        if (blocked) placed[i].item.element.style.visibility = 'hidden';
         const { item, up, length } = placed[i];
         const rounded = Math.round(length);
         if (rounded !== item.length) { item.length = rounded; item.element.style.setProperty('--co-len', `${rounded}px`); }

@@ -531,7 +531,7 @@ body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
 body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
 body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
 body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log,
-body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !important;}
+body.cot-si-report .cot-ret-text,body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !important;}
 .cot-si-ban{font-family:${FONT_COND};font-weight:700;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px oklch(from var(--surface-scene) l c h / .85);}
 .cot-si-ban.v{color:var(--ok);}.cot-si-ban.d{color:var(--danger);}.cot-si-ban.n{color:var(--ink-2);}

@@ -12,6 +12,7 @@
     "src/presentation/mediaPlayer.css": {"layout":0,"paint":0,"colour":3,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/presentation/publicNav.css": {"layout":0,"paint":0,"colour":4,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/aerialHud.css": {"layout":2,"paint":1,"colour":0,"duration":3,"reduced":0,"raf":0,"raster":0},
+    "src/ui/battleHudLayout.ts": {"layout":0,"paint":0,"colour":0,"duration":0,"reduced":0,"raf":1,"raster":0},
     "src/ui/battleTimeChoices.css": {"layout":0,"paint":0,"colour":2,"duration":0,"reduced":0,"raf":0,"raster":0},
     "src/ui/bootScreen.ts": {"layout":0,"paint":0,"colour":0,"duration":0,"reduced":0,"raf":1,"raster":0},
     "src/ui/components/components.css": {"layout":0,"paint":0,"colour":3,"duration":0,"reduced":0,"raf":0,"raster":0},

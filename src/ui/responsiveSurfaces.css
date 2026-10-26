@@ -169,7 +169,10 @@ body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);wh
    for a narrow phone scrolls instead of letting a label run past its plate; the first label starts on the panel's edge. */
 body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
-body[data-cot-width='phone'] .cot-set-tab.sel::after{left:4px;right:4px}
+/* a two-character tab's box meets the touch floor; its label (and its underline) keeps the label's width */
+body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+/* the scrolling tab row clips below its box, so a phone's indicator stands on the row's rule inside it */
+body[data-cot-width='phone'] .cot-set-tab.sel>span::after{bottom:0}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,
@@ -180,25 +183,33 @@ body[data-cot-width='compact'] .cot-set-body,
 body[data-cot-width='phone'] .cot-set-body{min-height:0;flex:1 1 auto;padding:0 var(--cot-edge) 14px}
 body[data-cot-width='compact'] .cot-set-ftr,
 body[data-cot-width='phone'] .cot-set-ftr{
-  flex:0 0 auto;flex-wrap:wrap;padding:10px var(--cot-edge) max(10px,env(safe-area-inset-bottom));
+  flex:0 0 auto;flex-wrap:wrap;padding:var(--s3) var(--cot-edge) max(var(--s3),env(safe-area-inset-bottom));
   background:rgba(5,8,11,.98);border-top:1px solid rgba(146,164,180,.18);
 }
+/* the footer sits on the sheet (one surface at every size) */
+body[data-cot-width='phone'] .cot-set-ftr{background:var(--surface-plate);border-top-color:var(--line-1)}
 body[data-cot-width='phone'] .cot-set-ftr .cot-set-btn{flex:1 1 120px;min-width:0}
 body[data-cot-width='phone'] .cot-set-btn.reset{margin-right:0}
 body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:column;gap:8px;padding-block:10px}
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 auto}
+body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 0}
 body[data-cot-width='phone'] .cot-settings .cot-battle-times{width:100%}
-body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 auto}
+body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 0}
 body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
 /* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
-body[data-cot-width='phone'] .cot-set-seg:not(.glyphs):has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+body[data-cot-width='phone'] .cot-set-seg:has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
 body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+/* on touch a segmented control is 44 px like every other control: its options sit inside its 3 px inset (the slate plate
+   inside the track, as on desktop) and their hit areas reach the track's edge */
+body[data-cot-input='coarse'] .cot-settings .cot-set-seg button{position:relative;height:calc(var(--cot-control-floor) - 6px)}
+body[data-cot-input='coarse'] .cot-settings .cot-set-seg button::before{content:'';position:absolute;inset:-3px 0}
+/* a picker set as a grid (the team colours) draws each cell at the full floor */
+body[data-cot-input='coarse'] .cot-settings .cot-set-seg:has(> :nth-child(5)) button{height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
@@ -209,17 +220,28 @@ body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 /* a short screen keeps the rows: the title steps aside (the dialog keeps its name) and the close sits at the tab row's end */
 body[data-cot-height='short'] .cot-settings .cot-set-hdr{position:absolute;top:0;right:0;height:var(--cot-control-floor);padding:0 var(--cot-edge);align-items:center}
 body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body[data-cot-height='short'] .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+/* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close) */
+body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+/* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - 4px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+/* a phone on its side keeps the upright phone's 16 px edge, so the first tab sits on the plates' edge */
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-settings{--cot-edge:var(--s4)}
+/* touch: a plate's top inset holds its heading (i)'s 44 px hit area inside the plate */
+body[data-cot-input='coarse'] .cot-set-card{padding-top:var(--s4)}
 body[data-cot-height='short'] .cot-set-preview{display:none}
 /* a compact screen keeps the preview to a strip, so the rows under it stay in view */
-body[data-cot-height='compact'] .cot-set-preview{max-height:200px}
+/* a compact screen keeps the preview to a band across the content column, cropped to the tank's tracks */
+body[data-cot-height='compact'] .cot-set-preview{aspect-ratio:auto;height:200px}
+body[data-cot-height='compact'] .cot-set-preview img{object-position:50% 72%}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
-body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
-body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
+body[data-cot-width='tablet'] .cot-set-hdr{padding:var(--s3) var(--s4) var(--s2)}
+body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:var(--s4)}
 body[data-cot-width='tablet'] .cot-set-tab{font-size:max(13px,var(--fs-13))}
-body[data-cot-width='tablet'] .cot-set-body{padding:0 14px 12px}
-body[data-cot-width='tablet'] .cot-set-conflict{margin:8px 14px 0}
-body[data-cot-width='tablet'] .cot-set-ftr{padding:10px 14px 12px}
+body[data-cot-width='tablet'] .cot-set-body{padding:0 var(--s4) var(--s3)}
+body[data-cot-width='tablet'] .cot-set-conflict{margin:var(--s2) var(--s4) 0}
+body[data-cot-width='tablet'] .cot-set-ftr{padding:var(--s3) var(--s4)}
 
 /* PLAY / PRIVATE ROOM ---------------------------------------------------- */
 body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
@@ -609,7 +631,9 @@ body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch :is(.
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive{
   left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:calc(106px * var(--mm-k,1))!important;height:calc(106px * var(--mm-k,1))!important}
+/* (its large step stops 8 px short of the score, left of it: the Horde's wider plate met its grid at 568x320, the layout
+   receipt; battleHudLayout.ts --hud-score-left) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important;height:min(calc(106px * var(--mm-k,1)),calc(var(--hud-score-left,100vw) - 20px))!important}
 /* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
    the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never
    shifts off the line. On a short landscape phone the toolbar's corner plate (158 px, hung from the corner) is that corner:
@@ -629,7 +653,7 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell{width:52px;height:48px}
 /* a 48 px tall slot draws its shell smaller, so the tip stays clear of the top edge (critic r4b) and 3 px from the corner
    count, standing 1 px higher so its foot keeps 3 px from the label (r6: 2.7 px to the count) */
-body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell:not(.wide) canvas{bottom:12px;transform:translateX(-50%) scale(.64)}
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell:not(.wide) canvas{bottom:12px;transform:translateX(-50%);--shell-k:.64}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{
   right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;
 }

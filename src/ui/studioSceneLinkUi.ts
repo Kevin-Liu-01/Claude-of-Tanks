@@ -35,7 +35,7 @@ interface SceneLinkNotice {
  */
 export const SCENE_LINK_GLYPHS = Object.freeze({
   link: uiIconSVG('link', 16),
-  broken: uiIconSVG('lampWarn', 22),
+  broken: uiIconSVG('alert', 22),
   done: uiIconSVG('check', 22),
 });
 

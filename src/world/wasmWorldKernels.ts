@@ -1,16 +1,17 @@
 /**
- * The world's WebAssembly kernels (workstream #3, the Rust core's flagged steps; RUST-ENGINE-DECISION §7): the terrain
- * contact surface, the obstacle grids and a hull's structure support, answered by crates/cot-sim-wasm behind their
- * TypeScript interfaces, bit for bit — the same Float32 lattice filled from the same height function at the same exact
- * coordinates, the same fold splits, the same grid visitation order, the match's deformed ground mirrored stamp for
- * stamp, the same tops over it (cargo test -p cot-sim; wasmWorldKernels.selftest.mjs). They change no answer, so a match
- * on them shares every state digest with one on the TypeScript, and peers may mix them.
+ * The world's WebAssembly kernels (workstream #3, the Rust core's steps; RUST-ENGINE-DECISION §7): the terrain contact
+ * surface, the obstacle grids, a hull's structure support and the bots' clearance scans, answered by crates/cot-sim-wasm
+ * behind their TypeScript interfaces, bit for bit — the same Float32 lattice filled from the same height function at the
+ * same exact coordinates, the same fold splits, the same grid visitation order, the match's deformed ground mirrored
+ * stamp for stamp, the same tops over it, the same clearances (cargo test -p cot-sim; wasmWorldKernels.selftest.mjs).
+ * They change no answer, so a match on them shares every state digest with one on the TypeScript, and peers may mix them.
  *
- * Off unless a world is built with `kernels` (headlessCollisionWorld.ts): the dedicated server under COT_SIM_KERNELS=wasm
- * (server/match/simKernels.ts) and the browser host under ?simKernels=wasm. One instance per world: its lattice, its
- * overlay and its records are that world's own. Node-runnable and DOM-free, like every authority module.
+ * A world built with `kernels` (headlessCollisionWorld.ts) runs on them: the dedicated server unless COT_SIM_KERNELS=ts
+ * (server/match/simKernels.ts) and the browser host unless ?simKernels=ts (docs/RUST-KERNELS.md). One instance per
+ * world: its lattice, its overlay and its records are that world's own. Node-runnable and DOM-free, like every authority
+ * module.
  */
-import type { CollisionRecord, ObstacleQuery, SimpleCollisionShape } from './collision.ts';
+import type { ClearanceScan, CollisionRecord, ObstacleQuery, SimpleCollisionShape } from './collision.ts';
 import type { TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { driveGroundTypeAt } from '../sim/terrainMobility.ts';
 import { topEdgeStationsIn, type StructureSupportField, type SupportHeightField } from '../sim/structureSupport.ts';
@@ -47,6 +48,10 @@ interface CotSimExports {
   sampling_frame_ptr(): number;
   sampling_out_ptr(): number;
   support_sample_hull(): void;
+  clearance_begin(minX: number, minZ: number, maxX: number, maxZ: number): number;
+  clearance_point_next(x: number, z: number, margin: number, skip: number): number;
+  clearance_lane_next(sx: number, sz: number, dx: number, dz: number, reach: number, margin: number, skip: number): number;
+  clearance_entry(): number;
 }
 
 /** crates/cot-sim-wasm support_sample_hull's frame and output (support_sampling.rs: FIT_MAX, BED_MAX, INNER_MAX). */
@@ -66,7 +71,10 @@ interface KernelContactSurface {
 /** One world's kernels: its contact lattice, its obstacle grids, its ground overlay and its hulls' support. */
 interface WorldKernels {
   contactSurface(): KernelContactSurface;
-  /** A grid over `records`; `support`: the obstacles the hulls stand on (their table is loaded beside the grid). */
+  /**
+   * A grid over `records`; `support`: the obstacles the hulls stand on (their table is loaded beside the grid, and the
+   * grid carries the bots' clearance scans over it).
+   */
   obstacleGrid(records: CollisionRecord[], cellSize?: number, support?: boolean): ObstacleQuery;
   /** Mirror the match's overlay (its stamps so far, then every change, in the order the TypeScript makes them). */
   mirrorOverlay(overlay: TerrainDeformation | null): void;
@@ -88,8 +96,9 @@ export function instantiateWorldKernels(module: WorldKernelModule, heightAt: (x:
     contactSurface: () => ({ heightAt: w.contact_height, cellFlippedAt: (x, z) => w.contact_flipped(x, z) === 1 }),
     obstacleGrid(records, cellSize = 24, support = false) {
       const grid = createObstacleGridKernel(w, records, cellSize);
-      if (support) supportRecords = loadSupportRecords(w, grid.indexed, grid.handle);
-      return grid.query;
+      if (!support) return grid.query;
+      supportRecords = loadSupportRecords(w, grid.indexed, grid.handle);
+      return Object.assign(grid.query, { clearance: createClearanceScan(w, grid.indexed) });
     },
     mirrorOverlay(overlay) {
       w.overlay_reset();
@@ -136,6 +145,22 @@ function createObstacleGridKernel(w: CotSimExports, records: CollisionRecord[], 
   };
 }
 
+/** The bots' clearance walk over the obstacles' table (collision.ts ClearanceScan; crates/cot-sim-wasm clearance_begin). */
+function createClearanceScan(w: CotSimExports, records: CollisionRecord[]): ClearanceScan {
+  return {
+    begin(minX, minZ, maxX, maxZ) { w.clearance_begin(minX, minZ, maxX, maxZ); },
+    point(x, z, margin, skip) {
+      const index = w.clearance_point_next(x, z, margin, skip);
+      return index < 0 ? null : records[index];
+    },
+    lane(sx, sz, dx, dz, reach, margin, skip) {
+      const index = w.clearance_lane_next(sx, sz, dx, dz, reach, margin, skip);
+      return index < 0 ? null : records[index];
+    },
+    get entry() { return w.clearance_entry(); },
+  };
+}
+
 /** One part in the kernel's flat encoding (kind, extent flag and extent, then its shape: crates/cot-sim-wasm records_load). */
 function encodePart(out: number[], part: SimpleCollisionShape | null | undefined): void {
   if (!part) { out.push(0, 0, 0, 0); return; }
@@ -154,7 +179,7 @@ function loadSupportRecords(w: CotSimExports, records: CollisionRecord[], grid: 
   const flat: number[] = [];
   for (const record of records) {
     const wreck = record.kind === 'tank-wreck' || record.kind === 'tram-wreck';
-    flat.push(...record.min, ...record.max, (record.crushable ? 1 : 0) | (wreck ? 2 : 0));
+    flat.push(...record.min, ...record.max, (record.crushable ? 1 : 0) | (wreck ? 2 : 0) | (record.kind === 'bridge' ? 4 : 0));
     const shape = record.shape2;
     if (!shape) flat.push(0);
     else if (shape.kind === 'compound') { flat.push(2, shape.parts.length); for (const part of shape.parts) encodePart(flat, part); }

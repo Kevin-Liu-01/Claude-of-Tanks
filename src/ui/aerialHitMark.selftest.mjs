@@ -9,7 +9,7 @@
 // over the recording DOM: a gunship pilot's hit shows the mark on its own canvas, sized, cleared and drawn each frame,
 // placed on the aim point, hidden when it expires or the HUD hides, never on the full-screen sight; a tank's hit draws
 // on the sight as before; a resize keeps the mark canvas at the sight's pixel ratio.
-import { created, windowStub, WIDTH, HEIGHT } from './hudDomHarness.test-support.mjs';
+import { created, mediaQueries, windowStub, WIDTH, HEIGHT } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -169,11 +169,13 @@ assert.notEqual(markEl.style.display, 'block', 'the mark canvas stays hidden for
 assert.equal(markInk(markOps).length, 0, 'and receives nothing');
 for (let t = 0; t <= HIT_CONFIRM_LIFETIME_S + 0.1; t += DT) frame(tank);
 
-// (E) a resize at a higher pixel ratio: the mark canvas follows the sight's ratio
+// (E) a higher pixel ratio (UI-LOCKDOWN A: the resolution query uiCanvas watches): the sight and the mark canvas take it at
+// their next frame
 windowStub.devicePixelRatio = 2; globalThis.devicePixelRatio = 2;
-windowStub.dispatchEvent(new Event('resize'));
+for (const query of mediaQueries.filter((entry) => /resolution/.test(entry.media))) query.dispatchEvent(new Event('change'));
+hit(); frame(pilot(true));
 const ratio = sight.width / WIDTH;
-assert.ok(ratio > 1, `the sight takes the higher pixel ratio (${ratio})`);
+assert.equal(ratio, 2, `the sight takes the higher pixel ratio (${ratio})`);
 assert.equal(markEl.width, Math.round(box * ratio), `the mark canvas follows it (${markEl.width} at ${ratio})`);
 
 console.log(`aerialHitMark: the gunship's hit-confirm mark draws in its own ${box} px canvas on the sight (reach ${reach.toFixed(1)} px), never on the full-screen sight; the ground sight unchanged`);

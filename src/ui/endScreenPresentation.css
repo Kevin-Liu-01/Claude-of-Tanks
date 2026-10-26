@@ -186,7 +186,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:upp
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{padding-bottom:.08em}
 /* (a watched battle's two rosters at a reading width on the widest windows: 1,230 px rows set the callsigns 750 px from
    their figures at 2560, gauntlet r6) */
-body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:1640px;margin-inline:auto;width:100%;box-sizing:border-box}
+body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{max-width:2000px;margin-inline:auto;width:100%;box-sizing:border-box}
 /* (the widest windows: the two teams side by side once the teams' column holds two whole rosters, 1,100 px, the record
    column narrower: stacked, the enemy's ran under the panel's foot beside 570 px of record plate at 2560, gauntlet r7;
    at 1600 and a narrower column the vehicles' names were cut, r5) */
