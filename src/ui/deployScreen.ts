@@ -27,11 +27,13 @@ const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
 });
 
 /**
- * The modes with a plate background of their own (public/media/deploy-r1/<id>-1600.webp, a 1600x900 cut of the still
- * their card shows). Every other mode's plate shows its tile picture until the media lane's larger cuts land, and so
- * does every mode under reduced data (the mode picker has loaded the tiles already).
+ * The modes with a plate background of their own (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows):
+ * the core modes' a 1600x900 cut of the still their card shows, the others the media lane's HUD-free battle frames. A
+ * mode without one shows its tile picture, and so does every mode under reduced data (the mode picker has loaded the
+ * tiles already).
  */
-const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault']);
+const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'drone', 'turbo_ball',
+  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130']);
 
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }

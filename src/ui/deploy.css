@@ -214,17 +214,17 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-de
 /* a phone's battlefield picker opens in the block's place, on the block's own fill: the picture steps aside while it is open */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-inline:has(.cot-deploy-field-pop:not([hidden])) .cot-deploy-art{display:none;}
 .cot-garage .cot-deploy-art img[data-mode='standard']{object-position:72% 45%;}
-.cot-garage .cot-deploy-art img[data-mode='drone']{object-position:68% 60%;}
+.cot-garage .cot-deploy-art img[data-mode='drone']{object-position:70% 65%;}
 .cot-garage .cot-deploy-art img[data-mode='zone_control']{object-position:55% 55%;}
 .cot-garage .cot-deploy-art img[data-mode='capture_the_flag']{object-position:36% 60%;}
 .cot-garage .cot-deploy-art img[data-mode='frontline_assault']{object-position:72% 50%;}
-.cot-garage .cot-deploy-art img[data-mode='turbo_ball']{object-position:55% 35%;}
-.cot-garage .cot-deploy-art img[data-mode='mars']{object-position:53% 45%;}
-.cot-garage .cot-deploy-art img[data-mode='endless_horde']{object-position:45% 50%;}
-.cot-garage .cot-deploy-art img[data-mode='gun_game']{object-position:45% 55%;}
-.cot-garage .cot-deploy-art img[data-mode='juggernaut']{object-position:35% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='turbo_ball']{object-position:45% 20%;}
+.cot-garage .cot-deploy-art img[data-mode='mars']{object-position:55% 45%;}
+.cot-garage .cot-deploy-art img[data-mode='endless_horde']{object-position:60% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='gun_game']{object-position:56% 55%;}
+.cot-garage .cot-deploy-art img[data-mode='juggernaut']{object-position:52% 45%;}
 .cot-garage .cot-deploy-art img[data-mode='infected']{object-position:45% 55%;}
-.cot-garage .cot-deploy-art img[data-mode='realistic']{object-position:45% 50%;}
+.cot-garage .cot-deploy-art img[data-mode='realistic']{object-position:55% 50%;}
 .cot-garage .cot-deploy-art img[data-mode='ac130']{object-position:42% 60%;}
 .cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:var(--s3);
   padding:0;border:0;background:none;scrollbar-width:thin;}
