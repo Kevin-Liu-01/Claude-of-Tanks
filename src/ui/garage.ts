@@ -2477,11 +2477,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeEqPicker();
   }
   // --- END EQUIPMENT SYSTEM -------------------------------------------------
-  const camoPatternLabel = (patternId: string): string => {
+  // a declaration, not a const: the camo picker is set up at boot, above it in this function
+  function camoPatternLabel(patternId: string): string {
     const genericKey = `garage.camo.generic.${patternId}`;
     const genericLabel = t(genericKey);
     return genericLabel !== genericKey ? genericLabel : camoOpts?.label?.[patternId] || patternId || t('camoPattern.factory');
-  };
+  }
   const paintBandSwatch = (canvas: HTMLCanvasElement, spec: GarageTankSpec, patternId: string): void => {
     if (patternId === 'auto') { paintAutoCamoSwatch(canvas, spec); return; }
     paintCamoSwatch(canvas, spec, patternId === CUSTOM_CAMO_ID && camoOpts?.getCustom

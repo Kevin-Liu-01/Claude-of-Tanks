@@ -244,6 +244,8 @@ body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__chips{flex:1 1 auto
   mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:var(--s1)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__opt{gap:var(--s1);padding:var(--s1)}
+/* a swatch not yet drawn holds a compact swatch's place (the kit's 168 px card placeholder made the rows jump) */
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__cell{contain-intrinsic-size:auto 92px}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:3/2}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__name{font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.2}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__facts{display:none}
