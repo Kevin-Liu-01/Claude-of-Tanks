@@ -95,15 +95,15 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-tank': { chooses: 'tank', options: FLEET, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:.cot-cards'], lane: 'premiere-gallery-studio' },
   'garage-nation': { chooses: 'nation', options: 15, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:chipById', 'bespoke:id===countryId'], lane: 'premiere-gallery-studio' },
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
-  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'select', marks: ['select:[data-rival]'], lane: 'premiere-gallery-studio' },
-  'garage-equipment-category': { chooses: 'filter', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:category.id'], lane: 'premiere-gallery-studio', path: 'equip-item' },
-  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:fittedAt===openSlot'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
+  'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
-  'garage-camo': { chooses: 'camo', options: 173, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:patternId===selectedPatternId'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-collection': { chooses: 'filter', options: 14, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===activeCamoCollection'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
-  'garage-camo-tag': { chooses: 'filter', options: 13, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:tagId===activeCamoTag'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
+  // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
+  // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
+  'garage-camo': { chooses: 'camo', options: 175, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-camo'], lane: 'premiere-gallery-studio', path: 'wear-camo' },
   'camo-lab-tools': { chooses: 'tool', options: 12, screen: 'garage', owner: 'src/ui/customCamoStudio.ts', build: 'bespoke', marks: ['bespoke:dataset.customTone', 'bespoke:dataset.customBrushType', 'bespoke:dataset.customAsset'], lane: 'premiere-gallery-studio' },
-  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'listbox', marks: ['listbox:#cot-garage-variant-menu', 'bespoke:id===selected.id'], lane: 'premiere-gallery-studio' },
+  // INTERACTION-REDESIGN C: the staging area is the kit's picker menu over its ten picture cards (the hand-rolled listbox went)
+  'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-staging'], lane: 'premiere-gallery-studio' },
   'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
   'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:option===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
   'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },
@@ -140,7 +140,7 @@ export const INTERACTION_SITES = Object.freeze({
   'hud-editor-profile': { chooses: 'view', options: 3, screen: 'settings', owner: 'src/ui/hudEditor.ts', build: 'segmented', marks: ['segmented:.hud-edit-profiles'], lane: 'premiere-site' },
 
   // ---- Rooms (the lead)
-  'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
+  'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.modes'], lane: 'lead', path: 'start-room' },
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.create-size'], lane: 'lead' },
   'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
@@ -157,34 +157,36 @@ export const INTERACTION_SITES = Object.freeze({
 
   // ---- the battle (premiere-battle)
   'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
+  /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
+  'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
   // ---- the Studio (premiere-gallery-studio)
   'studio-format': { chooses: 'setting', options: 4, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:formatSeg'], lane: 'premiere-gallery-studio' },
   'studio-controls': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:modeSeg', 'bespoke:dataset.value'], lane: 'premiere-gallery-studio' },
-  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:mapPop', 'bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
+  'studio-battlefield': { chooses: 'battlefield', options: 35, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-battlefield'], lane: 'premiere-gallery-studio' },
   'studio-hour': { chooses: 'hour', options: 7, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:timeSeg', 'bespoke:time===light.time'], lane: 'premiere-gallery-studio' },
   'studio-snap': { chooses: 'setting', options: 3, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:snapSeg'], lane: 'premiere-gallery-studio' },
   'studio-state': { chooses: 'state', options: 6, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:stateSeg', 'bespoke:sid===a.stateName'], lane: 'premiere-gallery-studio' },
-  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'bespoke', marks: ["bespoke:a.camo||'inherit'"], lane: 'premiere-gallery-studio' },
+  'studio-camo': { chooses: 'camo', options: 174, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-camo'], lane: 'premiere-gallery-studio' },
   'studio-effect': { chooses: 'effect', options: 33, screen: 'studio', owner: STUDIO, build: 'listbox', marks: ['listbox:fxStack'], lane: 'premiere-gallery-studio' },
   'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
-  'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:select'], lane: 'premiere-gallery-studio' },
-  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'select', marks: ['select:transition'], lane: 'premiere-gallery-studio' },
+  'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:group'], lane: 'premiere-gallery-studio' },
+  'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:transition', 'bespoke:id===shot.transition'], lane: 'premiere-gallery-studio' },
   'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], lane: 'premiere-gallery-studio' },
   'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
   'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
-  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:frame'], lane: 'premiere-gallery-studio' },
-  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:tanks'], lane: 'premiere-gallery-studio' },
-  'studio-lens': { chooses: 'setting', options: 3, screen: 'studio', owner: PRODUCTION, build: 'select', marks: ['select:lens'], lane: 'premiere-gallery-studio' },
+  // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
+  'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
+  'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'picker', marks: ['picker:studio-featured-tank'], lane: 'premiere-gallery-studio' },
   'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
   'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the Tank Gallery (premiere-gallery-studio)
   'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], lane: 'premiere-gallery-studio' },
   'gallery-facets': { chooses: 'filter', options: 23, screen: 'gallery', owner: 'src/gallery/galleryFacets.ts', build: 'bespoke', marks: ['bespoke:selected===code', 'bespoke:selected===id', `${GALLERY} bespoke:browse.era`, `${GALLERY} bespoke:browse.role`], lane: 'premiere-gallery-studio' },
-  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#gallerySort'], lane: 'premiere-gallery-studio' },
+  'gallery-sort': { chooses: 'sort', options: 28, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-sort'], lane: 'premiere-gallery-studio' },
   'gallery-layout': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.layout-switch', `${GALLERY} bespoke:dataset.value`], lane: 'premiere-gallery-studio' },
-  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#rivalSelect'], lane: 'premiere-gallery-studio' },
+  'gallery-rival': { chooses: 'rival', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'picker', marks: ['picker:gallery-rival'], lane: 'premiere-gallery-studio' },
   'gallery-peer-scale': { chooses: 'view', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.peer-switch'], lane: 'premiere-gallery-studio' },
   'gallery-drawing': { chooses: 'view', options: 3, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#diagramSwitch', `${GALLERY} bespoke:view===diagram`], lane: 'premiere-gallery-studio' },
   'gallery-layer': { chooses: 'view', options: 5, screen: 'gallery', owner: GALLERY, build: 'bespoke', marks: ['bespoke:dataset.mode'], lane: 'premiere-gallery-studio' },

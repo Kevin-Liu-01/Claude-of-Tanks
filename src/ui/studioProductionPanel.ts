@@ -4,6 +4,9 @@ import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import type { NoticeSeverity } from './components/notice.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { wireRovingKeys } from './components/components.ts';
+import { createPickerMenu } from './components/pickerMenu.ts';
+import { pickerText } from './pickerText.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
@@ -90,6 +93,17 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', tex
   if (text) element.textContent = text;
   return element;
 }
+/** A name with an inner hyphen, dot or slash (T-90M, 2S19-M2, M1A2/TUSK): it never breaks inside. */
+const KEPT_NAME = /([A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)/;
+/** A card's caption: its hyphenated names stand whole in no-wrap spans (the s15 critic: "炮火下的 T-" over "90M 纵队"). */
+function caption(text: string): HTMLElement {
+  const parts = text.split(KEPT_NAME);
+  if (parts.length === 1) return node('strong', '', text);
+  const strong = node('strong');
+  // the split's odd parts are the names it captured
+  parts.forEach((part, index) => { if (part) strong.append(node('span', index % 2 ? 'nobr' : '', part)); });
+  return strong;
+}
 /** The kit's controls (src/ui/components): a 36 px button, a primary, a chip. */
 const KIT_BUTTON = 'cot-c-btn cot-c-btn--36';
 const KIT_PRIMARY = 'cot-c-btn cot-c-btn--primary cot-c-btn--36';
@@ -117,6 +131,35 @@ function button(text: string, action: () => void, className = ''): HTMLButtonEle
   element.type = 'button';
   element.addEventListener('click', action);
   return element;
+}
+
+/**
+ * A choice of a few (the frame, the lens): the kit's segmented control, every option in view (the interaction census: raw
+ * selects), each a radio stamped data-<key>=<value>; the kit's roving keys move the choice.
+ */
+function segments<V extends string>(label: string, key: string, choices: readonly (readonly [V, string])[], value: V,
+  onChoose: (value: V) => void): { readonly group: HTMLElement; set(value: V): void; lock(locked: boolean): void } {
+  const group = node('div', 'cot-c-seg');
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-label', label);
+  wireRovingKeys(group);
+  let current = value;
+  const options = choices.map(([choice, text]) => {
+    const option = button(text, () => { if (choice !== current) { set(choice); onChoose(choice); } }, 'cot-c-seg__opt');
+    option.setAttribute('role', 'radio');
+    option.dataset[key] = choice;
+    group.append(option);
+    return option;
+  });
+  function set(next: V): void {
+    current = next;
+    for (const option of options) {
+      option.setAttribute('aria-checked', String(option.dataset[key] === next));
+      option.tabIndex = option.dataset[key] === next ? 0 : -1;
+    }
+  }
+  set(value);
+  return { group, set, lock(locked) { for (const option of options) option.disabled = locked; } };
 }
 
 export function mountStudioProductionPanel(
@@ -161,29 +204,43 @@ export function mountStudioProductionPanel(
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
-    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), node('strong', '', presetText(preset.id, 'title', preset.title)),
+    card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: Math.round(preset.durationMs / 1000) })), caption(presetText(preset.id, 'title', preset.title)),
       node('small', '', `${S.getMapInfo(preset.map).name} · ${t('studio.director.ui.shotCount', { count: preset.shots.length })}`));
     cards.set(preset.id, card);
     library.append(card);
   }
   const fields = node('div', 'production-fields');
-  const frameLabel = node('label', '', productionLabel('format'));
-  const frame = node('select');
-  frame.dataset.productionFormat = '';
-  for (const value of ['landscape', 'portrait', 'square', 'card'] as const) {
-    const option = node('option', '', productionLabel(value)); option.value = value; frame.append(option);
-  }
-  frame.value = format;
-  const tankLabel = node('label', '', productionLabel('subject'));
-  const tanks = node('select');
-  tanks.dataset.productionTank = '';
-  const defaultOption = node('option', '', productionLabel('defaultTank')); defaultOption.value = ''; tanks.append(defaultOption);
-  for (const id of S.TANK_IDS) { const option = node('option', '', S.getSpecInfo(id).name); option.value = id; tanks.append(option); }
-  frameLabel.append(frame); tankLabel.append(tanks); fields.append(frameLabel, tankLabel);
+  const frameLabel = node('div', 'production-choice', productionLabel('format'));
+  const frame = segments(productionLabel('format'), 'productionFormat',
+    (['landscape', 'portrait', 'square', 'card'] as const).map((value) => [value, productionLabel(value)] as const), format,
+    (next) => { setFormat(next); S.setProductionFormat(format); });
+  // the featured tank is the kit's picker menu (pickerMenu.ts): the fleet by name with its nation, search and recents (a raw
+  // select of about 220 in the census), the Director's default first
+  const FEATURED_DEFAULT = 'default';
+  let featured: string = FEATURED_DEFAULT;
+  const featuredTank = (): string => (featured === FEATURED_DEFAULT ? '' : featured);
+  const tankLabel = node('div', 'production-choice', productionLabel('subject'));
+  const tankHost = node('div', 'production-tank');
+  const tanks = createPickerMenu(tankHost, {
+    id: 'studio-featured-tank', label: productionLabel('subject'), value: FEATURED_DEFAULT, layout: 'list', text: pickerText(),
+    memory: 'studio-tank',
+    items: [{ id: FEATURED_DEFAULT, name: productionLabel('defaultTank') }, ...S.TANK_IDS.map((id) => {
+      const info = S.getSpecInfo(id);
+      return { id, name: info.name, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
+    })],
+    onChoose: (item) => {
+      featured = item.id;
+      if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes();
+    },
+  });
+  frameLabel.append(frame.group); tankLabel.append(tankHost);
+  // in the Studio app the frame is the header's (and on a phone the palette's): one datum, one control (the s15 critic:
+  // the Director's frame row repeated the header's switch); the receipts' bare dock keeps its own
+  if (hosts.head) fields.append(tankLabel); else fields.append(frameLabel, tankLabel);
   const stage = button(productionLabel('stage'), () => {
     if (staging || S.recordingStatus().active) return;
     staging = true; refresh(); say(productionLabel('staging'));
-    S.directProduction({ presetId: selectedId, format, ...(tanks.value ? { vehicleId: tanks.value } : {}) })
+    S.directProduction({ presetId: selectedId, format, ...(featuredTank() ? { vehicleId: featuredTank() } : {}) })
       .then(() => { say(productionLabel('ready')); refreshAll(); })
       .catch(failure)
       .finally(() => { staging = false; refresh(); });
@@ -236,7 +293,7 @@ export function mountStudioProductionPanel(
     photo.loading = 'lazy';
     photo.decoding = 'async';
     card.append(photo, node('span', 'production-duration', t('studio.ws.seconds', { s: ((take.durationMs ?? 0) / 1000).toFixed(1) })),
-      node('strong', '', zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
+      caption(zh ? take.short.zh : take.short.en), node('small', '', mapName(take.map)));
     takeCards.set(take.id, card);
     return card;
   }
@@ -302,7 +359,7 @@ export function mountStudioProductionPanel(
   function renderFleetTakes(): void {
     const typed = fleetSearch.value.trim();
     const query = typed.toLocaleLowerCase();
-    const tank = tanks.value || garageTank();
+    const tank = featuredTank() || garageTank();
     const matches = query
       ? fleetTakes.filter((take) => fleetText.get(take.id)?.includes(query))
       : fleetTakes.filter((take) => take.vehicle === tank);
@@ -315,7 +372,6 @@ export function mountStudioProductionPanel(
     refresh();
   }
   fleetSearch.addEventListener('input', renderFleetTakes);
-  tanks.addEventListener('change', () => { if (fleetTakes.length && !fleetSearch.value.trim()) renderFleetTakes(); });
   function loadSiteTake(take: SiteTake): void {
     const path = sceneLinkPath(take.scene); // this site's own files only, as a scene link
     if (!path || loadingTake || staging || S.recordingStatus().active) return;
@@ -360,26 +416,23 @@ export function mountStudioProductionPanel(
     const control = button(productionLabel(rig), () => { S.pause(); S.applyProductionCamera(rig); S.addCameraShot(); refreshAll(); }, KIT_CHIP);
     control.dataset.productionRig = rig; rigs.append(control);
   }
-  const lensLabel = node('label', 'production-lens', productionLabel('lens'));
-  const lens = node('select');
-  for (const [label, fov] of [['wide', 58], ['natural', 42], ['tight', 28]] as const) {
-    const option = node('option', '', productionLabel(label)); option.value = String(fov); lens.append(option);
-  }
-  lens.dataset.productionLens = '';
-  lens.value = '42';
-  lens.addEventListener('change', () => { S.pause(); S.setCamera({ fov: Number(lens.value) }); S.addCameraShot(); refreshAll(); });
-  lensLabel.append(lens);
+  const lensLabel = node('div', 'production-lens', productionLabel('lens'));
+  const lens = segments(productionLabel('lens'), 'productionLens',
+    ([['wide', 58], ['natural', 42], ['tight', 28]] as const).map(([label, fov]) => [String(fov), productionLabel(label)] as const), '42',
+    (fov) => { S.pause(); S.setCamera({ fov: Number(fov) }); S.addCameraShot(); refreshAll(); });
+  lensLabel.append(lens.group);
   const guides = node('label', 'production-guide');
   const guideCheck = node('input'); guideCheck.type = 'checkbox'; guideCheck.checked = true; guideCheck.dataset.productionGuides = '';
   guides.append(guideCheck, node('span', '', productionLabel('guides')));
   const guideLayer = node('div', 'studio-frame-guides'); guideLayer.setAttribute('aria-hidden', 'true');
   const guide = node('div', 'studio-frame-guide'); guideLayer.append(guide);
   if (hosts.guides) hosts.guides.prepend(guideLayer); else root.prepend(guideLayer);
-  function setFormat(): void {
-    format = frame.value as ProductionFormat;
+  function setFormat(next: ProductionFormat): void {
+    format = next;
+    frame.set(next);
     guide.style.setProperty('--frame-aspect', String(productionAspect(format)));
   }
-  frame.addEventListener('change', () => { setFormat(); S.setProductionFormat(format); }); setFormat();
+  setFormat(format);
   guideCheck.addEventListener('change', () => { guideLayer.hidden = !guideCheck.checked; });
   cameras.append(rigs, lensLabel, guides);
   director.append(cameras);
@@ -463,11 +516,14 @@ export function mountStudioProductionPanel(
   (hosts.toggle ?? root).append(toggle);
 
   function refresh(): void {
-    if (format !== S.productionFormat) { frame.value = S.productionFormat; setFormat(); }
+    if (format !== S.productionFormat) setFormat(S.productionFormat);
     const recording = S.recordingStatus();
     const locked = staging || recording.active;
     toggle.disabled = recording.active;
-    for (const element of [stage, frame, tanks, play, restart, scrub, lens, photo]) element.disabled = locked;
+    for (const element of [stage, play, restart, scrub, photo]) element.disabled = locked;
+    tanks.setDisabled(locked);
+    frame.lock(locked);
+    lens.lock(locked);
     for (const element of cards.values()) element.disabled = locked;
     for (const element of takeCards.values()) element.disabled = locked || loadingTake;
     for (const element of rigs.querySelectorAll('button')) element.disabled = locked || S._internal.actors.length === 0;

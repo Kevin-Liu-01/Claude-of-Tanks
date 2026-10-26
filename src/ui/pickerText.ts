@@ -13,5 +13,6 @@ export function pickerText(): PickerText {
     empty: t('picker.empty'),
     clear: t('picker.clear'),
     more: t('picker.more'),
+    close: t('picker.close'),
   };
 }

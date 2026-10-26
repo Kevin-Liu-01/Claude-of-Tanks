@@ -1,6 +1,7 @@
 import '../../src/ui/tokens/tokens.css';
 // the shared kit, as the game's entry loads it (main.ts): the HUD's flags, silhouettes, chips and key caps
 import '../../src/ui/components/components.css';
+// (the kit picker's sheet, which main.ts loads for the game: the spectator bar's picker of allies)
 import '../../src/ui/components/pickers.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
@@ -231,7 +232,12 @@ function state(name) {
   if(name==='log'||name==='combined')bus.emit('ui:shotLog',{});
   if(name==='chat'||name==='combined'||name==='spectator'){
   }
-  if(name==='spectator')hud.stageSpectateBar({specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:7,index:2});
+  // ?state=spectator-pick: the bar's picker of allies open over it (spectatorSwitcher.ts mountSpectateAllies)
+  if(name==='spectator'||name==='spectator-pick'){
+    const allies=tanks.filter(t=>t.team==='player'&&!t.isPlayer).map(t=>t.id);
+    hud.stageSpectateBar({id:allies[1],specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:allies.length,index:2,allies});
+    if(name==='spectator-pick')requestAnimationFrame(()=>document.querySelector('.cot-spec .subject')?.click());
+  }
   // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying
   if(name.startsWith('watch-')){
     const view=name.slice(6), seat=tanks[3];

@@ -80,6 +80,9 @@ import {
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
 
+/** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
+const CJK_CAP = /[\u3400-\u9fff]/;
+
 /** A desktop preset's preview (public/media/settings-r1: one Verdant frame per preset, a 640x360 cut at 1:1 pixels). */
 const QUALITY_PREVIEWS: ReadonlySet<PresetName> = new Set<PresetName>(['low', 'medium', 'high', 'ultra']);
 const qualityPreview = (name: PresetName): string | null =>
@@ -429,6 +432,7 @@ body[data-cot-input='coarse'] .cot-set-info::after{inset:calc((16px - var(--cot-
 .cot-hints .hk{display:flex;gap:2px;}
 /* (its caps are the battle's key caps, the vehicle-controls row's: battleHudLayout.css .sk) */
 .cot-hints .hk .cot-c-kbd{min-width:20px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
+.cot-hints .hk .cot-c-kbd.cjk{font:500 var(--battle-fs-12)/1 var(--font-ui);}
 /* never over the scope, a flight (a drone, the gunship flies on other keys: the class is hud.ts's), Watch or a
    spectated battle (owner 2026-10-25) */
 body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch] .cot-hints,body.cot-spectating .cot-hints{display:none;}
@@ -446,6 +450,9 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* (the two ways out at one width, and Settings' cap the battle's key cap at the 11 px floor, as the controls strip's:
    the kit's cap scaled to 8 px at 1280 and down, gauntlet r2) */
 .cot-resume .rz-actions>.cot-c-btn{min-width:184px;justify-content:center;}
+/* (the battle's primary, the end report's AGAIN and the bars' GARAGE and DRIVE: 48 px, its bevel for the kit's lifted shadow;
+   56 px and flat here, the same action read as two buttons, gauntlet r13) */
+.cot-resume .rz-go{box-shadow:var(--btn-primary-bevel);}
 .cot-resume .rz-set .cot-c-kbd{min-width:22px;height:22px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
@@ -662,8 +669,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   resume.innerHTML =
     `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title"${datumAttr('paused')}>${t('settings.pauseTitle')}</h2>` +
     '<div class="rz-actions">' +
-    `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--56 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--48 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--48 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
     '</div></div>';
   const resumeSettings = requiredElement<HTMLButtonElement>(resume, '.rz-set');
   const resumeSettingsKey = requiredElement<HTMLElement>(resume, '.rz-set kbd');
@@ -1977,8 +1984,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- controls hint strip -----------------------------------------------------------
   function hintGroup(label: string, actionIds: readonly ActionId[], id: HintGroupId): string {
+    // (a cap in Chinese (左键) at the labels' size in the plain face: at the Latin caps' 11 px figures 键 smeared at 1x,
+    // gauntlet r12)
     const kbds = actionIds
-      .map((action) => `<kbd class="cot-c-kbd">${bindLabel(action)}</kbd>`)
+      .map((action) => {
+        const cap = bindLabel(action);
+        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}">${cap}</kbd>`;
+      })
       .join('');
     return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;
   }

@@ -55,7 +55,7 @@ const zhPairs = [
   [{ 'data-ui-sound': 'back' }, '关闭', 'back'],
   [{ class: 'cot-drawer-close', 'aria-label': '关闭车库面板' }, '', 'back'],
   [{ 'data-ui-sound': 'back' }, '返回', 'back'],
-  [{ class: 'cot-modal__button', 'data-action': 'return' }, '返回车库', 'back'],
+  [{ class: 'cot-c-btn cot-c-btn--secondary', 'data-action': 'return' }, '返回车库', 'back'],
   [{ class: 'cot-battle', 'data-ui-sound': 'deploy' }, '出战', 'confirm'],
   [{ 'data-action': 'ready' }, '准备', 'confirm'],
 ];

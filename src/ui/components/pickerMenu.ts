@@ -30,13 +30,18 @@ interface PickerMenuOptions {
   readonly filters?: readonly PickerFilter[];
   readonly memory?: string;
   readonly randomId?: string;
+  /** The room the menu stays in (CSS px, top to bottom), where the trigger's scrolling panel is not it: the Garage's
+   *  staging area keeps under the top bar. */
+  readonly bounds?: () => { readonly top: number; readonly bottom: number } | null;
 }
 
 export interface PickerMenu {
   setItems(items: readonly PickerItem[], value?: string | null): void;
   setValue(id: string | null): void;
   setDisabled(disabled: boolean): void;
-  open(): void;
+  /** Open it; `from` anchors it to another control for this opening (a phone's menu item, where the trigger is hidden), which
+   *  takes the focus back on close. */
+  open(from?: HTMLElement): void;
   close(): void;
   dispose(): void;
 }
@@ -48,8 +53,12 @@ const MENU_MAX_H = 420;
 /** Its distance from the trigger and from the window's edges. */
 const MENU_GAP = 4;
 const MENU_EDGE = 8;
-/** Below this window width a coarse pointer gets a bottom sheet. */
+/** Below this window width or height a coarse pointer gets a bottom sheet; a short window's sheet leaves this much of the
+ *  window above it. */
 const SHEET_BELOW = 520;
+const SHEET_TOP_SHORT = 48;
+/** A scrolling panel under this height is no bound: the menu takes the window's room. */
+const BOUNDS_MIN_H = 240;
 
 interface MenuPlace {
   readonly sheet: boolean;
@@ -64,24 +73,29 @@ interface MenuPlace {
 /**
  * Where the popover stands for a trigger at `anchor` in a `view` window: under the trigger, or above it when the room below
  * is short of what it needs and the room above is larger; as wide as the trigger within 280-480 px and inside the window;
- * at most min(60 % of the window, 420 px) tall and no taller than its side's room. A coarse pointer on a window under 520 px
- * wide gets a bottom sheet across it. `height` is the popover's natural height (its content at full room). Pure.
+ * at most min(60 % of the window, 420 px) tall and no taller than its side's room. The room is the window's, or `bounds`
+ * (the trigger's scrolling panel: a dossier, a readout column), so the menu never runs over a site header or out of its
+ * panel. A coarse pointer on a window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's
+ * natural height (its content at full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand
+ * two abreast. Pure.
  */
 export function placeMenu(
   anchor: { readonly left: number; readonly top: number; readonly bottom: number; readonly width: number },
   view: { readonly width: number; readonly height: number },
   height: number,
   coarse: boolean,
+  wide = false,
+  bounds: { readonly top: number; readonly bottom: number } = { top: 0, bottom: view.height },
 ): MenuPlace {
   const cap = Math.min(view.height * 0.6, MENU_MAX_H);
-  if (coarse && view.width < SHEET_BELOW) {
-    const maxHeight = Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
+  if (coarse && (view.width < SHEET_BELOW || view.height < SHEET_BELOW)) {
+    const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
   }
-  const width = Math.min(MENU_MAX_W, Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
+  const width = Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
   const left = Math.max(MENU_EDGE, Math.min(anchor.left, view.width - MENU_EDGE - width));
-  const below = view.height - anchor.bottom - MENU_GAP - MENU_EDGE;
-  const aboveRoom = anchor.top - MENU_GAP - MENU_EDGE;
+  const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
+  const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
   const want = Math.min(height, cap);
   const above = below < want && aboveRoom > below;
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
@@ -102,6 +116,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   let value = options.value;
   let picker: ReturnType<typeof createPicker> | null = null;
   let previewed: PickerItem | null = null;
+  /** This opening's anchor when it is not the trigger. */
+  let openFrom: HTMLElement | null = null;
 
   const trigger = doc.createElement('button');
   trigger.type = 'button';
@@ -117,10 +133,17 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   pop.id = popId;
   pop.className = 'cot-c-menu__pop';
   pop.setAttribute('popover', 'manual');
+  // a sheet's head: the set's name and a close (a popover's trigger names it; a sheet stands apart from its trigger)
+  const head = doc.createElement('div');
+  head.className = 'cot-c-menu__head';
+  head.innerHTML = `<span class="cot-c-menu__title">${esc(options.label)}</span>`
+    + `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost cot-c-menu__close" aria-label="${esc(options.text.close ?? options.label)}">`
+    + `${icon('close', { size: 18 })}</button>`;
   const pickerHost = doc.createElement('div');
   pickerHost.className = 'cot-c-menu__picker';
-  pop.append(pickerHost);
-  doc.body.append(pop);
+  pop.append(head, pickerHost);
+  // in the top layer either way; inside a modal dialog it must be the dialog's (the rest of the page is inert under one)
+  (host.closest('dialog') ?? doc.body).append(pop);
 
   const itemOf = (id: string | null): PickerItem | null => (id === null ? null : items.find((item) => item.id === id) ?? null);
   /** The trigger shows `item` (a preview) or the chosen one: its picture or glyph, its name, its first fact. */
@@ -140,18 +163,53 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
 
   const isOpen = (): boolean => trigger.getAttribute('aria-expanded') === 'true';
   const coarse = (): boolean => typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
+  /** The trigger's scrolling panel, the room the menu stays in (the window when there is none, or it is too short). */
+  const boundsOf = (from: HTMLElement): { top: number; bottom: number } => {
+    for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
+      if (!/auto|scroll/.test(win.getComputedStyle(node).overflowY)) continue;
+      const box = node.getBoundingClientRect();
+      const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
+      return bottom - top >= BOUNDS_MIN_H ? { top, bottom } : { top: 0, bottom: win.innerHeight };
+    }
+    return { top: 0, bottom: win.innerHeight };
+  };
   const place = (): void => {
     if (!isOpen()) return;
-    const rect = trigger.getBoundingClientRect();
+    const anchorEl = openFrom?.isConnected ? openFrom : trigger;
+    const rect = anchorEl.getBoundingClientRect();
     pop.style.maxHeight = '';
+    pop.classList.remove('is-sheet');
     const natural = pop.scrollHeight;
-    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse());
+    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards',
+      options.bounds?.() ?? boundsOf(anchorEl));
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
     pop.style.left = `${spot.left}px`;
-    pop.style.top = `${spot.top}px`;
+    // a sheet stands on the window's foot whatever its head adds to the measured height
+    pop.style.top = spot.sheet ? 'auto' : `${spot.top}px`;
+    pop.style.bottom = spot.sheet ? '0' : '';
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
+    if (!spot.sheet) trimToWholeRows(spot);
+  };
+  /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:
+   *  the staging cards' names and a rival row sliced). An upward menu keeps its foot on its trigger. */
+  const trimToWholeRows = (spot: MenuPlace): void => {
+    const grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return;
+    const style = win.getComputedStyle(grid);
+    const top = grid.getBoundingClientRect().top + grid.clientTop;
+    const bottom = top + grid.clientHeight - (parseFloat(style.paddingBottom) || 0);
+    let foot = -Infinity;
+    for (const cell of grid.children) {
+      const box = cell.getBoundingClientRect();
+      if (box.height > 0 && box.top >= top - 0.5 && box.bottom <= bottom + 0.5) foot = Math.max(foot, box.bottom);
+    }
+    const cut = Math.floor(bottom - foot);
+    if (!Number.isFinite(cut) || cut < 2) return;
+    const height = pop.getBoundingClientRect().height - cut;
+    pop.style.maxHeight = `${height}px`;
+    if (spot.above) pop.style.top = `${spot.top + cut}px`;
   };
   let placeFrame = 0;
   const placeSoon = (): void => {
@@ -196,12 +254,15 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     win.removeEventListener('scroll', placeSoon, true);
     win.removeEventListener('resize', placeSoon);
     doc.removeEventListener('pointerdown', onOutside, true);
-    if (restoreFocus) trigger.focus({ preventScroll: true });
+    const back = openFrom?.isConnected ? openFrom : trigger;
+    openFrom = null;
+    if (restoreFocus) back.focus({ preventScroll: true });
   }
-  function open(): void {
+  function open(from?: HTMLElement): void {
     if (isOpen() || trigger.disabled) return;
     openMenu?.close();
     openMenu = api;
+    openFrom = from && from !== trigger ? from : null;
     ensurePicker();
     trigger.setAttribute('aria-expanded', 'true');
     pop.showPopover();
@@ -214,7 +275,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   }
   const onOutside = (event: PointerEvent): void => {
     const target = event.target as Node | null;
-    if (target && (pop.contains(target) || trigger.contains(target))) return;
+    if (target && (pop.contains(target) || trigger.contains(target) || openFrom?.contains(target))) return;
     close();
   };
   const onTrigger = (): void => { if (isOpen()) close(true); else open(); };
@@ -224,6 +285,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     open();
   };
   // Esc restores and closes in one press (the picker's own Esc would only restore first), before any surface hears it
+  const onClose = (): void => close(true);
   const onPopKey = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -232,12 +294,13 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   };
   const onPopFocusOut = (event: FocusEvent): void => {
     const next = event.relatedTarget as Node | null;
-    if (next && (pop.contains(next) || next === trigger)) return;
+    if (next && (pop.contains(next) || next === trigger || next === openFrom)) return;
     // a Tab out, or the focus moving anywhere else: closed with nothing changed (a pointer press is onOutside's)
     if (next) close();
   };
   trigger.addEventListener('click', onTrigger);
   trigger.addEventListener('keydown', onTriggerKey);
+  head.querySelector('.cot-c-menu__close')?.addEventListener('click', onClose);
   pop.addEventListener('keydown', onPopKey, true);
   pop.addEventListener('focusout', onPopFocusOut);
   paint(null);
@@ -268,6 +331,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       trigger.removeEventListener('keydown', onTriggerKey);
       pop.removeEventListener('keydown', onPopKey, true);
       pop.removeEventListener('focusout', onPopFocusOut);
+      head.querySelector('.cot-c-menu__close')?.removeEventListener('click', onClose);
       picker?.dispose();
       picker = null;
       pop.remove();

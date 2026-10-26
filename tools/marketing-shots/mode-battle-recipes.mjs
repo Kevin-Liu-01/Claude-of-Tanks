@@ -1457,11 +1457,13 @@ Object.assign(RECIPES, {
       await ctx.sleep(800);
       await ctx.snap('equipment picker on slot 3', { opened });
       for (const cat of ['survival', 'recon', 'mobility']) {
-        const chip = await ctx.page.$(`.cot-eqpick .chip[data-cat="${cat}"]`);
+        // the picker's category chips narrow together: the last category's chip lets go first
+        for (const on of await ctx.page.$$('.cot-eqpick [data-chip][aria-pressed="true"]')) await on.click();
+        const chip = await ctx.page.$(`.cot-eqpick [data-chip="tag:${cat}"]`);
         if (!chip) continue;
         await chip.click();
         await ctx.sleep(500);
-        const tile = await ctx.page.$('.cot-eqpick .cot-eqtile:not(.remove)');
+        const tile = await ctx.page.$('.cot-eqpick .cot-c-picker__opt:not([data-id="empty"])');
         if (tile) { await tile.hover(); await ctx.sleep(900); }
         await ctx.snap(`equipment picker ${cat} with a tile hovered`);
       }
@@ -1863,8 +1865,8 @@ Object.assign(RECIPES, {
         await A.page.waitForFunction(ready, { timeout: 240000, polling: 250 });
         await A.page.click('.cot-multiplayer-entry');
         await A.page.waitForFunction(() => document.querySelector('.cot-play')?.classList.contains('show'), { timeout: 30000 });
-        await A.page.click('.cot-play .modes [data-mode="lan"]');
-        await A.page.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10000 });
+        await A.page.click('.cot-play .modes [data-value="lan"]');
+        await A.page.waitForFunction(() => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', { timeout: 10000 });
         await A.page.evaluate(() => {
           const size = document.querySelector('.cot-play [data-field="create-size"]');
           if (size) size.value = '1';
