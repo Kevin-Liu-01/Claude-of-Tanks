@@ -15,7 +15,7 @@
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
-//     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>] [--profile-solo]
+//     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>] [--profile-solo] [--solo-eval=<expr>]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -63,6 +63,9 @@ const profileLeave = argv.includes('--profile-leave');
 // restore out of the other's round trips
 // --profile-solo: with --solo, a CPU profile of the host page's solo battle entry, each long task (300 ms or more) attributed
 const profileSolo = argv.includes('--profile-solo');
+// --solo-eval=<expression>: with --solo, evaluated in the host page once its solo battle has settled (its loading trace,
+// window.__BATTLE_LOAD, say), kept on the solo stage's sample (soloEval) and printed
+const soloEval = option('solo-eval', '');
 const leaveFirst = option('leave-first', 'B') === 'A' ? 'A' : 'B';
 const leaveGapMs = Number(option('leave-gap-ms', '0')) || 0;
 const profiling = { armed: false, live: [], workers: [] };
@@ -310,9 +313,16 @@ try {
       soloEntryProfile = attribute(profile, spans, profile.startTime / 1000 - soloEntryFrom);
       for (const task of soloEntryProfile) console.log(`solo entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 30).join('\n    ')}`);
     }
+    const soloEvaluated = soloEval ? await pageA.evaluate((expression) => {
+      try { return { value: JSON.parse(JSON.stringify((0, eval)(expression) ?? null)) }; } catch (error) { return { error: String(error?.message || error) }; }
+    }, soloEval).catch((error) => ({ error: String(error?.message || error).split('\n')[0] })) : null;
     await stage('solo', at);
     const soloSample = samples.at(-1);
     if (soloEntryProfile) soloSample.entryProfile = soloEntryProfile;
+    if (soloEvaluated) {
+      soloSample.soloEval = { expression: soloEval, value: soloEvaluated };
+      console.log(`solo eval: ${JSON.stringify(soloEvaluated).slice(0, 4000)}`);
+    }
     let soloCdp = null, soloFrom = 0;
     if (profileLeave) {
       soloCdp = await pageA.createCDPSession();
