@@ -1975,11 +1975,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const tick = el('i', 'mj');
       tick.style.left = pct(at);
       marks.push(tick);
-      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; the scene's end reads
-      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off); a label
-      // too near the end's leaves its tick bare (the s15 critic: "0:10" over "0:12" on a phone)
+      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; every label stands to
+      // the left of its tick, the scene's end included (it reads the length: the s13 critic read the bare end tick as a
+      // label cut off; the s16 critic read an end label flipped to the other side as inconsistent); a label closer to
+      // the end's than a label's width leaves its tick bare (the s15 critic: "0:10" over "0:12" on a phone)
       const end = at >= S.durationMs - step * 400;
-      const crowdsEnd = !end && rulerWidth > 0 && ((S.durationMs - at) / Math.max(1, S.durationMs)) * rulerWidth < RULER_LABEL_PX * 1.5;
+      const crowdsEnd = !end && rulerWidth > 0 && ((S.durationMs - at) / Math.max(1, S.durationMs)) * rulerWidth < RULER_LABEL_PX;
       if (k > 0 && !crowdsEnd && (!end || at >= S.durationMs - 1)) {
         const label = el('b', end ? 'end' : null, rulerClock(k * step));
         label.style.left = pct(at);

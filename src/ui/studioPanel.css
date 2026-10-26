@@ -400,6 +400,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio .production-rigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .cot-studio .production-guide{display:none}
 .cot-studio .production-exports{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+/* an empty result list and an empty status take no row, so the search sits a section's gap over the shot list (the s16
+   critic: 50 px of dead space there against 14 px between the section's own rows) */
+.cot-studio .production-fleet>:is(.production-library,.production-hint):empty{display:none}
 .cot-studio .production-fleet-search{display:grid;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 .cot-studio .production-fleet-search input{width:100%}
 /* ------------------------------------------------------------------------------------ the shelf (09-studio .shelf) */
@@ -451,8 +454,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-tl .tk--ruler .tm{position:absolute;top:0;bottom:0;left:7.5px;right:7.5px;pointer-events:none}
 .st-tl .tk--ruler .tm i{position:absolute;bottom:0;width:1px;height:4px;background:var(--line-2)}
 .st-tl .tk--ruler .tm i.mj{height:7px;background:var(--line-3)}
-.st-tl .tk--ruler .tm b{position:absolute;top:3px;padding-left:4px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
-.st-tl .tk--ruler .tm b.end{padding:0 4px 0 0;translate:-100% 0}
+.st-tl .tk--ruler .tm b{position:absolute;top:3px;padding-right:4px;translate:-100% 0;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
 .st-tl .tk--ruler .scrub{position:relative}
 .st-tl .tk--ruler .scrub::-webkit-slider-runnable-track{background:transparent}
 .st-tl .tk--ruler .scrub::-moz-range-track,.st-tl .tk--ruler .scrub::-moz-range-progress{background:transparent}
@@ -542,7 +544,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 /* a finger's targets: the info marks (the field frames' tiles among them) and the outliner's add controls grow, and an
    add control shows its plate (a bare 11 px plus was the whole target on a landscape phone) */
 @media (pointer:coarse){
-  :is(.cot-studio,.cot-studio-archive) .cot-info-trigger{width:28px;height:28px;min-width:28px;min-height:28px}
+  :is(.cot-studio,.cot-studio-archive) .cot-info-trigger{width:32px;height:32px;min-width:32px;min-height:32px}
+  /* its hit area reaches 44 px around the 32 px mark (the s16 critic: 26 px on a phone's frames) */
+  :is(.cot-studio,.cot-studio-archive) .cot-info-trigger::after{inset:-6px}
   .st-out .add{width:36px;height:36px;box-shadow:var(--ring-1)}
 }
 .cot-studio-archive{--font-display:var(--font-ui);width:min(94vw,1560px);max-width:none;padding:0;border:0;border-radius:var(--r2);background:var(--surface-page);
@@ -559,7 +563,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
 /* each frame's name stands on a plate, legible over sand and sky */
 .cot-studio-archive .media-archive-card-copy strong{padding:2px var(--s1);border-radius:var(--r1);background:var(--hud-plate)}
-.cot-studio-archive .media-archive-grid{gap:var(--s3);padding-inline-end:var(--s6);
+/* (as specific as the archive's own rail rule plus one: mediaArchive.css loads after this sheet, and its 1 px gap ran the
+   frames together into one strip: the s16 critic) */
+.cot-studio-archive .archiveBody .media-archive-grid{gap:var(--s3);padding-inline-end:var(--s6);
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent)}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
