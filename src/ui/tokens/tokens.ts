@@ -342,6 +342,7 @@ export const TOKENS = {
   'battle-control-label-halo': '0 1px 3px #000,0 0 5px #000',
   'battle-track-control': '.015em',
   'battle-track-status': '.06em',
+  'battle-track-callsign': '.025em',
   'battle-chip-danger': 'inset 3px 0 0 #ff5a4e,inset 0 0 0 1px oklch(from #ff5a4e l c h / .35),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
   'battle-chip-warn': 'inset 3px 0 0 #ffd15c,inset 0 0 0 1px oklch(from #ffd15c l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
   'battle-chip-ok': 'inset 3px 0 0 #5bd69b,inset 0 0 0 1px oklch(from #5bd69b l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',

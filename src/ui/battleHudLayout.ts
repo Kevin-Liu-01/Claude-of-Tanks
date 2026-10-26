@@ -200,6 +200,9 @@ const PARKED_CHIP_W = 106;
 /** A touch target's least side (battle-hud-layout.browser.mjs) and the systems row's gap (battleHudLayout.css). */
 const TOUCH_TARGET = 44;
 const SYSTEMS_GAP = 3;
+// the systems top slot's gap under the touch chrome and its rows' gap (portrait phones; the column's 7 px rhythm)
+const SLOT_GAP = 7;
+const SLOT_ROW_GAP = 4;
 /** The kill ribbon's width (hudKillRibbon.ts), where its place holds it. */
 const RIBBON_W = 520;
 /** Under this width the ribbon drops its cause chip and its streak's word; under the least it does not show. */
@@ -996,17 +999,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // slot's width shared: battleHudLayout.css data-systems-slot), wherever that slot is higher than its own place (with
     // an objective panel the chrome drops under it, and the slot is as high as the row already was: compact there, it
     // no longer runs off the screen). Its buttons keep the 44 px touch target, as many a row as the slot's width holds,
-    // the rows balanced (a five-control kit at 320 wide takes two), 4 px under the chrome (at 8 px a 44 px row left the
-    // scope's notices no clear band under it at 360x640).
+    // the rows balanced (a five-control kit at 320 wide takes two), 7 px under the chrome (at 8 px a 44 px row left the
+    // scope's notices no clear band under it at 360x640). The map shares its top edge (battleHudLayout.css drops it to the
+    // slot's while the slot holds the row) and the slot keeps the map's when the chrome stands down (a scope): hung from the
+    // chrome 4 px under it, the row stood 17.5 px off the map's top and foot, and 12.5 px over the map in a scope,
+    // gauntlet r12 at 320x568.
     let systemsSlot = '';
     let systemsPerRow = 0;
     if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
-      const slotTop = Math.max(touchChrome?.bottom ?? 0, top) + 4;
+      const slotTop = Math.max(touchChrome?.bottom ?? 0, top, map.top - SLOT_GAP) + SLOT_GAP;
       if (slotTop <= systemsTop) {
         systemsSlot = 'top';
         systemsTop = slotTop;
         systemsLeft = map.right + 8;
-        systemsWidth = dockWidth = Math.max(52, width - systemsLeft - 12);
+        // (its right edge on the column under it, the ammunition's and the consumables' 14 px: at 12 it stood 2 px past
+        // them at 320x568, gauntlet r12)
+        systemsWidth = dockWidth = Math.max(52, width - systemsLeft - 14);
       }
     }
     let systemsCount = 0;
@@ -1021,7 +1029,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const inRow = systemsCount - systemsBeside;
       const rows = Math.max(1, Math.ceil(inRow / fits));
       systemsPerRow = Math.max(1, Math.ceil(inRow / rows));
-      systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SYSTEMS_GAP;
+      // (rows 4 px apart, two of them the map's height: 3 px apart, they ended 1 px over its foot)
+      systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SLOT_ROW_GAP;
     };
     // (a row that pages no longer, its paging marks lifted before it is counted)
     const more = document.querySelector<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
@@ -1037,6 +1046,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if ((document.body.dataset.systemsSlot ?? '') !== systemsSlot) {
       if (systemsSlot) document.body.dataset.systemsSlot = systemsSlot;
       else delete document.body.dataset.systemsSlot;
+      // (the map moves with the slot: what this pass placed off its old edges is placed again off its new ones)
+      schedule();
     }
     if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {

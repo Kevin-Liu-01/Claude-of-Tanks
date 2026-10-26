@@ -11,6 +11,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']){--hud-message-width:min(400px,calc(50vw - 100px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
+/* (the hull plate on the map's 16 px gutter, its side as its foot: at 12 px it stood 4 px nearer its edge than the map stood
+   to its own, gauntlet r12) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-dp{left:16px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
   max-width:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));max-height:min(calc(32vh * var(--mm-k,1)),var(--hud-map-max,100vw));
 }
@@ -93,8 +96,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-
 
 /* Tablet mouse layouts cannot fit health, speed, six actions and a map on
    one row. Keep the ammo tray at floor level and lift the two instruments. */
+/* (on the map's 16 px gutters, side and foot: at 12 px the rack's foot stood 4 px under the map's beside it, gauntlet r12
+   at 900x700) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-shells{
-  left:12px;right:auto;bottom:12px;transform:none;gap:var(--s1);
+  left:16px;right:auto;bottom:16px;transform:none;gap:var(--s1);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) :is(.cot-shell,.cot-con){width:48px;height:52px}
 /* (a shell's slot 54 px wide, so "APFSDS" keeps clear of both borders, gauntlet r4 at 900x700) */
@@ -357,10 +362,16 @@ body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:c
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:var(--battle-fs-11);letter-spacing:0}
 /* (a Latin callsign at the Latin 11 px in Chinese, whose 13 px lift is for Chinese labels: zh callsigns ran about 15 %
    larger and were cut sooner than en's, gauntlet r8; hud.ts marks them .lat, as the battle load and the end report do) */
-:lang(zh-CN) body[data-cot-battle-layout] .cot-kill-lane .cot-kf .lat{font-size:var(--battle-fs-fig-11)}
+/* (below the wide mouse layouts' own name size, --battle-fs-13, which zh does not lift: outranking it, the zh names ran
+   17 % under en's at 1920, gauntlet r12) */
+:lang(zh-CN) .cot-kf .lat{font-size:var(--battle-fs-fig-11)}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .lat{letter-spacing:var(--battle-track-callsign)}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 8px))}
+/* (level with the systems slot right of it, 7 px under the touch chrome's 48 px, the slot's own gap (battleHudLayout.ts
+   SLOT_GAP): under the score at 108 px it stood 17.5 px over the slot's rows, gauntlet r12 at 320x568) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'][data-systems-slot='top']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 63px))}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
 
@@ -504,12 +515,14 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
-  /* (the column 10 px lower than the systems slot's two rows under an objective's chrome: at 215 the second row ran 2 px
-     onto it, and the slot fell to three rows of two over the band the notices take, the layout receipt at 320x568) */
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:225px;bottom:auto!important}
+  /* (the column 7 px under the systems slot's two rows, the map's foot: at 215 the second row ran 2 px onto it, and the
+     slot fell to three rows of two over the band the notices take, the layout receipt at 320x568) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:228px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%);--shell-k:.6}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 98px)}
+  /* (the consumables 7 px under the ammunition, 7 px apart and 7 px over FIRE, the column's one rhythm from the chrome down:
+     hung from the floor, the first sat on the ammunition's foot and the rest 9 px apart, gauntlet r12) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:287px;bottom:auto;gap:7px}
 }
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
@@ -692,7 +705,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
    row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
    touch target), each a tile as everywhere on touch */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap;row-gap:4px}
 /* (a short last row keeps the rows' tile width, never stretching to fill: its two tiles ran half as wide again as the
    three over them at 320x568, gauntlet r8) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:0 0 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}

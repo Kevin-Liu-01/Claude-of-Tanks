@@ -7227,9 +7227,15 @@ export function initHud(bus: EventBus): HudRuntime {
     const killerEl = requireElement<HTMLElement>(item, '.k'), victimEl = requireElement<HTMLElement>(item, '.v');
     killerEl.textContent = killer;
     victimEl.textContent = victim;
-    // (a callsign in Latin type keeps the Latin size in Chinese: battleHudLayout.css .lat)
-    killerEl.classList.toggle('lat', LATIN_CALLSIGN.test(killer));
-    victimEl.classList.toggle('lat', LATIN_CALLSIGN.test(victim));
+    // (a callsign in Latin type keeps the Latin size and tracking in Chinese: battleHudLayout.css .lat; its run marked Latin,
+    // which zh-CN's letter-spacing 0 does not reach: tracked 0 there, the same name ran 7 px shorter and was cut later than
+    // in en-US, gauntlet r12)
+    for (const [el, name] of [[killerEl, killer], [victimEl, victim]] as const) {
+      const latin = LATIN_CALLSIGN.test(name);
+      el.classList.toggle('lat', latin);
+      if (latin) el.lang = 'und-Latn';
+      else el.removeAttribute('lang');
+    }
     lane.prepend(item);
     while (lane.children.length > MAX_BATTLE_NOTIFICATIONS) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
