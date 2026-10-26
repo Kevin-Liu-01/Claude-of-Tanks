@@ -1,0 +1,373 @@
+{
+  "libraryId": "claude-of-tanks-maps-r1",
+  "schemaVersion": 1,
+  "author": "Kevin B. Liu",
+  "copyright": "Copyright © 2026 Kevin B. Liu",
+  "description": "The battlefield picker's card stills: each battlefield's signature at its default hour, filmed by the deterministic Scene Studio on release 251 (media lane, 2026-10-26).",
+  "maps": [
+    {
+      "id": "verdant",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/verdant-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42836
+          },
+          {
+            "path": "/media/maps-r1/verdant-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143754
+          },
+          {
+            "path": "/media/maps-r1/verdant-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 300620
+          }
+        ]
+      }
+    },
+    {
+      "id": "coastal",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/coastal-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42438
+          },
+          {
+            "path": "/media/maps-r1/coastal-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146652
+          },
+          {
+            "path": "/media/maps-r1/coastal-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 302730
+          }
+        ]
+      }
+    },
+    {
+      "id": "autumn",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/autumn-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43658
+          },
+          {
+            "path": "/media/maps-r1/autumn-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 141784
+          },
+          {
+            "path": "/media/maps-r1/autumn-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 293142
+          }
+        ]
+      }
+    },
+    {
+      "id": "frontier",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/frontier-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40948
+          },
+          {
+            "path": "/media/maps-r1/frontier-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 137426
+          },
+          {
+            "path": "/media/maps-r1/frontier-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 292674
+          }
+        ]
+      }
+    },
+    {
+      "id": "delta",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/delta-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 33684
+          },
+          {
+            "path": "/media/maps-r1/delta-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 111816
+          },
+          {
+            "path": "/media/maps-r1/delta-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 280960
+          }
+        ]
+      }
+    },
+    {
+      "id": "badlands",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/badlands-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 25054
+          },
+          {
+            "path": "/media/maps-r1/badlands-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 88630
+          },
+          {
+            "path": "/media/maps-r1/badlands-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 224448
+          }
+        ]
+      }
+    },
+    {
+      "id": "monsoon",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/monsoon-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 45276
+          },
+          {
+            "path": "/media/maps-r1/monsoon-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 151630
+          },
+          {
+            "path": "/media/maps-r1/monsoon-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 314948
+          }
+        ]
+      }
+    },
+    {
+      "id": "foundry",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/foundry-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 21720
+          },
+          {
+            "path": "/media/maps-r1/foundry-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 67286
+          },
+          {
+            "path": "/media/maps-r1/foundry-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 162260
+          }
+        ]
+      }
+    },
+    {
+      "id": "blackglass",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/blackglass-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41762
+          },
+          {
+            "path": "/media/maps-r1/blackglass-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 137614
+          },
+          {
+            "path": "/media/maps-r1/blackglass-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 320416
+          }
+        ]
+      }
+    },
+    {
+      "id": "copper_mesa",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/copper_mesa-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 45452
+          },
+          {
+            "path": "/media/maps-r1/copper_mesa-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 148866
+          },
+          {
+            "path": "/media/maps-r1/copper_mesa-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 325810
+          }
+        ]
+      }
+    },
+    {
+      "id": "airfield",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/airfield-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 38942
+          },
+          {
+            "path": "/media/maps-r1/airfield-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 132348
+          },
+          {
+            "path": "/media/maps-r1/airfield-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 321330
+          }
+        ]
+      }
+    },
+    {
+      "id": "longleaf",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/longleaf-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42188
+          },
+          {
+            "path": "/media/maps-r1/longleaf-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146116
+          },
+          {
+            "path": "/media/maps-r1/longleaf-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 301612
+          }
+        ]
+      }
+    },
+    {
+      "id": "mars",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/mars-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 44264
+          },
+          {
+            "path": "/media/maps-r1/mars-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 140202
+          },
+          {
+            "path": "/media/maps-r1/mars-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 317368
+          }
+        ]
+      }
+    },
+    {
+      "id": "cliffbridge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/cliffbridge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 44518
+          },
+          {
+            "path": "/media/maps-r1/cliffbridge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 149204
+          },
+          {
+            "path": "/media/maps-r1/cliffbridge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 309308
+          }
+        ]
+      }
+    }
+  ]
+}
