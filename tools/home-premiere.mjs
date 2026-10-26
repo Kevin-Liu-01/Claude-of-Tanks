@@ -125,7 +125,7 @@ function heroBlock() {
     + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
     + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div>`
-    + `<ul class="hero__stats">`
+    + `<ul class="hero__stats" data-datum="fleet-counts">`
     + `<li>${iconMarkup('gallery', 18)}<b>{{COT_PRODUCTION_VEHICLES}}</b>${t('home.stats.tanks')}</li>`
     + `<li>${iconMarkup('map', 18)}<b>{{COT_BATTLEFIELDS}}</b>${t('home.stats.battlefields')}</li>`
     + `<li>${iconMarkup('modeStandard', 18)}<b>{{COT_BATTLE_MODES}}</b>${t('home.stats.modes')}</li>`

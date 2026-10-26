@@ -22,7 +22,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
   top:var(--hud-right-top);right:var(--hud-report-right,12px);bottom:auto;width:var(--hud-report-width,var(--hud-side-width));
-  max-height:var(--hud-right-height);min-height:0;overflow:auto;overscroll-behavior:contain;
+  max-height:min(var(--hud-right-height),var(--si-log-fit,100vh));min-height:0;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
@@ -194,6 +194,9 @@ body[data-cot-battle-layout][data-systems-fill='slots']:not(.cot-touch-layout) .
    (the smoke's charges, a wait's seconds) where a slot counts its rounds and the glyph at the centre, 40 px tall: a 32 px
    underlined strip of tabs read as the rack's header, not its abilities */
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:20px;--hud-tile-h:40px;--hud-tile-radius:var(--r1)}
+/* (a stacked tray's 54 px tiles: the glyph at 16 px clears the corner cap, at 20 the Q, C, G and N caps met their glyphs,
+   gauntlet r7) */
+body[data-cot-battle-layout][data-hud-tray='stacked']:not(.cot-touch-layout) .cot-vehicle-controls{--hud-tile-icon:16px}
 body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
   grid-template-rows:minmax(0,1fr);column-gap:0;padding:3px;border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);
   background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
