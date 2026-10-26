@@ -5,7 +5,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
  "generatedBy": "node tools/brand-marks.mjs (src/ui/brandMark.ts, src/ui/brandMarkMotion.ts)",
- "count": 65,
+ "count": 68,
  "items": [
   {
    "file": "mark.svg",
@@ -84,16 +84,24 @@
    "use": "horizontal lockup, one colour"
   },
   {
-   "file": "lockup-stacked.svg",
-   "use": "stacked lockup on dark"
+   "file": "lockup-tall.svg",
+   "use": "the mark over the one-line wordmark, on dark"
   },
   {
-   "file": "lockup-stacked-paper.svg",
-   "use": "stacked lockup on paper"
+   "file": "lockup-tall-paper.svg",
+   "use": "the mark over the one-line wordmark, on paper"
+  },
+  {
+   "file": "logo-full.svg",
+   "use": "Garage sign source (the horizontal lockup)"
+  },
+  {
+   "file": "logo-full-metal.svg",
+   "use": "Garage sign source in brushed metal"
   },
   {
    "file": "title-card.svg",
-   "use": "the boot card (living mark over the stacked wordmark)"
+   "use": "the living mark over the one-line wordmark (brand motion)"
   },
   {
    "file": "og-logo.svg",
@@ -292,6 +300,11 @@
   {
    "file": "og-logo.png",
    "from": "og-logo.svg",
+   "size": "1200x630"
+  },
+  {
+   "file": "og-logo-transparent.png",
+   "from": "lockup-tall.svg",
    "size": "1200x630"
   },
   {

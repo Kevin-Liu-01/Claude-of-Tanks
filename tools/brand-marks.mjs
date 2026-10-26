@@ -4,10 +4,12 @@
 // src/ui/brandMarkMotion.ts). Copyright © 2026 Kevin B. Liu.
 //   node tools/brand-marks.mjs          write public/brand/* (SVG masters, PNG and ICO rasters, manifest.json)
 //   node tools/brand-marks.mjs --svg    the SVG masters only (no browser)
-// The wordmark comes from tools/brand/wordmark.py's outputs (src/ui/brandWordmark.ts and public/brand/wordmark-stacked.svg).
+// The wordmark comes from tools/brand/wordmark.py's outputs (src/ui/brandWordmark.ts). The name is one line everywhere
+// (owner, 2026-10-26: "for all words of 'claude of tanks', it sshould be horizontaol, not the words stacked"): a tall
+// space puts the mark over the one-line wordmark, a narrow one scales the lockup down.
 // Rasters draw each master onto a canvas in one headless browser (3 GB heap), so only pure-path SVGs are size-faithful;
 // the marks are pure paths by design. Run node tools/sync-brand-marks.mjs after this for the boot card.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -24,9 +26,6 @@ const PAPER = '#f6f3ec', TUNGSTEN = '#f0a030', GRAPHITE = '#11151a', GROUND = '#
 const [tx, ty, tw, th] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
 const [bx, by, bw, bh] = BRAND_BUST_VIEWBOX.split(' ').map(Number);
 const [wx, wy, ww, wh] = WORDMARK_VIEWBOX.split(' ').map(Number);
-const stackedSource = readFileSync(join(OUT, 'wordmark-stacked.svg'), 'utf8');
-const [sx, sy, sw, sh] = /viewBox="([^"]+)"/.exec(stackedSource)[1].split(' ').map(Number);
-const [stackedWords, stackedOf] = [...stackedSource.matchAll(/<path fill="[^"]+" d="([^"]+)"\/>/g)].map((match) => match[1]);
 
 const svg = (viewBox, body, label = 'Claude of Tanks') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" role="img" `
   + `aria-label="${label}"><!-- The Claude of Tanks mark (tools/brand-marks.mjs from src/ui/brandMark.ts). ${NOTICE} -->${body}</svg>\n`;
@@ -38,7 +37,6 @@ const tank = (ink, accent, keyline = false, id = 'mk') => brandTankBody({ ink, a
 const bust = (ink, accent, keyline = false, id = 'bk') => brandBustBody({ ink, accent, keyline, id });
 const TANK = [tx, ty, tw, th], BUST = [bx, by, bw, bh];
 const words = (ink, accent) => `<path fill="${ink}" d="${WORDMARK_WORDS}"/><path fill="${accent}" d="${WORDMARK_OF}"/>`;
-const stacked = (ink, accent) => `<path fill="${ink}" d="${stackedWords}"/><path fill="${accent}" d="${stackedOf}"/>`;
 
 /** The horizontal lockup: the tank 3.8 cap heights tall, a gap of one cap, the wordmark centred on the tank. */
 function lockup(ink, accent) {
@@ -48,12 +46,22 @@ function lockup(ink, accent) {
   return svg(`${x0.toFixed(0)} ${top.toFixed(0)} ${(ww + width + gap).toFixed(0)} ${height.toFixed(0)}`,
     place(tank(ink, accent), TANK, x0, top, width) + words(ink, accent));
 }
-/** The stacked lockup: the tank over the stacked wordmark, as wide as the words' block. */
-function lockupStacked(ink, accent, body = null) {
-  const width = sw * 0.92, height = width * th / tw, gap = sh * 0.1;
-  const x = sx + (sw - width) / 2, top = sy - height - gap;
-  return svg(`${sx} ${top.toFixed(0)} ${sw} ${(sh + height + gap).toFixed(0)}`,
-    (body ?? place(tank(ink, accent), TANK, x, top, width)) + stacked(ink, accent));
+/** The tall lockup, for a square or tall space: the tank over the one-line wordmark, 42 % of its width, half a cap
+ *  between them. `body` replaces the still tank (the title card's living one) in the same box. */
+const TALL = (() => {
+  const width = ww * 0.42, height = width * th / tw, gap = wh * 0.55;
+  return { x: wx + (ww - width) / 2, top: wy - height - gap, width, height };
+})();
+function lockupTall(ink, accent, body = null) {
+  return svg(`${wx} ${TALL.top.toFixed(0)} ${ww} ${(wy + wh - TALL.top).toFixed(0)}`,
+    (body ?? place(tank(ink, accent), TANK, TALL.x, TALL.top, TALL.width)) + words(ink, accent));
+}
+/** The in-world sign's lockup in brushed metal (the Garage display atlas's brand.wordmark.metal): the horizontal lockup
+ *  with its ink a steel ramp. */
+function lockupMetal() {
+  const ramp = '<defs><linearGradient id="cot-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/>'
+    + '<stop offset=".48" stop-color="#b9c0c8"/><stop offset=".52" stop-color="#9aa3ad"/><stop offset="1" stop-color="#dfe3e8"/></linearGradient></defs>';
+  return lockup('url(#cot-metal)', TUNGSTEN_600).replace(/(<!--[^>]*-->)/, `$1${ramp}`);
 }
 /** A square tile: `ground` behind, the full mark `share` of the side wide, centred on its box. A `crew` above 1 draws the
  *  commander and the helmet that much larger about the cupola's top, as the tab's pixel masters do, where the mark is
@@ -172,15 +180,16 @@ const masters = {
   'lockup.svg': lockup(PAPER, TUNGSTEN),
   'lockup-paper.svg': lockup(GRAPHITE, TUNGSTEN_600),
   'lockup-mono.svg': lockup(PAPER, PAPER).replace(tank(PAPER, PAPER), tank(PAPER, PAPER, true, 'lm')),
-  'lockup-stacked.svg': lockupStacked(PAPER, TUNGSTEN),
-  'lockup-stacked-paper.svg': lockupStacked(GRAPHITE, TUNGSTEN_600),
+  'lockup-tall.svg': lockupTall(PAPER, TUNGSTEN),
+  'lockup-tall-paper.svg': lockupTall(GRAPHITE, TUNGSTEN_600),
+  // the Garage display atlas's sign sources (tools/generate-garage-display-atlas.mjs), the lockup itself since 10-26
+  'logo-full.svg': lockup(PAPER, TUNGSTEN),
+  'logo-full-metal.svg': lockupMetal(),
 };
-// the boot title card: the living tank over the stacked wordmark (tools/sync-brand-marks.mjs inlines it into index.html)
+// the title card: the living tank over the one-line wordmark (the brand motion's loop, tools/brand-motion-export.mjs)
 {
-  const width = sw * 0.92, height = width * th / tw, gap = sh * 0.1;
-  const x = sx + (sw - width) / 2, top = sy - height - gap;
   const motion = brandMarkMotionSVG(106, PAPER, TUNGSTEN).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
-  masters['title-card.svg'] = lockupStacked(PAPER, TUNGSTEN, `<g class="cot-mark--motion">${place(motion, TANK, x, top, width)}</g>`);
+  masters['title-card.svg'] = lockupTall(PAPER, TUNGSTEN, `<g class="cot-mark--motion">${place(motion, TANK, TALL.x, TALL.top, TALL.width)}</g>`);
 }
 mkdirSync(OUT, { recursive: true });
 for (const [name, text] of Object.entries(masters)) writeFileSync(join(OUT, name), text);
@@ -228,13 +237,19 @@ try {
     writeFileSync(join(OUT, file), bytes);
     png.set(file, bytes);
   }
-  // the OG brand card (1200x630): the stacked lockup on graphite, a tungsten glow from the foot
+  // the OG brand card (1200x630): the tall lockup on graphite, a tungsten glow from the foot; and the lockup alone on a
+  // clear card (og-logo-transparent.png, which the featured encodes lay over their stills)
+  const [, , lw, lh] = /viewBox="([^"]+)"/.exec(masters['lockup-tall.svg'])[1].split(' ').map(Number);
+  const cardW = 820, cardH = Math.round(cardW * lh / lw);
+  const lockupImage = `<image href="data:image/svg+xml;base64,${Buffer.from(masters['lockup-tall.svg']).toString('base64')}" `
+    + `x="${(1200 - cardW) / 2}" y="${Math.round((630 - cardH) / 2)}" width="${cardW}" height="${cardH}"/>`;
   const card = svg('0 0 1200 630', '<defs><radialGradient id="g" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#f0a030" stop-opacity=".18"/>'
     + `<stop offset="1" stop-color="#f0a030" stop-opacity="0"/></radialGradient></defs><rect width="1200" height="630" fill="${GROUND}"/>`
-    + '<rect width="1200" height="630" fill="url(#g)"/>'
-    + `<image href="data:image/svg+xml;base64,${Buffer.from(masters['lockup-stacked.svg']).toString('base64')}" x="330" y="96" width="540" height="438"/>`);
+    + '<rect width="1200" height="630" fill="url(#g)"/>' + lockupImage);
   writeFileSync(join(OUT, 'og-logo.svg'), card);
   writeFileSync(join(OUT, 'og-logo.png'), Buffer.from(await draw(`data:image/svg+xml;base64,${Buffer.from(card).toString('base64')}`, 1200, 630), 'base64'));
+  const clear = svg('0 0 1200 630', lockupImage);
+  writeFileSync(join(OUT, 'og-logo-transparent.png'), Buffer.from(await draw(`data:image/svg+xml;base64,${Buffer.from(clear).toString('base64')}`, 1200, 630), 'base64'));
 } finally {
   await browser.close();
 }
@@ -269,12 +284,15 @@ const purpose = {
   'favicon-mark.svg': 'the mark on the tab tile (48 and 192 px)',
   'app-icon.svg': 'app icon master (full bleed)', 'maskable.svg': 'maskable and tile master (80 % safe zone)',
   'social-avatar.svg': 'X / GitHub avatar', 'lockup.svg': 'horizontal lockup on dark', 'lockup-paper.svg': 'horizontal lockup on paper',
-  'lockup-mono.svg': 'horizontal lockup, one colour', 'lockup-stacked.svg': 'stacked lockup on dark', 'lockup-stacked-paper.svg': 'stacked lockup on paper',
-  'title-card.svg': 'the boot card (living mark over the stacked wordmark)', 'og-logo.svg': 'OG brand card',
+  'lockup-mono.svg': 'horizontal lockup, one colour', 'lockup-tall.svg': 'the mark over the one-line wordmark, on dark',
+  'lockup-tall-paper.svg': 'the mark over the one-line wordmark, on paper', 'logo-full.svg': 'Garage sign source (the horizontal lockup)',
+  'logo-full-metal.svg': 'Garage sign source in brushed metal', 'title-card.svg': 'the living mark over the one-line wordmark (brand motion)',
+  'og-logo.svg': 'OG brand card',
 };
 const items = [...Object.keys(masters), 'og-logo.svg'].map((file) => ({ file, use: purpose[file] ?? '' }))
   .concat(rasters.map(([file, master, width, height]) => ({ file: file.replace(/^\.\.\//, '../'), from: master, size: `${width}x${height ?? width}` })))
-  .concat([{ file: 'og-logo.png', from: 'og-logo.svg', size: '1200x630' }, { file: 'favicon.ico', sizes: '16,32,48' },
+  .concat([{ file: 'og-logo.png', from: 'og-logo.svg', size: '1200x630' }, { file: 'og-logo-transparent.png', from: 'lockup-tall.svg', size: '1200x630' },
+    { file: 'favicon.ico', sizes: '16,32,48' },
     { file: '../favicon.ico', sizes: '16,32,48' }, { file: '../browserconfig.xml', use: 'Windows tile' }]);
 writeFileSync(join(OUT, 'manifest.json'), `${JSON.stringify({
   libraryId: 'claude-of-tanks-brand-245', author: 'Kevin B. Liu', copyright: 'Copyright © 2026 Kevin B. Liu',

@@ -81,6 +81,21 @@ export function brandTankBody({ ink, accent, keyline = false, id = 'cot-mk' }: M
     + `<g fill="${ink}">${front}</g></g></g>`;
 }
 
+/** The mark's drawing in the parts the living mark moves, each an svg body for BRAND_TANK_VIEWBOX: the track, the hull,
+ *  the turret's gun and hatch lid, the antenna and pennant, the crew (the commander, the helmet and the goggles) and the
+ *  turret and cupola in front of them. src/ui/brandMarkMotion.ts stacks each in its own layer so the compositor moves it. */
+export function brandTankLayers({ ink, accent }: MarkInk): Record<'run' | 'hull' | 'gear' | 'antenna' | 'crew' | 'front', string> {
+  return {
+    run: `<path fill="${ink}" fill-rule="evenodd" d="${TRACK}"/>`,
+    hull: `<path fill="${ink}" d="${HULL}"/>`,
+    gear: `<g fill="${ink}">${GUN}<path d="${LID}"/>${HINGE}</g>`,
+    antenna: `<path d="${ANTENNA}" fill="none" stroke="${ink}" stroke-width="1.6"/><path style="fill:${accent}" d="${PENNANT}"/>`,
+    crew: `<path style="fill:${accent}" fill-rule="evenodd" d="${COMMANDER_GLYPH}" transform="${COMMANDER_PLACE}"/>`
+      + `<g fill="${ink}"><path fill-rule="evenodd" d="${HELMET}"/>${HELMET_RIM}</g><g fill="none" stroke="${ink}" stroke-width="1.3">${LENSES}</g>`,
+    front: `<g fill="${ink}"><path d="${TURRET}"/><path d="${CUPOLA}"/></g>`,
+  };
+}
+
 /** The commander's bust (inside an svg whose viewBox is BRAND_BUST_VIEWBOX): helmet and goggles, arms on the cupola. */
 export function brandBustBody({ ink, accent, keyline = false, id = 'cot-bk' }: MarkInk): string {
   const cupola = 'M6 44.6h52l3 10.4H3Z';
