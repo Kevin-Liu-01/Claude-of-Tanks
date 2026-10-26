@@ -9,7 +9,7 @@
  * pitches and the wheels a whole number of spoke steps. Under reduced motion it is the static frame. It loads only where
  * a surface shows it (the boot card inlines its copy through tools/sync-brand-marks.mjs).
  */
-import { BRAND_TANK_ASPECT, BRAND_TANK_VIEWBOX, ROAD_WHEELS, brandTankBody, brandTankParts } from './brandMark.ts';
+import { BRAND_TANK_ASPECT, BRAND_TANK_VIEWBOX, ROAD_WHEELS, brandTankBody, brandTankLayers } from './brandMark.ts';
 
 /** The loop, in seconds, and the ground it covers per loop in the mark's units. */
 export const LOOP_S = 1.2;
@@ -61,70 +61,62 @@ export const BRAND_MOTION_CSS = `
   .cot-mark--motion .mk-puff{display:none}}
 `;
 
-// ---------------------------------------------------------------------------------------------------------------------
-// The living mark as compositor layers (2026-10-26, the boot census; owner: "even the claude tank animation doesnt play bc
-// its just loading"). Chrome runs the svg loop's group transforms on the compositor, but its track links are a
-// stroke-dashoffset, main-thread paint: under each long task of a cold load the wheels turned while the tracks stood
-// still (tools/mark-compositor-probe.mjs, a 1.5 s busy main thread: the links moved in 0 of 7 sampled frames, every other
-// part in 7). Here every moving group is its own HTML box over the same drawing, moved by transform and opacity alone,
-// the links a translate inside a clip, so the whole loop runs on the compositor whatever the main thread is doing. The
-// same parts, origins, travel and timing as the svg loop (its ground's units become percentages of each box).
-const [VB_X, VB_Y, VB_W, VB_H] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
-const pct = (n: number): string => `${Number(n.toFixed(4))}%`;
-/** A box over the mark's region [x, x + w] x [y, y + h], in its units. */
-const box = (x: number, y: number, w: number, h: number): string =>
-  `left:${pct((x - VB_X) / VB_W * 100)};top:${pct((y - VB_Y) / VB_H * 100)};width:${pct(w / VB_W * 100)};height:${pct(h / VB_H * 100)}`;
-const layer = (body: string, viewBox = BRAND_TANK_VIEWBOX, extra = ''): string =>
-  `<svg class="mk-l" viewBox="${viewBox}"${extra} aria-hidden="true" focusable="false">${body}</svg>`;
-const PUFF_R = 1.6;
-const LINK_W = 1.5;
-/** A run's notches in a clip over the run alone, a pitch longer each way, slid a pitch per loop: the dashoffset's path. */
-const linkClip = (run: 'top' | 'low', y: number): string => `<span class="mk-clip" style="${box(50, y - LINK_W / 2, 126, LINK_W)}">`
-  + `<span class="mk-g mk-links--${run}">${layer(`<path d="M${(50 - PITCH).toFixed(3)} ${y}H${(176 + PITCH).toFixed(3)}" fill="none" `
-    + `stroke="var(--mk-ground, #0b0e11)" stroke-width="${LINK_W}" stroke-dasharray="${(PITCH * 0.42).toFixed(2)} ${(PITCH * 0.58).toFixed(2)}"/>`,
-    `50 ${y - LINK_W / 2} 126 ${LINK_W}`, ' preserveAspectRatio="none"')}</span></span>`;
+/* ---- the living mark on the compositor (owner, 2026-10-26: "the claude tank animation doesnnt play bc its just loading")
+ * The same loop, built from HTML layers that move only by transform and opacity, so it keeps running while the main
+ * thread is busy (the boot card, where the game loads under it). Each moving part is its own box over the mark's: an svg
+ * of that part (brandTankLayers) whose box is the whole mark, so the parts register; the wheels are small boxes turning
+ * about their centres, the track's links a strip of notches sliding under a clip, the exhaust three discs. Nested boxes
+ * carry the hull's bob into the turret and the crew, as the svg groups do. */
+const [MX, MY, MW, MH] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
+const px = (x: number): string => `${((x - MX) / MW * 100).toFixed(3)}%`;
+const py = (y: number): string => `${((y - MY) / MH * 100).toFixed(3)}%`;
+const RUN_X = [50, 176] as const;
+const layer = (body: string): string => `<svg class="mkl-l" viewBox="${BRAND_TANK_VIEWBOX}" focusable="false">${body}</svg>`;
 
-/** The living mark as layers (the host gives the box its width; its height follows): the tank in the host's ink, the
- *  commander in the accent. */
-export function brandMarkMotionLayers(ink = 'currentColor', accent = 'var(--accent)'): string {
-  const parts = brandTankParts({ ink, accent });
-  const wheels = ROAD_WHEELS.map(([x, y]) => `<span class="mk-wheel" style="${box(x - WHEEL_R, y - WHEEL_R, 2 * WHEEL_R, 2 * WHEEL_R)}">`
-    + layer(`<g fill="${ink}"><circle cx="${x}" cy="${y}" r="1.7"/>${[0, 120, 240].map((angle) => `<rect x="${x - 0.55}" y="${y - WHEEL_R}" `
-      + `width="1.1" height="${WHEEL_R}" transform="rotate(${angle} ${x} ${y})"/>`).join('')}</g>`, `${x - WHEEL_R} ${y - WHEEL_R} ${2 * WHEEL_R} ${2 * WHEEL_R}`)
-    + '</span>').join('');
-  const puffs = [0, 1, 2].map((index) => `<span class="mk-puff" style="${box(37 - PUFF_R, 101 - PUFF_R, 2 * PUFF_R, 2 * PUFF_R)};`
-    + `animation-delay:${(-index * LOOP_S / 3).toFixed(2)}s">${layer(`<circle fill="${ink}" cx="37" cy="101" r="${PUFF_R}"/>`,
-      `${37 - PUFF_R} ${101 - PUFF_R} ${2 * PUFF_R} ${2 * PUFF_R}`)}</span>`).join('');
-  return `<span class="cot-mark cot-mark--layers" aria-hidden="true">${layer(`<g fill="${ink}">${parts.run}</g>`)}`
-    + `${linkClip('top', 120.4)}${linkClip('low', 136.6)}${wheels}`
-    + `<span class="mk-g mk-hull">${puffs}${layer(parts.hull)}<span class="mk-g mk-turret">${layer(parts.turret)}`
-    + `<span class="mk-g mk-antenna">${layer(parts.antenna)}</span><span class="mk-g mk-crew">${layer(parts.crew)}</span>`
-    + `${layer(parts.front)}</span></span></span>`;
+/** The living mark as compositor layers, as wide as its host: the tank in `ink`, the commander and pennant in `accent`, the
+ *  puffs in the host's colour and the links cut in --mk-ground. */
+export function brandMarkLiveHTML(ink = 'currentColor', accent = 'var(--accent)'): string {
+  const parts = brandTankLayers({ ink, accent });
+  const wheels = ROAD_WHEELS.map(([x, y]) => `<svg class="mkl-wheel" viewBox="${-WHEEL_R} ${-WHEEL_R} ${2 * WHEEL_R} ${2 * WHEEL_R}" `
+    + `style="left:${px(x - WHEEL_R)};top:${py(y - WHEEL_R)}" focusable="false"><g fill="${ink}"><circle r="1.7"/>`
+    + `${[0, 120, 240].map((angle) => `<rect x="-0.55" y="${-WHEEL_R}" width="1.1" height="${WHEEL_R}" transform="rotate(${angle})"/>`).join('')}</g></svg>`).join('');
+  const links = (run: 'top' | 'low', y: number): string => `<span class="mkl-links mkl-links--${run}" style="top:${py(y - 0.75)}"><i></i></span>`;
+  const puffs = [0, 1, 2].map((index) => `<i class="mkl-puff" style="animation-delay:${(-index * LOOP_S / 3).toFixed(2)}s"></i>`).join('');
+  return `<div class="mkl" aria-hidden="true">${layer(parts.run)}${links('top', 120.4)}${links('low', 136.6)}${wheels}`
+    + `<div class="mkl-l mkl-hull">${layer(parts.hull)}${puffs}<div class="mkl-l mkl-turret">${layer(parts.gear)}`
+    + `<div class="mkl-l mkl-antenna">${layer(parts.antenna)}</div><div class="mkl-l mkl-crew">${layer(parts.crew)}</div>`
+    + `${layer(parts.front)}</div></div></div>`;
 }
 
-/** The layers' rules: the svg loop's keyframes with its ground's units as percentages of each moving box. */
-const origin = (x: number, y: number): string => `${pct((x - VB_X) / VB_W * 100)} ${pct((y - VB_Y) / VB_H * 100)}`;
-export const BRAND_MOTION_LAYER_CSS = `
-.cot-mark--layers{--mk-loop:${LOOP_S}s;position:relative;display:block;aspect-ratio:${VB_W}/${VB_H}}
-.cot-mark--layers :is(.mk-g,.mk-l){position:absolute;inset:0;display:block;width:100%;height:100%;overflow:visible}
-.cot-mark--layers :is(.mk-clip,.mk-wheel,.mk-puff){position:absolute;display:block}
-.cot-mark--layers .mk-clip{overflow:hidden}
-.cot-mark--layers .mk-wheel{animation:mkl-turn var(--mk-loop) linear infinite}
-.cot-mark--layers .mk-links--top{animation:mkl-links-top var(--mk-loop) linear infinite}
-.cot-mark--layers .mk-links--low{animation:mkl-links-low var(--mk-loop) linear infinite}
-.cot-mark--layers .mk-hull{animation:mkl-bob calc(var(--mk-loop) / 2) ease-in-out infinite}
-.cot-mark--layers .mk-turret{transform-origin:${origin(105, 93)};animation:mkl-rock calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.38) infinite}
-.cot-mark--layers .mk-crew{animation:mkl-bounce calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.3) infinite}
-.cot-mark--layers .mk-antenna{transform-origin:${origin(64, 76)};animation:mkl-sway calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.26) infinite}
-.cot-mark--layers .mk-puff{opacity:0;animation:mkl-puff var(--mk-loop) ease-out infinite}
+/** The compositor loop's rules: the svg loop's motion in each layer's own percentages. */
+export const BRAND_MARK_LIVE_CSS = (() => {
+  const runW = RUN_X[1] - RUN_X[0];
+  const step = PITCH / (runW + PITCH) * 100;
+  return `
+.mkl{--mk-loop:${LOOP_S}s;position:relative;aspect-ratio:${MW}/${MH}}
+.mkl-l{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mkl-wheel{position:absolute;width:${(2 * WHEEL_R / MW * 100).toFixed(3)}%;aspect-ratio:1;animation:mkl-turn var(--mk-loop) linear infinite}
+.mkl-links{position:absolute;left:${px(RUN_X[0])};width:${(runW / MW * 100).toFixed(3)}%;height:${(1.5 / MH * 100).toFixed(3)}%;overflow:hidden}
+.mkl-links i{position:absolute;inset:0 auto 0 0;width:${(100 + PITCH / runW * 100).toFixed(3)}%;
+  background:linear-gradient(90deg,var(--mk-ground,var(--surface-scene)) 42%,transparent 42%) 0 0/${step.toFixed(3)}% 100% repeat-x}
+.mkl-links--top i{animation:mkl-top var(--mk-loop) linear infinite}
+.mkl-links--low i{animation:mkl-low var(--mk-loop) linear infinite}
+.mkl-hull{animation:mkl-bob calc(var(--mk-loop) / 2) ease-in-out infinite}
+.mkl-turret{transform-origin:${px(105)} ${py(93)};animation:mkl-rock calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.38) infinite}
+.mkl-crew{animation:mkl-bounce calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.3) infinite}
+.mkl-antenna{transform-origin:${px(64)} ${py(76)};animation:mkl-sway calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.26) infinite}
+.mkl-puff{position:absolute;left:${px(37 - 1.6)};top:${py(101 - 1.6)};width:${(3.2 / MW * 100).toFixed(3)}%;aspect-ratio:1;border-radius:50%;
+  background:currentColor;opacity:0;animation:mkl-puff var(--mk-loop) ease-out infinite}
+.mkl :is(.mkl-wheel,.mkl-links i,.mkl-hull,.mkl-turret,.mkl-crew,.mkl-antenna,.mkl-puff){will-change:transform}
 @keyframes mkl-turn{to{transform:rotate(240deg)}}
-@keyframes mkl-links-top{from{transform:translateX(0)}to{transform:translateX(${pct(PITCH / 126 * 100)})}}
-@keyframes mkl-links-low{from{transform:translateX(0)}to{transform:translateX(${pct(-PITCH / 126 * 100)})}}
-@keyframes mkl-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(${pct(-0.9 / VB_H * 100)})}}
+@keyframes mkl-top{from{transform:translateX(-${step.toFixed(3)}%)}to{transform:none}}
+@keyframes mkl-low{to{transform:translateX(-${step.toFixed(3)}%)}}
+@keyframes mkl-bob{0%,100%{transform:none}50%{transform:translateY(-${(0.9 / MH * 100).toFixed(3)}%)}}
 @keyframes mkl-rock{0%,100%{transform:rotate(-0.55deg)}50%{transform:rotate(0.55deg)}}
-@keyframes mkl-bounce{0%,100%{transform:translateY(0)}45%{transform:translateY(${pct(-1.1 / VB_H * 100)})}}
-@keyframes mkl-sway{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-5deg)}}
-@keyframes mkl-puff{0%{opacity:.5;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(${pct(-11 / (2 * PUFF_R) * 100)},${pct(-5 / (2 * PUFF_R) * 100)}) scale(3.2)}}
-@media (prefers-reduced-motion:reduce){.cot-mark--layers :is(.mk-wheel,.mk-links--top,.mk-links--low,.mk-hull,.mk-turret,.mk-crew,.mk-antenna,.mk-puff){animation:none}
-  .cot-mark--layers .mk-puff{display:none}}
+@keyframes mkl-bounce{0%,100%{transform:none}45%{transform:translateY(-${(1.1 / MH * 100).toFixed(3)}%)}}
+@keyframes mkl-sway{0%,100%{transform:none}50%{transform:rotate(-5deg)}}
+@keyframes mkl-puff{0%{opacity:.5;transform:none}100%{opacity:0;transform:translate(-${(11 / 3.2 * 100).toFixed(1)}%,-${(5 / 3.2 * 100).toFixed(1)}%) scale(3.2)}}
+@media (prefers-reduced-motion:reduce){.mkl *{animation:none}.mkl-puff{display:none}}
 `;
+})();
+

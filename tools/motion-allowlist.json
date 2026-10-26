@@ -4,10 +4,10 @@
     {
       "rule": "duration",
       "file": "index.html",
-      "where": ".cot-mark--layers",
+      "where": ".mkl",
       "property": "--mk-loop",
-      "reason": "The mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: one loop slides the links a pitch and turns the wheels two spoke steps, so it closes on itself. Reduced motion stops the loop.",
-      "measured": "LOOP_S 1.2 s; TRAVEL 240 degrees of a 5.4-unit wheel = 22.62 units, PITCH = TRAVEL / 4 = 5.655 units (the links' translate, 4.488 % of their 126-unit run)."
+      "reason": "The boot mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: the compositor mark's layers (wheels, links, hull, turret, antenna, crew, puffs) each move by transform or opacity on this one period, so one loop turns the wheels two spoke steps and slides the links one pitch and closes on itself. Reduced motion stops the loop.",
+      "measured": "LOOP_S 1.2 s. Boot r18 blocked-thread probe: the mark kept moving through a 2 s main-thread block, 83 of 84 frames presented (brand-ui-240-evidence/boot-live/boot-mark-main-thread-blocked-2s.mp4)."
     },
     {
       "rule": "paint",
@@ -36,10 +36,10 @@
     {
       "rule": "duration",
       "file": "src/ui/brandMarkMotion.ts",
-      "where": ".cot-mark--layers",
+      "where": ".mkl",
       "property": "--mk-loop",
-      "reason": "The same idle loop as compositor layers (brandMarkMotionLayers, the boot card): the svg loop's period, so the two draw the same frames. Reduced motion stops the loop.",
-      "measured": "LOOP_S 1.2 s; the links slide PITCH = 5.655 units a loop (4.488 % of their 126-unit run), the wheels turn 240 degrees."
+      "reason": "The boot mark's idle loop period (brandMarkMotion.ts LOOP_S), not a UI transition: the compositor mark's layers (wheels, links, hull, turret, antenna, crew, puffs) each move by transform or opacity on this one period, so one loop turns the wheels two spoke steps and slides the links one pitch and closes on itself. Reduced motion stops the loop.",
+      "measured": "LOOP_S 1.2 s. Boot r18 blocked-thread probe: the mark kept moving through a 2 s main-thread block, 83 of 84 frames presented (brand-ui-240-evidence/boot-live/boot-mark-main-thread-blocked-2s.mp4)."
     },
     {
       "rule": "raster",
