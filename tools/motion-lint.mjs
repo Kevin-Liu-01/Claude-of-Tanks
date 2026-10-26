@@ -9,7 +9,8 @@
 //             property, a background position or size, a dash offset)
 //   colour    ... a colour (color, background-color, border-color, fill, stroke...): a small repaint, still not the
 //             compositor's, so a large layer converts first (an overlay fading its opacity)
-//   duration  a time literal in a transition or animation (or in a custom property) instead of a --dur-* token
+//   duration  a literal duration in a transition or animation (or a time in a custom property) instead of a --dur-*
+//             token; delays and staggers are choreography and are not counted
 //   reduced   a transition or animation with no prefers-reduced-motion path
 //   raf       a requestAnimationFrame loop that writes element styles every frame
 //   raster    raster or video UI chrome: a logo, brand or partner mark, spinner, loader, the logo's rumble, any GIF
@@ -122,8 +123,11 @@ function motionValue(value, motion) {
 /** One token of a transition or animation item: { kind: time|var|ease|word|number, collapses? }. */
 function slotToken(token, motion) {
   const t = TIME.exec(token);
-  if (t) return { kind: 'time', zero: timeMs(t[1], t[2]) === 0, collapses: Math.abs(timeMs(t[1], t[2])) <= 1 };
-  if (/^var\(--interpolated\)\s*m?s$/i.test(token)) return { kind: 'time', zero: false, collapses: false };
+  if (t) {
+    const ms = timeMs(t[1], t[2]);
+    return { kind: 'time', zero: ms === 0, collapses: Math.abs(ms) <= 1, literal: ms > 1 };
+  }
+  if (/^var\(--interpolated\)\s*m?s$/i.test(token)) return { kind: 'time', zero: false, collapses: false, literal: true };
   if (/^(?:cubic-bezier|steps|linear)\(/i.test(token)) return { kind: 'ease' };
   const v = /^var\(\s*(--[\w-]+)/.exec(token);
   if (v) {
@@ -133,7 +137,7 @@ function slotToken(token, motion) {
   }
   if (/^calc\(/i.test(token)) {
     const literal = durationLiterals(token, motion) > 0 || /var\(--(?!(?:cot-)?ease-)/.test(stripMotionVars(token, motion));
-    return { kind: 'time', zero: false, collapses: !literal };
+    return { kind: 'time', zero: false, collapses: !literal, literal: durationLiterals(token, motion) > 0 };
   }
   if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(token)) return { kind: 'number' };
   return { kind: 'word', word: token.toLowerCase() };
@@ -388,6 +392,7 @@ const REDUCE_MEDIA = /prefers-reduced-motion\s*:\s*reduce/i;
 const OPT_IN_MEDIA = /prefers-reduced-motion\s*:\s*no-preference/i;
 const REDUCE_SELECTOR = /\[data-motion=["']?reduce["']?\]/i;
 const MOTION_PROP = /^(?:-webkit-)?(?:transition|animation)(?:-[a-z]+)?$/;
+const RING = /^(?:none|var\(--[\w-]*(?:ring|edge)[\w-]*\)|inset 0 0 0 [\d.]+px [^,]+)$/;
 const REDUCED_IN_SCRIPT = /prefers-reduced-motion|reduced?Motion|motionReduced|prefersReduced|data-motion|dataset\.motion/i;
 
 /** The classes and ids of each selector's subject compound ('*' for a universal subject). */
@@ -448,6 +453,18 @@ export function lintFile(file, text, motionGlobal) {
   }
   const covered = (selector) => reduceKeys.has('*') || [...subjectKeys(selector)].some((key) => key !== '*' && reduceKeys.has(key));
 
+  // a box-shadow that is only ever a 1 px ring on this subject (var(--ring-*), an inset spread line) repaints like a
+  // border colour: colour, not paint
+  const shadows = new Map();
+  for (const rule of rules) if (!rule.keyframes) for (const d of rule.decls) {
+    if (!/^(?:-webkit-)?box-shadow$/.test(d.property)) continue;
+    for (const key of subjectKeys(rule.selector)) if (key !== '*') shadows.set(key, [...(shadows.get(key) ?? []), d.value]);
+  }
+  const ringOnly = (selector) => {
+    const values = [...subjectKeys(selector)].flatMap((key) => shadows.get(key) ?? []);
+    return values.length > 0 && values.every((v) => RING.test(v.trim()));
+  };
+
   // which keyframes move: an unknown name (defined elsewhere) is taken to move
   const keyframesMove = new Map();
   for (const rule of rules) if (rule.keyframes) {
@@ -477,7 +494,11 @@ export function lintFile(file, text, motionGlobal) {
         continue;
       }
       if (!MOTION_PROP.test(d.property)) continue;
-      for (let k = durationLiterals(d.value, motion); k > 0; k--) add('duration', d.line, where, d.property, `${d.property}: ${d.value}`);
+      // durations only: a delay or a stagger is choreography, not a tempo
+      const literals = prop === 'transition' ? transitionItems(d.value, motion).filter((i) => i.duration?.literal).length
+        : prop === 'animation' ? animationItems(d.value, motion).filter((i) => i.name && i.duration?.literal).length
+          : /-duration$/.test(prop) ? durationLiterals(d.value, motion) : 0;
+      for (let k = literals; k > 0; k--) add('duration', d.line, where, d.property, `${d.property}: ${d.value}`);
       if (prop === 'transition' || prop === 'transition-property') {
         const items = prop === 'transition' ? transitionItems(d.value, motion)
           : splitTop(d.value).map((p) => ({ properties: [p.toLowerCase()], duration: { kind: 'var' } }));
@@ -486,7 +507,8 @@ export function lintFile(file, text, motionGlobal) {
           for (const p of item.properties) {
             if (p === 'none') continue;
             const cls = propertyClass(p);
-            if (cls) add(cls, d.line, where, p, `${d.property}: ${d.value}`);
+            const kind = cls === 'paint' && /^(?:-webkit-)?box-shadow$/.test(p) && ringOnly(rule.selector) ? 'colour' : cls;
+            if (kind) add(kind, d.line, where, p, `${d.property}: ${d.value}`);
           }
           if (prop === 'transition' && !item.duration.collapses && item.properties.some(moves)) transitionSite ??= d;
         }
@@ -733,20 +755,20 @@ export function keyframeBlocks(root = ROOT) {
   return n;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const args = process.argv.slice(2);
+/** The command line; returns the exit code (output is left to drain: an exit cuts a piped stdout at 64 KB). */
+function cli(args) {
   const flags = new Set(args);
   const root = resolve(args.find((a) => a.startsWith('--root='))?.slice(7) ?? ROOT);
   const findings = lint(root);
   const current = counts(findings);
-  if (flags.has('--json')) { console.log(JSON.stringify({ totals: totals(current), files: current, findings }, null, 1)); process.exit(0); }
+  if (flags.has('--json')) { console.log(JSON.stringify({ totals: totals(current), files: current, findings }, null, 1)); return 0; }
   if (flags.has('--report')) {
     let file = null;
     for (const f of findings.filter((x) => !x.allowed).sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)) {
       if (f.file !== file) { file = f.file; console.log(`\n${file}`); }
       console.log(`  ${f.line}\t${f.rule}\t${f.where}${f.property ? ` {${f.property}}` : ''}\t${f.detail}`);
     }
-    process.exit(0);
+    return 0;
   }
   const baseline = readBaseline(root);
   const now = totals(current), was = totals(baseline);
@@ -755,11 +777,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const up = Object.keys(baseline).length ? totalRises(current, baseline) : [];
     if (up.length) {
       console.error(`motion-lint: refusing to raise the baseline (${up.join(', ')}); animate transform and opacity on the motion tokens`);
-      process.exit(1);
+      return 1;
     }
     writeFileSync(join(root, BASELINE_FILE), baselineText(current));
     console.log(`motion-lint: baseline written (${Object.keys(current).length} files): ${table}`);
-    process.exit(0);
+    return 0;
   }
   const up = rises(current, baseline);
   if (up.length) {
@@ -768,8 +790,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.error(`  ${r.file}: ${r.rule} ${r.baseline} -> ${r.current}`);
       for (const f of findings.filter((x) => !x.allowed && x.file === r.file && x.rule === r.rule).slice(0, 8)) console.error(`    ${f.line}: ${f.where}${f.property ? ` {${f.property}}` : ''} ${f.detail}`);
     }
-    process.exit(1);
+    return 1;
   }
   const fell = RULES.filter((r) => now[r] < was[r]);
   console.log(`motion-lint: PASS — ${table}${fell.length ? '; the baseline can fall: node tools/motion-lint.mjs --write' : ''}`);
+  return 0;
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = cli(process.argv.slice(2));

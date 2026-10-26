@@ -85,6 +85,11 @@ assert.deepEqual(finds('a.css', [
   'reduced:5:.spin',
   'paint:9:@keyframes glow{box-shadow}',
 ], 'a fade needs no reduce path; growth and a loop do; a reduce rule on the class covers it; a finite token pulse collapses');
+assert.deepEqual(finds('ring.css', '.chip{box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast)}.chip.on{box-shadow:var(--ring-accent)}'
+  + '.card{box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast)}.card:hover{box-shadow:var(--e2)}'),
+  ['colour:1:.chip{box-shadow}', 'paint:1:.card{box-shadow}'], 'a ring-only box-shadow repaints like a border colour; an elevation is paint');
+assert.deepEqual(finds('delay.css', '.s{animation:rise var(--dur-base) ease .12s backwards;animation-delay:.2s;transition:opacity var(--dur-fast) .05s}'),
+  [], 'a delay or a stagger is choreography, not a duration');
 assert.deepEqual(finds('b.css', '@media (prefers-reduced-motion:no-preference){.drift{transition:transform 3s}}'),
   ['duration:1:.drift{transition}'], 'opting in under no-preference is a reduced-motion path');
 assert.deepEqual(finds('c.css', '.n{--fade:var(--dur-fast);--slow:300ms;transition:transform var(--fade)}.m{transition:transform var(--slow)}'),
