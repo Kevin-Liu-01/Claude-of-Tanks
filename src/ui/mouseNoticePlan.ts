@@ -1166,9 +1166,9 @@ function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[],
 }
 
 const TIERS = [2, 1, 0] as const;
-/** The dial's smaller steps while an alert raised before the roll-out shows (the alert off it at the whole reticle; at
- *  1024x600 only half the dial leaves the alert a slot between it and the detection). */
-const COUNTDOWN_YIELD_SCALES = [.9, .8, .7, .6, .5] as const;
+/** The dial's smaller steps while an alert raised before the roll-out shows (the alert off it at the pair's keep-out; at
+ *  1024x600 only the dial's least step leaves the alert a slot between it and the detection). */
+const COUNTDOWN_YIELD_SCALES = [.9, .8, .7, .6, .5, .45, .4] as const;
 
 /** Where the countdown, the revive count and the medal card look for a place, in order: [tier, may share a notice's
  *  place]. A place off the notices at a reduced keep-out beats sharing their place at the full one, and sharing beats
@@ -1330,16 +1330,16 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     return { alert: { x: found.s.x, y: found.s.y, w, h, small, giveWay: giveWayOf(found.s.giveWay, 0) }, clearance: tier };
   };
   // The dial while an alert raised before the roll-out shows: its own place where that leaves the alert a place clear of
-  // the whole reticle, else a step smaller (COUNTDOWN_YIELD_SCALES; 1366x768: between the detection and the dial
-  // no slot held the alert, and it went under the sight onto the scope's readouts), else its own.
+  // what the notices' own places clear, else a step smaller (COUNTDOWN_YIELD_SCALES; 1366x768 and 1024x600: between the
+  // detection and the dial no slot held the alert, and it went under the sight onto the scope's readouts), else its own.
   const countdownWithAlert = later(() => {
     const own = countdown(), first = { dial: own, ...alertOff(own) };
-    if (!own || first.clearance === 2) return first;
+    if (!own || first.clearance >= clearance) return first;
     for (const cap of COUNTDOWN_YIELD_SCALES) {
       if (cap >= own.scale) continue;
       const dial = centredCountdown(input, notices, cap);
       const next = { dial, ...alertOff(dial) };
-      if (next.clearance === 2) return next;
+      if (next.clearance >= clearance) return next;
     }
     return first;
   });
