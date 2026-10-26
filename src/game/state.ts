@@ -3344,6 +3344,16 @@ const _aerialWorld: AerialWorldQuery = {
 };
 
 /**
+ * (battle-spikes-253) The drones' id and launch callbacks, made outside simStep: closures made inside it shared the
+ * call's context with every variable any of its closures reads — the step's collider among them — so the callbacks the
+ * first battle made kept that battle's collision bundle, and through it its world, alive in every Garage after (the
+ * memory probe's retainer path: __DEBUG.game.aerialCallbacks.nextId → context → collider.collide → the world).
+ */
+function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['aerialCallbacks']> {
+  return { nextId: () => game.nextShellId++, launch: (shell) => { game.shells.push(shell); } };
+}
+
+/**
  * One fixed simulation step. Ordering is authoritative: sensing and AI write
  * input before movement; contacts resolve before weapons; projectiles resolve
  * before damage timers; objective state settles before the match verdict.
@@ -3370,7 +3380,7 @@ export function simStep(
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
   stages?.stage(FRAME_STAGE.aerial);
-  const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
+  const aerialCallbacks = game.aerialCallbacks ??= createAerialCallbacks(game);
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.
   _aerialWorldGame = game; _aerialWorldSource = world;
   for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);
