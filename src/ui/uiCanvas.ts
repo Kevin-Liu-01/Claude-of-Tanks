@@ -11,7 +11,9 @@
  * - a hidden or zero box sizes nothing: the store is released to 1 px and the drawing redrawn when the box returns;
  * - the size never comes from the store, and a box that follows its own store (a canvas with no CSS size takes its
  *   width/height attributes) is pinned at the box it had, so a store can never compound;
- * - a resolution media query follows the device ratio (a window dragged to another screen, a browser zoom);
+ * - a resolution media query follows the device ratio (a window dragged to another screen, a browser zoom), with a
+ *   half-second check behind it (an emulated device scale factor at an unchanged viewport size, as the canvas probe
+ *   flips it, changes devicePixelRatio and fires no query, resize or observer event);
  * - a retained drawing redraws only on a size, ratio or data change (redraw()), a per-frame painter sizes in begin();
  * - a lost context redraws when it is restored, and begin() allocates nothing.
  * UI text is DOM over the canvas, never canvas text (the kit's type, i18n, the zh floor, assistive tech):
@@ -86,6 +88,10 @@ let observer: ResizeObserver | null = null;
 /** False once observing the device-pixel box throws (Safari): the content box × ratio then. */
 let devicePixelBox = true;
 let ratioQuery: MediaQueryList | null = null;
+/** The ratio the query watches; the backstop check compares against it. */
+let watchedRatio = 0;
+/** How often the backstop reads devicePixelRatio (one property read: nothing allocates). */
+const RATIO_CHECK_MS = 500;
 /** Boxes that followed their own store and were pinned (the census reads it: it should stay 0). */
 let pinnedBoxes = 0;
 
@@ -111,6 +117,7 @@ function onRatioChange(): void {
 
 /** One resolution query at a time, for the ratio now: it changes once, and the next one is armed for the new ratio. */
 function watchRatio(): void {
+  watchedRatio = deviceRatio();
   if (typeof matchMedia !== 'function') return;
   ratioQuery?.removeEventListener?.('change', onRatioChange);
   ratioQuery = matchMedia(`(resolution: ${deviceRatio()}dppx)`);
@@ -123,6 +130,10 @@ function observe(canvas: HTMLCanvasElement): boolean {
   if (!observer) {
     observer = new ResizeObserver(onResize);
     watchRatio();
+    if (typeof setInterval === 'function') {
+      const timer = setInterval(() => { if (deviceRatio() !== watchedRatio) onRatioChange(); }, RATIO_CHECK_MS);
+      (timer as { unref?: () => void }).unref?.(); // (Node receipts exit with it running)
+    }
   }
   if (devicePixelBox) {
     try {
@@ -246,13 +257,13 @@ class Surface implements UiCanvas {
   /** The store this box asks for at the ratio now; a retained drawing redraws at once, a painter in its next begin(). */
   private resolve(notify = true): void {
     const ratio = Math.min(deviceRatio(), this.cap);
-    let width: number, height: number;
-    if (this.deviceW > 0 && this.deviceH > 0 && ratio === deviceRatio()) {
+    let width = Math.max(1, Math.round(this.width * ratio));
+    let height = Math.max(1, Math.round(this.height * ratio));
+    // the snapped device box where it is this box at this ratio (an emulated scale factor reports CSS px there)
+    if (this.deviceW > 0 && this.deviceH > 0 && ratio === deviceRatio()
+      && Math.abs(this.deviceW - this.width * ratio) <= 1 && Math.abs(this.deviceH - this.height * ratio) <= 1) {
       width = this.deviceW;
       height = this.deviceH;
-    } else {
-      width = Math.max(1, Math.round(this.width * ratio));
-      height = Math.max(1, Math.round(this.height * ratio));
     }
     const budget = this.options.maxPixels ?? 0;
     if (budget > 0 && width * height > budget) {

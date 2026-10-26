@@ -117,6 +117,22 @@ assert.equal(UI_CANVAS_DPR_CAP, 2, 'the probe\'s cap (tools/click-timeline.mjs C
   assert.equal(canvas.dataset.uiCanvas, undefined);
 }
 
+// 3b. an emulated scale factor (the probe's flip): devicePixelRatio changes with no query event and the device box
+// reports CSS px; the backstop check takes the new ratio within half a second, and an inconsistent device box is ignored
+{
+  globalThis.devicePixelRatio = 1;
+  setRatio(1);
+  const surface = createUiCanvas(null, '', { draw: () => {} });
+  report(surface.canvas, 100, 50, [100, 50]);
+  assert.equal(`${surface.canvas.width}x${surface.canvas.height}`, '100x50');
+  globalThis.devicePixelRatio = 2; // no 'change' dispatched
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.equal(`${surface.canvas.width}x${surface.canvas.height}`, '200x100', 'the backstop follows a silent ratio change');
+  report(surface.canvas, 100, 50, [100, 50]);
+  assert.equal(`${surface.canvas.width}x${surface.canvas.height}`, '200x100', 'a device box in CSS px (emulation) is not the store');
+  surface.dispose();
+}
+
 // 4. never compounding: a canvas with no CSS size (its attributes are its box) is pinned at the box it had
 {
   window.devicePixelRatio = 2;
