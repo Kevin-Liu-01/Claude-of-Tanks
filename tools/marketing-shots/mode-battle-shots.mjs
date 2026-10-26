@@ -479,6 +479,12 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
       };
     });
     log(`${slot}: battle live after ${Math.round((Date.now() - t0) / 1000)} s ${JSON.stringify(reached)}`);
+    // (2026-10-26, Main on the Deploy panel art: the map's air read as white specks behind the panel copy) with
+    // MB_NO_AMBIENCE=1, the map's airborne particles (world/mapAmbience.ts) off for the whole slot
+    if (process.env.MB_NO_AMBIENCE === '1') {
+      const off = await page.evaluate(() => { const a = window.__DEBUG?.mapAmbience; if (!a?.setEnabled) return false; a.setEnabled(false); return true; });
+      log(`${slot}: map ambience ${off ? 'off' : 'not reachable'}`);
+    }
     if (reached.timeOfDay && reached.timeOfDay !== hour) {
       const applied = await page.evaluate((time) => window.__SHOTS.battleTime(time), hour).catch(() => null);
       notes.push(`battle drew ${reached.timeOfDay}; applied ${hour} with __SHOTS.battleTime -> ${applied}`);

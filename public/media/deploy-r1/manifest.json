@@ -90,16 +90,16 @@
    "id": "turbo_ball-panel",
    "file": "turbo_ball-1600.webp",
    "mode": "turbo_ball",
-   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a K2 Black Panther leaps after the ball on Kestrel Airfield, the ball looming beside it (airfield, day, player k2_black_panther; battle-257b/modes/turbo_ball #10, 3840x2160)",
+   "source": "in-engine battle capture on main abccee56a1 (release 257), HUD hidden: a K2 Black Panther leaps over the whole ball beside the red goal hoop on Kestrel Airfield, the map ambience off (airfield, day, player k2_black_panther; battle-257c/modes/turbo_ball #19, 3840x2160)",
    "capture": {
-    "run": "battle-257b",
+    "run": "battle-257c",
     "slot": "modes/turbo_ball",
-    "candidate": 10,
+    "candidate": 19,
     "crop": null
    },
    "width": 1600,
    "height": 900,
-   "bytes": 108996
+   "bytes": 209848
   },
   {
    "id": "gun_game-tile",
@@ -313,16 +313,16 @@
    "id": "drone-panel",
    "file": "drone-1600.webp",
    "mode": "drone",
-   "source": "in-engine Scene Studio still on release 251, HUD-free: an FPV drone dives on a burning T-80U by the kolkhoz gate on Verdant Fields, a Challenger 3 below (site50/drone-251b-out/drone-ve, 3840x2160, 2 ms)",
+   "source": "in-engine Scene Studio still on release 251, HUD-free: an FPV drone dives on a burning T-80U by the kolkhoz gate on Verdant Fields, a Challenger 3 below (site50/drone-251c-out/drone-ve, 3840x2160, 2 ms; the map ambience off: no floating specks)",
    "capture": {
-    "run": "drone-251b",
+    "run": "drone-251c",
     "slot": "deploy/drone",
     "candidate": "ve",
     "crop": null
    },
    "width": 1600,
    "height": 900,
-   "bytes": 186992
+   "bytes": 186930
   },
   {
    "id": "ac130-tile",
