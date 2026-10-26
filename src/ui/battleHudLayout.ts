@@ -393,7 +393,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const seatWidth = Math.max(map.width, PARKED_CHIP_W);
       const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
       writeObjective('side', place);
-      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height, height) - 8;
+      // (and over a flight's console: the gunship's weapon cards stood 2.5 px under it at 568x256, gauntlet r11)
+      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
+        read('.cot-flight-hud:not([hidden]) .flight-console')?.top ?? height, height) - 8;
       // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
       if (shown.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
       else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
@@ -914,19 +916,21 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const row = overSlots ? tiles[0].parentElement : null;
     const split = row ? [...row.children].findIndex((node) => node.classList.contains('cot-drone-control')) : -1;
     const group = (node: HTMLElement) => (split < 0 ? 0 : [...row!.children].indexOf(node) > split ? 1 : -1);
-    const oneGroup = split >= 0 && tiles.every((node) => group(node) === group(tiles[0])) ? group(tiles[0]) : 0;
-    const firstSlot = !overSlots ? 0
-      : oneGroup > 0 && tiles.length <= conSlots ? slots.length - tiles.length
-        : oneGroup < 0 && tiles.length <= shellSlots ? 0
-          : Math.floor((slots.length - tiles.length) / 2);
+    // (each group on its side, the ammunition's from the first slot, the equipment's from the divider, where each fits its
+    // side: five tiles split three and two by count set the smoke's G across the divider, gauntlet r11; else the row
+    // stands over the middle slots, one a slot)
+    const leftTiles = split >= 0 ? tiles.filter((node) => group(node) < 0).length : -1;
+    const sided = overSlots && split >= 0 && leftTiles <= shellSlots && tiles.length - leftTiles <= conSlots;
+    const firstSlot = overSlots && !sided ? Math.floor((slots.length - tiles.length) / 2) : 0;
+    const slotOf = (at: number) => (!sided ? firstSlot + at : at < leftTiles ? at : shellSlots + at - leftTiles);
     if (overSlots || tilesOverSlots) {
       for (const node of document.querySelectorAll<HTMLElement>('.cot-vehicle-controls>button')) {
         if (!node.style) continue;
         const at = overSlots ? tiles.indexOf(node) : -1;
-        const slot = at >= 0 ? slots[firstSlot + at] : null;
+        const slot = at >= 0 ? slots[slotOf(at)] : null;
         const w = slot ? `${slot.width}px` : '';
-        const dx = !slot ? '' : at > 0 ? `${slot.left - slots[firstSlot + at - 1].right}px`
-          : firstSlot > 0 ? `${slot.left - systemsLeft}px` : '';
+        const dx = !slot ? '' : at > 0 ? `${slot.left - slots[slotOf(at - 1)].right}px`
+          : slotOf(0) > 0 ? `${slot.left - systemsLeft}px` : '';
         if (node.style.getPropertyValue('--hud-tile-w') !== w) node.style.setProperty('--hud-tile-w', w);
         if (node.style.getPropertyValue('--hud-tile-dx') !== dx) node.style.setProperty('--hud-tile-dx', dx);
       }
@@ -949,7 +953,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const plate = read('.cot-dp');
       const rowWidth = Math.min(dockWidth, Math.max(0, naturalWidth - 2));
       const overPlate = plate ? plate.left + plate.width / 2 - rowWidth / 2 : -1;
-      if (plate && overPlate >= systemsLeft && overPlate + rowWidth <= systemsLeft + systemsWidth) {
+      // (4 px of the gap's 8 to AUTO AIM may go to the centred row: at 568x256 it missed by 1 px and stood 8 px off the
+      // plate's centre, gauntlet r11)
+      if (plate && overPlate >= systemsLeft && overPlate + rowWidth <= systemsLeft + systemsWidth + 4) {
         systemsWidth -= overPlate - systemsLeft;
         systemsLeft = overPlate;
       }

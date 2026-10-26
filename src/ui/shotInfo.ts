@@ -405,7 +405,9 @@ const SI_CSS = `
 /* (one rhythm: every row 2 px over and under a hairline, the subtitle's included; the pen row's own gap and the armor row's
    own rules read as one-offs, gauntlet r3) */
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;padding:2px 0;border-top:1px solid var(--line-1);
-  align-items:center;font-size:var(--battle-fs-12);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
+  align-items:center;font-size:var(--battle-fs-12);line-height:14px;color:var(--ink-3);letter-spacing:0em;}
+/* (one 14 px line in both scripts: zh's 13 px rows ran a pixel a row taller than en's 12 px, and a dock that held four en
+   rows held three in zh, gauntlet r11) */
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:var(--s1);}
 /* (the row's glyph at 12 px in the label's ink: at 9 px in ink-3 it read as a speck, gauntlet r5) */
 .cot-si-kv .cot-si-k svg{width:12px;height:12px;flex:0 0 auto;color:var(--ink-2);}

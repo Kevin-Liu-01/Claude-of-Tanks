@@ -302,6 +302,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-sea
   min-height:0;clip-path:none;padding:var(--s1) 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:var(--battle-plate-shadow)}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block;white-space:normal}
+/* (zh's lines with leading of their own in the side seat, as the stacked tab's: its 13 px glyphs on 13 px lines touched,
+   gauntlet r11) */
+:lang(zh-CN) body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .mv{line-height:1.3}
 /* a tab too narrow for its parts on one line stacks them, one a line without their dots (hud.ts setObjectiveValue) */
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .sep{display:none}
 body[data-cot-battle-layout]:not([data-objective-seat='corner']) .cot-mode-status.stacked .seg{display:block}
