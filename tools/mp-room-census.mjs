@@ -16,6 +16,7 @@
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
 //     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>] [--profile-solo] [--solo-eval=<expr>]
+//     [--gate]   (exit 4 when the leave stage logs a console warning: its budget is 0)
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -68,6 +69,9 @@ const profileSoloMinMs = Number(option('profile-solo-min-ms', '300')) || 300;
 // --solo-eval=<expression>: with --solo, evaluated in the host page once its solo battle has settled (its loading trace,
 // window.__BATTLE_LOAD, say), kept on the solo stage's sample (soloEval) and printed
 const soloEval = option('solo-eval', '');
+// --gate: the run fails (exit 4) when the leave stage logs any console warning (Main 2026-10-26: the rooms' leave has a
+// budget of 0 warnings; the stopped host's late heartbeat was refused, host_only / invalid_command)
+const gate = argv.includes('--gate');
 const leaveFirst = option('leave-first', 'B') === 'A' ? 'A' : 'B';
 const leaveGapMs = Number(option('leave-gap-ms', '0')) || 0;
 const profiling = { armed: false, live: [], workers: [] };
@@ -536,4 +540,16 @@ writeFileSync(join(out, label, 'mp-room.desktop.json'), `${JSON.stringify({ prof
 const errors = samples.reduce((n, s) => n + (s.census?.consoleErrors.length ?? 0), 0);
 console.log(`mp-room-census: ${samples.length} stages, ${errors} console errors -> ${join(out, label, 'mp-room.desktop.json')}`);
 if (errors && !process.exitCode) process.exitCode = 1;
+if (gate) {
+  const leave = samples.find((sample) => sample.kind === 'lobby-leave');
+  const warnings = leave?.census?.consoleWarnings ?? null;
+  if (warnings === null) {
+    console.error('mp-room-census: GATE the leave stage did not run');
+    if (!process.exitCode) process.exitCode = 4;
+  } else if (warnings > 0) {
+    console.error(`mp-room-census: GATE lobby-leave logged ${warnings} console warning(s) (budget 0)`);
+    for (const text of leave.census.consoleWarningTexts ?? []) console.error(`  ${String(text).slice(0, 240)}`);
+    if (!process.exitCode) process.exitCode = 4;
+  } else console.log('mp-room-census: GATE lobby-leave 0 console warnings (budget 0)');
+}
 process.exit(process.exitCode ?? 0);
