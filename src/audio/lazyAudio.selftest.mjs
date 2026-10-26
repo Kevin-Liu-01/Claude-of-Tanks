@@ -578,9 +578,7 @@ assert.match(mainSource, /getMapId: \(\) => game\.phase === 'battle'\s*\? game\.
   'battle ambience uses canonical game map identity instead of an inactive cached world');
 assert.match(intentSource, /const preload = \([\s\S]{0,500}ignoreFailure\(preloadAudio\)/,
   'Battle intent transfers the full mixer before the click when possible');
-assert.match(mainSource, /const prepareAudioForEntry = \(\): void => \{[\s\S]{0,300}entry\.brand === 'Chromium'\)\) void nextPaintFrame\(\)\.then\(\(\) => audio\.prepare\(\)\);\s*else audio\.prepare\(\);\s*\};\s*const entryReady = boot\.ready\(prepareAudioForEntry\);/,
-  'the gate opens the device: on Chromium a paint after the press (its constructor stalls), elsewhere inside the gesture');
-assert.match(mainSource, /const entryReady = boot\.ready\(prepareAudioForEntry\);/,
+assert.match(mainSource, /const entryReady = boot\.ready\(\(\) => audio\.prepare\(\)\);/,
   'only the accepted boot gate delegates to silent, mute-aware device preparation');
 
 console.log('lazyAudio.selftest: deferred mixer and silent facade passed');

@@ -143,6 +143,17 @@ async function press(page, selector, touch) {
 }
 
 const expression = (body) => `(() => { const shown = window.__click.shown; const visible = window.__click.visible; return (${body}); })()`;
+// --gate (2026-10-25): the game document loads as a player's does, with its entry gate, which the warm-up presses. Its
+// press opens the audio device (main.ts prepareAudioForEntry), so no measured press pays that (under ?nogate the first
+// press anywhere does: a Settings press read 262 ms of lazyAudio unlockContext).
+if (flag('gate')) {
+  DOCS.game = { url: '/', ready: `window.__GAME_READY === true && !!document.querySelector('#cot-boot-gate.on')`,
+    after: async (page) => {
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(expression(GARAGE), { timeout: 240000, polling: 200 });
+      await new Promise((done) => setTimeout(done, 2000));
+    } };
+}
 
 /** Wait for a page expression (polled), bounded. */
 async function waitFor(page, body, timeout = 120000, polling = 100) {
@@ -368,7 +379,8 @@ const CANVAS_CHECK = `(() => {
   const describe = (node) => { const path = [label(node)];
     for (let el = node.parentElement, n = 0; el && el !== document.body && n < 3 && !path[0].includes('#'); el = el.parentElement, n++) path.unshift(label(el));
     return path.join(' > '); };
-  const violations = []; let checked = 0;
+  // (canvas-ui, 2026-10-25) a primitive's canvas carries data-ui-canvas: a shown 2D canvas without it was made outside it
+  const violations = [], outside = []; let checked = 0;
   for (const canvas of document.querySelectorAll('canvas')) {
     const kind = rec.contextKind && rec.contextKind.get(canvas) || null;
     // a WebGL view owns its resolution; a canvas never given a context allocates no store (a swatch not yet painted)
@@ -378,11 +390,12 @@ const CANVAS_CHECK = `(() => {
     const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
     const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
     if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
+    if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
     const wantW = box.width * scale, wantH = box.height * scale;
     if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
     else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
   }
-  return { checked, violations };
+  return { checked, violations, outside: [...new Set(outside)] };
 })()`;
 const canvasCheck = (page) => page.evaluate(CANVAS_CHECK).catch((cause) => ({ error: firstLine(cause) }));
 

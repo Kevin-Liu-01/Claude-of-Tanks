@@ -16,7 +16,7 @@ import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRidingCradle, addPintleRing, addPintleShield, addPintleShieldPort,
   createPintleLayout, isMgClass, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES, RIDING_CRADLE_RECOIL_M,
-  type PintleLayout, type RidingCradleFit,
+  type PintleLayout,
 } from '../machineGunGeometry.ts';
 import {
   barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, sweptTube, type FabricSpec,
@@ -25,6 +25,7 @@ import { jerrycanParts, whipAntennaParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { paintAmmoVertexColours, prepareWeaponFinishGeometry, weaponFinishFor } from '../weaponFinish.ts';
+import { RIDING_CRADLE_PARTS, RIDING_STATION_PARTS } from '../ridingPartsCache.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type GeometryScale = number | readonly number[];
@@ -1551,11 +1552,9 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
  * once per option set and each build takes copies (positions, indices and every attribute copied; geometry userData
  * copied one level deep), so the emplacement is the same to the bit and nothing a build does reaches another's.
  */
-const RIDING_CRADLE_PARTS = new Map<string, { readonly parts: readonly (readonly [string, readonly THREE.BufferGeometry[]])[][];
-  readonly fit: RidingCradleFit }>();
+/* (the stores live in ridingPartsCache.ts, which the Garage's prebuild seeds from a worker: UI-LOCKDOWN E) */
 /** Release 230: the riding remote stations (FITTINGS.americanRws, the armed FITTINGS.openYokeRws), built once per option
- * set as the riding pintles are: their yaw stage, cradle and gun parts, before they are assembled. */
-const RIDING_STATION_PARTS = new Map<string, readonly (readonly [string, readonly THREE.BufferGeometry[]])[][]>();
+ * set as the riding pintles are: their yaw stage, cradle and gun parts, before they are assembled (RIDING_STATION_PARTS). */
 function ridingCradleKey(opts: FittingOptions): string {
   const { mats: _mats, ...geometric } = opts;
   return JSON.stringify(geometric);
