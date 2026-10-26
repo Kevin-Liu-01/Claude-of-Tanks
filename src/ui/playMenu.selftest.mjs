@@ -154,8 +154,8 @@ for (const [optionTop, optionBottom, initialScroll, expected] of [
   revealMenuSelectOption(list,option);
   assert.equal(focused,true);assert.equal(panelScroll,57);assert.equal(list.scrollTop,expected);
 }
-assert.equal((source.match(/revealMenuSelectOption\(list, /g)||[]).length,2,
-  'opening and keyboard navigation share the same list-only reveal');
+// (2026-10-26, INTERACTION-REDESIGN line 1) the room's battlefield and vehicle are the kit's pickers: no hand-rolled list
+assert.doesNotMatch(source, /role="listbox"|function bindMenuSelect/, "the room's choices hold no hand-rolled listbox");
 
 // entry resilience (2026-09-25): every failure panel beacons its classified code. The room-level ICE note of v1
 // (a direct-only room) left with the cutover: ICE is negotiated per peer link by the match session, whose status

@@ -34,6 +34,7 @@ assert.deepEqual(marks('a.ts', "const format = document.createElement('select');
 assert.deepEqual(marks('a.ts', 'const dd = createCustomSelect(field);'), ['custom-select:dd']);
 assert.deepEqual(marks('a.ts', "const seg = el('div', 'cot-c-seg');\nseg.setAttribute('role', 'radiogroup');"), ['segmented:seg']);
 assert.deepEqual(marks('a.ts', '`<div class="cot-c-seg tt-builds" role="radiogroup">`'), ['segmented:.tt-builds'], 'the kit class names only the primitive');
+assert.deepEqual(marks('a.ts', "`${segmented({ label, options, value, className: 'room-team', attrs })}`"), ['segmented:.room-team'], "the kit's builder, by its own class");
 assert.deepEqual(marks('a.ts', '`<ul id="map-list" role="listbox">`'), ['listbox:#map-list']);
 assert.deepEqual(marks('a.ts', "const list = host.querySelector('[role=\"listbox\"]');"), [], 'a selector that finds a listbox is not one');
 assert.deepEqual(marks('a.ts', "for (const b of all) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));\n"

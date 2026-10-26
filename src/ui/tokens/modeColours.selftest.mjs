@@ -81,8 +81,12 @@ assert.deepEqual(leaks.map((path) => relative(ROOT, join(ROOT, path))), [], 'mod
 
 // 5. the registered call sites paint the mode's hue
 const SITES = [
-  ['src/ui/playMenu.ts', 'data-mode-tone="${rule.id}"', "Rooms' rule tiles carry their mode"],
-  ['src/ui/playMenu.ts', '.cot-play .rule svg{display:block;color:var(--mode-ink,currentColor)}', "Rooms' rule glyphs paint the mode"],
+  ['src/ui/playMenu.ts', 'glyph: rule.icon as IconId, tone: rule.id,', "Rooms' mode cards carry their mode"],
+  ['src/ui/components/components.css', '.cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "a picker card's glyph paints its mode"],
+  ['src/ui/modePicker.ts', 'if (next?.tone) glyph.dataset.modeTone = next.tone;', "the mode picker's rules card carries its mode"],
+  ['src/ui/components/components.css', '.cot-mp__glyph{display:flex;color:var(--mode-ink,var(--ink-2))}', "the rules card's glyph paints the mode"],
+  ['src/ui/playMenu.ts', 'modeGlyph.dataset.modeTone = selectedGameMode;', "Rooms' Mode trigger carries its mode"],
+  ['src/ui/playMenu.ts', '.cot-play .menu-select-glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}', "Rooms' Mode trigger glyph paints the mode"],
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
   ['src/ui/garage.ts', 'data-game-mode="${id}" data-mode-tone="${id}"', "every Garage Deploy choice carries its mode"],

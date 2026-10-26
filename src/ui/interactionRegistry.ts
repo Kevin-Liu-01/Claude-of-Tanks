@@ -135,15 +135,16 @@ export const INTERACTION_SITES = Object.freeze({
 
   // ---- Rooms (the lead)
   'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:item===button'], lane: 'lead', path: 'start-room' },
-  'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], lane: 'lead' },
+  'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.create-size'], lane: 'lead' },
   'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
   'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },
-  'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-vehicle-list'], lane: 'lead' },
-  'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-team-list'], lane: 'lead' },
+  'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-tank'], lane: 'lead' },
+  'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.room-team'], lane: 'lead' },
   // the lobby's hand-rolled dropdown (bindMenuSelect) writes every list's selection: claimed here
-  'rooms-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-size-list', 'bespoke:item===option'], lane: 'lead' },
-  'rooms-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.gameMode'], lane: 'lead' },
+  'rooms-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.room-size'], lane: 'lead' },
+  'rooms-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-mode'], lane: 'lead' },
+  'rooms-rules-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-rules-mode'], lane: 'lead' },
   'rooms-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'lead' },
   'rooms-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'bespoke', marks: ['bespoke:dataset.brainOpponent'], lane: 'lead' },
   'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-arrange]', 'custom-select:select'], lane: 'lead' },

@@ -64,6 +64,8 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
   // the objectives' drawer and its data load with the first battlefield shown (they share the HUD's glyph modules)
   let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
   let shownId: string | null | undefined;
+  /** The card under the pointer or the focus, which an update from outside keeps in the preview. */
+  let previewed: BattlefieldCard | null = null;
 
   /** Show one battlefield in the preview: the chosen one when nothing is previewed. */
   const show = (card: BattlefieldCard | null): void => {
@@ -94,9 +96,10 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     filters: options.filters,
     randomId: options.randomId,
     memory: MEMORY,
-    onPreview: (item) => show(item as BattlefieldCard | null),
+    onPreview: (item) => { previewed = item as BattlefieldCard | null; show(previewed); },
     onChoose: (item) => {
       value = item.id;
+      previewed = null;
       shownId = undefined;
       show(null);
       options.onChoose(item.id);
@@ -106,18 +109,21 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
 
   return {
     setCards(next, nextMode, nextValue): void {
+      const same = next.length === cards.length && next.every((card, i) => card.id === cards[i].id && card.name === cards[i].name);
       cards = next;
       mode = nextMode;
       if (nextValue !== undefined) value = nextValue;
-      picker.setItems(next, value);
+      // an update that changes only the mode or the choice (a room's every render) keeps the grid, its scroll and the
+      // player's focus; the preview redraws its objectives for the mode
+      if (same) picker.setValue(value); else picker.setItems(next, value);
       shownId = undefined;
-      show(null);
+      show(previewed);
     },
     setValue(id): void {
       value = id;
       picker.setValue(id);
       shownId = undefined;
-      show(null);
+      show(previewed);
     },
     focus(): void { picker.focus(); },
     dispose(): void {

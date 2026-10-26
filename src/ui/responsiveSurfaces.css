@@ -284,9 +284,6 @@ body[data-cot-width='phone'] .cot-play .control-actions{flex-wrap:wrap;gap:var(-
 body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='rejoin']{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .version-refusal .cot-c-notice__acts{display:grid;grid-template-columns:1fr}
 body[data-cot-width='phone'] .cot-play .code{font-size:var(--fs-20)}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams{align-items:stretch}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams .cot-c-seg{display:flex;width:100%}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams .cot-c-seg__opt{flex:1 1 0}
 body[data-cot-width='compact'] .cot-play .identity,
 body[data-cot-width='phone'] .cot-play .identity{display:grid;grid-template-columns:1fr;gap:var(--s2)}
 body[data-cot-width='compact'] .cot-play .room-action,
@@ -319,8 +316,6 @@ body[data-cot-width='compact'] .cot-play .battlefield-copy,
 body[data-cot-width='phone'] .cot-play .battlefield-copy{grid-column:auto;grid-template-columns:1fr;padding:var(--s4);gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .control-actions .action{flex:1 1 128px}
 body[data-cot-width='phone'] .cot-play .control-actions .action{flex:1 1 0;min-width:0;padding-inline:var(--s2)}
-body[data-cot-width='compact'] .cot-play .menu-select--map .menu-select-list,
-body[data-cot-width='phone'] .cot-play .menu-select--map .menu-select-list{grid-template-columns:1fr}
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .room-actions{grid-template-columns:1fr}
 /* a short or compact screen: the lobby's controls end the roster, so the roster keeps the screen; the head is lower and stays */
 body:is([data-cot-height='short'],[data-cot-height='compact']) .cot-play .lobby.show .controls{position:static}

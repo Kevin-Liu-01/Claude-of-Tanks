@@ -12,5 +12,6 @@ export function pickerText(): PickerText {
     favourite: t('picker.favourite'),
     empty: t('picker.empty'),
     clear: t('picker.clear'),
+    more: t('picker.more'),
   };
 }

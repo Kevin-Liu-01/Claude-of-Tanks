@@ -339,9 +339,9 @@ assert.match(hud,
   'the shared analog speedometer must expose its live status semantics on every input mode');
 
 assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
-  'live room controls must use the game listbox component instead of browser-native selects');
-assert.match(playMenu, /menu-select menu-select--vehicle[^>]*data-control="vehicle"[\s\S]*cot-room-vehicle-list[^>]*role="listbox"/,
-  'ready-up must expose the production vehicle roster through the shared accessible listbox');
+  "live room controls must use the kit's controls instead of browser-native selects");
+assert.match(playMenu, /menu-select menu-select--vehicle[^>]*data-control="vehicle"[\s\S]*aria-controls="cot-room-vehicle-pick"/,
+  "ready-up's vehicle trigger must control the picker that holds the production vehicle roster");
 assert.match(playMenu, /vehicleSelect\.addEventListener\('change',[\s\S]*type: 'select_vehicle'[\s\S]*type: 'select_equipment'[\s\S]*type: 'select_camo'/,
   'in-lobby tank changes must submit the complete vehicle loadout');
 const showCurrentRoomBody = playMenu.match(
@@ -350,16 +350,23 @@ const showCurrentRoomBody = playMenu.match(
 assert.ok(showCurrentRoomBody, 'the current-room presentation body remains inspectable');
 assert.doesNotMatch(showCurrentRoomBody, /syncGarageSelection\(\)/,
   'reopening a room must not overwrite its retained map or tank with stale Garage state');
-assert.match(playMenu, /menu-select menu-select--map[^>]*data-control="map"[\s\S]*cot-room-map-list[^>]*role="listbox"/,
-  'the battlefield picker must expose the complete map roster through an accessible styled listbox');
-assert.match(playMenu, /menu-select--map \.menu-select-list\{grid-template-columns:repeat\(2,/,
-  'the battlefield list must present preview tiles in a compact desktop grid');
-assert.match(playMenu, /menu-select-list\{position:fixed;[^}]*overflow:auto;overscroll-behavior:contain/,
-  'custom room lists must stay inside a viewport-aware scroll lane');
-assert.match(responsiveSurfaces, /data-cot-width='compact'[\s\S]*menu-select--map \.menu-select-list,[\s\S]*data-cot-width='phone'[\s\S]*grid-template-columns:1fr/,
-  'the battlefield picker must collapse to one column on phones');
-assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigger\.disabled = disabled/,
-  'custom room listboxes must preserve native disabled semantics for guests and ready states');
+// (2026-10-26, INTERACTION-REDESIGN part A) the battlefield trigger opens the kit's battlefield picker in the room's
+// flow: its cards are the whole roster, and they reflow to the space (components.css, the .cot-bf container queries)
+assert.match(playMenu, /menu-select menu-select--map[^>]*data-control="map"[\s\S]*aria-controls="cot-room-bf"[\s\S]*id="cot-room-bf"/,
+  'the battlefield trigger must control the picker that holds the complete map roster');
+assert.match(playMenu, /createBattlefieldPicker\(battlefieldPick,/,
+  "the room's battlefield picker must be the kit's battlefield picker");
+assert.doesNotMatch(`${playMenu}\n${responsiveSurfaces}`, /menu-select--map \.menu-select-list/,
+  'no rules remain for the retired battlefield list');
+// the room's small settings (battle format, deployment) are the kit's segmented control, disabled the native way
+assert.match(playMenu, /segmented\(\{ label: t\('playMenu\.deployment'\)[^\n]*className: 'room-team'/,
+  "the deployment must be the kit's segmented control");
+assert.match(playMenu, /function bindSegmentedSetting[\s\S]*?for \(const option of options\) option\.disabled = disabled/,
+  'a guest or a ready seat must find the segmented settings natively disabled');
+assert.match(playMenu, /createPicker\(vehiclePick, \{\s*id: 'rooms-tank'/,
+  "the room's vehicle must be the kit's picker, with the fleet's search and nation chips");
+assert.match(playMenu, /Object\.defineProperty\(vehicleSelect, 'disabled',[\s\S]*vehicleTrigger\.disabled = disabled/,
+  "the vehicle trigger must preserve native disabled semantics for guests and ready states");
 assert.match(publicNav, /\.public-nav__tools>\.public-nav__lang,\.public-nav__tools>\.public-nav__icon-link\{display:none\}/,
   'the phone bar keeps the mark, Play and the menu; language and source move into the menu sheet');
 
