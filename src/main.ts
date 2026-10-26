@@ -124,6 +124,7 @@ import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
+import { createGarageCamoTryOn } from './game/garageCamoTryOn.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -133,7 +134,7 @@ import {
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
-  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
+  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
@@ -592,6 +593,7 @@ const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
+const camoTryOn = createGarageCamoTryOn({ paint: paintCamoTryOn, onChange: () => invalidateGaragePresentation() });
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 worldRuntime = createWorldActivationRuntime<
   MainWorld,
@@ -1474,6 +1476,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
+    // the try-on (INTERACTION-REDESIGN B): the hovered or focused paint on the hero, painted small and swapped in
+    preview: (specId: string, patternId: string | null) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.preview(shown && shown.specId === specId ? shown.root : null, patternId);
+    },
     patterns: CAMO_CATALOG_PATTERN_IDS,
     // Read each pattern through t() so the active locale decides the displayed label (the previous
     // `...CAMO_PATTERN_LABEL` spread leaked English text into zh-CN for every service_* / sig_* pattern).
@@ -1485,19 +1492,22 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),
     set: (specId: string, patternId: string) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.wear(shown && shown.specId === specId ? shown.root : null, patternId);
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
-      // frame before a cold pattern bake instead of blocking the click.
+      // frame before a cold pattern bake instead of blocking the click; its
+      // try-on tile stands in until the bake lands.
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      }).then(() => invalidateGaragePresentation());
+      }).then(() => camoTryOn.settle(patternId)).then(() => invalidateGaragePresentation());
       multiplayerLobby?.syncSelection();
     },
     setCustom: (specId, value) => {
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      }).then(() => invalidateGaragePresentation());
+      }).then(() => camoTryOn.settle('custom')).then(() => invalidateGaragePresentation());
       // Deliberately sends Factory: custom paint is local single-player only.
       multiplayerLobby?.syncSelection();
     },
@@ -2389,7 +2399,8 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId: string, useTank = true) => pedestal.lendToBattle(specId, useTank),
+      // the hero leaves for battle in the paint it wears, never a try-on's tile
+      lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
       setupBattle,
       combatWarm,
       presentation: battlePresentation,

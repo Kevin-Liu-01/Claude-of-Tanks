@@ -162,6 +162,9 @@ interface GarageCamoOptions {
   getCustom?(specId: string): CustomCamo;
   setCustom?(specId: string, value: CustomCamo): void;
   prewarm?(specId: string): void;
+  /** Try a paint on the hero (hover and focus; main.ts garageCamoTryOn), or null to put the worn paint back. Returns
+   *  at once: the try-on paints on a later task. */
+  preview?(specId: string, patternId: string | null): void;
 }
 
 interface GarageRoomStatus {
@@ -2149,6 +2152,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // static. Tools query `.cot-camos .cgrid` first-match as before.
     grid.className = 'cgrid camo';
     camosEl.appendChild(grid);
+    wireCamoTryOn(grid, '.cot-camo-card', (option) => option.dataset.pid);
     for (const pid of ['factory', ...camoOpts.patterns.filter(id => id !== 'factory')]) {
       const card = document.createElement('button');
       card.type = 'button';
@@ -2608,6 +2612,31 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     requeueTankThumbs(selectedId);
     paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
   });
+
+  // the try-on (INTERACTION-REDESIGN B): a paint under a mouse or a pen, or under the keyboard's focus, shows on the hero
+  // at once (main.ts garageCamoTryOn); leaving the row or the sheet puts the worn paint back. A touch shows nothing
+  // until its press wears the paint (a scroll over the sheet left a try-on behind).
+  function wireCamoTryOn(host: HTMLElement, selector: string, idOf: (option: HTMLElement) => string | undefined): void {
+    const tryOn = (patternId: string | null): void => {
+      if (selectedId && !vehicleLocked) camoOpts?.preview?.(selectedId, patternId);
+    };
+    host.addEventListener('pointerover', (event) => {
+      if (event.pointerType === 'touch') return;
+      const option = eventElement(event)?.closest<HTMLElement>(selector);
+      const patternId = option ? idOf(option) : undefined;
+      if (patternId) tryOn(patternId);
+    });
+    host.addEventListener('pointerleave', (event) => { if (event.pointerType !== 'touch') tryOn(null); });
+    host.addEventListener('focusin', (event) => {
+      const option = eventElement(event)?.closest<HTMLElement>(selector);
+      const patternId = option?.matches(':focus-visible') ? idOf(option) : undefined;
+      if (patternId) tryOn(patternId);
+    });
+    host.addEventListener('focusout', (event) => {
+      if (!(event.relatedTarget instanceof Node && host.contains(event.relatedTarget))) tryOn(null);
+    });
+  }
+  wireCamoTryOn(paintEl, '[data-lt-paint]', (option) => option.dataset.ltPaint);
 
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
@@ -3632,6 +3661,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const spec = specById.get(specId);
     if (!spec) return false;
     const previousSelectedId = selectedId;
+    // a try-on stays with the tank it was tried on: the next tank arrives in its own paint
+    if (previousSelectedId && previousSelectedId !== specId) camoOpts?.preview?.(previousSelectedId, null);
     selectedId = specId;
     // Direct selection from another country (for example a screenshot
     // harness) switches the visible strip to that national fleet.
