@@ -15,7 +15,7 @@
 //
 //   node tools/mp-room-census.mjs --dist=<dir> --label=<label> --out=<dir> [--lock] [--budget-min=20]
 //     [--map=<id>] [--solo] [--vercel-json=<path>] [--transport=p2p] [--cpu-profile [--no-convolver]] [--battle-eval=<expr>]
-//     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>]
+//     [--program-log] [--profile-leave] [--leave-first=A|B] [--leave-gap-ms=<ms>] [--profile-solo]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -61,6 +61,8 @@ const profileLeave = argv.includes('--profile-leave');
 // --leave-first=A|B and --leave-gap-ms=<ms>: who leaves first (B by default) and how long the other waits after that
 // page's Garage is back (0 by default): two pages share the census's GPU process, so a gap keeps one page's Garage
 // restore out of the other's round trips
+// --profile-solo: with --solo, a CPU profile of the host page's solo battle entry, each long task (300 ms or more) attributed
+const profileSolo = argv.includes('--profile-solo');
 const leaveFirst = option('leave-first', 'B') === 'A' ? 'A' : 'B';
 const leaveGapMs = Number(option('leave-gap-ms', '0')) || 0;
 const profiling = { armed: false, live: [], workers: [] };
@@ -282,12 +284,30 @@ try {
   if (solo) {
     at = performance.now();
     const specId = await pageA.evaluate(() => window.__DEBUG?.selectedSpecId ?? window.__DEBUG?.game?.player?.specId ?? null);
+    let soloEntryCdp = null, soloEntryFrom = 0;
+    if (profileSolo) {
+      soloEntryCdp = await pageA.createCDPSession();
+      await soloEntryCdp.send('Profiler.enable');
+      await soloEntryCdp.send('Profiler.setSamplingInterval', { interval: 500 });
+      soloEntryFrom = await pageA.evaluate(() => performance.now());
+      await soloEntryCdp.send('Profiler.start');
+    }
     await pageA.evaluate((spec, map) => { void window.__DEBUG.startBattle(spec ?? 'm1a2_sepv3', map || null); }, specId, mapId);
     await pageA.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' && getComputedStyle(document.querySelector('.cot-bl')).display === 'none',
       { timeout: 240_000, polling: 100 });
     await new Promise((r) => setTimeout(r, 5000));
+    let soloEntryProfile = null;
+    if (soloEntryCdp) {
+      const { profile } = await soloEntryCdp.send('Profiler.stop');
+      const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= soloEntryFrom && ms >= 300);
+      mkdirSync(join(out, label), { recursive: true });
+      writeFileSync(join(out, label, 'solo-entry-A.cpuprofile'), JSON.stringify(profile));
+      soloEntryProfile = attribute(profile, spans, profile.startTime / 1000 - soloEntryFrom);
+      for (const task of soloEntryProfile) console.log(`solo entry task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 30).join('\n    ')}`);
+    }
     await stage('solo', at);
     const soloSample = samples.at(-1);
+    if (soloEntryProfile) soloSample.entryProfile = soloEntryProfile;
     let soloCdp = null, soloFrom = 0;
     if (profileLeave) {
       soloCdp = await pageA.createCDPSession();
