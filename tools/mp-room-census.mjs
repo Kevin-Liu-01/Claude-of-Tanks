@@ -55,7 +55,7 @@ const battleEval = option('battle-eval', '');
 // task of the battle stage names the programs it made and the key parts that differ from the nearest program of that
 // name made before it (a program released and made again reads "same key")
 const programLog = argv.includes('--program-log');
-// --profile-leave: a CPU profile of the host commander's page through the leave to the Garage, each long task attributed
+// --profile-leave: a CPU profile of both pages through the leave to the Garage, each long task attributed
 const profileLeave = argv.includes('--profile-leave');
 const profiling = { armed: false, live: [], workers: [] };
 const profileWorker = async (url, session) => {
@@ -414,13 +414,17 @@ try {
   }
 
   at = performance.now();
-  let leaveCdp = null, leaveFrom = 0;
+  // each page's session and its own clock at the start
+  const leaveCdp = [], leaveFrom = [];
   if (profileLeave) {
-    leaveCdp = await pageA.createCDPSession();
-    await leaveCdp.send('Profiler.enable');
-    await leaveCdp.send('Profiler.setSamplingInterval', { interval: 500 });
-    leaveFrom = await pageA.evaluate(() => performance.now());
-    await leaveCdp.send('Profiler.start');
+    for (const page of [pageA, pageB]) {
+      const cdp = await page.createCDPSession();
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+      leaveFrom.push(await page.evaluate(() => performance.now()));
+      await cdp.send('Profiler.start');
+      leaveCdp.push(cdp);
+    }
   }
   for (const page of [pageB, pageA]) {
     await page.evaluate(() => window.__DEBUG.leaveBattleToGarage());
@@ -428,16 +432,20 @@ try {
   }
   await new Promise((r) => setTimeout(r, 2000));
   let leaveProfile = null;
-  if (leaveCdp) {
-    const { profile } = await leaveCdp.send('Profiler.stop');
-    const spans = (await pageA.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= leaveFrom && ms >= 200);
+  if (leaveCdp.length) {
+    leaveProfile = {};
     mkdirSync(join(out, label), { recursive: true });
-    writeFileSync(join(out, label, 'host-leave.cpuprofile'), JSON.stringify(profile));
-    leaveProfile = attribute(profile, spans, profile.startTime / 1000 - leaveFrom);
-    for (const task of leaveProfile) console.log(`host leave task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 24).join('\n    ')}`);
+    for (const [i, cdp] of leaveCdp.entries()) {
+      const page = [pageA, pageB][i], who = 'AB'[i];
+      const { profile } = await cdp.send('Profiler.stop');
+      const spans = (await page.evaluate(() => window.__censusTaskSpans ?? [])).filter(([start, ms]) => start >= leaveFrom[i] && ms >= 200);
+      writeFileSync(join(out, label, `leave-${who}.cpuprofile`), JSON.stringify(profile));
+      leaveProfile[who] = attribute(profile, spans, profile.startTime / 1000 - leaveFrom[i]);
+      for (const task of leaveProfile[who]) console.log(`${who} leave task at ${task.startMs} ms, ${task.ms} ms (${task.samples} samples)\n  self:\n    ${task.self.join('\n    ')}\n  total:\n    ${task.total.slice(0, 24).join('\n    ')}`);
+    }
   }
   await stage('leave', at);
-  if (leaveProfile) samples.at(-1).profile = { page: leaveProfile };
+  if (leaveProfile) samples.at(-1).profile = leaveProfile;
 } catch (error) {
   // where each page stood when the stage gave up, and the stage's console so far
   const state = await Promise.all(pages.map((page) => page.evaluate(() => {
