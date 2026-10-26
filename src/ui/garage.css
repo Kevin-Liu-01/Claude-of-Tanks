@@ -1348,6 +1348,8 @@ body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
 /* The compact chip shows the numeral alone at the 11 px floor ("Tier VIII" would span two thirds of a phone card). */
 body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px;font-size:0}
 body[data-cot-panels='overlay'] .cot-card .hc-tier b{font-size:var(--hc-tier)}
+/* Chinese keeps the tier's 级 on a phone card, as its name row and the desktop cards write it */
+html[lang^='zh'] body[data-cot-panels='overlay'] .cot-card .hc-tier{font-size:var(--hc-tier)}
 body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:20px;padding:1px 3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;

@@ -4687,6 +4687,7 @@
   "garage.card.aria": "Tier {tier} {name}, {nation}",
   "garage.card.ariaUntiered": "{name}, {nation}",
   "garage.card.tier": "Tier {tier}",
+  "garage.tierPlate": "{tier}",
   "mediaLibrary.unavailable": "Library unavailable ({status})",
   "mediaLibrary.loading": "Loading…",
   "mediaLibrary.tabsAria": "Library collections",

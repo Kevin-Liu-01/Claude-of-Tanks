@@ -4711,6 +4711,7 @@
   "garage.card.aria": "{tier} 级 {name}，{nation}",
   "garage.card.ariaUntiered": "{name}，{nation}",
   "garage.card.tier": "{tier}级",
+  "garage.tierPlate": "{tier}级",
   "mediaLibrary.unavailable": "图库暂不可用（{status}）",
   "mediaLibrary.loading": "加载中…",
   "mediaLibrary.tabsAria": "图库合集",

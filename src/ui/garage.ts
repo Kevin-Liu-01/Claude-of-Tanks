@@ -3475,7 +3475,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const dossierHeader =
       `<div class="cot-dossier-head">` +
       `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
-      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
+      `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) ? t('garage.tierPlate', { tier: tierNumeral(spec.id) }) : '&mdash;'}</span><h3></h3></div>` +
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${tNation(spec.nation)} &middot; ${vehicleEraLabelI18n(spec.era, t)}</span></div>` +
       `<button class="cot-compact-equipment-trigger" type="button" data-garage-panel="equipment" ` +
       `aria-label="${t('garage.dossier.vehicleDossier')}" ` +
