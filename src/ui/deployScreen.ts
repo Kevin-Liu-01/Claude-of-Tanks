@@ -129,6 +129,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     // the mode's own settings open under the pickers and nothing above them moves (deploy.css holds the battlefield at
     // its resting height); a phone's page scrolls them into view
     options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
+    // the further options and the battlefield picker take one place: opening one closes the other
+    if (open && menu.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
+      menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
+    }
     if (open && document.body.dataset.cotPanels === 'overlay') {
       requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
     }
@@ -218,6 +222,9 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   function brief(id = plateBrief?.dataset.op || ''): void {
     const op = plateBrief ? host.operation(id) : null;
     if (!plateBrief || !op) { plateBrief?.replaceChildren(); return; }
+    // the briefed operation's row wears the selection (the accent ring), as a picked mode or battlefield does
+    const at = host.operationIds.indexOf(op.id);
+    [...host.ops.children].forEach((row, index) => row.classList.toggle('is-briefed', index === at));
     if (plateBrief.dataset.op === op.id && plateBrief.dataset.status === op.status && plateBrief.firstChild) return;
     plateBrief.dataset.op = op.id;
     plateBrief.dataset.status = op.status;
@@ -233,9 +240,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-head"><span class="cot-deploy-brief-ix" aria-hidden="true">${String(op.index).padStart(2, '0')}</span>` +
       `<h3 class="cot-deploy-brief-name">${t(`campaign.op.${op.id}.title`)}</h3></div>` +
       `<p class="cot-deploy-brief-text">${t(`campaign.op.${op.id}.brief`)}</p>` +
-      `<div class="cot-deploy-brief-facts">${host.flag(op.enemy)}${host.rules([['map', t(`map.${op.mapId}`)], ['clock', op.clock]])}` +
+      `<div class="cot-deploy-brief-facts">${host.rules([['clock', op.clock]])}` +
+      `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span>` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
-      `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span></div>` +
+      `${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div>` +
       `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async">` +
       `<canvas width="256" height="256"></canvas></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;

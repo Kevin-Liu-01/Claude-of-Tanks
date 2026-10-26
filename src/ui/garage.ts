@@ -3624,7 +3624,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `data-deploy-field-close aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>`);
     pop.hidden = false;
     pop.closest('.cot-battle-details')?.classList.add('is-picking');
-    pop.scrollIntoView({ block: 'nearest' }); // a phone's opened picker comes into view above the dock
+    // the picker opens where the battlefield and the rules stood (deploy.css gives it their room), so nothing scrolls
+    battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
     // the selected battlefield scrolls into view within the list only (its column keeps its place)
     const list = mapsEl.querySelector<HTMLElement>('.cot-map-scroll');

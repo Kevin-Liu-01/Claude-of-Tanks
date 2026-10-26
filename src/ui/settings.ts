@@ -246,7 +246,9 @@ const SETTINGS_CSS = `
   transition:color var(--dur-fast) var(--ease-enter);}
 .cot-set-tab:hover{color:var(--ink-2);}
 .cot-set-tab.sel{color:var(--ink-1);}
-.cot-set-tab.sel::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+/* the underline is the label's: a tab's box may be wider (the touch floor) and its label keeps the gutter */
+.cot-set-tab>span{position:relative;align-self:stretch;display:flex;align-items:center;}
+.cot-set-tab.sel>span::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
 /* scrolling rows: a thin scrollbar and overflow-gated fade masks (.fade-top/.fade-bot set from the scroll position) */
 .cot-set-body{flex:1;overflow-y:auto;padding:var(--s1) var(--s5) var(--s4);min-height:280px;
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;}
@@ -373,7 +375,8 @@ const SETTINGS_CSS = `
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
 .cot-set-note b{color:var(--ink-2);font-weight:600;}
-.cot-set-note.keep{text-wrap:balance;}
+.cot-set-note.keep{text-wrap:pretty;}
+:lang(zh-CN) .cot-set-note{word-break:keep-all;overflow-wrap:break-word;}
 .cot-set-note.folded{display:none;}
 .cot-set-body>.cot-set-note{margin-inline:calc(var(--s3) + var(--s2));}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
@@ -460,7 +463,8 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 /* the refusal belongs to the Custom row: under its swatches, above its rule, its glyph and text on the row's glyph and
    label columns */
 .cot-set-row:has(> .cot-set-refused:not([hidden])){flex-wrap:wrap;}
-.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 calc(-1 * var(--s2));padding-inline:var(--s2);}
+/* a framed notice stands on the content column's edges, as the plate's other framed controls do */
+.cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0;}
 /* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
 .cot-set-refused .cot-c-notice__glyph{width:24px;place-items:center start;}
 .cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;}
@@ -559,12 +563,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
-    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel">${t('settings.tab.controls')}</button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.gameplay')}</button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.sound')}</button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.graphics')}</button>` +
-    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.accessibility')}</button>` +
-    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel">${t('settings.tab.language')}</button>` +
+    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.controls')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.gameplay')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.sound')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.graphics')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.accessibility')}</span></button>` +
+    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.language')}</span></button>` +
     `</div>` +
     // a binding conflict: the kit's warning notice (glyph and tone, no stripe) with its two actions
     `<div class="cot-set-conflict cot-c-notice"${datumAttr('notices')} data-severity="warning" role="alert"><span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span>` +

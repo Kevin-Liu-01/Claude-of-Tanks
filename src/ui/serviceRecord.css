@@ -106,7 +106,7 @@
 .cot-record-reason-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-1)}
 .cot-record-reason-stats>div{min-width:0}
 .cot-record-reason-stats b{display:block;margin-top:6px;font:600 max(var(--fs-floor-12),var(--fs-15))/1.2 var(--font-display);color:var(--ink-1)}
-.cot-record-campaign{margin-top:var(--s4)}
+.cot-record-campaign{margin-top:var(--s3)}
 .cot-record-campaign-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
 .cot-record-campaign-grid>div{min-width:0}
 .cot-record-campaign-grid b{display:block;margin-top:6px;font:600 var(--fs-18)/1.2 var(--font-display);color:var(--ink-1)}
@@ -136,7 +136,8 @@
   background:var(--surface-raised);box-shadow:var(--ring-1)}
 .cot-record-ach-art{display:grid;place-items:center;padding:0;border:0;background:none;cursor:help}
 .cot-record-ach-copy{min-width:0;overflow-wrap:anywhere}
-.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
+/* a title row holds a NEW tag's height whether or not it carries one, so a row of cards shares its lines */
+.cot-record-ach-title{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2);min-height:20px;margin-bottom:var(--s3)}
 .cot-record-ach-title strong{font-size:max(var(--fs-floor-12),var(--fs-15));color:var(--ink-1)}
 .cot-record-tier{font:600 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);color:var(--ink-2)}
 .cot-record-bar{height:4px;background:var(--line-3)}
@@ -205,6 +206,8 @@
   .cot-record-vehicle{width:96px;height:64px}
   .cot-record-expand{top:var(--s3);translate:0}
   .cot-record-battle-medals{grid-column:2/-1}
+  /* here the row's medals take a line of their own: an open battle drops it (its body shows them) */
+  .cot-record-battle[open] .cot-record-battle-medals{display:none}
 }
 @media(max-width:700px){
   .cot-modal-root.cot-service-record .cot-modal__header{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'title close' 'line tank';min-height:0;padding:var(--s4)}
