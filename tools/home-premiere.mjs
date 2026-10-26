@@ -102,7 +102,8 @@ const MATCHUP_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree', 4: 'home.h
 function matchup(id, tanks) {
   const key = MATCHUP_KEYS[tanks?.length];
   if (!key) throw new Error(`home-premiere: ${id} names ${tanks?.length ?? 'no'} vehicles; a caption reads two to four (manifest tanks)`);
-  const names = tanks.map((spec) => tank(spec).name);
+  // a name keeps its model and variant on one line: "M1A2 Abrams SEPv3" never breaks before "SEPv3"
+  const names = tanks.map((spec) => tank(spec).name.replace(/ /g, '\u00a0'));
   const vars = Object.fromEntries(names.map((name, i) => ['abcd'[i], name]));
   const line = names.reduce((out, name, i) => out.replace(`{${'abcd'[i]}}`, name), text(key));
   return `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`;
@@ -334,7 +335,7 @@ function fleetBlock() {
   const tiles = strip.map((entry, i) => {
     const a = tank(entry.specId);
     return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(entry.rungs, i === 0), galleryHref(entry.specId),
-      `<b>${esc(a.name)}</b>`, [t(`nation.${a.nation}`), t(`map.${entry.map}`)]);
+      `<b>${esc(a.name.replace(/ /g, '\u00a0'))}</b>`, [t(`nation.${a.nation}`), t(`map.${entry.map}`)]);
   });
   return `<section class="bento bento--fleet" aria-labelledby="fleet-title"><div class="home-shell">`
     + bentoHead('fleet-title', 'home.fleet.title', '/gallery', 'publicNav.tankGallery')

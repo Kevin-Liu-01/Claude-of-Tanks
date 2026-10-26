@@ -41,7 +41,7 @@ img{display:block;max-width:100%}
 .hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
 /* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
-.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before,.hero__card::before{z-index:-1}
+.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
@@ -52,11 +52,11 @@ img{display:block;max-width:100%}
 .hero__lead{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:max(calc(var(--home-h1) * 9.4),34rem)}
 .hero__title{margin:0;font:700 var(--home-h1)/.88 var(--font-display);text-transform:uppercase;text-wrap:balance;color:var(--ink-1);text-box:trim-both cap alphabetic}
 .hero__lede{max-width:40em;margin:var(--s5) 0 0;font:400 var(--fs-18)/1.5 var(--font-body);color:var(--ink-1);text-wrap:balance}
-/* the shot's caption holds the right edge, centred on the actions' row, and the pause comes in on its left when the reel
-   starts; every caption shares one cell, so the longest sets the box and a turn crossfades with its clip without moving
-   anything */
+/* the shot's caption sits beside the reel's pause, which holds the hero's right edge, both centred on the actions' row.
+   The pause keeps its place while it waits for the reel (hidden only under reduced motion, where the reel never starts),
+   and every caption shares one cell, so the longest sets the box: nothing moves when the reel starts or turns */
 .hero__reelbar{position:relative;display:flex;align-items:center;gap:var(--s4);height:64px}
-.hero__reelbar>.hero__toggle{order:-1}
+@media (prefers-reduced-motion:no-preference){.hero__reelbar>.hero__toggle[hidden]{display:grid;visibility:hidden}}
 /* the words' scrim (owner 2026-10-25: their contrast holds over bright snow): a plate of the scene's ink under the lead and
    under the caption, feathered at its edges and running off the screen's side, a gradient mask over imagery, never blur */
 .hero__lead::before,.hero__reelbar::before{--feather:var(--s9);content:'';position:absolute;pointer-events:none;background:var(--home-hero-scrim);
@@ -242,6 +242,8 @@ img{display:block;max-width:100%}
 /* ---- head to head and the fleet: a bento of large stills, the first two columns wide and two rows tall, each named by what
    it shows and opening its vehicle (owner 2026-10-25: "we need to show of all our higher quality stuff") ---- */
 .bento{padding:var(--s7) 0}
+/* the first section after the hero keeps the full step between two sections */
+.bento--duels{padding-top:var(--s9)}
 .bento__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
 .bento__tile{margin:0;aspect-ratio:16/9;box-shadow:var(--ring-1)}
 .bento__tile--lead{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
@@ -295,22 +297,19 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__trailer{--h:58px;padding-inline:var(--s4)}
   .hero__trailer :is(.hero__thumb,.hero__dur){display:none}
   /* the headline and its line over the picture's foot, then the shot on screen beside the reel's pause, above the counts */
-  .hero__card{position:relative;flex-direction:column;align-items:stretch;gap:var(--s4);margin-bottom:var(--s4)}
+  .hero__card{flex-direction:column;align-items:stretch;gap:var(--s4);margin-bottom:var(--s4)}
   .hero__lead{max-width:none}
-  /* one scrim under the whole block, across the screen, feathered above the headline */
+  /* the words' scrim is the phone grade's lower half (home-phone-grade), across the picture and through the counts */
   .hero__lead::before,.hero__reelbar::before{content:none}
-  .hero__card::before{content:'';position:absolute;-webkit-mask-image:var(--plate);mask-image:var(--plate);inset:calc(-1 * var(--s9) - var(--s4)) calc(-1 * var(--home-gutter)) calc(-1 * var(--s3));pointer-events:none;
-    background:var(--home-hero-scrim);--plate:linear-gradient(0deg,var(--ink-1) calc(100% - var(--s9)),transparent)}
   .hero__lede{margin-top:var(--s3);font-size:var(--fs-16)}
   .hero__reelbar{justify-content:space-between;height:44px}
-  .hero__reelbar>.hero__toggle{order:0}
   .hero__shots{text-align:left}
   .hero__shot{align-items:flex-start}
   .hero__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s2);height:auto;margin:0;padding:0;border:0}
   .hero__stats li{flex-direction:column;align-items:flex-start;gap:var(--s2);padding:var(--s2);border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--ring-1)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
-  .features{padding-top:var(--s6)}
+  .features{padding:var(--s6) 0}
   .features-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2)}
   .feat,.feat--wide{aspect-ratio:16/9}
   .feat__cap{padding:var(--s4)}
@@ -319,12 +318,13 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   :root{--home-h1:clamp(var(--fs-32),10vw,var(--fs-44));--home-h2:var(--fs-44)}
   .play{padding:var(--s6) 0}
   /* the closing band keeps the phone's 80 px section rhythm */
-  .press{padding-bottom:calc(var(--s7) + var(--s6))}
+  .press{padding:var(--s6) 0 calc(var(--s7) + var(--s6))}
   /* one whole card per view; the switch keeps its arrows beside it while the column holds all four tabs (the play-acts
      query below sets them two by two when it does not), at the 44 px target */
   .play-rail{grid-auto-columns:100%;gap:var(--s2)}
   /* each bento is a rail of whole stills on a phone, the next one showing at the edge */
   .bento{padding:var(--s6) 0;contain-intrinsic-size:auto 420px}
+  .bento--duels{padding-top:calc(2 * var(--s6))}
   .bento .bento__grid{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:86%;gap:var(--s2);overflow-x:auto;overscroll-behavior-x:contain;
     scroll-snap-type:x mandatory;scrollbar-width:none}
   .bento__grid::-webkit-scrollbar{display:none}
