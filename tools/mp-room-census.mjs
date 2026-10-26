@@ -74,7 +74,7 @@ const stage = (name, startedAt) => {
 };
 
 const lock = useLock ? createCaptureLock() : null;
-let rooms = null, server = null, browser = null;
+let rooms = null, server = null, browser = null, pages = [];
 try {
   if (lock) {
     await lock.acquire(150 * 60 * 1000, { place: `mp-room-census-${label}` });
@@ -93,6 +93,7 @@ try {
       '--use-gl=angle', '--enable-webgl', '--js-flags=--max-old-space-size=3072', '--window-size=1100,720'] });
   // two first-time machines: separate contexts share no storage, cache or player identity
   const [pageA, pageB] = await Promise.all([1, 2].map(async () => (await browser.createBrowserContext()).newPage()));
+  pages = [pageA, pageB];
   for (const page of [pageA, pageB]) await page.setViewport({ width: 1024, height: 640, deviceScaleFactor: 1 });
   observe(pageA, 'A', log);
   observe(pageB, 'B', log);
@@ -165,8 +166,17 @@ try {
   await new Promise((r) => setTimeout(r, 2000));
   stage('leave', at);
 } catch (error) {
-  samples.push({ kind: `lobby-${['boot', 'create', 'join', 'ready', 'battle', 'leave'][samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0] });
+  // where each page stood when the stage gave up, and the stage's console so far
+  const state = await Promise.all(pages.map((page) => page.evaluate(() => {
+    const cover = document.querySelector('.cot-bl');
+    return { inMatch: window.__MULTIPLAYER_V2?.stats?.().inMatch ?? null, phase: window.__DEBUG?.game?.phase ?? null,
+      cover: cover ? getComputedStyle(cover).display : null, coverText: cover?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 160) ?? null };
+  }).catch((e) => ({ unreadable: String(e?.message || e).split('\n')[0] }))));
+  samples.push({ kind: `lobby-${['boot', 'create', 'join', 'ready', 'battle', 'leave'][samples.length] ?? 'flow'}`, error: String(error?.message || error).split('\n')[0],
+    pages: state, census: { consoleErrors: log.errors.splice(0), consoleWarnings: log.warnings.length, consoleWarningTexts: log.warnings.splice(0) } });
   console.error(`mp-room-census: ${samples.at(-1).error}`);
+  for (const [i, s] of state.entries()) console.error(`  page ${'AB'[i]}: ${JSON.stringify(s)}`);
+  for (const line of [...samples.at(-1).census.consoleErrors, ...samples.at(-1).census.consoleWarningTexts]) console.error(`  ${String(line).slice(0, 240)}`);
   process.exitCode = 2;
 } finally {
   await browser?.close().catch(() => {});

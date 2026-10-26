@@ -180,6 +180,26 @@
   "public/docs/phone/inpMs": {
    "value": 176,
    "owner": "premiere-site"
+  },
+  "bundle/game/any/brotliBytes": {
+   "value": 1078698,
+   "owner": "integrator",
+   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+  },
+  "bundle/game/any/entryBrotliBytes": {
+   "value": 244043,
+   "owner": "integrator",
+   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+  },
+  "bundle/cn/any/brotliBytes": {
+   "value": 1121750,
+   "owner": "integrator",
+   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
+  },
+  "bundle/cn/any/entryBrotliBytes": {
+   "value": 244043,
+   "owner": "integrator",
+   "ruling": "Main 2026-10-25, release 253: the riding-parts prebuild trigger (+170 B game, +259 B entry brotli); it moves into a lazy chunk in 254"
   }
  }
 }
