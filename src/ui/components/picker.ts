@@ -196,7 +196,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     ...(options.filters ?? []).map((filter) => [`tag:${filter.id}`, filter.label, filter.icon] as const),
   ].map(([key, label, glyph]) => `<button type="button" class="cot-c-chip" data-chip="${esc(key)}" aria-pressed="false" data-ui-sound="toggle">`
     + `${glyph ? icon(glyph as IconId, { size: 16 }) : ''}<span class="cot-c-chip__label">${esc(label)}</span></button>`).join('');
-  host.innerHTML = `<div class="cot-c-picker__bar">`
+  host.innerHTML = '<div class="cot-c-picker__bar">'
     + `<input class="cot-c-picker__search" type="search" placeholder="${esc(options.text.search)}" aria-label="${esc(options.text.search)}"`
     + ` aria-controls="${uid}" autocomplete="off" spellcheck="false"><div class="cot-c-picker__chips" role="group">${chips()}</div></div>`
     + `<div class="cot-c-picker__grid" id="${uid}" role="listbox" aria-label="${esc(options.label)}"></div>`
@@ -239,12 +239,20 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     for (const element of options$()) element.tabIndex = element === to ? 0 : -1;
     if (focus) to.focus({ preventScroll });
   };
-  /** Scroll the chosen option into the grid's view when the grid scrolls (a surface that bounds the picker's height). */
+  // The grid opens with its choice in view on whole rows: the chosen row on top, or near the end the first row from which
+  // the chosen one shows. A row cut under the bar would read as a loose caption (Rooms r25).
   const revealChosen = (): void => {
     const chosen = options$().find((element) => element.getAttribute('aria-selected') === 'true');
     if (!chosen || grid.scrollHeight <= grid.clientHeight) return;
-    const top = chosen.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop;
-    grid.scrollTop = Math.max(0, top - grid.clientHeight / 2 + chosen.offsetHeight / 2);
+    const style = getComputedStyle(grid);
+    const pad = parseFloat(style.paddingTop) || 0;
+    const origin = grid.getBoundingClientRect().top - grid.scrollTop + pad;
+    const end = grid.scrollHeight - grid.clientHeight;
+    const top = chosen.getBoundingClientRect().top - origin;
+    if (top <= end) { grid.scrollTop = top; return; }
+    const view = grid.clientHeight - pad - (parseFloat(style.paddingBottom) || 0);
+    const rows = options$().map((element) => element.getBoundingClientRect().top - origin).filter((row) => row + view >= top + chosen.offsetHeight);
+    grid.scrollTop = Math.min(end, rows.length ? Math.min(...rows) : end);
   };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);

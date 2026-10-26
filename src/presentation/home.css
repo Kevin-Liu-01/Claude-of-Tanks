@@ -72,7 +72,7 @@ img{display:block;max-width:100%}
 .hero__shots{display:grid;margin:0;text-align:right}
 .hero__shot{grid-area:1/1;display:flex;flex-direction:column;align-items:flex-end;gap:var(--s1);opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__shot.is-on{opacity:1}
-.hero__shot b{font:500 var(--fs-15)/1.3 var(--font-body);color:var(--ink-1);white-space:nowrap}
+.hero__shot b{font:500 calc(max(var(--fs-floor-12),var(--fs-13)) * 15 / 13)/1.3 var(--font-body);color:var(--ink-1);white-space:nowrap}
 .hero__where{display:flex;align-items:center;gap:var(--s3);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);white-space:nowrap}
 .hero__mode{display:inline-flex;align-items:center;gap:var(--s1)}
 .hero__where>span+span:not(.hero__mode)::before{content:'·';margin-right:var(--s3);color:var(--ink-3)}
@@ -372,6 +372,13 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 @container play-acts (width < 560px){
   .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 100%;overflow:visible}
   .play-acts>.cot-c-btn--icon:first-of-type{margin-left:auto}
+}
+/* a narrow desktop card (under 900 px) cannot hold the caption beside the actions: the caption and the pause take their
+   own row on the right, as tall as the pause, so the card steps 16 px above them and its own foot below (home r25). The
+   card is a container only from 768 px, where no fixed Play bar lives inside it */
+@media (width >= 768px){.hero__card{container:hero-card / inline-size}}
+@container hero-card (width < 900px){
+  .hero__reelbar{flex:1 1 100%;justify-content:flex-end;height:auto;min-height:44px}
 }
 @media (height < 520px) and (width >= 768px){
   .hero{min-height:var(--cot-viewport-height,100dvh)}
