@@ -23,7 +23,8 @@ the redacted-setting strip, `vercel build --prod`, the lockfile restore, the car
 last three releases' hashed `/assets` files from the local release cache (so a tab opened before the
 deploy keeps loading its chunks), `node tools/vercel-output-immutable.mjs` and `--check`, and the pulled `.vercel/.env*.local` files
 deleted whatever happens), then `node tools/release.mjs deploy <sha> --title="deploy N: <title>"`,
-which waits for the served version stamp. Every subcommand takes `--dry-run`. Append the row below
+which waits for the served version stamp and then records the release in the cache (a deploy run straight
+with the Vercel CLI is followed by `node tools/release.mjs record <sha>`; builds never record themselves). Every subcommand takes `--dry-run`. Append the row below
 by hand. `node tools/release.mjs rollback` promotes the production deployment before the live one
 (`vercel promote` also turns production-domain auto-assignment back on), and
 `node tools/release.mjs workers <sha>` deploys the edge services tagged with the commit.
