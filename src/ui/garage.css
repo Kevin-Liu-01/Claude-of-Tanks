@@ -85,6 +85,8 @@
 body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* the equipment picker opens over the stage's top at a short window: the plate steps aside while it is open */
 .cot-garage.picker-open .cot-garage-variant-control{visibility:hidden;}
+/* the paint sheet stands over the plate's corner: one surface at a time (the r22q critic: the staging menu opened over it) */
+.cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{visibility:hidden;}
 .cot-nav .cot-github{position:relative;padding-inline:var(--s2);}
 .cot-nav .github-stars{padding-left:6px;border-left:1px solid var(--line-3);
   flex:0 0 auto;color:var(--text-accent);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;}
@@ -400,6 +402,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 /* the viewer is opaque, its head with it: the plate's translucent ground let the dossier's figures show through the title
    (the r19q critic; r20q: the modal's own sheet, in the same layer and inserted later, won at one class) */
 .cot-modal.cot-technical-viewer{background:var(--surface-nav);}
+/* the drawing's head is one line: its title and its close stand on one centre (the r22q critic: at 844 x 390 a finger's
+   44 px close sat 12 px under the title) */
+.cot-technical-viewer .cot-modal__header{align-items:center;}
 .cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
 .cot-technical-viewer-tab{min-height:38px;padding:0 var(--s3);color:var(--ink-3);background:var(--side-plate);
   border:1px solid var(--line-2);cursor:pointer;
@@ -775,6 +780,9 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview{flex:none;block-size:9.5rem;margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-2);
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-eqpreview{container-type:inline-size}
+/* a short landscape sheet sets the values beside the words in two rows: its readout's height gives the cards the rest (the
+   r22q critic: at 844 x 390 one row of cards was cut through its words over 85 px of empty readout) */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview{block-size:7rem}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
@@ -784,6 +792,13 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 /* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
 html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
+/* a narrow card sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by word and
+   the zh value ran over it) */
+.cot-eqpreview .metric{container-type:inline-size}
+@container (width < 220px){
+  .cot-eqpreview .metric-label,.cot-eqpreview .metric-values{grid-column:2/-1}
+  .cot-eqpreview .metric-values{justify-content:flex-start}
+}
 .cot-eqpreview .cot-eqtip[data-shut] .action{border-top:0;padding-top:0;color:var(--ink-2);text-transform:none}
 /* a wide readout in a sheet sets the values beside the item's words, so one fixed height holds them */
 @container (width >= 560px){
@@ -1263,6 +1278,9 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
   left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
   top:calc(72px + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
+/* a short landscape sheet's cards carry the glyph and the name: the focused card's effects stand in the readout under them,
+   so a row of cards stands whole (the r23 critic: at 844 x 390 each zh card was cut through its second line of effects) */
+body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__facts{display:none}
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats{
   width:min(320px,calc(100vw - 16px));max-height:none;
 }
@@ -1400,7 +1418,7 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{justify-content:flex-start;min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
-.cot-garage .cot-action{padding:0 var(--s1) 0 var(--s2);gap:var(--s1);color:var(--ink-1);}
+.cot-garage .cot-action{padding:0 var(--s2);gap:var(--s2);color:var(--ink-1);}
 .cot-garage .cot-action>span{white-space:nowrap;}
 .cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
 

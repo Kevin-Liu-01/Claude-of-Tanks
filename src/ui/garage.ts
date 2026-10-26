@@ -1199,16 +1199,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const theirs = rival ? headlineOf(rival) : null;
     const cells = (key: StatRangeKey, value: number, lowerBetter: boolean) =>
       Math.max(1, Math.round(statFrac(group, key, value, lowerBetter) * 20));
+    // one grid in both views (owner 10-26: "fix these views and alignment a lot"): the glyph, the label, the figure and its
+    // unit on the column's right edge, the bar from the label's edge to it; comparing adds a small line under the label, the
+    // rival's figure and the gap on that same right edge, so no figure moves between the views
     const row = (glyph: string, label: string, key: keyof typeof mine & StatRangeKey, unit: string, digits: number, lowerBetter = false) => {
       const value = mine[key];
       const other = theirs?.[key];
       const gap = other == null ? null : Number((value - other).toFixed(digits));
       // an even figure carries no gap: only a difference is news
-      // comparing, every figure keeps its gap's cell (empty when even), so the figures share one right edge
-      const delta = gap == null ? '' : gap === 0 ? '<em class="num"></em>' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
-        `${gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
-      return `<div class="cot-hrow" data-stat="${key}">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
-        `<span class="v${theirs ? ' cmp' : ''}"><b class="num">${value.toFixed(digits)}</b>${unit || theirs ? `<small>${unit}</small>` : ''}${delta}</span>` +
+      const delta = !gap ? '' : `<em class="num${(lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">${gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
+      const versus = other == null ? '' : `<span class="cmp"><span class="rv"><span class="num">${other.toFixed(digits)}</span>` +
+        `${unit ? `<small>${unit}</small>` : ''}</span>${delta}</span>`;
+      return `<div class="cot-hrow${theirs ? ' is-cmp' : ''}" data-stat="${key}">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
+        `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}</span>${versus}` +
         scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
     };
     // the rival is the kit's picker menu (mountRivalMenu, after the readout is drawn): a raw select in the census
@@ -1216,7 +1219,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.station.overview'), '', 'Performance', true)}` +
       (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
       `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="${compareOn}">` +
-      `<span class="cot-c-chip__label">${t('garage.compare')}</span></button></div>`;
+      `<span class="cot-c-chip__label">${compareOn ? t('garage.compare.clear') : t('garage.compare')}</span></button></div>`;
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
     return `<section class="cot-stat-section cot-overview-section cot-primary" data-stations="overview">${picker}<div class="cot-headline">` +
       row('damage', t('garage.dossier.stat.damage'), 'dmg', 'hp', 0) +
@@ -1260,7 +1263,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
       media: { poster: iconUrl(other.id, 'side') } }));
     const group = `${statGroupOf(spec)}|${spec.id}`;
-    if (rivalMenu && group === rivalGroup) { rivalMenu.setItems(items, rival.id); return; }
+    // the chip is the bars' legend: their notch, then "vs", the rival's picture and its name (the menu's nation stays in it)
+    const legend = (): void => {
+      const trigger = rivalHost.querySelector<HTMLElement>('.cot-c-menu__trigger');
+      if (!trigger) return;
+      trigger.dataset.vs = t('garage.rival.vs');
+      trigger.dataset.tip = t('garage.rival.tip', { name: rival.label?.displayName || rival.name });
+    };
+    if (rivalMenu && group === rivalGroup) { rivalMenu.setItems(items, rival.id); legend(); return; }
     rivalMenu?.dispose();
     rivalGroup = group;
     const nations = [...new Set(peers.map(countryCodeOf))];
@@ -1275,6 +1285,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         rivalHost.querySelector<HTMLElement>('.cot-c-menu__trigger')?.focus({ preventScroll: true });
       },
     });
+    legend();
   }
 
   let selectedId = specs[0]?.id || '';
