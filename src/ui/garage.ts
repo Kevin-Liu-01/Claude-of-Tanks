@@ -2346,10 +2346,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const currentLoadout = curLoadout();
     const fittedAt = item ? currentLoadout.indexOf(item.id) : -1;
     const spec = selectedId ? specById.get(selectedId) : undefined;
-    // the tooltip shows whole, with its projections: one still loading holds it until they arrive
+    // the tooltip shows whole, with its projections: one still loading holds it until they arrive, then it opens on the
+    // anchor the pointer or focus is still on (the rich tooltip's own hover and focus paths; integ 254 over the kit tip)
     if (spec && !equipmentPreview) {
-      void loadEquipmentPreview().then(() => { if (eqTooltipAnchor === anchor) showEqTooltip(anchor); }, () => {});
-      return;
+      void loadEquipmentPreview().then(() => {
+        if (!anchor.isConnected) return;
+        if (anchor.matches(':hover')) anchor.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+        else if (anchor.matches(':focus-within')) anchor.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      }, () => {});
+      return null;
     }
     const category = equipmentTooltipCategory(item);
     const state = equipmentTooltipState(item, lock, fittedAt);
