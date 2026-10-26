@@ -203226,8 +203226,8 @@
       "nation": "Germany",
       "countryCode": "de",
       "era": "modern",
-      "tier": 7,
-      "tierNumeral": "VII",
+      "tier": 9,
+      "tierNumeral": "IX",
       "dimensionsM": {
         "hullLength": 7.72,
         "overallLength": 9.96,
@@ -204762,7 +204762,7 @@
         ]
       },
       "geometryHash": "9de46d5e",
-      "metadataHash": "3de27d61",
+      "metadataHash": "d84cb5ae",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0323
@@ -1787176,8 +1787176,8 @@
       "nation": "Ukraine",
       "countryCode": "ua",
       "era": "modern",
-      "tier": 5,
-      "tierNumeral": "V",
+      "tier": 6,
+      "tierNumeral": "VI",
       "dimensionsM": {
         "hullLength": 6.684,
         "overallLength": 8.7363,
@@ -1798450,7 +1798450,7 @@
         ]
       },
       "geometryHash": "2222d54a",
-      "metadataHash": "84d79039",
+      "metadataHash": "4b6720a7",
       "presentationAnchor": {
         "xM": -0.0215,
         "zM": 0.0288
