@@ -117,6 +117,8 @@ export interface TallGrass {
   /** (battle-spikes-253) Cells the near ring still has to build (the covered opening waits for none: the capped cold
    *  fill leaves the mid and far rings to the first frames, the sward beside the camera complete at reveal). */
   nearPending(): number;
+  /** (battle-spikes-253) Its ground-pressure passes' programs submitted with no draw (fullscreenProgramWarm.ts). */
+  compilePrograms(): number;
   readonly near: THREE.InstancedMesh;
   readonly mid: THREE.InstancedMesh;
   readonly far: THREE.InstancedMesh;
@@ -1278,6 +1280,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
   return {
     group,
     nearPending: () => (enabled ? near.pending.length + (near.building ? 1 : 0) : 0),
+    compilePrograms: () => (pressure?.compilePrograms() ?? 0) + (pressureFine?.compilePrograms() ?? 0),
     near: near.mesh,
     mid: mid.mesh,
     far: far.mesh,

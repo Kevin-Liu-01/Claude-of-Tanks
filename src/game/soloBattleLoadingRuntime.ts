@@ -47,6 +47,8 @@ interface BattleLoadTrace {
   worldTextureUpload?: TextureUploadTrace;
   /** Round 77c: the far-tree impostor atlas baked behind the veil (ms; baked false without a library). */
   impostorBake?: { baked: boolean; ms: number };
+  /** (battle-spikes-253) The GPU simulations' pass programs submitted under the cover (WorldRuntime.warmSimulationPrograms). */
+  simulationPrograms?: number;
   totalMs?: number;
   loadingElapsedMs?: number;
   visiblePreBattleS?: number;
@@ -484,6 +486,9 @@ export function createSoloBattleLoadingRuntime(
       const impostorBakeStartedAt = now();
       const impostorBaked = getWorld().warmImpostors?.() ?? false;
       trace.impostorBake = { baked: impostorBaked, ms: Math.round(now() - impostorBakeStartedAt) };
+      // (battle-spikes-253) and the GPU simulations' pass programs (ocean, ripples, ground pressure), submitted with no
+      // draw: their passes run only on a frame that advances time, so they linked in the first live frame
+      try { trace.simulationPrograms = getWorld().warmSimulationPrograms?.() ?? 0; } catch { /* the first live pass links them */ }
       mark('world');
       battleLoad.progress(0.555, 'Battlefield ready');
       await nextFrame();

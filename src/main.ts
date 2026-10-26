@@ -2908,6 +2908,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // without activation's precompile, so its bake programs linked at the first live frame that showed the far tier
             // (nav-perf's MP program log: the two COT_BAKE_BILLBOARD ShaderMaterials). Their links are awaited between
             // painted frames before the bake draws (a synchronous link in the bake was a 1.1 s task at root-r).
+            // (battle-spikes-253) and the world's GPU simulations (ocean, ripples, ground pressure), whose passes run only on a
+            // frame that advances time: their links ran in the first live frame (nav-perf's root-u room, 353 ms)
+            try { currentWorld()?.warmSimulationPrograms?.(); } catch { /* the first live pass links them */ }
             try {
               const world = currentWorld();
               if (world?.warmImpostorsAsync) {
