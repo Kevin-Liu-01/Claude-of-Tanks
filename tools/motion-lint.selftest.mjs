@@ -88,6 +88,10 @@ assert.deepEqual(finds('a.css', [
 assert.deepEqual(finds('ring.css', '.chip{box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast)}.chip.on{box-shadow:var(--ring-accent)}'
   + '.card{box-shadow:var(--ring-1);transition:box-shadow var(--dur-fast)}.card:hover{box-shadow:var(--e2)}'),
   ['colour:1:.chip{box-shadow}', 'paint:1:.card{box-shadow}'], 'a ring-only box-shadow repaints like a border colour; an elevation is paint');
+assert.deepEqual(finds('keys.css', '.gate.on{animation:pulse var(--dur-stage) infinite}.x .on{animation:none}'
+  + '.m :is(.wheel,.links){animation:spin var(--dur-stage) linear infinite}'
+  + '@media (prefers-reduced-motion:reduce){.y.on{transition:none}.m :is(.links,.wheel){animation:none}}'),
+  ['reduced:1:.gate.on'], 'a state class (.on) names no element; :is() names each alternative');
 assert.deepEqual(finds('delay.css', '.s{animation:rise var(--dur-base) ease .12s backwards;animation-delay:.2s;transition:opacity var(--dur-fast) .05s}'),
   [], 'a delay or a stagger is choreography, not a duration');
 assert.deepEqual(finds('b.css', '@media (prefers-reduced-motion:no-preference){.drift{transition:transform 3s}}'),

@@ -399,10 +399,23 @@ const REDUCED_IN_SCRIPT = /prefers-reduced-motion|reduced?Motion|motionReduced|p
 function subjectKeys(selector) {
   const keys = new Set();
   for (const sel of splitTop(selector ?? '')) {
-    const compounds = sel.replace(/\([^()]*\)/g, '()').split(/\s*[>+~]\s*|\s+/).filter(Boolean);
-    const subject = (compounds[compounds.length - 1] ?? '').replace(/::?[\w-]+(?:\(\))?/g, '');
-    if (subject === '*' || subject === '') keys.add('*');
-    for (const m of subject.matchAll(/[.#][\w-]+/g)) keys.add(m[0]);
+    // the last compound (combinators outside parentheses), without its pseudo-element, :not() or :has()
+    let depth = 0, start = 0;
+    for (let i = 0; i < sel.length; i++) {
+      const ch = sel[i];
+      if (ch === '(') depth++; else if (ch === ')') depth--;
+      else if (!depth && /[\s>+~]/.test(ch)) start = i + 1;
+    }
+    const subject = sel.slice(start).replace(/::[\w-]+(?:\([^)]*\))?/g, '').replace(/:(?:not|has)\((?:[^()]|\([^()]*\))*\)/g, '');
+    // an element is named by its first class or id (state classes such as .on follow it); :is() and :where() name each
+    // alternative
+    const lists = [...subject.matchAll(/:(?:is|where|matches)\(((?:[^()]|\([^()]*\))*)\)/g)].map((m) => m[1]);
+    const own = subject.replace(/:(?:is|where|matches)\((?:[^()]|\([^()]*\))*\)/g, '').replace(/:[\w-]+(?:\([^)]*\))?/g, '');
+    const first = (compound) => /[.#][\w-]+/.exec(compound)?.[0] ?? /^[a-z][\w-]*/i.exec(compound.trim())?.[0];
+    const named = first(own);
+    if (named) keys.add(named);
+    else if (lists.length) for (const list of lists) for (const alt of splitTop(list)) { const k = first(alt); if (k) keys.add(k); }
+    else keys.add('*');
   }
   return keys;
 }
@@ -451,7 +464,9 @@ export function lintFile(file, text, motionGlobal) {
     if (rule.keyframes || !inReduce(rule)) continue;
     for (const key of subjectKeys(rule.selector)) reduceKeys.add(key);
   }
-  const covered = (selector) => reduceKeys.has('*') || [...subjectKeys(selector)].some((key) => key !== '*' && reduceKeys.has(key));
+  // a BEM modifier (.mk-links--top) is the element its block class (.mk-links) names
+  const covered = (selector) => reduceKeys.has('*') || [...subjectKeys(selector)].some((key) => key !== '*'
+    && (reduceKeys.has(key) || reduceKeys.has(key.replace(/--[\w-]*$/, ''))));
 
   // a box-shadow that is only ever a 1 px ring on this subject (var(--ring-*), an inset spread line) repaints like a
   // border colour: colour, not paint
