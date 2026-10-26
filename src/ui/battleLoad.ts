@@ -414,6 +414,14 @@ ${WIDE} .cot-bl .count{font-size:clamp(15px,.78vw,20px);}${WIDE} .cot-bl .count 
 ${PORTRAIT_ROWS} .cot-bl .fmeta{flex-wrap:wrap;row-gap:8px;}
 ${PORTRAIT_ROWS} .cot-bl .fbar{order:3;flex-basis:100%;}
 ${PORTRAIT_ROWS} .cot-bl .fpct{margin-left:auto;}
+/* (a short window's sides' band under 140 px: the headings stand down, the rows' edges and the lists' own names telling
+   the sides apart, so seven a side stand whole: at 568x256 three of seven sat under the cue, gauntlet r10; the band's own
+   height, a container, as the layout owns the window's sizes) */
+body[data-cot-height='short'] .cot-bl .teams{container:bl-teams/size;}
+@container bl-teams (max-height:140px){
+  .cot-bl .team .thead{display:none;}
+  .cot-bl .team{--bl-heading:0px;}
+}
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .fbar i b{transition-duration:1ms;}}
 `;
 

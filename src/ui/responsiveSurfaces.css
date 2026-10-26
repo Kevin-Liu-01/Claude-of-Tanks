@@ -389,12 +389,6 @@ body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
 body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px;--bl-row-min:14px}
-/* (under 300 px tall the sides' headings stand down, their rows' edges and their lists' own names telling the sides apart,
-   so seven a side stand whole: at 568x256 three of seven sat under the cue, gauntlet r10) */
-@media (max-height:299px) and (orientation:landscape){
-  body[data-cot-height='short'] .cot-bl .team .thead{display:none}
-  body[data-cot-height='short'] .cot-bl .team{--bl-heading:0px}
-}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
 body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
