@@ -5732,6 +5732,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // first: 0.62 s of its first frame under load)
       try { await ctx.prepareFirstViewShadows?.(); } catch { /* the first frame links them as before */ }
       stillOwned();
+      // and the post chain's own, a pass at a time (LateFxPass.Copy: the one link left in a cold entry's first frame,
+      // 0.38 s); a pass whose programs are linked goes on in the same frame
+      try {
+        const budget = createFrameBudgetYielder(8);
+        await post.warmFirstFrame(() => budget(false));
+      } catch { /* the first frame links them as before */ }
+      stillOwned();
       // Direct-route boot has not started the shared rAF yet. Produce one
       // complete real Studio frame behind the boot veil so readiness means a
       // stable canvas, not merely a finished scene graph.
