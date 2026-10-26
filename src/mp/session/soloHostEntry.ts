@@ -12,6 +12,8 @@ import type { InPageRoomService } from '../room/inPageRoom.ts';
 import { createRoomConnectionAdapter } from './playMenuAdapter.ts';
 import type { BrowserLaunchRequest } from './browserComposition.ts';
 import { readSides } from '../../game/teamArrangement.ts';
+import { SIM_KERNELS_URL, prepareSoloHostPort } from '../host/browserHostPort.ts';
+import { COLLISION_MANIFEST_ROUTE } from '../host/worldCollision.ts';
 
 export interface SoloHostRequest {
   specId: string;
@@ -24,6 +26,14 @@ export interface SoloHostRequest {
 }
 
 let service: InPageRoomService | null = null;
+
+/**
+ * Prepare the battle's host thread while the player is still in the Garage (the battle intent): the battlefield's
+ * collision world, the player's anatomy and the bots' ground built ahead, so the entry waits on the actor alone.
+ */
+export function prepareSoloHost({ specId, mapId, gameMode }: Pick<SoloHostRequest, 'specId' | 'mapId' | 'gameMode'>): void {
+  prepareSoloHostPort({ mapId, mode: gameMode, manifestBase: COLLISION_MANIFEST_ROUTE, simKernelsUrl: SIM_KERNELS_URL, specIds: [specId], bots: true });
+}
 
 /**
  * Create the solo room, ready its seat and start it; the room's match_start hands the session to `launch` (main.ts

@@ -1041,9 +1041,11 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it too
+  // ?soloAuthority=host enters through the network composition (mp/session/soloHostEntry.ts): the intent warms it and
+  // prepares the battle's host thread (its world, the player's anatomy, the bots' ground)
   preloadSoloBattle: () => (/[?&]soloAuthority=host\b/.test(location.search)
-    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload()]) : preloadSoloBattleRuntime()),
+    ? Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), import('./mp/session/soloHostEntry.ts').then((entry) => entry.prepareSoloHost({
+      specId: garage.getSelected(), mapId: garage.getSelectedMap(), gameMode: 'standard' }))]) : preloadSoloBattleRuntime()),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -2655,6 +2657,18 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
     if (!playerBattleActions) {
       throw new Error('Network composition requires player battle actions.');
     }
+    // the network vehicles' wreck and program warms (under the cover, and a solo room's seats after its reveal)
+    const vehicleWarm = (bridge: MultiplayerWarmView, signal?: AbortSignal) => ({
+      entities: bridge.entities.values(),
+      signal,
+      prebakeBurntSteps,
+      anisotropy: engineCtx.anisotropy ?? 4,
+      renderer,
+      scene,
+      camera,
+      compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
+      warmRender,
+    });
     return {
         load: {
           battleLoad,
@@ -2747,17 +2761,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             focusEntity: rig.spectateTargetEnt ?? game.player,
             yieldForBudget: createFrameBudgetYielder(16),
           }),
-          wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks({
-            entities: bridge.entities.values(),
-            signal,
-            prebakeBurntSteps,
-            anisotropy: engineCtx.anisotropy ?? 4,
-            renderer,
-            scene,
-            camera,
-            compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
-            warmRender,
-          }),
+          wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks(vehicleWarm(bridge, signal)),
+          // (a solo room's seats after its reveal)
+          streamedVehicles: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmStreamedVehicles(vehicleWarm(bridge, signal)),
           playerPanel: async (bridge: MultiplayerWarmView, viewerId: string) => {
             const entity = bridge.entities.get(viewerId);
             if (!entity) return;

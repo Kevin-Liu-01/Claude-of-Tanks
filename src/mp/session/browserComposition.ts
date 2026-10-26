@@ -31,6 +31,7 @@ import { isMultiplayerV2Session } from './playMenuAdapter.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
+import { MIN_VISIBLE_PRE_BATTLE_S } from '../../game/preBattleCountdown.ts';
 import type {
   BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, RosterPrebuild,
   RosterPrebuildSeat, TankVisual,
@@ -111,6 +112,11 @@ export interface BrowserLoadTrace {
   };
   /** Seats whose vehicles were warmed beside the world load (prewarmRoster, 2026-10-15). */
   rosterPrewarmed?: number;
+  /**
+   * A solo room's seats built after its reveal (deferRoster): how many, and ms from the reveal until their vehicles were
+   * built and until their programs too were ready and the held countdown released.
+   */
+  streamedRoster?: { actors: number; buildMs: number; ms: number };
   /**
    * WELCOMEs after the first on this round (the link was replaced and the seat said hello again), and when each came (ms
    * from the entry's start). The first alone marks `roster` (2026-10-15).
@@ -237,6 +243,11 @@ export interface BrowserWarmPorts {
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   finalShadows?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * A solo room's vehicles built after its reveal (deferRoster): their forward programs and wreck states compiled and
+   * their uniforms warmed on the battle's frame budget, never a render of the scene.
+   */
+  streamedVehicles?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
 }
 
 /** The strict program preparation's verdict (src/engine/programWarm.ts ProgramPreparationResult, structurally). */
@@ -390,6 +401,8 @@ export interface SessionOwner {
   handOffHosting?(reason: string): boolean;
   /** Pause or resume this page's own solo match (MatchSession.setPaused). Optional for doubles. */
   setPaused?(paused: boolean): boolean;
+  /** The page revealed its solo battle: its held countdown starts (MatchSession.releaseCountdown). Optional for doubles. */
+  releaseCountdown?(): void;
   leaveMatch(reason?: string): Promise<void>;
   dispose(): void;
   stats(): MatchSessionStats;
@@ -1025,6 +1038,9 @@ export function createBrowserComposition({
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
+          // a solo battle's countdown is solo's: held until its streamed seats are ready (streamSoloRoster), then the
+          // three numerals a solo battle shows after its loader (its hold credits the load against the rest)
+          ...(next.roomInfo.solo ? { holdCountdown: true, countdownS: MIN_VISIBLE_PRE_BATTLE_S } : {}),
           ice: p2pPorts.createIceResolver ? p2pPorts.createIceResolver(roomMode(), next.client) : undefined,
           onLog: (level, message, fields) => {
             const detail = fields ? `${message} ${JSON.stringify(fields)}` : message;
@@ -1218,7 +1234,10 @@ export function createBrowserComposition({
       // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
       // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
       let prebuilt: RosterPrebuild | null = null;
-      if (load.prebuildRoster && seats.length) {
+      // (a solo battle's room in the page, soloHostEntry.ts) the vehicles are built after the world, as solo's roster is:
+      // built beside it, every seat's full vehicle stretched the world's own build by seconds on the main thread
+      const soloRoom = roomSession?.roomInfo.solo === true;
+      if (load.prebuildRoster && seats.length && !soloRoom) {
         try { prebuilt = load.prebuildRoster(seats, active.abort.signal); } catch { prebuilt = null; }
         if (prebuilt) void prebuilt.settled.then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster builds them */ });
       } else if (load.prewarmRoster && seats.length) {
@@ -1249,6 +1268,8 @@ export function createBrowserComposition({
         ...(scene.onVisualReady ? { onVisualReady: scene.onVisualReady } : {}),
         camoFor: (entry) => camoOf.get(entry.playerId) ?? 'factory',
         prebuilt,
+        // (a solo battle's room) the viewer's vehicle before the reveal, every other after it (streamSoloRoster)
+        deferRoster: soloRoom,
         onRosterProgress: (fraction, specId) => {
           if (round !== active) return;
           noteProgress(active);
@@ -1384,6 +1405,30 @@ export function createBrowserComposition({
     }
   };
 
+  /**
+   * A solo room's battle after its reveal (RUST-ENGINE-DECISION §7 step 5), as a solo battle's: the other seats' vehicles
+   * are built on the battle's frame budget, the viewer's side first, and their programs warmed (warm.streamedVehicles);
+   * then the countdown the host held (MatchSession.releaseCountdown) runs, as solo's held count is released after its
+   * bots' visuals (game/deferredCombatWarmRuntime.ts). A failed warm still releases it: the battle never waits on a warm.
+   */
+  const streamSoloRoster = async (active: ActiveRound, battlePresentation: BattlePresentation): Promise<void> => {
+    const startedAt = now();
+    try {
+      const streamed = await battlePresentation.streamRoster();
+      const buildMs = Math.round(now() - startedAt);
+      for (const actor of streamed) actor.visual.setGroundSampler?.(scene.groundSampler);
+      if (streamed.length && round === active) {
+        warm.shotCards?.(streamed.map((actor) => actor.specId));
+        await warm.streamedVehicles?.({ entities: new Map(streamed.map((actor) => [actor.id, actor])) }, active.abort.signal);
+      }
+      active.trace.streamedRoster = { actors: streamed.length, buildMs, ms: Math.round(now() - startedAt) };
+    } catch (error) {
+      if (!active.abort.signal.aborted) reportWarning('multiplayer v2 entry', `streamed roster: ${messageOf(error)}`);
+    } finally {
+      if (round === active && !disposed) session?.releaseCountdown?.();
+    }
+  };
+
   /** The first frame with the roster in place: warm under the cover, activate, prove the frame, reveal. */
   const activateRound = async (active: ActiveRound): Promise<void> => {
     const battlePresentation = active.presentation;
@@ -1484,6 +1529,7 @@ export function createBrowserComposition({
       markStage(active, 'loaderFade');
       load.setAdaptiveSuspended(false);
       active.revealed = true;
+      if (roomSession?.roomInfo.solo) void streamSoloRoster(active, battlePresentation);
       finishTrace(active, 'complete');
       settleEntry(true);
     } catch (error) {

@@ -15,8 +15,8 @@ import { setModeWeapon } from '../../sim/modeLoadout.ts';
  */
 import { Vector3 } from 'three';
 import type { Object3D } from 'three';
-import { createOpaqueLoadingYielder } from '../../engine/frameScheduler.ts';
-import type { FrameSchedulerOptions } from '../../engine/frameScheduler.ts';
+import { createFrameBudgetYielder, createOpaqueLoadingYielder } from '../../engine/frameScheduler.ts';
+import type { FrameSchedulerOptions, WorkYielder } from '../../engine/frameScheduler.ts';
 import { createCombatState, mainWeaponModuleState } from '../../sim/damage.ts';
 import type { CombatState } from '../../sim/damage.ts';
 import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
@@ -212,6 +212,11 @@ export interface BattlePresentationOptions {
   /** The seats' vehicles built beside the world load (prebuildRosterVisuals): the roster takes them before it builds. */
   prebuilt?: RosterPrebuild | null;
   rosterScheduling?: FrameSchedulerOptions;
+  /**
+   * A solo battle's room in the page (soloHostEntry.ts): the roster builds the viewer's vehicle before the reveal and
+   * leaves every other seat to streamRoster after it, as a solo battle streams its bots under the held countdown.
+   */
+  deferRoster?: boolean;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
   onVisualReady?: (actor: MatchActor) => void;
   /** The paint an actor wears (the wire carries none; the room service will). */
@@ -229,6 +234,12 @@ export interface BattlePresentation extends PresentationAdapter {
   predictionWorld(): PredictionWorld | null;
   /** Resolves once every roster actor announced so far has its builder, textures and visual (the session owner waits here after WELCOME). */
   rosterReady(): Promise<void>;
+  /**
+   * The seats a deferred roster (deferRoster) left for after the reveal, built now on `budgetMs` of each frame (16: the
+   * countdown holds while they build, and no one moves), the viewer's side first. Resolves with the actors it made (none
+   * without a deferred roster).
+   */
+  streamRoster(budgetMs?: number): Promise<MatchActor[]>;
   mount(): void;
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
@@ -482,6 +493,7 @@ export function createBattlePresentation({
   prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
   prebuilt = null,
   rosterScheduling,
+  deferRoster = false,
   clearVehicleDecals = null,
   onVisualReady,
   camoFor = () => 'factory',
@@ -615,11 +627,39 @@ export function createBattlePresentation({
     return actor;
   }
 
+  /** The seats a deferred roster left for after the reveal (deferRoster; streamRoster builds them). */
+  let deferredSeats: { entries: RosterEntry[]; context: RosterContext } | null = null;
+
   async function prepareRoster(entries: readonly RosterEntry[], rosterContext: RosterContext): Promise<void> {
+    if (disposed) throw new Error('battle presentation disposed');
+    let active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
+    if (deferRoster && !spectator) {
+      const opening = active.filter((entry) => entry.entityId === rosterContext.ownEntityId);
+      if (opening.length) {
+        deferredSeats = { entries: active.filter((entry) => !opening.includes(entry) && !actors.has(entry.playerId)), context: rosterContext };
+        active = opening;
+      }
+    }
+    await paintSeats(active, rosterContext, createOpaqueLoadingYielder(8, 50, rosterScheduling), true);
+    // the seats the room named and the WELCOME did not (a bot the plan guessed otherwise): their vehicles go
+    prebuilt?.dispose();
+  }
+
+  async function streamRoster(budgetMs = 16): Promise<MatchActor[]> {
+    const pending = deferredSeats;
+    deferredSeats = null;
+    if (!pending || disposed) return [];
+    const ownTeam = actorsByEntity.get(pending.context.ownEntityId)?.networkTeam;
+    // the viewer's side first: it stands beside the viewer when the countdown shows the field
+    const seats = [...pending.entries].sort((a, b) => Number(b.team === ownTeam) - Number(a.team === ownTeam));
+    const before = new Set(actors.keys());
+    await paintSeats(seats, pending.context, createFrameBudgetYielder(budgetMs), false);
+    return [...actors.values()].filter((actor) => !before.has(actor.id));
+  }
+
+  async function paintSeats(active: readonly RosterEntry[], rosterContext: RosterContext, schedule: WorkYielder, progress: boolean): Promise<void> {
     const assertActive = () => { if (disposed) throw new Error('battle presentation disposed'); };
     assertActive();
-    const active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
-    const schedule = createOpaqueLoadingYielder(8, 50, rosterScheduling);
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
@@ -661,11 +701,9 @@ export function createBattlePresentation({
       // (perf-255) its far LOD under the roster's budget, rather than in the first battle frame it stands that far
       const visual = actor.visual as { prepareFarLod?(): boolean };
       if (visual.prepareFarLod) { await yieldWork(); visual.prepareFarLod(); }
-      onRosterProgress?.((index + 1) / Math.max(1, active.length), entry.specId);
+      if (progress) onRosterProgress?.((index + 1) / Math.max(1, active.length), entry.specId);
       await yieldWork();
     }
-    // the seats the room named and the WELCOME did not (a bot the plan guessed otherwise): their vehicles go
-    prebuilt?.dispose();
   }
 
   function applyRoster(entries: readonly RosterEntry[], rosterContext: RosterContext): Promise<void> {
@@ -1433,6 +1471,7 @@ export function createBattlePresentation({
     setVisibility,
     predictionWorld,
     rosterReady: () => rosterReady,
+    streamRoster,
     mount,
     unmount,
     endDisconnected,

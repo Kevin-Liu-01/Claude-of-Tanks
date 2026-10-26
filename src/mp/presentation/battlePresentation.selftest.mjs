@@ -336,6 +336,24 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
+// A solo room's deferred roster (deferRoster): the viewer's vehicle before the reveal, every other seat after it
+// (streamRoster), the viewer's side first; a frame applied meanwhile passes over the seats not yet built.
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, deferRoster: true,
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  assert.deepEqual([...p.actors.keys()], ['me'], 'only the viewer before the reveal');
+  p.applyFrame(frame({ entities: [sample(2, 10, 10), sample(3, 12, 10)] }));
+  const streamed = await p.streamRoster();
+  assert.deepEqual(streamed.map((actor) => actor.id), ['bot-3', 'foe'], "the viewer's side first");
+  assert.equal(p.actors.size, 3);
+  assert.deepEqual(await p.streamRoster(), [], 'nothing left to stream');
+  p.dispose();
+}
+
 // ------------------------------------------------------------ the event path, a disconnect and a spectator
 {
   const events = [];
@@ -562,7 +580,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, a deferred roster streamed after the reveal, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};

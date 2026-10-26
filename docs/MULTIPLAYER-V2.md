@@ -2538,13 +2538,31 @@ host's Worker on the world kernels and the page keeps only the client. The campa
     (`MatchActor.pause`, refused for a match with more than one human seat), and the session's clock (a `PausableClock`)
     stands still with it.
   - Nothing of it reaches the wire.
+- **The entry is solo's** (the gate for the default: within 10 % of solo's entry):
+  - *The host thread is prepared on the battle intent.* The Garage's hover on Battle prepares a host Worker for the
+    selected map (`prepareSoloHost`, the core's `prepare`), so the boot finds the collision world and the anatomy built.
+  - *The vehicles come after the world.* A solo room never prebuilds its seats beside the world load, which stretched the
+    world's own build on the main thread.
+  - *The viewer's vehicle alone before the reveal.* The presentation's `deferRoster` builds only the viewer's vehicle
+    before the reveal, so the warms under the cover cover one vehicle. `streamRoster` then builds every other seat on 16 ms
+    of each frame (no one moves while the countdown holds), the viewer's side first. `warm.streamedVehicles` compiles their programs and warms their
+    uniforms (their wreck states follow in the background, with no scene render). This is how a solo battle streams its
+    bots after its reveal (`deferredCombatWarmRuntime.ts`).
+  - *The countdown is held.* A solo room's match boots with solo's visible countdown (3 s) and holds it
+    (`HostBootConfig.holdCountdown`, `MatchActor.holdCountdown`): the ticks run, the countdown does not.
+    `MatchSession.releaseCountdown` releases it once the streamed seats are ready, as solo's count holds at 3 while its
+    bots' warm is pending. A failed warm still releases it. The hold is host-local, and a match with more than one human
+    seat never holds.
 - **Receipts:**
   - `src/mp/room/syncCrypto.selftest.mjs`;
-  - `src/mp/room/inPageRoom.selftest.mjs`: a solo room's p2p match on the in-process host, a 2 s pause, 21 a side;
-  - `server/match/matchActorPause.selftest.mjs`: a paused match against its unpaused twin;
+  - `src/mp/room/inPageRoom.selftest.mjs`: a solo room's p2p match on the in-process host, its held countdown, a 2 s
+    pause, 21 a side;
+  - `server/match/matchActorPause.selftest.mjs`: a paused match against its unpaused twin, and the held countdown;
+  - `src/mp/presentation/battlePresentation.selftest.mjs`: the deferred roster and its stream;
   - `tools/mp-client-soak.selftest.mjs`: the solo pause case;
   - `src/game/battleFrameRuntime.selftest.mjs`: the hold's edges.
-  - In Chrome, `tools/solo-host-probe.mjs` (A B B A against the page's solo).
+  - In Chrome, `tools/solo-host-probe.mjs` (A B B A against the page's solo): click to reveal and click to control (the
+    battle clock running), the main thread's ms a frame, input to motion, the killcam.
 
 ## 10. Decisions for the owner
 
