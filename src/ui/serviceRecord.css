@@ -54,6 +54,8 @@
 .cot-service-record .cot-record-metrics>.cot-record-metric{display:grid;grid-row:span 2;grid-template-rows:subgrid;row-gap:var(--s2);align-content:start}
 .cot-service-record .cot-record-battle-metrics>.cot-record-metric{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:var(--s2);align-content:start}
 .cot-service-record .cot-record-metric .cot-c-tile__value{align-self:start}
+/* a label sits on its figure: the row keeps a wrapped label's room above, so every label-to-figure step is one gap */
+.cot-service-record :is(.cot-record-metrics,.cot-record-battle-metrics)>.cot-record-metric .cot-c-tile__label{align-self:end}
 .cot-service-record .cot-record-metric .cot-c-tile__note{font-family:var(--font-data)}
 /* a battle's render starts on the row's edge, the body's under it */
 .cot-record-battle-row>.cot-record-vehicle{object-position:0 0}
@@ -76,7 +78,7 @@
 .cot-record-outcome.loss strong{color:var(--text-danger)}
 .cot-record-outcome.win-rate strong{font-size:var(--fs-52)}
 /* a missing figure is an en dash at the outcome figures' size, in the quiet ink */
-.cot-record-outcome strong.is-null{font-size:var(--fs-28);color:var(--ink-3)}
+.cot-record-outcome strong.is-null{font-size:var(--fs-28)}
 .cot-record-split{display:flex;gap:2px;height:6px;margin-top:var(--s3);background:var(--line-1)}
 .cot-record-split i{min-width:4px}
 .cot-record-split .win{background:var(--ok)}
@@ -105,6 +107,9 @@
 .cot-record-latest-medal span{font-size:max(var(--fs-floor-12),var(--fs-12));font-weight:600;line-height:1.35;color:var(--ink-1);text-wrap:balance}
 .cot-record-reason-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-1)}
 .cot-record-reason-stats>div{min-width:0}
+/* the three run the card's full width at the plates' gap, each with a plate's inset, so their columns are the plates' above */
+.cot-record-reason-stats{margin-inline:calc(-1 * var(--s4))}
+.cot-record-reason-stats>div{padding-inline:var(--s4)}
 .cot-record-reason-stats b{display:block;margin-top:6px;font:600 max(var(--fs-floor-12),var(--fs-15))/1.2 var(--font-display);color:var(--ink-1)}
 .cot-record-campaign{margin-top:var(--s3)}
 .cot-record-campaign-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}

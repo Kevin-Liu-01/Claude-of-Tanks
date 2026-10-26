@@ -171,8 +171,8 @@ body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 /* a phone tab's box reaches the touch floor by its own inset (a two-character label plus 9 px a side is 44 px), so every
    label keeps its own width and the row's gaps come out even; the row's inset puts the first and last labels on the edge */
-body[data-cot-width='phone'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
-body[data-cot-width='phone'] .cot-set-tabs{padding-inline:calc(var(--cot-edge) - var(--s2) - 1px)}
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tabs{padding-inline:calc(var(--cot-edge) - var(--s2) - 1px)}
 /* the scrolling tab row clips below its box, so a phone's indicator stands on the row's rule inside it */
 body[data-cot-width='phone'] .cot-set-tab.sel>span::after{bottom:0}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}

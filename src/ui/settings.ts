@@ -273,21 +273,23 @@ const SETTINGS_CSS = `
 /* the heading sits on the rows' inset: its label starts at the row glyphs and its (i) ends at the controls' edge */
 .cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2);}
 .cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
+/* a row's rule spans the content column (its padding's inner edges), so rules, headings and controls share one pair of edges */
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
-  padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
-.cot-set-row:not(:has(~ .cot-set-row)){border-bottom:0;}
+  padding:var(--s1) var(--s2);background:linear-gradient(var(--line-1),var(--line-1)) center bottom/calc(100% - var(--s2) * 2) 1px no-repeat;
+  transition:background-color var(--dur-fast) var(--ease-enter);}
+.cot-set-row:not(:has(~ .cot-set-row)){background-image:none;}
 .cot-set-row:has(.cot-set-seg button:disabled):not(:has(.cot-set-seg button:enabled)) .cot-setting-label-text{color:var(--ink-3);}
-.cot-set-row:hover{background:var(--fill-faint);}
+.cot-set-row:hover{background-color:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
 /* a setting's glyph: one grey, the accent only on a shell slot's number */
 /* a row's glyph starts on its box's edge, so the glyph, the heading's label and the control under it share one edge */
-.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--ink-3);}
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--ink-2);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
 .cot-setting-label-text{min-width:0;}
 /* the rows in a conflict: the notice's warning tone, no stripe */
-.cot-set-row.conflict{background:color-mix(in srgb,var(--text-warn) 9%,transparent);}
+.cot-set-row.conflict{background-color:color-mix(in srgb,var(--text-warn) 9%,transparent);}
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) calc(var(--s3) + var(--s2)) var(--s1);}
@@ -469,7 +471,7 @@ body.cot-hud-aerial .cot-hints,html[data-cot-scoped] .cot-hints,html[data-watch]
 .cot-set-refused{flex:1 1 100%;align-self:stretch;gap:var(--s2);margin:0 0 var(--s1);}
 /* its glyph takes a row glyph's box and size, so it stands in the glyph column and its text on the label column */
 .cot-set-refused .cot-c-notice__glyph{width:24px;place-items:center start;}
-.cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;}
+.cot-set-refused .cot-c-notice__glyph svg{width:16px;height:16px;stroke-width:2;}
 
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}

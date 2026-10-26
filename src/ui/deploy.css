@@ -167,6 +167,10 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choi
 .cot-garage .cot-deploy-op-stars{display:inline-flex;gap:var(--s1);color:var(--ink-3);}
 /* one rendering of an operation's stars and difficulty in its row and its brief */
 .cot-garage .cot-deploy-op-meta .cot-deploy-op-stars svg{color:inherit;}
+/* the stars sit on the meta line at its glyphs' size */
+.cot-garage .cot-deploy-op-stars{align-items:center;}
+.cot-garage .cot-deploy-op-stars i{display:inline-flex;}
+.cot-garage .cot-deploy-op-stars svg{display:block;width:14px;height:14px;}
 .cot-garage .cot-deploy-op-meta .cot-deploy-op-diff{gap:2px;}
 .cot-garage .cot-deploy-op.is-briefed{box-shadow:var(--ring-accent);}
 .cot-garage .cot-deploy-op-stars .on{color:var(--accent);}
@@ -288,18 +292,24 @@ body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-fie
 body:is([data-cot-height='compact'],[data-cot-height='short'])[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{height:var(--field-rest,200px);}
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */
-body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{flex:1 1 0;min-height:0;}
-/* where the card has no spare room (a compact height, a phone) it steps aside and the options keep its height */
-body:is([data-cot-height='compact'],[data-cot-height='short']) .cot-garage .cot-battle-details.is-more .cot-deploy-field,
+/* a tall screen's card yields the options their room and keeps its name over its art (its tag and map step aside) */
+@media (min-height:1000px){
+  body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{flex:1 1 0;min-height:0;}
+  .cot-garage .cot-battle-details.is-more .cot-deploy-field :is(.cot-deploy-field-all,.cot-deploy-field-mm,.cot-deploy-field-tags){display:none;}
+}
+/* below 1000 px tall (and on a phone) the card steps aside and the options keep its height */
+@media (max-height:999px){
+  body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{display:none;}
+  body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:var(--field-rest,auto);align-content:start;}
+}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{display:none;}
-body:is([data-cot-height='compact'],[data-cot-height='short']) .cot-garage .cot-battle-details.is-more .cot-mode-settings,
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-more .cot-mode-settings{min-height:var(--field-rest,auto);align-content:start;}
 /* beside the screen, an operation launches from its brief's one primary; a phone's rows keep their own */
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-launch{display:none;}
 /* a phone's column has no height to share: the open picker takes a fixed one and scrolls its list */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:not([hidden])){flex:none;}
 .cot-garage .cot-deploy-field-pop .cot-maps{height:auto;flex:1 1 auto;min-height:0;}
-.cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:24px;gap:var(--s1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
+.cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:24px;gap:var(--s2);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);
   letter-spacing:var(--track-label);color:var(--ink-3);}
 body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-pop .cot-maps .mtitle{min-height:var(--cot-control-floor);}
 .cot-garage .cot-deploy-field-pop .cot-deploy-field-close{--h:24px;flex:none;box-shadow:var(--ring-2);color:var(--ink-3);}
@@ -496,6 +506,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-w
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-deploy-acts{flex:1;min-width:0;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-go{font-size:var(--fs-24);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s3);padding:var(--s3);}
+/* a phone's Launch takes its own line under the operation, so every row's text keeps the row's width */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-launch{grid-column:1/-1;justify-self:stretch;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-map{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-index{font-size:var(--fs-32);}
 @media (prefers-reduced-motion:reduce){.cot-garage .cot-battle-menu.open *{transition:none;}}
