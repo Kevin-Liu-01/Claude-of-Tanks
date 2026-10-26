@@ -55,7 +55,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .flags .cot-c-flag{width:20px;height:15px}
 .toggles{display:flex;flex-wrap:wrap;gap:var(--s1)}
 .toggles .cot-c-chip{height:26px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-12))}
-.toggles .cot-c-chip--compact{width:28px;padding:0}
+/* each wrapped row of chips runs flush to the column's edge: the chips share its spare width (a ragged edge left
+   "Fire support" and "Favourites" as stubs on rows of their own) */
+.toggles>.cot-c-chip{flex:1 0 auto;justify-content:center}
+.toggles .cot-c-chip--compact{flex:none;width:28px;padding:0}
 .toggles .cot-c-chip:disabled{color:var(--ink-4);cursor:default}
 .toggles--glyphs{gap:var(--s1) var(--s3)}
 .toggles--glyphs .cot-c-chip{gap:var(--s2)}
@@ -207,8 +210,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .cot-c-notices.gallery-notices--short{position:fixed;bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
 /* in the actions bar's row the notice is flat: its drop shadow fell on the button under it */
 .gallery-notices--stack .cot-c-notice{box-shadow:var(--ring-2)}
-/* a short two-column page: the window-foot notice stands over the dossier's column, never across the columns' seam */
-@media (width >= 768px){.cot-c-notices.gallery-notices--short{left:auto;right:var(--s3);width:min(380px,calc(50% - 2 * var(--s3)));transform:none}}
+/* a short two-column page: the window-foot notice stands over the dossier's column, never across the columns' seam (as
+   specific as the stage's width rule above, which held it at 420 px across the seam at 844x390) */
+@media (width >= 768px){.cot-c-notices.gallery-notices--short:not(.gallery-notices--stack){left:auto;right:var(--s3);width:min(380px,calc(50% - 2 * var(--s3)));transform:none}}
 .gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -279,10 +283,12 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .cot-c-stat .cot-c-stat__value b{font-size:var(--fs-16)}
 /* one grid for every round, each card on its subgrid: a long name wraps in its own column and the three figures keep
    one column each down the list (the gauntlet 10-25: they started at a different x in every card) */
-.ammunition-list{display:grid;grid-template-columns:24px minmax(0,1fr) repeat(3,auto);row-gap:var(--s2)}
-.shell{grid-column:1/-1;display:grid;grid-template-columns:subgrid;grid-template-rows:auto auto;align-items:center;column-gap:var(--s3);row-gap:var(--s2);
+/* the list carries the cards' column gap, so the subgrid's tracks keep it (the shell glyph touched its name) */
+.ammunition-list{display:grid;grid-template-columns:24px minmax(0,1fr) repeat(3,auto);gap:var(--s2) var(--s3)}
+.shell{grid-column:1/-1;display:grid;grid-template-columns:subgrid;grid-template-rows:auto auto;align-items:center;row-gap:var(--s2);
   padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-.shell>.cot-i{grid-row:span 2;width:24px;height:24px;color:var(--accent)}
+/* the glyph stands level with the round's name block, the scale under both */
+.shell>.cot-i{grid-row:1;width:24px;height:24px;color:var(--accent)}
 .shell-id{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
 .shell-id b{font:600 var(--fs-14)/1.1 var(--font-display);overflow-wrap:anywhere}
 .shell-id small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
@@ -378,7 +384,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}
 /* ---------------------------------------------------------------------------------------------------- responsive */
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
-  .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - 56px)}
+  .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
 @media (width < 1440px){
   .layers button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
@@ -388,12 +394,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 }
 @media (width < 1100px){
   body{overflow-x:hidden;overflow-y:auto}
-  /* a part brought into view clears the sticky site bar, and the dossier's tabs stick under it */
-  html{scroll-padding-top:56px}
-  .dz-tabs{top:56px}
+  /* a part brought into view clears the sticky site bar (its own height: 64 px, 56 px under 768 px), and the browse
+     column and the dossier's tabs stick under it */
+  html{scroll-padding-top:var(--shell-nav-h)}
+  .dz-tabs{top:var(--shell-nav-h)}
   .gallery-shell{height:auto;overflow:visible;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"stage stage" "browse dossier"}
   .stage{height:clamp(360px,58svh,620px)}
-  .browse{position:sticky;top:0;align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - 56px);border-top:1px solid var(--line-1)}
+  .browse{position:sticky;top:var(--shell-nav-h);align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h));border-top:1px solid var(--line-1)}
   .dossier{border-top:1px solid var(--line-1)}
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
@@ -411,7 +418,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .flags,#classFacets,.toggles--glyphs{flex-wrap:wrap}
   /* the flags and the class chips fill the column's width, as the search above them does */
   .flags button{height:40px}
-  .toggles .cot-c-chip{flex:none;height:36px}
+  .toggles .cot-c-chip{height:36px}
   .toggles .cot-c-chip--compact{width:36px}
   .toggles--glyphs .toggles{flex-wrap:wrap}
   .layout-switch{display:none}
@@ -458,7 +465,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
   /* the stage and its turntable fit under the site bar */
-  .stage{max-height:calc(var(--cot-viewport-height,100dvh) - 56px)}
+  .stage{max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
 /* a short stacked stage sets its legend at the top beside the camera rail, off the tank framed low in it */
 @media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto;max-width:300px}}

@@ -1100,7 +1100,10 @@ function renderAmmo(record: GalleryRecord): void {
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeName(type))}</small></span>`
+    const name = keepDesignation(shell.name || shell.type), typeName = shellTypeName(type);
+    // the round's type once: a designation that already names it ("3BK31 HEAT", "3OF82 HE-Frag") takes no subtitle
+    const named = name.split(/[^A-Za-z]+/).includes(typeName);
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(name)}</b>${named ? '' : `<small>${esc(typeName)}</small>`}</span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
