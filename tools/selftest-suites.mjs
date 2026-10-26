@@ -993,6 +993,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
     // colour-vision floors from the token values; the legacy names alias the tokens
     'src/ui/tokens/tokens.selftest.mjs',
+    'src/ui/tokens/modeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
@@ -1001,6 +1002,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/components/hoverTip.selftest.mjs',
     'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-10-25 (UI-LOCKDOWN part D): the static motion lint — compositor-only properties, the --dur-* tokens, a
+    // reduced-motion path for moving or looping motion, no rAF style loops, no raster UI chrome (counts may only fall)
+    'tools/motion-lint.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
     // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle

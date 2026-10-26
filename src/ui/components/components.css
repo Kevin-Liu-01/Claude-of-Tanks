@@ -152,4 +152,13 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tip.is-on{opacity:1}
 .cot-c-tip[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i,.cot-c-tip{transition:none}}
+/* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
+   its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
+[data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}
+[data-mode-tone='zone_control']{--mode-ink:var(--mode-zone-control)}[data-mode-tone='capture_the_flag']{--mode-ink:var(--mode-capture-the-flag)}
+[data-mode-tone='frontline_assault']{--mode-ink:var(--mode-frontline-assault)}[data-mode-tone='turbo_ball']{--mode-ink:var(--mode-turbo-ball)}
+[data-mode-tone='mars']{--mode-ink:var(--mode-mars)}[data-mode-tone='endless_horde']{--mode-ink:var(--mode-endless-horde)}
+[data-mode-tone='gun_game']{--mode-ink:var(--mode-gun-game)}[data-mode-tone='juggernaut']{--mode-ink:var(--mode-juggernaut)}
+[data-mode-tone='infected']{--mode-ink:var(--mode-infected)}[data-mode-tone='realistic']{--mode-ink:var(--mode-realistic)}
+[data-mode-tone='ac130']{--mode-ink:var(--mode-ac130)}[data-mode-tone='proving_ground']{--mode-ink:var(--mode-proving-ground)}
 }

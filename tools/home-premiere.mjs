@@ -120,8 +120,8 @@ function heroBlock() {
     + `<div class="hero__card"><h1 class="hero__title home-sr" id="hero-title">Claude of Tanks</h1>`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}</a>`
     + `<button class="${btn('', '64')} hero__trailer" type="button" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
-    + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}${t('home.hero.trailer')}`
-    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></button></div>`
+    + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${iconMarkup('media', 22, 'hero__trailer-icon')}<span>${t('home.hero.trailer')}`
+    + `<span class="hero__dur cot-c-muted num" lang="en">${clock(TRAILER.seconds)}</span></span></button></div>`
     + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
     + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div>`
@@ -210,7 +210,7 @@ function modeTile(id) {
   const picture = DEPLOY_ART.has(deploy(1280)) && DEPLOY_ART.has(deploy(480))
     ? `<img src="/${deploy(1280)}" srcset="/${deploy(480)} 480w, /${deploy(1280)} 1280w" sizes="${CARD_SIZES}" width="1280" height="720" alt="" loading="lazy" decoding="async">`
     : stillTag(`modes/${id}`, `media.home.modes.${id}`);
-  return `<figure class="play-tile cot-c-media" data-mode="${id}">${picture}`
+  return `<figure class="play-tile cot-c-media" data-mode="${id}" data-mode-tone="${id}">${picture}`
     + `<figcaption class="play-tile__nm"><a href="/docs/modes">${iconMarkup(def.icon, 24)}${t(`playMenu.matchMode.${id}.label`, 'b')}</a></figcaption></figure>`;
 }
 const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`mechanics/${id}`, `media.home.mechanics.${camel(id)}`)}`

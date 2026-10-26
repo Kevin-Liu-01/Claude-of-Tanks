@@ -1531,14 +1531,14 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry:hover,.cot-multiplayer-entry:focus-visible{background:var(--accent);color:var(--accent-hi);}
 
-/* each mode's colour: the selected rule's (the Deploy plate) and every Deploy choice's own */
-.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:#efb258;}
-.cot-battle-menu[data-rule='capture_the_flag'],.cot-garage [data-mode-tone='capture_the_flag']{--mode-color:#5dd0db;}
-.cot-battle-menu[data-rule='zone_control'],.cot-garage [data-mode-tone='zone_control']{--mode-color:#64c6fb;}
-.cot-battle-menu[data-rule='turbo_ball'],.cot-garage [data-mode-tone='turbo_ball']{--mode-color:#a8e46a;}
-.cot-battle-menu[data-rule='endless_horde'],.cot-garage [data-mode-tone='endless_horde']{--mode-color:#f5827b;}
-.cot-battle-menu[data-rule='frontline_assault'],.cot-garage [data-mode-tone='frontline_assault']{--mode-color:#e6a875;}
-.cot-battle-menu[data-rule='mars'],.cot-garage [data-mode-tone='mars']{--mode-color:#c8a2ff;}
+/* each mode's colour: the selected rule's (the Deploy plate) and every Deploy choice's own, from the mode tokens */
+.cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-standard);}
+.cot-battle-menu[data-rule='capture_the_flag'],.cot-garage [data-mode-tone='capture_the_flag']{--mode-color:var(--mode-capture-the-flag);}
+.cot-battle-menu[data-rule='zone_control'],.cot-garage [data-mode-tone='zone_control']{--mode-color:var(--mode-zone-control);}
+.cot-battle-menu[data-rule='turbo_ball'],.cot-garage [data-mode-tone='turbo_ball']{--mode-color:var(--mode-turbo-ball);}
+.cot-battle-menu[data-rule='endless_horde'],.cot-garage [data-mode-tone='endless_horde']{--mode-color:var(--mode-endless-horde);}
+.cot-battle-menu[data-rule='frontline_assault'],.cot-garage [data-mode-tone='frontline_assault']{--mode-color:var(--mode-frontline-assault);}
+.cot-battle-menu[data-rule='mars'],.cot-garage [data-mode-tone='mars']{--mode-color:var(--mode-mars);}
 .cot-battle-preview-icon,.cot-battle-preview h3{color:var(--mode-color);}
 .cot-battle-galaxy{border-color:#9977d8!important;background:radial-gradient(ellipse at 15% 10%,#6e40904a,transparent),#151127!important;color:#d7baff!important;}
 .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}

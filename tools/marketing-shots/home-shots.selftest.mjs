@@ -35,7 +35,7 @@ const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 const RETIRED_FEATURES = new Set(['garage', 'multiplayer']);
 const GROUPS = ['mechanics', 'modes'];
 const slots = [...home.matchAll(/<(img|video) data-home-slot="([^"]+)"[^>]*>/g)].map((m) => ({ tag: m[0], kind: m[1], slot: m[2] }));
-const deployTile = (id) => new RegExp(`<figure class="play-tile[^"]*" data-mode="${id}"><img src="/media/deploy-r1/${id}-(?:480|1280)\\.webp"`).test(home);
+const deployTile = (id) => new RegExp(`<figure class="play-tile[^"]*" data-mode="${id}"[^>]*><img src="/media/deploy-r1/${id}-(?:480|1280)\\.webp"`).test(home);
 const picked = GROUPS.flatMap((group) => picks.home[group].map((entry) => ({ group, entry, slot: `${group}/${entry.id}` })))
   .filter(({ group, entry }) => !(group === 'features' && RETIRED_FEATURES.has(entry.id)))
   .filter(({ group, entry }) => !(group === 'modes' && deployTile(entry.id)));
@@ -69,7 +69,7 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 // --- the modes: every mode, in the battle setup's order, with its own name and icon and no copy ----------------------
 const playSection = home.match(/<!--home:play-->([\s\S]*?)<!--\/home:play-->/)?.[1] ?? '';
 const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" data-play-panel="${name}" tabindex="0" role="group" aria-labelledby="play-title"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
-const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)">([\s\S]*?)<\/figure>/g)];
+const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)"[^>]*>([\s\S]*?)<\/figure>/g)];
 assert.deepEqual(cards.map((c) => c[1]), [...MODE_PRESENTATION_ORDER], 'one tile per battle mode, in the one presentation order Deploy and the rooms show (the practice modes are not battles)');
 assert.deepEqual([...MODE_PRESENTATION_ORDER].sort(), [...BATTLE_MODE_IDS].sort(), 'the presentation order holds every battle mode once');
 assert.deepEqual(picks.home.modes.map((m) => m.id), [...BATTLE_MODE_IDS], 'one mode shot per battle mode');
