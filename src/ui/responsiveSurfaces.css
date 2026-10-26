@@ -239,7 +239,8 @@ body[data-cot-width='phone'] .cot-play .player{
   display:flex;flex-wrap:wrap;align-items:baseline;min-height:0;gap:0 8px;padding-block:var(--s2);
 }
 /* both lines are a fixed 22 px (room for the 20 px HOST tag), so a host's, a player's and a spectator's rows are one height */
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player>*{min-height:22px;line-height:22px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player>*{height:22px;line-height:22px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .name{align-items:center}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .name{order:1;flex:1 1 0}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player :is(.ready,.wait){order:2}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player::after{content:'';order:3;flex-basis:100%}
