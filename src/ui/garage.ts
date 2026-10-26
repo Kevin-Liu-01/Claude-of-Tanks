@@ -3095,6 +3095,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span>${label}</span>${meta ? `<small>${meta}</small>` : ''}</div>`;
   }
 
+  /** A figure without a scale on the station's own plate (statBar's markup): the armament and the armour fronts read as
+   *  the plates beside them (the gauntlet 10-25: an icon gutter and an indent set them apart from Hit points). */
+  function figurePlate(icon: string, label: string, valueHtml: string): string {
+    return `<div class="srow"><span class="sicon">${uiIconSVG(icon, 16)}</span><div class="lr"><span>${label}</span>` +
+      `<b class="num">${valueHtml}</b></div></div>`;
+  }
+
   function statBar(
     label: string,
     valueText: string,
@@ -3546,8 +3553,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       shellRows + `</section>` +
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b class="num">${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b class="num">&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      figurePlate('gun', t('garage.dossier.armament.gun'), `${spec.gun.caliberMm} mm`) +
+      figurePlate('scope', t('garage.dossier.armament.arc'), `&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;`) + `</div></section>` +
       `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
@@ -3572,8 +3579,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `</div></section>` +
       `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b class="num">${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
-      `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b class="num">${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
+      figurePlate('shield', t('garage.dossier.protection.hull'), hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;') +
+      figurePlate('turretRing', t('garage.dossier.protection.turret'), turMm != null ? `${Math.round(turMm)} mm` : '&mdash;') + `</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), t('garage.dossier.modulesCount', { count: moduleRows.length }), 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +

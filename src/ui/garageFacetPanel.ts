@@ -261,8 +261,14 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     // and on a phone held upright it stops under the header too (wrapped facet rows made it tall enough to cover the
     // mark and the settings); only a short landscape phone takes the header's height (below)
     const short = document.body.dataset.cotHeight === 'short';
-    const ceiling = !short
-      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 8) + 8 : 16;
+    // the header's lowest visible edge, whichever of its parts a layout shows (a phone hides the nav bar and keeps the
+    // mark and the tools), and a clear gap under it (the gauntlet 10-25: flush against the active tab's underline)
+    let headerBottom = 0;
+    for (const el of document.querySelectorAll<HTMLElement>('.cot-gbar, .cot-brand-rail, .cot-nav')) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) headerBottom = Math.max(headerBottom, r.bottom);
+    }
+    const ceiling = !short ? headerBottom + 12 : 16;
     const fitHeight = Math.round(Math.max(160, Math.min(520, top - ceiling)));
     panel.style.maxHeight = `${fitHeight}px`;
     // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a

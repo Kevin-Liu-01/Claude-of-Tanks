@@ -82,7 +82,6 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-tabs{displa
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-stat-section{padding:var(--s3);margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-sidebar-section-title{min-height:20px;margin-bottom:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats .shellrow{padding-block:5px;}
-body[data-cot-panels='persistent'] .cot-garage .stats .armorline{min-height:44px;padding-block:6px;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-figure img{max-height:clamp(120px,24vh,260px);}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:var(--btn-h-s);margin-top:var(--s2);}
 /* The readout never scrolls: garage.ts (fitReadout) steps the column through four densities until the station fits.
@@ -95,8 +94,6 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-performance-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow{min-height:62px;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armor-grid{grid-template-columns:minmax(0,1fr);gap:var(--s2);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armorline{min-height:62px;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .armorline b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .srow .lr b{font-size:var(--fs-18);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .cot-stat-section{margin-bottom:var(--s4);}
 /* the roomy overview opens its figures' pitch and its rounds' plates into the column's height */
@@ -121,7 +118,6 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='roomy'] .co
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-crew-chip{min-height:0;height:26px;padding:0 var(--s2) 0 var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
 .cot-garage .stats[data-density~='2'] .cot-crew-chip{padding:var(--s1) 2px;}
-.cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.cot-mag){display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-ammo-tiles){display:none;}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
@@ -137,20 +133,18 @@ html[lang^='zh'] .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow)
 .cot-garage .stats[data-density~='1'] .shellkind .ty{display:none;}
 .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
 .cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
-/* each performance card (the magazine's two cells among them) sets one row over its scale: the glyph, the label, which
-   wraps in its own column when it is long, and the figure at the right edge of the first line, on every card (the
-   gauntlet 10-25: a wrapping row dropped some figures under their labels and kept others beside them) */
+/* each performance card (the magazine's two cells among them) sets one layout over its scale: the glyph and the label on
+   the first line, the figure at the right edge of the next, on every card (the gauntlet 10-25: a wrapping row dropped some
+   figures under their labels and kept others beside them) */
 .cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:var(--s1);}
 .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .sicon{align-self:start;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr>span{min-width:0;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{margin:0;white-space:nowrap;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{grid-column:1/-1;justify-self:end;margin:0;white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{grid-column:1/-1;}
-/* Chinese sets each label whole on its line and the figure at the right edge under it, on every card (the gauntlet 10-25:
-   a figure beside it squeezed 车体转向散布 into 车体转 / 向散布, and 弹夹装填 into 弹夹 / 装填) */
-html[lang^='zh'] body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{grid-template-columns:auto minmax(0,1fr);}
-html[lang^='zh'] body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{grid-column:1/-1;justify-self:end;}
+/* a label stands whole on its line, in both languages (the gauntlet 10-25: a figure beside it wrapped "Between / shots"
+   and broke 车体转向散布 mid-word) */
 html[lang^='zh'] body .cot-garage .stats[data-density~='2'] .srow .lr>span{word-break:keep-all;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
@@ -302,7 +296,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
   background:var(--plate-fill);box-shadow:var(--ring-2);color:var(--ink-1);}
 .cot-garage .cot-lt-loadout .eqslot svg{width:22px;height:22px;}
 .cot-garage .cot-lt-loadout .eqslot .sl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;color:var(--ink-2);}
+  font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
 .cot-garage .cot-lt-loadout .eqslot.empty{background:var(--glyph-plate);box-shadow:none;outline:1px dashed var(--line-control);outline-offset:-1px;}
 .cot-garage .cot-lt-loadout .eqslot.empty .plus{font:500 var(--fs-20)/1 var(--font-ui);color:var(--ink-3);}
 .cot-garage .cot-lt-loadout .eqslot.empty .sl{color:var(--ink-3);}
@@ -315,9 +309,11 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
   background:var(--plate-fill);box-shadow:var(--ring-2);cursor:pointer;}
 .cot-lt-swatch canvas{display:block;width:100%;height:100%;object-fit:cover;}
 .cot-lt-swatch.is-on{width:112px;outline:2px solid var(--accent);outline-offset:-2px;}
+/* the band's words in one case: the slots' and the paint's names in sentence case, as the acts beside them (the gauntlet
+   10-25: EMPTY and FACTORY stood in capitals next to Callouts and Anatomy) */
 .cot-lt-swatch .nm{position:absolute;left:2px;right:2px;bottom:2px;padding:3px var(--s1);background:var(--glyph-plate);
   color:var(--ink-1);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
 .cot-lt-swatch:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
 @media (hover:hover){.cot-lt-swatch:not(.is-on):hover{outline:1px solid var(--line-control);outline-offset:-1px;}}
 .cot-lt-band .cot-c-btn{--h:var(--slot,56px);height:100%;}
@@ -527,9 +523,10 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-thir
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   bottom:calc(var(--cot-side-panel-bottom) + var(--cot-figures-h) + var(--s2));pointer-events:none;}
 body[data-cot-panels='overlay'] .cot-lt-head{flex-direction:row;align-items:center;gap:var(--s2);}
-/* a phone's name row and band captions stand over the bright floor: the head takes the stage's local shade and each
-   caption a glyph plate, so neither reads light on light */
-body[data-cot-panels='overlay'] .cot-lt-head{padding:var(--s1) var(--s2);margin:calc(-1 * var(--s1)) calc(-1 * var(--s2));background:var(--stage-scrim);}
+/* a phone's name row and band captions stand over the bright floor: the head and each caption take a glyph plate, so
+   neither reads light on light (the gauntlet 10-25: the stage's shade left the orange tier and suffix at 2.4:1) */
+body[data-cot-panels='overlay'] .cot-lt-head{padding:var(--s1) var(--s2);margin:calc(-1 * var(--s1)) calc(-1 * var(--s2));
+  border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-cap{padding:1px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);}
 body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{min-width:0;overflow:hidden;white-space:nowrap;
   text-overflow:ellipsis;font-size:var(--fs-24);line-height:1.1;}

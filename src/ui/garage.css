@@ -414,12 +414,6 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-garage .shellmetric b{display:inline;margin:0 2px 0 0;color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-data);
   letter-spacing:0;text-transform:none;}
 .cot-garage .armor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-.cot-garage .armorline{position:relative;min-width:0;min-height:54px;padding:9px var(--s2) var(--s2) 38px;color:var(--ink-3);
-  text-transform:none;background:var(--scrim);border:1px solid var(--line-1);}
-.cot-garage .armorline svg{position:absolute;left:9px;top:11px;width:19px;height:19px;color:var(--accent-lo);}
-.cot-garage .armorline span{display:block;font:600 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;}
-.cot-garage .armorline b{display:block;margin-top:5px;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;
-  text-transform:none;}
 .cot-layer-link{width:100%;height:36px;margin-top:var(--s2);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
   color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);cursor:pointer;
   font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
@@ -463,7 +457,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   padding:0 var(--s3);background:var(--btn-secondary-fill);border-color:var(--btn-secondary-edge);box-shadow:none;
   text-transform:none;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);}
 /* the drawing's row reads as the links under it: glyph, name, and the chevron at its end */
-.cot-garage .stats .cot-technical-expand-label svg{width:16px;height:16px;}
+.cot-garage .stats .cot-technical-expand-label svg{width:16px;height:16px;color:var(--ink-2);}
 .cot-garage .stats .cot-technical-expand-label::after{content:'\203A';margin-left:auto;color:var(--ink-3);
   font-size:max(var(--fs-floor-11),var(--fs-14));line-height:1;}
 .cot-technical-expand-label>span{display:none;}
@@ -548,7 +542,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   outline:none;}
 .cot-country-chip .cot-flag{width:28px;height:21px;display:block;border-radius:var(--control-radius);}
 .cot-country-chip:hover{color:var(--ink-1);border-color:var(--line-3);}
-.cot-country-chip.sel{color:var(--ink-1);border-color:var(--accent);background:var(--accent-wash);}
+/* the chosen chip's wash over its own plate, as every selected chip reads (a bare wash showed the lit floor through it: a
+   tan chip beside the band's brown ones) */
+.cot-country-chip.sel{color:var(--ink-1);border-color:var(--accent);background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--surface-plate);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -743,11 +739,14 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   text-transform:uppercase;margin-bottom:5px;}
 .cot-camos .ctitle .cot-camo-title-actions{margin-left:auto;display:flex;align-items:center;gap:5px;letter-spacing:0}
 .cot-camos .ctitle .cot-info-trigger,.cot-maps .mtitle .cot-info-trigger{width:24px;height:24px;min-width:24px;min-height:24px}
-.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 var(--s2);border:1px solid var(--accent-lo);
-  background:var(--accent-wash);color:var(--accent-hi);cursor:pointer;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
-  letter-spacing:0;text-transform:uppercase;white-space:nowrap}
+/* Create is an action, not a choice: a quiet bordered button in sentence case, its brush in the accent (it wore a chosen
+   chip's orange edge and wash, so an action nobody had pressed read as switched on) */
+.cot-custom-open{min-height:24px;height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 var(--s2);border:1px solid var(--line-control);
+  background:var(--surface-plate);color:var(--ink-1);cursor:pointer;font:500 max(var(--fs-floor-11),var(--fs-12)) var(--font-ui);
+  letter-spacing:0;white-space:nowrap}
+.cot-custom-open svg{color:var(--accent)}
 .cot-custom-open:hover,.cot-custom-open:focus-visible,.cot-custom-open[aria-expanded='true']{
-  border-color:var(--accent);background:var(--accent-wash);outline:none}
+  border-color:var(--line-3);background:var(--surface-hover);outline:none}
 .cot-camo-tags{display:flex;flex:0 0 auto;gap:var(--s1);margin:0 0 var(--s1);min-width:0;overflow-x:auto;
   overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x;
   -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
@@ -1705,9 +1704,9 @@ body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:none}
 /* The expanded dossier is a complete reading view, not the compact preview. */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:var(--s6)}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .srow .lr{white-space:normal}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link){min-height:44px;height:auto;padding:10px;font-size:max(var(--fs-floor-11),var(--fs-11));white-space:normal}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.armorline span,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.eqslot .sl){font-size:max(var(--fs-floor-11),var(--fs-11))}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b,.armorline b){font-size:max(13px,var(--fs-13))}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-gallery-link,.cot-layer-link,.stats .cot-technical-expand-label){min-height:44px;height:auto;padding:10px;font-size:max(var(--fs-floor-11),var(--fs-11));white-space:normal}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.cot-technical-tab,.cot-technical-figure figcaption,.cot-module-chip,.cot-crew-chip,.shellhead,.shellrow .ty,.shellrow .nm small,.shellmetric,.eqslot .sl){font-size:max(var(--fs-floor-11),var(--fs-11))}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellmetric b){font-size:max(13px,var(--fs-13))}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellhead,.shellrow){grid-template-columns:42px minmax(0,1fr) 54px 48px;gap:5px;padding-inline:5px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] :is(.shellrow .nm,.shellrow .nm small){white-space:normal;overflow-wrap:anywhere}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-dossier-head>.cot-info-trigger{display:inline-flex;align-items:center;justify-content:center;
