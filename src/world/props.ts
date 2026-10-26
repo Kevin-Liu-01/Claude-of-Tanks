@@ -61,7 +61,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
-  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
+  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantFormSteps, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
   paintBoulder, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
@@ -7675,7 +7675,7 @@ ${snowCap ? `
   const rockForms: RockForm[] = [];
   const rockSeats: RockSeat[] = [];
   const rockChipSum = [0, 0, 0, 0];
-  function buildRockVariants(): void {
+  function* buildRockVariants(): Generator<PropsBuildSlice, void, void> {
   // (the hitbox lane and the map-revival lane, 2026-10-11) the legacy form and the boulder forms from rockDressing.ts's
   // constructors: the drawn, collision and far forms differ only in subdivision, so every host derives the same colliders
   const lithology = rockLithologyFor(mapId);
@@ -7687,7 +7687,11 @@ ${snowCap ? `
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
     const legacy = legacyRockVariant(vi, noi);
     rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
-    const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    // (battle-spikes-253) a form a step
+    const steps = boulderVariantFormSteps(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    let step = steps.next();
+    while (!step.done) { yield { fine: true, progress: false, stage: 'rock-forms' }; step = steps.next(); }
+    const forms = step.value;
     paintBoulder(forms.drawn, P.rockTone, lithology, rockBaseToneFor(mapId));
     // (rock round 2) the stone's mean tone above the ground, for the chips its foot sheds (groundLitter.ts rockChipTint)
     {
@@ -7705,9 +7709,10 @@ ${snowCap ? `
       paintBoulder(forms.far, P.rockTone, lithology, rockBaseToneFor(mapId));
       rockGeosFar.push(forms.far.geometry);
     }
+    yield { fine: true, progress: false, stage: 'rock-forms' };
   }
   }
-  buildRockVariants();
+  yield* buildRockVariants();
 
   yield { fine: true, stage: 'rock-variants' };
   const rockPlacements: THREE.Matrix4[][] = [[], [], []];
