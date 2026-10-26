@@ -127,7 +127,9 @@ for (const gunSide of ['left', 'right']) {
 {
   const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
-  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${L.tierSize}px;`;
+  // an 11 px tier chip reads the floor token (11 px in Latin, the zh floor in Chinese: 18cbf57629, the round-9 zh critic)
+  const tierVar = (size) => (size === 11 ? 'var(--fs-floor-11)' : `${size}px`);
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${tierVar(L.tierSize)};`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
   assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
@@ -169,7 +171,7 @@ for (const gunSide of ['left', 'right']) {
   }
   // a size is a literal px, the house max(<floor>, <token>) (a px or the --fs-floor-N token, whose floor is N px) or a
   // bare type token
-  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g),
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):(?:([\d.]+)px|var\(--fs-floor-(\d+)\))/g),
     ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:(?:max\()?(?:var\(--fs-floor-(\d+)\)|([\d.]+)px|var\(--fs-(\d+)\))/g)]
     .map((m) => Number(m[1] ?? m[2] ?? m[3]));
   assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);

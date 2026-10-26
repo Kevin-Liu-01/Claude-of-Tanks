@@ -49,6 +49,7 @@ import {
   garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
+import type { TechnicalLabelData } from './technicalDiagramLabels.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import { datumAttr } from './dom.ts';
 import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
@@ -1571,6 +1572,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     onClose: () => {
       technicalExpandTrigger?.setAttribute('aria-expanded', 'false');
       technicalExpandTrigger = null;
+      mountTechnicalLabels('', null);
     },
   });
   technicalModal.panel.id = 'cot-technical-viewer-dialog';
@@ -1611,7 +1613,36 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       tab.tabIndex = active ? 0 : -1;
       tab.toggleAttribute('autofocus', active);
     }
+    mountTechnicalLabels(spec.id, view.assetView);
   };
+  // 253: the drawings carry no text; their labels are DOM text from the tank's sidecar (technicalDiagramLabels.ts), stood
+  // over the image while the viewer is open (its title names the tank, so the overlay draws no header)
+  let technicalLabels: { dispose(): void } | null = null;
+  let technicalLabelsFor = '';
+  const technicalLabelData = new Map<string, Promise<TechnicalLabelData | null>>();
+  function mountTechnicalLabels(specId: string, assetView: string | null): void {
+    const key = assetView ? `${specId}|${assetView}` : '';
+    if (key === technicalLabelsFor) return;
+    technicalLabelsFor = key;
+    technicalLabels?.dispose();
+    technicalLabels = null;
+    if (!assetView) return;
+    // (the labels' module loads with the viewer, not with the Garage)
+    void import('./technicalDiagramLabels.ts').then(async (labels) => {
+      const kind = labels.technicalKindOfView(assetView);
+      if (!kind) return;
+      let pending = technicalLabelData.get(specId);
+      if (!pending) {
+        pending = fetch(labels.technicalLabelsUrl(specId)).then((response) => (response.ok ? response.json() : null))
+          .then((json) => (json ? labels.parseTechnicalLabels(json, specId) : null)).catch(() => null);
+        technicalLabelData.set(specId, pending);
+      }
+      const data = await pending;
+      if (!data || technicalLabelsFor !== key) return;
+      technicalLabels = labels.mountTechnicalDiagramLabels(technicalModalPanel, data, kind, null,
+        { header: false, image: technicalModalImage });
+    });
+  }
   const openTechnicalViewer = (viewId: GarageTechnicalViewId, trigger: HTMLButtonElement): void => {
     closeGarageVariantMenu();
     closeMobileNavigation();

@@ -19,6 +19,7 @@ import { tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { buildGalleryRecords, filterGalleryRecords, serializeGallerySpec } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import type { HeroManifest } from '../ui/heroCard.ts';
+import type { TechnicalLabelData } from '../ui/technicalDiagramLabels.ts';
 import { compareVehicleEras, isPostwarVehicleEra, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import {
   CONCEPT_PROTOTYPE_FILTER_META,
@@ -979,12 +980,12 @@ wireRoving($<HTMLElement>('#diagramSwitch'), (value) => { diagram = value as typ
 const diagramImage = $<HTMLImageElement>('#diagramImage');
 diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.hidden = true; });
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
-// the drawing's labels are drawn into it (about 5 px at the dossier's width): a press shows it at the window's size,
-// where they read; a press or Escape puts it back
+// a press shows the drawing at the window's size, named by its overlay's header; a press or Escape puts it back
 const diagramFigure = diagramImage.closest('figure')!;
 const setDiagramZoom = (on: boolean): void => {
   diagramFigure.classList.toggle('is-zoomed', on);
   diagramImage.setAttribute('aria-expanded', String(on));
+  mountDiagramLabels();
 };
 diagramImage.tabIndex = 0;
 diagramImage.setAttribute('role', 'button');
@@ -1002,6 +1003,37 @@ function renderDiagram(): void {
   diagramImage.src = iconUrl(selectedId, diagram);
   const labelKey = DIAGRAMS.find(([view]) => view === diagram)?.[1];
   diagramImage.alt = `${record?.displayName || ''} ${labelKey ? t(labelKey) : ''}`.trim();
+  mountDiagramLabels();
+}
+// 253: the drawings carry no text; their labels are DOM text from the tank's sidecar (src/ui/technicalDiagramLabels.ts),
+// laid out at the drawing's shown size. Inline the dossier's head names the tank; zoomed, the overlay's header does.
+let diagramLabels: { dispose(): void } | null = null;
+let diagramLabelsFor = '';
+const diagramLabelData = new Map<string, Promise<TechnicalLabelData | null>>();
+function mountDiagramLabels(): void {
+  const id = selectedId, view = diagram, zoomed = diagramFigure.classList.contains('is-zoomed');
+  const key = id ? `${id}|${view}|${zoomed}` : '';
+  if (key === diagramLabelsFor) return;
+  diagramLabelsFor = key;
+  diagramLabels?.dispose();
+  diagramLabels = null;
+  if (!id) return;
+  // (the labels' module loads with the first drawing, not with the page)
+  void import('../ui/technicalDiagramLabels.ts').then(async (labels) => {
+    const kind = labels.technicalKindOfView(view);
+    if (!kind) return;
+    let pending = diagramLabelData.get(id);
+    if (!pending) {
+      pending = fetch(labels.technicalLabelsUrl(id)).then((response) => (response.ok ? response.json() : null))
+        .then((json) => (json ? labels.parseTechnicalLabels(json, id) : null)).catch(() => null);
+      diagramLabelData.set(id, pending);
+    }
+    const data = await pending;
+    if (!data || diagramLabelsFor !== key) return;
+    const record = recordById.get(id);
+    diagramLabels = labels.mountTechnicalDiagramLabels(diagramFigure, data, kind,
+      record ? { name: record.displayName, tier: record.tierNumeral } : null, { header: zoomed, image: diagramImage });
+  });
 }
 
 wireRoving($<HTMLElement>('.peer-switch'), (value) => {

@@ -475,7 +475,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-technical-viewer-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
 .cot-technical-viewer-tab:hover,.cot-technical-viewer-tab:focus-visible{color:var(--accent-hi);border-color:var(--accent);outline:none;}
-.cot-technical-viewer-figure{margin:0;border:1px solid var(--line-3);background:var(--surface-page);
+.cot-technical-viewer-figure{position:relative;margin:0;border:1px solid var(--line-3);background:var(--surface-page);
   box-shadow:var(--e2);}
 .cot-technical-viewer-figure img{display:block;width:100%;max-height:calc(88vh - 250px);aspect-ratio:2/1;
   object-fit:contain;background:var(--surface-page);}

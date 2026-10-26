@@ -299,7 +299,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .shell-nums b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-display)}
 .shell-nums .cot-i{width:14px;height:14px;align-self:center}
 .shell .cot-c-scale{grid-column:2/-1}
-.diagram{margin:0;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
+.diagram{position:relative;margin:0;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
 .diagram img{display:block;width:100%;height:auto;aspect-ratio:2/1}
 .pose{display:flex;flex-direction:column;gap:var(--s3)}
 .sl{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s2) var(--s3);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
