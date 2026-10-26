@@ -95,13 +95,15 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - retier-257 +56 B, t90-lineage-257 -78 B, image-fit-254 -266 B (entry -269 B), brand-ui-primitives-250 4bab44f1c4 with
   //   integ's image-fit reconcile -343 B (entry -330 B; Gallery +108 B, home +23 B, docs -246 B, 404 +4 B; docsPickers.css
   //   adds no docs request).
-  // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged.
-  game: { brotliBytes: 1085633, requests: 128, entryBrotliBytes: 239975 },
-  cn: { brotliBytes: 1127813, requests: 129, entryBrotliBytes: 239975 },
-  gallery: { brotliBytes: 674791, requests: 75 },
+  // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged. The pins are the final release build's (432767fd9e, after the
+  // integ fixes: the Field Manual's Watch keys, the T-90 pair's matchmaking tier, the four hover loops, the try-on's seed
+  // form): game -318 B and Gallery -291 B against 97371edb3a's build, 404 +16 B.
+  game: { brotliBytes: 1085315, requests: 128, entryBrotliBytes: 239957 },
+  cn: { brotliBytes: 1127495, requests: 129, entryBrotliBytes: 239957 },
+  gallery: { brotliBytes: 674500, requests: 75 },
   home: { brotliBytes: 26208, requests: 8 },
   docs: { brotliBytes: 33013, requests: 12 },
-  notFound: { brotliBytes: 16688, requests: 7 },
+  notFound: { brotliBytes: 16704, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
