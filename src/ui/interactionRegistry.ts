@@ -138,7 +138,6 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-create-size-list'], lane: 'lead' },
   'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
   /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
-  'rooms-battlefield-list': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-map-list'], lane: 'lead' },
   'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },
   'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-vehicle-list'], lane: 'lead' },
   'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'listbox', marks: ['listbox:#cot-room-team-list'], lane: 'lead' },
