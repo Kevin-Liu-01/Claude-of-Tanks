@@ -1594,6 +1594,8 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
   podiumTopYM: GARAGE_PODIUM_TOP_Y_M,
   getRetainedWorldMapId: () => currentWorld()?.mapId || null,
   invalidatePresentation: invalidateGaragePresentation,
+  camera,
+  canvas: renderer.domElement,
 });
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +

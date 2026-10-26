@@ -3007,12 +3007,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // and the dock under the tank (its name, identity row, band and fleet), measured from the live layout and cached: a
   // ResizeObserver and the layout events re-measure it (no layout read per frame), and a change wakes the still Garage so
   // the camera eases onto it. The camera frames the canonical box (main.ts GARAGE_FRAME_BOX, the M1A2 reference) in the
-  // hero rect: centred in the free stage, a little below its middle so the turntable reads as ground, at about 62 % of
+  // hero rect: centred across the free stage and at 60 % of its height, so the tracks stand just over the name and the
+  // turntable reads as ground (owner 10-26 via Main: "should be moved down a little"; it sat at 53 %), at about 62 % of
   // its width, or as tall as the stage allows.
   interface StageRect { x: number; y: number; w: number; h: number }
   const HERO_SPAN_OF_FREE = 0.62;   // the hero's share of the free width (Main 10-25: 60-65 %)
   const SOLVER_FILL = 0.86;         // engine/cameraRig.ts SHOW_HERO_FILL: the share of the rect the camera fills
-  const HERO_LOW = 0.04;            // the hero's centre sits this share of the stage height below the stage's middle
+  const HERO_LOW = 0.10;            // the hero's centre sits this share of the stage height below the stage's middle
   const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
   let stageFree: StageRect | null = null;
   let stageHero: StageRect | null = null;
@@ -3057,7 +3058,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reach = (r: StageRect): number => Math.min(HERO_SPAN_OF_FREE * r.w, SOLVER_FILL * r.h / BOX_ASPECT);
     const free = above && reach(above) >= reach(beside) ? above : beside;
     const w = free.w * HERO_SPAN_OF_FREE / SOLVER_FILL;
-    const cy = free.y + free.h * (0.5 + HERO_LOW);
+    // a short stage fits the box by its height: its foot never sinks past the stage's (the name never covers the hull)
+    const boxH = Math.min(SOLVER_FILL * w * BOX_ASPECT, SOLVER_FILL * free.h);
+    const cy = Math.min(free.y + free.h * (0.5 + HERO_LOW), free.y + free.h - boxH / 2);
     stageHero = { x: free.x + (free.w - w) / 2, y: cy - free.h / 2, w, h: free.h };
   }
   let stageQueued = false;
