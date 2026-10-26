@@ -62,18 +62,16 @@ try{
    await page.locator('.cot-map-scroll').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});
    await tap('[data-deploy-field]');await tap('[data-battle-close]');
    step='appearance';await tap('.cot-lt-paint-all');await box('.cot-leftcol');
-   await tap('.cot-camos .cot-info-trigger');await closeModal();
-   for(const collection of await page.locator('.cot-camo-collection').all())await tap(collection);
-   await tap(page.locator('.cot-camo-collection').first());
-   for(const tag of await page.locator('.cot-camo-tag:not([hidden])').all())await tap(tag);
-   await tap(page.locator('.cot-camo-tag:not([hidden])').first());
-   await reach(page.locator('.cot-camo-card:not([hidden])').last());
+   await tap('.cot-drawer-actions .cot-info-trigger');await closeModal();
+   // the camo picker (INTERACTION-REDESIGN B): each kind chip filters the swatches and a second tap lets it go
+   for(const chip of await page.locator('.cot-camo-picker [data-chip^="tag:"]').all()){await tap(chip);await tap(chip);}
+   await reach(page.locator('.cot-camo-picker .cot-c-picker__opt').last());
    await page.locator('.cot-camos').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-camo.png`)});
-   await tap('.cot-custom-open');await box('.cot-modal-root.is-open .cot-modal');
+   await tap('.cot-camo-picker .cot-c-picker__opt[data-id="custom"]');await box('.cot-modal-root.is-open .cot-modal');
    for(const button of await page.locator('.cot-modal-root.is-open button:not([disabled])').all())await reach(button);
    for(const input of await page.locator('.cot-custom-color input,.cot-custom-repeat input,.cot-custom-check').all())await reach(input);
    await tap('[data-custom-brush-type=round]');await tap('.cot-custom-draw');
-   await tap('.cot-modal-root.is-open .cot-modal__button--primary');
+   await tap('.cot-modal-root.is-open .cot-c-btn--primary');
    assert.ok(await page.evaluate(()=>window.__MOBILE_SURFACES.customPaint.get(window.__MOBILE_SURFACES.garage.getSelected())?.strokes.length>0),'touch drawing applies to the selected tank');
    await page.screenshot({path:resolve(out,`${name}-custom-camo.png`)});await closeModal();await tap('.cot-drawer-close');
    step='dossier';await details();await box('.cot-garage .stats');

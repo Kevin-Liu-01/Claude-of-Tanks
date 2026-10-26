@@ -346,13 +346,13 @@ export function createCustomCamoStudio({
 
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.className = 'cot-modal__button';
+  cancel.className = 'cot-c-btn cot-c-btn--36';
   cancel.dataset.uiSound = 'back';
   cancel.textContent = t('customCamo.close');
   cancel.addEventListener('click', () => modal.close());
   const apply = document.createElement('button');
   apply.type = 'button';
-  apply.className = 'cot-modal__button cot-modal__button--primary';
+  apply.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--primary';
   apply.innerHTML = `${uiIconSVG('check', 17)}<span>${t('customCamo.apply')}</span>`;
   apply.addEventListener('click', () => {
     const id = selectedId();
