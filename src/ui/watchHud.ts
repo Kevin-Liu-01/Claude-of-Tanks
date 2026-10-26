@@ -108,6 +108,8 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
  .cot-watch .who{width:auto;flex:1 1 100%;grid-template-columns:auto 44px minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
+ /* (the buttons share the plate's width, one edge with it: a narrower centred row stood off its edges, gauntlet r10) */
+ .cot-watch .wb{flex:1 1 0}
 }
 /* (the seat's word stays on one line: zh's 驾驶 broke a character a line at 1440, gauntlet r3) */
 /* (the seat's action in the bar's capitals, as GARAGE and the rest: "Drive" in title case, gauntlet r7) */

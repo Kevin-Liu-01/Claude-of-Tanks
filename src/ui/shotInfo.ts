@@ -425,6 +425,9 @@ const SI_CSS = `
 /* (centred in its chip by the box, not the line: the label sat 2 px under its top edge and 5 over its foot, gauntlet r5) */
 /* (zh's chip a line taller: its 13 px glyphs fill their em box and touched the ring, gauntlet r9) */
 :lang(zh-CN) .cot-si-kv b .q{min-height:18px;}
+/* (a damage row's Latin callsign and its figure at the Latin size in Chinese, as the kill feed's rows: zh's damage rows
+   ran 17 % wider than its kill rows, gauntlet r10) */
+:lang(zh-CN) body .cot-si-toast .l1 .lat,:lang(zh-CN) body .cot-si-toast:not(.deflected) .l1 b{font-size:var(--battle-fs-fig-11);}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:var(--battle-track-status);}
 .si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
@@ -689,6 +692,8 @@ body.cot-touch-layout .cot-si-toast .l1 b{font-size:var(--battle-fs-11);}
 }
 `;
 
+/** A name in Latin type alone (the damage rows' .lat: Chinese's lifted label sizes are for Chinese text). */
+const LATIN_NAME = /^[\x20-\x7e\u00a0-\u024f]+$/;
 const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
@@ -1482,7 +1487,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.dataset.outcome = group.outcome?.id || 'mixed';
     toast.classList.toggle('deflected', !damaging);
     toast.classList.remove('out');
-    toast.querySelector('.attacker')!.textContent = name;
+    const attackerName = toast.querySelector<HTMLElement>('.attacker')!;
+    attackerName.textContent = name;
+    // (a Latin callsign keeps the Latin size in Chinese, as the kill feed's does: .lat, gauntlet r10)
+    attackerName.classList.toggle('lat', LATIN_NAME.test(name));
     const value = toast.querySelector<HTMLElement>('.l1 b')!;
     value.style.color = color;
     value.innerHTML = uiIconSVG(damaging ? 'damage' : (group.outcome?.icon || 'shield'), 11) +

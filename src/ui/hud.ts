@@ -4361,6 +4361,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
     const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
     g.save();
+    // (under 300 px tall the mark a fifth smaller about the aim point: its lower shards met the systems row 28 px under
+    // the sight at 568x256, gauntlet r10)
+    if (h < 300) { g.translate(cx, cy); g.scale(0.8, 0.8); g.translate(-cx, -cy); }
     g.lineJoin = 'miter';
     if (hitMark.blockedRapid) {
       const x = cx + 30, y = cy - 30;

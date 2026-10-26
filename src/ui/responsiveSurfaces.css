@@ -662,6 +662,9 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:48px;height:48px}
+/* (its glyph 3 px up and left of the centre, so the corner's count keeps 2 px off it: the ∞ sat on the medkit's corner at
+   568x256, and over zh's larger glyph, gauntlet r10) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con svg{width:18px;height:18px;transform:translate(-3px,-3px)}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-special{
   right:108px;bottom:calc(max(28px,env(safe-area-inset-bottom)) + 102px);width:56px;min-width:56px;height:56px;
 }

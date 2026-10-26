@@ -437,6 +437,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-body{min-h
    rows through their figures, gauntlet r8) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-rows{display:flex;flex-flow:column wrap;align-content:flex-start;min-height:0;overflow:hidden}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-rows>*{flex:none;width:100%;box-sizing:border-box}
+/* (the card leads with the penetration row, at every size one order, so a dock drops its rows from the foot starting with
+   the damage row, which the head's figure repeats: zh's taller rows dropped the pen row first at 1024x600 and 900x700,
+   gauntlet r10) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-rows>.pen{order:-1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{
   box-sizing:border-box;margin:0;grid-template-columns:minmax(0,90fr) minmax(0,172fr);gap:6px;
   --diagram-size:clamp(0px,calc(var(--hud-right-height) - 160px - var(--cot-si-blast-space,0px)),90px);
@@ -482,7 +486,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
    it, stays on the screen (at 8 px the label ran off the bottom edge at 568x290), 3 px under the consumables at 568x256. */
 @media (max-height:299px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:17px}
+  /* (64 px, 2 px under the consumables, so its word shares AUTO AIM's and SCOPE's line: at 76 px on the floor its word sat
+     13 px under theirs and 4 px off the screen's foot, gauntlet r10) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:30px;width:64px;height:64px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt) svg{width:24px;height:38px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */

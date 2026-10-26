@@ -49,8 +49,8 @@ export function battleNotificationRows(height: number, count = MAX_BATTLE_NOTIFI
 }
 /** A touch global feed narrower than this stacks each kill row, the killer over the cause and the victim
  *  (battleHudLayout.css [data-stack]): side by side its two callsigns kept under twelve characters, "Command…", gauntlet
- *  r8 at 390x844. */
-const FEED_STACK_W = 208;
+ *  r8 at 390x844; and fourteen take 98 px each beside the cause, so 210 px at 568x256 read "Commander_…", r10. */
+const FEED_STACK_W = 244;
 /** A stacked row (38 px: the killer's line, the cause and the victim's) and the lane's 3 px gap. */
 const FEED_STACK_PITCH = 41;
 
@@ -1149,13 +1149,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const ribbonFloor = ribbonShows && ribbon.width >= RIBBON_LEAST && ribbon.x + ribbon.width / 2 > width - sideWidth - 12
       ? ribbonTop - RIBBON_LIFT - RIBBON_H - 8 : height;
     const scopeVision = read('.cot-scope-vision');
+    const reportShown = !!document.querySelector('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
     const rightBottom = Math.min(rightFloor(height, width, map), ribbonFloor,
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height,
       // (Watch's touch climb rail, flying, holds the right edge: the right lanes end above it)
       watchRail && watchRail.left > width - sideWidth ? watchRail.top - 8 : height,
       // (and so does the scope's vision switch beside the sight, where it reaches under the right lanes: 1024x600's lane
       // ran 2 px onto it, gauntlet r4's overlap receipt)
-      scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height,
+      // (not while a report or the log shows: the dock takes the column and the switch its mirror seat, seatScopeVision;
+      // held over the switch, the 1024x600 card had 74 px with 124 px of column empty under it, gauntlet r10)
+      !reportShown && scopeVision && scopeVision.right > width - sideWidth && scopeVision.top > height / 3 ? scopeVision.top - 8 : height,
       lensRow && lensRow.right > width - sideWidth && lensRow.top > rightAnchor ? lensRow.top - 8 : height,
       watchLow && watchLow.right > width - sideWidth ? watchLow.top - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
@@ -1179,7 +1182,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && rightBottom - noticeBand.bottom >= REPORT_DOCK_MIN;
     // The dock is held only while a report or the open log fills it (the host's cards and the log are observed): an empty
     // dock left the enemy roster 12 px rows and the right kill lane no height at all (gauntlet r1 at 1280x720).
-    const reportShown = !!document.querySelector('.cot-si-cardhost')?.childElementCount || !!read('.cot-si-log.open');
     const report = reportShown ? battleReportDock(rightBottom, reportUnderBand ? Math.max(reportCeiling, noticeBand!.bottom) : reportCeiling,
       root.classList.contains('compact-shot-report')) : { top: rightBottom, height: 0, bottom: rightBottom };
     const dockReport = !touch;
