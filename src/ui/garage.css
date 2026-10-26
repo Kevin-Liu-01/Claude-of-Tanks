@@ -1653,7 +1653,9 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.srow .lr){font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{min-height:44px;padding:var(--s2)}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:max(13px,var(--fs-13))}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* the sheet's drawing row opens the viewer, whose own tabs pick the drawing: the sheet shows no tabs of its own (they read
+   as the sheet's sections) */
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:none}
 /* the Gallery and proving-ground links keep their row (glyph, label, chevron at the end) over the sheet's block reset */
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-gallery-link{display:flex}
 body[data-cot-input='coarse'] .cot-garage :is(.cot-info-trigger,.cot-technical-tab,.cot-camo-tag,.cot-camo-collection,.cot-custom-open,.cot-eqpick .chip,.cot-eqpick .ph .x){min-width:44px;min-height:44px}
