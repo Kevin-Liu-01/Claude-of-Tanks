@@ -437,6 +437,14 @@
             "bytes": 314948
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/monsoon-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081911
       }
     },
     {
@@ -463,6 +471,14 @@
             "bytes": 261604
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/alpine-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1065812
       }
     },
     {
@@ -489,6 +505,14 @@
             "bytes": 189382
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/caldera-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1071090
       }
     },
     {
@@ -515,6 +539,14 @@
             "bytes": 162260
           }
         ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/foundry-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1070793
       }
     },
     {
