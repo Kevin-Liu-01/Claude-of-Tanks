@@ -11,12 +11,12 @@ assert.equal(spectatorCardModel({ count: 3, index: 8 }).position, '3 / 3', 'posi
 
 const markup = spectatorSwitcherMarkup();
 assert.match(markup, /class="portrait"/);
-assert.match(markup, /class="cursor-hint" hidden>Press Esc to release cursor/);
+assert.doesNotMatch(markup, /cursor-hint/, 'no how-to line: the bar says what it is (INTERACTION-REDESIGN C)');
 assert.match(markup, /class="spec-status"/);
 assert.match(markup, /class="idx"[^>]* hidden/);
-assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">A<\/kbd>/);
-assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd aria-hidden="true">D<\/kbd>/);
-assert.ok(markup.indexOf('>A</kbd>') < markup.indexOf('>D</kbd>'), 'A and D shortcuts share one horizontal control row');
+assert.match(markup, /class="cycle prev"[^>]*>[\s\S]*?<kbd aria-hidden="true">Q<\/kbd>/);
+assert.match(markup, /class="cycle next"[^>]*>[\s\S]*?<kbd aria-hidden="true">E<\/kbd>/);
+assert.ok(markup.indexOf('>Q</kbd>') < markup.indexOf('>E</kbd>'), 'Q and E, Watch\'s keys, share one horizontal control row');
 assert.match(markup, /aria-label="Return to garage"/);
 assert.match(markup, /<svg[^>]*aria-hidden="true"/);
 assert.doesNotMatch(markup, /Allied vehicle/);

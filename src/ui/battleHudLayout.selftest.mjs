@@ -215,10 +215,10 @@ try {
   assert.equal(properties.get('--hud-network-corner-right'),'10px','without the fps/ping plate the strip takes the corner itself');
   plateShown=true;plate.getBoundingClientRect=()=>rect(8,36,1248,1356);
   callbacks.resize();flush();
-  assert.equal(properties.get('--hud-network-corner-right'),'134px','the strip sits 16 px left of a shown fps/ping plate, in the same row');
+  assert.equal(properties.get('--hud-network-corner-right'),'106px','the strip, the band\'s next plate, reaches 12 px under a shown fps/ping plate\'s slant, in the same row');
   assert.equal(properties.has('--hud-roster-top-right'),false);
   assert.equal(strip.hasAttribute('data-compact'),false,'room for every cell between the score and the plate');
-  score.getBoundingClientRect=()=>rect(0,64,300,1100);
+  score.getBoundingClientRect=()=>rect(0,64,300,1120);
   callbacks.resize();flush();
   assert.equal(strip.hasAttribute('data-compact'),true,'a row too narrow for every cell folds the strip to its ping');
   stripButton.getBoundingClientRect=()=>rect(8,36,1258,1313);
