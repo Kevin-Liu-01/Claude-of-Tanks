@@ -449,7 +449,8 @@ function frameView(requestedName = 'hero'): void {
 
 // the page's notices never cover the dossier's name or a control: beside the panes they stand at the stage's foot above
 // the turntable and photo buttons, and on a stacked page just above the dossier's actions (they ride its sticky bar,
-// where the copy and markup triggers sit)
+// where the copy and markup triggers sit; on a short page the bar scrolls with the dossier, and the notice stands in it,
+// beside the button that raised it: a window-foot notice covered the dossier's tabs at 844 x 390, the g15 critic)
 const stage = document.querySelector<HTMLElement>('#viewport');
 const actions = document.querySelector<HTMLElement>('.acts');
 type NoticeKit = typeof import('../ui/components/notice.ts');
@@ -460,14 +461,11 @@ function loadNotices(): Promise<NoticeKit> {
   noticeKit ??= import('../ui/components/notice.ts').then((kit) => {
     if (stage) kit.noticeRegion('gallery', { placement: 'host', host: stage, limit: 2, className: 'gallery-notices' });
     if (actions) kit.noticeRegion('gallery-stack', { placement: 'host', host: actions, limit: 2, className: 'gallery-notices gallery-notices--stack' });
-    // a short window lets the actions scroll with the page, so its notices stand at the window's foot
-    kit.noticeRegion('gallery-short', { placement: 'bottom', limit: 2, className: 'gallery-notices gallery-notices--short' });
     return kit;
   });
   return noticeKit;
 }
 const stackedPage = typeof matchMedia === 'function' ? matchMedia('(width < 1100px)') : null;
-const shortPage = typeof matchMedia === 'function' ? matchMedia('(height < 520px)') : null;
 /**
  * A designation's line breaks fall between its words, never inside its number (the gauntlet 10-25: "Challenger 1 Mk / 2",
  * "Svinets- / 2", "Hetman / II"): a hyphen holds its halves, and a short last token (a mark, a numeral, a suffix) stays
@@ -491,7 +489,7 @@ function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}
   let shown: GalleryNotice | null = null;
   void loadNotices().then((kit) => {
     if (dismissed) return;
-    shown = kit.notify({ text: message, severity, region: shortPage?.matches ? 'gallery-short' : stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
+    shown = kit.notify({ text: message, severity, region: stage && !stackedPage?.matches ? 'gallery' : 'gallery-stack', dedupeKey: message });
   }, () => { /* the notice is lost with its module; the page goes on */ });
   return { dismiss() { dismissed = true; shown?.dismiss(); } };
 }
@@ -855,6 +853,8 @@ function renderRoster(): void {
     vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
+  // (a short window sets that line under the search, gallery.css)
+  vehicleList.parentElement?.classList.toggle('is-empty', !filteredRecords.length);
   if (layout === 'grid' && heroCards) {
     for (const row of vehicleList.querySelectorAll<HTMLElement>('.it')) {
       const art = row.querySelector<HTMLElement>('.it__art');
@@ -1016,6 +1016,16 @@ const setDiagramZoom = (on: boolean): void => {
   diagramImage.setAttribute('aria-expanded', String(on));
   mountDiagramLabels();
 };
+// the zoomed drawing's own close, the kit's icon button in its corner (the g15 critic: a press or Escape put it back, but
+// nothing on the screen said so)
+const diagramClose = document.createElement('button');
+diagramClose.type = 'button';
+diagramClose.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--icon diagram-close';
+diagramClose.setAttribute('aria-label', t('gallery.diagram.close'));
+diagramClose.title = t('gallery.diagram.close');
+diagramClose.innerHTML = icon('close', { size: 18 });
+diagramClose.addEventListener('click', (event) => { event.stopPropagation(); setDiagramZoom(false); diagramImage.focus(); });
+diagramFigure.append(diagramClose);
 diagramImage.tabIndex = 0;
 diagramImage.setAttribute('role', 'button');
 diagramImage.setAttribute('aria-expanded', 'false');
@@ -1199,16 +1209,19 @@ function populateRivals(): void {
     filters: flagCodes.map((code) => ({ id: code, label: flagLabel(code) })), onChoose: (item) => setRival(item.id, true) });
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
- * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number } {
+ * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button), across the dossier's width
+ * (the g15 critic: narrower than the dossier, its tiles' edges and the card's flag showed beside it). */
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
   const top = Math.max(0, bar ? bar.bottom : 0);
+  const column = document.querySelector<HTMLElement>('.dossier')?.getBoundingClientRect();
+  const sides = column && column.width ? { left: column.left + 1, right: column.right } : {};
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
     const box = panel.getBoundingClientRect();
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom), ...sides };
   }
-  return { top, bottom: innerHeight };
+  return { top, bottom: innerHeight, ...sides };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */

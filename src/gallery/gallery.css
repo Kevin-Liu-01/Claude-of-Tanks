@@ -204,7 +204,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 
 /* --------------------------------------------------------------------------------------------- the dossier (.dossier) */
 .dossier{grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface-page);border-left:1px solid var(--line-1)}
-.dossier-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
+/* its gutter stands whether a tab overflows or not: a scrollbar that came with a long tab narrowed the 16:9 film by its own
+   width and lifted the name and the tabs 6 px (the g15 critic, Stats against the other tabs at 1920) */
+.dossier-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);padding-bottom:28px}
 .dossier-scroll.has-zoom{-webkit-mask-image:none;mask-image:none}
@@ -218,12 +220,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* stacked, the notice takes its own row at the top of the actions bar (it lay over the dossier's rows above the bar) */
 .acts{position:relative;flex-wrap:wrap}
 .cot-c-notices.gallery-notices--stack{position:static;order:-1;flex:1 0 100%;width:100%;transform:none}
-.cot-c-notices.gallery-notices--short{position:fixed;bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
 /* in the actions bar's row the notice is flat: its drop shadow fell on the button under it */
 .gallery-notices--stack .cot-c-notice{box-shadow:var(--ring-2)}
-/* a short two-column page: the window-foot notice stands over the dossier's column, never across the columns' seam (as
-   specific as the stage's width rule above, which held it at 420 px across the seam at 844x390) */
-@media (width >= 768px){.cot-c-notices.gallery-notices--short:not(.gallery-notices--stack){left:auto;right:var(--s3);width:min(380px,calc(50% - 2 * var(--s3)));transform:none}}
 .gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -254,8 +252,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
 .facts>div{display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:var(--s2);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .facts .cot-i{width:16px;height:16px;color:var(--ink-3)}
-.facts b{font:700 var(--fs-16)/1 var(--font-display);white-space:nowrap}
-.facts b small{margin-left:2px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
+.facts b{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) 2px;font:700 var(--fs-16)/1 var(--font-display);white-space:nowrap}
+/* a unit wider than the tile's room (zh 血量 beside 2,400 at 1440 and 1280: the g15 critic) takes the line under its figure */
+.facts b small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .dz-rules:empty{display:none}
 .dz-rules .is-dev{color:var(--text-warn)}
 .ratings{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -486,10 +485,16 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
 /* the drawing (2:1) takes the window's room: its height from the viewport, as a grid row's percentage did not bound it
    (the g14 critic: at 844 x 390 its key ran under the window's foot, at 2560 it stood at its natural 40 % width) */
+#dossier-anatomy figure .diagram-close{display:none}
+#dossier-anatomy figure.is-zoomed .diagram-close{display:inline-flex;position:fixed;top:var(--s4);right:var(--s4);background:var(--surface-menu)}
 #dossier-anatomy figure.is-zoomed img{width:min(100%,calc((100dvh - 2 * var(--s5)) * 2));max-width:none;height:auto;
   max-height:calc(100dvh - 2 * var(--s5));cursor:zoom-out}
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
+  /* a search that matches nothing says so under the search, with its Clear: under the filters the line and its button stood
+     below the window's foot (the g15 critic at 844 x 390) */
+  .browse.is-empty>.search{order:-2}
+  .browse.is-empty>.fam{order:-1}
   /* the stage and its turntable fit under the site bar */
   .stage{max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
