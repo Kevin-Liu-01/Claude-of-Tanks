@@ -105,7 +105,7 @@ assert.match(garage,
   /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-battle-control\{[\s\S]*top:max\(64px/,
   'portrait phones must place Battle below the brand and global controls instead of overlapping them');
 assert.match(garage,
-  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='maps'\] \.cot-leftcol,[\s\S]*top:calc\(max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\) \+ var\(--cot-room-row-space,0px\)\)/,
+  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-garage\[data-garage-panel='appearance'\] \.cot-leftcol\{[\s\S]*top:calc\(max\(120px,calc\(env\(safe-area-inset-top\) \+ 114px\)\) \+ var\(--cot-room-row-space,0px\)\)/,
   'portrait garage drawers must begin below the lowered Battle control and any room-readiness row');
 assert.match(garageSource, /root\.classList\.toggle\('has-room', !!status\)/,
   'room departure must release the space reserved for readiness controls');

@@ -112,7 +112,7 @@ export const INTERACTION_SITES = Object.freeze({
 
   // ---- Deploy (premiere-site)
   'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.mode', 'bespoke:dataset.gameMode'], lane: 'premiere-site' },
-  'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:id===mapId'], lane: 'premiere-site', path: 'map-deploy' },
+  'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-battlefield'], lane: 'premiere-site', path: 'map-deploy' },
   'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'bespoke', marks: ['bespoke:dataset.sides'], lane: 'premiere-site' },
   'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'bespoke', marks: ['bespoke:dataset.diff'], lane: 'premiere-site' },
   'deploy-mars': { chooses: 'setting', options: 3, screen: 'deploy', owner: GARAGE, build: 'custom-select', marks: ['select:[data-mars-field]', 'custom-select:marsDropdowns'], lane: 'premiere-site' },

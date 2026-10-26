@@ -112,7 +112,7 @@ export function objectiveDiagram(mode: string, mapId: string, box = DIAGRAM_BOX)
     const color = sideColor(marker.side), fill = sideFill(marker.side);
     const c = ctx as unknown as CanvasRenderingContext2D;
     switch (marker.kind) {
-      case 'spawn': drawSpawnGlyph(c, x, y, r * 0.8, color, fill); break;
+      case 'spawn': drawSpawnGlyph(c, x, y, r * 0.8, color, fill, marker.side === 'enemy' ? 'enemy' : 'own'); break;
       case 'zone':
       case 'sector':
         drawHexBadge(c, x, y, r, { fill, stroke: color, dashed: marker.status === 'locked' });
@@ -141,8 +141,8 @@ function legend(): string {
   };
   const m = box / 2;
   const items: Array<[string, string]> = [
-    [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('own'), sideFill('own'))), t('docs.modes.legend.ownSpawn')],
-    [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('enemy'), sideFill('enemy'))), t('docs.modes.legend.enemySpawn')],
+    [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('own'), sideFill('own'), 'own')), t('docs.modes.legend.ownSpawn')],
+    [glyph((c) => drawSpawnGlyph(c, m, m, r * 0.9, sideColor('enemy'), sideFill('enemy'), 'enemy')), t('docs.modes.legend.enemySpawn')],
     [glyph((c) => {
       drawHexBadge(c, m, m, r * 1.1, { fill: sideFill('neutral'), stroke: sideColor('neutral') });
       drawBadgeLetter(c, 'A', m, m, r * 1.1);

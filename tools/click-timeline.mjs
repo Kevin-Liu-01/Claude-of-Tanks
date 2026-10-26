@@ -503,7 +503,7 @@ const ACCESS_SURFACES = [
   { id: 'deploy', open: openDeploy, scope: '#cot-battle-menu' },
   { id: 'battlefield', scope: '#cot-battle-menu',
     open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-field]'), ctx);
-      await waitFor(page, `shown('.cot-map-card .cot-map-select')`, 15000); } },
+      await waitFor(page, `shown('[data-deploy-bf] .cot-c-picker__opt')`, 15000); } },
   { id: 'settings', scope: '.cot-settings',
     open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-settings-slot .cot-gear, [data-nav=settings]'), ctx);
       await waitFor(page, `shown('.cot-settings.open')`, 15000); } },

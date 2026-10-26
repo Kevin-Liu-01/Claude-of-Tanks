@@ -862,7 +862,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
     `<span class="cot-garage-variant-action">` +
     `${uiIconSVG('chevronRight', 16, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
-    `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
@@ -1105,7 +1104,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
   const roomControls = requiredElement<HTMLElement>(root, '.cot-room-controls');
   const roomReady = requiredElement<HTMLButtonElement>(root, '.cot-room-ready');
-  const mapsEl = requiredElement<HTMLElement>(root, '.cot-maps');
   const recordTrigger = requiredElement<HTMLButtonElement>(root, '.cot-record-trigger');
   const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
   const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
@@ -1510,8 +1508,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (next === 'appearance' && previous !== next) refreshCamoSel(); // the swatches it left for the drawer
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
-      [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
-        t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos')],
+      [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'appearance', t('garage.tools.camos')],
     ] as const) {
       if (active) {
         element.setAttribute('role', 'dialog');
@@ -1524,7 +1521,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
     }
     const drawerTitle = root.querySelector<HTMLElement>('.cot-drawer-heading strong');
-    if (drawerTitle) drawerTitle.textContent = t(next === 'maps' ? 'garage.tools.battlefields' : 'garage.tools.camos');
+    if (drawerTitle) drawerTitle.textContent = t('garage.tools.camos');
     root.querySelectorAll<HTMLButtonElement>('[data-garage-panel]').forEach((button) => {
       const expanded = button.dataset.garagePanel === next;
       button.setAttribute('aria-expanded', String(expanded));
@@ -1535,7 +1532,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         .find((button) => button.getClientRects().length > 0)?.focus();
     }
     requestAnimationFrame(() => {
-      syncSidebarPanelHeight();
       queueCountryRailAffordances();
       if (next && previous !== next && openGaragePanel() === next) {
         root.querySelector<HTMLElement>(next === 'equipment' ? '.cot-dossier-close' : '.cot-drawer-close')?.focus({ preventScroll: true });
@@ -1627,7 +1623,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   root.querySelector('.cot-drawer-close')?.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
     if (!isOverlayPanelLayout()) setGaragePanel('');
-    syncSidebarPanelHeight();
   });
   // a docked layout has no scrim under every paint: a press anywhere else closes it (in capture, before the stage's drag)
   document.addEventListener('pointerdown', (event) => {
@@ -1829,7 +1824,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
-  const mapCardById = new Map<string, HTMLElement>();
   // The selected battlefield on the battle card and the Deploy screen's field.
   function refreshBattlefield(): void {
     const selected = maps.find((map) => map.id === selectedMapId) || maps[0];
@@ -1856,94 +1850,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployScreen?.drawObjectives();
     closeDeployField();
   }
-  function initializeMapPicker(): void {
-    if (!maps.length) return;
-    const title = document.createElement('div');
-    title.className = 'mtitle cot-sidebar-section-title';
-    title.innerHTML = `${uiIconSVG('map', 13)}<span>${t('garage.battlefield.heading')}</span>`;
-    title.appendChild(createInfoButton({
-      label: t('garage.battlefield.about'),
-      title: t('garage.battlefield.heading'),
-      text: t('garage.battlefield.aboutText'),
-      guide: 'maps',
-      sections: [
-        { icon: 'map', title: t('garage.info.soloDeploymentTitle'), text: t('garage.info.soloDeploymentText') },
-        { icon: 'team', title: t('garage.info.multiplayerTitle'), text: t('garage.info.multiplayerText') },
-      ],
-    }));
-    mapsEl.appendChild(title);
-    const mapScroll = document.createElement('div');
-    mapScroll.className = 'cot-map-scroll';
-    mapsEl.appendChild(mapScroll);
-    const mapGrid = document.createElement('div');
-    mapGrid.className = 'cot-map-grid';
-    mapScroll.appendChild(mapGrid);
-    const mapThumbLoaders = new WeakMap<Element, () => void>();
-    const mapThumbObserver = typeof IntersectionObserver === 'function'
-      ? new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          mapThumbLoaders.get(entry.target)?.();
-          mapThumbObserver?.unobserve(entry.target);
-        }
-      }, { root: mapScroll, rootMargin: '120px' })
-      : null;
-    for (const m of maps) {
-      const card = document.createElement('div');
-      card.className = 'cot-map-card';
-      const selectMap = document.createElement('button');
-      selectMap.type = 'button';
-      selectMap.className = 'cot-map-select';
-      selectMap.setAttribute('aria-label', m.name);
-      const thumb = document.createElement('div');
-      thumb.className = `mthumb ${m.id}`;
-      const loadThumb = () => {
-        if (thumb.dataset.loaded === 'true') return;
-        thumb.dataset.loaded = 'true';
-        if (m.id === 'random') thumb.appendChild(createRandomMapMosaic(maps));
-        else if (m.thumb) thumb.style.backgroundImage = `url("${m.thumb.replace(/"/g, '%22')}")`;
-      };
-      mapThumbLoaders.set(thumb, loadThumb);
-      if (mapThumbObserver) mapThumbObserver.observe(thumb);
-      else loadThumb();
-      const nm = document.createElement('div');
-      nm.className = 'mname';
-      nm.textContent = m.name;
-      selectMap.append(thumb, nm);
-      card.append(selectMap);
-      const regions = mapRegionTags(m.id);
-      if (regions.length) {
-        const tags = document.createElement('div');
-        tags.className = 'cot-map-regions';
-        for (const region of regions) {
-          const tag = document.createElement('span');
-          tag.className = 'cot-map-region';
-          tag.dataset.region = region;
-          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
-          const label = document.createElement('span');
-          label.textContent = t(`camoTag.${region}`);
-          tag.appendChild(label);
-          tags.appendChild(tag);
-        }
-        thumb.appendChild(tags);
-      }
-      selectMap.addEventListener('click', () => {
-        emit('ui:click', {});
-        api.setSelectedMap(m.id);
-        if (isOverlayPanelLayout()) setGaragePanel('');
-      });
-      mapGrid.appendChild(card);
-      mapCardById.set(m.id, card);
-    }
-  }
-  initializeMapPicker();
   // Scroll masks are affordances, not decoration: the head appears only after
   // content moves above the viewport, while the tail appears only while more
   // remains below. Both depths collapse near their respective ends so the
   // first and last cards resolve to full opacity instead of hitting a shelf.
   const syncScrollFades = () => {
-    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
-    if (mapScroll) mapScroll.classList.toggle('can-scroll', mapScroll.scrollHeight > mapScroll.clientHeight + 1);
     const cg = root.querySelector('.cot-camos .cgrid.camo');
     if (cg) cg.classList.toggle('can-scroll', cg.scrollHeight > cg.clientHeight + 1);
     const dossierPassed = Math.max(0, statsEl.scrollTop);
@@ -1999,14 +1910,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const grid = root.querySelector<HTMLElement>('.cot-eqpick.open .pgrid');
     if (grid) fitPickerGrid(grid);
   });
-  // The map roster now exceeds the short-viewport column. Its flex height
-  // can settle after the first animation frame (once the camo grid measures),
+  // The dossier's flex height can settle after the first animation frame,
   // so window resize alone is insufficient to keep the fade affordance true.
   function observeScrollFadeSize(): void {
     if (typeof ResizeObserver !== 'function') return;
     const scrollFadeObserver = new ResizeObserver(syncScrollFades);
-    const mapScroll = mapsEl.querySelector('.cot-map-scroll');
-    if (mapScroll) scrollFadeObserver.observe(mapScroll);
     scrollFadeObserver.observe(statsEl);
   }
   observeScrollFadeSize();
@@ -2214,46 +2122,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeCamoPicker();
-  // Battlefield and camouflage form one balanced pair. They share the
-  // available vertical budget, grow together, and stop once the taller
-  // section can show all of its content. Any excess room remains below the
-  // pair for Battle Gallery rather than stretching either plate into a void.
-  function syncSidebarPanelHeight() {
-    const leftcol = root.querySelector<HTMLElement>('.cot-leftcol');
-    if (!leftcol || isOverlayPanelLayout() || getComputedStyle(mapsEl).display === 'none') {
-      leftcol?.style.removeProperty('--cot-sidebar-panel-height');
-      return;
-    }
-    const style = getComputedStyle(leftcol);
-    const gap = Number.parseFloat(style.rowGap || style.gap) || 8;
-    const fixedChildren = [...leftcol.children]
-      .filter((child): child is HTMLElement => child instanceof HTMLElement &&
-        child !== mapsEl && child !== camosEl && getComputedStyle(child).display !== 'none');
-    const fixedHeight = fixedChildren.reduce((sum, child) => sum + child.offsetHeight, 0);
-    const gapHeight = gap * Math.max(0, leftcol.children.length - 1);
-    const pairBudget = Math.max(216, leftcol.clientHeight - fixedHeight - gapHeight);
-    const mapTitle = mapsEl.querySelector<HTMLElement>('.mtitle');
-    const mapGrid = mapsEl.querySelector<HTMLElement>('.cot-map-grid');
-    const camoTitle = camosEl.querySelector<HTMLElement>('.ctitle');
-    const camoGrid = camosEl.querySelector<HTMLElement>('.cgrid.camo');
-    const mapIntrinsic = (mapTitle?.offsetHeight || 0) + (mapGrid?.scrollHeight || 0) + 25;
-    const camoIntrinsic = (camoTitle?.offsetHeight || 0) + (camoGrid?.scrollHeight || 0) + 25;
-    const contentCap = Math.max(108, mapIntrinsic, camoIntrinsic);
-    const height = Math.floor(Math.min(pairBudget / 2, contentCap));
-    const next = `${height}px`;
-    if (leftcol.style.getPropertyValue('--cot-sidebar-panel-height') !== next) {
-      leftcol.style.setProperty('--cot-sidebar-panel-height', next);
-      requestAnimationFrame(syncScrollFades);
-    }
-  }
-  window.addEventListener('resize', syncSidebarPanelHeight);
-  requestAnimationFrame(syncSidebarPanelHeight);
-  function observeSidebarSize(): void {
-    if (typeof ResizeObserver !== 'function') return;
-    const sidebarSizeObserver = new ResizeObserver(syncSidebarPanelHeight);
-    sidebarSizeObserver.observe(requiredElement<HTMLElement>(root, '.cot-leftcol'));
-  }
-  observeSidebarSize();
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
   // `cot.equip.<specId>`, read battle-side by game/state.ts at spawn). The
@@ -3780,9 +3648,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
   // the kit's battlefieldPicker opens in the field's place (deploy.css gives it the field's and the rules' room), its
   // cards narrowed to the chosen mode with Random first, a large preview of the map under the pointer or the focus, and
-  // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Each card reads
-  // battlefieldFacts (the Rooms host's picker reads the same). It loads with its first opening (the boot graph keeps no
-  // picker).
+  // one press choosing through the Garage's own selection; Esc and the close leave with nothing changed. Its cards read the
+  // Garage's battlefield list (catalog names, mapThumbs pictures, regionTags landscapes): a lazy import of
+  // battlefieldFacts.ts from here split mapThumbs off the boot chunk (one more game and cn request). It loads with its
+  // first opening (the boot graph keeps no picker).
   let deployField: { picker: import('./battlefieldPicker.ts').BattlefieldPicker; cards: () => import('./battlefieldPicker.ts').BattlefieldCard[] } | null = null;
   let deployFieldLoad: Promise<void> | null = null;
   function openDeployField(): void {
@@ -3802,17 +3671,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       deployField.picker.focus();
       return;
     }
-    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
-      { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
-    ]) => {
+    deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts')]).then(([{ createBattlefieldPicker }, { pickerText }]) => {
       const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.map((map) => {
         if (map.id === 'random') {
           return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
             media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
         }
-        const facts = battlefieldFacts(map.id);
-        return { id: facts.id, name: facts.name, facts: facts.regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-          media: { poster: facts.poster.thumb }, hero: facts.poster.hero, tags: [...facts.regions] };
+        const regions = mapRegionTags(map.id);
+        return { id: map.id, name: map.name, facts: regions.slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+          media: { poster: map.thumb || map.hero || '' }, hero: map.hero || map.thumb, tags: [...regions] };
       });
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
@@ -4667,9 +4534,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
-      // on the Deploy screen a focused mode deploys (the arrows chose it); every other control keeps its own Enter
-      if (target?.closest('button,input,select,a,[role="button"]')
-        && !(deployOpen && target.closest('.cot-deploy-panel .cot-battle-choice:not([data-proving])'))) return;
+      // on the Deploy screen the chosen mode deploys from its tile (the arrows choose as they move); a mode reached by Tab
+      // takes its own Enter first and is chosen, so Enter never deploys the mode chosen before. Every other control keeps
+      // its own Enter.
+      const tile = deployOpen ? target?.closest<HTMLElement>('.cot-deploy-panel .cot-battle-choice:not([data-proving])') : null;
+      if (tile ? tile.getAttribute('aria-pressed') !== 'true' : target?.closest('button,input,select,a,[role="button"]')) return;
       battle();
       e.preventDefault();
     }
@@ -4911,15 +4780,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     /**
-     * Highlight a battlefield in the map picker.
+     * Choose the battlefield (Deploy's field and its picker show it).
      * @param {string} mapId map id or 'random'
      */
     setSelectedMap(mapId: string) {
-      if (!mapCardById.has(mapId)) return;
+      if (!maps.some((map) => map.id === mapId)) return;
       selectedMapId = mapId;
-      for (const [id, card] of mapCardById) {
-        card.classList.toggle('sel', id === mapId);
-      }
       refreshBattlefield();
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
       // Keep packaged portraits healthy after the biome/camo transition.
@@ -4927,7 +4793,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
   };
 
-  if (mapCardById.size) api.setSelectedMap(selectedMapId);
+  if (maps.length) api.setSelectedMap(selectedMapId);
 
   applyCountryFilter(countryFilter);
   // Paint the hidden initial dossier without overwriting a persisted choice
