@@ -351,7 +351,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-take-story .filming-take-meta{margin:var(--s2) 0 0;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-take-story p[data-filming-take-story]{max-width:76ch;margin:12px 0 0;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.65}
 .filming-take-scene{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
-.filming-take-grid{margin-top:var(--s5)}
+/* the takes stand 12 px under the take's panel, with the grid's own 4 px: they continue it, as a picker's cards stand under its field */
+.filming-take-grid{margin-top:var(--s2)}
 .filming-take-grid .cot-c-picker__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .filming-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
 .filming-numbers div{min-width:0;padding:16px 14px;background:var(--surface-raised)}
