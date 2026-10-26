@@ -107,20 +107,21 @@ export function createSnapshotParser() {
   }
   function finish() {
     if (!meta) sizeArrays(null);
-    let fault = null;
+    let fault = null, table = strings;
     if (gaps.length || !stringsDone || errors.length) {
       fault = { message: errors[0] ?? (stringsDone ? 'gaps in the string table' : 'the string table did not end'), gaps: gaps.length, errors };
       // the strings after a single gap realigned: as many placeholders there as the graph's highest string index says are
       // missing (the ints whole)
       if (gaps.length === 1 && nodes && edges) {
         const missing = highestStringIndex(meta, nodes.a.subarray(0, nodes.n), edges.a.subarray(0, edges.n)) + 1 - strings.length;
-        if (missing > 0) strings.splice(gaps[0], 0, ...new Array(missing).fill('(lost)'));
+        // (concatenated, not spread into splice: millions of placeholders overflow an argument list)
+        if (missing > 0 && missing < 1e8) table = strings.slice(0, gaps[0]).concat(new Array(missing).fill('(lost)'), strings.slice(gaps[0]));
         fault.realigned = missing;
       }
     }
     const empty = new Uint32Array(0);
     return { meta, declared, nodes: nodes ? nodes.a.subarray(0, nodes.n) : empty, edges: edges ? edges.a.subarray(0, edges.n) : empty,
-      strings, fault };
+      strings: table, fault };
   }
   return { feed, finish };
 }
@@ -228,11 +229,16 @@ export async function snapshotRetainerPaths(cdp, markerNames, max = 3, locate = 
   let snapshot = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const parser = createSnapshotParser();
-    let chunks = 0, chars = 0;
-    const onChunk = ({ chunk }) => { chunks++; chars += chunk.length; parser.feed(chunk); };
+    // (2026-10-26: parsed in the handler, the probe read the protocol slower than a 1 GB snapshot arrived and the stream
+    // ended at ~470 MB, whole chunks never delivered) the chunks are only kept while they arrive, parsed once it is done
+    const received = [];
+    let chars = 0;
+    const onChunk = ({ chunk }) => { received.push(chunk); chars += chunk.length; };
     cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
     try { await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false, captureNumericValue: false }); }
     finally { cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk); }
+    const chunks = received.length;
+    for (let k = 0; k < received.length; k++) { parser.feed(received[k]); received[k] = null; }
     let taken = null, whole = false, why = '';
     try {
       taken = parser.finish();
