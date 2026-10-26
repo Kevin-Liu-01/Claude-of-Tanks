@@ -353,6 +353,37 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   assert.deepEqual(await p.streamRoster(), [], 'nothing left to stream');
   p.dispose();
 }
+// ...and with the other seats' prebuild (started once the world stood): the viewer's vehicle never waits on it, and the
+// stream takes its vehicles instead of building them, then lets the rest go
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
+  let release;
+  const held = new Map([['foe', fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false })], ['bot-3', fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false })]]);
+  const taken = [];
+  let disposedPrebuild = false;
+  const prebuilt = {
+    settled: new Promise((resolve) => { release = resolve; }),
+    has: (playerId) => held.has(playerId),
+    take(playerId) { const visual = held.get(playerId) ?? null; held.delete(playerId); if (visual) taken.push(playerId); return visual; },
+    dispose() { disposedPrebuild = true; },
+  };
+  const madeBefore = visuals.length;
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, deferRoster: true, prebuilt,
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  assert.deepEqual([...p.actors.keys()], ['me'], 'the viewer is built while the prebuild still runs');
+  assert.equal(disposedPrebuild, false, 'the prebuild stands until the stream');
+  const streaming = p.streamRoster();
+  release();
+  const streamed = await streaming;
+  assert.deepEqual(streamed.map((actor) => actor.id).sort(), ['bot-3', 'foe']);
+  assert.deepEqual(taken.sort(), ['bot-3', 'foe'], 'the stream takes the prebuilt vehicles');
+  assert.equal(visuals.length - madeBefore, 1, 'and builds only the viewer\'s');
+  assert.equal(disposedPrebuild, true);
+  p.dispose();
+}
 
 // ------------------------------------------------------------ the event path, a disconnect and a spectator
 {
@@ -580,7 +611,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, a deferred roster streamed after the reveal, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};
@@ -650,7 +681,15 @@ console.log('mp battle presentation: roster → hidden visuals, a deferred roste
     { playerId: 'foe', specId: spec, camo: 'winter', isViewer: false },
     { playerId: 'bot-9', specId: spec, camo: 'winter', isViewer: false },
   ], deps);
+  // whenBuilt: a seat's own build (its group's), before the prebuild has settled; a seat it does not hold at once
+  const order = [];
+  const meBuilt = prebuilt.whenBuilt('me').then(() => order.push(`me:${prebuilt.has('me')}`));
+  void prebuilt.settled.then(() => order.push('settled'));
+  await prebuilt.whenBuilt('nobody');
+  await meBuilt;
   await prebuilt.settled;
+  assert.deepEqual(order, ['me:true', 'settled'], 'the viewer\'s build is ready before the prebuild settles');
+  await prebuilt.whenBuilt('foe');
   assert.deepEqual(built, [`${spec}:ai`, `${spec}:high`, `${spec}:ai`], 'one build per vehicle, paint and build tier: the viewer\'s own (high geometry on a desktop) builds alone');
   assert.deepEqual(copied, ['ai'], 'the other seats of a build are copies');
   for (const opts of builds) {

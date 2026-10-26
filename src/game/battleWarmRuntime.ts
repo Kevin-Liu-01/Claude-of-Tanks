@@ -551,16 +551,15 @@ export async function warmNetworkWrecks({
 }
 
 /**
- * A solo room's vehicles built after its reveal (mp/session/browserComposition.ts streamSoloRoster): their forward
- * programs compiled and their uniforms warmed on a 12 ms frame budget, as solo's enemy visuals
- * (deferredCombatWarmRuntime.ts). A link still running when its window closes waits at its first draw. Their wreck
- * states follow unawaited, with no scene render (`live`): a first kill is seconds into the battle.
+ * A solo room's other vehicles, taken in under the cover after the viewer's warms (mp/session/browserComposition.ts
+ * streamSoloRoster): their forward programs compiled and their uniforms warmed in 12 ms slices. A link still running
+ * when its window closes waits at its first draw. Their wreck states follow unawaited, with no scene render (`live`):
+ * the reveal does not wait on them, and a first kill is seconds into the battle.
  */
 export async function warmStreamedVehicles(options: WreckWarmOptions): Promise<RuntimeValue> {
   const { signal, renderer, compilePrograms } = options;
   const roster = [...options.entities];
   const baseline = snapshotRendererPrograms(renderer);
-  // (the countdown holds until this resolves: a larger slice than solo's background warms)
   const yieldForBudget = createFrameBudgetYielder(12);
   for (const entity of roster) {
     const root = entity.visual?.root;
