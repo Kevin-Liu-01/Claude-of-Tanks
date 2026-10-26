@@ -44,6 +44,7 @@ import { ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { datumAttr } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
@@ -414,11 +415,6 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-page)}
 .cot-play .battlefield-art.is-random .random-map-mosaic{display:grid}
 .cot-play .battlefield-art .random-map-tile{display:block;min-width:0;background:center/cover no-repeat}
-.cot-play .battlefield-art .random-map-count{position:absolute;z-index:2;right:var(--s3);top:var(--s3);display:grid;min-width:54px;
-  padding:var(--s2);border-radius:var(--r1);background:var(--glyph-plate);text-align:center}
-.cot-play .battlefield-art .random-map-count b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-data)}
-.cot-play .battlefield-art .random-map-count span{margin-top:2px;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);
-  letter-spacing:var(--track-label-s);text-transform:uppercase}
 .cot-play .battlefield-copy{display:grid;align-items:center;gap:var(--s3);padding:var(--s4)}
 .cot-play .battlefield-picker{min-width:0}
 .cot-play .players{display:grid;gap:var(--s2);margin-top:var(--s2)}
@@ -843,7 +839,7 @@ export function createPlayMenu({
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt cot-c-btn" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
-    </div><div class="status cot-c-notice is-empty" data-severity="info" role="status" aria-live="polite" aria-atomic="true"><span class="cot-c-notice__glyph" data-status-glyph></span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-status-text></span></span></div>
+    </div><div class="status cot-c-notice is-empty"${datumAttr('notices')} data-severity="info" role="status" aria-live="polite" aria-atomic="true"><span class="cot-c-notice__glyph" data-status-glyph></span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-status-text></span></span></div>
     <section class="room-failure cot-c-notice" data-severity="error" hidden role="alert" aria-atomic="true" tabindex="-1"
       aria-labelledby="cot-room-failure-title" aria-describedby="cot-room-failure-detail">
       <span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-room-failure-title"></span><span class="cot-c-notice__detail" id="cot-room-failure-detail"></span></span>
@@ -853,8 +849,8 @@ export function createPlayMenu({
         <button class="action alt cot-c-btn" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
-      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"></div></div>
-        <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats></div></div>
+      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"${datumAttr('room-code')}></div></div>
+        <div class="seats"><div class="roommeta">${t('playMenu.lobby.seats')}</div><div class="seats-count num" data-seats${datumAttr('roster')}></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
@@ -862,7 +858,7 @@ export function createPlayMenu({
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-map-list" aria-labelledby="cot-room-map-label cot-room-map-value">
                 <span class="menu-select-thumb is-random" data-select-thumb aria-hidden="true"></span>
-                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>${t('playMenu.advanced.battlefieldRandom')}</span>
+                <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value${datumAttr('map-name')}>${t('playMenu.advanced.battlefieldRandom')}</span>
                   <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
               <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
             </div>
@@ -907,7 +903,7 @@ export function createPlayMenu({
           <button class="action cot-c-btn cot-c-btn--primary" data-action="start" type="button">${t("playMenu.start")}</button></div>
       </div><div class="note"></div>
     </div></section>
-    <details class="room-rules"><summary>${t('playMenu.roomRules')}<span data-selected-rule></span></summary>
+    <details class="room-rules"><summary>${t('playMenu.roomRules')}<span data-selected-rule${datumAttr('mode-name')}></span></summary>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
@@ -1064,7 +1060,7 @@ export function createPlayMenu({
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
   const operationDropdown = createCustomSelect(operationSelect);
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
-  battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
+  battlefieldArt.appendChild(createRandomMapMosaic(maps));
   const playersEl = requiredElement<HTMLElement>(root, '.players');
   const codeEl = requiredElement<HTMLElement>(root, '.code');
   const seatsEl = requiredElement<HTMLElement>(root, '[data-seats]');

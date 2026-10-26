@@ -144,6 +144,11 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
   `src/ui/minimapObjectives.ts`, and one glyph set, `src/ui/objectiveGlyphs.ts`; the HUD
   minimap and `src/game/matchModeWorldPresentation.ts` both consume them. A new objective
   gets a marker kind and a glyph there, never an ad-hoc drawing in the HUD or the world.
+- One datum, one owner: every on-screen datum (ping, fps, score, clock, objective, ammo, hp,
+  tank name, tier, mode, map and the rest) has one row in `src/ui/surfaceRegistry.ts` naming its
+  owning module, surface, screens and states; only that owner renders it, through `datumAttr()`,
+  `markDatum()` and `datumGlyph()` (in `src/ui/dom.ts`). A new readout gets a row there, never a
+  second copy on a screen (`src/ui/surfaceRegistry.selftest.mjs`, `tools/datum-census.mjs`).
 - Export only what another file imports: `node tools/unused-exports.mjs` lists the
   exports nothing else mentions and drives the periodic un-export passes;
   `npm run typecheck` runs the unused-locals check on the core owners. Leave

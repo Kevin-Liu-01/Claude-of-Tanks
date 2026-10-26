@@ -15,16 +15,15 @@
  * at most at the model's sample cadence. Layout follows the responsive body
  * attributes (no width media queries; the same lanes `.cot-net` uses).
  */
-import { createElement } from './dom.ts';
+import { createElement, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
 const STYLE_ID = 'cot-mp-status-style';
 /** The body class a battle's strip holds while it is up: the one link readout (hud.ts drops its corner chip under it). */
-const MP_LINK_CLASS = 'cot-mp-link';
+const MP_LINK_CLASS = 'cot-mp-battle';
 /** The battle strips up now (the class leaves with the last of them). */
 let linkHolders = 0;
 export const MP_STATUS_PANEL_STORAGE_KEY = 'cot.mp.netpanel';
@@ -68,18 +67,20 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
   background:linear-gradient(180deg,rgba(14,20,25,.86),rgba(5,9,12,.78));box-shadow:0 5px 14px rgba(0,0,0,.22);color:#dce6ed;
   font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;cursor:pointer;pointer-events:auto}
 .cot-mp-strip:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.cot-mp-strip .glyph{display:inline-flex;width:16px;height:16px;color:#b9e7c0}
+.cot-mp-strip .glyph{display:inline-flex;width:16px;height:16px;color:var(--text-ok)}
 .cot-mp-strip .glyph svg{width:16px;height:16px}
-.cot-mp-strip.degraded .glyph{color:#ffd27a;--i-b3:.22}
-.cot-mp-strip.bad .glyph{color:#ff8c82;--i-b2:.22;--i-b3:.22}
-.cot-mp-strip.offline .glyph{color:#ff8c82;--i-b1:.22;--i-b2:.22;--i-b3:.22}
-.cot-mp-strip.unknown .glyph{color:#8494a0;--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.degraded .glyph{color:var(--text-warn);--i-b3:.22}
+.cot-mp-strip.bad .glyph{color:var(--text-danger);--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.offline .glyph{color:var(--text-danger);--i-b1:.22;--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.unknown .glyph{color:var(--ink-3);--i-b2:.22;--i-b3:.22}
 .cot-mp-strip .unit{display:inline-grid;grid-template-columns:auto auto;align-items:baseline;column-gap:4px}
 .cot-mp-strip .unit+.unit{padding-left:8px;border-left:1px solid rgba(171,190,204,.2)}
 .cot-mp-strip .unit b{font-size:11px;font-weight:700;line-height:1}
-.cot-mp-strip .unit i{font-style:normal;font-size:11px;font-weight:700;line-height:1;letter-spacing:.03em;color:#8494a0}
-.cot-mp-strip.good .ping b{color:#b9e7c0}.cot-mp-strip.degraded .ping b{color:#ffd27a}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:#ff8c82}
-.cot-mp-strip .unit.host b{color:#ffd27a;letter-spacing:.12em}
+.cot-mp-strip .unit i{font-style:normal;font-size:11px;font-weight:700;line-height:1;letter-spacing:.03em;color:var(--ink-3)}
+.cot-mp-strip.good .ping b{color:var(--text-ok)}.cot-mp-strip.degraded .ping b{color:var(--text-warn)}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:var(--text-danger)}
+/* (the strip's tones are the HUD's tokens: a mint ping and a pale-yellow HOST were colours of their own, gauntlet r7; the
+   host badge is a role, in the accent, not a warning) */
+.cot-mp-strip .unit.host b{color:var(--accent-hi);letter-spacing:.12em}
 .cot-mp-strip .unit[hidden]{display:none!important}
 /* In battle the strip is bare HUD text (no box, no border). On mouse layouts it sits in the top-right
    corner row: the HUD's measured lanes (battleHudLayout.ts) set its right edge beside the fps/ping
@@ -89,7 +90,7 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
 .cot-mp-status.battle .cot-mp-strip .glyph svg{filter:drop-shadow(0 1px 2px #000)}
 .cot-mp-status.battle .cot-mp-strip .unit{display:inline-flex;align-items:baseline;gap:3px}
 .cot-mp-status.battle .cot-mp-strip .unit+.unit{padding-left:0;border-left:0}
-.cot-mp-status.battle .cot-mp-strip .unit i{color:#b4c2cc}
+.cot-mp-status.battle .cot-mp-strip .unit i{color:var(--ink-2)}
 .cot-mp-status.battle[data-compact] .unit:not(.ping){display:none}
 /* A phone-width mouse window has no room beside the score: the folded strip takes the right lane under it. */
 body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
@@ -100,7 +101,7 @@ body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:
   font:700 11px ${FONT_COND};letter-spacing:.12em;text-align:center;text-transform:uppercase;pointer-events:none}
 .cot-mp-banner.lobby{position:static;transform:none;max-width:none}
 .cot-mp-banner[hidden]{display:none}
-.cot-mp-banner.bad,.cot-mp-banner.offline{color:#ff887b;border-color:rgba(255,103,91,.7)}
+.cot-mp-banner.bad,.cot-mp-banner.offline{color:var(--text-danger);border-color:rgba(255,103,91,.7)}
 .cot-mp-banner .leave{display:none;margin:8px auto 0}
 .cot-mp-banner.leaving .leave{display:block}
 .cot-mp-leave{min-height:44px;padding:8px 14px;border:1px solid currentColor;border-radius:0;background:#151c24;color:#f0a9a0;
@@ -112,9 +113,9 @@ body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:
 .cot-mp-panel[hidden]{display:none}
 .cot-mp-panel .notice{margin:0 0 8px;font-size:12px;line-height:1.5;text-transform:none;color:#f2bd73}
 .cot-mp-panel .head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(171,190,204,.2);font-size:11px;color:#dce6ed}
-.cot-mp-panel .head .verdict{color:#b9e7c0}.cot-mp-panel.degraded .head .verdict{color:#ffd27a}.cot-mp-panel.bad .head .verdict,.cot-mp-panel.offline .head .verdict{color:#ff8c82}
+.cot-mp-panel .head .verdict{color:var(--text-ok)}.cot-mp-panel.degraded .head .verdict{color:var(--text-warn)}.cot-mp-panel.bad .head .verdict,.cot-mp-panel.offline .head .verdict{color:var(--text-danger)}
 .cot-mp-panel .row{display:grid;grid-template-columns:minmax(74px,auto) 1fr;column-gap:10px;padding:2px 0;text-transform:none}
-.cot-mp-panel .row span{color:#8494a0;text-transform:uppercase;letter-spacing:.03em;font-size:11px;align-self:baseline}
+.cot-mp-panel .row span{color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em;font-size:11px;align-self:baseline}
 .cot-mp-panel .row b{font-weight:700;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-mp-panel .cot-mp-leave{display:block;width:100%;margin-top:8px}
 body.cot-touch-layout .cot-mp-strip{min-height:44px;padding:6px 12px}
@@ -130,7 +131,12 @@ body[data-cot-width='phone'] .cot-mp-banner{width:calc(100vw - (var(--cot-edge) 
 body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
   left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:11px}
-body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping),body.cot-touch-layout .cot-mp-status.battle .unit i{display:none}
+body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping){display:none}
+/* (the touch tile on the HUD's plate with the touch tiles' ring, its ping with its unit: a bare "42" floated beside the map,
+   gauntlet r7) */
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);text-shadow:none}
+body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:1px}
+body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:11px;color:var(--ink-2)}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
 body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -280,8 +286,10 @@ export function createMultiplayerStatusSurface({
   strip.setAttribute('aria-controls', 'cot-mp-panel');
   // Built node by node (never queried back out of markup) so the Node receipt drives the real lifecycle on a stub document.
   const glyph = createElement('span', 'glyph', strip);
-  glyph.innerHTML = uiIconSVG('signal', 16);
+  glyph.innerHTML = datumGlyph('link', 16);
   const pingUnitNode = createElement('span', 'unit ping', strip);
+  // (the battle's one link readout: the datum receipts find a second one, UI-LOCKDOWN part C)
+  markDatum(pingUnitNode, 'link');
   const pingValue = createElement('b', 'num', pingUnitNode);
   pingValue.textContent = '—';
   const pingUnit = createElement('i', '', pingUnitNode);
@@ -289,9 +297,11 @@ export function createMultiplayerStatusSurface({
   hostUnit.hidden = true;
   const hostValue = createElement('b', '', hostUnit);
   const seatUnit = createElement('span', 'unit seat', strip);
+  markDatum(seatUnit, 'seat');
   seatUnit.hidden = true;
   const seatValue = createElement('b', '', seatUnit);
   const rosterUnit = createElement('span', 'unit roster', strip);
+  markDatum(rosterUnit, 'roster');
   const rosterValue = createElement('b', '', rosterUnit);
   rosterValue.textContent = '0/28';
   const touchNotice = createElement('span', 'notice', strip);
@@ -426,7 +436,7 @@ export function createMultiplayerStatusSurface({
     if (typeof window === 'undefined' || typeof CustomEvent !== 'function') return;
     window.dispatchEvent(new CustomEvent('cot-hud-relayout'));
   };
-  // (the strip owns the battle's link readout while it is up: the HUD's corner drops its own, hud.ts body.cot-mp-link;
+  // (the strip owns the battle's link readout while it is up: the HUD's corner drops its own, hud.ts body.cot-mp-battle;
   // owner 2026-10-25, "the ping or wifi is duplicated in the top right")
   if (host === 'battle') {
     if (linkHolders++ === 0) document.body?.classList?.add(MP_LINK_CLASS);

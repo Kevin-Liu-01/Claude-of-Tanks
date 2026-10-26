@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
+import {datumProblems} from './datum-census.mjs';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/mobile-surfaces'));
@@ -46,6 +47,8 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
       }
       return issues;
     },{selectors,clipCheck:pseudo||locale!=='en-US'});
+    // one datum, one place on the screen as shown (UI-LOCKDOWN part C, tools/datum-census.mjs)
+    issues.push(...await datumProblems(page));
     reports.push({name,label,width:page.viewportSize().width,height:page.viewportSize().height,issues});
     if(issues.length)await page.screenshot({path:resolve(out,`${name}-${label}-FAIL.png`)});
   }
