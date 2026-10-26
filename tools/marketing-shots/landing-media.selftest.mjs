@@ -68,8 +68,10 @@ assert.deepEqual(Object.keys(reel.features).sort(), ['battlefields', 'destructio
 const en = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));
 const zh = JSON.parse(await readFile(resolve(root, 'src/ui/i18nCatalog.zh-CN.json'), 'utf8'));
 const clipFiles = (clip) => [...clip.poster.rungs, clip.film, clip.mobile, clip.wide].filter(Boolean);
+// a clip without an altKey files its title as media.homeR2.<camelId> (tools/home-premiere.mjs syncAltCatalogs)
+const altKeyOf = (clip) => clip.altKey ?? `media.homeR2.${clip.id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase())}`;
 for (const clip of [...reel.hero, ...Object.values(reel.features)]) {
-  assert.ok(en[clip.altKey] && zh[clip.altKey], `${clip.id}: its alt text is in both catalogs`);
+  assert.ok(en[altKeyOf(clip)] && zh[altKeyOf(clip)], `${clip.id}: its alt text is in both catalogs`);
   for (const file of clipFiles(clip)) {
     assert.equal((await stat(resolve(root, 'public', file.path.slice(1)))).size, file.bytes, `${file.path} is the manifest's file`);
   }
@@ -82,7 +84,7 @@ const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[
 const rungs = reel.hero[0].poster.rungs;
 const srcset = rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
 const lcp = (rungs.find((rung) => rung.width >= 1440) ?? rungs.at(-1)).path;
-assert.ok(heroMarkup.includes(`<img class="hero__still" src="${lcp}" alt="`) && heroMarkup.includes(`data-i18n-alt="${reel.hero[0].altKey}"`)
+assert.ok(heroMarkup.includes(`<img class="hero__still" src="${lcp}" alt="`) && heroMarkup.includes(`data-i18n-alt="${altKeyOf(reel.hero[0])}"`)
   && heroMarkup.includes('fetchpriority="high"') && heroMarkup.includes(`srcset="${srcset}"`), 'the poster carries its size, priority and rungs');
 assert.match(heroMarkup, /<img class="hero__still" [^>]*width="1920" height="\d+"/, 'the poster reserves its box');
 assert.equal(home.includes(`<link rel="preload" href="${lcp}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${srcset}"`), true,
@@ -114,7 +116,7 @@ assert.deepEqual(featureSlots, ['battlefields', 'killcam', 'destruction', 'watch
 for (const slot of featureSlots) {
   const clip = reel.features[slot];
   const tile = featureMarkup.match(new RegExp(`<figure class="feat[^"]*" data-feature="${slot}">([\\s\\S]*?)</figure>`))?.[1] ?? '';
-  assert.match(tile, new RegExp(`<img src="${clip.poster.rungs.at(-1).path}"[^>]* width="\\d+" height="\\d+" alt="[^"]+" data-i18n-alt="${clip.altKey}" loading="lazy"`),
+  assert.match(tile, new RegExp(`<img src="${clip.poster.rungs.at(-1).path}"[^>]* width="\\d+" height="\\d+" alt="[^"]+" data-i18n-alt="${altKeyOf(clip)}" loading="lazy"`),
     `${slot}: its poster is sized, described and lazy`);
   const motion = clip.film || clip.mobile || clip.wide;
   assert.equal(/<video data-media-player muted loop playsinline preload="none" aria-hidden="true"/.test(tile), Boolean(motion), `${slot}: a loop exactly where the slot has motion`);
