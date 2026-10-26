@@ -104,26 +104,27 @@ if (trailerDialog && trailerVideo) {
   });
 }
 
-// The landing's segmented control (the kit's cot-c-seg, a radio group): a click or an arrow key picks an option, the
-// group keeps one tab stop on the picked option.
+// The landing's switch of rails: the kit's segmented look over tabs (it shows one panel of several, a tab's work): a
+// click, an arrow, Home or End picks a tab, and the list keeps one tab stop on the picked tab.
 function mountSegment(group: HTMLElement, pick: (option: HTMLButtonElement) => void): void {
   const options = [...group.querySelectorAll<HTMLButtonElement>('.cot-c-seg__opt')];
   const choose = (option: HTMLButtonElement, focus = false): void => {
     for (const other of options) {
-      other.setAttribute('aria-checked', String(other === option));
+      other.setAttribute('aria-selected', String(other === option));
       other.tabIndex = other === option ? 0 : -1;
     }
     if (focus) option.focus();
     pick(option);
   };
   options.forEach((option, i) => {
-    option.tabIndex = option.getAttribute('aria-checked') === 'true' ? 0 : -1;
     option.addEventListener('click', () => choose(option));
     option.addEventListener('keydown', (event) => {
-      const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
-      if (!step) return;
+      const to = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1
+        : event.key === 'ArrowRight' || event.key === 'ArrowDown' ? (i + 1) % options.length
+          : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? (i - 1 + options.length) % options.length : -1;
+      if (to < 0) return;
       event.preventDefault();
-      choose(options[(i + step + options.length) % options.length], true);
+      choose(options[to], true);
     });
   });
 }

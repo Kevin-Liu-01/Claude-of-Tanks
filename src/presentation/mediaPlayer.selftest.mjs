@@ -118,7 +118,7 @@ const page = await freshModule();
   assert.equal(video.paused, false, 'half the frame plays it');
   assert.equal(control.hidden, false, 'a loop over five seconds shows its pause control');
   assert.equal(control.getAttribute('aria-label'), 'Pause the loop');
-  assert.equal(control.className, 'cot-media-toggle');
+  assert.equal(control.className, 'cot-c-btn cot-c-btn--icon cot-media-toggle', 'the kit\'s square icon button over media');
   control.click();
   assert.equal(video.paused, true, 'the viewer pauses it');
   assert.deepEqual([control.hidden, control.dataset.state, control.getAttribute('aria-label')], [false, 'paused', 'Play the loop'],
@@ -358,6 +358,18 @@ for (const file of ['src/presentation/mediaPlayer.ts', 'src/presentation/respons
 for (const entry of ['src/presentation/publicPages.ts', 'src/presentation/publicNav.ts']) {
   const closure = staticImportClosure(entry, { root: ROOT });
   assert.ok(!closure.has('src/presentation/mediaPlayer.ts'), `${entry} loads the player beside the page, never in its first bytes`);
+}
+// the control is the kit's square icon button on an opaque plate: no disc, no see-through or blurred fill, and the
+// topic hero sets it one inset inside its top and right edges at every width
+{
+  const css = readFileSync(join(ROOT, 'src/presentation/mediaPlayer.css'), 'utf8');
+  assert.doesNotMatch(css, /border-radius:\s*50%/, 'the control is square, never a disc');
+  assert.doesNotMatch(css, /backdrop-filter|var\(--scrim\)|var\(--btn-media-fill\)/, 'its plate is opaque, never a scrim or blur');
+  assert.match(css, /\.cot-c-btn\.cot-media-toggle\{[^}]*background:var\(--surface-raised\)/, 'it stands on the raised surface');
+  const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
+  const placements = [...docsCss.matchAll(/\.dm-banner>\.cot-media-toggle\{([^}]*)\}/g)].map(([, body]) => body);
+  assert.deepEqual(placements, ['z-index:var(--docs-banner-z);top:var(--s4);right:var(--s4);bottom:auto'],
+    'the topic hero places its control once, 16 px inside its top and right edges, at every width');
 }
 
 uninstall();

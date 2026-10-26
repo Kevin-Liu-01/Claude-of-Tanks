@@ -98,14 +98,19 @@ const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
 // manifest names each clip's vehicles (spec ids in frame order, the lead first), its battlefield and its mode
 // two vehicles read "A vs B", three "A vs B and C", four (a two-on-two) "A and B vs C and D"
 const MATCHUP_KEYS = { 2: 'home.hero.shot', 3: 'home.hero.shotThree', 4: 'home.hero.shotFour' };
-/** The vehicles a clip shows, in frame order (their names are the same in every locale), as one catalog line. */
-function matchup(id, tanks) {
+/** The vehicles a clip shows, in frame order (their names are the same in every locale): its catalog key, the names and
+ *  the English line. */
+function matchupOf(id, tanks) {
   const key = MATCHUP_KEYS[tanks?.length];
   if (!key) throw new Error(`home-premiere: ${id} names ${tanks?.length ?? 'no'} vehicles; a caption reads two to four (manifest tanks)`);
   // a name keeps its model and variant on one line: "M1A2 Abrams SEPv3" never breaks before "SEPv3"
   const names = tanks.map((spec) => tank(spec).name.replace(/ /g, '\u00a0'));
   const vars = Object.fromEntries(names.map((name, i) => ['abcd'[i], name]));
-  const line = names.reduce((out, name, i) => out.replace(`{${'abcd'[i]}}`, name), text(key));
+  return { key, vars, line: names.reduce((out, name, i) => out.replace(`{${'abcd'[i]}}`, name), text(key)) };
+}
+/** The matchup as one catalog line. */
+function matchup(id, tanks) {
+  const { key, vars, line } = matchupOf(id, tanks);
   return `<b data-i18n="${key}" data-i18n-vars="${esc(JSON.stringify(vars))}">${esc(line)}</b>`;
 }
 /** A clip's mode: its glyph in the mode's own hue, and its name. */
@@ -256,14 +261,15 @@ const mechanicTile = (id) => `<figure class="play-tile cot-c-media">${stillTag(`
 function playBlock() {
   const tabs = [['modes', 'deploy', 'home.stats.modes', ''],
     ...MECHANICS.map(([group, icon]) => [group, icon, `home.mechanics.group.${group}`, ''])]
-    .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="radio" data-play-tab="${value}" aria-checked="${i === 0}">`
+    .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="tab" id="play-tab-${value}" aria-controls="play-panel-${value}"`
+      + ` data-play-tab="${value}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">`
       + `${iconMarkup(icon, 16)}${t(key)}${extra}</button>`).join('');
   const arrow = (dir, key) => `<button class="${btn('icon', '')}" type="button" data-rail-${dir}${dir === 'prev' ? ' disabled' : ''} aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">`
     + `${iconMarkup(dir === 'prev' ? 'chevronLeft' : 'chevronRight', 18)}</button>`;
-  const panel = (value, tiles, hidden) => `<div class="play-rail" data-play-panel="${value}" tabindex="0" role="group" aria-labelledby="play-title"${hidden ? ' hidden' : ''}>${tiles.join('')}</div>`;
+  const panel = (value, tiles, hidden) => `<div class="play-rail" id="play-panel-${value}" data-play-panel="${value}" tabindex="0" role="tabpanel" aria-labelledby="play-tab-${value}"${hidden ? ' hidden' : ''}>${tiles.join('')}</div>`;
   return `<section class="play" id="modes" aria-labelledby="play-title"><div class="home-shell">`
     + `<header class="home-head"><h2 class="home-h2" id="play-title">${t('home.play.title', 'span', 't-hollow')}</h2>`
-    + `<div class="play-acts"><div class="cot-c-seg" role="radiogroup" aria-labelledby="play-title">${tabs}</div>`
+    + `<div class="play-acts"><div class="cot-c-seg" role="tablist" aria-labelledby="play-title">${tabs}</div>`
     + `${arrow('prev', 'home.play.previousAria')}${arrow('next', 'home.play.nextAria')}</div></header>`
     + panel('modes', MODE_PRESENTATION_ORDER.map(modeTile), false)
     + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
@@ -305,11 +311,12 @@ function duelsBlock() {
     const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
     if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
     const name = matchup(id, [hero.id, foe.id]);
-    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), galleryHref(hero.id), name,
+    // the duel opens in the Gallery as a duel: its hero, its foe the rival (gallery.ts reads vs)
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), `${galleryHref(hero.id)}&amp;vs=${foe.id}`, name,
       [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
   });
   return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
-    + bentoHead('duels-title', 'home.duels.title', '/media', 'publicNav.media')
+    + bentoHead('duels-title', 'home.duels.title', '/docs/filming#library', 'publicNav.media')
     + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
 }
 // in battle: the media lane's battle clips (home-r2 clips[]), four loops two to a row, each its poster until the media
@@ -322,7 +329,10 @@ function clipsBlock() {
     const base = rungs.find((rung) => rung.width === 1280) ?? rungs.at(-1);
     const picture = `<img src="${base.path}" srcset="${rungs.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}"`
       + ` sizes="(width < 768px) 86vw, (width < 1100px) 50vw, 680px" width="1280" height="720" alt="" loading="lazy" decoding="async">`;
-    const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}">${ladder(clip)}</video>`;
+    // the loop names itself for its player's control ("Play <matchup>"), in either language (publicPages.ts videoLabels)
+    const shot = matchupOf(clip.id, clip.tanks);
+    const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}"`
+      + ` data-label="${esc(shot.line)}" data-i18n-label="${shot.key}" data-i18n-vars="${esc(JSON.stringify(shot.vars))}">${ladder(clip)}</video>`;
     return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
       + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
       + `<span class="bento__where">${whereLine(clip)}</span></a></figcaption></figure>`;

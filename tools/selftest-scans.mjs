@@ -108,6 +108,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
+  // 254 (interaction census, part D): every module and static page, for a choose-one built outside the picker
+  'tools/interaction-census.mjs': lists('src/**/*.ts', 'site/**/*.html'),
   // 230 (foliage-shadow-sites-228): every virtual: import under src resolves through the probe server's plugins
   'tools/map-probe-runtime.selftest.mjs': lists('src/**/*'),
   'tools/marketing-shots/battle-campaign.selftest.mjs': lists('tools/marketing-shots/scenes-action-r3/*.json',

@@ -164,9 +164,9 @@ function overview(view: ServiceRecordView): string {
     `<header class="cot-record-card-head">${uiIconSVG('lightbulb', 15)}<strong>${t('service.group.reasoning')}</strong></header>` +
     `<div class="cot-record-reason-row">${reasoningTiles}</div>` +
     `<div class="cot-record-reason-stats">` +
-    `<div>${statLabel(t('garage.record.longestChain'), 'statChain')}<b>${figure(view.stats.bestChain, t('garage.record.chainKills', { count: num(view.stats.bestChain) }))}</b></div>` +
-    `<div>${statLabel(t('garage.record.bestStreak'), 'statVictory')}<b>${figure(view.stats.bestStreak, t('garage.record.streakRounds', { count: num(view.stats.bestStreak) }))}</b></div>` +
-    `<div>${statLabel(t('garage.record.bestKills'), 'skull')}<b>${figure(view.stats.bestKills, t('garage.record.chainKills', { count: num(view.stats.bestKills) }))}</b></div></div></section>`;
+    `<div>${statLabel(t('garage.record.longestChain'), 'statChain')}<b>${figure(view.stats.bestChain)}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestStreak'), 'statVictory')}<b>${figure(view.stats.bestStreak)}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestKills'), 'skull')}<b>${figure(view.stats.bestKills)}</b></div></div></section>`;
 
   const latest = MEDALS
     .filter((medal) => medal.group !== 'reasoning' && view.medals[medal.id])
