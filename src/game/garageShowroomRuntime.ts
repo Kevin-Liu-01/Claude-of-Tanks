@@ -44,7 +44,14 @@ interface GarageShowroomRuntimeOptions {
   getStageRect: () => GarageStageRect | null;
   heroYawRad: number;
   heroPitchRad: number;
-  fixedFrame: () => GarageShowroomFrame;
+  /** A canonical frame in place of the hero's own box (the receipts); the Garage frames the hero itself. */
+  fixedFrame?: () => GarageShowroomFrame;
+  /** Headroom (m) over the hero's own box: a mode preview's flag or drone above the tank. */
+  frameTopPadM?: () => number;
+  /** The turntable (world centre, radius and deck height, m), kept whole on the screen. */
+  keepRing?: () => { x: number; y: number; z: number; r: number; h: number } | null;
+  /** The whole free stage (CSS px) the turntable keeps inside. */
+  getKeepRect?: () => GarageStageRect | null;
   floorY: () => number;
 }
 
@@ -78,6 +85,9 @@ export function createGarageShowroomRuntime({
   heroYawRad,
   heroPitchRad,
   fixedFrame,
+  frameTopPadM,
+  keepRing,
+  getKeepRect,
   floorY,
 }: GarageShowroomRuntimeOptions): GarageShowroomRuntime {
   if (!element || typeof element.addEventListener !== 'function') {
@@ -89,6 +99,9 @@ export function createGarageShowroomRuntime({
     heroYawRad,
     heroPitchRad,
     fixedFrame,
+    frameTopPadM,
+    keepRing,
+    getKeepRect,
     floorY,
   };
   const control = createShowroomOrbit(camera, rig, orbitOptions) as ShowroomOrbitControl;

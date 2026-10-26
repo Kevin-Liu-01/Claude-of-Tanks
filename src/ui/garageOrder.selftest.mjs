@@ -104,8 +104,11 @@ assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['roomy', '
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
-assert.match(garageSource, /const floor = docked \? band : sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
-  'the stage ends at the band docked, at the fleet on a phone on its side and at the name held upright');
+assert.match(garageSource, /const floor = sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
+  'a phone\'s stage ends at the fleet on its side and at the name held upright');
+assert.match(garageSource, /const floor = band && band\.height \? band\.top - 10/, 'the docked free stage ends at the band');
+assert.match(garageSource, /const above = head && head\.height \? stageRect\(x0, y0, x1, head\.top - 12\) : null;/,
+  'the docked hero stands above the name (or beside it), never under it');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"/, 'the battle card carries the battlefield picture');
 assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !== 'random' && selected\.thumb \?/,
   'the battle card draws the battlefield\'s 512 px still, never its 4K hero');

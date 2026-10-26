@@ -205,8 +205,9 @@ interface GarageOptions {
   readonly onGarageVariantSelect?: (variantId: string) => void;
   readonly camo?: GarageCamoOptions;
   readonly onMapSelect?: (mapId: string) => void;
-  /** The stage's overlay (the callouts) changed while the showroom is still: one frame places it (main.ts: the Garage
-   *  renders on demand, so a still stage draws nothing until asked). */
+  /** The stage's overlay (the callouts) or the stage itself (measureStage) changed while the showroom is still: the
+   *  Garage wakes to place it, and the camera eases onto a moved stage (main.ts: the Garage renders on demand, so a still
+   *  stage draws nothing until asked). */
   readonly onOverlayChange?: () => void;
   /** The player's own key for a vehicle action's binding (main.ts: the input layer's label), for the actions row. */
   readonly actionKeyFor?: (binding: VehicleActionBinding) => string | null | undefined;
@@ -3240,6 +3241,82 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     'next-generation': 'eraNextGeneration', modern: 'eraModern', 'cold-war': 'eraColdWar', ww2: 'eraWorldWarII', interwar: 'eraInterwar',
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
+  // --- THE STAGE: where the showroom frames the hero (owner 10-25 via Main: "tanks are too far to the top left here instead
+  // of closer to center and showing stuff off better"). The free stage is the window less the bar, the readout's column
+  // and the dock under the tank (its name, identity row, band and fleet), measured from the live layout and cached: a
+  // ResizeObserver and the layout events re-measure it (no layout read per frame), and a change wakes the still Garage so
+  // the camera eases onto it. The camera frames the canonical box (main.ts GARAGE_FRAME_BOX, the M1A2 reference) in the
+  // hero rect: centred in the free stage, a little below its middle so the turntable reads as ground, at about 62 % of
+  // its width, or as tall as the stage allows.
+  interface StageRect { x: number; y: number; w: number; h: number }
+  const HERO_SPAN_OF_FREE = 0.62;   // the hero's share of the free width (Main 10-25: 60-65 %)
+  const SOLVER_FILL = 0.86;         // engine/cameraRig.ts SHOW_HERO_FILL: the share of the rect the camera fills
+  const HERO_LOW = 0.04;            // the hero's centre sits this share of the stage height below the stage's middle
+  const BOX_ASPECT = 0.42;          // the canonical box's projected height over its width at the hero pose (choosing a rect)
+  let stageFree: StageRect | null = null;
+  let stageHero: StageRect | null = null;
+  const stageRect = (x0: number, y0: number, x1: number, y1: number): StageRect =>
+    ({ x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) });
+  /** The free stage and the hero's rect (CSS px), from the live layout; a hidden Garage keeps the last ones. */
+  function measureStage(): void {
+    const rr = root.getBoundingClientRect();
+    if (!(rr.width > 0 && rr.height > 0)) return;
+    const stats = statsEl.getBoundingClientRect();
+    const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
+    const band = lowerThird.querySelector('.cot-lt-band')?.getBoundingClientRect();
+    const head = lowerThird.querySelector('.cot-lt-head')?.getBoundingClientRect();
+    const docked = !isOverlayPanelLayout();
+    if (!docked) {
+      // a phone held upright frames the tank over its name; one on its side, between the left edge and the column, over the fleet
+      const sideways = document.body.dataset.cotOrientation === 'landscape';
+      const column = sideways ? lowerThird.getBoundingClientRect() : null;
+      // on its side, the stage's act buttons stand at its right edge, beside the tank: the stage ends before them
+      const acts = sideways ? lowerThird.querySelector('.cot-lt-acts')?.getBoundingClientRect() : null;
+      const x1 = Math.min(column && column.width ? column.left - 14 : rr.right - 18, acts && acts.width ? acts.left - 12 : Infinity);
+      const floor = sideways ? countryRailEl.getBoundingClientRect() : head;
+      const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
+        : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
+      stageFree = stageHero = stageRect(rr.left + 18, rr.top + 66, x1, y1);
+      return;
+    }
+    const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
+    const x0 = rr.left + 18;
+    const x1 = stats.width ? stats.left - 14 : rr.right - 18;
+    const y0 = Math.max(rr.top + 66, bar && bar.height ? bar.bottom + 8 : rr.top + 78);
+    const floor = band && band.height ? band.top - 10 : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190;
+    stageFree = stageRect(x0, y0, x1, Math.min(rr.bottom, floor));
+    // the hero stands above the name (the full width) or beside it (down to the band), whichever shows it larger: the
+    // name never covers the hull
+    const above = head && head.height ? stageRect(x0, y0, x1, head.top - 12) : null;
+    const beside = head && head.height ? stageRect(Math.max(x0, head.right + 24), y0, x1, floor) : stageFree;
+    const reach = (r: StageRect): number => Math.min(HERO_SPAN_OF_FREE * r.w, SOLVER_FILL * r.h / BOX_ASPECT);
+    const free = above && reach(above) >= reach(beside) ? above : beside;
+    const w = free.w * HERO_SPAN_OF_FREE / SOLVER_FILL;
+    const cy = free.y + free.h * (0.5 + HERO_LOW);
+    stageHero = { x: free.x + (free.w - w) / 2, y: cy - free.h / 2, w, h: free.h };
+  }
+  let stageQueued = false;
+  const queueStageMeasure = (): void => {
+    if (stageQueued) return;
+    stageQueued = true;
+    requestAnimationFrame(() => {
+      stageQueued = false;
+      const before = stageHero;
+      measureStage();
+      const after = stageHero;
+      if (after && (!before || Math.abs(after.x - before.x) + Math.abs(after.y - before.y)
+        + Math.abs(after.w - before.w) + Math.abs(after.h - before.h) > 0.5)) opts.onOverlayChange?.();
+    });
+  };
+  window.addEventListener('resize', queueStageMeasure);
+  window.addEventListener('cot:layoutchange', queueStageMeasure);
+  void document.fonts?.ready.then(queueStageMeasure);
+  if (typeof ResizeObserver === 'function') {
+    const stageObserver = new ResizeObserver(queueStageMeasure);
+    for (const el of [root, statsEl, lowerThird, countryRailEl, ...lowerThird.querySelectorAll('.cot-lt-head, .cot-lt-band')]) {
+      stageObserver.observe(el);
+    }
+  }
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
   // running gear, each with its real values, a dot on its part and a plate off the tank. They wait for their act (owner
   // 10-24: "dont show all the little info boxes over tanks until we press a certain button"), and the choice lasts the
@@ -4541,6 +4618,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
      */
     show(selected = selectedId) {
       queueBarFit();
+      queueStageMeasure();
       // The full play menu also owns mode selection; reconcile it on return.
       try {
         const remembered = localStorage.getItem('cot.game.mode.v1');
@@ -4606,39 +4684,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
 
-    /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels); `centred: false` is the whole free area (the
-     *  callouts' room) rather than the hero's centred frame. */
+    /** The rect the showroom frames the hero in (CSS pixels, measureStage); `centred: false` is the whole free stage (the
+     *  callouts' room). The cached rect itself (the camera reads it every frame): callers never write to it. */
     getStageRect(centred = true) {
       // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
       if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
-      // The stage (the 245 redesign): the docked layout frames the tank between the left edge and the readout's column,
-      // over the band's controls (the name may stand on the floor in front of it); a phone held upright frames it over its
-      // name, and one on its side between the left edge and the column, over the fleet.
-      const rr = root.getBoundingClientRect();
-      const stats = statsEl.getBoundingClientRect();
-      const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
-      const band = lowerThird.querySelector('.cot-lt-band')?.getBoundingClientRect();
-      const head = lowerThird.querySelector('.cot-lt-head')?.getBoundingClientRect();
-      const docked = !isOverlayPanelLayout();
-      const sideways = !docked && document.body.dataset.cotOrientation === 'landscape';
-      const column = sideways ? lowerThird.getBoundingClientRect() : null;
-      let x0 = rr.left + 18;
-      let x1 = docked && stats.width ? stats.left - 14 : column && column.width ? column.left - 14 : rr.right - 18;
-      // Docked, the hero stands on the screen's own centre line where the readout leaves it room (owner 10-25: "not
-      // forcing the actual tank to be uncentered in screen and in top left"); where that would keep it under seven
-      // tenths of the free width (a narrow window), it slides toward the column instead.
-      if (docked && centred) {
-        const free = x1 - x0, mid = (rr.left + rr.right) / 2;
-        let half = Math.min(mid - x0, x1 - mid), cx = mid;
-        if (2 * half < 0.7 * free) { half = 0.35 * free; cx = x1 - half; }
-        x0 = cx - half;
-        x1 = cx + half;
-      }
-      const y0 = rr.top + (docked ? 78 : 66);
-      const floor = docked ? band : sideways ? countryRailEl.getBoundingClientRect() : head;
-      const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
-        : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
-      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+      if (!stageHero || !stageFree) measureStage();
+      return (centred ? stageHero : stageFree) ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
     },
 
     /**
