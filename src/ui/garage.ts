@@ -1244,27 +1244,35 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   // the compare rival: the kit's picker menu over the selected tank's peers (its class), each with its nation and tier, a
   // chip per nation, search, favourites and recents (memory 'rival', shared with the Gallery's versus)
+  // one menu on one host, moved into each draw's slot: a draw while it is open (the readout redraws on its own loads)
+  // keeps it open; a new peer group (its nation chips) builds it again
   let rivalMenu: PickerMenu | null = null;
+  let rivalGroup = '';
+  const rivalHost = document.createElement('div');
+  rivalHost.className = 'cot-rival';
   function mountRivalMenu(spec: GarageTankSpec): void {
-    rivalMenu?.dispose();
-    rivalMenu = null;
-    const host = statsEl.querySelector<HTMLElement>('[data-rival-menu]');
-    const rival = host && compareOn ? rivalFor(spec) : null;
-    if (!host || !rival) return;
+    const slot = statsEl.querySelector<HTMLElement>('[data-rival-menu]');
+    const rival = slot && compareOn ? rivalFor(spec) : null;
+    if (!slot || !rival) { rivalMenu?.close(); return; }
+    slot.replaceWith(rivalHost);
     const peers = rivalPeers(spec);
+    const items = peers.map((other) => ({ id: other.id, name: other.label?.displayName || other.name,
+      facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
+      media: { poster: iconUrl(other.id, 'side') } }));
+    const group = `${statGroupOf(spec)}|${spec.id}`;
+    if (rivalMenu && group === rivalGroup) { rivalMenu.setItems(items, rival.id); return; }
+    rivalMenu?.dispose();
+    rivalGroup = group;
     const nations = [...new Set(peers.map(countryCodeOf))];
-    rivalMenu = createPickerMenu(host, {
-      id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival',
-      items: peers.map((other) => ({ id: other.id, name: other.label?.displayName || other.name,
-        facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
-        media: { poster: iconUrl(other.id, 'side') } })),
+    rivalMenu = createPickerMenu(rivalHost, {
+      id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival', items,
       filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
       onChoose: (item) => {
         rivalChoice = item.id;
         emit('ui:click', {});
         renderStats(spec);
-        // the readout is drawn again: the new trigger keeps the focus
-        statsEl.querySelector<HTMLElement>('[data-rival-menu] .cot-c-menu__trigger')?.focus({ preventScroll: true });
+        // the readout is drawn again around the same trigger: it keeps the focus
+        rivalHost.querySelector<HTMLElement>('.cot-c-menu__trigger')?.focus({ preventScroll: true });
       },
     });
   }
