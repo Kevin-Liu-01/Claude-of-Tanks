@@ -37,6 +37,21 @@ function, `env.terrain_height`, the map's height function.
   - `?simKernels=wasm-check` runs both in a solo battle: the TypeScript drives, every answer of the kernels is compared,
     and `window.__SIM_KERNELS.check` counts the comparisons and mismatches.
 
+## A fallback is reported
+
+Every path keeps its fallback to the TypeScript, and none of them is silent. `src/world/simKernelsStatus.ts` names the
+cause: `csp` (a Content Security Policy without `'wasm-unsafe-eval'`), `http_<status>`, `network`, `compile`, `link`,
+`missing` (a server image without the binary), `no_webassembly` or `error`. `off` means an opt-out.
+
+- **Browser host:** its Worker's `ready` carries `kernels: { mode, reason }`.
+- **Solo battle:** `soloBattleRuntime.ts` reports its load failure.
+- **On the page,** for both of those, `src/world/simKernelsReport.ts`:
+  - sets `window.__SIM_KERNELS`'s `mode`, `source` (`solo` / `host`) and `reason`;
+  - on a fallback, sends one telemetry note a session, `kernels:<source>:<reason>` (the entry telemetry's `sim_kernels`);
+  - in development, writes one `console.info` line. A production build writes nothing to the console.
+- **Dedicated server:** logs the reason (`world kernels did not load`, then `world kernels` with `kernels` and `reason`)
+  and serves it in `/metrics` as `kernels`.
+
 ## Receipts
 
 | Command | Proves |
@@ -49,6 +64,7 @@ function, `env.terrain_height`, the map's height function.
 | `node tools/mp-p2p-soak.mjs … --sim-kernels=wasm[@seats]` | The browser host Worker on the kernels, migrations included |
 | `node tools/sim-determinism-audit.mjs --craters --kernels` | A match on the kernels against one on the TypeScript, the dug ground included |
 | `node tools/solo-kernels-probe.mjs --check` | A solo battle in Chrome: `wasm-check`'s comparison, then the sim step A B B A |
+| `node src/world/simKernelsReport.selftest.mjs`, `src/mp/host/hostStandby.selftest.mjs` | A fallback's reason named and reported: the host core's `ready` (`off`, a refused module's `http_404`, `wasm`) |
 
 Changing a ported TypeScript function means regenerating its vectors (`node tools/port-golden-vectors.mjs`) and
 porting the change to its Rust file; `cargo test` fails until both agree.

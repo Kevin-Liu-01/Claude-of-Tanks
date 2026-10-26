@@ -240,6 +240,7 @@
             <button type="button" role="radio" class="cot-c-seg__opt" data-value="fleet" aria-checked="true" data-ui-sound="select" data-i18n="gallery.peer.fleet">Fleet</button>
             <button type="button" role="radio" class="cot-c-seg__opt" data-value="class" aria-checked="false" tabindex="-1" data-ui-sound="select" data-i18n="gallery.peer.class">Class</button>
           </div>
+          <p class="stat-ref" id="statRef" hidden></p>
           <div class="stat-groups" id="statGroups"></div>
         </section>
 
@@ -307,7 +308,7 @@
     </aside>
   </main>
 
-  <div class="toast" id="toast" role="status"></div>
+  <div class="sr-only" id="announce" role="status"></div>
   <script type="module" src="/src/analytics.ts"></script>
   <script type="module" src="/src/presentation/publicNav.ts"></script>
   <script type="module" src="/src/gallery/gallery.ts"></script>

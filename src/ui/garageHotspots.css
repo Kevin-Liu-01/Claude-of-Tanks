@@ -19,5 +19,7 @@
   background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
 .cot-hotspot .v svg{flex:none;color:var(--ink-3);}
 .cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-data);color:var(--ink-1);}
-.cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
+.cot-hotspot .v b{font-size:max(var(--fs-floor-11),var(--fs-13));}
+.cot-hotspot .v small{font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);}
+.cot-hotspot .v small:empty{display:none;}
 }

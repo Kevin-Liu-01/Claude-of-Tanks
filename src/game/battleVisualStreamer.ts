@@ -106,7 +106,7 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
     game: TGame,
     count: number,
     predicate?: VisualPredicate<TGame['tanks'][number]> | null,
-  ): Generator<void, boolean, void>;
+  ): Generator<void | PromiseLike<unknown>, boolean, void>;
   getSpec(specId: string): RuntimeValue;
   prebakeSharedTextures(
     spec: RuntimeValue,
@@ -154,11 +154,11 @@ export interface BattleVisualStreamer<Entity extends BattleVisualEntity = Battle
 
 /** Preserve for-of's cached next method, result identity, and IteratorClose. */
 function timedVisualBuildSteps(
-  steps: Generator<void, boolean, void>,
+  steps: Generator<void | PromiseLike<unknown>, boolean, void>,
   timing: VisualLoadTiming,
   now: () => number,
-): Iterable<void> {
-  const iterator: Iterator<void, boolean, void> = steps[Symbol.iterator]();
+): Iterable<void | PromiseLike<unknown>> {
+  const iterator: Iterator<void | PromiseLike<unknown>, boolean, void> = steps[Symbol.iterator]();
   const next = iterator.next;
   let index = 0;
   return {
@@ -185,7 +185,7 @@ function timedVisualBuildSteps(
           if (close === undefined || close === null) return { done: true, value: false };
           // IteratorClose supplies no return value, even though Generator's
           // static return signature requires its declared completion type.
-          return Reflect.apply(close, iterator, []) as IteratorResult<void, boolean>;
+          return Reflect.apply(close, iterator, []) as IteratorResult<void | PromiseLike<unknown>, boolean>;
         },
       };
     },
@@ -407,9 +407,11 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       let buildCheckpointCount = 0;
       try {
         const steps = ensureStagedVisualsSteps(game, 1, predicate);
-        for (const _step of timedVisualBuildSteps(steps, timing, now)) {
+        for (const step of timedVisualBuildSteps(steps, timing, now)) {
           const yieldAt = now();
-          await yieldForBudget();
+          // a decoration planned in the decor worker (stage 2b) is awaited, never polled
+          if (step) await step;
+          else await yieldForBudget();
           buildYieldMs += now() - yieldAt;
           buildCheckpointCount++;
         }

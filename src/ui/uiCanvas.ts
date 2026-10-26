@@ -9,6 +9,8 @@
  * - the backing store is the CSS content box × min(devicePixelRatio, cap), the box from one shared ResizeObserver
  *   (device-pixel-content-box where the browser reports it, so a shown store is the snapped device size exactly);
  * - a hidden or zero box sizes nothing: the store is released to 1 px and the drawing redrawn when the box returns;
+ *   a retained drawing under visibility:hidden (no observer reports it: the Garage awaiting its boot, photo mode) is
+ *   released too, at its drawing and by the half-second check below, and drawn when it shows;
  * - the size never comes from the store, and a box that follows its own store (a canvas with no CSS size takes its
  *   width/height attributes) is pinned at the box it had, so a store can never compound;
  * - a resolution media query follows the device ratio (a window dragged to another screen, a browser zoom), with a
@@ -94,7 +96,7 @@ let devicePixelBox = true;
 let ratioQuery: MediaQueryList | null = null;
 /** The ratio the query watches; the backstop check compares against it. */
 let watchedRatio = 0;
-/** How often the backstop reads devicePixelRatio (one property read: nothing allocates). */
+/** How often the backstop reads devicePixelRatio and sweeps the retained drawings' visibility (nothing allocates). */
 const RATIO_CHECK_MS = 500;
 /** Boxes that followed their own store and were pinned (the census reads it: it should stay 0). */
 let pinnedBoxes = 0;
@@ -119,6 +121,16 @@ function onRatioChange(): void {
   watchRatio();
 }
 
+/** The half-second check: a ratio no query reported, and the retained drawings a visibility change hid or showed. */
+function backstop(): void {
+  if (deviceRatio() !== watchedRatio) onRatioChange();
+  for (const ref of live) {
+    const surface = ref.deref();
+    if (surface) surface.sweepVisibility();
+    else live.delete(ref);
+  }
+}
+
 /** One resolution query at a time, for the ratio now: it changes once, and the next one is armed for the new ratio. */
 function watchRatio(): void {
   watchedRatio = deviceRatio();
@@ -135,7 +147,7 @@ function observe(canvas: HTMLCanvasElement): boolean {
     observer = new ResizeObserver(onResize);
     watchRatio();
     if (typeof setInterval === 'function') {
-      const timer = setInterval(() => { if (deviceRatio() !== watchedRatio) onRatioChange(); }, RATIO_CHECK_MS);
+      const timer = setInterval(backstop, RATIO_CHECK_MS);
       (timer as { unref?: () => void }).unref?.(); // (Node receipts exit with it running)
     }
   }
@@ -175,6 +187,8 @@ class Surface implements UiCanvas {
   private dirty = true;
   private lost = false;
   private pinned = false;
+  /** Released under visibility:hidden (the box is laid out, the canvas not shown): drawn again when it shows. */
+  private styleHidden = false;
   private readonly ref: WeakRef<Surface> | null;
   private readonly onLost = (): void => { this.lost = true; };
   private readonly onRestored = (): void => {
@@ -313,10 +327,37 @@ class Surface implements UiCanvas {
     this.priorW = this.priorH = -1;
   }
 
+  /** Whether the canvas renders: false under visibility:hidden (a laid-out box the observer still reports). */
+  private rendered(): boolean {
+    const check = this.canvas.checkVisibility;
+    return typeof check !== 'function' || check.call(this.canvas, { visibilityProperty: true, checkVisibilityCSS: true });
+  }
+
+  /** The backstop's sweep: a retained drawing hidden by style releases its store; one that shows again is drawn. */
+  sweepVisibility(): void {
+    if (!this.drawing || this.lost || this.targetW <= 0) return;
+    if (this.styleHidden) {
+      if (!this.rendered()) return;
+      this.styleHidden = false;
+      this.dirty = true;
+      this.flush();
+    } else if ((this.canvas.width > 1 || this.canvas.height > 1) && !this.rendered()) {
+      this.styleHidden = true;
+      this.release();
+    }
+  }
+
   /** Draw the retained drawing when it is due and shown. */
   private flush(): void {
     const draw = this.drawing;
     if (!draw || !this.dirty || this.lost || this.targetW <= 0) return;
+    if (!this.rendered()) {
+      // laid out but not shown: no store until it shows (the sweep draws it then)
+      this.styleHidden = true;
+      this.release();
+      return;
+    }
+    this.styleHidden = false;
     this.applyStore();
     this.transform();
     this.dirty = false;

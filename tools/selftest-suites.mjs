@@ -717,6 +717,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
     // and rear-arc gun curves
     'src/vehicles/frontEraPackages.selftest.mjs',
+    'src/vehicles/profiles/eraModuleKit.selftest.mjs',
     // 2026-10-21 (release 230, UA/PL round 11): the three ids' main gun over their own hulls with the shallower mantlet
     // chin and the gun-depression lane's curves (the barrel 25 mm, the mount 20 mm off the hull at every yaw)
     'src/vehicles/nationalGunMantlet.selftest.mjs',
@@ -1400,7 +1401,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/room/roomPolicy.selftest.mjs',
     'src/mp/room/roomSizeRules.selftest.mjs', // mp-scale-251: room size as each mode's ruleset, the LAN dev override
     'src/mp/room/p2pMatchHost.selftest.mjs',
+    'src/mp/room/inPageRoom.selftest.mjs', // step 5: a solo room in the page, its p2p match and its pause
     'src/mp/room/roomActor.selftest.mjs',
+    'src/mp/room/syncCrypto.selftest.mjs',
+    'src/world/simKernelsReport.selftest.mjs', // the kernels' fallback named and reported, never silent
     'src/mp/room/roomWorkerProgram.selftest.mjs',
     'src/mp/room/roomClient.selftest.mjs',
     'src/mp/room/roomClientSignals.selftest.mjs',
@@ -1474,6 +1478,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/snapshotBudget.selftest.mjs', // mp-scale-251: the per-viewer snapshot budget, keyframe slots, the row weigher
     'server/match/frameView.selftest.mjs', // mp-scale-251: viewer frames from the authority's view, the same bytes; past 32 hulls
     'server/match/matchActorResume.selftest.mjs',
+    'server/match/matchActorPause.selftest.mjs', // step 5: a solo match's pause, its unpaused twin's state
     'server/match/service.selftest.mjs',
     'server/match/tickCost.selftest.mjs',
     'tools/mp-soak.selftest.mjs',
@@ -2402,6 +2407,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/ridingPartsWire.selftest.mjs',
+    'src/vehicles/decorPlanWire.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
     'src/vehicles/leopardRevolutionRegistry.selftest.mjs',
     'src/ui/spectatorSwitcher.selftest.mjs',

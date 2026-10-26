@@ -272,6 +272,14 @@ export interface MatchActor {
   broadcastEvent(event: WireEvent): void;
   advance(nowMs?: number): number;
   start(): void;
+  /**
+   * A solo match's pause (RUST-ENGINE-DECISION §7 step 5: a solo battle on a local host): the loop stops at a tick
+   * boundary and resumes from it on a rebased clock, so every tick runs on the inputs it would have run on. Only a match
+   * with one human seat pauses (false otherwise, or when stopped or already paused); nothing of it reaches the wire.
+   */
+  pause(): boolean;
+  resume(): boolean;
+  readonly paused: boolean;
   stop(reason?: CloseReasonId, detail?: string): void;
   stats(): MatchActorStats;
   clientStats(): ActorClientStats[];
@@ -1037,9 +1045,25 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   });
 
   function start(): void {
-    if (stopped) return;
+    if (stopped || paused) return;
     if (authority.phase === 'loading') authority.onMatchReady();
     loop.start();
+  }
+
+  let paused = false;
+  function pauseMatch(): boolean {
+    if (stopped || paused || seats.length !== 1 || !loop.running) return false;
+    paused = true;
+    loop.stop();
+    actorLog.info('actor paused', { tick: loop.tick });
+    return true;
+  }
+  function resumeMatch(): boolean {
+    if (stopped || !paused) return false;
+    paused = false;
+    loop.start();
+    actorLog.info('actor resumed', { tick: loop.tick });
+    return true;
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
@@ -1194,6 +1218,9 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),
     start,
+    pause: pauseMatch,
+    resume: resumeMatch,
+    get paused() { return paused; },
     stop,
     stats,
     clientStats,

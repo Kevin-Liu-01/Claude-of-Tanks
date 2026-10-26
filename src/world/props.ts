@@ -4044,6 +4044,7 @@ function* propsBuildSteps(
     for (const seed of [kitRender.seed, kitRender.seed + 1]) {
       if (byPaint.has(`${kind}:${seed}`)) continue;
       byPaint.set(`${kind}:${seed}`, yield* paintedAhead(surfacePaintKey({ kind, size: 256, seed }),
+        // oxlint-disable-next-line require-yield -- the in-line paint returns the painter's buffers at once
         function* () { return kind === 'limeRender' ? paintLimeRender(256, seed) : paintLimewash(256, seed); }));
     }
   }

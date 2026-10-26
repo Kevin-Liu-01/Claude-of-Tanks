@@ -30,13 +30,11 @@ interface SceneLinkNotice {
 }
 
 /**
- * The Studio's link glyphs (constant first-party markup: the copy button and the notice card). No value from a scene or
- * a link is ever part of this markup; the notice writes every message and detail as text.
+ * The Studio's link glyph (constant first-party markup on the copy buttons). No value from a scene or a link is ever part
+ * of this markup; the kit's toast writes every message and detail as text.
  */
 export const SCENE_LINK_GLYPHS = Object.freeze({
   link: uiIconSVG('link', 16),
-  broken: uiIconSVG('alert', 22),
-  done: uiIconSVG('check', 22),
 });
 
 function encodeFailure(encoded: Exclude<SceneLinkEncoded, { ok: true }>): { message: string; detail: string } {

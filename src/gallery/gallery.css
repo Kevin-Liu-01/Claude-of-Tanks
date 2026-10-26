@@ -38,6 +38,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 /* ---------------------------------------------------------------------------------------------- browse (.browse) */
 .browse{grid-area:browse;display:flex;flex-direction:column;gap:var(--s3);min-width:0;min-height:0;padding:var(--s4) var(--s3) 0;
   background:var(--surface-page);border-right:1px solid var(--line-1)}
+/* the search and the filters keep their height and only the list gives way (a short window cut the role row's last line) */
+.browse>:not(.fam){flex:none}
 .search{margin:0}
 .search__field{display:flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s2) 0 var(--s3);border-radius:var(--control-radius);
   box-shadow:var(--ring-2);color:var(--ink-3);font:400 var(--fs-13)/1 var(--font-body);cursor:text}
@@ -53,7 +55,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .flags .cot-c-flag{width:20px;height:15px}
 .toggles{display:flex;flex-wrap:wrap;gap:var(--s1)}
 .toggles .cot-c-chip{height:26px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-12))}
-.toggles .cot-c-chip--compact{width:28px;padding:0}
+/* each wrapped row of chips runs flush to the column's edge: the chips share its spare width (a ragged edge left
+   "Fire support" and "Favourites" as stubs on rows of their own) */
+.toggles>.cot-c-chip{flex:1 0 auto;justify-content:center}
+.toggles .cot-c-chip--compact{flex:none;width:28px;padding:0}
 .toggles .cot-c-chip:disabled{color:var(--ink-4);cursor:default}
 .toggles--glyphs{gap:var(--s1) var(--s3)}
 .toggles--glyphs .cot-c-chip{gap:var(--s2)}
@@ -199,11 +204,16 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .cot-c-notices.gallery-notices{position:absolute;left:50%;bottom:64px;z-index:var(--z-toast);width:min(420px,calc(100% - 24px));
   transform:translateX(-50%)}
 /* the stage's notice keeps clear of the scale inset and the turntable bar; the stacked page's rides the actions bar */
-.cot-c-notices.gallery-notices:not(.gallery-notices--stack){width:min(420px,calc(100% - 2 * (var(--inset-w,160px) + 24px)))}
+.cot-c-notices.gallery-notices:not(.gallery-notices--stack){width:min(420px,calc(100% - 2 * (16px + var(--inset-w,160px) + 24px)))}
 /* stacked, the notice takes its own row at the top of the actions bar (it lay over the dossier's rows above the bar) */
 .acts{position:relative;flex-wrap:wrap}
 .cot-c-notices.gallery-notices--stack{position:static;order:-1;flex:1 0 100%;width:100%;transform:none}
 .cot-c-notices.gallery-notices--short{position:fixed;bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
+/* in the actions bar's row the notice is flat: its drop shadow fell on the button under it */
+.gallery-notices--stack .cot-c-notice{box-shadow:var(--ring-2)}
+/* a short two-column page: the window-foot notice stands over the dossier's column, never across the columns' seam (as
+   specific as the stage's width rule above, which held it at 420 px across the seam at 844x390) */
+@media (width >= 768px){.cot-c-notices.gallery-notices--short:not(.gallery-notices--stack){left:auto;right:var(--s3);width:min(380px,calc(50% - 2 * var(--s3)));transform:none}}
 .gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -245,11 +255,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .features li.note{height:auto;padding:var(--s2);border:1px dashed var(--line-2);box-shadow:none;background:none;line-height:1.45}
 .vsc{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:var(--s2);padding:var(--s3) var(--s3);
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-/* both sides share their rows (flag, silhouette, name from the top), whatever the length of either name */
+/* both sides share their rows (flag, silhouette from the top) */
 .vsc .s{display:grid;grid-template-rows:auto auto 1fr;align-content:start;align-self:stretch;gap:var(--s2);min-width:0}
 .vsc .s.r{justify-items:end}
 .vsc .s.r{align-items:flex-end;text-align:right}
-.vsc .s b{font:700 var(--fs-14)/1 var(--font-display);text-transform:uppercase;overflow-wrap:anywhere}
 .vsc .s .cot-c-sil{width:64px;height:20px;color:var(--ink-2)}
 .vsc .mid{display:flex;flex-direction:column;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);text-align:center}
 .vsc .mid>div{display:grid;grid-template-columns:minmax(64px,auto) 20px minmax(64px,auto);align-items:center;gap:var(--s1)}
@@ -261,20 +270,32 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .vsc .mid .cot-i{width:14px;height:14px;justify-self:center}
 .vsc__pick{position:relative;grid-column:1/-1}
 .vsc__scale{grid-column:1/-1;display:block;width:100%;height:auto;aspect-ratio:360/72}
+/* the stage's inset carries the true scale from 768 px up; the card's is the phone's only one (UI-LOCKDOWN G10) */
+@media (width >= 768px){.vsc__scale{display:none}}
+/* under it the card's true-scale pair is the only silhouette of each: the sides' small ones go */
+@media (width < 768px){.vsc .s .cot-c-sil{display:none}}
 .peer-switch,.diagram-switch{align-self:flex-start;flex-wrap:wrap}
+/* the stats' reference: the outlined cell (the kit scale's rival mark) and the rival's name */
+.stat-ref{display:flex;align-items:center;gap:var(--s2);margin:0;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body)}
+.stat-ref[hidden]{display:none}
+.stat-ref i{flex:none;width:10px;height:8px;box-shadow:var(--ring-accent)}
 .stat-groups,.stat-group{display:flex;flex-direction:column;gap:var(--s3)}
 .stat-group h2{display:flex;align-items:center;gap:var(--s2);margin:var(--s2) 0 0;color:var(--ink-2);font:600 var(--fs-13)/1 var(--font-display)}
 .stat-group h2 .cot-i{width:16px;height:16px;color:var(--ink-3)}
 .cot-c-stat .cot-c-stat__value b{font-size:var(--fs-16)}
-.ammunition-list{display:flex;flex-direction:column;gap:var(--s2)}
-.shell{display:grid;grid-template-columns:24px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:var(--s3);row-gap:var(--s2);
+/* one grid for every round, each card on its subgrid: a long name wraps in its own column and the three figures keep
+   one column each down the list (the gauntlet 10-25: they started at a different x in every card) */
+/* the list carries the cards' column gap, so the subgrid's tracks keep it (the shell glyph touched its name) */
+.ammunition-list{display:grid;grid-template-columns:24px minmax(0,1fr) repeat(3,auto);gap:var(--s2) var(--s3)}
+.shell{grid-column:1/-1;display:grid;grid-template-columns:subgrid;grid-template-rows:auto auto;align-items:center;row-gap:var(--s2);
   padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-.shell>.cot-i{grid-row:span 2;width:24px;height:24px;color:var(--accent)}
+/* the glyph stands level with the round's name block, the scale under both */
+.shell>.cot-i{grid-row:1;width:24px;height:24px;color:var(--accent)}
 .shell-id{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
 .shell-id b{font:600 var(--fs-14)/1.1 var(--font-display);overflow-wrap:anywhere}
 .shell-id small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
-.shell-nums{display:flex;gap:var(--s3);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
-.shell-nums span{display:inline-flex;align-items:baseline;gap:2px}
+.shell-nums{display:contents;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);white-space:nowrap}
+.shell-nums span{display:inline-flex;align-items:baseline;justify-content:flex-end;gap:2px}
 .shell-nums b{color:var(--ink-1);font:700 var(--fs-16)/1 var(--font-display)}
 .shell-nums .cot-i{width:14px;height:14px;align-self:center}
 .shell .cot-c-scale{grid-column:2/-1}
@@ -283,7 +304,16 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .pose{display:flex;flex-direction:column;gap:var(--s3)}
 .sl{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s2) var(--s3);color:var(--ink-2);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
 .sl output{color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data)}
-.sl input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--accent)}
+.sl input{grid-column:1/-1;width:100%;height:16px;margin:0;-webkit-appearance:none;appearance:none;background:transparent}
+/* a pose slider fills from its zero to its value (gallery.ts paintPoseFill sets --lo and --hi), not from its left edge */
+.sl input::-webkit-slider-runnable-track{height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--fill-scale) var(--lo,0%),var(--accent) var(--lo,0%) var(--hi,0%),var(--fill-scale) var(--hi,0%))}
+.sl input::-moz-range-track{height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--fill-scale) var(--lo,0%),var(--accent) var(--lo,0%) var(--hi,0%),var(--fill-scale) var(--hi,0%))}
+.sl input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
+.sl input::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
+.sl input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sl input:disabled{opacity:.4}
 .acts{display:flex;gap:var(--s2);padding:var(--s3) var(--g-pad);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .acts #testDrive{flex:1;min-width:0}
 .acts .cot-c-btn--icon[aria-pressed=true]{box-shadow:var(--ring-accent);color:var(--accent-hi)}
@@ -351,13 +381,12 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .markup-packet[open]>summary{margin-bottom:var(--s3)}
 
 /* a layer's count, read out to assistive technology alone (the visible notices are the kit's, above) */
-.toast{position:fixed;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 /* the site bar spans the page's own columns (a boxed bar floated over the stage on wide windows) */
 .public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}
 /* ---------------------------------------------------------------------------------------------------- responsive */
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
-  .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - 56px)}
+  .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
 @media (width < 1440px){
   .layers button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
@@ -367,12 +396,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 }
 @media (width < 1100px){
   body{overflow-x:hidden;overflow-y:auto}
-  /* a part brought into view clears the sticky site bar, and the dossier's tabs stick under it */
-  html{scroll-padding-top:56px}
-  .dz-tabs{top:56px}
+  /* a part brought into view clears the sticky site bar (its own height: 64 px, 56 px under 768 px), and the browse
+     column and the dossier's tabs stick under it */
+  html{scroll-padding-top:var(--shell-nav-h)}
+  .dz-tabs{top:var(--shell-nav-h)}
   .gallery-shell{height:auto;overflow:visible;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"stage stage" "browse dossier"}
   .stage{height:clamp(360px,58svh,620px)}
-  .browse{position:sticky;top:0;align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - 56px);border-top:1px solid var(--line-1)}
+  .browse{position:sticky;top:var(--shell-nav-h);align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h));border-top:1px solid var(--line-1)}
   .dossier{border-top:1px solid var(--line-1)}
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
@@ -390,13 +420,14 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .flags,#classFacets,.toggles--glyphs{flex-wrap:wrap}
   /* the flags and the class chips fill the column's width, as the search above them does */
   .flags button{height:40px}
-  .toggles .cot-c-chip{flex:none;height:36px}
+  .toggles .cot-c-chip{height:36px}
   .toggles .cot-c-chip--compact{width:36px}
   .toggles--glyphs .toggles{flex-wrap:wrap}
   .layout-switch{display:none}
   .fam,.fam[data-layout=grid]{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(150px,42%);
     gap:var(--s3);margin:0 -12px;padding:0 var(--s3) var(--s3);overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding:0 12px}
   .fam .gh{display:none}
+  .fam:has(.it){-webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent)}
   .fam .it{scroll-snap-align:start}
   .fam .fam__empty{width:calc(100vw - 2 * var(--g-pad))}
   /* the strip's one row of cards (106.8 px each, at every phone width) and its 12 px foot, held before the script fills
@@ -423,6 +454,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   :root body .take-media .fleet-take-toggle{right:calc(12px + 52px)}
   .fam .it{min-height:44px}
   .order__dir,.order__sort select{min-height:40px;min-width:40px}
+  /* the camera rail and the layer dock at a finger's size (the landscape phone's were 30 to 34 px); eight cameras still fit
+     the short stage's height */
+  .views button{height:36px;min-width:36px}
+  .layers button{height:40px;min-width:40px}
 }
 /* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
 #dossier-anatomy figure img{cursor:zoom-in}
@@ -432,8 +467,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
   /* the stage and its turntable fit under the site bar */
-  .stage{max-height:calc(var(--cot-viewport-height,100dvh) - 56px)}
+  .stage{max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
 /* a short stacked stage sets its legend at the top beside the camera rail, off the tank framed low in it */
-@media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto}}
+@media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto;max-width:300px}}
 }
