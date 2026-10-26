@@ -679,9 +679,33 @@ async function primeBattle(page, options, { mapId, gameMode }) {
   } else {
     await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); }, { specId: options.spec, mapId, gameMode });
   }
-  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+  await waitForGame(page, 'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
   if (watched) await sleep(options.seconds * 1000);
   else await driveBattle(page, { seconds: options.seconds, mode: gameMode });
+}
+
+/**
+ * (battle-spikes-253) A wait on the game whose timeout says where the game stood: its phase, the countdown, the battle
+ * load's and the world build's records, and its page errors (an evaluate raced against 20 s: a blocked main thread says
+ * so). A battle that never started used to leave only "Waiting failed".
+ */
+async function waitForGame(page, expression, options) {
+  try {
+    await page.waitForFunction(expression, options);
+  } catch (error) {
+    const state = await Promise.race([
+      page.evaluate(() => {
+        const D = window.__DEBUG;
+        const brief = (value) => { try { return JSON.stringify(value)?.slice(0, 600) ?? null; } catch { return 'unserialisable'; } };
+        return { phase: D?.game?.phase ?? null, preBattleS: D?.game?.preBattleS ?? null, battleLoad: brief(window.__BATTLE_LOAD ?? null),
+          worldLoad: brief(window.__WORLD_LOAD ?? null), prefetch: brief(window.__WORLD_PREFETCH ?? null),
+          countdownWarm: brief(window.__BATTLE_COUNTDOWN_WARM ?? null) };
+      }).catch((e) => ({ evaluateFailed: String(e?.message ?? e).slice(0, 200) })),
+      new Promise((resolve) => setTimeout(() => resolve({ evaluateFailed: 'no answer in 20 s (the main thread blocked)' }), 20000)),
+    ]);
+    error.message = `${error.message}; at the timeout ${JSON.stringify(state).slice(0, 2400)}`;
+    throw error;
+  }
 }
 
 async function measureBattle(page, options, { mapId, gameMode, allies, enemies, pass, key }) {
@@ -700,7 +724,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     }
     // the trace covers the battle from its phase on (the countdown and the fight; the loading veil's build is the
     // recorder's alone): a loading trace is most of the bytes and none of the frames a player sees
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 100 });
+    await waitForGame(page, 'window.__DEBUG.game.phase === "battle"', { timeout: 420000, polling: 100 });
     if (options.trace) {
       tracer = await startTrace(page, { detail: options.traceDetail });
       syncPerfMs = await page.evaluate((name) => performance.mark(name).startTime, SYNC_MARK);
@@ -708,7 +732,7 @@ async function measureBattle(page, options, { mapId, gameMode, allies, enemies, 
     // the CPU profile covers the battle from its phase on, as the trace does: the countdown's warm work and the fight
     const battlePhaseMs = await page.evaluate(() => performance.now());
     const cpuProfiler = options.cpuProfile ? await startCpuProfile(page) : null;
-    await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
+    await waitForGame(page, 'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 420000, polling: 250 });
     const entryMs = Date.now() - entryAt;
     // a watched battle: ride the human seat's hull (its bot drives it) as a player's chase view would follow it
     const rodeSeat = watched ? await page.evaluate(() => {
@@ -852,8 +876,8 @@ export async function runCensus(options) {
         for (const side of order) {
           if (options.budgetMin && (Date.now() - started) / 60000 > options.budgetMin) { log('time budget spent: stopping'); return { failures, stopped: true }; }
           try { await runScenario(options, side, scenario, size, done); } catch (error) {
-            failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 400) });
-            log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 200)}`);
+            failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 2600) });
+            log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 1500)}`);
           }
         }
       }
