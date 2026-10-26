@@ -62,6 +62,7 @@ interface GarageGpuWarmTimings {
   postWarm?: number;
   postPassMax?: number;
   postPasses?: Array<{ label: string; ms: number }>;
+  postLinkWait?: number;
 }
 
 interface GarageGpuWarmOptions {
@@ -77,6 +78,10 @@ interface GarageGpuWarmOptions {
   createYielder?: (budgetMs: number) => WarmYield;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
+  /** (2026-10-26, the boot census) Wait between frames until the submitted programs have linked (main.ts
+   *  awaitRendererProgramLinks): the warm's renders and the Garage's first frame otherwise waited on them inside one
+   *  task (1.4 s on a desktop, 11 s on a 4x phone, under the boot screen). */
+  awaitProgramLinks?: (yieldForBudget: WarmYield) => Promise<void>;
 }
 
 export interface GarageGpuRestoreReceipt {
@@ -309,6 +314,7 @@ export async function warmGarageGpuPipeline({
   createYielder = createFrameBudgetYielder,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
+  awaitProgramLinks,
 }: GarageGpuWarmOptions): Promise<void> {
   const compileAt = now();
   try { forwardPrograms.compile(scene); } catch { /* first real render is fallback */ }
@@ -323,6 +329,11 @@ export async function warmGarageGpuPipeline({
   };
 
   await yieldGpuWarm(true);
+  if (awaitProgramLinks) {
+    const linkAt = now();
+    try { await awaitProgramLinks(yieldGpuWarm); } catch { /* the renders below wait for them as before */ }
+    timings.postLinkWait = Math.round(now() - linkAt);
+  }
   const shadowPasses = await lighting.primeShadowMaps(
     renderer,
     scene,
@@ -347,5 +358,7 @@ export async function warmGarageGpuPipeline({
   timings.postWarm = Math.round(now() - postWarmAt);
   timings.postPassMax = Math.max(0, ...postPasses.map((pass) => pass.ms));
   timings.postPasses = postPasses;
+  // the shadow and post passes made programs of their own: their links too, before the frame that binds them
+  if (awaitProgramLinks) { try { await awaitProgramLinks(yieldGpuWarm); } catch { /* the frame waits for them as before */ } }
   post.render(simDt);
 }

@@ -3854,6 +3854,7 @@ await bootStage('post', async () => {
     timings: BOOT_TIMINGS,
     reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
+    awaitProgramLinks: awaitRendererProgramLinks,
   });
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
