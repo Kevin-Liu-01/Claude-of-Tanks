@@ -296,6 +296,7 @@ export const TOKENS = {
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
   'plate-art-grade': 'linear-gradient(180deg,rgba(5,6,8,.58) 0,rgba(5,6,8,.66) 40%,rgba(5,6,8,.78) 100%)',
+  'plate-art-grade-open': 'linear-gradient(180deg,rgba(5,6,8,.74) 0,rgba(5,6,8,.78) 40%,rgba(5,6,8,.84) 100%)',
   'plate-chip-fill': 'linear-gradient(rgba(246,243,236,.03),rgba(246,243,236,.03)),rgba(13,16,20,.86)',
   'plate-chip-fill-on': 'linear-gradient(rgba(240,160,48,.12),rgba(240,160,48,.12)),rgba(13,16,20,.86)',
   'home-hero-grade': 'linear-gradient(180deg,rgba(5,6,8,.78) 0,rgba(5,6,8,.4) 8vh,rgba(5,6,8,0) 18vh),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(5,6,8,.6) 10vh,rgba(5,6,8,0) 26vh)',

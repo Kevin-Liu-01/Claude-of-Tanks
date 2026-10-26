@@ -202,6 +202,9 @@ body:not([data-cot-panels='overlay']) .cot-garage .cot-deploy-plate,body[data-co
 .cot-garage .cot-deploy-art img.is-snap{transition:none;}
 .cot-garage .cot-deploy-art::after{content:'';position:absolute;inset:0;z-index:var(--z-lift);background:var(--plate-art-grade);box-shadow:var(--e2-flush);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-art::after{box-shadow:none;}
+/* the further options open a form on the picture: the grade deepens under its captions while it is open */
+body:not([data-cot-panels='overlay']) .cot-garage .cot-deploy-plate:has(.cot-battle-solo-options[data-more]) .cot-deploy-art::after,
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-inline:has(.cot-battle-solo-options[data-more]) .cot-deploy-art::after{background:var(--plate-art-grade-open);}
 .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-deploy-art{display:none;}
 /* over the picture the rule tiles, the pickers' tracks, the chips, the tank card and Watch are plates: their fills take the
    plate (a chip keeps its wash over it), and the words on the picture itself, the further options' captions, take the
@@ -214,11 +217,11 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-de
 /* a phone's battlefield picker opens in the block's place, on the block's own fill: the picture steps aside while it is open */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-inline:has(.cot-deploy-field-pop:not([hidden])) .cot-deploy-art{display:none;}
 .cot-garage .cot-deploy-art img[data-mode='standard']{object-position:72% 45%;}
-.cot-garage .cot-deploy-art img[data-mode='drone']{object-position:70% 65%;}
+.cot-garage .cot-deploy-art img[data-mode='drone']{object-position:82% 70%;}
 .cot-garage .cot-deploy-art img[data-mode='zone_control']{object-position:55% 55%;}
 .cot-garage .cot-deploy-art img[data-mode='capture_the_flag']{object-position:36% 60%;}
 .cot-garage .cot-deploy-art img[data-mode='frontline_assault']{object-position:72% 50%;}
-.cot-garage .cot-deploy-art img[data-mode='turbo_ball']{object-position:45% 20%;}
+.cot-garage .cot-deploy-art img[data-mode='turbo_ball']{object-position:38% 40%;}
 .cot-garage .cot-deploy-art img[data-mode='mars']{object-position:55% 45%;}
 .cot-garage .cot-deploy-art img[data-mode='endless_horde']{object-position:60% 55%;}
 .cot-garage .cot-deploy-art img[data-mode='gun_game']{object-position:56% 55%;}
