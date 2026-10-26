@@ -172,7 +172,8 @@ img{display:block;max-width:100%}
 .press__quotes .v5-social-metrics{gap:var(--s4)}
 .press__quotes .v5-social-card__body{justify-content:flex-start}
 .press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
-.press__title a{display:inline-flex;align-items:first baseline;gap:var(--s4)}
+.press__title a{display:flex;align-items:first baseline;gap:var(--s4)}
+.press__title a>span{text-box:trim-end cap alphabetic}
 .press__avatar{position:relative;top:.06em;flex:none;width:.8em;height:.8em;border-radius:50%;outline:1px solid var(--line-3)}
 .v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}

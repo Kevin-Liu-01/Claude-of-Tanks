@@ -245,6 +245,8 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player :
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player::after{content:'';order:3;flex-basis:100%}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .vehicle{order:4;flex:1 1 0;margin-top:4px}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player .team{order:5;margin-top:4px}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player :is(.ready,.wait):empty{display:none}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .player.spectator .vehicle{align-self:flex-start}
 body[data-cot-width='compact'] .cot-play .player .vehicle,
 body[data-cot-width='phone'] .cot-play .player .vehicle{grid-column:1;grid-row:2}
 body[data-cot-width='compact'] .cot-play .player .team,
@@ -254,7 +256,7 @@ body[data-cot-width='phone'] .cot-play .roomhead{flex-wrap:wrap}
 body[data-cot-width='phone'] .cot-play .roomhead>.action{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .seats-count{font-size:var(--fs-20)}
 /* a phone's lobby actions share one row, so the roster keeps more of the screen */
-body[data-cot-width='phone'] .cot-play .control-actions{flex-wrap:wrap}
+body[data-cot-width='phone'] .cot-play .control-actions{flex-wrap:wrap;gap:var(--s3)}
 /* Rejoin battle takes its own row under the others: the primary comes last, as at every size */
 body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='rejoin']{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .version-refusal .cot-c-notice__acts{display:grid;grid-template-columns:1fr}
