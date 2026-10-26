@@ -82,8 +82,9 @@ const indexSource = read('index.html');
 const bootTag = /^ {6}<div class="cot-boot-mark" [^>\n]*>\n/m.exec(indexSource);
 if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <div> opening tag in index.html');
 // (2026-10-26, the boot census) the card's tank is the living mark as compositor layers (brandMarkMotionLayers), placed
-// where the master places its svg loop, over the master's stacked wordmark: the svg loop moved svg children, which Chrome
-// runs on the main thread only, so every long task of a cold load froze it
+// where the master places its svg loop, over the master's stacked wordmark: the svg loop's track links (a
+// stroke-dashoffset) moved on the main thread only, so every long task of a cold load stopped the tracks under the
+// turning wheels
 const [vx, vy, vw, vh] = cardViewBox[1].split(' ').map(Number);
 const cardBody = titleCard.slice(cardBodyStart, cardBodyEnd);
 const placed = /^<g class="cot-mark--motion"><g transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)">/.exec(cardBody);
