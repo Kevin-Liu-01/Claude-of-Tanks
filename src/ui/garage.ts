@@ -3903,13 +3903,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let deployModesLoad: Promise<void> | null = null;
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
   function openDeployModes(): Promise<void> {
-    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker, modeRuleLines }, { pickerText }]) => {
+    deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
       const cards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
         id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
-        // one rule line under each picture (the plate, the rules card, reads every one); Frontline Assault's is the campaign it
-        // plays, as the Rooms host's card leads with
-        facts: id === 'frontline_assault' ? [t('campaign.heading')] : modeRuleLines(id, readTeamArrangement(id)).slice(0, 1),
-        media: { poster: deployModeArt(id) }, description: '', rules: [],
+        // the picture, glyph and name alone: the plate beside the cards is the rules card, showing every rule of the mode under
+        // the pointer or the focus (a rule line under each picture wrapped and repeated the name)
+        facts: [], media: { poster: deployModeArt(id) }, description: '', rules: [],
       }));
       deployModeCards = cards;
       deployModes = createModePicker(requiredElement<HTMLElement>(battleMenu, '[data-deploy-modes]'), {

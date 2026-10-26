@@ -287,7 +287,7 @@
   .cot-record-tab{position:relative;min-height:var(--cot-control-floor,44px)}
   .cot-record-tabs{gap:var(--s4);padding:0 var(--s4)}
   .cot-record-tab{padding:0 var(--s2)}
-  .cot-record-body{padding:var(--s3) var(--s4)}
+  .cot-record-body{padding:var(--s4)}
   .cot-record-medal-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 /* zh-CN labels sit one step up (the type rules) */
