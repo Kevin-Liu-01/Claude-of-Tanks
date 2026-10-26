@@ -157,14 +157,19 @@ button.cot-c-chip{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i,.cot-c-tip{transition:none}}
 /* ---- the picker (picker.ts): the one "choose one of a set". The things themselves as cards, swatches or rows; the
    chosen one wears the accent's wash and edge, as tiles do; a search and chips past eight items ---- */
-.cot-c-picker{display:flex;flex-direction:column;gap:var(--s3);min-width:0}
+.cot-c-picker{display:flex;flex-direction:column;gap:var(--s3);min-width:0;min-height:0;max-height:100%}
 .cot-c-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
 .cot-c-picker__search{flex:1 1 200px;box-sizing:border-box;min-width:0;height:36px;margin:0;padding:0 var(--s3);border:0;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);}
 .cot-c-picker__search::placeholder{color:var(--ink-3)}
 .cot-c-picker__search:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-c-picker__chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
-.cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3)}
+/* the chips keep one row and scroll sideways, so the cards keep the height */
+.cot-c-picker__chips{display:flex;flex:1 1 100%;gap:var(--s2);min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.cot-c-picker__chips::-webkit-scrollbar{display:none}
+.cot-c-picker__chips>.cot-c-chip{flex:none}
+/* where a surface bounds the picker's height the grid scrolls in place (its padding keeps the focus ring in view) */
+.cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);flex:1 1 auto;min-height:0;
+  margin:calc(-1 * var(--s1));padding:var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 .cot-c-picker__cell{position:relative;min-width:0;content-visibility:auto;contain-intrinsic-size:auto 168px}
@@ -177,6 +182,8 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
+.cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
+.cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0;padding:0 var(--s1)}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
@@ -202,6 +209,33 @@ button.cot-c-chip{cursor:pointer}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }
 @media (prefers-reduced-motion:reduce){.cot-c-picker__fav{transition:none}}
+/* ---- the battlefield picker (battlefieldPicker.ts): one large preview of the battlefield under the pointer or the
+   focus (its picture, its tactical map inset in the corner with the mode's objectives) beside the cards, above them
+   where the space is narrow ---- */
+.cot-bf{container-type:inline-size;min-width:0;min-height:0}
+.cot-bf__in{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);height:100%}
+.cot-bf__cards{display:flex;min-width:0;min-height:0}
+.cot-bf__cards>.cot-c-picker{flex:1}
+.cot-bf .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+@container (width >= 720px){
+  .cot-bf__in{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-items:start}
+  .cot-bf__cards{height:100%}
+}
+/* a narrow space (a phone, where a tap chooses and nothing previews) gives the cards the height: they show the maps */
+@container (width < 520px){
+  .cot-bf .cot-bf__preview{display:none}
+  .cot-bf__in{grid-template-rows:minmax(0,1fr)}
+}
+.cot-bf__preview{display:flex;flex-direction:column;gap:var(--s3);margin:0;min-width:0}
+.cot-bf__hero{aspect-ratio:16/9}
+.cot-bf .cot-bf__map{position:absolute;right:var(--s3);bottom:var(--s3);width:34%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);
+  background:var(--surface-scene);box-shadow:var(--plate-shadow)}
+.cot-bf .cot-bf__map[hidden]{display:none}
+.cot-bf__map>:is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cot-bf__cap{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s3);min-height:28px}
+.cot-bf__name{font:700 var(--fs-24)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-bf__facts{display:flex;gap:var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
+.cot-bf__facts span+span::before{content:'·';margin-right:var(--s2)}
 /* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
    its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
 [data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}

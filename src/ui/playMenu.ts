@@ -1,4 +1,7 @@
 import { createCustomSelect } from './customSelect.ts';
+import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
+import { pickerText } from './pickerText.ts';
+import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -449,6 +452,12 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .battlefield-art .random-map-mosaic{position:absolute;inset:0;display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--surface-page)}
 .cot-play .battlefield-art.is-random .random-map-mosaic{display:grid}
 .cot-play .battlefield-art .random-map-tile{display:block;min-width:0;background:center/cover no-repeat}
+/* the battlefield picker opens under the card's words, in the picture's place: its preview is the picture */
+.cot-play .battlefield-card.picking{grid-template-columns:minmax(0,1fr)}
+.cot-play .battlefield-card.picking .battlefield-art{display:none}
+.cot-play .battlefield-card.picking .battlefield-copy{grid-column:1 / -1;padding-left:var(--s4)}
+.cot-play .battlefield-pick{flex:none;height:min(560px,62vh);margin-top:var(--s3)}
+.cot-play .battlefield-pick[hidden]{display:none}
 .cot-play:where(:has(.control-options>.field[hidden])) .battlefield-card{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .cot-play .battlefield-copy{grid-column:2 / -1;display:grid;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s4) 0}
 .cot-play .battlefield-picker{min-width:0}
@@ -615,8 +624,10 @@ function playerId(): string {
 
 function bindMenuSelect(
   control: MenuSelectElement,
-  { beforeOpen = null }: {
+  { beforeOpen = null, openWith = null }: {
     beforeOpen?: ((control: MenuSelectElement) => void) | null;
+    /** Another control opens in the list's place (the battlefield picker): the trigger hands its opening to it. */
+    openWith?: (() => void) | null;
   } = {},
 ): MenuSelectController {
   const trigger = requiredElement<HTMLButtonElement>(control, '[data-select-trigger]');
@@ -690,6 +701,7 @@ function bindMenuSelect(
 
   function open(index = selectedIndex()): void {
     if (disabled) return;
+    if (openWith) { openWith(); return; }
     if (beforeOpen) beforeOpen(control);
     control.classList.add('open');
     list.showPopover();
@@ -908,6 +920,7 @@ export function createPlayMenu({
             <label class="operation-picker" data-operation-field hidden><span class="field-label">${t('playMenu.operation.label')}</span>
               <select data-control="operation"><option value="">${t('playMenu.operation.free')}</option>${CAMPAIGN_OPERATIONS.map((operation) =>
                 `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div></div></div>
+      <div class="battlefield-pick" id="cot-room-bf" role="group" aria-labelledby="cot-room-map-label" hidden></div>
       <div class="players"></div><div class="controls">
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
@@ -1087,8 +1100,8 @@ export function createPlayMenu({
       if (binding.control !== except) binding.controller.close();
     }
   }
-  function bindRoomMenu(control: MenuSelectElement): MenuSelectController {
-    const controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects });
+  function bindRoomMenu(control: MenuSelectElement, openWith: (() => void) | null = null): MenuSelectController {
+    const controller = bindMenuSelect(control, { beforeOpen: closeMenuSelects, openWith });
     const binding: MenuBinding = { control, controller };
     menuBindings.push(binding);
     return controller;
@@ -1097,8 +1110,57 @@ export function createPlayMenu({
   bindRoomMenu(vehicleSelect);
   bindRoomMenu(teamSelect);
   bindRoomMenu(sizeSelect);
-  bindRoomMenu(mapSelect);
+  bindRoomMenu(mapSelect, () => toggleBattlefieldPick());
   const battlefieldCard = requiredElement<HTMLElement>(root, '.battlefield-card');
+  // the battlefield picker (INTERACTION-REDESIGN.md part A; owner 2026-10-26: "make map selection much more intituitve"):
+  // the host's battlefield trigger opens it in the card's place, its preview standing for the card's picture. One press
+  // chooses through the room's own change; Esc restores a preview, then closes it with nothing changed.
+  const battlefieldPick = requiredElement<HTMLElement>(root, '.battlefield-pick');
+  const mapTrigger = requiredElement<HTMLButtonElement>(mapSelect, '[data-select-trigger]');
+  mapTrigger.setAttribute('aria-controls', battlefieldPick.id);
+  mapTrigger.removeAttribute('aria-haspopup');
+  let battlefieldPicker: BattlefieldPicker | null = null;
+  let roomMode = 'standard';
+  const battlefieldRegions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
+  const battlefieldCards = (): BattlefieldCard[] => maps.map((map): BattlefieldCard => (map.id === 'random'
+    ? { id: map.id, name: map.name, facts: [t('playMenu.map.battlefieldsCount', { count: maps.length - 1 })],
+      media: { mosaic: maps.filter((other) => other.thumb).slice(0, 4).map((other) => other.thumb as string) } }
+    : { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
+      media: { poster: map.thumb || map.hero || '' }, hero: map.hero || map.thumb, tags: [...mapRegionTags(map.id)] }));
+  function closeBattlefieldPick(restoreFocus = false): void {
+    if (battlefieldPick.hidden) return;
+    battlefieldPick.hidden = true;
+    battlefieldCard.classList.remove('picking');
+    mapTrigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) mapTrigger.focus();
+  }
+  function toggleBattlefieldPick(): void {
+    if (!battlefieldPick.hidden) { closeBattlefieldPick(true); return; }
+    if (mapSelect.disabled) return;
+    closeMenuSelects();
+    battlefieldPick.hidden = false;
+    battlefieldCard.classList.add('picking');
+    mapTrigger.setAttribute('aria-expanded', 'true');
+    if (battlefieldPicker) battlefieldPicker.setCards(battlefieldCards(), roomMode, mapSelect.value);
+    else {
+      battlefieldPicker = createBattlefieldPicker(battlefieldPick, {
+        id: 'rooms-battlefield', label: t('playMenu.advanced.battlefield'), cards: battlefieldCards(), value: mapSelect.value,
+        mode: roomMode, randomId: 'random', text: pickerText(),
+        filters: battlefieldRegions.map((tag) => ({ id: tag, label: t(`camoTag.${tag}`) })),
+        onChoose: (id) => {
+          mapSelect.value = id;
+          mapSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          closeBattlefieldPick(true);
+        },
+      });
+    }
+    battlefieldPicker.focus();
+  }
+  battlefieldPick.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    closeBattlefieldPick(true);
+  });
   const operationField = requiredElement<HTMLElement>(root, '[data-operation-field]');
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
   const operationDropdown = createCustomSelect(operationSelect);
@@ -1675,6 +1737,8 @@ export function createPlayMenu({
     if (operationField.hidden) operationDropdown.close();
     operationDropdown.refresh();
     mapSelect.value = operation?.mapId ?? next.mapId;
+    roomMode = next.gameMode || 'standard';
+    if (battlefieldPicker && !battlefieldPick.hidden) battlefieldPicker.setCards(battlefieldCards(), roomMode, mapSelect.value);
     const selectedMap = mapById.get(operation?.mapId ?? next.mapId) || mapById.get('random') || maps[0];
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
@@ -1719,6 +1783,7 @@ export function createPlayMenu({
       isCoopGameMode(next.gameMode);
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting'
       || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
+    if (mapSelect.disabled) closeBattlefieldPick();
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     sizeSelect.closest<HTMLElement>('.field')!.hidden = isCoopGameMode(next.gameMode);
     startBtn.style.display = role === 'host' ? '' : 'none';

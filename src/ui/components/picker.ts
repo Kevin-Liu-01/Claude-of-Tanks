@@ -18,8 +18,8 @@ export interface PickerItem {
   readonly name: string;
   /** At most two short data strings: a map's size and biome, a camo's nation and kind. */
   readonly facts?: readonly string[];
-  /** The thing itself: its picture (with a srcset where it has rungs). */
-  readonly media?: { readonly poster: string; readonly srcset?: string; readonly sizes?: string };
+  /** The thing itself: its picture (with a srcset where it has rungs), or for a set's Random up to four of its pictures. */
+  readonly media?: { readonly poster?: string; readonly srcset?: string; readonly sizes?: string; readonly mosaic?: readonly string[] };
   readonly glyph?: IconId;
   /** A game mode id: the glyph wears that mode's hue (data-mode-tone). */
   readonly tone?: string;
@@ -45,7 +45,7 @@ export interface PickerText {
   readonly clear: string;
 }
 
-export interface PickerOptions {
+interface PickerOptions {
   /** The registry id (src/ui/interactionRegistry.ts), stamped as data-picker. */
   readonly id: string;
   /** The set's name, for assistive tech. */
@@ -64,7 +64,7 @@ export interface PickerOptions {
   readonly memory?: string;
 }
 
-export interface PickerController {
+interface PickerController {
   setItems(items: readonly PickerItem[], value?: string | null): void;
   setValue(id: string | null): void;
   focus(): void;
@@ -78,7 +78,7 @@ const RECENT_MAX = 6;
 
 /* ------------------------------------------------------------------------------------------------------ the memory */
 
-export interface PickerMemory {
+interface PickerMemory {
   readonly favourites: readonly string[];
   readonly recent: readonly string[];
 }
@@ -116,7 +116,7 @@ export function toggleFavourite(memory: PickerMemory, id: string): PickerMemory 
 
 /* ------------------------------------------------------------------------------------------------------ the filter */
 
-export interface PickerQuery {
+interface PickerQuery {
   readonly text: string;
   /** Pressed filter chips: an item shows when it answers every one. */
   readonly tags: readonly string[];
@@ -159,10 +159,12 @@ export function gridStep(at: number, key: string, columns: number, count: number
 /* -------------------------------------------------------------------------------------------------- the controller */
 
 const optionMarkup = (item: PickerItem, chosen: boolean, favourite: boolean, layout: PickerOptions['layout'], text: PickerText): string => {
-  const media = item.media && layout !== 'list'
-    ? `<span class="cot-c-picker__media cot-c-media cot-c-media--soft"><img src="${esc(item.media.poster)}"`
-      + `${item.media.srcset ? ` srcset="${esc(item.media.srcset)}" sizes="${esc(item.media.sizes ?? '240px')}"` : ''} alt="" loading="lazy" decoding="async"></span>`
-    : '';
+  const picture = !item.media || layout === 'list' ? ''
+    : item.media.mosaic?.length
+      ? `<span class="cot-c-picker__mosaic">${item.media.mosaic.slice(0, 4).map((src) => `<img src="${esc(src)}" alt="" loading="lazy" decoding="async">`).join('')}</span>`
+      : item.media.poster ? `<img src="${esc(item.media.poster)}"`
+        + `${item.media.srcset ? ` srcset="${esc(item.media.srcset)}" sizes="${esc(item.media.sizes ?? '240px')}"` : ''} alt="" loading="lazy" decoding="async">` : '';
+  const media = picture ? `<span class="cot-c-picker__media cot-c-media cot-c-media--soft">${picture}</span>` : '';
   const glyph = item.glyph ? `<span class="cot-c-picker__glyph"${item.tone ? ` data-mode-tone="${esc(item.tone)}"` : ''}>${icon(item.glyph, { size: 18 })}</span>` : '';
   const facts = item.facts?.length ? `<span class="cot-c-picker__facts">${item.facts.slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('')}</span>` : '';
   const tip = item.disabled ? ` data-tip="${esc(item.disabled)}"` : '';
@@ -235,6 +237,13 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     if (!to) return;
     for (const element of options$()) element.tabIndex = element === to ? 0 : -1;
     if (focus) to.focus({ preventScroll: false });
+  };
+  /** Scroll the chosen option into the grid's view when the grid scrolls (a surface that bounds the picker's height). */
+  const revealChosen = (): void => {
+    const chosen = options$().find((element) => element.getAttribute('aria-selected') === 'true');
+    if (!chosen || grid.scrollHeight <= grid.clientHeight) return;
+    const top = chosen.getBoundingClientRect().top - grid.getBoundingClientRect().top + grid.scrollTop;
+    grid.scrollTop = Math.max(0, top - grid.clientHeight / 2 + chosen.offsetHeight / 2);
   };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);
@@ -343,6 +352,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   host.addEventListener('keydown', onKey);
   search.addEventListener('input', onInput);
   render();
+  requestAnimationFrame(revealChosen);
 
   return {
     setItems(next, nextValue): void {
@@ -350,6 +360,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       if (nextValue !== undefined) value = nextValue;
       bar.hidden = !searchable();
       render();
+      revealChosen();
     },
     setValue(id): void {
       value = id;
