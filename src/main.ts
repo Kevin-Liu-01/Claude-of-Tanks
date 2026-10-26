@@ -247,6 +247,7 @@ import { campaignOperationById } from './game/campaignOperations.ts';
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
 import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
+import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createProvingControls } from './game/provingGroundSession.ts';
@@ -2518,14 +2519,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     anisotropy: engineCtx.anisotropy ?? 4,
     rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
     // the load card's both teams from its first frame: the seats setupBattle will field, planned before the world
-    plannedRosters: (specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) => {
-      const plan = planBattleSeats(game, specId, request);
-      return plan ? {
-        allies: rosterPresentation.battleRows(plan.seats, 'player'),
-        enemies: rosterPresentation.battleRows(plan.seats, 'enemy'),
-        teamNations: plan.teamNations,
-      } : null;
-    },
+    plannedRosters: plannedCardTeams,
     warmShotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
     getCamoSweep: () => camoSweepP,
     prepareRevealCamera: prepareBattleRevealCamera,
@@ -3020,6 +3014,16 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 /** The last solo entry was a watched battle (Battle Again watches again). */
 let lastEntryWatched = false;
 
+/** A solo battle's both teams as the load card draws them, planned before its world (rosterState.planBattleSeats). */
+function plannedCardTeams(specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) {
+  const plan = planBattleSeats(game, specId, request);
+  return plan ? {
+    allies: rosterPresentation.battleRows(plan.seats, 'player'),
+    enemies: rosterPresentation.battleRows(plan.seats, 'enemy'),
+    teamNations: plan.teamNations,
+  } : null;
+}
+
 /**
  * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5). Every solo battle is the page's own simulation by
  * default (2026-10-26, release 256: the owner ruled that a solo game against bots must not create a multiplayer session).
@@ -3331,10 +3335,19 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   getSelectedMapId: () => garage.getSelectedMap(),
   // 2026-10-13 (the perf stream): the pending cover names the battlefield (a Random pick planned now, as the loading
   // owner will consume it) while the loading owner itself still downloads
-  describePendingMap: (specId: string, mapId: string | null) => {
+  describePendingMap: (specId: string, mapId: string | null, options?: SoloBattleLoadingStartOptions) => {
     const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
-    return (MAP_IDS as readonly string[]).includes(resolved)
-      ? { mapId: resolved, mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+    const known = (MAP_IDS as readonly string[]).includes(resolved);
+    // and both teams, planned now: the cover's first frame lists every seat (the owner, 2026-10-26)
+    const teams = plannedCardTeams(specId, {
+      randomRoster: options?.randomRoster ?? true, gameMode: options?.gameMode ?? 'standard',
+      campaignOperationId: options?.campaignOperationId ?? null, watch: options?.watch === true,
+    });
+    if (!known && !teams) return null;
+    return {
+      mapId: known ? resolved : 'random', ...(known ? { mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : {}),
+      ...(teams ? { allies: teams.allies, enemies: teams.enemies, teams: teamNationsFlags(teams.teamNations) } : {}),
+    };
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
