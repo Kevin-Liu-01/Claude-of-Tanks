@@ -34,7 +34,7 @@ export function openHudEditor(trigger:HTMLElement):void {
   const dimensions=new Map<HudPartId,[number,number]>();
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
-  const modal=createModal({title:label('title'),subtitle:label('help'),size:'wide',onClose:()=>{
+  const modal=createModal({title:label('title'),size:'wide',onClose:()=>{
     closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');
@@ -76,7 +76,7 @@ export function openHudEditor(trigger:HTMLElement):void {
       else if(!scene?.parts.has(id)&&['aircraft','medals','alerts','damage','killsRight'].includes(id))void load();
     }});
   const status=element('p','hud-edit-status',modal.footer);status.setAttribute('role','status');
-  status.textContent=label('sample');
+  // the status speaks only of a failed load or save
   const cancel=element('button',`hud-edit-cancel ${SECONDARY}`,modal.footer);cancel.type='button';cancel.textContent=label('cancel');cancel.onclick=()=>modal.close();
   const save=element('button','hud-edit-save cot-c-btn cot-c-btn--36 cot-c-btn--primary',modal.footer);save.type='button';save.textContent=label('save');save.onclick=()=>{
     if(saveHudPreferences(draft))modal.close();else status.textContent=label('saveError');
@@ -90,7 +90,8 @@ export function openHudEditor(trigger:HTMLElement):void {
     visibility.textContent=label(draft[profile][id]?.hidden?'show':'hide');
     visibility.setAttribute('aria-pressed',String(!draft[profile][id]?.hidden));
     const absent=!scene?.parts.has(id);
-    for(const b of nudge.querySelectorAll('button'))b.disabled=absent||'anchored' in currentPart();
+    // a hidden or anchored panel is not moved: its arrows wait (in every screen layout alike)
+    for(const b of nudge.querySelectorAll('button'))b.disabled=absent||!!draft[profile][id]?.hidden||'anchored' in currentPart();
     restore.disabled=absent;
     tip.textContent=label(absent?'unavailable':'anchored' in currentPart()?'anchored':'nudge');
   }

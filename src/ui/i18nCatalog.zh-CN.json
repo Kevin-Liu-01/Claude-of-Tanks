@@ -4192,7 +4192,7 @@
   "hudEditor.show": "显示元素",
   "hudEditor.hide": "隐藏元素",
   "hudEditor.anchored": "此元素跟随世界中的战车。可以隐藏，但位置始终与战车对应。",
-  "hudEditor.nudge": "拖动移动；方向键微调 1 像素，Shift + 方向键移动 10 像素，Delete 隐藏。在下方选择隐藏元素可恢复。",
+  "hudEditor.nudge": "拖动移动；方向键微调 1 像素，Shift + 方向键移动 10 像素，Delete 隐藏。",
   "hudEditor.sample": "战场预览 · 瞄准始终与火炮方向一致。",
   "hudEditor.cancel": "取消",
   "hudEditor.save": "保存布局",

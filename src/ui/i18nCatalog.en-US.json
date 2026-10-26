@@ -4168,7 +4168,7 @@
   "hudEditor.show": "Show element",
   "hudEditor.hide": "Hide element",
   "hudEditor.anchored": "This follows a tank in the world. You can hide it, but its position stays tied to that tank.",
-  "hudEditor.nudge": "Drag to move. Arrow keys: 1 px. Shift + arrow: 10 px. Delete: hide. Select hidden elements below to restore them.",
+  "hudEditor.nudge": "Drag to move. Arrow keys: 1 px. Shift + arrow: 10 px. Delete: hide.",
   "hudEditor.sample": "Battle preview · aiming remains aligned with your gun.",
   "hudEditor.cancel": "Cancel",
   "hudEditor.save": "Save layout",

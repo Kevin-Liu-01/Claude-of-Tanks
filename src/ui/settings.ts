@@ -357,8 +357,7 @@ const SETTINGS_CSS = `
 /* the settings of two to five values (difficulty, right click, a phone's quality, language, On/Off) are the kit's segmented
    control (components.css .cot-c-seg); every inline control is 36 px tall. The sets of six (the desktop's quality, the
    colour presets) and the crew voice are the kit's picker menu, as wide as the crew field. */
-.cot-settings .cot-c-seg__opt{height:30px;}
-.cot-settings .cot-set-onoff .cot-c-seg__opt{min-width:48px;}
+.cot-settings .cot-c-seg__opt{height:30px;min-width:48px;}
 .cot-set-menu{width:260px;max-width:100%;min-width:0;}
 /* time of day (battleTimeChoices.ts): a multi-select, so the kit's chips (each its own pill, a tick when on) rather than
    a segmented control; the legend names the group */

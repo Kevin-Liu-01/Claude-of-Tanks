@@ -56,10 +56,10 @@ try{
   // Switching profiles keeps separate drafts and recreates production viewport rules.
   const activeName=touch?(width>height?'Phone landscape':'Phone portrait'):'Desktop';
   const otherName=activeName==='Desktop'?'Phone portrait':'Desktop';
-  await page.getByRole('button',{name:otherName,exact:true}).click();
+  await page.getByRole('radio',{name:otherName,exact:true}).click();
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
   assert.equal(await page.locator('.hud-edit-scene').count(),1,`${name}: one isolated preview`);
-  await page.getByRole('button',{name:activeName,exact:true}).click();
+  await page.getByRole('radio',{name:activeName,exact:true}).click();
   await page.waitForSelector('.cot-hud-editor[data-preview-ready=true]');
   const retained=await page.locator('.hud-edit-part[data-part="map"]').boundingBox();
   assert.ok(Math.abs(retained.x-after.x)<1,`${name}: profile draft survives switching`);
