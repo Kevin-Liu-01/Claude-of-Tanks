@@ -42,6 +42,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{g
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow :is(.d,.z){white-space:nowrap}
 /* (the damage sits on the row's right edge with the zone and range under it, gauntlet r2) */
+/* (the log's head and rows on one 14 px line in both scripts: zh's taller line boxes, 18 px, left its 1024x600 dock no
+   whole row, so zh dropped the log and kept the feed where en kept the log, gauntlet r13) */
+body[data-cot-battle-layout] .cot-si-log :is(.sec,.cot-si-lrow){line-height:14px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .d{justify-self:end}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{width:auto;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
