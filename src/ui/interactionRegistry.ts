@@ -33,7 +33,7 @@ type Screen = (typeof DATUM_SCREENS)[number];
 /** What a set holds. The things the bar's line 1 names (a map, a camo, a mode, a tank, equipment, a nation, an hour)
  *  and every other set of things take the picker. */
 type Chooses =
-  | 'battlefield' | 'mode' | 'camo' | 'tank' | 'equipment' | 'nation' | 'hour' | 'operation' | 'environment' | 'rival'
+  | 'battlefield' | 'mode' | 'camo' | 'tank' | 'equipment' | 'consumable' | 'nation' | 'hour' | 'operation' | 'environment' | 'rival'
   | 'shot' | 'take' | 'effect' | 'state' | 'part' | 'media' | 'command' | 'tool' | 'filter' | 'sort'
   | 'sides' | 'difficulty' | 'team' | 'language' | 'view' | 'setting';
 /** The sets whose two to five values may stay on the kit's segmented control. */
@@ -97,6 +97,8 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  // the consumable catalog (2026-10-26): each slot opens the kit picker over the thirteen items (garageConsumables.ts)
+  'garage-consumables': { chooses: 'consumable', options: 13, screen: 'garage', owner: 'src/ui/garageConsumables.ts', build: 'picker', marks: ['picker:garage-consumables'], lane: 'premiere-gallery-studio' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
   // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch

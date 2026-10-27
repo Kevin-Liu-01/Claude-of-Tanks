@@ -93,7 +93,7 @@ assert.ok(WIRE_VERSION >= 6, 'a layout change: the wire version moved with it (t
     meta: { phase: PHASE.PLAYING, countdownMs: 0, battleTimeMs: tick * 1000 / 60 | 0, verdict: VERDICT.NONE, verdictReason: '', destructibleRevision: worst.crushable.length },
     destroyed: worst.crushable, entities, shells: [],
     viewer: {
-      entityId: 7, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
+      entityId: 7, modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], crewBits: 3, equipment: [1000, 1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
       movementVersion: 1, movementFlags: 3, movementValues: Array.from({ length: 44 }, (_, i) => Math.fround(i * 0.37)),
     },
     modeStateJson: null,
