@@ -1150,6 +1150,12 @@ body[data-cot-panels='overlay'] .cot-eqpick{
 body[data-cot-panels='overlay'] .cot-eqpick.open{display:flex}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-eq-picker{flex:1 1 auto}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
+/* its rows take one height (garage.ts fitWholeRows sets it to fill the room with whole rows) and its scroll stops on them,
+   so the window stays whole wherever it scrolls (v261: the chosen tile scrolled 8 px into view and a taller row ran under
+   the sheet's foot); a tile's lines stand in its middle */
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{scroll-snap-type:y mandatory;scroll-padding-block:var(--s2)}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__cell{scroll-snap-align:start}
+body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__opt{justify-content:center}
 /* a Chinese effect line keeps its terms whole: the tiles take two to a phone's row, so no line starts with a comma */
 html[lang^='zh'] body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 body[data-cot-panels='overlay'] .cot-garage .cot-technical-section{

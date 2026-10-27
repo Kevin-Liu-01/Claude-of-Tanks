@@ -280,20 +280,41 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
   fit(grid);
   grid.style.minHeight = `${Math.ceil(Math.max(floor, grid.getBoundingClientRect().height))}px`;
 }
+/** How far a fitted sheet's rows may give (their tiles' padding) to bring one more row in, or grow to fill the room. */
+const FIT_SHRINK_PX = 8;
+const FIT_STRETCH_PX = 36;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
- * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic).
+ * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic). `fill` (a phone's sheet)
+ * leaves no strip empty under those rows while more wait below: its rows take one height, the tallest tile's give or take
+ * what brings in a row that misses by a few pixels or fills what is left over, and the scroll stops on them (garage.css),
+ * so the window stays whole wherever it scrolls.
  */
-function fitWholeRows(grid: HTMLElement, peek = true): void {
+function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
+  grid.style.gridAutoRows = '';
   const style = getComputedStyle(grid);
   if (grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
+    const pad = parseFloat(style.paddingBottom) || 0;
+    const gap = parseFloat(style.rowGap) || 0;
+    // a grid fitted to whole rows ends one row gap under its last (its --peek): the room is measured against that foot, not
+    // the deeper default pad (v261: a row 3 px into the default 16 px pad was dropped, a row's height empty under the
+    // grid at 390 x 844 and one row of cards over 74 px of nothing at 844 x 390, the 261 critic's B8)
+    const room = grid.clientHeight - (peek ? pad : gap);
+    if (fill && !peek) {
+      const tallest = Math.max(0, ...[...grid.children].map((child) => child.getBoundingClientRect().height));
+      const rows = room - (parseFloat(style.paddingTop) || 0) + gap;
+      if (tallest > 0) {
+        let count = Math.max(1, Math.floor(rows / (tallest + gap)));
+        if (tallest - (rows / (count + 1) - gap) <= FIT_SHRINK_PX) count += 1;
+        const height = Math.min(tallest + FIT_STRETCH_PX, rows / count - gap);
+        grid.style.gridAutoRows = `${Math.floor(height * 100) / 100}px`;
+      }
+    }
     // the lowest row foot that shows whole, and the next row (rows may differ in height: a phone's tiles carry one to
     // four lines)
     const top = grid.getBoundingClientRect().top + grid.clientTop - grid.scrollTop;
-    const pad = parseFloat(style.paddingBottom) || 0;
-    const room = grid.clientHeight - pad;
     let foot = 0, nextTop = Infinity, nextHeight = 0;
     for (const child of grid.children) {
       const box = child.getBoundingClientRect();
@@ -303,7 +324,6 @@ function fitWholeRows(grid: HTMLElement, peek = true): void {
     }
     if (foot > 0 && !peek) {
       // the window ends one row gap under the last whole row, where the next row has not begun
-      const gap = parseFloat(style.rowGap) || 0;
       grid.style.maxHeight = `${Math.floor(Math.min(grid.clientHeight, foot + gap))}px`;
       grid.style.setProperty('--peek', `${Math.round(gap)}px`);
     } else if (foot > 0) {
@@ -1913,7 +1933,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const stats = statsEl.getBoundingClientRect();
       root.classList.toggle('picker-over-readout', eqpickEl.getBoundingClientRect().right > stats.left - 1);
     }
-    fitWholeRows(grid, false);
+    fitWholeRows(grid, false, document.body.dataset.cotPanels === 'overlay');
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
