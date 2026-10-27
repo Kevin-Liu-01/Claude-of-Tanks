@@ -1,4 +1,5 @@
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
+import { isPracticeMode } from '../sim/gameModeCatalog.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
@@ -171,15 +172,18 @@ console.log('playMenu.selftest: the failure panel classifies and beacons every r
 // Room setup is a separate intent and cannot emit a battle-start or mutate the solo rule.
 const openMultiplayer = garage.slice(garage.indexOf('  function openMultiplayer('), garage.indexOf('  function battle('))
   .replace("mode: 'private' | 'lan' = 'private'", "mode = 'private'").replace('): void {', ') {');
-for (const requested of [undefined, 'private', 'lan']) {
-  const calls = [];
-  runInNewContext(openMultiplayer + ';openMultiplayer(requested);', {
-    requested, selectedId: 'tank', selectedMapId: 'verdant', battleGameMode: 'mars',
-    closeBattleMenu: () => calls.push('close-setup'), closeMobileNavigation: () => {}, setGaragePanel: () => {},
-    emit: (event) => { assert.equal(event, 'ui:click'); },
-    opts: { onPlayRequest: (request) => calls.push(JSON.parse(JSON.stringify(request))) },
-  });
-  assert.deepEqual(calls, ['close-setup', {mode: requested || 'private', specId: 'tank', mapId: 'verdant', gameMode: 'mars'}]);
+// (260, Proving Ground a mode) a room hosts the battle modes only: chosen with the range, it opens on Standard
+for (const [battleGameMode, roomMode] of [['mars', 'mars'], ['proving_ground', 'standard']]) {
+  for (const requested of [undefined, 'private', 'lan']) {
+    const calls = [];
+    runInNewContext(openMultiplayer + ';openMultiplayer(requested);', {
+      requested, selectedId: 'tank', selectedMapId: 'verdant', battleGameMode, isPracticeMode,
+      closeBattleMenu: () => calls.push('close-setup'), closeMobileNavigation: () => {}, setGaragePanel: () => {},
+      emit: (event) => { assert.equal(event, 'ui:click'); },
+      opts: { onPlayRequest: (request) => calls.push(JSON.parse(JSON.stringify(request))) },
+    });
+    assert.deepEqual(calls, ['close-setup', {mode: requested || 'private', specId: 'tank', mapId: 'verdant', gameMode: roomMode}]);
+  }
 }
 assert.match(source, /containModalTab\(event, panel, closeBtn\)/);
 const failureBody = source.slice(source.indexOf('  function showFailure('), source.indexOf('  function showRoomFailure('));

@@ -77,7 +77,7 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   return {
     detection: box('.cot-sixth.on'), alert: box('.cot-alert.show'), countdown: box('.cot-prebattle.on'),
     medal: document.querySelector('.cot-medal-toasts')?.dataset.placement === 'ready' ? box('.cot-medal-toasts .cot-medal-toast') : null,
-    chip: box('.cot-aim-warning:not([hidden])'), vision: box('.cot-scope-vision'),
+    chip: box('.cot-aim-warning:not([hidden]),.cot-battle-notices .cot-aim-notice'), vision: box('.cot-scope-vision'),
     ink: window.__RETICLE_LOG.paint.filter((op) => op.box).map((op) => ({ ...op.box, what: op.text ?? (op.ring ? 'ring' : op.op) })),
     furniture: furniture.flatMap((selector) => [...document.querySelectorAll(selector)]
       .filter((node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))

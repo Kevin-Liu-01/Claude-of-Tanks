@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
   defaultGarageMapId, GARAGE_LEADING_VEHICLE_IDS, GARAGE_LEADING_VEHICLE_IDS_BY_NATION,
-  horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
+  horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta, settledRailEndPad,
 } from './garageOrder.ts';
 
 const garageSource = `${await readFile(new URL('./garage.ts', import.meta.url), 'utf8')}\n${
@@ -370,6 +370,34 @@ assert.equal(horizontalRailEndPad(620, [0, 164, 328, 492, 656, 820]), 36,
 assert.equal(horizontalRailEndPad(656, [0, 164, 328, 492, 656, 820]), 0,
   'a rail whose reach already lands on a card start needs no extra end');
 assert.equal(horizontalRailEndPad(0, [0, 164]), 0, 'a fitting rail has no end padding');
+// The rail settles (garage.ts settleRailEnd): its scrollWidth rounds to whole pixels while the pad does not. The 259
+// Garage, the M1A1 selected at 1600x900 (content 3929.4 px in a 1106 px rail, the last stop at 2823.5): the raw pad flipped
+// 0.5 px, none, 0.5 px on every layout; the settled one keeps the first and the rail measures once.
+{
+  const settle = (content, client, stops, keep) => {
+    let extra = 0, key = null, writes = 0;
+    for (let pass = 0; pass < 12; pass++) {
+      const scrollWidth = Math.round(content + extra);
+      const natural = scrollWidth - extra;
+      if (key === `${client}|${natural}`) return { writes, settled: true };
+      key = `${client}|${natural}`;
+      const raw = horizontalRailEndPad(natural - client, stops);
+      const pad = keep ? settledRailEndPad(extra, raw) : raw;
+      if (pad !== extra) { extra = pad; writes++; }
+    }
+    return { writes, settled: false };
+  };
+  const stops = [0, 164.5, 329, 493.5, 658, 822.5, 2823.5];
+  assert.equal(settle(3929.4, 1106, stops, false).settled, false, 'the raw pad flips on every layout (the loop)');
+  assert.deepEqual(settle(3929.4, 1106, stops, true), { writes: 0, settled: true }, 'a sub-pixel pad is the rounding: kept');
+  assert.deepEqual(settle(3700, 1106, [0, 164, 2620], true), { writes: 1, settled: true }, 'a real end pad is written once');
+  assert.equal(settledRailEndPad(0, 0.5), 0);
+  assert.equal(settledRailEndPad(0.5, 0), 0.5);
+  assert.equal(settledRailEndPad(0, 36), 36, 'a pad a pixel or more away is written');
+  assert.equal(settledRailEndPad(36, 0), 0, 'and so is its removal');
+  assert.match(garageSource, /const pad = settledRailEndPad\(extra, horizontalRailEndPad\(natural - rail\.clientWidth, stops\)\);/,
+    'the Garage settles each rail\'s end pad');
+}
 assert.equal(horizontalRailWheelDelta(4, 60), 60,
   'vertical mouse-wheel motion pans the horizontal country rail');
 assert.equal(horizontalRailWheelDelta(-38, 6), -38,
@@ -435,4 +463,4 @@ assert.match(garageSource,
   /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
 
-console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');
+console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');

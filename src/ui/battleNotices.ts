@@ -6,6 +6,7 @@
 // a few bytes, never the kit; the killcam's veil hides the region (battleHudLayout.css body.cot-kc-live).
 // Copyright © 2026 Kevin B. Liu.
 import type { ToastOptions } from './components/notice.ts';
+import { markDatum } from './dom.ts';
 
 /** The battle region's name. */
 const REGION = 'battle';
@@ -30,6 +31,9 @@ const relayout = (): void => { window.dispatchEvent(new Event('cot-hud-relayout'
 function loadKit(): Promise<typeof import('./components/notice.ts')> {
   kit ??= import('./components/notice.ts').then((module) => {
     module.noticeRegion(REGION, { placement: 'top', className: 'cot-battle-notices', limit: 1 });
+    // (the battle's one place for its toasts, however many come and go: surfaceRegistry.ts toasts)
+    const region = document.querySelector<HTMLElement>('.cot-c-notices.cot-battle-notices');
+    if (region) markDatum(region, 'toasts');
     return module;
   });
   return kit;

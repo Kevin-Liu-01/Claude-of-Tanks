@@ -78,10 +78,11 @@ function mountArchiveMotionInfo(): Promise<unknown> {
 
 /** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it). */
 function mountArchiveBody(): Promise<unknown> {
-  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
-    .then(([{ mountMediaArchive }]) => mountMediaArchive(
+  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchiveTakes.ts'),
+    import('../presentation/mediaArchive.css')])
+    .then(([{ mountMediaArchive }, { takeTitle }]) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
-      { mode: 'wall', limit: 330, filters: false },
+      { mode: 'wall', limit: 330, filters: false, takeTitle },
     ));
   return archiveMountPromise.catch((error: RuntimeValue) => { archiveMountPromise = null; throw error; });
 }

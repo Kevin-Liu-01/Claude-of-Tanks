@@ -292,7 +292,9 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto;column-gap:7px;align-content:center}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
-.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
+/* (its label in its row's ink, as the drone's and the cards beside it: in the switch's quieter ink it read as a disabled
+   card beside AMMO and HEALTH, gauntlet r18) */
+.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap;color:inherit}
 .cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
 .cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;position:absolute;left:var(--s3);right:var(--s3);bottom:5px;gap:var(--s1);height:3px}
 .cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:flex-start;gap:7px}
@@ -361,7 +363,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 }
 @media(pointer:coarse) and (orientation:portrait){
  .cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}
- html[data-flight=gunship] .cot-touch .scope{bottom:max(34px,env(safe-area-inset-bottom))!important}
+ /* (on FIRE's floor, their words on one line: 12 px higher, its word stood off FIRE's at 390x844 and 320x568, gauntlet r17) */
+ html[data-flight=gunship] .cot-touch .scope{bottom:max(22px,env(safe-area-inset-bottom))!important}
 }
 @media(max-height:290px){
  .cot-flight-hud[data-kind=gunship] :is(.flight-designation,.gunship-solution-label){display:none}
@@ -436,6 +439,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
    seatScopeVision; the I key still cycles the view). */
 body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}
+/* (risen over a box that meets its foot alone, by half its height at most: battleHudLayout seatScopeVision) */
+body[data-scope-vision='left'] .cot-hud .cot-scope-vision{transform:translate(calc(0px - var(--hud-vision-shift,0px)),calc(-50% - var(--hud-vision-rise,0px)))}
 @media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}
 body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
 /* Folded (owner backlog 2026-10-21: the Daylight plate sat over the scope picture): a moment after the sight opens or the

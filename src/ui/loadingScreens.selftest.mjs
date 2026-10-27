@@ -177,6 +177,20 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   // boot r27: under the 2560 card's 1.3 zoom a 4 px gap is 5.2 and snaps to 5 and 6; the zoomed gap is a whole 5 px
   assert.match(bootHtml, /zoom: 1\.3;[\s\S]{0,400}\.cot-boot-segs \{ gap: calc\(5px \/ 1\.3\); \}/,
     'the zoomed stage row keeps one gap');
+  // boot r28: centred as a box, the key cap's text sat 1 px off the prompt's baseline (en above, zh below)
+  assert.doesNotMatch(bootHtml, /\.cot-boot-key \{[^}]*vertical-align/, 'the key cap\'s text stands on the prompt\'s baseline');
+  // boot r29: in a line box shorter than its font the label rounded a pixel off the sentence at half the sub-pixel places
+  assert.match(bootHtml, /\.cot-boot-key \{[^}]*height: 22px;[^}]*\/22px var\(--font-data\)/, 'the key cap\'s line is the cap\'s height');
+  // boot r30: the credits' Source code star kept the second ink beside its paper label
+  assert.match(bootHtml, /\.cot-github-stars \{[^}]*color: inherit;/, 'the star takes its button\'s ink wherever it stands');
+  // boot r31: centred on a fraction, the credits title's caps painted a pixel above the portrait on 844x390; r32: a
+  // height rounded to place it put the fraction into the bottom padding, so the open dialog's top margin is rounded
+  assert.match(bootHtml, /dialog\.style\.marginTop = `\$\{Math\.round\(dialog\.getBoundingClientRect\(\)\.top\)\}px`;/,
+    'the credits dialog lays out on a whole pixel');
+  assert.match(bootHtml, /dialog\.showModal\(\); settle\(\);/, 'it settles as it opens');
+  assert.match(bootHtml, /new ResizeObserver\(\(\) => \{ if \(dialog\.open\) settle\(\); \}\)\.observe\(dialog\);/, 'and when its content changes size');
+  assert.match(bootHtml, /addEventListener\('resize', \(\) => \{ if \(dialog\.open\) settle\(\); \}\);/, 'and when the screen changes');
+  assert.doesNotMatch(bootHtml, /\.cot-credits \{[^}]*calc-size/, 'its size is its content\'s');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
