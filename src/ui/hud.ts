@@ -5110,8 +5110,15 @@ export function initHud(bus: EventBus): HudRuntime {
         const sideY = draw.magazineBottomY - 2;
         // (over a range tag hung at the 1:30 too, where it would sit on the countdown's row within a group gap)
         const tagNear = tag && tag.y1 < draw.cy && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP;
-        const overTop = Math.min(aboveSightTop(draw), tagNear ? tag.y0 - SIGHT_MARK_RING_GAP : Infinity)
-          - SIGHT_MARK_RING_GAP - height;
+        // (and through a scope over 430 px tall over its upper cross arm's end, as the readout row, where that keeps clear:
+        // over the ring alone the countdown took the arm's place at 320x568, gauntlet r19)
+        const ringTop = Math.min(aboveSightTop(draw), tagNear ? tag.y0 - SIGHT_MARK_RING_GAP : Infinity) - SIGHT_MARK_RING_GAP - height;
+        const armTop = draw.sniper && h > 430
+          ? Math.min(ringTop, draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH - SIGHT_MARK_RING_GAP - height) : ringTop;
+        // (never raised under a gun-limit chip, which stacks over it wider than its figures: it came 2 px from the map at
+        // 360x640, the paint receipt)
+        const overTop = armTop < ringTop && !aimWarningState(view, aimWarningScratch).visible
+          && sightFurnitureGap(x, armTop, x + textW + unitW, armTop + height) >= SIGHT_MARK_RING_GAP ? armTop : ringTop;
         if (draw.magazine && ringGap(draw, sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW, sideY + COUNTDOWN_DESCENT)
           >= SIGHT_MARK_RING_GAP && sightFurnitureGap(sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW,
           sideY + COUNTDOWN_DESCENT) >= SIGHT_MARK_RING_GAP) {
@@ -5292,6 +5299,39 @@ export function initHud(bus: EventBus): HudRuntime {
     return foot ? foot + 3 + top : 0;
   }
 
+  /** The scope row's baseline over the sight ('rowAbove'): its foot 3 px over the ring's stroke, the marker's clear centre
+   *  and `armTop`, then risen past what sits level with the marker under it (the vision switch); a chip goes over the row
+   *  (over a chip placeAimWarning already set over the sight, where the row leaves it be). */
+  function sniperRowOver(draw: ReticleDrawState, tag: typeof sniperTagScratch | null, mode: SniperRowMode, top: number,
+    armTop: number): number {
+    const row = sniperRowScratch;
+    const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
+    let y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
+      - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
+    // (over the range tag too, where it hangs over the sight beside the row's columns)
+    if (tag && tag.y1 < draw.cy) {
+      let right = -Infinity;
+      for (let part = 0; part < 3; part++) if (sniperRowPart(draw, part, mode)) right = Math.max(right, sniperPartScratch.x1);
+      if (tag.x0 < right + 3) y = Math.min(y, tag.y0 - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode));
+    }
+    y = sniperRowRise(draw, y, mode);
+    row.chipOverY = Math.min(y - top, draw.tagTopY) - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
+    return y;
+  }
+
+  /** Whether the scope row over the sight at baseline `y`, and the chip over it, keep the marks' gap from the HUD's
+   *  furniture (settleSniperRow's seat over the upper arm, kept only where it does). */
+  function sniperRowAboveClear(draw: ReticleDrawState, y: number, mode: SniperRowMode): boolean {
+    for (let part = 0; part < 3; part++) {
+      if (!sniperRowPart(draw, part, mode)) continue;
+      const p = sniperPartScratch;
+      if (sightFurnitureGap(p.x0, y - p.top, p.x1, y + p.foot) < SIGHT_MARK_RING_GAP) return false;
+    }
+    const half = draw.warningW / 2;
+    return !(draw.warningY > 0 && half > 0) || sightFurnitureGap(draw.cx - half, sniperRowScratch.chipOverY - AIM_WARNING_CHIP_ABOVE,
+      draw.cx + half, sniperRowScratch.chipOverY + AIM_WARNING_CHIP_BELOW) >= SIGHT_MARK_RING_GAP;
+  }
+
   /** The scope row's baseline in `mode` from its rest `y` (sniperReadoutStack): risen past the furniture under it, then
    *  the lowest at or under that keeping every gap to the marks under the marker and the ring; above the ring, the
    *  nearest over it ('rowAbove'). */
@@ -5300,24 +5340,14 @@ export function initHud(bus: EventBus): HudRuntime {
     sniperRowPlace(draw, mode);
     const top = sniperRowTop(draw, mode);
     if (mode === 'rowAbove') {
-      // its foot 3 px over the ring's stroke and the marker's clear centre, then risen past what sits level with the
-      // marker under it (the vision switch); a chip goes over the row
-      // (over a chip placeAimWarning already set over the sight, where the row leaves it be)
-      const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
-      // (and, on a scope over 430 px tall, over the upper cross arm's end, as the marks under the sight keep off the lower
-      // one: over the ring alone the line took the upper arm's place at 320x568, gauntlet r18)
-      const armTop = h > 430 ? draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH : Infinity;
-      y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
-        - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
-      // (over the range tag too, where it hangs over the sight beside the row's columns)
-      if (tag && tag.y1 < draw.cy) {
-        let right = -Infinity;
-        for (let part = 0; part < 3; part++) if (sniperRowPart(draw, part, mode)) right = Math.max(right, sniperPartScratch.x1);
-        if (tag.x0 < right + 3) y = Math.min(y, tag.y0 - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode));
+      // (on a scope over 430 px tall over the upper cross arm's end, as the marks under the sight keep off the lower one:
+      // over the ring alone the line took the upper arm's place at 320x568, gauntlet r18; over the ring where that
+      // seat, or the chip over it, would meet the HUD's furniture: the chip came 2 px from the map at 360x640)
+      if (h > 430) {
+        const raised = sniperRowOver(draw, tag, mode, top, draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH);
+        if (sniperRowAboveClear(draw, raised, mode)) return raised;
       }
-      y = sniperRowRise(draw, y, mode);
-      row.chipOverY = Math.min(y - top, draw.tagTopY) - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
-      return y;
+      return sniperRowOver(draw, tag, mode, top, Infinity);
     }
     y = sniperRowRise(draw, y, mode);
     let right = -Infinity;

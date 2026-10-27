@@ -150,6 +150,18 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
       rows = Math.max(1, Math.min(total, Math.floor((room - frame + gap + 0.5) / pitch)));
     }
     pop.style.maxHeight = `${Math.ceil(frame + rows * pitch - gap)}px`;
+    shownRows = rows;
+    shownPitch = pitch;
+    markMore();
+  }
+  let shownRows = 0, shownPitch = 0;
+  /** The list from its first row where the chosen one shows there, else the chosen at its foot: scrolled to the chosen
+   *  alone, a short window's list opened on its second ally with the first above it and nothing to say so (gauntlet r19
+   *  at 844x390, 568x256 and 320x568). */
+  function settleScroll(): void {
+    if (!grid || !shownRows) return;
+    const chosen = [...grid.children].findIndex((cell) => cell.querySelector('[aria-selected="true"]'));
+    grid.scrollTop = chosen < shownRows ? 0 : (chosen - shownRows + 1) * shownPitch;
     markMore();
   }
   const items = (): PickerModule.PickerItem[] =>
@@ -189,6 +201,9 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     fit();
     grid?.addEventListener('scroll', markMore, { passive: true });
     picker.focus();
+    settleScroll();
+    // (and after the kit's own reveal, a frame on, which scrolls the chosen row to the top)
+    requestAnimationFrame(settleScroll);
   }
   subject?.addEventListener('click', () => { if (pop.hidden) void open(); else close(); });
   // (Esc the picker leaves, once nothing is left to restore, backs out of it, never on to the pause veil)
