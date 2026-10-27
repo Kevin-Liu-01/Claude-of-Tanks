@@ -129,7 +129,7 @@ for (const id of ['pl01', 'pl01_105']) {
     }
     // the joint from the side, from the housing's lower edge to its brow, at two radii inside the gap
     const brow = receipt.topDeg - 1;
-    for (const r of [PL01_DRUM_R_M + .006, (PL01_DRUM_R_M + PL01_MANTLET_ARC_M) / 2 + .002]) {
+    for (const r of [PL01_DRUM_R_M + .0008, (PL01_DRUM_R_M + PL01_MANTLET_ARC_M) / 2]) {
       const misses = probe.sideWindows(r, receipt.lowDeg + 1, Math.min(brow, Math.asin((receipt.browY - probe.gun.position.y) / r) / DEG - 1));
       assert.deepEqual(misses, [], `${id}: a sight line through the joint at r ${r.toFixed(3)} m meets no turret part`);
     }
@@ -141,7 +141,7 @@ for (const id of ['pl01', 'pl01_105']) {
     // negative controls: a cube in the slot, a recoiling block beside the shroud
     const cube = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .02)); cube.name = 'negativeControlCube';
     const [, py, pz] = probe.gun.position.toArray();
-    cube.position.set(0, py, pz + PL01_MANTLET_ARC_M - .005);
+    cube.position.set(0, py, pz + PL01_MANTLET_ARC_M);
     const cubeCut = probe.withTurretMesh(cube, () => probe.cut(0));
     if (process.env.PL01_HOUSING_ONLY) console.log("cube", JSON.stringify(cubeCut));
     assert.ok(cubeCut.mount.d < CUT_KEEP_M && cubeCut.mount.part === 'negativeControlCube', `${id}: negative control: a cube in the slot is cut`);

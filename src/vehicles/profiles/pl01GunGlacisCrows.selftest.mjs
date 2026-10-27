@@ -106,7 +106,7 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.equal(gun.userData.pl01MantletReceipt, undefined, `${id} carries no retired single housing`);
   assert.deepEqual(gun.userData.pl01GunHousingReceipt, {
     revision: id === 'pl01_105' ? 'cv90105-shield-r1' : 'mspo2013-shroud-r1',
-    mantletArcM: 0.53, drumR: 0.5, cheekR: 0.58, halfWidth: 0.33,
+    mantletArcM: 0.5038, drumR: 0.5, cheekR: 0.58, halfWidth: 0.33,
     slotHalfWidth: id === 'pl01_105' ? 0.206 : 0.286, lowDeg: -24, topDeg: 38.585, browY: 0.62288,
     rootHalfWidth: id === 'pl01_105' ? 0.2 : 0.28,
     stationDepths: id === 'pl01_105' ? [0, 0.7, 0.92] : [0, 0.78, 1.7, 2.7, 3.38, 3.56],
@@ -121,7 +121,7 @@ for (const id of ['pl01', 'pl01_105']) {
     const y = housingPositions.getY(index), z = housingPositions.getZ(index);
     if (z > 0.6) continue;
     rearVertices += 1;
-    assert.ok(Math.hypot(y, z) > 0.53 - 1e-4, `${id} gun housing rear vertex (${y.toFixed(3)}, ${z.toFixed(3)}) inside its arc`);
+    assert.ok(Math.hypot(y, z) > 0.5038 - 1e-4, `${id} gun housing rear vertex (${y.toFixed(3)}, ${z.toFixed(3)}) inside its arc`);
   }
   assert.ok(rearVertices >= 24, `${id} gun housing rear is laid on its arc (${rearVertices} vertices)`);
 

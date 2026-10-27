@@ -29,9 +29,10 @@ export interface PL01GunPort {
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-/** The moving rear's arc about the trunnion axis (gun-local radius). */
-export const PL01_MANTLET_ARC_M = 0.53;
-/** The fixed housing's drum, just inside the moving arc. */
+/** The moving rear's arc about the trunnion axis (gun-local radius): 3.8 mm outside the drum, so the gun line crosses the
+ * joint in under 4 mm (gun-junction-census) and the rear's chords still clear the drum by 3 mm. */
+export const PL01_MANTLET_ARC_M = 0.5038;
+/** The fixed housing's drum, just inside the moving arc (24 facets: within 0.15 mm of round). */
 export const PL01_DRUM_R_M = 0.50;
 /** The fixed cheeks' front edge, past the moving arc: the joint is closed from the side. */
 export const PL01_CHEEK_R_M = 0.58;
@@ -44,15 +45,16 @@ const DEG = Math.PI / 180;
 interface Fit {
   /** The moving rear's half-width: the slot between the cheeks is 6 mm wider. */
   readonly rootHalfW: number;
-  /** Octagon stations [z, bottomHalfW, bottomY, sideHalfW, lowerY, upperY, topHalfW, topY]; the first lies on the arc. */
+  /** Octagon stations [z, bottomHalfW, bottomY, sideHalfW, lowerY, upperY, topHalfW, topY]; the first lies on the arc. Its
+   * top (0.172 over the trunnion, 19 deg up the arc) reaches the brow at full elevation, so no slit opens above it. */
   readonly stations: readonly (readonly number[])[];
 }
 
 const FIT_120: Fit = {
   rootHalfW: 0.28,
   stations: [
-    [0, 0.17, -0.20, 0.28, -0.10, 0.075, 0.19, 0.16],
-    [0.78, 0.165, -0.15, 0.275, -0.085, 0.073, 0.185, 0.157],
+    [0, 0.17, -0.20, 0.28, -0.10, 0.08, 0.19, 0.172],
+    [0.78, 0.165, -0.15, 0.275, -0.085, 0.075, 0.185, 0.163],
     [1.70, 0.15, -0.125, 0.245, -0.075, 0.068, 0.165, 0.148],
     [2.70, 0.125, -0.115, 0.21, -0.068, 0.062, 0.14, 0.135],
     [3.38, 0.11, -0.12, 0.185, -0.062, 0.058, 0.12, 0.126],
@@ -63,17 +65,27 @@ const FIT_120: Fit = {
 const FIT_105: Fit = {
   rootHalfW: 0.20,
   stations: [
-    [0, 0.14, -0.19, 0.20, -0.09, 0.06, 0.145, 0.145],
-    [0.70, 0.14, -0.185, 0.20, -0.088, 0.058, 0.14, 0.14],
-    [0.92, 0.115, -0.16, 0.17, -0.075, 0.05, 0.115, 0.118],
+    [0, 0.14, -0.19, 0.20, -0.09, 0.07, 0.145, 0.172],
+    [0.70, 0.14, -0.185, 0.20, -0.088, 0.065, 0.14, 0.16],
+    [0.92, 0.115, -0.16, 0.17, -0.075, 0.05, 0.115, 0.13],
   ],
 };
 
-/** One octagon ring, counter-clockwise seen from +Z; z per point from `zAt(y)`. */
-function octagon(s: readonly number[], zAt: (y: number) => number): V3[] {
+/** One station's right-hand chain, bottom to top: the octagon's corners with each chamfer halved and the flank split at
+ * the root's own heights (half way to the gun line, on it, half way above), so the root's chords stay within 0.7 mm of
+ * the arc. Every station takes the same split fractions, so the rings correspond point for point. */
+function chain(s: readonly number[], root: readonly number[]): V2[] {
   const [, bw, yb, sw, yl, yu, tw, yt] = s;
-  const ring: V2[] = [[bw, yb], [sw, yl], [sw, yu], [tw, yt], [-tw, yt], [-sw, yu], [-sw, yl], [-bw, yb]];
-  return ring.map(([x, y]) => [x, y, zAt(y)]);
+  const rl = root[4], ru = root[5], f = (y: number): number => (y - rl) / (ru - rl);
+  return [[bw, yb], [(bw + sw) / 2, (yb + yl) / 2], [sw, yl],
+    ...[rl / 2, 0, ru / 2].map((y): V2 => [sw, yl + f(y) * (yu - yl)]),
+    [sw, yu], [(sw + tw) / 2, (yu + yt) / 2], [tw, yt]];
+}
+
+/** The ring counter-clockwise seen from +Z: up the right-hand chain, down its mirror; z per point from `zAt(y)`. */
+function ring(right: readonly V2[], zAt: (y: number) => number): V3[] {
+  const left = right.map(([x, y]): V2 => [-x, y]).reverse();
+  return [...right, ...left].map(([x, y]) => [x, y, zAt(y)]);
 }
 
 /** A triangle `a b c` turned to face `out`. */
@@ -159,8 +171,8 @@ function addTurretFaceHousing(P: PL01GunPort, fit: Fit, roofY: number): Record<s
   const [, yc, zc] = P.spec.armor.gunPivot;
   const browY = roofY + 0.0008;   // a hair over the roof plate it abuts, never coplanar
   const topDeg = Math.asin((browY - yc) / PL01_DRUM_R_M) / DEG;
-  const facets = 6, drum: V2[] = [];
-  for (let k = 0; k <= facets; k++) drum.push(arcPoint(PL01_DRUM_R_M, HOUSING_LOW_DEG + (topDeg - HOUSING_LOW_DEG) * k / facets, zc, yc));
+  const facets = 6, drumFacets = 24, drum: V2[] = [];
+  for (let k = 0; k <= drumFacets; k++) drum.push(arcPoint(PL01_DRUM_R_M, HOUSING_LOW_DEG + (topDeg - HOUSING_LOW_DEG) * k / drumFacets, zc, yc));
   // the block reaches back to the roof station's front edge (turret z 1.34) under a flat brow
   const backZ = 1.34, lowY = drum[0][1];
   P.add('turret', xPrism([[backZ, lowY], ...drum, [backZ, browY]], -HOUSING_HALF_W, HOUSING_HALF_W));
@@ -178,14 +190,13 @@ function addTurretFaceHousing(P: PL01GunPort, fit: Fit, roofY: number): Record<s
 }
 
 /** The moving rear and body: octagon stations, the first laid on the arc about the trunnion. The rear face is closed in
- * level strips between the ring's own heights, each a flat trapezoid on a chord of the arc (sag under 8 mm): a fan from
- * the ring's centroid would sink its middle 2 cm toward the drum. */
+ * level strips between the ring's own heights, each a flat trapezoid on a chord of the arc: a fan from the ring's
+ * centroid would sink its middle 2 cm toward the drum. */
 function movingHousing(fit: Fit): THREE.BufferGeometry {
-  const R = PL01_MANTLET_ARC_M, onArc = (y: number): number => Math.sqrt(R * R - y * y);
-  const rings = fit.stations.map((s, i) => octagon(s, i === 0 ? onArc : () => s[0]));
+  const R = PL01_MANTLET_ARC_M, onArc = (y: number): number => Math.sqrt(R * R - y * y), root = fit.stations[0];
+  const rings = fit.stations.map((s, i) => ring(chain(s, root), i === 0 ? onArc : () => s[0]));
   const positions: number[] = [];
-  const [, bw, yb, sw, yl, yu, tw, yt] = fit.stations[0];
-  const levels: V2[] = [[bw, yb], [sw, yl], [sw, yu], [tw, yt]];
+  const levels = chain(root, root);
   for (let k = 0; k < levels.length - 1; k++) {
     const [w0, y0] = levels[k], [w1, y1] = levels[k + 1];
     const a: V3 = [-w0, y0, onArc(y0)], b: V3 = [w0, y0, onArc(y0)], c: V3 = [w1, y1, onArc(y1)], d: V3 = [-w1, y1, onArc(y1)];
@@ -230,13 +241,13 @@ function addGun105(P: PL01GunPort): void {
   // the sleeve in faceted courses with clamp bands, the bore evacuator, a bare muzzle length and the ported brake
   const sleeve = (z0: number, z1: number, r: number): void => P.add('gun', ngonZ(r, r, z1 - z0, 8), 0, 0, (z0 + z1) / 2);
   const band = (z: number): void => P.add('gunDark', ngonZ(0.101, 0.101, 0.026, 8), 0, 0, z);
-  sleeve(0.95, 1.95, 0.096); band(1.50); band(1.965);
-  sleeve(1.98, 2.46, 0.096);
+  sleeve(0.95, 1.965, 0.096); band(1.50); band(1.965);
+  sleeve(1.965, 2.46, 0.096);
   P.add('gun', ngonZ(0.128, 0.10, 0.05, 12), 0, 0, 2.485);
   P.add('gun', ngonZ(0.128, 0.128, 0.40, 12), 0, 0, 2.71);
   P.add('gun', ngonZ(0.10, 0.128, 0.05, 12), 0, 0, 2.935);
-  sleeve(2.96, 3.56, 0.094); band(3.575);
-  sleeve(3.59, 4.10, 0.092);
+  sleeve(2.96, 3.575, 0.094); band(3.575);
+  sleeve(3.575, 4.10, 0.092);
   P.add('gun', new THREE.CylinderGeometry(0.086, 0.086, 0.31, P.q ? 24 : 12).rotateX(Math.PI / 2), 0, 0, 4.255);
   P.add('gun', ngonZ(0.102, 0.102, 0.30, 12), 0, 0, 4.56);
   P.add('gun', ngonZ(0.102, 0.09, 0.02, 12), 0, 0, 4.40);
