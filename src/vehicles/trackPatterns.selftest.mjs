@@ -20,6 +20,9 @@ const expected = new Map([
   ['challenger2', 'british-rubber-pad'],
   ['leclerc_s2', 'franco-italian-modular'],
   ['type10_tk_x', 'japanese-modular'],
+  // 262: the production Type 74's double-pin track with end connectors; the STB-1's chevron-grouser shoe
+  ['type74', 'nato-double-pin'],
+  ['stb1', 'soviet-single-pin'],
   ['strv103b', 'hydropneumatic-dead-track'],
 ]);
 for (const [id, patternId] of expected) {
