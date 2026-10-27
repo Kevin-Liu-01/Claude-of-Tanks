@@ -489,6 +489,9 @@ await withFixture(async (f) => {
   hull.name = 'hull-root';
   f.scene.add(hull);
   const plain = f.addCaster('detail-plain', 3, { parent: hull, castShadow: false });
+  const twin = f.addCaster('detail-twin', 3, { parent: hull, castShadow: false });
+  // a detail mesh that shares the caster before it's material and variant stays out; one with its own material warms
+  plain.material = f.scene.getObjectByName('seen').material;
   const cut = f.addCaster('detail-cut', 3, { parent: hull, castShadow: false });
   cut.material.map = new THREE.Texture();
   cut.material.alphaTest = 0.5;
@@ -508,18 +511,18 @@ await withFixture(async (f) => {
   pads.material.side = THREE.DoubleSide;
   f.addCaster('far-sibling', 3, { parent: farLevel });
   farLevel.visible = false;
-  markVehicleShadowDetail(hull, { detail: [plain, cut, hidden, pads], proxies: [] });
+  markVehicleShadowDetail(hull, { detail: [plain, twin, cut, hidden, pads], proxies: [] });
   const castAtYield = [];
   await f.run({ casterWarmup: { maxCastersPerBatch: 8,
     yieldBeforeBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
     onBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
   } });
-  assert.deepEqual(f.cohorts, [['seen'], ['detail-cut'], ['detail-pads', 'far-sibling'], ['seen'], ['seen']],
+  assert.deepEqual(f.cohorts, [['seen', 'detail-twin'], ['detail-cut'], ['detail-pads', 'far-sibling'], ['seen'], ['seen']],
     'the cut-out and the hidden level\'s double-sided detail warm in batches of their own; the plain one repeats a warmed '
     + 'variant; none reaches a final cascade');
   assert.ok(castAtYield.every((cast) => cast === false), 'the detail casts at no yield');
-  assert.deepEqual([plain.castShadow, cut.castShadow, hidden.castShadow, pads.castShadow, stowed.visible, farLevel.visible],
-    [false, false, false, false, false, false]);
+  assert.deepEqual([plain.castShadow, twin.castShadow, cut.castShadow, hidden.castShadow, pads.castShadow, stowed.visible,
+    farLevel.visible], [false, false, false, false, false, false, false]);
   f.restored(true);
 });
 

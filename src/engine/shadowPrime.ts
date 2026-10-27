@@ -205,9 +205,20 @@ function collectWarmCasters(state: PrimeState, scene: Object3D): CasterState[] {
  * from the Garage's light set; the 580-590 ms guard frame). Each visible detail mesh that brings a variant no caster
  * before it has joins the warm batches, casting inside its own batch's render only.
  */
+/** A caster's depth variant with its materials' identities (addNearDetailCasters' skip key). */
+function detailKey(caster: CasterState): string {
+  const material = (caster.object as Object3D & { material?: Material | Material[] }).material;
+  const materials = Array.isArray(material) ? material : material ? [material] : [];
+  return `${caster.variant}|${materials.map((entry) => entry.uuid).join(',')}`;
+}
+
 function addNearDetailCasters(state: PrimeState, scene: Scene, casters: CasterState[]): Object3D[] {
   const casterMask = state.cameraMask | (1 << SHADOW_ONLY_LAYER);
-  const seen = new Set(casters.map((caster) => caster.variant));
+  // (2026-10-27) a detail mesh is skipped only where a caster before it shares its variant AND its materials: the variant
+  // reads what the caster shows of three's depth key, and two meshes alike in it still linked different programs (the
+  // census of 0ce9681c30: gearRoadWheelTires skipped behind a sibling of its variant, then linked after the reveal);
+  // a material in common makes the same depth material, so the rest of the key is the geometry's and the object's
+  const seen = new Set(casters.map(detailKey));
   const listed = new Set(casters.map((caster) => caster.object));
   // (a detail mesh in a level its LOD holds hidden, gearTrackPadsSimplified<LOD among them: the level is shown inside each
   // batch render as a hidden root is, and its own casters join the list so they cast in their own batch only)
@@ -226,15 +237,15 @@ function addNearDetailCasters(state: PrimeState, scene: Scene, casters: CasterSt
         break;
       }
       const caster = shown ? warmCasterState(mesh) : null;
-      if (!caster || seen.has(caster.variant)) continue;
-      seen.add(caster.variant);
+      if (!caster || seen.has(detailKey(caster))) continue;
+      seen.add(detailKey(caster));
       listed.add(mesh);
       casters.push({ ...caster, forceCast: true });
       for (const level of hiddenLevels) {
         if (levels.includes(level)) continue;
         levels.push(level);
         for (const other of withRootsShown([level], () => collectWarmCasters(state, level))) {
-          if (!listed.has(other.object)) { listed.add(other.object); seen.add(other.variant); casters.push(other); }
+          if (!listed.has(other.object)) { listed.add(other.object); seen.add(detailKey(other)); casters.push(other); }
         }
       }
     }
