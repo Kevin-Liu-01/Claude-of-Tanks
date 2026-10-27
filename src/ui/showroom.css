@@ -333,6 +333,11 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:68px;height:100%;gap:3px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);
   background:var(--plate-fill);box-shadow:var(--ring-2);color:var(--ink-1);}
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot svg{width:22px;height:22px;}
+/* a slot that opens a picker wears the kit's chevron at its top right, always shown (Main's 10-27 ruling: a fitted
+   equipment slot and every consumable; an empty slot keeps its plus) */
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{position:relative;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot>.chev{position:absolute;top:2px;right:2px;display:flex;color:var(--ink-3);pointer-events:none;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot>.chev svg{width:12px;height:12px;}
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot .sl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty{background:var(--glyph-plate);box-shadow:none;outline:1px dashed var(--line-control);outline-offset:-1px;}
