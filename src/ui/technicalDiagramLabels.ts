@@ -238,9 +238,10 @@ export function technicalLabelsMarkup(
     key.join('')}</ol>${legendRow}</div><!--/nosearch-->`;
 }
 
-/** A numbered badge's spacing (px): its 16 px disc and a hair. A static page spreads its badges at its reference box
- * and scales them with the image, so it spaces them for the narrowest box a phone draws (COMPACT_MIN_BOX_PX). */
-const BADGE_GAP_PX = 17;
+/** A numbered badge's spacing (px): its 16 px disc and 4 px of ground (a hair's 17 px read as touching: the g14 critic,
+ * "1 overlaps 2, 3 touches 4"). A static page spreads its badges at its reference box and scales them with the image,
+ * so it spaces them for the narrowest box a phone draws (COMPACT_MIN_BOX_PX). */
+const BADGE_GAP_PX = 20;
 const COMPACT_MIN_BOX_PX = 320;
 
 /** Badge centres near their callouts with none closer than `gap`: each takes the first free spot of a fan round its
@@ -387,6 +388,12 @@ export function mountTechnicalDiagramLabels(
       keyBlock.append(list);
       if (showLegend) keyBlock.append(legendRow());
       (options.key ?? host).append(keyBlock);
+      // a key in the host's flow can move the image (a centring grid lifts it by half the key's height, which resizes
+      // nothing, so no observer fires): the pins follow the image's box as it stands now (the g14 critic: on a phone the
+      // zoomed drawing's badges floated a key's height under it)
+      const settled = contentBox(host, image, data.size[0] / data.size[1]);
+      root.style.setProperty('--tdl-box-x', `${settled.x.toFixed(1)}px`);
+      root.style.setProperty('--tdl-box-y', `${settled.y.toFixed(1)}px`);
       return;
     }
     if (showLegend) {

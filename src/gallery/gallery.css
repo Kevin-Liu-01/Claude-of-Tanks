@@ -17,7 +17,7 @@
 @layer surfaces{
 /* The page declares the shell family ('Cot UI': IBM Plex Sans at 400/500, Chakra Petch at 600/700), not a second copy
    of Plex Sans (the type head's budget, typeSystem.selftest.mjs): the direction's body voice, 400/500 here, reads it. */
-:root{color-scheme:dark;--font:var(--font-ui);--font-body:var(--font-ui);--g-browse:clamp(248px,18.6vw,360px);--g-dossier:clamp(360px,28vw,480px);
+:root{color-scheme:dark;--font:var(--font-ui);--font-body:var(--font-ui);--g-browse:clamp(248px,18.6vw,max(360px,17vw));--g-dossier:clamp(360px,28vw,max(480px,24vw));
   --g-pad:16px}
 *{box-sizing:border-box}
 html,body{width:100%;margin:0;background:var(--surface-page);color:var(--ink-1)}
@@ -131,6 +131,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   padding:3px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--ink-1);line-height:0}
 .fam[data-layout=grid] .it__class svg{display:block;width:12px;height:12px}
 .fam[data-layout=grid] .it:has(.it__class) .e{top:36px}
+/* a hero card's tier chip (heroCardChips.ts) takes the top-left corner; the cloth flag behind the tank is the nation there */
+.it__art .hc-tier{display:none}
+.fam[data-layout=grid] .it__art.cot-hc .hc-tier{display:block}
+.fam[data-layout=grid] .it:has(.it__art.cot-hc .hc-tier)>.cot-c-flag{display:none}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
@@ -478,9 +482,12 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 }
 /* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
 #dossier-anatomy figure img{cursor:zoom-in}
-#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;margin:0;padding:var(--s5);
+#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;align-content:center;row-gap:var(--s4);margin:0;padding:var(--s5);
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
-#dossier-anatomy figure.is-zoomed img{width:auto;max-width:100%;max-height:100%;height:auto;cursor:zoom-out}
+/* the drawing (2:1) takes the window's room: its height from the viewport, as a grid row's percentage did not bound it
+   (the g14 critic: at 844 x 390 its key ran under the window's foot, at 2560 it stood at its natural 40 % width) */
+#dossier-anatomy figure.is-zoomed img{width:min(100%,calc((100dvh - 2 * var(--s5)) * 2));max-width:none;height:auto;
+  max-height:calc(100dvh - 2 * var(--s5));cursor:zoom-out}
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
   /* the stage and its turntable fit under the site bar */

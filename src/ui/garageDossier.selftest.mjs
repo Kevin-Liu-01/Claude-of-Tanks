@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { getLocale, setLocale } from './i18n.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageTechnicalViews,
+  garageCrewRows, garageGalleryHref, garageGunArc, garageModuleRows, garageSpecialSystem, garageTechnicalViews,
 } from './garageDossier.ts';
+import { NATIONAL_DONOR_TURRETS, NATIONAL_GUN_PITCH_BY_YAW } from '../vehicles/nationalDonorTurrets.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
 
 // Lock the test to the en-US catalog so the assertions stay readable while
@@ -64,6 +65,13 @@ assert.equal(new Set(silhouettes).size, shellIconTypes().length, 'each ammunitio
 for (const type of ['AP', 'APCR', 'APFSDS', 'HEAT', 'HE']) {
   assert.match(shellIconSVG(type), new RegExp(`data-shell-type="${type}"`));
 }
+// 258: the gun arc names the rear stop where the gun cannot come down to level over the rear (the rear fuel drums)
+assert.equal(garageGunArc({ gunDepressionDeg: 6, gunElevationDeg: 14 }), '\u22126\u00b0 / +14\u00b0');
+const curveOf = (id) => NATIONAL_GUN_PITCH_BY_YAW[id] ?? NATIONAL_DONOR_TURRETS[id]?.gunPitchByYawDeg;
+for (const [id, rear] of [['t72b3m_bulat_m', '5.3'], ['t72b3_bastion_m', '5.2'], ['t72b3_qilin', '10.5'], ['t72b3m_kunlun', '10.5'], ['t80u_yun', '11.3']]) {
+  assert.equal(garageGunArc({ gunDepressionDeg: 6, gunElevationDeg: 14, gunPitchByYawDeg: curveOf(id) }), `\u22126\u00b0 / +14\u00b0 \u00b7 rear \u2265 +${rear}\u00b0`, id);
+}
+assert.equal(garageGunArc({ gunDepressionDeg: 6, gunElevationDeg: 14, gunPitchByYawDeg: [[0, -6], [150, -6], [180, -3]] }), '\u22126\u00b0 / +14\u00b0', 'a curve below level over the rear names no stop');
 } finally {
   setLocale(originalLocale);
 }

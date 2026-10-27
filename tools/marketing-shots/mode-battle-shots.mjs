@@ -479,6 +479,12 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
       };
     });
     log(`${slot}: battle live after ${Math.round((Date.now() - t0) / 1000)} s ${JSON.stringify(reached)}`);
+    // (2026-10-26, Main on the Deploy panel art: the map's air read as white specks behind the panel copy) with
+    // MB_NO_AMBIENCE=1, the map's airborne particles (world/mapAmbience.ts) off for the whole slot
+    if (process.env.MB_NO_AMBIENCE === '1') {
+      const off = await page.evaluate(() => { const a = window.__DEBUG?.mapAmbience; if (!a?.setEnabled) return false; a.setEnabled(false); return true; });
+      log(`${slot}: map ambience ${off ? 'off' : 'not reachable'}`);
+    }
     if (reached.timeOfDay && reached.timeOfDay !== hour) {
       const applied = await page.evaluate((time) => window.__SHOTS.battleTime(time), hour).catch(() => null);
       notes.push(`battle drew ${reached.timeOfDay}; applied ${hour} with __SHOTS.battleTime -> ${applied}`);
@@ -580,6 +586,15 @@ function makeContext({ page, slot, entry, recipe, dir, notes, errors, battle, ho
         const file = `c${String(n).padStart(3, '0')}.png`;
         const buffer = await page.screenshot({ type: 'png', optimizeForSpeed: true, captureBeyondViewport: false });
         writeFileSync(join(dir, file), buffer);
+        // (2026-10-24, the Premiere lead's Deploy tiles: "HUD-free frames of each mode's own moment") with
+        // MB_CLEAN=1, the same frozen frame once more with the HUD hidden, as c###-clean.png (--pick=<slot>:<n>-clean)
+        if (process.env.MB_CLEAN === '1') {
+          const mode = await page.evaluate(() => window.__MB.hudMode ?? 'full');
+          await page.evaluate(() => window.__MB.setHud('hidden'));
+          writeFileSync(join(dir, file.replace('.png', '-clean.png')),
+            await page.screenshot({ type: 'png', optimizeForSpeed: true, captureBeyondViewport: false }));
+          await page.evaluate((m) => window.__MB.setHud(m), mode);
+        }
         const line = { n, file, label, ...(state.meta || {}) };
         appendFileSync(metaPath, `${JSON.stringify(line)}\n`);
         if (cameras?.length > 1 && local % cameraEvery === 0) {
