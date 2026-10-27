@@ -104,7 +104,10 @@ const GERMANY_SPECS = {
     dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.90 },
     stats: { hp: 2250, enginePowerHp: 1500, weightTons: 56.0, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 36, gunPitchDegS: 31 },
-    reloadS: 6.1, shellName: 'DM53 APFSDS', armorFactor: 1.08,
+    // 260 (fidelity): no armorFactor. The fourth batch changed radios, grilles, the gunner's chest rest and the
+    // ammunition hatch, not the armour (armedconflicts.com/-t84825); the first four batches (2A1-2A3) share the basic
+    // armour package and improved armour arrives with the sixth batch's 2A4 (joint-forces.com/features/31130).
+    reloadS: 6.1, shellName: 'DM53 APFSDS',
   }),
   leo2a4m_can: variant('leo2a4m_can', 'leo2a2', {
     name: 'Leopard 2A4M CAN', number: 'A4M', scheme: 'stripes',
