@@ -2870,20 +2870,26 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
             const forwardBatches: number[] = [];
             let catchUpFrames = 0;
+            // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
+            // just ahead of it) each cohort first uploads its buffers with every draw count at 0 (preUpload), and every
+            // batch, upload or draw, lets the GPU catch up before the next: a cohort's uploads meet an idle GPU process
+            const uploadBatches: number[] = [];
             for (const batch of createDeploymentForwardWarmBatches({
               scene,
               csmLights: lighting.csm?.lights,
               worldGroup: currentWorld()?.group,
               playerRoot: game.player?.visual?.root,
               warmRender,
+              preUpload: true,
             })) {
-              forwardBatches.push(batch.ms);
+              (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
               signal?.throwIfAborted();
-              await forwardYield(true);
+              if (batch.phase !== 'upload') await forwardYield(true);
               catchUpFrames += await waitForGpuCatchUp(catchUp);
             }
             const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
-              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames };
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
+              uploads: { batches: uploadBatches.length, maxMs: Math.max(0, ...uploadBatches) } };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;

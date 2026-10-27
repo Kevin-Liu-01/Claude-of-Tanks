@@ -39,7 +39,9 @@ assert.ok(openingAt > 0 && /renderWithoutShadowUpdates\(lighting\.csm\?\.lights 
 // the battlefield draws a cohort at a time, a frame between cohorts, before that render
 const cohorts = openingBody.indexOf('createDeploymentForwardWarmBatches({');
 assert.ok(cohorts > 0 && cohorts < openingBody.indexOf('renderCoveredComposerWarm(post.composer)')
-  && /forwardBatches\.push\(batch\.ms\);\s*signal\?\.throwIfAborted\(\);\s*await forwardYield\(true\);/.test(openingBody),
+  // (2026-10-26, the room-stalls lane: each cohort's buffers uploaded with zero draw counts ahead of its draws, a frame
+  // between draw batches, the GPU caught up after every batch)
+  && /\(batch\.phase === 'upload' \? uploadBatches : forwardBatches\)\.push\(batch\.ms\);\s*signal\?\.throwIfAborted\(\);\s*if \(batch\.phase !== 'upload'\) await forwardYield\(true\);/.test(openingBody),
 'the MP opening warm draws the battlefield in cohorts between frames before its composer render');
 
 // the solo combat warm: before its first compileAll (the tanks', then the world's)
