@@ -325,7 +325,7 @@
     .cot-boot-invite {
       grid-area: invite; display: none; width: fit-content; max-width: min(560px, 84vw); margin: 12px auto 0;
       color: var(--ink-1); font-size: 15px; font-weight: 700; line-height: 1.3; letter-spacing: .06em; text-transform: uppercase;
-      text-wrap: balance;
+      text-wrap: balance; overflow-wrap: break-word;
     }
     .cot-boot-invite.on { display: block; }
     /* the caption sits 12 px under the mark and 24 px above the label's line (the stage reserves 20 px over a one-line label) */
@@ -1257,7 +1257,8 @@
         const invitationTitle = hostName
           ? (chineseRoute ? '加入' + (/^[\x21-\x7e]/.test(hostName) ? ' ' : '') + hostName + (/[\x21-\x7e]$/.test(hostName) ? ' ' : '') + '的' + (/^[A-Z]/.test(battleLabel) ? ' ' : '') + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
           : (chineseRoute ? '加入私人对战 ' + roomCode : 'Join Private Battle ' + roomCode);
-        invite.textContent = invitationTitle;
+        // the host's callsign is one word, so the balanced wrap never splits a name (boot r26)
+        invite.textContent = hostName ? invitationTitle.replace(hostName, hostName.replace(/ /g, '\u00a0')) : invitationTitle;
         invite.classList.add('on');
         boot.classList.add('has-invite');
         document.title = invitationTitle + ' · Claude of Tanks';

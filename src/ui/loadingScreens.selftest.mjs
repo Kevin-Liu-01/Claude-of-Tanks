@@ -169,6 +169,11 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   assert.match(bootHtml, /\.cot-credits p\{[^}]*text-wrap:wrap\}/, 'the credits copy wraps greedily');
   assert.match(bootHtml, /\.cot-boot-links > \.cot-boot-link, \.cot-credits-actions \.cot-boot-link:last-child \{[^}]*text-transform: none;/,
     'one quiet type for the foot buttons and the credits\' quiet action');
+  // boot r26: the invitation's balanced wrap split "Commander Alexandrovich" on a phone; the callsign is one word
+  assert.match(bootHtml, /invitationTitle\.replace\(hostName, hostName\.replace\(\/ \/g, '\\u00a0'\)\)/,
+    'the invitation never splits the host\'s callsign');
+  assert.match(bootHtml, /\.cot-boot-invite \{[^}]*text-wrap: balance; overflow-wrap: break-word;/,
+    'an over-long callsign still breaks rather than overflow');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
