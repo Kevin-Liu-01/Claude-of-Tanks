@@ -428,7 +428,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:.01em;flex:none;margin-left:5px;vertical-align:1px;}
 /* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
-.cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
+.cot-es .es-tr .veh{display:flex;align-items:baseline;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
 .cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
 .cot-es .es-tr .veh .dt svg{display:inline-block;width:11px;height:11px;margin-right:2px;vertical-align:-1px}
 .cot-es .es-tr .veh b{color:${COL.gold};font-weight:700}
@@ -562,7 +562,8 @@ function detailGlyphs(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: 
   const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
   const parts = [kills > 0 ? `${uiIconSVG('skull', 11)}${kills}` : '', revives && deaths > 0 ? `${uiIconSVG('rematch', 11)}${deaths}` : '']
     .filter(Boolean);
-  return parts.length ? `<span class="counts num" aria-hidden="true"> · ${parts.join(' · ')}</span>` : '';
+  // (figures and glyphs, Latin in every script: marked so zh keeps them at the vehicle name's Latin size, endScreenPresentation)
+  return parts.length ? `<span class="counts num lat" aria-hidden="true"> · ${parts.join(' · ')}</span>` : '';
 }
 
 export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {
@@ -960,7 +961,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     maxDamage: number,
     revives: boolean,
   ): void {
-    const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${result.isPlayer ? ' me' : ''}${result.dead ? ' dead' : ''}`, listRoot);
+    // (a watched battle's row of the tank the viewer rode last is no row of theirs: the spectator's mark and a neutral ring,
+    // never the player's gold plate, which read as "mine" in Watch, gauntlet r17)
+    const own = result.isPlayer ? watchedView ? ' ridden' : ' me' : '';
+    const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${own}${result.dead ? ' dead' : ''}`, listRoot);
     row.setAttribute('role', 'listitem');
     // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
@@ -1020,7 +1024,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const columns = el('div', 'es-roster-cols', panel);
     const glyphHead = (icon: string, label: string, cls: string): string =>
       `<span class="ch ${cls}" data-tip="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
-    columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b><span class="tot num">${fmtN(side.kills)}</span>` +
+    // (the side's head names it and who lived: its kills are the headline's score, never a second figure, UI-LOCKDOWN B17)
+    columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b>` +
       `<span class="alive num" data-tip="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
       `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
       glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
@@ -1314,6 +1319,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       return;
     }
     const glyph = result === 'victory' ? 'statVictory' : result === 'defeat' ? 'statDefeat' : 'statDraw';
+    // (in the result's ink, endScreenPresentation.css .end.r-*)
+    if (result === 'victory' || result === 'defeat' || result === 'draw') end.classList.add(`r-${result}`);
     // the result in sentence case, as the service record names it (the headline's own copy is set in capitals)
     const word = result === 'victory' ? t('garage.record.victory') : result === 'defeat' ? t('garage.record.defeat')
       : result === 'draw' ? t('garage.record.draw') : host.dataset.banner || '';

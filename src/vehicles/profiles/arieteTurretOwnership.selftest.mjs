@@ -5,12 +5,14 @@ import { ensureInteriorFills } from '../interiorFills.ts';
 
 // Gallery packets from 2026-09-29. These are actual rendered face bounds in
 // rig_hull's neutral frame, not metadata assertions or unstable face indices.
+// 231 (gun-hull-fleet batch 2b, 121b2d7e7d): the turrets ride a ring 44 mm higher (every patch y +.044) and their lower
+// edges stop at 0.20 local, so the cheek ramp's foot is trimmed to 1.870 (main-reds-259, measured on 257 abccee56a1)
 const patches = [
-  ['right fore bin', [1.1704, 1.7864, 1.023], [1.5796, 2.1736, 1.023]],
-  ['left aft bin', [-1.606, 1.7864, -.4026], [-1.606, 2.2726, .2706]],
-  ['left fore bin', [-1.606, 1.7864, .3674], [-1.606, 2.1736, .9966]],
-  ['left stack', [-.9405, 1.74812, -.03388], [-.9405, 2.65188, .16588]],
-  ['left cheek ramp', [-.935, 1.7325, 1.155], [-.528, 2.255, 1.826]],
+  ['right fore bin', [1.1704, 1.8304, 1.023], [1.5796, 2.2176, 1.023]],
+  ['left aft bin', [-1.606, 1.8304, -.4026], [-1.606, 2.3166, .2706]],
+  ['left fore bin', [-1.606, 1.8304, .3674], [-1.606, 2.2176, .9966]],
+  ['left stack', [-.9405, 1.79212, -.03388], [-.9405, 2.69588, .16588]],
+  ['left cheek ramp', [-.935, 1.870, 1.155], [-.528, 2.299, 1.826]],
 ];
 function descendantOf(object, parent) {
   for (let at = object; at; at = at.parent) if (at === parent) return true;
@@ -69,7 +71,8 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
       hit.object.isMesh && !hit.object.userData.shadowOnly && hit.object.visible);
     assert.ok(lid && descendantOf(lid.object, turret), `${id}/${quality}: visible roof cover rotates`);
     const lidHeight = hull.worldToLocal(lid.point.clone()).y;
-    assert.ok(Math.abs(lidHeight - 2.5465) < .001,
+    // (231: the turret on its ring 44 mm higher, 2.5465 -> 2.5905)
+    assert.ok(Math.abs(lidHeight - 2.5905) < .001,
       `${id}/${quality}: cover is visible above the crown (actual ${lidHeight})`);
 
     const fixedDeck = hull.localToWorld(new THREE.Vector3(0, 1.76, -2.6));

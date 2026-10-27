@@ -381,9 +381,10 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:14px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:15px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
-body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
+/* (15 px at the least: at 14 the 11 px names' descenders met the row's rule, gauntlet r15 at 568x256) */
+body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(15px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
 body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{height:26px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
@@ -395,6 +396,13 @@ body[data-cot-height='short'] .cot-bl .team.long .row .fl[data-nation]{width:12p
 body[data-cot-height='short'] .cot-bl .team.long .row{gap:var(--s2)}
 body[data-cot-height='short'] .cot-bl .row .nm{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .foot{padding-top:5px}
+/* (on a short window's and a portrait phone's card the countdown stands in the progress row's place when it comes, its
+   own row's room going to the rosters: reserved under the bar, its 30 px left fourteen a side two rows short at 844x390
+   over an empty band, gauntlet r17) */
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .foot{position:relative}
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .count{position:absolute;inset:0;height:auto;margin:0;
+  display:flex;align-items:center;justify-content:center;line-height:1}
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .foot:has(>.count:not(:empty)) .fmeta{visibility:hidden}
 body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}
 body[data-cot-height='short'] .cot-bl .fstage{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .fpct{font-size:var(--battle-fs-13)}
@@ -685,6 +693,9 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-tou
 body.cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-drive{
   left:max(126px,calc(env(safe-area-inset-left) + 126px));transform:scale(.68);
 }
+/* (the second FIRE over the dial's centre: 126 px and half its 73 px, less the button's 28; at 140 it stood 5 px right of
+   it at 844x390, gauntlet r17) */
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .fire.alt{left:max(134px,calc(env(safe-area-inset-left) + 134px))}
 /* (every touch dial drops its unit and end marks: touchControls.ts) */
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:calc(92px * var(--mm-k,1))!important;height:calc(92px * var(--mm-k,1))!important}
 /* touchControls is battle-lazy and injects its base placement after this
@@ -766,7 +777,7 @@ body[data-cot-height='short'] .cot-kc-kv{gap:var(--s1);font-size:var(--battle-fs
 body[data-cot-height='short'] .cot-kc-kv>span{gap:3px;min-width:0}
 body[data-cot-height='short'] .cot-kc-kv b{white-space:nowrap}
 body[data-cot-height='short'] .cot-kc-pencap{display:none}
-body[data-cot-height='short'] .cot-kc-banner{margin:var(--s1) 7px 0;padding:3px 5px;font-size:var(--battle-fs-11)}
+body[data-cot-height='short'] .cot-kc-banner{margin:var(--s1) 7px 0}
 body[data-cot-height='short'] .cot-kc-killer{padding:0 7px 6px}
 body[data-cot-height='short'] .cot-kc-killer .kk{padding:5px 0 var(--s1);font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-kc-killer .nm{margin-top:var(--s1);font-size:var(--battle-fs-12);gap:5px}
@@ -833,16 +844,6 @@ body[data-cot-height='short'] .cot-hints{display:none!important}
 body[data-cot-panels='overlay']>.cot-gear{
   top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));
   width:44px;height:44px;min-height:44px;
-}
-
-body[data-cot-width] .cot-lock-toast{
-  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));text-align:center;
-  white-space:normal;overflow-wrap:anywhere;
-}
-body[data-cot-width='compact'] .cot-lock-toast,
-body[data-cot-width='phone'] .cot-lock-toast{
-  top:max(68px,calc(env(safe-area-inset-top) + 60px))!important;width:calc(100vw - (var(--cot-edge) * 2));
-  padding:8px 10px!important;font-size:11px!important;line-height:1.35;letter-spacing:.03em!important;
 }
 
 /* Opt-in engineering panels remain operable on the device being diagnosed. */

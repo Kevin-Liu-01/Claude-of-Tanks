@@ -270,7 +270,8 @@ function checkEdgeFade(material, parameters) {
   assert.match(vertex, /uniform float uCotNearReach;/, 'the reach is a uniform of the material');
   assert.match(vertex, /vCotNearScale = mix\( 0\.45, 1\.0, smoothstep\( 1\.6, 3\.6, aCard\.w \* length\( instanceMatrix\[ 0 \]\.xyz \) \) \) \* uCotNearReach;/,
     'and scales the band by the crown\'s size');
-  assert.equal(parameters.uniforms.uCotNearReach?.value, 1, 'a crown keeps the whole band');
+  // item 259: See-through foliage off (the default) keeps the band to its lens (checkShrubMaterial: on, a crown's whole)
+  assert.equal(parameters.uniforms.uCotNearReach?.value, 0.125, 'a crown keeps the lens band with See-through foliage off');
 }
 function checkGustLift(cards, impostor) {
   for (const [name, parameters] of [['cards', cards], ['impostor', impostor]]) {
@@ -420,12 +421,19 @@ function checkShrubMaterial(environment) {
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
     assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
+    // item 259: See-through foliage off (the default) holds every near band to its lens (the bark's 1 m); on, the trees
+    // round 4 reaches
+    assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.125, 'the shrub\'s near reach, See-through foliage off');
+    assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 0.125, 'and the crowns\'');
+    vegetation.setSeeThrough(true);
     assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.5, 'the shrub\'s near reach');
     assert.equal(shrubProgram.parameters.uniforms.uCotGateLift.value, 0.75, 'and its clusters leave from the top down');
     assert.equal(shrubProgram.parameters.uniforms.uCotInsideFade.value, 1, 'and it leaves whole with the camera inside it');
     assert.equal(shrubProgram.parameters.uniforms.uCotShrubThin.value, 0.011, 'and a small far shrub thins (FOLIAGE_SHRUB_THIN)');
     assert.equal(bush.material.userData.cotShrubThin, shrubProgram.parameters.uniforms.uCotShrubThin, 'the probe reaches the thinning');
     assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
+    vegetation.setSeeThrough(false);
+    assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 0.125, 'and off again, the lens');
   } finally {
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);

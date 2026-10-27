@@ -15,6 +15,13 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
+every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
+cases:
+- two of the plate's rows or worded elements intersect as their columns show them;
+- anything is cut by its column at rest on a window the layout calls neither compact nor short;
+- the datum census finds a duplicate.
+A new plate row needs no list entry: every element holding words is measured.
 `battle-hud-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the battle HUD's cheap overlap pass.
 It stages every state the layout fixture knows (the corners, hints, notices, reports, the scope, spectate, Watch
 ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI gauntlet's eight sizes (2560x1440,
@@ -105,6 +112,21 @@ process exit and SIGALRM (a perl alarm). Caps come from the guard options or
 reports and kills without ending the process (`browserGuardOf(browser)`). A
 fixture's fake launcher gets its fake browser back unwatched; a fixture that
 strips imports and runs a tool's source passes a `launchGuardedBrowser` port.
+
+The capture lock has two classes (2026-10-27, item 262). `render` holds
+(genIcons, genHeroCards, genDrawings, anatomy render sets, gauntlet captures,
+sheets) share it, two at once, as one lock directory with a `slot-<k>.holder`
+per member; `timing` holds (perf, census, timing, sortie tools, and any
+command not known to render) stay exclusive and wait for running renders.
+FIFO holds between classes: a render never passes a ready timing ticket (or
+an older copy's unclassed one, which stays exclusive). The class comes from
+`--lock-class=render|timing`, else acquire's `lockClass`, else
+`COT_SHOTS_LOCK_CLASS`, else the command's script names (`classifyCommand`);
+`--status` shows it. Holds are capped at 20 min: call `lock.checkpoint()` (or
+shoot's `checkpoint` in `runWarmHold`, which freezes and thaws the pages)
+between batches, and past the cap with anyone waiting it gives the lock up and
+re-queues at the back. Raise the cap per ticket only: `holdCapMinutes` with a
+`holdCapReason`.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

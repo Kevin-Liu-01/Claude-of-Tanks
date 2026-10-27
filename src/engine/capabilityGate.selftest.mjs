@@ -221,6 +221,84 @@ assert.deepEqual([classifyMemory(undefined), classifyMemory(1), classifyMemory(4
   assert.equal(proceed.probe.maxTextureUnits, 16);
 }
 
+{
+  // (2026-10-26, the boot ABBA) no probe worker on the boot path: the gate answers from the API's presence, and a real
+  // worker's refusal (workerRefusal.ts) adds its notice and drops the record, on a probed or a cached boot
+  const watchingHost = (worker) => {
+    const h = host({ worker });
+    const watchers = [];
+    let probes = 0;
+    return Object.assign(h, {
+      userAgent: 'test-agent', now: () => 1_000,
+      hasWorkerApi: () => worker !== 'absent',
+      probeWorker: () => { probes += 1; return true; },
+      watchWorkerRefusal: (refused) => watchers.push(refused),
+      watchers, probes: () => probes,
+    });
+  };
+  const screenOf = () => {
+    const screenState = { stage: { textContent: '' }, retry: { textContent: '', classList: { add() {} }, onclick: null },
+      notice: { textContent: '', classes: [] } };
+    screenState.notice.classList = { add: (name) => screenState.notice.classes.push(name) };
+    return screenState;
+  };
+  const gate = (h, screenState) => runBootCapabilityGate({ translate: t, send: () => assert.fail('no halt'), screen: screenState,
+    host: h, halt: () => assert.fail('no halt'), reload: () => {} });
+  {
+    const h = watchingHost('ok');
+    const screenState = screenOf();
+    const result = await gate(h, screenState);
+    assert.equal(h.probes(), 0, 'no worker starts on the boot path');
+    assert.equal(h.watchers.length, 1, 'the gate listens for a real worker\'s refusal');
+    assert.equal(result.probe.worker, true);
+    assert.deepEqual(result.verdict.notices, []);
+    await result.confirm(fakeContext());
+    assert.equal(h.store.size, 1, 'confirm records the verdict as before');
+    const record = [...h.store.entries()][0];
+    h.watchers[0]();
+    assert.equal(result.probe.worker, false, 'a refusal turns the probe false');
+    assert.deepEqual(result.verdict.notices.map(({ code }) => code), ['worker_blocked']);
+    assert.equal(screenState.notice.textContent, 'boot.gate.workerBlocked', 'the refused worker\'s sentence still shows');
+    assert.deepEqual(screenState.notice.classes, ['on']);
+    assert.equal(h.store.size, 0, 'the record drops: the next boot answers again');
+    h.watchers[0]();
+    assert.deepEqual(screenState.notice.classes, ['on'], 'a second report changes nothing');
+    const cachedHost = watchingHost('ok');
+    cachedHost.store.set(...record);
+    const cachedScreen = screenOf();
+    const cached = await gate(cachedHost, cachedScreen);
+    assert.equal(cached.source, 'cache');
+    assert.equal(cachedHost.watchers.length, 1, 'a cached boot listens too');
+    cachedHost.watchers[0]();
+    assert.equal(cachedScreen.notice.textContent, 'boot.gate.workerBlocked');
+    assert.equal(cachedHost.store.size, 0);
+  }
+  {
+    const h = watchingHost('absent');
+    const screenState = screenOf();
+    const result = await gate(h, screenState);
+    assert.equal(result.probe.worker, false, 'no Worker constructor: unsupported at once');
+    assert.equal(screenState.notice.textContent, 'boot.gate.workerBlocked');
+    assert.equal(h.watchers.length, 0, 'nothing left to listen for');
+  }
+  // the shared report: once, to every listener, and at once to a late one
+  const { onWorkerRefused, reportWorkerRefused } = await import('./workerRefusal.ts');
+  const heard = [];
+  onWorkerRefused(() => heard.push('early'));
+  onWorkerRefused(() => { throw new Error('a listener that throws'); });
+  onWorkerRefused(() => heard.push('second'));
+  reportWorkerRefused();
+  reportWorkerRefused();
+  onWorkerRefused(() => heard.push('late'));
+  assert.deepEqual(heard, ['early', 'second', 'late']);
+  const gateSource = await readFile(new URL('./capabilityGate.ts', import.meta.url), 'utf8');
+  const browserHost = gateSource.slice(gateSource.indexOf('export function browserCapabilityHost('));
+  assert.match(browserHost, /watchWorkerRefusal: onWorkerRefused,/, 'the browser host listens to the boot\'s real workers');
+  assert.doesNotMatch(browserHost, /new Worker\(/, 'and starts no worker of its own');
+  const skySource = await readFile(new URL('./sky.ts', import.meta.url), 'utf8');
+  assert.equal(skySource.match(/reportWorkerRefused\(\);/g)?.length, 6, 'both sky workers report a constructor, an error and a failed start');
+}
+
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const gateIndex = mainSource.indexOf('await runBootCapabilityGate({');
 const rendererIndex = mainSource.indexOf('createRenderer(container)');

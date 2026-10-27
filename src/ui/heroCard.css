@@ -35,7 +35,8 @@
 .cot-hc .hc-tier{position:absolute;z-index:var(--z-lift);top:var(--hc-pad,8px);right:var(--hc-pad,8px);padding:3px var(--s1) 2px;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-mono);letter-spacing:0;white-space:nowrap;
   color:var(--ink-3);background:var(--scrim);border:1px solid var(--line-3);}
-.cot-hc .hc-tier b{font-weight:500;color:var(--text-accent);}
+/* the numeral in ink: the accent stays on the primary action, the selection and the direction's marks (Main 10-27) */
+.cot-hc .hc-tier b{font-weight:500;color:var(--ink-1);}
 .cot-hc[data-hero-facing='left'] .hc-tier{right:auto;left:var(--hc-pad,8px);}
 /* a stand-alone tile's class glyph (decorateHeroTile) under its chip, on the chip's side, as the Garage roster's plate;
    the roster's own cards place theirs in garage.css */

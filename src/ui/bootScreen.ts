@@ -338,8 +338,64 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     const from = fillNow();
     if (to <= from + 0.0005) return;
     fillMotion?.cancel();
-    fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
+    const motion = fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
       { duration: reducedMotion ? 0 : finished ? DONE_MS : STEP_MS, easing: 'ease-out', fill: 'forwards' });
+    // the full line rests as a style, its motion and layer dropped (.cot-boot-fill.full): a held compositor fill snaps a
+    // whole pixel short of the track's painted end (boot r24)
+    if (to >= 1) motion.onfinish = () => { elFill.style.transform = 'scaleX(1)'; elFill.classList.add('full'); motion.cancel(); };
+  }
+
+  // The stage row under the fill (owner, 2026-10-26: "a segmented loading along with the main loading line"): one segment
+  // per stage, the download's first (the page's inline painter fills it with the files), then this list's. The page
+  // writes the Garage's stages, so its first paint holds the row; a Studio boot, whose list is longer, writes its own.
+  const elSegs = $('cot-boot-segs');
+  if (elSegs && elSegs.children.length !== stages.length + 1) {
+    const keep = elSegs.firstElementChild;
+    elSegs.replaceChildren(...(keep ? [keep] : []), ...stages.map(([key]) => {
+      const seg = document.createElement('i');
+      seg.dataset.seg = key;
+      seg.append(document.createElement('b'));
+      return seg;
+    }));
+  }
+  const segs = new Map<string, HTMLElement>();
+  for (const seg of elSegs ? [...elSegs.children] as HTMLElement[] : []) if (seg.dataset.seg) segs.set(seg.dataset.seg, seg);
+  const segMotion = new Map<HTMLElement, Animation>();
+  /** One segment's fill to `to` (0..1) from where it stands, a compositor step on a real change only. */
+  function stepSeg(seg: HTMLElement | undefined, to: number, then?: () => void): void {
+    const fill = seg?.firstElementChild as HTMLElement | null;
+    if (!seg || !fill || seg.classList.contains('done')) return;
+    const transform = getComputedStyle(fill).transform;
+    const from = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).a : 0;
+    fill.style.transform = '';
+    segMotion.get(seg)?.cancel();
+    if (typeof fill.animate !== 'function' || reducedMotion || to <= from + 0.0005) {
+      fill.style.transform = `scaleX(${Math.max(from, to)})`;
+      then?.();
+      return;
+    }
+    const motion = fill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
+      { duration: STEP_MS, easing: 'ease-out', fill: 'forwards' });
+    segMotion.set(seg, motion);
+    if (then) motion.onfinish = then;
+  }
+  /** A stage done: its segment full and solid. */
+  function doneSeg(seg: HTMLElement | undefined): void {
+    if (!seg || seg.classList.contains('done')) return;
+    stepSeg(seg, 1, () => {
+      segMotion.get(seg)?.cancel();
+      segMotion.delete(seg);
+      (seg.firstElementChild as HTMLElement | null)?.style.removeProperty('transform');
+      seg.classList.remove('now');
+      seg.classList.add('done');
+    });
+  }
+  /** The stage under way: every segment before it done, it the current one. */
+  function nowSeg(key: string): void {
+    for (const [segKey, seg] of segs) {
+      if (segKey === key) { seg.classList.add('now'); break; }
+      doneSeg(seg);
+    }
   }
 
   function showTip(i: number): void {
@@ -404,6 +460,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       const sp = span.get(key);
       if (sp && sp[0] > target) target = sp[0];
       if (elStage) elStage.textContent = stageLabel(key);
+      nowSeg(key);
       retarget();
     },
     /** Leave a stage: the fill advances to its end. */
@@ -412,6 +469,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       const effectiveKey = key || curKey;
       const sp = effectiveKey ? span.get(effectiveKey) : undefined;
       if (sp && sp[1] > target) target = sp[1];
+      if (effectiveKey) doneSeg(segs.get(effectiveKey));
       retarget();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
@@ -421,6 +479,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (!sp) return;
       const v = sp[0] + (sp[1] - sp[0]) * Math.max(0, Math.min(1, f));
       if (v > target) target = v;
+      if (curKey) stepSeg(segs.get(curKey), Math.max(0, Math.min(1, f)));
       retarget();
     },
     /** Override the visible stage label without touching the bar. */
@@ -439,6 +498,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (dismissed) return Promise.resolve();
       finished = true;
       target = 1;
+      for (const seg of segs.values()) doneSeg(seg);
       retarget();
       if (elStage) elStage.textContent = mode === 'studio' ? t('boot.stage.studioReady') : t('boot.stage.readyBattle');
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }

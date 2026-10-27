@@ -33,7 +33,7 @@ type Screen = (typeof DATUM_SCREENS)[number];
 /** What a set holds. The things the bar's line 1 names (a map, a camo, a mode, a tank, equipment, a nation, an hour)
  *  and every other set of things take the picker. */
 type Chooses =
-  | 'battlefield' | 'mode' | 'camo' | 'tank' | 'equipment' | 'nation' | 'hour' | 'operation' | 'environment' | 'rival'
+  | 'battlefield' | 'mode' | 'camo' | 'tank' | 'equipment' | 'consumable' | 'nation' | 'hour' | 'operation' | 'environment' | 'rival'
   | 'shot' | 'take' | 'effect' | 'state' | 'part' | 'media' | 'command' | 'tool' | 'filter' | 'sort'
   | 'sides' | 'difficulty' | 'team' | 'language' | 'view' | 'setting';
 /** The sets whose two to five values may stay on the kit's segmented control. */
@@ -97,6 +97,8 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-facets': { chooses: 'filter', options: 12, screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', build: 'bespoke', marks: ['bespoke:state[group]'], lane: 'premiere-gallery-studio' },
   'garage-rival': { chooses: 'rival', options: 12, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-rival'], lane: 'premiere-gallery-studio' },
   'garage-equipment': { chooses: 'equipment', options: 26, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-equipment'], lane: 'premiere-gallery-studio', path: 'equip-item' },
+  // the consumable catalog (2026-10-26): each slot opens the kit picker over the thirteen items (garageConsumables.ts)
+  'garage-consumables': { chooses: 'consumable', options: 13, screen: 'garage', owner: 'src/ui/garageConsumables.ts', build: 'picker', marks: ['picker:garage-consumables'], lane: 'premiere-gallery-studio' },
   'garage-paint-band': { chooses: 'camo', options: 4, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:index===0'], lane: 'premiere-gallery-studio' },
   // INTERACTION-REDESIGN B: the every-paint sheet is the kit picker (camoPicker.ts); its kinds are the picker's own filter
   // chips (the old nation collections and tag bar went with it), Auto leads and "Make your own" is its last swatch
@@ -108,7 +110,9 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-quick-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-quick-battlefield'], lane: 'premiere-gallery-studio' },
   'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-staging'], lane: 'premiere-gallery-studio' },
   'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
-  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:option===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
+  // drawings-overhaul-259: the guide's view switch is the technical drawing viewer's tabs now (technicalDrawing.ts), still
+  // bespoke and in the ratchet baseline; the segmented control is its owed build
+  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['src/ui/technicalDrawing.ts bespoke:value===current', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
   'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },
   'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'bespoke', marks: ["bespoke:id==='hero'", 'bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
   'tech-tree-node': { chooses: 'tank', options: 40, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:node.id'], lane: 'premiere-gallery-studio' },
@@ -116,7 +120,7 @@ export const INTERACTION_SITES = Object.freeze({
   'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], lane: 'premiere-gallery-studio' },
 
   // ---- Deploy (premiere-site)
-  'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-mode'], lane: 'premiere-site' },
+  'deploy-mode': { chooses: 'mode', options: 14, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-mode'], lane: 'premiere-site' },
   'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-battlefield'], lane: 'premiere-site', path: 'map-deploy' },
   'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'segmented', marks: ['segmented:.cot-battle-sides'], lane: 'premiere-site' },
   'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'segmented', marks: ['segmented:.cot-deploy-tier'], lane: 'premiere-site' },

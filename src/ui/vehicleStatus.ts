@@ -3,6 +3,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { createRichTooltip } from './richTooltip.ts';
+import { markDatum } from './dom.ts';
 import { createVehicleStatusReader, vehicleStatusCapacity, MAX_VEHICLE_STATUS_BOXES,
   type ConcealmentStatus, type VehicleStatus } from './vehicleStatusPolicy.ts';
 
@@ -19,7 +20,7 @@ const CSS = `
 .cot-status-box svg{width:23px;height:23px;position:relative;z-index:var(--z-lift)}
 .cot-status-fill{position:absolute;inset:0;background:currentColor;opacity:.25;transform-origin:bottom;transform:scaleY(var(--repair-fill,0));pointer-events:none;}
 .cot-status-mark{position:absolute;bottom:1px;right:2px;z-index:var(--z-lift);min-width:9px;text-align:center;font:700 var(--battle-fs-11)/1 var(--font-ui);color:inherit}
-.cot-status-box:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+.cot-status-box:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .cot-status-box:hover{background:var(--hud-plate-strong)}
 .cot-status-summary{white-space:pre-line}
 .cot-touch-layout .cot-status-box{flex-basis:44px;height:44px;padding:9px}
@@ -38,6 +39,8 @@ function detail(status: VehicleStatus): string {
 export function createVehicleStatusStrip() {
   ensureStyle('cot-vehicle-status-style',CSS,'surfaces');
   const root=document.createElement('div');root.className='cot-vehicle-status';root.hidden=true;
+  // fire's, the modules' and the crew's one place, with their severity and the repair's fill (UI-LOCKDOWN B2)
+  markDatum(root,'vehicle-status');
   root.setAttribute('role','group');root.setAttribute('aria-label',t('hud.status.title'));
   const read=createVehicleStatusReader();let active:readonly VehicleStatus[]=[];
   let capacity=MAX_VEHICLE_STATUS_BOXES;

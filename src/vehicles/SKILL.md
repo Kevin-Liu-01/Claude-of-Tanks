@@ -567,7 +567,8 @@ run with no flush seat nearby goes on a rack (four posts welded to its frame's a
 to another station of its own frame, flush or racked; only a run nothing can carry is dropped
 (`root.userData.spareTrack`, `spareTrackRejected`). The decor keeps its rigid pieces out of every built run
 (`root.userData.spareTrackBoxes`). Tag grilles, louvres and exhausts drawn into ordinary buckets with `withSeatRole(P, 'grille', ...)`
-where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark`. The receipt is
+where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGunDark` (never hull armour: the combat
+shell and its calibration read `hull` alone, and the barrel is traced as the gun). The receipt is
 `tools/spare-track-placement-check.mjs` against `docs/geometry-gate/spare-track.json` (part of `tank:anatomy:update`
 and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge. The search is the pass's only
 real cost, so `--update` also records its answers in the generated `spareTrackSeatPlan.ts` (a failing run goes straight
@@ -615,4 +616,6 @@ fills and the smoke-bank alignment) moves that squash onto rig_turret's children
 is a metre frame and the gun pitches rigidly about its drawn trunnion. Parts that sat at rig_turret's identity carry the
 squash as their own scale. `rig_turret.userData.turretSectionScale` names it, and the static batch, the P21 merge and
 the crumple's plate frame read it. A child whose rest rotation would shear under the squash sits in a `turretSection_*`
-group. Read a finished turret's squash from that key, never from `rig_turret.scale`.
+group. Read a finished turret's squash from that key, never from `rig_turret.scale`. A remote roof station takes the
+squash rigidly (259): its seat is squashed and its scale is the squashed width on every axis, so the authority's roof
+frame lays the profile's elevation (`counterDroneEngagement`'s ratchet).

@@ -1360,7 +1360,7 @@ export function createBrowserComposition({
             throw error;
           }
         },
-        onVerdict: (verdict, reason) => { if (verdict !== VERDICT.NONE) battlePresentation.applyVerdict(verdict, reason); },
+        onVerdict: (verdict, reason) => { if (verdict !== VERDICT.NONE) battlePresentation.settleVerdict(verdict, reason); },
         dispose: () => {
           reportLinkExit(active);
           unmountStatus();

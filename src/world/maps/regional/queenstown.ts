@@ -612,7 +612,8 @@ const tankTrestle: RegionalBuilder = (ctx) => {
       // the catwalk's rail round the deck, the ladder up the +z face to it
       for (const [x0, z0, x1, z1] of [[-P / 2, -P / 2, P / 2, -P / 2], [P / 2, -P / 2, P / 2, P / 2], [P / 2, P / 2, -P / 2, P / 2], [-P / 2, P / 2, -P / 2, -P / 2]] as const) {
         sink.member('structureWood', [x0, legH + 1.25, z0], [x1, legH + 1.25, z1], 0.06, 0.06, [0, 1, 0], { colour: TIMBER, decor: true, exposed: true }, 0);
-        for (let t = 0; t <= 1.001; t += 0.25) sink.span('structureWood', x0 + (x1 - x0) * t - 0.04, legH + 0.3, z0 + (z1 - z0) * t - 0.04, x0 + (x1 - x0) * t + 0.04, legH + 1.25, z0 + (z1 - z0) * t + 0.04, { colour: TIMBER, decor: true, fine: true });
+        // (259, the far-view census: the rail stood over the deck on posts all fine joinery) the corner posts at any range
+        for (let t = 0; t <= 1.001; t += 0.25) sink.span('structureWood', x0 + (x1 - x0) * t - 0.04, legH + 0.3, z0 + (z1 - z0) * t - 0.04, x0 + (x1 - x0) * t + 0.04, legH + 1.25, z0 + (z1 - z0) * t + 0.04, { colour: TIMBER, decor: true, fine: t > 0 });
       }
       // (its stiles from the ground into the deck's edge: the connectivity receipt)
       for (const dx of [-0.25, 0.25]) sink.member('structureWood', [dx, 0, P / 2 + 0.55], [dx, legH + 0.3, P / 2 - 0.03], 0.07, 0.05, [0, 0, 1], { colour: TIMBER, decor: true, exposed: true }, 0);
@@ -706,7 +707,8 @@ const cottageRow: RegionalBuilder = (ctx) => {
         if (b - a < 0.3) continue;
         sink.span('structureWood', a, 0.35, fz - 0.02, b, 0.42, fz + 0.02, { colour: white, decor: true });
         sink.span('structureWood', a, 0.8, fz - 0.02, b, 0.87, fz + 0.02, { colour: white, decor: true });
-        for (let x = a + 0.05; x < b; x += 0.24) sink.span('structureWood', x - 0.03, 0, fz - 0.015, x + 0.03, 1.05, fz + 0.015, { colour: white, decor: true, fine: true });
+        // (259, the far-view census: the rails stood on pickets all fine joinery) the end pickets at any range
+        for (let x = a + 0.05; x < b; x += 0.24) sink.span('structureWood', x - 0.03, 0, fz - 0.015, x + 0.03, 1.05, fz + 0.015, { colour: white, decor: true, fine: x > a + 0.06 && x + 0.24 < b });
       }
     }
   }

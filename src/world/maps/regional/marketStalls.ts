@@ -238,8 +238,9 @@ function goods(sink: PartSink, d: StallDress, x: number, y: number, z: number, w
     sink.span('structureMetal', sx - 0.02, y, z - 0.02, sx + 0.02, y + 0.42, z + 0.02, { colour: [0.2, 0.2, 0.2], decor: true });
     sink.span('structureMetal', sx - 0.22, y + 0.42, z - 0.015, sx + 0.22, y + 0.45, z + 0.015, { colour: [0.22, 0.21, 0.2], decor: true });
     for (const s of [-1, 1]) {
-      // each pan hung by its cord from the beam's end
-      sink.member('structureMetal', [sx + s * 0.2, y + 0.43, z], [sx + s * 0.2, y + 0.2, z], 0.008, 0.008, [1, 0, 0], { colour: [0.2, 0.2, 0.2], decor: true, exposed: true, fine: true }, 0);
+      // each pan hung by its cord from the beam's end (259, the far-view census: the cord fine joinery, the pans hung
+      // on nothing at range; the cord at any range)
+      sink.member('structureMetal', [sx + s * 0.2, y + 0.43, z], [sx + s * 0.2, y + 0.2, z], 0.008, 0.008, [1, 0, 0], { colour: [0.2, 0.2, 0.2], decor: true, exposed: true }, 0);
       sink.cylinder('structureMetal', [sx + s * 0.2, y + 0.18, z], 'y', 0.03, 0.09, 8, { colour: [0.5, 0.4, 0.25], decor: true }, 0.07);
     }
   }
@@ -416,7 +417,8 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
     }
     if (d.goods.bananas) {
       for (const x of [-px * 0.5, px * 0.4]) {
-        sink.member('structureWood', [x, front, pz - 0.05], [x, front - 0.35, pz - 0.05], 0.015, 0.015, [1, 0, 0], { colour: LASH, ...ex, fine: true }, 0);
+        // (259, the far-view census: the lashing fine joinery, the bunch hung on nothing at range) at any range
+        sink.member('structureWood', [x, front, pz - 0.05], [x, front - 0.35, pz - 0.05], 0.015, 0.015, [1, 0, 0], { colour: LASH, ...ex }, 0);
         sink.cylinder('structureWood', [x, front - 0.75, pz - 0.05], 'y', 0.42, 0.11, 7, { colour: [0.72, 0.68, 0.22], decor: true }, 0.16);
       }
     }
@@ -528,8 +530,9 @@ export function marketShed(sink: PartSink, d: StallDress, W: number, L: number, 
         lash(sink, d, [s * px, plate + 0.05, z]);
       }
       sink.member('structureWood', [0, plate + 0.3, z], [0, under(0) - 0.05, z], 0.12, 0.1, [0, 0, 1], t, 0.05);
-      // a bulb on its flex from the tie beam
-      sink.member('structureMetal', [0.4, plate + 0.16, z], [0.4, plate - 0.5, z], 0.01, 0.01, [1, 0, 0], { colour: [0.1, 0.1, 0.1], ...ex, fine: true }, 0);
+      // a bulb on its flex from the tie beam (259, the far-view census: the flex fine joinery, the bulb hung on nothing at
+      // range; the flex at any range)
+      sink.member('structureMetal', [0.4, plate + 0.16, z], [0.4, plate - 0.5, z], 0.01, 0.01, [1, 0, 0], { colour: [0.1, 0.1, 0.1], ...ex }, 0);
       sink.cylinder('glass', [0.4, plate - 0.62, z], 'y', 0.12, 0.05, 6, { decor: true }, 0.03);
     }
     for (const s of [-1, 1]) for (const f of [0.3, 0.7]) {

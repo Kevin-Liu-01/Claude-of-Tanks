@@ -288,14 +288,15 @@ try {
   const stripOf = (page) => page.evaluate(() => {
     const strip = document.querySelector('.cot-mp-strip');
     const panel = document.querySelector('.cot-mp-panel');
-    const banner = document.querySelector('.cot-mp-banner');
+    // (the battle's banner: the kit's notice in the battle's region, src/ui/battleNotices.ts)
+    const banner = document.querySelector('.cot-battle-notices .cot-mp-notice:not([data-state="exit"])');
     const network = window.__MULTIPLAYER_V2?.stats?.().network ?? null;
     const visible = (node) => !!node && !node.hidden && getComputedStyle(node).display !== 'none' && node.getClientRects().length > 0;
     return {
       present: !!strip, visible: visible(strip), text: strip?.textContent?.replace(/\s+/g, ' ').trim() ?? null, className: strip?.className ?? null,
       aria: strip?.getAttribute('aria-label') ?? null, expanded: strip?.getAttribute('aria-expanded') ?? null,
       panelVisible: visible(panel), panelRows: panel ? [...panel.querySelectorAll('.row')].filter((row) => !row.hidden).map((row) => row.textContent.replace(/\s+/g, ' ').trim()) : [],
-      bannerVisible: visible(banner), bannerText: banner?.textContent?.trim() ?? null, network,
+      bannerVisible: visible(banner), bannerText: banner?.querySelector('.cot-c-notice__text')?.textContent?.trim() ?? null, network,
     };
   });
   await waitFor(pageA, () => !!document.querySelector('.cot-mp-strip') && /\d/.test(document.querySelector('.cot-mp-strip .ping b')?.textContent ?? ''), 'A network strip shows a ping', 15_000);
@@ -313,7 +314,7 @@ try {
     if (!strip.visible) failures.push(`${label} network strip is not visible: ${JSON.stringify(strip)}`);
     if (!/good|degraded/.test(strip.className ?? '')) failures.push(`${label} network strip health ${strip.className}`);
     if (!/SEAT \d/.test(strip.text ?? '')) failures.push(`${label} network strip names no seat: ${strip.text}`);
-    if (!/\d+\/28/.test(strip.text ?? '')) failures.push(`${label} network strip names no roster: ${strip.text}`);
+    if (!/\d+\s*\/\s*28/.test(strip.text ?? '')) failures.push(`${label} network strip names no roster: ${strip.text}`);
     if (strip.bannerVisible) failures.push(`${label} shows a banner on a healthy link: ${strip.bannerText}`);
     if (strip.network?.health !== 'good') failures.push(`${label} network health ${JSON.stringify(strip.network)}`);
   }

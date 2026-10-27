@@ -119,6 +119,8 @@ export interface MovementCombatState {
     turret?: number;
     aimTime?: number;
     bloom?: number;
+    /** Engine power (2026-10-26: a Governor Override's burst, sim/consumableRules.ts; on the wire as VIEWER_EQUIPMENT). */
+    power?: number;
   };
 }
 
@@ -1758,6 +1760,7 @@ function applyEquipmentDebuffs(
   if (typeof equipment.turret === 'number') out.turretMult *= equipment.turret;
   if (typeof equipment.aimTime === 'number') out.aimTimeMult *= equipment.aimTime;
   if (typeof equipment.bloom === 'number') out.bloomMult = equipment.bloom;
+  if (typeof equipment.power === 'number') out.powerMult *= equipment.power;
 }
 
 /**

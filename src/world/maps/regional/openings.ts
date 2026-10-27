@@ -291,7 +291,9 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true, fine: true });
   }
   const f = style.frame, fw = f.width;
-  const fo = { decor: true, fineSides: true, ...(f.colour ? { colour: f.colour } : {}), ...(f.tint ? { tint: f.tint } : {}) };
+  // (on steps, its jambs stand on the tread under its head: EmitOptions.joined; without, its face is seated at range by
+  // its flush face, the box's rule)
+  const fo = { decor: true, fineSides: true, joined: !!style.steps, ...(f.colour ? { colour: f.colour } : {}), ...(f.tint ? { tint: f.tint } : {}) };
   faceBox(sink, f.bucket, face, u - w / 2 - fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u + w / 2 + fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u, y + h + fw / 2, f.out / 2, w + 2 * fw, fw, f.out, fo);

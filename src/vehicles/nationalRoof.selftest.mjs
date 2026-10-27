@@ -9,7 +9,7 @@ import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {topIndex} from './roofSweep.test-support.mjs';
 
 for(const quality of ['high','low']){
- const shapes=new Set();
+ const shapes=new Set(),shapeOf={};
  for(const [id,l] of Object.entries(NATIONAL_ROOF_LOADOUTS)){
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   const turret=tank.root.getObjectByName('rig_turret'),station=turret.getObjectByName(l.name),pitch=station?.getObjectByName('auxiliaryWeaponPitch');
@@ -19,7 +19,8 @@ for(const quality of ['high','low']){
   const stock=[];pitch.traverse(o=>{if(o.isMesh)stock.push(o)});
   // the whole station's stock (release 227: the Qilin's and the Kunlun's QJC-88 emplacements share their gun and differ
   // in their mount and shield)
-  const hash=createHash('sha256');station.traverse(o=>{if(o.isMesh)hash.update(Buffer.from(o.geometry.attributes.position.array.buffer));});shapes.add(hash.digest('hex'));
+  const hash=createHash('sha256');station.traverse(o=>{if(o.isMesh)hash.update(Buffer.from(o.geometry.attributes.position.array.buffer));});
+  const shape=hash.digest('hex');shapes.add(shape);shapeOf[id]=shape;
   const pintle=l.mount==='pintle';
   tank.root.updateMatrixWorld(true);
   const socket=new Vector3(...station.userData.auxiliaryMuzzle).sub(new Vector3(...station.userData.auxiliaryPivot));
@@ -122,5 +123,9 @@ for(const quality of ['high','low']){
   assert(tank.root.userData.nightLightCoverage.headlights>=4,`${id}: original driving lamps plus paired turret lamps`);
   tank.dispose();console.log(id,quality,'bore, caliber, lamps and 360° roof sweep PASS');
  }
- assert.equal(shapes.size,14,'fourteen distinct complete weapon assemblies');
+ // 252 (owner: "redesign the qilin around a type 96b inspired Yun like turret"): the Qilin's QJC-88 stands in the Kunlun's
+ // rim socket on the same Type 96B cupola and riser (nationalRoofConfig.ts), so the two share one emplacement (until 252
+ // only the riser set them apart); every other national roof keeps its own
+ assert.equal(shapeOf.t72b3_qilin,shapeOf.t72b3m_kunlun,'the Qilin and the Kunlun share the Type 96B cupola\'s QJC-88');
+ assert.equal(shapes.size,13,'thirteen distinct complete weapon assemblies');
 }

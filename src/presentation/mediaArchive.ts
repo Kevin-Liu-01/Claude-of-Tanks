@@ -7,25 +7,47 @@ import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
-/** The manifest's feature names in filter order; each is worded by mediaArchive.feature.<camelCase>, others show as written. */
+/** The manifest's feature names in filter order. */
 const FEATURES = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
-const featureLabel = (feature: string): string => {
-  const name = feature.trim().toLowerCase();
-  return FEATURES.includes(name) ? t('mediaArchive.feature.' + name.replace(/ (\w)/g, (_, c: string) => c.toUpperCase())) : feature;
+/** A manifest phrase or file stem as a key's last part ('Rack focus (near)' → rackFocusNear, 'b01-pan-runway' → b01PanRunway). */
+const camel = (text: string): string => text.trim().toLowerCase().replace(/[^a-z0-9]+(.)?/g, (_, c: string | undefined) => (c ?? '').toUpperCase());
+/** The catalog's line for `key`, or `fallback` where the catalog has none. */
+const caption = (key: string, fallback: string): string => {
+  const text = t(key);
+  return text === key ? fallback : text;
 };
+/** A filter's feature is worded by mediaArchive.feature.<camelCase>, a frame's or take's technique by
+ * mediaArchive.technique.<camelCase> (in the game the Studio's slice: only its Field frames show them). */
+const featureLabel = (feature: string): string => caption(
+  (FEATURES.includes(normalize(feature)) ? 'mediaArchive.feature.' : 'mediaArchive.technique.') + camel(feature), feature);
 interface PresentationShot {
   src: string;
   previewSrc?: string;
   alt: string;
   feature: string;
+  /** The battlefield: its id on the battlefield stills, its English name on the frames and takes (with `mapId`). */
   map: string;
+  mapId?: string;
   title: string;
+  take?: string;
   kind?: string;
   effects?: string[];
   sequence?: number;
 }
 
 interface PresentationManifest { shots: PresentationShot[] }
+
+interface ShotWords { title: string; /** the battlefield, '' where the title already names it */ place: string; alt: string }
+
+/** A shot's words in the locale: a battlefield still is its map's name, a take its catalog title, a frame its own line. */
+function shotWords(shot: PresentationShot, takeTitle?: MediaArchiveOptions['takeTitle']): ShotWords {
+  const map = caption(`map.${shot.mapId ?? shot.map}`, shot.map);
+  if (shot.kind === 'battlefield') return { title: map, place: '', alt: t('mediaArchive.card.battlefieldAlt', { map }) };
+  const stem = shot.src.slice(shot.src.lastIndexOf('/') + 1).replace(/\.\w+$/, '');
+  const title = shot.take ? takeTitle?.(shot.take) ?? shot.title : caption(`mediaArchive.frame.${camel(stem)}`, shot.title);
+  // a frame's or take's alt is its title
+  return { title, place: map, alt: shot.alt === shot.title ? title : shot.alt };
+}
 
 interface MediaArchiveOptions {
   mode?: string;
@@ -34,6 +56,8 @@ interface MediaArchiveOptions {
   pageSize?: number;
   feature?: string;
   filters?: boolean;
+  /** A take's title in the locale (mediaArchiveTakes.ts), where the archive shows takes; without it a take keeps its manifest title. */
+  takeTitle?: (take: string) => string | null;
 }
 
 let manifestPromise: Promise<PresentationManifest> | undefined;
@@ -72,7 +96,7 @@ function ensureLightbox(): HTMLDialogElement {
   return dialog;
 }
 
-function openShot(shot: PresentationShot): void {
+function openShot(shot: PresentationShot, words: ShotWords): void {
   const dialog = ensureLightbox();
   const image = dialog.querySelector<HTMLImageElement>('img');
   const feature = dialog.querySelector<HTMLElement>('span');
@@ -80,45 +104,46 @@ function openShot(shot: PresentationShot): void {
   const effects = dialog.querySelector<HTMLElement>('small');
   if (!image || !feature || !title || !effects) throw new Error('media lightbox is incomplete');
   image.src = shot.src;
-  image.alt = shot.alt;
-  feature.textContent = `${featureLabel(shot.feature)} // ${shot.map}`;
-  title.textContent = shot.title;
+  image.alt = words.alt;
+  feature.textContent = words.place ? `${featureLabel(shot.feature)} // ${words.place}` : featureLabel(shot.feature);
+  title.textContent = words.title;
   effects.textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : t('mediaArchive.lightbox.fallbackCaption');
   dialog.showModal();
 }
 
-function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): HTMLElement {
+function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue, takeTitle?: MediaArchiveOptions['takeTitle']): HTMLElement {
   const card = document.createElement('article');
   card.className = 'media-archive-card';
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'media-archive-card-open';
-  button.setAttribute('aria-label', t('mediaArchive.card.openAria', { title: shot.title }));
+  const words = shotWords(shot, takeTitle);
+  button.setAttribute('aria-label', t('mediaArchive.card.openAria', { title: words.title }));
   const image = document.createElement('img');
   image.src = shot.previewSrc || shot.src;
-  image.alt = shot.alt;
+  image.alt = words.alt;
   image.loading = index < 3 ? 'eager' : 'lazy';
   image.decoding = 'async';
   const copy = document.createElement('span');
   copy.className = 'media-archive-card-copy';
-  copy.innerHTML = `<span><span>${featureLabel(shot.feature)}</span><strong>${shot.title}</strong></span><small>${shot.map}</small>`;
+  copy.innerHTML = `<span><span>${featureLabel(shot.feature)}</span><strong>${words.title}</strong></span>${words.place ? `<small>${words.place}</small>` : ''}`;
   const count = document.createElement('span');
   count.className = 'media-archive-card-index';
   count.textContent = String(shot.sequence || index + 1).padStart(2, '0');
   button.append(image, copy, count);
-  button.addEventListener('click', () => openShot(shot));
+  button.addEventListener('click', () => openShot(shot, words));
   card.appendChild(button);
   if (recipe) {
     card.appendChild(createInfoButton({
-      label: t('fieldGuide.recipeLabel', { name: shot.title }),
-      title: t('fieldGuide.recipeTitle', { name: shot.title }),
+      label: t('fieldGuide.recipeLabel', { name: words.title }),
+      title: t('fieldGuide.recipeTitle', { name: words.title }),
       guide: 'recipe',
       json: recipe,
       className: 'media-archive-recipe',
       image: {
         src: shot.src,
-        alt: shot.alt || t('mediaArchive.recipe.fallbackAlt', { title: shot.title }),
-        caption: `${shot.title} // ${shot.map}`,
+        alt: words.alt || t('mediaArchive.recipe.fallbackAlt', { title: words.title }),
+        caption: words.place ? `${words.title} // ${words.place}` : words.title,
       },
     }));
   }
@@ -171,7 +196,7 @@ export async function mountMediaArchive(
     const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
-      shotCard(shot, index, recipeForMedia(recipes, shot.src))));
+      shotCard(shot, index, recipeForMedia(recipes, shot.src), options.takeTitle)));
     count.value = t('mediaArchive.count', {
       shown: String(visible.length).padStart(2, '0'),
       total: String(filtered.length).padStart(2, '0'),
@@ -179,8 +204,7 @@ export async function mountMediaArchive(
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;
     loadMore.textContent = remaining > 0 ? t('mediaArchive.loadMore', { count: Math.min(pageSize, remaining) }) : '';
-    const strip = filters.firstElementChild;
-    if (strip instanceof HTMLElement) setRoving(strip, active);
+    if (options.filters !== false) setRoving(filters.firstElementChild as HTMLElement, active);
   }
   if (options.filters !== false) {
     // the features are the kit's underline tabs over the grid: each shows the archive's shots of one feature

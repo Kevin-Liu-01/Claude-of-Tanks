@@ -480,6 +480,19 @@ interface TankFireEvent {
   burning: boolean;
 }
 
+/** An armed APS charge met a round off the struck hull (sim/consumableRules.ts): where, and the face it was meant for. */
+interface ApsInterceptEvent {
+  id: string;
+  shellId?: ShellId;
+  x: number;
+  y: number;
+  z: number;
+  nx?: number;
+  ny?: number;
+  nz?: number;
+  caliberMm?: number;
+}
+
 interface FxEventMap {
   'shell:fired': ShellFiredEvent;
   'weapon:predicted': PredictedWeaponEvent;
@@ -488,6 +501,7 @@ interface FxEventMap {
   'tank:destroyed': TankDestroyedEvent;
   'module:state': ModuleStateEvent;
   'tank:fire': TankFireEvent;
+  'aps:intercept': ApsInterceptEvent;
 }
 
 /**
@@ -6598,6 +6612,21 @@ function* createFxSteps(
         if (blast && info && (info.munition === 'heat' || info.munition === 'atgm' || info.munition === 'drone_fpv')) {
           shellMunitions.delete(e.shellId as ShellId);
           plateBurst(blast, { x: e.pos[0], y: e.pos[1], z: e.pos[2], nx: e.normal[0], ny: e.normal[1], nz: e.normal[2],
+            munition: info.munition, chargeKg: Math.max(0.3, info.chargeKg * 0.5), ground: null });
+        }
+      });
+      // the battle consumables' APS (2026-10-26): the interceptor's flash, and the round's own charge bursting off the
+      // hull; the round's end (its tracer, trail and wire) is the shell:expired that follows
+      onFxEvent(bus, 'aps:intercept', (e) => {
+        if (!Number.isFinite(e.x) || !Number.isFinite(e.y) || !Number.isFinite(e.z)) return;
+        _v3.set(e.x, e.y, e.z);
+        _v4.set(e.nx ?? 0, e.ny ?? 1, e.nz ?? 0);
+        if (_v4.lengthSq() < 1e-6) _v4.copy(_UP);
+        else _v4.normalize();
+        fx.impact('era', _v3, _v4, e.caliberMm || 90);
+        const info = e.shellId != null ? shellMunitions.get(e.shellId) : null;
+        if (blast && info && isExplosive(info.munition) && info.chargeKg > 0) {
+          plateBurst(blast, { x: e.x, y: e.y, z: e.z, nx: _v4.x, ny: _v4.y, nz: _v4.z,
             munition: info.munition, chargeKg: Math.max(0.3, info.chargeKg * 0.5), ground: null });
         }
       });

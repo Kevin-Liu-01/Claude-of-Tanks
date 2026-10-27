@@ -126,6 +126,15 @@ function make(
   return spec;
 }
 
+/** 258 (vehicles-hit-volume-fit-258): the M60A1 copies the Leopard 1A5's armour and with it the Leopard's spaced side
+ * skirts; no M48 or M60 draws one (nor had one), and the copied plates stood 20 cm off the hull and 27 cm past its
+ * rear: armour where nothing is drawn. The whole Patton line derives from this spec (the M46, M47, M48A5, M60A2 and
+ * M60A3). */
+function withoutSkirts(spec: FleetTankSpec): FleetTankSpec {
+  spec.armor.hullPlates = spec.armor.hullPlates.filter((plate) => !/^skirt_[LR]$/.test(plate.name ?? ''));
+  return spec;
+}
+
 function makeRevolutionPrototype(): FleetTankSpec {
   const spec = make('leo2a7', 'leo2_revolution_proto', 'Leopard 2 Revolution Proto', 'Germany', {
     hp: 2550, weightTons: 60, topSpeedKmh: 70,
@@ -323,7 +332,7 @@ const SPECS: FleetTankSpec[] = [
   // passed geometry min 90.7 + shaded parity min 9/10 — the recovered GLB is
   // retired and the procedural model ships EVERYWHERE (local + public), so no
   // publicVisualFallback: its own regenerated icons are legal to distribute.
-  make('leo1a5', 'm60a1', 'M60A1 Patton', 'USA',
+  withoutSkirts(make('leo1a5', 'm60a1', 'M60A1 Patton', 'USA',
     { hp: 2050, weightTons: 49.7, topSpeedKmh: 50, reverseSpeedKmh: 16,
       gun: {
         reloadS: 6.8, baseAccuracy: 0.30, aimTimeS: 1.8,
@@ -337,7 +346,7 @@ const SPECS: FleetTankSpec[] = [
         })),
       },
       publicVisualFallback: null, community: null,
-      dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } }),
+      dims: { hullLengthM: 6.946, overallLengthM: 9.436, widthM: 3.631, heightM: 3.27 } })),
   makePendekar(),
   make('merkava4', 'merkava1b', 'Merkava Mk.1B', 'Israel',
     { hp: 1900, weightTons: 60, topSpeedKmh: 46, gun: { reloadS: 7.8 },

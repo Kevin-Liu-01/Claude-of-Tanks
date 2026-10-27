@@ -60,9 +60,20 @@ assert.ok(c2.enginePowerHp / c2.weightTons > c1.enginePowerHp / c1.weightTons);
 for (const key of ['hp', 'topSpeedKmh', 'reverseSpeedKmh', 'turretTraverseDegS']) assert.ok(c2[key] > c1[key]);
 for (const key of ['reloadS', 'baseAccuracy', 'aimTimeS']) assert.ok(c2.gun[key] < c1.gun[key]);
 for (const key of ['move', 'hullRot', 'turret']) assert.ok(c2.gun.bloom[key] < c1.gun.bloom[key]);
-assert.deepEqual(c2.gun.shells, c1.gun.shells, 'all three main-gun rounds retained; decorative roof weapon adds no ammunition');
-assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.09);
-assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.10);
+// 259 (Main ruling 2026-10-26): the C2 fires the C2 Prototype's rounds, the prototype's round in-game; no named new-round
+// procurement. The 2025 delivery coverage keeps the 120/44 gun, which fires all standard NATO rounds:
+//   https://euro-sd.com/2025/07/major-news/45604/modernised-ariete-c2-delivered
+//   https://thedefensepost.com/2025/07/21/italy-upgraded-ariete-c2-tank/
+//   https://www.overtdefense.com/2025/07/23/italian-army-receives-first-ariete-c2-main-battle-tank
+// (fleetBalancePass applySameTierFairness copies them; the C2 keeps its own cadence). The decorative roof weapon adds no
+// ammunition.
+const round = ({ reloadS, ...rest }) => rest;
+assert.deepEqual(c2.gun.shells.map(round), TANK_SPECS.c2_ariete_proto.gun.shells.map(round),
+  "the C2 fires the C2 Prototype's three main-gun rounds");
+assert.ok(c2.gun.shells.every((r) => r.reloadS == null), 'the C2 rounds keep the gun cadence');
+// re-pinned with the prototype's rounds (1.09-1.10 on the C1's): 545 dmg at 5.4 s against 520 at 5.9 s
+assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.14);
+assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.15);
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
   .filter(row => row.id === 'c2_ariete'), [], 'new upgrade remains within the unmodified peer gates');
 

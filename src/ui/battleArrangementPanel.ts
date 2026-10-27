@@ -9,12 +9,14 @@ import type { CountryId } from '../sim/countries.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import { createTeamNationsControl } from './teamNationsControl.ts';
 
-type Field = 'allies' | 'enemies' | 'waveSize' | 'waveStep' | 'scoreTarget' | 'respawnS' | 'holdS' | 'enemyNation' | 'juggernautRole';
-const FIELDS: readonly Field[] = ['allies', 'enemies', 'waveSize', 'waveStep', 'scoreTarget', 'respawnS', 'holdS', 'enemyNation', 'juggernautRole'];
+type Field = 'allies' | 'enemies' | 'waveSize' | 'waveStep' | 'scoreTarget' | 'respawnS' | 'holdS' | 'enemyNation' | 'juggernautRole' | 'movingTargets';
+const FIELDS: readonly Field[] = ['allies', 'enemies', 'waveSize', 'waveStep', 'scoreTarget', 'respawnS', 'holdS', 'enemyNation', 'juggernautRole', 'movingTargets'];
 /** The settings of two to five values sit on the kit's segmented control; the counts, the winning score (up to six) and
  *  the enemy nation take the kit's picker menu. */
 const SEGMENTED: Partial<Record<Field, readonly string[]>> = {
   respawnS: ['2', '3', '6', '10', '15'], waveStep: ['0', '1', '2', '3'], holdS: ['10', '20', '30', '45', '60'], juggernautRole: ['boss', 'hunter'],
+  // the range's targets: still on their marks, or shuttling along their hull axes (the ruleset's patrol)
+  movingTargets: ['off', 'on'],
 };
 const SCORE_TARGETS: Partial<Record<GameModeId, readonly number[]>> = {
   capture_the_flag: [1, 3, 5, 7, 9], turbo_ball: [3, 5, 7, 10, 15], drone: [5, 10, 20, 30, 50],
@@ -28,7 +30,11 @@ interface ArrangeField {
 }
 
 /** Mode-specific controls share the exact stored arrangement read by battle creation. */
-export function createBattleArrangementPanel(host: HTMLElement, { playerCountry = () => null }: { playerCountry?: () => CountryId | null } = {}): { render(mode: GameModeId): void; close(): void } {
+export function createBattleArrangementPanel(host: HTMLElement, { playerCountry = () => null, customSides = () => false }: {
+  playerCountry?: () => CountryId | null;
+  /** Deploy's sides are on Custom: the counts show for a symmetric mode too (a wave mode always shows them). */
+  customSides?: () => boolean;
+} = {}): { render(mode: GameModeId): void; close(): void } {
   let mode: GameModeId = 'standard';
   const controls = document.createElement('div'); controls.className = 'cot-mode-settings';
   const readout = document.createElement('div'); readout.className = 'cot-mode-features';
@@ -44,14 +50,21 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
   const commit = (name: Field, value: string): void => {
     if (shown.get(name) === value) return;
     const current = readTeamArrangement(mode);
-    writeTeamArrangement(mode, { ...current, [name]: name === 'enemyNation' || name === 'juggernautRole' ? value || null : Number(value) });
+    // the range keeps its switch alone (sim/matchRuleset.ts normalizes its arrangement to it)
+    if (name === 'movingTargets') writeTeamArrangement(mode, value === 'on' ? { movingTargets: true } : null);
+    else writeTeamArrangement(mode, { ...current, [name]: name === 'enemyNation' || name === 'juggernautRole' ? value || null : Number(value) });
     render(mode);
   };
-  const label = (name: Field): string => t(`playMenu.arrange.${name === 'enemyNation' ? 'nation' : name}`);
-  const optionLabel = (name: Field, value: string): string => (name === 'juggernautRole' ? t(`playMenu.arrange.${value}`) : value);
+  // the range's switch speaks as its rule tile does (Targets: Still or Moving), one setting in one set of words
+  const label = (name: Field): string => (name === 'movingTargets' ? t('garage.deploy.rule.moving')
+    : t(`playMenu.arrange.${name === 'enemyNation' ? 'nation' : name}`));
+  const captions = new Map<Field, HTMLElement>();
+  const optionLabel = (name: Field, value: string): string => (name === 'juggernautRole' ? t(`playMenu.arrange.${value}`)
+    : name === 'movingTargets' ? t(value === 'on' ? 'garage.deploy.targetsMoving' : 'garage.deploy.targetsStill') : value);
   const fields = new Map<Field, ArrangeField>(FIELDS.map((name): [Field, ArrangeField] => {
     const root = document.createElement('div'); root.className = 'cot-arrange-field'; root.dataset.modeField = name;
     const caption = document.createElement('span'); caption.textContent = label(name);
+    captions.set(name, caption);
     root.append(caption);
     controls.append(root);
     const fixed = SEGMENTED[name];
@@ -84,15 +97,23 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
     const rules = matchRulesetFor(mode, null, arrangement);
     const random = rules.teamNations === 'random';
     const ownCountry = playerCountry();
+    // the range (the proving ground) is solo: no nations, no sides, its moving-target switch alone
+    const range = rules.provingGround != null;
     teams.render();
+    teams.root.hidden = range;
     for (const [name, field] of fields) {
-      field.root.hidden = name === 'juggernautRole' ? mode !== 'juggernaut' : name === 'waveSize' || name === 'waveStep' ? mode !== 'endless_horde'
+      field.root.hidden = range ? name !== 'movingTargets' : name === 'movingTargets' ? true
+        : name === 'juggernautRole' ? mode !== 'juggernaut' : name === 'waveSize' || name === 'waveStep' ? mode !== 'endless_horde'
         : name === 'holdS' ? mode !== 'frontline_assault'
         : name === 'scoreTarget' || name === 'respawnS' ? !RULESET_SCORE_TARGETS[mode]
         // MONO's enemy country (AUTO first); RANDOM seats any vehicle, so the field is hidden and ignored
         : name === 'enemyNation' ? random
-        : !isWaveMode(mode);
+        : !isWaveMode(mode) && !customSides();
       if (field.root.hidden) continue;
+      // Custom sides in a symmetric mode: its counts are its sides (a wave mode's are its allies and its enemy pool)
+      if (name === 'allies' || name === 'enemies') {
+        captions.get(name)!.textContent = isWaveMode(mode) ? label(name) : t(name === 'allies' ? 'garage.battle.sidesAllies' : 'garage.battle.sidesEnemies');
+      }
       const values: Array<[string, string]> = SEGMENTED[name] ? SEGMENTED[name].map((value) => [value, optionLabel(name, value)])
         : name === 'scoreTarget' ? (SCORE_TARGETS[mode] ?? [250, 500, 750, 1000, 1500, 2000]).map((value) => [String(value), String(value)])
         // the player's own country is never the enemy under MONO
@@ -103,7 +124,8 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
             : TEAM_ARRANGEMENT_LIMITS[name as 'allies' | 'enemies'][mode];
           return Array.from({ length: hi - lo + 1 }, (_, i): [string, string] => [String(lo + i), String(lo + i)]);
         })();
-      const value = name === 'juggernautRole' ? arrangement?.juggernautRole || 'boss' : name === 'enemyNation' ? (arrangement?.enemyNation && arrangement.enemyNation !== ownCountry ? arrangement.enemyNation : '')
+      const value = name === 'movingTargets' ? (rules.provingGround?.moving ? 'on' : 'off')
+        : name === 'juggernautRole' ? arrangement?.juggernautRole || 'boss' : name === 'enemyNation' ? (arrangement?.enemyNation && arrangement.enemyNation !== ownCountry ? arrangement.enemyNation : '')
         : String(name === 'waveSize' ? rules.horde?.waveSize : name === 'waveStep' ? rules.horde?.waveStep
           : name === 'holdS' ? rules.assault?.holdS : name === 'respawnS' ? rules.respawnS
           : name === 'scoreTarget' ? rules.scoreTarget ?? RULESET_SCORE_TARGETS[mode] : rules[name as 'allies' | 'enemies']);

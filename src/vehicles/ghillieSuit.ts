@@ -4531,10 +4531,11 @@ function ownerTriangles(parent: THREE.Object3D, others: readonly THREE.Object3D[
  * Every surface point of a triangle soup a clearance needs: each edge sampled `cell / 2` apart (walls and long thin
  * runs, a barrel's, have no plan area) and the plan view rasterised at `cell` centres with the triangle's height there.
  */
-function forTrianglePoints(tri: Float32Array, cell: number, visit: (x: number, y: number, z: number) => void): void {
+function forTrianglePoints(tri: Float32Array, cell: number, visit: (x: number, y: number, z: number) => void,
+  from = 0, to = tri.length): void {
   const half = cell / 2;
   const p = [0, 0, 0];
-  for (let t = 0; t < tri.length; t += 9) {
+  for (let t = from; t < to; t += 9) {
     for (let e = 0; e < 3; e++) {
       const o = t + e * 3, q = t + ((e + 1) % 3) * 3;
       const len = Math.hypot(tri[q] - tri[o], tri[q + 1] - tri[o + 1], tri[q + 2] - tri[o + 2]);
@@ -4564,6 +4565,20 @@ function forTrianglePoints(tri: Float32Array, cell: number, visit: (x: number, y
       p[a] = ua; p[b] = ub; p[c] = l0 * tri[t + c] + l1 * tri[t + 3 + c] + l2 * tri[t + 6 + c];
       visit(p[0], p[1], p[2]);
     }
+  }
+}
+
+/**
+ * forTrianglePoints a slice at a time (2026-10-26, the boot census: one owner's triangle pass was one 80-150 ms step of the
+ * boot hero's suit): 256 triangles a chunk, a yield once a slice has run 8 ms. The same points in the same order.
+ */
+function* forTrianglePointsSteps(tri: Float32Array, cell: number, visit: (x: number, y: number, z: number) => void,
+  budgetMs = 8): Generator<void, void, void> {
+  const chunk = 9 * 256;
+  let sliceAt = performance.now();
+  for (let from = 0; from < tri.length; from += chunk) {
+    forTrianglePoints(tri, cell, visit, from, Math.min(tri.length, from + chunk));
+    if (from + chunk < tri.length && performance.now() - sliceAt >= budgetMs) { yield; sliceAt = performance.now(); }
   }
 }
 
@@ -4908,7 +4923,7 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
   };
   // 3 cm samples (the fix round's audit on the T-90M: at 6 cm the turret's front lower face read 5 cm higher than it
   // reaches, and a bough under its edge stood inside its sweep)
-  forTrianglePoints(ownerTriangles(turret, [gun], hull, notSuit), 0.03, (x, y, z) => mark(turretOcc, x, y, z));
+  yield* forTrianglePointsSteps(ownerTriangles(turret, [gun], hull, notSuit), 0.03, (x, y, z) => mark(turretOcc, x, y, z));
   yield;
   // and the span the turret reaches at each radius through the traverse, lowest cell to highest: a hull point between
   // them lies inside its swept body, its hollow included (a deck plate running on under the turret's floor), not only
@@ -4925,7 +4940,7 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
   const DECK_CELL = 0.04;
   const deck = new Map<number, number>();
   const deckKey = (x: number, z: number): number => (Math.floor(x / DECK_CELL) + 512) * 4096 + (Math.floor(z / DECK_CELL) + 2048);
-  forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && notGear(mesh)), 0.04, (x, y, z) => {
+  yield* forTrianglePointsSteps(ownerTriangles(hull, [turret, gun], hull, (mesh) => notSuit(mesh) && notGear(mesh)), 0.04, (x, y, z) => {
     mark(hullOcc, x, y, z);
     const d = deckKey(x, z);
     const was = deck.get(d);
@@ -5021,7 +5036,7 @@ function* fieldClearanceSteps(P: GhillieBuilderPort, clearance: number, conserva
   const radius = new Map<number, number>(), extent = new Map<number, [number, number, number, number]>();
   const gunPoint = new THREE.Vector3();
   yield;
-  forTrianglePoints(ownerTriangles(gun, [], hull, notSuit), 0.04, (hx, hy, hz) => {
+  yield* forTrianglePointsSteps(ownerTriangles(gun, [], hull, notSuit), 0.04, (hx, hy, hz) => {
     gunPoint.set(hx - gunHull.x, hy - gunHull.y, hz - gunHull.z).applyQuaternion(toGunAxes);
     const x = gunPoint.x, y = gunPoint.y, z = gunPoint.z;
     const k = Math.floor(z / SWEEP_BIN_M), r = Math.hypot(x, y);
@@ -5662,6 +5677,8 @@ function* addGhillieOwner(
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
     if (coverOk) {
+      // a checkpoint between the cloth and its clearance filter (2026-10-26: the two were one 130 ms step)
+      yield;
       const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk, panel.minPieceTris ?? 8);
       // the cells whose cloth is really there (torn perimeter cells, islands and what the clearance took are not): a
       // drape starts only on cloth that exists

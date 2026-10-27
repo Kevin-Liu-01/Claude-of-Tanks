@@ -207,7 +207,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(16px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
-.cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.cot-bl .rows:focus-visible{outline:1px solid var(--focus-ink);outline-offset:-1px}
 /* (a list that scrolls shows whole rows: its height a whole number of its least rows' pitch, so the row at its foot is
    never cut across; and its cue, the end report's chevron over a fade, while more lies below: gauntlet r8 at 568x256) */
 .cot-bl .team{--bl-row-min:min(16px,var(--bl-row-height));position:relative;}
@@ -229,9 +229,12 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team.foe .row{flex-direction:row-reverse;}
 .cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
-/* (an open seat on the rows' own plate, its side's edge kept and no ring: a glass seat over the art nearly vanished into
-   the terrain at 1920 and 2560, gauntlet r14) */
-.cot-bl .row.slot{background:var(--hud-plate-strong);box-shadow:none;}
+/* (an open seat on the rows' own plate and ring, its side's edge kept: a glass seat over the art nearly vanished into
+   the terrain at 1920 and 2560, gauntlet r14, and without the ring the open seats ran into one slab, r15) */
+.cot-bl .row.slot{background:var(--hud-plate-strong);}
+/* (its waiting mark: the player glyph in the quiet ink, and a line where the name will stand) */
+.cot-bl .row.slot .og{display:flex;flex:none;color:var(--ink-4)}.cot-bl .row.slot .og svg{display:block;width:16px;height:16px}
+.cot-bl .row.slot .ol{flex:0 1 40%;height:4px;border-radius:2px;background:var(--line-2)}
 .cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
   box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
 /* (the player's ring takes the side's edge too: the side's rule outranked it, and a blue edge sat inside the orange ring,
@@ -342,9 +345,13 @@ ${PORTRAIT_ROWS} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT_ROWS} .cot-bl .team.foe .row .sil{grid-column:2;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
 ${PORTRAIT_ROWS} .cot-bl .row .nm{grid-row:1;}${PORTRAIT_ROWS} .cot-bl .row .cs{grid-row:2;margin:0;}
+/* (an open seat's waiting mark on one line, mirrored on the enemy side as its rows are: in the two-line grid its glyph
+   stood at the left of an enemy seat and its line had no width, gauntlet r18 at 390x844 and 320x568) */
+${PORTRAIT_ROWS} .cot-bl .row.slot{display:flex;align-items:center;gap:6px;}${PORTRAIT_ROWS} .cot-bl .team.foe .row.slot{flex-direction:row-reverse;}
 /* (each line one height in both scripts, so a row's lines stand level with the row's opposite: zh's 13 px "你" set the
    player's lines 2 px off the foe's, gauntlet r10) */
-${PORTRAIT_ROWS} .cot-bl .row .nm{line-height:16px;}${PORTRAIT_ROWS} .cot-bl .row .cs{line-height:14px;}
+/* (15 and 13 px, a pixel over and under them in the 32 px row: at 16 and 14 the descenders sat on its rule, r15) */
+${PORTRAIT_ROWS} .cot-bl .row .nm{line-height:15px;}${PORTRAIT_ROWS} .cot-bl .row .cs{line-height:13px;}
 /* (a phone up to 340 px wide gives the render's room to the names: a 138 px side left "M1A2 Abrams" 50 px, r8) */
 ${PORTRAIT_ROWS}[data-cot-width-density='narrow'] .cot-bl .row .sil{display:none;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
@@ -388,6 +395,10 @@ ${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(-
 ${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
 /* (a seat not yet named holds its card's place, the card's frame and the side's foot over an empty ground) */
 ${WIDE} .cot-bl .team.cards .row.card.slot{background:var(--hud-plate-strong);}
+/* (a tile's waiting mark where its vehicle and its name will stand) */
+${WIDE} .cot-bl .team.cards .row.card.slot .og{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%)}
+${WIDE} .cot-bl .team.cards .row.card.slot .og svg{width:24px;height:24px}
+${WIDE} .cot-bl .team.cards .row.card.slot .ol{position:absolute;left:6px;bottom:11px;width:50%}
 /* (the player's card's foot in the ring's accent: the side's blue foot sat inside its gold frame at 1920 and 2560, gauntlet r11) */
 ${WIDE} .cot-bl .team.ally.cards .row.card.me{border-bottom-color:var(--accent);}
 ${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;
@@ -877,6 +888,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const el = document.createElement('div');
       el.className = slotClass;
       el.setAttribute('aria-hidden', 'true');
+      // (an open seat's own state, a seat waiting for its player: a blank plate read as a row that failed to draw, gauntlet
+      // r17)
+      el.innerHTML = `<span class="og">${uiIconSVG('player', 16)}</span><span class="ol"></span>`;
       next.push(el);
     }
     if (next.length !== kept.length || next.some((el, at) => el !== kept[at])) {

@@ -227,7 +227,8 @@ for (const quality of ['high', 'low']) {
     assert.ok(boreHit, 'the bore has a recessed termination');
     const boreLocal = gunNode.worldToLocal(boreHit.point.clone());
     assert.ok(boreLocal.z < rig.gunLengthM-.19, `no solid cap hides the mouth: ${boreHit.object.name} at local ${boreLocal.toArray()} (${JSON.stringify(boreHit.object.parent.userData)})`);
-    const sternStart = hull.localToWorld(new T.Vector3(.2,1.08,-4.3));
+    // (240: the cage tops 1.39, its eight bars 0.1014 apart, so 1.08 meets the fifth; 1.035 is the gap below it)
+    const sternStart = hull.localToWorld(new T.Vector3(.2,1.035,-4.3));
     const sternDirection = new T.Vector3(0,0,1).transformDirection(hull.matrixWorld);
     const sternHit = new T.Raycaster(sternStart,sternDirection).intersectObject(hull,true)[0];
     const sternHitZ = sternHit && hull.worldToLocal(sternHit.point.clone()).z;
