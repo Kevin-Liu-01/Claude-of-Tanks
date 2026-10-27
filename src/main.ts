@@ -4152,6 +4152,9 @@ if (STUDIO_BOOT_INTENT) {
 try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
+// (boot-261) the gamepad service starts once the Garage has settled, not inside its build (input.ts watchGamepads)
+if (window.requestIdleCallback) window.requestIdleCallback(() => input.watchGamepads(), { timeout: 5000 });
+else setTimeout(() => input.watchGamepads(), 1500);
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
   // Keep the normal Verdant boot fast. A persisted outdoor choice hydrates
   // after readiness and never presents the removed synthetic map diorama.
