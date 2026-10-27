@@ -98,7 +98,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-out .gh{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0 2px}
 .st-out .gh>button:first-child{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;min-height:28px;padding:var(--s1) var(--s2);border:0;
   border-radius:var(--r1);background:none;color:var(--ink-2);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display);text-align:left}
-.st-out .gh>button:first-child[aria-current=true]{color:var(--accent)}
+/* the open workspace wears the kit's one selected state, the accent's wash and edge (the s18 critic: orange words alone on
+   the rail, the outliner and the phone's strip) */
+.st-out .gh>button:first-child[aria-current=true]{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .st-out .gh .cot-i,.st-out .add .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-out .add{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none}
 .st-out .it{display:flex;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);border:0;border-radius:var(--r1);background:transparent;
@@ -283,9 +285,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 @media (pointer:coarse){.cot-studio .mapPopX{--h:44px}}
 /* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them */
 @media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 200px}}
-/* the focus is the pointer's or the keys' place and wears the kit's amber ring; the scene's current map keeps its fill
-   under a neutral edge (the s16 critic: two cards in the same amber) */
-.cot-studio .mapPop .cot-c-picker__opt[aria-selected=true]:not(:focus-visible){box-shadow:var(--ring-3)}
+/* the scene's current map wears the kit's one selected state (wash and edge); the focus is the kit's neutral ring, so the
+   two never read alike (the s18 critic: a wash with no edge beside an edge with no wash) */
 .cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
 .cot-studio .pickBtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -375,9 +376,12 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
   min-width:0;padding:0;border:0;background:none;color:var(--ink-1);text-align:left}
 .cot-studio .production-card img{grid-column:1/-1;grid-row:1;display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/10;object-fit:cover;
   border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1)}
-.cot-studio .production-card .production-duration{grid-column:2;grid-row:2;padding-top:1px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-data)}
+/* the duration stands on the still's corner, so the caption under it has the card's whole width (the s18 critic: zh
+   "M1A2 Abrams TUSK…" cut beside "6.6 秒", the library's durations out of line with two-line titles) */
+.cot-studio .production-card .production-duration{grid-column:1/-1;grid-row:1;align-self:end;justify-self:end;margin:var(--s1);padding:2px var(--s1);
+  border-radius:var(--r1);background:var(--glyph-plate);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-data)}
 /* a take's name wraps (247 round 2: no ellipsis): two lines at most widths, the still above gives up the height */
-.cot-studio .production-card strong{grid-column:1;grid-row:2;min-width:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1.15 var(--font-display);
+.cot-studio .production-card strong{grid-column:1/-1;grid-row:2;min-width:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1.15 var(--font-display);
   overflow-wrap:anywhere;text-wrap:balance}
 .cot-studio .production-card small{display:none}
 .cot-studio .production-card[aria-pressed=true] img{box-shadow:var(--ring-accent)}
@@ -426,10 +430,11 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-shelf .production-card{grid-row:1/span 2;grid-template-rows:subgrid;min-height:0}
 /* a shelf caption keeps its names whole and takes at most two lines, so the stills above keep their height (the s15
    critic: a three-line caption at 1280 crushed every still to a strip) */
-/* a name too long for its card's line gives way to an ellipsis (its title holds it whole), never runs under the
-   duration (the s17 critic: zh "M1A2 Abrams TU" under "6.6 秒") */
-.cot-studio .production-card .nobr{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
-.st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+/* a name stands together: it starts a line rather than split there, and breaks inside itself only when it is wider than
+   the whole card; no ellipsis (the s18 critic: zh "M1A2 Abrams TUSK…" was cut and still wrapped) */
+.cot-studio .production-card .nobr{display:inline-block;max-width:100%;white-space:normal;vertical-align:bottom}
+/* every shelf caption holds two lines' room, so the takes' first lines and their stills stand on one line */
+.st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:calc(2 * 1.15em)}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
 
@@ -570,10 +575,11 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
 /* each frame's name stands on a plate, legible over sand and sky */
 .cot-studio-archive .media-archive-card-copy strong{padding:2px var(--s1);border-radius:var(--r1);background:var(--hud-plate)}
-/* (as specific as the archive's own rail rule plus one: mediaArchive.css loads after this sheet, and its 1 px gap ran the
-   frames together into one strip: the s16 critic) */
-.cot-studio-archive .archiveBody .media-archive-grid{gap:var(--s3);padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent)}
+/* the frames stand in a grid that uses the dialog's room and scrolls inside it (the s18 critic: a thin strip of 61 frames
+   on an empty scrim, its last card cut by the fade). As specific as the archive's own rail rule plus one: mediaArchive.css
+   loads after this sheet. */
+.cot-studio-archive .archiveBody .media-archive-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);
+  max-height:min(70vh,calc(100dvh - 160px));overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;overscroll-behavior:contain}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
