@@ -858,7 +858,9 @@ async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
   // (short lines: the rooms census keeps a warning's first 240 characters; one for the restore, one for each program)
   const failures = receipt.programCompileFailures;
   const since = dressingBuildTimings().slice(dressingChunks).map((timing) => timing.chunk ?? '?');
-  console.warn(`Garage late links: dressing built at the warm ${dressingBuilt}, chunks since ${since.length}: ${since.join(' ')}`);
+  console.warn(`Garage late links: dressing built at the warm ${dressingBuilt} (${receipt.dressingChunksFinished ?? 0} finished `
+    + `under the cover), ${receipt.shadowCasterBatches ?? 0} caster batches, ${receipt.uploadCatchUpFrames ?? 0} upload waits, `
+    + `chunks since ${since.length}: ${since.join(' ')}`);
   console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm; released ${lateLinks.released}; `
     + `warm ${receipt.programsPrepared ?? 0} prepared in ${receipt.programCohorts ?? 0} cohorts, ${receipt.programWarmSlices} slices, `
     + `deferred ${receipt.programWarmDeferred ?? 0}, compile failures ${failures?.count ?? 0}${failures?.first ? ` (${failures.first})` : ''}`);

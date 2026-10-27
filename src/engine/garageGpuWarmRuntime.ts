@@ -6,6 +6,7 @@ import {
   type WorkYielder,
 } from './frameScheduler.ts';
 import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { createGpuCatchUpGate } from './gpuCatchUp.ts';
 import { ProgramUniformPreparationError } from './programWarm.ts';
 import type { ProgramReceipt } from './programReceipt.ts';
 import type {
@@ -133,6 +134,9 @@ export interface GarageGpuRestoreReceipt {
   lateLinks?: ProgramReceipt;
   /** the workshop dressing's chunks the covered restore finished before its program warm (main.ts); absent with none */
   dressingChunksFinished?: number;
+  /** the shadow prime's caster warm batches (a program warm's restore only), and the frames the uploads waited for the GPU */
+  shadowCasterBatches?: number;
+  uploadCatchUpFrames?: number;
   /** objects whose program warm compile threw, and the first (programWarm's compileFailures); absent with none */
   programCompileFailures?: { count: number; first: string | null };
 }
@@ -179,6 +183,9 @@ interface GarageGpuRestoreOptions {
   /** The program warm is done: every program the Garage draws should exist from here (the lateLinks receipt opens). */
   onProgramsWarmed?: () => void;
 }
+
+/** The most frames an upload batch of a Garage restore waits for the GPU to catch up (half a second at 60 Hz). */
+const UPLOAD_CATCH_UP_MAX_FRAMES = 30;
 
 /** The restore's caller abandoned it (perf-246); never a reason to fall back to an unbounded compile. */
 export class GarageRestoreAbandonedError extends Error {
@@ -265,6 +272,8 @@ export async function restoreGarageGpuPipeline({
   let sceneUploadBatches: number[] = [];
   let settleFrameMs = 0;
   let programWarmDeferred: number | null | undefined;
+  let shadowCasterBatches = 0;
+  let uploadCatchUpFrames = 0;
 
   lighting.setStaticPresentationDormant(false);
   let lodsSelected = 0;
@@ -315,15 +324,36 @@ export async function restoreGarageGpuPipeline({
         // so cold or context-restored sessions remain valid.
         cascadeLimit: GARAGE_CRITICAL_SHADOW_CASCADES,
         yieldBeforeCascade: async () => { await yieldGpu(); },
+        // (2026-10-27, the room-stalls lane) every visible caster's depth program at the Garage's light set, a batch at a
+        // time under the cover, a new variant a batch (shadowPrime.ts): the rooms census's leave linked the dressing's
+        // depth programs (the Leopard bay's removed road wheels, the T-90 gun assembly) in the Garage's first frames, past
+        // the two cascades this prime renders. Most programs exist by then; the batches are wider than the entry's.
+        ...(programsNeedWarm ? { casterWarmup: { maxCastersPerBatch: 24, maxVerticesPerBatch: 120_000,
+          yieldBeforeBatch: async () => { shadowCasterBatches++; await yieldGpu(); } } } : {}),
       },
     );
     if (resourcesReleased || programsNeedWarm) {
-      sceneUploadBatches = await warmScene(renderer, scene, camera, {
-        scale: 0.0625,
-        maxObjects: 24,
-        maxWeight: 90_000,
-        yieldBeforeBatch: async () => { await yieldGpu(); },
-      });
+      // (2026-10-27, the room-stalls lane) each upload batch waits, a frame at a time, until the GPU has done the commands
+      // before the previous batch (gpuCatchUp.ts): behind a GPU process still building the links' pipelines, the rooms
+      // census's leave held a batch's bufferData 919 ms. A GPU that keeps up costs no frame.
+      const gl = renderer.getContext?.();
+      const uploadGate = gl ? createGpuCatchUpGate(gl) : null;
+      uploadGate?.beginDrain();
+      try {
+        sceneUploadBatches = await warmScene(renderer, scene, camera, {
+          scale: 0.0625,
+          maxObjects: 24,
+          maxWeight: 90_000,
+          yieldBeforeBatch: async () => {
+            await yieldGpu();
+            for (let frames = 0; uploadGate && frames < UPLOAD_CATCH_UP_MAX_FRAMES && !uploadGate.caughtUp(); frames++) {
+              uploadCatchUpFrames++;
+              await yieldProgramReadiness();
+              assertCurrent();
+            }
+          },
+        });
+      } finally { uploadGate?.dispose(); }
     }
     assertCurrent();
     const settleFrameAt = now();
@@ -345,6 +375,8 @@ export async function restoreGarageGpuPipeline({
     programsPrepared: programStats.programsPrepared ?? 0,
     programCohortMax: programStats.programCohortMax ?? 0,
     programBudgetSlices: programStats.programBudgetSlices ?? 0,
+    ...(shadowCasterBatches ? { shadowCasterBatches } : {}),
+    ...(uploadCatchUpFrames ? { uploadCatchUpFrames } : {}),
     ...(programStats.compileFailures ? { programCompileFailures: { count: programStats.compileFailures,
       first: programStats.firstCompileFailure ?? null } } : {}),
     linkerSlices,
