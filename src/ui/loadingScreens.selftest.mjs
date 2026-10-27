@@ -128,7 +128,21 @@ assert.match(bootHtml, /<!-- cot:boot-lockup -->\s*<div class="mkl" aria-hidden=
   'the boot lockup\'s mark is the compositor-layered living mark (tools/sync-brand-marks.mjs)');
 assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   'the boot fill\'s track reserves its height in the first paint');
-assert.doesNotMatch(bootHtml, /cot-boot-ticks/, 'one continuous fill: no stage ticks');
+// (owner, 2026-10-26: "a segmented loading along with the main loading line, like it was before") the main line keeps the
+// whole load; under it one segment per stage, the download's first, then bootScreen's Garage stages in order, written in the
+// page so the first paint holds the row; each segment's fill moves by its compositor scaleX
+{
+  const garage = bootSource.match(/const GARAGE_STAGES[^=]*= \[([\s\S]*?)\] as const;/)?.[1] ?? '';
+  const stageKeys = [...garage.matchAll(/\['(\w+)'/g)].map(([, key]) => key);
+  const row = bootHtml.match(/<div class="cot-boot-segs" id="cot-boot-segs" data-datum="load-stage-progress" aria-hidden="true">([\s\S]*?)<\/div>/)?.[1] ?? '';
+  assert.deepEqual([...row.matchAll(/data-seg="(\w+)"/g)].map(([, key]) => key), ['download', ...stageKeys],
+    'the stage row is the download and then every Garage stage, in order');
+  assert.ok(stageKeys.length >= 8, 'the Garage stage list was read');
+  assert.match(bootHtml, /\.cot-boot-segs b \{[^}]*transform: scaleX\(0\);[^}]*will-change: transform;/, 'a segment fills by its compositor scaleX');
+  assert.match(bootHtml, /data-datum="load-progress"><div class="cot-boot-fill"/, 'the main line is the load-progress datum');
+  assert.match(bootSource, /stepSeg\(segs\.get\(curKey\)/, 'the current segment fills by the stage\'s real steps');
+  assert.doesNotMatch(bootSource, /setInterval\([^)]*[Ss]eg|setTimeout\([^)]*[Ss]eg/, 'no timer moves a segment');
+}
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');

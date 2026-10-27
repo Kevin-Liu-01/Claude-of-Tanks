@@ -351,10 +351,19 @@
     /* one continuous tungsten fill: bootScreen.ts animates its scaleX on the compositor toward the real load */
     .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .22); }
     .cot-boot-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: var(--accent); will-change: transform; }
+    /* the stages under it, one segment each (owner, 2026-10-26: "a segmented loading along with the main loading line,
+       like it was before"): a done stage solid, the current one filled by its real steps, the rest dim. The inline painter
+       fills the download's segment with the files; bootScreen.ts steps the others' scaleX on the compositor */
+    .cot-boot-segs { display: flex; gap: 4px; height: 3px; margin-top: 8px; }
+    .cot-boot-segs i { position: relative; flex: 1 1 0; overflow: hidden; background: oklch(from var(--ink-1) l c h / .14); }
+    .cot-boot-segs b { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: var(--accent); will-change: transform; }
+    .cot-boot-segs i.done b { transform: scaleX(1); background: var(--ink-2); }
 
     /* --- tips + gate ------------------------------------------------------- */
+    /* the tip stands on the load column's left edge, under the stage line and the bars: one column, one edge */
     .cot-boot-tip {
-      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px auto 0; overflow: hidden;
+      grid-area: slot; justify-self: start; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px 0 0; overflow: hidden;
+      text-align: left;
       font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity var(--dur-base) var(--ease-camera);
     }
@@ -509,7 +518,7 @@
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
+    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-segs) { visibility: hidden; }
     .cot-boot-load { position: relative; }
     .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
     .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -962,6 +971,9 @@
         const fill = document.getElementById('cot-boot-fill');
         const share = Number(fill && fill.parentElement && fill.parentElement.getAttribute('data-download-share')) || 0;
         if (fill && share) fill.style.transform = `scaleX(${(share * Math.min(network.scripts, network.expected) / network.expected).toFixed(4)})`;
+        // the download's own segment shows the same files across its whole width
+        const seg = document.querySelector('#cot-boot-segs [data-seg="download"] b');
+        if (seg) seg.style.transform = `scaleX(${(Math.min(network.scripts, network.expected) / network.expected).toFixed(4)})`;
         // the count ticks in place, so it wears the data face (.num); an engine without replaceChildren keeps plain text
         if (typeof stage.replaceChildren !== 'function' || typeof document.createElement !== 'function') {
           stage.textContent = `${MESSAGES.downloading} · ${counted}`;
@@ -1150,12 +1162,13 @@
         <svg class="wm-stack" viewBox="0 0 3946 2184" aria-hidden="true" focusable="false"><path transform="translate(-55.0 -142.0)" style="fill:currentColor" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495Z"/><path transform="translate(-5085.0 596.0)" style="fill:var(--accent)" d="M5085 619.8V372.2L5143.2 314H5314.8L5373.1 372.2V619.8L5314.8 678H5143.2ZM5290.9 634.3 5323.1 602.1V389.9L5290.9 357.7H5167.1L5134.9 389.9V602.1L5167.1 634.3ZM5529.1 314H5768.3V357.7H5579V478.3H5743.3V522H5579V678H5529.1Z"/><rect style="fill:var(--accent)" x="831.0" y="1051.0" width="3115.0" height="90.0"/><path transform="translate(-6811.5 1342.0)" style="fill:currentColor" d="M7020.5 257H6811.5V142H7365.5V257H7156.5V842H7020.5ZM7591.5 142H7715.5L7971.5 842H7833.5L7776.5 687H7530.5L7473.5 842H7335.5ZM7746.5 575 7653.5 309H7651.5L7561.5 575ZM8081.5 142H8203.5L8515.5 617H8517.5V142H8648.5V842H8526.5L8214.5 368H8212.5V842H8081.5ZM8818.5 142H8954.5V435H9060.5L9229.5 142H9382.5L9177.5 491L9399.5 842H9243.5L9059.5 551H8954.5V842H8818.5ZM9469.5 734V634H9603.5V693L9636.5 726H9843.5L9877.5 692V576L9844.5 543H9579.5L9471.5 435V250L9579.5 142H9895.5L10003.5 250V351H9869.5V291L9836.5 258H9638.5L9605.5 291V394L9638.5 427H9903.5L10011.5 535V732L9901.5 842H9577.5Z"/></svg>
         <!-- /cot:boot-lockup --></div>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite" data-datum="room-code"></div>
-      <div class="cot-boot-load" data-datum="load-progress">
+      <div class="cot-boot-load">
         <div class="cot-boot-meta">
           <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage" data-datum="load-stage" role="status" aria-live="polite" aria-atomic="true">Starting engine</div>
         </div>
-        <div class="cot-boot-bar" data-download-share=".2"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
+        <div class="cot-boot-bar" data-download-share=".2" data-datum="load-progress"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
+        <div class="cot-boot-segs" id="cot-boot-segs" data-datum="load-stage-progress" aria-hidden="true"><i data-seg="download" class="now"><b></b></i><i data-seg="renderer"><b></b></i><i data-seg="sky"><b></b></i><i data-seg="lighting"><b></b></i><i data-seg="garage"><b></b></i><i data-seg="vehicle"><b></b></i><i data-seg="hud"><b></b></i><i data-seg="ui"><b></b></i><i data-seg="audio"><b></b></i><i data-seg="post"><b></b></i><i data-seg="ready"><b></b></i></div>
         <div class="cot-boot-notice" id="cot-boot-notice" aria-live="polite" data-datum="notices"></div>
       </div>
 
