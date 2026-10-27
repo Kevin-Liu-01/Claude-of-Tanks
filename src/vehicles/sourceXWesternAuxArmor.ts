@@ -4,7 +4,7 @@ import type { ArmorPlate } from '../sim/armor.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import { ARIETE_X_FAMILY_SCALE } from './profiles/arieteXFamilyFrame.ts';
-import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
+import { CR1_GRANBY_APPLIQUE } from './profiles/challenger1HistoricFrame.ts';
 
 type Point = [number, number, number];
 type Face = Point[];
@@ -179,45 +179,29 @@ function arieteSkirts(add: Sink): void {
 }
 
 function challengerSkirts(add: Sink): void {
-  // challenger1XSuppliedHull.ts installedSkirt()/sideApplique(), in its fixed
-  // authoring ruler. Recessed panel fields and their raised rims remain distinct.
-  const low = (z: number) => 21.377953 + (z - 58.503937) * (41.220470 - 21.377953) / (95.590553 - 58.503937);
-  const rows = [[-173.346451, 45.118111, 49.685040], [-121.653542, 21.338583, 49.685040],
-    [37.992126, 21.338583, 49.685040], [58.503937, 21.377953, 49.685040],
-    [83.267715, low(83.267715), 49.685040], [95.629921, 41.220470, 48.188976]];
-  const panels = [[-107.992126, -73.385826, 76.181099, 24.173227, 58.582676],
-    ...[[-73.346458, -57.125984], [-56.811024, -40.551182], [-40.275589, -24.055119],
-      [-23.622047, -7.362205], [-7.125984, 9.133859], [9.606299, 25.866142],
-      [26.141731, 42.401573]].map(([a, b]) => [a, b, 77.086617, 24.724409, 59.094486])];
+  // challenger1Historic.ts skirts()/granbyKit() (release 262): the Op Granby cassettes' outer faces, and the skirt
+  // behind them where a seam or an uncovered panel leaves it exposed (one inherited family charged per shot).
+  const { innerX: skirtX, outerX, low, high, rear, front } = CR1_GRANBY_APPLIQUE;
+  const rail = 1.585, panels = 5, z0 = -3.22, z1 = 1.52, pitch = (z1 - z0) / panels;
+  const frontSkirt = [[1.56, .56], [2.86, .56], [3.18, .78], [3.36, 1.06]] as const;
   for (const side of [-1, 1] as const) {
-    const convert = (face: Face): Face => face.map(([x, y, z]) => c1Point(x, y, z));
     const name = `skirt_${sideName(side)}`;
-    let inner: Face[] = rows.slice(0, -1).map(([z, lo, hi], i) => {
-      const [nz, nlo, nhi] = rows[i + 1];
-      const face: Face = [[side * 70, lo, z], [side * 70, nlo, nz], [side * 70, nhi, nz], [side * 70, hi, z]];
-      if (normal(face)[0] * side < 0) face.reverse();
-      return face;
-    });
-    panels.forEach(([a, b, outer, bottom, top], index) => {
-      const cover = sideFace(side * outer, bottom, top, a, b);
-      inner = expose(inner, cover);
-      const group = `applique-${side}-${index}`;
-      add(name, convert(sideFace(side * (outer - .43307), bottom + 1.29922, top - 1.29922, a + 2.48, b - 2.48)), group);
-      for (const [lo, hi, rear, front] of [[bottom, bottom + 1.29922, a, b], [top - 1.29922, top, a, b],
-        [bottom + 1.29922, top - 1.29922, a, a + 2.48], [bottom + 1.29922, top - 1.29922, b - 2.48, b]]) {
-        add(name, convert(sideFace(side * outer, lo, hi, rear, front)), group);
-      }
-    });
-    const tip = [[42.677166, 23.464567], [62.755905, 23.464567], [95.433067, 41.181103]];
-    for (let i = 0; i < tip.length - 1; i++) {
-      const [z, lo] = tip[i], [nz, nlo] = tip[i + 1];
-      const face: Face = [[side * 73.700790, lo, z], [side * 73.700790, nlo, nz],
-        [side * 73.700790, 49.685040, nz], [side * 73.700790, 49.685040, z]];
-      if (normal(face)[0] * side < 0) face.reverse();
-      inner = expose(inner, face);
-      add(name, convert(face), `applique-${side}-tip`);
+    const oriented = (face: Face): Face => (normal(face)[0] * side < 0 ? [...face].reverse() : face);
+    let inner: Face[] = [];
+    for (let i = 0; i < panels; i++) {
+      const zc = z0 + pitch * (i + .5), half = (pitch - .025) / 2;
+      inner.push(sideFace(side * skirtX, i === 0 ? .80 : .58, rail, zc - half, zc + half));
     }
-    inner.forEach(face => add(name, convert(face), `thin-${side}`));
+    for (let i = 0; i < frontSkirt.length - 1; i++) {
+      const [za, la] = frontSkirt[i], [zb, lb] = frontSkirt[i + 1];
+      inner.push(oriented([[side * skirtX, la, za], [side * skirtX, lb, zb], [side * skirtX, rail, zb], [side * skirtX, rail, za]]));
+    }
+    const covers: Face[] = [];
+    for (let i = 0; i < 7; i++) covers.push(sideFace(side * outerX, low, high, rear + i * .66, rear + i * .66 + .64));
+    covers.push(sideFace(side * outerX, low, high, 2.04, 2.86));
+    covers.push(oriented([[side * outerX, low, 2.86], [side * outerX, .92, front], [side * outerX, high, front], [side * outerX, high, 2.86]]));
+    covers.forEach((cover, index) => { inner = expose(inner, cover); add(name, cover, `applique-${side}-${index}`); });
+    inner.forEach(face => add(name, face, `thin-${side}`));
   }
 }
 

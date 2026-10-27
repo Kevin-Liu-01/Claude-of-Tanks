@@ -17,7 +17,7 @@ import {createT90BurlakXArmorZones,T90_BURLAK_X_SOURCE_DATUMS} from './t90Burlak
 import {createT90MSXArmorZones,T90MS_X_SOURCE_DATUMS} from './t90msXArmor.ts';
 import { LECLERC_CLASSIC_X_DATUMS } from './profiles/leclercClassicXFrame.ts';
 import { ARIETE_C1_X_DATUMS, ARIETE_X_FAMILY_SCALE, ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG } from './profiles/arieteXFamilyFrame.ts';
-import { CHALLENGER1_SUPPLIED_DATUMS } from './profiles/challenger1XSuppliedFrame.ts';
+import { CR1_HISTORIC } from './profiles/challenger1HistoricFrame.ts';
 import { STRV122_SUPPLIED_DATUMS } from './profiles/strv122XSuppliedFrame.ts';
 import { applySourceXAuxArmor } from './sourceXAuxArmor.ts';
 import { applyLeclercClassicXFieldKitArmor } from './leclercClassicXKitArmor.ts';
@@ -84,7 +84,7 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = {
   strv122: {...STRV122_SUPPLIED_DATUMS.dims},
   t72b3m_2016:{...T72B3M_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:3.5952429614961154,silhouetteHullLengthM:7.509942752402276},
-  challenger1_mk3:{...CHALLENGER1_SUPPLIED_DATUMS.dims},
+  challenger1_mk3:{...CR1_HISTORIC.dims},
   t72bu:{...T72BU_X_SOURCE_DATUMS.dims,
     silhouetteHeightM:2.742923826724291,silhouetteHullLengthM:7.573092477768661},
   chieftain5:{hullLengthM:6.57542378005239,overallLengthM:10.470842599868774,
@@ -119,8 +119,8 @@ const frames: Readonly<Record<string, SourceFrame>> = {
   strv122: {turret:[...STRV122_SUPPLIED_DATUMS.turretPivot],
     gun:[...STRV122_SUPPLIED_DATUMS.trunnion],muzzleZ:STRV122_SUPPLIED_DATUMS.muzzleZ},
   t72b3m_2016:{turret:[...T72B3M_X_SOURCE_DATUMS.turretPivot],gun:[...T72B3M_X_SOURCE_DATUMS.trunnion],muzzleZ:T72B3M_X_SOURCE_DATUMS.muzzleZ},
-  challenger1_mk3:{turret:[...CHALLENGER1_SUPPLIED_DATUMS.turretPivot],
-    gun:[...CHALLENGER1_SUPPLIED_DATUMS.trunnion],muzzleZ:CHALLENGER1_SUPPLIED_DATUMS.muzzleZ},
+  challenger1_mk3:{turret:[...CR1_HISTORIC.turretPivot],
+    gun:[...CR1_HISTORIC.trunnion],muzzleZ:CR1_HISTORIC.muzzleZ},
   t72bu:{turret:[...T72BU_X_SOURCE_DATUMS.turretPivot],gun:[...T72BU_X_SOURCE_DATUMS.trunnion],muzzleZ:T72BU_X_SOURCE_DATUMS.muzzleZ},
   chieftain5:{turret:[.0031,1.476,.36928],gun:[-.008067,1.859441,1.570],muzzleZ:6.812053203582764},
   t90:{turret:[...T90_AW_X_SOURCE_DATUMS.turretPivot],gun:[...T90_AW_X_SOURCE_DATUMS.trunnion],muzzleZ:T90_AW_X_SOURCE_DATUMS.muzzleZ},

@@ -2,7 +2,7 @@
 // Never infer this transform from candidate dimensions or its measured bounds.
 export const OWNER_SIZE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
   k21: .90, kf41_lynx: .90, ajax: .90, ares_apc: .90,
-  griffin50mm: .90, challenger1_mk3: 1.10,
+  griffin50mm: .90,
 });
 export function withOwnerSizeTargets<T extends Record<string, { turret: readonly number[]; gun: readonly number[] }>>(frames: T): T {
   return Object.fromEntries(Object.entries(frames).map(([id, frame]) => {

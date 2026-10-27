@@ -2676,8 +2676,9 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and
   // gains a fat canvas roll across the rear deck, laid ahead of the roof gear so the stern reads at play distance; the
   // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
+  // Release 262: the rebuilt turret carries its own L8 banks on the cheek fronts (challenger1HistoricTurret.ts), so the
+  // decor draws no second pair.
   challenger1_mk2: () => [
-    { kit: 'smoke', p: 1, v: { v: '4' }, slot: ['turretCheekPair', {}] },
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
@@ -3893,9 +3894,10 @@ const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, n
   strv103b: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
   strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
-  // round 4 (2026-10-07): the Challenger 1 commander's L37 cupola on the low right roof (turret-local (0.50, -0.81),
-  // turret pivot z 0.362): the bedrolls the decor laid there would bury the new gun's pintle and can.
-  challenger1_mk2: [[0.50, -0.45, 0.62]],
+  // round 4 (2026-10-07): the Challenger 1 roof guns' stations, so the decor's bedrolls never bury a pintle or its can.
+  // Release 262: the rebuilt turret's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
+  challenger1_mk2: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  challenger1_mk3: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */

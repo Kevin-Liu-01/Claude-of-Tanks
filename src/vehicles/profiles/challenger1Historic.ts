@@ -1,0 +1,207 @@
+// Challenger 1 Mk 2 / Mk 3 — release 262 rebuild from historical references (owner 2026-10-27: "redesign the ...
+// challenger 1 mk 2 ... turrets and hulls ... based on proper historical referrences so they will no longer look so
+// chungus"). Hull, running gear, turret and L11A5 are new first-party geometry authored from the published dimensions
+// and measured drawings recorded in docs/references/tanks/challenger1_mk2.md: hull 8.33 m, overall 11.55 m, 3.52 m
+// over the skirts, 2.50 m to the turret roof, six Hydrogas road wheels a side on a 1.02 m pitch, rear drive, a 2.56 m
+// slab-sided Chobham turret (77 % of the hull) with its long wedge front and bustle, the TOGS barbette and the
+// commander's No. 15 cupola on the vehicle's right (-x), the loader's hatch on the left. The two marks share the
+// hull and turret; the Mk 3 carries the Op Granby kit (side applique, nose package, rear drums) its earlier build had.
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { KIT } from './kit.ts';
+import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
+import { roofSheet, beamBetween } from './measuredPrimitives.ts';
+import { addChallenger1HistoricTurret } from './challenger1HistoricTurret.ts';
+import { CR1_HISTORIC as D, CR1_GRANBY_APPLIQUE, type Challenger1Mark } from './challenger1HistoricFrame.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
+const { box, cylX, cylY, cylZ, torus } = KIT;
+
+/** A section ring authored for the left side (+x), mirrored to the right with its winding kept. */
+function sided(ring: readonly SectionPoint[], side: number): SectionPoint[] {
+  return side > 0 ? [...ring] : ring.map(([x, y]) => [-x, y] as const).reverse();
+}
+/** Chamfered box section, counter-clockwise from +Z. */
+function chamferedBox(w: number, lo: number, hi: number, c: number, cTop = c): SectionPoint[] {
+  return [[-w + c, lo], [w - c, lo], [w, lo + c], [w, hi - cTop], [w - cTop, hi], [-w + cTop, hi], [-w, hi - cTop], [-w, lo + c]];
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Hull: the welded Shir 2-derived tub. Centre body between the tracks (+-1.04), sponsons over them to +-1.70, a
+// shallow 19-degree upper glacis from the 1.58 m roof to the nose plate, a steep nose plate and a lower nose plate to
+// the 0.50 m belly; the engine deck stands 10 cm proud of the turret roof plate behind the bulkhead.
+// ---------------------------------------------------------------------------------------------------------------
+type TubStation = readonly [z: number, belly: number, top: number];
+const TUB: readonly TubStation[] = [
+  [-4.12, 1.00, 1.66], [-3.60, 0.50, 1.68], [-1.33, 0.50, 1.68], [-1.29, 0.50, 1.58],
+  [2.55, 0.50, 1.58], [3.40, 0.50, 1.29], [3.95, 0.716, 1.10], [4.165, 0.79, 0.84],
+];
+const SPONSON: readonly TubStation[] = [
+  [-4.12, 1.10, 1.66], [-1.33, 1.10, 1.68], [-1.29, 1.10, 1.58], [2.55, 1.10, 1.58], [3.00, 1.10, 1.44],
+];
+
+function hullTub(P: TankBuilderPort): void {
+  P.add('hull', sectionSolid(TUB.map(([z, lo, hi]) => ({ z, ring: chamferedBox(D.hull.innerHalfW, lo, hi, Math.min(.06, (hi - lo) * .2), .03) }))));
+  for (const side of [-1, 1]) {
+    const xi = D.hull.innerHalfW - .02, xo = D.hull.sponsonHalfW;
+    P.add('hull', sectionSolid(SPONSON.map(([z, lo, hi]) => ({ z, ring: sided([[xi, lo], [xo - .03, lo], [xo, lo + .03], [xo, hi - .025], [xo - .025, hi], [xi, hi]], side) }))));
+    // The front mudguard: a folded sheet from the sponson's nose over the idler to the bow, its outer lip turned down
+    // (the fender line the headlight clusters stand on), with the rubber flap hung from its front edge.
+    const a = Math.min(side * (D.hull.innerHalfW - .01), side * xo), b = Math.max(side * (D.hull.innerHalfW - .01), side * xo);
+    P.addMudguard(`cr1-front-guard-${side}`, 'hull', roofSheet([
+      [2.95, a, b, 1.46, 1.46], [3.55, a, b, 1.30, 1.30], [4.10, a, b, 1.13, 1.13],
+    ], .03));
+    P.addMudguard(`cr1-front-guard-lip-${side}`, 'hull', box(.03, .16, 1.15), side * (xo - .015), 1.215, 3.53, -.28, 0, 0);
+    P.hangMudguard('cr1-front-flap', 'hullRubber', box(.62, .34, .025), side * (xo - .33), .95, 4.105);
+    // The rear guard over the sprocket closes the sponson's tail.
+    P.addMudguard(`cr1-rear-guard-${side}`, 'hull', box(xo - D.hull.innerHalfW + .02, .03, .44), side * (xo + D.hull.innerHalfW) / 2, 1.645, -3.92);
+    P.hangMudguard('cr1-rear-flap', 'hullRubber', box(.58, .30, .025), side * (xo - .33), 1.38, -4.135);
+  }
+}
+
+function glacisKit(P: TankBuilderPort): void {
+  // Driver's hatch at the glacis head (centre line) with his periscope, the splash board across the glacis and the
+  // tow points on the nose plate.
+  P.addHatch('hullDetail', cylY(.30, .31, .04, P.q ? 24 : 14), 0, 1.60, 2.30);
+  P.addEquipment('hullDark', box(.20, .06, .07), 0, 1.65, 2.62);
+  P.addModuleVisual('optics', 'hullGlass', box(.16, .03, .012), 0, 1.655, 2.66);
+  P.addEquipment('hullDetail', box(1.90, .05, .07), 0, 1.565, 2.86, -.33, 0, 0);
+  for (const side of [-1, 1]) {
+    for (const x of [.42, .74]) {
+      P.addEquipment('hullDetail', box(.13, .14, .12), side * x, .94, 4.10, -.95, 0, 0);
+      P.addEquipment('hullDark', torus(.055, .017, 12, 6), side * x, .89, 4.16, Math.PI / 2, 0, 0);
+    }
+    // Headlight clusters on the front guards (two lamps in an armoured box), inboard of the guard's lip.
+    const lampX = side * (D.hull.innerHalfW + .30), lampZ = 3.72, lampY = 1.255;
+    P.addEquipment('hullDetail', box(.36, .15, .17), lampX, lampY + .07, lampZ, -.27, 0, 0);
+    for (const dx of [-.085, .085]) {
+      P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.048, .02, 12), 'headlight'), lampX + dx, lampY + .085, lampZ + .095, -.27, 0, 0);
+    }
+  }
+}
+
+function engineDeck(P: TankBuilderPort): void {
+  // Two rows of four louvred grilles across the deck (the radiator and air-inlet decks), framed on the plate.
+  const deckY = 1.68;
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+    const z = -1.72 - i * .58, x = side * .82;
+    P.addEquipment('hullDetail', box(1.38, .035, .52), x, deckY + .017, z);
+    for (let k = 0; k < (P.q ? 9 : 5); k++) {
+      P.addEquipment('hullDark', box(1.30, .012, .022), x, deckY + .036, z - .22 + k * (.44 / ((P.q ? 9 : 5) - 1)));
+    }
+  }
+  // Filler caps and lifting eyes along the deck edge, the engine-access cap at the tail.
+  for (const side of [-1, 1]) {
+    P.addEquipment('hullDetail', cylY(.08, .08, .03, 14), side * 1.48, deckY + .015, -3.95);
+    P.addEquipment('hullDark', torus(.05, .014, 10, 6), side * 1.52, deckY + .03, -1.45);
+  }
+  P.addEquipment('hullDetail', cylY(.20, .21, .035, 20), .62, deckY + .018, -3.95);
+  // Exhaust louvres on the rear plate, the tail lights and the towing pintle.
+  for (const side of [-1, 1]) {
+    P.addEquipment('hullDark', box(.62, .26, .04), side * .62, 1.42, -4.14);
+    for (let k = 0; k < 4; k++) P.addEquipment('hullDetail', box(.60, .014, .05), side * .62, 1.32 + k * .065, -4.16);
+    P.addEquipment('hullDetail', box(.16, .10, .06), side * 1.38, 1.52, -4.15);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.11, .05, .012), 'marker'), side * 1.38, 1.52, -4.183);
+    P.addEquipment('hullDark', torus(.06, .018, 12, 6), side * .25, 1.06, -4.17, Math.PI / 2, 0, 0);
+  }
+  P.addEquipment('hullDetail', box(.22, .16, .10), 0, 1.10, -4.16);
+  KIT.towCable(P, [[-1.22, 1.70, -3.70], [-1.24, 1.70, -1.90], [-1.30, 1.69, -1.40]]);
+}
+
+// Skirts: the armoured front section over the first two stations (its leading edge rising over the idler) and five
+// thin rear panels on the sponson rail, all hung outside the 1.71 m track edge within the 3.52 m width.
+function skirts(P: TankBuilderPort, side: number): void {
+  const xo = D.hull.skirtOuterX, rail = 1.585;
+  const front: readonly (readonly [number, number])[] = [[1.56, .56], [2.86, .56], [3.18, .78], [3.36, 1.06]];
+  P.addExternalArmor('hull', sectionSolid(front.map(([z, lo]) => ({ z, ring: sided([[xo - .04, lo], [xo, lo], [xo, rail], [xo - .04, rail]], side) }))));
+  const panels = 5, z0 = -3.22, z1 = 1.52, pitch = (z1 - z0) / panels;
+  for (let i = 0; i < panels; i++) {
+    const zc = z0 + pitch * (i + .5), lo = i === 0 ? .80 : .58;
+    P.addExternalArmor('hull', box(.03, rail - lo, pitch - .025), side * (xo - .015), (rail + lo) / 2, zc);
+    // panel stiffener and its hanger on the rail
+    P.addEquipment('hullDetail', box(.02, .05, pitch - .07), side * (xo + .004), lo + .06, zc);
+  }
+  // The rear panel's lower corner is cut over the sprocket climb.
+  P.addEquipment('hullDetail', box(.10, .045, z1 - z0 + .08), side * (xo - .05), rail + .015, (z0 + z1) / 2);
+  P.addEquipment('hullDetail', box(.09, .045, 1.82), side * (xo - .045), rail + .015, 2.46);
+}
+
+// Op Granby (Mk 3): bolted Chobham applique over the skirts, the nose package and the two jettisonable fuel drums.
+function granbyKit(P: TankBuilderPort): void {
+  const { innerX: xi, outerX: xo, low: lo, high: hi, rear, front } = CR1_GRANBY_APPLIQUE;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 7; i++) {
+      const z0 = rear + i * .66, z1 = z0 + .64;
+      P.addExternalArmor('hull', sectionSolid([z0, z1].map((z) => ({ z, ring: sided([[xi, lo], [xo, lo], [xo, hi], [xi, hi]], side) }))));
+      for (const y of [.62, .86, 1.10, 1.34]) for (const dz of [.16, .48]) {
+        P.addEquipment('hullDark', cylX(.018, .012, 8), side * (xo + .004), y, z0 + dz);
+      }
+    }
+    // the forward cassette steps up over the idler
+    P.addExternalArmor('hull', sectionSolid([[2.04, lo], [2.86, lo], [front, .92]].map(([z, l]) => ({ z, ring: sided([[xi, l], [xo, l], [xo, hi], [xi, hi]], side) }))));
+    for (const z of [-2.30, -.98, .34, 1.66, 2.45]) P.addEquipment('hullDetail', box(.17, .05, .10), side * (xi + .07), hi + .02, z);
+  }
+  // Nose package: two angled plates across the nose plate and the lower glacis, on their brackets.
+  const w = D.hull.innerHalfW - .04;
+  P.addExternalArmor('hull', roofSheet([[3.72, -w, w, 1.205, 1.205], [3.98, -w, w, 1.085, 1.085], [4.24, -w, w, .86, .86]], .06));
+  P.addExternalArmor('hull', roofSheet([[3.86, -w, w, .58, .58], [4.12, -w, w, .70, .70], [4.24, -w, w, .82, .82]], .05));
+  for (const x of [-.75, -.25, .25, .75]) {
+    P.addEquipment('hullDetail', beamBetween([x, 1.09, 3.92], [x, .99, 4.03], .018, 8));
+    P.addEquipment('hullDetail', beamBetween([x, .72, 4.05], [x, .64, 3.95], .018, 8));
+  }
+  // Rear fuel drums on their cradle off the rear plate.
+  for (const side of [-1, 1]) {
+    const x = side * .74, y = 1.42, z = -4.52;
+    P.addEquipment('hullFittingPaint', cylX(.30, 1.0, P.q ? 28 : 16), x, y, z);
+    for (const dx of [-.36, .36]) P.addEquipment('hullDark', torus(.30, .012, 24, 6).rotateY(Math.PI / 2), x + dx, y, z);
+    P.addEquipment('hullDetail', box(1.06, .05, .40), x, y - .33, -4.42);
+    for (const dx of [-.42, .42]) P.addEquipment('hullDetail', beamBetween([x + dx, y - .33, -4.24], [x + dx, 1.10, -4.15], .02, 8));
+  }
+}
+
+// Native suspension-driven gear: six Hydrogas stations, front idler, high rear sprocket, four return rollers behind the
+// skirts carrying the 0.65 m track's upper run.
+function runningGear(P: TankBuilderPort): void {
+  const G = D.gear;
+  const shoeDims = { padHeight: .032, grouserHeight: .010, webHeight: .016, hornHeight: .050, pinRadius: .008, pinCentreY: 0 };
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
+  const rollers = G.rollerZs.map((z) => ({ z, y: G.rollerY, r: G.rollerR }));
+  P.gear = KIT.buildRunningGear(P, {
+    style: 'rubber', wheelR: G.wheelR, wheelY: KIT.seatedWheelY(botY, .024, G.wheelR), wheelW: G.wheelW,
+    wheelZs: [...G.wheelZs], xc: G.trackXc, trackW: G.trackW, trackTh: .024,
+    sprocket: G.sprocket, idler: G.idler, rollers, returnRollerWidthM: .20,
+    topY: G.topY, botY, linkPitchM: .16, trackShoeDimensions: shoeDims,
+    loopPoints: KIT.trackLoopPoints({
+      sprocket: G.sprocket, idler: G.idler, contact: { zF: G.wheelZs[0] + .10, zR: G.wheelZs[G.wheelZs.length - 1] - .10 },
+      botY, topY: G.topY, sag: .012,
+      endWheels: KIT.endRoadWheels([...G.wheelZs], KIT.seatedWheelY(botY, .024, G.wheelR), G.wheelR),
+      supports: rollers.map((r) => ({ z: r.z, y: r.y + r.r + .018 })),
+    }),
+    arms: true, coveredTop: true, paintedEnds: true, rigidLinkChords: true,
+  });
+}
+
+function markings(P: TankBuilderPort): void {
+  const num = P.spec.visual.number || '';
+  for (const side of [-1, 1]) {
+    P.decal('hull', 'number', num, .30, [side * (D.hull.skirtOuterX + .004), 1.16, 2.30], side * Math.PI / 2);
+  }
+}
+
+export function buildChallenger1Historic(P: TankBuilderPort, mark: Challenger1Mark): void {
+  P.hullG.position.set(0, 0, 0);
+  P.turretG.position.set(...D.turretPivot);
+  P.gunG.position.set(D.trunnion[0] - D.turretPivot[0], D.trunnion[1] - D.turretPivot[1], D.trunnion[2] - D.turretPivot[2]);
+  P.topY = D.structuralRoofY - D.turretPivot[1];
+  hullTub(P);
+  glacisKit(P);
+  engineDeck(P);
+  for (const side of [-1, 1]) skirts(P, side);
+  if (mark === 'mk3') granbyKit(P);
+  runningGear(P);
+  addChallenger1HistoricTurret(P, mark);
+  markings(P);
+  // The turret's underside stands its seam over the 1.58 m roof plate; the engine deck behind the bulkhead is 10 cm
+  // higher, so the bustle (whose floor is 1.70) may rise that far over it (turretSeatRace.ts).
+  P.turretG.userData.turretSeatRiseM = .12;
+  P.hullG.userData.challenger1Rebuild = Object.freeze({ release: 262, mark, reference: 'docs/references/tanks/challenger1_mk2.md' });
+}
+

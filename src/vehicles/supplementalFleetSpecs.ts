@@ -290,7 +290,9 @@ const SPECS: FleetTankSpec[] = [
   make('chieftain_mk9', 'vickers_mk1', 'Vickers MBT Mk.1', 'UK',
     { hp: 1500, enginePowerHp: 650, weightTons: 38.6, topSpeedKmh: 48,
       gun: { caliberMm: 105, reloadS: 6.8 },
-      dims: { hullLengthM: 7.92, overallLengthM: 9.79, widthM: 3.17, heightM: 2.71 },
+      // release 262: the historical rebuild's published frame (profiles/vickersMk1.ts VICKERS_MK1.dims), 2.44 m to
+      // the turret roof; the 7.92 m hull and 2.71 m height were the print build's carriers
+      dims: { hullLengthM: 7.29, overallLengthM: 9.79, widthM: 3.17, heightM: 2.44 },
       visual: { number: 'V1' } }, JACK),
   // -- Ukraine ---------------------------------------------------------------
   make('t80uk', 't84', 'T-84 Oplot', 'Ukraine',
