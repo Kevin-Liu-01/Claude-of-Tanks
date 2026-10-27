@@ -182,6 +182,8 @@ interface GarageGpuRestoreOptions {
   now?: () => number;
   /** The program warm is done: every program the Garage draws should exist from here (the lateLinks receipt opens). */
   onProgramsWarmed?: () => void;
+  /** (diagnostics) the casters the shadow prime's warm batches draw */
+  onPrimeCasters?: (casters: readonly Object3D[]) => void;
 }
 
 /** The most frames an upload batch of a Garage restore waits for the GPU to catch up (half a second at 60 Hz). */
@@ -254,6 +256,7 @@ export async function restoreGarageGpuPipeline({
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
   onProgramsWarmed,
+  onPrimeCasters,
 }: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {
   const startedAt = now();
   const assertCurrent = (): void => {
@@ -329,7 +332,8 @@ export async function restoreGarageGpuPipeline({
         // depth programs (the Leopard bay's removed road wheels, the T-90 gun assembly) in the Garage's first frames, past
         // the two cascades this prime renders. Most programs exist by then; the batches are wider than the entry's.
         ...(programsNeedWarm ? { casterWarmup: { maxCastersPerBatch: 24, maxVerticesPerBatch: 120_000,
-          yieldBeforeBatch: async () => { shadowCasterBatches++; await yieldGpu(); } } } : {}),
+          yieldBeforeBatch: async () => { shadowCasterBatches++; await yieldGpu(); },
+          ...(onPrimeCasters ? { onCasters: onPrimeCasters } : {}) } } : {}),
       },
     );
     if (resourcesReleased || programsNeedWarm) {

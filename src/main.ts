@@ -1062,6 +1062,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     const programsNeedWarm = true;
     const dressingChunksFinished = await finishGarageDressingUnderCover(isCurrent);
     let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch; dressingChunks: number; dressingBuilt: boolean } | null = null;
+    const primeCasters = new Set<THREE.Object3D>();
     let receipt: GarageGpuRestoreReceipt;
     try {
       receipt = await restoreGarageGpuPipeline({
@@ -1075,6 +1076,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
         resourcesReleased,
         programsNeedWarm,
         isCurrent,
+        onPrimeCasters: (casters) => { for (const caster of casters) primeCasters.add(caster); },
         onProgramsWarmed: () => {
           late?.watch.stop();
           // (a late draw's object tagged +added: not in the scene when the warm ended; +hidden: in it, off its visible walk;
@@ -1091,8 +1093,14 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
             }
           });
           scene.traverseVisible((object) => { shown.add(object); });
+          const castAtWarm = new Map<THREE.Object3D, boolean>();
+          scene.traverse((object) => { castAtWarm.set(object, object.castShadow); });
           const annotate = (object: THREE.Object3D, material: THREE.Material): string => {
-            const tag = !inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '';
+            let tag = !inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '';
+            if ((material as THREE.Material & { isMeshDepthMaterial?: boolean; isMeshDistanceMaterial?: boolean }).isMeshDepthMaterial
+              || (material as THREE.Material & { isMeshDistanceMaterial?: boolean }).isMeshDistanceMaterial) {
+              tag += `${primeCasters.has(object) ? ' +primed' : ''} +cast:${castAtWarm.get(object)}`;
+            }
             if (!warmKeys.has(material)) return tag;
             const warmKey = warmKeys.get(material), drawKey = keyOf(material);
             if (!warmKey) return `${tag} +warm:none`;
