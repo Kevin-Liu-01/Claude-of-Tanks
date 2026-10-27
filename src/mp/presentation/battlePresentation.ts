@@ -1257,6 +1257,12 @@ export function createBattlePresentation({
         const hit: Record<string, RuntimeValue> = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
         // (ac130-fx-228 r2) the hit's source rides only as the authority's two values (as tank_destroyed's does below)
         if ('attackerSource' in hit && hit.attackerSource !== 'ac130' && hit.attackerSource !== 'drone') delete hit.attackerSource;
+        // (a sortie on the solo sim Worker) the hit names its attacker's vehicle as the page's own battle names it (state.ts
+        // enrichHitEvent): the report's final blow and the hit toasts read it
+        if (solo) {
+          const attacker = actors.get(String(hit.attackerId ?? ''));
+          if (attacker) { hit.attackerName = attacker.spec.name; hit.attackerSpecId = attacker.specId; }
+        }
         // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the match let this viewer
         // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
         // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms

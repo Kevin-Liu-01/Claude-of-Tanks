@@ -319,6 +319,46 @@ assert.equal(game.player, null, 'dispose restores the game state');
 assert.deepEqual(game.tanks, []);
 assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fallback');
 
+// A free sortie on the solo sim Worker (solo): a hit names its attacker's vehicle as state.ts enrichHitEvent does (the
+// report's final blow, the hit toasts), and the end is a solo battle's — network false, the allies lost counted.
+{
+  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null };
+  const events = [];
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit(type, payload) { events.push({ type, payload }); } }, solo: true,
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  p.applyFrame(frame());
+  p.applyEvent({ kind: 'shell_hit', payload: { shellId: 11, shooterId: 'foe', targetId: 'me', kind: 'pen', damage: 300,
+    pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } }, { own: false, feedbackPredicted: false });
+  const hit = events.find((e) => e.type === 'shell:hit');
+  assert.equal(hit?.payload.attackerName, spec.name, "a solo hit names its attacker's vehicle");
+  assert.equal(hit?.payload.attackerSpecId, 'm1a1_abrams_hc');
+  p.applyFrame(frame({ tick: 130, entities: [sample(2, -91, 64), sample(3, 10, 10, { hp: 0, flags: ENTITY_FLAGS.DESTROYED })] }));
+  p.applyEvent({ kind: 'match_ended', payload: { result: 'bravo', reason: 'elimination' } }, { own: false, feedbackPredicted: false });
+  const end = events.find((e) => e.type === 'battle:ended');
+  assert.equal(state.result, 'defeat');
+  assert.equal(end?.payload.network, false, "a solo sortie's end is a solo battle's");
+  assert.equal(end?.payload.alliesLost, 1, 'the allies lost, as state.ts counts them');
+  p.dispose();
+}
+{
+  const before = busEvents.length;
+  const networkGame = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null };
+  const p = createBattlePresentation({
+    engineCtx: { scene, anisotropy: 1 }, game: networkGame, bus: { emit(type, payload) { busEvents.push({ type, payload }); } },
+    createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+  });
+  await p.applyRoster(roster, context);
+  p.applyFrame(frame());
+  p.applyEvent({ kind: 'shell_hit', payload: { shellId: 12, shooterId: 'foe', targetId: 'me', kind: 'pen', damage: 300,
+    pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } }, { own: false, feedbackPredicted: false });
+  const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
+  assert.equal('attackerName' in (hit?.payload ?? {}), false, 'a room battle keeps the wire hit as it came');
+  p.dispose();
+}
+
 // Announced opponents are listed even before their first spotted snapshot.
 {
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
@@ -611,7 +651,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, a solo sortie's hit names and end, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};
