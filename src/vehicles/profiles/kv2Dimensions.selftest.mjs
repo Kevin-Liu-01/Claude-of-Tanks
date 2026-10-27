@@ -44,7 +44,7 @@ try {
   near(hit(turretStock, [0.78, 2.0, 9], [0, 0, -1]).z, 1.37, 0.01, 'turret front plate');
   near(hit(turretStock, [0.80, 2.2, -9], [0, 0, 1]).z, -1.38, 0.01, 'turret rear plate');
   near(hit(turretStock, [0.50, -5, -1.25], [0, 1, 0]).y, 1.91, 0.01, 'rear overhang soffit');
-  near(hit(turretStock, [0.50, -5, -0.62], [0, 1, 0]).y, 1.69, 0.01, 'turret floor ahead of the square step');
+  near(hit(turretStock, [0.50, -5, -0.40], [0, 1, 0]).y, 1.69, 0.01, 'turret floor ahead of the square step');
   // a 0.70 m track (S1) and the six road wheels and three return rollers a side
   const band = new THREE.Box3();
   for (const m of under(hull, (o) => o.name === 'gearTrackBandL')) band.expandByObject(m);
