@@ -1,5 +1,55 @@
 # Leopard 1A5 (`leo1a5`) — owner-source rebuild packet
 
+## 262 proportion rebuild: gap table (2026-10-27)
+
+Owner, verbatim: "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,
+turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well".
+
+### Sources
+- Panzermuseum Munster data placard for the Leopard 1 A5. It gives 42.2 t, 610 kW, length 9.54 m, width 3.25 m and
+  height 2.71 m, a 105 mm L/51 gun, 55 rounds, and "Turmzusatzpanzerung" (turret add-on armour). It also records
+  1,225 vehicles converted for the Bundeswehr in 1986–1992. Photo: Commons "Panzermuseum Munster 2010 0723.JPG",
+  Banznerfahrer, CC BY-SA 3.0.
+- Side, front and front three-quarter photos of the Munster 1A5: Commons "Panzermuseum Munster 2010 0728.JPG",
+  "… 0724.JPG" and "… 0709.JPG", Banznerfahrer, 7 July 2010, CC BY-SA 3.0. These give the deck, skirt and wheel
+  heights, the turret height and the wedge shape.
+- Wikipedia (de), Leopard 1: the 1A5 turret is cast steel ("wie für die 1A5 üblich aus Gussstahl"), as on the 1A1A1
+  it was converted from. Only the A3/A4 (and the Danish 1A5-DK) carry the welded turret. The page also gives 440 mm
+  ground clearance, seven road-wheel pairs and the EMES 18.
+- Wikipedia (en), Leopard 1: 9.54 m gun forward, 3.37 m width, 2.39 m to the turret roof, 2.7 m overall. The 1A5 was
+  a retrofit of 1,225 1A1A1, and the 1A1A1 had the Blohm & Voss bolt-on spaced turret armour.
+- Tank Archives, "Leopard tracks": 550 mm track. KNDS 1A5 page: 3.37 m width. A Leopard 1 data sheet (single source)
+  gives 4.24 m of track on the ground.
+
+The 262 brief asked for "the welded 1A5 turret". The German 1A5 is the cast 1A1A1 turret with the Blohm & Voss wedge
+appliqué. This rebuild keeps the cast core and models the appliqué, which is what gives the 1A5 its wedge look.
+
+### Gap table (hull frame, metres, ground y 0, forward +z)
+
+| Measure | Historical | Current (pre-262) | 262 target |
+|---|---|---|---|
+| Hull length | 7.09 | 7.085 | keep |
+| Length, gun forward | 9.54 | 9.545 | keep |
+| Width over tracks | 3.25 (placard) | 3.34 (xc 1.40, track .54) | 3.25 (xc 1.35, track .55) |
+| Width over skirts | 3.37 | 3.44 (hems ±1.711, lockers ±1.65) | 3.37 (±1.685) |
+| Turret roof | 2.39 | 2.47 crown on a domed pancake | 2.38, flat roof |
+| Overall height (EMES, cupola) | 2.62–2.71 | 2.62 (EMES lid) | ≤ 2.71 |
+| Ground clearance (belly) | 0.44 | 0.41 | 0.44 |
+| Deck at the turret ring | ≈1.60 (photo: roof 2.39 less ≈0.79 of turret) | 1.72 | 1.60 |
+| Stern deck | ≈1.66 (photo) | 1.82 | 1.66 |
+| Fender / skirt top | ≈1.12 (photo) | 1.30 fender shelf, sponson box 1.29–1.44 | 1.12 |
+| Skirt hem | ≈0.76 (photo, just over the wheel tops) | 0.84 | 0.78 |
+| Upper hull side | sloped plate from fender to deck edge | vertical sponson box ±1.62, deck edge ±1.29 | slope ±1.62 at the fender to ±1.30 at the deck |
+| Road wheels | 7 pairs, Ø ≈0.68, nearly touching | Ø 0.69 at .74 pitch (4.44 m span) | Ø 0.68 at .707 pitch (4.24 m) |
+| Return run | under the fender | rollers y 1.00, run 1.14 | rollers y .86, run ≈1.00 |
+| Track | 550 mm | 540 mm | 550 mm |
+| Turret width | base ≈2.3 with the side plates; roof ≈1.6 | 2.52 wide from the ring to y 2.1, then a dome | sloped walls: base ±1.15, roof ±0.80 |
+| Turret plan | B&V wedge: angled front plates pointing forward past the mantlet; spaced side plates | rounded teardrop with flush cheek slabs | cast core + spaced wedge front and side plates |
+| Turret height over deck | ≈0.78 | 0.75, mostly dome | 0.78, flat roof, vertical rear plate |
+| Mantlet | tall B&V-armoured mantlet, coax right, sight port left | butterfly casting | tall faceted mantlet block |
+| EMES 18 | tall armoured box on the right front roof with twin doors | present (0.24 box) | taller box with doors on the new roof |
+| Gun | 105 mm L7A3 (L/51), thermal sleeve with clamp bands, fume extractor | 4.35 m tube with sleeve and evacuator | keep, re-seat on the new mantlet |
+
 ## Current source authority (2026-08-18)
 
 The owner-supplied `tank_leopard_1.glb` is now the articulated geometric and

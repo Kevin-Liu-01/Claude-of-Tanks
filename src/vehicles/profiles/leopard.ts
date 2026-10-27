@@ -12349,18 +12349,28 @@ withBuildSteps(buildKF51OwnerExact, buildKF51OwnerExactSteps);
 // long low cast turret, compact saddle and rear basket set the base shape;
 // A5-only B&V appliqué, EMES-18 and German equipment are then surface-seated.
 function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBuild {
-  const { box, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
-  // Leopard 1 upper glacis: 60 degrees from vertical (30 degrees above the
-  // ground plane). Keep the source nose/deck heights and solve the deck break
-  // from that angle instead of stretching a shallow plate back to z=1.55.
+  // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
+  // chungus"; gap table in docs/references/tanks/leo1a5.md). Datums from the Panzermuseum Munster 1A5 (data placard:
+  // 9.54 m, 3.25 m over the tracks, 2.71 m; side, front and quarter photos): 0.44 m belly, the fender and skirt top at
+  // 1.12, the deck at 1.58 under the turret's sweep and 1.64 at the stern, a flat cast-turret roof at 2.39 and the
+  // EMES 18 lid at 2.71. The former stack (fender shelf 1.30, deck 1.72-1.82, a 2.5 m-wide domed turret) read tall
+  // and swollen.
+  const bellyY = 0.44;
+  const fenderY = 1.12;
+  const deckEdgeX = 1.30;
+  const sponsonX = 1.66;
+  const skirtX = 1.678;
+  // Leopard 1 upper glacis: 60 degrees from vertical (30 degrees above the ground plane) from the source nose up to
+  // the deck break, solved from that angle.
   const upperGlacisAngleFromVerticalDeg = 60;
   const upperGlacisFrontZ = 3.54;
   const upperGlacisFrontY = 1.04;
-  const upperGlacisRearY = 1.54;
+  const upperGlacisRearY = 1.52;
   const upperGlacisRisePerRun = Math.tan(
     THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg),
   );
@@ -12368,180 +12378,109 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     - (upperGlacisRearY - upperGlacisFrontY) / upperGlacisRisePerRun;
   const upperGlacisY = (z: number): number => upperGlacisFrontY
     + (upperGlacisFrontZ - z) * upperGlacisRisePerRun;
-  const centerDeckRearZ = -1.25;
-  const centerDeckTopY = (z: number): number => THREE.MathUtils.lerp(
-    1.77,
-    1.60,
-    THREE.MathUtils.clamp(
-      (z - centerDeckRearZ) / (upperGlacisRearZ - centerDeckRearZ),
-      0,
-      1,
-    ),
-  );
-  // The lifted terminal wraps crest at 1.265 m including their physical
-  // shoes. Raise the continuous shelf and lower sponson seam together so the
-  // new course keeps real clearance instead of clipping into the fender.
-  const fenderShelfY = 1.295;
-  const fenderShelfTopY = 1.3175;
-  const hullSponsonBottomY = 1.29;
-  const hullSponsonTopY = 1.44;
-  // Keep the hull at its authored source datum. The former +140 mm body lift
-  // opened an oversized strip of daylight above the unchanged Leopard track
-  // course and made the complete upper vehicle read detached from its gear.
-  const bodyLiftY = 0;
-  const roadWheelR = 0.345;
+  // Deck crown along the hull centre: the break, the turret ring, the flat engine deck under the turret's sweep (its
+  // bustle and basket clear it at every bearing) and the stern rise.
+  const deckStations: readonly Vec2Tuple[] = [
+    [upperGlacisRearZ, upperGlacisRearY], [1.40, 1.565], [0.50, 1.58], [-2.30, 1.58], [-3.34, 1.64],
+  ];
+  const deckTopY = (z: number): number => {
+    for (let i = 0; i < deckStations.length - 1; i++) {
+      const [z0, y0] = deckStations[i], [z1, y1] = deckStations[i + 1];
+      if (z <= z0 && z >= z1) return y0 + (y1 - y0) * (z0 - z) / (z0 - z1);
+    }
+    return z > deckStations[0][0] ? deckStations[0][1] : deckStations[deckStations.length - 1][1];
+  };
+  const deckEdgeY = (z: number): number => deckTopY(z) - 0.025;
+  // Running gear: the source's seven stations on the 0.74 m pitch, the track on the published 3.25 m (centres 2.70,
+  // 550 mm shoes) and the return run lowered under the 1.12 fender with the terminal drums.
+  const roadWheelR = 0.34;
   const roadWheelY = 0.37;
   const roadWheelZs = [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92];
   const returnRollerZs = [2.40, 1.00, -0.42, -1.77];
-  const returnRollerY = 1.00;
-  const trackWidth = 0.54;
+  const returnRollerY = 0.86;
+  const trackWidth = 0.55;
+  const trackXc = 1.35;
   const trackThickness = 0.07;
   const trackTopSupportY = returnRollerY + 0.105 + trackThickness / 2;
   const trackBotY = 0.05;
-  // Put both ground-course knees directly below the terminal road-wheel
-  // centres. The old +/- radius stations left long flat overhangs before the
-  // end rises; these contact pins let the tangent solver wrap the first and
-  // last wheels as one coherent course.
   const trackContactZF = roadWheelZs[0];
   const trackContactZR = roadWheelZs.at(-1);
-  // Lift both terminal drums 50 mm so the end wraps rise cleanly into the
-  // return run instead of flattening at the hull ends. Their radii and
-  // longitudinal stations stay unchanged, preserving the compact wheelbase.
-  const frontIdler = { z: 3.17, y: 0.79, r: 0.29 };
-  const rearSprocket = { z: -2.70, y: 0.84, r: 0.30 };
+  const frontIdler = { z: 3.17, y: 0.66, r: 0.28 };
+  const rearSprocket = { z: -2.70, y: 0.73, r: 0.29 };
 
   // ---------------------------------------------------------------- hull --
-  // Normalized source anchors: x ±1.685, z ±3.541; track y 0..1.185;
-  // structural hull y .40..1.82.
+  // Lower tub between the tracks, from the 0.44 belly to the fender line.
   const buildLeo1A5ArticulatedProfileHullStage1 = (): void => {
-    P.add('hull', box(1.90, 0.54, 6.48), 0, 0.68, -0.02);
+    P.add('hull', box(1.90, fenderY - bellyY, 6.48), 0, (fenderY + bellyY) / 2, -0.02);
   };
   buildLeo1A5ArticulatedProfileHullStage1();
   yield 'buildLeo1A5ArticulatedProfileHullStage1';
-  // The sponson is the hull shoulder above the fenders. It terminates at the
-  // angle-derived deck break so the shortened 60-degree glacis has a closed,
-  // load-bearing hull volume behind it.
-  const sponsonRearZ = -3.34;
-  const sponsonLength = upperGlacisRearZ - sponsonRearZ;
-  const sponsonCenterZ = (upperGlacisRearZ + sponsonRearZ) / 2;
   const buildLeo1A5ArticulatedProfileRunningGearStage1 = (): void => {
-    P.add('hull', box(3.26, hullSponsonTopY - hullSponsonBottomY, sponsonLength),
-      0, (hullSponsonBottomY + hullSponsonTopY) / 2, sponsonCenterZ);
-    P.add('hull', box(2.58, 0.18, sponsonLength), 0, 1.43, sponsonCenterZ);
-    // Nose-only lower glacis. The previous slab ran all the way back to
-    // z=1.50 and exposed a second upper-glacis plane from y=.74..1.54. This
-    // compact wedge ends at the shallow glacis' forward edge, sharing its
-    // x=±.80, y=1.04, z=3.54 seam without duplicating the long outer skin.
+    // The upper hull: one loft from the stern to the deck break. Sloped side plates run from the fender (±1.66) in to
+    // the deck edge (±1.30) over the full width of the vehicle, the Leopard 1 tumblehome, not a vertical sponson box.
+    const upperRing = (z: number): readonly (readonly [number, number])[] => [
+      [-sponsonX, fenderY - 0.02], [sponsonX, fenderY - 0.02], [deckEdgeX, deckEdgeY(z)],
+      [deckEdgeX - 0.20, deckTopY(z)], [-(deckEdgeX - 0.20), deckTopY(z)], [-deckEdgeX, deckEdgeY(z)],
+    ];
+    P.add('hull', sectionSolid([-3.34, -2.30, 0.50, 1.40, upperGlacisRearZ]
+      .map((z) => ({ z, ring: upperRing(z) }))));
+    // Nose-only lower glacis from the belly to the upper plate's front edge.
     const lowerBow = convexSlab(
-      [-0.78, 0.48, 3.24], [0.78, 0.48, 3.24], [0.78, 0.48, 2.92], [-0.78, 0.48, 2.92],
+      [-0.78, bellyY + 0.04, 3.24], [0.78, bellyY + 0.04, 3.24], [0.78, bellyY + 0.04, 2.92], [-0.78, bellyY + 0.04, 2.92],
       [-0.80, 1.04, 3.54], [0.80, 1.04, 3.54], [0.80, 0.74, 3.30], [-0.80, 0.74, 3.30]);
     lowerBow.userData.primaryStockRole = 'leo1a5-lower-bow';
     P.add('hull', lowerBow);
+    // The single 60-degree upper glacis, from the nose (±0.80) to the deck break (±1.30).
     P.add('hull', slab(
-      [-1.05, 1.34, upperGlacisRearZ], [1.05, 1.34, upperGlacisRearZ],
-      [1.05, 1.34, -3.34], [-1.05, 1.34, -3.34],
-      [-1.24, 1.54, upperGlacisRearZ], [1.24, 1.54, upperGlacisRearZ],
-      [1.24, 1.51, -3.34], [-1.24, 1.51, -3.34]));
+      [-deckEdgeX, upperGlacisRearY, upperGlacisRearZ], [deckEdgeX, upperGlacisRearY, upperGlacisRearZ],
+      [0.80, upperGlacisFrontY, upperGlacisFrontZ], [-0.80, upperGlacisFrontY, upperGlacisFrontZ],
+      [-deckEdgeX, upperGlacisRearY + 0.06, upperGlacisRearZ], [deckEdgeX, upperGlacisRearY + 0.06, upperGlacisRearZ],
+      [0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ], [-0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ]));
     for (const s of [-1, 1] as const) {
       const m = (x: number): number => s * x;
+      // Front cheek: the sloped side runs forward from the deck break down to the bow fender corner beside the glacis.
       P.add('hull', slab(
-        [m(1.05), 1.34, upperGlacisRearZ], [m(1.63), 1.34, upperGlacisRearZ],
-        [m(1.63), 1.34, -3.34], [m(1.05), 1.34, -3.34],
-        [m(1.24), 1.54, upperGlacisRearZ], [m(1.29), 1.49, upperGlacisRearZ],
-        [m(1.29), 1.47, -3.34], [m(1.24), 1.51, -3.34]));
-      P.add('hull', slab(
-        [m(0.80), 1.04, upperGlacisFrontZ], [m(1.64), 1.34, 3.48],
-        [m(1.63), 1.34, upperGlacisRearZ], [m(1.05), 1.34, upperGlacisRearZ],
-        [m(0.80), 1.10, upperGlacisFrontZ], [m(1.64), 1.40, 3.43],
-        [m(1.29), 1.49, upperGlacisRearZ], [m(1.05), 1.54, upperGlacisRearZ]));
+        [m(0.80), 1.00, upperGlacisFrontZ], [m(1.64), 1.04, 3.46],
+        [m(sponsonX), fenderY - 0.04, upperGlacisRearZ], [m(1.05), fenderY - 0.04, upperGlacisRearZ],
+        [m(0.80), 1.10, upperGlacisFrontZ], [m(1.64), fenderY, 3.42],
+        [m(sponsonX), fenderY - 0.02, upperGlacisRearZ], [m(deckEdgeX), upperGlacisRearY - 0.025, upperGlacisRearZ]));
     }
-    // Source-derived deck crown.  The Leopard 1 engine deck is appreciably
-    // higher at the stern and falls through two clean breaks into the glacis;
-    // the former flat 1.5 m lid made the whole vehicle read as a modern box.
-    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): under the turret's sweep (its seated
-    // underside 1.779, out to 2.95 m off the ring's axis) the engine deck lies flat at 1.75 to -2.45 with its kit on it,
-    // and climbs to the stern's crown behind; the deck and its grilles, bars, fans and caps stood 1.78-1.82 there, and the
-    // turret ran through them at every rear bearing.
+    // Rear plate from the belly rise to the stern deck, and its deck lip.
+    P.add('hull', box(2.58, 1.64 - 0.94, 0.15), 0, (1.64 + 0.94) / 2, -3.47);
+    // lower rear plate: the belly rises from its rear edge (z -3.26) to the rear plate's foot (z -3.395) (owner
+    // 2026-10-19 sweep: the slot between them stood open from below up to the deck), 30 mm into each
     P.add('hull', slab(
-      [-1.28, 1.7387, -2.45], [1.28, 1.7387, -2.45], [1.28, 1.71, -1.25], [-1.28, 1.71, -1.25],
-      [-1.28, 1.75, -2.45], [1.28, 1.75, -2.45], [1.28, 1.75, -1.25], [-1.28, 1.75, -1.25]));
-    P.add('hull', slab(
-      [-1.28, 1.76, -3.34], [1.28, 1.76, -3.34], [1.28, 1.7387, -2.45], [-1.28, 1.7387, -2.45],
-      [-1.28, 1.82, -3.34], [1.28, 1.82, -3.34], [1.28, 1.75, -2.45], [-1.28, 1.75, -2.45]));
-    P.add('hull', slab(
-      [-1.28, 1.71, centerDeckRearZ], [1.28, 1.71, centerDeckRearZ],
-      [1.24, upperGlacisRearY, upperGlacisRearZ], [-1.24, upperGlacisRearY, upperGlacisRearZ],
-      [-1.28, 1.77, centerDeckRearZ], [1.28, 1.77, centerDeckRearZ],
-      [1.24, 1.60, upperGlacisRearZ], [-1.24, 1.60, upperGlacisRearZ]));
-    // The two deck skins above used to bridge open air: the central hull core
-    // ends at y=1.52, leaving as much as 30 cm of daylight below the marked
-    // engine-deck crown.  These structural lofts overlap the existing core and
-    // terminate inside the deck skins, turning the rear and center runs into
-    // one continuous armored volume without changing their exterior planes.
-    P.add('hull', slab(
-      [-1.27, 1.46, -3.34], [1.27, 1.46, -3.34], [1.27, 1.47, -1.25], [-1.27, 1.47, -1.25],
-      [-1.28, 1.761, -3.34], [1.28, 1.761, -3.34], [1.28, 1.711, -1.25], [-1.28, 1.711, -1.25]));
-    P.add('hull', slab(
-      [-1.27, 1.47, centerDeckRearZ], [1.27, 1.47, centerDeckRearZ],
-      [1.23, 1.44, upperGlacisRearZ], [-1.23, 1.44, upperGlacisRearZ],
-      [-1.28, 1.711, centerDeckRearZ], [1.28, 1.711, centerDeckRearZ],
-      [1.24, 1.541, upperGlacisRearZ], [-1.24, 1.541, upperGlacisRearZ]));
-    P.add('hull', slab(
-      [-1.05, upperGlacisRearY, upperGlacisRearZ],
-      [1.05, upperGlacisRearY, upperGlacisRearZ],
-      [0.80, upperGlacisFrontY, upperGlacisFrontZ],
-      [-0.80, upperGlacisFrontY, upperGlacisFrontZ],
-      [-1.05, upperGlacisRearY + 0.06, upperGlacisRearZ],
-      [1.05, upperGlacisRearY + 0.06, upperGlacisRearZ],
-      [0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ],
-      [-0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ]));
-    P.add('hull', box(2.50, 0.60, 0.15), 0, 1.21, -3.47);
-    // lower rear plate: the belly rises from its rear edge (z -3.26, y 0.41) to the rear plate's foot (z -3.395,
-    // y 0.91) (owner 2026-10-19 sweep: the slot between them stood open from below up to the deck), 30 mm into each
-    P.add('hull', slab(
-      [-0.944, 0.416, -3.23], [0.944, 0.416, -3.23], [0.944, 0.916, -3.425], [-0.944, 0.916, -3.425],
-      [-0.944, 0.496, -3.23], [0.944, 0.496, -3.23], [0.944, 0.996, -3.425], [-0.944, 0.996, -3.425]));
-    P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
+      [-0.944, bellyY + 0.006, -3.23], [0.944, bellyY + 0.006, -3.23], [0.944, 0.946, -3.425], [-0.944, 0.946, -3.425],
+      [-0.944, bellyY + 0.086, -3.23], [0.944, bellyY + 0.086, -3.23], [0.944, 1.026, -3.425], [-0.944, 1.026, -3.425]));
+    P.add('hull', box(2.62, 0.05, 0.20), 0, 1.62, -3.43);
 
-    // The source's fenders are a continuous structural shelf, not two thin
-    // rails floating above the running gear. Close the complete suspension-
-    // side wall first: the old profile stopped the lower hull at x=0.95 while
-    // the revised inner shoe edge starts at x=1.17, leaving a literal sightline
-    // through the vehicle. These plates are the real hull side behind the running gear,
-    // with the return run and suspension still outboard of them.
     for (const s of [-1, 1] as const) {
-      P.add('hull', box(0.08, 0.62, 6.30), s * 0.95, 1.02, -0.05);
-      P.add('hull', box(0.10, 0.30, 0.30), s * 0.95, 1.15, 3.18, -0.28, 0, 0);
-      P.add('hull', box(0.10, 0.32, 0.28), s * 0.95, 1.12, -3.22, 0.12, 0, 0);
-
-      // The shelf bridges the sealed side wall to the outer fender fascia.
-      // A shallow camouflaged shoulder below it removes the bright background
-      // slit while preserving clearance around the moving top links.
-      // (2026-10-19, flaps sweep: 25 mm wider outboard, to the fascia it stood 14 mm short of, its end inside the fascia)
-      P.add('hullDetail', box(0.575, 0.045, 6.78), s * 1.4175, fenderShelfY, -0.02);
-      P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.195, -0.08);
-      P.add('hullDetail', box(0.012, 0.18, 6.04), s * 1.70, 1.195, -0.10);
+      // The real hull side behind the running gear, sealed from belly to fender.
+      P.add('hull', box(0.08, fenderY - 0.45, 6.30), s * 0.95, (fenderY + 0.45) / 2, -0.05);
+      P.add('hull', box(0.10, 0.30, 0.30), s * 0.95, 0.98, 3.18, -0.28, 0, 0);
+      P.add('hull', box(0.10, 0.32, 0.28), s * 0.95, 0.95, -3.22, 0.12, 0, 0);
+      // Continuous fender shelf over the return run, the sloped side resting on it.
+      P.add('hullDetail', box(0.70, 0.03, 6.78), s * 1.345, fenderY - 0.015, -0.02);
+      P.add('hullDetail', box(0.012, 0.06, 6.70), s * 1.692, fenderY - 0.03, -0.04);
+      // Front mudguards fall from the shelf over the idler; the rear ones close the shelf behind the sprocket.
       P.add('hullDetail', slab(
-        [s * 1.10, 1.27, 3.34], [s * 1.67, 1.27, 3.36], [s * 1.67, 1.27, 2.70], [s * 1.13, 1.27, 2.62],
-        [s * 1.10, 1.33, 3.42], [s * 1.67, 1.33, 3.42], [s * 1.67, 1.33, 2.70], [s * 1.13, 1.33, 2.62]));
-      // Owner 2026-10-19 (flaps sweep): the hems stood 2 mm outboard of the fascia's outer face (1.706); at 1.711 they
-      // overlap it by 2 mm.
-      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.36), s * 1.711, 1.045, 3.31, -0.06, 0, 0);
-      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.34, 0.40), s * 1.711, 1.02, -3.34, 0.08, 0, 0);
+        [s * 1.05, fenderY - 0.03, 3.30], [s * 1.69, fenderY - 0.03, 3.30], [s * 1.69, 1.02, 3.50], [s * 1.05, 1.02, 3.50],
+        [s * 1.05, fenderY, 3.30], [s * 1.69, fenderY, 3.30], [s * 1.69, 1.05, 3.49], [s * 1.05, 1.05, 3.49]));
+      // Rubber side skirts: hem over the wheel tops, top on the fender edge (segmented as on service vehicles).
+      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.30, 0.36), s * skirtX, 0.97, 3.31, -0.06, 0, 0);
+      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.32, 0.40), s * skirtX, 0.96, -3.34, 0.08, 0, 0);
       for (let k = 0; k < 7; k++) {
         const z = 2.40 - k * 0.82;
-        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.76), s * 1.711, 0.995, z);
-        P.add('hullDetail', box(0.012, 0.34, 0.026), s * 1.707, 1.00, z - 0.395);
-        P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.345, z);
+        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.33, 0.76), s * skirtX, 0.945, z);
+        P.add('hullDetail', box(0.012, 0.34, 0.026), s * (skirtX - 0.004), 0.945, z - 0.395);
       }
-      // Leopard-pattern fender lockers: flush lids and small outboard latches
-      // add the long, busy side cadence visible on service vehicles without
-      // turning cosmetic stowage into armor.
-      for (let k = 0; k < 4; k++) {
-        const z = -2.58 + k * 0.83;
-        P.addEquipment('hull', box(0.42, 0.16, 0.72), s * 1.43, 1.395, z);
-        P.addEquipment('hull', box(0.44, 0.025, 0.74), s * 1.43, 1.487, z);
-        P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.655, 1.395, z + 0.22);
+      // Pioneer tools and their brackets on the sloped upper side, where the A5 carries them.
+      for (let k = 0; k < 3; k++) {
+        const z = -1.90 + k * 1.10;
+        const xAt = (y: number): number => sponsonX - (sponsonX - deckEdgeX) * (y - fenderY) / (deckEdgeY(z) - fenderY);
+        P.addEquipment('hullDark', box(0.04, 0.05, 0.08), s * (xAt(1.30) + 0.012), 1.30, z - 0.30, 0, 0, s * 0.68);
+        P.addEquipment('hullDark', box(0.04, 0.05, 0.08), s * (xAt(1.30) + 0.012), 1.30, z + 0.30, 0, 0, s * 0.68);
+        P.addEquipment('hullWood', cylZ(0.022, 0.90, 8), s * (xAt(1.32) + 0.035), 1.32, z);
       }
     }
     P.mats.rubber.color.setHex(0x34372d);
@@ -12550,13 +12489,13 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   yield 'buildLeo1A5ArticulatedProfileRunningGearStage1';
 
   // Driver station, lamps, guards, towing gear and source-visible deck kit.
-  const driverHatchY = centerDeckTopY(0.86);
+  const driverHatchY = deckTopY(0.86);
   const buildLeo1A5ArticulatedProfileHullStage2 = (): void => {
     P.addCupola('hull', box(0.68, 0.08, 0.42), -0.45, driverHatchY + 0.04, 0.86, -0.04, 0, 0);
   };
   buildLeo1A5ArticulatedProfileHullStage2();
   yield 'buildLeo1A5ArticulatedProfileHullStage2';
-  const driverPeriscopeY = centerDeckTopY(1.03);
+  const driverPeriscopeY = deckTopY(1.03);
   const buildLeo1A5ArticulatedProfileHullStage3 = (): void => {
     for (const x of [-0.66, -0.45, -0.24]) {
       P.addEquipment('hull', box(0.13, 0.07, 0.05), x, driverPeriscopeY + 0.035, 1.03, -0.10, 0, 0);
@@ -12565,255 +12504,249 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   };
   buildLeo1A5ArticulatedProfileHullStage3();
   yield 'buildLeo1A5ArticulatedProfileHullStage3';
-  const roundHatchY = centerDeckTopY(0.70);
+  const roundHatchY = deckTopY(0.70);
   const buildLeo1A5ArticulatedProfileRunningGearStage2 = (): void => {
     P.addEquipment('hull', cylY(0.18, 0.18, 0.025, P.q ? 20 : 14), 0.63, roundHatchY + 0.0125, 0.70);
     P.addEquipment('hull', torus(0.18, 0.012, P.q ? 20 : 14), 0.63, roundHatchY + 0.031, 0.70);
     for (const s of [-1, 1] as const) {
-      headlight(P, s * 1.31, 1.30, 3.27, -0.26);
-      P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.33, 3.30, -0.26, 0, 0);
+      // Headlights and their guards on the front cheeks, ahead of the glacis corners.
+      headlight(P, s * 1.31, 1.17, 3.27, -0.26);
+      P.addEquipment('hull', box(0.018, 0.18, 0.16), s * 1.31, 1.20, 3.30, -0.26, 0, 0);
       P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
-      liftEye(P, 'hullDetail', s * 1.17, centerDeckTopY(1.65) + 0.015, 1.65, s * 0.45);
-      P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.48, 3.36, 0, 0, s * 0.08);
-      P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.65, 3.36);
+      liftEye(P, 'hullDetail', s * 1.17, deckTopY(1.65) + 0.015, 1.65, s * 0.45);
+      // width-indicator rods on the front mudguards
+      P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, fenderY + 0.17, 3.36, 0, 0, s * 0.08);
+      P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), fenderY + 0.17 + Math.cos(0.08) * 0.17, 3.36);
     }
+    // tow cable run across the bow edge, below the grouser rack
     towCable(P, [
-      [-0.76, upperGlacisY(3.18) + 0.07, 3.18],
-      [0, upperGlacisY(2.82) + 0.07, 2.82],
-      [0.76, upperGlacisY(3.18) + 0.07, 3.18],
+      [-0.70, upperGlacisY(3.42) + 0.075, 3.42],
+      [0, upperGlacisY(3.44) + 0.075, 3.44],
+      [0.70, upperGlacisY(3.42) + 0.075, 3.42],
     ], 0.024);
-    shovelTool(P, -1.05, centerDeckTopY(-0.25) + 0.015, -0.25);
-    P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, centerDeckTopY(-0.48) + 0.015, -0.48);
-
-    // Leopard engine deck: long intake fields, twin fan rings, transverse
-    // exhaust bank and rear louvres, all below the rotating basket.
-    for (const s of [-1, 1] as const) {
-      // (release 240: on the lowered deck, under the turret's sweep)
-      P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, 1.759, -1.72);
-      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.762, -1.20);
-      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.762, -2.24);
-      for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, 1.762, -1.29 - k * 0.17);
-      P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, 1.756, -2.50);
-      P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, 1.765, -2.50);
-      P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, 1.768, -2.50);
-      P.addEquipment('hull', cylY(0.085, 0.085, 0.025, 12), s * 1.08, 1.7605, -2.08);
+    // The A5's grouser (Schneegreifer) rack across the upper glacis: two rows of spiked cleats on a bar frame.
+    const glacisTilt = THREE.MathUtils.degToRad(90 - upperGlacisAngleFromVerticalDeg);
+    for (const z of [2.92, 3.14]) {
+      P.addEquipment('hullDark', box(1.30, 0.03, 0.04), 0, upperGlacisY(z) + 0.075, z, glacisTilt, 0, 0);
+      for (let k = 0; k < 9; k++) {
+        P.addEquipment('hullDark', box(0.10, 0.07, 0.14), -0.56 + k * 0.14, upperGlacisY(z) + 0.095, z, glacisTilt, 0, 0);
+      }
     }
-    P.add('hullDark', box(1.78, 0.018, 0.44), 0, 1.806, -3.00);
-    for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, 1.819, -2.84 - k * 0.11);
+    shovelTool(P, -1.05, deckTopY(-0.25) + 0.015, -0.25);
+    P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, deckTopY(-0.48) + 0.015, -0.48);
 
-    // Rear service face and two giant NATO fuel cans in proper carriers.
-    // They sit against the transom, clear of the sprocket wraps, with braces
-    // running forward into the hull instead of hovering behind it. Each can is
-    // a complete pressed-steel assembly (shouldered body, X ribs, handle and
-    // filler cap), not a flat box painted onto the rear plate.
-    P.add('hullDark', box(2.28, 0.46, 0.035), 0, 1.34, -3.525);
+    // Leopard engine deck: long intake fields, twin fan rings, transverse exhaust bank and rear louvres, all below the
+    // rotating basket.
+    const engineDeckY = deckTopY(-1.72);
+    for (const s of [-1, 1] as const) {
+      P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, engineDeckY + 0.009, -1.72);
+      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, engineDeckY + 0.012, -1.20);
+      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, engineDeckY + 0.012, -2.24);
+      for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, engineDeckY + 0.012, -1.29 - k * 0.17);
+      P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.006, -2.50);
+      P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, deckTopY(-2.50) + 0.015, -2.50);
+      P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, deckTopY(-2.50) + 0.018, -2.50);
+      P.addEquipment('hull', cylY(0.085, 0.085, 0.025, 12), s * 1.08, deckTopY(-2.08) + 0.0105, -2.08);
+    }
+    const exhaustTopY = deckTopY(-3.00) + 0.022;
+    P.add('hullDark', box(1.78, 0.018, 0.44), 0, exhaustTopY - 0.009, -3.00);
+    for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, exhaustTopY + 0.006, -2.84 - k * 0.11);
+
+    // Rear service face and two giant NATO fuel cans in proper carriers, against the transom, clear of the sprocket
+    // wraps, with braces running forward into the hull.
+    P.add('hullDark', box(2.28, 0.46, 0.035), 0, 1.26, -3.525);
     for (let k = 0; k < 7; k++) {
-      P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.34, -3.545);
+      P.add('hullDetail', box(0.035, 0.38, 0.035), -0.90 + k * 0.30, 1.26, -3.545);
     }
     for (const s of [-1, 1] as const) {
       const canX = s * 0.72;
-      P.addEquipment('hullCloth', box(0.56, 0.66, 0.24), canX, 1.44, -3.45);
-      P.addEquipment('hullCloth', box(0.48, 0.09, 0.22), canX, 1.805, -3.45);
-      P.addEquipment('hullDark', box(0.23, 0.075, 0.07), canX, 1.87, -3.45);
-      P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.88, -3.45);
-      // Pressed X stiffeners on the visible aft face.
-      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.44, -3.582, 0, 0, 0.66);
-      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.44, -3.584, 0, 0, -0.66);
-      // Full carrier cage and diagonal heel into the transom.
-      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 1.80, -3.45);
-      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 1.08, -3.45);
-      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX - 0.30, 1.44, -3.45);
-      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX + 0.30, 1.44, -3.45);
-      P.addEquipment('hullDark', box(0.075, 0.11, 0.40), canX, 1.10, -3.34, 0.26, 0, 0);
-      P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
+      P.addEquipment('hullCloth', box(0.56, 0.66, 0.24), canX, 1.32, -3.45);
+      P.addEquipment('hullCloth', box(0.48, 0.09, 0.22), canX, 1.685, -3.45);
+      P.addEquipment('hullDark', box(0.23, 0.075, 0.07), canX, 1.75, -3.45);
+      P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.7525, -3.45);
+      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.32, -3.582, 0, 0, 0.66);
+      P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.32, -3.584, 0, 0, -0.66);
+      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 1.68, -3.45);
+      P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 0.96, -3.45);
+      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX - 0.30, 1.32, -3.45);
+      P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX + 0.30, 1.32, -3.45);
+      P.addEquipment('hullDark', box(0.075, 0.11, 0.40), canX, 0.98, -3.34, 0.26, 0, 0);
+      P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.24, 1.42, -3.545);
     }
 
-    // Seven 660 mm dual wheels on a rebuilt Leopard-family trapezoid course.
-    // The complete wheel train rises back into the suspension bay and the road-
-    // wheel row advances another 12 cm without changing its compact .74 m
-    // cadence.  The loaded run rises with the tires, while explicit contact
-    // knees leave both end drums on true tangent ramps.  A fine-pitch integrated
-    // shoe replaces the former deep connector/pin stack: the wrap now reads as
-    // one tight chain around the idler and sprocket instead of a ring of spikes.
     buildRunningGear(P, {
-      style: 'rubber', dishR: 0.77, wheelR: roadWheelR, wheelW: 0.225, wheelY: roadWheelY, xc: 1.40,
+      style: 'rubber', dishR: 0.77, wheelR: roadWheelR, wheelW: 0.225, wheelY: roadWheelY, xc: trackXc,
       wheelZs: roadWheelZs,
       sprocket: rearSprocket, idler: frontIdler,
-      rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.105 })),
+      rollers: returnRollerZs.map((z) => ({ z, y: returnRollerY, r: 0.10 })),
       trackW: trackWidth, trackTh: trackThickness, topY: trackTopSupportY, botY: trackBotY,
       contactZF: trackContactZF, contactZR: trackContactZR,
       frontArcSteps: 12, rearArcSteps: 12,
       linkPitchM: 0.125, shoeRadialScale: 0.58, shoeWidthScale: 0.97,
-      endRingSpan: 0.50, coveredTop: 1.06, arms: true, paintedEnds: true,
+      endRingSpan: 0.50, coveredTop: true, arms: true, paintedEnds: true,
       padHex: 0x3b3c32, chainHex: 0x2c3029, gearFloor: true,
     });
 
-    // Keep the complete armored body on the source datum. Running-gear objects
-    // and their dedicated buckets remain at the certified wheel/end-drum
-    // stations; only fixed hull skins and fittings use this body offset, and
-    // the turret ring follows the deck so it cannot float above the lowered
-    // hull.
-    P.offsetBuckets([
-      'hull', 'hullCupola', 'hullEquipment', 'hullDetail', 'hullDark',
-      'hullRubber', 'hullWood', 'hullCloth', 'hullGlass', 'hullTrack',
-      'hullShadow', 'hullTrackGuardL', 'hullTrackGuardR',
-    ], 0, bodyLiftY, 0);
     P.hullG.userData.leopard1A5FinishReceipt = {
-      continuousFenders: true,
+      revision: 'leo1a5-262-proportions',
+      bellyY,
+      fenderY,
+      deckAtRingY: deckTopY(0.50),
+      engineDeckY,
+      sternDeckY: deckTopY(-3.34),
+      deckEdgeX,
+      sponsonX,
+      skirtOuterX: skirtX + 0.007,
+      skirtHemY: 0.78,
+      slopedUpperSides: true,
       segmentedSideAprons: 14,
-      fenderLockers: 8,
       rearFuelCans: 2,
       rearFuelCanSize: [0.56, 0.66, 0.24],
       roadWheelStations: 7,
       roadWheelR,
       roadWheelY,
       roadWheelPitch: 0.74,
-      roadWheelSpan: 4.44,
       roadWheelZs: [...roadWheelZs],
-      roadWheelForwardShift: 0.30,
       returnRollerZs: [...returnRollerZs],
       returnRollerY,
-      bodyLiftY,
       trackWidth,
-      wheelWidth: 0.225,
-      trackOuterEdgeX: Number((1.40 + trackWidth / 2).toFixed(4)),
+      trackXc,
+      trackOuterEdgeX: Number((trackXc + trackWidth / 2).toFixed(4)),
       trackTopSupportY: Number(trackTopSupportY.toFixed(4)),
       trackThickness,
       trackBotY,
-      trackContactZF,
-      trackContactZR,
-      sealedHullSides: true,
-      closedDeckUnderstructure: true,
-      deckSupportSegments: 2,
-      hullOverFenders: true,
-      hullSponsonBottomY: Number((hullSponsonBottomY + bodyLiftY).toFixed(4)),
-      fenderShelfTopY: Number((fenderShelfTopY + bodyLiftY).toFixed(4)),
-      hullFenderOverlapY: Number((fenderShelfTopY - hullSponsonBottomY).toFixed(4)),
-      upperGlacisSurfaces: 1,
       upperGlacisAngleFromVerticalDeg,
       upperGlacisFrontZ,
       upperGlacisRearZ: Number(upperGlacisRearZ.toFixed(4)),
-      upperGlacisFrontY: Number((upperGlacisY(upperGlacisFrontZ) + bodyLiftY).toFixed(4)),
-      upperGlacisRearY: Number((upperGlacisY(upperGlacisRearZ) + bodyLiftY).toFixed(4)),
-      deckEquipmentReseated: true,
-      lowerGlacisJoinY: Number((1.04 + bodyLiftY).toFixed(4)),
-      redesignedLeopardTrackCourse: true,
-      integratedTrackShoes: true,
-      trackLinkPitch: 0.125,
-      trackShoeRadialScale: 0.58,
-      trackEndArcSteps: 12,
-      frontIdlerZ: frontIdler.z,
-      frontIdlerY: frontIdler.y,
-      rearSprocketZ: rearSprocket.z,
-      rearSprocketY: rearSprocket.y,
+      upperGlacisFrontY,
+      upperGlacisRearY,
+      frontIdler: { ...frontIdler },
+      rearSprocket: { ...rearSprocket },
     };
-
-    // ------------------------------------------------------------- turret --
-    // The source ring is 0.54 m ahead of the hull origin.  Keep that authored
-    // station: the old fleet profile sat the whole turret too far aft and then
-    // compensated with an overlong tube.
-    P.turretG.position.set(0, 1.55 + bodyLiftY, 0.50);
-    P.add('turret', cylY(0.98, 1.04, 0.11, P.q ? 28 : 18), 0, -0.055, 0);
-    // Source station samples form a long cast teardrop: broad around the ring,
-    // tapering gently to z=-2.3 rather than a circular pancake.  Two dense
-    // ellipsoid skins give the curved side/roof read while the rear closure
-    // gives the basket and antenna bases a physical load path.
-    // Keep the functional launcher seating surface identical at every quality.
-    P.add('turret', xform(sph(1, 30), 0, 0, 0, 0, 0, 0, [1.30, 0.43, 1.78]), 0, 0.39, -0.42);
-    P.add('turret', xform(sph(1, 28), 0, 0, 0, 0, 0, 0, [1.17, 0.31, 1.57]), 0, 0.61, -0.36);
-    P.add('turret', box(1.68, 0.055, 1.92), 0, 0.78, -0.62);
-    P.add('turret', slab(
-      [-0.90, 0.04, -1.48], [0.90, 0.04, -1.48], [0.62, 0.08, -2.25], [-0.62, 0.08, -2.25],
-      [-0.76, 0.68, -1.44], [0.76, 0.68, -1.44], [0.44, 0.55, -2.20], [-0.44, 0.55, -2.20]));
   };
   buildLeo1A5ArticulatedProfileRunningGearStage2();
   yield 'buildLeo1A5ArticulatedProfileRunningGearStage2';
 
-  // Surface-seated A5 Blohm & Voss spaced appliqué. The paired panels form a
-  // joined chevron and retain the low cast source shell beneath them.
+  // ------------------------------------------------------------- turret --
+  // The German 1A5 keeps the cast 1A1A1 turret (Wikipedia de: "wie für die 1A5 üblich aus Gussstahl") with the
+  // Blohm & Voss bolted appliqué. The source ring station (0.50 m ahead of the hull origin) and turret length (front
+  // 1.08 m ahead of the ring, bustle to 2.20 m behind) hold; the cast core is now a flat-roofed casting 2.3 m across at
+  // the base and 1.8 m at the roof, 0.79 m tall, instead of a 2.5 m ellipsoid dome.
+  const turretY = deckTopY(0.50) + 0.02;
+  P.turretG.position.set(0, turretY, 0.50);
+  const castRing = (wb: number, wm: number, ym: number, wr: number, yr: number, yb = 0): readonly (readonly [number, number])[] => [
+    [-wb, yb], [wb, yb], [wm, ym], [wr, yr], [-wr, yr], [-wm, ym],
+  ];
+  const castStations: readonly { z: number; ring: readonly (readonly [number, number])[] }[] = [
+    { z: -2.20, ring: castRing(0.62, 0.66, 0.34, 0.56, 0.62, 0.06) },
+    { z: -1.80, ring: castRing(0.88, 0.92, 0.36, 0.74, 0.73, 0.03) },
+    { z: -1.10, ring: castRing(1.08, 1.12, 0.36, 0.86, 0.78, 0.02) },
+    { z: -0.40, ring: castRing(1.15, 1.18, 0.35, 0.90, 0.79) },
+    { z: 0.20, ring: castRing(1.16, 1.19, 0.34, 0.90, 0.79) },
+    { z: 0.65, ring: castRing(1.06, 1.09, 0.33, 0.84, 0.78) },
+    { z: 0.95, ring: castRing(0.80, 0.83, 0.32, 0.66, 0.72) },
+    { z: 1.08, ring: castRing(0.64, 0.66, 0.32, 0.54, 0.67) },
+  ];
+  const castRoofY = 0.79;
   const mirror = (s: Side, p: Vec3Tuple): Vec3Tuple => [s * p[0], p[1], p[2]];
-  const sideSlab = (s: Side, a: Vec3Tuple, b: Vec3Tuple, c: Vec3Tuple, d: Vec3Tuple,
-    e: Vec3Tuple, f: Vec3Tuple, g: Vec3Tuple, h: Vec3Tuple): THREE.BufferGeometry => s > 0
-    ? slab(a, b, c, d, e, f, g, h)
-    : slab(mirror(s, b), mirror(s, a), mirror(s, d), mirror(s, c),
-      mirror(s, f), mirror(s, e), mirror(s, h), mirror(s, g));
+  const sideSlab = (s: Side, ...points: readonly Vec3Tuple[]): THREE.BufferGeometry => {
+    const [a, b, c, d, e, f, g, h] = points;
+    return s > 0
+      ? slab(a, b, c, d, e, f, g, h)
+      : slab(mirror(s, b), mirror(s, a), mirror(s, d), mirror(s, c),
+        mirror(s, f), mirror(s, e), mirror(s, h), mirror(s, g));
+  };
+  const buildLeo1A5ArticulatedProfileTurretStage0 = (): void => {
+    P.add('turret', cylY(0.98, 1.04, 0.11, P.q ? 28 : 18), 0, -0.055, 0);
+    P.add('turret', sectionSolid(castStations, { smoothSideEdges: [1, 2, 4, 5] }));
+  };
+  buildLeo1A5ArticulatedProfileTurretStage0();
+  yield 'buildLeo1A5ArticulatedProfileTurretStage0';
+
+  // Blohm & Voss appliqué: the wedge plates either side of the mantlet that give the 1A5 its pointed front, and the
+  // side plates behind them. Each is a solid block rooted in the casting with its outer face standing off it, so the
+  // spaced plates read from every bearing without opening the hull envelope.
   const buildLeo1A5ArticulatedProfileTurretStage1 = (): void => {
     for (const s of [-1, 1] as const) {
-      // Bury the inner course and the high outer shoulder in the cast shell.
-      // The former high corners (x ~= 1.03) sat outside the narrowing turret
-      // ellipse and made these cheeks read as detached plates.
-      P.add('turret', sideSlab(s,
-        [0.28, 0.10, 0.80], [1.18, 0.16, 0.35], [1.20, 0.44, 0.17], [0.30, 0.40, 0.62],
-        [0.26, 0.42, 1.28], [0.98, 0.44, 0.68], [0.90, 0.62, 0.44], [0.27, 0.67, 1.04]));
-      const rearApplique = convexSlab(...([
-        [1.02, 0.16, 0.24], [1.31, 0.20, -0.72], [1.22, 0.56, -0.86], [0.96, 0.45, 0.12],
-        [0.91, 0.46, 0.45], [1.16, 0.49, -0.63], [1.05, 0.73, -0.72], [0.85, 0.70, 0.27],
-      ] as const).map(p => mirror(s, p)));
-      rearApplique.userData.primaryStockRole = 'leo1a5-rear-applique';
-      P.add('turret', rearApplique);
-      P.addEquipment('turret', box(0.025, 0.035, 0.64), s * 1.18, 0.52, -0.28, 0, 0, s * 0.24);
-      liftEye(P, 'turretDetail', s * 0.72, 0.79, 0.20, s * 0.45);
-      liftEye(P, 'turretDetail', s * 0.76, 0.78, -1.10, s * 2.65);
+      const wedge = sideSlab(s,
+        [0.52, 0.06, 1.04], [0.58, 0.06, 1.38], [1.30, 0.08, 0.40], [1.04, 0.08, 0.40],
+        [0.52, 0.70, 0.99], [0.58, 0.71, 1.28], [1.28, 0.77, 0.40], [1.02, 0.79, 0.40]);
+      wedge.userData.primaryStockRole = 'leo1a5-bv-wedge';
+      P.add('turret', wedge);
+      const sidePlate = sideSlab(s,
+        [1.04, 0.08, 0.40], [1.31, 0.08, 0.40], [1.25, 0.08, -1.20], [1.00, 0.08, -1.20],
+        [1.00, 0.77, 0.40], [1.25, 0.75, 0.40], [1.19, 0.71, -1.20], [0.94, 0.72, -1.20]);
+      sidePlate.userData.primaryStockRole = 'leo1a5-bv-side';
+      P.add('turret', sidePlate);
+      // Bolt heads seated on the plates' outer faces at bolt-row height, and the dark joint where the wedge meets the
+      // side plate.
+      for (let k = 0; k < 4; k++) {
+        const t = (k + 0.5) / 4, boltY = 0.45;
+        const b = [0.58 + 0.72 * t, 0.06 + 0.02 * t, 1.38 - 0.98 * t], u = [0.58 + 0.70 * t, 0.71 + 0.06 * t, 1.28 - 0.88 * t];
+        const f = (boltY - b[1]) / (u[1] - b[1]);
+        P.addEquipment('turretDark', cylX(0.022, 0.018, 8), s * (b[0] + (u[0] - b[0]) * f + 0.806 * 0.004), boltY,
+          b[2] + (u[2] - b[2]) * f + 0.592 * 0.004, 0, s * -0.634, 0);
+        const sideX = 1.31 - 0.06 * t - 0.06 * (boltY - 0.08) / (0.67 - 0.04 * t);
+        P.addEquipment('turretDark', cylX(0.022, 0.018, 8), s * (sideX + 0.004), boltY, 0.40 - 1.60 * t);
+      }
+      P.add('turretDark', box(0.02, 0.64, 0.02), s * 1.293, 0.42, 0.40);
+      liftEye(P, 'turretDetail', s * 0.72, castRoofY + 0.01, 0.20, s * 0.45);
+      liftEye(P, 'turretDetail', s * 0.76, castRoofY, -1.10, s * 2.65);
     }
-    P.add('turret', box(0.94, 0.20, 0.32), 0, 0.69, 0.92, -0.12, 0, 0);
 
-    // EMES-18: compact two-window armored sight rooted in the right roof.
-    P.addEquipment('turret', box(0.46, 0.10, 0.44), 0.48, 0.76, 0.32);
-    P.addEquipment('turret', box(0.50, 0.24, 0.47), 0.48, 0.92, 0.32);
-    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, 1.056, 0.32);     // 2026-10-19 (owner float sweep): lid sat 2.5 mm over the head; seated
-    P.add('turretDark', box(0.38, 0.16, 0.025), 0.48, 0.92, 0.568);
+    // EMES 18: the tall armoured sight box on the right front roof, its twin windows behind armoured doors.
+    P.addEquipment('turret', box(0.46, 0.10, 0.44), 0.48, castRoofY + 0.04, 0.32);
+    P.addEquipment('turret', box(0.50, 0.24, 0.47), 0.48, castRoofY + 0.20, 0.32);
+    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, castRoofY + 0.3375, 0.32);
+    P.add('turretDark', box(0.38, 0.16, 0.025), 0.48, castRoofY + 0.20, 0.568);
     for (const x of [0.39, 0.57]) {
-      P.add('turretGlass', box(0.115, 0.105, 0.014), x, 0.92, 0.584);
-      P.addEquipment('turret', box(0.15, 0.14, 0.014), x, 0.92, 0.600);
+      P.add('turretGlass', box(0.115, 0.105, 0.014), x, castRoofY + 0.20, 0.584);
+      P.addEquipment('turret', box(0.15, 0.14, 0.014), x, castRoofY + 0.20, 0.600);
     }
-    P.addEquipment('turret', box(0.024, 0.16, 0.018), 0.48, 0.92, 0.603);
+    P.addEquipment('turret', box(0.024, 0.16, 0.018), 0.48, castRoofY + 0.20, 0.589);
 
-    // Structural hatches/cupolas stay hittable. Sights, MG, launchers,
-    // antennae and stowage use equipment ownership and never grow armor.
-    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), 0.52, 0.84, -0.62);
+    // Structural hatches/cupolas stay hittable. Sights, MG, launchers, antennae and stowage use equipment ownership
+    // and never grow armor.
+    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), 0.52, castRoofY + 0.03, -0.62);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.52 + Math.sin(a) * 0.23, 0.90, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
+      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.52 + Math.sin(a) * 0.23, castRoofY + 0.0825, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
     }
-    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), 0.52, 0.94, -0.62);
-    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), 0.52, 0.985, -0.62);
-    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.55, 0.83, -0.46);
-    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.55, 0.90, -0.46);
-    P.addEquipment('turret', box(0.16, 0.16, 0.18), 0.48, 0.97, -0.26);
-    P.add('turretGlass', box(0.10, 0.075, 0.014), 0.48, 0.98, -0.165);
-    for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, 0.82, 0.28, -0.10, 0, 0);
+    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), 0.52, castRoofY + 0.13, -0.62);
+    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), 0.52, castRoofY + 0.175, -0.62);
+    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.55, castRoofY + 0.0275, -0.46);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.55, castRoofY + 0.0975, -0.46);
+    P.addEquipment('turret', box(0.16, 0.16, 0.18), 0.48, castRoofY + 0.08, -0.26);
+    P.add('turretGlass', box(0.10, 0.075, 0.014), 0.48, castRoofY + 0.09, -0.165);
+    for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
     {
-      // Low, fully seated loader's MG station: bearing, ammunition box and
-      // shield share one roof footprint instead of a bare fitting hovering
-      // beside the hatch.
-      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, 0.86, -0.30);
-      P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, 0.91, -0.30);
+      // Low, fully seated loader's MG station: bearing, ammunition box and shield share one roof footprint.
+      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, castRoofY + 0.065, -0.30);
+      P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, castRoofY + 0.12, -0.30);
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
         scale: 0.96, seed: 15, shield: true, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = 'leo1LoaderMg3';
-      mg.position.set(-0.45, 0.91, -0.30);
+      mg.position.set(-0.45, castRoofY + 0.12, -0.30);
       mg.rotation.y = 0.34;
       P.turretG.add(mg);
     }
+    // Wegmann 76 mm smoke launchers: four per side on the casting behind the side plates.
     for (const s of [-1, 1] as const) {
-      P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 1.22, 0.45, -0.08, 0, 0, s * 0.25);
+      P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 1.00, 0.45, -1.46, 0, 0, s * 0.25);
       for (let k = 0; k < 8; k++) {
         const row = Math.floor(k / 4), col = k % 4;
-        const y = 0.34 + row * 0.18, z = 0.15 - col * 0.14;
-        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 1.29, y, z);
+        const y = 0.34 + row * 0.18, z = -1.30 - col * 0.11;
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 1.07, y, z);
       }
     }
   };
   buildLeo1A5ArticulatedProfileTurretStage1();
   yield 'buildLeo1A5ArticulatedProfileTurretStage1';
 
-  // Compact Leopard bustle basket: its 1.88 m width now follows the cast
-  // tail instead of overhanging it by a broad shelf. The shorter floor is
-  // biased aft while the mounting transom still overlaps the armored rear,
-  // so the basket reads as one rear assembly rather than an oversized box.
+  // Compact Leopard bustle basket on the casting's tail.
   const bustleWidth = 1.88;
   const bustleFrontZ = -2.24;
   const bustleRearZ = -2.84;
@@ -12837,113 +12770,83 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       P.addEquipment('turret', box(0.055, 0.055, bustleDepth + 0.02), s * 0.76, 0.47, bustleCenterZ, -0.50, 0, 0);
       const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.64, d: 0.27, h: 0.26,
         rails: 3, fill: 0.82, seed: s > 0 ? 31 : 32, rotation: [0, s * Math.PI / 2, 0] });
-      rack.position.set(s * 1.09, 0.31, -1.68);
+      rack.position.set(s * 1.03, 0.31, -1.68);
       P.turretG.add(rack);
-      P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.79, 0.84, -1.42);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.79, 1.54, -1.42, 0, 0, s * 0.025);
+      P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.79, castRoofY + 0.02, -1.42);
+      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.79, castRoofY + 0.72, -1.42, 0, 0, s * 0.025);
     }
     stowage(P, 'turretCloth', rng, [
       [-0.56, 0.51, -2.54, 0.52, 0.32, 0.48], [0, 0.50, -2.55, 0.50, 0.31, 0.48],
       [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
     ]);
-    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the can pair stands on the basket floor; it
-    // hung 7 cm under it, into the engine deck's exhaust bank at rest)
     jerryCan(P, 'turretCloth', 0.68, 0.57, -2.65, 0.16);
-    tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8); // 2026-10-19 (owner float sweep): stood 21 mm over the load
+    tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8);
     ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 
     P.turretG.userData.leopard1A5TurretFinishReceipt = {
+      revision: 'leo1a5-262-cast-bv',
+      castTurret: true,
+      castBaseHalfWidth: 1.16,
+      castRoofHalfWidth: 0.90,
+      castRoofY,
+      castFrontZ: 1.08,
+      castRearZ: -2.20,
+      blohmVossWedge: true,
+      blohmVossSidePlates: true,
       connectedBustleBasket: true,
-      compactBustleBasket: true,
       bustleRearZ,
       bustleWidth,
       bustleDepth: Number(bustleDepth.toFixed(2)),
       bustleFloorY: 0.31,
       sideRackZ: -1.68,
       shieldedRoofMachineGun: true,
-      frontCheekPanelsSeated: true,
-      frontCheekMirrorSymmetric: true,
-      frontCheekRootInsetM: 0.08,
     };
 
-    P.decal('turret', 'crossgrey', null, 0.28, [1.225, 0.48, -0.52], Math.PI / 2, 0, 0.18);
-    P.decal('turret', 'crossgrey', null, 0.28, [-1.225, 0.48, -0.52], -Math.PI / 2, 0, -0.18);
-    P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.17, 0.61, -1.05], Math.PI / 2, 0, 0.14);
+    P.decal('turret', 'crossgrey', null, 0.28, [1.235, 0.40, -0.40], Math.PI / 2, 0, 0.10);
+    P.decal('turret', 'crossgrey', null, 0.28, [-1.235, 0.40, -0.40], -Math.PI / 2, 0, -0.10);
+    P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.10, 0.52, -1.45], Math.PI / 2, 0, 0.14);
   };
   buildLeo1A5ArticulatedProfileMarkingsStage1();
   yield 'buildLeo1A5ArticulatedProfileMarkingsStage1';
 
-  // Broad cast butterfly saddle and source-length L7A3. The turret owns a
-  // flat receiver plate while the moving mantlet owns a matching planar rear
-  // pad. Their volumes overlap through the complete legal pitch range, so the
-  // attachment side reads as a real bolted seat. The casting tapers to a
-  // finite forward face in both side and plan view: a real trapezoid rather
-  // than the former upper/lower triangles meeting at a knife-edge ridge.
-  const mantletReceiver = {
-    width: 1.16, height: 0.50, depth: 0.18, y: 0.47, z: 0.79,
-  };
-  const mantletRearPad = {
-    width: 1.22, height: 0.46, depth: 0.16, z: -0.34,
-  };
-  const mantletCasting = {
-    rearHalfWidth: 0.64, rearHalfHeight: 0.29, rearZ: -0.30,
-    frontHalfWidth: 0.50, frontHalfHeight: 0.16, frontZ: 0.38,
+  // Blohm & Voss armoured mantlet and the L7A3. The turret owns a flat receiver plate; the moving mask owns a
+  // matching rear pad and a faceted block, wider at its seat and sloped back over the top.
+  const trunnionY = 0.40;
+  const mantletReceiver = { width: 1.04, height: 0.60, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
+  // (the rear pad stays inside the receiver and clears the deck at +20 degrees of elevation over the side bearings)
+  const mantletRearPad = { width: 1.00, height: 0.48, depth: 0.14, z: -0.22 };
+  const mantletMask = {
+    rearHalfWidth: 0.49, rearLow: -0.30, rearHigh: 0.33, rearZ: -0.16,
+    frontHalfWidth: 0.43, frontLow: -0.26, frontHigh: 0.25, frontZ: 0.36,
   };
   const buildLeo1A5ArticulatedProfileGunStage1 = (): void => {
-    P.add('turret', new THREE.BoxGeometry(
-      mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth,
-    ), 0, mantletReceiver.y, mantletReceiver.z);
-    P.add('turretDark', new THREE.BoxGeometry(1.10, 0.44, 0.018), 0, mantletReceiver.y, 0.889);
-    P.gunG.position.set(0, 0.47, 1.15);
-    P.addGunExtra(new THREE.BoxGeometry(
-      mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth,
-    ), 0, 0, mantletRearPad.z);
+    P.add('turret', new THREE.BoxGeometry(mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth),
+      0, mantletReceiver.y, mantletReceiver.z);
+    P.gunG.position.set(0, trunnionY, 1.15);
+    P.addGunExtra(new THREE.BoxGeometry(mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth),
+      0, 0, mantletRearPad.z);
+    const k = mantletMask;
     P.addGunExtra(slab(
-      [-mantletCasting.frontHalfWidth, -mantletCasting.frontHalfHeight, mantletCasting.frontZ],
-      [mantletCasting.frontHalfWidth, -mantletCasting.frontHalfHeight, mantletCasting.frontZ],
-      [mantletCasting.rearHalfWidth, -mantletCasting.rearHalfHeight, mantletCasting.rearZ],
-      [-mantletCasting.rearHalfWidth, -mantletCasting.rearHalfHeight, mantletCasting.rearZ],
-      [-mantletCasting.frontHalfWidth, mantletCasting.frontHalfHeight, mantletCasting.frontZ],
-      [mantletCasting.frontHalfWidth, mantletCasting.frontHalfHeight, mantletCasting.frontZ],
-      [mantletCasting.rearHalfWidth, mantletCasting.rearHalfHeight, mantletCasting.rearZ],
-      [-mantletCasting.rearHalfWidth, mantletCasting.rearHalfHeight, mantletCasting.rearZ]));
-    // Do not restore the old lower center wedge here. Its thin forward strip
-    // doubled the casting skin and read as a loose plate in oblique views.
-    // The former ellipsoid shoulder ears projected ahead of the angular mask
-    // in exact side view. The connected casting already tapers from its 1.28 m
-    // rear butterfly seat to the 1.00 m front course, so no separate rounded
-    // caps are needed.
-    P.addGunExtraDark(xform(sph(1, P.q ? 20 : 14), 0, 0, 0, 0, 0, 0, [0.54, 0.12, 0.10]), 0, 0, -0.13);
+      [-k.frontHalfWidth, k.frontLow, k.frontZ], [k.frontHalfWidth, k.frontLow, k.frontZ],
+      [k.rearHalfWidth, k.rearLow, k.rearZ], [-k.rearHalfWidth, k.rearLow, k.rearZ],
+      [-k.frontHalfWidth, k.frontHigh, k.frontZ], [k.frontHalfWidth, k.frontHigh, k.frontZ],
+      [k.rearHalfWidth, k.rearHigh, k.rearZ], [-k.rearHalfWidth, k.rearHigh, k.rearZ]));
+    // bolt rows on the mask face and the coax / sight ports
+    for (const x of [-0.30, -0.10, 0.10, 0.30]) P.addGunExtraDark(cylZ(0.018, 0.02, 8), x, 0.16, 0.355);
     P.addGunExtra(cylZ(0.18, 0.30, P.q ? 20 : 14, 0.20), 0, 0, 0.38);
-    P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.37, 0.06, 0.37);
-    P.addGunExtraDark(cylZ(0.022, 0.095, 9), -0.37, 0.08, 0.37);
+    P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.30, 0.04, 0.36);
+    P.addGunExtraDark(cylZ(0.022, 0.095, 9), -0.30, 0.06, 0.36);
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
     P.gunG.userData.leopard1A5MantletReceipt = {
       seated: true,
-      shapedButterflyCasting: true,
-      flatFacetedFace: true,
-      flatRearContactFace: true,
-      trapezoidalSideProfile: true,
-      flatForwardFace: true,
-      lowerCenterWedgeRemoved: true,
-      frontFaceWidth: mantletCasting.frontHalfWidth * 2,
-      frontFaceHeight: mantletCasting.frontHalfHeight * 2,
-      frontFaceZ: mantletCasting.frontZ,
-      castingRearWidth: mantletCasting.rearHalfWidth * 2,
-      castingRearHeight: mantletCasting.rearHalfHeight * 2,
-      castingRearZ: mantletCasting.rearZ,
-      turretReceiver: true,
-      width: 1.32,
-      height: 0.55,
-      faceDepth: 0.31,
+      blohmVossMask: true,
+      maskFrontHalfWidth: mantletMask.frontHalfWidth,
+      maskRearHalfWidth: mantletMask.rearHalfWidth,
+      maskFrontZ: mantletMask.frontZ,
       rearContactWidth: mantletRearPad.width,
-      rearContactHeight: mantletRearPad.height,
-      rearContactDepth: mantletRearPad.depth,
       rearContactZ: mantletRearPad.z,
       receiverWidth: mantletReceiver.width,
-      receiverHeight: mantletReceiver.height,
-      receiverDepth: mantletReceiver.depth,
       receiverY: mantletReceiver.y,
       receiverZ: mantletReceiver.z,
       barrelRadius: 0.064,
@@ -12952,7 +12855,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.mats.glass.color.setHex(0x3e493b);
     P.mats.glass.roughness = 0.48;
     P.mats.glass.metalness = 0.30;
-    P.topY = 1.55 + bodyLiftY;
+    P.topY = turretY;
   };
   buildLeo1A5ArticulatedProfileGunStage1();
 }

@@ -46,6 +46,8 @@ const CURVES = {
   t72_rys: [],
   // 2026-10-26: the M48A5's trunnion at 2.10 under its compact shield; its measured curve (supplementalFleetSpecs.ts)
   m48a5_patton: [],
+  // 262: the Leopard 1A5 proportion rebuild (deck 1.58, cast B&V turret); its measured curve (modern2.ts)
+  leo1a5: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
