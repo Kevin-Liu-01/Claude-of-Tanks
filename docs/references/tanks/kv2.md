@@ -85,6 +85,29 @@ Copies of the Commons images and the measured crops are kept outside the reposit
   ALIGNED, offset 0 mm, angle 0, axial 0, radius −12 mm, no combat-rig row). Gameplay stats unchanged (the spec's
   +12/−5 arc stays; S1 gives +18/−3: an owner decision).
 
+### Critic round (two blind critics against S3-S5) and what changed
+
+Hull critic: the box, deck height, width ratio and wheel pitch matched the drawing; the bow read as a long glacis
+under a short driver's plate (now a 0.50 m driver's plate at 30° over a short 20° strip), the idler's overlay spokes
+read as a pinwheel (they were turned across the radius: now eight radial spokes on a 0.66 m idler), the return
+rollers drew at the kit default 0.18 m (`sovGear` now passes `rollerR`/`returnRollerWidthM`: 0.34 × 0.20 m at the
+drawing's stations), the stern needed the rolled upper plate, the deck covers were too small, the fender triangles
+too flat. Kept by decision: the early stamped six-pocket road wheels (1941 production; the museum tank's spoked cast
+wheels are a later fit) and the fleet's toothed sprocket rings (the fleet-wide sprocket design).
+Turret critic: the box proportions, roof height, barrel length and diameter matched; the drum read as a hub-capped
+wheel set into the wall (now 1.06 m, top level with the roof, smooth domed caps), the shield box dominated (now
+0.67 m tall, 0.54 m deep, one chin chamfer, seam bolts), the door hinges and handles read flat, a raised barrel ring
+did not exist (removed), the rear soffit is a square step (now). Its muzzle-reach note moved the trunnion 0.10 m
+behind the front plate: overall 6.85 m (S1's table: 6.95; the drawing: the muzzle at the bow).
+
+### Fairness line (tools: `.qa-dev/kv2/fairness-line.mjs`, the 259 round robin's measure)
+
+The KV-2 against its 18 shown-tier-I peers on the balance range (six seeds, both range ends): before (main 260)
+strength 0.042, 1/18 pairs inside 0.2-0.8; after strength 0.032, 1/18. Only the BMP-2 pair is inside (0.417); the
+KV-2 loses every MBT pair at tier I (AMX-30/30B/30B2, Leopard 1A5, M46/M47/M48A5/M60A1/M60A3, Merkava 1B, STB-1,
+T-62, Type 59/74, ZTZ-85-III, UDES 03, Jagdpanzer E 100). Outside its bounds before and after; stats not tuned
+(owner/Main decision).
+
 ## Print-era chronology (2026-07-30 .. 2026-10-26)
 
 Soviet 1940 breakthrough heavy: the towering slab. Signature cues: enormous
