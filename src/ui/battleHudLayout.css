@@ -173,7 +173,15 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
 /* the replay owns the screen: the battle's own strips outside the HUD's root step aside too (owner 2026-10-25, "fix
    overlapping uis") */
-body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibility:hidden!important}
+body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints,.cot-battle-notices){visibility:hidden!important}
+/* the map's large step on a window up to 1024 px wide: the kill ribbon and the right-hand kill feed on its side stand down
+   while it is open, the map taking their room (battleHudLayout.ts data-hud-map-large) */
+body[data-cot-battle-layout][data-hud-map-large] .cot-ribbon,
+body[data-cot-battle-layout][data-hud-map-large='right'] .cot-kill-lane.r{display:none!important}
+/* the battle's notices (battleNotices.ts: the kit's region) under the centre's detection and alert, never on them, at the
+   planner's top (battleHudLayout.ts --hud-battle-notices-top; UI-LOCKDOWN B14): the pointer lock's notice and the
+   network's banner each stood fixed at the centre top, over the objective and each other */
+body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)))}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}

@@ -1316,6 +1316,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       return;
     }
     const glyph = result === 'victory' ? 'statVictory' : result === 'defeat' ? 'statDefeat' : 'statDraw';
+    // (in the result's ink, endScreenPresentation.css .end.r-*)
+    if (result === 'victory' || result === 'defeat' || result === 'draw') end.classList.add(`r-${result}`);
     // the result in sentence case, as the service record names it (the headline's own copy is set in capitals)
     const word = result === 'victory' ? t('garage.record.victory') : result === 'defeat' ? t('garage.record.defeat')
       : result === 'draw' ? t('garage.record.draw') : host.dataset.banner || '';

@@ -4,10 +4,6 @@ import { createPointerLockFeedbackRuntime } from './pointerLockFeedbackRuntime.t
 
 class FakeElement {
   constructor() {
-    this.className = '';
-    this.textContent = '';
-    this.style = { cssText: '', opacity: '' };
-    this.removed = false;
     this.listeners = new Map();
   }
   addEventListener(type, listener) { this.listeners.set(type, listener); }
@@ -15,17 +11,14 @@ class FakeElement {
     if (this.listeners.get(type) === listener) this.listeners.delete(type);
   }
   dispatch(type) { this.listeners.get(type)?.(); }
-  remove() { this.removed = true; }
 }
 
-const priorDocument = globalThis.document;
-const appended = [];
-globalThis.document = {
-  createElement: () => new FakeElement(),
-  body: { appendChild: (element) => appended.push(element) },
-};
+// (the battle's notice region, ui/battleNotices.ts: the notice is the kit's, so the receipt reads what it was handed)
+const shown = [];
+const dismissed = [];
+const notices = { show: (options) => shown.push(options), dismiss: (id) => dismissed.push(id) };
 
-try {
+{
   const canvas = new FakeElement();
   const bus = createBus();
   let denied = null;
@@ -52,7 +45,7 @@ try {
     isBattleStageVisible: () => battleStageVisible,
     canRecapturePointer: () => canRecapture,
     ensureTouchControls: async () => ({ refresh: () => { refreshes += 1; } }),
-    nextFrame: () => new Promise(() => {}),
+    notices,
   });
 
   canvas.dispatch('mousedown');
@@ -60,12 +53,20 @@ try {
   assert.equal(lockRequests, 0, 'non-battle canvas never recaptures even if the other predicate permits it');
   battleStageVisible = true;
   denied();
-  assert.equal(appended.length, 1, 'durable denial shows one notice on the visible battle stage');
-  assert.equal(appended[0].className, 'cot-lock-toast');
+  assert.equal(shown.length, 1, 'durable denial shows one notice on the visible battle stage');
+  assert.equal(shown[0].id, 'cot-pointer-lock');
+  assert.equal(shown[0].severity, 'warning', 'the notice is the kit\'s warning in the battle region');
+  assert.equal(shown[0].dismissible, false);
   denied();
-  assert.equal(appended.length, 1, 'repeated denial does not duplicate the notice');
+  assert.equal(shown.length, 1, 'repeated denial does not duplicate the notice');
   restored();
-  assert.equal(appended[0].removed, true, 'successful capture removes and rearms the notice');
+  assert.deepEqual(dismissed, ['cot-pointer-lock'], 'successful capture dismisses and rearms the notice');
+  battleStageVisible = false;
+  denied();
+  assert.equal(shown.length, 1, 'a covered stage waits before the notice shows');
+  restored();
+  assert.equal(dismissed.length, 2, 'capture while waiting drops the wait');
+  battleStageVisible = true;
 
   canvas.dispatch('mousedown');
   assert.equal(resumes, 1, 'canvas intent resumes audio');
@@ -108,8 +109,8 @@ try {
   bus.emit('ui:battleStart', {});
   await Promise.resolve();
   assert.equal(refreshes, 2, 'dispose detaches the battle-start listener');
-} finally {
-  globalThis.document = priorDocument;
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  assert.equal(shown.length, 1, 'a disposed runtime never shows the waiting notice');
 }
 
 console.log('pointerLockFeedbackRuntime.selftest: gesture, notice and disposal ownership passed');

@@ -422,7 +422,7 @@ for (const [source, pattern, label] of [
   [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
   [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
   [renderer, /el\.id = 'cot-ctxlost'/, 'graphics recovery'],
-  [pointerLockFeedback, /element\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
+  [pointerLockFeedback, /notices = lazyBattleNotices,/, 'pointer-lock fallback'],
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
 // The public pages lay out at first paint, before or without JavaScript (brand-ui SPEC §5.5): their stylesheets read

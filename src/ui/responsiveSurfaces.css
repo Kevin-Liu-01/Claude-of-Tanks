@@ -839,16 +839,6 @@ body[data-cot-panels='overlay']>.cot-gear{
   width:44px;height:44px;min-height:44px;
 }
 
-body[data-cot-width] .cot-lock-toast{
-  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));text-align:center;
-  white-space:normal;overflow-wrap:anywhere;
-}
-body[data-cot-width='compact'] .cot-lock-toast,
-body[data-cot-width='phone'] .cot-lock-toast{
-  top:max(68px,calc(env(safe-area-inset-top) + 60px))!important;width:calc(100vw - (var(--cot-edge) * 2));
-  padding:8px 10px!important;font-size:11px!important;line-height:1.35;letter-spacing:.03em!important;
-}
-
 /* Opt-in engineering panels remain operable on the device being diagnosed. */
 body[data-cot-width='compact'] #cot-perfhud,
 body[data-cot-width='phone'] #cot-perfhud{

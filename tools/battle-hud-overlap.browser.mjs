@@ -32,13 +32,13 @@ await mkdir(out, { recursive: true });
 export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
   ['1280x720', 1280, 720, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
-export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
+export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
   'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers'];
 /** The HUD's instruments, each a box another may not cross. */
 export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show', '.cot-net', '.cot-mp-status.battle',
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
-  '.cot-medal-toasts', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
+  '.cot-medal-toasts', '.cot-battle-notices .cot-c-notice', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
   '.cot-si-toasthost', '.cot-si-log.open', '.cot-si-cardhost:not(:empty)', '.cot-room-chat:not([hidden])', '.cot-spec.show',
   '.cot-watch', '.cot-watch-rail', '.cot-hints.show', '.cot-drive', '.cot-dp', '.cot-minimap', '.cot-shell', '.cot-con', '.cot-vehicle-controls',
   '.cot-flight-hud .flight-console', '.cot-flight-hud .gunship-solution', '.cot-scope-vision',
