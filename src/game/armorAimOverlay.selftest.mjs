@@ -107,6 +107,27 @@ assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay h
   assert.notEqual(secondEntry.frames[0].color, frame.color, 'each vehicle paints its own colours');
 }
 
+// 262: a panel behind a skirt (a spaced plate 30 cm off the right side) stands out past it; the others keep the lift
+{
+  const skirt = { name: 'skirt_R', kind: 'spaced', physicalMm: 10, keMm: 10, ceMm: 10,
+    verts: [[1.3, 0, 1], [1.3, 0, -1], [1.3, 2, -1], [1.3, 2, 1]] };
+  const skirtedRoot = root.clone(true);
+  const skirted = {
+    ...target, id: 'overlay-test-skirt', visual: { root: skirtedRoot },
+    spec: { armor: { ...target.spec.armor, hullPlates: [plate, skirt],
+      collisionShells: { hull: [{ ...target.spec.armor.collisionShells.hull[0] }], turret: [] } } },
+  };
+  const skirtEntry = overlay.prime(skirted);
+  const position = skirtEntry.frames[0].geometry.getAttribute('position');
+  let side = 0, rest = 0;
+  for (let vertex = 0; vertex < position.count; vertex += 3) {
+    const xs = [0, 1, 2].map((k) => position.getX(vertex + k));
+    if (xs.every((x) => x > 1.2)) { side++; assert.ok(xs.every((x) => x >= 1.33 && x < 1.4), `the skirted side stands past the skirt (${xs})`); }
+    else rest++;
+  }
+  assert.ok(side > 0 && rest > 0, 'the side behind the skirt is lifted past it, the rest is not');
+}
+
 const restoreWarm = overlay.warm();
 assert(entry.frames.every((frame) => frame.mesh.visible), 'warm exposes overlay shaders under the loading veil');
 restoreWarm();

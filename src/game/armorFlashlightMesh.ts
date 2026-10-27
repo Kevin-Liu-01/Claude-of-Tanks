@@ -10,7 +10,8 @@
 // so a front read as red and green triangle fans (owner, 2026-10-27). Now:
 //   - only the union's outer surface is drawn;
 //   - the shell is lifted SKIN_LIFT_M along a normal field that depends on position alone, so panels that meet keep
-//     meeting (no seam opens, no band doubles), just proud of skirts, ERA and fittings;
+//     meeting (no seam opens, no band doubles), just proud of the hull's fittings; a panel behind skirts, ERA, a screen
+//     or a track run stands out past them as a plate of its own (STANDOFF);
 //   - the skin is cut into armour zones with straight borders and grown into flat panels (sim/armorPanels.ts); each panel
 //     aims a few samples and takes one colour, blended from them by the area each stands for;
 //   - panel borders draw as anti-aliased lines in the fill's own shader (no second draw); a panel's inner facets and
@@ -19,8 +20,20 @@ import * as THREE from 'three';
 import { indexSkinPanels, onSkinPanel, type SkinPanelIndex, type SkinPoint } from '../sim/armorSkin.ts';
 import { armorPanelSet } from '../sim/armorPanels.ts';
 
-/** How far the shell stands proud of the armour cells (m): over skirts, ERA and fittings, as the old inflation did. */
+/** How far the shell stands proud of the armour cells (m): over the hull's own fittings, as the old inflation did. */
 const SKIN_LIFT_M = 0.06;
+/**
+ * A panel behind skirts, ERA, a spaced screen or a track run (the frame's spaced, era and external plates) stands out
+ * past them by STANDOFF_CLEAR_M, as a plate of its own: they stand 20-60 cm off the hull, far past the even lift,
+ * and hid the panel behind them (2026-09-13 owner review: "make them a little bigger than the tank"). Only when
+ * STANDOFF_SHARE of its probes find one within STANDOFF_MAX_M along its normal: a fitting over one corner does not
+ * lift a whole plate.
+ */
+const STANDOFF_MAX_M = 0.8;
+const STANDOFF_CLEAR_M = 0.04;
+const STANDOFF_SHARE = 0.3;
+const STANDOFF_EDGE_M = 0.02;
+const STANDOFF_PROBES = 24;
 const ON_PLANE_M = 0.012;
 const KEY_QUANTUM_M = 5e-4;
 
@@ -41,6 +54,9 @@ export interface FlashlightGeometry {
 }
 
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const sub = (a: readonly number[], b: readonly number[]): SkinPoint => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const cross = (a: readonly number[], b: readonly number[]): SkinPoint =>
+  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const key = (p: readonly number[]): string =>
   `${Math.round(p[0] / KEY_QUANTUM_M)},${Math.round(p[1] / KEY_QUANTUM_M)},${Math.round(p[2] / KEY_QUANTUM_M)}`;
 
@@ -79,6 +95,59 @@ function liftField(index: readonly SkinPanelIndex[]): (point: SkinPoint) => Skin
   };
 }
 
+interface OuterPlate { normal: SkinPoint; offset: number; edges: Array<{ normal: SkinPoint; offset: number }> }
+
+const OUTER_KINDS = new Set(['spaced', 'era', 'external']);
+
+/** The frame's plates that stand outside its cells (skirts, ERA, screens, tracks): planes and outline edge planes. */
+function outerPlates(plates: FlashlightPlates): OuterPlate[] {
+  const out: OuterPlate[] = [];
+  for (const plate of (plates || []) as ReadonlyArray<{ kind?: string; verts?: readonly (readonly number[])[] }>) {
+    const verts = plate.verts;
+    if (!plate.kind || !OUTER_KINDS.has(plate.kind) || !verts || verts.length < 3) continue;
+    const u = sub(verts[1], verts[0]), v = sub(verts[verts.length - 1], verts[0]);
+    const raw = cross(u, v);
+    const size = Math.sqrt(dot(raw, raw));
+    if (!(size > 1e-12)) continue;
+    const normal: SkinPoint = [raw[0] / size, raw[1] / size, raw[2] / size];
+    const centre = [0, 0, 0];
+    for (const point of verts) for (let axis = 0; axis < 3; axis++) centre[axis] += point[axis] / verts.length;
+    let turn = 0;
+    for (let i = 0; i < verts.length; i++) turn += dot(cross(sub(verts[i], centre), sub(verts[(i + 1) % verts.length], centre)), normal);
+    const ordered = turn >= 0 ? verts : [...verts].reverse();
+    const edges: OuterPlate['edges'] = [];
+    for (let i = 0; i < ordered.length; i++) {
+      const a = ordered[i], b = ordered[(i + 1) % ordered.length];
+      const side = cross(sub(b, a), normal);
+      const length = Math.sqrt(dot(side, side));
+      if (!(length > 1e-12)) continue;
+      const n: SkinPoint = [side[0] / length, side[1] / length, side[2] / length];
+      edges.push({ normal: n, offset: -dot(n, a) });
+    }
+    out.push({ normal, offset: -dot(normal, centre), edges });
+  }
+  return out;
+}
+
+/** How far out along a panel's normal (m, 0: none) the plates in front of it reach, by its probes (see STANDOFF). */
+function panelStandoff(probes: readonly (readonly number[])[], normal: readonly number[], outer: readonly OuterPlate[]): number {
+  if (!outer.length || !probes.length) return 0;
+  let covered = 0, reach = 0;
+  for (const point of probes) {
+    let best = 0;
+    for (const plate of outer) {
+      const facing = dot(plate.normal, normal);
+      if (Math.abs(facing) < 0.2) continue;
+      const t = -(dot(plate.normal, point) + plate.offset) / facing;
+      if (!(t > 0) || t > STANDOFF_MAX_M) continue;
+      const hit = [point[0] + normal[0] * t, point[1] + normal[1] * t, point[2] + normal[2] * t];
+      if (plate.edges.every((edge) => dot(edge.normal, hit) + edge.offset <= STANDOFF_EDGE_M)) best = Math.max(best, t);
+    }
+    if (best > 0) { covered++; reach = Math.max(reach, best); }
+  }
+  return covered >= probes.length * STANDOFF_SHARE ? reach : 0;
+}
+
 interface FlashlightTemplate {
   readonly position: THREE.Float32BufferAttribute;
   readonly bary: THREE.Float32BufferAttribute;
@@ -98,6 +167,18 @@ function buildTemplate(cells: FlashlightCells, plates: FlashlightPlates): Flashl
   const set = armorPanelSet(cells, plates);
   if (!set) return null;
   const lift = liftField(indexSkinPanels(set.skin));
+  // each panel behind outer plates stands past them: its extra lift along its own normal
+  const outer = outerPlates(plates);
+  const extra = set.panels.map((panel) => {
+    const probes: (readonly number[])[] = [...panel.samples];
+    const members = [...panel.facets].sort((a, b) => set.facets[b].area - set.facets[a].area || a - b);
+    for (const index of members) {
+      if (probes.length >= STANDOFF_PROBES) break;
+      probes.push(set.facets[index].centroid, ...set.facets[index].points);
+    }
+    const reach = panelStandoff(probes.slice(0, STANDOFF_PROBES), panel.normal, outer);
+    return reach > 0 ? Math.max(0, reach + STANDOFF_CLEAR_M - SKIN_LIFT_M) : 0;
+  });
   let count = 0;
   for (const facet of set.facets) count += (facet.points.length - 2) * 3;
   if (!count) return null;
@@ -113,9 +194,11 @@ function buildTemplate(cells: FlashlightCells, plates: FlashlightPlates): Flashl
       // the fan triangle (p0, pi, pi+1); the edge opposite vertex k: k=0 → pi..pi+1 (outline edge i), k=1 → pi+1..p0
       // (outline edge `last` on the last triangle, else a diagonal), k=2 → p0..pi (outline edge 0 on the first)
       const edges = [border(i), i + 1 === last ? border(last) : 0, i === 1 ? border(0) : 0];
+      const panel = set.panels[set.facetPanel[index]], out = extra[set.facetPanel[index]];
       for (const [k, point] of [points[0], points[i], points[i + 1]].entries()) {
         const l = lift(point);
-        positions.set([point[0] + l[0], point[1] + l[1], point[2] + l[2]], vertex * 3);
+        positions.set([point[0] + l[0] + panel.normal[0] * out, point[1] + l[1] + panel.normal[1] * out,
+          point[2] + l[2] + panel.normal[2] * out], vertex * 3);
         bary[vertex * 3 + k] = 1;
         borders.set(edges, vertex * 3);
         panelVertices[set.facetPanel[index]].push(vertex);
