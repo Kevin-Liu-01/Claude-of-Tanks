@@ -294,8 +294,10 @@ body[data-cot-panels='overlay'] .cot-garage>.cot-featured{display:none;}
 /* the take needs a readout that keeps its full plates beside it: 1200 px, above the tall band's 900 px edge, so it stays a
    height query */
 @media (height < 1200px){body[data-cot-panels='persistent'] .cot-garage>.cot-featured{display:none;}}
+/* (a cap, not a bottom: the plate still ends at its content; a set bottom stretched it to the take, and Mobility or Crew
+   stood over a tall empty plate at 2560: the r26 critic) */
 @media (height >= 1200px){body[data-cot-panels='persistent'][data-cot-width='desktop'] .cot-garage .stats{
-  bottom:calc(var(--edge) + var(--battle-h) + var(--take-h) + 2 * var(--s3));}}
+  max-height:calc(100% - var(--column-top) - var(--tabs-h) - var(--s2) - var(--edge) - var(--battle-h) - var(--take-h) - 3 * var(--s3));}}
 
 /* ---- the lower third: the name on the floor in front of the tank, its identity, then the band ---- */
 .cot-lt-head{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);max-width:100%;}

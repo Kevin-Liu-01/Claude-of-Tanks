@@ -66,6 +66,9 @@
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
+/* a card menu whose room holds no whole row of 16:9 pictures crops them to 3:1, so a row stands whole with its names
+   (pickerMenu.ts place, squat) */
+.cot-c-menu__pop.is-squat .cot-c-picker__media{aspect-ratio:3/1}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
 .cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}

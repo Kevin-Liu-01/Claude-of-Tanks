@@ -69,6 +69,9 @@ interface MenuRoom {
   readonly bottom: number;
   readonly left?: number;
   readonly right?: number;
+  /** The menu covers its room from its trigger to the room's foot (or top) whatever its rows need, so nothing of the panel
+   *  under it shows past its edge (the r26 critic: the Garage readout's rows cut in half under the rival menu). */
+  readonly fill?: boolean;
 }
 
 interface MenuPlace {
@@ -112,9 +115,9 @@ export function placeMenu(
   const left = Math.max(edge, Math.min(side ? side.left : anchor.left, view.width - edge - width));
   const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
   const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
-  const want = Math.min(height, cap);
-  const above = below < want && aboveRoom > below;
-  const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
+  const want = bounds.fill ? Number.POSITIVE_INFINITY : Math.min(height, cap);
+  const above = below < Math.min(height, cap) && aboveRoom > below;
+  const maxHeight = Math.max(0, bounds.fill ? (above ? aboveRoom : below) : Math.min(cap, above ? aboveRoom : below));
   const shown = Math.min(want, maxHeight);
   return { sheet: false, left, top: above ? anchor.top - MENU_GAP - shown : anchor.bottom + MENU_GAP, width, maxHeight, above };
 }
@@ -189,15 +192,18 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     }
     return { top: 0, bottom: win.innerHeight };
   };
-  const place = (): void => {
+  /** `squat`: a picture-card menu whose room holds no whole row draws its pictures flatter (pickers.css .is-squat) and is
+   *  placed once more (the r26 critic: at 1024 x 600 the Garage's staging cards lost their names under its foot). */
+  const place = (squat = false): void => {
     if (!isOpen()) return;
     const anchorEl = openFrom?.isConnected ? openFrom : trigger;
     const rect = anchorEl.getBoundingClientRect();
     pop.style.maxHeight = '';
     pop.classList.remove('is-sheet');
+    pop.classList.toggle('is-squat', squat);
     const natural = pop.scrollHeight;
-    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards',
-      options.bounds?.() ?? boundsOf(anchorEl));
+    const room: MenuRoom = options.bounds?.() ?? boundsOf(anchorEl);
+    const spot = placeMenu(rect, { width: win.innerWidth, height: win.innerHeight }, natural, coarse(), options.layout === 'cards', room);
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
     pop.style.left = `${spot.left}px`;
@@ -206,13 +212,15 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.style.bottom = spot.sheet ? '0' : '';
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
-    if (!spot.sheet) trimToWholeRows(spot);
+    // a filling menu stands its room's whole height; its grid scrolls under the kit's foot fade
+    pop.style.height = room.fill && !spot.sheet ? `${spot.maxHeight}px` : '';
+    if (!spot.sheet && !room.fill && !trimToWholeRows(spot) && !squat && options.layout === 'cards') place(true);
   };
   /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:
    *  the staging cards' names and a rival row sliced). An upward menu keeps its foot on its trigger. */
-  const trimToWholeRows = (spot: MenuPlace): void => {
+  const trimToWholeRows = (spot: MenuPlace): boolean => {
     const grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
-    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return;
+    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return true;
     const style = win.getComputedStyle(grid);
     const top = grid.getBoundingClientRect().top + grid.clientTop;
     const bottom = top + grid.clientHeight - (parseFloat(style.paddingBottom) || 0);
@@ -221,11 +229,14 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       const box = cell.getBoundingClientRect();
       if (box.height > 0 && box.top >= top - 0.5 && box.bottom <= bottom + 0.5) foot = Math.max(foot, box.bottom);
     }
+    // no whole row in the room: the caller may draw the cards flatter
+    if (!Number.isFinite(foot)) return false;
     const cut = Math.floor(bottom - foot);
-    if (!Number.isFinite(cut) || cut < 2) return;
+    if (cut < 2) return true;
     const height = pop.getBoundingClientRect().height - cut;
     pop.style.maxHeight = `${height}px`;
     if (spot.above) pop.style.top = `${spot.top + cut}px`;
+    return true;
   };
   let placeFrame = 0;
   const placeSoon = (): void => {

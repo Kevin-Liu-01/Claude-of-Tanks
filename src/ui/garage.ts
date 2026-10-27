@@ -1283,10 +1283,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     rivalMenu = createPickerMenu(rivalHost, {
       id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival', items,
       // its room is the readout column, side to side and top to foot: no stat label shows beside it and it never covers
-      // the battle card (the r25 critic: "Da", "Re", "Hi" cut at its left edge; at 900 it ran past the column's edge)
+      // the battle card (the r25 critic: "Da", "Re", "Hi" cut at its left edge; at 900 it ran past the column's edge); it
+      // fills that room to the column's foot, so no readout row shows cut under it (the r26 critic)
       bounds: () => {
         const column = statsEl.getBoundingClientRect();
-        return column.width ? { top: column.top, bottom: column.bottom, left: column.left, right: column.right } : null;
+        return column.width ? { top: column.top, bottom: column.bottom, left: column.left, right: column.right, fill: true } : null;
       },
       filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
       onChoose: (item) => {
@@ -1892,7 +1893,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
-    if (cg) holdGridHeight(cg, fitWholeRows);
+    // whole rows, as the equipment grid's (the r26 critic read the paint grid's 40 % peek, dimmed to a quarter, as a row
+    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below
+    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false));
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
