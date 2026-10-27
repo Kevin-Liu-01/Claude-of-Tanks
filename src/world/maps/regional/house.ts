@@ -4,7 +4,7 @@
 // window/door rhythm of each face. A style supplies a dialect: how a window, a door and (for half-timbered regions) a
 // framed wall are dressed. Every body is centred on the origin with its base at y = 0, like the props builders.
 import {
-  FINE_SIDES_MAX_DEPTH_M, LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
+  FINE_FLUSH_MAX_DEPTH_M, LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import {
@@ -1725,18 +1725,18 @@ export const H = {
   post(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     if (y1 - y0 < 0.02) return;
     captureMember('post', u, y0, u, y1, width, out, opts);
-    sink.member(bucket, facePoint(face, u, y0), facePoint(face, u, y1), width, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u, y0), facePoint(face, u, y1), width, out, face.out, { ...opts, joined: true });
   },
   /** a horizontal rail on a face from u0 to u1 at y */
   rail(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number, height: number, out: number, opts: EmitOptions & { ends?: boolean }): void {
     if (u1 - u0 < 0.02) return;
     captureMember('rail', u0, y, u1, y, height, out, opts);
-    sink.member(bucket, facePoint(face, u0, y), facePoint(face, u1, y), height, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u0, y), facePoint(face, u1, y), height, out, face.out, { ...opts, joined: true });
   },
   /** a diagonal brace between two face points */
   brace(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, y0: number, u1: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     captureMember('brace', u0, y0, u1, y1, width, out, opts);
-    sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, { ...opts, joined: true });
   },
   /**
    * A brace cut to its panel (the facade craft's round 6; wave 241: "the lower diagonal brace lapping across the post
@@ -1765,9 +1765,10 @@ export const H = {
     const frame = new LocalFrame(across, axis, face.out, facePoint(face, (u0 + u1) / 2, (y0 + y1) / 2, out / 2 - embed));
     const front = out - embed, back = -embed;
     const o: EmitOptions = { ...opts, uv: UV_MEMBER };
+    // (a framed wall's timber, as H's members: EmitOptions.joined: its face alone at range, the frame seated through its
+    // neighbours, its sides fine joinery to FINE_FLUSH_MAX_DEPTH_M; deeper, drawn at any range)
     sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, front)), o, frame);
-    // (as a member's box: a strut deeper than FINE_SIDES_MAX_DEPTH_M keeps its sides, which seat its face on the wall)
-    const sides: EmitOptions = opts.decor && !opts.shadow && out <= FINE_SIDES_MAX_DEPTH_M + 1e-6
+    const sides: EmitOptions = opts.decor && !opts.shadow && front <= FINE_FLUSH_MAX_DEPTH_M + 1e-6
       ? { ...o, fine: opts.fineSides === 'near' || opts.fine === 'near' ? 'near' : true } : o;
     for (let i = 0; i < poly.length; i++) {
       const p = poly[i], q = poly[(i + 1) % poly.length];

@@ -555,7 +555,8 @@ export function doorCanopy(sink: PartSink, face: Face, u: number, y: number, w: 
       { ...timber, exposed: true, fine: 'near' }, 0);
     faceBox(sink, 'structureWood', face, cu, by, (depth - 0.08) / 2, 0.08, 0.08, depth - 0.08, { ...timber, fine: 'near' });
   }
-  faceBox(sink, 'structureWood', face, u, by, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: 'near' });
+  // (under its slab, the beam joined at range through it: EmitOptions.joined)
+  faceBox(sink, 'structureWood', face, u, by, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: 'near', joined: true });
   if (style.kind === 'shed') {
     // one slab from the wall falling to the front beam
     const a = facePoint(face, u - span / 2, wall + 0.02, 0), b = facePoint(face, u + span / 2, wall + 0.02, 0);

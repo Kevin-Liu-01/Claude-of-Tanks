@@ -44,12 +44,29 @@ export const BUCKET_UV_DENSITY: Readonly<Record<RegionalBucket, number>> = Objec
  */
 export const FINE_SIDES_MAX_DEPTH_M = 0.05;
 /**
+ * Up to this depth a fineSides box's depth does not read past the fine-detail distance or on a phone (a surround, a
+ * sill, a jamb, a beam 6-20 cm proud): its sides stay fine joinery and it is seated in those views another way (box):
+ * its top drawn there (it runs from its face to the wall), or where a desktop draws the bucket's fine joinery at every
+ * range a flush face on its back built for a phone alone. No desktop builds more, a phone a face at most (259; Main,
+ * 2026-10-26: the sides drawn at every range cost a phone's kit builds 10.5 % more triangles). Deeper (a finial, a fin),
+ * the sides read and stay coarse.
+ */
+export const FINE_FLUSH_MAX_DEPTH_M = 0.2;
+/** The flush face's stand off the box's back: inside the box, within the contact of its wall, clear of its depth fight. */
+export const flushFaceM = (depth: number): number => Math.min(0.045, Math.max(0.025, depth / 2));
+/**
  * The props buckets whose fine joinery props.ts draws only within the quality preset's fine-detail distance of the camera
  * (its fine-detail cells, updateFineDetail): on every tier, and on a desktop as well these. Every other bucket's fine
  * pieces draw at any range; a phone builds no fine joinery at all (index.ts buildRegionalParts).
  */
 export const FINE_CELLED_BUCKETS: ReadonlySet<string> = new Set(['structureWood', 'regionalStone']);
 export const DESKTOP_FINE_CELLED_BUCKETS: ReadonlySet<string> = new Set(['structureMetal', 'regionalPlaster']);
+/**
+ * Whether a desktop draws a bucket's fine joinery at every range: props.ts culls only the buckets above by distance (the
+ * plain walls weather into regionalStone and regionalPlaster, weather.ts).
+ */
+const RANGE_CULLED: ReadonlySet<string> = new Set([...FINE_CELLED_BUCKETS, ...DESKTOP_FINE_CELLED_BUCKETS, 'stone', 'plaster']);
+const fineDrawnAtRange = (bucket: RegionalBucket): boolean => !RANGE_CULLED.has(bucket);
 
 export type RegionalParts = Record<RegionalBucket, THREE.BufferGeometry[]>;
 /**
@@ -139,11 +156,31 @@ export interface EmitOptions {
   tag?: 'renderLoss';
   /**
    * a box seated on a wall (a timber, a shutter leaf): its outward face reads at any range, its sides and caps are
-   * fine joinery (`fine`). Honoured by `box` for non-casting dressing no deeper than FINE_SIDES_MAX_DEPTH_M; `member`
+   * fine joinery (`fine`). Honoured by `box` for non-casting dressing no deeper than FINE_SIDES_MAX_DEPTH_M (to
+   * FINE_FLUSH_MAX_DEPTH_M the whole box fine and a flush face for it at range; deeper, every face coarse); `member`
    * sets it on every framing member. 'near': those faces are near fine joinery (`fine` 'near'), on a box's `coarse`
    * faces' complement as well
    */
   fineSides?: boolean | 'near';
+  /**
+   * how far the box's +z face stands proud of the wall it is set into, when the box runs back into it (a sill through
+   * its reveal, a joist end under a jetty, a framing timber's embed): the fineSides depth rule reads it, not the box's
+   * depth. faceBox and member set it
+   */
+  proud?: number;
+  /**
+   * built on a phone only (regional/index.ts drops it from a desktop's build): the flush face that stands in for a part a
+   * desktop draws whole at every range (its fine joinery in a bucket the props never cull by distance)
+   */
+  phoneOnly?: boolean;
+  /**
+   * its face joined to the building at range through the parts it meets, whatever its depth up to
+   * FINE_FLUSH_MAX_DEPTH_M: a framed wall's timbers (house.ts H: posts, rails, braces, struts, their faces in one plane,
+   * the frame seated on its sill and corners), a door frame on its threshold under its head, a canopy's beam under its
+   * slab. Its face alone at range, its sides fine joinery, as a part within its wall's contact (the building-integrity
+   * census holds every such part seated)
+   */
+  joined?: boolean;
   /**
    * laid on the terrain (the wall-foot strip, house.ts groundSkirt): a group of its own, which the weathering's wall-foot
    * band never cuts at its break heights (a part facing up takes no damp, so a cut would only add triangles)
@@ -257,9 +294,10 @@ export class PartSink {
     try { return body(); } finally { this.pieceName = prior; }
   }
 
-  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false, tag?: EmitOptions['tag']): Accumulator {
+  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false, tag?: EmitOptions['tag'],
+    phone = false): Accumulator {
     const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`
-      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '');
+      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '') + (phone ? '|m' : '');
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -289,7 +327,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground, opts.tag);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground, opts.tag, !!opts.phoneOnly);
     const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -352,12 +390,23 @@ export class PartSink {
     const o = { ...opts, uv: opts.uv ?? (frame ? MEMBER : WORLD) };
     const lf = o.uv.kind === 'member' ? (local ?? new LocalFrame(IDENTITY.ax, IDENTITY.ay, IDENTITY.az, centre)) : undefined;
     // the faces that stay coarse (a long view reads them) while every other face is fine joinery: `coarse`, or under
-    // fineSides the +z face (a face frame's outward axis) of a box no deeper than FINE_SIDES_MAX_DEPTH_M; non-casting
-    // dressing only
-    const sides = !!opts.fineSides && half[2] * 2 <= FINE_SIDES_MAX_DEPTH_M + 1e-6;
-    const keep = opts.decor && !opts.shadow ? coarse ?? (sides ? { pz: true } : null) : null;
+    // fineSides the +z face (a face frame's outward axis) of a box no deeper than FINE_SIDES_MAX_DEPTH_M; to
+    // FINE_FLUSH_MAX_DEPTH_M none, a flush face standing in for the box; non-casting dressing only
+    const depth = Math.min(half[2] * 2, opts.proud ?? Infinity), dressing = !!opts.decor && !opts.shadow;
+    const sides = !!opts.fineSides && depth <= (opts.joined ? FINE_FLUSH_MAX_DEPTH_M : FINE_SIDES_MAX_DEPTH_M) + 1e-6;
+    const flush = dressing && !coarse && !!opts.fineSides && !sides && depth <= FINE_FLUSH_MAX_DEPTH_M + 1e-6;
+    // where a desktop draws the bucket's fine joinery at every range, the flush face is a phone's alone; elsewhere the
+    // box's top, which runs from its face to the wall (or into it: a sill through its reveal, a joist under a jetty),
+    // seats it at range with no face added, and only a box without its top takes the flush face
+    const phoneFlush = flush && fineDrawnAtRange(bucket), topSeat = flush && !phoneFlush && !skip?.py;
+    const keep = dressing ? coarse ?? (sides ? { pz: true } : topSeat ? { pz: true, py: true } : flush ? {} : null) : null;
     const fine = { ...o, fine: o.fine === 'near' || o.fineSides === 'near' ? 'near' as const : true };
     const at = (face: keyof FaceSkip) => (keep && !keep[face] ? fine : o);
+    if (flush && !topSeat && !skip?.pz) {
+      // (from the wall plane: `depth` back from the +z face)
+      const z = (half[2] - depth + flushFaceM(depth)) / half[2];
+      this.quad(bucket, c(-1, -1, z), c(1, -1, z), c(1, 1, z), c(-1, 1, z), phoneFlush ? { ...o, phoneOnly: true } : o, lf);
+    }
     // +x, -x, +y, -y, +z, -z faces (corners ccw from outside)
     if (!skip?.px) this.quad(bucket, c(1, -1, 1), c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), at('px'), lf);
     if (!skip?.nx) this.quad(bucket, c(-1, -1, -1), c(-1, -1, 1), c(-1, 1, 1), c(-1, 1, -1), at('nx'), lf);
@@ -408,7 +457,7 @@ export class PartSink {
     // a framing member abuts its neighbours at both ends: only its face and two sides show (ends: true keeps the caps)
     // exposed: a free member (debris, a wheel spoke, a hip cap) keeps every face. A framing member's sides and caps
     // are fine joinery (EmitOptions.fineSides): a few centimetres deep, they are sub-pixel at a long view
-    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts.exposed ? opts : { ...opts, fineSides: opts.fineSides === 'near' ? 'near' : true }, frame,
+    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts.exposed ? opts : { ...opts, fineSides: opts.fineSides === 'near' ? 'near' : true, proud: depth - embed }, frame,
       opts.exposed ? undefined : opts.ends ? { nz: true } : { nz: true, py: true, ny: true });
   }
 
@@ -616,6 +665,7 @@ export class PartSink {
       if (role === 'f' || role === 'n') geometry.userData.fine = true;
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
+      if (rest.includes('m')) geometry.userData.phoneOnly = true;
       if (piece) geometry.userData.damagePiece = piece;
       if (tag) geometry.userData.partTag = tag;
       geometry.userData.uvJitter = 'none';
@@ -695,7 +745,9 @@ export function faceBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: n
   const h: FaceBoxHidden = hidden === 'ends' ? { ends: true } : hidden === 'caps' ? { top: true, bottom: true } : hidden ?? {};
   const seated = o - so / 2 <= 0.002;
   const skip: FaceSkip = { nz: seated || !!h.back, px: !!h.ends, nx: !!h.ends, py: !!h.top, ny: !!h.bottom };
-  sink.box(bucket, centre, [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? WORLD }, frame, skip);
+  // (a part run back into the wall, a sill through its reveal: its stand off the wall plane, for the fineSides rule)
+  const proud = o - so / 2 < -0.002 ? Math.max(0, o + so / 2) : undefined;
+  sink.box(bucket, centre, [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? WORLD, ...(proud !== undefined ? { proud } : {}) }, frame, skip);
 }
 
 /** A flat panel on a face (a window pane): one quad facing out, `o` metres proud of the wall plane. */
