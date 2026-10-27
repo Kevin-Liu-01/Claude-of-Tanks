@@ -30,6 +30,12 @@
 // startViteChild's dev servers run without one (`ws: false`), every page is checked after the thaw and re-warmed if it
 // lost its context, and a page frozen longer than `maxFrozenMinutes` is checked (and re-warmed) while still queued.
 //
+// Lock classes and the hold cap (2026-10-27, item 262): a hold is a `render` (sharing the lock, two at once) or a
+// `timing` hold (exclusive) by its command (genHeroCards, genIcons, genDrawings, gauntlet and sheet tools render), or by
+// `lockClass`; `holdCapMinutes` (with a `holdCapReason`) raises the 20-min cap for this ticket. shoot gets
+// `checkpoint()`: call it between batches. Past the cap with anyone waiting, it freezes the pages, gives the lock up,
+// re-queues at the back, and thaws (and checks) the pages once the lock is held again; the hold limit starts again.
+//
 // Runaway browsers (2026-10-26, item 244): launch the hold's browser with tools/browser-launch.mjs launchGuardedBrowser.
 // A renderer past 6 GB (or its tree past 10 GB), warming or shooting, has the browser killed, a `[browser-guard]` line
 // naming this hold's label and its pages, the capture lock released at once (the queue moves on) and the process ended
@@ -205,7 +211,7 @@ async function closeWarm(warmed, say) {
  */
 export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes = 18, graceSeconds = 60, waitHours = 4,
   place = null, ticket = null, maxFrozenMinutes = 20, lock = createCaptureLock(), log = console.log, freeze = freezePage,
-  thaw = thawPage, check = checkPage, rewarm = rewarmPage } = {}) {
+  thaw = thawPage, check = checkPage, rewarm = rewarmPage, lockClass = null, holdCapMinutes = null, holdCapReason = null } = {}) {
   if (typeof warm !== 'function' || typeof shoot !== 'function') throw new Error('runWarmHold needs warm() and shoot()');
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
   setBrowserGuardContext({ hold: label });
@@ -254,6 +260,9 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
     warmed = await lock.acquire(waitHours * 3600 * 1000, {
       place,
       ticket,
+      lockClass,
+      holdCapMinutes,
+      holdCapReason,
       prepare: async () => {
         const warmStarted = Date.now();
         const result = await warm();
@@ -290,19 +299,23 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
   const refresher = setInterval(() => lock.refresh(), 30_000);
   refresher.unref();
   const controller = new AbortController();
-  const alarm = setTimeout(() => {
-    say(`hold limit: ${holdMinutes} min; asking shoot to stop`);
-    controller.abort(new Error(`hold limit ${holdMinutes} min`));
-  }, holdMinutes * 60 * 1000);
-  let closed = false;
-  try {
+  let alarm = null;
+  const arm = () => {
+    clearTimeout(alarm);
+    alarm = setTimeout(() => {
+      say(`hold limit: ${holdMinutes} min; asking shoot to stop`);
+      controller.abort(new Error(`hold limit ${holdMinutes} min`));
+    }, holdMinutes * 60 * 1000);
+  };
+  arm();
+  const thawAll = async (where) => {
     for (const [page, session] of sessions) await thaw(page, session);
     // A page that lost its warm state while frozen (a reload, a crash) is loaded again before shoot sees it.
     for (const page of sessions.keys()) {
       const state = await check(page);
       if (state.ok) continue;
       const started = Date.now();
-      say(`a page lost its warm state at the thaw (${state.why}); re-warming it inside the hold`);
+      say(`a page lost its warm state ${where} (${state.why}); re-warming it inside the hold`);
       try {
         await rewarm(page);
         say(`re-warmed in ${((Date.now() - started) / 1000).toFixed(0)} s`);
@@ -310,7 +323,28 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
         say(`re-warm failed (${error?.message ?? error}); shoot gets the page as it is`);
       }
     }
-    const shooting = Promise.resolve().then(() => shoot({ ...warmed, signal: controller.signal, heldAt }));
+  };
+  // Past the hold cap with anyone waiting: freeze, give the lock up, re-queue, and thaw once it is held again.
+  const checkpoint = async () => {
+    if (typeof lock.checkpoint !== 'function') return { yielded: false };
+    return lock.checkpoint({
+      timeoutMs: waitHours * 3600 * 1000,
+      beforeYield: async () => {
+        clearTimeout(alarm);
+        for (const page of sessions.keys()) sessions.set(page, await freeze(page));
+        say('hold cap reached with tickets waiting: pages frozen, lock given up, re-queued');
+      },
+      afterResume: async () => {
+        say('lock held again after the hold-cap yield');
+        await thawAll('after the hold-cap yield');
+        arm();
+      },
+    });
+  };
+  let closed = false;
+  try {
+    await thawAll('at the thaw');
+    const shooting = Promise.resolve().then(() => shoot({ ...warmed, signal: controller.signal, heldAt, checkpoint }));
     // Past the limit and the grace, the browser is closed so nothing draws after the lock is gone.
     const stopped = new Promise((done) => controller.signal.addEventListener('abort', done, { once: true }))
       .then(() => sleep(graceSeconds * 1000)).then(() => 'grace');
