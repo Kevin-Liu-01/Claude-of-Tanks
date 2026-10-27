@@ -110,7 +110,9 @@ export const INTERACTION_SITES = Object.freeze({
   'garage-quick-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-quick-battlefield'], lane: 'premiere-gallery-studio' },
   'garage-staging': { chooses: 'environment', options: 10, screen: 'garage', owner: GARAGE, build: 'picker', marks: ['picker:garage-staging'], lane: 'premiere-gallery-studio' },
   'garage-featured-still': { chooses: 'media', options: 6, screen: 'garage', owner: GARAGE, build: 'bespoke', marks: ['bespoke:k===i'], lane: 'premiere-gallery-studio' },
-  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['bespoke:option===views[0]', 'bespoke:other===button', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
+  // drawings-overhaul-259: the guide's view switch is the technical drawing viewer's tabs now (technicalDrawing.ts), still
+  // bespoke and in the ratchet baseline; the segmented control is its owed build
+  'guide-steps': { chooses: 'view', options: 3, screen: 'garage', owner: 'src/ui/infoGuides.ts', build: 'bespoke', marks: ['src/ui/technicalDrawing.ts bespoke:value===current', 'bespoke:i===index', 'bespoke:dataset.part'], lane: 'premiere-gallery-studio' },
   'guide-pins': { chooses: 'part', options: 3, screen: 'garage', owner: 'src/ui/infoGuidePhoto.ts', build: 'bespoke', marks: ['bespoke:i===index'], lane: 'premiere-gallery-studio' },
   'photo-framing': { chooses: 'view', options: 5, screen: 'garage', owner: 'src/ui/photoMode.ts', build: 'bespoke', marks: ["bespoke:id==='hero'", 'bespoke:dataset.view'], lane: 'premiere-gallery-studio' },
   'tech-tree-node': { chooses: 'tank', options: 40, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'bespoke', marks: ['bespoke:node.id'], lane: 'premiere-gallery-studio' },
