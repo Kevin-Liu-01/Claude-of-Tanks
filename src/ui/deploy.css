@@ -180,7 +180,9 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 .cot-garage .cot-deploy-brief-facts .cot-flag{border-radius:1px;box-shadow:var(--ring-2);}
 /* the operation's map and its enemy's flag keep a line of their own under the clock, the stars and the difficulty, at every width */
 .cot-garage .cot-deploy-brief-where{display:flex;align-items:center;gap:var(--s3);flex-basis:100%;}
-.cot-garage .cot-deploy-brief-mm{grid-column:2;grid-row:2/6;position:relative;align-self:start;aspect-ratio:1;overflow:hidden;
+/* the tactical map spans the text's rows and the empty last one, so a map taller than the text grows into that row instead
+   of spreading the title, text, facts and Launch apart (58 px over the facts at 2560, r51) */
+.cot-garage .cot-deploy-brief-mm{grid-column:2;grid-row:2/-1;position:relative;align-self:start;aspect-ratio:1;overflow:hidden;
   border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--ring-2);}
 .cot-garage .cot-deploy-brief-mm :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;}
 /* Launch follows its operation's facts (no band between the brief and its action) */
@@ -319,7 +321,9 @@ body[data-cot-panels] .cot-garage .cot-deploy-field:has(.cot-deploy-field-pop:no
 /* in a phone's column the open picker stands in the field's and the rules' place at a definite height (the Rooms host's),
    so its cards scroll in place under its head; the further options open under the pickers with the field held at its
    resting height (deployScreen.ts measures it) */
-body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{flex:none;min-height:0;height:clamp(180px,min(62dvh,100dvh - 200px),560px);}
+/* (its plate fits whole from its head to the picker's foot between the column's top fade and the dock's, so the plate's
+   frame reads closed when the picker scrolls into view: 100dvh less the header and tabs, the plate's head and the dock, r51) */
+body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-field{flex:none;min-height:0;height:clamp(180px,min(62dvh,100dvh - 342px),560px);}
 @media (max-height:500px) and (orientation:landscape){
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__preview{display:none;}
   body[data-cot-panels='overlay'] .cot-garage .cot-deploy-bf .cot-bf__in{grid-template-columns:minmax(0,1fr);}

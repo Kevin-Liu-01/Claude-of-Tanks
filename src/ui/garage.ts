@@ -3664,9 +3664,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
       if (!column) return;
       deployFieldColumnScroll ??= column.scrollTop;
-      // the picker's top stands clear of the column's top fade (its band is --s3)
+      // the picker's top stands clear of the column's top fade (its band is --s3); where its plate fits whole down to the
+      // picker's foot, the plate's own top does, so its frame reads closed rather than running up under the fade (r51)
       const fade = Number.parseFloat(getComputedStyle(column).getPropertyValue('--s3')) || 12;
-      column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top - fade;
+      const top = column.getBoundingClientRect().top;
+      const plate = pop.closest<HTMLElement>('.cot-battle-details');
+      // the room between the top fade and the dock's own fade over its top edge (--s5), or the column's foot without a dock
+      const dock = battleMenu.querySelector<HTMLElement>('.cot-battle-menu-foot')?.getBoundingClientRect().top ?? column.getBoundingClientRect().bottom;
+      const room = dock - (Number.parseFloat(getComputedStyle(column).getPropertyValue('--s5')) || 24) - top - fade;
+      const whole = plate && pop.getBoundingClientRect().bottom - plate.getBoundingClientRect().top <= room;
+      column.scrollTop += (whole ? plate : pop).getBoundingClientRect().top - top - fade;
     });
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
