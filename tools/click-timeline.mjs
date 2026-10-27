@@ -490,7 +490,7 @@ const restoreGarage = async (page, ctx) => {
 };
 // A Garage sweep presses every visible control on the Garage's screen except what leaves the page, starts a battle or
 // a room, or switches the language (those have their own paths)
-const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]', '[data-proving]',
+const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]',
   '[data-nav=home]', '[data-nav=gallery]', '[data-nav=docs]', '[data-nav=studio]', '[data-nav=github]', '.cot-github',
   '[data-mobile-nav=home]', '[data-mobile-nav=gallery]', '[data-mobile-nav=docs]', '[data-mobile-nav=studio]',
   '[data-mobile-nav=locale]', '[data-deploy-room]', '[data-tabbar=gallery]', '.cot-wordmark', 'a[href^="http"]',

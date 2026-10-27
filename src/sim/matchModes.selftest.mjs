@@ -578,7 +578,11 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const { readFileSync } = await import('node:fs');
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   const play = readFileSync(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
-  assert.match(garage, /const cards = \(\): import\('\.\/modePicker\.ts'\)\.ModeCard\[\] => MODE_PRESENTATION_ORDER\.map\(/, 'Deploy\'s mode picker reads the order');
+  // Deploy offers the practice modes too (owner 2026-10-26: "make proving grround into a mode"), after the battle modes;
+  // the rooms keep the battle modes alone
+  const { DEPLOY_MODE_ORDER, PRACTICE_MODE_IDS } = await import('./gameModeCatalog.ts');
+  assert.deepEqual([...DEPLOY_MODE_ORDER], [...MODE_PRESENTATION_ORDER, ...PRACTICE_MODE_IDS], 'Deploy lists the battle modes, then the practice modes');
+  assert.match(garage, /const cards = \(\): import\('\.\/modePicker\.ts'\)\.ModeCard\[\] => DEPLOY_MODE_ORDER\.map\(/, 'Deploy\'s mode picker reads its order');
   assert.match(play, /MODE_PRESENTATION_ORDER as readonly string\[\]\)\.indexOf\(id\)/, 'the room mode cards sort by it');
   assert.doesNotMatch(garage + play, /deployCardsHTML\(\['|leadingModes/, 'no surface keeps its own mode list');
 }

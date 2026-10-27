@@ -2,7 +2,7 @@
 // The Deploy screen's overlap probe (Main 2026-10-26, on Deploy's plate at 1280x800: with Custom sides picked, the
 // bot-count row sat half hidden under the tank card). Copyright © 2026 Kevin B. Liu.
 //
-// Every battle mode on the quick tab's plate, at rest and with the further options open, at the UI gauntlet's eight
+// Every mode on the quick tab's plate (DEPLOY_MODE_ORDER: the battle modes and the range), at rest and with the further options open, at the UI gauntlet's eight
 // windows. Per state:
 // - overlap: the plate's rows and controls (ROWS, and any element on the plate holding words of its own; nested ones fold
 //   into their outermost) are measured as each shows,
@@ -16,6 +16,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { datumProblems } from './datum-census.mjs';
+import { DEPLOY_MODE_ORDER } from '../src/sim/gameModeCatalog.ts';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { default: puppeteer } = await import('puppeteer');
@@ -27,8 +28,8 @@ await mkdir(out, { recursive: true });
 export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
   ['1280x800', 1280, 800, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
-export const MODES = ['standard', 'drone', 'zone_control', 'capture_the_flag', 'frontline_assault', 'turbo_ball', 'mars',
-  'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130'];
+/** Every mode Deploy offers (the battle modes and the range), as its picker lists them. */
+export const MODES = [...DEPLOY_MODE_ORDER];
 /** The plate's rows and controls, each a box another may not cross. */
 export const ROWS = ['.cot-battle-preview', '.cot-deploy-rules > *', '.cot-deploy-field', '.cot-battle-times', '.cot-battle-galaxy',
   '.cot-battle-sides', '.cot-deploy-diff', '.cot-deploy-more', '.cot-mode-settings > .cot-arrange-field', '.cot-mode-settings > .cot-teams',
@@ -82,7 +83,7 @@ try {
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`${url}/tools/fixtures/mobile-surfaces.html?locale=en-US&full`, { waitUntil: 'networkidle0', timeout: 180000 });
     await page.evaluate(() => (document.querySelector('[data-nav="deploy"]') ?? document.querySelector('.cot-battle-mode'))?.click());
-    await page.waitForFunction(() => document.querySelectorAll('[data-deploy-modes] .cot-c-picker__opt').length >= 13, { timeout: 120000 });
+    await page.waitForFunction((count) => document.querySelectorAll('[data-deploy-modes] .cot-c-picker__opt').length >= count, { timeout: 120000 }, MODES.length);
     for (const mode of MODES) {
       if (arg('mode', '') && !arg('mode', '').split(',').includes(mode)) continue;
       for (const state of ['rest', 'more']) {

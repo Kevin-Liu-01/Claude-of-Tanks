@@ -64,17 +64,15 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 /* ---- the lower band: the campaign's next operation and the recent battles (.lower, .camp-card, .rec) ---- */
 .cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:var(--s3);flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
 /* a compact height gives the mode picker the lower band's room */
-/* a short screen sets the lower band aside: Proving Ground, the column's last row, ends on the plate's foot */
+/* a short screen sets the lower band aside: the mode picker, the column's last row, ends on the plate's foot */
 @media (max-height:760px){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-lower{display:none;}
-  body[data-cot-panels='persistent'] .cot-garage .cot-deploy-proving{margin-bottom:0;}}
+  body[data-cot-panels='persistent'] .cot-garage .cot-deploy-modes{margin-bottom:0;}}
 /* the battle modes: the one mode picker (modePicker.ts, the Rooms host's too) takes the list's room and scrolls its cards in
    place; the plate beside it is the rules card of the mode under the pointer or the focus, so the picker keeps none */
 /* (as tall as its cards, then scrolling them in place where the list is shorter; its grid's fade band reaches past its
    foot, so the next row keeps a gap clear of it) */
-.cot-garage .cot-deploy-modes{flex:0 1 auto;min-height:0;}
-/* the mode cards' grid bleeds its fade band past its foot, and Proving Ground belongs to the cards: it keeps the larger
-   gap below it */
-.cot-garage .cot-deploy-proving{margin-bottom:var(--s5);}
+/* (the cards' grid bleeds its fade band past its foot: the larger gap below it) */
+.cot-garage .cot-deploy-modes{flex:0 1 auto;min-height:0;margin-bottom:var(--s5);}
 .cot-garage .cot-deploy-modes .cot-mp__in{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);}
 .cot-garage .cot-deploy-modes .cot-mp__cards{height:100%;}
 .cot-garage .cot-deploy-modes .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
@@ -83,18 +81,6 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-modes .cot-c-picker__media{aspect-ratio:2/1;}
 /* a mode's glyph stands beside its name, which wraps under itself, never under the glyph */
 .cot-garage .cot-deploy-modes .cot-c-picker__words{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;}
-/* the proving ground: the selected tank onto the range, an action beside the mode choices (one slim row), not one of them */
-.cot-garage .cot-deploy-proving{display:flex;align-items:center;gap:var(--s3);flex:none;min-height:56px;padding:var(--s1) var(--s2);
-  border:0;border-radius:var(--control-radius);background:var(--row-plate);box-shadow:var(--e1);color:var(--ink-1);text-align:left;cursor:pointer;}
-.cot-garage .cot-deploy-proving .choice-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:var(--control-radius);
-  background:var(--fill-soft);}
-.cot-garage .cot-deploy-proving .choice-icon svg{width:21px;height:21px;}
-.cot-garage .cot-deploy-proving .choice-icon svg{color:var(--mode-ink,var(--ink-2));}
-.cot-garage .cot-deploy-proving .choice-name{flex:1;min-width:0;font:600 var(--fs-15)/1 var(--font-display);text-transform:uppercase;}
-.cot-garage .cot-deploy-proving-art{order:2;flex:none;width:86px;height:48px;object-fit:cover;border-radius:var(--r1);}
-.cot-garage .cot-deploy-proving>svg:last-child{order:3;flex:none;color:var(--ink-3);}
-@media (hover:hover){.cot-garage .cot-deploy-proving:hover{background-color:var(--surface-hover);}}
-.cot-garage .cot-deploy-proving:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .cot-garage .cot-deploy-lower:empty{display:none;}
 /* before the first battle the campaign card takes the band's first half */
 .cot-garage .cot-deploy-camp:only-child{grid-column:1/-1;}
@@ -231,6 +217,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-details.is-inline:has(.c
 .cot-garage .cot-deploy-art img[data-mode='infected']{object-position:45% 55%;}
 .cot-garage .cot-deploy-art img[data-mode='realistic']{object-position:55% 50%;}
 .cot-garage .cot-deploy-art img[data-mode='ac130']{object-position:42% 60%;}
+.cot-garage .cot-deploy-art img[data-mode='proving_ground']{object-position:50% 55%;}
 .cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:var(--s3);
   padding:0;border:0;background:none;scrollbar-width:thin;}
 /* the selected mode (.sel-h) */
@@ -395,6 +382,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head .cot-deploy-fie
 .cot-garage .cot-battle-menu.open .cot-battle-times legend,
 .cot-garage .cot-battle-menu.open .cot-mode-features{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-garage .cot-battle-menu.open .cot-battle-times{display:inline-flex;gap:var(--s1);margin:0;padding:0;border:0;}
+/* a mode in its own light keeps no time choice: Mars's galaxy, the range's day (the inline-flex above outranked [hidden]) */
+.cot-garage .cot-battle-menu.open .cot-battle-times[hidden]{display:none;}
 /* the 34 px pills snap their 13 px sides down to 12, not up to 16: at 16 the time and team-size rows wrap at 1440 */
 .cot-garage .cot-battle-menu.open .cot-time-content{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
   min-height:34px;height:34px;padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
@@ -493,6 +482,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-fie
 @media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:var(--btn-secondary-ring-hover);}}
 .cot-garage .cot-battle-menu.open [data-battle-watch]:disabled{opacity:.4;cursor:default;}
 .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] [data-battle-watch]{display:none;}
+/* a solo practice mode (the range) has nothing to watch: Deploy takes the row (the flex above outranked [hidden]) */
+.cot-garage .cot-battle-menu.open [data-battle-watch][hidden]{display:none;}
 
 /* ---- folded layouts: the direction's phone Deploy (91-phone-deploy.html): the bar, the ways to play as pills, the
    modes as rows with the chosen one opened over its picture, the plate under them, Deploy docked at the bottom ---- */
@@ -516,7 +507,6 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-mo
 body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-keys){display:none;}
 /* a phone's column gives the mode picker a definite height (as the battlefield picker's), its cards scrolling in place */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-modes{flex:none;height:clamp(200px,min(52dvh,100dvh - 190px),520px);min-height:0;margin-bottom:var(--s3);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-proving{margin-bottom:0;}
 /* the head's last battle again, as "Again" (91's .bar .again), and the Deploy bar's estimate */
 .cot-garage .cot-deploy-again .short{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again{order:1;margin:0 0 0 auto;}

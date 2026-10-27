@@ -75,10 +75,10 @@ import {
 } from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { MODE_PRESENTATION_ORDER, normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { DEPLOY_MODE_ORDER, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
+  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetBattlefield, rulesetReloadMultiplier, rulesetSides, RULESET_SCORE_TARGETS, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -253,7 +253,7 @@ export interface GarageRuntime {
 const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze({
   zone_control: 'modeZones', capture_the_flag: 'modeFlag', frontline_assault: 'modeFrontline', turbo_ball: 'modeTurbo',
   gun_game: 'modeGunGame', mars: 'modeMars', juggernaut: 'modeJuggernaut', infected: 'modeInfected',
-  endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130',
+  endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130', proving_ground: 'modeProving',
 });
 
 /** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.
@@ -697,12 +697,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
     // the battle modes: the one mode picker (modePicker.ts, the Rooms host's too), filled when it loads (openDeployModes)
     `<div class="cot-deploy-modes" data-deploy-modes></div>` +
-    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen; an
-    // action beside the mode choices, not one of them
-    `<button class="cot-deploy-proving" type="button" data-proving data-mode-tone="proving_ground">` +
-    `<img class="cot-deploy-proving-art" src="${deployModeArt('proving_ground')}" alt="" width="480" height="270" loading="lazy" decoding="async">` +
-    `<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
-    `${uiIconSVG('chevronRight', 18)}</button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `<div class="cot-deploy-lower" data-deploy-lower></div></section>` +
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
@@ -1746,9 +1740,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
+  /** The battlefield the chosen mode plays: the one its ruleset lays its range on (the proving ground's), else the
+   *  player's pick, which a fixed field leaves as it stood for the other modes. */
+  const fieldMapId = (): string => rulesetBattlefield(battleGameMode) ?? selectedMapId;
+  /** The field the battle card and Deploy last showed (a change of mode that changes it redraws them). */
+  let shownFieldMapId = '';
   // The selected battlefield on the battle card and the Deploy screen's field.
   function refreshBattlefield(): void {
-    const selected = maps.find((map) => map.id === selectedMapId) || maps[0];
+    shownFieldMapId = fieldMapId();
+    const selected = maps.find((map) => map.id === shownFieldMapId) || maps[0];
     if (!selected) return;
     requiredElement<HTMLElement>(root, '[data-deploy-map]').textContent = selected.name;
     // the battle card's picture: the battlefield's 512 px still (never its 4K hero), or every battlefield for Random
@@ -1762,6 +1762,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       .map((tag) => [regionTagIcon(tag) || 'map', t(`camoTag.${tag}`)] as const));
     requiredElement<HTMLElement>(root, '[data-deploy-field-all]').innerHTML =
       `${uiIconSVG('map', 15)}${t('garage.deploy.allMaps', { count: maps.filter((map) => map.id !== 'random').length })}`;
+    // a mode on one battlefield offers no other: the count of them all would promise a choice
+    requiredElement<HTMLElement>(root, '[data-deploy-field-all]').hidden = rulesetBattlefield(battleGameMode) != null;
     const fieldMap = requiredElement<HTMLImageElement>(root, '[data-deploy-field-mm]');
     fieldMap.hidden = selected.id === 'random';
     if (!fieldMap.hidden) fieldMap.src = minimapAssetUrl(selected.id);
@@ -3536,13 +3538,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     emit('ui:click', {});
-    opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: battleGameMode });
+    // a room hosts the battle modes only: a practice mode (the range) opens it on Standard
+    opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: isPracticeMode(battleGameMode) ? 'standard' : battleGameMode });
   }
 
   function battle(watch = false) {
     if (!selectedId) return;
     const specId = selectedId;
-    const mapId = selectedMapId;
+    const mapId = fieldMapId();
     closeBattleMenu();
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
@@ -3629,14 +3632,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
     requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
     if (deployField) {
-      deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
+      deployField.picker.setCards(deployField.cards(), battleGameMode, fieldMapId());
       deployField.picker.focus();
       return;
     }
     deployFieldLoad ??= Promise.all([import('./battlefieldPicker.ts'), import('./pickerText.ts'), import('./battlefieldFacts.ts')]).then(([
       { createBattlefieldPicker }, { pickerText }, { battlefieldFacts },
     ]) => {
-      const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.map((map) => {
+      // a mode on one battlefield (the range) offers that one alone
+      const cards = (): import('./battlefieldPicker.ts').BattlefieldCard[] => maps.filter((map) => {
+        const fixed = rulesetBattlefield(battleGameMode);
+        return fixed == null || map.id === fixed;
+      }).map((map) => {
         if (map.id === 'random') {
           return { id: map.id, name: map.name, facts: [t('garage.deploy.allMaps', { count: maps.length - 1 })],
             media: { mosaic: maps.filter((other) => other.id !== 'random' && other.thumb).slice(0, 4).map((other) => other.thumb as string) } };
@@ -3648,12 +3655,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       const regions = [...new Set(maps.flatMap((map) => mapRegionTags(map.id)))];
       const picker = createBattlefieldPicker(requiredElement<HTMLElement>(pop, '[data-deploy-bf]'), {
-        id: 'deploy-battlefield', label: t('garage.battlefield.heading'), cards: cards(), value: selectedMapId,
+        id: 'deploy-battlefield', label: t('garage.battlefield.heading'), cards: cards(), value: fieldMapId(),
         mode: battleGameMode, randomId: 'random', text: pickerText(),
         filters: regions.map((tag) => ({ id: tag, label: t(`camoTag.${tag}`) })),
         onChoose: (id) => {
           emit('ui:click', {});
-          api.setSelectedMap(id);
+          // the range's one field leaves the player's pick for the other modes as it stood
+          if (rulesetBattlefield(battleGameMode) == null) api.setSelectedMap(id); else closeDeployField();
           requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').focus();
         },
       });
@@ -3700,13 +3708,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           const meta = battleRuleMeta[mode];
           return meta ? { mode, label: meta.label } : null;
         },
-        selectedMap: () => selectedMapId, selectedMode: () => battleGameMode, modeArt: deployModeArt,
+        selectedMap: fieldMapId, selectedMode: () => battleGameMode, modeArt: deployModeArt,
         again(mode, mapId) {
           if (mode === 'standard') setBattleMode('solo'); else setBattleGameMode(mode);
           api.setSelectedMap(mapId);
           battle();
         },
-        difficulty: () => difficulty,
+        // the range seats no bots, so it offers no bot tier
+        difficulty: () => (matchRulesetFor(battleGameMode).provingGround ? null : difficulty),
         lastBattle: () => getRecentBattles()[0], loadEstimateS: battleLoadEstimateS, keycap, segmented, wireRoving, setRoving,
         click: () => emit('ui:click', {}),
         // the campaign tab's plate: the operation in focus, as facts the screen sets (the next to play by default)
@@ -3828,7 +3837,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!selectedId) return;
       try {
         if (battleMode === 'solo') {
-          opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
+          opts.onBattleIntent?.({ specId: selectedId, mapId: fieldMapId() });
         } else {
           // Opening a room is not solo-battle intent. Warming the bot roster and
           // current garage map here made the lobby compete with irrelevant
@@ -3862,10 +3871,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (battleMenu.classList.contains('open')) closeBattleMenu();
     else openBattleMenu();
   });
-  requiredElement<HTMLButtonElement>(battleMenu, '[data-proving]').addEventListener('click', () => {
-    emit('ui:click', {});
-    startTestDrive(selectedId);
-  });
   // the battle modes (INTERACTION-REDESIGN.md part C; the census's deploy-mode row): the one mode picker, the Rooms host's
   // too. Each card is the mode's picture, its glyph in its hue, its name and the first two rules the ruleset keeps
   // (modeRuleLines); the plate is the rules card, showing the mode under the pointer or the focus and the chosen one
@@ -3876,7 +3881,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let deployModeCards: (() => import('./modePicker.ts').ModeCard[]) | null = null;
   function openDeployModes(): Promise<void> {
     deployModesLoad ??= Promise.all([import('./modePicker.ts'), import('./pickerText.ts')]).then(([{ createModePicker }, { pickerText }]) => {
-      const cards = (): import('./modePicker.ts').ModeCard[] => MODE_PRESENTATION_ORDER.map((id) => ({
+      const cards = (): import('./modePicker.ts').ModeCard[] => DEPLOY_MODE_ORDER.map((id) => ({
         id, name: t(`playMenu.matchMode.${id}.label`), glyph: (MODE_GLYPH[id] || 'modeStandard') as import('./icons/spriteIndex.ts').IconId, tone: id,
         // the picture, glyph and name alone: the plate beside the cards is the rules card, showing every rule of the mode under
         // the pointer or the focus (a rule line under each picture wrapped and repeated the name)
@@ -3986,18 +3991,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       boss: ruleset.juggernaut ? t('garage.deploy.times', { value: String(ruleset.juggernaut.hpScale) }) : null,
       equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
       ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
+      // the range (the proving ground): its lanes, its plate rack, its moving-target switch, and the player alone on it
+      lanes: ruleset.provingGround ? String(ruleset.provingGround.lanes.length) : null,
+      plates: ruleset.provingGround ? String(ruleset.provingGround.plateRack.plates.length) : null,
+      moving: ruleset.provingGround ? t(ruleset.provingGround.moving ? 'garage.deploy.targetsMoving' : 'garage.deploy.targetsStill') : null,
+      solo: ruleset.provingGround ? t('garage.deploy.solo') : null,
     };
   }
   type DeployFacts = ReturnType<typeof deployFacts>;
   const DEPLOY_FACT_ICON = {
     teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell',
-    gravity: 'modeMars', speed: 'speed', boss: 'shield',
+    gravity: 'modeMars', speed: 'speed', boss: 'shield', lanes: 'statRange', plates: 'layerArmor', moving: 'speed', solo: 'team',
   } as const;
   function renderDeployRules(mode: GameModeId): void {
     const facts: DeployFacts = deployFacts(mode);
     // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
     const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
-    const keys = ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
+    // the range's card: its lanes, plates and moving targets, the player alone, no clock, its rounds
+    const keys = facts.lanes != null ? ['lanes', 'plates', 'moving', 'solo', 'clock', 'ammo'] as const
+      : ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
     deployRules.dataset.count = String(keys.length);
     deployRules.innerHTML = keys.map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
@@ -4132,12 +4144,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleMenu.dataset.modeTone = battleGameMode;
     // an open battlefield picker follows the mode (its cards and its preview's objectives)
     if (deployField && root.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
-      deployField.picker.setCards(deployField.cards(), battleGameMode, selectedMapId);
+      deployField.picker.setCards(deployField.cards(), battleGameMode, fieldMapId());
     }
     renderArrangementPanel();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';
+    // the range: one battlefield in its own light, no sides, no bots, nothing to watch (it is solo)
+    const range = matchRulesetFor(battleGameMode).provingGround != null;
+    if (fieldMapId() !== shownFieldMapId) refreshBattlefield();
     const meta = (solo && battleRuleMeta[battleGameMode]) || battleModeMeta[battleMode];
     setupSelection.textContent = meta.label;
     if (solo) renderModePlate(battleGameMode);
@@ -4154,10 +4169,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
     // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
     setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
-    timeOptions.hidden = shown;
+    setupWatch.hidden = range;
+    timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
     soloOptions.hidden = !solo;
-    teamOptions.hidden = isWaveMode(battleGameMode);
+    teamOptions.hidden = isWaveMode(battleGameMode) || range;
     refreshBattleTimes(shown);
     timeHint.textContent = t(shown ? 'garage.battle.nightGalaxy' : 'garage.battle.timeHint');
     marsLabel.hidden = !shown;
@@ -4727,7 +4743,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** Enter the currently selected solo battle without reopening the play menu. */
     startSolo() {
-      if (selectedId) launchBattle(selectedId, selectedMapId);
+      if (selectedId) launchBattle(selectedId, fieldMapId());
     },
 
     testDrive(specId?: string | null) {

@@ -113,7 +113,7 @@ export const INTERACTION_SITES = Object.freeze({
   'tech-tree-build': { chooses: 'view', options: 4, screen: 'tech-tree', owner: 'src/ui/techTree.ts', build: 'segmented', marks: ['segmented:.tt-builds', 'bespoke:id===chosen'], lane: 'premiere-gallery-studio' },
 
   // ---- Deploy (premiere-site)
-  'deploy-mode': { chooses: 'mode', options: 13, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-mode'], lane: 'premiere-site' },
+  'deploy-mode': { chooses: 'mode', options: 14, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-mode'], lane: 'premiere-site' },
   'deploy-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'deploy', owner: GARAGE, build: 'picker', marks: ['picker:deploy-battlefield'], lane: 'premiere-site', path: 'map-deploy' },
   'deploy-sides': { chooses: 'sides', options: 3, screen: 'deploy', owner: GARAGE, build: 'segmented', marks: ['segmented:.cot-battle-sides'], lane: 'premiere-site' },
   'deploy-difficulty': { chooses: 'difficulty', options: 3, screen: 'deploy', owner: 'src/ui/deployScreen.ts', build: 'segmented', marks: ['segmented:.cot-deploy-tier'], lane: 'premiere-site' },
