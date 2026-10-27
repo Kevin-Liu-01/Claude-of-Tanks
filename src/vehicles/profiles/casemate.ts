@@ -396,6 +396,10 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.07, 0.06, 4.2), s * 1.665, 1.815, -0.95);
     P.add('hull', box(0.20, 0.03, 5.64), s * 1.53, 1.535, 0.54);               // fender plate 3.36..-2.28
+    // 259: the fender's edge (x 1.63) stood 8 cm inboard of the skirt backing (1.73) over z 1.16-2.02, a slot open from
+    // above on both sides (the right one a fleet-audit work order, docs/geometry-gate/contig-hidden.json): a closing strip
+    // on the fender's edge meets the backing
+    P.add('hullDetail', box(0.12, 0.03, 0.92), s * 1.68, 1.525, 1.58);
     P.add('hullCloth', cylZ(0.045, 4.10, 10), s * 1.665, 1.87, -0.95);         // folded screen
     for (const z of [-2.62, -1.50, -0.40, 0.70]) P.add('hullDetail', box(0.11, 0.035, 0.06), s * 1.665, 1.90, z); // strut clips
   }
