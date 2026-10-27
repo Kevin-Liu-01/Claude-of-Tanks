@@ -9,7 +9,7 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
-import { roofSheet, beamBetween } from './measuredPrimitives.ts';
+import { roofSheet } from './measuredPrimitives.ts';
 import { addChallenger1HistoricTurret } from './challenger1HistoricTurret.ts';
 import { addChallenger1SleekTurret } from './challenger1SleekTurret.ts';
 import { CR1_HISTORIC as D, CR1_GRANBY_APPLIQUE, CR1_GRANBY_CASSETTES, CR1_GRANBY_PITCH, CR1_GRANBY_JOINT, CR1_SKIRT, type Challenger1Mark } from './challenger1HistoricFrame.ts';
@@ -121,6 +121,8 @@ function skirts(P: TankBuilderPort, side: number): void {
     // panel stiffener along its foot
     P.addEquipment('hullDetail', box(.02, .05, pitch - .07), side * (xo + .004), lo + .06, zc);
   }
+  // two bolt rows along the armoured front section
+  for (let z = 1.66; z < 2.96; z += .26) for (const y of [.64, SKIRT_TOP - .07]) P.addEquipment('hullDark', cylX(.016, .012, 8), side * (xo + .004), y, z);
   // the track-guard ledge the skirts hang from, from the sponson wall out over the skirt tops, bow to stern
   P.addEquipment('hullDetail', box(xo - xs + .02, .03, 6.55), side * (xs + xo) / 2, SKIRT_TOP + .015, -.25);
   for (const z of [-2.70, -1.75, -.80, .15, 1.10, 2.05, 2.90]) P.addEquipment('hullDark', box(.016, .05, .05), side * (xo + .006), SKIRT_TOP - .04, z);
@@ -157,16 +159,17 @@ function granbyKit(P: TankBuilderPort): void {
   }
   P.addEquipment('hullDetail', box(2.05, .04, .06), 0, 1.13, 4.03, -.86, 0, 0);
   P.addEquipment('hullDetail', box(2.05, .04, .06), 0, .82, 4.10, -.86, 0, 0);
-  // Rear fuel drums (two 175 L, 0.88 x 0.58 m) cradled on brackets off the rear plate.
+  // Rear fuel drums (two 175 L), each 0.58 m across, centred 0.90 m out, in a cradle bolted to the rear plate with two
+  // straps round it.
   for (const side of [-1, 1]) {
-    const x = side * .52, y = 1.36, z = -4.48;
-    P.addEquipment('hullFittingPaint', cylX(.29, .88, P.q ? 28 : 16), x, y, z);
-    for (const dx of [-.30, .30]) P.addEquipment('hullDark', torus(.29, .012, 24, 6).rotateY(Math.PI / 2), x + dx, y, z);
-    for (const dx of [-.32, .32]) {
-      P.addEquipment('hullDetail', box(.05, .05, .36), x + dx, y - .31, -4.32);
-      P.addEquipment('hullDetail', beamBetween([x + dx, y - .31, -4.48], [x + dx, 1.62, -4.16], .02, 8));
-      P.addEquipment('hullDark', box(.04, .62, .02), x + dx, y, z - .30);
+    const x = side * .90, y = 1.36, z = -4.48;
+    P.addEquipment('hullFittingPaint', cylX(.29, .78, P.q ? 28 : 16), x, y, z);
+    for (const dx of [-.25, .25]) P.addEquipment('hullDark', torus(.296, .012, 24, 6).rotateY(Math.PI / 2), x + dx, y, z);
+    for (const dx of [-.28, .28]) {
+      P.addEquipment('hullDetail', box(.06, .06, .34), x + dx, y - .30, -4.33);
+      P.addEquipment('hullDetail', box(.08, .42, .04), x + dx, y - .12, -4.185);
     }
+    P.addEquipment('hullDetail', box(.66, .05, .08), x, y - .30, -4.58);
   }
 }
 

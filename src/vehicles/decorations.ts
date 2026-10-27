@@ -2678,23 +2678,21 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
   // Release 262: the rebuilt Challenger 1 (both marks) carries its own L8 banks on the cheek fronts, its two aerials and
   // tow eyes on the nose plate (challenger1Historic*.ts), and its flanks are bins, the mesh basket and the TOGS barbette:
-  // the decor draws no second smoke pair, whip, bow hooks (their bow slot left them in the air) or turret-side links.
+  // the decor draws no second smoke pair, whip, bow hooks (their bow slot left them in the air), turret-side links or IR
+  // searchlight (the Challenger 1 fought with TOGS, not an IR light).
   challenger1_mk2: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
   ],
   challenger1_mk1: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
   ],
   challenger1_mk3: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
   ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },

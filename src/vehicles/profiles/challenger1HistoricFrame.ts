@@ -28,7 +28,7 @@ export const CR1_HISTORIC = Object.freeze({
 
 /** Op Granby applique cassettes outside the skirts (the Mk 3; its armour zones read them: sourceXWesternAuxArmor.ts). */
 export const CR1_GRANBY_APPLIQUE = Object.freeze({
-  innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .16, low: .50, high: 1.44, rear: -2.58, front: 3.30,
+  innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .24, low: .36, high: 1.44, rear: -2.58, front: 3.30,
 });
 /** Six box-section cassettes on a 0.77 m pitch with 6 cm joints, ahead of them the forward cassette over the idler. */
 export const CR1_GRANBY_CASSETTES = 6, CR1_GRANBY_PITCH = .77, CR1_GRANBY_JOINT = .06;
@@ -37,5 +37,5 @@ export const CR1_GRANBY_CASSETTES = 6, CR1_GRANBY_PITCH = .77, CR1_GRANBY_JOINT 
 export const CR1_SKIRT = Object.freeze({
   top: 1.42,
   front: Object.freeze([[1.56, .56, 1.42], [3.05, .56, 1.42], [3.40, .82, 1.33], [3.92, 1.02, 1.17]] as const),
-  panels: 5, rear: -3.22, panelFront: 1.52, gap: .025, firstFoot: .80, foot: .58,
+  panels: 5, rear: -2.90, panelFront: 1.52, gap: .025, firstFoot: .62, foot: .58,
 });

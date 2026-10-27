@@ -347,8 +347,8 @@ export const TURRET_GUN_PORT_KEEP_M = .01;
  * recoiling tube at both recoil strokes: `clearance`, its smallest distance 1.5 cm and more ahead of the face to every
  * turret mesh (the gun's own parts excepted; `part` names the nearest, `at` the sample); `exposed`, the tube samples
  * behind the face that are not hidden (rays up, sideways and diagonally up must meet a turret part or the gun's own
- * mount, mantlet, shield or boot, within 3 m); and `mountClearance`, the gun mount's smallest distance, ahead of the face,
- * to the turret. Dispose the probe when done.
+ * mount, mantlet, shield or boot, within 3 m); and `mountClearance`, the gun mount's smallest distance, 3 cm and more ahead
+ * of the face (where a mantlet or boot seats on it), to the turret. Dispose the probe when done.
  */
 export function turretGunPortProbe(id) {
   const spec = getSpec(id);
@@ -408,7 +408,8 @@ export function turretGunPortProbe(id) {
     tank.root.updateMatrixWorld(true);
     const mountSamples = densePoints(meshTriangles(mount, tInv).tri, .015);
     for (let i = 0; i < mountSamples.length; i += 3) {
-      if (mountSamples[i + 2] <= port.faceZ + .015) continue;
+      // a mantlet or boot seats on the face: its last 3 cm there are its seat, not a clearance
+      if (mountSamples[i + 2] <= port.faceZ + .03) continue;
       const d = grid.distance(mountSamples[i], mountSamples[i + 1], mountSamples[i + 2]);
       if (d < mountClearance) { mountClearance = d; mountPart = grid.nearest < 0 ? null : partOf(grid.nearest); }
     }
