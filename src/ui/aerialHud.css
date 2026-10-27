@@ -436,6 +436,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
    seatScopeVision; the I key still cycles the view). */
 body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}
+/* (risen over a box that meets its foot alone, by half its height at most: battleHudLayout seatScopeVision) */
+body[data-scope-vision='left'] .cot-hud .cot-scope-vision{transform:translateY(calc(-50% - var(--hud-vision-rise,0px)))}
 @media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}
 body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
 /* Folded (owner backlog 2026-10-21: the Daylight plate sat over the scope picture): a moment after the sight opens or the

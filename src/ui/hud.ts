@@ -2258,7 +2258,12 @@ function setObjectiveValue(target: HTMLElement, copy: string, marks: readonly (D
   const width = parseFloat(document.body?.style?.getPropertyValue?.('--hud-objective-width') || '') || OBJECTIVE_DEFAULT_W;
   // (a class, which the planner observes, so its re-seat follows the taller tab; toggle with its force writes nothing when
   // unchanged)
-  target.closest?.('.cot-mode-status')?.classList.toggle('stacked', copy.includes(' · ') && objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W);
+  const over = objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W;
+  const tab = target.closest?.('.cot-mode-status');
+  tab?.classList.toggle('stacked', copy.includes(' · ') && over);
+  // (a copy of one part too wide for the tab wraps between its words: the drone's "CONFIRM 750 KILLS" ran under the tab's
+  // slanted edge on the touch windows, gauntlet r16)
+  tab?.classList.toggle('wraps', !copy.includes(' · ') && over);
 }
 /** The Frontline objective's parts (line, wave, hostiles): the hostiles are a datum of their own (surfaceRegistry.ts). */
 const FRONTLINE_MARKS: readonly (DatumKey | null)[] = [null, null, 'hostiles'];

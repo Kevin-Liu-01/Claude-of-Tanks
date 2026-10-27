@@ -435,7 +435,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // r3 still read "0 ALIVE" over "· 0/1 SAFE" on the phones).
     const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
     const copy = (typeof node?.querySelector === 'function' ? node.querySelector('.mv')?.textContent : '') ?? '';
-    if (node?.classList && seat !== 'side') node.classList.toggle('stacked', seat !== 'corner' && copy.includes('·') && objectiveCopyWidth(copy) > place.width - OBJECTIVE_CHROME_W);
+    if (node?.classList && seat !== 'side') {
+      const over = seat !== 'corner' && objectiveCopyWidth(copy) > place.width - OBJECTIVE_CHROME_W;
+      node.classList.toggle('stacked', over && copy.includes('·'));
+      // (and a copy of one part wraps between its words, as hud.ts setObjectiveValue decides at each copy)
+      node.classList.toggle('wraps', over && !copy.includes('·'));
+    }
   }
   /** A node's box when it shows (laid out, not hidden or transparent), else null. */
   const shownBox = (node: Element): DOMRect | null => {
@@ -454,6 +459,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   function seatScopeVision(width: number, height: number, touch: boolean): void {
     const vision = document.querySelector<HTMLElement>('.cot-scope-vision');
     let seat = '';
+    let rise = 0;
     if (vision && !vision.hidden && !touch) {
       const reach = Math.max(Math.min(width, height) * 0.15 + 8, 80);
       const edge = width < 540 ? 112 : 180;
@@ -470,13 +476,25 @@ export function installBattleHudLayout(root: HTMLElement): void {
         const left = { left: 0, top: right.top, right: Math.max(width / 2 - reach, edge), bottom: right.bottom };
         left.left = left.right - w;
         seat = 'left';
+        const boxes: DOMRect[] = [];
         for (const node of document.querySelectorAll(`${SIGHT_FURNITURE},${LEFT_LANE},.cot-sixth.on,.cot-alert.show`)) {
           if (node === vision || node.contains(vision)) continue;
           const box = shownBox(node);
-          if (box && apart(left, box) < 3) seat = 'none';
+          if (box) boxes.push(box);
+        }
+        const met = boxes.filter((box) => apart(left, box) < 3);
+        // (a seat met only under its centre rises over what it meets, by half its height at most, and keeps 3 px from every
+        // box there too: at 900x700 the hull panel's corner met its foot by 5 px, and the switch waited hidden beside a
+        // clear seat, gauntlet r16)
+        if (met.length) {
+          const centre = (left.top + left.bottom) / 2;
+          rise = met.every((box) => box.top > centre) ? Math.ceil(left.bottom + 3 - Math.min(...met.map((box) => box.top))) : Infinity;
+          const risen = { ...left, top: left.top - rise, bottom: left.bottom - rise };
+          if (rise > h / 2 || boxes.some((box) => apart(risen, box) < 3)) { seat = 'none'; rise = 0; }
         }
       }
     }
+    setBodyVar('--hud-vision-rise', rise ? `${rise}px` : '');
     if ((document.body.dataset.scopeVision ?? '') !== seat) {
       if (seat) document.body.dataset.scopeVision = seat;
       else delete document.body.dataset.scopeVision;

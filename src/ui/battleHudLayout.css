@@ -312,6 +312,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--mode-ink,var(--objective-accent))}
 body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:1;min-width:0}
 body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
+body[data-cot-battle-layout] .cot-mode-status.wraps .seg{white-space:normal}
 /* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its
    progress on its own line */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='side'] .cot-mode-status{

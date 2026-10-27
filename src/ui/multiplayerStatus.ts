@@ -149,7 +149,10 @@ body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping){display:none}
 /* (the touch tile on the HUD's plate with the touch tiles' ring, its ping with its unit: a bare "42" floated beside the map,
    gauntlet r7) */
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);text-shadow:none}
-body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:1px;white-space:nowrap}
+/* (the figure and its unit a word apart and in one weight, as the mouse strip sets them: "42MS" in two weights read as one
+   token, gauntlet r16) */
+body.cot-touch-layout .cot-mp-status.battle .unit.ping{align-items:baseline;gap:4px;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .unit.ping b{font-weight:700}
 body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:var(--battle-fs-11);color:var(--ink-2)}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
