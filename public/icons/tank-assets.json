@@ -1861645,13 +1861645,13 @@
     },
     "t90m": {
       "id": "t90m",
-      "name": "T-90M",
+      "name": "T-90M Proryv",
       "label": {
         "id": "t90m",
-        "displayName": "T-90M",
-        "shortName": "T-90M",
+        "displayName": "T-90M Proryv",
+        "shortName": "T-90M Proryv",
         "searchAliases": [
-          "T-90M",
+          "T-90M Proryv",
           "t90m"
         ],
         "noteKey": null
@@ -1870160,7 +1870160,7 @@
         ]
       },
       "geometryHash": "446e829e",
-      "metadataHash": "7751b9d7",
+      "metadataHash": "9d8ba0df",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.0769
@@ -1870303,13 +1870303,13 @@
     },
     "t90m_proryv": {
       "id": "t90m_proryv",
-      "name": "T-90M Proryv",
+      "name": "T-90AM II",
       "label": {
         "id": "t90m_proryv",
-        "displayName": "T-90M Proryv",
-        "shortName": "T-90M Proryv",
+        "displayName": "T-90AM II",
+        "shortName": "T-90AM II",
         "searchAliases": [
-          "T-90M Proryv",
+          "T-90AM II",
           "t90m_proryv",
           "t90m proryv"
         ],
@@ -1879819,7 +1879819,7 @@
         ]
       },
       "geometryHash": "664829d4",
-      "metadataHash": "1d09209a",
+      "metadataHash": "c9fd82a2",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": -0.138
