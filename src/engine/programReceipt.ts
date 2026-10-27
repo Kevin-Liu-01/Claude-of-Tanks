@@ -19,9 +19,14 @@ export interface ProgramReceipt {
   frames: number;
   /** the first eight made, by material type and name */
   names: string[];
-  /** beside each name: where its key departs from the nearest warmed program of its type (index:made/warmed), or 'new' */
+  /**
+   * beside each name: where its key departs from the nearest warmed program of its type (index:made/warmed), 'same-key'
+   * where a warmed program with its very key was released and linked again, or 'new'
+   */
   diffs: string[];
   origins?: string[];
+  /** programs the warm had made that the renderer released since the window opened */
+  released: number;
 }
 
 export function programLabel(program: ReceiptProgram): string {
@@ -50,7 +55,7 @@ export function programKeyDiff(program: ReceiptProgram, warmed: Iterable<Receipt
     }
     if (!best || diff.length < best.length) best = diff;
   }
-  return best ? best.slice(0, 4).join(' ') : 'new';
+  return best ? best.length ? best.slice(0, 4).join(' ') : 'same-key' : 'new';
 }
 
 /** The receipt of the programs `live` holds that `baseline` (the warm's own, at the window's opening) does not. */
@@ -58,6 +63,10 @@ export function programReceipt(live: readonly ReceiptProgram[], baseline: Readon
   watch: Pick<ProgramOriginWatch, 'origins'> | null): ProgramReceipt {
   const made = live.filter((program) => !baseline.has(program));
   const named = made.slice(0, 8);
+  const held = new Set(live);
+  let released = 0;
+  for (const program of baseline) if (!held.has(program)) released++;
   return { made: made.length, frames, names: named.map(programLabel),
-    diffs: named.map((program) => programKeyDiff(program, baseline)), ...(watch ? { origins: [...watch.origins] } : {}) };
+    diffs: named.map((program) => programKeyDiff(program, baseline)), ...(watch ? { origins: [...watch.origins] } : {}),
+    released };
 }

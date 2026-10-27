@@ -24,9 +24,13 @@ const baseline = new Set(warmed);
 const made = { type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,highp,uv,8,false' };
 const live = [...warmed, made];
 assert.deepEqual(programReceipt(live, baseline, 3, { origins: ['MeshDepthMaterial<wheels<hull'] }),
-  { made: 1, frames: 3, names: ['MeshDepthMaterial'], diffs: ['3:8/7'], origins: ['MeshDepthMaterial<wheels<hull'] });
-assert.deepEqual(programReceipt(warmed.slice(1), baseline, 0, null), { made: 0, frames: 0, names: [], diffs: [] },
-  'a released program is not counted, and no watch leaves no origins');
+  { made: 1, frames: 3, names: ['MeshDepthMaterial'], diffs: ['3:8/7'], origins: ['MeshDepthMaterial<wheels<hull'], released: 0 });
+assert.deepEqual(programReceipt(warmed.slice(1), baseline, 0, null), { made: 0, frames: 0, names: [], diffs: [], released: 1 },
+  'a released program is counted as released, not made, and no watch leaves no origins');
+// a warmed program released and its very key linked again reads 'same-key'
+const relinked = { type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,highp,uv,7,false' };
+assert.deepEqual(programReceipt([relinked, ...warmed.slice(1)], baseline, 1, null),
+  { made: 1, frames: 1, names: ['MeshDepthMaterial'], diffs: ['same-key'], released: 1 });
 const many = Array.from({ length: 10 }, (_, i) => ({ type: 'ShaderMaterial', name: `m${i}` }));
 const receipt = programReceipt(many, baseline, 1, null);
 assert.equal(receipt.made, 10);

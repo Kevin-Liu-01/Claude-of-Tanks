@@ -131,6 +131,8 @@ export interface GarageGpuRestoreReceipt {
    * 0 is the receipt: the rooms census's leave linked one program in the upload warm, 0.4-1.1 s.
    */
   lateLinks?: ProgramReceipt;
+  /** objects whose program warm compile threw, and the first (programWarm's compileFailures); absent with none */
+  programCompileFailures?: { count: number; first: string | null };
 }
 
 /**
@@ -341,6 +343,8 @@ export async function restoreGarageGpuPipeline({
     programsPrepared: programStats.programsPrepared ?? 0,
     programCohortMax: programStats.programCohortMax ?? 0,
     programBudgetSlices: programStats.programBudgetSlices ?? 0,
+    ...(programStats.compileFailures ? { programCompileFailures: { count: programStats.compileFailures,
+      first: programStats.firstCompileFailure ?? null } } : {}),
     linkerSlices,
     shadowPasses,
     shadowPassMax: Math.max(0, ...shadowPasses),

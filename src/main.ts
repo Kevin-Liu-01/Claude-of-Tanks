@@ -829,9 +829,15 @@ async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
     }
   } finally { watch.stop(); }
   const { lateLinks } = receipt;
-  if (lateLinks?.made) {
-    console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm: ${JSON.stringify(lateLinks)}`);
-  }
+  if (!lateLinks?.made) return;
+  // (short lines: the rooms census keeps a warning's first 240 characters; one for the restore, one for each program)
+  const failures = receipt.programCompileFailures;
+  console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm; released ${lateLinks.released}; `
+    + `warm ${receipt.programsPrepared ?? 0} prepared in ${receipt.programCohorts ?? 0} cohorts, ${receipt.programWarmSlices} slices, `
+    + `deferred ${receipt.programWarmDeferred ?? 0}, compile failures ${failures?.count ?? 0}${failures?.first ? ` (${failures.first})` : ''}`);
+  lateLinks.names.forEach((name, index) => {
+    console.warn(`Garage late link ${index + 1}/${lateLinks.made}: ${lateLinks.origins?.[index] ?? name} [${lateLinks.diffs[index]}]`);
+  });
 }
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),

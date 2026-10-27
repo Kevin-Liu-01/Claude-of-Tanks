@@ -92,6 +92,12 @@ export interface ForwardProgramWarmStats {
   programsPrepared?: number;
   programCohortMax?: number;
   programBudgetSlices?: number;
+  /**
+   * (2026-10-27, the room-stalls lane) objects whose compile threw (the real render remains their fallback), and the
+   * first one's name and error: a swallowed failure leaves its program to a presented frame
+   */
+  compileFailures?: number;
+  firstCompileFailure?: string;
 }
 
 /** Opt-in numeric receipts; durations and counts accumulate without naming scene objects. */
@@ -1321,7 +1327,13 @@ export function createForwardProgramWarmOwner({
         if (!valid()) return;
         const before = snapshotRendererPrograms(renderer);
         const compileAt = now();
-        try { compile(object); } catch { /* the real render remains the fallback */ }
+        try { compile(object); } catch (error) {
+          // the real render remains the fallback
+          if (stats) {
+            stats.compileFailures = (stats.compileFailures ?? 0) + 1;
+            stats.firstCompileFailure ??= `${object.name || object.type}: ${String((error as Error)?.message ?? error).slice(0, 80)}`;
+          }
+        }
         if (!valid()) return;
         if (stats) recordForwardCompileStats(stats, object, now() - compileAt);
         // Preserve every native compile/object variant, but admit a bounded
