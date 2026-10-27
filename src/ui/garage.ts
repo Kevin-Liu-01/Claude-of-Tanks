@@ -57,7 +57,7 @@ import { datumAttr } from './dom.ts';
 import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta, settledRailEndPad,
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
@@ -1684,7 +1684,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const box = item.getBoundingClientRect();
       if (box.width > 0) stops.push(box.left - line);
     }
-    const pad = horizontalRailEndPad(natural - rail.clientWidth, stops);
+    const pad = settledRailEndPad(extra, horizontalRailEndPad(natural - rail.clientWidth, stops));
     if (pad !== extra) rail.style.setProperty('--rail-end', pad ? `${pad}px` : '');
   };
   // A rail moved by script (a wheel's vertical pan, a flick's coast) runs free of its snap stops, which would pull each
