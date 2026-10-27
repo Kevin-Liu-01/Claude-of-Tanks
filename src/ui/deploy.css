@@ -467,7 +467,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-s
 .cot-garage .cot-deploy-tank{display:flex;align-items:center;gap:var(--s3);padding:var(--s2);border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
 .cot-garage .cot-deploy-tank:empty{display:none;}
 .cot-garage .cot-deploy-tank .cot-card{position:relative;width:132px;height:80px;min-height:0;flex:none;margin:0;pointer-events:none;}
-.cot-garage .cot-deploy-tank .cot-card :is(.nm,.hc-tier){display:none;}
+.cot-garage .cot-deploy-tank .cot-card :is(.nm,.hc-tier,.hc-class){display:none;}
 .cot-garage .cot-deploy-tank .info{display:flex;flex-direction:column;justify-content:center;gap:var(--s2);flex:1;min-width:0;}
 /* the name over its flag, and its readiness (the kit's tag) at the row's end */
 .cot-garage .cot-deploy-tank .head{display:flex;align-items:center;gap:var(--s2);min-width:0;}
@@ -535,8 +535,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tabs{flex:1 0 100%;heigh
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{flex:none;height:40px;gap:var(--s2);padding:0 var(--s2);border-radius:0;
   box-shadow:none;font-size:max(var(--fs-floor-12),var(--fs-13));}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab svg{width:15px;height:15px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{color:var(--ink-2);}
-/* the phone's tabs are the desktop's: text over the selected one's underline */
+/* the phone's tabs are the desktop's: text over the selected one's underline, the others in the desktop's ink (ink-2 was
+   the phone's chip tabs' own, r46) */
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);}
 /* a phone held upright sets its four tabs across the width as words alone (with their glyphs a 390 px phone showed two and
    a half, Local network off the screen, r41-r44); a narrower phone scrolls them under the fade, which shows only where
