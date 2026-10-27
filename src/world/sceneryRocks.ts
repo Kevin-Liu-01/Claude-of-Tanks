@@ -1345,6 +1345,8 @@ export function* buildRockFormationSteps(
   const masses: RockMass[] = [];
   const standing = massOf(desk.filter((piece) => piece.standing), ground, min);
   if (standing) masses.push(standing);
+  // (260, the Saltwind census: a formation's standing and fallen masses were one 115 ms step) the fallen mass its own
+  if (solid.size) yield FORMATION_SLICE;
   const fallen = solid.size ? massOf([...solid], ground, min) : null;
   if (fallen) { fallen.fallen = true; masses.push(fallen); }
   yield FORMATION_SLICE;

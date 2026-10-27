@@ -12058,6 +12058,9 @@ ${snowCap ? `
       // (battle-spikes-253) the build and the refit in their own slices (Steinburg's pillbox pool was one 182 ms task)
       yield { fine: true, progress: false, stage: 'pool-refit-' + kind };
       const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
+      // (260, the Saltwind census: the refit and the first fits, or the refit and the pool's mesh, were one step) the
+      // placement after the refit its own slice
+      yield { fine: true, progress: false, stage: 'pool-place-' + kind };
       let fitted = 0;
       for (let index = 0; index < pool.records.length; index++) {
         const record = pool.records[index];
