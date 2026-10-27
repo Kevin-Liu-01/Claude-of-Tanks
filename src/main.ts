@@ -101,7 +101,7 @@ import {
   warmGarageGpuPipeline,
   type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
-import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
+import { programKeyDiff, programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -788,7 +788,8 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): { readonly origins: readonly string[]; stop(): void } {
+function watchProgramOrigins(annotate?: (object: THREE.Object3D, material: THREE.Material) => string):
+  { readonly origins: readonly string[]; stop(): void } {
   const origins: string[] = [];
   const previous = renderer.renderBufferDirect;
   const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
@@ -797,7 +798,7 @@ function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): { r
     if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
       const path: string[] = [material.type];
       for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
+      origins.push(`${path.join('<')}${annotate?.(object, material) ?? ''}`);
     }
   };
   renderer.renderBufferDirect = watched;
@@ -817,6 +818,26 @@ function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): { r
  * program linked there warns once, so the census's leave gate (no console warnings) holds the receipt at 0.
  */
 const GARAGE_LATE_LINK_FRAMES = 90;
+/**
+ * (2026-10-27, the room-stalls lane) The workshop dressing's remaining chunks, finished under a covered Garage restore
+ * before its program warm, one a paint frame (each is a quiet-lease step of 100 ms or less): a dressing left unbuilt at
+ * the battle (a room joined within seconds of boot) otherwise streamed into the first Garage frames after the leave,
+ * and each chunk's first draw linked its programs there (the rooms census rs39-40, the guest: the slideshow screen and
+ * two clutter depth programs, every one added after the warm). Returns how many it finished.
+ */
+async function finishGarageDressingUnderCover(isCurrent?: () => boolean): Promise<number> {
+  const stillValid = (): boolean => (isCurrent?.() ?? true) && game.phase === 'garage';
+  let finished = 0;
+  while (!garageDressing.isBuilt() && stillValid()) {
+    let more: boolean;
+    // (a chunk that fails is the quiet scheduler's to retry, as before; the return goes on with the dressing it has)
+    try { more = await garageDressing.pump(stillValid); } catch { break; }
+    finished++;
+    if (!more) break;
+    await nextPaintFrame();
+  }
+  return finished;
+}
 /** The workshop dressing's finished chunks, in order (garageDressing.ts group.userData.buildTimings). */
 const dressingBuildTimings = (): ReadonlyArray<{ chunk?: string }> =>
   (garageDressing.group.userData.buildTimings as Array<{ chunk?: string }> | undefined) ?? [];
@@ -1037,6 +1058,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
     // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
     const programsNeedWarm = true;
+    const dressingChunksFinished = await finishGarageDressingUnderCover(isCurrent);
     let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch; dressingChunks: number; dressingBuilt: boolean } | null = null;
     let receipt: GarageGpuRestoreReceipt;
     try {
@@ -1053,12 +1075,29 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
         isCurrent,
         onProgramsWarmed: () => {
           late?.watch.stop();
-          // (a late draw's object tagged +added: not in the scene when the warm ended; +hidden: in it, off its visible walk)
+          // (a late draw's object tagged +added: not in the scene when the warm ended; +hidden: in it, off its visible walk;
+          // and its material's program key as the warm left it against the one it drew with: +warm:none, or the diff)
           const inScene = new Set<THREE.Object3D>(), shown = new Set<THREE.Object3D>();
-          scene.traverse((object) => { inScene.add(object); });
+          const warmKeys = new Map<THREE.Material, string | null>();
+          const keyOf = (material: THREE.Material): string | null => ((renderer.properties.get(material) as
+            { currentProgram?: { cacheKey?: string } } | undefined)?.currentProgram?.cacheKey ?? null);
+          scene.traverse((object) => {
+            inScene.add(object);
+            const material = (object as THREE.Mesh).material;
+            for (const entry of Array.isArray(material) ? material : material ? [material] : []) {
+              if (!warmKeys.has(entry)) warmKeys.set(entry, keyOf(entry));
+            }
+          });
           scene.traverseVisible((object) => { shown.add(object); });
-          late = { baseline: new Set(renderer.info.programs ?? []),
-            watch: watchProgramOrigins((object) => (!inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '')),
+          const annotate = (object: THREE.Object3D, material: THREE.Material): string => {
+            const tag = !inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '';
+            if (!warmKeys.has(material)) return tag;
+            const warmKey = warmKeys.get(material), drawKey = keyOf(material);
+            if (!warmKey) return `${tag} +warm:none`;
+            const diff = drawKey ? programKeyDiff({ type: 'm', cacheKey: drawKey }, [{ type: 'm', cacheKey: warmKey }]) : '?';
+            return `${tag} +warm:${diff}`;
+          };
+          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins(annotate),
             dressingChunks: dressingBuildTimings().length, dressingBuilt: garageDressing.isBuilt() };
         },
       });
@@ -1066,6 +1105,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       (late as { watch: ProgramOriginWatch } | null)?.watch.stop();
       throw error;
     }
+    if (dressingChunksFinished) receipt.dressingChunksFinished = dressingChunksFinished;
     if (late) void recordGarageLateLinks(receipt, late);
     return receipt;
   },

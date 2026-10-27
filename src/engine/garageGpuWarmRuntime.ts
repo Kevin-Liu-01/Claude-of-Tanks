@@ -131,6 +131,8 @@ export interface GarageGpuRestoreReceipt {
    * 0 is the receipt: the rooms census's leave linked one program in the upload warm, 0.4-1.1 s.
    */
   lateLinks?: ProgramReceipt;
+  /** the workshop dressing's chunks the covered restore finished before its program warm (main.ts); absent with none */
+  dressingChunksFinished?: number;
   /** objects whose program warm compile threw, and the first (programWarm's compileFailures); absent with none */
   programCompileFailures?: { count: number; first: string | null };
 }
