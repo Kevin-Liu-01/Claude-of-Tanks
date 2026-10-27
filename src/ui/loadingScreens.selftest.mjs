@@ -183,9 +183,14 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   assert.match(bootHtml, /\.cot-boot-key \{[^}]*height: 22px;[^}]*\/22px var\(--font-data\)/, 'the key cap\'s line is the cap\'s height');
   // boot r30: the credits' Source code star kept the second ink beside its paper label
   assert.match(bootHtml, /\.cot-github-stars \{[^}]*color: inherit;/, 'the star takes its button\'s ink wherever it stands');
-  // boot r31: centred on a fraction, the credits title's caps painted a pixel above the portrait on 844x390
-  assert.match(bootHtml, /\.cot-credits \{[^}]*height:calc-size\(fit-content, 100dvh - 2 \* round\(down, \(100dvh - size\) \/ 2, 1px\)\);/,
-    'the credits dialog stands on a whole pixel');
+  // boot r31: centred on a fraction, the credits title's caps painted a pixel above the portrait on 844x390; r32: a
+  // height rounded to place it put the fraction into the bottom padding, so the open dialog's top margin is rounded
+  assert.match(bootHtml, /dialog\.style\.marginTop = `\$\{Math\.round\(dialog\.getBoundingClientRect\(\)\.top\)\}px`;/,
+    'the credits dialog lays out on a whole pixel');
+  assert.match(bootHtml, /dialog\.showModal\(\); settle\(\);/, 'it settles as it opens');
+  assert.match(bootHtml, /new ResizeObserver\(\(\) => \{ if \(dialog\.open\) settle\(\); \}\)\.observe\(dialog\);/, 'and when its content changes size');
+  assert.match(bootHtml, /addEventListener\('resize', \(\) => \{ if \(dialog\.open\) settle\(\); \}\);/, 'and when the screen changes');
+  assert.doesNotMatch(bootHtml, /\.cot-credits \{[^}]*calc-size/, 'its size is its content\'s');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,

@@ -454,9 +454,6 @@
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
       border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-raised);box-shadow:var(--e4);
       font-family:var(--font-ui);
-      /* centred by the browser, the dialog's top fell on a fraction and the title's caps painted a pixel off the portrait
-         and the close button: its height grows by under a pixel so the gap over it is whole (boot r31) */
-      height:calc-size(fit-content, 100dvh - 2 * round(down, (100dvh - size) / 2, 1px));
     }
     .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
     #cot-boot.credits-open :is(.cot-boot-inner, .cot-boot-foot, .cot-boot-links) { visibility: hidden; }
@@ -1279,10 +1276,20 @@
       for (const type of ['keydown', 'keyup']) {
         dialog.addEventListener(type, (event) => event.stopPropagation());
       }
+      // The browser centres the dialog on a fraction of a pixel, and past half a pixel the title's caps painted a row
+      // off the portrait (boot r31). Its top margin takes the centred place rounded to a whole pixel, so everything in it
+      // lays out on whole rows and its size, so its padding, stays its content's (boot r32). It settles again whenever
+      // its content or the screen changes size.
+      const settle = () => {
+        dialog.style.marginTop = '';
+        dialog.style.marginTop = `${Math.round(dialog.getBoundingClientRect().top)}px`;
+      };
+      new ResizeObserver(() => { if (dialog.open) settle(); }).observe(dialog);
       open.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); }
+        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); settle(); }
       });
+      addEventListener('resize', () => { if (dialog.open) settle(); });
       close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
