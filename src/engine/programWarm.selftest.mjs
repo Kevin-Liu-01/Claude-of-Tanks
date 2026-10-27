@@ -316,6 +316,17 @@ for (const diagnostic of ['frozen', 'clock-failure']) {
 }
 
 {
+  // (2026-10-26, the room-stalls lane: one Garage restore poll walked every program a battle left, 1.13 s in one task) a
+  // slice spends at most its query budget (8 ms on this fixture's 7 ms queries: two), then yields and goes on from there
+  const fixture = timedForwardFixture();
+  fixture.renderer.pending = false;
+  fixture.renderer.info.programs.push({ program: {} }, { program: {} }, { program: {} }, { program: {} });
+  const timing = {};
+  assert.equal([...fixture.owner.linkerBreathingSlices(10, timing)].length, 2, 'five linked programs, two a slice: two yields');
+  assert.equal(timing.queryCount, 5, 'every program is still asked once');
+}
+
+{
   const fixture = timedForwardFixture({ clockFailure: true });
   assert.equal([...fixture.owner.linkerBreathingSlices(2, {})].length, 2,
     'diagnostic clock errors cannot skip the original bounded linker waits');

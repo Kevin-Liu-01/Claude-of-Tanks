@@ -3,7 +3,7 @@
 // (nav-perf's root-r room: a 1.3 s getProgramParameter at a Garage return). Without fences, on a lost context, or when
 // a fence cannot be made or read, the gate answers caught up and the poll behaves as before.
 import assert from 'node:assert/strict';
-import { createGpuCatchUpGate } from './gpuCatchUp.ts';
+import { GPU_CATCH_UP_STALE_MS, createGpuCatchUpGate } from './gpuCatchUp.ts';
 
 function fencedContext() {
   const events = [];
@@ -76,4 +76,33 @@ for (const fault of ['no-fences', 'lost', 'fence-null', 'wait-throws']) {
   assert.ok(at > 0 && body.includes('createGpuCatchUpGate(renderer.getContext())') && body.includes('if (gate.caughtUp())')
     && body.includes('gate.dispose()'), 'the renderer-wide link wait asks only once the GPU caught up');
 }
-console.log('gpuCatchUp.selftest: a poll asks only after its previous mark signalled; never a blocking wait; fenceless, lost and failing contexts answer caught up');
+{
+  // (2026-10-26, the rooms A/B: a Garage return's link drain asked behind a battle's work on a mark from before it)
+  // a drain that starts past the mark's age marks the queue again and its first poll waits for that mark; a drain right
+  // after another keeps the fresh mark (a wreck warm's drains, one per wreck visual)
+  const { gl, events, signal } = fencedContext();
+  let clock = 0;
+  const gate = createGpuCatchUpGate(gl, () => clock);
+  gate.caughtUp(); signal(1);
+  assert.equal(gate.caughtUp(), true, 'fence 1 signalled; fence 2 marks this poll');
+  signal(2);
+  clock += GPU_CATCH_UP_STALE_MS / 2;
+  gate.beginDrain();
+  assert.equal(gate.caughtUp(), true, 'a fresh mark: the next drain asks at once');
+  signal(3);
+  clock += GPU_CATCH_UP_STALE_MS + 1;
+  const before = events.length;
+  gate.beginDrain();
+  assert.deepEqual(events.slice(before), [['delete', 3], ['fence', 4], ['flush']], 'a stale mark, signalled or not, is placed again');
+  assert.equal(gate.caughtUp(), false, 'and the drain waits for the GPU to reach it');
+  signal(4);
+  assert.equal(gate.caughtUp(), true);
+  // a fenceless or lost context, or a gate with no mark yet, has nothing to renew
+  const bare = createGpuCatchUpGate({ isContextLost: () => false }, () => clock);
+  bare.beginDrain(); assert.equal(bare.caughtUp(), true);
+  const fresh = fencedContext();
+  const unmarked = createGpuCatchUpGate(fresh.gl, () => clock);
+  unmarked.beginDrain();
+  assert.deepEqual(fresh.events, [], 'no mark yet: beginDrain places none');
+}
+console.log('gpuCatchUp.selftest: a poll asks only after its previous mark signalled; a drain past the mark\'s age re-marks; never a blocking wait; fenceless, lost and failing contexts answer caught up');
