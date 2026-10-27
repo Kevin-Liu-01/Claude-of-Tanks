@@ -54,7 +54,7 @@
   "challenger3_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0d7aa0ac394aee9a","gun":"60c581e216e962c9"}},
   "chieftain3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bdd3e1a34fc0a3e8","gun":"3a9a3f385b66c8a8"}},
   "chieftain5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"302ec75e45255e53","gun":"b1535e564074f8e3"}},
-  "chieftain_mk10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5155cf3182162fde","gun":"3f68eb9128176147"}},
+  "chieftain_mk10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c98fd77a742b833c","gun":"3f68eb9128176147"}},
   "chieftain_mk9": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"abfaa19389d55002","gun":"8d1e597a90e0fe9d"}},
   "cv90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"019383d5cb29e655","gun":"0fc9fd77fe8cc681"}},
   "cv90105_tml": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3a04c184b755b291","gun":"c78e4ddc90605565"}},
