@@ -5,6 +5,7 @@ import {getSpec} from './specs.ts';
 import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts';
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
+import {COMBAT_GUN_RIGS} from './combatGunRigs.generated.ts';
 
 const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u',t84:'t72b3m_2016',
   type96_72_long:'t72b3',type96_80_feng:'t80u',type96_72m_lei:'t72b3m_2016'};
@@ -31,7 +32,14 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     const spec=getSpec(id);
     turret.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.turretPivot[i])<.001,`${id}: installed ring matches hit frame`));
-    gun.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.gunPivot[i])<.001,`${id}: installed trunnion matches hit frame`));
+    // 230: a combat-rig row (combatGunRigs.generated.ts) is the hit frame, and its trunnion is rig_gun projected onto the
+    // drawn bore line (the T-80UK's sits 8.7 mm over rig_gun): the trunnion is drawn on the hit frame's bore, not at it
+    const row=COMBAT_GUN_RIGS[id];
+    if(row){
+      assert.deepEqual([...spec.armor.turretPivot,...spec.armor.gunPivot],[...row.turretPivot,...row.gunPivot],`${id}: the hit frame is its combat-rig row`);
+      [0,2].forEach(i=>assert(Math.abs(gun.position.getComponent(i)-row.gunPivot[i])<.001,`${id}: installed trunnion on the hit frame's bore`));
+      assert(Math.abs(gun.position.y-row.gunPivot[1])<.01,`${id}: installed trunnion within 1 cm of the drawn bore`);
+    } else gun.position.toArray().forEach((v,i)=>assert(Math.abs(v-spec.armor.gunPivot[i])<.001,`${id}: installed trunnion matches hit frame`));
     for(const yaw of [-1.47,0,1.47]) {
       turret.rotation.y=yaw;gun.rotation.x=-.15;tank.root.updateMatrixWorld(true);
       assert(tank.gunMuzzleWorld(new Vector3()).toArray().every(Number.isFinite));
