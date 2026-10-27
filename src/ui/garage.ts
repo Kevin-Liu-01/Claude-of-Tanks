@@ -1434,7 +1434,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const panelSurface = (panel: 'equipment' | 'appearance'): TransientSurface => ({
     id: panel === 'equipment' ? 'garage-dossier' : 'garage-paint-sheet',
     element: () => (panel === 'equipment' ? statsEl : root.querySelector('.cot-leftcol')),
-    owns: (node) => node instanceof Element && !!node.closest(`[data-garage-panel="${panel}"]`),
+    // (its controls are the buttons that open it: the Garage's root wears the open panel's name too)
+    owns: (node) => node instanceof Element && !!node.closest(`button[data-garage-panel="${panel}"]`),
     close: (reason) => { if (openGaragePanel() === panel) setGaragePanel('', { restoreFocus: reason === 'escape' }); },
     get modal() { return isOverlayPanelLayout(); },
   });
@@ -1620,6 +1621,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     mobileNavMenu.hidden = false;
     mobileNavTrigger.setAttribute('aria-expanded', 'true');
     mobileNavTrigger.setAttribute('aria-label', t('garage.mobileNav.closeAria'));
+    // the focus moves into the menu it opened, on its first destination
+    mobileNavMenu.querySelector<HTMLElement>('button, a[href]')?.focus({ preventScroll: true });
   };
   mobileNavTrigger.addEventListener('click', () => {
     emit('ui:click', {});

@@ -62,7 +62,7 @@ const MENU_EDGE = 8;
  *  window above it. */
 const SHEET_BELOW = 520;
 const SHEET_TOP_SHORT = 48;
-/** A panel under this height is no bound: the menu takes the window's room. */
+/** A box under this height is no panel: the menu's room is the next one out (the window at the last). */
 const BOUNDS_MIN_H = 240;
 
 interface MenuPlace {
@@ -202,7 +202,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       if (style.overflowY === 'visible' && !/paint|content|strict/.test(style.contain)) continue;
       const box = node.getBoundingClientRect();
       const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
-      return bottom - top >= BOUNDS_MIN_H ? { top, bottom } : { top: 0, bottom: win.innerHeight };
+      // a short box (a row that clips its own text) is no panel: the one holding it is
+      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom };
     }
     return { top: 0, bottom: win.innerHeight };
   };

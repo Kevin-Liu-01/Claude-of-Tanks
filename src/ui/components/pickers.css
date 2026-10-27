@@ -182,14 +182,18 @@
    enters while the other leaves (surfaceStack.ts); display and the top layer flip at the end of the exit */
 .cot-c-menu__pop{position:fixed;inset:auto;box-sizing:border-box;display:none;flex-direction:column;margin:0;padding:var(--s2);border:0;
   border-radius:var(--plate-radius);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);overflow:hidden;
-  --menu-from:0 calc(-1 * var(--s1));opacity:0;translate:var(--menu-from);
+  opacity:0;translate:0 calc(-1 * var(--s1));
   transition:opacity var(--dur-fast) var(--ease-exit),translate var(--dur-fast) var(--ease-exit),
     display var(--dur-fast) allow-discrete,overlay var(--dur-fast) allow-discrete}
-.cot-c-menu__pop.is-above{--menu-from:0 var(--s1)}
-.cot-c-menu__pop.is-sheet{--menu-from:0 var(--s4)}
+.cot-c-menu__pop.is-above{translate:0 var(--s1)}
+.cot-c-menu__pop.is-sheet{translate:0 var(--s4)}
 .cot-c-menu__pop:popover-open{display:flex;opacity:1;translate:none;transition-timing-function:var(--ease-enter)}
 .cot-c-menu__pop:not(:popover-open){pointer-events:none}
-@starting-style{.cot-c-menu__pop:popover-open{opacity:0;translate:var(--menu-from)}}
+@starting-style{
+  .cot-c-menu__pop:popover-open{opacity:0;translate:0 calc(-1 * var(--s1))}
+  .cot-c-menu__pop.is-above:popover-open{translate:0 var(--s1)}
+  .cot-c-menu__pop.is-sheet:popover-open{translate:0 var(--s4)}
+}
 .cot-c-menu__picker{display:flex;flex:1 1 auto;flex-direction:column;min-height:0}
 .cot-c-menu__picker>.cot-c-picker{flex:1 1 auto}
 /* a menu is narrow: its search takes its own line and its chips the next, so whole chips show (the r21q critic: a star and

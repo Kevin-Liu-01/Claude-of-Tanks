@@ -23,8 +23,8 @@ interface TransientSurfaceRow {
   readonly owner: string;
   /** Its box once open (a selector). */
   readonly box: string;
-  /** The surface it stands on: it opens from inside that one, which stays open under it. */
-  readonly on?: string;
+  /** The surface it stands on: it opens from inside that one, which stays open under it (per layout where they differ). */
+  readonly on?: string | { readonly docked?: string; readonly folded?: string };
   /** Its own scrim takes the presses outside it. */
   readonly modal?: boolean;
   /** How the census opens it, per layout; a layout without a recipe never shows it. */
@@ -46,13 +46,19 @@ export const TRANSIENT_SURFACES = Object.freeze({
     open: { docked: ['.cot-lt-consumables .csslot[data-slot="0"]'], folded: ['.cot-lt-consumables .csslot[data-slot="0"]'] } },
   'garage-paint-sheet': { screen: 'garage', owner: GARAGE, box: '.cot-leftcol', open: { docked: ['.cot-lt-paint-all'], folded: ['.cot-lt-paint-all'] } },
   'garage-dossier': { screen: 'garage', owner: GARAGE, box: '.cot-garage .stats', modal: true, open: { folded: ['.cot-compact-equipment-trigger'] } },
-  'garage-rival': { screen: 'garage', owner: GARAGE, box: menuBox('garage-rival'), open: { docked: RIVAL_OPEN } },
+  // (folded, the Compare row stands in the dossier)
+  'garage-rival': { screen: 'garage', owner: GARAGE, box: menuBox('garage-rival'), on: { folded: 'garage-dossier' },
+    open: { docked: RIVAL_OPEN, folded: ['.cot-compact-equipment-trigger', ...RIVAL_OPEN] } },
   'garage-staging': { screen: 'garage', owner: GARAGE, box: menuBox('garage-staging'), open: { docked: ['[data-picker-menu="garage-staging"]'] } },
   'garage-quick-mode': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-mode'), open: { docked: ['[data-battle-quick]'], folded: ['[data-battle-quick]'] } },
   'garage-quick-battlefield': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-battlefield'), open: {} },
   'garage-filters': { screen: 'garage', owner: 'src/ui/garageFacetPanel.ts', box: '.cot-facet-panel', open: { docked: ['.cot-facet-toggle'], folded: ['.cot-facet-toggle'] } },
   'garage-mobile-nav': { screen: 'garage', owner: GARAGE, box: '.cot-mobile-nav-menu', open: { folded: ['.cot-mobile-nav-trigger'] } },
+  'tech-tree': { screen: 'garage', owner: 'src/ui/techTree.ts', box: '.cot-tt', modal: true, open: { docked: ['.cot-techtree-trigger'] } },
   'garage-technical': { screen: 'garage', owner: GARAGE, box: '.cot-technical-viewer', modal: true, open: {} },
+  // the room's panel opens from Deploy's private room (its pickers need a room: the census reaches the panel alone)
+  'rooms': { screen: 'deploy', owner: 'src/ui/playMenu.ts', box: '.cot-play .panel', modal: true,
+    open: { docked: [...DEPLOY_OPEN, '[data-deploy-room="private"]'], folded: [...DEPLOY_OPEN, '[data-deploy-room="private"]'] } },
   'garage-return-failure': { screen: 'garage', owner: 'src/ui/garageReturnFailure.ts', box: '.cot-modal', modal: true, open: {} },
   'battle-entry-failure': { screen: 'garage', owner: 'src/ui/garageReturnFailure.ts', box: '.cot-modal', modal: true, open: {} },
   'service-record': { screen: 'garage', owner: 'src/ui/serviceRecordDialog.ts', box: '.cot-modal', modal: true, open: {} },
@@ -82,14 +88,13 @@ export const TRANSIENT_SURFACES = Object.freeze({
   // ---- the Tank Gallery and the public pages
   'gallery-rival': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-rival'), open: { docked: ['[data-picker-menu="gallery-rival"]'], folded: ['[data-picker-menu="gallery-rival"]'] } },
   'gallery-sort': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-sort'), open: { docked: ['[data-picker-menu="gallery-sort"]'], folded: ['[data-picker-menu="gallery-sort"]'] } },
-  'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram', modal: true, open: { docked: ['#diagramImage'], folded: ['#diagramImage'] } },
+  'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram', modal: true, open: { docked: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'], folded: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'] } },
   'public-nav-menu': { screen: 'gallery', owner: 'src/presentation/publicNav.ts', box: '#public-nav-menu', open: { folded: ['.public-nav__menu-trigger'] } },
 
   // ---- the battle
   'spectate-ally': { screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', box: '.cot-spec-pop', open: {} },
 
   // ---- Rooms (the panel and its pickers over the Garage)
-  'rooms': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.cot-play .panel', modal: true, open: {} },
   'rooms-tank': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.vehicle-pick', on: 'rooms', open: {} },
   'rooms-battlefield': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.battlefield-pick', on: 'rooms', open: {} },
   'rooms-mode': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.mode-pick', on: 'rooms', open: {} },

@@ -58,7 +58,7 @@ for (const [file, source] of text) {
 // 4. Every row's place is whole: the surface it stands on is a row of its screen or a page-wide one, and every recipe
 // presses at least one control.
 for (const [id, row] of rows) {
-  if (row.on) assert.ok(ids.has(row.on), `${id}: it stands on ${row.on}, which has no row`);
+  for (const on of typeof row.on === 'string' ? [row.on] : Object.values(row.on ?? {})) assert.ok(ids.has(on), `${id}: it stands on ${on}, which has no row`);
   for (const [layout, recipe] of Object.entries(row.open)) {
     assert.ok(Array.isArray(recipe) && recipe.length > 0 && recipe.every((step) => typeof step === 'string' && step.length > 0),
       `${id}: its ${layout} recipe presses nothing`);

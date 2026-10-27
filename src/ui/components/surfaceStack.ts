@@ -101,7 +101,7 @@ let installed = false;
 /** One Escape and one outside press for every surface, ahead of the page's own keys (the window's capture, installed as
  *  the kit loads, before any surface's owner adds its listeners). */
 function install(): void {
-  if (installed || typeof window === 'undefined') return;
+  if (installed || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
   installed = true;
   window.addEventListener('keydown', (event) => {
     const top = stack.at(-1);
@@ -114,7 +114,10 @@ function install(): void {
   }, true);
   window.addEventListener('pointerdown', (event) => {
     const top = stack.at(-1);
-    if (!planPress(top && { ...boxOf(top), modal: top.modal }, event.target as Node | null)) return;
+    // a press on a surface's own backdrop (a sheet's ::backdrop is its element's) lands outside its box
+    const box = top && !top.modal && event.target === top.element() ? (event.target as Element).getBoundingClientRect() : null;
+    const backdrop = !!box && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom);
+    if (!backdrop && !planPress(top && { ...boxOf(top), modal: top.modal }, event.target as Node | null)) return;
     stack.pop();
     top!.close('outside');
   }, true);

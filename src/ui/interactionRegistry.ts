@@ -185,6 +185,8 @@ export const INTERACTION_SITES = Object.freeze({
   // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
   'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
   'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'picker', marks: ['picker:studio-featured-tank'], lane: 'premiere-gallery-studio' },
+  // (261) the tanks to add to a scene: the kit's picker menu, each tank's portrait (a hand-made list until then)
+  'studio-actor': { chooses: 'tank', options: FLEET, screen: 'studio', owner: STUDIO, build: 'picker', marks: ['picker:studio-actor'], lane: 'premiere-gallery-studio' },
   'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
   'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
 

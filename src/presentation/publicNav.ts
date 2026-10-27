@@ -58,6 +58,8 @@ function mountMenuSheet(): void {
     trigger.setAttribute('aria-expanded', String(open));
     trigger.setAttribute('aria-label', t(open ? 'publicNav.closeMenu' : 'publicNav.openMenu'));
     if (!open && restoreFocus) trigger.focus();
+    // the focus moves into the sheet it opened, on its first destination
+    if (open) menu.querySelector<HTMLElement>('a[href], button')?.focus({ preventScroll: true });
   };
   trigger.addEventListener('click', () => set(Boolean(menu.hidden)));
   menu.addEventListener('click', (event) => {
