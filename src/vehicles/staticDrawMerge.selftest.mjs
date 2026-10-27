@@ -31,7 +31,10 @@ const GARAGE = { camoSeed: 4200, quality: 'ai', staticPreview: true, batchStatic
 // cosmetic distance detail, a different class from the shell, so the two no longer share a run. Near the tanks draw
 // turret, turretDetail and turretFittingPaint (the tubes); at range turretDetail now detaches.
 const PINNED = {
-  ua_m1a2_abrams: { saved: 88, owners: { rig_hull: 1, rig_turret: 1, abramsSourceX_LoaderM240: 86 } },
+  // 253 (diagrams-camo, 95990ebcdf / de807087da): the KF51 EVO's camo split now runs after the merges in every build
+  // path and re-projects the seated turret's moved corners, so the hull's and the turret's one contiguous same-material
+  // fold each are split runs now (intended): only the loader M240's 86 remain (main-reds-259, measured)
+  ua_m1a2_abrams: { saved: 86, owners: { abramsSourceX_LoaderM240: 86 } },
   // VH.14 (2026-10-15): the roof MG is a working station, so its can-and-rounds fold rode the gun's own pitch rig.
   // 230's station rebuilds (the remote stations' cradles, 9d00a70dc2 / 07ba388a24) gave each station gun a recoil rig
   // (auxiliaryWeaponRecoil: the body and its can) under the pitch rig, and the pitch rig's own parts each wear another

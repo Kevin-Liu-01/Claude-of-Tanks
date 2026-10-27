@@ -12,6 +12,8 @@ import {createTankState} from '../../sim/movement.ts';
 import {enlargeArieteXFamily} from './arieteXFamilyScale.ts';
 import {capturePrimaryHull,assertC2PrimaryHullDelta,assertC2ReceivingClearance} from './arieteC2Receiving.test-support.mjs';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
+import {turretSeatPlane} from '../turretSeatPlane.ts';
 
 const hash=a=>createHash('sha256').update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength)).digest('hex');
 function stock(root){
@@ -55,11 +57,32 @@ function footprintAdapter(){
   near(updateArgs[0],2,1e-12,'source wheel scroll');near(updateArgs[1],3,1e-12,'source right scroll');
   near(surfaceArgs[0],2,1e-12,'source surface left');near(surfaceArgs[1],3,1e-12,'source surface right');
 }
+// 245 (07de7d3398, the turret-seat program) seats each turret over its own hull (turretSeatRace.ts): the C2's raised deck
+// (1.66, its race's rim 1.069 m) brings the C1 turret's underside corners up onto the C2's seat plane, which the C1's
+// 1.479 deck leaves as built. Every other corner, every unmoved normal and the whole gun mount are the C1's
+// (main-reds-259, measured on 257 abccee56a1).
+function seatedOnlyByC2(a,b){
+  const seat=turretSeatPlane(combatAnatomyCalibration('c2_ariete')?.turretRing,b.parent.userData);
+  assert(seat,'the C2 turret is seated');
+  const pa=a.geometry.attributes.position,pb=b.geometry.attributes.position,na=a.geometry.attributes.normal,nb=b.geometry.attributes.normal;
+  assert.equal(pa.count,pb.count,'turret vertex count retained');
+  const va=new T.Vector3(),vb=new T.Vector3();let moved=0;
+  for(let i=0;i<pa.count;i++){
+    va.fromBufferAttribute(pa,i);vb.fromBufferAttribute(pb,i);
+    if(va.equals(vb)){assert(na.getX(i)===nb.getX(i)&&na.getY(i)===nb.getY(i)&&na.getZ(i)===nb.getZ(i),'unmoved turret normal retained');continue;}
+    moved++;va.applyMatrix4(a.matrixWorld);vb.applyMatrix4(b.matrixWorld);
+    const plane=seat.planeAt(Math.max(seat.keepR,Math.hypot(vb.x-seat.cx,vb.z-seat.cz)));
+    assert(Math.abs(va.x-vb.x)<1e-6&&Math.abs(va.z-vb.z)<1e-6,'a seated corner only rises');
+    assert(Math.abs(vb.y-plane)<1e-5&&va.y<plane,`a changed C2 turret corner sits on its own seat plane (${vb.y} vs ${plane})`);
+  }
+  assert(moved>0,'the C2 seat lifts the C1 turret underside');
+}
 function samePrimary(c1,c2){
   for(const name of ['turret','gunMount']){
     const a=c1.root.getObjectByName(name),b=c2.root.getObjectByName(name);
     assert(a&&b,`retained ${name}`);
-    for(const key of ['position','normal'])assert.equal(hash(a.geometry.attributes[key]),hash(b.geometry.attributes[key]),`${name} ${key} retained`);
+    if(name==='turret')seatedOnlyByC2(a,b);
+    else for(const key of ['position','normal'])assert.equal(hash(a.geometry.attributes[key]),hash(b.geometry.attributes[key]),`${name} ${key} retained`);
     assert.equal(a.geometry.index?hash(a.geometry.index):null,b.geometry.index?hash(b.geometry.index):null,`${name} topology retained`);
     assert.deepEqual(a.matrixWorld.toArray(),b.matrixWorld.toArray(),`${name} placement retained`);
   }

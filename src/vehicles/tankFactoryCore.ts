@@ -7513,6 +7513,9 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // Fleet-weapons lane 2026-10-09: the gun's bare steel (muzzle devices, bore mouths, coax barrels, cradle hardware)
   // is weapon steel (weaponFinish.ts), not the flat hardware gunmetal.
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'weaponSteel'], gunMount: ['gunG', 'hull'],
+  // a gun floodlight's drum and bracket in the mount's paint, as their own draw (gunFloodlight.ts seat.bucket): a mount that
+  // is a measured source part keeps its own stock (the Type 96B's boot, type96GunOwnership.selftest.mjs)
+  gunMountLamp: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'weaponSteel'], gunMountCloth: ['gunG', 'canvasCloth'],
   // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
   gunMountCanvasSkin: ['gunG', 'canvasCloth'],
@@ -7574,7 +7577,7 @@ const CAMO_BUCKETS = new Set([
   'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment', 'hullGun',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
-  'turretEquipment', 'gun', 'gunMount',
+  'turretEquipment', 'gun', 'gunMount', 'gunMountLamp',
   // The opt-in independent twin-gun tubes take the same camouflaged barrel paint as `gun`, so they need its projection
   // and its vertex-colour bake (2026-10-10: without them the BMPT's twin 30 mm tubes rendered black).
   'gunBarrel0', 'gunBarrel1',
@@ -7595,7 +7598,7 @@ export function bucketMaterialKey(bucket: string): TankMaterialKey | null {
 const LOD0_KEEP = new Set([
   'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR', 'hullGun',
   'hullFixedPaintedBodywork',
-  'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
+  'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'gunMountLamp', 'hullRubber',
   'gunMountCanvasSkin',
 ]);
 

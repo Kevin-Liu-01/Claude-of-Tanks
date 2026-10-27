@@ -27,6 +27,13 @@ import { resolveTankId } from './tankIdAliases.ts';
 // Re-pinned 2026-10-22 (owner: "i dont like the monnocolor flat camos, just use the default americann desert for those
 // kinds of cases"): the four flat coats (HA, AIM, SA, M60A1) are gone; m1a1ha, m1a2_tusk, m1a2_sepv2 and m60a1 are back
 // on their production rows byte for byte, and the three patterned Signatures (HC, FEP, M60A3) stay.
+// Re-pinned 2026-10-26 (main-reds-259, Main's lane R): three selections moved by their labels alone, the owner's renames
+// (240: "T-64BV Donbas" -> "T-64BV mod. 2017", 96c258ae35; 253: "Type 90 Kyū-maru" / "Type 90A" -> "STC-1" / "STC-2",
+// af3d1db803). Recomputed with the old labels each equals production's digest; preset and visuals are unchanged.
+// sig_type90 bcd696cc3ccade87 -> fb2d08c9f545951b, sig_type90a f2858eadd71f7c88 -> a2635ecb60ebf9d2, sig_ua_t64bv
+// 09903e47298549e7 -> f2e5b458815e4d65. The same 253 rename paints the prototypes' designations ("STC-1", "STC-2" for
+// "73", "90-A") on schema-1 type90 / type90a's Factory coats; with the old numbers each equals production's digest
+// (type90 49f13f4a7611302c -> cc5999a15cec54d1, type90a 4b4a154b8dbb9e0d -> ee30ce99e88984dd).
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -48,7 +55,12 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Every tank: the default selection, the Factory/stock scheme, the Factory visual and AUTO on twelve maps.
 // The baseline names tanks by their tank id schema 1 spelling (2026-10-13, SSOT 2.19): each row is read through the
 // alias layer, so a renamed tank is held to its own production row.
-assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length, 'the same fleet');
+// Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
+// 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
+const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
+assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,
+  'the same fleet, plus the tanks added since');
+for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
 const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');

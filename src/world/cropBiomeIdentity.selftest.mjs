@@ -24,6 +24,10 @@ function declaration(text, name) {
   const found = [];
   function visit(node) {
     if (ts.isFunctionDeclaration(node) && node.name?.text === name) found.push(node.getText(tree));
+    // a module-level scratch the functions share (lighting.ts COVERAGE_HISTOGRAM, lockdown-251) copies the same way
+    if (ts.isVariableStatement(node) && node.declarationList.declarations.some((d) => ts.isIdentifier(d.name) && d.name.text === name)) {
+      found.push(node.getText(tree));
+    }
     ts.forEachChild(node, visit);
   }
   visit(tree);
@@ -53,7 +57,8 @@ assert.match(rngSource, /^export function mulberry32\(/);
 // The public owner becomes a local declaration inside this test port.
 const rngFixture = await loadFixture(`${rngSource.replace(/^export /, '')}\nreturn mulberry32;`, []);
 const mulberry32 = rngFixture({});
-const mipSource = ['isDrawableImage', 'alphaCoverage', 'downsampleCoverageMip', 'correctMipCoverage', 'buildCoverageMipmaps']
+const mipSource = ['isDrawableImage', 'alphaCoverage', 'downsampleCoverageMip', 'COVERAGE_HISTOGRAM', 'correctMipCoverage',
+  'buildCoverageMipmaps']
   .map(name => declaration(lighting, name)).join('\n');
 const mipFixture = await loadFixture(`${mipSource}\nreturn buildCoverageMipmaps;`, ['document', 'ImageData', 'HTMLCanvasElement']);
 const buildMips = mipFixture({

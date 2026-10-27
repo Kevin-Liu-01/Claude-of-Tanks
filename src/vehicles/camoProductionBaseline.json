@@ -433,8 +433,8 @@
   "sig_leclerc": "33f44987f14fe454",
   "sig_ariete_c2": "f3c48cd5e8575f73",
   "sig_type10b": "887b9841aac1b356",
-  "sig_type90": "bcd696cc3ccade87",
-  "sig_type90a": "f2858eadd71f7c88",
+  "sig_type90": "fb2d08c9f545951b",
+  "sig_type90a": "a2635ecb60ebf9d2",
   "sig_type59": "a582aad184333f35",
   "sig_ztz85_iii": "a928db3cf404d31e",
   "sig_type99a": "8d838ba4a892d7ef",
@@ -465,7 +465,7 @@
   "sig_namer_ifv": "940278e68a8f45a7",
   "sig_t84": "63f139a8fdd43aa6",
   "sig_ua_challenger2": "ecdb9b5db9981c35",
-  "sig_ua_t64bv": "09903e47298549e7",
+  "sig_ua_t64bv": "f2e5b458815e4d65",
   "sig_ua_t80bv": "cd5370cd253c5b5e",
   "sig_ua_t80u_kursk": "40871f6a63ae5edf",
   "sig_ua_t84_oplot_m": "bc4eee8139a5254c",
@@ -819,13 +819,13 @@
   "type90": {
    "selection": "factory",
    "stock": "sig_type90",
-   "factory": "49f13f4a7611302c",
+   "factory": "cc5999a15cec54d1",
    "auto": "dpm digitaldesert winterbands berlin oakleaf merdc desert urban urban dpm dpm dpm"
   },
   "type90a": {
    "selection": "factory",
    "stock": "sig_type90a",
-   "factory": "4b4a154b8dbb9e0d",
+   "factory": "ee30ce99e88984dd",
    "auto": "amoeba pinkdesert merdcwinter urbanblock autumn merdc desert berlin urbanblock summer amoeba amoeba"
   },
   "type10": {

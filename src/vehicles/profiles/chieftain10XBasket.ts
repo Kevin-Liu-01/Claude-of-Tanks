@@ -1,6 +1,12 @@
 // Independent folded floor, seat pedestals and tray from scalar source planes.
 // The original complete turret contains these lower assemblies; they are not
 // a solid extension of the external casting and retain their actual air gaps.
+//
+// The source basket was drawn for a wider ring: its trays and link reach 1.15 m off the turret's axis, past this hull's
+// race (rim 0.8816 m, inner edge 0.8115 m), and 240's turret seat (turretSeatRace.ts seatTurretOverDeck) folded every
+// triangle past the rim up into the turret's underside. The basket is drawn to this ring: scaled in plan about the
+// turret's axis (heights kept), so its widest point stands 19 mm inside the race's inner edge and the seat moves none of
+// it (main-reds-259; chieftain10XBasket.selftest.mjs reads the source at scale 1).
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -42,12 +48,26 @@ function sideSolid(outline: readonly Plan[], left: number, right: number): THREE
     steps: 1 }).rotateY(Math.PI / 2).translate(left, 0, 0);
 }
 
-function add(P: TankBuilderPort, pivot: Point, geometry: THREE.BufferGeometry, name: string): void {
+/** The basket's plan scale about the turret's axis: 0.7965 m (15 mm inside the race's inner edge) over the source's
+ *  widest point, the hanging link's upper end at 1.1482 m. */
+export const BASKET_PLAN_SCALE = .69;
+/** The right support's top: the seat's plane (1.622, the highest the seated underside stands inside the rim) and the
+ *  source's 30 mm reach into the bearing it hangs from; the source top, 1.542399, hung under a bearing the seat lifted. */
+const RIGHT_SUPPORT_TOP = 1.652;
+
+/** The port, the turret pivot the source coordinates are read from, and whether this is the source basket as measured
+ *  (scale 1, the source support top) or the basket fitted to this ring. */
+interface Basket { P: TankBuilderPort; pivot: Point; source: boolean }
+
+function add({ P, pivot, source }: Basket, geometry: THREE.BufferGeometry, name: string): void {
   geometry.userData.chieftain10BasketPiece = name;
+  if (!source) {
+    geometry.translate(-pivot[0], 0, -pivot[2]).scale(BASKET_PLAN_SCALE, 1, BASKET_PLAN_SCALE).translate(pivot[0], 0, pivot[2]);
+  }
   P.addEquipment('turretDetail', geometry, -pivot[0], -pivot[1], -pivot[2]);
 }
 
-function base(P: TankBuilderPort, pivot: Point): void {
+function base(B: Basket): void {
   const radius = .785085, centerZ = .596846;
   const outline: Plan[] = Array.from({ length: 24 }, (_, i) => {
     const a = i * Math.PI / 12;
@@ -59,7 +79,7 @@ function base(P: TankBuilderPort, pivot: Point): void {
     [.38234472, -.92401976, .17997037], [.60863545, -.79344999, .25794932],
     [.79333562, -.60878452, .36817324], [.92280632, -.38526418, .50184278],
     [.98984094, -.14217914, .64498739]]);
-  add(P, pivot, floorSolid(outline, .761857, .794758, [hole]), 'floor');
+  add(B, floorSolid(outline, .761857, .794758, [hole]), 'floor');
   const rim: Plan[] = [];
   for (let i = 0; i <= 3; i++) {
     const a = Math.PI * 11 / 12 + i * Math.PI / 12;
@@ -69,12 +89,12 @@ function base(P: TankBuilderPort, pivot: Point): void {
     const a = Math.PI * 11 / 12 + i * Math.PI / 12;
     rim.push([radius * Math.sin(a), centerZ + radius * Math.cos(a)]);
   }
-  add(P, pivot, floorSolid(rim, .793758, 1.039567), 'localRearRim');
-  add(P, pivot, KIT.box(.32229, .11788, .32214).translate(-.000004, .853698, centerZ), 'centralFloorBoss');
+  add(B, floorSolid(rim, .793758, 1.039567), 'localRearRim');
+  add(B, KIT.box(.32229, .11788, .32214).translate(-.000004, .853698, centerZ), 'centralFloorBoss');
 }
 
-function pedestals(P: TankBuilderPort, pivot: Point): void {
-  add(P, pivot, sideSolid([[.264366, .793758], [.951816, .793758],
+function pedestals(B: Basket): void {
+  add(B, sideSolid([[.264366, .793758], [.951816, .793758],
     [.951816, 1.013227], [.588326, 1.013227], [.638757, 1.091107],
     [.638757, 1.342027], [.264366, 1.342027]], -.681770, -.453759), 'leftSteppedPedestal');
   const right = bounded([
@@ -84,15 +104,15 @@ function pedestals(P: TankBuilderPort, pivot: Point): void {
     [.98544370, -.17000210, .60110384], [-.10550498, -.99441877, -.77255727],
     [-.54870958, .83601303, .68843921], [-.96734373, .25346815, -.12173641],
   ]);
-  add(P, pivot, floorSolid(right, .807089, 1.542399), 'rightObliqueSupport');
+  add(B, floorSolid(right, .807089, B.source ? 1.542399 : RIGHT_SUPPORT_TOP), 'rightObliqueSupport');
   // The source pad has a small rear notch rather than a rectangular outline.
   const pad: Plan[] = [[-.77822, .371236], [-.31791, .371236], [-.31791, .782926],
     [-.47016, .782926], [-.47016, .744366], [-.62598, .744366],
     [-.62598, .782926], [-.77822, .782926]];
-  add(P, pivot, floorSolid(pad, 1.357556, 1.425676), 'leftSeatPad');
+  add(B, floorSolid(pad, 1.357556, 1.425676), 'leftSeatPad');
 }
 
-function upperTray(P: TankBuilderPort, pivot: Point): void {
+function upperTray(B: Basket): void {
   // Seven independently measured outer wall planes meet in a folded arc.
   // The inboard return is open; the 241 mm rim is never a filled tray block.
   const outer: Plan[] = [[-.104411, -.472944], [-.308711, -.436344],
@@ -101,37 +121,37 @@ function upperTray(P: TankBuilderPort, pivot: Point): void {
   const inner: Plan[] = [[-.902410, .820087], [-.902410, .477827],
     [-.308490, .377946], [-.227481, -.034724], [-.114400, -.120634],
     [-.114400, -.461074]];
-  add(P, pivot, floorSolid([...outer, ...inner], 1.364646, 1.374587), 'leftUpperTrayFloor');
+  add(B, floorSolid([...outer, ...inner], 1.364646, 1.374587), 'leftUpperTrayFloor');
   for (let i = 0; i < outer.length - 1; i++) {
     const a = outer[i], b = outer[i + 1], dx = b[0] - a[0], dz = b[1] - a[1];
     const length = Math.hypot(dx, dz), nx = dz / length, nz = -dx / length;
-    add(P, pivot, floorSolid([a, b, [b[0] + nx * .008, b[1] + nz * .008],
+    add(B, floorSolid([a, b, [b[0] + nx * .008, b[1] + nz * .008],
       [a[0] + nx * .008, a[1] + nz * .008]], 1.364646, 1.605556), 'leftUpperTrayRim');
   }
   // Source inner folded return descends to 1.25236 m instead of stopping at
   // the horizontal seat plane. It retains the source's narrow 10 mm width.
-  add(P, pivot, floorSolid([[-.308490, .072706], [-.248460, .377946],
+  add(B, floorSolid([[-.308490, .072706], [-.248460, .377946],
     [-.238640, .379756], [-.298670, .074526]], 1.252357, 1.605647), 'leftInnerReturn');
-  add(P, pivot, KIT.box(.054, .02462, .19).translate(-.52, 1.353337, .45), 'concealedSeatJoint');
+  add(B, KIT.box(.054, .02462, .19).translate(-.52, 1.353337, .45), 'concealedSeatJoint');
 }
 
-function lowerTray(P: TankBuilderPort, pivot: Point): void {
+function lowerTray(B: Basket): void {
   const outer: Plan[] = [[-.850189, .484956], [-.850189, .596847],
     [-.785249, .989397], [-.728458, 1.152007], [-.309988, 1.152007],
     [-.389549, .799966], [-.389549, .484956]];
-  add(P, pivot, floorSolid(outer, 1.016326, 1.023697), 'leftLowerTrayFloor');
+  add(B, floorSolid(outer, 1.016326, 1.023697), 'leftLowerTrayFloor');
   // Actual taller outboard and forward lips; the opposite low wall stops
   // at 1.06521 m and does not enclose the upper opening.
   for (let i = 0; i < outer.length - 1; i++) {
     const a = outer[i], b = outer[i + 1], dx = b[0] - a[0], dz = b[1] - a[1];
     const length = Math.hypot(dx, dz), nx = dz / length, nz = -dx / length;
-    add(P, pivot, floorSolid([a, b, [b[0] + nx * .007, b[1] + nz * .007],
+    add(B, floorSolid([a, b, [b[0] + nx * .007, b[1] + nz * .007],
       [a[0] + nx * .007, a[1] + nz * .007]], 1.016326,
     i < 4 ? 1.179977 : 1.065207), 'leftLowerTrayRim');
   }
 }
 
-function hangingReturn(P: TankBuilderPort, pivot: Point): void {
+function hangingReturn(B: Basket): void {
   // Two original plane-defined folds continue below the tray. The opening
   // beneath the seat stays empty; this is a roughly 10 mm sheet, not a block.
   const planes = [
@@ -152,11 +172,11 @@ function hangingReturn(P: TankBuilderPort, pivot: Point): void {
         [x(inner, 1.309746, z), 1.309746], [x(slopeInner, 1.374405, z), 1.374405],
         [x(slopeOuter, 1.364646, z), 1.364646], [x(outer, 1.306726, z), 1.306726]],
     }));
-    add(P, pivot, sectionSolid(sections), 'leftHangingReturn');
+    add(B, sectionSolid(sections), 'leftHangingReturn');
   }
 }
 
-function hangingLink(P: TankBuilderPort, pivot: Point): void {
+function hangingLink(B: Basket): void {
   // Source's narrow bent linkage: scalar centerline and 40 mm cross-section.
   // Round junction fillets are simplified; no surrounding gap is filled.
   const points: Point[] = [[.0858, .6634, -.155], [.0878, 1.244, -.110],
@@ -167,15 +187,17 @@ function hangingLink(P: TankBuilderPort, pivot: Point): void {
     const geometry = KIT.cylY(.01995, .01995, delta.length() + .002, 10);
     geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
       new THREE.Vector3(0, 1, 0), delta.normalize())).translate(...midpoint.toArray());
-    add(P, pivot, geometry, 'rightHangingLink');
+    add(B, geometry, 'rightHangingLink');
   }
 }
 
-export function addChieftain10XBasket(P: TankBuilderPort, pivot: Point): void {
-  base(P, pivot);
-  pedestals(P, pivot);
-  upperTray(P, pivot);
-  lowerTray(P, pivot);
-  hangingReturn(P, pivot);
-  hangingLink(P, pivot);
+/** The basket fitted to this ring, or with `source` the source basket as measured (the receipt's reference). */
+export function addChieftain10XBasket(P: TankBuilderPort, pivot: Point, source = false): void {
+  const B: Basket = { P, pivot, source };
+  base(B);
+  pedestals(B);
+  upperTray(B);
+  lowerTray(B);
+  hangingReturn(B);
+  hangingLink(B);
 }
