@@ -17,6 +17,10 @@
 // map's set pieces on flat ground, from several seeds: the fast census the selftest gates (the ratchet).
 // --ledger gates each row (kit/builder) against the committed census: no row may add floating parts, nor more than
 // max(0.05 m2, 10 %) of any open kind's worst view, nor slivers. --update-ledger rewrites the rows checked.
+// --strands (on in the gate profile; 259): each row also counts its stranded parts, those that float past the
+// fine-detail distance (a desktop's celled buckets' fine joinery hidden) or in a phone's build (none built) but not in
+// the whole build. --damage-states (gate profile) adds the Bund towers at each damage state. --lod=far|phone runs the
+// views on that view's parts; --floating-only skips the envelope and the views.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { analyseBuilding, severity as coreSeverity, FLAG_FINE, FLAG_TRANSPARENT, FLAG_DOUBLE } from './building-integrity-core.mjs';
@@ -41,7 +45,10 @@ const ledgerPath = opt('ledger', '');
 const rows = [];
 const started = performance.now();
 
-/** Flatten bucket geometries (non-indexed or indexed) into the core's triangle arrays. */
+/**
+ * Flatten bucket geometries (non-indexed or indexed) into the core's triangle arrays. `includeFine`: whether the fine
+ * joinery (userData.fine) is drawn, or per bucket (a function of its name).
+ */
 function packParts(parts, { includeFine = true, matrix = null } = {}) {
   const buckets = []; const bucketIndex = new Map();
   let triCount = 0;
@@ -50,7 +57,7 @@ function packParts(parts, { includeFine = true, matrix = null } = {}) {
     if (!Array.isArray(geometries)) continue;
     for (const g of geometries) {
       const p = g?.getAttribute?.('position'); if (!p) continue;
-      if (!includeFine && g.userData?.fine) continue;
+      if (g.userData?.fine && !(typeof includeFine === 'function' ? includeFine(bucket) : includeFine)) continue;
       const n = (g.index ? g.index.count : p.count) / 3; triCount += n; geos.push([bucket, g, n]);
     }
   }
@@ -130,6 +137,7 @@ function printRow(row) {
   if (s.floating) parts.push(`floating ${s.floating} (${s.floatingM2} m2)`);
   for (const k of ['hole', 'inside', 'gap', 'inverted']) if (s[k + 'M2']) parts.push(`${k} ${s[k + 'M2']} m2`);
   if (s.sliver) parts.push(`sliver ${s.sliver}`);
+  if (s.strandedFar || s.strandedPhone) parts.push(`stranded far ${s.strandedFar ?? 0}, phone ${s.strandedPhone ?? 0}`);
   console.log(parts.join(' | '));
 }
 
@@ -280,17 +288,19 @@ if (source === 'kits' && !fromJson) {
   // --px=<m> [--res=<n>]: finer views (with --images, to see where a finding sits)
   const gateProfile = opt('profile', '') === 'gate';
   const fine = opt('px', '') ? { viewOptions: { ...KIT_VIEW_OPTIONS, pxM: Number(opt('px', '')), maxRes: Number(opt('res', '480')) } } : {};
+  // --floating-only: the floating parts alone, no envelope or views (a floating part hidden inside a solid counts too)
+  const views = gateProfile ? GATE_PROFILE.viewOptions : fine.viewOptions ?? KIT_VIEW_OPTIONS;
   await runKitCensus({ kits: list('kits'), builders: list('builders'),
     seeds: gateProfile ? GATE_PROFILE.seeds : (opt('seeds', '11,29') || '11,29').split(',').map(Number),
-    ...(gateProfile ? { viewOptions: GATE_PROFILE.viewOptions, dedupeLandmarks: true } : fine),
-    generic: !flag('no-generic'), landmarks: !flag('no-landmarks'), only: opt('only', ''),
+    ...(gateProfile ? { dedupeLandmarks: true } : {}), viewOptions: flag('floating-only') ? { ...views, skipViews: true } : views,
+    generic: !flag('no-generic'), landmarks: !flag('no-landmarks'), only: opt('only', ''), lod: opt('lod', 'near'), damageStates: gateProfile || flag('damage-states'), strands: gateProfile || flag('strands'),
     onRow: (row) => { rows.push(row); if (flag('verbose')) printRow(row); }, packParts, analyseBuilding, severity, summarise,
     images: opt('images', '') ? (stem, rasters) => writeRasters(opt('images', ''), stem, rasters) : null });
 }
 
 // ------------------------------------------------------------------------------------------------ report
 rows.sort((a, b) => b.severity - a.severity);
-const defective = rows.filter((r) => r.severity > 0);
+const defective = rows.filter((r) => r.severity > 0 || r.summary.strandedFar || r.summary.strandedPhone);
 console.log(`\n${rows.length} buildings checked, ${defective.length} with a finding (${((performance.now() - started) / 1000).toFixed(1)} s)`);
 const byGroup = new Map();
 for (const r of rows) {
@@ -307,6 +317,7 @@ for (const r of defective.slice(0, top)) {
   printRow(r);
   const d = r.detail;
   for (const f of d.floating.slice(0, 3)) console.log(`    floating ${f.areaM2} m2 ${f.size.join('x')} m at (${f.at.join(',')}) clear ${f.clearanceM ?? '>3'} m [${f.buckets.join(',')}]${f.fineShare ? ` fine ${f.fineShare}` : ''}`);
+  for (const view of ['far', 'phone']) for (const f of d.stranded?.[view]?.slice(0, 3) ?? []) console.log(`    stranded (${view}) ${f.areaM2} m2 ${f.size.join('x')} m at (${f.at.join(',')}) clear ${f.clearanceM ?? '>3'} m [${f.buckets.join(',')}]`);
   for (const k of ['hole', 'inside', 'gap', 'inverted']) { const w = d.kinds?.[k]?.worst; if (w) console.log(`    ${k} worst ${w.areaM2} m2 in ${d.kinds[k].views} views, ${w.view} at (${w.at.join(',')}) [${w.buckets.join(',')}]`); }
 }
 
@@ -342,7 +353,7 @@ if (ledgerPath) {
   let ledger = { about: '', rows: {} };
   try { ledger = JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')); } catch { /* first write */ }
   if (flag('update-ledger')) {
-    ledger.about = 'Building integrity census (node tools/building-integrity-check.mjs --source=kits --profile=gate): one row per kit builder, generic catalog builder and authored set piece, its numbers from one seed on flat ground. tools/building-integrity-check.selftest.mjs holds every row: no row may add a floating part or a sliver, or more than max(0.05 m2, 10 %) on any open kind\'s worst view, and every builder needs a row. After a deliberate change rewrite the rows with --update-ledger and give the cause in the commit.';
+    ledger.about = 'Building integrity census (node tools/building-integrity-check.mjs --source=kits --profile=gate): one row per kit builder, generic catalog builder, authored set piece and Bund tower damage state, its numbers from one seed on flat ground. tools/building-integrity-check.selftest.mjs holds every row: no row may add a floating part or a sliver, or more than max(0.05 m2, 10 %) on any open kind\'s worst view, no row strands a part past the fine-detail distance or in a phone\'s build (strandedFar, strandedPhone: 0), and every builder needs a row. After a deliberate change rewrite the rows with --update-ledger and give the cause in the commit.';
     ledger.updatedAt = new Date().toISOString();
     ledger.rows = { ...(ledger.rows ?? {}), ...current };
     writeFileSync(resolve(ledgerPath), JSON.stringify(ledger, null, 1) + '\n');

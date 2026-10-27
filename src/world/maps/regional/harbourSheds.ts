@@ -72,7 +72,8 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   for (const sx of [-1, 1]) sink.span('structureWood', sx * px - 0.08, plate, -D / 2, sx * px + 0.08, plate + 0.14, D / 2, { colour: shade(timber, 0.9) });
   sink.dressing(mobile, () => {
     for (const z of zs) {
-      sink.span('structureWood', -px - 0.1, plate + 0.14, z - 0.06, px + 0.1, plate + 0.26, z + 0.06, { colour: shade(timber, 0.85), decor: true, fine: true });
+      // (259, the far-view census: fine joinery, the net hung over one stood in the air at range) the tie beams at any range
+      sink.span('structureWood', -px - 0.1, plate + 0.14, z - 0.06, px + 0.1, plate + 0.26, z + 0.06, { colour: shade(timber, 0.85), decor: true });
       for (const sx of [-1, 1]) sink.member('structureWood', [sx * (px - 0.06), plate - 0.6, z], [sx * (px - 0.6), plate + 0.16, z], 0.07, 0.07, [0, 0, 1], { colour: shade(timber, 0.85), decor: true, exposed: true, fine: true }, 0.035);
     }
   });
@@ -119,8 +120,9 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   // the back: its wall to the eaves and its gable to the rake
   const back: Face = { origin: [0, 0, zs[0]], u: [-1, 0, 0], out: [0, 0, -1], width: W };
   side(back, -px, px, (u) => eaveY + Math.max(0, rg.s - Math.abs(u)) * rg.tanP - 0.06);
-  // the creek end's fascia board under the eave
-  faceBox(sink, 'structureWood', { origin: [0, 0, D / 2 + 0.06], u: [1, 0, 0], out: [0, 0, 1], width: W }, 0, plate + 0.07, 0.02, rw, 0.14, 0.04, { colour: shade(timber, 0.8), decor: true });
+  // the creek end's fascia board under the eave (259, the far-view census: 6 cm past the plates' ends, on the fine tie
+  // beam's line alone) on the plates' ends
+  faceBox(sink, 'structureWood', { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, 0, plate + 0.07, 0.02, rw, 0.14, 0.04, { colour: shade(timber, 0.8), decor: true });
   // the plank slip from inside the shelter down to the plot's water edge: bearers, the boards across them
   const z0 = -D / 2 + 1.2, z1 = Math.max(D / 2 + 0.5, bb.maxZ - 0.1), yb = 0.22, yf = -0.25;
   const yAt = (z: number) => yb + (yf - yb) * (z - z0) / (z1 - z0);
