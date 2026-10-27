@@ -1,13 +1,16 @@
 // 261 (owner: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets"): the
 // STB-1 prototype's and the production Type 74's guns pitch in their own cast masks, each seated in a channel cut into
-// its own turret front (castGunSeat.ts). Sources (docs/references/tanks/type74.md and stb1.md, "Mantlet"):
+// its turret front (castGunSeat.ts). 262 (owner, 2026-10-27, with his STB-1 model: "both the type 74 and stb should be
+// based from this"): both masks are sized to that model's broad front: the bore 0.257 m over the ring datum, the drum
+// 0.33 m round the trunnion, its face reaching the turret's foot and nearly its crown. Sources
+// (docs/references/tanks/type74.md and stb1.md, "Mantlet" and "Owner model"):
 //   - Type 74: a large external mask of Japan's own design under a laced canvas cover; the J1 telescope's capped port on
 //     the vehicle's right of the gun and the coaxial 7.62 mm's on its left, a cylindrical collar with a flared half-round
 //     hood over its top, a lifting eye on the turret's upper front edge either side, and the IR/white searchlight on a
 //     cradle beside the gun base on the left, tied to the collar by two parallel bars, so it rides the gun.
-//   - STB-1 (1969): a compact rounded mask with a deep rounded chin, laced canvas on its sides, a capped port on its upper
-//     left and a lifting eye on its top; a plain collar; no searchlight (it carried a passive night sight: active
-//     infrared came with STB-2).
+//   - STB-1: the owner's model: a rounded oval mask face with a dark rim, a port either side of the bore, a short thick
+//     collar, and a six-lens searchlight box on the mask's left (the 1969 photograph and ja.wiki record a passive night
+//     sight; the owner's model governs, and the conflict is in the reference).
 // Program frame (BUILD-STANDARD §A): +x is the vehicle's right. Every mask part is a gun-mount part (it pitches with the
 // gun and does not recoil); the mask's drum turns in its receiver with a constant radial gap, its sides run a constant
 // seam inside the channel's walls, and its trunnion pins run into the walls. japaneseMantlet.selftest.mjs holds the gun
@@ -144,32 +147,48 @@ function publishFit(P: MantletBuilderPort, fit: Omit<GunShieldFit, 'faceZ' | 'mo
   });
 }
 
-/** Cut the shell for its seat and add the pieces; the trunnion pins run from the drum's sides into the channel's walls. */
-function seatShell(P: MantletBuilderPort, shell: THREE.BufferGeometry, half: number, receiverR: number, drumHalf: number, pinR: number): void {
-  const { y, z } = P.gunG.position;
-  // the receiver's floor 7 cm over the ring datum, above the plane the turret's seat lifts the shell's low corners to
-  for (const piece of cutMaskSeat(shell, { halfWidth: half, axisY: y, axisZ: z, radius: receiverR, bands: P.q ? 20 : 10, floorY: 0.07 })) P.add('turret', piece);
-  shell.dispose();
-  const seg = P.q ? 24 : 12, pinLen = half + 0.035 - drumHalf;
-  // painted like the mask: through the seam the pin reads as the mask's own trunnion, inside the wall's front edge
-  for (const s of [-1, 1]) P.add('gunMount', KIT.cylX(pinR, pinLen, seg), s * (drumHalf + pinLen / 2 - 0.004), 0, 0);
+/** One mask's seat: the channel cut into the shell, the receiver round the trunnion, the drum turning in it. */
+interface MaskSeatFit {
+  readonly channelHalf: number;
+  readonly receiverR: number;
+  readonly drumR: number;
+  /** the drum's underside under the bore through its travel: level with the turret's foot over the deck */
+  readonly drumLow: number;
+  readonly drumHalf: number;
+  /** the receiver's floor, turret frame: just over the shell's foot ring */
+  readonly floorY: number;
+  readonly pinR: number;
 }
+
+/** Cut the shell for its seat and add the pieces; the trunnion pins run from the drum's sides into the channel's walls. */
+function seatShell(P: MantletBuilderPort, shell: THREE.BufferGeometry, fit: MaskSeatFit): void {
+  const { y, z } = P.gunG.position;
+  for (const piece of cutMaskSeat(shell, {
+    halfWidth: fit.channelHalf, axisY: y, axisZ: z, radius: fit.receiverR, bands: P.q ? 24 : 12, floorY: fit.floorY,
+  })) P.add('turret', piece);
+  shell.dispose();
+  const seg = P.q ? 24 : 12, pinLen = fit.channelHalf + 0.035 - fit.drumHalf;
+  // painted like the mask: through the seam the pin reads as the mask's own trunnion, inside the wall's front edge
+  for (const s of [-1, 1]) P.add('gunMount', KIT.cylX(fit.pinR, pinLen, seg), s * (fit.drumHalf + pinLen / 2 - 0.004), 0, 0);
+  P.add('gunMount', maskDrum(fit.drumHalf, fit.drumR, fit.drumLow, DRUM_TRAVEL, !!P.q));
+}
+
+// The drum keeps its underside `drumLow` under the bore through 15 degrees either way of level: over the deck the turret
+// swings over, the gun's depression at each bearing is the hull's to limit (gunPitchByYawDeg).
+const DRUM_TRAVEL = 15 * Math.PI / 180;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Type 74 (production): the broad external mask
 // ---------------------------------------------------------------------------------------------------------------------
-// Both masks keep their undersides 0.135 m under the bore, level with the turret's own underside over the deck (its
-// seat plane, turretSeatRace.ts): through the gun's whole travel the drum never hangs into the fender lockers and deck
-// kit the turret swings over. Over the deck, the gun's depression at each bearing is the hull's to limit.
-const DRUM_LOW = 0.135, DRUM_TRAVEL = 15 * Math.PI / 180;
 const T74 = {
-  channelHalf: 0.48, receiverR: 0.20, drumR: 0.18, drumHalf: 0.465,
+  seat: { channelHalf: 0.515, receiverR: 0.36, drumR: 0.33, drumLow: 0.27, drumHalf: 0.50, floorY: 0.05, pinR: 0.06 },
+  // the mask block ahead of the drum, its face 0.11 m proud of the turret's nose
   stations: [
-    { z: 0.00, half: 0.465, lo: -0.135, hi: 0.180, rb: 0.040, rt: 0.050 },
-    { z: 0.12, half: 0.462, lo: -0.130, hi: 0.178, rb: 0.040, rt: 0.055 },
-    { z: 0.22, half: 0.452, lo: -0.122, hi: 0.168, rb: 0.040, rt: 0.060 },
-    { z: 0.30, half: 0.430, lo: -0.115, hi: 0.152, rb: 0.040, rt: 0.058 },
-    { z: 0.345, half: 0.398, lo: -0.108, hi: 0.137, rb: 0.036, rt: 0.050 },
+    { z: 0.00, half: 0.500, lo: -0.270, hi: 0.330, rb: 0.060, rt: 0.075 },
+    { z: 0.16, half: 0.496, lo: -0.262, hi: 0.326, rb: 0.060, rt: 0.080 },
+    { z: 0.28, half: 0.484, lo: -0.250, hi: 0.310, rb: 0.060, rt: 0.088 },
+    { z: 0.37, half: 0.460, lo: -0.236, hi: 0.288, rb: 0.058, rt: 0.085 },
+    { z: 0.42, half: 0.425, lo: -0.222, hi: 0.262, rb: 0.050, rt: 0.075 },
   ] as const,
 };
 
@@ -179,111 +198,110 @@ const T74 = {
  */
 export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometry): void {
   const { box, cylX, cylZ } = KIT;
-  const seg = P.q ? 40 : 18, steps = P.q ? 4 : 2;
-  seatShell(P, shell, T74.channelHalf, T74.receiverR, T74.drumHalf, 0.045);
-  // the drum turning in its receiver and the mask block ahead of it
-  P.add('gunMount', maskDrum(T74.drumHalf, T74.drumR, DRUM_LOW, DRUM_TRAVEL, !!P.q));
+  const seg = P.q ? 40 : 18, steps = P.q ? 4 : 2, { seat } = T74;
+  seatShell(P, shell, seat);
   P.add('gunMount', maskSolid(T74.stations, steps));
   // the laced canvas cover gathered over the drum and the mask's crown, tied down by three straps
-  P.add('gunMountCanvasSkin', drumCanvas(T74.drumHalf - 0.012, T74.drumR, 0.30, Math.PI * 0.95, 6, 0.004, 0.006, !!P.q));
+  P.add('gunMountCanvasSkin', drumCanvas(seat.drumHalf - 0.014, seat.drumR, 0.30, Math.PI * 0.95, 7, 0.005, 0.008, !!P.q));
   P.add('gunMountCanvasSkin', maskSolid([
-    { z: 0.0, half: 0.455, lo: 0.06, hi: 0.188, rb: 0.01, rt: 0.06 },
-    { z: 0.11, half: 0.452, lo: 0.06, hi: 0.186, rb: 0.01, rt: 0.062 },
-    { z: 0.20, half: 0.445, lo: 0.06, hi: 0.176, rb: 0.01, rt: 0.064 },
+    { z: 0.0, half: 0.490, lo: 0.13, hi: 0.338, rb: 0.01, rt: 0.08 },
+    { z: 0.15, half: 0.487, lo: 0.13, hi: 0.334, rb: 0.01, rt: 0.084 },
+    { z: 0.27, half: 0.476, lo: 0.13, hi: 0.318, rb: 0.01, rt: 0.09 },
   ], steps));
-  for (const x of [-0.30, 0, 0.30]) P.add('gunMountDark', box(0.035, 0.012, 0.20), x, 0.187, 0.10, -0.06, 0, 0);
-  for (const s of [-1, 1]) for (let k = 0; k < 5; k++) {
+  for (const x of [-0.33, 0, 0.33]) P.add('gunMountDark', box(0.045, 0.014, 0.27), x, 0.336, 0.13, -0.07, 0, 0);
+  for (const s of [-1, 1]) for (let k = 0; k < 6; k++) {
     // the lacing zig-zagging along the cover's crown near each cheek
-    P.add('gunMountDark', box(0.008, 0.008, 0.05), s * (0.395 + (k % 2) * 0.018), 0.19 - k * 0.0025, 0.03 + k * 0.036, 0, (k % 2 ? 0.5 : -0.5), 0);
+    P.add('gunMountDark', box(0.01, 0.01, 0.06), s * (0.425 + (k % 2) * 0.022), 0.338 - k * 0.003, 0.03 + k * 0.042, 0, (k % 2 ? 0.5 : -0.5), 0);
   }
   // the J1 telescope's port on the right and the coaxial 7.62 mm's on the left, both a little over the bore
-  portBoss(P, 0.235, 0.058, 0.345, 0.056, 'sight', P.q ? 20 : 12);
-  portBoss(P, -0.285, 0.046, 0.345, 0.046, 'coax', P.q ? 20 : 12);
+  portBoss(P, 0.30, 0.10, 0.40, 0.066, 'sight', P.q ? 20 : 12);
+  portBoss(P, -0.33, 0.08, 0.40, 0.054, 'coax', P.q ? 20 : 12);
   // the collar the barrel leaves through, the flared half-round hood over its top and the seal round the barrel
-  // (115 mm: at the gun's -6 degrees over the deck a 135 mm collar stood 1.6 cm off the glacis crest)
-  P.add('gunMount', cylZ(0.115, 0.17, seg), 0, 0, 0.43);
-  P.add('gunMountDark', cylZ(0.119, 0.016, seg), 0, 0, 0.36);
-  P.add('gunMount', halfHood([{ z: 0.43, inner: 0.114, outer: 0.127 }, { z: 0.50, inner: 0.126, outer: 0.139 },
-    { z: 0.56, inner: 0.145, outer: 0.157 }], !!P.q));
-  barrelSeal(P, 0.0775, 0.515, seg);
-  // the searchlight on its cradle beside the gun base (left): a deck plate run in from the mask's left side, a web under
-  // it, the lamp house with chamfered rear corners, its framed six-pane glass, and the two bars to the collar
-  const lx = -0.625;
-  P.add('gunMount', box(0.47, 0.016, 0.38), -0.62, -0.042, 0.33);
-  P.add('gunMount', box(0.12, 0.045, 0.22), -0.49, -0.0705, 0.27);                  // the cradle's foot on the mask's side
-  P.add('gunMount', box(0.03, 0.035, 0.30), -0.80, -0.0665, 0.33);                   // the deck plate's outer rib
+  P.add('gunMount', cylZ(0.13, 0.20, seg), 0, 0, 0.51);
+  P.add('gunMountDark', cylZ(0.134, 0.018, seg), 0, 0, 0.43);
+  P.add('gunMount', halfHood([{ z: 0.51, inner: 0.129, outer: 0.143 }, { z: 0.58, inner: 0.141, outer: 0.155 },
+    { z: 0.64, inner: 0.160, outer: 0.174 }], !!P.q));
+  barrelSeal(P, 0.0775, 0.605, seg);
+  // the searchlight on its cradle beside the gun base (left), clear of the mask's side: a deck plate run in from the
+  // mask's left side, a web under it, the lamp house with chamfered rear corners, its framed six-pane glass, and the two
+  // bars to the collar
+  const lx = -0.80;
+  P.add('gunMount', box(0.58, 0.016, 0.40), -0.735, -0.042, 0.42);
+  P.add('gunMount', box(0.12, 0.045, 0.24), -0.50, -0.0705, 0.36);                  // the cradle's foot on the mask's side
+  P.add('gunMount', box(0.03, 0.035, 0.32), -0.99, -0.0665, 0.42);                   // the deck plate's outer rib
   P.add('gunMount', sectionSolid([
-    { z: 0.16, ring: [[-0.17, -0.034], [0.17, -0.034], [0.19, -0.015], [0.19, 0.345], [0.17, 0.365], [-0.17, 0.365], [-0.19, 0.345], [-0.19, -0.015]] },
-    { z: 0.22, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
-    { z: 0.49, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
+    { z: 0.25, ring: [[-0.17, -0.034], [0.17, -0.034], [0.19, -0.015], [0.19, 0.345], [0.17, 0.365], [-0.17, 0.365], [-0.19, 0.345], [-0.19, -0.015]] },
+    { z: 0.31, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
+    { z: 0.58, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
   ]), lx, 0, 0);
-  P.add('gunMount', box(0.45, 0.034, 0.036), lx, 0.36, 0.488);
-  P.add('gunMount', box(0.45, 0.034, 0.036), lx, -0.024, 0.488);
-  P.add('gunMount', box(0.036, 0.35, 0.036), lx - 0.207, 0.168, 0.488);
-  P.add('gunMount', box(0.036, 0.35, 0.036), lx + 0.207, 0.168, 0.488);
-  P.add('gunMountGlass', markVehicleNightLens(box(0.36, 0.33, 0.012), 'headlight', { searchlight: true }), lx, 0.168, 0.497);
-  P.add('gunMountDark', box(0.012, 0.31, 0.016), lx, 0.168, 0.505);
-  for (const dy of [-0.055, 0.055]) P.add('gunMountDark', box(0.34, 0.010, 0.016), lx, 0.168 + dy, 0.505);
-  P.add('gunMountDark', box(0.30, 0.016, 0.20), lx, 0.373, 0.32);                       // the lid's seam band
-  for (const dx of [-0.10, 0.10]) P.add('gunMountDark', box(0.022, 0.026, 0.12), lx + dx, 0.388, 0.32); // lid handles
-  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.30, 10), -0.278, y, 0.487);
+  P.add('gunMount', box(0.45, 0.034, 0.036), lx, 0.36, 0.578);
+  P.add('gunMount', box(0.45, 0.034, 0.036), lx, -0.024, 0.578);
+  P.add('gunMount', box(0.036, 0.35, 0.036), lx - 0.207, 0.168, 0.578);
+  P.add('gunMount', box(0.036, 0.35, 0.036), lx + 0.207, 0.168, 0.578);
+  P.add('gunMountGlass', markVehicleNightLens(box(0.36, 0.33, 0.012), 'headlight', { searchlight: true }), lx, 0.168, 0.587);
+  P.add('gunMountDark', box(0.012, 0.31, 0.016), lx, 0.168, 0.595);
+  for (const dy of [-0.055, 0.055]) P.add('gunMountDark', box(0.34, 0.010, 0.016), lx, 0.168 + dy, 0.595);
+  P.add('gunMountDark', box(0.30, 0.016, 0.20), lx, 0.373, 0.41);                       // the lid's seam band
+  for (const dx of [-0.10, 0.10]) P.add('gunMountDark', box(0.022, 0.026, 0.12), lx + dx, 0.388, 0.41); // lid handles
+  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.47, 10), -0.365, y, 0.577);
   // the turret's lifting eyes on its upper front edge either side of the mask
-  for (const s of [-1, 1]) KIT.liftEye(P, 'turretDetail', s * 0.60, 0.25, 0.98, s * 0.25);
+  for (const s of [-1, 1]) KIT.liftEye(P, 'turretDetail', s * 0.70, 0.46, 0.93, s * 0.25);
   publishFit(P, {
-    shield: 'type74-production-external-mask', halfWidthM: T74.channelHalf, shieldHalfWidthM: T74.drumHalf,
-    receiverR: T74.receiverR, drumR: T74.drumR, drumLow: DRUM_LOW, stub: { r: 0.045 },
+    shield: 'type74-production-external-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.drumHalf,
+    receiverR: seat.receiverR, drumR: seat.drumR, drumLow: seat.drumLow, stub: { r: seat.pinR },
   });
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// STB-1 (prototype): the compact rounded mask with its deep chin
+// STB-1 (prototype): the owner's model's rounded oval mask
 // ---------------------------------------------------------------------------------------------------------------------
 const STB1 = {
-  channelHalf: 0.41, receiverR: 0.20, drumR: 0.18, drumHalf: 0.395,
-  // rounder than the production mask everywhere, its full chin carried forward under the collar before it rounds up
+  seat: { channelHalf: 0.475, receiverR: 0.36, drumR: 0.33, drumLow: 0.27, drumHalf: 0.46, floorY: 0.05, pinR: 0.06 },
+  // an oval face (corner radii near its half-height) domed forward of the drum, 0.08 m proud of the turret's nose
   stations: [
-    { z: 0.00, half: 0.395, lo: -0.135, hi: 0.180, rb: 0.070, rt: 0.070 },
-    { z: 0.09, half: 0.392, lo: -0.135, hi: 0.173, rb: 0.090, rt: 0.090 },
-    { z: 0.18, half: 0.370, lo: -0.135, hi: 0.160, rb: 0.110, rt: 0.110 },
-    { z: 0.26, half: 0.315, lo: -0.133, hi: 0.137, rb: 0.110, rt: 0.105 },
-    { z: 0.315, half: 0.240, lo: -0.124, hi: 0.112, rb: 0.095, rt: 0.090 },
-    { z: 0.345, half: 0.175, lo: -0.104, hi: 0.088, rb: 0.070, rt: 0.070 },
+    { z: 0.00, half: 0.460, lo: -0.270, hi: 0.330, rb: 0.140, rt: 0.160 },
+    { z: 0.14, half: 0.452, lo: -0.262, hi: 0.322, rb: 0.170, rt: 0.190 },
+    { z: 0.26, half: 0.430, lo: -0.245, hi: 0.300, rb: 0.200, rt: 0.220 },
+    { z: 0.34, half: 0.395, lo: -0.222, hi: 0.270, rb: 0.200, rt: 0.220 },
+    { z: 0.385, half: 0.340, lo: -0.190, hi: 0.230, rb: 0.170, rt: 0.190 },
   ] as const,
 };
 
 /**
- * The STB-1's mask, its narrow laced canvas, its port and lifting eye, the plain collar and the seat cut into `shell`
- * (the cast turret shell in the turret's final frame, unadded).
+ * The STB-1's oval mask, its dark rim, its two ports, the thick collar, the six-lens searchlight box on its left and the
+ * seat cut into `shell` (the cast turret shell, turret frame, unadded).
  */
 export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometry): void {
-  const { box, cylZ, torus } = KIT;
-  const seg = P.q ? 40 : 18, steps = P.q ? 5 : 3;
-  seatShell(P, shell, STB1.channelHalf, STB1.receiverR, STB1.drumHalf, 0.045);
-  P.add('gunMount', maskDrum(STB1.drumHalf, STB1.drumR, DRUM_LOW, DRUM_TRAVEL, !!P.q));
+  const { box, cylZ } = KIT;
+  const seg = P.q ? 40 : 18, steps = P.q ? 5 : 3, { seat } = STB1;
+  seatShell(P, shell, seat);
   P.add('gunMount', maskSolid(STB1.stations, steps));
-  // the casting's parting line, a flash rib standing 6 mm proud round the mask's waist
-  P.add('gunMount', maskSolid([
-    { z: 0.174, half: 0.376, lo: -0.139, hi: 0.167, rb: 0.113, rt: 0.113 },
-    { z: 0.186, half: 0.374, lo: -0.139, hi: 0.165, rb: 0.113, rt: 0.113 },
+  // the rim: a dark bead 6 mm proud round the oval where its face leaves the drum
+  P.add('gunMountDark', maskSolid([
+    { z: 0.255, half: 0.438, lo: -0.252, hi: 0.307, rb: 0.205, rt: 0.225 },
+    { z: 0.275, half: 0.434, lo: -0.249, hi: 0.303, rb: 0.205, rt: 0.225 },
   ], steps));
-  // the narrow laced canvas over the drum, laced down each side
-  P.add('gunMountCanvasSkin', drumCanvas(STB1.drumHalf - 0.012, STB1.drumR, 0.55, Math.PI * 0.95, 4, 0.004, 0.005, !!P.q));
-  for (const s of [-1, 1]) for (let k = 0; k < 6; k++) {
-    const a = 0.62 + k * 0.33;
-    P.add('gunMountDark', box(0.03, 0.009, 0.009), s * 0.37, (STB1.drumR + 0.005) * Math.sin(a), (STB1.drumR + 0.005) * Math.cos(a), -a, 0, s * (k % 2 ? 0.5 : -0.5));
+  // a port either side of the bore, a little over it: the telescope's on the right, the coaxial gun's on the left
+  portBoss(P, 0.245, 0.11, 0.36, 0.06, 'sight', P.q ? 20 : 12);
+  portBoss(P, -0.245, 0.11, 0.36, 0.052, 'coax', P.q ? 20 : 12);
+  // the short thick collar, its ring and the seal round the barrel
+  P.add('gunMount', cylZ(0.15, 0.22, seg), 0, 0, 0.47);
+  P.add('gunMountDark', cylZ(0.158, 0.02, seg), 0, 0, 0.56);
+  P.add('gunMount', cylZ(0.11, 0.06, seg), 0, 0, 0.60);
+  barrelSeal(P, 0.0775, 0.63, seg);
+  // the searchlight box on the mask's left: a cradle plate on the mask's face, the box, its six lenses in a frame and
+  // the lid's seam
+  const lx = -0.445, ly = 0.20;
+  P.add('gunMount', box(0.30, 0.03, 0.16), lx + 0.10, -0.005, 0.40);                 // the cradle plate on the face
+  P.add('gunMount', box(0.56, 0.40, 0.30), lx, ly, 0.52);
+  P.add('gunMountDark', box(0.52, 0.36, 0.012), lx, ly, 0.672);
+  for (const c of [-1, 1]) for (const r of [-1, 0, 1]) {
+    P.add('gunMountGlass', markVehicleNightLens(box(0.21, 0.098, 0.012), 'headlight', { searchlight: true }), lx + c * 0.125, ly + r * 0.115, 0.68);
   }
-  // the capped port on the upper left (the coaxial machine gun's) and the telescope's on the right
-  portBoss(P, -0.165, 0.075, 0.30, 0.044, 'coax', P.q ? 20 : 12, -0.35);
-  portBoss(P, 0.19, 0.0, 0.30, 0.048, 'sight', P.q ? 20 : 12);
-  // the lifting eye on the mask's crown
-  P.add('gunMountDark', torus(0.04, 0.012, 12, 8).rotateX(Math.PI / 2).rotateY(Math.PI / 2), -0.15, 0.205, 0.10);
-  P.add('gunMount', box(0.05, 0.03, 0.08), -0.15, 0.172, 0.10);
-  // the plain collar and its dust ring
-  P.add('gunMount', cylZ(0.128, 0.14, seg), 0, 0, 0.41);
-  P.add('gunMountDark', cylZ(0.136, 0.018, seg), 0, 0, 0.458);
-  barrelSeal(P, 0.0775, 0.481, seg);
+  P.add('gunMountDark', box(0.56, 0.012, 0.30), lx, ly + 0.155, 0.52);
+  for (const dx of [-0.16, 0.16]) P.add('gunMountDark', box(0.03, 0.02, 0.10), lx + dx, ly + 0.21, 0.50);
   publishFit(P, {
-    shield: 'stb1-prototype-rounded-mask', halfWidthM: STB1.channelHalf, shieldHalfWidthM: STB1.drumHalf,
-    receiverR: STB1.receiverR, drumR: STB1.drumR, drumLow: DRUM_LOW, stub: { r: 0.045 },
+    shield: 'stb1-prototype-oval-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.drumHalf,
+    receiverR: seat.receiverR, drumR: seat.drumR, drumLow: seat.drumLow, stub: { r: seat.pinR },
   });
 }

@@ -1,8 +1,9 @@
 # STB-1 (`stb1`)
 
 **Exact variant modeled:** STB-1, the first Type 74 prototype (completed September 1969 with STB-2; JGSDF).
-Builder: `src/vehicles/profiles/japan.ts` (`buildSTB1`); its gun mount and the turret front around it:
-`src/vehicles/profiles/japaneseMantlets.ts` (`addSTB1Mantlet`).
+Builder: `buildType74Family(P, 'prototype')` in `src/vehicles/profiles/type74Family.ts` (262: the Type 74 family on the
+owner's model, below), called from `src/vehicles/profiles/japan.ts` (`buildSTB1`); its gun mount and the turret front
+around it: `src/vehicles/profiles/japaneseMantlets.ts` (`addSTB1Mantlet`).
 
 ## Prototype facts (sourced)
 
@@ -43,20 +44,24 @@ the remote AA machine gun are sourced and stay.
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs` (the gun stays inside its shield over the whole travel; the
 STB-1's and the Type 74's shields are different castings).
 
+**Superseded in 262** by the owner's model (below): the mask is now the model's oval face with its rim and two ports, the
+collar short and thick, and the model's six-lens searchlight box rides on the mask's left.
+
 ## Hull (262 rebuild)
 
 Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too"; Main: the prototype must read as
-different from the production tank from the hull up. Builder: `addSTB1HullBody` / `addSTB1HullHardwareAndRunningGear`
-(`src/vehicles/profiles/japan.ts`) with the fittings in `src/vehicles/profiles/japaneseHullKit.ts`.
+different from the production tank from the hull up. Builder: `src/vehicles/profiles/type74Family.ts` (the shared hull
+on the owner's model, below, and `addPrototypeHullKit`) with the fittings in `src/vehicles/profiles/japaneseHullKit.ts`.
+The "after" columns are the final state on the owner's model.
 
 | Feature | STB-1 before (b93941ce9d) | STB-1 source | STB-1 after (262) | Production Type 74 (262) |
 |---|---|---|---|---|
 | Rear plate | Sloped and tucked (the loft's last station) | Vertical ([wikiwiki](https://wikiwiki.jp/warthunder/STB-2), archived STB-1 text) | Vertical, full section to the stern, with two low tow shackles | Sloped, bolted access door, pipe rail, tow eyes |
-| Exhaust | A canister on each rear fender | One mesh-guarded cylinder on the left rear fender **[photo]** | One silencer in a mesh guard (hoops and bars) on the left rear fender; a locker on the right | Muffler covers on both rear fenders |
+| Exhaust | A canister on each rear fender | One mesh-guarded cylinder on the left rear fender **[photo]** | Mesh-guarded silencers on both rear corners and mesh-topped boxes on both rear sponsons (the owner's model) | Muffler covers on both rear side slopes |
 | Track | The Japanese staggered-rib shoe | Chevron grousers where it wraps the idler **[photo]**; the STT test hull first ran Type 61 tracks | The single-pin chevron shoe | Double-pin with end connectors |
-| Lamps | A three-lamp bank in an armoured shoe on each shoulder | Cage-guarded boxes at both front corners **[photo]** | A taller, narrower caged box on each front fender (three bars; marker and two headlights) | Four-lamp boxes, four-bar cages |
-| Nose | A dark band and a bar across the lower nose, tow eyes on its underside | A flat glacis with a cable loop and tow fittings on the lower plate **[photo]** | The band and bar replaced by two clevis shackles on the nose plate; the cable loop kept | Straight crease, chamfered lower corners, two shackles |
-| Pioneer tools | None aft | On the left rear deck **[photo]** | A shovel on the left rear deck, between the radiator field and the silencer | On the left fender |
+| Lamps | A three-lamp bank in an armoured shoe on each shoulder | Cage-guarded boxes at both front corners **[photo]** | A caged twin-headlight box on each front fender cap (three bars) and a hooded lamp on the glacis' right (the owner's model) | Four-lamp boxes, four-bar cages, ribbed mudguards |
+| Nose | A dark band and a bar across the lower nose, tow eyes on its underside | A flat glacis with a cable loop and tow fittings on the lower plate **[photo]** | Two tow hooks on the lower plate (the owner's model) | The shared nose, two shackles, the tow cable across the glacis |
+| Pioneer tools | None aft | On the left rear deck **[photo]** | A shovel on the left rear deck strip | On the left rear deck strip |
 | Smoke dischargers | Turret rear sides | Turret rear sides **[photo]** | Unchanged | Turret front corners |
 | Commander's station | Raised two-tier drum with the remote AA machine gun | Raised station, remote AA M2 aimed by periscope ([ja.wikipedia](https://ja.wikipedia.org/wiki/74式戦車)) | Unchanged | Low cupola, M2 on a pintle |
 | Gun travel | −10/+15 at the gun | Not published | −6/+9 at the gun (the shared figure) with the hull pitch, per-yaw curves | The same |
@@ -64,3 +69,47 @@ different from the production tank from the hull up. Builder: `addSTB1HullBody` 
 Not modelled: the STB-1's forward-opening "gunner's hatch" (ja.wikipedia) — which roof hatch the article means is not
 clear from the photographs.
 
+
+## Owner model (262): both tanks rebuilt on it
+
+Owner, 2026-10-27, handing over an STB-1 model: "both the type 74 and stb should be based from this". The model is
+"STB_1" by reverie outbreak ([Sketchfab](https://sketchfab.com/3d-models/stb-1-b0f59399010542ae90a2aa9bd5b21e53),
+CC-BY-NC-4.0), kept as an authoring oracle only at `public/models/community-candidates/stb_1_owner_20261027.glb`
+(gitignored, md5 `464b7e95e6def5a6ea042fbeafbdddec`; `docs/ATTRIBUTION.md`). No vertex, index or texture of it is used:
+its stations were measured by rays (inside-out for the turret, outside-in for the hull in the hull's own frame, its
+4.9 degree skew to the traversed turret undone) and rebuilt from primitives in `src/vehicles/profiles/type74Family.ts`.
+
+Frame: x 0.972 (its tracks' 3.27 m to the published 3.18), y 0.86 (its 2.36 m crown to the published 2.25 m roof and
+cupola), z 0.989 and −0.074 (its 6.85 m hull to our 6.77, nose at +3.37).
+
+| Station | Model (program units) | Built |
+|---|---|---|
+| Tub | ±1.00, belly 0.37–0.42 | ±0.98 (the track corridor), belly 0.38 |
+| Sponsons | floor 1.07–1.12 over the track's top run; the outer edge at ±1.58; sides sloping 42–47 degrees to the deck edge ±1.27 | floor 1.09, edge ±1.575, 42 degrees to ±1.27; front faces at +2.40 with fender caps over the idlers |
+| Deck | 1.39–1.43, flat to the stern | 1.40 |
+| Glacis | crest +1.87 at the deck; 19 degrees to the nose's top edge (0.90, +3.35); lower plate 28 degrees to the belly at +2.55–2.65 | the same |
+| Stern | vertical plate at −3.41 from the deck to 0.76; lower plate raked forward to the belly at −3.00 | the same (STB-1); the production tank keeps its sloped plate |
+| Rear sponsons | mesh-topped boxes flush with the deck, outer face at ±1.53, z −1.25..−2.55; mesh cylinders behind them | the same (STB-1) |
+| Running gear | five road wheels 0.79 m on a 1.01 m pitch at +2.00/+0.98/0.00/−1.01/−2.05; idler +3.02, sprocket −2.92 (both raised) | five 0.74 m wheels at +2.00/+0.99/0.00/−1.01/−2.02; idler (+3.00, 0.66), sprocket (−2.95, 0.70) |
+| Turret | ring datum 1.41 at z +0.49; 18-station plan ±1.33, +1.49/−2.12; full belt at 0.07–0.24, sides rolling in above; crown flat at 0.625–0.634; bustle undercut from 0.6 of the plan at the foot | the same plan and ten rings (refined to 36 × 19); pivot (0, 1.42, 0.50) |
+| Gun | bore 1.677 (0.257 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.257, 1.18) in the turret frame; tube 4.10 (STB-1), 3.91 (Type 74) |
+| Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | a 0.33 m drum in a 0.475 m channel and a domed oval face, its rim, two ports, a thick collar |
+| Searchlight | a six-lens box on the mask's left (x −0.14..−0.73), its foot at the bore, its top level with the crown | the same, riding the gun |
+
+Conflicts between the model and the sources, settled for the model (the owner's instruction):
+
+- **Searchlight.** The model carries a six-lens searchlight box; ja.wikipedia records a passive night sight on STB-1 and
+  the 1969 photograph shows no lamp box. Built per the model.
+- **Exhaust.** The model has mesh-guarded cylinders on both rear corners and mesh-topped boxes on both rear sponsons; the
+  1969 photograph shows one guarded silencer on the left. Built per the model.
+- **Turret flank boxes.** The model carries a four-pane box on each turret flank; no photograph shows them. Built per
+  the model.
+- **Gun travel.** Neither the model nor any source gives the STB-1's own limits; −6/+9 at the gun (the production
+  figure) with the ±8 hydropneumatic hull pitch.
+
+The production Type 74 (`type74.md`) sits on the same hull, running gear and turret shell; the two tanks differ in their
+masks (canvas-covered with the cradle searchlight; oval with the box searchlight), sterns (sloped; vertical), exhausts
+(muffler covers; mesh boxes and guarded silencers), lamps (recessed four-lamp boxes, ribbed mudguards; caged twin
+headlights, plain mudguards), drivers' hatches (flush; raised octagon), roofs (low cupola and M2, smoke at the front
+corners, bustle basket; raised station and remote gun, flank boxes, rear-side smoke, roof vents, rear rail) and tracks
+(double-pin; chevron single-pin).

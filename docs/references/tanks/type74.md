@@ -474,7 +474,9 @@ Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
 ## Hull (262 rebuild)
 
 Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too". Builder: `buildType74`
-(`src/vehicles/profiles/misc.ts`) with the fittings in `src/vehicles/profiles/japaneseHullKit.ts`. Photographs:
+(`src/vehicles/profiles/misc.ts`) → `buildType74Family(P, 'production')` (`src/vehicles/profiles/type74Family.ts`), with
+the fittings in `src/vehicles/profiles/japaneseHullKit.ts`. The rows below are this pass's sourced fittings; the hull
+they sit on is the owner's model's (next section). Photographs:
 [glacis, low front](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_left_front_low-angle_view_at_Camp_Katsura_November_11,_2018.jpg),
 [headlight box](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_headlight_(right)_right_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg),
 [right side](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_Right_Side_View_at_Camp_Katsura_September_18,_2016.jpg),
@@ -495,3 +497,24 @@ Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks t
 | Commander's cupola | Six periscopes | Five periscopes round the hatch ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)) | Five |
 | Gun travel | −10/+15 at the gun | −6/+9 at the gun; the hull's hydropneumatic pitch adds the rest | −6/+9 at the gun; the special action's hull pitch (±8, pinned) carries it to −14/+17; per-yaw depression curves keep the gun off the hull |
 
+
+## Owner model (262): the production tank on the family hull
+
+Owner, 2026-10-27, handing over an STB-1 model: "both the type 74 and stb should be based from this". The model, its
+licence, its hash and the measured stations are in `stb1.md` ("Owner model"); both tanks are now the Type 74 family on
+it (`src/vehicles/profiles/type74Family.ts`), the production tank `buildType74Family(P, 'production')`.
+
+| Feature | 262 hull pass (79917245ef) | Owner's model | Production Type 74 after |
+|---|---|---|---|
+| Hull section | Tub ±0.98 under a flat 3.0 m deck at 1.375–1.395 out to fenders at ±1.57, a vertical 0.40 m sponson band | Sponsons over the tracks with sides sloping ~45 degrees from the tracks' outer edge to the deck edge | Floor 1.09, outer lip ±1.575, sides 42 degrees up to the deck edge ±1.27, deck 1.40; fender caps over the idlers |
+| Glacis | 29 degrees from a crest at +2.42 to a crease at +3.35 | 19 degrees from a crest at +1.87 to the nose's top edge at +3.35 | The model's; the lower plate 28 degrees to the belly |
+| Belly | 0.305 | 0.37–0.42 | 0.38 |
+| Running gear | Five wheels on a 0.8675 m pitch (+1.83..−1.64), sprocket (−3.00, 0.90) | Five on a 1.01 m pitch (+2.00..−2.05), idler +3.02, sprocket −2.92, both raised; the stern overhangs the sprocket | Five 0.74 m wheels at +2.00/+0.99/0.00/−1.01/−2.02, idler (+3.00, 0.66), sprocket (−2.95, 0.70) |
+| Turret | 18-station plan ±1.14, +1.35/−2.05; shell 0.465 m, crown at 1.885 | Plan ±1.33, +1.49/−2.12; full belt 0.07–0.24 m, sides rolling to a flat crown at 0.63 m, the bustle undercut | The model's plan and rings; crown at 2.05; cupola top 2.23 |
+| Gun | Bore 1.60, trunnion (0, 0.18, 1.15) | Bore 1.677 | Trunnion (0, 0.257, 1.18); `armor.gunPivot` follows |
+| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.33 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose) |
+| Searchlight | Cradle at x −0.625 | (the model's is the STB-1 box) | The cradle at x −0.80, clear of the larger mask |
+| Fender stowage | Four lockers on the flat fenders | (no fenders: sloped sides) | Two lockers on each side slope |
+| Mufflers | On the flat rear fenders | (mesh cylinders on the rear corners) | Muffler covers on the rear side slopes |
+| Turret stowage | Baskets hugging the bustle's flanks | A rail at the bustle's rear | A bustle basket across the rear face |
+| Driver's hatch | Flush on the deck at +2.00 | A raised octagon on the glacis (the STB-1's) | Flush, laid on the glacis at +2.15, the three periscopes ahead |

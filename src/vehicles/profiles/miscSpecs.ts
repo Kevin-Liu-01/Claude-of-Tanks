@@ -51,7 +51,8 @@ const TYPE74_SPEC = {
   dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.70 },
   armor: communityArmor({
     lenM: 6.7, widM: 3.18, hgtM: 2.25, turretPivot: [0, 1.42, 0.50],
-    gunPivot: [0, 0.18, 1.15], barrelLenM: 4.42, barrelRadM: 0.062,
+    // 262: the trunnion of the Type 74 family's mask on the owner's model (profiles/type74Family.ts), 0.257 m over the ring
+    gunPivot: [0, 0.257, 1.18], barrelLenM: 4.42, barrelRadM: 0.062,
     frontMm: 110, sideMm: 45, rearMm: 25, roofMm: 20,
     tFrontMm: 195, tSideMm: 80, tRearMm: 40, mantletMm: 195,
   }),
