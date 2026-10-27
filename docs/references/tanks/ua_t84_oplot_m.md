@@ -1,5 +1,15 @@
 # ua_t84_oplot_m — BM Oplot / Oplot-M (Ukraine) — §5.248 ground-up round packet
 
+## Release 262 rename (owner 2026-10-27, approved tier table)
+This build (id `t84bm_oplot_m`, unchanged) is now **"T-84U Oplot"**, the 2000 serial tank, Object 478DU9 (adopted
+8 February 2000; renamed BM Oplot in 2004): the welded Duplet turret in its wartime field kit, before the BM Oplot-M's
+armoured bustle compartment. Its ammunition is the period Soviet stock, 3BM42 Mango APFSDS, 3BK29 HEAT and 3OF26
+HE-Frag (src/vehicles/ukraine.ts; the 3BM60U and Kombat-M were later than the T-84U), which puts its capability score at
+0.772 and its shown tier at VI (was VII). Geometry unchanged. The real T-84BM Oplot-M is now `bm_oplot_m`
+([bm_oplot_m.md](bm_oplot_m.md)). Known anachronism kept from the build: its tall roof tower (the T-84U's commander's
+sight was the PNK-5/TKN-5 per GlobalSecurity; the panoramic PNK-6 came with the 478DU9-1).
+
+
 ## Round (2026-08-17, ukraine §5.248 builder lane)
 Ground-up §K rebuild replacing the donor-clone composition (`T80_PROFILES.t84.build`
 + additive kit). New builder `buildUAOplotM` in `src/vehicles/profiles/ukraine.ts`

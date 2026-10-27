@@ -4,7 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
-import { modernArmor, plate, reactivePlate, shell } from './specHelpers.ts';
+import { apfsdsPenetration, modernArmor, plate, reactivePlate, shell } from './specHelpers.ts';
 import type { ArmorPlate } from './specHelpers.ts';
 import { OPLOT_BM_ERA, OPLOT_BM_FRAME } from './oplotBMLayout.ts';
 import { ukrainianAbramsCage } from './ukrainianDroneCage.ts';
@@ -140,14 +140,18 @@ const UKRAINE_SPECS = {
   spec.gun.reloadS = 6.3;
   spec.gun.baseAccuracy = 0.31;
   spec.gun.aimTimeS = 1.8;
+  // Release 262 (Main's ruling on the rename): the 2000 serial tank fires the Soviet-stock rounds Ukraine held then, the
+  // 3BM42 Mango (1986) and the 3BK29 HEAT, on the fleet's apfsdsPenetration scale (quoted ~500 mm at 2 km); the 3BM60U
+  // and the Kombat-M of the old Oplot-M row are later than the T-84U. The 3OF26 keeps the T-84's value.
+  const mango = apfsdsPenetration(500);
   Object.assign(spec.gun.shells[0], {
-    name: '3BM60U APFSDS', pen100Mm: 830, pen1000Mm: 770,
-    pen2000Mm: 700, dmg: 540, velocityMps: 1780,
+    name: '3BM42 Mango APFSDS', pen100Mm: mango[0], pen1000Mm: mango[1],
+    pen2000Mm: mango[2], dmg: 500, velocityMps: 1715,
   });
   Object.assign(spec.gun.shells[1], {
-    name: 'Kombat-M HEAT', pen100Mm: 760, pen1000Mm: 760, dmg: 500,
+    name: '3BK29 HEAT', pen100Mm: 630, pen1000Mm: 630, dmg: 470,
   });
-  Object.assign(spec.gun.shells[2], { dmg: 600 });
+  Object.assign(spec.gun.shells[2], { dmg: 570 });
 }
 
 // The T-84BM Oplot-M and its Thai export twin, the Oplot-T (release 262, tier X): their own frame

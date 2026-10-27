@@ -34,7 +34,6 @@ import { OPLOT_BM_FRAME, OPLOT_BM_ERA } from '../oplotBMLayout.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export type OplotBMVariant = 'm' | 't';
-type Point = readonly [number, number, number];
 
 const { box, cylX, cylY, cylZ } = KIT;
 const side = (s: number, x: number): number => s * x;
@@ -182,7 +181,7 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
       const z = 2.70 - i * 0.74;
       const tall = i < 3;
       const h = tall ? 0.40 : 0.30;
-      eraCassette(P, 'hull', sector, [side(s, 1.892), 1.215 - (0.40 - h) / 2, z], [0.06, h, 0.66], [0, 0, side(s, 0.20)]);
+      eraCassette(P, 'hull', sector, [side(s, 1.873), 1.215 - (0.40 - h) / 2, z], [0.06, h, 0.66], [0, 0, side(s, 0.19)]);
     }
   }
 }
@@ -202,11 +201,11 @@ function buildTurretShell(P: TankBuilderPort): void {
   const wall = (w: number, top: number): [number, number][] => [[-w, -0.01], [w, -0.01], [w, 0.36], [w - 0.07, top],
     [-w + 0.07, top], [-w, 0.36]];
   P.add('turret', sectionSolid([
-    { z: -1.32, ring: wall(1.30, ROOF_Y) },
-    { z: -0.70, ring: wall(1.44, ROOF_Y) },
-    { z: 0.10, ring: wall(1.50, ROOF_Y) },
-    { z: 0.70, ring: wall(1.42, ROOF_Y) },
-    { z: 1.22, ring: wall(1.00, 0.64) },
+    { z: -1.32, ring: wall(1.36, ROOF_Y) },
+    { z: -0.70, ring: wall(1.52, ROOF_Y) },
+    { z: 0.10, ring: wall(1.58, ROOF_Y) },
+    { z: 0.80, ring: wall(1.58, ROOF_Y) },
+    { z: 1.22, ring: wall(1.10, 0.64) },
   ]));
   // Ammunition bustle, its own armoured box behind the shell, blow-off roof panels.
   P.add('turret', sectionSolid([
@@ -221,32 +220,33 @@ function buildTurretShell(P: TankBuilderPort): void {
   P.add('turret', cylY(1.02, 1.06, 0.06, 32), 0, 0.0, 0);
   P.add('turretDark', cylY(0.92, 0.92, 0.60, 20), 0, -0.32, 0);
 
-  // Cheek blocks: Duplet built-in ERA in welded boxes either side of the gun slot, chamfered at the outer corners.
+  // Cheek blocks: Duplet built-in ERA in welded boxes either side of the gun slot. The flat front face runs out to
+  // |x| 1.10, then a 45 degree chamfer meets the flank at 1.64 (the oracle's arrowhead, world z 1.07 to 1.85).
+  const chamferN: [number, number] = [0.815, 0.58];
+  const chamferYaw = Math.atan2(chamferN[1], chamferN[0]);
   for (const s of [-1, 1]) {
-    const plan: [number, number][] = s > 0
-      ? [[0.37, 1.10], [1.38, 0.86], [1.52, 1.28], [1.06, 1.78], [0.37, 1.72]]
-      : [[-0.37, 1.10], [-0.37, 1.72], [-1.06, 1.78], [-1.52, 1.28], [-1.38, 0.86]];
-    P.add('turret', planPrism(plan, 0.05, 0.62, 0.985));
-    // the cheek lid course: two rows of cassettes on the front face and two on the chamfer
+    const plan: [number, number][] = [[0.37, 1.08], [1.58, 0.82], [1.64, 0.98], [1.10, 1.74], [0.37, 1.76]];
+    P.add('turret', planPrism(s > 0 ? plan : plan.map(([x, z]) => [-x, z] as [number, number]).reverse(), 0.05, 0.62, 0.985));
     const sector = s > 0 ? OPLOT_BM_ERA.turretL : OPLOT_BM_ERA.turretR;
-    for (const [y, h] of [[0.20, 0.24], [0.46, 0.24]] as const) {
-      for (const [x, w] of [[0.55, 0.30], [0.86, 0.30]] as const) {
-        eraCassette(P, 'turret', sector, [side(s, x), y, 1.775 + (x - 0.37) * 0.02], [w, h, 0.05], [Math.PI / 2, 0, 0]);
+    for (const [y, h] of [[0.20, 0.25], [0.47, 0.25]] as const) {
+      // front face: two lids a row, plates facing forward
+      for (const [x, w] of [[0.56, 0.33], [0.91, 0.31]] as const) {
+        eraCassette(P, 'turret', sector, [side(s, x), y, 1.785 - (x - 0.37) * 0.027], [w, 0.05, h], [Math.PI / 2, 0, 0]);
       }
-      const chamferYaw = Math.atan2(1.78 - 1.28, 1.52 - 1.06);
-      eraCassette(P, 'turret', sector, [side(s, 1.31), y, 1.55], [0.05, h, 0.52], [0, side(s, -(Math.PI / 2 - chamferYaw)), 0]);
+      // chamfer: one long lid a row, its plate normal on the chamfer's
+      eraCassette(P, 'turret', sector, [side(s, 1.39), y, 1.375], [0.05, h, 0.74], [0, side(s, -chamferYaw), 0]);
     }
     // top lid of the block with its bolted service plates
-    P.add('turretDark', box(0.95, 0.012, 0.52), side(s, 0.92), 0.622, 1.38, 0, side(s, -0.12), 0);
+    P.add('turretDark', box(0.95, 0.012, 0.52), side(s, 0.92), 0.622, 1.30, 0, side(s, -0.12), 0);
     for (const dz of [1.22, 1.50]) P.add('turretDetail', box(0.30, 0.012, 0.18), side(s, 0.70), 0.632, dz);
   }
-  // Flank ERA: two courses of Duplet modules along each side of the shell.
+  // Flank ERA: two courses of Duplet modules along each side of the shell, the upper set in with the leaning wall.
+  const wallAt = (z: number): number => (z > 0.10 ? 1.58 : z > -0.70 ? 1.52 + (z + 0.70) * 0.075 : 1.52);
   for (const s of [-1, 1]) {
     const sector = s > 0 ? OPLOT_BM_ERA.flankL : OPLOT_BM_ERA.flankR;
-    for (const [y, h] of [[0.18, 0.28], [0.48, 0.24]] as const) {
-      for (const z of [0.66, 0.16, -0.34]) {
-        const x = (z > 0.40 ? 1.44 : 1.51) - (y > 0.3 ? 0.03 : 0) + 0.03;
-        eraCassette(P, 'turret', sector, [side(s, x), y, z], [0.06, h, 0.46], [0, side(s, z > 0.40 ? 0.13 : 0.03), 0]);
+    for (const [y, h, lean] of [[0.20, 0.30, 0], [0.49, 0.24, 0.025]] as const) {
+      for (const z of [0.58, 0.10, -0.38]) {
+        eraCassette(P, 'turret', sector, [side(s, wallAt(z) - lean + 0.028), y, z], [0.06, h, 0.46], [0, 0, side(s, lean ? 0.20 : 0)]);
       }
     }
   }
@@ -356,7 +356,7 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
 
 function buildRemoteWeapon(P: TankBuilderPort): void {
   // KT-12.7 laid from the PNK-6 (the commander's sight controls the remote AA gun, KMDB): over the commander's ring.
-  addFieldRoofWeapon(P, [-0.62, ROOF_Y + 0.115, -0.42], 12.7, 'KT-12.7 remote anti-aircraft gun', 0.0, 0.92);
+  addFieldRoofWeapon(P, [-1.00, ROOF_Y, -0.70], 12.7, 'KT-12.7 remote anti-aircraft gun', 0.0, 0.92);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -21,10 +21,11 @@ export const UKRAINE_TREE: NationTree = Object.freeze({
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
-    // T-84 and Oplot
-    node({ id: 't84', tier: 6, line: 'kharkiv', lane: 0, parents: ['t64bv_donbas'], slot: 'line' }),
-    node({ id: 't80u_kursk', tier: 6, line: 'kharkiv', lane: 1, parents: ['t84'], slot: 'line' }),
-    node({ id: 't84bm_oplot_m', tier: 7, line: 'kharkiv', lane: 0, parents: ['t80u_kursk'], slot: 'line' }),
+    // T-84 and Oplot (262: the Object 478DU2 prototype, the 2000 T-84U Oplot and the T-80U Kursk at VI; the
+    // T-84BM Oplot-M and its Thai export Oplot-T at X)
+    node({ id: 't84', tier: 6, line: 'kharkiv', lane: 1, parents: ['t64bv_donbas'], slot: 'line' }),
+    node({ id: 't80u_kursk', tier: 6, line: 'kharkiv', lane: 2, parents: ['t84'], slot: 'line' }),
+    node({ id: 't84bm_oplot_m', tier: 6, line: 'kharkiv', lane: 0, parents: ['t84'], slot: 'line' }),
     node({
       id: 't72b3m_hetman', tier: 7, line: 'kharkiv', lane: 1, parents: ['t84bm_oplot_m'], slot: 'line',
       builds: ['t72b3m_hetman_ii'],

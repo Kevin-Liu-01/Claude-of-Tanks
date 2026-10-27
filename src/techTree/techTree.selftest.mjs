@@ -144,7 +144,9 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above). 262 (owner 2026-10-27): the T-84BM Oplot-M and Oplot-T at X on the Kharkiv line after the
-// renamed T-84U Oplot; the M1A1 SA (Ukraine) moves to lane 1 so the Oplot-M's connector clears it.
-assert.equal(digest, 'e8cde9ca8888727a', `tree content changed: re-pin to ${digest} if deliberate`);
+// (FAMILY_UPGRADES above). 262 (owner approval 2026-10-27): the T-84BM Oplot-M and Oplot-T at X on the Kharkiv line;
+// the older pair renamed Object 478DU2 (VI) and T-84U Oplot (VI on its period 2000 ammunition, score 0.772), the T-84U
+// leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
+// the Oplot-M's connector clears it.
+assert.equal(digest, '23d3a233fc33dd4b', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

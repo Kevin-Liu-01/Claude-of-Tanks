@@ -30,7 +30,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   t72_rys: 5, t72b3: 6, t72b3_bastion_m: 8, t72b3_qilin: 7, t72b3_sich: 7, t72b3_zubr: 6, t72b3_zubr_ii: 6,
   t72b3m_2016: 6, t72b3m_2022: 6, t72b3m_bulat_m: 8, t72b3m_hetman: 7, t72b3m_hetman_ii: 7, t72b3m_kunlun: 7,
   t72b3m_wilk: 7, t72b_1987: 3, t72bu: 3, t72bu_1989: 3, t72m1_jaguar: 4, t80: 3, t80b: 4, t80bv: 4, t80u: 6,
-  t80u_bars_m: 8, t80u_husarz: 7, t80u_kursk: 6, t80u_yun: 7, t80u_zoria: 7, t80uk: 6, t84: 6, t84bm_oplot_m: 7,
+  t80u_bars_m: 8, t80u_husarz: 7, t80u_kursk: 6, t80u_yun: 7, t80u_zoria: 7, t80uk: 6, t84: 6, t84bm_oplot_m: 6,
   t90: 7, t90_1992: 7, t90a: 9, t90a_2004: 9, t90a_2006: 9, t90a_burlak: 9, t90a_burlak_proto: 9, t90a_vladimir: 9,
   t90am: 9, t90m: 10, t90m_proryv: 10, t90ms_2011: 9, t90ms_tagil: 9, t90sm: 9, t90sm_2013: 9, tos1a_tagil: 5,
   type10: 10, type100: 10, type10_dozer: 10, type10_tk_x: 9, type10b: 9, type59: 1, type74: 1, type89: 6, type90: 8,
