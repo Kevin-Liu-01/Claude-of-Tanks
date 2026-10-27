@@ -74,6 +74,73 @@ assert.equal(timings.postPassMax, 5);
 assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 
 {
+  // (2026-10-26, the boot census) an owner that can submit the scene a slice at a time does, against the visible scene,
+  // before the shadow state's update: the one-task submission was 100-150 ms of a cold desktop's boot
+  const order = [];
+  const sliced = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() { order.push('light'); }, async primeShadowMaps() { return [1]; } },
+    forwardPrograms: {
+      compile() { assert.fail('the sliced submission replaces the one-task compile'); },
+      *compileSceneSteps(options) {
+        assert.ok(options.visibleRoot === scene, 'the visible scene, as compile() selects it');
+        assert.equal(options.sliceMs, 8);
+        for (let slice = 0; slice < 3; slice++) { order.push('slice'); yield; }
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: sliced,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => { order.push('yield'); },
+    warmScene: async () => [1],
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 6), ['slice', 'yield', 'slice', 'yield', 'slice', 'yield'], 'a yield between submission slices');
+  assert.ok(order.indexOf('light') > order.lastIndexOf('slice'), 'shadow state follows the whole submission');
+  assert.equal(sliced.postCompileSlices, 3);
+  assert.equal(order.at(-1), 'render');
+}
+
+{
+  // (2026-10-26, the live 258 census and the boot ABBA) the compiled programs' first use between frames, hidden LOD
+  // levels included, after the link wait and before the shadow prime and the warm's draws (which reach only the selected
+  // LOD level); initializeSteps would prepare only programs its own submission made, none after the full compile
+  const order = [];
+  const firstUse = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() {}, async primeShadowMaps() { order.push('shadows'); return [1]; } },
+    forwardPrograms: {
+      compile() { order.push('compile'); },
+      *initializeSteps() { assert.fail('the boot first-uses the compiled programs, not a second submission'); },
+      *prepareCompiledSteps(root, options) {
+        assert.ok(root === scene);
+        for (let slice = 0; slice < 2; slice++) { order.push('first-use'); yield; }
+        options.timing.uniformCount = 24;
+        options.timing.uniformReused = 3;
+        return { status: 'complete', pending: 0 };
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: firstUse,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => {},
+    awaitProgramLinks: async () => { order.push('links'); },
+    warmScene: async () => { order.push('draws'); return [1]; },
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 5), ['compile', 'links', 'first-use', 'first-use', 'shadows']);
+  assert.ok(order.indexOf('draws') > order.lastIndexOf('first-use'));
+  assert.equal(firstUse.firstUseSlices, 2);
+  assert.equal(firstUse.firstUsePrograms, 24);
+  assert.equal(firstUse.firstUseReused, 3);
+  assert.equal(firstUse.firstUsePending, undefined, 'a complete first use records nothing pending');
+}
+
+{
   const restoreCalls = [];
   let restoreClock = 0;
   const receipt = await restoreGarageGpuPipeline({

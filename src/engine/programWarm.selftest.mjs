@@ -118,6 +118,79 @@ forwardOwner.invalidate();
   forwardGl.pending = true;
 }
 
+{
+  // (2026-10-26, the boot ABBA) prepareCompiledSteps: the first use of programs an earlier compile made. Every compiled
+  // material's whole cache under the root, hidden objects included, each material once; never-compiled materials and
+  // already-reflected programs cost no native call; and no second compile. initializeSteps after the same full compile
+  // finds no new program, so it prepares none (why the boot's first use did nothing in 91c59b9309)
+  const reflected = [];
+  const queried = [];
+  const programOf = (name, id) => ({ id, program: { name },
+    getUniforms() { reflected.push(name); return {}; }, getAttributes() { return {}; } });
+  const lod0 = programOf('lod0', 1);
+  const lod1 = programOf('lod1', 2);
+  const lod1Shadowed = programOf('lod1-shadowed', 3);
+  const shared = programOf('shared', 4);
+  const programs = [lod0, lod1, lod1Shadowed, shared];
+  const caches = new Map([
+    ['mat-lod0', new Map([['k0', lod0]])],
+    ['mat-lod1', new Map([['k1', lod1], ['k1s', lod1Shadowed]])],
+    ['mat-shared', new Map([['ks', shared]])],
+  ]);
+  const material = (name) => ({ name });
+  const materials = Object.fromEntries(['mat-lod0', 'mat-lod1', 'mat-shared', 'mat-cold'].map((name) => [name, material(name)]));
+  let compiles = 0;
+  const renderer = {
+    ...targetRenderer,
+    info: { programs },
+    properties: { get(m) { const cache = caches.get(m.name); return cache ? { programs: cache } : {}; } },
+    gl: {
+      getExtension: () => ({ COMPLETION_STATUS_KHR: 0x91B1 }),
+      getProgramParameter(handle) { queried.push(handle.name); return true; },
+    },
+    getContext() { return this.gl; },
+    compile() { compiles += 1; },
+  };
+  const shown = { isMesh: true, material: materials['mat-lod0'] };
+  const hiddenLevel = { isMesh: true, visible: false, material: [materials['mat-lod1'], materials['mat-shared']] };
+  const twin = { isMesh: true, material: materials['mat-shared'] };
+  const cold = { isMesh: true, material: materials['mat-cold'] };
+  const group = { name: 'not-renderable', material: materials['mat-cold'] };
+  const root = { traverse(visit) { for (const object of [this, group, shown, hiddenLevel, twin, cold]) visit(object); },
+    traverseVisible(visit) { for (const object of [this, group, shown, twin, cold]) visit(object); } };
+  let clock = 0;
+  const owner = createForwardProgramWarmOwner({ renderer, scene: root, camera: 'camera', getTarget: () => 'hdr',
+    now: () => { clock += 1; return clock; } });
+  [...owner.initializeSteps(root, null, { includeHidden: true })];
+  assert.deepEqual(reflected, [], 'initializeSteps after the full compile finds no new program to prepare');
+  const timing = {};
+  const steps = owner.prepareCompiledSteps(root, { timing });
+  let step = steps.next();
+  assert.equal(step.done, false, 'a frame before the first native query');
+  assert.deepEqual(reflected, []);
+  while (!step.done) step = steps.next();
+  assert.deepEqual(step.value, { status: 'complete', pending: 0 });
+  assert.equal(compiles, 4, 'only initializeSteps compiled (its four renderables); the first use compiles nothing');
+  assert.deepEqual([...reflected].sort(), ['lod0', 'lod1', 'lod1-shadowed', 'shared'],
+    'every compiled cache entry, the hidden LOD level and its variants included, each once');
+  assert.deepEqual([...queried].sort(), ['lod0', 'lod1', 'lod1-shadowed', 'shared'], 'one completion query each');
+  assert.equal(timing.uniformCount, 4);
+  reflected.length = 0;
+  queried.length = 0;
+  const again = owner.prepareCompiledSteps(root, { timing: {} });
+  let next = again.next();
+  while (!next.done) next = again.next();
+  assert.deepEqual(next.value, { status: 'complete', pending: 0 });
+  assert.deepEqual([reflected, queried], [[], []], 'reflected programs are reused: no native call');
+  owner.invalidate();
+  const stale = steps; // (a finished generator stays finished)
+  assert.equal(stale.next().done, true);
+  const fresh = owner.prepareCompiledSteps(root);
+  next = fresh.next();
+  while (!next.done) next = fresh.next();
+  assert.equal(queried.length, 4, 'an invalidated lifetime proves its programs again');
+}
+
 function timedForwardFixture({ compileFailure = null, clockFailure = false } = {}) {
   let clock = 0;
   const events = [];

@@ -108,18 +108,20 @@ interface CumulusFields {
   sigma: Float32Array;
 }
 
-function fillCumulusFields(
+function* fillCumulusFields(
   width: number,
   height: number,
   config: CumulusBakeConfig,
   samplers: CumulusSamplers,
-): CumulusFields {
+  rowsPerStep: number,
+): Generator<void, CumulusFields, void> {
   const { warp, macroAniso, threshold, cluster, edge, edgeWisp, coreWidth } = config;
   const { fbmD, fbmWX, fbmWY, fbmM } = samplers;
   const mask = new Float32Array(width * height);
   const core = new Float32Array(width * height);
   const sigma = new Float32Array(width * height);
   for (let y = 0; y < height; y++) {
+    if (y > 0 && y % rowsPerStep === 0) yield;
     const v = y / height;
     for (let x = 0; x < width; x++) {
       const u = x / width;
@@ -151,13 +153,14 @@ function fillCumulusFields(
   return { mask, core, sigma };
 }
 
-function shadeCumulusPixels(
+function* shadeCumulusPixels(
   width: number,
   height: number,
   config: CumulusBakeConfig,
   samplers: Pick<CumulusSamplers, 'fbmM' | 'fbmHF'>,
   fields: CumulusFields,
-): Uint8ClampedArray {
+  rowsPerStep: number,
+): Generator<void, Uint8ClampedArray, void> {
   const {
     macroAniso, marchSteps, marchStepPx, shadeK, lit, shade, silver,
     detailAmp, alphaVariation, maxAlpha,
@@ -166,6 +169,7 @@ function shadeCumulusPixels(
   const { mask, core, sigma } = fields;
   const pixels = new Uint8ClampedArray(width * height * 4);
   for (let y = 0; y < height; y++) {
+    if (y % rowsPerStep === 0) yield;
     for (let x = 0; x < width; x++) {
       const index = y * width + x;
       const offset = index * 4;
@@ -199,12 +203,31 @@ function shadeCumulusPixels(
   return pixels;
 }
 
+function finishBake(steps: Generator<void, Uint8ClampedArray, void>): Uint8ClampedArray {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 /** Return the exact RGBA bytes for the low cumulus deck. */
 export function bakeCumulusPixels(
   width: number,
   height: number,
   config: CumulusBakeConfig,
 ): Uint8ClampedArray {
+  return finishBake(bakeCumulusPixelsSteps(width, height, config, Infinity));
+}
+
+/**
+ * The same bytes, yielding every rowsPerStep rows (2026-10-26, the boot ABBA: a cloud worker past its deadline made the
+ * synchronous fallback one 1.1 s task; the caller now drives these slices under its frame budget).
+ */
+export function* bakeCumulusPixelsSteps(
+  width: number,
+  height: number,
+  config: CumulusBakeConfig,
+  rowsPerStep = 4,
+): Generator<void, Uint8ClampedArray, void> {
   const {
     seed,
   } = config;
@@ -216,8 +239,8 @@ export function bakeCumulusPixels(
   const fbmHF = makeFbm(rng, 3, 48);
 
   const samplers = { fbmD, fbmWX, fbmWY, fbmM, fbmHF };
-  const fields = fillCumulusFields(width, height, config, samplers);
-  return shadeCumulusPixels(width, height, config, samplers, fields);
+  const fields = yield* fillCumulusFields(width, height, config, samplers, rowsPerStep);
+  return yield* shadeCumulusPixels(width, height, config, samplers, fields, rowsPerStep);
 }
 
 /** Return the exact RGBA bytes for the high cirrus deck. */
@@ -226,6 +249,16 @@ export function bakeCirrusPixels(
   height: number,
   config: CirrusBakeConfig,
 ): Uint8ClampedArray {
+  return finishBake(bakeCirrusPixelsSteps(width, height, config, Infinity));
+}
+
+/** The same bytes, yielding every rowsPerStep rows (bakeCumulusPixelsSteps). */
+export function* bakeCirrusPixelsSteps(
+  width: number,
+  height: number,
+  config: CirrusBakeConfig,
+  rowsPerStep = 4,
+): Generator<void, Uint8ClampedArray, void> {
   const { seed } = config;
   const rng = mulberry32(seed + 11);
   const fbm = makeFbm(rng, 4, 4);
@@ -236,6 +269,7 @@ export function bakeCirrusPixels(
   const litColor: Color3 = [1.0, 0.99, 0.955];
   const shadeColor: Color3 = [0.66, 0.72, 0.85];
   for (let y = 0; y < height; y++) {
+    if (y > 0 && y % rowsPerStep === 0) yield;
     const v = y / height;
     for (let x = 0; x < width; x++) {
       const u = x / width;

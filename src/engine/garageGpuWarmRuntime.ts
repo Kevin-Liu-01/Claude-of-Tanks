@@ -35,6 +35,10 @@ interface GarageLightingRestorePort extends GarageLightingWarmPort {
 
 interface ForwardProgramCompilePort {
   compile(root: Object3D): void;
+  /** The same submission a slice at a time (programWarm.ts compileSceneSteps); the boot's warm prefers it. */
+  compileSceneSteps?(options: { visibleRoot?: Object3D; sliceMs?: number }): Generator<void, void, void>;
+  /** The compiled programs' first use between frames, hidden objects included (programWarm.ts prepareCompiledSteps). */
+  prepareCompiledSteps?: ForwardProgramWarmOwner['prepareCompiledSteps'];
 }
 
 type ForwardProgramRestorePort = Pick<
@@ -56,6 +60,13 @@ interface GaragePostWarmPort extends GaragePostRenderPort {
 
 interface GarageGpuWarmTimings {
   postCompile?: number;
+  postCompileSlices?: number;
+  firstUse?: number;
+  /** Programs first-used, and those already reflected, by the boot's first-use step; pending when its budget ended. */
+  firstUsePrograms?: number;
+  firstUseReused?: number;
+  firstUsePending?: number;
+  firstUseSlices?: number;
   shadowPassMax?: number;
   shadowPasses?: number[];
   sceneUpload?: number;
@@ -318,23 +329,57 @@ export async function warmGarageGpuPipeline({
   now = () => performance.now(),
   awaitProgramLinks,
 }: GarageGpuWarmOptions): Promise<void> {
-  const compileAt = now();
-  try { forwardPrograms.compile(scene); } catch { /* first real render is fallback */ }
-  timings.postCompile = Math.round(now() - compileAt);
-
-  lighting.update(true);
   const yieldGpuFrame = createYielder(16);
   let pulse = 0;
   const yieldGpuWarm: WarmYield = async (force = false) => {
     reportProgress(Math.min(0.94, 0.04 + pulse++ * 0.035));
     return yieldGpuFrame(force);
   };
+  // (2026-10-26, the boot census) the visible scene's submission a slice at a time when the owner can (one task of
+  // 100-150 ms on a cold desktop otherwise), against the same production target
+  const compileAt = now();
+  let compileSlices = 0;
+  try {
+    if (forwardPrograms.compileSceneSteps) {
+      for (const _ of forwardPrograms.compileSceneSteps({ visibleRoot: scene, sliceMs: 8 })) {
+        compileSlices += 1;
+        await yieldGpuWarm();
+      }
+    } else forwardPrograms.compile(scene);
+  } catch { /* first real render is fallback */ }
+  timings.postCompile = Math.round(now() - compileAt);
+  timings.postCompileSlices = compileSlices;
+
+  lighting.update(true);
 
   await yieldGpuWarm(true);
   if (awaitProgramLinks) {
     const linkAt = now();
     try { await awaitProgramLinks(yieldGpuWarm); } catch { /* the renders below wait for them as before */ }
     timings.postLinkWait = Math.round(now() - linkAt);
+  }
+  // (2026-10-26, the live 258 census and the boot ABBA) every compiled program's first use, between frames, hidden
+  // objects included: the compile above reaches every LOD level of the hero, but the warm's draws below only the level
+  // its camera selects. On a 4x phone the showroom's camera then framed another level, and the first live frames
+  // first-used its ~20 programs (686 + 1144 ms); with a busy GPU process the warm's own upload draws first-used the
+  // rest (24 at ~60 ms, each behind a GPU flush)
+  if (forwardPrograms.prepareCompiledSteps) {
+    const firstUseAt = now();
+    const firstUseTiming: { uniformCount?: number; uniformReused?: number } = {};
+    let firstUseSlices = 0;
+    try {
+      const steps = forwardPrograms.prepareCompiledSteps(scene, { timing: firstUseTiming });
+      let step = steps.next();
+      for (; !step.done; step = steps.next()) {
+        firstUseSlices += 1;
+        await yieldGpuWarm(true);
+      }
+      if (step.value.status !== 'complete') timings.firstUsePending = step.value.pending ?? -1;
+    } catch { /* the draws below and the first frame remain the fallback */ }
+    timings.firstUse = Math.round(now() - firstUseAt);
+    timings.firstUseSlices = firstUseSlices;
+    timings.firstUsePrograms = firstUseTiming.uniformCount ?? 0;
+    timings.firstUseReused = firstUseTiming.uniformReused ?? 0;
   }
   const shadowPasses = await lighting.primeShadowMaps(
     renderer,

@@ -140,6 +140,15 @@ export interface ForwardProgramWarmOwner {
     /** includeHidden: also the hidden renderables (idle effect pools a live warm compiles in place, 2026-10-20) */
     options?: { requireCompletion?: boolean; includeHidden?: boolean },
   ): Generator<void, void, void>;
+  /**
+   * First use of the programs an earlier compile already made: every compiled material's whole program cache under
+   * root, hidden objects included, between frames and with no second compile (initializeSteps prepares only the
+   * programs its own submission creates).
+   */
+  prepareCompiledSteps(
+    root?: Object3D,
+    options?: { timing?: ForwardProgramCompileTiming },
+  ): Generator<void, ProgramPreparationResult, void>;
   linkerBreathingSlices(maxSlices: number, timing?: ForwardProgramCompileTiming,
     signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
   invalidate(): void;
@@ -1319,6 +1328,35 @@ export function createForwardProgramWarmOwner({
     } finally { objects.length = 0; programs.clear(); }
   };
 
+  // (2026-10-26, the boot ABBA) after the boot's full compile initializeSteps found no new program to prepare, and the
+  // hero's ~24 first uses each waited ~60 ms behind a GPU flush inside the warm's upload draws (1.45 s on the 4x phone)
+  const prepareCompiledSteps = function* (
+    root: Object3D = scene,
+    { timing }: { timing?: ForwardProgramCompileTiming } = {},
+  ): Generator<void, ProgramPreparationResult, void> {
+    const ownedEpoch = epoch;
+    const lifetime = captureProgramWarmLifetime(renderer);
+    const valid = (): boolean => epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
+    if (!valid()) return incompletePreparation('invalidated');
+    const materials = new Set<Material>();
+    const cohort: MaterialProgramCohort = new Map();
+    root.traverse((object) => {
+      if (!isForwardRenderable(object)) return;
+      const material = (object as Object3D & { material?: Material | Material[] | null }).material;
+      for (const entry of Array.isArray(material) ? material : [material]) {
+        if (!entry || materials.has(entry)) continue;
+        const properties = renderer.properties?.get(entry);
+        if (typeof properties === 'object' && properties !== null && 'programs' in properties
+          && properties.programs instanceof Map && properties.programs.size) materials.add(entry);
+      }
+    });
+    try {
+      captureMaterialPrograms(renderer, materials, cohort, valid);
+      if (!valid()) return incompletePreparation('invalidated');
+      return yield* prepareNewUniformCohort({ renderer, gl: lifetime.gl, valid, now, timing, lifetime }, cohort);
+    } finally { materials.clear(); cohort.clear(); }
+  };
+
   const linkerBreathingSlices = function* (
     maxSlices: number,
     timing?: ForwardProgramCompileTiming,
@@ -1385,6 +1423,7 @@ export function createForwardProgramWarmOwner({
     compileSceneSteps,
     prepareSceneSteps,
     initializeSteps,
+    prepareCompiledSteps,
     linkerBreathingSlices,
     invalidate() { epoch += 1; programWarmLifetimes.delete(renderer); },
   };
