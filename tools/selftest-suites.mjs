@@ -174,6 +174,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-20 (the CN lane's measured depression, carried to the national concepts and the fleet's curves): every
     // published gunPitchByYawDeg keeps the whole gun 25 mm off its hull at every yaw; the bare depression meets the hull
     'src/vehicles/nationalGunClearance.selftest.mjs',
+    // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
+    // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
+    'src/vehicles/strv103GunPort.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',

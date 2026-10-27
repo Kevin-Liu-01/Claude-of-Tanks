@@ -32,7 +32,9 @@
 import {
   BufferGeometry,
   Group,
+  LatheGeometry,
   MeshStandardMaterial,
+  Vector2,
 } from 'three';
 import { FITTINGS, KIT, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
@@ -162,11 +164,6 @@ function loft(P: CasemateBuilderPort, sts: readonly LoftStation[], bucket = 'hul
 // Shared fittings (all hull buckets — see GATE-STRUCTURAL RULES above)
 // ---------------------------------------------------------------------------
 
-// Small helper: bake a pitch into a geo before P.add (keeps call sites flat).
-function xform2(geo: BufferGeometry, x: number, y: number, z: number, rx: number): BufferGeometry {
-  return KIT.xform(geo, x, y, z, rx, 0, 0);
-}
-
 // Bow tow hook / shackle bracket.
 function towHook(P: CasemateBuilderPort, x: number, y: number, z: number): void {
   const { cylX } = KIT;
@@ -183,6 +180,50 @@ function hullGun(P: CasemateBuilderPort, axisY: number, secs: readonly GunSectio
     const len = s.z0 - s.z1;
     P.add(s.dark ? 'hullGunDark' : 'hullGun', cylZ(s.r, len, P.q ? 18 : 12, s.r2), 0 + (s.x || 0), axisY + (s.dy || 0), s.z1 + len / 2);
   }
+}
+
+/** A fixed hull gun's port, the glacis it leaves through and the housing over it (`addFixedGunPort`). */
+export interface FixedGunPort {
+  /** The bore axis height (the gun runs along z at x 0). */
+  readonly axisY: number;
+  /** The housing's level top. */
+  readonly topY: number;
+  /** The housing's half-widths at its foot and at its top. */
+  readonly halfW: readonly [number, number];
+  /** The glacis height under the housing's centreline, rear to front: [z, y]. The last station is the port face. */
+  readonly stations: readonly (readonly [number, number])[];
+  /** The port ring on the housing's face round the tube (armour: its bore stands clear of the tube by the keep), its
+   * outer radius, its length and how far it stands proud of the face; its lower arc runs into the glacis. */
+  readonly ring: { readonly rIn: number; readonly rOut: number; readonly length: number; readonly proud: number };
+}
+
+/**
+ * 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): the fixed
+ * tube left the hull obliquely through the glacis plate, which cut it over a metre and a half, and the nose fittings
+ * stood across it. It now leaves through an armoured housing that rides the glacis over it, by a ring on the housing's
+ * front face, and ahead of that face it stands clear of every hull part (gunHullClearance.test-support.mjs
+ * fixedGunHullProbe). The housing foot sinks 3 cm into the glacis at each station. Publishes the port as
+ * hullG.userData.fixedGunPort: the housing's face (faceZ) and the ring's front (z).
+ */
+export function addFixedGunPort(
+  P: { readonly hullG: Group; readonly q?: boolean; add(slot: string, geometry: BufferGeometry, ...transform: number[]): void },
+  port: FixedGunPort,
+): void {
+  const SINK = 0.03;
+  const [wb, wt] = port.halfW;
+  for (let i = 0; i + 1 < port.stations.length; i++) {
+    const [z0, g0] = port.stations[i], [z1, g1] = port.stations[i + 1];
+    P.add('hull', orientedSlab(
+      [-wb, g0 - SINK, z0], [wb, g0 - SINK, z0], [wb, g1 - SINK, z1], [-wb, g1 - SINK, z1],
+      [-wt, port.topY, z0], [wt, port.topY, z0], [wt, port.topY, z1], [-wt, port.topY, z1]));
+  }
+  const faceZ = port.stations[port.stations.length - 1][0];
+  const { rIn, rOut, length, proud } = port.ring;
+  const ring = new LatheGeometry([[rIn, 0], [rOut, 0], [rOut, length], [rIn, length], [rIn, 0]]
+    .map(([r, y]) => new Vector2(r, y)), P.q ? 28 : 16);
+  ring.rotateX(Math.PI / 2);
+  P.add('hull', ring, 0, port.axisY, faceZ + proud - length);
+  P.hullG.userData.fixedGunPort = { faceZ, z: faceZ + proud, axisY: port.axisY, rIn };
 }
 
 // Deep steel-wheel run in the soviet-heavy style: painted steel wheels with a
@@ -215,15 +256,16 @@ function steelGear(P: CasemateBuilderPort, g: SteelGearConfig): void {
 // compact roof cluster held to the published-height envelope.
 // ---------------------------------------------------------------------------
 export function buildStrv103(P: CasemateBuilderPort): void {
-  const { cylY, cylZ, frustum, liftEye, periscope } = KIT;
+  const { cylX, cylY, cylZ, frustum, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
   const buildStrv103Hull = (): void => {
   // ---- primary silhouette loft (side top/bot + widths from the work order)
   // lower hull band: belly line ~0.33 between the tracks, sides at deck width
   const primaryHull = [
-    { z: 3.30, b: 1.02, t: 1.50, w: 0.50, wt: 0.78 },          // raised gun-support shelf tip
-    { z: 2.61, b: 0.72, t: 1.48, w: 0.80, wt: 1.50 },          // nose root
+    // 259: the shelf tip and the nose root ran 1-3 cm into the tube's belly (1.468); they stand 2.2 cm under it
+    { z: 3.30, b: 1.02, t: 1.445, w: 0.50, wt: 0.78 },         // raised gun-support shelf tip
+    { z: 2.61, b: 0.72, t: 1.43, w: 0.80, wt: 1.50 },          // nose root
     { z: 1.60, b: 0.33, t: 1.58, w: 0.90, wt: 1.64 },          // glacis mid (under gun)
     { z: 1.10, b: 0.33, t: 1.63, w: 0.90, wt: 1.64 },          // glacis upper
     { z: 0.75, b: 0.33, t: 1.80, w: 0.90, wt: 1.64 },          // glacis break
@@ -262,17 +304,18 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.055, 0.055, 0.92), s * 0.72, 0.82, 2.77, -0.42, 0, 0);
   }
-  // glacis louvre banks (radiators live ON the glacis): dark wells + ribs
+  // glacis louvre banks (radiators live ON the glacis): dark wells + ribs. 259: their inner edges ran under the tube
+  // (4-7 cm from the bore); they stand outboard of the gun housing's 0.18 m foot.
   const glY = (z: number): number => 1.76 - (z - 0.85) * (0.66 / 1.76);        // glacis surface line
   withSeatRole(P, 'grille', (P) => {
     for (const s of [-1, 1]) {
-      P.add('hullDark', box(0.82, 0.025, 1.18), s * 0.45, 1.46, 1.69, -0.36, 0, 0);
+      P.add('hullDark', box(0.66, 0.025, 1.18), s * 0.53, 1.46, 1.69, -0.36, 0, 0);
     }
     for (let i = 0; i < 6; i++) {
       const z = 1.10 + i * 0.22;
       for (const s of [-1, 1]) {
-        P.add('hullDark', box(0.76, 0.02, 0.16), s * 0.45, glY(z) + 0.012, z, -0.36, 0, 0);
-        P.add('hullDetail', box(0.80, 0.028, 0.05), s * 0.45, glY(z) + 0.035, z + 0.06, -0.36, 0, 0);
+        P.add('hullDark', box(0.60, 0.02, 0.16), s * 0.53, glY(z) + 0.012, z, -0.36, 0, 0);
+        P.add('hullDetail', box(0.64, 0.028, 0.05), s * 0.53, glY(z) + 0.035, z + 0.06, -0.36, 0, 0);
       }
     }
   });
@@ -308,10 +351,17 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     { z0: 3.30, z1: 2.20, r: 0.092 },                                          // mid step
     { z0: 2.20, z1: 1.05, r: 0.098, r2: 0.108 },                               // rear taper into the glacis
   ]);
-  P.add('hullGun', xform2(cylZ(0.10, 0.42, 12, 0.12), 0, 0, 0, -0.36), 0, 1.52, 1.15); // glacis exit sleeve
-  // travel clamp yoke on the nose shelf (under-tube, band-thin from the side)
-  P.add('hullDetail', box(0.06, 0.28, 0.06), 0, 1.22, 3.05);
-  P.add('hullDetail', box(0.22, 0.05, 0.09), 0, 1.38, 3.05);
+  // 259 (owner: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): the glacis cut the tube
+  // from z 1.0 to its nose shelf, a tilted sleeve stood beside it and the nose screen's centre bar ran through it. The
+  // tube leaves through the gun housing on the glacis by a thin seal ring at z 2.5 and passes the screen's opening.
+  addFixedGunPort(P, { axisY: 1.56, topY: 1.70, halfW: [0.18, 0.15],
+    stations: [[0.92, 1.717], [1.10, 1.63], [1.60, 1.58], [2.50, 1.4465]],
+    ring: { rIn: 0.104, rOut: 0.13, length: 0.05, proud: 0.025 } });
+  // The 103B's travel lock: an A-frame yoke on the nose shelf (belly 1.468, crown 1.652 over z 3.10), its arms 5 cm
+  // outboard of the tube, its head bar 1.8 cm over it, its saddle 1.2 cm under it, open in battle.
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.04, 0.266, 0.06), s * 0.165, 1.565, 3.10, 0, 0, s * 0.346);
+  P.add('hullDetail', box(0.30, 0.04, 0.07), 0, 1.69, 3.10);
+  P.add('hullDetail', box(0.20, 0.03, 0.07), 0, 1.441, 3.10);
   // virtual articulation anchors (empty groups; fx muzzle anchor only)
   P.turretG.position.set(0, 1.56, 0.40);
   P.gunG.position.set(0, 0, 0);
@@ -340,13 +390,19 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   P.add('hull', box(0.52, 0.16, 0.48), -0.72, 1.90, -1.20);                   // unequal roof service lid
   P.add('hullDark', box(0.46, 0.018, 0.42), -0.72, 1.99, -1.20);
   P.add('hull', box(0.36, 0.12, 0.38), 0.12, 1.88, -1.34);                    // central vent crown
-  // flotation-screen rim strip around the deck edge (103B cue) + fenders
+  // flotation-screen rim strip around the deck edge (103B cue) + fenders. 259: the screen itself lies folded in that
+  // trough (the 103B's flotation fit; the 103A carried none): a canvas bellows roll along each run, its folded struts
+  // clipped down over it.
   for (const s of [-1, 1]) {
     P.add('hull', box(0.07, 0.06, 4.2), s * 1.665, 1.815, -0.95);
     P.add('hull', box(0.20, 0.03, 5.64), s * 1.53, 1.535, 0.54);               // fender plate 3.36..-2.28
+    P.add('hullCloth', cylZ(0.045, 4.10, 10), s * 1.665, 1.87, -0.95);         // folded screen
+    for (const z of [-2.62, -1.50, -0.40, 0.70]) P.add('hullDetail', box(0.11, 0.035, 0.06), s * 1.665, 1.90, z); // strut clips
   }
   P.add('hull', box(3.40, 0.06, 0.07), 0, 1.815, -3.02);
   P.add('hull', box(3.40, 0.06, 0.07), 0, 1.79, 0.88);
+  P.add('hullCloth', cylX(0.045, 3.30, 10), 0, 1.87, -3.02);
+  P.add('hullCloth', cylX(0.045, 3.30, 10), 0, 1.845, 0.88);
   // engine-deck intake ribs behind the glacis break
   for (let i = 0; i < 5; i++) P.add('hullDark', box(2.70, 0.016, 0.09), 0, 1.805, 0.45 - i * 0.24);
   P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), -1.15, 1.815, -1.35);        // fuel fillers

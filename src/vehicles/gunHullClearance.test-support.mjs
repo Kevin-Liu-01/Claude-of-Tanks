@@ -261,3 +261,76 @@ export function gunHullSweep(probe, curveSpec, { stop = 0, partsAt = () => 'all'
   }
   return worst;
 }
+
+/** The clearance a gun fixed in its hull keeps ahead of its port from every other hull part (259). */
+export const FIXED_GUN_KEEP_M = .01;
+
+/**
+ * 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): a main
+ * gun fixed in its hull (armor.turretless; its meshes are the hull's hullGun buckets, nothing under rig_turret or
+ * rig_gun), measured over the hull it leaves. Build `id` (seed 4242, high quality, decorations on) and pose the whole tank
+ * at a hull pitch: the gun is aimed by pitching the hull (sim/movement.ts: one canonical pose), so each pitch is measured
+ * in the world frame. `measure(pitchDeg)` returns the barrel's smallest distance, 1.5 cm and more ahead of its housing's
+ * face (hullG.userData.fixedGunPort.faceZ), to every other visible hull mesh within 6.5 cm, the port ring included
+ * (`clearance`, the mesh in `part`, the sample in `at`), and `exposed`, the samples behind that face that are not hidden:
+ * from each, rays up, sideways and diagonally up must all meet the hull within 3 m (the tube inside its housing). `pitchesDeg` is the hull's whole
+ * published range (spec.hydropneumaticAim) and level. Dispose the probe when done.
+ */
+export function fixedGunHullProbe(id, { decor = true } = {}) {
+  const spec = getSpec(id);
+  if (!spec.armor?.turretless) throw new Error(`${id}: no fixed hull gun to measure`);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor });
+  tank.root.updateMatrixWorld(true);
+  const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
+  const port = hull?.userData.fixedGunPort;
+  if (!hull || !port) { tank.dispose(); throw new Error(`${id}: no fixedGunPort receipt on rig_hull (casemate.ts addFixedGunPort)`); }
+  const isGun = (o) => /^(hullGun|muzzleBore)/.test(o.name);
+  const all = meshesUnder(tank.root);
+  // a fixed gun is one body with its hull: nothing it draws pitches apart from it
+  const articulated = turret ? meshesUnder(turret) : [];
+  if (articulated.length) { tank.dispose(); throw new Error(`${id}: ${articulated.length} meshes ride rig_turret; the gun is not fixed in the hull`); }
+  const gunMeshes = all.filter(isGun), hullMeshes = all.filter((m) => !isGun(m));
+  if (!gunMeshes.length) { tank.dispose(); throw new Error(`${id}: no hullGun meshes`); }
+  const aim = spec.hydropneumaticAim ?? {};
+  const pitchesDeg = [-(aim.noseDownDeg ?? 0), 0, aim.noseUpDeg ?? 0];
+  const identity = new THREE.Matrix4(), toHull = new THREE.Matrix4(), v = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster(), RAY_DIRS = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [1, 1, 0], [-1, 1, 0]]
+    .map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
+  raycaster.far = 3;
+  // the hull's faces from either side: a ray leaving the tube inside its housing meets the housing's back faces
+  const twoSided = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const proxies = () => hullMeshes.filter((m) => !m.isInstancedMesh).map((m) => {
+    const o = new THREE.Mesh(m.geometry, twoSided); o.matrixAutoUpdate = false; o.matrixWorld.copy(m.matrixWorld); return o;
+  });
+  const measure = (pitchDeg) => {
+    tank.root.rotation.x = -pitchDeg * DEG;
+    tank.root.updateMatrixWorld(true);
+    toHull.copy(hull.matrixWorld).invert();
+    const soup = meshTriangles(hullMeshes, identity), grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 }), seen = proxies();
+    const samples = densePoints(meshTriangles(gunMeshes, identity).tri, .015);
+    let clearance = Infinity, part = null, at = null, exposed = 0, ahead = 0, behind = 0;
+    const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
+    for (let i = 0; i < samples.length; i += 3) {
+      v.set(samples[i], samples[i + 1], samples[i + 2]);
+      const z = v.clone().applyMatrix4(toHull).z;
+      if (z > port.faceZ + .015) {
+        ahead++;
+        const d = grid.distance(v.x, v.y, v.z);
+        if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = v.clone().applyMatrix4(toHull).toArray().map((c) => +c.toFixed(3)); }
+      } else if (z < port.faceZ - .005 && (i / 3) % 4 === 0) {
+        behind++;
+        for (const dir of RAY_DIRS) {
+          raycaster.set(v, dir.clone().transformDirection(hull.matrixWorld));
+          if (!raycaster.intersectObjects(seen, false).length) { exposed++; break; }
+        }
+      }
+    }
+    return { pitchDeg, clearance, part, at, exposed, ahead, behind };
+  };
+  return {
+    id, port, pitchesDeg, measure, hullMeshes,
+    /** Add a probe mesh to the hull (a negative control) and drop it again. */
+    withHullMesh(mesh, run) { hull.add(mesh); hullMeshes.push(mesh); tank.root.updateMatrixWorld(true); try { return run(); } finally { hull.remove(mesh); hullMeshes.pop(); } },
+    dispose: () => { twoSided.dispose(); tank.dispose(); },
+  };
+}
