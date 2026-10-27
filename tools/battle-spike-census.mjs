@@ -33,7 +33,8 @@
 // simulation is then the same tick for tick on every run of a build (a fresh profile, a pinned roster), the workload a
 // before/after pair must share. The AC-130 cannot be watched (its gunship is the human's alone) and keeps the player.
 //
-// One browser at a time (--js-flags heap cap; the run aborts a battle past 6 GB of browser RSS), the capture FIFO held
+// One browser at a time (--js-flags heap cap; the browser guard fails a battle whose renderer passes 6 GB or whose
+// browser tree passes BATTLE_TREE_CAP_MB, and the census goes on to the next), the capture FIFO held
 // for the whole run (tools/capture-lock.mjs), the dist served by `vite preview`. Each battle writes
 // <out>/<map>-<mode>-<size>v<size>-<pass>.json (the analysis, the roster, the load), and beside it the recorder's
 // readout (.frames.json.gz) and the main thread's trace events (.trace.json.gz), so --reanalyze=<out> can re-run the
@@ -65,7 +66,12 @@ const SYNC_MARK = 'cot-spike-census-sync';
 const TRACE_CATEGORIES = Object.freeze(['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing']);
 /** Chrome's trace buffer for a battle (KB): it holds the battle; the stream is read event by event, never whole. */
 const TRACE_BUFFER_KB = 600 * 1024;
-const RSS_ABORT_KB = 6 * 1024 * 1024;
+/**
+ * (2026-10-27) The browser tree's cap for a battle (MB; COT_BROWSER_TREE_CAP_MB overrides): the guard's 10 GB default
+ * killed a 7v7 Steinburg census at 10.09 GB with its renderer at 2.9 GB, the rest the GPU process's targets and textures
+ * (a footprint the old 6 GB RSS rule here never read). The renderer's 6 GB cap stays the runaway guard.
+ */
+const BATTLE_TREE_CAP_MB = 16384;
 /**
  * A scenario's whole run (a fresh browser, its cold and warm battles) at most. A browser the RSS watchdog closed left a
  * page call that never settled, and the census held the capture FIFO for 91 minutes with no browser (2026-10-25): every
@@ -579,6 +585,8 @@ const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''
 
 // the browser playing now: a stopped census (SIGTERM, SIGINT) closes it before it exits, leaving no orphan Chrome
 let activeBrowser = null;
+// a guard trip (exit: false) released the capture FIFO with the browser: the next battle takes its place again
+let guardReleasedLocks = false;
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.once(signal, () => {
     const closing = activeBrowser ? activeBrowser.close().catch(() => {}) : Promise.resolve();
@@ -607,22 +615,29 @@ async function playScenario(options, side, scenario, size, done, abort) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = size - 1, enemies = size;
-  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
-    args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] });
-  activeBrowser = browser;
   let aborted = null;
+  // (2026-10-27) the guard is the one memory rule: a trip kills this browser and fails this battle only (exit: false)
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
+    args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] },
+  {
+    label: `battle-spike-census ${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}`,
+    treeCapMb: Number(process.env.COT_BROWSER_TREE_CAP_MB) || BATTLE_TREE_CAP_MB,
+    exit: false,
+    onTrip: (report) => {
+      guardReleasedLocks = true;
+      if (aborted) return;
+      aborted = `browser guard: ${report.why}`;
+      log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
+      abort(aborted);
+    },
+  });
+  activeBrowser = browser;
   const pid = browser.process()?.pid;
   // the browser tree's resident set (the GPU process's Metal memory included on a Mac): its peak a battle, recorded
   const rss = { peakKb: 0 };
   const watchdog = setInterval(() => {
     const kb = pid ? treeRssKb(pid) : 0;
     rss.peakKb = Math.max(rss.peakKb, kb);
-    if (kb > RSS_ABORT_KB && !aborted) {
-      aborted = `browser RSS ${(kb / 1048576).toFixed(1)} GB past 6 GB`;
-      log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
-      abort(aborted);
-      browser.close().catch(() => {});
-    }
   }, 5000);
   watchdog.unref();
   try {
@@ -876,7 +891,7 @@ export async function runCensus(options) {
   for (const side of options.roots) {
     if (!existsSync(path.join(side.root, 'dist', 'index.html'))) throw new Error(`${side.root} has no dist (npm run build)`);
   }
-  const locks = await acquireProbeLocks({ log });
+  let locks = await acquireProbeLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   // a chunk with a budget stops hard 30 minutes past it, whatever is pending: the FIFO is the other lanes' too
@@ -901,6 +916,11 @@ export async function runCensus(options) {
           try { await runScenario(options, side, scenario, size, done); } catch (error) {
             failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 2600) });
             log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 1500)}`);
+          }
+          if (guardReleasedLocks) {
+            guardReleasedLocks = false;
+            log('the browser guard released the capture FIFO: queueing again');
+            locks = await acquireProbeLocks({ log });
           }
         }
       }
