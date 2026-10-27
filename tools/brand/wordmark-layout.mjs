@@ -3,6 +3,7 @@
 // one CSS pixel is one font unit of Chakra Petch, and prints each glyph's x, baseline and font weight plus the "of"
 // rules, for the horizontal lockup and the stacked title card. tools/brand/wordmark.py outlines the glyphs there.
 //   node tools/brand/wordmark-layout.mjs > /tmp/wordmark-layout.json
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -30,7 +31,7 @@ const html = `<style>${css}</style>
 <div id="h"><span class="wm"><span class="w">Claude<i class="b"></i></span><span class="of"><span class="w">of<i class="b"></i></span></span><span class="w">Tanks<i class="b"></i></span></span></div>
 <div id="s"><span class="stack"><span class="w">Claude<i class="b"></i></span><span class="of"><span class="w">of<i class="b"></i></span></span><span class="w">Tanks<i class="b"></i></span></span></div>`;
 
-const browser = await puppeteer.launch({ headless: 'shell' });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell' });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 12000, height: 6000 });

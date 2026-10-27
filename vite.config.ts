@@ -443,7 +443,10 @@ export default defineConfig({
             // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
             // leaf those two pages (and only they) boot that no worker loads (the worker-shared chunks may not reach the i18n
             // boot chunk, which pickerText does); on their own they were one more game boot request and two on the Gallery.
-            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio, 258): the hero cards' tier chip (ui/heroCardChips.ts, 0.4 KB, the Garage's roster
+            // at boot and the lazy shared hero tiles) rides here too: it reads the locale runtime as pickerText does, and on its
+            // own it was one more game and cn boot request.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
             // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
             // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
@@ -455,7 +458,10 @@ export default defineConfig({
             // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
             // 2026-10-26 (premiere-gallery-studio): the battlefield preview's minimap URL (minimapAssetUrl.ts, the game's boot and
             // the lazy battlefield picker) rides here too: on its own it was one more game and cn boot request.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (consumables-260): the DOM-free consumable rules and the Garage's loadout helpers (sim/consumableRules.ts,
+            // game/consumableLoadout.ts) load at boot on exactly the game and cn (the Garage, the room selection) and in the lazy
+            // HUD and battle; on their own they were one more boot request on both.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

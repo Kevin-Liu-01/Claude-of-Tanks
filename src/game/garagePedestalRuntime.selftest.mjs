@@ -102,6 +102,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
             nowMs += 5;
             yield;
           }
+          if (programOutcome?.throws) throw new Error(programOutcome.throws);
           return programOutcome;
         } finally {
           programClosures += 1;
@@ -142,11 +143,14 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
     discardSharedTextures: () => undefined,
     createBudgetYield: () => async () => {
       buildYields++;
-      if (failBudget) throw new Error('frame budget failure');
-      await delayedBuilds.shift()?.promise;
+      // the delayed and failing yields are the post-boot switches' (the boot hero builds in slices too, 2026-10-26)
+      if (bootComplete) {
+        if (failBudget) throw new Error('frame budget failure');
+        await delayedBuilds.shift()?.promise;
+      }
       nowMs += 11;
     },
-    nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
+    nextFrame: async () => { frameCalls += 1; if (bootComplete) await delayedFrames.shift()?.promise; },
     waitForPaint,
     getDeviceTier: () => deviceTier,
     getPhase: () => phase,
@@ -238,8 +242,12 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   h.setSelected('bravo');
   await h.runtime.set('bravo');
   assert.equal(h.runtime.current?.specId, 'bravo');
-  assert.equal(h.compileCalls, 1, 'cold interactive hero must submit its exact programs');
+  // (2026-10-26) the boot hero's programs are the Garage GPU warm's (no scene frame draws before it): its switch defers
+  // its own warm and records why; the cold interactive hero submits its exact programs
+  assert.equal(h.compileCalls, 1, 'only the post-boot hero submits its exact programs');
   assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
+  const bootLink = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'alpha')?.link;
+  assert.equal(bootLink?.status, 'deferred', 'the boot hero records a deferred warm, never a silent one');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
   assert.ok(h.visuals[0].root.parent === null, 'parked hero leaves the active scene graph');
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
@@ -624,7 +632,8 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
 {
   const h = createHarness({ buildCheckpoints: 2 });
   await h.runtime.set('alpha');
-  assert.equal(h.buildClosures, 0, 'covered boot retains synchronous construction');
+  // (2026-10-26) the boot screen's hero builds a slice at a time too (the owner: no freeze on the boot screen)
+  assert.equal(h.buildClosures, 1, 'the boot hero builds through the private sliced factory');
   h.setBootComplete(true);
   await h.runtime.set('bravo');
   const timing = h.debugTarget.__SWITCH_TIMINGS.at(-1);
@@ -632,7 +641,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.equal(timing.buildYieldMs, 22);
   assert.equal(timing.buildCheckpointCount, 2);
   assert.equal(timing.maxBuildStepMs, 7);
-  assert.equal(h.buildClosures, 1);
+  assert.equal(h.buildClosures, 2);
   assert.deepEqual(h.disposed, []);
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   h.runtime.dispose();
@@ -647,7 +656,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([outgoing.root]));
   assert.deepEqual(h.runtime.cacheIds, ['alpha']);
   assert.deepEqual(h.disposed, ['bravo']);
-  assert.equal(h.buildClosures, 1, 'failed frame wait closes the private factory iterator');
+  assert.equal(h.buildClosures, 2, 'failed frame wait closes the private factory iterator (the boot hero\'s closed at its end)');
   h.runtime.dispose();
 }
 
@@ -656,7 +665,8 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   // and the switch record carries the link receipt.
   const h = createHarness({ programSlices: 3, programOutcome: { status: 'complete', pending: 0 } });
   await h.runtime.set('alpha');
-  assert.equal(h.programPrepared, 0, 'covered boot keeps its synchronous path');
+  // (2026-10-26) the boot hero's links are the Garage GPU warm's (no scene frame before it)
+  assert.equal(h.programPrepared, 0, 'the boot hero defers its program warm to the Garage GPU warm');
   h.setBootComplete(true);
   const framesBefore = h.frameCalls;
   await h.runtime.set('bravo');
@@ -691,7 +701,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   await bravo;
   assert.equal(h.runtime.current?.specId, 'charlie', 'the stale link wait cannot replace the newer hero');
   assert.equal(h.programPrepared, 2);
-  assert.equal(h.programClosures, 2, 'both preparations are closed exactly once');
+  assert.equal(h.programClosures, 2, 'every preparation is closed exactly once');
   const stale = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
   assert.equal(stale.path, 'aborted');
   assert.equal(stale.abortReason, 'compile-stale');
@@ -762,6 +772,19 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
     'and builds the next card ahead');
   assert.ok(h.runtime.hasCached('bravo'));
   assert.equal(h.runtime.current?.specId, 'alpha', 'never shown on its own');
+  h.runtime.dispose();
+}
+
+{
+  // (2026-10-26) a program warm that throws says so in its switch record: the boot hero's threw unseen on every boot
+  const h = createHarness({ programSlices: 1, programOutcome: { throws: 'warm owner not initialized' } });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  await h.runtime.set('bravo');
+  const link = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo')?.link;
+  assert.equal(link?.status, 'error');
+  assert.match(link?.reason ?? '', /warm owner not initialized/);
+  assert.equal(h.runtime.current?.specId, 'bravo', 'the first visible render stays the fallback');
   h.runtime.dispose();
 }
 

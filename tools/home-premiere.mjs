@@ -186,7 +186,7 @@ function heroBlock() {
     + filmButton('mute', 'sound', 'publicPages.film.mute', 'soundOff')
     + filmButton('full', 'fullscreen', 'publicPages.film.fullscreen')
     + `</div>`
-    + `<button class="${btn('icon', '36')} cot-c-btn--ghost hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
+    + `<button class="${btn('icon', '36')} hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
     + `${iconMarkup('close', 20)}</button></dialog>`
     + `</header>`;
 }

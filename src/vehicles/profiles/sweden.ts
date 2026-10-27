@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
-import { buildStrv103 } from './casemate.ts';
+import { addFixedGunPort, buildStrv103 } from './casemate.ts';
 import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -130,7 +130,9 @@ function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
   for (const y of [1.42, 1.78]) {
     P.add('hullDetail', box(2.68, 0.035, 0.035), 0, y, 2.58);
   }
+  // 259: the centre bar ran through the tube; the screen opens round it (bars at x +-0.25 stand 16 cm clear)
   for (let i = 0; i < 11; i++) {
+    if (i === 5) continue;
     const x = -1.25 + i * 0.25;
     P.add('hullDetail', box(0.030, 0.39, 0.030), x, 1.60, 2.58,
       0, 0, (i - 5) * 0.018);
@@ -736,13 +738,14 @@ function addStrv103ARunningGear(P: SwedishBuilderPort): void {
 }
 
 function buildStrv103A(P: SwedishBuilderPort): void {
-  const { box, cylY, cylZ, torus, sph, liftEye, periscope } = KIT;
+  const { box, cylX, cylY, cylZ, torus, sph, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
   // ---- primary silhouette loft (print z-profile mapped to the published
-  // frame; glacis plane 1.845@z0.62 -> 1.47@z2.98, beak lip 1.50@3.52).
+  // frame; glacis plane 1.845@z0.62 -> 1.47@z2.98, beak lip 1.475@3.52: 259, 2.5 cm under the print's 1.50, which met
+  // the tube's underside).
   const primary: LoftRow[] = [
-    { z: 3.52, b: 1.26, t: 1.50, w: 1.30, wt: 1.46 },        // bare beak lip (no dozer/fence)
+    { z: 3.52, b: 1.26, t: 1.475, w: 1.30, wt: 1.46 },       // bare beak lip (no dozer/fence)
     { z: 2.98, b: 0.88, t: 1.47, w: 1.44, wt: 1.60 },        // beak root over the sprockets
     { z: 2.36, b: 0.64, t: 1.57, w: 1.48, wt: 1.65 },        // nose run (print yMin 0.61-0.74)
     { z: 1.55, b: 0.40, t: 1.70, w: 1.52, wt: 1.67 },        // glacis mid under the tube
@@ -763,7 +766,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     .map((r) => ({ z: r.z, b: r.b, t: Math.min(r.t, 1.38), w: Math.min(r.w, 0.94) })));
   loftRows(P, [
     { z: 2.98, b: 0.88, t: 1.38, w: 0.94 },
-    { z: 3.52, b: 1.26, t: 1.50, w: 0.94 },
+    { z: 3.52, b: 1.26, t: 1.475, w: 0.94 },
   ]);
   // Real A-nose lower structure (no dozer): the stiffened under-lip crossbeam
   // and twin under-beak tow brackets — the honest low mass at the tip (the
@@ -787,10 +790,21 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     { z0: 3.55, z1: 2.30, r: 0.098 },                        // mid step
     { z0: 2.30, z1: 1.10, r: 0.106, r2: 0.125 },             // rear taper to the glacis
   ]);
-  P.add('hullGun', KIT.xform(cylZ(0.115, 0.46, 12, 0.135), 0, 0, 0, -0.34), 0, 1.55, 1.18); // glacis exit sleeve
-  // travel clamp on the beak: two planted cheek posts + top yoke band
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.24, 0.06), s * 0.13, 1.50, 2.96);
-  P.add('hullDetail', box(0.34, 0.05, 0.08), 0, 1.65, 2.96);
+  // 259 (owner: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): the 9-degree glacis cut
+  // the level tube from z 1.5 (its crown) to 2.9 (its belly), and the beak's travel clamp ran its yoke band 6 cm through
+  // it. The tube now leaves through the armoured housing that rides the glacis over it (the loft rows below its
+  // centreline) by a cast ring on the housing's face; the beak lip drops 2.5 cm, and the travel lock stands open round it.
+  addFixedGunPort(P, { axisY: 1.59, topY: 1.745, halfW: [0.18, 0.15],
+    stations: [[1.26, 1.747], [1.55, 1.70], [2.36, 1.57], [2.95, 1.475]],
+    ring: { rIn: 0.110, rOut: 0.158, length: 0.10, proud: 0.06 } });
+  // The travel lock on the beak (the tube's belly 1.492, its crown 1.688 over z 3.28): two posts 4.9 cm outboard of
+  // the tube, a saddle 1.3 cm under it seated on the beak, and the hinged clamp bar 2.4 cm over it, open in battle.
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.05, 0.30, 0.07), s * 0.172, 1.605, 3.28);
+    P.add('hullDark', cylX(0.022, 0.07, 10), s * 0.172, 1.735, 3.28);     // hinge knuckles
+  }
+  P.add('hullDetail', box(0.40, 0.045, 0.08), 0, 1.735, 3.28);           // clamp bar
+  P.add('hullDetail', box(0.24, 0.025, 0.08), 0, 1.4665, 3.28);          // saddle on the beak
   // virtual articulation anchors (fixedMount: fx/aim only, re-seated to hullG)
   P.turretG.position.set(0, 1.59, 0.40);
   P.gunG.position.set(0, 0, 0);
@@ -805,9 +819,10 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // same plane.
   const glY = (z: number): number => 1.845 - (z - 0.62) * 0.1585;
   const GLACIS_PITCH = Math.atan(0.1585);
-  for (const s of [-1, 1]) addStrv103ALouvreBank(P, { x: s * 0.55, z: 1.62, y: glY(1.62), pitch: GLACIS_PITCH,
-    width: 0.74, length: 1.20, blades: 16 });
-  P.add('hullDetail', box(1.86, 0.05, 0.05), 0, glY(2.52) + 0.025, 2.52, GLACIS_PITCH, 0, 0); // splash rail
+  // (259: the banks and the splash rail stand outboard of the gun housing's 0.18 m foot)
+  for (const s of [-1, 1]) addStrv103ALouvreBank(P, { x: s * 0.57, z: 1.62, y: glY(1.62), pitch: GLACIS_PITCH,
+    width: 0.72, length: 1.20, blades: 16 });
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.76, 0.05, 0.05), s * 0.55, glY(2.52) + 0.025, 2.52, GLACIS_PITCH, 0, 0); // splash rail
   // spare links planted on the right glacis shoulder (A-era field fit)
   mount(P, 'hull', FITTINGS.spareTrackLinks({
     mats: P.mats, links: 3, width: 0.60, pitch: 0.17, seed: 10420,
@@ -909,6 +924,13 @@ function buildStrv103A(P: SwedishBuilderPort): void {
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.048,
       shield: false, seed: 10450 + (s > 0 ? 1 : 0),
     }), s * 1.22, 1.56, 3.24);                                                // plain A-era pods
+  }
+  // 259: the 103A's infrared driving lamps (the 103B gave them up; hhogman.se, Strv 103B: "removed IR headlights"): a
+  // black-filtered lamp on a bracket seated on the beak either side, inboard of the white pods and clear of the tube.
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.10, 0.06, 0.09), s * 0.62, 1.50, 3.27);        // bracket on the beak
+    P.add('hullDetail', cylZ(0.085, 0.15, 16), s * 0.62, 1.615, 3.29);      // lamp body
+    P.add('hullDark', cylZ(0.072, 0.012, 16), s * 0.62, 1.615, 3.371);      // infrared filter
   }
   P.add('hull', box(0.24, 0.16, 0.62), -1.46, 1.44, 1.90);                    // fixed MG box
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.52, 1.47, 2.26);

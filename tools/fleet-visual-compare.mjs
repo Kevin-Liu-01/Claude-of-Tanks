@@ -5,6 +5,7 @@
 // Usage:
 //   node tools/fleet-visual-compare.mjs --before=/tmp/before --after=/tmp/after
 //   node tools/fleet-visual-compare.mjs --before ... --after ... --strict
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
@@ -33,7 +34,7 @@ const selectedViews = new Set(option('views').split(',').map((view) => view.trim
 
 const beforeManifest = JSON.parse(readFileSync(resolve(beforeDir, 'tank-assets.json'), 'utf8'));
 const afterManifest = JSON.parse(readFileSync(resolve(afterDir, 'tank-assets.json'), 'utf8'));
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });

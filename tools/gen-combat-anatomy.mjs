@@ -340,8 +340,11 @@ function addPolygonToSlices(polygon, pointsBySlice, z0, z1, step) {
  * on loose AABBs or leaving the old quad seams between zones.
  */
 // VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family) draws into `hullGun`, its own bucket for the
-// spare-link seat solver; it stays part of the hull's structural shell exactly as it was inside `hull`.
-const PRIMARY_BUCKETS = { hull: ['hull', 'hullGun'], turret: ['turret'] };
+// spare-link seat solver. 259: it is not hull armour. Inside the shell it ran the hull's last slices out to the muzzle,
+// plating the barrel as glacis 2 m ahead of the nose, bridging the nose to the tube with a convex face in air, and
+// stretching the calibrated zones to the muzzle (the Strv 103A's nose took side-armour labels). The barrel is traced as
+// the gun (armor.gunBarrel), as on every turreted tank.
+const PRIMARY_BUCKETS = { hull: ['hull'], turret: ['turret'] };
 
 // Release 227, round 7 (2026-10-18; the critic's UAPL-R5C-5: "the main-armour polygon sits in front of the visible
 // upper-glacis ERA ... these modules are bound but can never act first"): the T-72B3 family's hull bucket carries its
@@ -603,9 +606,18 @@ function moduleShapeReceipts(root, hullRig, turretRig, armorModules) {
   return rows;
 }
 
-function eraPlateReceipts(root) {
+// 258 (vehicles-hit-volume-fit-258): the build fits each zone's surfaces in its owner rig's own frame
+// (tankFactoryCore eraVisualBindingReceipt), before the rig's scale; the combat frames carry none (rigid-hull-frame.mjs),
+// so each point takes its owner rig's scale (hull rigs sit at the root's origin and turret rigs on their turret pivots,
+// so the scale is about the frame's origin). Unscaled, the Challenger 2E's skirt ERA stood 19 cm inside the cassettes it
+// draws and the Sheridan's 10 cm outside them.
+function eraPlateReceipts(root, rigScales = {}) {
   const receipt = root.userData.eraVisualBindingReceipt;
   if (!receipt || !Array.isArray(receipt.plates)) return [];
+  const scaled = (owner, point) => {
+    const s = rigScales[owner];
+    return s ? [point[0] * s.x, point[1] * s.y, point[2] * s.z] : point;
+  };
   return receipt.plates
     .filter((plate) => plate.registered && plate.ownerMatches
       && plate.partCount > 0 && Array.isArray(plate.fittedSurfaces)
@@ -614,7 +626,7 @@ function eraPlateReceipts(root) {
       name: plate.name,
       owner: plate.owner,
       surfaces: plate.fittedSurfaces.map(
-        (surface) => surface.map((point) => point.map(round)),
+        (surface) => surface.map((point) => scaled(plate.owner, point).map(round)),
       ),
       visualSectors: [...(plate.visualSectors || [])],
     }));
@@ -635,13 +647,20 @@ function receiptFor(id) {
     // plate and a hulk's well are drawn from it (2026-10-22), and with it the hull the turret traverses over, which the
     // turret's seat follows (measureTurretSweep). A ring measured past the hull's own sides keeps its cap (244).
     const armor = TANK_SPECS[id]?.armor;
+    // 259: a variant that draws its donor's exact hull and turret (the PT-91M on the T-72BU: hullG.userData.pt91mDonor)
+    // measures the ring with the donor's radius. The radius only guides the measure, yet it sets the deck it reads, and the
+    // PT-91M's own (the T-72B3's ring refit to its 3.66 m kit width) seated the donor's turret 0.1 mm off the donor's.
+    const coreDonor = hullRig.userData.pt91mDonor?.id;
+    const ringArmor = (coreDonor && TANK_SPECS[coreDonor]?.armor) || armor;
     const ring = armor?.turretless ? null
-      : measureTurretRing(hullRig, turretRig, turretRingRadius(armor), { exterior: true, rimCap: TURRET_RING_SIDE_CAPS[id] });
+      : measureTurretRing(hullRig, turretRig, turretRingRadius(ringArmor), { exterior: true, rimCap: TURRET_RING_SIDE_CAPS[id] });
     const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
     // the build seated its turret over the deck from the ring receipt of the row it read (turretSeatRace.ts's own test)
     const seatReceipt = combatAnatomyCalibration(id)?.turretRing;
     const seatedTurret = !!seatReceipt && seatReceipt.rimR > 0.3 && Number.isFinite(seatReceipt.deckY);
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
+    // (the rigs' scales, before the frames below take them, for the ERA receipts the build fitted in the rigs' frames)
+    const rigScales = { hull: hullRig.scale.clone(), turret: turretRig.scale.clone() };
     rigidHullFrame(tank, id);
     rigidTurretFrame(tank);
     // Only the explicitly structural armor buckets calibrate shell collision.
@@ -686,7 +705,7 @@ function receiptFor(id) {
       moduleShapes: moduleShapeReceipts(
         tank.root, hullRig, turretRig, TANK_SPECS[id]?.armor?.modules,
       ),
-      eraPlates: eraPlateReceipts(tank.root),
+      eraPlates: eraPlateReceipts(tank.root, rigScales),
       ...(tank.root.userData.weaponGeometryParts?.length
         ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },

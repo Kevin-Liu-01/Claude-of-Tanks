@@ -85,6 +85,7 @@ import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { notice } from '../ui/components/notice.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
@@ -1220,7 +1221,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
   color:var(--ink-2);text-transform:uppercase;cursor:pointer;pointer-events:auto;}
 .cot-kc-skip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-.cot-kc-skip:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
+.cot-kc-skip:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
 /* (the kit's key cap, the HUD's: components .cot-c-kbd at the battle's 11 px) */
 .cot-kc-skip .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);
@@ -1238,6 +1239,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase;}
 .cot-kc-annot .hd .m svg{color:var(--kc-amber);}
 .cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
+/* (the death view leaves the shell and the attacker line to the killer card, and the title its own line: B15) */
+.cot-kc-annot :is(.shellrow,.w)[hidden],.cot-kc-title .s:empty{display:none;}
 .cot-kc-annot .shellrow>svg{color:var(--accent-hi);}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
   font-size:12.5px;letter-spacing:var(--track-label-s);color:var(--accent-hi);}
@@ -1257,13 +1260,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   vertical-align:1.5px;line-height:1.25;font-weight:700;}
 .cot-kc-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-4);letter-spacing:0em;
   text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 11px 0;padding:var(--s1) var(--s2);text-align:center;display:none;
-  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
-  letter-spacing:.18em;color:var(--danger);border:1px solid oklch(from var(--danger) l c h / .55);
-  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),var(--hud-plate));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
-.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:var(--battle-fs-13);color:var(--accent-hi);letter-spacing:.09em;}
-body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:var(--battle-fs-11);letter-spacing:.04em}
-.cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
+.cot-kc-banner{margin:7px 11px 0;display:none;}
+.cot-kc-banner.on{display:block;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
@@ -1513,8 +1511,10 @@ export function createKillCam(deps: KillcamDeps) {
     const hdK = el('div', 'k', shellRow);
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
+    // (the ammunition rack's detonation is the kit's error notice, inline in the analysis with the rack's glyph: a danger
+    // banner of its own, its own plate, tracking and gradient, outside the one notice family, UI-LOCKDOWN B14)
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
+    banner.innerHTML = notice({ severity: 'error', icon: 'ammoRack', text: t('killcam.ammoRackDetonation'), live: false });
     // killer card (death view only — populated per replay in beginXray)
     const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
@@ -2544,10 +2544,11 @@ export function createKillCam(deps: KillcamDeps) {
   function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
     const meta = d.hdMeta.querySelector('span');
     if (meta) meta.textContent = t('killcam.ballisticAnalysis');
-    appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
+    // (the death view's distance and damage are the killer card's, beside the analysis: UI-LOCKDOWN B15)
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
     appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
     appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
-    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
     appendPenetrationStat(d, event);
     appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
   }
@@ -2570,7 +2571,9 @@ export function createKillCam(deps: KillcamDeps) {
     const attackerName = attackerLabel(event);
     d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
     d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
-    d.titleS.textContent = finalBlow
+    // (in the death view the killer card names who and with what, the registry's place: the title's line, the analysis's
+    // shell and its attacker line leave it, UI-LOCKDOWN B15)
+    d.titleS.textContent = pb.isDeathView ? '' : finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
         attacker: attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
       })
@@ -2590,6 +2593,8 @@ export function createKillCam(deps: KillcamDeps) {
     d.hdW.append(attackerName || t('killcam.enemy'));
     d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
     d.hdW.append(event.targetName || '');
+    (d.hdK.parentElement ?? d.hdK).hidden = pb.isDeathView;
+    d.hdW.hidden = pb.isDeathView;
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -5223,7 +5228,7 @@ export function createKillCam(deps: KillcamDeps) {
     );
     appendKillerStat(
       d,
-      'Distance',
+      t('killcam.stat.distance'),
       `${Math.round(event.flightDistM || 0)} m`,
       '',
       'scope',
@@ -5457,7 +5462,8 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function addXrayDamageLabel(d: KillcamDom, event: KillcamHitEvent): void {
-    if ((event.damage || 0) <= 0) return;
+    // (the death view's damage is the killer card's row: UI-LOCKDOWN B15)
+    if ((event.damage || 0) <= 0 || pb.isDeathView) return;
     _p.set(...event.pos);
     addXrayLabel(d, _p, '', `−${Math.round(event.damage || 0)} HP`, '', true);
   }

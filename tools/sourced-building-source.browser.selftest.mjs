@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Native storage and exact data-texture pixels; not a timing or resource-cap gate.
 // Owns its FIFO lease. Run directly, without an outer capture wrapper.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -293,7 +294,7 @@ try {
   checkInterrupted();
   // Do not race launch against a signal: await its result, then close its owned
   // child before proceeding. Puppeteer's exit handlers must not bypass finally.
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000,
     handleSIGINT: false, handleSIGTERM: false,
     protocolTimeout: 30_000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   checkInterrupted();

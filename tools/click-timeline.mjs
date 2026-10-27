@@ -25,6 +25,7 @@
 // The probe hides navigator.webdriver, so the transitions, veils and idle warm-ups run as they do for a player. The
 // battle document boots with it visible (the game then installs `__DEBUG`, which the battle paths use to end a
 // battle) and hides it once the Garage is up.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -490,7 +491,7 @@ const restoreGarage = async (page, ctx) => {
 };
 // A Garage sweep presses every visible control on the Garage's screen except what leaves the page, starts a battle or
 // a room, or switches the language (those have their own paths)
-const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]', '[data-proving]',
+const SWEEP_DENY = ['[data-battle-launch]', '[data-campaign-launch]', '[data-battle-watch]',
   '[data-nav=home]', '[data-nav=gallery]', '[data-nav=docs]', '[data-nav=studio]', '[data-nav=github]', '.cot-github',
   '[data-mobile-nav=home]', '[data-mobile-nav=gallery]', '[data-mobile-nav=docs]', '[data-mobile-nav=studio]',
   '[data-mobile-nav=locale]', '[data-deploy-room]', '[data-tabbar=gallery]', '.cot-wordmark', 'a[href^="http"]',
@@ -1137,7 +1138,7 @@ async function main() {
       const reply = await fetch(base.url.replace(`//${host}`, '//127.0.0.1')).catch(() => null);
       if (!reply?.ok) throw new Error(`${base.label} (${base.url}) does not answer`);
     }
-    const browser = await puppeteer.launch({
+    const browser = await launchGuardedBrowser(puppeteer, {
       headless: 'new', protocolTimeout: 600000, timeout: 180000, defaultViewport: null,
       args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
         '--js-flags=--max-old-space-size=3072', `--host-resolver-rules=MAP ${host} 127.0.0.1`,

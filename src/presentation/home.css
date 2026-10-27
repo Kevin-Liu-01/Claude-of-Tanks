@@ -14,13 +14,14 @@
 :root{--home-h1:clamp(var(--fs-44),min(5.4vw,9.5svh),var(--fs-88));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-feat:clamp(var(--fs-28),2.6vw,var(--fs-44));--home-feat-wide:clamp(var(--fs-36),4vw,var(--fs-76));--home-gutter:var(--shell-gutter);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
-/* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
-   reading and data voices read it, so the head stays inside its type budget */
-body{--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* the page declares the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below), which the kit's display
+   and reading voices read, and IBM Plex Mono for its readouts (the counts and the clocks, bar line 4), loaded when one
+   shows, with no preload, so the head stays inside its type budget */
+body{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
 img{display:block;max-width:100%}
 /* the page's own focus outline; the kit's controls draw their ring (components.css), so they take no second outline */
-:focus-visible:not([class*='cot-c-']){outline:2px solid var(--accent-hi);outline-offset:4px}
+:focus-visible:not([class*='cot-c-']){outline:2px solid var(--focus-ink);outline-offset:4px}
 .home main{overflow:hidden}
 .home h1,.home h2,.home h3{text-wrap:balance}
 .shell,.home-shell{width:min(calc(100% - var(--home-gutter) * 2),var(--shell-max));margin-inline:auto}
@@ -81,7 +82,7 @@ img{display:block;max-width:100%}
 .hero__ctas{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s6)}
 .hero__trailer{padding-left:var(--s2);background:var(--surface-raised)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
-.hero__thumb img{width:100%;height:100%;object-fit:cover}
+.hero__thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
 .hero__dur{margin-left:var(--s3);font:500 max(var(--fs-floor-12),var(--fs-14))/1 var(--font-data);letter-spacing:normal}
 .hero__trailer-icon{display:none}
@@ -99,8 +100,8 @@ img{display:block;max-width:100%}
 /* the trailer: a dialog over the page, its sound on the viewer's press */
 .hero__film{width:min(1280px,calc(100vw - 2 * var(--home-gutter) - 2px));max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
-.hero__film video{display:block;width:100%;aspect-ratio:16/9;background:var(--surface-scene)}
-.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);box-shadow:var(--btn-secondary-ring);color:var(--ink-1)}
+.hero__film video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:50% 50%;background:var(--surface-scene)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -161,7 +162,7 @@ img{display:block;max-width:100%}
 .play-acts .cot-c-btn--icon:disabled{opacity:.55;cursor:default}
 .play-acts .cot-c-seg__opt{font-size:max(var(--fs-floor-12),var(--fs-13))}
 .play-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--s3) * 2) / 3);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none;
-  /* whole cards per view, the arrows the way on; on a phone the next card peeks under a fade (below) */
+  /* whole cards per view, the arrows the way on; a phone shows one whole card at a time (below) */
   --fade-l:0px;--fade-r:0px;-webkit-mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,var(--ink-1) var(--fade-l),var(--ink-1) calc(100% - var(--fade-r)),transparent 100%)}
 .play-rail::-webkit-scrollbar{display:none}
 .play-rail[hidden]{display:none}
@@ -179,38 +180,45 @@ img{display:block;max-width:100%}
 
 /* ---- the press band: the Three.js feature, the launch numbers, the posts ---- */
 .press{padding:var(--s7) 0 var(--s9)}
-.press__inner{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "stats" "quotes" "sources" "date";gap:var(--s5)}
+.press__inner{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "stats" "posts" "reddit" "date";gap:var(--s5)}
 /* the section grammar: a display headline whose line is the hollow voice (owner UI rule 5), the accent filled */
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
 :lang(zh-CN) .home-h2 .t-hollow{opacity:1}
-/* zh quotes break at their punctuation, never inside a word */
-:lang(zh-CN) .press__quotes blockquote{line-break:strict}
+/* zh quotes and titles break at their punctuation, never inside a word */
+:lang(zh-CN) :is(.press__posts blockquote,.press__reddit h3){line-break:strict}
 /* the press head ends on its baseline like the modes head, so both sit 24 px over their content */
 .press__title{grid-area:title;text-box:trim-end cap alphabetic}
-.press__title em{font-style:normal;color:var(--ink-1);-webkit-text-stroke:0;text-shadow:none}
-.press__title a:hover em,.press__title a:focus-visible em{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
+.press__title em{font-style:normal}
 .press__stats{grid-area:stats;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5) var(--s3);margin:0}
 .press__stats dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;white-space:nowrap}
 .press__stats dt .v5-social-metric-icon{width:16px;height:16px}
 :lang(zh-CN) :is(.press__stats dt,.hero__stats li){font-family:var(--font-cjk)}
 .press__stats dd{margin:var(--s2) 0 0;font:700 var(--fs-40)/1 var(--font-display);color:var(--ink-1);text-box:trim-end cap alphabetic}
-.press__sources{grid-area:sources;display:flex;flex-wrap:wrap;gap:var(--s2);margin:0;padding:var(--s5) 0 0;list-style:none;border-top:1px solid var(--line-1)}
-.press__src{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
-.press__src:hover,.press__src:focus-visible{color:var(--ink-1);box-shadow:var(--ring-3)}
-/* the quoted posts: four cards, each over its battle photo */
-.press__quotes{grid-area:quotes;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
+/* the posts (owner, 2026-10-26: the Reddit posts prominent again, the Three.js post its own card): Three.js's feature
+   first and largest, two rows tall beside the four quoted posts, each over its battle photo; then the five Reddit
+   launch posts on the same card */
+.press__posts{grid-area:posts;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr;gap:var(--s3)}
+.press__posts>.v5-social-card--threejs{grid-column:span 2;grid-row:span 2}
+.press__reddit{grid-area:reddit;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--s3)}
 /* one size for every quote, the last line never a lone word */
-.press__quotes .v5-social-card__body blockquote,.press__quotes .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
-.press__quotes .v5-social-metrics{gap:var(--s4)}
-.press__quotes .v5-social-card__body{justify-content:flex-start}
-.press__quotes .v5-social-metrics{font-size:max(var(--fs-floor-12),var(--fs-12))}
-.press__title a{display:flex;align-items:first baseline;gap:var(--s4)}
-.press__title a>span{text-box:trim-end cap alphabetic}
-.press__avatar{position:relative;top:.06em;flex:none;width:.8em;height:.8em;border-radius:50%;outline:1px solid var(--line-3)}
-.v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
+.press__posts .v5-social-card__body blockquote,.press__posts .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.3;text-wrap:pretty}
+.press__posts .v5-social-card--threejs .v5-social-card__body blockquote{font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.v5-social-card--urban-crossfire{--social-card-image:url('/media/site50-r14/stills/s19-roof-tiles-close.webp');--social-card-position:50% 48%}
+/* the band's lead card carries its still: the copy stands at the top and the counts at the foot, each on a scrim, with the
+   picture between them (home r30: the largest card was 460 px of near-black plate) */
+.press__posts .v5-social-card--threejs::after{opacity:.62}
+.press__posts .v5-social-card--threejs>a{background:linear-gradient(180deg,var(--scrim),transparent 42%,transparent 62%,var(--scrim))}
+:is(.press__posts,.press__reddit) .v5-social-metrics{gap:var(--s4);font-size:max(var(--fs-floor-12),var(--fs-12))}
+.press__posts .v5-social-card__body{justify-content:flex-start}
+.v5-social-card--reddit{min-height:240px}
+.v5-social-card--reddit>a{padding:var(--s5);background:none}
+.v5-social-card .v5-social-card__avatar--reddit{display:grid;place-items:center;background:var(--surface-hover)}
+.v5-social-card__avatar--reddit .v5-social-platform-icon{width:22px;height:22px}
+.v5-social-card__title{margin:0;color:var(--ink-1);font:600 var(--fs-18)/1.3 var(--font-display);text-wrap:pretty}
+.press__reddit .v5-social-card__body{justify-content:flex-start;padding:var(--s5) 0}
+.v5-social-card{position:relative;isolation:isolate;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--ring-1)}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
-.v5-social-card--vaibhav{--social-accent:var(--ink-2)}
 .v5-social-card--desert-duel{--social-card-image:url('/media/site50-r14/stills/s27-caravanserai-kill.webp');--social-card-position:50% 55%}
 .v5-social-card--winter-breaker{--social-card-image:url('/media/site50-r14/stills/s24-ice-duel.webp');--social-card-position:52% 50%}
 .v5-social-card--verdant-column{--social-card-image:url('/media/site50-r14/stills/s04-column-under-fire.webp');--social-card-position:50% 52%}
@@ -220,8 +228,7 @@ img{display:block;max-width:100%}
 .v5-social-card__identity>span:nth-child(2){display:flex;min-width:0;flex-direction:column;line-height:1.15}
 .v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-2);font:400 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
-.v5-social-card__identity em{margin-left:auto;padding:0 var(--s2);height:20px;display:inline-flex;align-items:center;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--social-accent);font:600 var(--fs-11)/1 var(--font-display);font-style:normal;letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap}
-.v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover}
+.v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover;object-position:50% 50%}
 .v5-social-card__body{display:flex;flex:1;flex-direction:column;justify-content:center;padding:var(--s6) 0}
 .v5-social-card__body blockquote{margin:0;color:var(--ink-1);font:600 var(--fs-28)/1.2 var(--font-display)}
 .v5-social-card--long-quote .v5-social-card__body blockquote{font-size:var(--fs-20);line-height:1.32}
@@ -234,6 +241,7 @@ img{display:block;max-width:100%}
 .v5-social-metric-icon{color:var(--ink-2);display:inline-block;width:18px;height:18px;flex:none;background:currentColor;-webkit-mask:var(--social-metric-icon) center/contain no-repeat;mask:var(--social-metric-icon) center/contain no-repeat}
 .v5-social-metric-icon--view{--social-metric-icon:url('/brand/social/view.svg')}
 .v5-social-metric-icon--like{--social-metric-icon:url('/brand/social/like.svg')}
+.v5-social-metric-icon--upvote{--social-metric-icon:url('/brand/social/upvote.svg')}
 .v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg')}
 .v5-social-metric-icon--comment{--social-metric-icon:url('/brand/social/comment.svg')}
 .v5-social-metric-icon--repost{--social-metric-icon:url('/brand/social/repost.svg')}
@@ -277,6 +285,7 @@ img{display:block;max-width:100%}
 /* the sections under the hero lay out only as they near the screen: the first frame draws the hero alone */
 .features{content-visibility:auto;contain-intrinsic-size:auto 2600px}
 :is(.play,.press,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 640px}
+.press{contain-intrinsic-size:auto 1400px}
 .bento{content-visibility:auto;contain-intrinsic-size:auto 1500px}
 
 /* Chinese headlines: roomier lines (CJK glyphs fill the em box, so the Latin display leading would make two lines touch) */
@@ -284,7 +293,9 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 
 @media (width < 1100px){
   .play-rail{grid-auto-columns:calc((100% - var(--s3)) / 2)}
-  .press__quotes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .press__posts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .press__posts>.v5-social-card--threejs{grid-row:auto}
+  .press__reddit{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 /* the phone landing: the poster and the clips over the first 640 px, the headline in its sky, the counts, and one Play
    bar held at the bottom of the screen; the features one to a row */
@@ -350,9 +361,14 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play-tile__nm .cot-i{width:20px;height:20px}
   .press__stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .press__stats dd{font-size:var(--fs-28)}
-  .press__quotes{grid-template-columns:minmax(0,1fr)}
+  .press__posts{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto}
+  .press__posts>.v5-social-card--threejs{grid-column:auto}
+  /* the Reddit posts are a rail of whole cards on a phone, the next one showing at the edge */
+  .press__reddit{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:80%;overflow-x:auto;overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory;scrollbar-width:none}
+  .press__reddit::-webkit-scrollbar{display:none}
+  .press__reddit>*{scroll-snap-align:start}
   .v5-social-card{min-height:0}
-  .press__src{height:44px}
   .v5-social-card>a{padding:var(--s5)}
   .v5-social-card__identity em{display:none}
   /* the picture, then the words under it: no headline over a tank on a narrow screen */
@@ -381,6 +397,10 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero__reelbar{flex:1 1 100%;justify-content:flex-end;height:auto;min-height:44px}
 }
 @media (height < 520px) and (width >= 768px){
+  /* the headline takes its height-led size under the 44 px floor and the column's width, so it holds one line and the
+     hero's stat row stays on the screen (home r30: two lines ran the en hero 22 px past 844x390) */
+  :root{--home-h1:clamp(var(--fs-32),min(5.4vw,9.5svh),var(--fs-88))}
+  .hero__lead{max-width:none}
   .hero{min-height:var(--cot-viewport-height,100dvh)}
   .hero__card{margin-bottom:var(--s4)}
 }
@@ -388,10 +408,10 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 @media (pointer:coarse),(height < 520px){
   .play-acts>.cot-c-seg>.cot-c-seg__opt{height:44px}
   .play-acts .cot-c-btn--icon{--h:50px}
-  .press__src{height:44px}
   .film-btn,.hero__film-close{--h:44px}
   .film-scrub{height:44px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
+@media(hover:hover) and (pointer:fine){.press__posts .v5-social-card--threejs:hover::after{opacity:.7}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after{transition:none}.v5-social-card::after{transform:none}html{scroll-behavior:auto}.feat>img,.feat>video,.feat__link .cot-i{transition:none}.feat:hover>img,.feat:hover>video{transform:none}}
 }

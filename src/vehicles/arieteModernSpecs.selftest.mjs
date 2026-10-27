@@ -22,15 +22,16 @@ import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 // order, paint and lazy-registration contracts below are live.
 assert.equal(TANK_SPECS.c1_ariete_proto_serie1.name, 'C1 Ariete Prototype (Serie 1)');
 assert.equal(TANK_SPECS.c2_ariete_proto.name, 'C2 Ariete Prototype');
-assert.equal(tankTier('c1_ariete_proto_serie1'), 9);
-assert.equal(tankTier('c2_ariete_proto'), 10);
+// 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
+assert.equal(tankTier('c1_ariete_proto_serie1'), 6);
+assert.equal(tankTier('c2_ariete_proto'), 7);
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.ok(!SECOND_WAVE_X_IDS.includes('c2_ariete'), 'new C2 is not inserted into the historical source wave');
 assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['c1_ariete', 'c2_ariete']);
 
 assert.equal(ARIETE_X_FAMILY_SCALE, 1.12 * 1.10, 'fixed owner-directed enlargement');
 const c1 = TANK_SPECS.c1_ariete, c2 = TANK_SPECS.c2_ariete;
-for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
+for (const [spec, datums, tier] of [[c1, C1, 6], [c2, C2, 7]]) {
   assert.equal(ALL_TANK_IDS.filter(id => id === spec.id).length, 1);
   assert.ok(PRODUCTION_TANK_IDS.includes(spec.id));
   assert.equal(tankTier(spec.id), tier);
@@ -59,9 +60,20 @@ assert.ok(c2.enginePowerHp / c2.weightTons > c1.enginePowerHp / c1.weightTons);
 for (const key of ['hp', 'topSpeedKmh', 'reverseSpeedKmh', 'turretTraverseDegS']) assert.ok(c2[key] > c1[key]);
 for (const key of ['reloadS', 'baseAccuracy', 'aimTimeS']) assert.ok(c2.gun[key] < c1.gun[key]);
 for (const key of ['move', 'hullRot', 'turret']) assert.ok(c2.gun.bloom[key] < c1.gun.bloom[key]);
-assert.deepEqual(c2.gun.shells, c1.gun.shells, 'all three main-gun rounds retained; decorative roof weapon adds no ammunition');
-assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.09);
-assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.10);
+// 259 (Main ruling 2026-10-26): the C2 fires the C2 Prototype's rounds, the prototype's round in-game; no named new-round
+// procurement. The 2025 delivery coverage keeps the 120/44 gun, which fires all standard NATO rounds:
+//   https://euro-sd.com/2025/07/major-news/45604/modernised-ariete-c2-delivered
+//   https://thedefensepost.com/2025/07/21/italy-upgraded-ariete-c2-tank/
+//   https://www.overtdefense.com/2025/07/23/italian-army-receives-first-ariete-c2-main-battle-tank
+// (fleetBalancePass applySameTierFairness copies them; the C2 keeps its own cadence). The decorative roof weapon adds no
+// ammunition.
+const round = ({ reloadS, ...rest }) => rest;
+assert.deepEqual(c2.gun.shells.map(round), TANK_SPECS.c2_ariete_proto.gun.shells.map(round),
+  "the C2 fires the C2 Prototype's three main-gun rounds");
+assert.ok(c2.gun.shells.every((r) => r.reloadS == null), 'the C2 rounds keep the gun cadence');
+// re-pinned with the prototype's rounds (1.09-1.10 on the C1's): 545 dmg at 5.4 s against 520 at 5.9 s
+assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) > 1.14);
+assert.ok(sustainedPrimaryDpm(c2) / sustainedPrimaryDpm(c1) < 1.15);
 assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier)
   .filter(row => row.id === 'c2_ariete'), [], 'new upgrade remains within the unmodified peer gates');
 

@@ -89,14 +89,33 @@ function mergeFragments(faces:Face[],facts:Contours):Face[] {
   // Merge only when their union is already convex: unchanged area and exact
   // original boundary, with no inset, missing sliver or artificial bridge.
   const result=[...faces];
-  for(let i=0;i<result.length;i++)for(let j=i+1;j<result.length;j++){
+  const join=(i:number,j:number):Face|null=>{
     const a=facts(result[i]),b=facts(result[j]);
-    if(!b.face.every(p=>Math.abs(a.unitDepth(p))<1e-11))continue;
+    // (2026-10-26, the boot census) two faces apart by more than a micron can never join: their hull adds area far past
+    // the test's 1e-13, so the hull below is skipped (it ran for every coplanar pair, the fleet chunk's evaluation)
+    if(!overlaps(a.bounds,b.bounds,-1e-6))return null;
+    if(!b.face.every(p=>Math.abs(a.unitDepth(p))<1e-11))return null;
     const joined=hull([...result[i],...result[j]]);
-    if(Math.abs(area(joined)-a.area-b.area)>1e-13)continue;
-    result[i]=joined;result.splice(j,1);i=-1;break;
+    return Math.abs(area(joined)-a.area-b.area)>1e-13?null:joined;
+  };
+  // Every merge takes the first joinable pair in (i, j) order, as a full rescan from the start after each merge would. A
+  // pair of unchanged faces that failed stays failed, so after a merge into face i only the pairs (a, i) with a < i are
+  // checked again before the scan goes on from i (2026-10-26, the boot census: the rescans were the evaluation's cost).
+  let changed=-1,from=0;
+  scan:for(;;){
+    if(changed>=0){
+      for(let a=0;a<changed;a++){
+        const joined=join(a,changed);
+        if(joined){result[a]=joined;result.splice(changed,1);changed=a;continue scan;}
+      }
+      from=changed;changed=-1;
+    }
+    for(let i=from;i<result.length;i++)for(let j=i+1;j<result.length;j++){
+      const joined=join(i,j);
+      if(joined){result[i]=joined;result.splice(j,1);changed=i;continue scan;}
+    }
+    return result;
   }
-  return result;
 }
 function planeKey(face:Face):string {
   const[a,b,c]=face,u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);

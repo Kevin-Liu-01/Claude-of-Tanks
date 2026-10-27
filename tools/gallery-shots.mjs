@@ -5,6 +5,7 @@
 // camera.position and camera.target, so an owner's markup view is reproduced exactly (window.__TANK_GALLERY.setCamera).
 // Serve a checkout first (`node node_modules/vite/bin/vite.js --port 5291 --strictPort`) and stop that exact PID after.
 // Never edit src while it runs: vite hot-reloads the page under the capture. A manual probe, not part of npm test.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 
@@ -14,7 +15,7 @@ if (!spec) { console.error('usage: node tools/gallery-shots.mjs --port=N --out=d
 const port = arg('port', '5291'), out = arg('out', 'tmp/gallery-shots');
 const width = +arg('width', 1200), height = +arg('height', 900);
 mkdirSync(out, { recursive: true });
-const browser = await puppeteer.launch({ headless: true, protocolTimeout: 900000,
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 900000,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', `--window-size=${width},${height}`] });
 try {
   const page = await browser.newPage();

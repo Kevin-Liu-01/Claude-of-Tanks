@@ -16,6 +16,7 @@
 //   it keeps 3 px from the reticle's ink, the controls and the panels, and the struck round or rack is painted with no
 //   DOM chip, notice or panel over it. At 360x640 the chip stays seated by the sight.
 // No screenshot. node tools/hud-polish.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-polish]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { recordReticle } from './hud-ammo-capture.mjs';
@@ -65,7 +66,7 @@ function lineEnds(selector, boxes = false) {
 }
 
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const reports = [];
 const failures = [];
 try {
@@ -212,7 +213,7 @@ try {
           const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
           const box = (node) => { const r = node.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }; };
           const shown = (node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
-          const chipNode = document.querySelector('.cot-aim-warning:not([hidden])');
+          const chipNode = document.querySelector('.cot-aim-warning:not([hidden]),.cot-battle-notices .cot-aim-notice');
           if (!chipNode || !shown(chipNode)) return { chip: null };
           const chip = box(chipNode);
           const map = document.querySelector('.cot-minimap');
@@ -230,7 +231,7 @@ try {
           // (the empty gun's marks: the struck round's or the rack's shells, magazineShellPath, and what covers them)
           const shells = ink.filter((mark) => mark.shell);
           const covers = [];
-          for (const node of document.querySelectorAll('.cot-aim-warning:not([hidden]),.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-medal-toast,.cot-vehicle-controls>button,.cot-touch.on .round,.cot-touch.on .round>.lb,.cot-scope-vision')) {
+          for (const node of document.querySelectorAll('.cot-aim-warning:not([hidden]),.cot-battle-notices .cot-aim-notice,.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-medal-toast,.cot-vehicle-controls>button,.cot-touch.on .round,.cot-touch.on .round>.lb,.cot-scope-vision')) {
             if (!shown(node)) continue;
             const b = box(node);
             for (const mark of shells) if (apart(b, mark) < 0) { covers.push(node.className); break; }

@@ -100,8 +100,9 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
+import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -154,7 +155,7 @@ import { installCampaignProgress } from './game/campaignProgress.ts';
 import { installServiceRecord } from './game/serviceRecord.ts';
 import { installMedalToasts } from './ui/medalToast.ts';
 import {
-  createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
+  createGarageStage, createGarageStageSteps, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
@@ -234,6 +235,7 @@ import type { MatchActor } from './mp/presentation/battlePresentation.ts';
 import type { LobbyIntent } from './mp/session/lobbyIntent.ts';
 import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
+import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -867,12 +869,21 @@ bus.on('module:state', (payload) => {
 GARAGE_POS.y = 0;
 let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(
+  // (2026-10-26, the boot census) the stage a section at a time under the boot screen (one task of 120 ms on a cold
+  // desktop, 604 ms on the 4x phone), at the vehicle stage's cadence
+  const stageSteps = createGarageStageSteps(
     engineCtx,
     GARAGE_POS,
     selectedGarageVariantId,
     () => invalidateGaragePresentation(),
   );
+  const stageYield = createOpaqueLoadingYielder(12, 80);
+  let gs: ReturnType<typeof createGarageStage>;
+  for (;;) {
+    const step = stageSteps.next();
+    if (step.done) { gs = step.value; break; }
+    await stageYield();
+  }
   scene.add(gs.group);
   const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
@@ -933,7 +944,6 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
-let lastGarageProgramRoot: THREE.Object3D | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -959,8 +969,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
   restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
-    const programRoot = pedestal.current?.root ?? scene;
-    const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
+    // (2026-10-26, the rooms A/B) every covered return links the Garage's programs before its frames: a hero a battle
+    // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
+    // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
+    const programsNeedWarm = true;
     const receipt = await restoreGarageGpuPipeline({
       renderer,
       scene,
@@ -973,7 +985,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       programsNeedWarm,
       isCurrent,
     });
-    lastGarageProgramRoot = programRoot;
     return receipt;
   },
 });
@@ -1383,10 +1394,12 @@ const playSurface = createPlaySurfaceRuntime({
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
+        consumables: loadConsumables(garage.getSelected(), consumableSpecFor(getSpec(garage.getSelected()))),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
       getVehicleLoadout: (specId: string) => ({
         equipment: loadSelectedEquipment(specId, getSpec(specId)),
+        consumables: loadConsumables(specId, consumableSpecFor(getSpec(specId))),
         camo: getMultiplayerCamoSelection(specId),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -1713,7 +1726,9 @@ const showroom = createGarageShowroomRuntime({
   frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
-  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
+  getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
+  // the tracks rest on the name line; photo mode's whole-screen stage centres the hero
+  anchorFoot: () => !document.body.classList.contains('cot-photo-on'),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();
@@ -2214,7 +2229,6 @@ createPointerLockFeedbackRuntime({
     spectating: !!killcam.spectate?.active,
   }),
   ensureTouchControls,
-  nextFrame,
 });
 
 // Shell inventory, consumable cooldowns, special actions, and the exact
@@ -2243,9 +2257,7 @@ playerBattleActions = createPlayerBattleActions({
     shellAmmunitionCapacity: battleClientAccess.shellAmmunitionCapacity,
     rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor,
     hasConsumableRule: battleClientAccess.hasConsumableRule,
-    cooldownRemaining: battleClientAccess.cooldownRemaining,
-    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
-    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+    useSoloConsumable: battleClientAccess.useSoloConsumable,
     requestTankSelfRight: battleClientAccess.requestTankSelfRight,
     requestTankJump: battleClientAccess.requestTankJump,
   },
@@ -2915,6 +2927,40 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
+            // (2026-10-26, the 257 rooms census: the room entry's longest task, 1.5 s, was the opening composer warm below
+            // uploading the battlefield's textures and buffers in its one render) the battlefield draws offscreen a cohort
+            // at a time, a frame between cohorts, as the solo deployment's forward warm does: the composer warm then meets
+            // resident textures, buffers and programs
+            // (2026-10-26, the room-stalls lane: after the cohorts, one cohort's draw still held 1033 ms of texSubImage2D)
+            // the battlefield's textures uploaded first, one at a time under a frame budget, so the cohorts' draws meet
+            // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
+            // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
+            // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
+            const forwardYield = createFrameBudgetYielder(8);
+            const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
+            const forwardBatches: number[] = [];
+            let catchUpFrames = 0;
+            // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
+            // just ahead of it) each cohort first uploads its buffers with every draw count at 0 (preUpload), and every
+            // batch, upload or draw, lets the GPU catch up before the next: a cohort's uploads meet an idle GPU process
+            const uploadBatches: number[] = [];
+            for (const batch of createDeploymentForwardWarmBatches({
+              scene,
+              csmLights: lighting.csm?.lights,
+              worldGroup: currentWorld()?.group,
+              playerRoot: game.player?.visual?.root,
+              warmRender,
+              preUpload: true,
+            })) {
+              (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
+              signal?.throwIfAborted();
+              if (batch.phase !== 'upload') await forwardYield(true);
+              catchUpFrames += await waitForGpuCatchUp(catchUp);
+            }
+            const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
+              uploads: { batches: uploadBatches.length, maxMs: Math.max(0, ...uploadBatches) } };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;
@@ -2948,7 +2994,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing };
+            return { ...timing, textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
@@ -3271,7 +3317,8 @@ function beginSoloOnHost(specId: string | null | undefined, mapId: string | null
   const chosen = specId ?? garage.getSelected();
   return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
     specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-    equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    equipment: loadSelectedEquipment(chosen, getSpec(chosen)),
+    consumables: loadConsumables(chosen, consumableSpecFor(getSpec(chosen))), camo: getMultiplayerCamoSelection(chosen),
   }, beginMultiplayerV2Battle, () => {
     noteSoloAuthority({ authority: 'page', reason: 'fallback' });
     return page();
@@ -3849,8 +3896,12 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
-  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end
-  isBootCovering: () => STUDIO_BOOT_INTENT && !bootComplete,
+  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end.
+  // (2026-10-26, the boot census) Nor does the Garage boot: the hero's switch scheduled a frame as the vehicle stage
+  // ended, before the post stage's warm compiled anything, and that frame compiled and first-used all of the hero's
+  // programs in one task (1.4 s on a cold desktop, 13.8 s on the 4x phone, the GPU process linking them one by one
+  // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
+  isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
   isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
@@ -4070,6 +4121,10 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
+  // (2026-10-26) the cloud decks are real before the warm uploads them: a worker past its deadline leaves them baking in
+  // slices, and the Garage's sky preset no longer bakes them in one task meanwhile (sky.ts applyPresentationPreset).
+  // The decks only: the volumetric layer's noise was never awaited here, and still shows when it arrives.
+  await sky.ensureCloudDecksChunked(() => nextFrame());
   BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,
@@ -4081,6 +4136,7 @@ await bootStage('post', async () => {
     timings: BOOT_TIMINGS,
     reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
+    awaitProgramLinks: awaitRendererProgramLinks,
   });
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
@@ -4233,6 +4289,9 @@ if (STUDIO_BOOT_INTENT) {
   });
 }
 
+// (2026-10-26, the boot census) every program the boot submitted links between frames before the first live frame:
+// three's first use of a program still linking reads its log inside that frame (1.3-1.5 s on a cold desktop)
+try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {

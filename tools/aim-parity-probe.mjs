@@ -21,6 +21,7 @@
 //
 // The JSON dump holds the raw frame traces + per-sequence summaries; the
 // summaries are also printed. Exits non-zero on harness failure only.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { writeFileSync } from 'node:fs';
@@ -55,7 +56,7 @@ if (useLocal) {
 if (!url) { console.error('need --url or --local'); process.exit(2); }
 console.log(`[parity:${label}] target ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   protocolTimeout: 600000,

@@ -51,7 +51,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   settingsMenu: { id: 'settings' },
 } satisfies Readonly<Record<ActionId, SettingsIconSpec>>);
 
-type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality' | 'battleTimes';
+type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality' | 'battleTimes' | 'foliageSeeThrough';
 
 export const SETTINGS_OPTION_ICONS = Object.freeze({
   sensitivity: { id: 'mouse' },
@@ -78,4 +78,5 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   audioConcussion: { id: 'soundOff', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
   battleTimes: { id: 'timeDay', tone: 'amber' },
+  foliageSeeThrough: { id: 'regionWoodland', tone: 'green' }, // item 259: Graphics › See-through foliage
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);

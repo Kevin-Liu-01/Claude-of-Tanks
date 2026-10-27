@@ -252,6 +252,12 @@ export interface BattlePresentation extends PresentationAdapter {
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
   endDisconnected(): boolean;
+  /**
+   * The session's verdict (the newest snapshot's meta, or the room's match status), which lands ahead of the presented
+   * tick and of the kill the event queue still holds: while frames flow it waits as the meta does, for the
+   * `match_ended` event or the grace, so the final-kill replay has its kill; with none flowing it presents at once.
+   */
+  settleVerdict(verdict: VerdictId, reason: string): void;
   /** Spectators: which team reads as "player" (allies) in the HUD. */
   setPerspective(entityId: number): boolean;
   readonly ownActor: MatchActor | null;
@@ -545,7 +551,6 @@ export function createBattlePresentation({
   let viewerTeam: TeamId | null = null;
   let perspectiveTeam: TeamId | null = null;
   let mounted = false;
-  /** (solo) the presented time of the killcam's last step capture */
   let killcamStepAtMs = -Infinity;
   let disposed = false;
   let legacy: Pick<PresentationGameState, 'tanks' | 'rosterTanks' | 'tankById' | 'player' | 'shells' | 'spotting'> | null = null;
@@ -579,6 +584,8 @@ export function createBattlePresentation({
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
   let verdictSeenAtMs: number | null = null;
+  let sessionVerdict: { verdict: VerdictId; reason: string } | null = null;
+  let lastFrameAtMs = -Infinity;
   let lastPredictedFireSeq = -1;
   let predictionWorldCache: PredictionWorld | null = null;
   let predictionWorldSpec: FleetTankSpec | null = null;
@@ -1103,8 +1110,16 @@ export function createBattlePresentation({
     endMatch(result, reason || 'elimination');
   }
 
+  function settleVerdict(verdict: VerdictId, reason: string): void {
+    if (game.result || verdict === VERDICT.NONE) return;
+    if (!mounted || clock() - lastFrameAtMs > verdictGraceMs) { applyVerdict(verdict, reason); return; }
+    sessionVerdict ??= { verdict, reason };
+    verdictSeenAtMs ??= clock();
+  }
+
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
+    lastFrameAtMs = clock();
     if (mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
@@ -1169,10 +1184,13 @@ export function createBattlePresentation({
       emitPredictedShot(own, predicted.shellSlot);
     }
     // The verdict is persistent snapshot state: a reconnect or a late joiner converges on it even when the
-    // `match_ended` event predates this client; the event keeps the cinematic order when it does arrive.
-    if (frame.meta.verdict !== VERDICT.NONE && !game.result) {
+    // `match_ended` event predates this client; the event keeps the cinematic order when it does arrive. The session's
+    // verdict (settleVerdict) waits here too.
+    let verdict = frame.meta.verdict, verdictReason = frame.meta.verdictReason;
+    if (verdict === VERDICT.NONE && sessionVerdict) { verdict = sessionVerdict.verdict; verdictReason = sessionVerdict.reason; }
+    if (verdict !== VERDICT.NONE && !game.result) {
       verdictSeenAtMs ??= clock();
-      if (clock() - verdictSeenAtMs >= verdictGraceMs) applyVerdict(frame.meta.verdict, frame.meta.verdictReason);
+      if (clock() - verdictSeenAtMs >= verdictGraceMs) applyVerdict(verdict, verdictReason);
     }
     if (frame.phase === 'failed') endDisconnected();
   }
@@ -1247,7 +1265,10 @@ export function createBattlePresentation({
 
   function emitLocalPlayerEvent(kind: string, payload: Record<string, RuntimeValue>): void {
     switch (kind) {
-      case 'consumable_used': bus.emit('ui:consumableUsed', { slot: payload.slot, cooldownS: payload.cooldownS, readyAt: payload.readyAt }); break;
+      case 'consumable_used': bus.emit('ui:consumableUsed', {
+        slot: payload.slot, cooldownS: payload.cooldownS, readyAt: payload.readyAt,
+        ...(payload.charges !== undefined ? { charges: payload.charges } : {}), ...(payload.item ? { item: payload.item } : {}),
+      }); break;
       case 'consumable_denied': bus.emit('ui:consumableDenied', { slot: payload.slot, reason: payload.reason, remainingS: payload.remainingS }); break;
       case 'magazine_reload': bus.emit('ui:magazineReloadStarted', {}); break;
       case 'magazine_reload_denied': bus.emit('ui:magazineReloadDenied', { reason: payload.reason }); break;
@@ -1318,6 +1339,18 @@ export function createBattlePresentation({
           shellType: payload.shellType, caliberMm: payload.caliberMm, pos: [payload.x, payload.y, payload.z],
           // the building the authority's round struck (any round: its hole, 2026-10-10)
           ...(typeof payload.structureId === 'number' ? { structureId: payload.structureId } : {}),
+        });
+        return;
+      case 'aps_intercept':
+        // an armed APS charge met the round off the struck hull (sim/consumableRules.ts): its burst there, then the
+        // round's end, as the solo step raises them
+        bus.emit('aps:intercept', {
+          id: payload.id, shooterId: payload.shooterId, shellId: payload.shellId, x: payload.x, y: payload.y, z: payload.z,
+          nx: payload.nx, ny: payload.ny, nz: payload.nz, caliberMm: payload.caliberMm,
+        });
+        bus.emit('shell:expired', {
+          shellId: payload.shellId, shooterId: payload.shooterId, pos: [payload.x, payload.y, payload.z], hitTerrain: false,
+          shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
         return;
       case 'tank_destroyed': {
@@ -1531,6 +1564,7 @@ export function createBattlePresentation({
     applyFrame,
     applyEvent,
     applyVerdict,
+    settleVerdict,
     setVisibility,
     predictionWorld,
     rosterReady: () => rosterReady,

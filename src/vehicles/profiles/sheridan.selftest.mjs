@@ -16,7 +16,7 @@ const spec = getSpec('m551_sheridan');
 const ttsSpec = getSpec('m551a1_tts');
 assert.ok(spec, 'M551 Sheridan is registered');
 assert.ok(ttsSpec, 'M551A1 TTS is registered');
-assert.equal(tankTier(spec.id), 9, 'Sheridan is a Tier IX vehicle');
+assert.equal(tankTier(spec.id), 2, 'Sheridan matches at its shown Tier II (258)');
 assert.equal(spec.role, 'light');
 assert.equal(spec.gun.caliberMm, 152);
 assert.equal(spec.gun.primaryGuided, true);
@@ -76,7 +76,7 @@ assert.deepEqual({
   count: 14,
 }, 'dedicated Shillelagh channel is competitive at Tier IX');
 // 252 (tech-tree-view-252: the Garage's stat bars compare within the tier the Garage shows, the national tree's column):
-// the M551 shows Tier II since the 257 capability re-tier; matchmaking keeps tankTier IX.
+// the M551 shows Tier II since the 257 capability re-tier, and matches there since 258.
 assert.equal(garageStatGroup(spec), '2/cold-war',
   'garage compares Sheridan against its shown Tier II peers');
 const starship = getSpec('m60a2');
@@ -88,7 +88,7 @@ assert.ok(spec.gun.reloadS > starshipMissile.reloadS,
   'a missile fired through the Sheridan main gun uses a normal gun reload, not an IFV launcher cycle');
 assert.ok(spec.armor.modules.some((module) => module.module === 'missileRack'),
   'damageable combat anatomy includes the missile stowage');
-assert.equal(tankTier(ttsSpec.id), 10, 'M551A1 TTS is the Tier X Sheridan variant');
+assert.equal(tankTier(ttsSpec.id), 4, 'M551A1 TTS matches at its shown Tier IV (258)');
 assert.equal(ttsSpec.variantOf, spec.id);
 // 2026-10-25 (owner: "properly label next gen vs modern"): a 1989 Sheridan upgrade is modern, not next generation.
 assert.equal(ttsSpec.era, 'modern');
@@ -163,7 +163,7 @@ for (const slot of [1, 2]) {
   stepShell(projectile, 1 / 60);
   assert.ok(projectile.vel.y < 0, `${round.name} follows normal ballistic gravity`);
 }
-assert.equal(garageStatGroup(ttsSpec), '4/modern'); // the TTS shows Tier IV in the US tree since 257 (tankTier stays X)
+assert.equal(garageStatGroup(ttsSpec), '4/modern'); // the TTS shows and matches at Tier IV (257, 258)
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',
   'm551a1_tts_turret_era_R', 'm551a1_tts_turret_era_L', 'm551a1_tts_turret_roof_era',

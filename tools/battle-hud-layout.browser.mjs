@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Committed rendered regression; accepts an existing dev server and Playwright.
 // node tools/battle-hud-layout.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/hud-check
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+// the markers over tanks in every state: no flag, whole, the side in shape and colour (?state=markers stages them)
+import { markerProblems } from './marker-census.mjs';
 const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','outputs/battle-hud-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser = await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
@@ -34,7 +37,7 @@ const cases = [
   ['pseudo-desktop',1920,1080,false,'en-US',{pseudo:true}],['pseudo-laptop',1366,768,false,'en-US',{pseudo:true}],
   ['pseudo-phone',390,844,true,'en-US',{pseudo:true}],['pseudo-landscape',844,390,true,'en-US',{pseudo:true}],
 ];
-const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
+const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','markers','ended'];
 const reports=[];const errors=[];
 // Clipped copy (pseudo and Chinese cases): a text element whose own content overflows a box that hides overflow, or
 // whose text ends outside the nearest ancestor that clips. Only catalog copy counts — pseudo text (accented Latin-1 or
@@ -120,7 +123,7 @@ const NOTICE_ALERTS = [
   ['lineTaken','mode:line_advanced',{line:2,total:3}],['consumablesOff','ui:consumableDenied',{slot:0,reason:'RULESET'}],
   ['readyIn','ui:consumableDenied',{slot:0,reason:'COOLDOWN',remainingS:118}],['ammoAcquired','mode:pickup_collected','pickup'],
   ['autoAimLong','ui:autoAimState','longspec'],['autoAimOff','ui:autoAimState',{on:false,reason:'AUTO-AIM OFF'}],
-  ['moduleLong','module:state','longmodule'],['ending','ending:begin',{captionKey:'ending.scoreReached'}],
+  ['ending','ending:begin',{captionKey:'ending.scoreReached'}],
   ['endingWave','ending:begin',{captionKey:'ending.lastStand',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
   ['flagTaken','mode:flag_taken','ours'],['reloadDenied','ui:magazineReloadDenied',{reason:'MAGAZINE_RELOADING'}],
   ['specialDenied','ui:specialActionDenied',{reason:'OTHER'}],['crewUnharmed','ui:consumableDenied',{slot:1,reason:'NOTHING'}],
@@ -372,7 +375,7 @@ function measure(state){
   }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
-    ['.cot-aim-warning:not([hidden])','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-pips.show','.cot-mode-status.show','.cot-ribbon.on','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
+    ['.cot-aim-warning:not([hidden])','.cot-battle-notices .cot-aim-notice','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-pips.show','.cot-mode-status.show','.cot-ribbon.on','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
      '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',
@@ -551,6 +554,7 @@ try {
     async function check(state){
       const result=await page.evaluate(measure,state);
       if(pseudo||locale!=='en-US')result.failures.push(...await page.evaluate(clippedText));
+      result.failures.push(...await page.evaluate(markerProblems,state==='markers'));
       const score=result.rects.find(r=>r.name==='cot-top');
       // (the objective shows 'stacked' in two rows where its progress wraps)
       const objective=result.rects.find(r=>r.name.startsWith('cot-mode-status show'));

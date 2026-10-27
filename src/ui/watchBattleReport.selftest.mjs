@@ -119,9 +119,11 @@ assert.ok(!drawn.some((element) => element.classes.has('es-view-tabs') || elemen
   'no personal debrief: the report is the battle\'s');
 const reportRows = drawn.filter((element) => element.classes.has('es-tr'));
 assert.equal(reportRows.length, tanks.length, 'every tank has its row');
-const me = reportRows.filter((row) => row.classes.has('me'));
-assert.equal(me.length, 1, 'the ridden tank\'s row is the one highlighted');
-assert.ok(me[0].classes.has('foe'), 'on Bravo\'s roster');
+// (gauntlet r17, brand-ui-battle-242) the ridden tank's row wears the spectator's mark (.ridden), never the player's own plate
+const riddenRows = reportRows.filter((row) => row.classes.has('ridden'));
+assert.equal(riddenRows.length, 1, 'the ridden tank\'s row is the one marked');
+assert.ok(!reportRows.some((row) => row.classes.has('me')), 'no row wears the player\'s own plate in a watched battle');
+assert.ok(riddenRows[0].classes.has('foe'), 'on Bravo\'s roster');
 const marks = drawn.filter((element) => element.classes.has('ev'));
 assert.ok(marks.some((mark) => mark.classes.has('k-kill') && mark.classes.has('s-bravo')), 'Bravo\'s kills on the line in Bravo\'s ink');
 assert.ok(marks.some((mark) => mark.classes.has('k-kill') && mark.classes.has('s-alpha')), 'and Alpha\'s in Alpha\'s');

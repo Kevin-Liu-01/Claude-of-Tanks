@@ -1,25 +1,18 @@
-// Keep every shipped brand copy derived from its editable master: the crest's lockups and the boot title card.
+// Keep every shipped brand copy derived from its editable master: the boot card's lockup and the docs footers' mark.
 // Usage:
 //   node tools/sync-brand-marks.mjs
 //   node tools/sync-brand-marks.mjs --check
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BRAND_MOTION_CSS } from '../src/ui/brandMarkMotion.ts';
-import { brandMarkSVG } from '../src/ui/brandMark.ts';
+import { BRAND_MARK_LIVE_CSS, brandMarkLiveHTML } from '../src/ui/brandMarkMotion.ts';
+import { BRAND_BOOT_STACK, BRAND_TANK_VIEWBOX, brandMarkSVG, brandTankLayers, brandWordmarkStack } from '../src/ui/brandMark.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
 
 function read(relativePath) {
   return readFileSync(join(ROOT, relativePath), 'utf8');
-}
-
-function svgBody(svg) {
-  const openEnd = svg.indexOf('\n');
-  const closeStart = svg.lastIndexOf('\n</svg>');
-  if (openEnd < 0 || closeStart < 0) throw new Error('invalid SVG master');
-  return svg.slice(openEnd + 1, closeStart);
 }
 
 function replaceBetween(source, startMarker, endMarker, replacement) {
@@ -45,50 +38,26 @@ function syncFile(relativePath, expected) {
   return true;
 }
 
-const colorMaster = read('public/brand/logo-mark.svg');
-const metalMaster = read('public/brand/logo-mark-metal.svg');
-const colorBody = svgBody(colorMaster);
-const metalBody = svgBody(metalMaster);
-
-const fullStart = '  <g transform="translate(5 5) scale(0.78125)">\n';
-const fullEnd = '\n  </g>\n  <text class="wm1"';
-const fullMetalEnd = '\n</g>\n  <text class="wm1"';
-
-const fullColor = replaceBetween(
-  read('public/brand/logo-full.svg'),
-  fullStart,
-  fullEnd,
-  colorBody,
-);
-syncFile('public/brand/logo-full.svg', fullColor);
-
-const fullMetal = replaceBetween(
-  read('public/brand/logo-full-metal.svg'),
-  fullStart,
-  fullMetalEnd,
-  metalBody,
-);
-syncFile('public/brand/logo-full-metal.svg', fullMetal);
-
-// (brand-ui 245) The commander mark (the owner's pick): tools/brand-marks.mjs writes every master from src/ui/brandMark.ts;
-// the retired crest's files above stay for the media kits, and the boot splash carries the title card (the living tank
-// over the stacked wordmark), its body inlined with the loop's rules.
-const titleCard = read('public/brand/title-card.svg');
-const cardViewBox = /^<svg [^>]*viewBox="([^"]+)"/.exec(titleCard);
-const cardBodyStart = titleCard.indexOf('-->') + 3;
-const cardBodyEnd = titleCard.lastIndexOf('</svg>');
-if (!cardViewBox || cardBodyStart < 3 || cardBodyEnd < cardBodyStart) throw new Error('invalid title-card master');
-const indexSource = read('index.html');
-const bootTag = /^ {6}<svg class="cot-boot-mark" [^>\n]*>\n/m.exec(indexSource);
-if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <svg> opening tag in index.html');
-// the opening tag keeps whatever attributes the page gives it (its role and data-i18n-aria-label); only its frame follows
-const bootStart = bootTag[0].replace(/viewBox="[^"]*"/, `viewBox="${cardViewBox[1]}"`);
-const bootBody = '      <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->\n'
-  + titleCard.slice(cardBodyStart, cardBodyEnd);
-let index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </svg>\n', bootBody);
-// (brand-ui 245) the card's tank is the living mark: its loop's rules, from src/ui/brandMarkMotion.ts, in the boot sheet
+// The boot card's lockup (owner, 2026-10-26: "tank onn left and then claude, then of, than tanks left aligned", and a mark
+// that keeps moving while the game loads): the living mark as compositor layers (src/ui/brandMarkMotion.ts) with the word
+// stack to its right, sized in the mark's width (--boot-mark) by BRAND_BOOT_STACK; the layers' rules in the boot sheet.
+const [markLeft, markTop, markWidth] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
+const share = (units) => (units / markWidth).toFixed(5);
+// the lockup's ink in mark widths, from the hull's rear foot (the hull's first point, the drawing's leftmost ink) to the
+// stack's right edge (the tank, the gap, the stack at its height by its viewBox): the card's load column takes it, so the
+// stage line, both bars and the tip share the ink's two edges (boot r24: the bars stood 4 to 7 px left of the hull);
+// --boot-ink-in is the mark box's own margin before that ink, which the lockup hangs outside the column
+const inkLeft = Number(brandTankLayers({ ink: '', accent: '' }).hull.match(/ d="M([\d.]+)/)[1]) - markLeft;
+const [stackW, stackH] = brandWordmarkStack().match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+const lockupK = (1 + (BRAND_BOOT_STACK.gap + BRAND_BOOT_STACK.height * stackW / stackH - inkLeft) / markWidth).toFixed(5);
+const stackCss = `.cot-boot-inner{--boot-lockup-k:${lockupK};--boot-ink-in:${share(inkLeft)}}\n`
+  + `.cot-boot-mark{gap:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.gap)})}\n`
+  + `.cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.height)});`
+  + `margin-top:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.top - markTop)})}`;
+let index = replaceBetween(read('index.html'), '<!-- cot:boot-lockup -->', '<!-- /cot:boot-lockup -->',
+  `\n        ${brandMarkLiveHTML()}\n        ${brandWordmarkStack()}\n        `);
 index = replaceBetween(index, '/* cot:brand-motion */', '/* /cot:brand-motion */',
-  `\n${BRAND_MOTION_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
+  `\n${`${BRAND_MARK_LIVE_CSS.trim()}\n${stackCss}`.split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
 syncFile('index.html', index);
 
 // (brand-ui 247) the Field Manual's static pages carry the mark in their footer: the drawing src/ui/brandMark.ts gives at

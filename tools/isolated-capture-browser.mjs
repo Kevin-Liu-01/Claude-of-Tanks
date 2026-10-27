@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -14,7 +15,7 @@ export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, r
     mkdtempSync = fs.mkdtempSync,
     temporaryDirectory = tmpdir,
     createViteServer = createServer,
-    launchBrowser = options => puppeteer.launch(options),
+    launchBrowser = options => launchGuardedBrowser(puppeteer, options),
     removeCache = fs.rmSync,
     logCleanupError = (resource, error) => console.error(`[isolated-capture cleanup ${resource}]`, String(error)),
     capture = null,

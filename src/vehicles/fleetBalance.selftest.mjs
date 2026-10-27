@@ -122,7 +122,11 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // 2026-10-13: 50 -> 51 with the Tier X Warrior TES(H) envelope (coordinator ruling on VEH-11).
 // 2026-10-25: 51 -> 57 as the IFVs relabelled modern fold into their modern peers (KF41 Lynx, CV90 Mk IV and its concept,
 // Type 89, LRMV Lynx, Borsuk; fleetBalancePass applyModernEraFold).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 57,
+// 2026-10-26: 57 -> 62 as matchmaking reads the shown tier (258): five vehicles lifted over a shown-tier floor
+// (applyShownTierFloors; the Centurion 5/2's entry already existed).
+// 62 -> 70 (259): eight vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
+// their entries).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 70,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -132,7 +136,7 @@ for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
 
 const challenger1_mk2 = TANK_SPECS.challenger1_mk2;
 const challenger1Primary = challenger1_mk2.gun.shells[0];
-assert.equal(tankTier('challenger1_mk2'), 9, 'Challenger 1 occupies Tier IX');
+assert.equal(tankTier('challenger1_mk2'), 8, 'Challenger 1 matches at its shown tier (258)');
 assert.deepEqual({
   hp: challenger1_mk2.hp,
   speed: challenger1_mk2.topSpeedKmh,
@@ -166,7 +170,7 @@ assert.equal(garageStatGroup(challenger1_mk2), shownGroup(challenger1_mk2),
   'garage compares Challenger 1 against the peers of its shown tier');
 
 const kv2 = TANK_SPECS.kv2;
-assert.equal(tankTier('kv2'), 7, 'KV-2 remains Tier VII');
+assert.equal(tankTier('kv2'), 1, 'KV-2 matches at its shown tier (258)');
 assert.deepEqual({
   hp: kv2.hp,
   reverse: kv2.reverseSpeedKmh,
@@ -234,9 +238,9 @@ for (const { id, round } of guided) {
 }
 
 const siegeLine = [
-  ['udes03', 8, 1400, 430, 315, 90],
-  ['strv103a', 9, 1850, 480, 345, 180],
-  ['strv103b', 10, 2400, 520, 380, 220],
+  ['udes03', 1, 1400, 430, 315, 90],
+  ['strv103a', 2, 1850, 480, 345, 180],
+  ['strv103b', 2, 2400, 520, 380, 220],
 ];
 let previousDpm = 0;
 for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
@@ -264,10 +268,22 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
   const pose = {
     pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
   };
-  const headOn = traceTank(new Vector3(0, 0.9, 10), new Vector3(0, 0.9, -10),
+  // 259: centre mass is the hull's own, the middle of its closed shell's height (the generic wedge's 0.9 m grazed the
+  // 103A's beak underside once its measured loft raised the beak to 1.26-1.50 m), and the wedge is the first plate met.
+  // Until 259 the fixed gun was hull shell: the barrel was plated as glacis to the muzzle, the zones were stretched to
+  // it, and the 103A's nose took a 1 cm sliver and side-armour faces (it met the wedge only through a gap mid-hull).
+  const shell = spec.armor.collisionShells.hull;
+  const shellY = shell.flatMap((cell) => [cell.min[1], cell.max[1]]);
+  const centreY = (Math.min(...shellY) + Math.max(...shellY)) / 2;
+  const headOn = traceTank(new Vector3(0, centreY, 10), new Vector3(0, centreY, -10),
     pose, spec.armor);
-  assert.ok(headOn.some((hit) => hit.kind === 'plate' && hit.plate.name === 'upper_glacis'),
-    `${id}: center-mass shot meets the visible wedge`);
+  assert.equal(headOn.find((hit) => hit.kind === 'plate')?.plate.name, 'upper_glacis',
+    `${id}: center-mass shot meets the visible wedge first`);
+  const noseZ = Math.max(...shell.map((cell) => cell.max[2]));
+  const gunY = spec.armor.gunPivot[1];
+  assert.deepEqual(traceTank(new Vector3(-4, gunY, noseZ + 0.6), new Vector3(4, gunY, noseZ + 0.6), pose, spec.armor)
+    .filter((hit) => hit.kind === 'plate').map((hit) => hit.plate.name), [],
+  `${id}: the fixed gun ahead of the nose is the gun, not hull armour`);
   const side = traceTank(new Vector3(6, 0.95, 0), new Vector3(-6, 0.95, 0),
     pose, spec.armor);
   const sideArmor = side.find((hit) => hit.kind === 'plate'
@@ -309,10 +325,10 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), shownGroup(TANK_SPECS.strv103
   'garage normalizes the 103A against its Cold War peers of its shown tier');
 
 const japaneseMbtProgression = [
-  ['type90_kyumaru', 9, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
-  ['type90a', 9, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
-  ['type10_tk_x', 10, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
-  ['type10b', 10, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
+  ['type90_kyumaru', 8, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90a', 8, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
+  ['type10_tk_x', 9, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
+  ['type10b', 9, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
 for (const [
   id, tier, hp, engine, reverse, hullTraverse, turretTraverse, gunPitch,
@@ -346,11 +362,12 @@ for (const [
 }
 
 const merkavaProgression = [
-  ['merkava2b', 8, 2200, 1000, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
+  // 258: the shown tiers; the Mk 2B's engine lifted over its shown-tier mobility floor (applyShownTierFloors)
+  ['merkava2b', 3, 2200, 1060, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
   // 235: the Merkava 3C's true (unsquashed) wedge slope stops more of a frontal round, so its wedge plates carry less
   // (fleetBalancePass TURRET_FRONT_COMPENSATION x0.852 keeps its frontal protection where it was)
-  ['merkava3c', 9, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 596],
-  ['merkava3_baz', 9, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
+  ['merkava3c', 8, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 596],
+  ['merkava3_baz', 8, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
   ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
 ];
 let previousMerkavaDpm = 0;
@@ -390,9 +407,9 @@ for (const [
 
 const pattonProgression = [
   // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
-  ['m48a5_patton', 8, 2050, 50, 7, 450, 580, 535, 490],
-  ['m60a1', 8, 2100, 52, 6.8, 440, 570, 530, 480],
-  ['m60a3', 8, 2200, 50, 6.4, 450, 610, 570, 520],
+  ['m48a5_patton', 1, 2050, 50, 7, 450, 580, 535, 490],
+  ['m60a1', 1, 2100, 52, 6.8, 440, 570, 530, 480],
+  ['m60a3', 1, 2200, 50, 6.4, 450, 610, 570, 520],
 ];
 let previousPattonDpm = 0;
 for (const [id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000]
@@ -419,7 +436,7 @@ const starship = TANK_SPECS.m60a2;
 const starshipHeat = starship.gun.shells.find((round) => round.guided !== true
   && round.type === 'HEAT');
 const starshipMissile = starship.gun.shells.find((round) => round.guided === true);
-assert.equal(tankTier('m60a2'), 9, 'Starship occupies Tier IX');
+assert.equal(tankTier('m60a2'), 2, 'Starship matches at its shown tier (258)');
 assert.equal(starship.hp, 2250, 'Starship carries a Tier IX HP pool');
 assert.equal(starship.gun.reloadS, 9, 'Starship conventional channel keeps its deliberate cycle');
 assert.deepEqual([starshipHeat.dmg, starshipHeat.pen100Mm, starshipHeat.reloadS],
@@ -435,7 +452,7 @@ assert.equal(garageStatGroup(starship), shownGroup(starship),
 const m3a3 = TANK_SPECS.m3a3_bradley;
 const m3a3Primary = m3a3.gun.shells[0];
 const m3a3Missile = m3a3.gun.shells.find((round) => round.guided === true);
-assert.equal(tankTier('m3a3_bradley'), 10, 'M3A3 occupies Tier X');
+assert.equal(tankTier('m3a3_bradley'), 5, 'M3A3 matches at its shown tier (258)');
 assert.deepEqual(
   [m3a3.hp, m3a3.gun.reloadS, m3a3Primary.dmg,
     m3a3Primary.pen100Mm, m3a3Primary.pen2000Mm],

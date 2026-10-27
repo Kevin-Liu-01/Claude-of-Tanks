@@ -5,7 +5,9 @@
 // Every HUD state the layout fixture stages, at the windows the HUD is reviewed at: the visible instruments' boxes, and
 // any two that intersect fail unless the pair is a deliberate layering (ALLOWED, each with its reason). Nested
 // instruments fold into their outermost one. The sight's own layers (the reticle canvas, the gimbal sight, a drone's
-// signal-loss veil) and the world-space markers over tanks are the scene's, not instruments, and are not measured.
+// signal-loss veil) and the world-space markers over tanks are the scene's, not instruments, and are not measured as
+// boxes; in every state the markers in view pass tools/marker-census.mjs instead (no flag, whole, the side in shape and
+// colour), and ?state=markers stages them (both sides in view, one enemy under the gun).
 // One datum, one place (owner 2026-10-25: "prevent things like that silly double ping indicator from happening again";
 // UI-LOCKDOWN part C): in every state, a networked battle's host and client among them, two visible readouts of one
 // [data-datum] fail, and so does a datum with no row in src/ui/surfaceRegistry.ts or a visible link or frame-rate figure
@@ -14,9 +16,11 @@
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
 //     [--out=outputs/battle-hud-overlap]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { datumProblems } from './datum-census.mjs';
+import { markerProblems } from './marker-census.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { default: puppeteer } = await import('puppeteer');
@@ -29,19 +33,23 @@ await mkdir(out, { recursive: true });
 export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
   ['1280x720', 1280, 720, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
-export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
+export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
-  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client'];
+  'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers'];
 /** The HUD's instruments, each a box another may not cross. */
 export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show', '.cot-net', '.cot-mp-status.battle',
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
-  '.cot-medal-toasts', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
+  '.cot-medal-toasts', '.cot-battle-notices .cot-c-notice', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
   '.cot-si-toasthost', '.cot-si-log.open', '.cot-si-cardhost:not(:empty)', '.cot-room-chat:not([hidden])', '.cot-spec.show',
   '.cot-watch', '.cot-watch-rail', '.cot-hints.show', '.cot-drive', '.cot-dp', '.cot-minimap', '.cot-shell', '.cot-con', '.cot-vehicle-controls',
   '.cot-flight-hud .flight-console', '.cot-flight-hud .gunship-solution', '.cot-scope-vision',
   '.cot-touch.on .joy', '.cot-touch.on .round', '.cot-touch.on .mobile-chrome', '.cot-touch.on .quick'];
 /** Deliberate layerings: [selector a, selector b, why]. A pair matches in either order. */
-export const ALLOWED = [];
+export const ALLOWED = [
+  // (the network strip hangs beside the corner plate, its slanted right edge 4 px off the plate's slanted left one
+  // (battleHudLayout.ts NETWORK_PLATE_TUCK): their boxes cross only where the two slants interlock)
+  ['.cot-net', '.cot-mp-status.battle', 'the strip tucked to the corner plate\'s slant'],
+];
 
 function measure(instruments) {
   const els = [];
@@ -59,7 +67,7 @@ function measure(instruments) {
 }
 
 const allowed = (a, b) => ALLOWED.find(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
-const browser = await puppeteer.launch({ headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
 const report = [];
 let failures = 0;
 try {
@@ -80,7 +88,15 @@ try {
       await page.waitForFunction(() => !!window.__HUD_LAYOUT, { timeout: 60000 });
       // the layout's planners settle over a few frames (and the Watch bar's chunk lands)
       await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 600)));
-      const rects = await page.evaluate(measure, INSTRUMENTS);
+      // (the layout's passes settle over frames, and under load one lands after the first measure: measured until two
+      // in a row agree, the 844x390 notifications' aim chip read 50 px under its seat mid-settle in full runs, round 14)
+      let rects = await page.evaluate(measure, INSTRUMENTS);
+      for (let tries = 0; tries < 6; tries++) {
+        await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 250)));
+        const again = await page.evaluate(measure, INSTRUMENTS);
+        if (JSON.stringify(again) === JSON.stringify(rects)) break;
+        rects = again;
+      }
       const problems = [];
       for (let i = 0; i < rects.length; i++) {
         const a = rects[i];
@@ -92,10 +108,17 @@ try {
       }
       // one datum, one place (tools/datum-census.mjs, the registry's runtime half)
       problems.push(...await datumProblems(page, { scope: '.cot-hud, .cot-mp-status' }));
+      // the markers over tanks, as the state shows them and staged over it (one census per state; ?state=markers needs
+      // both sides in view and the target plate up)
+      problems.push(...await page.evaluate(markerProblems, state === 'markers'));
+      await page.evaluate(() => { window.__HUD_LAYOUT.markers(); return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); });
+      const seen = await page.evaluate(() => [...document.querySelectorAll('.cot-hpbars .cot-hpb, .cot-tgt')]
+        .filter((el) => el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })).length);
+      problems.push(...(await page.evaluate(markerProblems, false)).map((p) => `staged: ${p}`));
       for (const e of errors) problems.push(`page error: ${e}`);
       failures += problems.length;
-      report.push({ case: name, state, problems, rects });
-      console.log(`${problems.length ? 'FAIL' : 'ok  '} ${name.padEnd(9)} ${state.padEnd(26)} ${problems.join(' | ')}`);
+      report.push({ case: name, state, problems, rects, markers: seen });
+      console.log(`${problems.length ? 'FAIL' : 'ok  '} ${name.padEnd(9)} ${state.padEnd(26)} markers ${String(seen).padStart(2)} ${problems.join(' | ')}`);
       await page.close();
     }
   }

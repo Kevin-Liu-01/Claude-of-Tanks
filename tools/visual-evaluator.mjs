@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // VISUAL EVALUATOR driver (owner directive 2026-08-03: "strong visual
 // evaluators … correct angles … exact geometries … rounded structures").
@@ -46,7 +47,7 @@ await server.listen();
 const port = server.config.server.port;
 console.log(`[visual-eval] vite up on :${port}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

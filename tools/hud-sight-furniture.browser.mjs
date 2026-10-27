@@ -13,6 +13,7 @@
 // chip the reticle seats there yields to (r10e: at 320x568 the chip sat under the DETECTED notice).
 // No screenshot; accepts an existing dev server:
 // node tools/hud-sight-furniture.browser.mjs --url=http://127.0.0.1:5189 [--out=tools/fixtures/hud-sight-furniture.json]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { settleTray } from './hud-ammo-capture.mjs';
@@ -31,9 +32,9 @@ const SIZES = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700,
   [740, 360, true], [640, 360, true], [375, 667, true]];
 const NAMES = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
-  '.cot-scope-vision', '.cot-aim-warning', '.flight-identity', '.cot-ear'];
+  '.cot-scope-vision', '.cot-aim-warning', '.cot-battle-notices .cot-aim-notice', '.flight-identity', '.cot-ear'];
 
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const sizes = {};
 const notices = {};
 try {

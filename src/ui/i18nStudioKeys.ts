@@ -24,6 +24,10 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studio.ws.',
   // every message a Studio module throws, which the panel shows (brand-ui 247, the zh audit)
   'studio.error.',
+  // the fifty frames' own lines in the Field frames archive (mediaArchive.ts, shown in the game only by the Studio; 259)
+  'mediaArchive.frame.',
+  // and the frames' and takes' techniques there (Panning shot, Rack focus); the filters' features stay in the boot catalog
+  'mediaArchive.technique.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

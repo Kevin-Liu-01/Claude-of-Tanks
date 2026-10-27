@@ -6,6 +6,7 @@
 // --executable-path and --expected-browser-version=Chrome/152.0.7977.83. Four A/B/B/A
 // browser lifetimes are fully closed serially; OS/default-device cache is NOT reset.
 // No game boot, build, autoplay bypass, fake audio, device enumeration or mic.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -196,7 +197,7 @@ async function runAudioSinkProbe(options) {
           return server;
         },
         launchBrowser: async value => {
-          const launched = await puppeteer.launch(value);
+          const launched = await launchGuardedBrowser(puppeteer, value);
           browser = launched;
           const close = launched.close.bind(launched), child = launched.process();
           browserRun.pid = child?.pid ?? null;

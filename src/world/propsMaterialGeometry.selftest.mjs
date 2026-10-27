@@ -8,6 +8,8 @@ import { mergePropsMaterialGeometrySteps, PROPS_CONVERSION_BATCH_LIMIT,
   PROPS_CONVERSION_BUDGET_MS } from './propsMaterialGeometry.ts';
 import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderLayers.ts';
 import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.ts';
+// floating-decor-259: the merge's fine-cell bucket sets are geometry.ts's own (props.ts imports them)
+import { DESKTOP_FINE_CELLED_BUCKETS, FINE_CELLED_BUCKETS } from './maps/regional/geometry.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const owned = new Set();
@@ -153,13 +155,15 @@ function materialFixture(buckets, events = []) {
   const prepare = new Function('buckets', 'mats', 'group', 'THREE', 'ensureWorldNightEmissionMask',
     'prepareWorldStaticNightFixture', 'mergePropsMaterialGeometrySteps', 'bucketShadowProfile', 'setShadowCasterProfile', 'bindClutterBatch',
     'tagStructureVertices', 'bindStructureSpans', 'structureSpans', 'structureMaterials', 'structureDepthMaterial',
+    'FINE_CELLED_BUCKETS', 'DESKTOP_FINE_CELLED_BUCKETS',
     `${mergeCode}\nreturn mergeMaterialBuckets;`)(
     buckets, mats, group, THREE,
     geometry => { events.push(['curtain', geometry]); },
     geometries => { events.push(['glass', geometries]); },
     (sources, key) => mergePropsMaterialGeometrySteps(sources, key, () => 0),
     bucketShadowProfile, setShadowCasterProfile, bindClutterBatch,
-    tagStructureVertices, bindStructureSpans, structureSpans, structureMaterials, structureDepthMaterial);
+    tagStructureVertices, bindStructureSpans, structureSpans, structureMaterials, structureDepthMaterial,
+    FINE_CELLED_BUCKETS, DESKTOP_FINE_CELLED_BUCKETS);
   return { group, material, prepare, structureSpans, structureMaterials };
 }
 const wrapperStart = propsSource.indexOf('export async function createPropsAsync(');

@@ -57,7 +57,7 @@ const KIT = `
 .cot-watch .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
  padding:0 6px;border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);
  letter-spacing:normal;text-transform:none;color:var(--ink-2)}
-.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;object-position:left center;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-watch .cot-c-sil{display:inline-block;flex:none;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;
  mask:var(--sil) center/contain no-repeat}
 .cot-watch .cot-c-sil--right{transform:scaleX(-1)}
@@ -119,8 +119,9 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
 /* (the seat's action in the bar's capitals, as GARAGE and the rest: "Drive" in title case, gauntlet r7) */
 .cot-watch .wb.seat .label{white-space:nowrap;text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (riding, the ridden tank's controls row shows its state without its key caps: the watcher's own Q and E sat in the bar
-   above it beside the row's Q, gauntlet r4) */
-html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
+   above it beside the row's Q, gauntlet r4; its ammunition and consumables too, the ridden tank's slots and never the
+   watcher's keys: their 1 to 6 kept caps under a row without them, gauntlet r14) */
+html[data-watch=ride] .cot-hud :is(.cot-vehicle-controls .sk,.cot-shell .key,.cot-con .key){visibility:hidden}
 /* (... and a narrow tile's glyph back on its centre at the row's size: set at its foot a size down to clear a cap no longer
    shown, it sank 8 px under the tile's centre at 900x700, gauntlet r13) */
 html[data-watch=ride] body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-hud .cot-vehicle-controls>button .si{align-self:center;--hud-tile-icon:inherit}
@@ -139,7 +140,8 @@ html[data-watch=ride] body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-h
    bar wrapped onto the sight, the slots, the dial and the drone's rail, gauntlet r8) */
 @media(max-height:299px) and (orientation:landscape){
  .cot-watch{left:50%;right:auto;transform:translateX(-50%);flex-wrap:nowrap}
- .cot-watch .who{flex:none;width:160px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
+ /* (the plate its name's width, to 210 px: at 160 px "VIII · Leopard 2A4 V" lost its suffix, gauntlet r15) */
+ .cot-watch .who{flex:none;width:max-content;min-width:160px;max-width:210px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{display:none}
  .cot-watch .wb{height:34px;min-width:34px;padding:0 var(--s1)}.cot-watch .wb.seat{min-width:44px}
  html[data-watch=ride] body.cot-touch-layout .cot-watch{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 46px)}

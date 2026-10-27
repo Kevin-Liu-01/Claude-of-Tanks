@@ -15,6 +15,13 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
+every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
+cases:
+- two of the plate's rows or worded elements intersect as their columns show them;
+- anything is cut by its column at rest on a window the layout calls neither compact nor short;
+- the datum census finds a duplicate.
+A new plate row needs no list entry: every element holding words is measured.
 `battle-hud-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the battle HUD's cheap overlap pass.
 It stages every state the layout fixture knows (the corners, hints, notices, reports, the scope, spectate, Watch
 ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI gauntlet's eight sizes (2560x1440,
@@ -85,6 +92,26 @@ one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
 `COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
 generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
 also spelled `--release`); exploration passes its own rounds explicitly.
+
+Every browser goes through `browser-launch.mjs` (2026-10-26, item 244; the
+10-23 crashes came from a 14.1 GB capture renderer): `launchGuardedBrowser(
+puppeteer, options, { label })`, or `launchGuardedBrowser(chromium, options)`
+for playwright (`method: 'launchServer'` / `'launchPersistentContext'`), never
+`puppeteer.launch` or `chromium.launch` (`browser-launch-census.selftest`
+fails on a direct call). It adds `--js-flags=--max-old-space-size=3072` and
+`--renderer-process-limit=4`, and samples the browser's process group every
+2 s (physical footprint every ~10 s for large renderers). A renderer past
+6 GB, or the tree past 10 GB, is killed by its exact pids; a
+`[browser-guard]` line names the label, the `runWarmHold` hold, the pages and
+the peaks (also `/tmp/cot-browser-guard.log`); every capture lock the process
+holds is released (`releaseAllCaptureHolds`); the process exits 86. Still
+close the browser in `finally`: the guard also reaps the tree on disconnect,
+process exit and SIGALRM (a perl alarm). Caps come from the guard options or
+`COT_BROWSER_HEAP_MB`, `COT_BROWSER_RENDERER_CAP_MB`, `COT_BROWSER_TREE_CAP_MB`,
+`COT_BROWSER_GUARD_INTERVAL_MS`, `COT_BROWSER_RENDERER_LIMIT`; `exit: false`
+reports and kills without ending the process (`browserGuardOf(browser)`). A
+fixture's fake launcher gets its fake browser back unwatched; a fixture that
+strips imports and runs a tool's source passes a `launchGuardedBrowser` port.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

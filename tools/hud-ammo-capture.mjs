@@ -35,6 +35,7 @@
 //    (critic r6: at 900 px the ∞ printed 12 px into APFSDS).
 // runCapture takes its browser and capture lock as arguments, so tools/hud-ammo-frame-ink.selftest.mjs drives the whole
 // flow against a recording page.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { resolve } from 'node:path';
 import { cropImage, decodePng, encodePng, inkGap, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
 
@@ -281,7 +282,7 @@ export function readHud(rules) {
   // and go); only the vision switch, a control, keeps clear of them, below.)
   const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
     '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
-    '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity', '.cot-ear'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
+    '.cot-aim-warning:not([hidden])', '.cot-battle-notices .cot-aim-notice', '.cot-scope-vision', '.flight-identity', '.cot-ear'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
   // every mark of the sight keeps FURNITURE_GAP from every control (critic r8: the stack's foot 4.77 px into the row)
   for (const item of furniture) for (const control of controls) {
@@ -305,7 +306,8 @@ export function readHud(rules) {
   const vision = [...document.querySelectorAll('.cot-scope-vision')].filter(visible).map(rect);
   const panels = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
     '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show', '.cot-ear.l', '.cot-ear.r',
-    '.cot-aim-warning:not([hidden])', '.cot-si-cardhost:not(:empty)', '.cot-si-log.open', '.flight-identity']
+    '.cot-aim-warning:not([hidden])', '.cot-battle-notices .cot-aim-notice', '.cot-si-cardhost:not(:empty)', '.cot-si-log.open',
+    '.flight-identity']
     .flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible).map((el) => ({ name: selector, box: rect(el) })))
     .filter((panel) => panel.box.x1 - panel.box.x0 >= 1 && panel.box.y1 - panel.box.y0 >= 1);
   for (const box of vision) {
@@ -411,7 +413,7 @@ export function readHud(rules) {
     reportUp: [...document.querySelectorAll('.cot-si-cardhost > .cot-si-card, .cot-si-log.open')].some(visible),
     logOpen: [...document.querySelectorAll('.cot-si-log.open')].some(visible),
     seatedChip: seated.length > 0,
-    warning: chips.length > 0 || [...document.querySelectorAll('.cot-aim-warning:not([hidden])')].some(visible),
+    warning: chips.length > 0 || [...document.querySelectorAll('.cot-aim-warning:not([hidden]),.cot-battle-notices .cot-aim-notice')].some(visible),
   };
 }
 
@@ -625,7 +627,7 @@ export async function runCapture({ chromium, lock, url, out, cases = CASES, stag
   const startedAt = Date.now();
   let browser = null;
   try {
-    browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+    browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
     for (const c of cases.filter((item) => !caseFilter || caseFilter.split(',').includes(item.name))) {
       const context = await browser.newContext({ viewport: { width: c.width, height: c.height }, hasTouch: c.touch,
         isMobile: c.touch, deviceScaleFactor: c.scale, reducedMotion: 'reduce' });

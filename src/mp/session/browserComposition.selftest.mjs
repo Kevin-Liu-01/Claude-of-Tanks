@@ -228,6 +228,8 @@ function createRecordedPresentation(options, record) {
       options.game.resultReason = reason;
       options.bus.emit('battle:ended', { result: options.game.result, reason, network: true });
     },
+    // the session's verdict, at once here (the real one waits for its event while frames flow: battlePresentation.selftest)
+    settleVerdict(verdict, reason) { presentation.applyVerdict(verdict, reason); },
     setVisibility() {},
     predictionWorld() {
       const heightField = options.worldCollision?.heightField;

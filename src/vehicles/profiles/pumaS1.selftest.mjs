@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Box3, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
 const spec = getSpec('spz_wotan');
 assert.ok(spec, 'SPz Puma S1 is registered');
 assert.equal(spec.name, 'SPz Wotan');
-assert.equal(tankTier(spec.id), 10, 'Puma S1 is Tier X');
+assert.equal(tankTier(spec.id), 6, 'Puma S1 matches at its shown Tier VI (258)');
 assert.equal(spec.role, 'ifv');
 assert.equal(spec.weightTons, 43);
 assert.deepEqual(spec.dims, {
@@ -19,11 +20,16 @@ assert.deepEqual(spec.dims, {
   heightM: 3.24,
 });
 assert.equal(spec.gun.caliberMm, 30);
-assert.deepEqual(spec.armor.gunPivot, [-0.14 * 0.9, 0.42 * 0.9, 1.33 * 0.9],
-  'Puma S1 cannon sits close to the turret centerline while preserving its asymmetric RCT30 face');
+// (the 230 combat-rig table writes the measured pivot to the millimetre, -0.126 for -0.14 x 0.9: read within a micron)
+for (const [axis, value] of [-0.14 * 0.9, 0.42 * 0.9, 1.33 * 0.9].entries()) {
+  assert.ok(Math.abs(spec.armor.gunPivot[axis] - value) < 1e-6,
+    'Puma S1 cannon sits close to the turret centerline while preserving its asymmetric RCT30 face');
+}
 assert.ok(spec.gun.shells.some((round) => round.guided && /Spike LR2 MELLS/.test(round.name)),
   'Puma S1 has its independent MELLS guided channel');
-assert.ok(spec.armor.crew.every((crew) => !crew.turretLocal && crew.max[1] < 1.93 * 0.9),
+// (235 crew-fit seats the heads to 1.8415 under the measured 1.872 hull roof; 1.93 x 0.9 was the authored estimate)
+const hullRoofY = combatAnatomyCalibration(spec.id).hull.bodyRoofY;
+assert.ok(spec.armor.crew.every((crew) => !crew.turretLocal && crew.max[1] < hullRoofY),
   'all three Puma S1 crew stations remain below the roof in the protected hull cell');
 
 const source = readFileSync(new URL('./pumaS1.ts', import.meta.url), 'utf8');

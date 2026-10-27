@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Render the current 30-map Studio duel collection.
 // Usage:
@@ -238,7 +239,7 @@ try {
   const url = `http://localhost:${server.config.server.port}/`;
   console.log(`[studio-examples] vite up at ${url}`);
 
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   }));

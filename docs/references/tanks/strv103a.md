@@ -193,3 +193,28 @@ published 2.14 p95-sovereign — resident-class cap).
 
 NEXT (post-§E): re-ladder the whole rows after the mast fix releases the
 height clamp (frame re-lands overall-driven; quarters re-price).
+
+## 259: gun port, travel lock, IR lamps and the 103A's own field kit (2026-10-26)
+
+Owner: "dont allow the strv 103 bs gun to like glitch through the front of its gate. fix for the A and B! make all its
+deocrations specialized and customized heheh for both a and b".
+
+- **Before (live 258):** the level tube (bore 1.59) crossed the 9-degree glacis from its crown at z 1.5 to its belly at
+  z 2.9 (up to 11.6 cm deep). The splash rail ran 9.8 cm into it, the beak travel clamp's yoke band (the "gate") 6.3 cm,
+  the beak lip 0.8 cm; the clamp posts stood 7 mm off it. The tilted exit sleeve sat across it at z 1.18.
+- **After:** the tube leaves through an armoured housing riding the glacis over it (z 1.26-2.95, level top 1.745, foot
+  0.18 m a side; casemate.ts `addFixedGunPort`) by a cast ring on its face (bore 1.2 cm clear of the tube). The beak lip
+  drops 2.5 cm to 1.475. The travel lock at z 3.28 stands open round the tube: posts 4.9 cm outboard, a saddle 1.3 cm
+  under it, the hinged clamp bar 2.4 cm over it. The louvre banks (x +-0.57) and the split splash rail stand outboard of
+  the housing. `strv103GunPort.selftest.mjs` (gunHullClearance.test-support `fixedGunHullProbe`): ahead of the face every
+  tube sample keeps 1 cm from every hull mesh (decor included), behind it the tube is hidden, at hull pitch -13/0/+12;
+  a bar laid across the tube fails it.
+- **A-only fittings:** infrared driving lamps on the beak (a black-filtered lamp on a bracket either side, inboard of the
+  white pods). Source: hhogman.se Strv 103 ("Strv 103B ... removed IR headlights"), so the A carried them.
+- **A field kit (decorations.ts `STRV103_DECOR`):** a shovel and axe on the left fender, a canvas tarpaulin roll, a
+  wooden ammunition crate, a fuel-can pair on the Nordic rack, two crew packs; no fleet cargo pools, no casemate travel
+  lock or second cable.
+- **Sources checked, not modelled:** smoke dischargers and Lyran launchers (the sources place Lyran on the 103C only and
+  give no layout for smoke launchers on the A or B); the dozer blade (one per platoon on early vehicles, every tank from
+  the 103C: the A keeps its bare beak). Hull pitch (Wikipedia): A -10/+12, B-standard -11/+16; the specs' envelopes are
+  unchanged (gameplay).

@@ -64,6 +64,12 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
    the side: at 900x700 it read "Commander…", r5) */
 .cot-ribbon.tight .cause,.cot-ribbon.tight .sil{display:none}
 .cot-ribbon.tight .x{min-width:44px;padding:0 10px}
+/* (and its word at the label size, untracked, its gaps 8 px, the callsign a step smaller: the 14 px tracked word left a
+   16-character callsign 13 at 900x700, gauntlet r17) */
+.cot-ribbon.tight .top{gap:8px;padding-left:12px}
+.cot-ribbon.tight .w{font-size:var(--battle-fs-12);letter-spacing:0}
+.cot-ribbon.tight .cs{font-size:var(--battle-fs-15)}
+:lang(zh-CN) .cot-ribbon.tight .w{font-size:var(--battle-fs-13)}
 .cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}
 .cot-ribbon .stream>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
@@ -96,6 +102,9 @@ interface KillRibbonRuntime {
   damage(targetId: string, amount: number): void;
   /** The player destroyed `victim`. */
   kill(victim: RibbonVictim, cause: RibbonCause): void;
+  /** Whether the ribbon shows a kill here now (a mouse layout from 768 px wide and not short, not spectating, not in the
+   *  scope): the feed then leaves the player's own kill to it (one datum, one place: UI-LOCKDOWN B1). */
+  shows(): boolean;
   /** The player lit an enemy (the stream counts the spots of the streak's window). */
   spot(): void;
   /** The player's side took a zone. */
@@ -193,6 +202,11 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       root.classList.add('on');
       if (hideTimer) clearTimeout(hideTimer);
       hideTimer = setTimeout(() => { hideTimer = null; root.classList.remove('on'); }, RIBBON_HOLD_MS);
+    },
+    shows() {
+      // (its layouts set it flex: anything else, a phone's none or a stub document's nothing, shows no ribbon)
+      if (typeof getComputedStyle !== 'function' || getComputedStyle(root).display !== 'flex') return false;
+      return !document.body.classList.contains('cot-spectating') && !document.documentElement.hasAttribute('data-cot-scoped');
     },
     spot() {
       spotTimes[spotNext] = performance.now();

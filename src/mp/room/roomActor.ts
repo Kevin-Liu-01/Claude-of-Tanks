@@ -611,6 +611,7 @@ export class RoomActor {
     return {
       specId: typeof value.specId === 'string' ? value.specId : null,
       equipment: Array.isArray(value.equipment) ? value.equipment.map(String) : [],
+      consumables: Array.isArray(value.consumables) ? value.consumables.map(String) : [],
       camo: typeof value.camo === 'string' ? value.camo : 'factory',
     };
   }

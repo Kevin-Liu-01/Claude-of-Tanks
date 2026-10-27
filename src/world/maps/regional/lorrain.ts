@@ -426,7 +426,9 @@ const church: RegionalBuilder = (ctx) => {
       });
       // the string courses between the stages and under the cornice
       const b = tower.bodies[0];
-      for (const y of [tower.floors[1], tower.floors[2]]) sink.band('stone', b.x0 - 0.1, y - 0.12, b.z0 - 0.1, b.x1 + 0.1, y + 0.1, b.z1 + 0.1, { decor: true });
+      // (259, the far-view census: 10 cm proud, the courses stood off the tower on their tops and undersides, fine
+      // joinery hidden at range) whole at any range
+      for (const y of [tower.floors[1], tower.floors[2]]) sink.span('stone', b.x0 - 0.1, y - 0.12, b.z0 - 0.1, b.x1 + 0.1, y + 0.1, b.z1 + 0.1, { decor: true });
       // the round-headed hood over each belfry opening
       for (const o of towerOpenings) {
         if (o.kind !== 'loft') continue;

@@ -16,6 +16,7 @@
 // alert set five lines 96 px wide onto the ammo slot), and a notice over the map is stacked over it (at the controls'
 // layer the map, later in the page, painted over the alert the ruling sets there). No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { recordReticle } from './hud-ammo-capture.mjs';
@@ -76,7 +77,7 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   return {
     detection: box('.cot-sixth.on'), alert: box('.cot-alert.show'), countdown: box('.cot-prebattle.on'),
     medal: document.querySelector('.cot-medal-toasts')?.dataset.placement === 'ready' ? box('.cot-medal-toasts .cot-medal-toast') : null,
-    chip: box('.cot-aim-warning:not([hidden])'), vision: box('.cot-scope-vision'),
+    chip: box('.cot-aim-warning:not([hidden]),.cot-battle-notices .cot-aim-notice'), vision: box('.cot-scope-vision'),
     ink: window.__RETICLE_LOG.paint.filter((op) => op.box).map((op) => ({ ...op.box, what: op.text ?? (op.ring ? 'ring' : op.op) })),
     furniture: furniture.flatMap((selector) => [...document.querySelectorAll(selector)]
       .filter((node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
@@ -123,7 +124,7 @@ function noticeGaps(scene) {
 
 await mkdir(out, { recursive: true });
 const sizes = TOUCH_NOTICE_SIZES.filter((size) => !arg('case', '') || arg('case', '').split(',').includes(size));
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const reports = [];
 const failures = [];
 try {

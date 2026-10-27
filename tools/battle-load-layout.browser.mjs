@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Render the production loading component; no duplicated CSS or roster layout.
 // Run against Vite: node tools/battle-load-layout.browser.mjs --url=http://127.0.0.1:5204
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -12,7 +13,7 @@ await mkdir(out,{recursive:true});
 // (--channel=chromium: Playwright's bundled headless shell, where the installed Chrome's channel hangs; --executable=<path>: a
 // headless shell already on disk when the Playwright found wants another build)
 const channel = arg('channel','chrome'), executablePath = arg('executable','');
-const browser = await chromium.launch({headless:true,...(channel==='chromium'?{}:{channel}),...(executablePath?{executablePath}:{}),args:['--disable-gpu']});
+const browser = await launchGuardedBrowser(chromium, {headless:true,...(channel==='chromium'?{}:{channel}),...(executablePath?{executablePath}:{}),args:['--disable-gpu']});
 const reports=[];
 const errors=[];
 function measure() {

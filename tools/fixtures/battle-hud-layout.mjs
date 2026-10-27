@@ -3,6 +3,8 @@ import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/components/components.css';
 // (the kit picker's sheet, which main.ts loads for the game: the spectator bar's picker of allies)
 import '../../src/ui/components/pickers.css';
+// (the kit's notices, which main.ts loads for the game: the battle's notice region, UI-LOCKDOWN B14)
+import '../../src/ui/components/notices.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
 // Real production components, deterministic presentation data, no WebGL/simulation.
@@ -13,7 +15,7 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
-import { Vector3, WebGLRenderer } from 'three';
+import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { sightFurniture, sightNotice } from '../../src/ui/sightFurniture.ts';
@@ -34,7 +36,8 @@ import { createCombatState } from '../../src/sim/damage.ts';
 import { createSpecialActionState } from '../../src/sim/specialActionPolicy.ts';
 import {createMultiplayerStatusSurface} from '../../src/ui/multiplayerStatus.ts';
 import {NetworkStatusModel} from '../../src/mp/session/networkStatus.ts';
-import { setLocale } from '../../src/ui/i18n.ts';
+import { setLocale, t } from '../../src/ui/i18n.ts';
+import { battleNotices } from '../../src/ui/battleNotices.ts';
 import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
 
 // the catalog lands before the HUD builds (the game awaits it too), and a zh-CN capture carries the label floor its /cn/
@@ -45,6 +48,11 @@ installResponsiveLayout();
 const bus = createBus();
 const input = createInput();
 const hud = initHud(bus);
+// (the nations' flags land before the first kill, as in a battle, whose load screen imports them long before one: the
+// HUD imports them on demand, and the fixture's kills come at once, so some sizes' feeds drew flags and others none,
+// gauntlet r17)
+await import('../../src/ui/flags.ts');
+await new Promise((resolve) => setTimeout(resolve, 0));
 // (a gentle field under the battle, as a battle's map hands the HUD one: the minimap draws its relief and the drone reads
 // its altitude off it; without one the altitude read a dash, gauntlet r5)
 hud.buildMinimap({size:1024, minY:0, maxY:24, getHeightAt:(x,z)=>8+6*Math.sin(x/140)*Math.cos(z/170), getGroundType:()=>'grass'});
@@ -71,6 +79,14 @@ const tanks = Array.from({length:TANK_COUNT},(_,i)=>{
     spec, state:createTankState(spec,i===0?new Vector3(0,0,50):spread(i,ally),0), combat:createCombatState(spec)};
 });
 const player = tanks[0];
+// ?state=markers: the in-world markers over the tanks in view (the hull bars over allies and enemies, the target plate
+// over the enemy under the gun), a camera at the player's roof looking down the field where the other states have none
+const homes = tanks.map((tank) => tank.state.pos.clone());
+// (the other enemies wide of the plate over the one under the gun: the bars decluttered, a bar crossing it waits hidden)
+const MARKER_SEATS = [[8, 0, 150], [9, -95, 200], [10, 110, 240], [2, -26, 80], [3, 30, 104]];
+const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
+const flightCamera = new PerspectiveCamera(55, 1, 0.5, 6000);
+flightCamera.userData.thermalFlight = true;
 hud.setDamagePanel(panel);
 panel.setTank(player.spec);
 panel.setState(player.combat);
@@ -181,6 +197,17 @@ function hit(incoming=false, attackerIndex=8) {
     kind:'pen',damage:420,dmgRoll:460,penRollMm:560,penRollFreshMm:560,effectiveMm:350,nominalMm:220,impactAngleDeg:34,
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
 }
+// The consumables tray as a crew's loadout sets it (ui:battleConsumables, game/consumableLoadout.ts): each state one of
+// five threes from the catalog in turn (sim/consumableRules.ts, thirteen items), so between them the states show every
+// item's glyph and its uses left; a tree without the catalog keeps the three kits. (Its path is built, so the dev server
+// leaves the import to the page.)
+const CATALOG_PATH=['..','..','src','sim','consumableRules.ts'].join('/');
+const consumableIds=await import(/* @vite-ignore */ CATALOG_PATH).then((module)=>module.CONSUMABLE_CATALOG.map((item)=>item.id),()=>[]);
+function stageTray(name){
+  if(!consumableIds.length)return;
+  const three=[...name].reduce((sum,c)=>sum+c.charCodeAt(0),0)%5;
+  bus.emit('ui:battleConsumables',{items:[0,1,2].map((k)=>consumableIds[(three*3+k)%consumableIds.length])});
+}
 let network=null;
 function multiplayer(kind='healthy', role='host') {
   network?.dispose();
@@ -191,9 +218,11 @@ function multiplayer(kind='healthy', role='host') {
 }
 function state(name) {
   network?.dispose();network=null;
+  battleNotices.dismiss('cot-pointer-lock');
   delete frame.rosterTanks; frame.tanks=tanks; frame.aim=defaultAim(); frame.mode='battle';
+  delete frame.camera; tanks.forEach((tank, i) => { tank.state.pos.copy(homes[i]); tank.combat.hp = tank.combat.maxHp; });
   // (a networked state's link round trip from its first frame: the corner chip reads it at most once a second)
-  frame.pingMs=name==='mp-host'||name==='mp-client'?42:0;
+  frame.pingMs=name==='mp-host'||name==='mp-client'||name==='notices'?42:0;
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
@@ -213,17 +242,32 @@ function state(name) {
   // Cross the real 30-frame FPS threshold; single-frame fixtures miss this plate.
   for(let i=0;i<31;i++)hud.update(frame);
   panel.update(player.combat);
+  // (a watched battle is watched from its start, so its kills are never the viewer's: the watch side before the first,
+  // as watchRuntime.ts sets it; set after them, the lane read "You" in Watch, gauntlet r17)
+  if(name.startsWith('watch-'))hud.setWatchSide('player');
   // (the first battles' strip stands at the rollout, before the player's first engagement: no kills staged)
   for(let i=0;i<(name==='hints'?0:name==='feed-burst'?14:3);i++){
     bus.emit('mode:respawn',{id:tanks[8].id});
     bus.emit('mode:respawn',{id:tanks[1].id});
     bus.emit('tank:destroyed',{id:tanks[8].id,killerId:player.id,cause:'fire'});
     bus.emit('tank:destroyed',{id:tanks[1].id,killerId:tanks[9].id,cause:'fire'});
+    // (a burst's allied lane full of a teammate's kills: the player's own go to the kill ribbon wherever it shows,
+    // UI-LOCKDOWN B1, so the burst would leave that lane short of its eight rows)
+    if(name==='feed-burst'){bus.emit('mode:respawn',{id:tanks[10].id});bus.emit('tank:destroyed',{id:tanks[10].id,killerId:tanks[2].id,cause:'fire'});}
   }
-  if(name==='notifications'||name.startsWith('mode-')) {
+  if(name==='notifications'||name==='notices'||name.startsWith('mode-')) {
     bus.emit('player:spotted',{timeS:frame.timeS-4});
     hud.update(frame);
-    if(name==='notifications')bus.emit('ui:magazineReloadStarted',{});
+    if(name==='notifications'||name==='notices')bus.emit('ui:magazineReloadStarted',{});
+  }
+  // the battle's notice region (UI-LOCKDOWN B14) under the detection and the alert: a lost link's banner with its leave,
+  // and on a mouse layout the pointer lock's notice waiting behind it (pointerLockFeedbackRuntime.ts raises it with these
+  // options on a durable denial; a touch layout never takes the pointer)
+  if(name==='notices'){
+    multiplayer('offline');
+    if(!document.body.classList.contains('cot-touch-layout'))battleNotices.show({id:'cot-pointer-lock',className:'cot-lock-notice',
+      severity:'warning',text:t('pointerLock.toast.unavailable'),durationMs:null,dismissible:false});
+    for(let i=0;i<3;i++)hud.update(frame);
   }
   if(name==='countdown') hud.preBattleCountdown(5);
   if(name==='reports'||name==='log'||name==='chat'||name==='combined'||name==='feed-burst') {
@@ -235,13 +279,15 @@ function state(name) {
   // ?state=spectator-pick: the bar's picker of allies open over it (spectatorSwitcher.ts mountSpectateAllies)
   if(name==='spectator'||name==='spectator-pick'){
     const allies=tanks.filter(t=>t.team==='player'&&!t.isPlayer).map(t=>t.id);
-    hud.stageSpectateBar({id:allies[1],specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:allies.length,index:2,allies});
+    // (the bar names the ally the picker lists, its own callsign and vehicle: a staged Leopard beside the list's T-90AM
+    // read as one player in two tanks, gauntlet r15)
+    const seat=tanks.find((tank)=>tank.id===allies[1]);
+    hud.stageSpectateBar({id:seat.id,specId:seat.spec.id,name:seat.displayName,vehicle:seat.spec.name,count:allies.length,index:2,allies});
     if(name==='spectator-pick')requestAnimationFrame(()=>document.querySelector('.cot-spec .subject')?.click());
   }
   // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying
   if(name.startsWith('watch-')){
     const view=name.slice(6), seat=tanks[3];
-    hud.setWatchSide('player');
     void import('../../src/ui/watchHud.ts').then(({createWatchHud})=>{
       const watch=createWatchHud(()=>hud.root,{cycle(){},drone(){},toggleSeat(){},setClimb(){}});
       watch.update({view,tank:view==='drone'?null:{id:seat.id,team:'player',spec:{id:seat.spec.id,name:seat.spec.name,nation:seat.spec.nation}},
@@ -258,8 +304,14 @@ function state(name) {
     frame.matchModeState={...frame.matchModeState,id:name==='gunship'?'ac130':'drone'};
     // (the gunship flown from its gimbal, its airframe hidden: the lens's sight and solution show, gauntlet r4)
     player.visual=name==='gunship'?{root:{visible:false}}:undefined;
+    // (the flight's own camera, in its thermal view as a battle's flight camera is: without one the vision switch stood
+    // disabled and read as greyed out, gauntlet r14)
+    flightCamera.aspect=innerWidth/innerHeight;flightCamera.position.set(player.aerial.x,player.aerial.y,player.aerial.z);
+    flightCamera.lookAt(player.state.pos);flightCamera.updateProjectionMatrix();flightCamera.updateMatrixWorld();
+    frame.camera=flightCamera;
     for(let i=0;i<5;i++)hud.update(frame);
   }
+  if(name==='markers')markers();
   if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
   // (the frame carries the sight too: a mode set alone was undone by the next frame's 'battle', gauntlet r3 read idle)
@@ -275,10 +327,23 @@ function state(name) {
     multiplayer('healthy',name==='mp-host'?'host':'client');
     for(let i=0;i<3;i++)hud.update(frame);
   }
+  stageTray(name);
   if(name==='ended')bus.emit('battle:ended',{result:'victory',timeS:320,reason:'elimination',roster:tanks.map(t=>({
     id:t.id,isPlayer:t.isPlayer,team:t.team,specId:t.spec.id,name:t.displayName,hp:t.combat.hp,maxHp:t.combat.maxHp
   }))});
   return name;
+}
+// The markers staged over the state on screen (the receipts check them in every state: spectate, Watch, the aerial
+// views, a networked battle's host and client): the camera, the seats in view and the enemy under the gun.
+function markers() {
+  for(const [i,x,z] of MARKER_SEATS)tanks[i].state.pos.set(x,0,z);
+  markerCamera.aspect=innerWidth/innerHeight;markerCamera.position.set(0,6,0);markerCamera.lookAt(0,2,150);
+  markerCamera.updateProjectionMatrix();markerCamera.updateMatrixWorld();
+  const target=tanks[8].state.pos, at=new Vector3(target.x,1.6,target.z);
+  frame.camera=markerCamera;
+  frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
+  tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
+  for(let i=0;i<4;i++)hud.update(frame);
 }
 function roster(allies, enemies) {
   const entries=Array.from({length:allies+enemies},(_,i)=>{
@@ -292,7 +357,7 @@ function roster(allies, enemies) {
   hud.update(frame);
 }
 // (the layout's published sight furniture, the HUD's own module instance: tools/hud-sight-furniture.browser.mjs reads it)
-window.__HUD_LAYOUT = {multiplayer,state, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
+window.__HUD_LAYOUT = {multiplayer,state, markers, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 // (two more frames once layout settles: the HUD's size observers (the minimap's label size, 140 px and under none) land

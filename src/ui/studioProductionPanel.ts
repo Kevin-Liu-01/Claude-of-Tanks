@@ -93,8 +93,10 @@ function node<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', tex
   if (text) element.textContent = text;
   return element;
 }
-/** A name with an inner hyphen, dot or slash (T-90M, 2S19-M2, M1A2/TUSK): it never breaks inside. */
-const KEPT_NAME = /([A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)/;
+/** A vehicle's name: capitalised or numbered words in a run (Leopard 2A6, M1A2 Abrams TUSK, T-14 Armata, T-90M): it never
+ * breaks inside (the s16 critic: "Leopard" over "2A6", "M1A2 Abrams" over "TUSK"). */
+// (a full-width comma or a pause after the name keeps to it: the s17 critic read "，工厂公路" starting a line)
+const KEPT_NAME = /((?:[A-Z0-9][A-Za-z0-9./-]*(?: [A-Z0-9][A-Za-z0-9./-]*)+|[A-Za-z0-9]+(?:[-./][A-Za-z0-9]+)+)[，、,]?)/;
 /** A card's caption: its hyphenated names stand whole in no-wrap spans (the s15 critic: "炮火下的 T-" over "90M 纵队"). */
 function caption(text: string): HTMLElement {
   const parts = text.split(KEPT_NAME);
@@ -103,6 +105,13 @@ function caption(text: string): HTMLElement {
   // the split's odd parts are the names it captured
   parts.forEach((part, index) => { if (part) strong.append(node('span', index % 2 ? 'nobr' : '', part)); });
   return strong;
+}
+/** A Director section's title with its glyph, as every other workspace's section titles carry theirs (the s17 critic). */
+function heading(glyph: Parameters<typeof uiIconSVG>[0], text: string): HTMLElement {
+  const title = node('h3');
+  title.innerHTML = uiIconSVG(glyph, 16);
+  title.append(node('span', '', text));
+  return title;
 }
 /** The kit's controls (src/ui/components): a 36 px button, a primary, a chip. */
 const KIT_BUTTON = 'cot-c-btn cot-c-btn--36';
@@ -183,7 +192,7 @@ export function mountStudioProductionPanel(
   const say = (text: string, error = false): void => { hosts.notice?.(text, error ? 'error' : 'info'); };
   const failure = (error: unknown): void => { say(error instanceof Error ? error.message : String(error), true); };
   const librarySection = node('section');
-  librarySection.append(node('h3', '', productionLabel('library')));
+  librarySection.append(heading('film', productionLabel('library')));
   const library = node('div', 'production-library');
   const cards = new Map<string, HTMLButtonElement>();
   function selectPreset(id: string): void {
@@ -253,7 +262,7 @@ export function mountStudioProductionPanel(
   // The site's takes: fetched the first time the Director opens; a card stages its take exactly as filmed (S.load, as
   // Load JSON does), ready to play, change and film again.
   const takesSection = node('section', 'production-takes');
-  if (!hosts.takes) takesSection.append(node('h3', '', productionLabel('takes')));
+  if (!hosts.takes) takesSection.append(heading('play', productionLabel('takes')));
   const takesLibrary = node('div', 'production-library');
   // the index's loading and its failure stand in for the cards, as the kit's inline notice
   const takesStatus = node('div', 'production-takes-status');
@@ -335,7 +344,7 @@ export function mountStudioProductionPanel(
   const fleetStatus = node('div', 'production-hint');
   fleetStatus.setAttribute('role', 'status');
   fleetStatus.setAttribute('aria-live', 'polite');
-  fleetSection.append(node('h3', '', t('studio.director.fleet.heading')), fleetSearchLabel, fleetLibrary, fleetStatus);
+  fleetSection.append(heading('vehicle', t('studio.director.fleet.heading')), fleetSearchLabel, fleetLibrary, fleetStatus);
   director.append(fleetSection);
   let fleetTakes: SiteTake[] = [];
   const fleetText = new Map<string, string>();
@@ -395,7 +404,7 @@ export function mountStudioProductionPanel(
   }
 
   const sequence = node('section');
-  sequence.append(node('h3', '', productionLabel('shotlist')));
+  sequence.append(heading('toolPhoto', productionLabel('shotlist')));
   const transport = node('div', 'production-transport');
   const play = button(productionLabel('play'), () => { if (S.playing) S.pause(); else S.play(); refresh(); }, KIT_BUTTON);
   const restart = button(productionLabel('restart'), () => { S.stop(); S.seek(0); refresh(); }, KIT_BUTTON);
@@ -410,7 +419,7 @@ export function mountStudioProductionPanel(
   sequence.append(transport, scrubRow, shots);
   director.append(sequence);
 
-  const cameras = node('section'); cameras.append(node('h3', '', productionLabel('camera')));
+  const cameras = node('section'); cameras.append(heading('optics', productionLabel('camera')));
   const rigs = node('div', 'production-rigs');
   for (const rig of ['hero', 'track', 'rear', 'overhead', 'detail'] as const) {
     const control = button(productionLabel(rig), () => { S.pause(); S.applyProductionCamera(rig); S.addCameraShot(); refreshAll(); }, KIT_CHIP);
@@ -437,7 +446,7 @@ export function mountStudioProductionPanel(
   cameras.append(rigs, lensLabel, guides);
   director.append(cameras);
 
-  const exports = node('section'); exports.append(node('h3', '', productionLabel('export')));
+  const exports = node('section'); exports.append(heading('deploy', productionLabel('export')));
   const exportButtons = node('div', 'production-exports');
   const photo = button(productionLabel('photo'), () => {
     const [width, height] = format === 'portrait' ? [2160, 3840] : format === 'square' ? [2880, 2880]

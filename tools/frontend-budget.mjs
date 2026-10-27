@@ -98,12 +98,53 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged. The pins are the final release build's (432767fd9e, after the
   // integ fixes: the Field Manual's Watch keys, the T-90 pair's matchmaking tier, the four hover loops, the try-on's seed
   // form): game -318 B and Gallery -291 B against 97371edb3a's build, 404 +16 B.
-  game: { brotliBytes: 1085315, requests: 128, entryBrotliBytes: 239957 },
-  cn: { brotliBytes: 1127495, requests: 129, entryBrotliBytes: 239957 },
-  gallery: { brotliBytes: 674500, requests: 75 },
-  home: { brotliBytes: 26208, requests: 8 },
-  docs: { brotliBytes: 33013, requests: 12 },
-  notFound: { brotliBytes: 16704, requests: 7 },
+  // 2026-10-26 (integrator 258, re-pinned at the release build of 7d7d15e292 after its npm ci; each share is the local build of
+  // its merge commit against the one before, main 257 local within -118 B of its release pin; Main approved the totals):
+  // - Main: "owner Garage framing + Overview compare" (brand-ui-garage-redesign-245 5197bfc9c0: the tracks on the name line,
+  //   the 14 degree look-down, the Overview readout's compare legend, Studio s17, the tier chip in the kitPicker chunk):
+  //   +796 B game (+830 B cn), +402 B entry, +500 B Gallery, home +127 B, docs +39 B (approved: +858 / +899 / +435 / +499);
+  // - Main: "no flags on the markers" (brand-ui-battle-242 37e25f7081, with gauntlet r14): +555 B game (+759 raw), +156 B entry;
+  // - Main: "solo roster plan, phase 1" (solo-roster-plan-258 5eeb374220, planBattleSeats): +671 B game (+2,414 raw), entry
+  //   -9 B (approved +866 / +2,413 raw);
+  // - interaction-picker-254 3880af6939 (the boot lockup, the /home press cards, hover loops): +241 B game, +11 B entry,
+  //   home +226 B (inline CSS +170 B), Gallery +289 B; its forward e9369a4258 (one selected state): -150 B game, +96 B entry,
+  //   Gallery -156 B, home -15 B;
+  // - mm-tiers-258 da835cd14b (matchmaking tier.ts follows the shown tiers): -717 B game, Gallery +419 B;
+  //   vehicles-m48a5-mantlet-258 +47 B game (+74 B Gallery); vehicles-rear-drums-258 +386 B game (+433 B cn, +159 B entry,
+  //   Gallery +172 B); brand-ui-primitives-250 07efeea37c (the 13 Deploy plates): -64 B game, docs +71 B, Gallery -61 B, home
+  //   +5 B (approved -157 / +73 / +56 / +16); battle-spikes-253, media-deploy-panels-257 and motion-lint-253 none.
+  // - Main: "boot-258 last" (nav-perf's boot fix, item/boot-258 2aef1bc70b: isBootCovering for every boot, the link waits
+  //   before the first live frame, the Garage warm uncull'd at the scene's samples, the aux-armor rescans): +282 B game and cn
+  //   (+630 raw; entry +45 B), Gallery +308 B (+502 raw, fleetFactory).
+  // Requests unchanged. Over 257's pins: game +1,803 B (with the 128 B margin), entry +592 B, Gallery +1,545 B, home +334 B,
+  // docs +94 B, 404 -18 B.
+  // 2026-10-27 (integrator 259, re-pinned at the release build of 2324d9313a; each share the local build of its merge commit
+  // against the one before, game brotli unless named; requests unchanged on every page):
+  // - Main's named shares: consumables-260 +4,334 B in the merged chain (+4,079 alone against its base; entry +1,031 / +837
+  //   alone, cn +5,007 / +4,738, docs +72 / +38; approved +4,020, entry +888, cn +4,664, docs +56); boot-259 +904 B (entry
+  //   +838; approved +1,001 / +914).
+  // - The heads' own: leo2a3-iv-260 (with tier-fairness-259) +413 B (Gallery +204); main-reds-hitmodel-259 +146 B (Gallery
+  //   +217); greenery-settings-259 +578 B (home +107, docs +221, Gallery +299, 404 +110); brand-ui-battle-242 -293 B (cn -379);
+  //   mp-room-leave-258 +260 B (entry +144); greenery-consumables-merge-259 -150 B; floating-decor-259 +106 B; hit-volume-fit
+  //   +64 B (Gallery +119); mp-room-entry-258 +677 B (entry +522); killcam-capture-259 +160 B; strv103-gunport -215 B;
+  //   drawings-overhaul-259 +41 B (its viewer a lazy chunk, no boot request); interaction-picker-254 +323 B (entry +382, inline
+  //   CSS +171); main-reds-repins-259 -197 B.
+  // Over 258's release build: game +7,176 B (entry +2,917), cn +7,719 B, Gallery +817 B, home +120 B, docs +314 B, 404 +120 B.
+  // 2026-10-27 (integrator 260, re-pinned at the release build of 1b30e7fda4; requests unchanged on every page):
+  // - Main's named shares: "consumables band: the slot fit and phone rows (with gallery-studio's 04c3954089)" +185 B game
+  //   and cn (approved); "slot hint: the chevron (with gallery-studio's 9ca7e1da93) and the tip's count of kits" +374 B
+  //   game, +392 B cn, entry +258 B; "Proving Ground mode, Deploy r40-r44, zh archive titles" (brand-ui-primitives-250
+  //   3f4ce8a0e1; approved home +2, docs +78, Gallery +1).
+  // - The heads' own: brand-ui-battle-242 e92b4bc2ab (UI-LOCKDOWN B14, gauntlet r17) then 25355f1b24 (gauntlet r18, +167 B
+  //   game and cn between the two release builds, entry -23 B); garage-rail-end-loop 73b1dd157c and interaction-picker-254
+  //   4c781561fc (the boot card's 1 px fixes, inline) small; integ's --ring-hot token.
+  // Over 259's release build: game +1,200 B (entry +59 B), cn +1,261 B, Gallery +17 B, home +32 B, docs +124 B, 404 +15 B.
+  game: { brotliBytes: 1095494, requests: 128, entryBrotliBytes: 243525 },
+  cn: { brotliBytes: 1138356, requests: 129, entryBrotliBytes: 243525 },
+  gallery: { brotliBytes: 676879, requests: 75 },
+  home: { brotliBytes: 26694, requests: 8 },
+  docs: { brotliBytes: 33545, requests: 12 },
+  notFound: { brotliBytes: 16821, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

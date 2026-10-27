@@ -41,6 +41,7 @@
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
  * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -855,7 +856,7 @@ try {
     step('vite', { origin, cacheDir });
   }
 
-  const launchBrowser = () => puppeteer.launch({
+  const launchBrowser = () => launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],
@@ -1191,7 +1192,7 @@ try {
     : report.roomEvents.find((event) => event.kind === 'host_changed' && event.hostId === ids.b && event.generation === startGeneration + 1)
       ?? report.roomEvents.find((event) => event.kind === 'host_changed' && event.generation === startGeneration + 1);
   const reportsFromB = live ? null : report.roomEvents.filter((event) => event.kind === 'match_report' && event.from === ids.b).length;
-  const stripB = await pages.b.evaluate(() => ({ host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false, banner: document.querySelector('.cot-mp-banner')?.hidden === false ? document.querySelector('.cot-mp-banner .text')?.textContent : null }));
+  const stripB = await pages.b.evaluate(() => ({ host: document.querySelector('.cot-mp-strip .unit.host')?.hidden === false, banner: document.querySelector('.cot-battle-notices .cot-mp-notice:not([data-state="exit"]) .cot-c-notice__text')?.textContent ?? null }));
   report.migration = {
     electedAfterMs, resumedAfterMs, election: election ? { hostId: election.hostId, generation: election.generation, reason: election.reason, resumeTick: election.resumeTick } : null, hostTickBefore,
     b: bAfter, c: await p2pOf(pages.c), cMatchPhase: cAfter.matchPhase, cSnapshotsAfterMigration: cAfter.snapshots - cBefore, cMigrations: cAfter.migrations, bMigrations: (await stats(pages.b))?.session?.migrations ?? null,

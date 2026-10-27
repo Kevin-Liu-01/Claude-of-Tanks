@@ -237,27 +237,25 @@ for (const side of [-1, 1]) {
 
 const distributed = new Set();
 for (const id of ALL_TANK_IDS) {
+  // 259: the Strv 103s carry their own period kit (below), never the fleet's cargo pools
+  if (id === 'strv103a' || id === 'strv103b') continue;
   const manifest = decorManifestFor(getSpec(id), () => 0.5);
   const cargo = manifest.filter((row) => row.kit === 'cargo' && (row.p ?? 1) > 0);
   assert.equal(cargo.length, 7, `${id}: deterministic manifest includes a seven-piece field load`);
   assert.equal(new Set(cargo.map((row) => row.v?.v)).size, 7,
     `${id}: equipment set does not repeat the same prop`);
   assert.ok(cargo.every((row) => row.slot[0] === 'fleetCargo'
-    && row.slot[1].routes.length >= (id === 'strv103b' ? 1 : 4)),
+    && row.slot[1].routes.length >= 4),
   `${id}: equipment owns its required placement route network`);
   assert.ok(cargo.every((row) => row.v?.nation === getSpec(id).nation),
     `${id}: field equipment inherits the vehicle nation palette`);
   const preferred = cargo.map((row) => row.slot[1].routes[0]);
   assert.deepEqual([...new Set(preferred.map((route) => route[0]))].sort(),
-    (id === 'strv103b'
-      ? ['hullRoof']
-      : ['hullRearRack', 'turretRear']).sort(),
+    ['hullRearRack', 'turretRear'].sort(),
     `${id}: preferred equipment stays on the bustle and hull rear rack`);
   const routeStations = new Set(cargo.flatMap((row) => row.slot[1].routes.map((route) => route[0])));
   assert.deepEqual([...routeStations].sort(),
-    (id === 'strv103b'
-      ? ['hullRoof']
-      : ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide']).sort(),
+    ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide'].sort(),
     `${id}: fallback network covers aft equipment stations only`);
   assert.ok(cargo.every((row) => row.slot[1].routes.every(([station, args]) =>
     station !== 'turretRoof' || args.rear === true)),
@@ -283,32 +281,22 @@ for (const v of UNPLACED_VARIANTS) assert.ok(!distributed.has(v), `${v}: no play
 assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIANTS.size,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);
 
-const strvCargo = decorManifestFor(getSpec('strv103b'), () => 0.5)
-  .filter((row) => row.kit === 'cargo');
-const strvRoofStations = new Map([
-  ['mechanics-tool-chest', { x: 0.65, z: -1.45 }],
-  ['large-rucksack', { x: -0.25, z: -1.45 }],
-  ['fire-extinguisher', { x: -1.05, z: -1.30 }],
-  ['blue-water-can', { x: -0.80, z: -0.20 }],
-  ['beer-cooler-blue', { x: 1.15, z: -1.00 }],
-  ['helmet-bundle', { x: 0.85, z: -0.30 }],
-  ['folded-tarp-pack', { x: -0.25, z: -0.85 }],
-]);
-assert.deepEqual(new Map(strvCargo.map((row) => [row.v?.v, row.slot[1].routes[0][1]])),
-  strvRoofStations,
-  'Strv 103B roof cargo retains its non-overlapping measured station layout');
-assert.ok(strvCargo.every((row) => row.slot[1].routes.length === 1),
-  'Strv 103B roof cargo cannot silently fall back to an unmeasured mount');
-const strvWaterCans = strvCargo.find((row) => row.v?.v === 'blue-water-can');
-assert.ok(strvWaterCans, 'Strv 103B retains its paired blue water cans');
-assert.deepEqual(strvWaterCans.slot[1].routes[0], ['hullRoof', { x: -0.80, z: -0.20 }],
-  'Strv 103B water cans use the annotated roof seat before any fallback');
-assert.ok(strvWaterCans.slot[1].routes.every(([station]) => !station.startsWith('turret')),
-  'Strv 103B water cans cannot return to the virtual turret decoration rig');
-assert.ok(strvCargo.every((row) => row.slot[1].routes[0][0] === 'hullRoof'),
-  'every Strv 103B loose-equipment primitive prefers a measured roof seat');
-assert.ok(strvCargo.every((row) => row.slot[1].routes.every(([station]) => !station.startsWith('turret'))),
-  'Strv 103B steel, can, and canvas cargo cannot enter the virtual turret rig');
+// 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
+// S-tank carries its own period kit (decorations.ts STRV103_DECOR), every load at a measured flat roof point or on its
+// fender, none from the fleet cargo pools and none on the virtual turret rig.
+// (a stub spec: this receipt's module graph registers the base fleet only, and the 103A is a Swedish fleet row)
+const strvSpec = (id) => ({ id, nation: 'Sweden', era: 'cold-war', armor: { turretless: true } });
+for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs']], ['strv103b', ['camonet', 'jerry', 'bin', 'packs']]]) {
+  const manifest = decorManifestFor(strvSpec(id), () => 0.5);
+  assert.deepEqual(manifest.map((row) => row.kit), kits, `${id}: its own field kit, in order`);
+  assert.ok(manifest.every((row) => (row.p ?? 1) === 1 && (row.slot[0] === 'hullRoof' || row.slot[0] === 'fender')),
+    `${id}: every load is always carried, at a measured roof point or on a fender`);
+  const roof = manifest.filter((row) => row.slot[0] === 'hullRoof').map((row) => row.slot[1]);
+  assert.ok(roof.every((a, i) => roof.every((b, j) => i === j || Math.hypot(a.x - b.x, a.z - b.z) > 0.6)),
+    `${id}: the roof loads keep 0.6 m apart`);
+}
+assert.notDeepEqual(decorManifestFor(strvSpec('strv103a'), () => 0.5), decorManifestFor(strvSpec('strv103b'), () => 0.5),
+  'the 103A and the 103B carry different kits');
 
 const annotatedRoofHit = {
   p: new THREE.Vector3(-0.80187, 1.82439, -0.19998),

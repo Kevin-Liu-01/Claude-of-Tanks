@@ -46,6 +46,7 @@
 //   node tools/solo-host-probe.mjs [--map=verdant] [--sizes=7,14] [--seconds=20] [--cycles=1] [--smoke]
 //                                  [--latency=12] [--cpu-throttle=6] [--dist=.qa-dev/dist]
 //   (report: .qa-dev/solo-host-probe.json)
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { resolve } from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
@@ -85,7 +86,7 @@ const vite = dist
     server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 if (!dist) await vite.listen();
 const origin = `http://127.0.0.1:${port}`;
-const browser = await puppeteer.launch({ headless: true, protocolTimeout: 600_000, args: ['--no-sandbox',
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600_000, args: ['--no-sandbox',
   '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
   ...(smoke ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=metal', '--enable-gpu'])] });
 

@@ -1,0 +1,55 @@
+/* The technical drawing viewer (src/ui/technicalDrawing.ts, 258): the view and kind tabs, the stage (the text-free
+   plate under its vector overlay and the numbered badges, zoomed and panned by custom properties), and the key under
+   it (numbered labels in columns, the legend, a scale bar in metres). Every value reads a token; the inline values are
+   custom properties only (the stage's aspect, the zoom and pan, each badge's place, the readout's place, the scale
+   bar's length). The tones are the diagrams' tokens, mapped from data-tone by technicalDiagramLabels.css.
+   First-party: Kevin B. Liu (NOTICE.md). */
+@import url('./technicalDiagramLabels.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer components{
+.cot-td{display:flex;flex-direction:column;gap:8px;min-width:0;color:var(--ink-1);--tdl-tone:var(--ink-3);
+  font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-data)}
+.cot-td__bar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px}
+.cot-td__tabs{display:flex;gap:2px;padding:2px;border-radius:var(--r1);background:var(--surface-raised)}
+.cot-td__tab{min-height:28px;padding:0 10px;border:0;border-radius:var(--r1);background:none;color:var(--ink-2);
+  font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);cursor:pointer}
+.cot-td__tab[aria-pressed='true']{background:var(--surface-menu);color:var(--ink-1);box-shadow:var(--ring-2)}
+.cot-td__tab:focus-visible,.cot-td__row:focus-visible,.cot-td__fit:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-td__stage{position:relative;overflow:hidden;aspect-ratio:var(--td-aspect,3/1);border-radius:var(--r1);
+  background:var(--surface-page);touch-action:pan-y}
+.can-zoom .cot-td__stage{cursor:zoom-in}
+.cot-td.is-zoomed .cot-td__stage{cursor:grab;touch-action:none}
+.cot-td__zoom{position:absolute;inset:0;transform-origin:0 0;
+  transform:translate(var(--td-pan-x,0),var(--td-pan-y,0)) scale(var(--td-zoom,1))}
+.cot-td__plate,.cot-td__overlay{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none}
+.cot-td__el{fill:var(--tdl-tone);fill-opacity:.38;stroke:var(--tdl-tone);stroke-opacity:.85;stroke-width:1;
+  vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.cot-td[data-kind='modules'] .cot-td__el,.cot-td[data-kind='crew'] .cot-td__el{fill-opacity:.62;stroke-opacity:1}
+.cot-td.is-hot .cot-td__el{fill-opacity:.1;stroke-opacity:.3}
+.cot-td.is-hot .cot-td__el.is-hot{fill-opacity:.72;stroke:var(--ink-1);stroke-opacity:1;stroke-width:1.5}
+.cot-td__badges{position:absolute;inset:0;pointer-events:none}
+.cot-td__badge,.cot-td__n{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;
+  border-radius:8px;background:var(--tdl-tone);color:var(--ink-on-accent);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
+.cot-td__badge{position:absolute;left:var(--td-x);top:var(--td-y);transform:translate(-50%,-50%) scale(calc(1/var(--td-zoom,1)))}
+.cot-td__badge.is-hot,.cot-td__row.is-hot .cot-td__n{box-shadow:var(--ring-hot)}
+.cot-td.is-hot .cot-td__badge:not(.is-hot){opacity:.35}
+.cot-td__tip{position:absolute;left:var(--td-x);top:var(--td-y);transform:translate(12px,-120%);padding:2px 6px;
+  border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-2);white-space:nowrap;pointer-events:none;
+  visibility:hidden}
+.cot-td__tip.is-on{visibility:visible}
+.cot-td__fit{position:absolute;right:6px;bottom:6px;min-height:24px;padding:0 8px;border:0;border-radius:var(--r1);
+  background:var(--hud-plate);color:var(--ink-2);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);
+  cursor:pointer;visibility:hidden}
+.cot-td.is-zoomed .cot-td__fit{visibility:visible}
+.cot-td__key{display:flex;flex-direction:column;gap:6px;color:var(--ink-2)}
+.cot-td__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 12px;margin:0;padding:0;list-style:none}
+.cot-td__row{display:flex;align-items:center;gap:6px;width:100%;min-height:22px;padding:0 2px;border:0;border-radius:var(--r1);
+  background:none;color:inherit;font:inherit;text-align:start;cursor:default}
+.cot-td__row.is-hot{background:var(--surface-raised);color:var(--ink-1)}
+.cot-td__n{flex:none}
+.cot-td__legend{display:flex;flex-wrap:wrap;gap:2px 12px}
+.cot-td__swatch{display:inline-block;width:10px;height:6px;margin-inline-end:4px;vertical-align:middle;border-radius:var(--r1);
+  background:var(--tdl-tone)}
+.cot-td__scale{display:flex;align-items:center;gap:6px;color:var(--ink-3)}
+.cot-td__scale>i{display:block;width:var(--td-scale,40px);height:4px;border:1px solid currentColor;border-top:0}
+}
