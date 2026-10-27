@@ -1,37 +1,34 @@
-// The scoped armour flashlight's mesh (243): the armour skin (armorSkin.ts) as one closed, evenly lifted shell per
-// frame, one sample and one flat colour per panel, and the shell's creases outlined in the one overlay draw.
+// The scoped armour flashlight's mesh: the armour skin (armorSkin.ts) as one closed, evenly lifted shell per frame,
+// cut into a few smooth armour panels (armorPanels.ts), one flat colour per panel, the panel borders outlined in the
+// one overlay draw.
 //
 // Before 243 every collision-cell triangle was drawn on its own, each cell blown up about its own centroid: the
 // slices overlapped in bands at every seam, the cells' insides (shared slice faces, cupola walls inside the turret)
 // showed through, steps left holes, and every triangle took its own sample, so the shell read as a field of
-// mismatched shards. Now:
-//   - only the union's outer surface is drawn, one panel per plate and plane;
+// mismatched shards. 243 drew the union's outer surface, but one sample per skin panel (plate and plane): the cells'
+// hull triangles a few degrees apart each took their own colour, and the plates' borders ran along triangle edges,
+// so a front read as red and green triangle fans (owner, 2026-10-27). Now:
+//   - only the union's outer surface is drawn;
 //   - the shell is lifted SKIN_LIFT_M along a normal field that depends on position alone, so panels that meet keep
 //     meeting (no seam opens, no band doubles), just proud of skirts, ERA and fittings;
-//   - each panel (one plate, one plane) takes one sample inside it and one flat colour: zones read crisp, with no
-//     gradient shard from an odd corner and no more samples than panels;
-//   - creases of 50 degrees or more draw as anti-aliased lines in the fill's own shader (no second draw); the cells'
-//     shallower facets and plate changes on one surface are not outlined (the colours show a plate).
+//   - the skin is cut into armour zones with straight borders and grown into flat panels (armorPanels.ts); each panel
+//     aims a few samples and takes one colour, blended from them by the area each stands for;
+//   - panel borders draw as anti-aliased lines in the fill's own shader (no second draw); a panel's inner facets and
+//     clipping cuts are never outlined.
 import * as THREE from 'three';
-import {
-  armorSkinPanels, indexSkinPanels, onSkinPanel, skinBorderTest, type SkinPanelIndex, type SkinPoint,
-} from './armorSkin.ts';
+import { indexSkinPanels, onSkinPanel, type SkinPanelIndex, type SkinPoint } from './armorSkin.ts';
+import { armorPanelSet } from './armorPanels.ts';
 
 /** How far the shell stands proud of the armour cells (m): over skirts, ERA and fittings, as the old inflation did. */
 const SKIN_LIFT_M = 0.06;
-/**
- * Panels of one plate meeting at less than this angle read as one surface: no outline between them. The cells are
- * slices hulled on 45-degree supports, so their facets meet at 20-45 degrees; outlined, they drew every facet as a seam.
- * Plates and true edges keep their outline.
- */
-const SOFT_CREASE_COS = Math.cos(THREE.MathUtils.degToRad(50));
 const ON_PLANE_M = 0.012;
 const KEY_QUANTUM_M = 5e-4;
 
 export interface FlashlightSample {
-  /** Frame-local point on the armour the penetration query aims at. */
-  readonly center: readonly number[];
-  /** The vertices this sample paints: `targets[start .. end)`. */
+  /** Frame-local points on the panel the penetration query aims at, and the share of the panel each stands for. */
+  readonly points: readonly (readonly number[])[];
+  readonly weights: readonly number[];
+  /** The vertices this panel paints: `targets[start .. end)`. */
   readonly start: number;
   readonly end: number;
 }
@@ -43,13 +40,7 @@ export interface FlashlightGeometry {
   readonly targets: Uint32Array;
 }
 
-interface Triangle { panel: number; points: [SkinPoint, SkinPoint, SkinPoint] }
-
-const sub = (a: readonly number[], b: readonly number[]): SkinPoint => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a: readonly number[], b: readonly number[]): SkinPoint =>
-  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const length = (a: readonly number[]): number => Math.hypot(a[0], a[1], a[2]);
 const key = (p: readonly number[]): string =>
   `${Math.round(p[0] / KEY_QUANTUM_M)},${Math.round(p[1] / KEY_QUANTUM_M)},${Math.round(p[2] / KEY_QUANTUM_M)}`;
 
@@ -100,55 +91,45 @@ interface FlashlightTemplate {
 /** One template per cell list (one per spec frame): every vehicle of a spec shares the shell, only its colours are its own. */
 const templates = new WeakMap<object, FlashlightTemplate | null>();
 
-function buildTemplate(cells: Parameters<typeof armorSkinPanels>[0]): FlashlightTemplate | null {
-  const panels = armorSkinPanels(cells);
-  if (!panels.length) return null;
-  const index = indexSkinPanels(panels);
-  const triangles: Triangle[] = [];
-  panels.forEach((panel, panelIndex) => {
-    for (const piece of panel.pieces) {
-      for (let i = 1; i + 1 < piece.length; i++) triangles.push({ panel: panelIndex, points: [piece[0], piece[i], piece[i + 1]] });
-    }
-  });
-  if (!triangles.length) return null;
-  const lift = liftField(index);
-  const isBorder = skinBorderTest(index, SOFT_CREASE_COS, false);
-  const count = triangles.length * 3;
+type FlashlightCells = Parameters<typeof armorPanelSet>[0];
+type FlashlightPlates = Parameters<typeof armorPanelSet>[1];
+
+function buildTemplate(cells: FlashlightCells, plates: FlashlightPlates): FlashlightTemplate | null {
+  const set = armorPanelSet(cells, plates);
+  if (!set) return null;
+  const lift = liftField(indexSkinPanels(set.skin));
+  let count = 0;
+  for (const facet of set.facets) count += (facet.points.length - 2) * 3;
+  if (!count) return null;
   const positions = new Float32Array(count * 3);
   const bary = new Float32Array(count * 3);
   const borders = new Float32Array(count * 3);
-  // one sample per panel, at the centroid of its largest piece (convex, so the point is on the panel): every copy of
-  // the panel's vertices takes its colour
-  const panelVertices: number[][] = panels.map(() => []);
-  triangles.forEach((triangle, t) => {
-    const [a, b, c] = triangle.points;
-    const centroid: SkinPoint = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
-    // the edge opposite vertex k: k=0 → bc, k=1 → ca, k=2 → ab
-    const edge = [isBorder(triangle.panel, b, c, centroid), isBorder(triangle.panel, c, a, centroid), isBorder(triangle.panel, a, b, centroid)];
-    triangle.points.forEach((point, k) => {
-      const vertex = t * 3 + k;
-      const l = lift(point);
-      positions.set([point[0] + l[0], point[1] + l[1], point[2] + l[2]], vertex * 3);
-      bary[vertex * 3 + k] = 1;
-      borders.set([edge[0] ? 1 : 0, edge[1] ? 1 : 0, edge[2] ? 1 : 0], vertex * 3);
-      panelVertices[triangle.panel].push(vertex);
-    });
+  const panelVertices: number[][] = set.panels.map(() => []);
+  let vertex = 0;
+  set.facets.forEach((facet, index) => {
+    const points = facet.points, last = points.length - 1;
+    const border = (edge: number): number => set.borders[set.edgeStart[index] + edge];
+    for (let i = 1; i < last; i++) {
+      // the fan triangle (p0, pi, pi+1); the edge opposite vertex k: k=0 → pi..pi+1 (outline edge i), k=1 → pi+1..p0
+      // (outline edge `last` on the last triangle, else a diagonal), k=2 → p0..pi (outline edge 0 on the first)
+      const edges = [border(i), i + 1 === last ? border(last) : 0, i === 1 ? border(0) : 0];
+      for (const [k, point] of [points[0], points[i], points[i + 1]].entries()) {
+        const l = lift(point);
+        positions.set([point[0] + l[0], point[1] + l[1], point[2] + l[2]], vertex * 3);
+        bary[vertex * 3 + k] = 1;
+        borders.set(edges, vertex * 3);
+        panelVertices[set.facetPanel[index]].push(vertex);
+        vertex++;
+      }
+    }
   });
   const samples: FlashlightSample[] = [];
   const targets = new Uint32Array(count);
   let cursor = 0;
-  panels.forEach((panel, panelIndex) => {
+  set.panels.forEach((panel, panelIndex) => {
     const vertices = panelVertices[panelIndex];
     if (!vertices.length) return;
-    let largest = panel.pieces[0], largestArea = -1;
-    for (const piece of panel.pieces) {
-      let area = 0;
-      for (let i = 1; i + 1 < piece.length; i++) area += length(cross(sub(piece[i], piece[0]), sub(piece[i + 1], piece[0]))) / 2;
-      if (area > largestArea) { largestArea = area; largest = piece; }
-    }
-    const center = [0, 0, 0];
-    for (const point of largest) for (let axis = 0; axis < 3; axis++) center[axis] += point[axis] / largest.length;
-    samples.push({ center, start: cursor, end: cursor + vertices.length });
+    samples.push({ points: panel.samples, weights: panel.weights, start: cursor, end: cursor + vertices.length });
     targets.set(vertices, cursor);
     cursor += vertices.length;
   });
@@ -161,14 +142,18 @@ function buildTemplate(cells: Parameters<typeof armorSkinPanels>[0]): Flashlight
   };
 }
 
-/** The flashlight shell of one frame's cells for one vehicle, or null when they have no outer surface. */
+/**
+ * The flashlight shell of one frame's cells for one vehicle, zoned by the frame's authored plates, or null when the
+ * cells have no outer surface.
+ */
 export function buildFlashlightGeometry(
-  cells: Parameters<typeof armorSkinPanels>[0],
+  cells: FlashlightCells,
+  plates: FlashlightPlates,
   neutral: THREE.Color,
 ): FlashlightGeometry | null {
   if (!cells?.length) return null;
   let template = templates.get(cells);
-  if (template === undefined) { template = buildTemplate(cells); templates.set(cells, template); }
+  if (template === undefined) { template = buildTemplate(cells, plates); templates.set(cells, template); }
   if (!template) return null;
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', template.position);

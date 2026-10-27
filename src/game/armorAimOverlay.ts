@@ -19,8 +19,14 @@ const SAMPLE_BATCH_SIZE = 48;
 // proud of skirts, stowage and ERA. 243 (owner: "so many terrible weird
 // geometries"): it is the cells' outer skin, evenly lifted, with outlined
 // panels (armorFlashlightMesh.ts), not every cell triangle blown up about its
-// own cell.
+// own cell. 262 (owner: "make highlighting simpler and generalized"): a few
+// armour panels per zone with straight borders (armorPanels.ts), each one
+// colour blended from a few samples spread over it.
 const MAX_QUERY_M = 820;
+// A sample whose ray meets main armour this far (m) short of the panel point
+// sees another panel in front of it (a turret over the hull roof, a sponson
+// over the side): it counts only when no sample of the panel is clear.
+const OCCLUDED_M = 0.12;
 
 const LOW = new THREE.Color(0xe53d35);
 const MID = new THREE.Color(0xf0aa35);
@@ -59,6 +65,14 @@ interface ArmorOverlayFrame {
   targets: Uint32Array;
 }
 
+/** The panel being sampled across batches: its clear and its occluded samples' weighted ratio sums. */
+interface PanelBlend {
+  clear: number;
+  clearWeight: number;
+  hidden: number;
+  hiddenWeight: number;
+}
+
 interface ArmorOverlayEntry {
   target: ArmorOverlayTarget;
   group: THREE.Group;
@@ -67,7 +81,9 @@ interface ArmorOverlayEntry {
   inScope: boolean;
   sampling: boolean;
   sampleFrameIndex: number;
+  samplePanelIndex: number;
   samplePointIndex: number;
+  blend: PanelBlend;
   nextSampleMs: number;
   lastShellSpec: DamageShellSpec | null;
 }
@@ -107,6 +123,12 @@ function ownerForFrame(
   return visual.root.getObjectByName(turretLocal ? 'rig_turret' : 'rig_hull') || visual.root;
 }
 
+function blendedRatio(blend: PanelBlend): number {
+  if (blend.clearWeight > 0) return blend.clear / blend.clearWeight;
+  if (blend.hiddenWeight > 0) return blend.hidden / blend.hiddenWeight;
+  return NaN;
+}
+
 function paintSample(
   attribute: THREE.Float32BufferAttribute,
   targets: Uint32Array,
@@ -138,8 +160,9 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const frames: ArmorOverlayFrame[] = [];
     const frameKinds = [['hull', false], ['turret', true]] as const;
     for (const [key, turretLocal] of frameKinds) {
-      const cells = target.spec?.armor?.collisionShells?.[key] || [];
-      const built = buildFlashlightGeometry(cells, NEUTRAL);
+      const armor = target.spec?.armor;
+      const cells = armor?.collisionShells?.[key] || [];
+      const built = buildFlashlightGeometry(cells, turretLocal ? armor?.turretPlates : armor?.hullPlates, NEUTRAL);
       const owner = ownerForFrame(target.visual, turretLocal);
       if (!built || !owner) continue;
       const mesh = new THREE.Mesh(built.geometry, material);
@@ -162,7 +185,9 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       inScope: false,
       sampling: false,
       sampleFrameIndex: 0,
+      samplePanelIndex: 0,
       samplePointIndex: 0,
+      blend: { clear: 0, clearWeight: 0, hidden: 0, hiddenWeight: 0 },
       nextSampleMs: -Infinity,
       lastShellSpec: null,
     };
@@ -212,31 +237,45 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (!target?.state || !target?.combat || !armor || !shellSpec || !muzzle) return true;
     const pose = tankPoseFromState(target.state, _pose);
     let remaining = SAMPLE_BATCH_SIZE;
+    const blend = entry.blend;
     while (entry.sampleFrameIndex < entry.frames.length && remaining > 0) {
       const frame = entry.frames[entry.sampleFrameIndex];
       frame.owner.updateWorldMatrix(true, false);
-      while (entry.samplePointIndex < frame.samples.length && remaining > 0) {
-        const samplePoint = frame.samples[entry.samplePointIndex++];
-        remaining--;
-        _world.fromArray(samplePoint.center).applyMatrix4(frame.owner.matrixWorld);
-        _dir.copy(_world).sub(muzzle);
-        const distance = _dir.length();
-        if (!(distance > 0.05) || distance > MAX_QUERY_M) {
-          paintSample(frame.color, frame.targets, samplePoint, NEUTRAL);
-          continue;
+      while (entry.samplePanelIndex < frame.samples.length && remaining > 0) {
+        const panel = frame.samples[entry.samplePanelIndex];
+        if (entry.samplePointIndex === 0) {
+          blend.clear = 0; blend.clearWeight = 0; blend.hidden = 0; blend.hiddenWeight = 0;
         }
-        _dir.multiplyScalar(1 / distance);
-        const info = queryAimArmor(
-          muzzle, _dir, Math.min(MAX_QUERY_M, distance + 0.3), pose, armor,
-          target.combat.eraSpent,
-        ) as AimArmorInfo | null;
-        const ratio = info ? estimatePenRatio(shellSpec, info.distM, info) : NaN;
-        paintSample(frame.color, frame.targets, samplePoint, penetrationColor(ratio, _color));
+        while (entry.samplePointIndex < panel.points.length && remaining > 0) {
+          const k = entry.samplePointIndex++;
+          remaining--;
+          _world.fromArray(panel.points[k]).applyMatrix4(frame.owner.matrixWorld);
+          _dir.copy(_world).sub(muzzle);
+          const distance = _dir.length();
+          if (!(distance > 0.05) || distance > MAX_QUERY_M) continue;
+          _dir.multiplyScalar(1 / distance);
+          const maxDist = Math.min(MAX_QUERY_M, distance + 0.3);
+          const info = queryAimArmor(muzzle, _dir, maxDist, pose, armor, target.combat.eraSpent) as AimArmorInfo | null;
+          if (!info) continue;
+          const ratio = estimatePenRatio(shellSpec, info.distM, info);
+          if (!Number.isFinite(ratio)) continue;
+          const last = info.layers[info.layers.length - 1];
+          const weight = panel.weights[k];
+          if (last && last.plate.kind === 'main' && last.t * maxDist < distance - OCCLUDED_M) {
+            blend.hidden += ratio * weight; blend.hiddenWeight += weight;
+          } else {
+            blend.clear += ratio * weight; blend.clearWeight += weight;
+          }
+        }
+        if (entry.samplePointIndex < panel.points.length) break;
+        paintSample(frame.color, frame.targets, panel, penetrationColor(blendedRatio(blend), _color));
+        entry.samplePanelIndex++;
+        entry.samplePointIndex = 0;
       }
       frame.color.needsUpdate = true;
-      if (entry.samplePointIndex >= frame.samples.length) {
+      if (entry.samplePanelIndex >= frame.samples.length) {
         entry.sampleFrameIndex++;
-        entry.samplePointIndex = 0;
+        entry.samplePanelIndex = 0;
       }
     }
     return entry.sampleFrameIndex >= entry.frames.length;
@@ -286,6 +325,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
       entry.sampling = true;
       entry.sampleFrameIndex = 0;
+      entry.samplePanelIndex = 0;
       entry.samplePointIndex = 0;
     }
   }
