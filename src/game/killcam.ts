@@ -82,6 +82,7 @@ import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { notice } from '../ui/components/notice.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
@@ -1262,13 +1263,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   vertical-align:1.5px;line-height:1.25;font-weight:700;}
 .cot-kc-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-4);letter-spacing:0em;
   text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 11px 0;padding:var(--s1) var(--s2);text-align:center;display:none;
-  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
-  letter-spacing:.18em;color:var(--danger);border:1px solid oklch(from var(--danger) l c h / .55);
-  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),var(--hud-plate));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
-.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:var(--battle-fs-13);color:var(--accent-hi);letter-spacing:.09em;}
-body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:var(--battle-fs-11);letter-spacing:.04em}
-.cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
+.cot-kc-banner{margin:7px 11px 0;display:none;}
+.cot-kc-banner.on{display:block;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
@@ -1526,8 +1522,10 @@ export function createKillCam(deps: KillcamDeps) {
     const hdK = el('div', 'k', shellRow);
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
+    // (the ammunition rack's detonation is the kit's error notice, inline in the analysis with the rack's glyph: a danger
+    // banner of its own, its own plate, tracking and gradient, outside the one notice family, UI-LOCKDOWN B14)
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
+    banner.innerHTML = notice({ severity: 'error', icon: 'ammoRack', text: t('killcam.ammoRackDetonation'), live: false });
     // killer card (death view only — populated per replay in beginXray)
     const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
