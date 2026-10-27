@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Real Garage/Settings/room owners. Landscape touch, browser-height pressure,
 // and rotation; no renderer, duplicated CSS, force-clicks or live room creation.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -9,7 +10,7 @@ const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.sli
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/mobile-surfaces'));
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const reports=[],errors=[];
 try {
 for(const [name,width,height,locale='en-US',pseudo=false] of [

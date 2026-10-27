@@ -12,6 +12,7 @@
 //     --width 3840 \
 //     --out shots/marketing-battles-r3/quality-report.json
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -50,7 +51,7 @@ if (entries.filter((entry) => entry.category === 'foreground').length !== 30) {
   throw new Error('foreground export must contain exactly 30 PNGs');
 }
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setContent('<canvas id="canvas" width="320" height="180"></canvas>');
 

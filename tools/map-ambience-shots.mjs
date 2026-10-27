@@ -12,6 +12,7 @@
 // (__DEBUG.mapAmbience.setEnabled). Both frames of a pair share the pinned fx clock, so they differ by the air alone.
 // Frames land in <out>/frames/<map>-<time>-<off|on>.png and every map's receipt (the pose, the air's layers and draws)
 // in <out>/manifest.json, merged as each map finishes, so a run resumes; more maps than --pages take further holds.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
@@ -157,7 +158,7 @@ async function main(argv) {
       waitHours: options.waitHours,
       warm: async () => {
         const server = await startViteChild({ root: options.root, mode: 'preview', outDir: options.dist });
-        const browser = await puppeteer.launch({ ...mapProbeLaunchOptions({ width: options.width, height: options.height, protocolTimeout: 900000 }), timeout: 180000 });
+        const browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: options.width, height: options.height, protocolTimeout: 900000 }), timeout: 180000 });
         const close = async () => { await browser.close(); await server.close(); };
         try {
           const entries = [];

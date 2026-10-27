@@ -24,6 +24,7 @@
 //
 // Reads source PNGs from shots/marketing/final/ (fallback raw/).
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -71,7 +72,7 @@ const srcPath = (name) => {
 const dataURI = (file, mime = 'image/png') =>
   `data:${mime};base64,${readFileSync(file).toString('base64')}`;
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setContent('<canvas id="c"></canvas>');
 

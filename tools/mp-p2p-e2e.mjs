@@ -41,6 +41,7 @@
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
  * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -855,7 +856,7 @@ try {
     step('vite', { origin, cacheDir });
   }
 
-  const launchBrowser = () => puppeteer.launch({
+  const launchBrowser = () => launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],

@@ -4,6 +4,7 @@
 //   node tools/media-r5/studio-ui.mjs --script=a.json[,b.json] --out=dir [--port=7424] [--dpr=1]
 // Several scripts share one browser; the GPU lock is held per script (short leases).
 // Script: { map, scene (path), fps, frames, viewport:[w,h], actions:[{frame, do:'picture'|'time'|'scroll'|'select'|'eval', ...}] }
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -21,7 +22,7 @@ let server, browser;
 try {
   server = await createServer({ root: ROOT, logLevel: 'error', cacheDir: join(outRoot, '.vite'), server: { host: '127.0.0.1', port, strictPort: true, hmr: false, watch: { ignored: ['**/*'] } } });
   await server.listen();
-  browser = await puppeteer.launch({ headless: true, protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   // the page opens only once the GPU is ours (a page left idle through a long queue can detach)
   let page = null;
   const raf = (n = 2) => page.evaluate(n => new Promise(r => { let k = 0; const f = () => ++k >= n ? r() : requestAnimationFrame(f); requestAnimationFrame(f); }), n);

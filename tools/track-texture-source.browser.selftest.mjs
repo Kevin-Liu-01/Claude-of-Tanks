@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Exact native pixels/GPU storage for real tank track materials; not an FPS gate.
 // Owns its FIFO lease. Run directly or through the registered npm post suite.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -170,7 +171,7 @@ try {
     } }],
   });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000,
     protocolTimeout: 30_000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser); report.browserVersion = await browser.version();
   page = await browser.newPage();

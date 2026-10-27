@@ -1,6 +1,7 @@
 // Live articulation gate for the complete garage roster. The static audit
 // proves source structure; this probe proves that the selected visual is
 // actually seated in the runtime hull/turret/gun/recoil hierarchy.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -18,7 +19,7 @@ const server = await createServer({
   server: { port: 6500 + Math.floor(Math.random() * 250), strictPort: false, hmr: false, watch: null },
 });
 await server.listen();
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

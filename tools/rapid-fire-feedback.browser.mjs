@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Real HUD/readout regression: desktop, touch portrait and short landscape.
 // node tools/rapid-fire-feedback.browser.mjs --url=http://127.0.0.1:5197
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createCaptureLock } from './capture-lock.mjs';
@@ -11,7 +12,7 @@ await lock.acquire(Number(arg('lock-timeout', '60000')));
 const refresh = setInterval(() => lock.refresh(), 30000);
 let browser;
 try {
-  browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-gpu'] });
+  browser = await launchGuardedBrowser(chromium, { channel: 'chrome', headless: true, args: ['--disable-gpu'] });
   const out = arg('out', '.qa-dev/rapid-fire-feedback'); await mkdir(out, { recursive: true });
   for (const [name, width, height, touch] of [['desktop',1366,768,false],['portrait',390,844,true],['landscape',568,320,true]]) {
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch });

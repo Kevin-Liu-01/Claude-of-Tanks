@@ -29,6 +29,7 @@
 // the journey again. --lock takes a normal ticket in the shared capture queue through tools/capture-hold.mjs (the
 // servers are checked and the browser starts while the ticket waits) and stops starting runs after --budget-min
 // minutes of the hold; --place=<key> keeps a killed run's place in the queue.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -608,7 +609,7 @@ async function main() {
         await new Promise((r) => setTimeout(r, 10000));
       }
     }
-    const browser = await puppeteer.launch({
+    const browser = await launchGuardedBrowser(puppeteer, {
       headless: 'new', protocolTimeout: 360000, timeout: 180000, defaultViewport: null,
       args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
         '--autoplay-policy=no-user-gesture-required', `--host-resolver-rules=MAP ${host} 127.0.0.1`,
