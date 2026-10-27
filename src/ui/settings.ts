@@ -913,7 +913,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    *  persisted as settings.rmbMode (main.ts routes the RMB-bound action per frame). Item 259 (the lead, bar line 13: one
    *  datum, one place): its one control, under the RMB action's binding on Controls; Accessibility links here. */
   function rmbModeRow(parent: HTMLElement): void {
-    const row = el('div', 'cot-set-row', parent);
+    const row = markDatum(el('div', 'cot-set-row', parent), 'rmb-mode');
     row.id = 'cot-set-rmb-mode';
     settingLabel(row, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
     const modes: ReadonlyArray<readonly [RmbMode, string]> = [

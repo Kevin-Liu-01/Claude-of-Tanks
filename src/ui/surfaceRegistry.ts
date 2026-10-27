@@ -189,6 +189,14 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'boot', owner: BOOT, surface: '#cot-boot-notice' },
     ],
   },
+  /** (item 259, the lead: one datum, one place) What right-click does (rmbMode: Hold to Aim, Toggle Aim, Free Look): one
+   *  control, on Controls under the RMB action's binding; Accessibility's Hold or toggle group links to it, never repeats it. */
+  'rmb-mode': {
+    labels: ['settings.rmb.label'],
+    places: [
+      { screen: 'settings', owner: 'src/ui/settings.ts', surface: '#cot-set-rmb-mode' },
+    ],
+  },
   /** The battle stands paused: the veil after a focus loss, the tag on Settings opened in a battle. */
   paused: {
     places: [
