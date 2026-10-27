@@ -105,6 +105,10 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam{flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;margin:0 -12px;padding:0 var(--s3) var(--s4);overflow-y:auto;
   overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .fam__group{display:flex;flex-direction:column;gap:2px}
+/* the list rests on a row's start (or a group head's), so its top row is never half under the sort bar wherever a scroll,
+   a wheel or the chosen tank's reveal leaves it (the 261 critic: "Leopard 2A4" sliced at 1440 and 1280) */
+.fam{scroll-snap-type:y mandatory}
+.fam :is(.it,.gh){scroll-snap-align:start}
 .fam .gh{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s2) var(--s2);font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-2)}
 .fam .gh .cot-i{width:16px;height:16px;color:var(--ink-3)}
 .fam .gh .n{margin-left:auto;font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-3)}

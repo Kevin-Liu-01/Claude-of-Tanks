@@ -2262,6 +2262,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
 
+  // a sheet's readout that changes height (an item with projected values after Empty, or back) gives the cards its room or
+  // takes it: the grid is fitted to whole rows again (the 261 critic: 140 px empty under a short readout at 390 x 844, a
+  // cut fourth row, one row of cards at 1024 x 600 and 844 x 390)
+  if (typeof ResizeObserver === 'function') {
+    let readoutHeight = -1;
+    new ResizeObserver(() => {
+      const height = eqReadoutEl.getBoundingClientRect().height;
+      if (eqOpenSlot < 0 || height === readoutHeight || document.body.dataset.cotPanels !== 'overlay') { readoutHeight = height; return; }
+      readoutHeight = height;
+      const grid = eqPicker.grid();
+      if (grid) { grid.style.minHeight = ''; fitPickerGrid(grid); }
+    }).observe(eqReadoutEl);
+  }
+
   function measureEqTitle(): void {
     eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
   }

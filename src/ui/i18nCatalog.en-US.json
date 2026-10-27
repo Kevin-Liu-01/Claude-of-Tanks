@@ -1515,6 +1515,7 @@
   "hud.consumable.empty": "{name}, used up",
   "garage.consumables": "Consumables",
   "garage.consumable.uses": "{n} uses",
+  "garage.consumable.unlimited": "Unlimited uses",
   "garage.consumable.cooldown": "{s} s",
   "hud.ammunition.aria": "Ammunition selector",
   "hud.net.perfAria": "Performance and network status",

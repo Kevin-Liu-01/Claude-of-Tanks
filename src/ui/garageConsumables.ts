@@ -114,7 +114,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     if (!id) { readoutEl.replaceChildren(); return; }
     const view = consumableSlotsView([id])[0]!;
     const facts = shown.get(id);
-    const uses = view.charges == null ? '∞' : t('garage.consumable.uses', { n: String(view.charges) });
+    const uses = view.charges == null ? t('garage.consumable.unlimited') : t('garage.consumable.uses', { n: String(view.charges) });
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
     eyebrow.textContent = [facts ? t(consumableCategoryKey(facts.category)) : '',

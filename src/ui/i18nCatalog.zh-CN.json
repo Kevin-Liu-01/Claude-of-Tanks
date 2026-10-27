@@ -1532,6 +1532,7 @@
   "hud.consumable.empty": "{name}，已用完",
   "garage.consumables": "消耗品",
   "garage.consumable.uses": "{n} 次",
+  "garage.consumable.unlimited": "不限次数",
   "garage.consumable.cooldown": "{s} 秒",
   "hud.ammunition.aria": "弹药选择器",
   "hud.net.perfAria": "性能与网络状态",

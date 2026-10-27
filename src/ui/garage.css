@@ -776,6 +776,15 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-eqpick .cot-c-picker__facts{justify-content:center;flex-wrap:wrap;font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.35}
 /* an effect line wraps inside its card (a flex item keeps its text's width: on a phone it ran into the next card) */
 .cot-eqpick .cot-c-picker__facts>span{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:normal;overflow:visible}
+/* a tile's facts (what it does, the slot it is fitted in) stand on lines of their own: run together, a wrapped "· Slot 2"
+   started its line with the dot (the 261 critic) */
+.cot-eqpick .cot-c-picker__facts{flex-direction:column;align-items:center;gap:2px}
+.cot-eqpick .cot-c-picker__facts span+span::before{content:none}
+/* a consumable's tile sets its glyph over its name, as an equipment tile does: glyph-beside-name tiles wrapped one by one
+   (RESTOCK, 自动灭火) into a second layout in the same grid, and their row grew taller than the next (the 261 critic) */
+.cot-cspick .cot-c-picker__words{flex-direction:column;flex-wrap:nowrap;align-items:center;gap:var(--s1)}
+.cot-cspick .cot-c-picker__glyph{display:grid;place-items:center;margin:0}
+.cot-cspick .cot-c-picker__glyph svg{width:24px;height:24px}
 /* Chinese breaks only between phrases (the catalog marks them; never 装/备 or 瞄/准), and no character alone on a line */
 html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:pretty;overflow-wrap:anywhere}
 /* a shut item reads as unavailable by its quiet glyph and words, still legible (the kit's half opacity took them to 2.9:1) */
@@ -807,6 +816,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpreview{
 /* a touch sheet previews nothing under a pointer, so its readout holds only the chosen item's figures: with none (Empty)
    it is the name's line and the cards take the room (the r26 critic: a 190 px blank block under a short window of cards) */
 body[data-cot-panels='overlay'] .cot-eqpreview:not(:has(.metric)){block-size:auto}
+/* where the tiles carry what each does, the readout does not say it again (the 261 critic: a phone showed the chosen
+   consumable's effect on its tile and under the grid); a short landscape sheet's tiles hide theirs and its readout keeps it */
+body[data-cot-panels='overlay']:not([data-cot-height='short'][data-cot-orientation='landscape']) .cot-eqpreview .detail{display:none}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
@@ -816,6 +828,9 @@ body[data-cot-panels='overlay'] .cot-eqpreview:not(:has(.metric)){block-size:aut
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 /* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
 html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
+/* the docked readout's value cards stand on one line, each as wide as its glyph, label and value: a card sized to its
+   content collapsed to its glyph in zh, its label ran past it and its value fell under the picker's foot (the 261 critic) */
+body[data-cot-panels='persistent'] .cot-eqpreview .metric{display:flex;align-items:center;gap:6px;container-type:normal;white-space:nowrap}
 /* a narrow card in a sheet sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by
    word and the zh value ran over it); only in the sheet's grid, whose tracks set the cards' widths: the docked readout's
    cards size to their words, and containment there shrank "Aim time" to 50 px with no value (the r25 critic) */
@@ -837,11 +852,10 @@ body[data-cot-panels='overlay'] .cot-eqpreview .metric{container-type:inline-siz
 .cot-eqpick .cot-c-picker__fav{display:none}
 
 /* the readout's body (the item, what it does, its projected values and what a press does) */
-.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--text-accent);font-size:max(var(--fs-floor-11),var(--fs-11));
-  font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-eqtip[data-category="recon"] .eyebrow{color:var(--text-own);}
-.cot-eqtip[data-category="mobility"] .eyebrow{color:var(--text-ok);}
-.cot-eqtip[data-category="survival"] .eyebrow{color:var(--accent-lo);}
+/* the item's category (a consumable's with its cooldown and uses) is a quiet fact in the readout's ink, in sentence case:
+   set in the accent and capitals before the name it read as an eyebrow, and its units read "35 S" (the 261 critic) */
+.cot-eqtip .eyebrow{display:block;margin-bottom:var(--s1);color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));
+  font-weight:600;letter-spacing:0;text-transform:none;}
 .cot-eqtip strong{display:block;color:var(--ink-1);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.25;
   font-weight:700;letter-spacing:var(--track-label-s);text-transform:uppercase;}
 .cot-eqtip .detail{display:block;margin-top:5px;color:var(--ink-2);font-size:max(var(--fs-floor-11),var(--fs-11));
@@ -1506,13 +1520,13 @@ body[data-cot-input='coarse'] .cot-garage .cot-info-trigger:focus-visible{box-sh
 body[data-cot-input='coarse'] .cot-garage .cot-info-trigger__icon{width:18px;height:18px}
 body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align-items:center;gap:var(--s2)}
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
-/* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
-   the screen */
+/* the phone picker is a sheet the screen's height (the 261 critic: sized to its tiles, the equipment sheet stood under the
+   header and sliced a header button, the consumables' rose over it and sliced the logo; the two had two tops), its grid
+   taking the room its readout leaves (garage.ts fits it to whole rows again as the readout's height changes) */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick{
-  position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
-  top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
-  max-height:calc(100% - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));
-  background:var(--surface-page);
+  position:absolute;left:0;right:0;top:0;bottom:0;width:auto;max-width:760px;margin-inline:auto;max-height:none;
+  padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  border-block:0;background:var(--surface-page);
 }
 /* the phone picker opens from the dossier's slots: the dossier steps aside under it (the sheet's scrim stays), so the
    picker is never a sheet half over another with two close buttons */

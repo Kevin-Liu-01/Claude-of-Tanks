@@ -415,6 +415,10 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
    floor, so four characters need 56 px at the 1.08 scale */
 .cot-garage .cot-lt-consumables .eqslot{min-width:max-content;}
 .cot-garage .cot-lt-consumables .eqslot .sl{max-width:none;overflow:visible;text-overflow:clip;}
+/* a zh equipment name is four characters at the reading floor: its slot takes their width too (the 261 critic: 火炮驱… at
+   1280, 1024 and 900) */
+html[lang^='zh'] .cot-garage .cot-lt-loadout .eqslot{min-width:max-content;}
+html[lang^='zh'] .cot-garage .cot-lt-loadout .eqslot .sl{max-width:none;overflow:visible;text-overflow:clip;}
 /* the equipment picker opens over the stage above the band, every item in view */
 body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + var(--s1));
   left:var(--edge);right:auto;top:auto;bottom:calc(var(--band-bottom) + var(--slot) + var(--lt-cap) + var(--s2));
