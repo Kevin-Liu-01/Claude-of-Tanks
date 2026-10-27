@@ -130,7 +130,7 @@ channel, the client copies reload → gunReload after applying the row.
 
 **Viewer section** (only for a seated player, about its own tank): `u8 entityId`,
 `u32 modules` (2 bits per each of the fifteen `VIEWER_MODULES` entries: 0 ok, 1 yellow, 2 red),
-`u8 crewBits` (`VIEWER_CREW`), 4 × `u16` equipment multipliers ×1000
+`u8 crewBits` (`VIEWER_CREW`), 5 × `u16` equipment multipliers ×1000
 (`VIEWER_EQUIPMENT`), `u16 modeSpeedMultiplier` ×1000, `u16 modeGravityScale`
 ×1000, `u8 movementVersion` (0 = none) and, when present, `u16 movementFlags`,
 `u8 count`, `count × f32` — the movement integrator checkpoint of

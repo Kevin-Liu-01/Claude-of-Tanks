@@ -455,7 +455,10 @@ export default defineConfig({
             // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
             // 2026-10-26 (premiere-gallery-studio): the battlefield preview's minimap URL (minimapAssetUrl.ts, the game's boot and
             // the lazy battlefield picker) rides here too: on its own it was one more game and cn boot request.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (consumables-260): the DOM-free consumable rules and the Garage's loadout helpers (sim/consumableRules.ts,
+            // game/consumableLoadout.ts) load at boot on exactly the game and cn (the Garage, the room selection) and in the lazy
+            // HUD and battle; on their own they were one more boot request on both.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

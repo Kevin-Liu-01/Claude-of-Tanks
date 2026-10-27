@@ -18,6 +18,8 @@ export interface HostBootSeat {
   team: 'alpha' | 'bravo' | 'spectator';
   specId: string;
   equipment?: readonly string[] | null;
+  /** The consumable in each slot (sim/consumableRules.ts); absent carries the default trio. */
+  consumables?: readonly string[] | null;
 }
 
 export interface HostBootBot {

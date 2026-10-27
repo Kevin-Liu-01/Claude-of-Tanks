@@ -15,7 +15,7 @@ import { normalizeTeamArrangement, roomSizeRulesFor, type TeamArrangement } from
 import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_DEV_MAX_TEAM_SIZE, ROOM_MAP_RE, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
-  ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, cleanSeatId, isRecord,
+  ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanConsumables, cleanEquipment, cleanId, cleanSeatId, isRecord,
   isRoomTeam, noElection, normalizePlayerName,
 } from './protocol.ts';
 import type {
@@ -84,7 +84,7 @@ export interface JoinRoomOptions {
 
 /** A start plan: what the match host receives. Bots fill empty slots; disconnected seats are excluded. */
 export interface RoomStartPlan {
-  seats: Array<{ seat: number; playerId: string; name: string; team: RoomTeam; specId: string; equipment: string[]; camo: string }>;
+  seats: Array<{ seat: number; playerId: string; name: string; team: RoomTeam; specId: string; equipment: string[]; consumables: string[]; camo: string }>;
   bots: Array<{ playerId: string; name: string; team: 'alpha' | 'bravo'; specId: string }>;
   mapId: string;
   gameMode: string;
@@ -245,6 +245,7 @@ function createPlayer(room: RoomSnapshot, {
     seat: nextSeat(room),
     specId: selection?.specId ? cleanSpecId(selection.specId) : null,
     equipment: cleanEquipment(selection?.equipment),
+    consumables: cleanConsumables(selection?.consumables),
     camo: cleanCamo(selection?.camo),
     ready: false,
     connected: true,
@@ -431,6 +432,8 @@ export function applyRoomCommand(
     case 'select_equipment':
       assertEditable(player);
       player.equipment = cleanEquipment(command.equipment);
+      // the consumables ride the same command (2026-10-26): an older client sends none and keeps what it had
+      if (Array.isArray(command.consumables)) player.consumables = cleanConsumables(command.consumables);
       player.ready = false;
       break;
     case 'select_camo': {
@@ -573,7 +576,8 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
     if (player.team !== 'spectator' && !player.specId) continue;
     seats.push({
       seat: player.seat, playerId: player.id, name: player.name, team: player.team,
-      specId: player.specId ?? botSpecFallback, equipment: player.equipment.slice(), camo: player.camo,
+      specId: player.specId ?? botSpecFallback, equipment: player.equipment.slice(),
+      consumables: (player.consumables ?? []).slice(), camo: player.camo,
     });
   }
   const bots: RoomStartPlan['bots'] = [];
@@ -656,7 +660,9 @@ export function serializeRoom(room: RoomSnapshot): RoomSnapshot {
   return {
     ...room,
     settings: { ...room.settings, arrangement: room.settings.arrangement ? { ...room.settings.arrangement } : null },
-    players: room.players.map((player) => ({ ...player, equipment: player.equipment.slice() })),
+    players: room.players.map((player) => ({
+      ...player, equipment: player.equipment.slice(), consumables: (player.consumables ?? []).slice(),
+    })),
     match: room.match ? { ...room.match, verdict: room.match.verdict ? { ...room.match.verdict } : null } : null,
     lastResult: room.lastResult ? { ...room.lastResult } : null,
     host: { ...room.host },

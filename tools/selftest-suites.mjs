@@ -390,6 +390,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/suspensionPatterns.selftest.mjs',
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
+    'src/sim/consumableRules.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/sim/weaponReload.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
@@ -1638,6 +1639,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
+    'src/sim/consumableAuthority.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
     'src/sim/botGunLane.selftest.mjs',
@@ -1682,6 +1684,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/playSurfaceRuntime.selftest.mjs',
     'src/game/equipment.selftest.mjs',
     'src/game/consumables.selftest.mjs',
+    'src/game/consumableLoadout.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
     // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point

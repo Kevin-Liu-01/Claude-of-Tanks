@@ -2233,6 +2233,31 @@ export function repairAllModules(combat: CombatState | null | undefined): string
   return fixed;
 }
 
+/** Repair the named modules to full HP (a spare-track-links kit: both tracks); returns the ones repaired. */
+export function repairModules(combat: CombatState | null | undefined, names: readonly string[]): string[] {
+  const fixed: string[] = [];
+  if (!combat || !combat.modules) return fixed;
+  for (const name of names as readonly ModuleId[]) {
+    const m = combat.modules[name];
+    if (!m || m.state === 'ok') continue;
+    m.hp = m.maxHp;
+    refreshModuleState(m);
+    fixed.push(name);
+  }
+  return fixed;
+}
+
+/** Strain a module to a share of its HP (a Governor Override's engine); true when its HP dropped. */
+export function strainModule(combat: CombatState | null | undefined, name: string, hpFraction: number): boolean {
+  const m = combat?.modules?.[name as ModuleId];
+  if (!m) return false;
+  const hp = Math.min(m.hp, m.maxHp * Math.max(0, Math.min(1, hpFraction)));
+  if (!(hp < m.hp)) return false;
+  m.hp = hp;
+  refreshModuleState(m);
+  return true;
+}
+
 /**
  * Select ammunition without starting, resetting, or skipping a weapon's load
  * cycle. Ammo types in one gun share its timer and magazine; a separate
