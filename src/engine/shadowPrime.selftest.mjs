@@ -693,4 +693,74 @@ await withFixture(async (f) => {
   'context owner invalidates shadow readiness before any quality or covered restore work');
 }
 
-console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed');
+// (2026-10-27, the room-stalls lane; a diagnostic room census: the prime's camera on its own layer counted none of the
+// battle's 8 point lights, so its depth programs were keyed for a light set no live frame has, and the guard's first frame
+// built the player's again, 580 ms) every prime render counts exactly the lights the live camera counts
+{
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const cascades = [new THREE.DirectionalLight(), new THREE.DirectionalLight()];
+  const points = [new THREE.PointLight(), new THREE.PointLight(), new THREE.PointLight()];
+  const hemi = new THREE.HemisphereLight();
+  const offLayer = new THREE.PointLight();
+  offLayer.layers.set(7);
+  scene.add(...cascades, ...points, hemi, offLayer);
+  const live = [...cascades, ...points, hemi];
+  const before = [...live, offLayer].map((light) => light.layers.mask);
+  const cameraMask = camera.layers.mask;
+  const counted = [];
+  const prior = new THREE.WebGLRenderTarget(4, 4);
+  const target = { value: prior, face: 0, mip: 0 };
+  const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
+    info: {},
+    shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
+    getContext: () => ({ isContextLost: () => false }),
+    getRenderTarget: () => target.value,
+    getActiveCubeFace: () => target.face,
+    getActiveMipmapLevel: () => target.mip,
+    setRenderTarget(next, face = 0, mip = 0) { Object.assign(target, { value: next, face, mip }); },
+    render(activeScene, activeCamera) {
+      const seen = [];
+      activeScene.traverse((object) => { if (object.isLight && object.layers.test(activeCamera.layers)) seen.push(object); });
+      counted.push(seen);
+    },
+  });
+  await primeShadowCascades({ renderer, scene, camera, lights: cascades, count: cascades.length });
+  assert.ok(counted.length > 0, 'the prime rendered');
+  for (const seen of counted) {
+    assert.deepEqual(new Set(seen), new Set(live), 'a prime render counts the live camera\'s lights, never one it cannot see');
+  }
+  assert.deepEqual([...live, offLayer].map((light) => light.layers.mask), before, 'every light\'s layers restored');
+  assert.equal(camera.layers.mask, cameraMask);
+}
+
+// (the room census: one prime task held 307 ms of a depth program's link) a warm batch takes at most one depth-program
+// variant no batch before it took: plain casters batch as before, a new variant opens its own batch
+{
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), light = new THREE.DirectionalLight();
+  scene.add(light);
+  const caster = (name, material) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name; mesh.castShadow = true;
+    scene.add(mesh);
+  };
+  const plain = new THREE.MeshStandardMaterial();
+  const cutout = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
+  const displaced = new THREE.MeshStandardMaterial({ displacementMap: new THREE.Texture() });
+  caster('p1', plain); caster('p2', plain); caster('p3', plain); caster('cut', cutout); caster('p4', plain); caster('disp', displaced);
+  const target = { value: null, face: 0, mip: 0 };
+  const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
+    info: {}, shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
+    getContext: () => ({ isContextLost: () => false }),
+    getRenderTarget: () => target.value, getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0,
+    setRenderTarget(next) { target.value = next; },
+    render() {},
+  });
+  const sizes = [];
+  await primeShadowCascades({ renderer, scene, camera, lights: [light], count: 1,
+    casterWarmup: { onBatch: (batch) => sizes.push(batch.casterCount) } });
+  assert.deepEqual(sizes, [3, 2, 1], 'p1-p3 (one new variant), cut and p4 (cut new), disp (new): one new variant a batch');
+}
+
+console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch');

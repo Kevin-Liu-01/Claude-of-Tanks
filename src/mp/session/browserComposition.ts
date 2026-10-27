@@ -126,6 +126,13 @@ export interface BrowserLoadTrace {
    */
   rewelcomes?: number;
   rewelcomeAtMs?: number[];
+  /**
+   * (2026-10-27, the room-stalls lane) the programs the reveal made: those the renderer gained after the black watchdog,
+   * through the reveal, the loader's fade and the first REVEAL_PROGRAM_FRAMES frames after it (`frames`: the frames
+   * counted so far), with the first few named. The covered warm owns every program: 0 is the receipt (the rooms census
+   * found the first live frame linking the viewer's depth programs, 580-590 ms).
+   */
+  revealPrograms?: { made: number; frames: number; names: string[] };
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -296,6 +303,8 @@ export interface BrowserPresentationPorts {
   setWaitingForPeers(waiting: boolean): void;
   setGarageLighting(active: boolean): void;
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /** The renderer's live programs (renderer.info.programs), for the trace's revealPrograms receipt. */
+  programs?(): readonly { name?: string }[] | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -706,6 +715,8 @@ const COMPILE_CEILING_MS = 120_000;
 const ENTRY_STALL_MS = 120_000;
 const ENTRY_EXTEND_MS = 30_000;
 const ENTRY_CEILING_MS = 600_000;
+/** The frames after the loader's fade that the revealPrograms receipt still counts (half a second at 60 Hz). */
+const REVEAL_PROGRAM_FRAMES = 30;
 
 /** A preparation that ran out of windows made progress if it linked programs, or got its whole cohort submitted. */
 function compileProgressed(previous: BrowserWarmPreparation, current: BrowserWarmPreparation): boolean {
@@ -1117,6 +1128,23 @@ export function createBrowserComposition({
     active.trace.status = status;
     active.trace.endedAt = at;
     active.trace.totalMs = Math.round(at - active.trace.startedAt);
+  };
+
+  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<object>, frames: number): void => {
+    const live = activation.programs?.();
+    if (!live) return;
+    const made = live.filter((program) => !baseline.has(program));
+    active.trace.revealPrograms = { made: made.length, frames, names: made.slice(0, 8).map((program) => program.name ?? '?') };
+  };
+
+  /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
+  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<object>): Promise<void> => {
+    if (!activation.programs) return;
+    for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {
+      try { await load.nextFrame(); } catch { return; }
+      if (round !== active || active.failed) return;
+      noteRevealPrograms(active, baseline, frames);
+    }
   };
 
   const markStage = (active: ActiveRound, stage: string): void => {
@@ -1549,6 +1577,7 @@ export function createBrowserComposition({
         }
       }
       markStage(active, 'blackWatchdog');
+      const revealBaseline = new Set(activation.programs?.() ?? []);
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
@@ -1562,7 +1591,9 @@ export function createBrowserComposition({
       active.revealed = true;
       if (roomSession?.roomInfo.solo) session?.releaseCountdown?.();
       finishTrace(active, 'complete');
+      noteRevealPrograms(active, revealBaseline, 0);
       settleEntry(true);
+      void countRevealPrograms(active, revealBaseline);
     } catch (error) {
       await failRound(active, error, active.activated ? 'reveal' : 'warm');
     }

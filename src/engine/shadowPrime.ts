@@ -74,8 +74,17 @@ function cleanupRunner() {
   };
 }
 
-function capturePrimeState({ renderer, camera, lights }: ShadowPrimeRequest) {
+function capturePrimeState({ renderer, scene, camera, lights }: ShadowPrimeRequest) {
   const info = renderer.info;
+  // (2026-10-27, the room-stalls lane) every other light the live camera counts: a prime render keeps them on its layer
+  // too (renderPrimeCascade), so the depth programs it builds carry the live frame's light counts
+  const cascades = new Set<Object3D>(lights);
+  const live: Array<{ light: Object3D; mask: number }> = [];
+  scene.traverse((object) => {
+    if ((object as Object3D & { isLight?: boolean }).isLight && !cascades.has(object) && (object.layers.mask & camera.layers.mask) !== 0) {
+      live.push({ light: object, mask: object.layers.mask });
+    }
+  });
   const gl = renderer.getContext();
   const shadowMap = renderer.shadowMap;
   const originalRender = shadowMap.render;
@@ -85,6 +94,7 @@ function capturePrimeState({ renderer, camera, lights }: ShadowPrimeRequest) {
     face: renderer.getActiveCubeFace?.() ?? 0,
     mip: renderer.getActiveMipmapLevel?.() ?? 0,
     cameraMask: camera.layers.mask,
+    live,
     prior: lights.map((light) => ({ light, shadow: light.shadow,
       mask: light.layers.mask, auto: light.shadow.autoUpdate, needs: light.shadow.needsUpdate })),
     contextCurrent(): boolean {
@@ -105,6 +115,28 @@ interface CasterState {
   /** A BatchedMesh's own per-item cull (null for any other caster). */
   perObjectCulled: boolean | null;
   vertexCount: number;
+  /** what keys its depth program apart from another caster's (depthVariant) */
+  variant: string;
+}
+
+/**
+ * (2026-10-27, the room-stalls lane) What makes three build a caster's depth program apart from another's, as far as the
+ * caster shows it: instancing, skinning, batching, morph targets, and per material an alpha-tested map, a displacement
+ * map, the side it casts from and a custom depth material. A warm batch takes at most one variant no batch before it
+ * did (warmBatches), so one task links at most one new depth program (the room census: a prime task held 307 ms of link).
+ */
+function depthVariant(object: Object3D): string {
+  const caster = object as Object3D & { isInstancedMesh?: boolean; isSkinnedMesh?: boolean; isBatchedMesh?: boolean;
+    geometry?: BufferGeometry; material?: Material | Material[]; customDepthMaterial?: Material };
+  const morphs = caster.geometry?.morphAttributes?.position?.length ?? 0;
+  const materials = Array.isArray(caster.material) ? caster.material : caster.material ? [caster.material] : [];
+  const parts = materials.map((material) => {
+    const m = material as Material & { map?: unknown; alphaMap?: unknown; displacementMap?: unknown; displacementScale?: number };
+    return `${(m.map || m.alphaMap) && m.alphaTest > 0 ? 'a' : ''}${m.displacementMap && m.displacementScale !== 0 ? 'd' : ''}`
+      + `${m.shadowSide ?? m.side}`;
+  });
+  return `${caster.isInstancedMesh ? 'i' : ''}${caster.isSkinnedMesh ? 's' : ''}${caster.isBatchedMesh ? 'b' : ''}m${morphs}`
+    + `:${caster.customDepthMaterial?.uuid ?? ''}:${[...new Set(parts)].sort().join(',')}`;
 }
 
 /** Three's BatchedMesh keeps its last draw list while per-item culling is off and no visibility changed. */
@@ -141,7 +173,8 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
     const batched = object as BatchedCaster;
     if (draws) casters.push({ object, castShadow: object.castShadow,
       receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled,
-      perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount });
+      perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount,
+      variant: depthVariant(object) });
   });
   return casters;
 }
@@ -156,13 +189,19 @@ function warmBatches(casters: readonly CasterState[], options: ShadowCasterWarmu
   const batches: Array<{ start: number; end: number; vertexCount: number }> = [];
   let start = 0;
   let vertexCount = 0;
+  // (one new depth-program variant a batch: depthVariant)
+  const seen = new Set<string>();
+  let newInBatch = false;
   for (let index = 0; index < casters.length; index++) {
     const vertices = casters[index]!.vertexCount;
-    if (index > start && (index - start >= maxCasters || vertexCount + vertices > maxVertices)) {
+    const fresh = !seen.has(casters[index]!.variant);
+    if (index > start && (index - start >= maxCasters || vertexCount + vertices > maxVertices || (fresh && newInBatch))) {
       batches.push({ start, end: index, vertexCount });
       start = index;
       vertexCount = 0;
+      newInBatch = false;
     }
+    if (fresh) { seen.add(casters[index]!.variant); newInBatch = true; }
     // A geometry is atomic: an oversized caster is an honest single-item batch.
     vertexCount += vertices;
   }
@@ -197,6 +236,7 @@ function restorePrimeBindings(state: PrimeState): void {
   cleanup.run(() => { state.shadowMap.render = state.originalRender; });
   cleanup.run(() => { state.camera.layers.mask = state.cameraMask; });
   for (const prior of state.prior) cleanup.run(() => { prior.light.layers.mask = prior.mask; });
+  for (const live of state.live) cleanup.run(() => { live.light.layers.mask = live.mask; });
   cleanup.finish();
 }
 
@@ -209,6 +249,13 @@ function renderPrimeCascade(
   try {
     camera.layers.set(SHADOW_PRIME_LAYER);
     light.layers.enable(SHADOW_PRIME_LAYER);
+    // (2026-10-27, the room-stalls lane; a diagnostic room census: the prime's camera on its own layer counted none of the
+    // battle's 8 point lights, its hemisphere or the other cascades, and three keys every depth program by the light counts
+    // of the render that builds it, so the first live frame built every caster variant again: the guard frame's 580 ms of
+    // the player's depth programs) the live camera's lights stand on the prime layer as well: the forward pass still draws
+    // nothing (no drawable is on that layer) and only the selected cascade renders its map (shadowMap.render below)
+    for (const { light: other } of state.live) other.layers.enable(SHADOW_PRIME_LAYER);
+    for (const cascade of state.lights) cascade.layers.enable(SHADOW_PRIME_LAYER);
     // Enter through the public renderer to rebuild Three's current render
     // state after each task. Only the selected production cascade draws;
     // its traversal still sees the original camera and shadow-only layers.

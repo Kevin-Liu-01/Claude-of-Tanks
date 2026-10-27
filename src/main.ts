@@ -3071,6 +3071,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           runBlackWatchdog: (signal?: AbortSignal) => (recordLightCensus('watchdog'), runSceneBlackWatchdogAsync(
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
           )),
+          programs: () => renderer.info.programs,
         },
       activation: {
         game,
