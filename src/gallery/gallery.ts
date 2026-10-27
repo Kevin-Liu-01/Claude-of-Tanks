@@ -722,10 +722,24 @@ function renderFacets(): void {
   count.textContent = String(more);
   count.hidden = !more;
   const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
-  if (disclosure && more && !moreFacetsShown) disclosure.open = true;
+  // (laid over the list beside the stage, it stays shut: its count says how many are on)
+  if (disclosure && more && !moreFacetsShown && !matchMedia(MORE_FACETS_OVER).matches) disclosure.open = true;
   moreFacetsShown = true;
 }
 let moreFacetsShown = false;
+/** Where the open More filters lay a plate over the list (gallery.css); there they close as a menu does. */
+const MORE_FACETS_OVER = '(width >= 768px) and (height >= 520px)';
+function closeMoreFacetsOver(event: Event): void {
+  const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
+  if (!disclosure?.open || !matchMedia(MORE_FACETS_OVER).matches) return;
+  if (event instanceof KeyboardEvent) {
+    if (event.key !== 'Escape' || !disclosure.contains(document.activeElement)) return;
+    disclosure.open = false;
+    disclosure.querySelector('summary')?.focus();
+  } else if (!disclosure.contains(event.target as Node)) disclosure.open = false;
+}
+document.addEventListener('pointerdown', closeMoreFacetsOver, true);
+document.addEventListener('keydown', closeMoreFacetsOver);
 function onFacet(event: Event): void {
   const button = (event.target as Element | null)?.closest<HTMLButtonElement>('button[data-facet]');
   if (!button || button.disabled) return;
@@ -1218,7 +1232,7 @@ function populateRivals(): void {
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button), across the dossier's width
  * (the g15 critic: narrower than the dossier, its tiles' edges and the card's flag showed beside it). */
-function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number; fill?: boolean } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
   const top = Math.max(0, bar ? bar.bottom : 0);
   const column = document.querySelector<HTMLElement>('.dossier')?.getBoundingClientRect();
@@ -1226,7 +1240,9 @@ function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
     const box = panel.getBoundingClientRect();
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom), ...sides };
+    // it fills the panel from the trigger to the panel's edge, so its edge never slices the dossier's name or tabs (the g17
+    // critic: its top cut the tab labels at 1024 and 900 and the name at zh 1280)
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom), ...sides, fill: true };
   }
   return { top, bottom: innerHeight, ...sides };
 }

@@ -78,6 +78,13 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 /* opened, the further filters keep the list in view: they scroll in about a quarter of the window (the g16 critic: at
    900 and 1024 they pushed every vehicle row out of the column) */
 .more-facets[open]>.toggles--glyphs{max-height:clamp(120px,26vh,320px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* beside the stage they are a plate laid over the list, whole, and the list keeps its rows under it (the g17 critic: a
+   nested scroll box hid Flanker to Support at 1280 and left the list one row at 1024); a stacked page lets them flow */
+@media (width >= 768px) and (height >= 520px){
+  .more-facets{position:relative}
+  .more-facets[open]>.toggles--glyphs{position:absolute;left:0;right:0;top:calc(100% + var(--s1));z-index:var(--z-menu);margin:0;
+    padding:var(--s3);border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2);max-height:min(64vh,560px)}
+}
 .more-facets__n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 var(--s2);border-radius:9px;background:var(--accent);
   color:var(--ink-on-accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .more-facets__n[hidden]{display:none}
@@ -264,15 +271,18 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 @container dossier (width < 360px){
   .dz-tabs{padding:0 var(--s2)}
   .dz-tabs .cot-c-tabs{gap:var(--s1);justify-content:space-between}
-  .dz-tabs .cot-c-tabs__tab{font-size:max(var(--fs-floor-12),var(--fs-12))}
+  /* six tabs (Markup's too) fit the 296 px dossier at the floor size (the g17 critic: "verview" cut at its edge at 900) */
+  .dz-tabs .cot-c-tabs__tab{font-size:max(var(--fs-floor-11),var(--fs-11))}
 }
-@container dossier (width < 460px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* (scoped to the dossier: the base .facts rule follows and won at equal weight, so a narrow dossier kept four plates and
+   zh units broke under their figures at 900 and 1024: the g17 critic) */
+@container dossier (width < 460px){.dossier .facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* a narrow dossier's damage kinds stand one a row, each name on one line ("Destructibles · 0" wrapped at 900), and its
    versus card keeps the flags and figures inside it, without the side silhouettes (they spilled past its edge) */
 @container dossier (width < 360px){
-  .damage-kinds{grid-template-columns:minmax(0,1fr)}
-  .damage-kinds button{white-space:nowrap}
-  .vsc .s .cot-c-sil{display:none}
+  .dossier .damage-kinds{grid-template-columns:minmax(0,1fr)}
+  .dossier .damage-kinds button{white-space:nowrap}
+  .dossier .vsc .s .cot-c-sil{display:none}
 }
 .dz{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3) var(--g-pad) var(--s4)}
 .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
@@ -457,7 +467,12 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .stage{--inset-w:0px}
   .views button{width:30px;padding:0;justify-content:center}
   .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  #viewport .legend:not(:empty){right:calc(16px + 36px + var(--s2))}
+  /* the legend is a band along the stage's foot, over the turntable bar: a column beside the rail stood on the model's gun
+     at 1024 x 600 (the g17 critic) */
+  #viewport .legend:not(:empty){left:16px;right:calc(16px + 36px + var(--s2));max-width:none;flex-direction:row;flex-wrap:wrap;
+    column-gap:var(--s3)}
+  /* the anatomy row reaches to the camera rail's glyphs (it kept the wide rail's 180 px and wrapped: the g17 critic) */
+  .stage .subs{max-width:calc(100% - 16px - 30px - var(--s5))}
 }
 /* a phone, or a short window under 1100 px: the page scrolls, the stage spanning the top */
 @media (width < 768px), ((height < 520px) and (width < 1100px)){
