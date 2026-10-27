@@ -36,24 +36,11 @@ export function webpSize(buffer) {
 
 const sha = (buffer) => createHash('sha256').update(buffer).digest('hex').slice(0, 16);
 
-/** Known hit-volume misfits: combat armour where the model draws nothing (the overlay-agreement check found them,
- * 2026-10-26). The vehicles item vehicles-hit-volume-fit-258 fits these plates to their hulls. Each entry is the most
- * frame px its outline may stand off the plate, for that drawing, view and armour key. The list only shrinks: an entry
- * that grows fails, and one that no longer stands off fails until it is removed. */
-const KNOWN_OFF_PLATE = new Map(Object.entries({
-  // M551 Sheridan: the hull roof and upper sides are 9 cm wider than the vehicle each side
-  'm551_sheridan front H46': 40, 'm551_sheridan front H47': 39, 'm551_sheridan front H48': 30,
-  'm551_sheridan front H50': 43, 'm551_sheridan front H51': 41,
-  'm551_sheridan top H45': 15, 'm551_sheridan top H46': 21, 'm551_sheridan top H47': 16, 'm551_sheridan top H50': 23,
-  'm551_sheridan top H51': 22,
-  // Namer: the roof and glacis 8 cm wider
-  'namer_ifv front H06': 23, 'namer_ifv front H07': 31, 'namer_ifv front H08': 25, 'namer_ifv front H09': 31,
-  'namer_ifv front H11': 17, 'namer_ifv front H12': 31, 'namer_ifv top H07': 16, 'namer_ifv top H12': 16,
-  // M60A3: a left spaced skirt 20 cm outside the model, 27 cm past the hull's rear
-  'm60a3 side H02': 35,
-  // Leo 2A4M CAN: its left skirt 7 cm past the hull's rear
-  'leo2a4m_can side H02': 12,
-}));
+/** Known hit-volume misfits (combat armour where the model draws nothing), each the most frame px its outline may stand
+ * off the plate, for that drawing, view and armour key. The list only shrinks: an entry that grows fails, and one that
+ * no longer stands off fails until it is removed. Emptied by vehicles-hit-volume-fit-258 (the Sheridan, Namer, M60A3 and
+ * Leo 2A4M CAN entries the overlay-agreement check found, 2026-10-26). */
+const KNOWN_OFF_PLATE = new Map(Object.entries({}));
 const pathPoints = (d) => [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
 
 /** Every problem with one drawing (data parsed, plates read through `plate(name)`), as sentences. */
