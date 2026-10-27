@@ -599,6 +599,8 @@
       .cot-boot-inner, .cot-credits, .cot-boot-foot, .cot-boot-links { zoom: 1.3; }
       /* zoomed, the labels' baseline lands 0.24 px under the whole pixel: the version keeps its whole bottom */
       .cot-boot-foot { bottom: 22px; }
+      /* zoomed, the row's 4 px gaps are 5.2 and snap to 5 and 6: a whole 5 px keeps one rhythm (boot r27) */
+      .cot-boot-segs { gap: calc(5px / 1.3); }
     }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {

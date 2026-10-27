@@ -174,6 +174,9 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
     'the invitation never splits the host\'s callsign');
   assert.match(bootHtml, /\.cot-boot-invite \{[^}]*text-wrap: balance; overflow-wrap: break-word;/,
     'an over-long callsign still breaks rather than overflow');
+  // boot r27: under the 2560 card's 1.3 zoom a 4 px gap is 5.2 and snaps to 5 and 6; the zoomed gap is a whole 5 px
+  assert.match(bootHtml, /zoom: 1\.3;[\s\S]{0,400}\.cot-boot-segs \{ gap: calc\(5px \/ 1\.3\); \}/,
+    'the zoomed stage row keeps one gap');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
