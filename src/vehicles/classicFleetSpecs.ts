@@ -115,6 +115,10 @@ const SPECS: FleetTankSpec[] = [
     // docs/references/tanks/m47_patton.md)
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
       gunElevationDeg: 19, gunDepressionDeg: 10,
+      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull): the full -10 deg over the front 142 deg either
+      // side, the engine deck and its corner mufflers' stops over the rear
+      gunPitchByYawDeg: [[0, -10], [142, -10], [147, -8.4], [148, -7.5], [149, -7], [152, -6.2], [153, -6], [157, -6.1],
+        [161, -6.4], [162, -6], [163, -5.7], [165, -5.6], [180, -5.9]],
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',
