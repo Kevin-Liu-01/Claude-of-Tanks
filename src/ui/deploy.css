@@ -186,10 +186,11 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 /* Launch follows its operation's facts (no band between the brief and its action) */
 .cot-garage .cot-deploy-brief-go{grid-column:1;align-self:start;}
 .cot-garage .cot-deploy-brief-lock{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1.2 var(--font-body);color:var(--ink-3);}
-/* a tall window's brief: its title, text and facts a step larger, its tactical map up to 320 px (after the brief's own rules) */
+/* a tall window's brief: its title, text and facts a step larger, its tactical map up to 420 px and its picture up to 5:4
+   (after the brief's own rules; at 2560 a 160 px band stood under Launch, r48-r49) */
 @media (min-height:1200px){
   body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-deploy-brief{
-    grid-template-columns:minmax(0,1fr) clamp(150px,32%,320px);}
+    grid-template-columns:minmax(0,1fr) clamp(150px,40%,420px);grid-template-rows:minmax(auto,min(80cqi,62vh)) auto auto auto auto minmax(0,1fr);}
   body[data-cot-panels='persistent'] .cot-garage .cot-deploy-brief-name{font-size:var(--fs-36);}
   body[data-cot-panels='persistent'] .cot-garage .cot-deploy-brief-text{font-size:var(--fs-18);}
   body[data-cot-panels='persistent'] .cot-garage .cot-deploy-brief-facts :is(.cot-c-rules,.cot-deploy-brief-where){font-size:var(--fs-14);}
@@ -450,7 +451,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-ga
 .cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-arrange-field>span){display:block;padding:0 0 var(--s2);color:var(--ink-3);
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
 .cot-garage .cot-battle-menu.open .cot-teams{flex-direction:column;align-items:flex-start;gap:0;}
-.cot-garage .cot-battle-menu.open :is(.cot-teams button,.cot-battle-sides .cot-c-seg__opt){height:34px;}
+/* every segmented control on the plate stands one height (the range's Targets stood 2 px shorter than the sides, r49) */
+.cot-garage .cot-battle-menu.open :is(.cot-teams button,.cot-battle-sides .cot-c-seg__opt,.cot-arrange-seg .cot-c-seg__opt){height:34px;}
 .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:40px;}
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
 /* a segmented setting is as wide as its values beside the screen, as the sides and the team size are (filling its cell
@@ -542,11 +544,13 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true'
 /* a phone held upright sets its four tabs across the width as words alone (with their glyphs a 390 px phone showed two and
    a half, Local network off the screen, r41-r44); a narrower phone scrolls them under the fade, which shows only where
    they overflow (deployScreen.ts marks .is-scrollable) */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tabs{gap:0;padding:0 var(--s1);mask-image:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tabs{justify-content:space-between;gap:var(--s2);
+  padding:0 0 0 var(--s2);mask-image:none;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tabs.is-scrollable{padding-right:var(--s6);
   mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s6)),transparent);}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tab{flex:1 0 auto;justify-content:center;
-  padding:0 var(--s1);font-size:max(var(--fs-floor-12),var(--fs-12));}
+/* (on the column's 12 px gutter, the room between them shared out, each underline its words' as on the desktop, r49) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tab{flex:none;padding:0;
+  font-size:max(var(--fs-floor-12),var(--fs-12));}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-deploy-tab svg{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
   overflow:auto;gap:var(--s3);padding:var(--s3) var(--s3) calc(96px + env(safe-area-inset-bottom));}
