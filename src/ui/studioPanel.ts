@@ -427,6 +427,12 @@ const RULER_LABEL_PX = 44;
 const MAP_POP_MIN = 200;
 const MAP_POP_MAX = 560;
 const MAP_POP_GAP = 12;
+/** Under this much room below the card the picker cannot show its bar and two rows of cards: it opens as a sheet over
+ * the inspector instead, grown to MAP_SHEET px where the screen has it (the s16 critic: on a phone, at 844 x 390, 1024 x
+ * 600 and 1280 x 720 the popover cut its cards and the card above scrolled under the tab bar). */
+const MAP_POP_SHEET_BELOW = Number.POSITIVE_INFINITY; // the sheet at every size: one form (the s17 critic: a nested box at 1440 and up)
+const MAP_SHEET = 520;
+const MAP_SHEET_TOP = 56;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
 const CONTROLS_MODE_KEY = 'cot.studio.controls';
 function readControlsMode(): 'quick' | 'pro' {
@@ -778,6 +784,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // picker's own preview needs, so the card above it is the preview: the map under the pointer or the focus shows there,
   // and leaving puts the scene's map back.
   const mapPop = el('div', 'mapPop');
+  // a sheet names itself and closes from its own head (a touch screen has no Escape)
+  const mapPopHead = el('div', 'mapPopHead');
+  const mapPopClose = el('button', 'cot-c-btn cot-c-btn--icon cot-c-btn--ghost mapPopX');
+  mapPopClose.type = 'button';
+  mapPopClose.innerHTML = uiIconSVG('close', 18);
+  mapPopClose.setAttribute('aria-label', t('picker.close'));
+  mapPopClose.addEventListener('click', () => { toggleMapPick(false); mapBtn.focus(); });
+  mapPopHead.append(el('span', 'mapPopTitle', t('studioPanel.section.map')), mapPopClose);
   let mapPicker: BattlefieldPicker | null = null;
   const mapRegions = [...new Set(S.MAP_IDS.flatMap((id) => mapRegionTags(id)))];
   const mapPickerCards = (): BattlefieldCard[] => S.MAP_IDS.map((id) => {
@@ -961,11 +975,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRowThumb.className = 'th';
   mapRowThumb.alt = '';
   mapRowThumb.decoding = 'async';
-  mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
+  // the rows name their sections: the map and its light read once, on the inspector's card and dial (the s16 critic)
+  mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studioPanel.section.map')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
   // the row names the light; its sun's angles are the dial's (UI-LOCKDOWN G15)
-  lightRow.pick.append(el('span', 'nm', ''));
+  lightRow.pick.append(el('span', 'nm', t('studioPanel.timeOfDay')));
   sceneRows.append(mapRow.row, lightRow.row);
 
   /** A map's name in the locale (翠野原, not Verdant Fields), its own name where the catalog has none. */
@@ -987,13 +1002,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
    * phone and at 1024 x 600 the card scrolled away or showed as a strip).
    */
   function fitMapPop(): void {
-    mapPop.style.maxHeight = '';
+    mapPop.style.cssText = '';
     const scroller = mapPick.closest<HTMLElement>('.st-insp');
     if (!scroller) return;
     const pad = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
     scroller.scrollTop += secScene.getBoundingClientRect().top - scroller.getBoundingClientRect().top - pad;
-    const room = scroller.getBoundingClientRect().bottom - mapPick.getBoundingClientRect().bottom - MAP_POP_GAP;
-    mapPop.style.maxHeight = `${Math.round(Math.max(MAP_POP_MIN, Math.min(MAP_POP_MAX, innerHeight * 0.65, room)))}px`;
+    const box = scroller.getBoundingClientRect();
+    const room = box.bottom - mapPick.getBoundingClientRect().bottom - MAP_POP_GAP;
+    const sheet = room < MAP_POP_SHEET_BELOW;
+    mapPop.classList.toggle('sheet', sheet);
+    if (!sheet) {
+      if (mapPop.parentElement !== mapPick) mapPick.append(mapPop);
+      mapPop.style.maxHeight = `${Math.round(Math.max(MAP_POP_MIN, Math.min(MAP_POP_MAX, innerHeight * 0.65, room)))}px`;
+      return;
+    }
+    // the inspector contains its paint: the sheet stands in the Studio's root, over the inspector's corner and grown up
+    // and left to MAP_SHEET where the screen has the room
+    const host = mapPick.closest<HTMLElement>('.cot-studio');
+    if (host && mapPop.parentElement !== host) host.append(mapPop);
+    const width = Math.min(innerWidth, Math.max(box.width, MAP_SHEET));
+    const height = Math.min(innerHeight - MAP_SHEET_TOP, Math.max(box.height, MAP_SHEET));
+    const right = Math.min(innerWidth, box.right), bottom = Math.min(innerHeight, box.bottom);
+    mapPop.style.cssText = `left:${Math.round(Math.max(0, right - width))}px;width:${Math.round(width)}px;`
+      + `top:${Math.round(Math.max(MAP_SHEET_TOP, bottom - height))}px;height:${Math.round(Math.min(height, bottom - MAP_SHEET_TOP))}px`;
   }
   function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
@@ -1009,6 +1040,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         onPreview: (card) => paintMapCard(card ? card.id : null),
         onChoose: (id) => { chooseMap(id); mapBtn.focus(); },
       });
+      mapPop.prepend(mapPopHead);
     }
     mapPicker.focus();
   }
@@ -1035,8 +1067,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
   });
   document.addEventListener('pointerdown', (event) => {
-    if (mapPop.classList.contains('open') &&
-        !(event.target instanceof Node && (mapPick.contains(event.target) || mapRow.row.contains(event.target)))) toggleMapPick(false);
+    if (mapPop.classList.contains('open') && !(event.target instanceof Node
+        && (mapPick.contains(event.target) || mapPop.contains(event.target) || mapRow.row.contains(event.target)))) toggleMapPick(false);
   });
 
   // === TANKS group ===
@@ -1943,11 +1975,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const tick = el('i', 'mj');
       tick.style.left = pct(at);
       marks.push(tick);
-      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; the scene's end reads
-      // its length, set to the left of its tick (the s13 critic read the bare end tick as a label cut off); a label
-      // too near the end's leaves its tick bare (the s15 critic: "0:10" over "0:12" on a phone)
+      // the first label would sit under the playhead's thumb at rest, so its tick stands alone; every label stands to
+      // the left of its tick, the scene's end included (it reads the length: the s13 critic read the bare end tick as a
+      // label cut off; the s16 critic read an end label flipped to the other side as inconsistent); a label closer to
+      // the end's than a label's width leaves its tick bare (the s15 critic: "0:10" over "0:12" on a phone)
       const end = at >= S.durationMs - step * 400;
-      const crowdsEnd = !end && rulerWidth > 0 && ((S.durationMs - at) / Math.max(1, S.durationMs)) * rulerWidth < RULER_LABEL_PX * 1.5;
+      const crowdsEnd = !end && rulerWidth > 0 && ((S.durationMs - at) / Math.max(1, S.durationMs)) * rulerWidth < RULER_LABEL_PX;
       if (k > 0 && !crowdsEnd && (!end || at >= S.durationMs - 1)) {
         const label = el('b', end ? 'end' : null, rulerClock(k * step));
         label.style.left = pct(at);
@@ -2968,8 +3001,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       paintMapCard(null);
       projectName.textContent = name;
       mapRowThumb.src = imageFor(MAP_THUMBS, id) || '';
-      mapRow.pick.querySelector('.nm')!.textContent = name;
-      lightRow.pick.querySelector('.nm')!.textContent = t(`atmosphere.${S.timeOfDay}`);
       if (planShown) planView.refreshPlan();
       mapBtn.setAttribute('aria-label', t('studioPanel.map.chooseAriaCurrent', { name: info.name || id }));
       mapPicker?.setValue(id);

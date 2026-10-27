@@ -2,9 +2,9 @@
 // The living mark's exports (owner, 2026-10-24: "an animated version where hes rolling along"): the loop of
 // src/ui/brandMarkMotion.ts rendered frame by frame (every animation's clock set exactly, so the loop closes) and encoded
 // for socials and the README. Copyright © 2026 Kevin B. Liu.
-//   node tools/brand-motion-export.mjs
+//   node tools/brand-motion-export.mjs [scene]   (a scene's name renders that scene alone; the manifest lists them all)
 // Writes public/brand/motion/commander-loop.{mp4,webm,gif} (the tank alone, 1280x720; the GIF 640x360) and
-// public/brand/motion/title-card-loop.{mp4,webm} (the tank over the stacked wordmark, 1080x1080). One headless browser
+// public/brand/motion/title-card-loop.{mp4,webm} (the tank over the name on one line, 1080x1080). One headless browser
 // (3 GB heap) renders the frames; ffmpeg encodes them.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -25,13 +25,13 @@ const scenes = [
   { name: 'commander-loop', w: 1280, h: 720, gif: 640,
     body: `<div style="width:760px">${brandMarkMotionSVG(438, '#f6f3ec', '#f0a030').replace(/width="\d+" height="\d+"/, 'width="760" height="438"')}</div>` },
   { name: 'title-card-loop', w: 1080, h: 1080,
-    body: `<div style="width:560px">${titleCard.replace(/^<svg /, '<svg width="560" ').replace(/<!--[\s\S]*?-->/, '')}</div>` },
+    body: `<div style="width:864px">${titleCard.replace(/^<svg /, '<svg width="864" ').replace(/<!--[\s\S]*?-->/, '')}</div>` },
 ];
 
 mkdirSync(OUT, { recursive: true });
 const browser = await puppeteer.launch({ headless: 'shell', args: ['--js-flags=--max-old-space-size=3072'] });
 try {
-  for (const scene of scenes) {
+  for (const scene of scenes.filter((item) => !process.argv[2] || item.name === process.argv[2])) {
     const frames = mkdtempSync(join(tmpdir(), `brand-motion-${scene.name}-`));
     try {
       const page = await browser.newPage();
