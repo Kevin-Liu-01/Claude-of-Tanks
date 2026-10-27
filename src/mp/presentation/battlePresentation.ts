@@ -1062,10 +1062,11 @@ export function createBattlePresentation({
   }
 
   /**
-   * (a sortie on the solo sim Worker) the killcam's step capture, as state.ts takes it each fixed step before the shells
-   * fly: the live shells' traces and every hull's last pose before this frame's hits (a frame applies, then its events),
-   * which a replay restages; at most once a step of presented time. Its steps also retire the program warm-up rig, which
-   * a battle that never captures leaves drawn throughout.
+   * The killcam's step capture, as state.ts takes it each fixed step before the shells fly (a room's battle and a sortie
+   * on the solo sim Worker alike): the live shells' traces and every hull's last pose before this frame's hits (a frame
+   * applies, then its events), which a replay restages; at most once a step of presented time. Its steps also retire the
+   * program warm-up rig, which a battle that never captures leaves drawn throughout. It allocates nothing a step (held
+   * frames refreshed in place, pooled trace buffers).
    */
   function recordKillcamStep(renderTimeMs: number): void {
     if (renderTimeMs - killcamStepAtMs < TICK_MS - 0.5 && renderTimeMs >= killcamStepAtMs) return;
@@ -1104,7 +1105,7 @@ export function createBattlePresentation({
 
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
-    if (solo && mounted) recordKillcamStep(frame.renderTimeMs);
+    if (mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
     if (frame.modeStateJson !== lastModeStateJson) {

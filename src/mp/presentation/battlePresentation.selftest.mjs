@@ -371,7 +371,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
   assert.equal('attackerName' in (hit?.payload ?? {}), false, 'a room battle keeps the wire hit as it came');
   p.applyFrame(frame({ tick: 122, renderTimeMs: 2033.4 }));
-  assert.deepEqual(networkLog, ['hit'], "a room battle's killcam is fed its hits only");
+  assert.deepEqual(networkLog, ['hit', 'step'], "a room battle's killcam gets its hits and the step capture (traces, poses, the warm-up rig retired)");
   p.dispose();
 }
 
