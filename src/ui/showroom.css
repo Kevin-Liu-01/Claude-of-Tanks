@@ -316,7 +316,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-band>*{display:flex;align-items:stretch;gap:var(--s1);min-width:0;}
 .cot-lt-band>*+*{padding-left:var(--s3);border-left:1px solid var(--line-2);}
 .cot-lt-group{flex-direction:column;align-items:flex-start;}
-.cot-lt-group>:is(.cot-lt-loadout,.cot-lt-paint){display:flex;gap:var(--s1);height:var(--slot,56px);}
+.cot-lt-group>:is(.cot-lt-loadout,.cot-lt-consumables,.cot-lt-paint){display:flex;gap:var(--s1);height:var(--slot,56px);}
 /* (the captions stand over the stage's floor, so they take the stage's halo, as the name over the tank does) */
 .cot-lt-cap{font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-1);text-shadow:var(--stage-halo);}
@@ -327,21 +327,21 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
 .cot-lt-act[aria-pressed='true']>span{color:var(--accent);}
 /* the slots: the fitted item's glyph and short name, an empty slot dashed with its plus */
-.cot-garage .cot-lt-loadout{display:flex;}
-.cot-garage .cot-lt-loadout .eqslot{width:68px;height:100%;gap:3px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables){display:flex;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:68px;height:100%;gap:3px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);
   background:var(--plate-fill);box-shadow:var(--ring-2);color:var(--ink-1);}
-.cot-garage .cot-lt-loadout .eqslot svg{width:22px;height:22px;}
-.cot-garage .cot-lt-loadout .eqslot .sl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot svg{width:22px;height:22px;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot .sl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
-.cot-garage .cot-lt-loadout .eqslot.empty{background:var(--glyph-plate);box-shadow:none;outline:1px dashed var(--line-control);outline-offset:-1px;}
-.cot-garage .cot-lt-loadout .eqslot.empty .plus{font:500 var(--fs-20)/1 var(--font-ui);color:var(--ink-3);}
-.cot-garage .cot-lt-loadout .eqslot.empty .sl{color:var(--ink-3);}
-@media (hover:hover){.cot-garage .cot-lt-loadout .eqslot:hover{background:var(--surface-hover);}
-  .cot-garage .cot-lt-loadout .eqslot.empty:hover .plus{color:var(--ink-1);}}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty{background:var(--glyph-plate);box-shadow:none;outline:1px dashed var(--line-control);outline-offset:-1px;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty .plus{font:500 var(--fs-20)/1 var(--font-ui);color:var(--ink-3);}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty .sl{color:var(--ink-3);}
+@media (hover:hover){.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot:hover{background:var(--surface-hover);}
+  .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty:hover .plus{color:var(--ink-1);}}
 /* the slot being fitted wears the kit's one selected state, the accent's wash and edge (the lead's 10-26 ruling; the r25
    critic read the edge alone as a second selected look) */
-.cot-garage .cot-lt-loadout .eqslot.open{background:var(--accent-wash);box-shadow:var(--ring-accent);}
-.cot-garage .cot-lt-loadout .eqslot:focus-visible{outline:2px solid var(--focus-ink);outline-offset:-2px;}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.open{background:var(--accent-wash);box-shadow:var(--ring-accent);}
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot:focus-visible{outline:2px solid var(--focus-ink);outline-offset:-2px;}
 /* the paint: what the tank wears, named; three more to try; every paint */
 .cot-lt-swatch{position:relative;width:40px;height:100%;flex:none;padding:0;border:0;border-radius:var(--control-radius);overflow:hidden;
   background:var(--plate-fill);box-shadow:var(--ring-2);cursor:pointer;}
@@ -357,14 +357,14 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-band .cot-c-btn{--h:var(--slot,56px);height:100%;}
 .cot-lt-paint-all[aria-expanded='true'],.cot-lt-acts [data-lt-callouts][aria-pressed='true']{box-shadow:var(--ring-accent);color:var(--accent);}
 .cot-lt-acts{display:flex;}
-.cot-garage.vehicle-locked :is(.cot-lt-paint,.cot-lt-loadout){pointer-events:none;opacity:.42;}
+.cot-garage.vehicle-locked :is(.cot-lt-paint,.cot-lt-loadout,.cot-lt-consumables){pointer-events:none;opacity:.42;}
 /* a narrow docked band (under 760 px: a window under about 1180 px) keeps what the tank wears and every paint, and the acts
    close up */
 @container lt (width < 760px){
   body[data-cot-panels='persistent'] .cot-lt-swatch:not(.is-on){display:none;}
   body[data-cot-panels='persistent'] .cot-lt-band .cot-c-btn{--h:44px;}
   body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{min-width:54px;padding:0 var(--s1);}
-  body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:54px;}
+  body[data-cot-panels='persistent'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:54px;}
   body[data-cot-panels='persistent'] .cot-lt-band{gap:var(--s2);}
   body[data-cot-panels='persistent'] .cot-lt-band>*+*{padding-left:var(--s2);}
 }
@@ -372,9 +372,27 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
    width); the worn paint and the slots close up to make the room */
 @container lt (width < 560px){
   body[data-cot-panels='persistent'] .cot-lt-band .cot-lt-act{min-width:44px;padding:0 var(--s1);}
-  body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:46px;}
+  body[data-cot-panels='persistent'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:46px;}
   body[data-cot-panels='persistent'] .cot-lt-swatch.is-on{width:64px;}
   body[data-cot-panels='persistent'] .cot-lt-swatch.is-on .nm{display:none;}
+}
+/* the consumables (progression's 260 group, garageConsumables.ts: three slots on the equipment slot's primitive, after
+   Equipment) make the band four groups, and it fits them: under 1080 px of band the paint keeps what the tank wears (its
+   sheet holds the rest), under 940 px the slots close to 60 px, and under 760 px the acts stand at the end of the
+   name's row, just above the band (the owner keeps them labelled at every width), the name's block giving them its end */
+@container lt (width < 1080px){
+  body[data-cot-panels='persistent'] .cot-lt-band:has(.cot-lt-consumables) .cot-lt-swatch:not(.is-on){display:none;}
+}
+@container lt (width < 940px){
+  body[data-cot-panels='persistent'] .cot-garage .cot-lt-band:has(.cot-lt-consumables) .eqslot{width:60px;}
+}
+@container lt (width < 760px){
+  body[data-cot-panels='persistent'] .cot-lt-band:has(.cot-lt-consumables) .cot-lt-acts{position:absolute;right:0;
+    bottom:calc(var(--slot,56px) + max(var(--fs-floor-11),var(--fs-11)) + var(--s1) + var(--s3));padding-left:0;border-left:0;}
+  body[data-cot-panels='persistent'] .cot-lt-head:has(~ .cot-lt-band .cot-lt-consumables){max-width:calc(100% - 248px - var(--s3));}
+  /* (the identity row wraps inside that end rather than run under the acts: at 900 its tank count and class did) */
+  body[data-cot-panels='persistent'] .cot-lt-head:has(~ .cot-lt-band .cot-lt-consumables) .cot-lt-id{flex-wrap:wrap;max-width:100%;}
+  body[data-cot-panels='persistent'] .cot-garage .cot-lt-band:has(.cot-lt-consumables) .eqslot{width:50px;}
 }
 /* the equipment picker opens over the stage above the band, every item in view */
 body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + var(--s1));
@@ -614,8 +632,8 @@ body[data-cot-panels='overlay'] .cot-lt-id .lt-nation>span{display:none;}
 body[data-cot-panels='overlay'] .cot-lt-id .cot-flag{width:26px;height:18px;}
 body[data-cot-panels='overlay'] .cot-lt-band{width:100%;gap:var(--s2);}
 body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s2);}
-body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout{flex:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:52px;}
+body[data-cot-panels='overlay'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables){flex:none;}
+body[data-cot-panels='overlay'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:52px;}
 body[data-cot-panels='overlay'] .cot-lt-paint{flex:1 1 auto;}
 /* a phone shows the worn paint wide, one more paint and every paint, each a 44 px touch target */
 body[data-cot-panels='overlay'] .cot-lt-swatch{width:44px;}
@@ -624,12 +642,12 @@ body[data-cot-panels='overlay'] .cot-lt-swatch .nm{display:none;}
 body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-all){display:none;}
 /* a folded tablet's band has the room for wider slots, the third quick paint and the worn paint's name */
 @container lt (width >= 560px){
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:72px;}
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch:is(:nth-child(3),:nth-child(4)):not(.cot-lt-paint-all){display:block;}
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
 }
 body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
-body[data-cot-panels='overlay'] :is(.cot-garage .cot-lt-loadout .eqslot.empty,.cot-lt-paint-all){background:var(--surface-menu);}
+body[data-cot-panels='overlay'] :is(.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty,.cot-lt-paint-all){background:var(--surface-menu);}
 /* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}
@@ -662,7 +680,7 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-head{height:var(--cot-name-h);}
 /* on its side the column is narrow: square slots, the worn paint, one more (two once the column reaches 350 px) and every
    paint */
-body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .cot-lt-loadout .eqslot{width:var(--slot);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:var(--slot);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-all{--h:44px;width:44px;}
 @container lt (width >= 350px){
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-swatch:nth-child(3):not(.cot-lt-paint-all){display:block;}
@@ -687,7 +705,7 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-
 }
 /* a narrow phone's band (under 340 px: a phone under 360 px) narrows its slots to the touch floor */
 @container lt (width < 340px){
-  body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:44px;}
+  body[data-cot-panels='overlay'] .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:44px;}
   body[data-cot-panels='overlay'] .cot-lt-band{gap:var(--s1);}
   body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s1);}
 }
