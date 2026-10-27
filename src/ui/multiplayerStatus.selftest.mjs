@@ -68,10 +68,10 @@ const live = (patch = {}) => ({
 
 {
   const strip = formatStrip(live());
-  assert.deepEqual([strip.health, strip.ping, strip.pingUnit, strip.seat, strip.roster], ['good', '64', 'MS', 'SEAT 4', '12/28']);
+  assert.deepEqual([strip.health, strip.ping, strip.pingUnit, strip.seat, strip.roster], ['good', '64', 'MS', 'SEAT 4', '12\u00a0/\u00a028']);
   assert.match(strip.aria, /Good.*64 ms.*seat 4.*12 of 28/);
   const lobby = formatStrip({ ...base(), room: 'joined', roomRttMs: 23.6, seat: 0, rosterCount: 1, health: 'good', healthReason: 'room' });
-  assert.deepEqual([lobby.ping, lobby.pingUnit, lobby.seat, lobby.roster], ['24', 'MS', 'SEAT 0', '1/28'], 'the lobby strip shows the room round trip');
+  assert.deepEqual([lobby.ping, lobby.pingUnit, lobby.seat, lobby.roster], ['24', 'MS', 'SEAT 0', '1\u00a0/\u00a028'], 'the lobby strip shows the room round trip');
   const idle = formatStrip(base());
   assert.deepEqual([idle.ping, idle.pingUnit, idle.seat], ['—', '', '']);
   assert.equal(formatStrip(live({ rttMs: 2500 })).ping, '999', 'the ping cell is bounded');
@@ -83,9 +83,9 @@ const live = (patch = {}) => ({
 
 {
   assert.equal(formatBanner(null), '');
-  assert.equal(formatBanner({ kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }), 'Reconnecting · attempt 2 · next try in 3 s');
+  assert.equal(formatBanner({ kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }), 'Reconnecting · attempt 2 · next try in 3\u00a0s');
   assert.equal(formatBanner({ kind: 'reconnecting', scope: 'match', attempt: 1, nextRetryS: 0 }), 'Reconnecting · attempt 1');
-  assert.equal(formatBanner({ kind: 'reconnecting', scope: 'room', attempt: 3, nextRetryS: 8 }), 'Room link lost · reconnecting (attempt 3, next try in 8 s)');
+  assert.equal(formatBanner({ kind: 'reconnecting', scope: 'room', attempt: 3, nextRetryS: 8 }), 'Room link lost · reconnecting (attempt 3, next try in 8\u00a0s)');
   assert.equal(formatBanner({ kind: 'reconnecting', scope: 'room', attempt: 3, nextRetryS: 0 }), 'Room link lost · reconnecting (attempt 3)');
   assert.equal(formatBanner({ kind: 'stalled' }), 'Server not responding · waiting for updates');
   assert.equal(formatBanner({ kind: 'dropped', reason: 'replaced' }), 'Removed from the battle · your seat reconnected from elsewhere');
@@ -212,7 +212,7 @@ const live = (patch = {}) => ({
   assert.equal(cell('ping').children[1].textContent, 'MS');
   assert.equal(cell('seat').hidden, false);
   assert.equal(cell('seat').children[0].textContent, 'SEAT 4');
-  assert.equal(cell('roster').children[0].textContent, '12/28');
+  assert.equal(cell('roster').children[0].textContent, '12\u00a0/\u00a028');
   assert.match(strip.getAttribute('aria-label'), /Good/);
   assert.equal(notice, null, 'a good link raises nothing');
 
@@ -237,10 +237,10 @@ const live = (patch = {}) => ({
     { kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }, at);
   // (the panel is open: its notice holds the text, never the banner as well, UI-LOCKDOWN B13)
   assert.equal(notice, null);
-  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Reconnecting · attempt 2 · next try in 3 s');
+  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Reconnecting · attempt 2 · next try in 3\u00a0s');
   surface.togglePanel(false);
   assert.equal(notice.id, 'cot-mp-banner');
-  assert.equal(notice.text, 'Reconnecting · attempt 2 · next try in 3 s');
+  assert.equal(notice.text, 'Reconnecting · attempt 2 · next try in 3\u00a0s');
   assert.equal(notice.severity, 'warning');
   assert.equal(notice.durationMs, null, 'it stays while the link is bad');
   assert.equal(notice.dismissible, false);
@@ -321,7 +321,7 @@ const live = (patch = {}) => ({
   lobby.set({ ...base(), room: 'reconnecting', roomReconnectAttempt: 1, health: 'bad', healthReason: 'room_reconnecting' },
     { kind: 'reconnecting', scope: 'room', attempt: 1, nextRetryS: 1 }, at);
   const lobbyBanner = lobby.root.children.find((node) => node.className.startsWith('cot-mp-banner'));
-  assert.equal(lobbyBanner.children[0].textContent, 'Room link lost · reconnecting (attempt 1, next try in 1 s)');
+  assert.equal(lobbyBanner.children[0].textContent, 'Room link lost · reconnecting (attempt 1, next try in 1\u00a0s)');
   assert.equal(lobbyBanner.className, 'cot-mp-banner lobby bad', 'no leave control without a leave');
   assert.equal(lobby.pressLeave(), 'ignored');
   lobby.dispose();

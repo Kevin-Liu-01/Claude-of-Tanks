@@ -15,6 +15,13 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`deploy-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the Deploy screen's overlap pass. It runs
+every battle mode's plate, at rest and with the further options open, at the gauntlet's eight sizes. It fails in three
+cases:
+- two of the plate's rows or worded elements intersect as their columns show them;
+- anything is cut by its column at rest on a window the layout calls neither compact nor short;
+- the datum census finds a duplicate.
+A new plate row needs no list entry: every element holding words is measured.
 `battle-hud-overlap.browser.mjs` (Puppeteer, an existing dev server: `--url=`) is the battle HUD's cheap overlap pass.
 It stages every state the layout fixture knows (the corners, hints, notices, reports, the scope, spectate, Watch
 ride and drone, the AC-130 gunship and the drone flight, the modes) at the UI gauntlet's eight sizes (2560x1440,

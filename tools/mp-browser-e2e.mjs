@@ -314,7 +314,7 @@ try {
     if (!strip.visible) failures.push(`${label} network strip is not visible: ${JSON.stringify(strip)}`);
     if (!/good|degraded/.test(strip.className ?? '')) failures.push(`${label} network strip health ${strip.className}`);
     if (!/SEAT \d/.test(strip.text ?? '')) failures.push(`${label} network strip names no seat: ${strip.text}`);
-    if (!/\d+\/28/.test(strip.text ?? '')) failures.push(`${label} network strip names no roster: ${strip.text}`);
+    if (!/\d+\s*\/\s*28/.test(strip.text ?? '')) failures.push(`${label} network strip names no roster: ${strip.text}`);
     if (strip.bannerVisible) failures.push(`${label} shows a banner on a healthy link: ${strip.bannerText}`);
     if (strip.network?.health !== 'good') failures.push(`${label} network health ${JSON.stringify(strip.network)}`);
   }

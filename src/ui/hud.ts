@@ -23,7 +23,7 @@ import { createElement as el, datumAttr, markDatum } from './dom.ts';
 import type { DatumKey } from './surfaceRegistry.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
-import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
+import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, objectiveCopyOver } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { mountSpectateAllies, spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
@@ -62,6 +62,7 @@ import type { DamagePanelController } from './damagePanel.ts';
 import type { DriveTelemetry } from './driveTelemetry.ts';
 import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
+import type { BattleNoticePort } from './battleNotices.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
 import {
@@ -1284,6 +1285,19 @@ const _tmp = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _reticleAnchor: ReticleAnchorState = { x: 0, y: 0, single: false };
 const aimWarningScratch: AimWarningState = { visible: false, kind: '', text: '' };
+/** The parked chip's id in the battle's notice region (battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
+const AIM_NOTICE_ID = 'cot-aim-warning';
+// (the region loads with the first parked chip, as the pointer lock's notice loads it: pointerLockFeedbackRuntime.ts)
+let aimNoticePort: Promise<BattleNoticePort> | null = null;
+const aimNotices: BattleNoticePort = {
+  show(options) {
+    aimNoticePort ??= import('./battleNotices.ts').then((module) => module.battleNotices);
+    void aimNoticePort.then((port) => { port.show(options); }, () => {});
+  },
+  dismiss(id) {
+    if (aimNoticePort) void aimNoticePort.then((port) => { port.dismiss(id); }, () => {});
+  },
+};
 const MODULE_ALERT_ICON_IDS = new Set([
   'gun', 'turretRing', 'gunMount', 'autoloader', 'feedSystem', 'missileRack', 'roofGun',
   'engine', 'transmission', 'fuelTank', 'ammoRack', 'radio', 'optics',
@@ -1769,7 +1783,9 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 /* the player's own kills and deaths: the player's word in the accent's ink (no plate and no stripe: the feed is bare
    text over the battlefield on both sides, as the rosters are) */
 .cot-kill-lane .cot-kf[data-relation=you] .k,.cot-kill-lane .cot-kf[data-relation=victim] .v,
-.cot-kill-lane .cot-kf[data-relation=ridden] :is(.k,.v){color:var(--accent-hi);}
+/* (the ridden tank's own name alone, the other in its side's ink: both in the accent, a Watch row's enemy victim read as
+   an ally, gauntlet r18) */
+.cot-kill-lane .cot-kf[data-relation=ridden][data-ridden=k] .k,.cot-kill-lane .cot-kf[data-relation=ridden][data-ridden=v] .v{color:var(--accent-hi);}
 /* (the player's own word never gives way: the other callsign takes the cut, gauntlet r1 at 390 portrait read "Y.") */
 .cot-kf[data-relation=you] .k,.cot-kf[data-relation=victim] .v{flex:none;}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
@@ -2053,7 +2069,9 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-con .key{position:absolute;top:3px;left:4px;font:500 var(--battle-fs-fig-11)/12px var(--font-data);color:var(--ink-2);
   letter-spacing:0;
   border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);padding:0 3px;z-index:2;}
-.cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
+/* (its count in the corner every count of the rack and the controls takes, the top right: under the glyph at the bottom
+   right it was the one count off that corner, gauntlet r18) */
+.cot-con .cnt{position:absolute;top:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
   font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(var(--battle-veil) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
@@ -2249,7 +2267,12 @@ function setObjectiveValue(target: HTMLElement, copy: string, marks: readonly (D
   const width = parseFloat(document.body?.style?.getPropertyValue?.('--hud-objective-width') || '') || OBJECTIVE_DEFAULT_W;
   // (a class, which the planner observes, so its re-seat follows the taller tab; toggle with its force writes nothing when
   // unchanged)
-  target.closest?.('.cot-mode-status')?.classList.toggle('stacked', copy.includes(' · ') && objectiveCopyWidth(copy) > width - OBJECTIVE_CHROME_W);
+  const over = objectiveCopyOver(target, copy, width);
+  const tab = target.closest?.('.cot-mode-status');
+  tab?.classList.toggle('stacked', copy.includes(' · ') && over);
+  // (a copy of one part too wide for the tab wraps between its words: the drone's "CONFIRM 750 KILLS" ran under the tab's
+  // slanted edge on the touch windows, gauntlet r16)
+  tab?.classList.toggle('wraps', !copy.includes(' · ') && over);
 }
 /** The Frontline objective's parts (line, wave, hostiles): the hostiles are a datum of their own (surfaceRegistry.ts). */
 const FRONTLINE_MARKS: readonly (DatumKey | null)[] = [null, null, 'hostiles'];
@@ -4039,6 +4062,7 @@ export function initHud(bus: EventBus): HudRuntime {
     count: number,
     color: string,
     lineWidth: number,
+    ring: number,
   ): void {
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
@@ -4046,6 +4070,10 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 1; i <= count; i++) {
       const distance = i * spacing;
       const tick = i % 2 === 0 ? 4.5 : 3;
+      // (and each one left out where its bar would meet the ring, from its middle to its ends: a short window's 14 px ring
+      // took the first ticks' bars on its dashes at 568x256, gauntlet r17)
+      const margin = RING_STROKE_REACH + SIGHT_MARK_RING_GAP + lineWidth / 2;
+      if (distance - margin < ring && Math.hypot(distance, tick) + margin > ring) continue;
       const reach = tick + lineWidth / 2;
       // (each tick left out where it would meet a mark: the rack, the struck round, the countdown under the marker)
       for (let s = 0; s < 2; s++) {
@@ -4086,15 +4114,17 @@ export function initHud(bus: EventBus): HudRuntime {
     const cy = anchor.y ?? view.cy;
     ctx.globalAlpha = scopeFadeAlpha();
     const radius = clampRetR(smoothRadPx);
-    const gap = radius + 3;
+    // (the arms start 3 px off the ring's stroke and their own under-stroke: at radius + 3 their caps met its dashes at
+    // 844x390, gauntlet r17)
+    const gap = radius + RING_STROKE_REACH + SIGHT_MARK_RING_GAP + 1.2;
     const armEnd = scopeArmEnd(radius);
     // the direction's optic ink (06b-sniper-optic .optic): paper lines over a graphite under-stroke, no green tint
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(5,6,8,0.55)', 2.4);
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(246,243,236,0.78)', 1.1);
     const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);
     const maxMil = Math.min(3, Math.max(1, Math.floor((armEnd - 4) / mil)));
-    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(5,6,8,0.6)', 2.2);
-    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(246,243,236,0.86)', 0.9);
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(5,6,8,0.6)', 2.2, radius);
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(246,243,236,0.86)', 0.9, radius);
     ctx.globalAlpha = 1;
   }
 
@@ -4669,12 +4699,17 @@ export function initHud(bus: EventBus): HudRuntime {
     cy: number,
     scale: number,
     centerRadius: number,
+    reach = 8 * scale,
   ): void {
+    const inner = 2.8 * scale;
+    const outer = Math.min(8 * scale, reach);
     ctx.beginPath();
-    ctx.moveTo(cx - 8 * scale, cy + 0.5); ctx.lineTo(cx - 2.8 * scale, cy + 0.5);
-    ctx.moveTo(cx + 2.8 * scale, cy + 0.5); ctx.lineTo(cx + 8 * scale, cy + 0.5);
-    ctx.moveTo(cx + 0.5, cy - 8 * scale); ctx.lineTo(cx + 0.5, cy - 2.8 * scale);
-    ctx.moveTo(cx + 0.5, cy + 2.8 * scale); ctx.lineTo(cx + 0.5, cy + 8 * scale);
+    if (outer > inner + 1) {
+      ctx.moveTo(cx - outer, cy + 0.5); ctx.lineTo(cx - inner, cy + 0.5);
+      ctx.moveTo(cx + inner, cy + 0.5); ctx.lineTo(cx + outer, cy + 0.5);
+      ctx.moveTo(cx + 0.5, cy - outer); ctx.lineTo(cx + 0.5, cy - inner);
+      ctx.moveTo(cx + 0.5, cy + inner); ctx.lineTo(cx + 0.5, cy + outer);
+    }
     ctx.stroke();
     ctx.beginPath();
     ctx.arc(cx, cy, centerRadius * Math.min(scale, 1.35), 0, Math.PI * 2);
@@ -5000,7 +5035,13 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.strokeStyle = '#ffffff';
     ctx.fillStyle = '#ffffff';
     ctx.lineWidth = draw.markerLineWidth + 0.6;
-    paintReticleMarker(draw.cx, draw.cy, draw.zoomScale, 1.1);
+    paintReticleMarker(draw.cx, draw.cy, draw.zoomScale, 1.1, markerArmReach(draw));
+  }
+
+  /** How far the centre marker's arms reach: 3 px inside the ring's stroke (through the scope on a short window the ring,
+   *  some 14 px, ran over the arms' 8 px x the zoom's 1.8, gauntlet r17). */
+  function markerArmReach(draw: ReticleDrawState): number {
+    return draw.radius - RING_STROKE_REACH - SIGHT_MARK_RING_GAP - draw.markerLineWidth;
   }
 
   function paintPhysicalGunMarker(view: HudAimView, draw: ReticleDrawState): void {
@@ -5263,7 +5304,10 @@ export function initHud(bus: EventBus): HudRuntime {
       // marker under it (the vision switch); a chip goes over the row
       // (over a chip placeAimWarning already set over the sight, where the row leaves it be)
       const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
-      y = Math.min(aboveSightTop(draw), chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
+      // (and, on a scope over 430 px tall, over the upper cross arm's end, as the marks under the sight keep off the lower
+      // one: over the ring alone the line took the upper arm's place at 320x568, gauntlet r18)
+      const armTop = h > 430 ? draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH : Infinity;
+      y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
         - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
       // (over the range tag too, where it hangs over the sight beside the row's columns)
       if (tag && tag.y1 < draw.cy) {
@@ -5561,19 +5605,40 @@ export function initHud(bus: EventBus): HudRuntime {
     if (draw.warningW !== seat.w) { seat.w = draw.warningW; touchAimWarning.style.setProperty('--hud-aim-warning-w', `${draw.warningW}px`); }
   }
 
+  /** The parked chip's notice: raised with its words, changed when they change, dismissed when it goes or seats (only
+   *  then: the reticle repaints every frame), its glyph the chip's. */
+  let aimNoticeText = '';
+  function syncAimNotice(warning: AimWarningState | null): void {
+    const text = warning?.text ?? '';
+    if (text === aimNoticeText) return;
+    aimNoticeText = text;
+    if (!warning || !text) { aimNotices.dismiss(AIM_NOTICE_ID); return; }
+    aimNotices.show({
+      id: AIM_NOTICE_ID, className: 'cot-aim-notice', severity: warning.kind === 'blocked' ? 'error' : 'warning',
+      icon: warning.kind === 'rollover' ? 'rematch' : warning.kind === 'blocked' ? 'alert' : 'turretRing',
+      // (over the network's, which a touch layout gives a screen reader alone: multiplayerStatus.ts)
+      text, durationMs: null, dismissible: false, priority: 2,
+    });
+  }
+
   function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);
     // (the chip is the kit's notice plate in every layout, the DOM chip the reticle seats: a mouse layout's canvas drew a
     // pointed hex with its own stroke and glyph beside the touch layout's plate, gauntlet r3)
     const touchWarning = warning.visible;
     const seated = touchWarning && draw.warningY > 0 && touchWarningSeated();
+    // (UI-LOCKDOWN B14) where a layout parks the chip off the sight it is the kit's notice in the battle's region, which
+    // the planner seats where the chip parked (battleHudLayout.css); the DOM chip is then the reticle's mark alone
+    const parked = touchWarning && !touchWarningSeated();
+    syncAimNotice(parked ? warning : null);
     // A seated chip yields to the sixth-sense notice (sightFurniture.ts sightNotice, published on a touch layout only):
     // where its place runs into the notice it waits hidden until the notice goes. The notice never moves it: it comes and
     // goes, and the places clear of it ran into the furniture instead (r10e: at 320x568 the left FIRE button, 22 px deep
     // at 16 m, 33 at 24 m)
     const yielded = seated && sightNoticeGap(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
       draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP;
-    if (touchAimWarning.hidden === (touchWarning && !yielded)) touchAimWarning.hidden = !touchWarning || yielded;
+    const shown = touchWarning && !parked && !yielded;
+    if (touchAimWarning.hidden === shown) touchAimWarning.hidden = !shown;
     // (the chip, canvas or seated, for the scope's cross arms to yield to; its seat even while it waits hidden for the
     // notice, which moves no mark)
     if (seated || (!touchWarning && warning.visible && draw.warningY > 0)) {
@@ -5689,12 +5754,13 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
     ctx.fillStyle = 'rgba(6,9,12,0.9)';
     ctx.lineWidth = markLw + 1.2;
-    paintReticleMarker(cx, cy, zs, 1.6);
+    const markerReach = markerArmReach(draw);
+    paintReticleMarker(cx, cy, zs, 1.6, markerReach);
     ctx.globalAlpha = 0.97;
     ctx.strokeStyle = primaryMarkerCol;
     ctx.fillStyle = primaryMarkerCol;
     ctx.lineWidth = markLw;
-    paintReticleMarker(cx, cy, zs, 1.1);
+    paintReticleMarker(cx, cy, zs, 1.1, markerReach);
 
     // Layout clearance for the center marker's magazine/countdown furniture;
     // no circle is drawn here (reload progress is on the dispersion dots).
@@ -7389,7 +7455,10 @@ export function initHud(bus: EventBus): HudRuntime {
     item.dataset.killCause = presentation.cause;
     if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
-    else if (ridden && (payload.killerId === ridden || payload.id === ridden)) item.dataset.relation = 'ridden';
+    else if (ridden && (payload.killerId === ridden || payload.id === ridden)) {
+      item.dataset.relation = 'ridden';
+      item.dataset.ridden = payload.killerId === ridden ? 'k' : 'v';
+    }
     item.dataset.tip = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
       presentation.relationLabel].filter(Boolean).join(' · ');
     item.innerHTML = `<span class="k"></span>` + flag(kNation) +
@@ -8111,10 +8180,12 @@ export function initHud(bus: EventBus): HudRuntime {
   function renderCanvas(dt: number, force = false): void {
     if (!force && reticleCanReuse(aimView)) return;
     // (UI-LOCKDOWN A) no store while the HUD is hidden: nothing to paint (its next shown frame repaints in full)
+    // (the parked chip's notice, outside the HUD's root, goes with the sight: hidden, cleared or flying)
     if (!retSurface.begin()) {
       reticlePaint.valid = false;
       hideAerialHitMark();
       sightText.clear();
+      syncAimNotice(null);
       return;
     }
     ctx.clearRect(0, 0, w, h);
@@ -8126,6 +8197,7 @@ export function initHud(bus: EventBus): HudRuntime {
       reticlePaint.valid = false;
       hideAerialHitMark();
       sightText.clear();
+      syncAimNotice(null);
       return;
     }
     // (the sight's text runs follow its repaints: a reused frame keeps them, a repaint places them again)
@@ -8134,6 +8206,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (mode === 'sniper' && !aerial) drawScope(aimView);
     drawHitIndicators(lastTimeS);
     if (!aerial) drawReticle(aimView, dt);
+    else syncAimNotice(null);
     if (mode === 'sniper' && !aerial) paintScopeSkeleton(aimView);
     if (aerial) paintAerialHitMark(lastTimeS);
     else { hideAerialHitMark(); drawHitMark(ctx, aimView.cx, aimView.cy, lastTimeS); }

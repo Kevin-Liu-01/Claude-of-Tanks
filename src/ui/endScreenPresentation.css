@@ -117,6 +117,7 @@ body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campa
 /* (the stripe on the living rows alone: it overrode the destroyed rows' tint on every other one, gauntlet r6) */
 body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even):not(.dead,.me){background:var(--fill-faint)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{background:var(--accent-wash);box-shadow:var(--battle-row-me)}
+body[data-cot-width] .cot-es.cot-es--record .es-tr.ridden{box-shadow:var(--ring-3)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:var(--line-2)}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:0;box-shadow:var(--ring-2)}
 /* the wide windows (the direction's 11-end-screen): the player's report and the rosters side by side, each on its plate
@@ -193,6 +194,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:upp
    that much, not padded under, so the head keeps the Latin height: padded, it took 7 px from the report under it, which
    showed a row fewer than en's at 1280x720 and 1024x600 over a row-high empty band, r13) */
 :lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-ban{position:relative;top:-.08em}
+/* (but not beside a watched battle's score, which stays on its words' baseline: lifted alone, ALPHA rode 14 px over the
+   score at 1920, gauntlet r17) */
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record.watched .es-ban{top:0}
 /* (a watched battle's two rosters share the plate's width at every wide window, as at 1920: capped to a reading width
    they stopped short of the plate's edge or left a 470 px channel between them at 2560, gauntlet r8 to r11) */
 body[data-cot-width] .cot-es.cot-es--record.watched .es-rosters{width:100%;box-sizing:border-box}
@@ -218,7 +222,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .end.r-draw .d{background:v
 /* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
    Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
    ink (a kill's silhouette the victim's), and the line ends on the winner's flag. */
-body[data-cot-width] .cot-es.cot-es--record .es-ban.w{display:inline-flex;align-items:center;gap:.16em;text-transform:uppercase}
+/* (its words give the headline its baseline, the flag centred on them: a centred flag first gave the line its foot, and the
+   score beside it sat 2-3 px under the words' baseline, gauntlet r17) */
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w{display:inline-flex;align-items:baseline;gap:.16em;text-transform:uppercase}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w>.fg{align-self:center}
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w .cjk{font-size:.8em}
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w.alpha{color:var(--team-own)}
 body[data-cot-width] .cot-es.cot-es--record .es-ban.w.bravo{color:var(--team-enemy)}
@@ -354,6 +361,14 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 @media(min-width:701px) and (max-width:1279px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:repeat(6,minmax(0,1fr))}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
+}
+/* (but with the room for it, 661 px tall and more, the card leads the tiles over their two rows of three, as on the wide
+   windows: standing down at 900x700 it left the report 144 px empty and the player's tank unnamed, gauntlet r18) */
+@media(min-width:701px) and (max-width:1279px) and (min-height:661px) and (max-height:760px){
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:grid;grid-row:span 2}
+}
+@media(min-width:701px) and (max-width:1279px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
   body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-stat-grid,.es-combat-details,.es-blow){grid-column:1/-1}
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}
