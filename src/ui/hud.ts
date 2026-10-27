@@ -363,6 +363,8 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   id?: string;
   /** tank:spotted: who lit the tank (spotting.ts), when the sim names a spotter. */
   spotterId?: string | null;
+  /** aps:intercept: whose round the struck tank's APS charge met. */
+  shooterId?: string;
   killerId?: string;
   name?: string;
   vehicle?: string;
@@ -383,6 +385,9 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   guided?: boolean;
   readyAt?: number;
   cooldownS?: number;
+  /** A consumable's uses left (null is unlimited); the loadout's item per slot (the catalog, 2026-10-26). */
+  charges?: number | null;
+  items?: readonly string[];
   remainingS?: number;
   targetName?: string;
   by?: string;
@@ -1234,9 +1239,12 @@ import type { IconId } from './icons/icon.ts';
 // the alert band's line is the kit's notice queue (premiere-site's primitive, components/notice.ts)
 import { NoticeQueue, type QueuedToast } from './components/notice.ts';
 import { setAttr, setData, setDisabled, setHidden, setText } from './domWrite.ts';
+import { CONSUMABLE_READY_MARK, cooldownRemaining } from '../game/consumables.ts';
 import {
-  CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
-} from '../game/consumables.ts';
+  BATTLE_CONSUMABLES_EVENT, CONSUMABLE_ICONS, DEFAULT_CONSUMABLE_LOADOUT, consumableNameKey, isConsumableId,
+  type ConsumableId,
+} from '../game/consumableLoadout.ts';
+import { consumableTiming } from '../sim/matchRuleset.ts';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector vehicle-silhouette/arrow language instead (WoT reads shape + heading, not
@@ -1353,31 +1361,12 @@ const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 // as mixed-style clip-art next to the shells). Color lives ONLY in the shell
 // type labels and the selected-slot border.
 const TRAY_INK = 'rgba(238,244,250,0.86)';
-// Consumable name translation table — keeps the authoritative
-// `CONSUMABLE_RULES` in `src/game/consumables.ts` free of UI strings
-// (the sim/network layer must not depend on i18n).
-const CONSUMABLE_LABEL_KEYS: Readonly<Record<string, string>> = {
-  repair: 'hud.consumable.repair',
-  first_aid: 'hud.consumable.firstAid',
-  extinguisher: 'hud.consumable.extinguisher',
-};
-const consumableLabel = (id: string): string =>
-  t(CONSUMABLE_LABEL_KEYS[id] || 'hud.consumable.repair');
-
-const CONSUMABLES = [
-  {
-    key: '4', label: consumableLabel('repair'), count: CONSUMABLE_READY_MARK,
-    svg: uiIconSVG('repair', 20, TRAY_INK),
-  },
-  {
-    key: '5', label: consumableLabel('first_aid'), count: CONSUMABLE_READY_MARK,
-    svg: uiIconSVG('medkit', 20, TRAY_INK),
-  },
-  {
-    key: '6', label: consumableLabel('extinguisher'), count: CONSUMABLE_READY_MARK,
-    svg: uiIconSVG('extinguisher', 20, TRAY_INK),
-  },
-];
+// The consumables (2026-10-26, the catalog: sim/consumableRules.ts): each tile shows its slot's item. The battle
+// announces the player's loadout (BATTLE_CONSUMABLES_EVENT) and the tiles swap their glyph and names; the item ids and
+// their names stay apart, so the sim/network layer never depends on i18n.
+const CONSUMABLE_KEYS = ['4', '5', '6'] as const;
+const consumableLabel = (id: string): string => t(consumableNameKey(id));
+const consumableSvg = (id: ConsumableId): string => uiIconSVG(CONSUMABLE_ICONS[id], 20, TRAY_INK);
 
 // Procedural shell artwork for the ammo slots: one consistent silhouette
 // language across the loadout — every icon is a vertical projectile of the
@@ -2065,6 +2054,8 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-con.sugg:not(.cooling){border-color:var(--accent);}
 .cot-con.cooling{border-color:var(--line-1);cursor:not-allowed;}
 .cot-con.used{opacity:.35;filter:grayscale(1);}
+/* a charged item with no uses left this life (the catalog, 2026-10-26) */
+.cot-con.empty{opacity:.35;filter:grayscale(1);cursor:not-allowed;}
 .cot-con.deny{border-color:var(--danger);animation:cotConDeny var(--dur-screen);}
 @keyframes cotConDeny{0%,100%{transform:translateX(0)}30%{transform:translateX(-2px)}70%{transform:translateX(2px)}}
 @media (prefers-reduced-motion:reduce){.cot-con.deny{animation:none}}
@@ -3069,26 +3060,33 @@ export function initHud(bus: EventBus): HudRuntime {
   const conEls: HTMLButtonElement[] = [];
   const conSlots: RetainedConsumableSlot[] = [];
   const conReadyAt = [0, 0, 0];
-  const conCooldownS = CONSUMABLE_RULES.map((r) => r.cooldownS);
-  for (let i = 0; i < CONSUMABLES.length; i++) {
-    const c = CONSUMABLES[i];
+  const conItems: ConsumableId[] = [...DEFAULT_CONSUMABLE_LOADOUT];
+  const conCooldownS = conItems.map((id) => consumableTiming(id).cooldownS);
+  /** Uses left this life per slot (null is unlimited). */
+  const conCharges: (number | null)[] = conItems.map((id) => consumableTiming(id).charges);
+  const conMark = (i: number): string => conCharges[i] == null ? CONSUMABLE_READY_MARK : String(conCharges[i]);
+  /** A tile's retained slot over its current item (made again when the item changes, so its label memo starts fresh). */
+  const conSlotFor = (i: number, s: HTMLButtonElement): RetainedConsumableSlot => createRetainedConsumableSlot({
+    elements: {
+      button: s,
+      count: requireElement<HTMLElement>(s, '.cnt'),
+      cooldown: requireElement<HTMLElement>(s, '.cool'),
+    },
+    locale: getLocale,
+    readyMark: () => conMark(i),
+    readyLabel: () => t('hud.consumable.ready', { name: consumableLabel(conItems[i]!) }),
+    coolingLabel: (seconds) => t('hud.consumable.cooling', { name: consumableLabel(conItems[i]!), seconds }),
+  });
+  for (let i = 0; i < CONSUMABLE_KEYS.length; i++) {
+    const id = conItems[i]!;
     const s = el('button', 'cot-con', conBox);
     s.type = 'button';
-    s.dataset.tip = c.label;
-    s.setAttribute('aria-label', t('hud.consumable.ready', { name: c.label }));
-    s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
-      `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
-    conSlots.push(createRetainedConsumableSlot({
-      elements: {
-        button: s,
-        count: requireElement<HTMLElement>(s, '.cnt'),
-        cooldown: requireElement<HTMLElement>(s, '.cool'),
-      },
-      locale: getLocale,
-      readyMark: CONSUMABLE_READY_MARK,
-      readyLabel: () => t('hud.consumable.ready', { name: c.label }),
-      coolingLabel: (seconds) => t('hud.consumable.cooling', { name: c.label, seconds }),
-    }));
+    s.dataset.tip = consumableLabel(id);
+    s.dataset.item = id;
+    s.setAttribute('aria-label', t('hud.consumable.ready', { name: consumableLabel(id) }));
+    s.innerHTML = `<div class="key">${CONSUMABLE_KEYS[i]}</div>${consumableSvg(id)}` +
+      `<div class="cnt">${conMark(i)}</div><div class="cool"></div>`;
+    conSlots.push(conSlotFor(i, s));
     const activateConsumable = (event: Event): void => {
       event.preventDefault();
       event.stopPropagation();
@@ -3107,6 +3105,33 @@ export function initHud(bus: EventBus): HudRuntime {
     });
     conEls.push(s);
   }
+
+  /** A slot takes another item: its glyph, names, cooldown and uses (the key cap a rebind set stays). */
+  function setConsumableTile(i: number, id: ConsumableId): void {
+    const s = conEls[i];
+    if (!s) return;
+    conItems[i] = id;
+    const timing = consumableTiming(id);
+    conCooldownS[i] = timing.cooldownS;
+    conCharges[i] = timing.charges;
+    conReadyAt[i] = 0;
+    s.dataset.tip = consumableLabel(id);
+    s.dataset.item = id;
+    const glyph = s.querySelector('svg');
+    const holder = document.createElement('div');
+    holder.innerHTML = consumableSvg(id);
+    if (glyph && holder.firstElementChild) glyph.replaceWith(holder.firstElementChild);
+    s.classList.remove('used', 'deny', 'empty');
+    conSlots[i] = conSlotFor(i, s);
+    conSlots[i]!.render(0, conCooldownS[i]!);
+  }
+  on(BATTLE_CONSUMABLES_EVENT, (payload) => {
+    const items = Array.isArray(payload?.items) ? payload.items : null;
+    if (!items) return;
+    for (let i = 0; i < conEls.length && i < items.length; i++) {
+      if (isConsumableId(items[i])) setConsumableTile(i, items[i]);
+    }
+  });
 
   function updateConsumableCooldowns(timeS: number): void {
     for (let i = 0; i < conSlots.length; i++) {
@@ -3130,9 +3155,14 @@ export function initHud(bus: EventBus): HudRuntime {
       for (const name in combat.crew) if (!combat.crew[name]) { crewDown = true; break; }
       burning = !!combat.fire?.burning;
     }
-    suggestConsumable(0, moduleDown);
-    suggestConsumable(1, crewDown);
-    suggestConsumable(2, burning);
+    // each tile by its item: a repair while a module is out, first aid while a crew member is down, a fire kit while
+    // the tank burns
+    for (let i = 0; i < conItems.length; i++) {
+      const id = conItems[i];
+      suggestConsumable(i, id === 'repair' || id === 'repair_large' ? moduleDown
+        : id === 'first_aid' ? crewDown
+          : id === 'extinguisher' || id === 'fire_suppression' ? burning : false);
+    }
   }
 
   // --- minimap ---
@@ -7660,26 +7690,32 @@ export function initHud(bus: EventBus): HudRuntime {
       : reason === 'MAGAZINE_FULL' ? t('hud.alert.magazineAlreadyFull')
         : t('hud.alert.magazineReloadUnavailable'), { icon: reason === 'MAGAZINE_FULL' ? 'check' : 'clock', tone: 'info' });
   });
-  on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
+  on('ui:consumableUsed', ({ slot, readyAt, cooldownS, charges }) => {
     if (slot == null || readyAt == null || cooldownS == null) return;
     const s = conEls[slot];
     if (!s) return;
     conReadyAt[slot] = readyAt;
     conCooldownS[slot] = cooldownS;
+    if (charges !== undefined) {
+      conCharges[slot] = charges;
+      s.classList.toggle('empty', charges === 0);
+    }
     updateConsumableCooldowns(lastTimeS);
-    const icons = ['repair', 'medkit', 'extinguisher'];
-    showAlert(t('hud.alert.consumableUsed', { name: CONSUMABLES[slot].label }), { icon: icons[slot] || 'check', tone: 'success' });
+    const id = conItems[slot]!;
+    showAlert(t('hud.alert.consumableUsed', { name: consumableLabel(id) }), { icon: CONSUMABLE_ICONS[id], tone: 'success' });
   });
   on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
     if (slot == null) return;
+    const id = conItems[slot] ?? 'repair';
     if (reason === 'NOTHING') {
-      const icons = ['repair', 'medkit', 'extinguisher'];
-      showAlert(t(slot === 2
-        ? 'hud.alert.noFireToExtinguish'
-        : slot === 1
-          ? 'hud.alert.crewUnharmed'
-          : 'hud.alert.nothingToRepair'),
-        { icon: icons[slot] || 'info', tone: 'info' });
+      // what the item had nothing to do for; a timed item already running says it is on
+      const key = id === 'extinguisher' ? 'hud.alert.noFireToExtinguish'
+        : id === 'first_aid' ? 'hud.alert.crewUnharmed'
+          : id === 'repair' || id === 'repair_large' || id === 'track_links' ? 'hud.alert.nothingToRepair'
+            : 'hud.alert.consumableNotNeeded';
+      showAlert(t(key, { name: consumableLabel(id) }), { icon: CONSUMABLE_ICONS[id], tone: 'info' });
+    } else if (reason === 'EMPTY') {
+      showAlert(t('hud.consumable.empty', { name: consumableLabel(id) }), { icon: CONSUMABLE_ICONS[id], tone: 'info' });
     } else if (reason === 'COOLDOWN') {
       showAlert(t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }),
         { icon: 'clock', tone: 'info' });
@@ -7692,12 +7728,21 @@ export function initHud(bus: EventBus): HudRuntime {
   on('ui:consumableReset', () => {
     for (let i = 0; i < conEls.length; i++) {
       conReadyAt[i] = 0;
-      conCooldownS[i] = CONSUMABLE_RULES[i].cooldownS;
+      const timing = consumableTiming(conItems[i]!);
+      conCooldownS[i] = timing.cooldownS;
+      conCharges[i] = timing.charges;
+      conEls[i].classList.remove('empty');
       // Render through the retained slot so its memo cannot diverge from the
       // tray; only the click-feedback classes are outside its ownership.
       conSlots[i].render(0, conCooldownS[i]);
       conEls[i].classList.remove('used', 'deny');
     }
+  });
+  // an APS charge met a round (sim/consumableRules.ts): the crew it saved, or the shooter whose round it stopped
+  on('aps:intercept', ({ id, shooterId }) => {
+    if (playerId == null) return;
+    if (id === playerId) showAlert(t('hud.alert.apsInterceptedOwn'), { icon: CONSUMABLE_ICONS.aps_charge, tone: 'success' });
+    else if (shooterId === playerId) showAlert(t('hud.alert.apsInterceptedShot'), { icon: CONSUMABLE_ICONS.aps_charge });
   });
   // round 30: the armour-overlay key confirms its state the way the auto-aim lock does
   on('ui:armorOverlayState', ({ on }) => {

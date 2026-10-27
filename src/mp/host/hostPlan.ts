@@ -39,7 +39,10 @@ export function planFromMatchStart(matchStart: RoomMatchStartPayload, tankIds: T
   const { seats, bots } = plan as { seats?: unknown; bots?: unknown };
   if (!Array.isArray(seats) || !seats.every(isSeat) || (bots !== undefined && (!Array.isArray(bots) || !bots.every(isBot)))) return null;
   return {
-    seats: seats.map((seat) => ({ ...seat, specId: tankIds.resolveIncoming(seat.specId), equipment: seat.equipment ? [...seat.equipment] : [] })),
+    seats: seats.map((seat) => ({
+      ...seat, specId: tankIds.resolveIncoming(seat.specId), equipment: seat.equipment ? [...seat.equipment] : [],
+      consumables: Array.isArray(seat.consumables) ? [...seat.consumables] : [],
+    })),
     bots: Array.isArray(bots) ? bots.map((bot) => ({ ...bot, specId: tankIds.resolveIncoming(bot.specId) })) : [],
   };
 }
@@ -56,7 +59,10 @@ export function planFromRoom(
     // A room seat's vehicle is this build's id (the MP build gate keeps rooms on one build); an id a rename retired
     // still names its vehicle (SSOT 2.19).
     const specId = player.specId ? tankIds.resolveIncoming(player.specId) : botSpecFallback;
-    seats.push({ seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice() });
+    seats.push({
+      seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice(),
+      consumables: (player.consumables ?? []).slice(),
+    });
   }
   const bots: HostBootBot[] = [];
   // the room's own bot planner with the match seed: the same bots, vehicles and countries the room's planStart froze
@@ -98,7 +104,10 @@ export function planFromRoster(roster: readonly RosterPlanEntry[], room: RoomSna
       continue;
     }
     const player = room?.players.find((candidate) => candidate.id === entry.playerId) ?? null;
-    seats.push({ seat: entry.seat, playerId: entry.playerId, name: entry.name, team, specId: entry.specId, equipment: player ? player.equipment.slice() : [] });
+    seats.push({
+      seat: entry.seat, playerId: entry.playerId, name: entry.name, team, specId: entry.specId,
+      equipment: player ? player.equipment.slice() : [], consumables: player ? (player.consumables ?? []).slice() : [],
+    });
   }
   return { seats, bots };
 }

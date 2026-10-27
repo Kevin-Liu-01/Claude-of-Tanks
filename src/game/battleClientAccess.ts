@@ -35,9 +35,8 @@ export interface BattleClientAccess {
   readonly rulesetUnlimitedFor: typeof rulesetUnlimitedFor;
   readonly isPostwarVehicleEra: RuntimeModule['isPostwarVehicleEra'];
   readonly hasConsumableRule: (slot: number) => boolean;
-  readonly cooldownRemaining: RuntimeModule['cooldownRemaining'];
-  readonly resetConsumableCooldowns: RuntimeModule['resetConsumableCooldowns'];
-  readonly startConsumableCooldown: RuntimeModule['startConsumableCooldown'];
+  /** A slot's item on the page battle's tank (game/soloConsumables.ts). */
+  readonly useSoloConsumable: RuntimeModule['useSoloConsumable'];
   readonly advancePreBattleCountdown: RuntimeModule['advancePreBattleCountdown'];
   readonly resolveVisiblePreBattleSeconds: RuntimeModule['resolveVisiblePreBattleSeconds'];
   readonly advanceTankPresentationPose: RuntimeModule['advanceTankPresentationPose'];
@@ -130,10 +129,8 @@ export function createBattleClientAccess(
     // ... as is the per-entity unlimited-rounds read the shell cards carry (the composition root imports its module)
     rulesetUnlimitedFor,
     isPostwarVehicleEra: (...args) => requireRuntime().isPostwarVehicleEra(...args),
-    hasConsumableRule: (slot) => !!requireRuntime().CONSUMABLE_RULES[slot],
-    cooldownRemaining: (...args) => requireRuntime().cooldownRemaining(...args),
-    resetConsumableCooldowns: (...args) => requireRuntime().resetConsumableCooldowns(...args),
-    startConsumableCooldown: (...args) => requireRuntime().startConsumableCooldown(...args),
+    hasConsumableRule: (slot) => Number.isInteger(slot) && slot >= 0 && slot < requireRuntime().CONSUMABLE_SLOTS,
+    useSoloConsumable: (...args) => requireRuntime().useSoloConsumable(...args),
     advancePreBattleCountdown: (...args) => requireRuntime().advancePreBattleCountdown(...args),
     resolveVisiblePreBattleSeconds: (...args) => requireRuntime().resolveVisiblePreBattleSeconds(...args),
     advanceTankPresentationPose: (...args) => requireRuntime().advanceTankPresentationPose(...args),

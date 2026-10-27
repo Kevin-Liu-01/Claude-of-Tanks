@@ -234,6 +234,7 @@ import type { MatchActor } from './mp/presentation/battlePresentation.ts';
 import type { LobbyIntent } from './mp/session/lobbyIntent.ts';
 import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
+import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -1373,10 +1374,12 @@ const playSurface = createPlaySurfaceRuntime({
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
+        consumables: loadConsumables(garage.getSelected(), consumableSpecFor(getSpec(garage.getSelected()))),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
       getVehicleLoadout: (specId: string) => ({
         equipment: loadSelectedEquipment(specId, getSpec(specId)),
+        consumables: loadConsumables(specId, consumableSpecFor(getSpec(specId))),
         camo: getMultiplayerCamoSelection(specId),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -2235,9 +2238,7 @@ playerBattleActions = createPlayerBattleActions({
     shellAmmunitionCapacity: battleClientAccess.shellAmmunitionCapacity,
     rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor,
     hasConsumableRule: battleClientAccess.hasConsumableRule,
-    cooldownRemaining: battleClientAccess.cooldownRemaining,
-    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
-    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+    useSoloConsumable: battleClientAccess.useSoloConsumable,
     requestTankSelfRight: battleClientAccess.requestTankSelfRight,
     requestTankJump: battleClientAccess.requestTankJump,
   },
@@ -3134,7 +3135,8 @@ function beginSoloOnHost(specId: string | null | undefined, mapId: string | null
   const chosen = specId ?? garage.getSelected();
   return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
     specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-    equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    equipment: loadSelectedEquipment(chosen, getSpec(chosen)),
+    consumables: loadConsumables(chosen, consumableSpecFor(getSpec(chosen))), camo: getMultiplayerCamoSelection(chosen),
   }, beginMultiplayerV2Battle, () => {
     noteSoloAuthority({ authority: 'page', reason: 'fallback' });
     return page();

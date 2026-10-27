@@ -1222,7 +1222,10 @@ export function createBattlePresentation({
 
   function emitLocalPlayerEvent(kind: string, payload: Record<string, RuntimeValue>): void {
     switch (kind) {
-      case 'consumable_used': bus.emit('ui:consumableUsed', { slot: payload.slot, cooldownS: payload.cooldownS, readyAt: payload.readyAt }); break;
+      case 'consumable_used': bus.emit('ui:consumableUsed', {
+        slot: payload.slot, cooldownS: payload.cooldownS, readyAt: payload.readyAt,
+        ...(payload.charges !== undefined ? { charges: payload.charges } : {}), ...(payload.item ? { item: payload.item } : {}),
+      }); break;
       case 'consumable_denied': bus.emit('ui:consumableDenied', { slot: payload.slot, reason: payload.reason, remainingS: payload.remainingS }); break;
       case 'magazine_reload': bus.emit('ui:magazineReloadStarted', {}); break;
       case 'magazine_reload_denied': bus.emit('ui:magazineReloadDenied', { reason: payload.reason }); break;
@@ -1287,6 +1290,18 @@ export function createBattlePresentation({
           shellType: payload.shellType, caliberMm: payload.caliberMm, pos: [payload.x, payload.y, payload.z],
           // the building the authority's round struck (any round: its hole, 2026-10-10)
           ...(typeof payload.structureId === 'number' ? { structureId: payload.structureId } : {}),
+        });
+        return;
+      case 'aps_intercept':
+        // an armed APS charge met the round off the struck hull (sim/consumableRules.ts): its burst there, then the
+        // round's end, as the solo step raises them
+        bus.emit('aps:intercept', {
+          id: payload.id, shooterId: payload.shooterId, shellId: payload.shellId, x: payload.x, y: payload.y, z: payload.z,
+          nx: payload.nx, ny: payload.ny, nz: payload.nz, caliberMm: payload.caliberMm,
+        });
+        bus.emit('shell:expired', {
+          shellId: payload.shellId, shooterId: payload.shooterId, pos: [payload.x, payload.y, payload.z], hitTerrain: false,
+          shellType: payload.shellType, caliberMm: payload.caliberMm,
         });
         return;
       case 'tank_destroyed': {
