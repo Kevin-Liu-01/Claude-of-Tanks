@@ -479,6 +479,39 @@ await withFixture(async (f) => {
   f.restored(true);
 });
 
+// (2026-10-27, the room-stalls lane) an LOD's hidden levels warm too where one brings a depth variant no caster before it
+// has: its casters draw in the batches (the level shown inside each synchronous render only), a level that repeats a
+// warmed variant stays out, and no level reaches the final cascades
+await withFixture(async (f) => {
+  f.addCaster('near', 3);
+  const lod = new THREE.LOD();
+  lod.name = 'tank-lod';
+  f.scene.add(lod);
+  const levels = ['level-near', 'level-cut', 'level-plain'].map((name, index) => {
+    const level = new THREE.Group();
+    level.name = name;
+    lod.addLevel(level, index * 50);
+    return level;
+  });
+  f.addCaster('lod-near', 3, { parent: levels[0] });
+  const cut = f.addCaster('lod-cut', 3, { parent: levels[1] });
+  cut.material.map = new THREE.Texture();
+  cut.material.alphaTest = 0.5;
+  f.addCaster('lod-plain', 3, { parent: levels[2] });
+  levels[1].visible = false;
+  levels[2].visible = false;
+  const visibleAtYield = [];
+  await f.run({ casterWarmup: { maxCastersPerBatch: 8,
+    yieldBeforeBatch() { visibleAtYield.push(levels[1].visible); f.bindingsRestored(); },
+    onBatch() { visibleAtYield.push(levels[1].visible); f.bindingsRestored(); },
+  } });
+  assert.deepEqual(f.cohorts, [['near', 'lod-near'], ['lod-cut'], ['near', 'lod-near'], ['near', 'lod-near']],
+    'the cut-out level warms in its own batch; the plain level repeats a warmed variant; neither reaches a final cascade');
+  assert.ok(visibleAtYield.every((visible) => visible === false), 'the level is hidden at every yield');
+  assert.deepEqual(levels.map((level) => level.visible), [true, false, false]);
+  f.restored(true);
+});
+
 await withFixture(async (f) => {
   f.renderer.shadowMap.type = THREE.VSMShadowMap;
   const parent = f.addCaster('vsm-parent', 3, { receiveShadow: true });
@@ -763,4 +796,4 @@ await withFixture(async (f) => {
   assert.deepEqual(sizes, [3, 2, 1], 'p1-p3 (one new variant), cut and p4 (cut new), disp (new): one new variant a batch');
 }
 
-console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch');
+console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; an LOD\'s hidden levels warm where they bring a new variant');
