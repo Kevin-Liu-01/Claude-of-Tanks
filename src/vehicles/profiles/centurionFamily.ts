@@ -248,7 +248,8 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   }
 }
 
-function buildEngineDeck(P: TankBuilderPort): void {
+function buildEngineDeck(P: TankBuilderPort, m: MarkDesign): void {
+  if (m.idf) { buildAvdsDeck(P); return; }
   const top = ENGINE_DECK_Y;
   // Two armoured radiator louvre fields behind the ring: dark wells under raked slats.
   for (const s of [-1, 1]) {
@@ -276,14 +277,58 @@ function buildEngineDeck(P: TankBuilderPort): void {
   }
 }
 
-function buildRearPlate(P: TankBuilderPort): void {
+/** The Sho't Kal's AVDS-1790-2A conversion: the raised M48-style louvred "humpback" over the new engine compartment,
+ * the rear louvre grille, and an M48-style box air cleaner on each rear guard where the British exhausts were. The
+ * engine deck carries the tow cables. */
+function buildAvdsDeck(P: TankBuilderPort): void {
+  const top = 1.90;
+  // the hump: its raked front rises behind the turret's sweep (the ring's rear reach is z -0.93)
+  P.add('hull', slab(
+    [-1.20, ENGINE_DECK_Y - 0.01, -1.12], [1.20, ENGINE_DECK_Y - 0.01, -1.12], [1.20, ENGINE_DECK_Y - 0.01, -3.36], [-1.20, ENGINE_DECK_Y - 0.01, -3.36],
+    [-1.16, top, -1.42], [1.16, top, -1.42], [1.16, top, -3.30], [-1.16, top, -3.30]));
+  // the rear louvre grille raked down from the hump to the rear plate
+  P.add('hull', slab(
+    [-1.20, 1.70, -3.36], [1.20, 1.70, -3.36], [1.20, 1.70, -3.66], [-1.20, 1.70, -3.66],
+    [-1.16, top, -3.30], [1.16, top, -3.30], [1.16, 1.76, -3.66], [-1.16, 1.76, -3.66]));
+  for (let i = 0; i < 6; i++) {
+    const t = (i + 0.5) / 6, gz = -3.31 - t * 0.34, gy = top - t * 0.14;
+    P.add('hullDark', box(2.20, 0.014, 0.035), 0, gy + 0.008, gz);
+  }
+  // two longitudinal grille doors over the radiators, and the engine access plate between them
   for (const s of [-1, 1]) {
-    // towing hooks and the tail lights
+    P.add('hullDark', box(0.80, 0.012, 1.40), s * 0.62, top + 0.004, -2.30);
+    for (let i = 0; i < 10; i++) P.add('hullDetail', box(0.80, 0.016, 0.04), s * 0.62, top + 0.018, -1.68 - i * 0.137);
+    P.add('hullDetail', box(0.86, 0.03, 0.04), s * 0.62, top + 0.02, -1.58);
+    P.add('hullDetail', box(0.86, 0.03, 0.04), s * 0.62, top + 0.02, -3.02);
+  }
+  P.add('hull', box(0.34, 0.02, 1.50), 0, top + 0.01, -2.30);
+  // the deck's sides step down to the guards where the British louvres were
+  for (const s of [-1, 1]) {
+    // M48-style box air cleaner on the rear guard, its clamped lid and its duct into the deck side
+    P.add('hullDetail', box(0.30, 0.34, 0.78), s * 1.50, GUARD_Y + 0.185, -2.62);
+    P.add('hullDark', box(0.31, 0.012, 0.79), s * 1.50, GUARD_Y + 0.34, -2.62);
+    for (const cz of [-2.40, -2.84]) P.add('hullDark', box(0.04, 0.06, 0.05), s * 1.656, GUARD_Y + 0.28, cz);
+    P.add('hullDark', cylX(0.07, 0.10, 12), s * 1.30, GUARD_Y + 0.26, -2.62);
+    // the tow cable along the deck's edge
+    KIT.towCable(P, [[s * 1.04, top + 0.03, -1.60], [s * 1.06, top + 0.03, -2.40], [s * 1.04, top + 0.03, -3.20]]);
+  }
+}
+
+function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
+  for (const s of [-1, 1]) {
+    // towing hooks; the British tail lights, or the Sho't's US-pattern lights in their round guards
     P.add('hullDetail', box(0.14, 0.18, 0.12), s * 0.62, 0.95, REAR_Z - 0.04);
     P.add('hullDark', xform(torus(0.055, 0.017, 10, 6), 0, 0, 0, 0, 0, Math.PI / 2), s * 0.62, 0.86, REAR_Z - 0.045);
-    P.add('hullDetail', box(0.12, 0.08, 0.05), s * 1.18, 1.56, REAR_Z - 0.02);
-    P.add('hullGlass', box(0.08, 0.04, 0.012), s * 1.18, 1.56, REAR_Z - 0.036);
-    KIT.spareTrackStrip(P, 'hull', s * 0.86, 1.26, REAR_Z - 0.035, 2, Math.PI / 2);
+    if (m.idf) {
+      P.add('hullDetail', box(0.16, 0.12, 0.05), s * 1.18, 1.56, REAR_Z - 0.02);
+      P.add('hullGlass', box(0.10, 0.04, 0.012), s * 1.18, 1.58, REAR_Z - 0.036);
+      P.add('hullDark', xform(cylZ(0.09, 0.07, 14), 0, 0, 0, 0, 0, 0), s * 1.18, 1.56, REAR_Z - 0.035);
+      KIT.spareTrackStrip(P, 'hull', s * 0.70, 1.30, REAR_Z - 0.035, 3, Math.PI / 2);
+    } else {
+      P.add('hullDetail', box(0.12, 0.08, 0.05), s * 1.18, 1.56, REAR_Z - 0.02);
+      P.add('hullGlass', box(0.08, 0.04, 0.012), s * 1.18, 1.56, REAR_Z - 0.036);
+      KIT.spareTrackStrip(P, 'hull', s * 0.86, 1.26, REAR_Z - 0.035, 2, Math.PI / 2);
+    }
   }
   // infantry telephone box on the right rear
   P.add('hullDetail', box(0.22, 0.26, 0.10), -0.30, 1.38, REAR_Z - 0.05);
@@ -575,8 +620,8 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   buildRunningGear(P);
   yield 'centurionRunningGear';
   buildGlacisAndNose(P, m);
-  buildEngineDeck(P);
-  buildRearPlate(P);
+  buildEngineDeck(P, m);
+  buildRearPlate(P, m);
   yield 'centurionHullFittings';
   P.turretG.position.set(0, RING.y, RING.z);
   P.gunG.position.set(0, TRUNNION.y, TRUNNION.z);
@@ -594,7 +639,13 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     gunPivotLocal: [0, TRUNNION.y, TRUNNION.z],
     movingHousingBuckets: ['gunMount', 'gunMountDark', 'gunMountCloth'],
   };
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.52, 0.48, -0.30], -Math.PI / 2);
+  if (m.idf) {
+    // the company chevron, point down, on each middle side plate; the tank's number on the basket's sides
+    P.decal('hull', 'number', 'V', 0.55, [SKIRT.outer + 0.004, 1.10, -0.30], Math.PI / 2);
+    P.decal('hull', 'number', 'V', 0.55, [-SKIRT.outer - 0.004, 1.10, -0.30], -Math.PI / 2);
+  } else {
+    P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.52, 0.48, -0.30], -Math.PI / 2);
+  }
   P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [1.68, 1.08, 1.40], Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-1.68, 1.08, 1.40], -Math.PI / 2);
   P.topY = 1.0;

@@ -119,8 +119,8 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  */
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
- * digital came with that tank (2026-10-21). */
-const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
+ * digital came with that tank (2026-10-21), the Sho't Kal's 1973 Sinai grey with that tank (release 262). */
+const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_shot_kal'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
@@ -795,6 +795,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz100_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // release 262: the Sho't Kal wears the IDF's 1973 Sinai grey as it came (shotKalSpecs.ts)
+  shot_kal: 'paint_shot_kal',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

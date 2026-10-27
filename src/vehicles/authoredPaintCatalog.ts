@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 21 entries over 80 vehicles.
+// 22 entries over 81 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -20,6 +20,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_object695_x',
   'paint_pl_t80u_modern',
   'paint_ru_t80u_modern',
+  'paint_shot_kal',
   'paint_strv81',
   'paint_t72b3m',
   'paint_t90ms',
@@ -59,6 +60,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_object695_x',lead: 'object695',sourceTankIds: ['object695'],nation: 'Russia',label: 'Russian Digital Woodland III',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#4f5a44',weather: '#5c6647',patches: ['#7d8664','#33402c','#6f7570'],camoScale: 0.34}},
   {id: 'paint_pl_t80u_modern',lead: 't80u_husarz',sourceTankIds: ['t80u_husarz','t72b3m_wilk','t72b3_zubr','t72b3_zubr_ii'],nation: 'Poland',label: 'Polish Three-Tone Woodland',tags: ['pl','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4a563b',weather: '#4a5c42',patches: ['#29342d','#827458']}},
   {id: 'paint_ru_t80u_modern',lead: 't80u_bars_m',sourceTankIds: ['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m'],nation: 'Russia',label: 'Russian Woodland',tags: ['ru','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#586145',weather: '#4a5c42',patches: ['#29342d','#827458']}},
+  {id: 'paint_shot_kal',lead: 'shot_kal',sourceTankIds: ['shot_kal'],nation: 'Israel',label: 'IDF Plain Khaki',tags: ['il','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#8c8670',weather: '#9a9480',patches: []}},
   {id: 'paint_strv81',lead: 'strv81',sourceTankIds: ['strv81'],nation: 'Sweden',label: 'Swedish Woodland',tags: ['se','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#39483b',weather: '#4f5948',patches: ['#263129','#62634a','#74664c'],camoScale: 0.55}},
   {id: 'paint_t72b3m',lead: 't72b3m_2022',sourceTankIds: ['t72b3m_2022','t72b3m_2016'],nation: 'Russia',label: 'Russian Plain Deep Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#293a28',weather: '#2e422d',patches: [],solidWeatheringIntensity: 0.03}},
   {id: 'paint_t90ms',lead: 't90ms_2011',sourceTankIds: ['t90ms_2011','t90ms_tagil'],nation: 'USSR/Russia',label: 'Russian Plain Brown',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#6a6047',weather: '#75694e',patches: []}},

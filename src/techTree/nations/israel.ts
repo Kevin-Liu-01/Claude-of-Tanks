@@ -38,5 +38,7 @@ export const ISRAEL_TREE: NationTree = Object.freeze({
     node({ id: 'namer_ifv', tier: 4, line: 'namer', lane: 0, parents: ['merkava2b'], slot: 'line' }),
     // Special
     node({ id: 'sabra_mk2', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 262: the IDF's Centurion of 1973, beside the Sabra (both foreign hulls in IDF service)
+    node({ id: 'shot_kal', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });
