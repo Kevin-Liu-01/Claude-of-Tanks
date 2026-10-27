@@ -3,7 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
   type PlanRect,
 } from './mouseNoticePlan.ts';
-import { addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
@@ -186,6 +186,10 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
   '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-pips.show', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.cot-battle-notices .cot-aim-notice', '.flight-identity',
   '.cot-ear'].join(',');
+/** What the world plates keep clear of besides that furniture (sightFurniture.ts plateObstacles): Watch's and the
+ *  spectator's bars, the network strip; and the kill feed's rows, which give way to the target plate (FEED_ROWS). */
+const PLATE_OBSTACLES = '.cot-watch:not([hidden]),.cot-spec,.cot-mp-status.battle';
+const FEED_ROWS = '.cot-kill-lane .cot-kf:not(.out)';
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
@@ -571,6 +575,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (ribbon.classList.contains('yield') !== meets) ribbon.classList.toggle('yield', meets);
   }
+  /** The range that measures a feed row's copy (publishSightFurniture), made once (none in a stub document). */
+  let plateRange: Range | null = null;
   /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, on a touch layout the
    *  sixth-sense notice its seated warning chip yields to, and on either the centre notices the scope's arms end short of. */
   function publishSightFurniture(touch: boolean): void {
@@ -582,6 +588,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // the scope's line ended 5 px over the second FIRE's ring at 320x568, gauntlet r14)
       const pad = node.matches?.('.cot-touch.on .round') ? ROUND_CONTROL_PAD : 0;
       addSightFurniture(box.left - pad, box.top - pad, box.right + pad, box.bottom + pad);
+    }
+    for (const node of document.querySelectorAll(PLATE_OBSTACLES)) {
+      const box = shownBox(node);
+      if (box) addPlateObstacle(box.left, box.top, box.right, box.bottom);
+    }
+    // (each row by its copy's extent, not the lane-wide row box; a row standing aside for the target plate is laid out
+    // still, and is published as it is)
+    for (const node of document.querySelectorAll(FEED_ROWS)) {
+      if (!node.getClientRects().length) continue;
+      plateRange ??= typeof document.createRange === 'function' ? document.createRange() : null;
+      plateRange?.selectNodeContents(node);
+      const box = plateRange ? plateRange.getBoundingClientRect() : node.getBoundingClientRect();
+      addPlateObstacle(box.left, box.top, box.right, box.bottom, true, node);
     }
     // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
     // land on any frame of that, its first included; r10e)
