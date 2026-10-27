@@ -517,9 +517,10 @@
       transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate calc(var(--dur-stage)*2) ease-in-out infinite; }
-    /* the prompt's key is the kit's key cap (components.css .cot-c-kbd), drawn here so the boot loads no kit */
+    /* the prompt's key is the kit's key cap (components.css .cot-c-kbd), drawn here so the boot loads no kit; set in the
+       sentence, the cap's text stands on the sentence's baseline (an inline flex box's own), not its box's middle (boot r28) */
     .cot-boot-key {
-      display: inline-flex; align-items: center; height: 22px; margin-inline: 4px; padding: 0 6px; vertical-align: middle;
+      display: inline-flex; align-items: center; height: 22px; margin-inline: 4px; padding: 0 6px;
       border-radius: var(--control-radius); box-shadow: var(--ring-3);
       font: 500 max(var(--fs-floor-11), var(--fs-11))/1 var(--font-data); color: var(--ink-1);
     }

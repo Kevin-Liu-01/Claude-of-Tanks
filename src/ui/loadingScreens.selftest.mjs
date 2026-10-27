@@ -177,6 +177,8 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   // boot r27: under the 2560 card's 1.3 zoom a 4 px gap is 5.2 and snaps to 5 and 6; the zoomed gap is a whole 5 px
   assert.match(bootHtml, /zoom: 1\.3;[\s\S]{0,400}\.cot-boot-segs \{ gap: calc\(5px \/ 1\.3\); \}/,
     'the zoomed stage row keeps one gap');
+  // boot r28: centred as a box, the key cap's text sat 1 px off the prompt's baseline (en above, zh below)
+  assert.doesNotMatch(bootHtml, /\.cot-boot-key \{[^}]*vertical-align/, 'the key cap\'s text stands on the prompt\'s baseline');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
