@@ -264,10 +264,22 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
   const pose = {
     pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
   };
-  const headOn = traceTank(new Vector3(0, 0.9, 10), new Vector3(0, 0.9, -10),
+  // 259: centre mass is the hull's own, the middle of its closed shell's height (the generic wedge's 0.9 m grazed the
+  // 103A's beak underside once its measured loft raised the beak to 1.26-1.50 m), and the wedge is the first plate met.
+  // Until 259 the fixed gun was hull shell: the barrel was plated as glacis to the muzzle, the zones were stretched to
+  // it, and the 103A's nose took a 1 cm sliver and side-armour faces (it met the wedge only through a gap mid-hull).
+  const shell = spec.armor.collisionShells.hull;
+  const shellY = shell.flatMap((cell) => [cell.min[1], cell.max[1]]);
+  const centreY = (Math.min(...shellY) + Math.max(...shellY)) / 2;
+  const headOn = traceTank(new Vector3(0, centreY, 10), new Vector3(0, centreY, -10),
     pose, spec.armor);
-  assert.ok(headOn.some((hit) => hit.kind === 'plate' && hit.plate.name === 'upper_glacis'),
-    `${id}: center-mass shot meets the visible wedge`);
+  assert.equal(headOn.find((hit) => hit.kind === 'plate')?.plate.name, 'upper_glacis',
+    `${id}: center-mass shot meets the visible wedge first`);
+  const noseZ = Math.max(...shell.map((cell) => cell.max[2]));
+  const gunY = spec.armor.gunPivot[1];
+  assert.deepEqual(traceTank(new Vector3(-4, gunY, noseZ + 0.6), new Vector3(4, gunY, noseZ + 0.6), pose, spec.armor)
+    .filter((hit) => hit.kind === 'plate').map((hit) => hit.plate.name), [],
+  `${id}: the fixed gun ahead of the nose is the gun, not hull armour`);
   const side = traceTank(new Vector3(6, 0.95, 0), new Vector3(-6, 0.95, 0),
     pose, spec.armor);
   const sideArmor = side.find((hit) => hit.kind === 'plate'

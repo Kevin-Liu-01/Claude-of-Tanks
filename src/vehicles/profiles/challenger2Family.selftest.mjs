@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { authoringRigSpec } from '../combatGunRigSeat.ts';
 
 function make(id) {
   return createTank(id, null, {
@@ -38,12 +39,14 @@ for (const id of ['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2']) {
   close(squash[0], 1.10, `${id} turret width scale`);
   close(squash[1], 1.54, `${id} enlarged turret height with authored shaping`);
   close(squash[2], 1.10, `${id} turret length scale`);
-  close(turret.position.x, spec.armor.turretPivot[0] * 1.10,
-    `${id} turret pivot x`);
-  close(turret.position.y, spec.armor.turretPivot[1] * 1.10,
-    `${id} turret pivot y`);
-  close(turret.position.z, spec.armor.turretPivot[2] * 1.10,
-    `${id} turret pivot z`);
+  // 230: the builder seats rig_turret at the profile's authored pivot times the family scale; the combat-rig table
+  // (combatGunRigs.generated.ts) then seats the combat pivot where rig_turret is drawn, already in the 1.10 frame, so the
+  // spec's pivot is that seat with no second 1.10
+  const authored = authoringRigSpec(spec).armor.turretPivot;
+  for (const [axis, name] of [[0, 'x'], [1, 'y'], [2, 'z']]) {
+    close(turret.position.getComponent(axis), authored[axis] * 1.10, `${id} turret pivot ${name} (authored, scaled)`);
+    close(spec.armor.turretPivot[axis], turret.position.getComponent(axis), `${id} combat turret pivot ${name} (drawn seat)`);
+  }
 }
 
 for (const id of ['fv4034', 'challenger2e', 'ua_challenger2']) {

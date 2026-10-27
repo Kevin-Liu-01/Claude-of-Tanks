@@ -51,8 +51,9 @@ for(const quality of['high','low']){
   assert.ok(gear.length>8);assert.equal(geometryBytes(tank.root,gear),geometryBytes(donor.root,gear),'complete native donor wheels/rollers/links retain buffers and instances');
   for(const name of['rig_hull','rig_turret','rig_gun','rig_recoil'])assert.deepEqual(tank.root.getObjectByName(name).matrixWorld.elements,donor.root.getObjectByName(name).matrixWorld.elements,name+' stays in donor frame');
   const spec=getSpec('pt91m');assert.equal(spec.variantOf,'t72bu');assert.equal(spec.gun.caliberMm,125);
-  assert.deepEqual(spec.armor.turretPivot,[...DATUMS.turretPivot]);
-  near(spec.armor.gunBarrel.lengthM,DATUMS.muzzleZ-DATUMS.trunnion[2]);
+  // 230: the combat-rig table seats the pivot where rig_turret is drawn, rounded to nine places (combatGunRigs.generated.ts)
+  DATUMS.turretPivot.forEach((v,i)=>near(spec.armor.turretPivot[i],v,1e-6,'turret pivot'));
+  near(spec.armor.gunBarrel.lengthM,DATUMS.muzzleZ-DATUMS.trunnion[2],1e-4,'barrel length (the row keeps four places)');
   const turret=tank.root.getObjectByName('rig_turret'),seats=turret.userData.pt91mEraSeats;
   assert.equal(seats.filter(s=>s.owner==='turret').length,30,'three courses of flat cheek cassettes');
   assert.equal(seats.filter(s=>s.owner==='hull').length,32,'complete refitted field on the glacis, clear of raised fender crowns');
