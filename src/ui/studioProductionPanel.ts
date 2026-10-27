@@ -348,7 +348,10 @@ export function mountStudioProductionPanel(
     box.append(glyph, body);
     takesStatus.replaceChildren(box);
   }
+  /** A battlefield's name in the reader's language (the catalog's map.<id>; the Studio's own name where it has none). */
   function mapName(id: string): string {
+    const key = `map.${id}`;
+    if (t(key) !== key) return t(key);
     try { return S.getMapInfo(id).name; } catch (_) { return id; }
   }
   /** A template on the shelf: its still with its length on the corner, its name under it; a press stages it. */

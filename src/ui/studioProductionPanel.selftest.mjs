@@ -167,7 +167,7 @@ assert.deepEqual(shelf.children.map(card => card.dataset.productionPreset ?? car
   'the shelf lays out the sequences, then the filmed scenes; every tank\'s take waits in the browser');
 const streetTake = byData('siteTake', 's01-street');
 assert.ok(streetTake.children.some(child => child.textContent === 'Street push'), 'a card carries the take\'s short title');
-assert.ok(streetTake.children.some(child => child.textContent === 'urban'), 'and its map');
+assert.ok(streetTake.children.some(child => child.textContent === t('map.urban')), 'and its map, in the reader\'s language');
 assert.ok(byData('productionPreset', 'two').children.some(child => child.textContent === t('studio.ws.seconds', { s: '15' })), 'a sequence card carries its length');
 streetTake.fire('click'); await tick(); await tick();
 assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s01-street.scene.json', 'a card fetches its own scene');
