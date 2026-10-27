@@ -84,6 +84,14 @@ interface CapabilityProbeHost {
   storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void } | null;
   /** Start and stop a trivial worker; throw or return false when workers are blocked. */
   probeWorker(): boolean;
+  /**
+   * (2026-10-26, the boot ABBA) Run probeWorker later: after the boot screen's first paint, in an idle slot. Its blob
+   * worker blocked the boot screen 0.14–0.84 s under load. With it, the probe answers from hasWorkerApi and a refused
+   * worker adds its notice when the check runs; absent, probeWorker runs inline.
+   */
+  deferWorkerProbe?(check: () => void): void;
+  /** The Worker constructor exists (the inline answer while the start check waits). */
+  hasWorkerApi?(): boolean;
   /** Part of the cached verdict's key; absent means the verdict is never cached. */
   userAgent?: string;
   /** Wall clock for the record's age (ms). */
@@ -223,6 +231,10 @@ function probeStorage(storage: CapabilityProbeHost['storage']): boolean {
   }
 }
 
+function workerStarts(host: CapabilityProbeHost): boolean {
+  try { return host.probeWorker() === true; } catch (_) { return false; }
+}
+
 /** Ask a throwaway WebGL2 context and the host what this browser can do. */
 export function probeCapabilities(host: CapabilityProbeHost): CapabilityProbe {
   const probe: CapabilityProbe = {
@@ -230,7 +242,8 @@ export function probeCapabilities(host: CapabilityProbeHost): CapabilityProbe {
     maxTextureUnits: 0, maxTextureSize: 0, vertexTextureUnits: 0, colorBufferFloat: false,
     storage: probeStorage(host.storage), worker: false, memoryClass: classifyMemory(host.deviceMemory),
   };
-  try { probe.worker = host.probeWorker() === true; } catch (_) { probe.worker = false; }
+  if (host.deferWorkerProbe) probe.worker = host.hasWorkerApi?.() === true;
+  else probe.worker = workerStarts(host);
   let gl: ProbeCanvasContext | null = null;
   try {
     const canvas = host.createCanvas();
@@ -400,6 +413,17 @@ export function runBootCapabilityGate(options: BootCapabilityGateOptions): Promi
     probe, verdict, source: cached ? 'cache' : 'probe',
     confirm: (gl) => confirmBootCapability(result, gl, options).then((next) => Object.assign(result, next)),
   };
+  if (!cached && probe.worker && host.deferWorkerProbe) {
+    // the start check after the first paint: a refused worker adds its notice and drops any record confirm wrote, so
+    // the next boot checks again (result.probe: confirm may have replaced it with the real context's)
+    host.deferWorkerProbe(() => {
+      if (workerStarts(host) || !result.probe.worker) return;
+      result.probe.worker = false;
+      result.verdict = evaluateCapabilityGate(result.probe, options.translate, options.requiredTextureUnits);
+      presentCapabilityVerdict(result.verdict, options.screen, options.reload);
+      clearCachedCapability(host.storage);
+    });
+  }
   return Promise.resolve(result);
 }
 
@@ -461,7 +485,7 @@ export function capabilityProbeForced(search: string): boolean {
   try { return new URLSearchParams(search || '').get('gate')?.toLowerCase() === 'fresh'; } catch (_) { return false; }
 }
 
-/** The browser host: a detached canvas, navigator memory, localStorage and a blob worker. */
+/** The browser host: a detached canvas, navigator memory, localStorage and a blob worker started after the first paint. */
 export function browserCapabilityHost(): CapabilityProbeHost {
   return {
     createCanvas: () => document.createElement('canvas'),
@@ -479,6 +503,16 @@ export function browserCapabilityHost(): CapabilityProbeHost {
       } finally {
         URL.revokeObjectURL(url);
       }
+    },
+    hasWorkerApi: () => typeof Worker === 'function',
+    // a frame, then an idle slot (at most 2 s on): never ahead of the boot screen's first paint
+    deferWorkerProbe: (check) => {
+      const idle = (): void => {
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(() => check(), { timeout: 2000 });
+        else setTimeout(check, 0);
+      };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => { setTimeout(idle, 0); });
+      else setTimeout(idle, 0);
     },
   };
 }
