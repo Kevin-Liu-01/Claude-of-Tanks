@@ -1,13 +1,13 @@
 // The Deploy screen's objective map (brand-ui 242; the Premiere direction's 04-deploy page, its .bfield .mm). Copyright ©
 // 2026 Kevin B. Liu.
 // The chosen battlefield's opening objectives for the chosen mode (spawns, capture zones, flag bases, frontline sectors,
-// goals), baked by tools/deploy-objectives-bake.mjs into public/minimaps/objectives.json through the battle's own
+// goals, the range's lanes), baked by tools/deploy-objectives-bake.mjs into public/minimaps/objectives.json through the battle's own
 // placement and controller, drawn over its tactical map through the HUD's derivation and glyphs. Standard places no
 // objective: its map shows the two spawns. A mode the bake leaves out shows the bare map.
 import { objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  badgeLetter, badgeLetterFont, drawBallGlyph, drawGoalGlyph, drawHexBadge, drawPennant, drawSpawnGlyph, OBJECTIVE_PALETTE,
-  sideColor, sideFill, type GlyphLetter,
+  badgeLetter, badgeLetterFont, drawBallGlyph, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawSpawnGlyph, laneLetter,
+  OBJECTIVE_PALETTE, sideColor, sideFill, type GlyphLetter,
 } from './objectiveGlyphs.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { projectWorldToMinimap } from './minimapOrientation.ts';
@@ -93,6 +93,17 @@ function paintMarkers(ctx: CanvasRenderingContext2D, width: number, height: numb
       case 'flagBase': drawPennant(ctx, x, y, r * 1.6, color); break;
       case 'goal': drawGoalGlyph(ctx, x, y, r * 0.8, color, fill); break;
       case 'ball': drawBallGlyph(ctx, x, y, r * 0.5); break;
+      // the range's lanes: each a numbered target board on its mark (the proving ground)
+      case 'lane':
+        drawLaneGlyph(ctx, x, y, r * 0.8);
+        if (layer && marker.label) {
+          laneLetter(x, y, r * 0.8, letter);
+          letterStyle.font = badgeLetterFont(Math.max(11, letter.px)); // (the 11 px floor)
+          letterStyle.color = letter.color;
+          letterStyle.haloWidth = letter.halo;
+          layer.place(slot++, marker.label, letter.x, letter.y, letterStyle);
+        }
+        break;
       default: break;
     }
   }

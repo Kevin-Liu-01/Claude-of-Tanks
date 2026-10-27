@@ -21,6 +21,10 @@ assert.match(garageTs, /createPickerMenu\(requiredElement<HTMLElement>\(hosts, '
 assert.match(garageTs, /createPickerMenu\(requiredElement<HTMLElement>\(hosts, '\[data-quick-field\]'\), \{\s*id: 'garage-quick-battlefield',[\s\S]*?layout: 'cards'/,
   'the battlefields open on the kit picker menu');
 assert.match(garageTs, /field\.open\(quickBtn\)/, 'a mode chosen, the battlefield menu follows from the same control');
+// a mode on one battlefield (the range, sim/matchRuleset.ts rulesetBattlefield) has no battlefield to offer next: the
+// control closes on the mode (owner 2026-10-26: "make proving grround into a mode")
+assert.match(garageTs, /if \(rulesetBattlefield\(battleGameMode\) != null\) return;\s*field\.setValue\(selectedMapId\);\s*field\.open\(quickBtn\);/,
+  'a mode on one battlefield closes the control instead of offering battlefields it ignores');
 assert.match(garageTs, /quickMenus\.mode\.open\(quickBtn\)/, 'the menus are anchored to the control');
 assert.match(garageTs, /const cards = \(\): import\('\.\/battlefieldPicker\.ts'\)\.BattlefieldCard\[\] => battlefieldCards\(battlefieldFacts\);/,
   "the Deploy screen's picker and the quick menu read one set of battlefield cards");

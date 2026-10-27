@@ -241,9 +241,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
    abutted the words beside it and stood past the column); a token moves to the next line whole and wraps inside only
    when it is wider than the column */
 .dm-article code{display:inline-block;max-width:100%;overflow-wrap:anywhere;vertical-align:baseline;font-family:var(--font-data);font-size:max(var(--fs-floor-12),var(--fs-14));font-weight:400;color:inherit}
-/* a way-in card's command takes its own line: inline, the unbreakable command left a short first line and split the
-   words after it */
-.dm-roles--ways code{display:block;width:fit-content}
+/* a way-in card's command flows in its sentence as the other chapters' code does, moving to the next line whole only
+   when it does not fit (set as its own block it left the line before it short, r34) */
+.dm-roles--ways p{text-wrap:pretty}
 /* a figure's frame is drawn inside its box, so the figure ends on the block edge with the tables and cards */
 .dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1-flush)}
 .dm-section .topic-figure img{display:block;width:100%;height:auto}
@@ -333,11 +333,19 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-screen figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:var(--s3) var(--s2);border-top:1px solid var(--line);background:var(--surface-raised)}
 .filming-screen figcaption span{display:grid;gap:3px}
 .filming-screen figcaption strong{font-size:max(var(--fs-floor-11),var(--fs-11))}
-.filming-screen figcaption small{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-screen figcaption>b{color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);white-space:nowrap}
 /* the stages and the takes are the kit's pickers (cards): six stages a row under the screen, four takes a row under the story */
 .filming-stage-bar{margin:var(--s3) 0}
 .filming-stage-bar .cot-c-picker__grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+/* a stage's two facts stack a line each and wrap at whole words: six cards a row left one line a word of each (r33);
+   a take's name breaks at its spaces in zh, never inside a word (纵队) */
+.filming-stage-bar .cot-c-picker__facts{flex-direction:column}
+/* stacked, the facts need no separator between them (a "·" opened the second line, r34); a size stays one value
+   (1920 × 1080 holds no-break spaces in the catalogs) */
+.filming-stage-bar .cot-c-picker__facts span+span::before{content:none}
+.filming-stage-bar .cot-c-picker__facts>span{white-space:normal;overflow:visible;text-wrap:pretty}
+.filming-take-grid .cot-c-picker__name{text-wrap:pretty}
+:lang(zh-CN) :is(.filming-stage-bar .cot-c-picker__facts>span,.filming-take-grid .cot-c-picker__name){word-break:keep-all;overflow-wrap:anywhere}
 .filming-stage-note{min-height:3.3em;max-width:76ch;margin:14px 0 0;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
 .filming-frames{margin:16px 0 0;background:var(--surface-scene);box-shadow:var(--e2-flush)}
 .filming-frame-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
@@ -351,7 +359,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-take-story .filming-take-meta{margin:var(--s2) 0 0;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-take-story p[data-filming-take-story]{max-width:76ch;margin:12px 0 0;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.65}
 .filming-take-scene{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
-.filming-take-grid{margin-top:var(--s5)}
+/* the takes stand 12 px under the take's panel, with the grid's own 4 px: they continue it, as a picker's cards stand under its field */
+.filming-take-grid{margin-top:var(--s2)}
 .filming-take-grid .cot-c-picker__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .filming-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
 .filming-numbers div{min-width:0;padding:16px 14px;background:var(--surface-raised)}
