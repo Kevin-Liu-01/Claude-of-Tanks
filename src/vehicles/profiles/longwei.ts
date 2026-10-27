@@ -41,17 +41,18 @@ const GUN_LENGTH = 6.454;
 /** Turret roof (turret-local): 0.78 m over the ring plane, 2.35 m over the ground (the 99A's published 2.37 m). */
 const ROOF_Y = 0.78;
 /** The arrowhead cheeks: their throat walls stand at |x| 0.30 and run 0.85 m back; the front line sweeps from the tip
- * at z 1.45 back to 0.72 at the outer corner (|x| 1.42), and the face leans back 0.08 m over its height. */
+ * at z 1.55 (0.41 m ahead of the mantlet's face) back to 0.72 at the outer corner (|x| 1.42), and the face leans back
+ * 0.08 m over its height. */
 const THROAT_X = 0.30;
 const CHEEK_OUTER_X = 1.42;
-const CHEEK_TIP_Z = 1.45;
-const CHEEK_SWEEP = (1.45 - 0.72) / (1.42 - 0.30);
+const CHEEK_TIP_Z = 1.55;
+const CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
 const CHEEK_DEPTH = 0.85;
 /** The top face falls from the roof line 0.40 m behind the front edge. */
 const CHEEK_TOP_RUN = 0.40;
 const CHEEK_LEAN = 0.08;
-const CHEEK_BOTTOM_Y = 0.05;
-const CHEEK_FRONT_TOP_Y = 0.54;
+const CHEEK_BOTTOM_Y = 0.02;
+const CHEEK_FRONT_TOP_Y = 0.44;
 /** The brow over the gun throat: its underside clears the mantlet's top corner at full elevation. */
 const BROW_UNDER_Y = 0.70;
 const MANTLET_HALF_W = 0.25;
@@ -157,11 +158,18 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
       [s * 1.08, 1.50, 3.10], [s * 1.70, 1.50, 2.96], [s * 1.70, 1.48, 2.86], [s * 1.08, 1.48, 3.00],
       [s * 1.08, 1.57, 3.02], [s * 1.70, 1.57, 2.90], [s * 1.70, 1.52, 2.82], [s * 1.08, 1.52, 2.94]));
   }
-  // ---- front mudguards + flaps ----
+  // ---- front fenders (release 262: the 99A's solid rounded boxes over the idlers) + flaps ----
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.68, 0.035, 0.30), s * 1.47, 1.455, 3.40);
-    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);
-    P.add('hullDetail', box(0.12, 0.135, 0.20), s * 1.78, 1.3725, 3.43);       // hanger bracket into the fender nose
+    const x0 = 1.13, x1 = 1.85, r = 0.06;
+    const section = (lo: number, hi: number): SectionPoint[] => {
+      const pts: SectionPoint[] = [[x0, lo], [x1, lo]];
+      for (let i = 0; i <= 3; i++) { const a = (i / 3) * Math.PI / 2; pts.push([x1 - r + Math.cos(a) * r, hi - r + Math.sin(a) * r]); }
+      pts.push([x0, hi]);
+      return s > 0 ? pts : mirrorRing(pts);
+    };
+    P.add('hull', sectionSolid([[2.95, 1.30, 1.485], [3.30, 1.30, 1.485], [3.42, 1.285, 1.45], [3.50, 1.27, 1.38]]
+      .map(([z, lo, hi]) => ({ z, ring: section(lo, hi) }))));
+    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.30, 0.028), s * 1.47, 1.11, 3.49);
   }
   // ---- stern: split transom (the low service face between the track lanes, outboard shoulders over the shoes) ----
   P.add('hull', box(2.16, 0.86, 0.10), 0, 1.34, -3.47);
@@ -290,11 +298,13 @@ function addSkirts(P: TankBuilderPort): void {
       const bottom = (z: number): number => {
         if (i === 0 && z > 2.85) return 0.62 + (z - 2.85) / (z1 - 2.85) * 0.36;
         const t = (z - z0) / (z1 - z0);
-        return 0.62 + 0.09 * Math.sin(Math.PI * t);
+        return 0.60 + 0.15 * Math.sin(Math.PI * t);
       };
       const zs = Array.from({ length: 7 }, (_, k) => z0 + (z1 - z0) * k / 6);
       if (i === 0) zs.splice(zs.findIndex((z) => z > 2.85), 0, 2.85);
       P.add('hull', sectionSolid(zs.map((z) => ({ z, ring: ring(panelIn, panelOut, bottom(z), 1.235) }))));
+      // the joint behind each panel: a dark seam strip on the band
+      if (i > 0) P.add('hullDark', KIT.box(0.006, 1.235 - 0.60, 0.014), side * (panelOut + 0.001), (1.235 + 0.60) / 2, front);
       // two small access holes per panel
       for (const f of [0.30, 0.70]) {
         const z = z0 + (z1 - z0) * f;
@@ -345,28 +355,33 @@ function addSternBin(P: TankBuilderPort): void {
 }
 
 /**
- * A bolted towing beam across the 62-degree nose plate (y 0.70 at z 3.30 to 1.215 at 3.02), 0.30 m down from the
- * nose break: a 0.14 m deep, 0.06 m proud bevelled section bedded 8 mm into the plate, from |x| 0.98, with eight bolt
- * heads and a towing eye on a lug at each end. It breaks the tall nose into two courses; the gun at -7 degrees passes
- * 0.35 m over it.
+ * A slim bolted towing bar across the 62-degree nose plate (y 0.70 at z 3.30 to 1.215 at 3.02), 0.30 m down from the
+ * nose break (release 262: 0.07 m deep and 0.035 m proud, after critics read the 0.14 m beam as a dozer blade), from
+ * |x| 0.98, with eight bolt heads and a towing eye on a lug at each end; below it, on the near-vertical lower bow, the
+ * 99A's row of four appliqué boxes. The gun at -7 degrees passes 0.35 m over the bar.
  */
 function addNoseBeam(P: TankBuilderPort): void {
   const { cylY, torus, box } = KIT;
   const up = new THREE.Vector3(0, 0.515, -0.28).normalize(), n = new THREE.Vector3(0, -up.z, up.y);
   const at = (s: number, out: number): THREE.Vector3 =>
     new THREE.Vector3(0, 1.215, 3.02).addScaledVector(up, -s).addScaledVector(n, out);
-  const section: ZY[] = [[0.37, -0.008], [0.36, 0.06], [0.24, 0.06], [0.23, -0.008]]
+  const section: ZY[] = [[0.335, -0.008], [0.33, 0.035], [0.27, 0.035], [0.265, -0.008]]
     .map(([s, out]) => { const p = at(s, out); return [p.z, p.y] as const; });
   P.add('hullDetail', loftX([-0.98, 0.98].map((x) => ({ x, ring: section }))));
-  const face = at(0.30, 0.06), tilt = Math.atan2(n.z, n.y);
+  const face = at(0.30, 0.035), tilt = Math.atan2(n.z, n.y);
   for (const x of [-0.84, -0.56, -0.28, -0.08, 0.08, 0.28, 0.56, 0.84]) {
     P.add('hullDark', place(cylY(0.016, 0.016, 0.012, 8), x, face.y + n.y * 0.004, face.z + n.z * 0.004, tilt));
   }
   // a lug off the beam's lower face, the eye standing face-forward through it, 2 cm clear of the plate at its foot
-  const lug = at(0.37, 0.035);
+  const lug = at(0.335, 0.02);
   for (const side of [-1, 1]) {
     P.add('hullDetail', box(0.05, 0.10, 0.10), side * 0.92, lug.y - 0.045, lug.z + 0.03);
     P.add('hullDark', place(torus(0.045, 0.014, 12), side * 0.92, lug.y - 0.10, lug.z + 0.055, Math.PI / 2));
+  }
+  // the lower bow's appliqué row: four bolted boxes on the lane from y 0.385 to 0.70 (z 3.34 to 3.30)
+  for (const x of [-0.66, -0.22, 0.22, 0.66]) {
+    P.add('hullDetail', box(0.40, 0.22, 0.07), x, 0.55, 3.345, -0.12, 0, 0);
+    for (const dx of [-0.15, 0.15]) P.add('hullDark', KIT.cylZ(0.014, 0.012, 8), x + dx, 0.62, 3.385);
   }
 }
 
@@ -403,9 +418,9 @@ function addTurretCore(P: TankBuilderPort): void {
   P.add('turret', KIT.box(THROAT_X * 2 + 0.04, ROOF_Y - BROW_UNDER_Y, 0.50), 0, (ROOF_Y + BROW_UNDER_Y) / 2, CORE_FRONT_Z + 0.20);
 }
 
-/** One cheek wedge's section at |x| = a: its front line runs from the throat tip (z 1.45 at |x| 0.30) back to 0.72 at
- * the outer corner (|x| 1.42), 33 degrees off square in plan; the face leans back 0.08 m, the top falls 0.24 m from the
- * roof to its front edge (the arrowhead in profile), and its root buries 0.85 m back into the core and side module. */
+/** One cheek wedge's section at |x| = a: its front line runs from the throat tip (z 1.55 at |x| 0.30) back to 0.72 at
+ * the outer corner (|x| 1.42), 37 degrees off square in plan; the face leans back 0.08 m, the top falls 0.32 m from the
+ * roof to its front edge at 45 degrees (the arrowhead in profile), and its root buries 0.85 m back into the core. */
 const cheekFrontZ = (a: number): number => CHEEK_TIP_Z - (a - THROAT_X) * CHEEK_SWEEP;
 // constant bottom and front-top lines keep the face and top planar (the combat plates trace them exactly)
 const cheekBottomY = (_a: number): number => CHEEK_BOTTOM_Y;
@@ -436,11 +451,10 @@ function addCheekWedges(P: TankBuilderPort): void {
   for (const sign of [-1, 1]) {
     P.add('turret', loftX(steps.map((a) => ({ x: sign * a, ring: cheekSection(a) }))));
     const n = cheekFaceNormal(sign), rotation = faceEuler(n), thick = 0.065;
-    for (const a of [0.52, 0.84, 1.16]) {
-      for (const [y, h] of [[0.17, 0.22], [0.40, 0.18]]) {
-        const c = cheekFacePoint(sign, a, y).addScaledVector(n, thick / 2 - 0.006);
-        eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.29, thick, h], rotation);
-      }
+    // two large wedge-shaped dual-reactive modules a face (the 99A's), not a tile grid
+    for (const a of [0.61, 1.11]) {
+      const c = cheekFacePoint(sign, a, 0.215).addScaledVector(n, thick / 2 - 0.006);
+      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.47, thick, 0.33], rotation);
     }
     for (const a of [0.45, 0.75, 1.05, 1.32]) {
       const p = cheekFacePoint(sign, a, cheekFrontTopY(a) - 0.02).addScaledVector(n, 0.004);
@@ -476,10 +490,11 @@ function addMantlet(P: TankBuilderPort): void {
   const ring = (hw: number, lo: number, hi: number, c: number): SectionPoint[] => [
     [-hw + c, lo], [hw - c, lo], [hw, lo + c], [hw, hi - c], [hw - c, hi], [-hw + c, hi], [-hw, hi - c], [-hw, lo + c],
   ];
+  // the root runs 0.25 m behind the trunnion, inside the core's front at every elevation (cnGunMantlet.selftest)
   P.add('gunMount', sectionSolid([
-    { z: 0.10, ring: ring(MANTLET_HALF_W, -0.23, 0.22, 0.03) },
-    { z: 0.52, ring: ring(MANTLET_HALF_W, -0.23, 0.22, 0.03) },
-    { z: 0.60, ring: ring(MANTLET_HALF_W - 0.04, -0.19, 0.18, 0.05) },
+    { z: -0.25, ring: ring(MANTLET_HALF_W, -0.23, 0.22, 0.03) },
+    { z: 0.32, ring: ring(MANTLET_HALF_W, -0.23, 0.22, 0.03) },
+    { z: 0.40, ring: ring(MANTLET_HALF_W - 0.04, -0.19, 0.18, 0.05) },
   ]));
   // canvas boot from the mantlet face to the tube
   const n = P.q ? 18 : 12, e = 2 / 3;
@@ -487,10 +502,10 @@ function addMantlet(P: TankBuilderPort): void {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
     return [Math.sign(c) * Math.abs(c) ** e * w / 2, Math.sign(s) * Math.abs(s) ** e * h / 2] as const;
   });
-  P.add('gunMountCanvasSkin', sectionSolid([[0.56, 0.34, 0.30], [0.68, 0.30, 0.27], [0.80, 0.24, 0.23], [0.90, 0.21, 0.21]]
+  P.add('gunMountCanvasSkin', sectionSolid([[0.36, 0.34, 0.30], [0.48, 0.30, 0.27], [0.60, 0.25, 0.24], [0.72, 0.23, 0.23]]
     .map(([z, w, h]) => ({ z, ring: boot(w, h) })), { smoothSideEdges: Array.from({ length: n }, (_, i) => i) }));
-  P.add('gunMountDark', cylZ(0.112, 0.035, n), 0, 0, 0.89);
-  P.add('gunMountDark', cylZ(0.032, 0.03, 12), -0.15, -0.07, 0.605);
+  P.add('gunMountDark', cylZ(0.122, 0.035, n), 0, 0, 0.71);
+  P.add('gunMountDark', cylZ(0.032, 0.03, 12), -0.15, -0.07, 0.405);
 }
 
 /** ZPT-98-class 125 mm tube: two thermal-sleeve runs either side of the evacuator a little past mid-barrel, a thick
@@ -498,16 +513,16 @@ function addMantlet(P: TankBuilderPort): void {
 function addLongweiGun(P: TankBuilderPort): void {
   const { cylZ, torus, box } = KIT;
   const len = GUN_LENGTH, seg = P.q ? 24 : 14;
-  KIT.buildGun(P, { len, r: 0.071, sleeve: false, collar: false, baseR: 0.105, evac: 0.55, evacR: 1.62 });
-  for (const [start, end, r0, r1] of [[1.00, 3.05, 0.100, 0.096], [4.05, 5.45, 0.092, 0.088]]) {
+  KIT.buildGun(P, { len, r: 0.080, sleeve: false, collar: false, baseR: 0.118, evac: 0.55, evacR: 1.55 });
+  for (const [start, end, r0, r1] of [[0.80, 3.05, 0.114, 0.110], [4.05, 5.45, 0.104, 0.100]]) {
     P.add('gun', cylZ(r0, end - start, seg, r1), 0, 0, (start + end) / 2);
     for (const z of [start, end]) P.add('gunDark', torus(z === start ? r0 + 0.002 : r1 + 0.002, 0.010, seg), 0, 0, z, Math.PI / 2, 0, 0);
   }
-  P.add('gunDark', cylZ(0.080, 0.22, seg), 0, 0, len - 0.11);
+  P.add('gunDark', cylZ(0.090, 0.22, seg), 0, 0, len - 0.11);
   // muzzle reference mirror on its clamp band
-  P.add('gunDark', torus(0.076, 0.010, seg), 0, 0, len - 0.42, Math.PI / 2, 0, 0);
-  P.add('gunDark', box(0.06, 0.035, 0.09), 0, 0.098, len - 0.42);
-  muzzleTipDot(P, 0, 0, len + 0.012, 0.057, { parent: 'gunG' });
+  P.add('gunDark', torus(0.086, 0.010, seg), 0, 0, len - 0.42, Math.PI / 2, 0, 0);
+  P.add('gunDark', box(0.06, 0.035, 0.09), 0, 0.108, len - 0.42);
+  muzzleTipDot(P, 0, 0, len + 0.012, 0.064, { parent: 'gunG' });
   P.muzzleZ = len;
 }
 
@@ -673,7 +688,7 @@ function buildLongweiTurret(P: TankBuilderPort): void {
     roofLocalY: ROOF_Y, cheekTipZ: CHEEK_TIP_Z, cheekSweepDeg: Math.atan(CHEEK_SWEEP) / D2R,
     widthOverModulesM: 1.57 * 2, lengthM: CHEEK_TIP_Z - (CORE_REAR_Z - 0.41),
     throatHalfWidthM: THROAT_X, mantletHalfWidthM: MANTLET_HALF_W,
-    cheekCassettesPerSide: 6, radarFaces: 4, launchers: 2, smokePerSide: 5,
+    cheekCassettesPerSide: 2, radarFaces: 4, launchers: 2, smokePerSide: 5,
     commanderSide: 'right', gunnerSide: 'left', dazzlerSide: 'left',
     bustleUndersideM: 0.34, legacyVtDerivativeRetired: true, terracedFrontRetired: true,
   });

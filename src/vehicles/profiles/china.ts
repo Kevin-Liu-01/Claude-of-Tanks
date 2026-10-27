@@ -18,11 +18,7 @@ import {
   closedIntegratedChevron,
   type ChevronStation,
 } from './chineseChevron.ts';
-import {
-  loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
-  buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
-  ruBoot,
-} from './russia.ts';
+import { loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { DoubleSide, Float32BufferAttribute, Mesh, MeshBasicMaterial, Raycaster, Vector3, type BufferGeometry } from 'three';
@@ -39,16 +35,6 @@ type VehicleAssemblyOwner = 'hull' | 'turret';
 
 export interface ChinaBuilderPort extends TankBuilderPort {}
 
-const nonUniformXform = KIT.xform as (
-  geometry: BufferGeometry,
-  x: number,
-  y: number,
-  z: number,
-  rotationX: number,
-  rotationY: number,
-  rotationZ: number,
-  scale: number | readonly number[],
-) => BufferGeometry;
 
 function armorCassette(
   P: ChinaBuilderPort,

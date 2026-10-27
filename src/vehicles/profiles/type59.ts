@@ -31,8 +31,8 @@ const BELLY_Y = 0.43;
 const ROOF_Y = 1.45;
 /** Hull side plates between the tracks (the track's inner edge stands at 2.64 / 2 - 0.29 = 1.03). */
 const HULL_HALF_W = 0.99;
-/** Fender shelf over the tracks, to the 3.27 m width. */
-const FENDER_Y = 1.115, FENDER_OUT = 1.635;
+/** Fender shelf over the tracks, to the 3.27 m width (side photo: its top 1.14-1.17 m). */
+const FENDER_Y = 1.15, FENDER_OUT = 1.635;
 /** Nose: the 60-degree (from vertical) upper glacis meets the 55-degree lower plate. */
 const NOSE_Z = 2.90, NOSE_Y = 0.80;
 const UPPER_GLACIS_TAN = Math.tan(30 * D2R), LOWER_GLACIS_TAN = Math.tan(35 * D2R);
@@ -54,9 +54,9 @@ const TURRET_PIVOT: Vec3 = [0, ROOF_Y, 0.0];
 /** The cast dome: a plan egg about an apex 0.12 m behind the ring centre, 2.16 m wide, 1.44 m to its front and 1.12 m
  * to its rear, rising 0.74 m as a superellipse (exponent 2.5: a near-vertical lower band, a flattish crown). */
 const DOME = Object.freeze({ H: 0.74, cz: -0.12, side: 1.08, front: 1.44, rear: 1.12, nFront: 2.0, nRear: 2.4, vExp: 2.5, sink: 0.03 });
-/** Bore axis 1.738 m over the ground ([GS-59spec] line-of-fire height); the trunnion 0.62 m behind the ring centre's
- * front face line. */
-const TRUNNION: Vec3 = [0, 1.738 - ROOF_Y, 0.62];
+/** The bore leaves the dome at about mid-height (side photo: axis 1.81-1.84 m, 55% of the dome; [GS-59spec] gives a
+ * 1.738 m line-of-fire height): the trunnion stands 0.36 m over the ring, 0.62 m ahead of its centre. */
+const TRUNNION: Vec3 = [0, 0.36, 0.62];
 /** Muzzle 5.15 m ahead of the trunnion: 5.77 m ahead of the ring, 2.87 m past the nose. */
 const MUZZLE_Z = 5.15;
 const EVACUATOR_LEN = 0.87;
@@ -194,8 +194,8 @@ function addFenders(P: TankBuilderPort): void {
   const { box } = KIT;
   const shelfZ0 = -2.94, shelfZ1 = 2.56;
   KIT.fenders(P, HULL_HALF_W - 0.01, FENDER_OUT, FENDER_Y, shelfZ0, shelfZ1, 0.03);
-  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.72, FENDER_Y + 0.005], [2.85, FENDER_Y - 0.035],
-    [2.95, FENDER_Y - 0.10], [3.01, FENDER_Y - 0.19], [3.02, FENDER_Y - 0.26]];
+  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.70, FENDER_Y + 0.005], [2.82, FENDER_Y - 0.035],
+    [2.91, FENDER_Y - 0.10], [2.965, FENDER_Y - 0.19], [2.98, FENDER_Y - 0.26]];
   for (const side of [-1, 1]) {
     const x0 = side > 0 ? HULL_HALF_W - 0.01 : -FENDER_OUT, x1 = side > 0 ? FENDER_OUT : -(HULL_HALF_W - 0.01);
     P.addMudguard('type59-front-scoop', 'hull', bentPlateX(scoop, x0, x1, 0.028));
@@ -277,10 +277,16 @@ function addFenderStowage(P: TankBuilderPort): void {
   const { box, cylZ, cylY } = KIT;
   const yb = FENDER_Y + 0.015, xc = (HULL_HALF_W + FENDER_OUT) / 2 + 0.01, w = 0.50;
   // right fender (-X): fuel and oil tanks
-  const tanks: [number, number][] = [[1.30, 0.42], [0.36, -0.52], [-0.58, -1.46], [-1.54, -2.10]];
+  const tanks: [number, number][] = [[1.30, 0.50], [0.38, -0.42], [-0.54, -1.34], [-1.48, -2.06]];
   for (const [z1, z0] of tanks) {
     const h = 0.24, len = z1 - z0;
-    P.addEquipment('hullDetail', box(w, h, len), -xc, yb + h / 2, (z0 + z1) / 2);
+    // a rounded flat tank: a quarter-round crown along both long edges
+    const ring: SectionPoint[] = [];
+    for (let i = 0; i <= 4; i++) { const a = (i / 4) * Math.PI / 2; ring.push([-xc + w / 2 - 0.07 + Math.cos(a) * 0.07, yb + h - 0.07 + Math.sin(a) * 0.07]); }
+    for (let i = 0; i <= 4; i++) { const a = Math.PI / 2 + (i / 4) * Math.PI / 2; ring.push([-xc - w / 2 + 0.07 + Math.cos(a) * 0.07, yb + h - 0.07 + Math.sin(a) * 0.07]); }
+    ring.push([-xc - w / 2, yb], [-xc + w / 2, yb]);
+    P.addEquipment('hullDetail', sectionSolid([{ z: z0, ring }, { z: z0 + 0.03, ring }, { z: z1 - 0.03, ring }, { z: z1, ring }].map((st, k) => (
+      k === 0 || k === 3 ? { z: st.z, ring: ring.map(([x, y]) => [-xc + (x + xc) * 0.94, yb + (y - yb) * 0.94] as const) } : st))));
     P.addEquipment('hullDark', box(w - 0.04, 0.012, 0.03), -xc, yb + h + 0.002, z0 + 0.10);
     P.addEquipment('hullDark', cylY(0.035, 0.035, 0.03, 10), -xc - 0.12, yb + h + 0.012, z1 - 0.12);   // filler cap
     for (const z of [z0 + 0.12, z1 - 0.12]) P.addEquipment('hullDark', box(w + 0.02, 0.02, 0.035), -xc, yb + h * 0.55, z);  // straps
@@ -316,14 +322,16 @@ function addHullRear(P: TankBuilderPort): void {
   P.add('hullDark', box(1.70, 0.012, 0.36), 0, ROOF_Y - 0.035, -2.75, -0.20, 0, 0);
   for (const k of KIT.grilleIndices(P.q, 3, 2)) P.add('hullDetail', box(1.64, 0.016, 0.04), 0, ROOF_Y - 0.02 - k * 0.022, -2.63 - k * 0.11, -0.20, 0, 0);
   // two 200 L drums across the stern on raked brackets
-  const drumY = 1.60, drumZ = -3.18, drumR = 0.29;
+  const drumY = 1.72, drumZ = -3.20, drumR = 0.29, drumX = 0.60, drumL = 0.86;
   for (const s of [-1, 1]) {
-    P.add('hull', cylX(drumR, 0.86, P.q ? 20 : 12), s * 0.47, drumY, drumZ);
-    for (const e of [0.05, 0.89]) P.add('hullDark', cylX(drumR + 0.006, 0.018, P.q ? 20 : 12), s * e, drumY, drumZ);
-    P.add('hullDark', cylX(drumR + 0.004, 0.014, P.q ? 20 : 12), s * 0.47, drumY, drumZ);
-    P.add('hullDark', box(0.04, 0.03, 0.62), s * 0.47, drumY + drumR + 0.01, drumZ);                      // strap
-    P.add('hullDetail', box(0.08, 0.36, 0.08), s * 0.62, drumY - 0.30, REAR_Z - 0.02, 0.35, 0, 0);       // bracket
-    P.add('hullDetail', box(0.08, 0.06, 0.40), s * 0.62, drumY - drumR - 0.02, drumZ + 0.08);            // cradle
+    P.add('hull', cylX(drumR, drumL, P.q ? 20 : 12), s * drumX, drumY, drumZ);
+    for (const e of [-drumL / 2 + 0.01, drumL / 2 - 0.01]) P.add('hullDark', cylX(drumR + 0.006, 0.018, P.q ? 20 : 12), s * drumX + e, drumY, drumZ);
+    P.add('hullDark', cylX(drumR + 0.004, 0.014, P.q ? 20 : 12), s * drumX, drumY, drumZ);
+    P.add('hullDark', box(0.04, 0.03, 0.62), s * drumX, drumY + drumR + 0.01, drumZ);                    // strap
+    for (const dx of [-0.26, 0.26]) {
+      P.add('hullDetail', box(0.07, 0.42, 0.07), s * drumX + dx, drumY - 0.36, REAR_Z - 0.05, 0.42, 0, 0); // raked bracket
+      P.add('hullDetail', box(0.07, 0.06, 0.46), s * drumX + dx, drumY - drumR - 0.02, drumZ + 0.10);      // cradle
+    }
   }
   // BDSh smoke canisters on the rear plate
   for (const s of [-1, 1]) {
@@ -470,8 +478,8 @@ function addTurretRoof(P: TankBuilderPort): void {
 function addMantletCover(P: TankBuilderPort): void {
   const { cylZ } = KIT;
   // [z, width, height]: a rounded canvas bag 0.46 m wide at the slot, gathered to a clamp on the tube
-  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.50, 0.46, 0.50], [0.62, 0.42, 0.45],
-    [0.74, 0.36, 0.38], [0.86, 0.28, 0.29], [0.96, 0.215, 0.215]];
+  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.48, 0.46, 0.50], [0.58, 0.42, 0.45],
+    [0.68, 0.36, 0.38], [0.76, 0.29, 0.30], [0.83, 0.235, 0.235]];
   const n = P.q ? 20 : 12, e = 2 / 3.2;   // superellipse exponent 3.2: a soft-cornered bag
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
@@ -483,9 +491,9 @@ function addMantletCover(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(2, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.112, 0.04, n), 0, 0, 0.95);
+  P.addGunExtraDark(cylZ(0.122, 0.04, n), 0, 0, 0.82);
   // the coaxial 7.62 mm's port in the cover, right of the gun
-  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.55);
+  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.52);
 }
 
 /** 100 mm Type 59 rifled gun (licensed D-10T): the tube tapers from the cover to the bore evacuator, which runs flush
@@ -494,7 +502,7 @@ function addMainGun(P: TankBuilderPort): void {
   const evStart = MUZZLE_Z - EVACUATOR_LEN;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    [0.30, 1.10, 0.092, 0.096], [1.10, 2.40, 0.086, 0.092], [2.40, evStart - 0.06, 0.078, 0.086],
+    [0.30, 1.10, 0.100, 0.110], [1.10, 2.40, 0.088, 0.100], [2.40, evStart - 0.06, 0.078, 0.088],
     [evStart - 0.06, evStart + 0.02, 0.092, 0.078], [evStart + 0.02, MUZZLE_Z - 0.04, 0.092, 0.092],
     [MUZZLE_Z - 0.04, MUZZLE_Z, 0.084, 0.092],
   ], { rings: [[evStart + 0.03, 0.095], [MUZZLE_Z - 0.06, 0.095]], muzzle: MUZZLE_Z });
@@ -504,8 +512,9 @@ function addMainGun(P: TankBuilderPort): void {
 /** The later-model IR searchlight right of the gun on a short cradle arm, slaved in elevation (gun frame). */
 function addSearchlight(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
-  const x = -0.44, y = 0.17, z = 0.80, r = 0.155;
-  P.add('gunMountLamp', box(0.30, 0.05, 0.10), -0.27, 0.07, 0.72);              // arm off the cradle
+  const x = -0.40, y = 0.30, z = 0.74, r = 0.150;
+  P.add('gunMountLamp', box(0.26, 0.05, 0.10), -0.24, 0.12, 0.66);              // arm off the cradle
+  P.add('gunMountLamp', box(0.05, 0.16, 0.08), -0.36, 0.18, 0.68);              // riser to the stirrup
   P.add('gunMountLamp', box(0.06, 0.12, 0.10), x, y - r - 0.03, z - 0.02);       // stirrup
   P.add('gunMountLamp', cylZ(r, 0.26, P.q ? 20 : 12), x, y, z);
   P.add('gunMountDark', cylZ(r + 0.008, 0.025, P.q ? 20 : 12), x, y, z + 0.135);   // bezel

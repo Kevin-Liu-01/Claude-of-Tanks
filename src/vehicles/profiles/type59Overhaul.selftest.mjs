@@ -105,7 +105,7 @@ try {
   assert.ok(lampBox.max.y - lampBox.min.y < 0.45, 'the searchlight is a 0.31 m lamp, not the refit\'s 0.41 m drum');
   const gunBox = bounds(gun);
   assert.ok(near(gunBox.max.z, 0 + 0.62 + 5.15, 0.02), `the muzzle stands 2.87 m past the nose (${gunBox.max.z.toFixed(3)})`);
-  assert.ok(near(gun.position.y + turret.position.y, 1.738), 'bore axis at the published 1.738 m');
+  assert.ok(near(gun.position.y + turret.position.y, 1.81), 'the bore leaves the dome at mid-height (1.81 m, the side photo)');
 
   const dshkPosition = loaderMG.position.clone();
   turret.rotation.y = Math.PI / 2;
