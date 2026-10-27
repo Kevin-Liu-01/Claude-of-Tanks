@@ -55,11 +55,12 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerCountry 
     else writeTeamArrangement(mode, { ...current, [name]: name === 'enemyNation' || name === 'juggernautRole' ? value || null : Number(value) });
     render(mode);
   };
-  const label = (name: Field): string => (name === 'movingTargets' ? t('action.rangeMoving')
+  // the range's switch speaks as its rule tile does (Targets: Still or Moving), one setting in one set of words
+  const label = (name: Field): string => (name === 'movingTargets' ? t('garage.deploy.rule.moving')
     : t(`playMenu.arrange.${name === 'enemyNation' ? 'nation' : name}`));
   const captions = new Map<Field, HTMLElement>();
   const optionLabel = (name: Field, value: string): string => (name === 'juggernautRole' ? t(`playMenu.arrange.${value}`)
-    : name === 'movingTargets' ? t(`settings.${value}`) : value);
+    : name === 'movingTargets' ? t(value === 'on' ? 'garage.deploy.targetsMoving' : 'garage.deploy.targetsStill') : value);
   const fields = new Map<Field, ArrangeField>(FIELDS.map((name): [Field, ArrangeField] => {
     const root = document.createElement('div'); root.className = 'cot-arrange-field'; root.dataset.modeField = name;
     const caption = document.createElement('span'); caption.textContent = label(name);

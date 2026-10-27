@@ -65,14 +65,12 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:var(--s3);flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
 /* a compact height gives the mode picker the lower band's room */
 /* a short screen sets the lower band aside: the mode picker, the column's last row, ends on the plate's foot */
-@media (max-height:760px){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-lower{display:none;}
-  body[data-cot-panels='persistent'] .cot-garage .cot-deploy-modes{margin-bottom:0;}}
+@media (max-height:760px){body[data-cot-panels='persistent'] .cot-garage .cot-deploy-lower{display:none;}}
 /* the battle modes: the one mode picker (modePicker.ts, the Rooms host's too) takes the list's room and scrolls its cards in
    place; the plate beside it is the rules card of the mode under the pointer or the focus, so the picker keeps none */
-/* (as tall as its cards, then scrolling them in place where the list is shorter; its grid's fade band reaches past its
-   foot, so the next row keeps a gap clear of it) */
-/* (the cards' grid bleeds its fade band past its foot: the larger gap below it) */
-.cot-garage .cot-deploy-modes{flex:0 1 auto;min-height:0;margin-bottom:var(--s5);}
+/* (as tall as its cards, then scrolling them in place where the list is shorter; its grid's fade lives in the grid's own
+   padding, so the column's gap is the only one under it: the 24 px margin left a strip under the last row, r40) */
+.cot-garage .cot-deploy-modes{flex:0 1 auto;min-height:0;}
 .cot-garage .cot-deploy-modes .cot-mp__in{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);}
 .cot-garage .cot-deploy-modes .cot-mp__cards{height:100%;}
 .cot-garage .cot-deploy-modes .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
@@ -258,9 +256,10 @@ body:not([data-cot-panels='overlay']) .cot-garage .cot-battle-details:not(.is-pi
 .cot-garage .cot-deploy-field-card{position:relative;display:block;min-width:0;height:100%;padding:0;border:0;border-radius:var(--control-radius) 0 0 var(--control-radius);
   background:none;color:var(--ink-1);cursor:pointer;text-align:left;overflow:hidden;}
 .cot-garage .cot-deploy-field:has(.cot-deploy-field-mm img[hidden]) .cot-deploy-field-card{border-radius:var(--control-radius);}
-/* the open picker's field keeps the accent ring over its art (a ring on the card itself lies under the picture) */
-.cot-garage .cot-deploy-field-card[aria-expanded='true']::after{content:'';position:absolute;inset:0;z-index:var(--z-lift);border-radius:inherit;
-  box-shadow:var(--ring-accent);pointer-events:none;}
+/* the open picker's field keeps the accent ring over its art and its tactical map, one ring round the whole card (on the
+   picture button alone it left the map outside, r40); where the picker opens in the card's place the card has no ring */
+.cot-garage .cot-deploy-field:has(>.cot-deploy-field-card[aria-expanded='true']):not(:has(.cot-deploy-field-pop:not([hidden])))::after{
+  content:'';position:absolute;inset:0;z-index:var(--z-lift);border-radius:inherit;box-shadow:var(--ring-accent);pointer-events:none;}
 .cot-garage .cot-deploy-field-thumb{position:absolute;inset:0;display:block;background:var(--surface-hover) center/cover no-repeat;}
 .cot-garage .cot-deploy-field-thumb::after{content:'';position:absolute;inset:0;background:var(--media-fade-soft);}
 .cot-garage .cot-deploy-field-thumb .random-map-mosaic{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;width:100%;height:100%;}

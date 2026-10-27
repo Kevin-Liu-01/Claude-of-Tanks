@@ -337,6 +337,12 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* the stages and the takes are the kit's pickers (cards): six stages a row under the screen, four takes a row under the story */
 .filming-stage-bar{margin:var(--s3) 0}
 .filming-stage-bar .cot-c-picker__grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+/* a stage's two facts stack a line each and wrap at whole words: six cards a row left one line a word of each (r33);
+   a take's name breaks at its spaces in zh, never inside a word (纵队) */
+.filming-stage-bar .cot-c-picker__facts{flex-direction:column}
+.filming-stage-bar .cot-c-picker__facts>span{white-space:normal;overflow:visible;text-wrap:pretty}
+.filming-take-grid .cot-c-picker__name{text-wrap:pretty}
+:lang(zh-CN) :is(.filming-stage-bar .cot-c-picker__facts>span,.filming-take-grid .cot-c-picker__name){word-break:keep-all;overflow-wrap:anywhere}
 .filming-stage-note{min-height:3.3em;max-width:76ch;margin:14px 0 0;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
 .filming-frames{margin:16px 0 0;background:var(--surface-scene);box-shadow:var(--e2-flush)}
 .filming-frame-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
