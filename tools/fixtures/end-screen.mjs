@@ -33,7 +33,11 @@ const summary={playerVehicle:'M1A1 Abrams HC',playerSpecId:'m1a1_abrams_hc',map:
  beats:[{t:41,kind:'spot'},{t:135,kind:'kill',id:'enemy-1',specId:'t90am'},{t:278,kind:'zone',own:true,label:'B'},{t:362,kind:'kill',id:'enemy-3',specId:'t90am'},{t:400,kind:'loss',id:'trackL'},{t:455,kind:'kill',id:'enemy-6',specId:'m1a1_abrams_hc'}]};
 function show(result='victory',room=false,awards=true){
  bus.emit('network:roomState',room?{role:'host',playerId:'a',state:{phase:'waiting',round:1,roomCode:'ABC123',mode:'private',gameMode:'standard',hostId:'a',players:[{id:'a',name:'You',specId:'m1a1_abrams_hc',team:'alpha',ready:false,connected:true},{id:'b',name:'Ally',specId:'t90am',team:'bravo',ready:true,connected:true}]}}:null);
- bus.emit('battle:ended',{result,roster:[]});report.show(result,{...summary,...(new URLSearchParams(location.search).has('watched')?{watched:true}:{}),awards:awards?summary.awards:null});
+ // (the sides' kills agree with the result: the losing side's a third fewer, a draw's level; every head read 40 : 40,
+ // a VICTORY over a tie, gauntlet r18)
+ const fewer=(list)=>list.map((row,i)=>({...row,kills:i%3?row.kills:Math.max(0,row.kills-2)}));
+ const sides=result==='victory'?{enemies:fewer(summary.enemies)}:result==='defeat'?{allies:fewer(summary.allies)}:{};
+ bus.emit('battle:ended',{result,roster:[]});report.show(result,{...summary,...sides,...(new URLSearchParams(location.search).has('watched')?{watched:true}:{}),awards:awards?summary.awards:null});
 }
 // ?result=defeat|draw and ?watched=1 (a watched battle's neutral report) stage the other heads
 window.__DEBRIEF={show,report,bus};show(new URLSearchParams(location.search).get('result')||'victory');

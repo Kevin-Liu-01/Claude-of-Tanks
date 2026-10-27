@@ -1661,6 +1661,12 @@ export function rulesetPhysicsAt(mode: GameModeId, gravityScale: number): Rulese
   return gravity ? gravityPhysics(physics, gravity) : physics;
 }
 
+/** The battlefield a mode plays whatever the player picked, or null for any: the proving ground's range is laid out for
+ *  one battlefield's ground (every other fails closed: sim/provingGround.ts planProvingRange). */
+export function rulesetBattlefield(mode: GameModeId): string | null {
+  return BASE_RULESETS[mode]?.provingGround?.mapId ?? null;
+}
+
 export function matchRulesetFor(
   mode: GameModeId,
   campaign: CampaignRulesetInput | null = null,

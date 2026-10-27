@@ -13,7 +13,7 @@
 }
 .media-library-head{display:grid;gap:14px;margin:0 0 22px}
 .media-library-set{margin:0 0 26px;content-visibility:auto;contain-intrinsic-size:auto 420px}
-.media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:var(--fs-11);letter-spacing:var(--track-label);text-transform:uppercase}
+.media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:var(--track-label);text-transform:uppercase}
 .media-library-grid{display:flex;flex-wrap:wrap;gap:var(--s2)}
 /* the collections are one strip at every width, its rule on the column's edges; a strip longer than the column scrolls
    sideways and fades its cut end */
@@ -23,9 +23,8 @@
    strip on and turns back at its end */
 .media-library-tabs.is-over{padding-right:calc(var(--cot-control-floor,44px) + var(--s2));
   mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--cot-control-floor,44px) - var(--s6)),transparent calc(100% - var(--cot-control-floor,44px)))}
-/* the more button stands on the strip's rule at every size, as the tabs do */
-.media-library-more{position:absolute;right:0;bottom:1px}
-@media (pointer:coarse){.media-library-more{--h:var(--cot-control-floor,44px)}}
+/* the more button stands on the strip's rule at every size, as tall as the tabs, so its chevron sits on their names' line */
+.media-library-more{--h:var(--cot-control-floor,44px);position:absolute;right:0;bottom:1px}
 .media-library-more[hidden]{display:none}
 .media-library-more.is-back svg{transform:scaleX(-1)}
 .media-library-tabs .cot-c-tabs__tab{flex:none}

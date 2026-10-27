@@ -77,8 +77,29 @@ assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
 const siteArchive = JSON.parse(readFileSync(join(ROOT, 'public/media/site50-r14/archive.json'), 'utf8'));
 const productionShots = JSON.parse(readFileSync(join(ROOT, 'public/media/production-r1/manifest.json'), 'utf8')).shots;
 const archiveCount = siteArchive.shots.length + productionShots.length;
-assert.ok(docsScriptSource.includes(`{ mode: 'wall', limit: ${archiveCount}, filters: false }`),
-  'the manual\'s wall shows the whole archive');
+// (259, gallery-studio: the zh Field frames showed FRONTIER, COASTAL) every archive card reads in the locale: a
+// battlefield still by its map's name, a take by its catalog title, a frame by its own line, each feature by its key,
+// and every frame's or take's battlefield by its id
+{
+  const catalogs = ['en-US', 'zh-CN'].map((locale) => JSON.parse(readFileSync(join(ROOT, `src/ui/i18nCatalog.${locale}.json`), 'utf8')));
+  const [en] = catalogs;
+  const camel = (text) => text.trim().toLowerCase().replace(/[^a-z0-9]+(.)?/g, (_, c) => (c ?? '').toUpperCase());
+  // the filters' features (mediaArchive.feature.*); every other feature is a frame's or take's technique, in the Studio slice
+  const filters = JSON.parse(readFileSync(join(ROOT, 'src/presentation/mediaArchive.ts'), 'utf8')
+    .match(/^const FEATURES = (\[[^\]]*\]);$/m)[1].replaceAll("'", '"'));
+  const keyed = (key, what) => catalogs.forEach((catalog) => assert.ok(typeof catalog[key] === 'string', `${what}: ${key}`));
+  for (const shot of productionShots) keyed(`map.${shot.map}`, 'a battlefield still names its map');
+  for (const shot of siteArchive.shots) {
+    keyed(`map.${shot.mapId}`, 'a frame or take names its battlefield by id');
+    assert.equal(en[`map.${shot.mapId}`], shot.map, `${shot.src}: its mapId is the battlefield it names`);
+    keyed(`mediaArchive.${filters.includes(shot.feature.trim().toLowerCase()) ? 'feature' : 'technique'}.${camel(shot.feature)}`,
+      'a filter\'s feature or a still\'s technique is worded');
+    if (shot.kind === 'take') keyed(`media.site50.title.${camel(shot.take)}`, 'a take\'s title is the catalog\'s (mediaArchiveTakes.ts)');
+    else keyed(`mediaArchive.frame.${camel(shot.src.slice(shot.src.lastIndexOf('/') + 1).replace(/\.\w+$/, ''))}`, 'a frame has its own line');
+  }
+}
+assert.ok(docsScriptSource.includes(`{ mode: 'wall', limit: ${archiveCount}, filters: false, takeTitle }`),
+  'the manual\'s wall shows the whole archive, its takes by their titles in the locale');
 
 const homeSource = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const homeStyles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');

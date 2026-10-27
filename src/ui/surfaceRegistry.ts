@@ -223,6 +223,26 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'battle', owner: HUD, surface: '.cot-dmgnum' },
     ],
   },
+  /** The battle's toasts, the kit's notices in one region: the pointer lock's notice, a networked battle's banner and the
+   *  parked aim chip (UI-LOCKDOWN B14; the centre's alerts are `notices`). */
+  toasts: {
+    places: [
+      { screen: 'battle', owner: 'src/ui/battleNotices.ts', surface: '.cot-battle-notices' },
+    ],
+  },
+  /** The hits the player takes, a row each in the left lane, on the kit's notice queue (UI-LOCKDOWN B14). */
+  hits: {
+    places: [
+      { screen: 'battle', owner: 'src/ui/shotInfo.ts', surface: '.cot-si-toasthost' },
+    ],
+  },
+  /** The medals earned in battle, a card at a time in its seat off the reticle, on the kit's notice queue (UI-LOCKDOWN
+   *  B14). */
+  medals: {
+    places: [
+      { screen: 'battle', owner: 'src/ui/medalToast.ts', surface: '.cot-medal-toasts' },
+    ],
+  },
   /** The killcam's killer card (who destroyed the player, with what). */
   killer: {
     places: [
