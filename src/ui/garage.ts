@@ -46,7 +46,7 @@ import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconId, shellIconSVG } from './shellIcons.ts';
 import { shellTypeLabel } from './shellLabels.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup, garageStatShare,
+  garageCrewRows, garageGalleryHref, garageGunArc, garageModuleRows, garageStatGroup, garageStatShare,
   garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
@@ -3426,7 +3426,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +
       figurePlate('gun', t('garage.dossier.armament.gun'), `${spec.gun.caliberMm} mm`) +
-      figurePlate('scope', t('garage.dossier.armament.arc'), `&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;`) + `</div></section>` +
+      // the arc and, where the gun cannot come down to level over the rear (its fuel drums), the rear stop (the vehicles lane, 258)
+      figurePlate('scope', t('garage.dossier.armament.arc'), escapeHtmlAttribute(garageGunArc(spec))) + `</div></section>` +
       `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance', true)}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
