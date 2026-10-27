@@ -75,7 +75,7 @@
 .cot-facet-option .ct{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;color:var(--ink-3);}
 .cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:var(--ink-1);border-color:var(--line-control);}
 .cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:var(--ink-1);}
-.cot-facet-option:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.cot-facet-option:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 /* the chosen value reads as chosen: an amber fill, edge and glyph */
 .cot-facet-option[aria-pressed='true']{color:var(--ink-1);border-color:var(--accent);border-bottom-color:var(--accent);
   background:var(--accent-wash);box-shadow:var(--ring-accent);}

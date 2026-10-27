@@ -104,7 +104,7 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px;}
+  outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
 .cot-mobile-nav-menu[hidden]{display:none !important;}
 .cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
@@ -176,7 +176,7 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-battle-solo-options{display:grid;gap:var(--s4);}
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:-3px;}
+  outline:2px solid var(--focus-ink);outline-offset:-3px;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:transform var(--dur-fast) ease-out;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:scale(.98);}
 .cot-battle-menu .cot-battle-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
@@ -1059,7 +1059,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger>span{
   padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:14px;height:14px}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px}
+  outline:2px solid var(--focus-ink);outline-offset:2px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
   display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
