@@ -102,7 +102,7 @@ import {
 } from './engine/garageGpuWarmRuntime.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
-import { stageTextureUploads } from './engine/textureUploadStaging.ts';
+import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2863,9 +2863,13 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // (2026-10-26, the room-stalls lane: after the cohorts, one cohort's draw still held 1033 ms of texSubImage2D)
             // the battlefield's textures uploaded first, one at a time under a frame budget, so the cohorts' draws meet
             // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
-            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal });
-            const forwardBatches: number[] = [];
+            // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
+            // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
             const forwardYield = createFrameBudgetYielder(8);
+            const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
+            const forwardBatches: number[] = [];
+            let catchUpFrames = 0;
             for (const batch of createDeploymentForwardWarmBatches({
               scene,
               csmLights: lighting.csm?.lights,
@@ -2876,9 +2880,10 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               forwardBatches.push(batch.ms);
               signal?.throwIfAborted();
               await forwardYield(true);
+              catchUpFrames += await waitForGpuCatchUp(catchUp);
             }
             const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
-              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0) };
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;

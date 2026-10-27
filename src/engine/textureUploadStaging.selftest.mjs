@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import {
   DataTexture, DepthTexture, Group, Mesh, MeshStandardMaterial, PlaneGeometry, ShaderMaterial, Texture, WebGLRenderTarget,
 } from 'three';
-import { collectDrawnTextures, stageTextureUploads } from './textureUploadStaging.ts';
+import { collectDrawnTextures, stageTextureUploads, textureUploadBytes, waitForGpuCatchUp } from './textureUploadStaging.ts';
 
 const geometry = new PlaneGeometry(1, 1);
 const albedo = new Texture(), normal = new Texture(), shared = new Texture(), splat = new DataTexture(new Uint8Array(4), 1, 1);
@@ -68,9 +68,43 @@ assert.equal(collectDrawnTextures({ initTexture() {} }, [root]).has(albedo), tru
 // the room's opening warm stages the battlefield's textures before its cohort draws, and reports the stage
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const opening = main.slice(main.indexOf('openingEffects: async'), main.indexOf('shotCards:', main.indexOf('openingEffects: async')));
-const staged = opening.indexOf('await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal })');
+const staged = opening.indexOf('await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp })');
 const cohorts = opening.indexOf('createDeploymentForwardWarmBatches({');
 assert.ok(staged > 0 && cohorts > staged, 'the opening warm stages the textures before the cohorts draw');
 assert.ok(opening.includes('return { ...timing, textureStaging, deploymentForward };'), 'the opening warm reports the stage');
+const loop = opening.slice(cohorts, opening.indexOf('const deploymentForward', cohorts));
+assert.ok(loop.includes('catchUpFrames += await waitForGpuCatchUp(catchUp);'), 'each cohort draw lets the GPU catch up before the next');
 
-console.log('textureUploadStaging.selftest: the maps, compiled sampler uniforms and ShaderMaterial uniforms, each once, no attachments; one upload a budget check; a failing upload left to its draw; the room opening stages before its cohorts');
+// (the room A/B) a large upload waits for the GPU to finish what was issued before it; a small one does not wait
+{
+  const big = new DataTexture(new Uint8Array(1 << 20), 512, 512), small = new DataTexture(new Uint8Array(4096), 32, 32);
+  assert.equal(textureUploadBytes(big), 1 << 20);
+  assert.equal(textureUploadBytes(new Texture({ width: 1024, height: 512 })), 1024 * 512 * 4, 'an image: four bytes a texel');
+  assert.equal(textureUploadBytes(new Texture()), 0);
+  const scene = new Group();
+  scene.add(new Mesh(geometry, new MeshStandardMaterial({ map: big })), new Mesh(geometry, new MeshStandardMaterial({ map: small })));
+  const gates = [];
+  const createGate = () => {
+    const gate = { calls: 0, disposed: false, caughtUp() { this.calls += 1; return this.calls > 3; }, beginDrain() {}, dispose() { this.disposed = true; } };
+    gates.push(gate);
+    return gate;
+  };
+  let frames = 0;
+  const order = [];
+  const uploads = { initTexture(texture) { order.push(texture === big ? 'big' : 'small'); }, properties: { get: () => undefined } };
+  const result = await stageTextureUploads(uploads, [scene], async () => {},
+    { catchUp: { gl: {}, waitFrame: async () => { frames += 1; }, createGate } });
+  assert.equal(gates.length, 1, 'only the large texture waits');
+  assert.equal(frames, 3, 'until its fence signalled');
+  assert.equal(result.catchUpFrames, 3);
+  assert.ok(gates.every((gate) => gate.disposed), 'every gate is disposed');
+  assert.deepEqual(order.sort(), ['big', 'small']);
+  // the wait is bounded: a fence that never signals costs at most maxWaitFrames
+  const stuck = await waitForGpuCatchUp({ gl: {}, waitFrame: async () => {}, maxWaitFrames: 5,
+    createGate: () => ({ caughtUp: () => false, beginDrain() {}, dispose() {} }) });
+  assert.equal(stuck, 5);
+  // a context without fences answers caught up at once (gpuCatchUp.ts)
+  assert.equal(await waitForGpuCatchUp({ gl: { isContextLost: () => false }, waitFrame: async () => assert.fail('no fences: no wait') }), 0);
+}
+
+console.log('textureUploadStaging.selftest: the maps, compiled sampler uniforms and ShaderMaterial uniforms, each once, no attachments; one upload a budget check; a failing upload left to its draw; the room opening stages before its cohorts; a large upload and each cohort wait for the GPU, bounded');
