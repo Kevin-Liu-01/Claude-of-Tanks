@@ -239,7 +239,9 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   assert.deepEqual(covers, [['cover', 'winter'], ['load', 'winter']]);
 }
 const pendingComposition = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
+assert.match(pendingComposition, /describePendingMap: \(specId: string, mapId: string \| null, options\?: SoloBattleLoadingStartOptions\) => \{\n    const resolved = battleIntent\.peekMap\(specId, mapId \|\| worldRuntime\.pendingMapId\);/,
   'the composition names the map the intent will consume, from the same pending map the loading owner falls back to');
+// (2026-10-26, the owner: "fix team lists in loading state") the cover lists both planned teams from its first frame
+assert.match(pendingComposition, /describePendingMap:[\s\S]{0,400}plannedCardTeams\(specId, \{/, 'the pending cover plans the battle\'s teams');
 
 console.log('soloBattleEntryRuntime.selftest: selection, the named pending cover and covered failure recovery pass');

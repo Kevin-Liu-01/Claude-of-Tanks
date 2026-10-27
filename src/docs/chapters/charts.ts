@@ -28,8 +28,9 @@ export function lineChart(options: { readonly x: Axis; readonly y: Axis; readonl
   const { x, y, series, title } = options;
   // the top margin holds the y unit over the value column at a phone's counter-scale (about 2 units a drawn pixel); the
   // left margin holds the widest value ("1000", four mono figures at the 13 px zh floor) and its 8 px clearance at a
-  // 390 px phone's counter-scale (1.79); the plot ends on the figure's right edge (no right margin)
-  const W = 640, H = 300, left = 72, right = 0, top = 34, bottom = 40;
+  // 390 px phone's counter-scale (1.79); the right margin holds half the widest tick value ("2000") at that scale, so the
+  // last value centres on its mark as every other does
+  const W = 640, H = 300, left = 72, right = 32, top = 34, bottom = 40;
   const GAP = 8;
   const sx = (v: number): number => left + ((v - x.min) / (x.max - x.min)) * (W - left - right);
   const sy = (v: number): number => top + (1 - (Math.min(v, y.max) - y.min) / (y.max - y.min)) * (H - top - bottom);
@@ -40,8 +41,8 @@ export function lineChart(options: { readonly x: Axis; readonly y: Axis; readonl
   const grid = y.ticks.map((v) => `<line class="g" x1="${left}" x2="${W - right}" y1="${f(sy(v))}" y2="${f(sy(v))}"/>`
     + k(left, sy(v), `<text class="t" x="${-GAP}" text-anchor="end" dominant-baseline="central">${v}</text>`)).join('');
   // each tick: its 5 px mark under the rule, its value 18 px under it (the label's top 9 px clear of the mark), centred
-  // on its mark; a tick on the plot's right end (the figure's edge) ends its value on the mark, so it stays inside
-  const xticks = x.ticks.map((v) => k(sx(v), H - bottom, `<line class="k" y2="5"/><text class="t" y="18" text-anchor="${v >= x.max ? 'end' : 'middle'}">${v}</text>`)).join('');
+  // on its mark (the last one too, in the right margin)
+  const xticks = x.ticks.map((v) => k(sx(v), H - bottom, `<line class="k" y2="5"/><text class="t" y="18" text-anchor="middle">${v}</text>`)).join('');
   const lines = series.map((s) => {
     const d = s.points.map(([px, py], i) => `${i ? 'L' : 'M'}${f(sx(px))} ${f(sy(py))}`).join('');
     const last = s.points.at(-1);

@@ -38,6 +38,7 @@
 // <out>/<map>-<mode>-<size>v<size>-<pass>.json (the analysis, the roster, the load), and beside it the recorder's
 // readout (.frames.json.gz) and the main thread's trace events (.trace.json.gz), so --reanalyze=<out> can re-run the
 // analysis over a finished census.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -606,7 +607,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = size - 1, enemies = size;
-  const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
     args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] });
   activeBrowser = browser;
   let aborted = null;

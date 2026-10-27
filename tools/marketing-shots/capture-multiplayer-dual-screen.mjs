@@ -44,6 +44,7 @@
  * command does the same.
  */
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
@@ -526,9 +527,9 @@ async function bootGarage(page, origin, label) {
 async function openLanMenu(page, label) {
   await page.waitForSelector('.cot-multiplayer-entry', { visible: true, timeout: 60_000 });
   await page.click('.cot-multiplayer-entry');
-  await page.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-  await page.click('.cot-play .modes [data-mode="lan"]');
-  await waitFor(page, () => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), `${label} LAN mode`, 10_000);
+  await page.waitForSelector('.cot-play.show .modes [data-value="lan"]', { timeout: 30_000 });
+  await page.click('.cot-play .modes [data-value="lan"]');
+  await waitFor(page, () => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', `${label} LAN mode`, 10_000);
 }
 
 /** A lobby control (the play menu's custom select): set its value and announce the change as a pick would. */
@@ -716,7 +717,7 @@ async function capture({ options, plan, seedInfo }) {
     log(`vite ${origin} (cache ${options.cacheDir})`);
 
     const puppeteer = (await import('puppeteer')).default;
-    browser = await puppeteer.launch({
+    browser = await launchGuardedBrowser(puppeteer, {
       headless: true,
       protocolTimeout: 360_000,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-background-timer-throttling',
@@ -958,7 +959,7 @@ async function compose({ options, record, framing }) {
   });
   const puppeteer = (await import('puppeteer')).default;
   // software only: the composition never touches the GPU the capture lock guards
-  const browser = await puppeteer.launch({
+  const browser = await launchGuardedBrowser(puppeteer, {
     headless: true, args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--force-color-profile=srgb'],
   });
   let composed;

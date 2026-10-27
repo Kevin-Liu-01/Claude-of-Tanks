@@ -1,4 +1,5 @@
 // Production HUD geometry regression. No WebGL or frame-rate claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -23,7 +24,7 @@ function unchanged(before,after,label){
  else assert.ok(Math.min(after.map.right,after.card.right)<=Math.max(after.map.left,after.card.left)||after.card.top>=after.map.bottom+11.5,`${label}: top-mounted map overlaps report`);
 }
 try{
- await server.listen();browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch=false,locale='en-US']of [
   ['desktop',1440,900],['laptop',1366,768],['small',1024,600],['short',844,390],['portrait-mouse',820,1180],
   ['compact-mouse',540,720],['narrow-mouse',390,844],['touch',667,375,true],['tiny-touch',568,256,true],['zh',1366,768,false,'zh-CN']]){
@@ -36,7 +37,7 @@ try{
   for(const count of [1,7,14,21,41])for(const mapSize of [160,220,300]){
    await page.evaluate(({count,mapSize})=>{
     const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);
-    for(let i=0;i<3&&document.querySelector('.cot-minimap').dataset.zoom!==String([160,220,300].indexOf(mapSize));i++)f.bus.emit('ui:minimapZoom',{});
+    f.bus.emit('ui:minimapZoom',{step:[160,220,300].indexOf(mapSize)});
     if(count===21)f.multiplayer('healthy');
     if(count===41)f.multiplayer('reconnecting');
     f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);
@@ -50,9 +51,12 @@ try{
    });
    await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/arrivals');
+   // (Tab holds the rosters while the battle has the cursor, hud.ts: a headless page holds no pointer lock, so one stands in)
+   await page.evaluate(()=>Object.defineProperty(document,'pointerLockElement',{configurable:true,get:()=>document.body}));
    await page.keyboard.down('Tab');await page.clock.runFor(100);
    unchanged(before,await page.evaluate(measure),label+'/tab');
    await page.keyboard.up('Tab');await page.clock.runFor(100);
+   await page.evaluate(()=>{delete document.pointerLockElement;});
    // Keep the report fresh while the production kill-notice timers expire.
    await page.clock.fastForward(4900);
    await page.evaluate(()=>window.__HUD_LAYOUT.hit());await page.clock.runFor(100);

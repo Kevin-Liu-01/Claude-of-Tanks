@@ -35,7 +35,7 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
  text-align:left;cursor:pointer}
 .cot-custom-select-list [role=option]:hover{background:var(--surface-hover);color:var(--ink-1)}
 .cot-custom-select-list [aria-selected=true]{background:var(--accent-wash);color:var(--ink-1)}
-.cot-custom-select-trigger .cot-flag,.cot-custom-select-list .cot-flag{display:block;width:22px;height:16px;object-fit:cover;flex-shrink:0}
+.cot-custom-select-trigger .cot-flag,.cot-custom-select-list .cot-flag{display:block;width:22px;height:16px;object-fit:cover;object-position:50% 50%;flex-shrink:0}
 .cot-custom-select-mark{display:flex;align-items:center;justify-content:center;width:22px;height:16px;flex-shrink:0;color:var(--ink-3)}
 .cot-custom-select-mark svg{width:18px;height:18px}
 @media(pointer:coarse){.cot-custom-select-trigger,.cot-custom-select-list [role=option]{min-height:44px}}

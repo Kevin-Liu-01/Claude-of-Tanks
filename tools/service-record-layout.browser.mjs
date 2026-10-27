@@ -1,4 +1,5 @@
 // Production Service Record geometry regression; run under capture-command.mjs.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -12,7 +13,7 @@ const receipts = [];
 let browser;
 try {
   await server.listen();
-  browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-gpu'] });
+  browser = await launchGuardedBrowser(chromium, { channel: 'chrome', headless: true, args: ['--disable-gpu'] });
   for (const [name, width, height, locale] of [
     ['desktop', 1440, 900, 'en-US'], ['small-portrait', 320, 568, 'en-US'],
     ['portrait', 390, 844, 'en-US'], ['landscape', 667, 375, 'en-US'],

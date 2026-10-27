@@ -24,18 +24,30 @@ export const MODAL_FOCUSABLE_SELECTOR = [
 
 const MODAL_SIZES = new Set(['small', 'medium', 'large', 'wide']);
 
-/** Shared keyboard boundary for the modal shell and in-battle Settings. */
+/** The kit's toasts (components/notice.ts): one shown over a contained surface stays in its Tab ring. */
+const TOAST_SELECTOR = '.cot-c-notice--toast';
+
+/** Shared keyboard boundary for the modal shell and in-battle Settings. The ring is the panel's controls, then those of
+ *  any toast shown outside it (an error's Retry raised over a modal); Tab moves natively inside each and wraps between them. */
 export function containModalTab(event: KeyboardEvent, panel: HTMLElement, fallback: HTMLElement): void {
   if (event.key !== 'Tab') return;
-  const focusable = [...panel.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
+  const reachable = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
     .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
-  const first = focusable[0] || fallback;
-  const last = focusable.at(-1) || fallback;
-  const outside = !panel.contains(document.activeElement);
-  if (outside || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
-    event.preventDefault();
-    (event.shiftKey ? last : first).focus({ preventScroll: true });
-  }
+  const toasts = [...document.querySelectorAll<HTMLElement>(TOAST_SELECTOR)].filter((toast) => !panel.contains(toast));
+  const rings = [panel, ...toasts].map((root) => ({ root, focusable: reachable(root) }))
+    .filter((ring, index) => index === 0 || ring.focusable.length);
+  const active = document.activeElement;
+  const at = rings.findIndex((ring) => ring.root.contains(active));
+  const edge = (index: number, end: boolean): HTMLElement => {
+    const { focusable } = rings[(index + rings.length) % rings.length];
+    return (end ? focusable.at(-1) : focusable[0]) || fallback;
+  };
+  let next: HTMLElement | null = null;
+  if (at < 0) next = edge(event.shiftKey ? -1 : 0, event.shiftKey);
+  else if (event.shiftKey ? active === edge(at, false) : active === edge(at, true)) next = edge(at + (event.shiftKey ? -1 : 1), event.shiftKey);
+  if (!next) return;
+  event.preventDefault();
+  next.focus({ preventScroll: true });
 }
 export type ModalSize = 'small' | 'medium' | 'large' | 'wide';
 
@@ -74,6 +86,9 @@ interface ModalOptions {
   className?: string;
   onOpen?: ((controller: ModalController) => void) | null;
   onClose?: ((controller: ModalController) => void) | null;
+  /** Whether the modal holds edits a close would drop: while it does, a press on the backdrop leaves it open (Esc and the
+   *  close button still close it, on purpose). */
+  unsaved?: (() => boolean) | null;
 }
 
 let serial = 0;
@@ -91,9 +106,8 @@ export function normalizeModalSize(value: RuntimeValue): ModalSize {
 }
 
 // The one modal (SPEC 6.2): a plate over a dimmed scene, on the Premiere tokens (brand-ui 247, the consistency pass): no
-// glass, no top rule, no eyebrow; the close is the kit's ghost icon button and .cot-modal__button the kit's secondary and
-// primary buttons, drawn from the same tokens as src/ui/components/components.css (this sheet sits in the surfaces layer,
-// over the kit's).
+// glass, no top rule, no eyebrow; the close is a ghost icon button on the kit's tokens, and the footer's buttons are the
+// kit's own (cot-c-btn, src/ui/components/components.css; this sheet sits in the surfaces layer, over the kit's).
 const CSS = `
 .cot-modal-root,.cot-modal{box-sizing:border-box;min-width:0}
 .cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
@@ -115,8 +129,8 @@ const CSS = `
   background:transparent;color:var(--ink-2);cursor:pointer;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .cot-modal__close:hover{color:var(--ink-1);background:var(--surface-hover)}
-.cot-modal__close:focus-visible,.cot-modal__button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-.cot-modal__close:active,.cot-modal__button:active{transform:translateY(var(--btn-press-drop))}
+.cot-modal__close:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-modal__close:active{transform:translateY(var(--btn-press-drop))}
 .cot-modal__body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:clamp(18px,3vw,30px);scrollbar-width:thin;
   scrollbar-color:var(--line-3) transparent}
 .cot-modal__body::-webkit-scrollbar{width:7px}.cot-modal__body::-webkit-scrollbar-track{background:transparent}
@@ -124,14 +138,6 @@ const CSS = `
 .cot-modal__footer{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);padding:var(--s3) clamp(18px,3vw,30px);
   border-top:1px solid var(--line-1)}
 .cot-modal__footer:empty{display:none}
-.cot-modal__button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
-  min-height:var(--btn-h-s);padding:0 var(--s4);border:0;border-radius:var(--control-radius);
-  background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring);color:var(--ink-1);cursor:pointer;
-  font:600 max(13px,var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
-  transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
-.cot-modal__button:hover{background:var(--surface-hover);box-shadow:var(--btn-secondary-ring-hover)}
-.cot-modal__button--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
-.cot-modal__button--primary:hover{background:var(--btn-primary-hover);box-shadow:var(--btn-primary-shadow)}
 body[data-cot-width='phone'] .cot-modal-root{padding:var(--s2);place-items:end center}
 body[data-cot-width='phone'] .cot-modal{width:100%;max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
 body[data-cot-width='phone'] .cot-modal__header{padding:var(--s4) var(--s4) var(--s3)}
@@ -139,8 +145,9 @@ body[data-cot-width='phone'] .cot-modal__body{padding:var(--s4)}
 body[data-cot-width='phone'] .cot-modal__footer{padding:var(--s3) var(--s4);flex-wrap:wrap}
 body[data-cot-width='phone'] .cot-modal__title{font-size:22px}
 body[data-cot-width='phone'] .cot-modal__subtitle{font-size:max(13px,var(--fs-13))}
-body[data-cot-input='coarse'] :is(.cot-modal__close,.cot-modal__button){min-width:44px;min-height:44px}
-@media(prefers-reduced-motion:reduce){.cot-modal-root,.cot-modal,.cot-modal__button,.cot-modal__close{transition:none!important}}
+body[data-cot-input='coarse'] .cot-modal__close{min-width:44px;min-height:44px}
+body[data-cot-input='coarse'] .cot-modal__footer .cot-c-btn{--h:var(--cot-control-floor)}
+@media(prefers-reduced-motion:reduce){.cot-modal-root,.cot-modal,.cot-modal__close{transition:none!important}}
 `;
 
 function ensureCss() {
@@ -163,7 +170,7 @@ function unlockBody() {
 /** Create a reusable modal controller. Callers populate `body` and `footer`. */
 export function createModal({
   title = '', subtitle = '', size = 'medium',
-  closeLabel = '', className = '', onOpen = null, onClose = null,
+  closeLabel = '', className = '', onOpen = null, onClose = null, unsaved = null,
 }: ModalOptions = {}): ModalController {
   ensureCss();
   const id = `cot-modal-${++serial}`;
@@ -276,8 +283,9 @@ export function createModal({
   };
 
   closeButton.addEventListener('click', () => controller.close());
+  // a stray press beside the plate never drops unsaved edits
   backdrop.addEventListener('pointerdown', (event) => {
-    if (event.target === backdrop) controller.close();
+    if (event.target === backdrop && !unsaved?.()) controller.close();
   });
   panel.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {

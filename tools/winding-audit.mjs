@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { uniqueIds } from './id-list.mjs';
 // RENDER-TRUTH AUDIT driver (BUILD-STANDARD §C.1, owner order 2026-08-06;
@@ -62,7 +63,7 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

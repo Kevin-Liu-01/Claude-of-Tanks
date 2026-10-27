@@ -52,6 +52,8 @@ interface GarageShowroomRuntimeOptions {
   keepRing?: () => { x: number; y: number; z: number; r: number; h: number } | null;
   /** The whole free stage (CSS px) the turntable keeps inside. */
   getKeepRect?: () => GarageStageRect | null;
+  /** The hero's foot on the stage rect's foot (the tracks on the name line), not its middle on the rect's middle. */
+  anchorFoot?: () => boolean;
   floorY: () => number;
 }
 
@@ -88,6 +90,7 @@ export function createGarageShowroomRuntime({
   frameTopPadM,
   keepRing,
   getKeepRect,
+  anchorFoot,
   floorY,
 }: GarageShowroomRuntimeOptions): GarageShowroomRuntime {
   if (!element || typeof element.addEventListener !== 'function') {
@@ -102,6 +105,7 @@ export function createGarageShowroomRuntime({
     frameTopPadM,
     keepRing,
     getKeepRect,
+    anchorFoot,
     floorY,
   };
   const control = createShowroomOrbit(camera, rig, orbitOptions) as ShowroomOrbitControl;

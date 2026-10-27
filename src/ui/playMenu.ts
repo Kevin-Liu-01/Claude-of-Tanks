@@ -8,7 +8,7 @@ import type { IconId } from './icons/icon.ts';
 import { mapRegionTags } from './regionTags.ts';
 import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { containModalTab } from './modal.ts';
-import { segmented, setRoving, wireRoving } from './components/components.ts';
+import { segmented, setRoving, setToggle, toggle, wireRoving } from './components/components.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
@@ -249,20 +249,14 @@ const CSS = `
 .cot-play .lead:empty{display:none}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:var(--s2)}
 
-/* the two ways in: a private room and the local network */
-.cot-play .modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-top:var(--s4)}
-.cot-play .mode{position:relative;display:flex;align-items:center;gap:var(--s3);min-height:64px;padding:var(--s3) var(--s4);
-  border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);
-  text-align:left;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
-.cot-play .mode:hover{background:var(--surface-hover)}
-.cot-play .mode.on{background:var(--accent-wash);box-shadow:var(--ring-accent)}
-.cot-play .mode b{display:block;margin:0;font:700 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-display);text-transform:uppercase}
-.cot-play .mode-icon{display:grid;flex:none;place-items:center;color:var(--ink-2)}
-.cot-play .mode:is(:hover,.on) .mode-icon{color:var(--ink-1)}
-.cot-play .mode-icon svg{display:block}
-.cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  gap:var(--s2);background:none;box-shadow:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body)}
-.cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
+/* the two ways in, a private room and the local network, on the kit's segmented control (.modes, styled with the room's
+   other settings below); the solo link under the room */
+.cot-play .modes{margin-top:var(--s4)}
+.cot-play .mode{display:flex;align-items:center;gap:var(--s2);order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
+  border:0;background:none;color:var(--ink-2);font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer;
+  transition:color var(--dur-fast) var(--ease-enter)}
+.cot-play .mode:hover{color:var(--ink-1)}
+.cot-play.lobby-active .mode,.cot-play:not(.multiplayer-entry) .mode{display:none}
 
 /* labels: 12 px at the label tracking */
 .cot-play :is(.rule-heading b,.arrange-head b,.campaign-heading b,.field-label,.roommeta,.arrange-sides-label){
@@ -297,9 +291,9 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .arrange-sides-label{flex-basis:100%}
 .cot-play .arrange-readout{margin-left:auto;color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);letter-spacing:var(--track-label-s)}
 .cot-play .arrange-cap,.cot-play .brain-note{display:block;margin-top:var(--s2)}
-.cot-play .brain-allies{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);cursor:pointer}
-.cot-play .brain-allies input{width:14px;height:14px;min-height:0;margin:0;padding:0;box-shadow:none;accent-color:var(--accent)}
-.cot-play .brain-allies input:disabled+span{opacity:.5}
+.cot-play .brain-allies{display:flex;align-items:center;gap:var(--s3);margin-left:auto;color:var(--ink-2);font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body)}
+.cot-play .brain-allies__label{cursor:pointer}
+.cot-play .brain-allies.is-disabled .brain-allies__label{color:var(--ink-4);cursor:default}
 .cot-play .operation-picker{display:grid;gap:var(--s1);margin-top:var(--s2)}
 
 /* the campaign's operations */
@@ -344,6 +338,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
   padding:0 var(--s3);border:0;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-2);
   color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);letter-spacing:normal;text-transform:none;outline:none}
 .cot-play :is(input,select):focus-visible{box-shadow:var(--focus-ring)}
+/* the enemy nation's picker menu stands as tall as the fields beside it, so its label shares their line (Rooms r36) */
+.cot-play .arrange-fields .cot-c-menu__trigger{min-height:44px}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
 .cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
@@ -450,8 +446,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 
-.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12))}
-.cot-play .player .name{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
+/* the name keeps the vehicle name's line pitch, the tag's line included, so a wrapped name and a wrapped vehicle centre
+   onto the same lines (Rooms r35: 3 px apart when the tag took a 24 px line under a 16 px one) */
+.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-12),var(--fs-12));margin-block:calc((var(--name-line) - 20px) / 2)}
+.cot-play .player .name{--name-line:calc(max(var(--fs-floor-12),var(--fs-13)) * 1.3);display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--s2);min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/var(--name-line) var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
 .cot-play .vehicle-icon{--w:58px;--h:42px;width:var(--w);height:var(--h);flex:0 0 var(--w);object-fit:cover;
@@ -472,8 +470,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .format-field[hidden]{display:none}
 /* a room's small settings (battle format, deployment) are the kit's segmented control, as wide as their field and as
    tall as its other controls; a guest still reads the format the host chose */
-.cot-play :is(.create-size,.room-size,.room-team){display:flex;width:100%}
-.cot-play :is(.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
+.cot-play :is(.modes,.create-size,.room-size,.room-team){display:flex;width:100%}
+.cot-play :is(.modes,.create-size,.room-size,.room-team) .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px;padding-inline:var(--s2)}
 .cot-play :is(.room-size,.room-team) .cot-c-seg__opt[aria-checked=true]:disabled{color:var(--ink-2)}
 /* the five formats are mono numbers: they need little air to fit the rules column */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt{padding-inline:var(--s1)}
@@ -539,8 +537,6 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .close{to
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.show .controls{
   margin:var(--s3) calc(-1 * var(--s4)) 0;padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:minmax(0,1fr)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3)}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s4)}
 @media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
   .cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
@@ -742,10 +738,9 @@ export function createPlayMenu({
       <span class="cot-c-notice__acts"><button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button></span>
     </section></header>
     <p class="lead"></p>
-    <div class="modes">
-      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><b>${t('playMenu.private.title')}</b></button>
-      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><b>${t('playMenu.lan.title')}</b></button>
-    </div>
+    ${segmented({ label: t('playMenu.kind'), value: 'private', className: 'modes', options: [
+      { value: 'private', label: t('playMenu.kind.private'), icon: 'battlePrivate' },
+      { value: 'lan', label: t('playMenu.kind.lan'), icon: 'battleLan' }] })}
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
@@ -845,7 +840,8 @@ export function createPlayMenu({
       <div class="brain-row">
         ${segmented({ label: t('playMenu.brain.heading'), value: 'classic', className: 'brain-seg', options: [
           { value: 'classic', label: t('playMenu.brain.classic') }, { value: 'jev', label: t('playMenu.brain.jev') }] })}
-        <label class="brain-allies"><input type="checkbox" data-brain-allies><span>${t('playMenu.brain.allies')}</span></label>
+        <div class="brain-allies"><span class="brain-allies__label" aria-hidden="true">${t('playMenu.brain.allies')}</span>${toggle({
+          label: t('playMenu.brain.allies'), checked: false, onWord: t('settings.on'), offWord: t('settings.off'), attrs: { 'data-brain-allies': '' } })}</div>
       </div>
       <small class="brain-note" data-brain-note hidden>${t('playMenu.brain.note')}</small>
     </section>
@@ -871,6 +867,8 @@ export function createPlayMenu({
   const garageBtn = requiredElement<HTMLButtonElement>(root, '[data-room-failure="garage"]');
   const nameInput = requiredElement<HTMLInputElement>(root, '[data-field="name"]');
   const codeInput = requiredElement<HTMLInputElement>(root, '[data-field="code"]');
+  /** The room's kind, private or the local network (the kit's segmented control). */
+  const kindSeg = requiredElement<HTMLElement>(root, '.modes');
   const createSizeSelect = requiredElement<MenuSelectElement>(root, '[data-field="create-size"]');
   const vehicleSelect = requiredElement<MenuSelectElement>(root, '[data-control="vehicle"]');
   const teamSelect = requiredElement<MenuSelectElement>(root, '[data-control="team"]');
@@ -1057,7 +1055,7 @@ export function createPlayMenu({
   function mapCard(map: PlayMenuMap): BattlefieldCard {
     const poster = battlefieldFacts(map.id).poster;
     return { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
-      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, tags: [...mapRegionTags(map.id)] };
+      media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, loop: poster.loop, tags: [...mapRegionTags(map.id)] };
   }
   function closeBattlefieldPick(restoreFocus = false): void {
     if (battlefieldPick.hidden) return;
@@ -1109,6 +1107,17 @@ export function createPlayMenu({
     const pick = region.getBoundingClientRect();
     const both = pick.bottom - origin - card <= panel.clientHeight - sticky - 12;
     panel.scrollTop = Math.max(0, both ? card : pick.top - origin);
+    // the stuck foot and the fade it lays over what scrolls under it (measured where it now stands): the picker rises
+    // clear of them, never past its own top (Rooms r33: the chosen card's name and facts sat in the fade)
+    const foot = panel.querySelector<HTMLElement>('.lobby.show .controls');
+    if (!foot || getComputedStyle(foot).position !== 'sticky') return;
+    const options = foot.querySelector<HTMLElement>('.control-options');
+    const fade = options ? parseFloat(getComputedStyle(options, '::before').height) || 0 : 0;
+    const cover = Math.min(foot.getBoundingClientRect().top, (options?.getBoundingClientRect().top ?? Infinity) - fade);
+    const placed = region.getBoundingClientRect();
+    const under = placed.bottom + 12 - cover;
+    const room = placed.top - (panel.getBoundingClientRect().top + sticky + 12);
+    if (under > 0 && room > 0) panel.scrollTop += Math.min(under, room);
   }
   battlefieldPick.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -1357,25 +1366,29 @@ export function createPlayMenu({
   const brainSeg = requiredElement<HTMLElement>(brainSection, '.brain-seg');
   // what Jev is, for a pointer, is the option's hover tip; screen readers keep the note
   requiredElement<HTMLElement>(brainSeg, '[data-value="jev"]').dataset.tip = t('playMenu.brain.note');
-  const brainAllies = brainSection.querySelector<HTMLInputElement>('input[data-brain-allies]')!;
+  const brainAllies = requiredElement<HTMLButtonElement>(brainSection, '[data-brain-allies]');
+  const alliesRow = requiredElement<HTMLElement>(brainSection, '.brain-allies');
   const brainNote = brainSection.querySelector<HTMLElement>('[data-brain-note]')!;
   function renderBrain(fromLobby: boolean): void {
     // rooms keep the classic brain on the host for now (docs/JEV-COMMANDER.md): the setting is solo-only
     brainSection.hidden = fromLobby;
     const settings = readBrainSettings();
     setRoving(brainSeg, settings.opponent);
-    brainAllies.checked = settings.opponent === 'jev' && settings.allies;
+    setToggle(brainAllies, settings.opponent === 'jev' && settings.allies);
     brainAllies.disabled = settings.opponent !== 'jev';
+    alliesRow.classList.toggle('is-disabled', brainAllies.disabled);
     brainNote.hidden = settings.opponent !== 'jev';
   }
   wireRoving(brainSeg, (opponent) => {
     writeBrainSettings({ opponent });
     renderBrain(!!state);
   });
-  brainAllies.addEventListener('change', () => {
-    writeBrainSettings({ allies: brainAllies.checked });
+  brainAllies.addEventListener('click', () => {
+    writeBrainSettings({ allies: brainAllies.getAttribute('aria-checked') !== 'true' });
     renderBrain(!!state);
   });
+  // the switch's words are its own name: a press on them presses it, as a label's would
+  requiredElement<HTMLElement>(alliesRow, '.brain-allies__label').addEventListener('click', () => brainAllies.click());
 
   /** Choose a battle mode: the room's own change for its host while it waits; the next room's or solo battle's before. */
   function chooseMode(next: string): void {
@@ -1595,10 +1608,7 @@ export function createPlayMenu({
     mode = normalizePlayMode(requestedMode) === 'lan' ? 'lan' : 'private';
     revealMenu();
     room.classList.add('show');
-    for (const item of root.querySelectorAll<HTMLButtonElement>('.mode')) {
-      item.classList.toggle('on', item.dataset.mode === mode);
-      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item.dataset.mode === mode));
-    }
+    setRoving(kindSeg, mode);
     setConnecting(false);
     showFailure(reason);
   }
@@ -2029,8 +2039,6 @@ export function createPlayMenu({
   });
 
   function selectMode(nextMode: PlayMode): void {
-    const button = root.querySelector<HTMLButtonElement>(`.mode[data-mode="${nextMode}"]`);
-    if (!button) return;
     closePicks();
     if (nextMode === 'solo') {
       closeCurrentSession('mode_changed');
@@ -2054,19 +2062,14 @@ export function createPlayMenu({
     closeCurrentSession('mode_changed');
     clearFailure();
     mode = nextMode;
-    for (const item of root.querySelectorAll<HTMLElement>('.mode')) {
-      item.classList.toggle('on', item === button);
-      if (item.dataset.mode !== 'solo') item.setAttribute('aria-pressed', String(item === button));
-    }
+    setRoving(kindSeg, mode);
     room.classList.add('show');
     setConnecting(false);
     if (!menuRoomsUrl()) showFailure('room_unconfigured');
     else setStatus('');
   }
-  root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {
-    const requested = button.dataset.mode;
-    selectMode(normalizePlayMode(requested));
-  }));
+  wireRoving(kindSeg, (requested) => selectMode(normalizePlayMode(requested)));
+  requiredElement<HTMLButtonElement>(root, '.mode[data-mode="solo"]').addEventListener('click', () => selectMode('solo'));
   createBtn.addEventListener('click', () => { void requestRoom('create'); });
   joinBtn.addEventListener('click', () => { void requestRoom('join'); });
   retryBtn.addEventListener('click', () => {

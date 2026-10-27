@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Source-pinned native pixel regression; no game quality or capture overrides.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -40,7 +41,7 @@ try {
     } }],
   });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new',
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
     timeout: 30_000, protocolTimeout: 60_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);

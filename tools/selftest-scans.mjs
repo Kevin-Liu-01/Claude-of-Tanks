@@ -76,6 +76,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/mp/room/roomSizeRules.selftest.mjs': lists('cloudflare/rooms/src/*.ts'),
   'src/techTree/techTree.selftest.mjs': lists('src/techTree/*.ts', 'src/techTree/nations/*'),
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
+  // one selected state (interaction-picker-254 a311036509): every sheet and module under src/ui and src/presentation
+  'src/ui/components/components.selftest.mjs': lists('src/ui/**/*.{css,ts}', 'src/presentation/**/*.{css,ts}'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
@@ -108,6 +110,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/hot-path-alloc.mjs': lists('src/**/*.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
+  // 256 (owner: "no more object containns"): every module, sheet and page, for a contain fit or an unfocused cover
+  'tools/image-fit-lint.mjs': lists('src/**/*.{ts,css}', 'site/**/*.html'),
   // 254 (interaction census, part D): every module and static page, for a choose-one built outside the picker
   'tools/interaction-census.mjs': lists('src/**/*.ts', 'site/**/*.html'),
   // 230 (foliage-shadow-sites-228): every virtual: import under src resolves through the probe server's plugins
@@ -162,6 +166,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),
   'src/vehicles/vehicleNightLighting.selftest.mjs': tracked('src/vehicles/**'),
   'tools/attribution-audit.mjs': tracked('**'),
+  'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),

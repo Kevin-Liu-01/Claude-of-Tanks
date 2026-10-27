@@ -8,6 +8,7 @@
 // proxy, plus supersampled stills. Receipts, digests, resume and the shared
 // capture lock follow produce.mjs. `--jobs=file.json` renders several jobs in
 // one browser session and one capture-lock hold (a trailer's shot list).
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync, readdirSync, createReadStream, statSync } from 'node:fs';
@@ -219,7 +220,7 @@ try {
   // stop above owns SIGTERM, so a stopped batch always ends its lease.
   for (const listener of process.listeners('SIGTERM')) if (listener !== stop) process.off('SIGTERM', listener);
   const origin = server.resolvedUrls?.local?.[0]?.replace(/\/$/, '') ?? `http://127.0.0.1:${port}`;
-  browser = await puppeteer.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
     protocolTimeout: 600000, args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
   // the page's ready budget (2026-10-15: a loaded machine took past the fixed 300 s); COT_CINEMA_READY_MS raises it
   const READY_MS = Number(process.env.COT_CINEMA_READY_MS) || 300000;

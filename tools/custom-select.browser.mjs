@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Actual shared component + mode owner; verifies state writes and keyboard/popover behavior.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -7,7 +8,7 @@ const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.sli
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/custom-select'));
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const errors=[];let checked=0;
 try {
   for(const [name,width,height,touch] of [['desktop',1280,800,false],['phone',390,844,true],['landscape',844,390,true]]) {
@@ -16,22 +17,31 @@ try {
     await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/custom-select.html`,{waitUntil:'networkidle'});
     for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']) {
       await page.evaluate(mode=>window.__SELECT_TEST.arrangement.render(mode),mode);
-      const keys=await page.locator('[data-mode-field]').evaluateAll(selects=>selects.filter(s=>!s.parentElement.hidden).map(s=>s.dataset.modeField));
+      // the arrangement's fields: the counts, the winning score and the enemy nation on the kit's picker menu, the
+      // settings of two to five values on its segmented control
+      const keys=await page.locator('[data-mode-field]').evaluateAll(fields=>fields.filter(f=>!f.hidden).map(f=>f.dataset.modeField));
       for(const key of keys) {
-        const native=page.locator(`[data-mode-field="${key}"]`);
-        assert.equal(await native.isVisible(),false,'native select is hidden');
-        const trigger=page.locator(`[data-mode-field="${key}"] + .cot-custom-select-trigger`);
-        const target=await native.evaluate(s=>s.options[s.options.length-1].value);
-        await trigger.click();
-        const list=page.locator('.cot-custom-select-list:popover-open');
-        assert.equal(await list.count(),1,'one custom menu at a time');
-        const rect=await list.boundingBox();
-        assert.ok(rect.x>=0 && rect.y>=0 && rect.x+rect.width<=width+1 && rect.y+rect.height<=height+1,`${name} ${mode} ${key}: popup in viewport`);
-        await list.locator(`[data-value="${target}"]`).click();
-        assert.equal(await native.inputValue(),target);
-        if(key==='enemyNation') assert.equal(await trigger.locator('.cot-flag').count(),1,'nation retains official flag');
+        const field=page.locator(`[data-mode-field="${key}"]`);
+        const trigger=field.locator('.cot-c-menu__trigger');
+        let target;
+        if(await trigger.count()) {
+          await trigger.click();
+          const list=page.locator('.cot-c-menu__pop:popover-open');
+          assert.equal(await list.count(),1,'one menu at a time');
+          const rect=await list.boundingBox();
+          assert.ok(rect.x>=0 && rect.y>=0 && rect.x+rect.width<=width+1 && rect.y+rect.height<=height+1,`${name} ${mode} ${key}: popup in viewport`);
+          const option=list.locator('[role=option]').last();
+          target=await option.getAttribute('data-id');
+          await option.click();
+          if(key==='enemyNation') assert.equal(await trigger.locator('.cot-c-picker__chip img').count(),1,'nation retains official flag');
+          assert.equal(await list.count(),0,'selection dismisses menu');
+        } else {
+          const option=field.locator('.cot-c-seg__opt').last();
+          target=await option.getAttribute('data-value');
+          await option.click();
+          assert.equal(await option.getAttribute('aria-checked'),'true');
+        }
         assert.equal(await page.evaluate(([mode,key])=>String(window.__SELECT_TEST.readTeamArrangement(mode)[key]),[mode,key]),target,'owner persists the selected setting');
-        assert.equal(await list.count(),0,'selection dismisses menu');
         checked++;
       }
     }

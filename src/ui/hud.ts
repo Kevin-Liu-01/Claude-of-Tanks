@@ -25,7 +25,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, MAX_BATTLE_NOTIFICATIONS, OBJECTIVE_CHROME_W, objectiveCopyWidth } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
-import { spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
+import { mountSpectateAllies, spectatorCardModel, spectatorSwitcherMarkup, spectatorSwitcherStyles } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
 import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { createRetainedConsumableSlot, type RetainedConsumableSlot } from './hudConsumablePresentation.ts';
@@ -355,6 +355,10 @@ interface HudHitEvent extends HitEventPresentation {
 }
 
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
+  /** ui:minimapZoom: the map's size step to set (none: M's toggle of the large step). */
+  step?: number;
+  /** spectate:begin/change: who may be watched, in the stepping order (killcam.ts; the bar's picker of allies). */
+  allies?: readonly string[];
   destroyed?: boolean;
   id?: string;
   /** tank:spotted: who lit the tank (spotting.ts), when the sim names a spotter. */
@@ -501,7 +505,7 @@ interface LiveDamageNumber {
   timer?: ReturnType<typeof setTimeout>;
 }
 interface HitMark { t0: number; bounced: boolean; blockedRapid?: boolean }
-interface SpawnFlag { x: number; z: number; color: string; fill?: string }
+interface SpawnFlag { x: number; z: number; color: string; fill?: string; side: 'own' | 'enemy' }
 
 interface ReticlePaintState {
   valid: boolean;
@@ -601,6 +605,8 @@ interface ShellSlotButton extends HTMLButtonElement {
 }
 
 interface AlertOptions { tone?: string; icon?: string }
+/** A name in Latin type alone (the kill feed's .lat: Chinese's lifted label sizes are for Chinese text, gauntlet r8). */
+const LATIN_CALLSIGN = /^[\x20-\x7e\u00a0-\u024f]+$/;
 /** An alert's tone as the kit's notice severities name it (components/notice.ts). */
 const ALERT_SEVERITY: Readonly<Record<string, 'info' | 'success' | 'warning' | 'error'>> = {
   danger: 'error', warning: 'warning', success: 'success', info: 'info',
@@ -793,6 +799,10 @@ const DRY_RING = 'rgba(214,120,112,0.62)';
  *  rack and the reload countdown (ringGap; critic r6: the desktop scope's countdown sat on the ring, a phone's clip
  *  touched it). */
 const SIGHT_MARK_RING_GAP = 3;
+/** How far a scope cross arm's under-stroke reaches either side of its line (paintScopeSkeleton: 2.4 px wide). */
+const SCOPE_ARM_REACH = 1.2;
+/** Where the scope's cross arms end, 1.55 radii out (the r4 short skeleton; paintScopeSkeleton). */
+const scopeArmEnd = (radius: number): number => radius * 1.55 + 3;
 /** How far the ring's stroke reaches past its radius: the dark halo under-pass, circleLw + 1.5 wide (drawReticle). */
 const RING_STROKE_REACH = 1.5;
 /** A rack shell's dark contour reaches 1.5 px past its outline; a turned outer shell (AUTOLOADER_HUD_OUTER_ROTATION)
@@ -830,12 +840,13 @@ const TOUCH_WARNING_W = 180;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
  *  the column or beside the line), the zoom plate left out; the last flag marks a place only a chip makes different.
- *  rowBeside sets the chip over the sight whenever there is one (under the column it would push the row under it). */
+ *  rowBeside sets the chip over the sight whenever there is one (under the column it would push the row under it). Over
+ *  the ring the row is the line alone: the zoom plate beside it set the row 96 px off the sight's axis at 568x256, the
+ *  countdown under the line and the range tag by the ring between them (gauntlet r14). */
 const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, boolean])[] = [
   ['stack', false, false, false], ['zoomBeside', false, false, false], ['chipBeside', false, false, true],
   ['stack', true, false, true], ['zoomBeside', true, false, true], ['rowBeside', false, false, false],
-  ['rowAbove', false, false, false], ['rowAbove', true, false, true], ['stack', false, true, false], ['stack', true, true, true],
-  ['rowAbove', false, true, false], ['rowAbove', true, true, true],
+  ['rowAbove', false, true, false], ['rowAbove', true, true, true], ['stack', false, true, false], ['stack', true, true, true],
 ];
 /** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
 const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
@@ -1489,7 +1500,9 @@ const HUD_CSS = `
   --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
   --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
-.cot-hud *{box-sizing:border-box;margin:0;padding:0;}
+/* (the kit picker's parts keep the kit's own box: this surface reset outranks its components layer, and zeroed the
+   spectator bar's list rows to their edges; :where keeps the reset's weight where it applies) */
+.cot-hud :where(:not(.cot-c-picker, .cot-c-picker *)){box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
 .cot-ret-text{z-index:var(--hud-layer-sight);}
 /* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
@@ -2067,7 +2080,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:var(--battle-fs-11)}
 .cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
-.cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
+.cot-hpb{position:absolute;width:128px;height:40px;text-align:center;will-change:transform;
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
   font-family:${FONT_COND};
@@ -2081,21 +2094,23 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
 .cot-hpb .fl{height:100%;width:100%;transform-origin:0 50%;background:var(--hud-enemy);transition:transform var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
-.cot-hpb::after{content:"";display:block;width:0;height:0;margin:1px auto 0;
-  border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
-.cot-hpb.ally::after{border-top-color:var(--hud-own);}
+/* the side under the bar in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond,
+   the target plate's, and the ally's chevron, each whole inside the bar's box (the 31 px box cut the old pointer) */
+.cot-hpb::after{content:"";display:block;width:6px;height:6px;margin:3px auto 0;transform:rotate(45deg);
+  background:var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
+.cot-hpb.ally::after{width:0;height:0;margin-top:1px;transform:none;background:none;
+  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--hud-own);}
 /* Over-target marker (brand-ui 242, the direction's 06-battle-hud .tgt): one compact plate row on the target — its
-   flag, its silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
+   silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
    points, the enemy's diamond pointing into the tank. A stable-height instrument follows the exact projected turret
    roof; its width changes only when its copy does, so names stay whole without steady-state frame reflow. The plate is
-   the row alone: the instrument around it paints nothing over the battlefield. */
+   the row alone: the instrument around it paints nothing over the battlefield. No nation flag on any marker over a tank
+   (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"): the side reads in the silhouette's
+   and the bar's colour and the diamond's shape; the rosters, the load card, the scoreboard and the report keep them. */
 .cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:var(--s1);}
 .cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;text-shadow:var(--battle-text-halo);}
-.cot-tgt .flg{display:flex;flex:none;}.cot-tgt .flg:empty{display:none;}
-.cot-tgt .flg .cot-flag{display:block;box-shadow:var(--flag-ring);}
 .cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
 .cot-tgt .nick{flex:none;font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
@@ -2136,6 +2151,13 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
   font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);white-space:nowrap;}
 .cot-mm-hd .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-mm-hd .cot-c-kbd{flex:none;height:19px;min-width:19px;padding:0 5px;font-size:var(--battle-fs-11);}
+/* (the size control: the map's glyph and its key cap on the header's line, the kit's ring on hover and focus) */
+.cot-mm-size{flex:none;display:inline-flex;align-items:center;gap:var(--s1);height:22px;padding:0 2px 0 var(--s1);border:0;
+  border-radius:var(--control-radius);background:none;color:var(--ink-2);font:inherit;cursor:pointer;pointer-events:auto;}
+.cot-mm-size:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
+.cot-mm-size:focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px;}
+.cot-mm-size[aria-pressed='true']{color:var(--accent-hi);}
+body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 /* Detection is one compact instrument, revealed after the authoritative
    sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
    bulb, keeping motion quiet while the state remains active. */
@@ -2287,12 +2309,11 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The width the plate keeps for its range ("1,240 m" at the data face's 12 px). */
   const TARGET_RANGE_W = 52;
   const tgtEl = el('div', 'cot-tgt', root);
-  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="flg"></span><span class="cg"></span>` +
+  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="cg"></span>` +
     `<b class="nick"></b><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
     `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
     `<div class="hp num"></div></div><div class="anch"></div></div>`;
   const tgtRefs = {
-    flg: requireElement<HTMLElement>(tgtEl, '.flg'),
     rng: requireElement<HTMLElement>(tgtEl, '.rng'),
     nick: requireElement<HTMLElement>(tgtEl, '.nick'),
     tier: requireElement<HTMLElement>(tgtEl, '.tier'),
@@ -2302,7 +2323,6 @@ export function initHud(bus: EventBus): HudRuntime {
     cg: requireElement<HTMLElement>(tgtEl, '.cg'),
   };
   let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
-  let tgtLastFlagKey = ''; // the flag shown: its vehicle and whether the flag art had loaded
   let tgtLastRangeM = -2; // the range shown, whole metres (-1: no player to range from)
   let tgtShown = false;
   let tgtRect: TargetPlateRect | null = null; // screen-px rect of the shown plate (sniper hairline gap)
@@ -2535,9 +2555,12 @@ export function initHud(bus: EventBus): HudRuntime {
   /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
   const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
-  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility).
+  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility),
+  // while the battle has the cursor; with the cursor free (paused, the report up) Tab moves the keyboard's focus, as
+  // everywhere else (INTERACTION-REDESIGN C: captured on the window, no HUD button and no report button was reachable).
   window.addEventListener('keydown', event => {
-    if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
+    if (event.code !== 'Tab' || mode === 'hidden' || !document.pointerLockElement || document.body.classList.contains('cot-si-report')
+        || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
         (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
     event.preventDefault();
     if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
@@ -2562,7 +2585,6 @@ export function initHud(bus: EventBus): HudRuntime {
   specBar.innerHTML = spectatorSwitcherMarkup();
   specBar.setAttribute('role', 'region');
   specBar.setAttribute('aria-label', t('spectator.spectating'));
-  const specCursorHint = requireElement<HTMLElement>(specBar, '.cursor-hint');
   const specWho = markDatum(requireElement<HTMLElement>(specBar, '.who'), 'watched');
   const specNick = requireElement<HTMLElement>(specBar, '.nick');
   const specVeh = requireElement<HTMLElement>(specBar, '.veh');
@@ -2581,8 +2603,20 @@ export function initHud(bus: EventBus): HudRuntime {
       || document.querySelector<HTMLButtonElement>('.cot-es [data-es-action="garage"]');
     if (btn) btn.click(); // existing endOverlayRuntime Garage handler
   });
+  // (the plate's picker of allies: the one chosen is watched, as Q and E step to it)
+  const specAllies = mountSpectateAllies(specBar, (id) => {
+    bus.emit('spectate:select', { id });
+    bus.emit('ui:click', {});
+  });
   function specPopulate(p: HudEventPayload, first: boolean): void {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
+    // (each ally by the rosters' callsign, its tier and vehicle under it, as the plate reads)
+    specAllies.update((p.allies ?? []).map((id) => {
+      const ally = (lastTanksRef || []).find((t) => t && t.id === id) || null;
+      const allyTier = ally?.spec?.id ? tierNumeral(ally.spec.id) : '';
+      const vehicle = ally?.spec?.name ?? '';
+      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle };
+    }), p.id ?? null);
     const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)
     specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
@@ -2608,6 +2642,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
   function specHide(): void {
+    specAllies.close();
     specBar.classList.remove('in');
     document.body.classList.remove('cot-spectating');
     setTimeout(() => {
@@ -3110,9 +3145,13 @@ export function initHud(bus: EventBus): HudRuntime {
   const mmLetters = createCanvasText(mmWrap, 'cot-mm-letters');
   // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
   const mmHead = el('div', 'cot-mm-hd', mmWrap);
-  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
+  // (its key cap is the size control's, INTERACTION-REDESIGN C: the large map had a key and no control)
+  mmHead.innerHTML = `<span class="nm"${datumAttr('map-name')}></span>`
+    + `<button type="button" class="cot-mm-size" aria-pressed="false" aria-label="${t('hud.map.large')}">`
+    + `${uiIconSVG('zoomIn', 14)}<kbd class="cot-c-kbd" aria-hidden="true">M</kbd></button>`;
   const mmName = requireElement<HTMLElement>(mmHead, '.nm');
   const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
+  const mmSize = requireElement<HTMLButtonElement>(mmHead, '.cot-mm-size');
   // the grid's coordinates, WoT's convention: numbers are the columns (1 west to 0 east, along the top), letters the rows
   // (A north to K south, down the left), in the plate's gutter (the CSS above)
   const mmCols = el('div', 'cot-mm-gx', mmWrap), mmRows = el('div', 'cot-mm-gy', mmWrap);
@@ -3995,7 +4034,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.globalAlpha = scopeFadeAlpha();
     const radius = clampRetR(smoothRadPx);
     const gap = radius + 3;
-    const armEnd = radius * 1.55 + 3;
+    const armEnd = scopeArmEnd(radius);
     // the direction's optic ink (06b-sniper-optic .optic): paper lines over a graphite under-stroke, no green tint
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(5,6,8,0.55)', 2.4);
     paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(246,243,236,0.78)', 1.1);
@@ -4362,6 +4401,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
     const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
     g.save();
+    // (under 300 px tall the mark a fifth smaller about the aim point: its lower shards met the systems row 28 px under
+    // the sight at 568x256, gauntlet r10)
+    if (h < 300) { g.translate(cx, cy); g.scale(0.8, 0.8); g.translate(-cx, -cy); }
     g.lineJoin = 'miter';
     if (hitMark.blockedRapid) {
       const x = cx + 30, y = cy - 30;
@@ -4812,15 +4854,35 @@ export function initHud(bus: EventBus): HudRuntime {
     return ringGap(draw, draw.cx - halfW, top - 3, draw.cx + halfW, top + markH) < SIGHT_MARK_RING_GAP ? belowRing(draw) + 3 : top;
   }
 
-  /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included). */
+  /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included), and on the scope below its lower
+   *  cross arm too where that holds (scopeArmGap). */
   function belowRing(draw: ReticleDrawState): number {
-    return draw.circleY + draw.radius + RING_STROKE_REACH + SIGHT_MARK_RING_GAP;
+    const ring = draw.circleY + draw.radius + RING_STROKE_REACH;
+    return (lowerArmHolds(draw) ? Math.max(ring, draw.cy + scopeArmEnd(draw.radius) + SCOPE_ARM_REACH) : ring) + SIGHT_MARK_RING_GAP;
   }
 
   /** The lowest row anything set over the sight may reach: the ring's stroke, the marker's clear centre and any mark
    *  already set over the ring this frame, whichever is highest. */
   function aboveSightTop(draw: ReticleDrawState): number {
     return Math.min(draw.circleY - draw.radius - RING_STROKE_REACH, draw.cy - draw.centerClearanceRadius, draw.aboveTopY);
+  }
+
+  /**
+   * How far a box keeps from the scope's lower cross arm (paintScopeSkeleton: from the ring's gap to scopeArmEnd, its
+   * under-stroke SCOPE_ARM_REACH either side; negative where it runs through the box), on a scope over 430 px tall: the
+   * marks under the sight keep off it as off the ring (gauntlet r12: the reload time took the lower arm's place at
+   * 1280x720, 1024x600 and 900x700, the sight one arm short). The compact stack of the short windows keeps the arm's
+   * yielding: there the marks have no room under its end.
+   */
+  function scopeArmGap(draw: ReticleDrawState, x0: number, y0: number, x1: number, y1: number): number {
+    const dx = Math.max(draw.cx - SCOPE_ARM_REACH - x1, 0, x0 - draw.cx - SCOPE_ARM_REACH);
+    const dy = Math.max(draw.cy + draw.radius + 3 - y1, 0, y0 - draw.cy - scopeArmEnd(draw.radius));
+    return dx > 0 || dy > 0 ? Math.hypot(dx, dy) : -1;
+  }
+
+  /** Whether the scope's lower arm counts as the sight's furniture this frame (scopeArmGap). */
+  function lowerArmHolds(draw: ReticleDrawState): boolean {
+    return draw.sniper && h > 430;
   }
 
   /**
@@ -4845,7 +4907,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const { circleX: x, circleY: y, radius: r } = draw;
     const near = Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1));
     const far = Math.max(Math.hypot(x0 - x, y0 - y), Math.hypot(x1 - x, y0 - y), Math.hypot(x0 - x, y1 - y), Math.hypot(x1 - x, y1 - y));
-    return Math.max(near - (r + RING_STROKE_REACH), r - RING_STROKE_REACH - far);
+    const ring = Math.max(near - (r + RING_STROKE_REACH), r - RING_STROKE_REACH - far);
+    // (on a scope over 430 px tall its lower cross arm is the ring's furniture too)
+    return lowerArmHolds(draw) ? Math.min(ring, scopeArmGap(draw, x0, y0, x1, y1)) : ring;
   }
 
   /** One hollow round in the empty ink, struck through, over a dark contour. */
@@ -4938,7 +5002,8 @@ export function initHud(bus: EventBus): HudRuntime {
       // countdown and nearer than TAG_GROUP_GAP beside it, the countdown drops under the tag, so the two never read as
       // one line.
       const tag = sniperDistanceTag(view, draw);
-      if (tag && top < tag.y1 && top + height > tag.y0 && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP) {
+      // (within the marks' 3 px of the tag too: set under the lower arm, a countdown came 0.24 px under it, r12)
+      if (tag && top < tag.y1 + SIGHT_MARK_RING_GAP && top + height > tag.y0 && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP) {
         top = Math.max(top, tag.y1 + SIGHT_MARK_RING_GAP);
         // (dropping can carry it onto a ring that sits under the marker, the gun's lay off the centre)
         if (ringGap(draw, x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) top = Math.max(top, belowRing(draw));
@@ -5019,9 +5084,12 @@ export function initHud(bus: EventBus): HudRuntime {
     row.besideLeft = draw.cx + column + TAG_GROUP_GAP;
     row.bestClear = -Infinity;
     const tag = sniperDistanceTag(view, draw);
+    // (over 430 px tall the line rests a fixed step under the lower cross arm's end: under a 96 px floor it stood 8 px
+    // under the arm at 1920 and 30 to 55 px under it at 1280, 1024 and 390x844, a label off the lens, gauntlet r12)
     const rest = h <= 300 ? draw.cy + 32
       : h <= 430 ? draw.cy + 48
-        : Math.min(draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96), sniperReadoutFloor());
+        : Math.min(draw.cy + Math.max(draw.radius * 1.02 + 24,
+          scopeArmEnd(draw.radius) + SCOPE_ARM_REACH + SIGHT_MARK_RING_GAP + row.lineTop + 1), sniperReadoutFloor());
     const chip = row.chipW > 0;
     let seated = false;
     for (let i = 0; i < SNIPER_ROW_PLACES.length && !seated; i++) {
@@ -5814,6 +5882,12 @@ export function initHud(bus: EventBus): HudRuntime {
       ?? findScreenAimTarget(lastTanksRef || [], camera);
   }
 
+  function showTargetPlate(): void {
+    if (tgtShown) return;
+    tgtEl.style.display = 'block';
+    tgtShown = true;
+  }
+
   function hideTargetPlate(): void {
     aimTargetId = null;
     tgtLastRangeM = -2;
@@ -5853,10 +5927,17 @@ export function initHud(bus: EventBus): HudRuntime {
       copyChanged = true;
     }
     if (!copyChanged) return;
-    // the row: its padding, the flag, the silhouette, the callsign, the tier, the vehicle and the range's reserve
-    const rowWidth = 20 + 24 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + 22
+    // (measured shown: a hidden plate's spans measure nothing, so it kept its floor and cut the callsign and the vehicle
+    // at both ends on each new target; the gauntlet's markers frames)
+    showTargetPlate();
+    // the hull points at their widest (they only fall from full), beside the bar
+    const full = String(Math.round(target.combat.maxHp));
+    tgtRefs.hp.textContent = `${full}/${full}`;
+    // the row: its padding, the silhouette, the callsign, the tier, the vehicle and the range's reserve; the bar's row
+    const rowWidth = 20 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + Math.ceil(tgtRefs.tier.scrollWidth) + 8
       + Math.ceil(tgtRefs.veh.scrollWidth) + 8 + TARGET_RANGE_W;
-    tgtPlateWidth = Math.max(176, Math.min(440, rowWidth));
+    const barWidth = 118 + 6 + Math.ceil(tgtRefs.hp.scrollWidth);
+    tgtPlateWidth = Math.max(176, Math.min(440, Math.max(rowWidth, barWidth)));
     tgtEl.style.width = `${tgtPlateWidth}px`;
   }
 
@@ -5876,13 +5957,6 @@ export function initHud(bus: EventBus): HudRuntime {
       maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', 'currentColor');
       tgtLastVehicleId = vehicleId;
     }
-    // the flag (flags.ts loads with its art after the HUD; the plate takes it once it has)
-    const nation = target.spec?.nation ?? '';
-    const flagKey = flagHtml && nation ? `${vehicleId}:${nation}` : '';
-    if (flagKey !== tgtLastFlagKey) {
-      tgtRefs.flg.innerHTML = flagKey && flagHtml ? flagHtml(nation) : '';
-      tgtLastFlagKey = flagKey;
-    }
     // the range from the player's tank, in whole metres
     const from = playerRef?.state?.pos;
     const to = target.state.pos;
@@ -5896,10 +5970,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
     const hpText = `${Math.max(0, Math.round(target.combat.hp))}/${Math.round(target.combat.maxHp)}`;
     if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
-    if (!tgtShown) {
-      tgtEl.style.display = 'block';
-      tgtShown = true;
-    }
+    showTargetPlate();
     const bar = hpPool.get(target.id);
     if (bar?.shown) { bar.root.style.display = 'none'; bar.shown = false; }
   }
@@ -6714,8 +6785,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // the ally blip cluster at spawn — the map read one-sided). The tints are
     // the team inks every blip and objective glyph shares (brand-ui H1).
     spawnFlags = [
-      { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own') },
-      { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy') },
+      { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own'), side: 'own' },
+      { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy'), side: 'enemy' },
     ];
   }
 
@@ -6815,8 +6886,9 @@ export function initHud(bus: EventBus): HudRuntime {
       const dimmed = Math.hypot(x - playerMapX, y - playerMapY) < 15;
       mmCtx.save();
       if (dimmed) mmCtx.globalAlpha = 0.55;
-      // The same tank-and-return glyph marks spawns on the map and in world.
-      drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)');
+      // The same tank-and-return glyph marks spawns on the map and in world, the enemy's on its diamond (a side is shape
+      // and colour, never colour alone: INTERACTION-REDESIGN bar line 6).
+      drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)', flag.side);
       mmCtx.restore();
     }
   }
@@ -6878,7 +6950,7 @@ export function initHud(bus: EventBus): HudRuntime {
           const reviving = marker.status === 'respawn' && marker.side === 'own' && playerDown;
           if (nearPlayer && !reviving) mmCtx.globalAlpha = 0.6;
           if (reviving) halo(12, 0.6);
-          drawSpawnGlyph(mmCtx, x, y, 8.5, color, fill);
+          drawSpawnGlyph(mmCtx, x, y, 8.5, color, fill, marker.side === 'enemy' ? 'enemy' : 'own');
           break;
         }
         case 'flagBase': {
@@ -7204,8 +7276,18 @@ export function initHud(bus: EventBus): HudRuntime {
     // both silhouettes take their side's team ink from the lane (.cot-kill-lane.l / .r)
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', 'currentColor');
     if (vSpec) maskIcon(requireElement<HTMLElement>(item, '.vsi'), vSpec, 'side_silhouette', 'currentColor');
-    requireElement<HTMLElement>(item, '.k').textContent = killer;
-    requireElement<HTMLElement>(item, '.v').textContent = victim;
+    const killerEl = requireElement<HTMLElement>(item, '.k'), victimEl = requireElement<HTMLElement>(item, '.v');
+    killerEl.textContent = killer;
+    victimEl.textContent = victim;
+    // (a callsign in Latin type keeps the Latin size and tracking in Chinese: battleHudLayout.css .lat; its run marked Latin,
+    // which zh-CN's letter-spacing 0 does not reach: tracked 0 there, the same name ran 7 px shorter and was cut later than
+    // in en-US, gauntlet r12)
+    for (const [el, name] of [[killerEl, killer], [victimEl, victim]] as const) {
+      const latin = LATIN_CALLSIGN.test(name);
+      el.classList.toggle('lat', latin);
+      if (latin) el.lang = 'und-Latn';
+      else el.removeAttribute('lang');
+    }
     lane.prepend(item);
     while (lane.children.length > MAX_BATTLE_NOTIFICATIONS) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
@@ -7737,13 +7819,39 @@ export function initHud(bus: EventBus): HudRuntime {
   // resolution; CSS scales it, so blips/labels stay proportionate.
   // (the steps scale every layout's own plate size, --mm-k: a fixed 300 px lost to the phones' sizes and the 32vh cap, so
   // gauntlet r3's large map grew 10 px at 1280 and not at all at 1024x600; data-zoom names the step for the probes)
+  // INTERACTION-REDESIGN C (the census's large-map row: a three-size cycle on M alone, forgotten, two presses back from
+  // large): M, the plate's size control and a tap on a touch layout's map toggle the large step and the size the map
+  // rests at; a step named by the event ({ step }) is set as it is (the probes' sizes); the size is remembered.
   const MM_SCALES = [0.75, 1, 1.5];
+  const MM_LARGE = MM_SCALES.length - 1;
+  const MM_SIZE_KEY = 'cot.hud.mapSize';
   let mmSizeIdx = 1;
-  mmWrap.dataset.zoom = String(mmSizeIdx);
-  on('ui:minimapZoom', () => {
-    mmSizeIdx = (mmSizeIdx + 1) % MM_SCALES.length;
-    mmWrap.style.setProperty('--mm-k', String(MM_SCALES[mmSizeIdx]));
-    mmWrap.dataset.zoom = String(mmSizeIdx);
+  try {
+    const saved = Number(localStorage.getItem(MM_SIZE_KEY) ?? NaN);
+    if (Number.isInteger(saved) && saved >= 0 && saved <= MM_LARGE) mmSizeIdx = saved;
+  } catch { /* no storage: the default size */ }
+  let mmRest = mmSizeIdx < MM_LARGE ? mmSizeIdx : 1;
+  const setMapSize = (step: number, remember: boolean): void => {
+    mmSizeIdx = step;
+    if (step < MM_LARGE) mmRest = step;
+    mmWrap.style.setProperty('--mm-k', String(MM_SCALES[step]));
+    mmWrap.dataset.zoom = String(step);
+    mmSize.setAttribute('aria-pressed', step === MM_LARGE ? 'true' : 'false');
+    mmSize.innerHTML = `${uiIconSVG(step === MM_LARGE ? 'zoomOut' : 'zoomIn', 14)}`;
+    mmSize.append(mmKey);
+    if (remember) try { localStorage.setItem(MM_SIZE_KEY, String(step)); } catch { /* no storage */ }
+  };
+  setMapSize(mmSizeIdx, false);
+  on('ui:minimapZoom', (payload) => {
+    const step = typeof payload?.step === 'number' ? Math.max(0, Math.min(MM_LARGE, Math.round(payload.step)))
+      : mmSizeIdx === MM_LARGE ? mmRest : MM_LARGE;
+    setMapSize(step, true);
+  });
+  mmSize.addEventListener('click', () => { bus.emit('ui:minimapZoom', {}); });
+  // (a touch layout's map is its own control: a tap on it toggles the large step; it has no header)
+  mmWrap.addEventListener('click', (event) => {
+    if (!document.body.classList.contains('cot-touch-layout') || (event.target instanceof Element && event.target.closest('.cot-mm-size'))) return;
+    bus.emit('ui:minimapZoom', {});
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
@@ -8171,6 +8279,7 @@ export function initHud(bus: EventBus): HudRuntime {
         specId: payload.specId || 'm1a1_abrams_fep',
         count: payload.count,
         index: payload.index,
+        allies: payload.allies,
       }, true);
     },
 
@@ -8299,8 +8408,6 @@ export function initHud(bus: EventBus): HudRuntime {
       // forceAimDisplay state, or the staged over-target plate hides (the
       // frozen spotting sim never saw the teleported target). Live battles
       // always advance timeS, so real frames still supersede immediately.
-      const cursorReleased = !document.pointerLockElement;
-      if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
       if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); sightText.clear(); return; }

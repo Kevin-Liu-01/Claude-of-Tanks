@@ -22,26 +22,26 @@ export const CHINA_TREE: NationTree = Object.freeze({
   nodes: Object.freeze([
     // Type 59 to ZTZ-100
     node({ id: 'type59', tier: 1, line: 'ztz', lane: 1, parents: [], slot: 'line' }),
-    node({ id: 'ztz85_iii', tier: 4, line: 'ztz', lane: 1, parents: ['type59'], slot: 'line' }),
-    node({ id: 'ztz99_longwei', tier: 7, line: 'ztz', lane: 1, parents: ['ztz85_iii'], slot: 'line' }),
-    node({ id: 'ztz99a', tier: 8, line: 'ztz', lane: 1, parents: ['ztz99_longwei'], slot: 'line' }),
-    node({ id: 'ztz99a2', tier: 9, line: 'ztz', lane: 1, parents: ['ztz99a'], slot: 'line' }),
-    node({ id: 'ztz100', tier: 10, line: 'ztz', lane: 1, parents: ['ztz99a2', 'vt4a1'], slot: 'line' }),
+    node({ id: 'ztz85_iii', tier: 1, line: 'ztz', lane: 2, parents: ['type59'], slot: 'line' }),
+    node({ id: 'ztz99_longwei', tier: 6, line: 'ztz', lane: 2, parents: ['ztz85_iii'], slot: 'line' }),
+    node({ id: 'ztz99a', tier: 9, line: 'ztz', lane: 2, parents: ['ztz99_longwei'], slot: 'line' }),
+    node({ id: 'ztz99a2', tier: 10, line: 'ztz', lane: 3, parents: ['ztz99a'], slot: 'line' }),
+    node({ id: 'ztz100', tier: 10, line: 'ztz', lane: 2, parents: ['ztz99a2', 'vt4a1'], slot: 'line' }),
     // Type 96
-    node({ id: 'type96_72_long', tier: 6, line: 'type96', lane: 0, parents: ['ztz85_iii'], slot: 'line' }),
-    node({ id: 'type96b', tier: 7, line: 'type96', lane: 0, parents: ['type96_72_long'], slot: 'line' }),
+    node({ id: 'type96_72_long', tier: 5, line: 'type96', lane: 1, parents: ['ztz85_iii'], slot: 'line' }),
+    node({ id: 'type96b', tier: 6, line: 'type96', lane: 0, parents: ['type96_72_long'], slot: 'line' }),
     node({
-      id: 'type96_72m_lei', tier: 8, line: 'type96', lane: 0, parents: ['type96b'], slot: 'line',
+      id: 'type96_72m_lei', tier: 6, line: 'type96', lane: 1, parents: ['type96b'], slot: 'line',
       builds: ['type96_80_feng'],
     }),
-    node({ id: 'vt4a1', tier: 9, line: 'type96', lane: 0, parents: ['type96_72m_lei'], slot: 'line' }),
+    node({ id: 'vt4a1', tier: 8, line: 'type96', lane: 1, parents: ['type96_72m_lei'], slot: 'line' }),
     // AFT-10 and Type 100
-    node({ id: 'aft10', tier: 7, line: 'support', lane: 2, parents: ['ztz85_iii'], slot: 'line' }),
-    node({ id: 'ztz100_prototype', tier: 7, line: 'support', lane: 3, parents: ['aft10'], slot: 'line' }),
-    node({ id: 'type100', tier: 10, line: 'support', lane: 3, parents: ['ztz100_prototype'], slot: 'line' }),
+    node({ id: 'aft10', tier: 3, line: 'support', lane: 3, parents: ['ztz85_iii'], slot: 'line' }),
+    node({ id: 'ztz100_prototype', tier: 10, line: 'support', lane: 5, parents: ['aft10'], slot: 'line' }),
+    node({ id: 'type100', tier: 10, line: 'support', lane: 4, parents: ['ztz100_prototype'], slot: 'line' }),
     // Special
-    node({ id: 't72b3m_kunlun', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    node({ id: 't72b3_qilin', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    node({ id: 't80u_yun', tier: 10, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    node({ id: 't72b3m_kunlun', tier: 7, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    node({ id: 't72b3_qilin', tier: 7, line: 'special', lane: 2, parents: [], slot: 'special' }),
+    node({ id: 't80u_yun', tier: 7, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

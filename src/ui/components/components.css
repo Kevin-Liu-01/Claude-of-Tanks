@@ -78,7 +78,8 @@ button.cot-c-chip{cursor:pointer}
   padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
   font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);cursor:pointer;white-space:nowrap}
 .cot-c-seg__opt svg{width:16px;height:16px}
-.cot-c-seg__opt:is([aria-checked=true],[aria-selected=true]){background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
+/* the kit's one selected state: the accent's wash and edge, as a chip, a picked card and a toggle wear it */
+.cot-c-seg__opt:is([aria-checked=true],[aria-selected=true]){background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 .cot-c-seg__opt:disabled{color:var(--ink-4);cursor:not-allowed}
 /* ---- tabs (direction .tabs, .tab, .tab.on, .tab .n) ---- */
 .cot-c-tabs{display:flex;gap:26px;border-bottom:1px solid var(--line-1)}
@@ -97,6 +98,8 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-toggle[aria-checked=true] .cot-c-toggle__track{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 .cot-c-toggle[aria-checked=true] .cot-c-toggle__track i{transform:translateX(16px);background:var(--accent)}
 .cot-c-toggle[aria-checked=true]{color:var(--ink-1)}
+.cot-c-toggle:disabled{color:var(--ink-4);cursor:not-allowed}
+.cot-c-toggle:disabled .cot-c-toggle__track i{background:var(--ink-4)}
 /* ---- the 20-cell stat scale (direction .scale; the A graft) ---- */
 .cot-c-scale{display:grid;grid-template-columns:repeat(20,1fr);gap:2px;height:8px}
 .cot-c-scale i{box-sizing:border-box;background:var(--fill-scale)}
@@ -116,7 +119,7 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-stat__delta.is-worse{color:var(--text-danger)}
 .cot-c-stat .cot-c-scale{grid-column:2/span 2}
 /* ---- vehicle identity: flag + silhouette + name (direction .flag, .silm, .veh; owner rule 3) ---- */
-.cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;object-position:50% 50%;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-c-flag--sm{width:16px;height:12px}
 .cot-c-flag--md{width:22px;height:16.5px}
 .cot-c-flag--lg{width:30px;height:22.5px}
@@ -141,7 +144,7 @@ button.cot-c-chip{cursor:pointer}
 /* ---- picture cards: a picture under its title, the fade only where type sits (direction .mode, .camp-card, .bfield,
    .take) ---- */
 .cot-c-media{position:relative;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
-.cot-c-media>img,.cot-c-media>video,.cot-c-media>picture>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cot-c-media>img,.cot-c-media>video,.cot-c-media>picture>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-c-media::after{content:'';position:absolute;inset:0;pointer-events:none;background:var(--media-fade)}
 .cot-c-media--soft::after{background:var(--media-fade-soft)}
 .cot-c-media--full::after{background:var(--media-fade-full)}

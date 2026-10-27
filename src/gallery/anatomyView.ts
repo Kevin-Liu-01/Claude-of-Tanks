@@ -678,9 +678,11 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   });
   bar.addEventListener('keydown', (event) => {
     const target = event.target as HTMLElement;
-    if (!target.dataset.anatomyMetric || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    // the arrows step the metric and Home and End take the first and the last (the interaction census: no Home or End)
+    if (!target.dataset.anatomyMetric || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
-    const index = ARMOR_METRICS.indexOf(metric) + (event.key === 'ArrowRight' ? 1 : -1);
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? ARMOR_METRICS.length - 1
+      : ARMOR_METRICS.indexOf(metric) + (event.key === 'ArrowRight' ? 1 : -1);
     view.setMetric(ARMOR_METRICS[(index + ARMOR_METRICS.length) % ARMOR_METRICS.length]);
     bar.querySelector<HTMLElement>(`[data-anatomy-metric="${metric}"]`)?.focus();
   });

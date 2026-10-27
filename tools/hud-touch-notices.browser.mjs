@@ -16,6 +16,7 @@
 // alert set five lines 96 px wide onto the ammo slot), and a notice over the map is stacked over it (at the controls'
 // layer the map, later in the page, painted over the alert the ruling sets there). No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { recordReticle } from './hud-ammo-capture.mjs';
@@ -123,7 +124,7 @@ function noticeGaps(scene) {
 
 await mkdir(out, { recursive: true });
 const sizes = TOUCH_NOTICE_SIZES.filter((size) => !arg('case', '') || arg('case', '').split(',').includes(size));
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const reports = [];
 const failures = [];
 try {

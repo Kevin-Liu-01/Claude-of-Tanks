@@ -6,6 +6,7 @@ import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 import { donorSpec } from './donorSpecs.ts';
 
 // 2026-10-01 (owner: retire frozen pins): the nineteen pinned pre-work donor fingerprints are gone; the
@@ -44,13 +45,9 @@ for (const id of SECOND_WAVE_X_IDS) {
   const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id], donorRow = donorSpec(TANK_SPECS, donor);
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
   assert.ok(!spec.name.endsWith(' X'), `${id}: the X suffix was retired (owner 2026-09-15)`);
-  // 2026-09-15 owner rulings (evening): the Leopard 2A6 study is tier X, the Jagdpanzer E100 study tier VII.
-  // 2026-09-16: the Leclerc XLR and AMX 56 studies are tier X ("the newer models are the tier 10s")
-  // 2026-09-23 (owner: "no hidden tanks"): the t72b_1987 and t72b3 donor records retired, so tier.ts no longer carries
-  // the rows this check read for their studies; the donors' last published tier (VIII at a10d0a30b) is pinned here.
-  const ruled = { k1a1: 10, leo2a6: 10, jpz_e100: 7, leclerc_xlr: 10, amx56: 10, c1_ariete: 10,
-    t72b_1987: 8, t72b3: 8 }[id];
-  assert.equal(tankTier(id), ruled ?? tankTier(donor), `${id}: rebuild must not silently increase combat tier`);
+  // 258: a study's tier is its reviewed column in the tree table (src/techTree/tiers.ts, pinned by techTree.selftest's
+  // digest), never one a rebuild inherits from its donor
+  assert.equal(tankTier(id), displayTier(id), `${id}: matches at its shown tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);
   assert.equal(spec.publicVisualFallback, undefined);

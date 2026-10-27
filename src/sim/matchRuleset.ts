@@ -1547,6 +1547,19 @@ export function modeLightsTanks(mode: string | null | undefined): boolean {
   return mode === 'juggernaut' || mode === 'capture_the_flag' || mode === 'infected';
 }
 
+/** The role modes: their sides seat by role (Juggernaut's boss, the infected, the AC-130's crew), the room's team size
+ *  sizing neither (mp/room/roomBots.ts planRoomBots). */
+export function seatsByRole(rules: MatchRuleset): boolean {
+  return !!(rules.juggernaut || rules.infection || rules.aerial === 'gunship');
+}
+
+/** Whether a room's bots fill each side to its team size (mp/room/roomBots.ts planRoomBots' symmetric seating): neither a
+ *  role mode nor a wave mode. Takes the room's stored mode id, an unknown one reading as Standard's (matchRulesetFor). */
+export function seatsByTeamSize(mode: GameModeId | string | null | undefined, arrangement: TeamArrangement | null = null): boolean {
+  const id = String(mode ?? 'standard') as GameModeId;
+  return !isWaveMode(id) && !seatsByRole(matchRulesetFor(id, null, arrangement));
+}
+
 /** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */
 export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
   return mode === 'endless_horde' || mode === 'frontline_assault';

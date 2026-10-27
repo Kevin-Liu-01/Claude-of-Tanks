@@ -125,6 +125,7 @@ import { tankContactRect } from './sim/tankContactShape.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
 import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
+import { createGarageCamoTryOn } from './game/garageCamoTryOn.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
@@ -134,7 +135,7 @@ import {
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
-  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
+  setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
@@ -239,7 +240,7 @@ import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import { installAccessibility } from './ui/accessibilityPreferences.ts';
 import { installPinchZoomGuard } from './ui/pinchZoomGuard.ts';
 import {
-  spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
+  spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds, planBattleSeats,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
@@ -248,6 +249,7 @@ import { campaignOperationById } from './game/campaignOperations.ts';
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
 import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
+import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createProvingControls } from './game/provingGroundSession.ts';
@@ -594,6 +596,16 @@ const garageIdleWorkCoordinator = createGarageIdleWorkCoordinator();
 const garageFramePacer = createGarageFramePacer();
 let garagePresentationDirty = true;
 let invalidateGaragePresentation = () => { garagePresentationDirty = true; };
+// the camo try-on (INTERACTION-REDESIGN B); its timings ride on window.__CAMO_TRY_ON for click-timeline's camo paths
+const camoTryOnStats = { tries: 0, lastTryMs: 0, wears: 0, lastWearMs: 0 };
+(window as Window & { __CAMO_TRY_ON?: typeof camoTryOnStats }).__CAMO_TRY_ON = camoTryOnStats;
+const camoTryOn = createGarageCamoTryOn({
+  paint: paintCamoTryOn,
+  onChange: () => invalidateGaragePresentation(),
+  onTiming: (kind, ms) => {
+    if (kind === 'try') { camoTryOnStats.tries++; camoTryOnStats.lastTryMs = ms; } else { camoTryOnStats.wears++; camoTryOnStats.lastWearMs = ms; }
+  },
+});
 if (typeof window !== 'undefined') window.__GARAGE_IDLE_WORK = garageIdleWorkCoordinator.stats;
 worldRuntime = createWorldActivationRuntime<
   MainWorld,
@@ -1498,6 +1510,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
+    // the try-on (INTERACTION-REDESIGN B): the hovered or focused paint on the hero, painted small and swapped in
+    preview: (specId: string, patternId: string | null) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.preview(shown && shown.specId === specId ? shown.root : null, patternId);
+    },
     patterns: CAMO_CATALOG_PATTERN_IDS,
     // Read each pattern through t() so the active locale decides the displayed label (the previous
     // `...CAMO_PATTERN_LABEL` spread leaked English text into zh-CN for every service_* / sig_* pattern).
@@ -1509,11 +1526,22 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     get: (specId: string) => getCamoSelection(specId),
     getCustom: (specId: string) => getCustomCamoSelection(specId),
     set: (specId: string, patternId: string) => {
+      const shown = pedestal.switchPending ? null : pedestal.current;
+      camoTryOn.wear(shown && shown.specId === specId ? shown.root : null, patternId);
       setCamoSelection(specId, patternId);
       // Keep the exact high-resolution paint, but yield the triggering UI
-      // frame before a cold pattern bake instead of blocking the click.
+      // frame before a cold pattern bake instead of blocking the click; its
+      // try-on tile stands in until the bake lands.
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
+      }).then(() => camoTryOn.settle(patternId)).then(() => invalidateGaragePresentation());
+      multiplayerLobby?.syncSelection();
+    },
+    // "Wear on every <nation> tank" (INTERACTION-REDESIGN B): one paint on many tanks; the shown hero bakes first
+    setMany: (specIds: readonly string[], patternId: string) => {
+      for (const id of specIds) setCamoSelection(id, patternId);
+      camoSweepP = applyCamoPatternsChunked({
+        priorityIds: [selectedVehicle.id], onlySpecIds: [...specIds],
       }).then(() => invalidateGaragePresentation());
       multiplayerLobby?.syncSelection();
     },
@@ -1521,7 +1549,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       setCustomCamoSelection(specId, value);
       camoSweepP = applyCamoPatternsChunked({
         priorityIds: [specId], onlySpecIds: [specId],
-      }).then(() => invalidateGaragePresentation());
+      }).then(() => camoTryOn.settle('custom')).then(() => invalidateGaragePresentation());
       // Deliberately sends Factory: custom paint is local single-player only.
       multiplayerLobby?.syncSelection();
     },
@@ -1568,6 +1596,8 @@ window.__GARAGE_WORKSHOP = createGarageWorkshopDiagnostics({
   podiumTopYM: GARAGE_PODIUM_TOP_Y_M,
   getRetainedWorldMapId: () => currentWorld()?.mapId || null,
   invalidatePresentation: invalidateGaragePresentation,
+  camera,
+  canvas: renderer.domElement,
 });
 
 // PRE-BATTLE LOADING SCREEN (src/ui/battleLoad.ts): map art + both rosters +
@@ -1673,7 +1703,9 @@ const showroom = createGarageShowroomRuntime({
   frameTopPadM: () => (garagePreviewMode === 'capture_the_flag' ? 2.6 : garagePreviewMode === 'drone' ? .7 : 0),
   keepRing: () => ({ x: GARAGE_POS.x, y: GARAGE_POS.y, z: GARAGE_POS.z,
     r: GARAGE_PLATFORM_GEOMETRY.baseRadiusM, h: GARAGE_PLATFORM_GEOMETRY.topYM }),
-  getKeepRect: () => (garage.getStageRect ? garage.getStageRect(false) : null),
+  getKeepRect: () => (garage.getRingRect ? garage.getRingRect() : null),
+  // the tracks rest on the name line; photo mode's whole-screen stage centres the hero
+  anchorFoot: () => !document.body.classList.contains('cot-photo-on'),
   floorY: () => GARAGE_POS.y,
 });
 resetGarageShowroom = () => showroom.reset();
@@ -2439,7 +2471,8 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId: string, useTank = true) => pedestal.lendToBattle(specId, useTank),
+      // the hero leaves for battle in the paint it wears, never a try-on's tile
+      lendPlayerVisual: (specId: string, useTank = true) => { camoTryOn.preview(null, null); return pedestal.lendToBattle(specId, useTank); },
       setupBattle,
       combatWarm,
       presentation: battlePresentation,
@@ -2535,6 +2568,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     prebakeSharedTextures,
     anisotropy: engineCtx.anisotropy ?? 4,
     rosterRows: (team: string) => rosterPresentation.battleRows(game.tanks, team),
+    // the load card's both teams from its first frame: the seats setupBattle will field, planned before the world
+    plannedRosters: plannedCardTeams,
     warmShotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
     getCamoSweep: () => camoSweepP,
     prepareRevealCamera: prepareBattleRevealCamera,
@@ -3042,6 +3077,16 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
 /** The last solo entry was a watched battle (Battle Again watches again). */
 let lastEntryWatched = false;
 
+/** A solo battle's both teams as the load card draws them, planned before its world (rosterState.planBattleSeats). */
+function plannedCardTeams(specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }) {
+  const plan = planBattleSeats(game, specId, request);
+  return plan ? {
+    allies: rosterPresentation.battleRows(plan.seats, 'player'),
+    enemies: rosterPresentation.battleRows(plan.seats, 'enemy'),
+    teamNations: plan.teamNations,
+  } : null;
+}
+
 /**
  * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5). Every solo battle is the page's own simulation by
  * default (2026-10-26, release 256: the owner ruled that a solo game against bots must not create a multiplayer session).
@@ -3353,10 +3398,21 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   getSelectedMapId: () => garage.getSelectedMap(),
   // 2026-10-13 (the perf stream): the pending cover names the battlefield (a Random pick planned now, as the loading
   // owner will consume it) while the loading owner itself still downloads
-  describePendingMap: (specId: string, mapId: string | null) => {
+  describePendingMap: (specId: string, mapId: string | null, options?: SoloBattleLoadingStartOptions) => {
     const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
-    return (MAP_IDS as readonly string[]).includes(resolved)
-      ? { mapId: resolved, mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+    const known = (MAP_IDS as readonly string[]).includes(resolved);
+    // and both teams, planned now: the cover's first frame lists every seat (the owner, 2026-10-26)
+    const teams = plannedCardTeams(specId, {
+      randomRoster: options?.randomRoster ?? true, gameMode: options?.gameMode ?? 'standard',
+      campaignOperationId: options?.campaignOperationId ?? null, watch: options?.watch === true,
+    });
+    if (!known && !teams) return null;
+    return {
+      mapId: known ? resolved : 'random', ...(known ? { mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : {}),
+      ...(teams ? { allies: teams.allies, enemies: teams.enemies, teams: teamNationsFlags(teams.teamNations) } : {}),
+      // the rules row (mode chip, clock) from the cover's first frame, as the loading owner's show draws it
+      modeId: normalizeGameMode(options?.gameMode ?? 'standard'), ...(options?.campaignOperationId ? { campaign: true } : {}),
+    };
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
@@ -3653,8 +3709,12 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
-  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end
-  isBootCovering: () => STUDIO_BOOT_INTENT && !bootComplete,
+  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end.
+  // (2026-10-26, the boot census) Nor does the Garage boot: the hero's switch scheduled a frame as the vehicle stage
+  // ended, before the post stage's warm compiled anything, and that frame compiled and first-used all of the hero's
+  // programs in one task (1.4 s on a cold desktop, 13.8 s on the 4x phone, the GPU process linking them one by one
+  // while every compositor frame, the boot card's tank included, waited). The warm now links them between frames first.
+  isBootCovering: () => !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
   isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
@@ -3885,6 +3945,7 @@ await bootStage('post', async () => {
     timings: BOOT_TIMINGS,
     reportProgress: (fraction: number) => boot.sub(fraction),
     simDt: SIM_DT,
+    awaitProgramLinks: awaitRendererProgramLinks,
   });
 });
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
@@ -3993,6 +4054,8 @@ const studioAccess = createStudioAccess({
       const budget = createFrameBudgetYielder(8);
       return deploymentShadowWarm.prime(() => budget(false));
     },
+    // (2026-10-26) the renderer's queued program links, waited for between frames
+    awaitProgramLinks: () => awaitRendererProgramLinks(() => nextFrame()),
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
     // main.ts owns both direct boot and the first lazy F8 handoff.
@@ -4035,6 +4098,9 @@ if (STUDIO_BOOT_INTENT) {
   });
 }
 
+// (2026-10-26, the boot census) every program the boot submitted links between frames before the first live frame:
+// three's first use of a program still linking reads its log inside that frame (1.3-1.5 s on a cold desktop)
+try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {

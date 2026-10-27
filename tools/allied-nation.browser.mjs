@@ -1,4 +1,5 @@
 // Real Garage controls, custom dropdown, persistence, and short-screen access.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -11,7 +12,7 @@ let server,browser;
 try{
  server=await createServer(mapProbeServerOptions(process.cwd(),resolve('.qa-dev/allied-nation-vite')));
  await server.listen();const port=server.httpServer.address().port;
- browser=await puppeteer.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--disable-gpu','--disable-webgl','--disable-dev-shm-usage']});
+ browser=await launchGuardedBrowser(puppeteer, {headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--disable-gpu','--disable-webgl','--disable-dev-shm-usage']});
   for(const [width,height] of [[1280,800],[568,320],[480,240]]){
    const page=await browser.newPage(),errors=[];
    page.on('pageerror',error=>errors.push(error.message));

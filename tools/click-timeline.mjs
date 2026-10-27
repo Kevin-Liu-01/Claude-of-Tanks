@@ -25,6 +25,7 @@
 // The probe hides navigator.webdriver, so the transitions, veils and idle warm-ups run as they do for a player. The
 // battle document boots with it visible (the game then installs `__DEBUG`, which the battle paths use to end a
 // battle) and hides it once the Garage is up.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -402,10 +403,15 @@ const CANVAS_CHECK = `(() => {
     checked++;
     const box = canvas.getBoundingClientRect();
     const shown = box.width > 0 && box.height > 0 && (!canvas.checkVisibility || canvas.checkVisibility({ checkVisibilityCSS: true }));
-    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [Math.round(box.width), Math.round(box.height)], dpr };
+    // (canvas-ui, 2026-10-25) the store is sized to the element's own layout box (clientWidth/Height, what uiCanvas
+    // measures), never a transform's: a collapsing touch tray scales its slots to .94 while they fade out
+    const layoutW = canvas.clientWidth, layoutH = canvas.clientHeight;
+    const entry = { canvas: describe(canvas), kind, w: canvas.width, h: canvas.height, box: [layoutW, layoutH], dpr };
     if (!shown) { if (canvas.width * canvas.height > 1) violations.push({ ...entry, state: 'hidden-held' }); continue; }
     if (!canvas.hasAttribute('data-ui-canvas')) outside.push(entry.canvas);
-    const wantW = box.width * scale, wantH = box.height * scale;
+    // a canvas at opacity 0 is still composited (a fade-in needs its store): neither held nor sized against
+    if (canvas.checkVisibility && !canvas.checkVisibility({ checkOpacity: true })) continue;
+    const wantW = layoutW * scale, wantH = layoutH * scale;
     if (canvas.width > Math.ceil(wantW) + 1 || canvas.height > Math.ceil(wantH) + 1) violations.push({ ...entry, state: 'oversized' });
     else if (canvas.width < Math.floor(wantW) - 1 || canvas.height < Math.floor(wantH) - 1) violations.push({ ...entry, state: 'blurry' });
   }
@@ -532,9 +538,9 @@ const ACCESS_SURFACES = [
   { id: 'record', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-record-trigger'), ctx);
     await waitFor(page, `shown('#cot-record-modal')`, 20000); } },
   { id: 'paint', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-lt-paint-all'), ctx);
-    await waitFor(page, `shown('.cot-camo-card')`, 15000); } },
+    await waitFor(page, `shown('[data-picker="garage-camo"] .cot-c-picker__opt') || shown('.cot-camo-card')`, 15000); } },
   { id: 'equipment', open: async (page, ctx) => { await tapOrClick(page, await target(page, '.eqslot[data-slot]'), ctx);
-    await waitFor(page, `shown('.cot-eqtile')`, 15000); } },
+    await waitFor(page, `shown('.cot-eqpick .cot-c-picker__opt')`, 15000); } },
   { id: 'rooms', scope: '.cot-play',
     open: async (page, ctx) => { await openDeploy(page, ctx); await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-room="private"]'), ctx);
       await waitFor(page, `shown('.cot-play .panel')`, 30000); } },
@@ -586,6 +592,28 @@ export const PATHS = [
   { id: 'roster-chip', doc: 'game', reps: 5,
     press: (page, i) => target(page, '.cot-country-chips .cot-country-chip', i + 1), done: ROSTER_DONE, doneTimeoutMs: 60000,
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-country-chips .cot-country-chip', 0), ctx).catch(() => {}); } },
+  // INTERACTION-REDESIGN B, the camo try-on and the worn paint (main.ts garageCamoTryOn, window.__CAMO_TRY_ON). A hover on
+  // one of the band's next swatches paints its 256 px tile and swaps it onto the hero (done: the try-on count); a press
+  // wears the band's next paint and its full bake lands (done: the wear count). Each sample logs the try-on's paint and
+  // swap, or the wear's press-to-bake, in milliseconds.
+  { id: 'camo-try', doc: 'game', reps: 6,
+    script: async (page, i, run) => {
+      await page.mouse.move(2, 2);
+      const before = await page.evaluate(() => window.__CAMO_TRY_ON?.tries ?? 0);
+      await run('camo-try', () => target(page, '.cot-lt-paint [data-lt-paint]', 1 + (i % 3)),
+        { action: (p) => p.hover('[data-click-target]'), done: `(window.__CAMO_TRY_ON?.tries ?? 0) > ${before}`, doneTimeoutMs: 15000 });
+      const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastTryMs ?? -1);
+      console.log(`    camo-try #${i} tile paint and swap ${ms.toFixed(1)} ms`);
+      await page.mouse.move(2, 2);
+    } },
+  { id: 'camo-wear', doc: 'game', reps: 6,
+    script: async (page, i, run) => {
+      const before = await page.evaluate(() => window.__CAMO_TRY_ON?.wears ?? 0);
+      await run('camo-wear', () => target(page, '.cot-lt-paint [data-lt-paint]', 1),
+        { done: `(window.__CAMO_TRY_ON?.wears ?? 0) > ${before}`, doneTimeoutMs: 60000 });
+      const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastWearMs ?? -1);
+      console.log(`    camo-wear #${i} press to bake ${ms.toFixed(0)} ms`);
+    } },
   { id: 'settings-open', doc: 'game', reps: 4,
     press: (page) => target(page, '.cot-settings-slot .cot-gear, [data-nav=settings]'), shown: `shown('.cot-settings.open')`,
     after: closeSettings },
@@ -605,7 +633,7 @@ export const PATHS = [
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '#cot-battle-menu [data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', 0), ctx).catch(() => {});
       await closeDeploy(page, ctx); } },
   { id: 'deploy-sides', doc: 'game', reps: 4, setup: openDeploy,
-    press: (page, i) => target(page, `#cot-battle-menu .cot-sides-choice[data-sides="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
+    press: (page, i) => target(page, `#cot-battle-menu .cot-battle-sides .cot-c-seg__opt[data-value="${i % 2 ? '7v7' : '14v14'}"]`), teardown: closeDeploy },
   { id: 'deploy-time', doc: 'game', reps: 4, setup: openDeploy,
     press: (page, i) => target(page, '#cot-battle-menu .cot-time-choice', Math.floor(i / 2)), teardown: closeDeploy },
   { id: 'deploy-tab', doc: 'game', reps: 4, setup: openDeploy,
@@ -1110,7 +1138,7 @@ async function main() {
       const reply = await fetch(base.url.replace(`//${host}`, '//127.0.0.1')).catch(() => null);
       if (!reply?.ok) throw new Error(`${base.label} (${base.url}) does not answer`);
     }
-    const browser = await puppeteer.launch({
+    const browser = await launchGuardedBrowser(puppeteer, {
       headless: 'new', protocolTimeout: 600000, timeout: 180000, defaultViewport: null,
       args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
         '--js-flags=--max-old-space-size=3072', `--host-resolver-rules=MAP ${host} 127.0.0.1`,

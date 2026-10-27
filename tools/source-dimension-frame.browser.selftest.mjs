@@ -1,5 +1,6 @@
 // Real GPU regression for the source-only ruler. Supplementary to the
 // Node regression; registered in npm test's post phase. No private inputs needed.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import {createServer} from 'vite';
@@ -16,7 +17,7 @@ try {
       res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><body></body></html>');
     });}}]});
   await server.listen();
-  browser=await puppeteer.launch({headless:'new',args:['--use-gl=angle','--enable-webgl','--no-sandbox']});
+  browser=await launchGuardedBrowser(puppeteer, {headless:'new',args:['--use-gl=angle','--enable-webgl','--no-sandbox']});
   const page=await browser.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(String(e)));
   const address=server.httpServer.address();

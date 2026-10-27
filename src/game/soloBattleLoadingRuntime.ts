@@ -4,7 +4,7 @@ import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { LazyAudio } from '../audio/lazyAudio.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
-import { PENDING_ROSTER_SLOTS, battleLoadModeLabel, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
+import { battleLoadModeLabel, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
 import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
@@ -141,6 +141,14 @@ export interface SoloBattleLoadingRuntimeOptions {
   ): Promise<void>;
   anisotropy: number;
   rosterRows(team: string): BattleLoadRosterRow[];
+  /**
+   * The battle's both teams before its world loads (rosterState.planBattleSeats as the card's rows, and its TEAM NATIONS
+   * record): the load card lists every seat from its first frame. Null (a watched battle): the card holds its rows open
+   * until the roster stage fills them. The roster stage still draws the seated battle's rows (the same plan).
+   */
+  plannedRosters?(specId: string, request: { randomRoster: boolean; gameMode: string; campaignOperationId: string | null; watch: boolean }): {
+    allies: BattleLoadRosterRow[]; enemies: BattleLoadRosterRow[]; teamNations: Parameters<typeof teamNationsFlags>[0];
+  } | null;
   warmShotCards(specIds: string[]): void;
   getCamoSweep(): Parameters<DeploymentPort['warm']>[0];
   prepareRevealCamera(): void;
@@ -251,6 +259,7 @@ function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
         getPedestalVisual: options.getPedestalVisual,
         prebakeSharedTextures: options.prebakeSharedTextures,
         rosterRows: options.rosterRows,
+        plannedRosters: options.plannedRosters,
         warmShotCards: options.warmShotCards,
         getCamoSweep: options.getCamoSweep,
         prepareRevealCamera: options.prepareRevealCamera,
@@ -340,6 +349,7 @@ export function createSoloBattleLoadingRuntime(
   prebakeSharedTextures,
   anisotropy,
   rosterRows,
+  plannedRosters,
   warmShotCards,
   getCamoSweep,
   prepareRevealCamera,
@@ -381,6 +391,17 @@ export function createSoloBattleLoadingRuntime(
         markedAt = marked;
       };
 
+      // both teams from the card's first frame (the owner, 2026-10-26: "fix team lists in loading state"): the seats
+      // the battle will field, planned before the world loads; a failed plan holds the rows open as before
+      let planned: ReturnType<NonNullable<typeof plannedRosters>> = null;
+      try {
+        planned = plannedRosters?.(specId, { randomRoster, gameMode: normalizedGameMode, campaignOperationId, watch }) ?? null;
+      } catch { planned = null; }
+      // (the seats a side wherever rows go. A plan that names one side only, or none (a watched battle), shows no rows:
+      // 257's keep rule holds the press's cover's seats, and the fill below keeps the unnamed side's open seats, never an
+      // empty side. The plan comes through the port: importing it here split a boot chunk, one more request)
+      const seats = planned && planned.allies.length > 0 && planned.enemies.length > 0
+        ? { allies: planned.allies.length, enemies: planned.enemies.length } : null;
       battleLoad.show({
         mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
@@ -388,10 +409,11 @@ export function createSoloBattleLoadingRuntime(
         mode: soloBattleLoadingModeLabel(normalizedGameMode),
         modeId: normalizedGameMode,
         ...(campaignOperationId ? { campaign: true } : {}),
-        allies: [],
-        enemies: [],
-        slots: PENDING_ROSTER_SLOTS,
+        allies: seats && planned ? planned.allies : [],
+        enemies: seats && planned ? planned.enemies : [],
+        ...(seats ? { seats } : {}),
       });
+      if (planned) battleLoad.rosters(planned.allies, planned.enemies, teamNationsFlags(planned.teamNations), seats);
       await audio.startLoadingAfterPaint();
       await ensureBattleVisuals();
       const battleVisuals = getBattleVisuals();

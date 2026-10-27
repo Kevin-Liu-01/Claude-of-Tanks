@@ -22,13 +22,14 @@ const EXPECTED = Object.freeze({
   fv510_milan:        { hp: 1750, speed: 68, reverse: 20, traverse: 45.6, damage: 88, pen: [120, 108, 96], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
   bmp3_rok:           { hp: 1700, speed: 70, reverse: 20, traverse: 50.9, damage: 60, pen: [165, 150, 135], reload: 0.45, sound: '2a72', missile: [500, 'arkan-launch'] },
   ua_m2a3_bradley:    { hp: 2150, speed: 61, reverse: 22, traverse: 42.4, damage: 68, pen: [165, 150, 135], reload: 0.38, sound: 'm242-bushmaster', missile: [560, 'tow-launch'] },
-  bmpt_terminator2:   { hp: 2700, speed: 60, reverse: 18, traverse: 32, damage: 52, pen: [118, 106, 94], reload: 0.30, sound: 'twin-2a42', missile: [540, 'ataka-launch'] },
+  // 258: lifted to its shown tier V by fleetBalancePass applyShownTierFloors (pen); marder1a3 and upior likewise
+  bmpt_terminator2:   { hp: 2700, speed: 60, reverse: 18, traverse: 32, damage: 52, pen: [125, 112, 100], reload: 0.30, sound: 'twin-2a42', missile: [540, 'ataka-launch'] },
   bwp1:               { hp: 1850, speed: 68, reverse: 28, traverse: 50.9, damage: 62, pen: [158, 144, 130], reload: 0.32, sound: 'mk30-2', missile: [580, 'spike-launch'] },
-  marder1a3:          { hp: 1250, speed: 65, reverse: 17, traverse: 53, damage: 32, pen: [72, 64, 56], reload: 0.20, sound: 'rh202', missile: [450, 'milan-launch'] },
+  marder1a3:          { hp: 1250, speed: 65, reverse: 17, traverse: 53, damage: 32, pen: [76, 68, 60], reload: 0.20, sound: 'rh202', missile: [450, 'milan-launch'] },
   m3a3_bradley:       { hp: 2300, speed: 61, reverse: 20, traverse: 49.3, damage: 70, pen: [185, 170, 155], reload: 0.33, sound: 'm242-bushmaster', missile: [700, 'tow-launch'] },
   m6_linebacker:      { hp: 2400, speed: 60, reverse: 22, traverse: 47, damage: 72, pen: [190, 175, 160], reload: .30, sound: 'm242-bushmaster', missile: [340, 'tow-launch'] },
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 50.9, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
-  upior:              { hp: 1700, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [146, 132, 118], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
+  upior:              { hp: 1820, speed: 75, reverse: 30, traverse: 55.1, damage: 58, pen: [158, 143, 128], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 30.1, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 57.2, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },

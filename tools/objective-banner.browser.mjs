@@ -1,4 +1,5 @@
 // Production HUD/award DOM regression; no WebGL or frame-rate claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -8,7 +9,7 @@ const {chromium}=await import(modulePath);
 const out=resolve('.qa-dev/objective-banner');await mkdir(out,{recursive:true});
 const server=await createServer({server:{host:'127.0.0.1',port:5364,hmr:false},logLevel:'error'});let browser;const results=[];
 try{
- await server.listen();browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,locale='en-US']of [['desktop',1440,900],['portrait',390,844],['narrow',320,568],['landscape',667,375],['tiny',568,256],['small',480,270],['zh',667,375,'zh-CN']]){
   const context=await browser.newContext({viewport:{width,height},hasTouch:width<800,isMobile:width<800,reducedMotion:'reduce'});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});

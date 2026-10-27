@@ -751,6 +751,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
+    // 2026-10-26: the duel wall in motion, takes 234-245 (site50.mjs DUEL_TABLE): races, quiet fire, a knockout each
+    'tools/media-r5/duels.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -787,6 +789,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
+    // launch in the checkout goes through it
+    'tools/browser-launch.selftest.mjs',
+    'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
@@ -872,6 +878,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
@@ -897,6 +904,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
     'src/game/garagePedestalRuntime.selftest.mjs',
+    'src/game/garageCamoTryOn.selftest.mjs',
+    'src/ui/camoPicker.selftest.mjs',
+    'src/ui/garageEquipmentPicker.selftest.mjs',
+    'src/ui/components/pickerMenu.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -944,6 +955,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -1750,6 +1762,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sootTextureSharing.selftest.mjs',
+    'src/vehicles/decorKitTextureSelection.selftest.mjs',
     'src/vehicles/wreckBurn.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
@@ -2353,6 +2366,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
+    'src/ui/garageBattleQuick.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
@@ -2367,6 +2381,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-25 (UI-LOCKDOWN B and C, owner: "prevent things like that silly double ping indicator from happening
     // again"): one row a datum, placed only by its owner, its glyph through the registry
     'src/ui/surfaceRegistry.selftest.mjs',
+    // 2026-10-26 (owner, the battle load: "there are still black bars above and below the images here!!! fix that!!! no more
+    // object containns"): contain only on registered transparent cutouts, every cover rule's focal point declared (a
+    // shrinking baseline), and the letterbox-band judge the browser check runs on the load, end and media pages
+    'tools/image-fit-lint.selftest.mjs',
+    'tools/letterbox-bands.selftest.mjs',
     // 2026-10-26 (INTERACTION-REDESIGN part D, owner: "i really mean update all legacy interaction surfaces and systems"):
     // every choose-one registered against the kit picker, failing sites only in a shrinking baseline, common-path presses
     // that only fall; the keyboard and touch judge the gauntlet and click-timeline captures run
