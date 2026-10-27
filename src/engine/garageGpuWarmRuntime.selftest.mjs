@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { BoxGeometry, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
+import { readFileSync } from 'node:fs';
+import { BoxGeometry, Group, LOD, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import { createForwardProgramWarmOwner, ProgramUniformPreparationError } from './programWarm.ts';
 import {
   GarageRestoreAbandonedError,
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
+  selectLodLevelsFor,
 } from './garageGpuWarmRuntime.ts';
 
 const scene = new Scene();
@@ -520,4 +522,29 @@ for (const abandonAt of ['program', 'linker', 'shadow', 'upload']) {
   assert.deepEqual(seen.at(-1), ['staticDormant', true], `${abandonAt}: the static presentation sleeps again`);
 }
 
-console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, fail-closed cancellation and abandonment passed');
+// (2026-10-26, the room-stalls lane) the restore warms the LOD levels the first Garage frame will draw: a hero's levels as
+// a far battle camera left them choose the close level for the Garage camera before any program is prepared
+{
+  const scene = new Scene(), lod = new LOD(), near = new Mesh(new BoxGeometry(), new MeshStandardMaterial()),
+    far = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+  lod.addLevel(near, 0); lod.addLevel(far, 40);
+  const fixed = new LOD(), fixedNear = new Mesh(new BoxGeometry()), fixedFar = new Mesh(new BoxGeometry());
+  fixed.addLevel(fixedNear, 0); fixed.addLevel(fixedFar, 40); fixed.autoUpdate = false;
+  scene.add(lod, fixed);
+  const battle = new PerspectiveCamera(); battle.position.set(0, 0, 200);
+  assert.equal(selectLodLevelsFor(scene, battle), 1, 'an auto-updating LOD chooses; one held by its owner does not');
+  assert.ok(!near.visible && far.visible, 'the battle camera left the far level shown');
+  fixedNear.visible = false; fixedFar.visible = true;
+  const garage = new PerspectiveCamera(); garage.position.set(0, 0, 6);
+  assert.equal(selectLodLevelsFor(scene, garage), 1);
+  assert.ok(near.visible && !far.visible, 'the Garage camera chooses the close level before the warm');
+  assert.ok(!fixedNear.visible && fixedFar.visible, 'a LOD with autoUpdate off keeps its level');
+  assert.equal(selectLodLevelsFor({}, garage), 0, 'a fake root has no LODs');
+  const source = readFileSync(new URL('./garageGpuWarmRuntime.ts', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('export async function restoreGarageGpuPipeline'));
+  assert.ok(body.indexOf('lodsSelected = selectLodLevelsFor(scene, camera);') > 0
+    && body.indexOf('lodsSelected = selectLodLevelsFor(scene, camera);') < body.indexOf('forwardPrograms.initializeSteps(scene'),
+    'the restore chooses the levels before it prepares their programs');
+}
+
+console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, fail-closed cancellation and abandonment passed; the restore warms the LOD levels the Garage camera draws');

@@ -41,14 +41,22 @@ function isWebGLProgram(value: ThreeWebGLProgram['program']): value is WebGLProg
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * The first program from `cursor` whose link is still pending (its index), or `programs.length` when none is. With a
+ * `deadline` (a time on `context.now`'s clock) the walk also stops once the deadline passes and returns the next index
+ * to ask, so one slice never queries the renderer's whole program list (2026-10-26, the room-stalls lane: leaving a room,
+ * one Garage restore poll walked every program the battle left, 1.13 s of getProgramParameter in one task).
+ */
 function firstPendingProgram(
   context: FirstUseWarmContext,
   completionToken: number,
   programs: readonly CapturedProgram[],
   cursor: number,
+  deadline = Number.POSITIVE_INFINITY,
 ): number {
   const { gl, timing, now, existingPrograms } = context;
   for (; cursor < programs.length; cursor += 1) {
+    if (cursor > 0 && diagnosticNow(now) >= deadline) return cursor;
     if (!context.valid()) return programs.length;
     const entry = programs[cursor];
     if (!capturedProgramIsLive(context.renderer, entry) || reuseReflectedProgram(context, entry)) continue;
@@ -824,6 +832,8 @@ function pendingProgramNotes(pending: readonly CapturedProgram[]): PendingProgra
  * returning-tab freeze: the Garage hero's drain cut short left its links to a synchronous first render.
  */
 export const STRICT_DRAIN_STALL_MS = 2_000;
+/** The completion queries one linker breathing slice may spend before it yields (firstPendingProgram's deadline). */
+const LINKER_SLICE_QUERY_MS = 8;
 
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
@@ -1366,7 +1376,9 @@ export function createForwardProgramWarmOwner({
       for (let slice = 0; slice < maxSlices; slice += 1) {
         if (!valid()) return;
         if (gate.caughtUp()) {
-          cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor);
+          // (a slice asks for at most LINKER_SLICE_QUERY_MS, then gives the frame back and goes on from there)
+          cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor,
+            diagnosticNow(now) + LINKER_SLICE_QUERY_MS);
           if (cursor === programs.length) return;
         } else recordCompileTiming(timing, 'gpuBehind', 1);
         finishPoll();
