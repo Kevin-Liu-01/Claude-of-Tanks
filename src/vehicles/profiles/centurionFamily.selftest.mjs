@@ -5,8 +5,8 @@
 //   - hull 7.557 m long (front guards to rear plate) within 1 %, 3.28-3.39 m over the side plates, the roof at 1.70 m;
 //   - the cast turret over a 1.88 m ring 0.47 m ahead of the hull's middle, unsquashed, its roof at 2.62-2.72 m and the
 //     casting at least 1.10 m wide 0.30 m behind its front face (the wedge nose read 0.80);
-//   - the guns: the Mk 3's 20-pdr Type A swells only at its muzzle counterweight, the Strv 81B's Type B carries its fume
-//     extractor 55-65 % along, the Mk 5/2's L7 its bore evacuator 45-55 % along and stands shorter;
+//   - the guns: the Mk 3's 20-pdr Type A swells only at its muzzle counterweight, the Strv 81B's Type B carries its short
+//     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along and stands shorter;
 //   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B) and none on the Mk 3 (roofWeaponPolicy.ts).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -83,9 +83,9 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81']) {
       assert.ok(bulge(0.3, 0.85) < tube * 1.3, `${id}: the 20-pdr Type A carries no fume extractor`);
       assert.ok(bulge(0.9, 1.0) > tube * 1.25, `${id}: the Type A's muzzle counterweight`);
     } else if (id === 'strv81') {
-      assert.ok(bulge(0.55, 0.65) > tube * 1.5 && bulge(0.3, 0.45) < tube * 1.3, `${id}: the Type B's fume extractor 55-65 % along`);
+      assert.ok(bulge(0.42, 0.52) > tube * 1.5 && bulge(0.6, 0.85) < tube * 1.3, `${id}: the Type B's fume extractor 42-52 % along`);
     } else {
-      assert.ok(bulge(0.45, 0.55) > tube * 1.35 && bulge(0.68, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 45-55 % along`);
+      assert.ok(bulge(0.40, 0.50) > tube * 1.35 && bulge(0.62, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 40-50 % along`);
     }
     const cupolaGun = [];
     turret.traverse((o) => { if (o.userData?.fitting === 'pintleMG' && o.parent?.userData?.fitting !== 'pintleMG') cupolaGun.push(o); });
