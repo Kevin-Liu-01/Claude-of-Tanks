@@ -119,6 +119,8 @@ interface SovietGearOptions {
   idlerY?: number;
   idlerR?: number;
   rollers?: readonly { z: number; y: number; r: number }[];
+  rollerR?: number;
+  returnRollerWidthM?: number;
   botY?: number;
   corridorOwned?: boolean;
 }
@@ -166,6 +168,8 @@ function sovGear(P: SovietHeavyBuilderPort, g: SovietGearOptions): RunningGearPo
     sprocket: { z: g.zc - g.span / 2 - (g.sprocketDz ?? 0.44), y: g.sprocketY ?? (lift + g.wheelR + 0.10), r: g.sprocketR ?? g.wheelR * 0.92 },
     idler: { z: g.zc + g.span / 2 + (g.idlerDz ?? 0.44), y: g.idlerY ?? (lift + g.wheelR + 0.06), r: g.idlerR ?? g.wheelR * 0.84 },
     rollers: g.rollers || [], trackW: g.trackW, topY: g.topY,
+    ...(g.rollerR ? { rollerR: g.rollerR } : {}),
+    ...(g.returnRollerWidthM ? { returnRollerWidthM: g.returnRollerWidthM } : {}),
     botY: (g.botY ?? 0.10) + lift,        // track run above the wheel bottoms:
     arms: true,                           // the oracles show wheel scallops
     ...(g.corridorOwned ? { armBucket: 'hullRunningGearDetail' } : {}),
@@ -190,23 +194,25 @@ function sovGear(P: SovietHeavyBuilderPort, g: SovietGearOptions): RunningGearPo
 // World metres, ground y = 0, bow +z, tank left +x. The welded KV-1 hull is a 1.85 m box from the 0.43 belly to the
 // 1.65 roof, 6.675 m from nose to tail, with fender shelves 0.28 m under the roof over 0.70 m tracks. The 1941
 // production turret stands on the 1.535 m ring at z 0.32: 1.94 wide, 2.75 long, roof 3.24, its rear 0.7 m overhanging
-// the engine deck at 1.91. The M-10T trunnion is the turret's front plate, (0, 2.60, 1.37); its muzzle 3.57 (6.95 m
-// overall, S1).
+// the engine deck at 1.91 over a square step. The M-10T trunnion sits 0.10 m behind the front plate, (0, 2.67, 1.27),
+// the 1.06 m cradle drum's top level with the roof; its muzzle 3.47, 0.17 m past the nose (6.85 m overall: S1's table
+// says 6.95, the drawing and the photographs 0.1-0.2 m of muzzle past the bow).
 // ---------------------------------------------------------------------------
 const KV2 = Object.freeze({
   halfW: 0.925, belly: 0.43, roof: 1.65, nose: 3.30, tail: -3.375,
   // bow plates (S1): driver's plate 30° from vertical, glacis 70° (20° over the horizontal), lower plate 25°
-  driverTopZ: 2.20, driverFootZ: 2.431, driverFootY: 1.25, glacisEndZ: 3.27, glacisEndY: 0.945,
+  // (S4 front: a tall driver's plate carrying the vision block and the ball, a short glacis strip, a tall lower plate)
+  driverTopZ: 2.36, driverFootZ: 2.649, driverFootY: 1.15, glacisEndZ: 3.27, glacisEndY: 0.94,
   noseTopY: 0.93, noseFootY: 0.89, lowerFootZ: 3.085,
-  // stern (S1): upper plate 50° from vertical, lower plate curved 0-90°
-  deckEndZ: -2.95, tailTopY: 1.31, tailKneeY: 1.03, tailR: 0.60,
+  // stern (S1, S4 rear, S6): the deck rolls over into the rear plate, which curves under to the belly
+  tailTopR: 0.42, tailKneeY: 1.03, tailR: 0.60,
   fenderY: 1.37, fenderTh: 0.022, fenderOuter: 1.66, fenderFrontZ: 2.30, fenderRearZ: -3.34,
   mudguardTipZ: 3.24, mudguardTipY: 1.18,
   // turret, local to the ring (world 0, 1.67, 0.32)
   ringZ: 0.32, ringY: 1.67, tHalfW: 0.97, tFront: 1.05, tRear: -1.70, tRoof: 1.57, tFloor: 0.02, tSoffit: 0.24,
-  tSoffitZ: -1.07, tStepZ: -0.92, cheekZ: 0.93, cheekHalfW: 0.85, chamferZ: 0.85, frontTopY: 1.44,
-  // M-10T: trunnion on the front plate, turret-local
-  trunnionY: 0.93,
+  tSoffitZ: -0.93, tStepZ: -0.92, cheekZ: 0.93, cheekHalfW: 0.85, chamferZ: 0.97, frontTopY: 1.54,
+  // M-10T: the trunnion 0.10 m behind the front plate, turret-local; the drum's top level with the roof
+  trunnionY: 1.00, trunnionZ: 0.95, drumR: 0.53,
 });
 
 type KvPoint = readonly [number, number, number];
@@ -215,10 +221,10 @@ type KvPoint = readonly [number, number, number];
 function kv2HullProfile(z: number): [bottom: number, top: number] {
   const K = KV2;
   const lerp = (z0: number, y0: number, z1: number, y1: number): number => y0 + (y1 - y0) * (z - z0) / (z1 - z0);
-  const kneeZ = K.tail + K.tailR;
+  const kneeZ = K.tail + K.tailR, shoulderZ = K.tail + K.tailTopR;
   const bottom = z < kneeZ ? K.tailKneeY - Math.sqrt(Math.max(0, K.tailR ** 2 - (z - kneeZ) ** 2))
     : z <= K.lowerFootZ ? K.belly : lerp(K.lowerFootZ, K.belly, K.nose, K.noseFootY);
-  const top = z < K.deckEndZ ? lerp(K.tail, K.tailTopY, K.deckEndZ, K.roof)
+  const top = z < shoulderZ ? K.roof - K.tailTopR + Math.sqrt(Math.max(0, K.tailTopR ** 2 - (z - shoulderZ) ** 2))
     : z <= K.driverTopZ ? K.roof
     : z <= K.driverFootZ ? lerp(K.driverTopZ, K.roof, K.driverFootZ, K.driverFootY)
     : z <= K.glacisEndZ ? lerp(K.driverFootZ, K.driverFootY, K.glacisEndZ, K.glacisEndY)
@@ -243,8 +249,11 @@ function addKV2Hull(P: SovietHeavyBuilderPort): void {
   const K = KV2;
   // One welded box (S1: 75 mm sides from belly to roof): the stations are every corner of the bow and stern plates,
   // the stern's curved lower plate in 15° steps.
-  const zs = new Set([K.tail, K.deckEndZ, K.tail + K.tailR, K.driverTopZ, K.driverFootZ, K.lowerFootZ, K.glacisEndZ, K.nose]);
-  for (let deg = 195; deg < 270; deg += 15) zs.add(K.tail + K.tailR + K.tailR * Math.cos(deg * Math.PI / 180));
+  const zs = new Set([K.tail, K.tail + K.tailTopR, K.tail + K.tailR, K.driverTopZ, K.driverFootZ, K.lowerFootZ, K.glacisEndZ, K.nose]);
+  for (let deg = 195; deg < 270; deg += 15) {
+    zs.add(K.tail + K.tailR + K.tailR * Math.cos(deg * Math.PI / 180));
+    zs.add(K.tail + K.tailTopR + K.tailTopR * Math.cos(deg * Math.PI / 180));
+  }
   const sections = [...zs].sort((a, b) => a - b).map((z) => {
     const [b, t] = kv2HullProfile(z);
     return { z, ring: [[-K.halfW, b], [K.halfW, b], [K.halfW, t], [-K.halfW, t]] as [number, number][] };
@@ -254,19 +263,16 @@ function addKV2Hull(P: SovietHeavyBuilderPort): void {
   // glacis' sides and nose, the stern's upper plate
   for (const s of [-1, 1]) {
     const x = s * (K.halfW - 0.004);
-    kv2Weld(P, 'hullDetail', [x, K.roof, K.deckEndZ], [x, K.roof, K.driverTopZ]);
+    kv2Weld(P, 'hullDetail', [x, K.roof, K.tail + K.tailTopR], [x, K.roof, K.driverTopZ]);
     kv2Weld(P, 'hullDetail', [x, K.roof, K.driverTopZ], [x, K.driverFootY, K.driverFootZ]);
     kv2Weld(P, 'hullDetail', [x, K.driverFootY, K.driverFootZ], [x, K.glacisEndY, K.glacisEndZ]);
-    kv2Weld(P, 'hullDetail', [x, K.tailTopY, K.tail], [x, K.roof, K.deckEndZ]);
     kv2Weld(P, 'hullDetail', [x, K.noseFootY, K.nose], [x, K.belly, K.lowerFootZ]);
   }
   kv2Weld(P, 'hullDetail', [-K.halfW, K.roof, K.driverTopZ], [K.halfW, K.roof, K.driverTopZ]);
   kv2Weld(P, 'hullDetail', [-K.halfW, K.driverFootY, K.driverFootZ], [K.halfW, K.driverFootY, K.driverFootZ]);
   kv2Weld(P, 'hullDetail', [-K.halfW, K.noseTopY, K.nose - 0.004], [K.halfW, K.noseTopY, K.nose - 0.004], 0.014);
-  kv2Weld(P, 'hullDetail', [-K.halfW, K.roof, K.deckEndZ], [K.halfW, K.roof, K.deckEndZ]);
-  kv2Weld(P, 'hullDetail', [-K.halfW, K.tailTopY, K.tail - 0.002], [K.halfW, K.tailTopY, K.tail - 0.002]);
-  // the deck plate's transverse joint behind the turret and the roof plate's ahead of it (bolted, S3 plan)
-  for (const z of [-0.84, 1.62]) {
+  // the deck plate's transverse joints behind the turret and the roof plate's ahead of it (bolted, S3 plan)
+  for (const z of [-0.84, -2.18, 1.95]) {
     P.add('hullDark', KIT.box(1.80, 0.006, 0.012), 0, K.roof + 0.003, z);
     for (let k = 0; k < 9; k++) P.add('hullDetail', KIT.cylY(0.017, 0.017, 0.014, 6), -0.80 + k * 0.20, K.roof + 0.007, z + 0.035);
   }
@@ -293,13 +299,17 @@ function addKV2Fenders(P: SovietHeavyBuilderPort): void {
     P.add('hullDetail', kv2Plate(s > 0 ? xo - 0.012 : -xo, s > 0 ? xo : -xo + 0.012,
       [K.fenderFrontZ, K.fenderY - 0.010], [K.mudguardTipZ, K.mudguardTipY - 0.010], 0.040));
     // the shelf's triangular frames against the hull side (S4: four a side, upright leg forward, flat bar)
-    const fx = s * (K.halfW + 0.012);
+    // angle-iron triangles standing 40 mm off the wall on the shelf, the upright leg forward (S4)
+    const fx = s * (K.halfW + 0.035);
     for (const z0 of [1.70, 0.45, -0.85, -2.10]) {
-      const z1 = z0 - 0.56, top = K.roof - 0.025, foot = K.fenderY, h = top - foot, d = Math.hypot(h, z0 - z1);
-      P.add('hullDetail', box(0.012, h, 0.045), fx, foot + h / 2, z0 - 0.0225);
-      P.add('hullDetail', box(0.012, 0.012, z0 - z1), fx, foot + 0.006, (z0 + z1) / 2);
-      P.add('hullDetail', box(0.012, 0.045, d), fx, foot + h / 2, (z0 + z1) / 2, -Math.atan2(h, z0 - z1), 0, 0);
+      const z1 = z0 - 0.56, top = K.roof - 0.02, foot = K.fenderY, h = top - foot, d = Math.hypot(h, z0 - z1);
+      P.add('hullDetail', box(0.045, h, 0.05), fx, foot + h / 2, z0 - 0.025);
+      P.add('hullDetail', box(0.045, 0.014, z0 - z1), fx, foot + 0.007, (z0 + z1) / 2);
+      P.add('hullDetail', box(0.045, 0.05, d), fx, foot + h / 2, (z0 + z1) / 2, -Math.atan2(h, z0 - z1), 0, 0);
+      P.add('hullDetail', box(0.035, 0.035, 0.02), s * (K.halfW + 0.0175), top - 0.02, z0 - 0.025);     // wall cleat
     }
+    // the mudguard's turned-down front flap
+    P.add('hull', box(w, 0.12, K.fenderTh), xm, K.mudguardTipY - 0.06, K.mudguardTipZ - K.fenderTh / 2);
     // shelf joints and the rows of bolts that hold it to the hull side
     for (const z of [-1.90, 0.10, 1.50]) P.add('hullDark', box(w - 0.02, 0.004, 0.010), xm, K.fenderY + 0.001, z);
     for (let k = 0; k < 14; k++) P.add('hullDetail', KIT.cylY(0.014, 0.014, 0.012, 6), s * (xi + 0.035), K.fenderY + 0.004, -3.20 + k * 0.40);
@@ -337,7 +347,7 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
   const tilt = -Math.PI / 6;
   // driver's armoured vision block on the centre line (S4), its visor and slit
   {
-    const [x, y, z] = dp(0, 1.49, 0.04);
+    const [x, y, z] = dp(0, 1.43, 0.04);
     P.add('hullDetail', box(0.34, 0.15, 0.08), x, y, z, tilt, 0, 0);
     P.add('hullDetail', box(0.30, 0.05, 0.03), x, y + 0.05, z + 0.045, tilt, 0, 0);
     P.add('hullDark', box(0.20, 0.022, 0.02), x, y - 0.012, z + 0.042, tilt, 0, 0);
@@ -345,7 +355,7 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
   }
   // the bow DT in its ball on the tank's left (S4), the headlight on its right
   {
-    const [x, y, z] = dp(0.42, 1.47, 0.0);
+    const [x, y, z] = dp(0.42, 1.38, 0.0);
     P.add('hullDetail', KIT.xform(cylZ(0.135, 0.05, 16), 0, 0, 0.02), x, y, z, tilt, 0, 0);                // armoured collar
     P.add('hull', sph(0.105, 14), x, y + 0.03, z + 0.05);                                                     // ball
     P.add('hullDark', KIT.xform(cylZ(0.016, 0.20, 8), 0, 0, 0.17), x, y + 0.03, z + 0.05, tilt * 0.3, 0, 0); // DT barrel
@@ -360,17 +370,17 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
   // driver's periscopes and the radio operator's round hatch on the roof ahead of the turret (kept flush: the turret's
   // floor sweeps over them)
   for (const x of [-0.18, 0.18]) {
-    P.add('hullDetail', box(0.16, 0.035, 0.12), x, K.roof + 0.0175, 1.92);
-    P.add('hullGlass', box(0.12, 0.010, 0.012), x, K.roof + 0.025, 1.985);
+    P.add('hullDetail', box(0.16, 0.035, 0.12), x, K.roof + 0.0175, 2.20);
+    P.add('hullGlass', box(0.12, 0.010, 0.012), x, K.roof + 0.025, 2.265);
   }
-  P.add('hullDark', cylY(0.25, 0.25, 0.006, 20), 0.42, K.roof + 0.002, 1.66);                             // hatch seam
-  P.add('hullDetail', cylY(0.23, 0.23, 0.012, 20), 0.42, K.roof + 0.006, 1.66);                           // hatch lid
-  P.add('hullDetail', box(0.10, 0.012, 0.05), 0.42, K.roof + 0.008, 1.40);                                // hinge
-  // the 71-TK-3's whip on the driver's plate's left edge, 2.19 m off the ring's axis: outside the shield box's sweep
-  // (2.03 m) and the rear overhang's (1.96 m), its tip 0.18 m under the tube laid at -5 degrees over it
+  P.add('hullDark', cylY(0.25, 0.25, 0.006, 20), 0.42, K.roof + 0.002, 1.80);                             // hatch seam
+  P.add('hullDetail', cylY(0.23, 0.23, 0.012, 20), 0.42, K.roof + 0.006, 1.80);                           // hatch lid
+  P.add('hullDetail', box(0.10, 0.012, 0.05), 0.42, K.roof + 0.008, 1.54);                                // hinge
+  // the 71-TK-3's whip on the driver's plate's left edge, 2.27 m off the ring's axis: outside the shield box's sweep
+  // and the rear overhang's (1.96 m), its tip 0.11 m under the tube laid at -5 degrees over it
   {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.70, r: 0.011, rake: 0.07, seed: 4 });
-    whip.position.set(0.80, kv2HullProfile(2.36)[1], 2.36);
+    whip.position.set(0.80, kv2HullProfile(2.45)[1], 2.45);
     P.hullG.add(whip);
   }
   // the nose: bolt row along the lower plate's top edge and the two towing eyes (S4 front)
@@ -382,13 +392,9 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
     P.add('hullDetail', KIT.xform(box(0.16, 0.20, 0.06), 0, 0, 0.03), s * 0.55, y, z, lowerTilt, 0, 0);
     P.add('hullDark', KIT.xform(cylX(0.034, 0.17, 8), 0, -0.02, 0.06), s * 0.55, y, z, lowerTilt, 0, 0);
   }
-  // spare track links on the glacis (VEH-13: one registered run)
-  const tilt20 = Math.atan2(K.driverFootY - K.glacisEndY, K.glacisEndZ - K.driverFootZ);
-  withSpareTrackRun(P, { site: 'kv-nose-deck-links', source: 'adhoc', rotation: [tilt20, 0, 0] }, (port) => {
-    for (const [k, zc] of [[0, 2.62], [1, 2.78]] as const) {
-      const y = kv2HullProfile(zc)[1] + 0.024;
-      port.add('hullTrack', spareLinkBlock(0.5, 0.045, 0.15), -0.42, y, zc + k * 0.002, tilt20, 0, 0);
-    }
+  // spare track links flat on the right front fender (VEH-13: one registered run)
+  withSpareTrackRun(P, { site: 'kv-fender-links', source: 'adhoc', rotation: [0, 0, 0] }, (port) => {
+    for (const zc of [0.70, 0.86]) port.add('hullTrack', spareLinkBlock(0.5, 0.045, 0.15), -1.33, K.fenderY + 0.0225, zc);
   });
 }
 
@@ -396,40 +402,35 @@ function addKV2EngineDeck(P: SovietHeavyBuilderPort): void {
   const K = KV2, { box, cylX, cylY, cylZ } = KIT;
   const y = K.roof;
   // engine access plate (bolted, S3 plan) right behind the turret
-  P.add('hullDetail', box(0.92, 0.022, 0.76), 0, y + 0.011, -1.48);
+  P.add('hullDetail', box(0.90, 0.022, 0.60), 0, y + 0.011, -1.50);
   for (let k = 0; k < 6; k++) for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.016, 0.016, 0.010, 6), -0.40 + k * 0.16, y + 0.025, -1.48 + s * 0.345);
-    if (k < 5) P.add('hullDark', cylY(0.016, 0.016, 0.010, 6), s * 0.425, y + 0.025, -1.80 + k * 0.16);
+    P.add('hullDark', cylY(0.016, 0.016, 0.010, 6), -0.40 + k * 0.16, y + 0.025, -1.50 + s * 0.27);
+    if (k < 4) P.add('hullDark', cylY(0.016, 0.016, 0.010, 6), s * 0.415, y + 0.025, -1.74 + k * 0.16);
   }
-  for (const x of [-0.25, 0.25]) P.add('hullDark', box(0.10, 0.016, 0.022), x, y + 0.030, -1.48);           // lift handles
-  // the intake louvres either side (armoured slats in a raised frame) and the transverse outlet louvre at the rear
-  const louvre = (x: number, z: number, wx: number, lz: number, along: 'z' | 'x'): void => {
+  for (const x of [-0.25, 0.25]) P.add('hullDark', box(0.10, 0.016, 0.022), x, y + 0.030, -1.50);           // lift handles
+  // the two short intake grilles beside it (armoured slats in a raised frame, S3 plan)
+  for (const s of [-1, 1]) {
+    const x = s * 0.66, z = -1.72, wx = 0.30, lz = 0.48;
     P.add('hullDetail', box(wx, 0.05, lz), x, y + 0.025, z);
     P.add('hullDark', box(wx - 0.06, 0.012, lz - 0.06), x, y + 0.046, z);
-    const n = Math.round((along === 'z' ? lz : wx) / 0.075);
-    for (let k = 0; k < n; k++) {
-      const t = -0.5 + (k + 0.5) / n;
-      if (along === 'z') P.add('hullDetail', box(wx - 0.06, 0.018, 0.026), x, y + 0.058, z + t * (lz - 0.08), 0.5, 0, 0);
-      else P.add('hullDetail', box(0.026, 0.018, lz - 0.06), x + t * (wx - 0.08), y + 0.058, z, 0, 0, 0.5);
-    }
-  };
-  for (const s of [-1, 1]) louvre(s * 0.66, -2.06, 0.32, 1.10, 'z');
-  louvre(0, -2.72, 1.36, 0.34, 'z');
-  // round transmission inspection hatches
-  for (const x of [-0.24, 0.24]) {
-    P.add('hullDetail', cylY(0.17, 0.17, 0.024, 16), x, y + 0.012, -2.22);
-    P.add('hullDark', cylY(0.178, 0.178, 0.006, 16), x, y + 0.003, -2.22);
-    for (let k = 0; k < 6; k++) {
-      const a = k * Math.PI / 3;
-      P.add('hullDark', cylY(0.013, 0.013, 0.008, 6), x + Math.sin(a) * 0.135, y + 0.027, -2.22 + Math.cos(a) * 0.135);
+    for (let k = 0; k < 6; k++) P.add('hullDetail', box(wx - 0.06, 0.018, 0.026), x, y + 0.058, z - 0.18 + k * 0.072, 0.5, 0, 0);
+  }
+  // the two big round transmission covers behind the deck joint (S3 plan: about 0.65 m across), bolted rims
+  for (const x of [-0.42, 0.42]) {
+    P.add('hullDetail', cylY(0.32, 0.32, 0.028, 28), x, y + 0.014, -2.56);
+    P.add('hullDark', cylY(0.33, 0.33, 0.006, 28), x, y + 0.003, -2.56);
+    P.add('hullDetail', cylY(0.10, 0.12, 0.03, 16), x, y + 0.040, -2.56);
+    for (let k = 0; k < 10; k++) {
+      const a = k * Math.PI / 5;
+      P.add('hullDark', cylY(0.014, 0.014, 0.008, 6), x + Math.sin(a) * 0.28, y + 0.031, -2.56 + Math.cos(a) * 0.28);
     }
   }
-  // the stern: two exhaust outlets with armoured cowls on the upper rear plate, two towing eyes on the curved lower plate
-  const up = Math.atan2(K.roof - K.tailTopY, K.deckEndZ - K.tail);
+  // the stern: hooded exhaust outlets on the deck's rear edge (S4 rear), two towing eyes on the curved lower plate
   for (const s of [-1, 1]) {
-    const z = -3.16, yy = K.tailTopY + (z - K.tail) * Math.tan(up);
-    P.add('hullDetail', KIT.xform(box(0.22, 0.16, 0.24), 0, 0.06, 0), s * 0.44, yy, z, up, 0, 0);
-    P.add('hullDark', KIT.xform(cylZ(0.060, 0.10, 12), 0, 0.06, -0.10), s * 0.44, yy, z, up, 0, 0);
+    const z = K.tail + K.tailTopR + 0.05;
+    P.add('hullDetail', box(0.26, 0.11, 0.24), s * 0.40, y + 0.055, z);
+    P.add('hullDetail', KIT.xform(cylX(0.13, 0.26, 16, 0.13), 0, 0, 0, 0, 0, 0, [1, 0.75, 1]), s * 0.40, y + 0.11, z);
+    P.add('hullDark', cylZ(0.06, 0.03, 12), s * 0.40, y + 0.05, z - 0.11);
   }
   for (const s of [-1, 1]) {
     const yy = 0.80, kneeZ = K.tail + K.tailR, dz = Math.sqrt(K.tailR ** 2 - (yy - K.tailKneeY) ** 2);
@@ -442,15 +443,22 @@ function addKV2EngineDeck(P: SovietHeavyBuilderPort): void {
 function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
   const { box, cylX } = KIT;
   // S1: six double-rimmed 0.60 m road wheels a side on torsion bars, three return rollers, rear sprocket, front idler,
-  // a 0.70 m single-horn track (band 0.96..1.66: the hull side at 0.925 keeps 35 mm to it)
-  const xc = 1.31, idler = { z: 2.93, y: 0.80 }, sprocket = { z: -2.98, y: 0.80 };
+  // a 0.70 m single-horn track (band 0.96..1.66: the hull side at 0.925 keeps 35 mm to it). S3/S5: the idler 0.66 m,
+  // the tyred return rollers 0.34 m across and narrow, the track resting on them.
+  const xc = 1.31, idler = { z: 2.90, y: 0.80, r: 0.33 }, sprocket = { z: -2.98, y: 0.80 };
+  const wheelZs = [2.25, 1.33, 0.41, -0.51, -1.43, -2.35];
   const gear = sovGear(P, {
     xc, trackW: 0.70, wheels: 6, wheelR: 0.30, wheelY: 0.37, span: 4.60, zc: -0.05, topY: 1.03, botY: 0.13,
-    sprocketY: sprocket.y, sprocketR: 0.33, sprocketDz: 0.63, idlerY: idler.y, idlerR: 0.30, idlerDz: 0.68,
-    rollers: [1.79, -0.05, -1.89].map((z) => ({ z, y: 0.995, r: 0.15 })),
+    sprocketY: sprocket.y, sprocketR: 0.33, sprocketDz: 0.63, idlerY: idler.y, idlerR: idler.r, idlerDz: idler.z - 2.25,
+    rollers: [1.52, -0.20, -1.96].map((z) => ({ z, y: 0.96, r: 0.17 })), rollerR: 0.17, returnRollerWidthM: 0.20,
     corridorOwned: true,
     style: 'holes',                       // the early stamped wheels' six pockets, spinning with the wheel
   });
+  // the bump-stop brackets on the hull side over each road wheel (S3)
+  for (const sx of [-1, 1]) for (const z of wheelZs) {
+    P.add('hullDetail', box(0.10, 0.12, 0.16), sx * 0.975, 0.86, z);
+    P.add('hullDark', box(0.07, 0.03, 0.12), sx * 0.985, 0.785, z);
+  }
   {
     // KIT.torus() lies flat (XZ plane): an X-facing wheel ring needs rz π/2.
     gear.addRoadWheelLayer(KIT.torus(0.268, 0.012, 12).rotateZ(Math.PI / 2), P.mats.spareTrack, {
@@ -461,22 +469,23 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
       outset: 0.1105,
       name: 'gearRoadWheelDarkAnnuli', appearanceRole: 'wheelInset', // dark annulus, not a painted face (runningGearFinish.ts)
     });
-    const dx = xc - 1.2925;               // the face planes measured on the print-era seat, carried with the track
+    const dx = xc - 1.2925, k = idler.r / 0.30; // the face planes measured on the print-era seat, carried with the track
     for (const sx of [-1, 1]) {
-      // idler: the open spoked wheel (dark void, six spokes, rim and hub rings) on the kit hub's face
-      P.add('hullRunningGearDark', cylX(0.27, 0.006, 18), sx * (1.578 + dx), idler.y, idler.z);
-      P.add('hullRunningGearTrack', KIT.torus(0.272, 0.011, 14), sx * (1.5825 + dx), idler.y, idler.z, 0, 0, Math.PI / 2);
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2 + 0.26;
-        P.add('hullRunningGearTrack', KIT.xform(box(0.012, 0.052, 0.17), 0, Math.sin(a) * 0.17, Math.cos(a) * 0.17, a, 0, 0),
+      // idler: the open dished wheel (dark void, eight straight radial spokes, rim and hub rings) on the kit hub's face
+      P.add('hullRunningGearDark', cylX(0.27 * k, 0.006, 20), sx * (1.578 + dx), idler.y, idler.z);
+      P.add('hullRunningGearTrack', KIT.torus(0.272 * k, 0.011, 16), sx * (1.5825 + dx), idler.y, idler.z, 0, 0, Math.PI / 2);
+      for (let n = 0; n < 8; n++) {
+        const a = (n / 8) * Math.PI * 2 + 0.2, r = 0.17 * k;
+        // -a: the spoke's length (local z) turned onto the radius (sin a, cos a), never across it
+        P.add('hullRunningGearTrack', KIT.xform(box(0.014, 0.045, 0.19 * k), 0, Math.sin(a) * r, Math.cos(a) * r, -a, 0, 0),
           sx * (1.5835 + dx), idler.y, idler.z);
       }
-      P.add('hullRunningGearTrack', KIT.torus(0.060, 0.010, 10), sx * (1.5875 + dx), idler.y, idler.z, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearTrack', KIT.torus(0.060 * k, 0.010, 10), sx * (1.5875 + dx), idler.y, idler.z, 0, 0, Math.PI / 2);
       // sprocket: dark recessed core, hub bolt ring and hub ring on the carrier-ring plane
       P.add('hullRunningGearDark', cylX(0.150, 0.006, 16), sx * (1.6515 + dx), sprocket.y, sprocket.z);
       P.add('hullRunningGearTrack', KIT.torus(0.152, 0.007, 14), sx * (1.6510 + dx), sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2 + 0.3;
+      for (let n = 0; n < 6; n++) {
+        const a = (n / 6) * Math.PI * 2 + 0.3;
         P.add('hullRunningGearTrack', cylX(0.015, 0.010, 6), sx * (1.6525 + dx), sprocket.y + Math.sin(a) * 0.100, sprocket.z + Math.cos(a) * 0.100);
       }
       P.add('hullRunningGearTrack', KIT.torus(0.055, 0.008, 10), sx * (1.6505 + dx), sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
@@ -526,12 +535,12 @@ function kv2TurretSection(z: number): [halfW: number, floor: number, roof: numbe
 }
 
 function addKV2Turret(P: SovietHeavyBuilderPort): void {
-  const K = KV2, { box, cylX, cylZ } = KIT;
+  const K = KV2, { box, cylX } = KIT;
   P.turretG.position.set(0, K.ringY, K.ringZ);
   // 75 mm rolled plates (S1), the 1941 production turret: vertical sides and cheeks, a short chamfer over the front
   // plate, the rear 0.7 m standing over the engine deck. The roof edges carry a 15 mm bevel.
   const bev = 0.015;
-  const sections = [K.tRear, K.tSoffitZ, K.tStepZ, K.chamferZ, K.cheekZ, K.tFront].map((z) => {
+  const sections = [K.tRear, K.tSoffitZ, K.tStepZ, K.chamferZ, K.cheekZ, K.tFront].sort((a, b) => a - b).map((z) => {
     const [w, f, r] = kv2TurretSection(z);
     return { z, ring: [[-w, f], [w, f], [w, r - bev], [w - bev, r], [-w + bev, r], [-w, r - bev]] as [number, number][] };
   });
@@ -555,19 +564,21 @@ function addKV2Turret(P: SovietHeavyBuilderPort): void {
   for (const s of [-1, 1]) for (let k = 0; k < 10; k++) {
     P.add('turretDark', cylX(0.017, 0.012, 6), s * (K.tHalfW + 0.004), K.tFloor + 0.05, -0.85 + k * 0.19);
   }
-  // the front plate's mantlet opening: a dark annular reveal round the drum, and the drum's guide cheeks either side
-  // (S4 front: the drum fills most of the plate between two raised bolted bars)
-  P.add('turretDark', box(1.16, 0.98, 0.012), 0, K.trunnionY + 0.01, K.tFront + 0.004);
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.08, 0.80, 0.04), s * 0.69, 1.00, K.tFront + 0.02);
-    for (let k = 0; k < 4; k++) P.add('turretDark', cylZ(0.018, 0.014, 6), s * 0.69, 0.67 + k * 0.22, K.tFront + 0.045);
-  }
+  // the front plate's mantlet opening: a dark reveal round the drum, and a welded bar either side (S4 front: the drum
+  // fills most of the plate between two raised bars)
+  const reveal = 2 * Math.sqrt(K.drumR ** 2 - (K.tFront - K.trunnionZ) ** 2);
+  P.add('turretDark', box(1.30, reveal, 0.012), 0, K.trunnionY, K.tFront + 0.004);
+  for (const s of [-1, 1]) P.add('turret', box(0.08, 0.86, 0.04), s * 0.74, 1.00, K.tFront + 0.02);
   // side plates: two grab handles a side, the pistol port and the vision slit over it (S4 turret close-up)
   for (const s of [-1, 1]) {
     const x = s * K.tHalfW;
+    // U-handles of 32 mm bar standing 70 mm off the plate on welded feet
     for (const hy of [0.98, 0.42]) {
-      for (const hz of [0.26, 0.62]) kv2Weld(P, 'turretDetail', [x, hy, hz], [x + s * 0.06, hy, hz], 0.013);
-      kv2Weld(P, 'turretDetail', [x + s * 0.06, hy, 0.25], [x + s * 0.06, hy, 0.63], 0.013);
+      for (const hz of [0.26, 0.62]) {
+        kv2Weld(P, 'turretDetail', [x, hy, hz], [x + s * 0.07, hy, hz], 0.016);
+        P.add('turretDetail', box(0.016, 0.05, 0.05), x + s * 0.008, hy, hz);
+      }
+      kv2Weld(P, 'turretDetail', [x + s * 0.07, hy, 0.245], [x + s * 0.07, hy, 0.635], 0.016);
     }
     P.add('turretDetail', cylX(0.055, 0.024, 12), x + s * 0.012, 0.80, 0.26);
     P.add('turretDark', cylX(0.022, 0.03, 8), x + s * 0.020, 0.80, 0.26);
@@ -579,19 +590,18 @@ function addKV2Turret(P: SovietHeavyBuilderPort): void {
 function addKV2TurretRear(P: SovietHeavyBuilderPort): void {
   const K = KV2, { box, cylY, cylZ, sph } = KIT;
   const zr = K.tRear;
-  // the big rear door (S4 rear, S5), offset to the tank's right and hung on that edge, with the DT ball on the left
+  // the big rear door (S4 rear, S5): a raised plate 45 mm proud, offset to the tank's right and hung on that edge on two
+  // big hinge blocks, with the DT ball on the left
   const doorX = -0.20, doorY = 0.95, dw = 0.84;
   P.add('turretDark', box(dw + 0.03, dw + 0.03, 0.008), doorX, doorY, zr - 0.002);                       // door seam
   P.add('turret', box(dw, dw, 0.045), doorX, doorY, zr - 0.024);                                          // door plate
-  for (let k = 0; k < 6; k++) for (const s of [-1, 1]) {
-    const t = -0.36 + k * 0.144;
-    P.add('turretDark', cylZ(0.016, 0.012, 6), doorX + t, doorY + s * 0.375, zr - 0.050);
-    P.add('turretDark', cylZ(0.016, 0.012, 6), doorX + s * 0.375, doorY + t, zr - 0.050);
+  for (const [bx, by] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35], [0.12, 0.35], [0.12, -0.35]] as const) {
+    P.add('turretDark', cylZ(0.020, 0.014, 6), doorX + bx, doorY + by, zr - 0.052);
   }
   for (const hy of [doorY - 0.25, doorY + 0.25]) {
-    P.add('turretDetail', box(0.36, 0.07, 0.022), doorX - dw / 2 + 0.16, hy, zr - 0.057);                  // strap hinges
-    P.add('turretDetail', cylY(0.040, 0.040, 0.15, 10), doorX - dw / 2 - 0.035, hy, zr - 0.040);         // knuckles
-    P.add('turretDark', cylY(0.016, 0.016, 0.19, 6), doorX - dw / 2 - 0.035, hy, zr - 0.040);            // pins
+    P.add('turretDetail', box(0.16, 0.14, 0.07), doorX - dw / 2 + 0.04, hy, zr - 0.060);                  // hinge blocks
+    P.add('turret', box(0.07, 0.14, 0.08), doorX - dw / 2 - 0.035, hy, zr - 0.040);                      // wall lugs
+    P.add('turretDark', cylY(0.020, 0.020, 0.20, 8), doorX - dw / 2 - 0.005, hy, zr - 0.075);            // pins
   }
   P.add('turretDetail', box(0.04, 0.16, 0.04), doorX + dw / 2 - 0.07, doorY, zr - 0.068);                  // handle
   P.add('turretDetail', cylZ(0.05, 0.03, 10), doorX + 0.10, doorY + 0.18, zr - 0.060);                    // pistol port
@@ -636,36 +646,31 @@ function addKV2Howitzer(P: SovietHeavyBuilderPort): void {
   const K = KV2, { cylX, cylZ } = KIT;
   // 152 mm M-10T (S2: L/24.5, 3.70 m, half-jacketed). The cylindrical cradle drum turns in the front plate on the
   // trunnion axis, the armoured box over the recoil cylinders bolted to its face; both pitch with the gun.
-  P.gunG.position.set(0, K.trunnionY, K.tFront);
-  P.addGunExtra(cylX(0.50, 1.08, 28), 0, 0, 0);                                                           // drum
+  P.gunG.position.set(0, K.trunnionY, K.trunnionZ);
+  const R = K.drumR, half = 0.54;
+  P.addGunExtra(cylX(R, half * 2, 32), 0, 0, 0);                                                          // drum
   for (const s of [-1, 1]) {
-    P.addGunExtra(cylX(0.44, 0.020, 24), s * 0.545, 0, 0);                                               // end plates
-    P.addGunExtra(KIT.torus(0.465, 0.035, 28, 8).rotateZ(Math.PI / 2), s * 0.505, 0, 0);                  // rolled end edge
-    for (let k = 0; k < 10; k++) {
-      const a = (k / 10) * Math.PI * 2 + 0.2;
-      P.addGunExtraDark(cylX(0.020, 0.016, 6), s * 0.56, Math.sin(a) * 0.40, Math.cos(a) * 0.40);
-    }
+    // smooth convex end caps (S4: no bolt circle) bulging 0.10 m past a rolled end edge
+    P.addGunExtra(KIT.torus(R - 0.03, 0.035, 32, 8).rotateZ(Math.PI / 2), s * (half - 0.035), 0, 0);
+    P.addGunExtra(KIT.xform(KIT.sph(R - 0.03, 24, Math.PI / 2), 0, 0, 0, 0, 0, -s * Math.PI / 2, [1, 0.10 / (R - 0.03), 1]), s * (half - 0.01), 0, 0);
   }
-  // the shield box: 0.74 wide, 0.72 tall, its chin cut back (S4), the tube leaving through a raised boss
-  const bw = 0.74, bTop = 0.34, bBot = -0.38, bRear = 0.30, bFront = 0.92, chinZ = 0.72, chinY = -0.18;
+  // the shield box over the recoil cylinders: 0.74 wide, 0.67 tall, one 45° chin running back into the drum's lower
+  // curve (S4), the tube leaving through a low boss
+  const bw = 0.74, bTop = 0.32, bBot = -0.35, bRear = 0.30, bFront = 0.84, chinZ = 0.59, chinY = -0.10;
   P.addGunExtra(sectionSolid([bRear, chinZ, bFront].map((z) => {
     const bot = z <= chinZ ? bBot : chinY;
     return { z, ring: [[-bw / 2, bot], [bw / 2, bot], [bw / 2, bTop - 0.012], [bw / 2 - 0.012, bTop], [-bw / 2 + 0.012, bTop], [-bw / 2, bTop - 0.012]] as [number, number][] };
   })));
-  P.addGunExtra(cylZ(0.175, 0.06, 20), 0, 0, bFront + 0.03);                                               // tube boss
-  for (const s of [-1, 1]) {
-    for (const [by, bz] of [[0.18, 0.56], [-0.22, 0.56], [0.18, 0.80], [-0.10, 0.80]] as const) {
-      P.addGunExtraDark(cylX(0.022, 0.016, 6), s * (bw / 2 + 0.006), by, bz);
-    }
+  P.addGunExtra(cylZ(0.150, 0.04, 20), 0, 0, bFront + 0.02);                                               // tube boss
+  // round-head bolts in a line down the box-to-drum seam on each side, two small ones over the tube
+  for (const s of [-1, 1]) for (const by of [0.22, 0.08, -0.06, -0.20]) {
+    P.addGunExtraDark(KIT.xform(KIT.sph(0.026, 8, Math.PI / 2), 0, 0, 0, 0, 0, -s * Math.PI / 2), s * (bw / 2), by, 0.57);
   }
-  for (const [bx, by] of [[-0.26, 0.22], [0.26, 0.22], [-0.27, -0.08], [0.27, -0.08]] as const) {
-    P.addGunExtraDark(cylZ(0.022, 0.016, 6), bx, by, bFront + 0.006);
-  }
-  // the barrel: buildGun's tube to the muzzle, the half-jacket over its rear (S2), its seam ring
+  for (const bx of [-0.08, 0.08]) P.addGunExtraDark(cylZ(0.016, 0.012, 6), bx, 0.23, bFront + 0.006);
+  // the barrel: buildGun's tube to the muzzle and the half-jacket over its rear (S2)
   const len = 2.20, r = 0.111;
   KIT.buildGun(P, { len, r, brake: null, baseR: 0.15, sleeve: false, evac: null });
-  P.add('gun', cylZ(0.132, 0.58, 20), 0, 0, bFront + 0.31);
-  P.add('gun', cylZ(0.138, 0.03, 20), 0, 0, bFront + 0.585);
+  P.add('gun', cylZ(0.132, 0.58, 20), 0, 0, bFront + 0.29);
   muzzleBore(P, { r, z: len - 0.019, seg: 16 });
   {
     // a bore is a hole: the device disc on a floorless void clone (see the import note)

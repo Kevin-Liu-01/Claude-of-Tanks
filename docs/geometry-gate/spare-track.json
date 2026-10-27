@@ -1055,11 +1055,11 @@
    "hostSweep": []
   },
   "kv2": {
-   "inputHash": "ad205a1b40a7745b",
+   "inputHash": "3da5f34c8535fcd7",
    "runs": [
     {
      "index": 0,
-     "site": "adhoc:kv-nose-deck-links@<anon>@profiles/soviet-heavy.ts",
+     "site": "adhoc:kv-fender-links@<anon>@profiles/soviet-heavy.ts",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -1075,8 +1075,8 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<addKV2Hull@profiles/soviet-heavy.ts:252>"
+      "exposure": 0.874,
+      "host": "hull<addKV2Fenders@profiles/soviet-heavy.ts:288>"
      }
     }
    ],

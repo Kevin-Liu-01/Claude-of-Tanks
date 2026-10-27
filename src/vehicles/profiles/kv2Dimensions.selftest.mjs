@@ -44,6 +44,7 @@ try {
   near(hit(turretStock, [0.78, 2.0, 9], [0, 0, -1]).z, 1.37, 0.01, 'turret front plate');
   near(hit(turretStock, [0.80, 2.2, -9], [0, 0, 1]).z, -1.38, 0.01, 'turret rear plate');
   near(hit(turretStock, [0.50, -5, -1.25], [0, 1, 0]).y, 1.91, 0.01, 'rear overhang soffit');
+  near(hit(turretStock, [0.50, -5, -0.62], [0, 1, 0]).y, 1.69, 0.01, 'turret floor ahead of the square step');
   // a 0.70 m track (S1) and the six road wheels and three return rollers a side
   const band = new THREE.Box3();
   for (const m of under(hull, (o) => o.name === 'gearTrackBandL')) band.expandByObject(m);
@@ -51,14 +52,14 @@ try {
   const instances = (name) => under(hull, (o) => o.name === name).reduce((n, m) => n + (m.isInstancedMesh ? m.count : 1), 0);
   assert.equal(instances('gearRoadWheelTires'), 12, 'six road wheels a side');
   assert.equal(instances('gearReturnRollerTires'), 6, 'three return rollers a side');
-  // the M-10T: trunnion on the front plate, the mouth 0.27 m past the nose (6.95 m overall, S1)
+  // the M-10T: trunnion 0.10 m behind the front plate, the mouth 0.17 m past the nose (6.85 m overall)
   const trunnion = gun.getWorldPosition(new THREE.Vector3());
-  near(trunnion.y, 2.60, 0.01, 'trunnion height');
-  near(trunnion.z, 1.37, 0.01, 'trunnion station');
+  near(trunnion.y, 2.67, 0.01, 'trunnion height');
+  near(trunnion.z, 1.27, 0.01, 'trunnion station');
   let mouth = null;
   gun.traverse((o) => { if (o.userData?.physicalMouth && !mouth) mouth = o.getWorldPosition(new THREE.Vector3()); });
   assert.ok(mouth, 'the howitzer publishes its mouth');
-  near(mouth.z, 3.57, 0.02, 'muzzle station');
+  near(mouth.z, 3.47, 0.02, 'muzzle station');
   near(mouth.z + 3.38, getSpec('kv2').dims.overallLengthM, 0.03, 'overall length with the howitzer forward');
   console.log('kv2Dimensions.selftest: the KV-2 hull, fenders, turret, tracks and howitzer stand at their published and measured datums');
 } finally {
