@@ -14,22 +14,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.24,
         "pos": [
-          1.1840349,
-          0.2303018,
-          -0.6793161
+          1.2349048,
+          0.4089105,
+          -0.0291689
         ],
         "quaternion": [
-          0.00703,
-          0.8831157,
-          -0.0037342,
-          0.4690877
+          -0.1946513,
+          0.6695351,
+          0.2001134,
+          0.6883228
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "chieftain_mk10",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0001048
+        "maximumSurfaceErrorM": 0.0092659
       },
       {
         "kind": "designation",

@@ -281,7 +281,11 @@ export function collectStock(id, options = {}) {
         if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
         const own = new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld);
         const bounds = partBounds.get(bucket), geo = mesh.geometry.boundingBox;
-        const same = bounds && geo && bounds.min.distanceTo(geo.min) < 1e-4 && bounds.max.distanceTo(geo.max) < 1e-4;
+        // 259: the turret seat (turretSeatRace.ts seatTurretOverDeck) lifts a turret mesh's under-deck corners onto the
+        // deck after the merge, so only its underside may have risen; it is still the merged parts in the mesh's frame
+        // (the Challenger 1's turretDark, in an LOD wrapper carrying the casting squash and the -0.562 m re-seat)
+        const same = bounds && geo && bounds.max.distanceTo(geo.max) < 1e-4
+          && Math.abs(bounds.min.x - geo.min.x) < 1e-4 && Math.abs(bounds.min.z - geo.min.z) < 1e-4 && geo.min.y > bounds.min.y - 1e-4;
         if (same && !own.equals(matrix)) matrix = own;
       }
       bucketMatrix.set(bucket, matrix);

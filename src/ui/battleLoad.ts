@@ -229,9 +229,9 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .team.foe .row{flex-direction:row-reverse;}
 .cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
-/* (an open seat on the rows' own plate, its side's edge kept and no ring: a glass seat over the art nearly vanished into
-   the terrain at 1920 and 2560, gauntlet r14) */
-.cot-bl .row.slot{background:var(--hud-plate-strong);box-shadow:none;}
+/* (an open seat on the rows' own plate and ring, its side's edge kept: a glass seat over the art nearly vanished into
+   the terrain at 1920 and 2560, gauntlet r14, and without the ring the open seats ran into one slab, r15) */
+.cot-bl .row.slot{background:var(--hud-plate-strong);}
 .cot-bl .row.me{background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate-strong);
   box-shadow:none;outline:1px solid var(--accent);outline-offset:-1px;}
 /* (the player's ring takes the side's edge too: the side's rule outranked it, and a blue edge sat inside the orange ring,
@@ -344,7 +344,8 @@ ${PORTRAIT_ROWS} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:ri
 ${PORTRAIT_ROWS} .cot-bl .row .nm{grid-row:1;}${PORTRAIT_ROWS} .cot-bl .row .cs{grid-row:2;margin:0;}
 /* (each line one height in both scripts, so a row's lines stand level with the row's opposite: zh's 13 px "你" set the
    player's lines 2 px off the foe's, gauntlet r10) */
-${PORTRAIT_ROWS} .cot-bl .row .nm{line-height:16px;}${PORTRAIT_ROWS} .cot-bl .row .cs{line-height:14px;}
+/* (15 and 13 px, a pixel over and under them in the 32 px row: at 16 and 14 the descenders sat on its rule, r15) */
+${PORTRAIT_ROWS} .cot-bl .row .nm{line-height:15px;}${PORTRAIT_ROWS} .cot-bl .row .cs{line-height:13px;}
 /* (a phone up to 340 px wide gives the render's room to the names: a 138 px side left "M1A2 Abrams" 50 px, r8) */
 ${PORTRAIT_ROWS}[data-cot-width-density='narrow'] .cot-bl .row .sil{display:none;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}

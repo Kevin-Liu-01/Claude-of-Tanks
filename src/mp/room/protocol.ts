@@ -88,6 +88,8 @@ export const ROOM_RATE_MAX_MESSAGES = 120;
 export const ROOM_MAX_PAYLOAD_BYTES = 32 * 1024;
 export const ROOM_MAX_NAME_CHARS = 24;
 export const ROOM_MAX_EQUIPMENT = 3;
+/** Consumable slots a seat names (sim/consumableRules.ts CONSUMABLE_SLOTS). */
+export const ROOM_MAX_CONSUMABLES = 3;
 /** `region` in the admission reply (`room_created` / `room_joined`): where the host says it runs, for the status surface. */
 export const ROOM_MAX_REGION_CHARS = 32;
 /**
@@ -131,6 +133,8 @@ export interface RoomPlayer {
   seat: number;
   specId: string | null;
   equipment: string[];
+  /** The consumable in each slot (2026-10-26, the catalog); absent from an older room, which seats the default trio. */
+  consumables?: string[];
   camo: string;
   ready: boolean;
   connected: boolean;
@@ -215,6 +219,8 @@ export interface RoomChatEntry {
 export interface RoomSelection {
   specId: string | null;
   equipment: string[];
+  /** The consumable in each slot (sim/consumableRules.ts); the host's authority sanitizes it against the vehicle. */
+  consumables?: string[];
   camo: string;
 }
 
@@ -437,6 +443,19 @@ export function cleanSeatId(value: unknown): string {
   return id;
 }
 
+/** A seat's consumables: up to ROOM_MAX_CONSUMABLES well-formed ids in slot order; the authority gates them. */
+export function cleanConsumables(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const clean: string[] = [];
+  for (const entry of value) {
+    const id = String(entry ?? '').trim();
+    if (!ROOM_EQUIPMENT_RE.test(id) || clean.includes(id)) continue;
+    clean.push(id);
+    if (clean.length === ROOM_MAX_CONSUMABLES) break;
+  }
+  return clean;
+}
+
 export function cleanEquipment(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const clean: string[] = [];
@@ -484,6 +503,8 @@ function isRoomPlayer(value: unknown): value is RoomPlayer {
     isSafeUnsigned(value.seat) && value.seat < ROOM_MAX_SEATS &&
     (value.specId === null || (typeof value.specId === 'string' && ROOM_SPEC_RE.test(value.specId))) &&
     Array.isArray(value.equipment) && value.equipment.every((entry) => typeof entry === 'string') &&
+    (value.consumables === undefined ||
+      (Array.isArray(value.consumables) && value.consumables.every((entry) => typeof entry === 'string'))) &&
     typeof value.camo === 'string' && typeof value.ready === 'boolean' && typeof value.connected === 'boolean' &&
     typeof value.isAdmin === 'boolean' && isSafeUnsigned(value.joinedAt) &&
     (value.hostDeclined === undefined || typeof value.hostDeclined === 'boolean');

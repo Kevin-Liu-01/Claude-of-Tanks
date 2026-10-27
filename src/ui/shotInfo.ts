@@ -384,13 +384,8 @@ const SI_CSS = `
 /* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
    narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis; from 210 px both
    fit, and the 900x700 card's 220 kept neither glyph in either script, r12) */
-@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
+@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
-   gauntlet r7) */
-.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
-  color:var(--ink-1);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
-.cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:var(--s1);overflow:hidden;white-space:nowrap;}
@@ -505,6 +500,9 @@ const SI_CSS = `
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 .attacker{flex:0 1 auto;}
 .cot-si-toast .l1 .si{display:inline-block;width:29px;height:12px;flex:0 0 29px;}
+/* (on touch, with no roster column to line up with, the silhouette's ink on the lane's 12 px edge: its image's own
+   margin set it 4.5 px in from the "You" rows and the map, gauntlet r15) */
+body.cot-touch-layout .cot-si-toast .l1 .si{margin-left:-4px;}
 .cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
   font-size:var(--battle-fs-11);display:flex;align-items:center;gap:var(--s1);
   white-space:nowrap;}
@@ -780,9 +778,8 @@ function appendShotCardHeader(
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
-  const damage = el('span', 'cot-si-dmg', header);
-  damage.innerHTML = `${GLYPH.damage}<span>${ev.damage > 0 ? `−${formatNumber(Math.round(ev.damage))}` : '0'}</span>`;
-  if (!(ev.damage > 0)) damage.style.color = COL.dim;
+  // (the damage dealt is the floating number over the hit, never the card's figure as well: UI-LOCKDOWN B16, the
+  // registry's ruling; the card keeps the penetration, the angle, the armour and the outcome)
 }
 
 /** The round's type chip classes: a missile's chip carries its own class (class names, not copy). */
@@ -1333,8 +1330,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!missileSplash) kv('angle', t('shotInfo.angle'), `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
     if (!missileSplash) kv('armor', t('killcam.stat.armor'), armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
-    // (a reference plate on the proving ground has no hull: no damage and no roll, no row)
-    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('damage', t('killcam.stat.damage'), `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    // (no damage row: the damage dealt is the floating number over the hit at the same moment, and a blocked hit's
+    // outcome says what its 0 would; the roll stays on card.dataset.dmgroll for traces: UI-LOCKDOWN B16)
     if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier
@@ -1481,7 +1478,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     latestToast = { element: toast, group };
     const damaging = group.damage > 0;
-    const summary = damaging ? `−${formatNumber(Math.round(group.damage))}` :
+    // (the damage taken is the hit-direction label's figure: the toast names the attacker and the shell, UI-LOCKDOWN B16)
+    const summary = damaging ? escapeHtml(ev.shellType || '') :
       group.outcome?.label || t('hud.incoming.mixedHits');
     const color = damaging ? COL.red : (group.outcome?.color || COL.dim);
     toast.dataset.damage = String(Math.round(group.damage));

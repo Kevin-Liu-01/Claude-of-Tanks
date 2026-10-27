@@ -13,6 +13,7 @@ export interface LobbyPlayer {
   team: LobbyTeam;
   specId: string | null;
   equipment: string[];
+  consumables?: string[];
   camo: string;
   ready: boolean;
   connected: boolean;

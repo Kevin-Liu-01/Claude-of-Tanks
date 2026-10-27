@@ -634,7 +634,10 @@ export class RoomClient {
 
   private selectionPayload(selection: Partial<RoomSelection> | null | undefined): Record<string, unknown> | null {
     if (!selection) return null;
-    return { specId: selection.specId ?? null, equipment: selection.equipment ?? [], camo: selection.camo ?? 'factory' };
+    return {
+      specId: selection.specId ?? null, equipment: selection.equipment ?? [], consumables: selection.consumables ?? [],
+      camo: selection.camo ?? 'factory',
+    };
   }
 
   private rejoinPayload(code: string): Record<string, unknown> {

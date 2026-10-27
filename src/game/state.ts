@@ -88,7 +88,7 @@ import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../si
 import {
   createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
-  repairAllModules, startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
+  startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import { magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
@@ -154,7 +154,12 @@ import {
   clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
 } from './provingRange.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
-import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
+import {
+  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, consumableSpottingIds, type ConsumableId, type ConsumableState,
+} from '../sim/consumableRules.ts';
+import {
+  createSoloConsumables, soloApsIntercepts, soloGuidanceJammed, tickSoloConsumables, useSoloConsumable,
+} from './soloConsumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import { FRAME_STAGE, frameStages } from './stateCore.ts';
 import {
@@ -264,6 +269,11 @@ type SoloPooledEntity = Omit<RosterEntity,
     visual: SoloVisual | null;
     contactGeom: MovementContactGeometry | null;
     aiCtl: SoloAiController | null;
+    /** The consumable in each slot, kept across lives (game/soloConsumables.ts). */
+    consumableItems?: ConsumableId[];
+    /** This life's consumable cooldowns, charges and timed effects. */
+    consumables?: ConsumableState;
+    /** consumables.readyAt itself, the field the bots' support chooser reads. */
     consumableReadyAt?: number[];
     bot?: boolean;
     /** Jev commander (2026-09-25): who commands this bot this battle (the HUD roster tags 'jev'). */
@@ -805,8 +815,10 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
       const entity = tank as SpottingTank & { specId: string };
       return hasCamoPaint(entity.specId) ? CAMO_PAINT_BONUS : 0;
     },
-    getEquipment: (tank) =>
-      (tank as SpottingTank & { equip?: string[] }).equip || null,
+    getEquipment: (tank) => {
+      const entity = tank as SpottingTank & { equip?: string[]; consumables?: ConsumableState };
+      return consumableSpottingIds(entity.consumables, entity.equip, game.timeS);
+    },
     rng: mulberry32(9100),
   });
 }
@@ -911,7 +923,9 @@ function initializeBattleEntity(
   entity.input.shellSlot = 0;
   entity.input.actionBits = 0;
   entity.input.aimPoint.copy(entity.state.aimPoint);
-  entity.consumableReadyAt = [0, 0, 0];
+  // the catalog (2026-10-26): the player's saved loadout or a bot's role picks, a fresh life of charges
+  entity.consumableItems = undefined;
+  createSoloConsumables(entity, context.game.ruleset, isPlayer);
   entity._destroyedAnnounced = false;
   entity._openingRoute = null;
   entity._lastImpactT = -1;
@@ -1507,6 +1521,7 @@ export function setupBattle(
       );
       // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
       applyRulesetToCombat(ent.combat, ent.spec.gun.shells, game.ruleset, healthScale);
+      createSoloConsumables(ent, game.ruleset, !!ent.isPlayer);
       initializeAerial(ent, game.ruleset);
       ent.specialAction = createSpecialActionState(ent.spec);
       bindSpecialActionState(ent);
@@ -2173,7 +2188,8 @@ function tryFire(
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   const shooter = game.tankById.get(shell.shooterId);
-  if (isActiveSoloEntity(shooter) && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))) {
+  if (isActiveSoloEntity(shooter) && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))
+    && !soloGuidanceJammed(game.tanks, shooter.team, shooter.input.aimPoint, game.timeS)) {
     guideShellToward(shell, shooter.input.aimPoint, SIM_DT);
   }
   stepShell(shell, SIM_DT);
@@ -2256,6 +2272,27 @@ function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
   applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, entity.modeGravityScale ?? 1);
 }
 
+/**
+ * An armed APS charge met the round (the authority's interceptShell): it is spent short of the hull and bursts off the
+ * face it was meant for, along that face's normal. The FX read the round's munition on aps:intercept, so it goes first;
+ * the round's end for its tracer and trail follows.
+ */
+function interceptSoloShell(
+  bus: EventBus,
+  struckId: string,
+  shell: DamageShell,
+  hit: { point: { x: number; y: number; z: number }; normal?: { x: number; y: number; z: number } } | undefined,
+): void {
+  shell.dead = true;
+  const point = hit?.point ?? shell.pos;
+  const nx = hit?.normal?.x ?? 0, ny = hit?.normal?.y ?? 1, nz = hit?.normal?.z ?? 0;
+  const x = point.x + nx * APS_BURST_OFFSET_M, y = point.y + ny * APS_BURST_OFFSET_M, z = point.z + nz * APS_BURST_OFFSET_M;
+  bus.emit('aps:intercept', { id: struckId, shooterId: shell.shooterId, shellId: shell.id, x, y, z, nx, ny, nz,
+    caliberMm: shell.spec.caliberMm });
+  bus.emit('shell:expired', { shellId: shell.id, shooterId: shell.shooterId, pos: [x, y, z], hitTerrain: false,
+    shellType: shell.spec.type, caliberMm: shell.spec.caliberMm });
+}
+
 function resolveTankShellImpact(
   game: SoloGameState,
   bus: EventBus,
@@ -2265,6 +2302,11 @@ function resolveTankShellImpact(
   const entity = nearest.entity;
   const intersections = nearest.intersections;
   if (!entity || !intersections) return;
+  // an armed APS charge meets a missile or HEAT round from the front arc before it strikes (sim/consumableRules.ts)
+  if (soloApsIntercepts(entity, shell.spec, shell.vel, game.timeS)) {
+    interceptSoloShell(bus, entity.id, shell, intersections[0]);
+    return;
+  }
   knockEntityFromShell(entity, shell);
   const strike = intersections[0]?.point;
   if (strike) game._destruction?.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z);
@@ -2575,43 +2617,6 @@ function stepBotControllers(game: SoloGameState): void {
   }
 }
 
-function repairBotModules(entity: SoloEntity, bus: EventBus): boolean {
-  let used = false;
-  for (const module of repairAllModules(entity.combat)) {
-    used = true;
-    bus.emit('module:state', {
-      id: entity.id, module, state: 'ok', source: 'repair-kit',
-    });
-  }
-  return used;
-}
-
-function reviveBotCrew(entity: SoloEntity): boolean {
-  let used = false;
-  for (const crew of Object.keys(entity.combat.crew)) {
-    if (entity.combat.crew[crew] !== false) continue;
-    entity.combat.crew[crew] = true;
-    used = true;
-  }
-  return used;
-}
-
-function extinguishBot(entity: SoloEntity, bus: EventBus): boolean {
-  if (!entity.combat.fire.burning) return false;
-  entity.combat.fire.burning = false;
-  entity.combat.fire.ticksLeft = 0;
-  entity.combat.fire.tickTimer = 0;
-  bus.emit('tank:fire', { id: entity.id, burning: false });
-  return true;
-}
-
-function useBotConsumable(entity: SoloEntity, bus: EventBus, actionBit: number): boolean {
-  if (actionBit === PLAYER_ACTION_BITS.REPAIR) return repairBotModules(entity, bus);
-  if (actionBit === PLAYER_ACTION_BITS.FIRST_AID) return reviveBotCrew(entity);
-  if (actionBit === PLAYER_ACTION_BITS.EXTINGUISHER) return extinguishBot(entity, bus);
-  return false;
-}
-
 function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
   for (const entity of game.tanks) {
     if (!entity.aiCtl || entity.modeActive === false || entity.combat.destroyed) continue;
@@ -2631,13 +2636,9 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
     entity.input.auxiliaryBits = (entity.input.auxiliaryBits || 0) | (actionBits & (
       PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.LIGHTS_OFF | PLAYER_ACTION_BITS.ROOF_GUN
     ));
-    const readyAt = entity.consumableReadyAt || (entity.consumableReadyAt = [0, 0, 0]);
-    for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
-      const bit = 1 << slot;
-      if (!(actionBits & bit) || cooldownRemaining(game.timeS, readyAt[slot]) > 0) continue;
-      if (useBotConsumable(entity, bus, bit)) {
-        readyAt[slot] = game.timeS + CONSUMABLE_RULES[slot].cooldownS;
-      }
+    if (game.ruleset?.consumables === false) continue;
+    for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
+      if (actionBits & (1 << slot)) useSoloConsumable(entity, bus, slot, game.timeS);
     }
   }
 }
@@ -3328,6 +3329,7 @@ export function simStep(
   stepBotControllers(game);
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
+  tickSoloConsumables(game.tanks, bus, game.timeS, game.combatRng);
   stages?.stage(FRAME_STAGE.aerial);
   const aerialCallbacks = game.aerialCallbacks ??= createAerialCallbacks(game);
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.

@@ -11,7 +11,7 @@ import { captureMovementCheckpoint } from '../match/movementCheckpoint.ts';
 import { PHASE, VERDICT, WireError, applySnapshotPacket, buildSnapshotPacket, decodeMessage, encodeMessage } from './index.ts';
 
 const viewerOf = (values, version = 8) => ({
-  entityId: 1, modules: new Array(15).fill(0), crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
+  entityId: 1, modules: new Array(15).fill(0), crewBits: 3, equipment: [1000, 1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
   movementVersion: version, movementFlags: 5, movementValues: values.map(Math.fround),
 });
 const frameOf = (tick, viewer) => ({

@@ -491,4 +491,17 @@ try {
 assert.ok(cachePins.held > 0, 'the pack builds hold their Garage caches');
 assert.equal(cachePins.released, cachePins.held, 'and release every hold');
 
+// (2026-10-26, the boot census) the boot builds the stage a section at a time (one task of 120 ms on a cold desktop, 604
+// ms on the 4x phone): a generator whose yields sit between its sections, the one-call build its driver, the boot its user
+{
+  const body = stageSource.slice(stageSource.indexOf('export function* createGarageStageSteps('));
+  assert.ok(body.length < stageSource.length, 'the stage has a stepped build');
+  assert.ok((body.match(/^  yield;$/gm) ?? []).length >= 10, 'yields between its procedural sections');
+  assert.match(stageSource, /export function createGarageStage\([\s\S]*?const steps = createGarageStageSteps\(engineCtx, pos, initialVariantId, requestRender\);/);
+  const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+  const boot = main.slice(main.indexOf("bootStage('garage'"), main.indexOf("bootStage('garage'") + 1200);
+  assert.match(boot, /createGarageStageSteps\(/, 'the boot builds the stage in steps');
+  assert.match(boot, /await stageYield\(\);/, 'with the boot screen\'s cadence between them');
+}
+
 console.log('garageArchitecture.selftest: ok');

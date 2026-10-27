@@ -48,7 +48,7 @@ function rowOf(state) {
 function viewerOf(state) {
   const checkpoint = captureMovementCheckpoint(state);
   return {
-    entityId: 1, modules: new Array(15).fill(0), crewBits: 3, equipment: [1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
+    entityId: 1, modules: new Array(15).fill(0), crewBits: 3, equipment: [1000, 1000, 1000, 1000, 1000], modeSpeedMultiplier: 1000, modeGravityScale: 1000,
     movementVersion: checkpoint.version, movementFlags: checkpoint.flags, movementValues: checkpoint.values.map(Math.fround),
   };
 }

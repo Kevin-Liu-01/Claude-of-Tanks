@@ -22,6 +22,8 @@ export interface SoloHostRequest {
   /** Hulls a side, the player's included (the room's bots fill the rest; 1..21): the stored sides' larger by default. */
   teamSize?: number;
   equipment: string[];
+  /** The consumable in each slot (game/consumableLoadout.ts). */
+  consumables?: string[];
   camo: string;
 }
 
@@ -68,7 +70,10 @@ export async function beginSoloOnLocalHost(
   try {
     connection = await adapter.connect({
       kind: 'create', mode: 'lan', roomsUrl: IN_PAGE_ROOM_ENDPOINT, solo: true, player: { id: 'solo-commander', name: 'Commander' },
-      selection: { specId: request.specId, mapId: request.mapId, gameMode: request.gameMode, equipment: request.equipment, camo: request.camo },
+      selection: {
+        specId: request.specId, mapId: request.mapId, gameMode: request.gameMode, equipment: request.equipment,
+        consumables: request.consumables ?? [], camo: request.camo,
+      },
       teamSize: Math.max(1, Math.min(ROOM_SOLO_MAX_TEAM_SIZE, Math.round(teamSize))),
     });
     if (!connection) throw new Error('solo room unavailable');

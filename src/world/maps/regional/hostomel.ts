@@ -281,8 +281,11 @@ const maintenanceHangar = (ctx: RegionalBuildContext): RegionalParts => {
     if (torn) {
       const f = frame.faces[torn.face], u = torn.u, y = frame.floors[0] + Math.max(torn.h / 2 + 0.3, Math.min(He - 1.0 - 1.4 - torn.h / 2, torn.y - 1.0));
       // (the flap bent out of the tear: its painted face to the outside, its galvanised back 5 mm behind to the inside)
-      const flap = (back: number): [Vec3, Vec3, Vec3, Vec3] => [[-0.7, 0.5], [0.7, 0.5], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
-        f.origin[0] + f.u[0] * (u + du) + f.out[0] * (0.05 - dy * 0.3 - back), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * (0.05 - dy * 0.3 - back)] as Vec3) as [Vec3, Vec3, Vec3, Vec3];
+      // (259, the phone census: hinged 17 cm under the tear's head, inside the cut, the flap touched the sheet only through
+      // the desktop's fine edges) hinged on the sheet at the tear's head, bent out below it
+      const hinge = torn.h / 2;
+      const flap = (back: number): [Vec3, Vec3, Vec3, Vec3] => [[-0.7, hinge], [0.7, hinge], [0.8, -0.6], [-0.5, -0.9]].map(([du, dy]) => [
+        f.origin[0] + f.u[0] * (u + du) + f.out[0] * ((hinge - dy) * 0.3 - back), y + dy, f.origin[2] + f.u[2] * (u + du) + f.out[2] * ((hinge - dy) * 0.3 - back)] as Vec3) as [Vec3, Vec3, Vec3, Vec3];
       sink.quad('structureMetal', ...(flap(0).reverse() as [Vec3, Vec3, Vec3, Vec3]), { colour: shade(livery, 0.7), decor: true });
       sink.quad('structureMetal', ...flap(0.005), { colour: rgb(0x8a8e90), decor: true });
     }
@@ -429,10 +432,9 @@ const officeBlock: RegionalBuilder = (ctx) => {
     for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
       facePanel(sink, paneBucket(rng, 0.45), f, door.u - hallW / 2 + (c + 0.5) * cw, hy0 + (r + 0.5) * rh, 0.3, cw - 0.06, rh - 0.06, { decor: true, window: [0, 0, 1] });
     }
-    if (!mobile) {
-      for (let c = 1; c < cols; c++) faceBox(sink, 'structureMetal', f, door.u - hallW / 2 + c * cw, (hy0 + hy1) / 2, 0.34, 0.07, hy1 - hy0, 0.08, { colour: MULLION, decor: true });
-      for (let r = 1; r < rows; r++) faceBox(sink, 'structureMetal', f, door.u, hy0 + r * rh, 0.34, hallW, 0.07, 0.08, { colour: MULLION, decor: true });
-    }
+    // (259, the phone census: a phone's build left them out and the middle panes stood apart in the air) on every tier
+    for (let c = 1; c < cols; c++) faceBox(sink, 'structureMetal', f, door.u - hallW / 2 + c * cw, (hy0 + hy1) / 2, 0.34, 0.07, hy1 - hy0, 0.08, { colour: MULLION, decor: true });
+    for (let r = 1; r < rows; r++) faceBox(sink, 'structureMetal', f, door.u, hy0 + r * rh, 0.34, hallW, 0.07, 0.08, { colour: MULLION, decor: true });
     // the entrance canopy on two columns
     const cz = D / 2 + 1.25;
     sink.span('stone', door.u - 2.2, 3.0, D / 2, door.u + 2.2, 3.28, cz + 0.05);
@@ -607,7 +609,9 @@ const waterTower: RegionalBuilder = (ctx) => {
     for (let y = 3.0; y < gy - 0.3; y += 0.9) {
       sink.cylinder('structureMetal', [lx, y, 0], 'y', 0.03, 0.42, 8, { ...steel, fine: true }, 0.42, false, -Math.PI / 2, Math.PI);
     }
-    for (const dz of [-0.22, 0.22]) sink.member('structureMetal', [-(Rt + 0.12), gy + 0.1, dz], [-(Rt + 0.12), H + Ht + 0.3, dz], 0.04, 0.04, [-1, 0, 0], { ...steel, exposed: true }, 0);
+    // (259, the far-view census: from 10 cm over the gallery's deck, the stiles stood on their rungs alone, fine joinery
+    // hidden at range) on the deck
+    for (const dz of [-0.22, 0.22]) sink.member('structureMetal', [-(Rt + 0.12), gy, dz], [-(Rt + 0.12), H + Ht + 0.3, dz], 0.04, 0.04, [-1, 0, 0], { ...steel, exposed: true }, 0);
     for (let y = gy + 0.4; y < H + Ht + 0.2; y += 0.3) sink.span('structureMetal', -(Rt + 0.12) - 0.015, y - 0.015, -0.22, -(Rt + 0.12) + 0.015, y + 0.015, 0.22, { ...steel, fine: true });
   });
   return sink.finish();

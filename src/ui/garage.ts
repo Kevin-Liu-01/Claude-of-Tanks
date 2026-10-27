@@ -36,6 +36,7 @@ import {
 import type { EquipmentItem, EquipmentLock } from '../game/equipment.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
+import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -807,6 +808,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"${datumAttr('tank-name')}></h2><div class="cot-lt-id"></div></div>` +
     `<div class="cot-lt-band"><div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.equipment')}</span>` +
     `<div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"${datumAttr('equipment')}></div></div>` +
+    // the consumables (2026-10-26, the catalog): the three items the battle's keys 4/5/6 use (garageConsumables.ts)
+    `<div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.consumables')}</span>` +
+    `<div class="cot-lt-consumables" role="group" aria-label="${t('garage.consumables')}"></div></div>` +
     `<div class="cot-lt-group"><span class="cot-lt-cap" aria-hidden="true">${t('garage.band.paint')}</span>` +
     `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div></div>` +
     `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-lt-act" data-lt-callouts aria-pressed="false" ` +
@@ -1332,6 +1336,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   indexGarageSpecs();
 
   const emit = (ev: string, payload: RuntimeValue): void => { if (bus?.emit) bus.emit(ev, payload); };
+  /** The consumable slots and their picker (garageConsumables.ts), made once the Garage's state exists. */
+  let garageConsumables: GarageConsumables | null = null;
   const selectedGarageVariant = () => garageVariants.find((variant) =>
     variant.id === selectedGarageVariantId) || garageVariants[0] || null;
   // The staging area is the kit's picker menu (INTERACTION-REDESIGN C, "Garage staging area picker"): the trigger shows the
@@ -2059,6 +2065,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
   initializeCamoPicker();
+  garageConsumables = createGarageConsumables({
+    host: requiredElement<HTMLElement>(root, '.cot-lt-consumables'),
+    root,
+    vehicle: () => (selectedId ? specById.get(selectedId) ?? null : null),
+    locked: () => vehicleLocked,
+    text: pickerText,
+    emit: (name, payload) => emit(name, payload as RuntimeValue),
+  });
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
   // Catalog/persistence/era-gating live in game/equipment.ts (localStorage
   // `cot.equip.<specId>`, read battle-side by game/state.ts at spawn). The
@@ -3394,6 +3408,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     // the slots live in the band under the name, in every layout; their picker opens over the stage
     loadoutEl.innerHTML = equipmentSlots(eqIds);
+    garageConsumables?.render();
     if (dossierFolded()) {
       statsEl.innerHTML = overviewSection(spec, eqM, shells);
       mountRivalMenu(spec);

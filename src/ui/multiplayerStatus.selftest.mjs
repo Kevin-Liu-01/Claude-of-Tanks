@@ -115,6 +115,11 @@ const live = (patch = {}) => ({
   assert.equal(reconnecting[1][1], '—');
   const lobbyRows = formatPanelRows({ ...base(), room: 'connecting' });
   assert.deepEqual(lobbyRows.map(([label]) => label), ['Room', 'Region', 'Seat', 'Seated']);
+  // (the strip's cells shown beside its ping: the panel leaves seat and seated to them and gives the round trip's median
+  // and spread, never its figure again: UI-LOCKDOWN B12)
+  const stripRows = formatPanelRows(snapshot, true);
+  assert.deepEqual(stripRows.map(([label]) => label), ['Link', 'Round trip', 'Updates', 'Last update', 'Buffer', 'Loss', 'Corrections', 'Traffic', 'Reconnects', 'Room', 'Region']);
+  assert.equal(stripRows.find(([label]) => label === 'Round trip')[1], 'median 72 ms ± 4');
   assert.deepEqual(lobbyRows.map(([, value]) => value), ['Connecting', '—', '—', '0 / 28']);
 }
 
@@ -170,7 +175,14 @@ const live = (patch = {}) => ({
   const stored = new Map();
   const storage = { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => { stored.set(key, value); } };
   let leaves = 0;
-  const surface = createMultiplayerStatusSurface({ host: 'battle', onLeave: () => { leaves++; }, storage, now: () => at, leaveConfirmMs: 2000 });
+  // (the battle's banner is the kit's notice in the battle's region, battleNotices.ts: the receipt reads what it raised)
+  let notice = null;
+  let raised = 0;
+  const notices = {
+    show: (options) => { raised++; notice = { ...options }; },
+    dismiss: (id) => { assert.equal(id, 'cot-mp-banner'); notice = null; },
+  };
+  const surface = createMultiplayerStatusSurface({ host: 'battle', onLeave: () => { leaves++; }, storage, now: () => at, leaveConfirmMs: 2000, notices });
   const root = surface.root;
   assert.ok(body.children.includes(root), 'the root mounts on the body');
   assert.equal(root.className, 'cot-mp-status battle');
@@ -182,14 +194,13 @@ const live = (patch = {}) => ({
   assert.equal(head.all((node) => node.id === 'cot-mp-status-style').length, 1);
   const strip = root.children.find((node) => node.className.startsWith('cot-mp-strip'));
   const panel = root.children.find((node) => node.id === 'cot-mp-panel');
-  const banner = body.children.find((node) => node.className.startsWith('cot-mp-banner'));
-  assert.ok(strip && panel && banner, 'strip, panel and banner exist');
+  assert.ok(strip && panel, 'strip and panel exist');
+  assert.ok(!body.children.some((node) => node.className.startsWith('cot-mp-banner')), 'no fixed banner box of its own in battle');
   assert.equal(strip.type, 'button');
   assert.equal(strip.getAttribute('aria-expanded'), 'false');
   assert.equal(strip.getAttribute('aria-controls'), 'cot-mp-panel');
   assert.equal(panel.hidden, true);
-  assert.equal(banner.hidden, true);
-  assert.equal(banner.getAttribute('aria-live'), 'polite');
+  assert.equal(notice, null);
   const cell = (name) => strip.children.find((node) => node.className === `unit ${name}`);
   assert.equal(cell('ping').children[0].textContent, '—');
   assert.equal(cell('seat').hidden, true);
@@ -203,7 +214,7 @@ const live = (patch = {}) => ({
   assert.equal(cell('seat').children[0].textContent, 'SEAT 4');
   assert.equal(cell('roster').children[0].textContent, '12/28');
   assert.match(strip.getAttribute('aria-label'), /Good/);
-  assert.equal(banner.hidden, true);
+  assert.equal(notice, null, 'a good link raises nothing');
 
   // the panel: toggled, remembered, painted from the last sample
   surface.togglePanel();
@@ -224,50 +235,76 @@ const live = (patch = {}) => ({
   // a bad sample: the banner names the attempt and the countdown and offers the leave
   surface.set(live({ transport: 'reconnecting', link: 'reconnecting', reconnectAttempt: 2, health: 'bad', healthReason: 'reconnecting' }),
     { kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }, at);
-  assert.equal(banner.hidden, false);
-  assert.equal(banner.children[0].textContent, 'Reconnecting · attempt 2 · next try in 3 s');
-  assert.equal(banner.className, 'cot-mp-banner battle bad leaving');
+  // (the panel is open: its notice holds the text, never the banner as well, UI-LOCKDOWN B13)
+  assert.equal(notice, null);
+  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Reconnecting · attempt 2 · next try in 3 s');
+  surface.togglePanel(false);
+  assert.equal(notice.id, 'cot-mp-banner');
+  assert.equal(notice.text, 'Reconnecting · attempt 2 · next try in 3 s');
+  assert.equal(notice.severity, 'warning');
+  assert.equal(notice.durationMs, null, 'it stays while the link is bad');
+  assert.equal(notice.dismissible, false);
+  assert.deepEqual(notice.actions.map((action) => action.label), ['Leave battle'], 'a bad link offers the leave');
+  const shownOnce = raised;
+  surface.set(live({ transport: 'reconnecting', link: 'reconnecting', reconnectAttempt: 2, health: 'bad', healthReason: 'reconnecting' }),
+    { kind: 'reconnecting', scope: 'match', attempt: 2, nextRetryS: 3 }, at);
+  assert.equal(raised, shownOnce, 'an unchanged sentence is not raised again');
+  surface.togglePanel(true);
+  assert.equal(notice, null, 'opening the panel takes the notice down');
+  surface.togglePanel(false);
+  assert.ok(notice, 'and closing it puts it back');
   assert.equal(strip.className, 'cot-mp-strip bad');
   assert.equal(panel.className, 'cot-mp-panel bad');
   assert.equal(rows.children.filter((row) => !row.hidden)[0].children[1].textContent, 'Reconnecting · attempt 2');
   // degraded: the banner explains, the leave stays out of the way
   surface.set(live({ rttMs: 210, health: 'degraded', healthReason: 'rtt' }), { kind: 'degraded', reason: 'rtt' }, at);
-  assert.equal(banner.children[0].textContent, 'Unstable connection · high latency');
-  assert.equal(banner.className, 'cot-mp-banner battle degraded');
+  assert.equal(notice.text, 'Unstable connection · high latency');
+  assert.equal(notice.severity, 'warning');
+  assert.deepEqual(notice.actions, [], 'the leave stays out of the way');
   // a server drop
   surface.set(live({ transport: 'closed', link: 'closed', closeReason: 'idle_timeout', seatDropped: true, health: 'offline', healthReason: 'dropped' }),
     { kind: 'dropped', reason: 'idle_timeout' }, at);
-  assert.equal(banner.children[0].textContent, 'Removed from the battle · idle too long');
-  assert.equal(banner.className, 'cot-mp-banner battle offline leaving');
+  assert.equal(notice.text, 'Removed from the battle · idle too long');
+  assert.equal(notice.severity, 'error', 'a link the match let go is an error');
+  assert.equal(notice.actions.length, 1);
+  // the notice's leave leaves at once
+  notice.actions[0].run();
+  assert.equal(leaves, 1);
+  assert.equal(notice.actions[0].keep, true, 'the leave keeps the notice until the battle goes');
   // back to good: the banner goes
   surface.set(live(), null, at);
-  assert.equal(banner.hidden, true);
+  assert.equal(notice, null);
+  surface.togglePanel(true);
 
   // the leave key: arm, expire, arm, confirm
   assert.equal(surface.pressLeave(), 'armed');
-  assert.equal(banner.hidden, false);
-  assert.equal(banner.children[0].textContent, 'Leave the battle? Press again to confirm');
-  assert.equal(banner.className, 'cot-mp-banner battle good leaving');
-  assert.equal(leaves, 0);
+  assert.equal(notice, null, 'the open panel holds the notice');
+  assert.equal(panel.children.find((node) => node.className === 'notice').textContent, 'Leave the battle? Press again to confirm');
+  surface.togglePanel(false);
+  assert.equal(notice.text, 'Leave the battle? Press again to confirm');
+  assert.equal(notice.severity, 'warning', 'an armed leave is a warning, never an error');
+  assert.equal(notice.actions.length, 1);
+  surface.togglePanel(true);
+  assert.equal(leaves, 1);
   at += 2001;
   surface.set(live(), null, at);
-  assert.equal(banner.hidden, true, 'an expired arming clears the banner on the next sample');
+  assert.equal(notice, null, 'an expired arming clears the banner on the next sample');
   assert.equal(surface.pressLeave(), 'armed');
   at += 500;
   assert.equal(surface.pressLeave(), 'left');
-  assert.equal(leaves, 1);
+  assert.equal(leaves, 2);
   // the panel's own button leaves at once
   panelLeave.click();
-  assert.equal(leaves, 2);
-  // the banner's button too
-  banner.children[1].click();
   assert.equal(leaves, 3);
   // the strip toggles the panel by tap
   strip.click();
   assert.equal(surface.panelOpen, false);
   assert.equal(stored.get(MP_STATUS_PANEL_STORAGE_KEY), '0');
+  surface.set(live({ rttMs: 210, health: 'degraded', healthReason: 'rtt' }), { kind: 'degraded', reason: 'rtt' }, at);
+  assert.ok(notice);
   surface.dispose();
-  assert.ok(!body.children.includes(root) && !body.children.includes(banner), 'dispose removes the root and the banner');
+  assert.ok(!body.children.includes(root), 'dispose removes the root');
+  assert.equal(notice, null, 'and takes its notice down');
   assert.equal(surface.pressLeave(), 'ignored');
   assert.ok(!body.classList.contains('cot-mp-battle'), 'the last strip out hands the link back to the HUD corner');
 
@@ -317,7 +354,9 @@ console.log('multiplayerStatus.selftest: strip, banner, panel rows, leave arming
   assert.equal(formatBanner({ kind: 'migrating', host: 'Bob', self: false }), 'New host: Bob · resuming…');
   assert.equal(formatBanner({ kind: 'migrating', host: 'Me', self: true }), 'You are the new host · resuming the match…');
   // the real surface: the badge cell appears with the role and goes with it; the migration banner is not a leave banner
-  const root = createMultiplayerStatusSurface({ host: 'battle', now: () => 1000, onLeave: () => {} });
+  let notice = null;
+  const notices = { show: (options) => { notice = options; }, dismiss: () => { notice = null; } };
+  const root = createMultiplayerStatusSurface({ host: 'battle', now: () => 1000, onLeave: () => {}, notices });
   const badge = root.root.find((node) => node.className === 'unit host');
   assert.ok(badge && badge.hidden, 'the badge cell exists, hidden');
   root.set(host, null, 1000);
@@ -325,11 +364,10 @@ console.log('multiplayerStatus.selftest: strip, banner, panel rows, leave arming
   assert.equal(badge.textContent, 'HOST');
   root.set(peer, { kind: 'migrating', host: 'Carol', self: false }, 1000);
   assert.equal(badge.hidden, true);
-  const banner = body.find((node) => node.className?.startsWith('cot-mp-banner') && node.className.includes('battle'));
-  assert.ok(banner && !banner.hidden, 'the banner shows');
-  assert.match(banner.className, /migrating/);
-  assert.doesNotMatch(banner.className, /leaving/, 'a migration is not a reason to leave');
-  assert.equal(banner.find((node) => node.className === 'text').textContent, 'New host: Carol · resuming…');
+  assert.ok(notice, 'the banner shows');
+  assert.equal(notice.severity, 'info', 'a new host is information');
+  assert.deepEqual(notice.actions, [], 'a migration is not a reason to leave');
+  assert.equal(notice.text, 'New host: Carol · resuming…');
   root.dispose();
   console.log('multiplayerStatus.selftest: the host badge, the peer-to-peer rows and the migration banner verified');
 }

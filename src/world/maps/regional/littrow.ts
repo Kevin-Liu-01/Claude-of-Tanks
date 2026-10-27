@@ -208,7 +208,8 @@ function dish(sink: PartSink, c: Vec3, dir: Vec3, r: number, depth: number, colo
   }
   // the feed on its three struts at the focus, and the hub behind the vertex
   const focus: Vec3 = [c[0] + w[0] * depth * 1.6, c[1] + w[1] * depth * 1.6, c[2] + w[2] * depth * 1.6];
-  for (let i = 0; i < 3; i++) bar(sink, at(rings, (i * segs) / 3, 0.02), focus, 0.025, { colour: STEEL, decor: true, fine: true });
+  // (259, the far-view census: the struts fine joinery, the feed hung at the focus on nothing at range) at any range
+  for (let i = 0; i < 3; i++) bar(sink, at(rings, (i * segs) / 3, 0.02), focus, 0.025, { colour: STEEL, decor: true });
   sink.span(M, focus[0] - 0.07, focus[1] - 0.07, focus[2] - 0.07, focus[0] + 0.07, focus[1] + 0.07, focus[2] + 0.07, { colour: DARK, decor: true });
 }
 
