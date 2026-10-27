@@ -375,7 +375,7 @@ function measure(state){
   }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
-    ['.cot-aim-warning:not([hidden])','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-pips.show','.cot-mode-status.show','.cot-ribbon.on','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
+    ['.cot-aim-warning:not([hidden])','.cot-battle-notices .cot-aim-notice','.cot-sixth.on','.cot-alert.show','.cot-ear.l','.cot-ear.r','.cot-top','.cot-pips.show','.cot-mode-status.show','.cot-ribbon.on','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
      '.cot-si-toasthost','.cot-si-log.open','.cot-si-cardhost:not(:empty)',
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
      '.cot-shell','.cot-con','.cot-vehicle-controls','.cot-touch.on .joy','.cot-touch.on .round',

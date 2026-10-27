@@ -57,7 +57,7 @@ import { datumAttr } from './dom.ts';
 import { createUiCanvas, drawImageFit, uiCanvas, type UiCanvas, type UiCanvasDraw } from './uiCanvas.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailEndPad, horizontalRailState, horizontalRailWheelDelta, settledRailEndPad,
 } from './garageOrder.ts';
 import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
@@ -1671,7 +1671,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const box = item.getBoundingClientRect();
       if (box.width > 0) stops.push(box.left - line);
     }
-    const pad = horizontalRailEndPad(natural - rail.clientWidth, stops);
+    const pad = settledRailEndPad(extra, horizontalRailEndPad(natural - rail.clientWidth, stops));
     if (pad !== extra) rail.style.setProperty('--rail-end', pad ? `${pad}px` : '');
   };
   // A rail moved by script (a wheel's vertical pan, a flick's coast) runs free of its snap stops, which would pull each
@@ -3011,7 +3011,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       slots.push(item
         ? `<button type="button" class="eqslot" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(slotLabel)}">` +
-          `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
+          `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span>` +
+          // a fitted slot opens the picker: the kit's chevron at its corner (Main's 10-27 ruling; an empty slot keeps its +)
+          `<span class="chev" aria-hidden="true">${uiIconSVG('chevronDown', 12)}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(tooltip)}">` +
           `<span class="plus" aria-hidden="true">+</span><span class="sl">${t('garage.equipment.empty.name')}</span></button>`);

@@ -29,13 +29,11 @@ export const IMAGE_FIT_CUTOUTS: readonly ImageFitCutout[] = Object.freeze([
   { owner: 'src/ui/techTree.css', key: '.cot-tt .tt-portrait', holds: "a node's tank render" },
   { owner: GARAGE_CSS, key: '.cot-card .ti', holds: "a roster card's packaged angle render" },
   { owner: GARAGE_CSS, key: '.cot-garage .stats .stats-ti', holds: "the readout's tank icon" },
-  { owner: 'src/ui/infoGuides.ts', key: 'inline:vehicleImage.style.cssText', holds: "a guide's vehicle render (its box follows the render's height)" },
   { owner: 'src/ui/hudEditorPreview.ts', key: "js:drawImageFit(ctx, surface.image, width - 10, height - 10, 'contain');", holds: "the damage panel's top-view plan" },
   // diagrams on their own plates (line drawings, shot schematics)
   { owner: 'src/ui/contextInfo.ts', key: ".cot-info-modal__media figure[data-fit='contain'] img", holds: "an info image its caller marks fit: 'contain', a render or a diagram (a footage frame or a photo takes the default cover)" },
   { owner: GARAGE_CSS, key: '.cot-technical-figure img', holds: 'a technical drawing (armour, modules, crew)' },
   { owner: GARAGE_CSS, key: '.cot-technical-viewer-figure img', holds: 'a technical drawing, enlarged' },
-  { owner: 'src/docs/chapters.css', key: '.dm-diagram img', holds: "a manual chapter's diagram" },
   { owner: 'src/ui/shotInfo.ts', key: '.cot-si-diag .pf', holds: "the shot schematic's profile drawing" },
   { owner: 'src/ui/battleHudLayout.css', key: 'body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil)', holds: "the shot schematic's profile and silhouette" },
   { owner: 'src/ui/battleHudLayout.css', key: 'body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.ov', holds: "the shot schematic's overlay" },

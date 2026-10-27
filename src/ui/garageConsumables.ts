@@ -1,8 +1,9 @@
 // garageConsumables.ts — the Garage's consumable slots and their picker (2026-10-26, the catalog: owner "have a much
 // larger variety"). Copyright © 2026 Kevin B. Liu.
 //
-// The three slots sit in the lower third's band beside the equipment: each the fitted item's glyph and short name, its
-// full name and what it does in the tip. A slot opens the kit picker (components/picker.ts, layout 'swatches') with the
+// The three slots sit in the lower third's band beside the equipment: each the fitted item's glyph and short name with
+// the kit's chevron (it opens a choice), its full name and what it does in the tip, and under them how many kits this tank
+// may fit (Main's ruling, 2026-10-27: the default trio reads as a choice). A slot opens the kit picker (components/picker.ts, layout 'swatches') with the
 // whole catalog: the categories are its filter chips, a shut item (its era, its smoke dischargers) stays in the set with
 // its reason, and an item already in another slot swaps into this one. A choice is saved per tank
 // (game/consumableLoadout.ts `cot.cons.<specId>`) and announced (CONSUMABLE_LOADOUT_EVENT) so the settings rows and the
@@ -78,6 +79,27 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     return vehicle ? loadConsumables(vehicle.id, vehicleFacts(vehicle)) : [];
   };
   const tip = (id: ConsumableId): string => `${t(consumableNameKey(id))}: ${t(consumableEffectKey(id))}`;
+  // how many kits the picker lets this tank fit (consumableLock under the Garage's gate); unknown until the smoke table
+  // is in, so the count never names a smoke reload the tank cannot load
+  const choices = (): number | null => {
+    const vehicle = options.vehicle();
+    if (!vehicle || !smokeOf) return null;
+    let n = 0;
+    for (const group of consumablePickerGroups([], vehicleFacts(vehicle))) for (const entry of group.items) if (!entry.lock) n++;
+    return n;
+  };
+  const slotTip = (id: ConsumableId, n: number | null): string =>
+    n == null ? tip(id) : `${tip(id)}\n${t('garage.consumableChoices', { n: String(n) })}`;
+  // the tip reads data-tip as it shows (components/hoverTip.ts), so the count lands in place, the focus untouched
+  function refreshTips(): void {
+    const n = choices();
+    for (const el of host.querySelectorAll<HTMLElement>('.csslot')) {
+      if (isConsumableId(el.dataset.item ?? '')) el.dataset.tip = slotTip(el.dataset.item as ConsumableId, n);
+    }
+  }
+  // a pointer or the focus reaching the band fetches the smoke table: a pointer's dwell and a keyboard's way through the
+  // equipment slots both come before a consumable's tip
+  const warm = (): void => { if (!smokeOf) void loadSmokeTable().then(refreshTips); };
 
   // each item's category and lock as the open picker shows them (the readout's eyebrow and its reason)
   const shown = new Map<ConsumableId, { readonly category: string; readonly lock: ConsumableLock | null }>();
@@ -145,7 +167,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     if (!smokeOf) {
       // the first open waits for the smoke table (a later click on another slot wins)
       pendingSlot = slot;
-      void loadSmokeTable().then(() => { if (pendingSlot === slot && smokeOf) { pendingSlot = -1; open(slot); } });
+      void loadSmokeTable().then(() => { refreshTips(); if (pendingSlot === slot && smokeOf) { pendingSlot = -1; open(slot); } });
       return;
     }
     pendingSlot = -1;
@@ -201,12 +223,15 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   function render(): void {
     const vehicle = options.vehicle();
     const views = consumableSlotsView(items());
+    const n = choices();
     host.innerHTML = views.map((view) =>
       // the equipment slot's primitive (one control, one selected state: .open), styled with the band (showroom.css)
       `<button type="button" class="eqslot csslot" data-slot="${view.slot}" data-item="${view.itemId}" ` +
       `aria-label="${escapeAttr(`${t('garage.consumableSlot', { n: String(view.slot + 1) })}: ${tip(view.itemId)}`)}" ` +
-      `data-tip="${escapeAttr(tip(view.itemId))}">${uiIconSVG(view.iconId, 22)}` +
-      `<span class="sl">${escapeAttr(t(view.shortKey))}</span></button>`).join('');
+      `data-tip="${escapeAttr(slotTip(view.itemId, n))}">${uiIconSVG(view.iconId, 22)}` +
+      `<span class="sl">${escapeAttr(t(view.shortKey))}</span>` +
+      // the kit's chevron, as a fitted equipment slot ends (gallery-studio's .chev rule in showroom.css styles both groups)
+      `<span class="chev" aria-hidden="true">${uiIconSVG('chevronDown', 12)}</span></button>`).join('');
     // the settings rows (canvas-ui) read each slot's view: its action, item, name keys and glyph; at boot with the shown
     // tank and on every change of tank or item
     if (vehicle) options.emit(CONSUMABLE_LOADOUT_EVENT, { specId: vehicle.id, items: views });
@@ -224,6 +249,9 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     if (event.target instanceof Element && event.target.closest('.ph .x')) { options.emit('ui:click', {}); close(); }
   };
   host.addEventListener('click', onHostClick);
+  const band = host.closest<HTMLElement>('.cot-lt-band') ?? host;
+  band.addEventListener('pointerover', warm);
+  band.addEventListener('focusin', warm);
   panel.addEventListener('click', onPanelClick);
 
   return {
@@ -233,6 +261,8 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
       pendingSlot = -1;
       close();
       host.removeEventListener('click', onHostClick);
+      band.removeEventListener('pointerover', warm);
+      band.removeEventListener('focusin', warm);
       panel.removeEventListener('click', onPanelClick);
       picker?.dispose();
       panel.remove();
