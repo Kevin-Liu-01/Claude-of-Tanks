@@ -3,8 +3,10 @@
 // built on that world, seated with the planned seats (the viewer's vehicle first, deferRoster); the covered warms run in
 // order, the other seats are taken in under the cover, the battle phase is activated, the loader fades and only then does
 // the Worker's held count run. The battle frame's hold stands the Worker's tick, the HUD's presses reach the controls, the
-// Garage return stops the Worker. A Worker that cannot boot rejects with its stage named `boot` (the page takes the
-// battle), and the owner's static graph holds no room, session, signalling, ICE, WebRTC, seat token or migration.
+// Garage return stops the Worker; the page hidden stands it too, and an error the running Worker raises is a warning. A
+// link lost short of a verdict ends the live battle without a record (the presentation stays for the end screen). A Worker
+// that cannot boot rejects with its stage named `boot` (the page takes the battle), and the owner's static graph holds no
+// room, session, signalling, ICE, WebRTC, seat token or migration.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
@@ -13,7 +15,7 @@ import { parseAst } from 'rolldown/parseAst';
 import { createSoloSimCore } from './soloSimCore.ts';
 import { createSoloSimBattleRuntime } from './soloSimBattleRuntime.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
-import { TEAM } from '../mp/wire/index.ts';
+import { CLOSE_REASON, TEAM } from '../mp/wire/index.ts';
 
 const watchdog = setTimeout(() => { console.error('soloSimBattleRuntime.selftest: stuck'); process.exit(1); }, 150_000);
 watchdog.unref();
@@ -78,13 +80,25 @@ function recordedPresentation(options, record) {
     predictionWorld() { return null; },
     setPerspective() { return true; },
     setAuthorityObstacles() {},
-    mount() {}, unmount() {}, endDisconnected() { return false; },
+    mount() {}, unmount() {}, endDisconnected() { record.push('endDisconnected'); return false; },
     dispose() { presentation.disposed = true; record.push('presentation:dispose'); },
   };
   return presentation;
 }
 
-function ports(record, port, { openWorker } = {}) {
+/** The page's visibility, flipped by hand. */
+function pageVisibility() {
+  const listeners = new Set();
+  const page = {
+    hiddenNow: false,
+    port: { hidden: () => page.hiddenNow, onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); } },
+    set(hidden) { page.hiddenNow = hidden; for (const listener of [...listeners]) listener(); },
+    get listeners() { return listeners.size; },
+  };
+  return page;
+}
+
+function ports(record, port, { openWorker, visibility } = {}) {
   const presentations = [];
   const stage = (name) => async () => { record.push(name); };
   return {
@@ -123,6 +137,8 @@ function ports(record, port, { openWorker } = {}) {
       openWorker: openWorker ?? ((battlefield) => { record.push(`openWorker:${battlefield.mapId}`); return port; }),
       world: { manifestBase: null, simKernelsUrl: null },
       clientBuild: 'selftest',
+      reportWarning: (scope, message) => record.push(`warn:${scope}:${message}`),
+      ...(visibility ? { visibility: visibility.port } : {}),
       createPresentation: (options) => { const presentation = recordedPresentation(options, record); presentations.push(presentation); return presentation; },
     },
   };
@@ -141,7 +157,8 @@ const sortie = { specId: 'm1a1_abrams_hc', mapId: 'verdant', mode: 'standard', s
   const record = [];
   const link = channel();
   const core = createSoloSimCore({ port: link.sim, buildWorld: async () => { record.push('worker:world'); return 'terrain'; } });
-  const { ports: battlePorts, presentations } = ports(record, link.page);
+  const visibility = pageVisibility();
+  const { ports: battlePorts, presentations } = ports(record, link.page, { visibility });
   const runtime = createSoloSimBattleRuntime(battlePorts);
   const pump = setInterval(() => runtime.pump(1 / 60, performance.now()), 16);
   try {
@@ -177,6 +194,25 @@ const sortie = { specId: 'm1a1_abrams_hc', mapId: 'verdant', mode: 'standard', s
     assert.equal(actor.tick, heldTick, 'no tick while held');
     runtime.setPaused(false);
     await until(() => actor.tick > heldTick + 20, 'the battle goes on');
+    // the page hidden stands the tick as the hold does (the page's own battle stands with its frames); shown, it goes on
+    visibility.set(true);
+    await until(() => actor.paused, 'the Worker stands while the page is hidden');
+    assert.equal(runtime.stats().paused, true);
+    const hiddenTick = actor.tick;
+    await sleep(300);
+    assert.equal(actor.tick, hiddenTick, 'no tick while hidden');
+    // held while hidden, then shown: the hold still stands
+    runtime.setPaused(true);
+    visibility.set(false);
+    await sleep(100);
+    assert.equal(actor.paused, true, 'shown under the hold, the tick still stands');
+    runtime.setPaused(false);
+    await until(() => !actor.paused && actor.tick > hiddenTick + 20, 'shown and released, the battle goes on');
+    // an error the running Worker raises is a warning: the battle goes on
+    link.sim.post({ type: 'boot_failed', error: 'a tick threw' });
+    await until(() => record.includes('warn:solo sim:a tick threw'), 'the running Worker\'s error is reported');
+    assert.equal(runtime.active, true);
+    assert.equal(presentation.disposed, false, 'the battle keeps its presentation');
     // a HUD press rides the next control sample
     runtime.queueAction('smoke');
     await until(() => presentation.frames > 30, 'frames reach the presentation');
@@ -187,7 +223,33 @@ const sortie = { specId: 'm1a1_abrams_hc', mapId: 'verdant', mode: 'standard', s
     assert.equal(presentation.disposed, true);
     await sleep(50);
     assert.ok(actor.stopped, 'the Worker\'s authority stops with the sortie');
-    console.log(`soloSimBattleRuntime.selftest: a sortie of ${seats.length} seats loaded beside the Worker, warmed and took in its other seats under the cover, revealed, ran its held count from the reveal, held for the pause and stopped at the Garage return`);
+    assert.equal(visibility.listeners, 0, 'the sortie lets the page\'s visibility go');
+    console.log(`soloSimBattleRuntime.selftest: a sortie of ${seats.length} seats loaded beside the Worker, warmed and took in its other seats under the cover, revealed, ran its held count from the reveal, held for the pause and while the page was hidden, took a running error as a warning and stopped at the Garage return`);
+  } finally {
+    clearInterval(pump);
+    runtime.disposePresentation();
+    core.dispose();
+  }
+}
+
+// the Worker's link lost short of a verdict: the live battle ends without a record and keeps its presentation
+{
+  const record = [];
+  const link = channel();
+  const core = createSoloSimCore({ port: link.sim, buildWorld: async () => 'terrain' });
+  const { ports: battlePorts, presentations } = ports(record, link.page);
+  const runtime = createSoloSimBattleRuntime(battlePorts);
+  const pump = setInterval(() => runtime.pump(1 / 60, performance.now()), 16);
+  try {
+    await runtime.begin(sortie);
+    await until(() => core.actor?.authority.phase === 'playing', 'the count runs out');
+    core.actor.stop(CLOSE_REASON.SERVER_DRAIN, 'the simulation stopped');
+    await until(() => record.includes('endDisconnected'), 'the battle ends as lost');
+    assert.equal(runtime.active, true, 'the sortie stays for its end screen');
+    assert.equal(presentations[0].disposed, false, 'the presentation stays for its end screen');
+    runtime.disposePresentation();
+    assert.equal(presentations[0].disposed, true);
+    console.log('soloSimBattleRuntime.selftest: a link lost short of a verdict ends the live battle without a record and keeps the presentation for the end screen');
   } finally {
     clearInterval(pump);
     runtime.disposePresentation();

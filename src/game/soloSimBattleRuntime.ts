@@ -84,6 +84,8 @@ export interface SoloSimBattlePorts {
   reportWarning?(scope: string, message: string): void;
   /** The battle presentation's factory (the receipts record one). */
   createPresentation?: typeof createBattlePresentation;
+  /** The page hidden: the Worker's tick stands, as the page's own battle stands with its frames. */
+  visibility?: { hidden(): boolean; onChange(listener: () => void): () => void };
 }
 
 export interface SoloSimBattleRuntime {
@@ -94,7 +96,7 @@ export interface SoloSimBattleRuntime {
   readonly inMatch: boolean;
   /** One display frame: the Worker's frames to the presentation. */
   pump(dtSeconds: number, nowMs: number): void;
-  /** The battle frame's hold (the settings open, the killcam): the Worker's tick stands. */
+  /** The battle frame's hold (the settings open, the killcam): the Worker's tick stands (and while the page is hidden). */
   setPaused(paused: boolean): boolean;
   queueConsumable(slot: number): void;
   queueAction(action: Parameters<ControlSampler['queueAction']>[0]): void;
@@ -138,6 +140,7 @@ interface ActiveSortie {
   trace: SoloSimLoadTrace;
   stageAt: number;
   entry: { resolve(): void; reject(error: unknown): void };
+  unsubscribe: (() => void)[];
 }
 
 export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBattleRuntime {
@@ -145,7 +148,10 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
   const now = ports.now ?? (() => performance.now());
   const reportWarning = ports.reportWarning ?? ((scope, message) => console.warn(`[${scope}] ${message}`));
   let current: ActiveSortie | null = null;
-  let paused = false;
+  // the battle frame's hold, and the page hidden: either stands the Worker's tick
+  let held = false;
+  let hidden = false;
+  const applyHold = (active: ActiveSortie): void => { active.session?.setPaused(held || hidden); };
 
   const markStage = (active: ActiveSortie, stage: string): void => {
     const at = now();
@@ -155,6 +161,7 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
 
   const release = (active: ActiveSortie): void => {
     active.abort.abort('sortie_ended');
+    for (const unsubscribe of active.unsubscribe.splice(0)) unsubscribe();
     if (active.session) active.session.dispose();
     else active.port?.close();
     active.port = null;
@@ -349,10 +356,17 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
       controls: createControlSampler(() => active.presentation?.ownActor ?? null),
       welcomed: false, lit: false, activating: false, activated: false, revealed: false, failed: false, frames: 0,
       trace: { version: 1, map: sortie.mapId, mode: sortie.mode, seats: sortie.seats.length, stages: {}, startedAt, status: 'pending' },
-      stageAt: startedAt, entry,
+      stageAt: startedAt, entry, unsubscribe: [],
     };
     current = active;
-    paused = false;
+    held = false;
+    hidden = ports.visibility?.hidden() ?? false;
+    if (ports.visibility) {
+      active.unsubscribe.push(ports.visibility.onChange(() => {
+        hidden = ports.visibility!.hidden();
+        if (current === active) applyHold(active);
+      }));
+    }
     const check = (detail: string): void => {
       if (active.abort.signal.aborted || current !== active) throw new SortieSupersededError(detail);
     };
@@ -447,7 +461,16 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
         port, boot, clientBuild, clock: now,
         presentation: presentationPorts,
         onFailed: (error) => fail(active, new Error(`The battle's simulation could not start: ${error}`), 'boot'),
+        onError: (error) => reportWarning('solo sim', error),
       });
+      // the Worker's link lost short of a verdict: a live battle ends without a record (the end screen offers the Garage);
+      // an entry fails (the page takes a battle the Worker never seated). A verdict's own close finds the result set.
+      active.unsubscribe.push(active.session.client.onPhase((phase, detail) => {
+        if ((phase !== 'closed' && phase !== 'failed') || current !== active) return;
+        if (active.revealed) { battlePresentation.endDisconnected(); return; }
+        fail(active, new Error(`The battle's simulation stopped: ${detail || phase}`), active.welcomed ? 'connect' : 'boot');
+      }));
+      if (held || hidden) applyHold(active);
       void active.session.ready.then((ready) => {
         active.trace.boot = ready;
         markStage(active, 'boot');
@@ -468,8 +491,8 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
     setPaused(next) {
       const active = current;
       if (!active?.session) return false;
-      paused = next;
-      active.session.setPaused(next);
+      held = next;
+      applyHold(active);
       return true;
     },
     queueConsumable(slot) { current?.controls.queueConsumable(slot); },
@@ -484,7 +507,7 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
       const active = current;
       return active ? {
         active: true, inMatch: active.activated, revealed: active.revealed, frames: active.frames,
-        actors: active.presentation?.actors.size ?? 0, paused,
+        actors: active.presentation?.actors.size ?? 0, paused: held || hidden,
       } : null;
     },
   };

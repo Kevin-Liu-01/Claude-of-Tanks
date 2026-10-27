@@ -31,6 +31,8 @@ export interface SoloSimSessionOptions {
   clientBuild: string;
   /** The Worker failed to boot (the solo entry falls back to the page's own simulation). */
   onFailed?(error: string): void;
+  /** An error the running Worker raised (its battle goes on; a link it loses ends the battle through the client's phase). */
+  onError?(error: string): void;
 }
 
 export interface SoloSimSession {
@@ -57,6 +59,7 @@ export function createSoloSimSession({
   clock = () => performance.now(),
   clientBuild,
   onFailed,
+  onError,
 }: SoloSimSessionOptions): SoloSimSession {
   let disposed = false;
   let paused = false;
@@ -103,6 +106,8 @@ export function createSoloSimSession({
         if (pendingPause !== null) { port.post({ type: 'pause', paused: pendingPause }); pendingPause = null; }
         return;
       case 'boot_failed':
+        // (the Worker's error event after its boot is a running battle's error, not a boot that failed)
+        if (ready) { onError?.(message.error); return; }
         failReady(new Error(message.error));
         onFailed?.(message.error);
         return;

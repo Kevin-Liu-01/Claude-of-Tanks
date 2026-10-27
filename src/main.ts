@@ -134,7 +134,7 @@ import {
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
-  getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
+  getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection, STORED_CAMO_SELECTION,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
@@ -247,7 +247,7 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { readTeamArrangement } from './game/teamArrangement.ts';
+import { readBrainSettings, readTeamArrangement } from './game/teamArrangement.ts';
 import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
@@ -2762,6 +2762,13 @@ function loadSoloSimBattle() {
       presentation: { activate: activation.activate, ...options.presentation },
       openWorker: ({ mapId, mode }) => openSoloSimWorker(mapId, mode),
       world: SOLO_SIM_WORLD,
+      visibility: {
+        hidden: () => document.hidden,
+        onChange(listener) {
+          document.addEventListener('visibilitychange', listener);
+          return () => document.removeEventListener('visibilitychange', listener);
+        },
+      },
     });
     if (diagnosticsRequested) (window as { __SOLO_SIM?: unknown }).__SOLO_SIM = runtime;
     return runtime;
@@ -3141,7 +3148,7 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
  * `?soloAuthority=worker` puts a free sortie in a versus battle mode on the solo sim Worker (src/game/soloSimBattleRuntime.ts,
  * the rework: no room, session or multiplayer UI), pending the gates and the owner's OK; `?soloAuthority=host` still puts
  * it on a local host (mp/session/soloHostEntry.ts) until the rework replaces it. The campaign, a watched battle, the
- * practice and co-op modes and a browser without Workers stay on the page even then.
+ * practice and co-op modes, a battle Jev commands and a browser without Workers stay on the page even then.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|worker|page)\b/.exec(location.search)?.[1] ?? null;
 function soloAuthorityFor(
@@ -3153,6 +3160,8 @@ function soloAuthorityFor(
   if (campaign) return page('campaign');
   if (watch) return page('watch');
   if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
+  // (a battle Jev commands asks Jev each turn over the network: the page's own controller holds it)
+  if (readBrainSettings().opponent === 'jev') return page('jev');
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
   if (SOLO_AUTHORITY_PARAM === 'worker') return { authority: 'worker', reason: 'forced' };
@@ -3234,10 +3243,11 @@ async function beginSoloSimSortie(specId: string, mapId: string | null, options:
     ruleset: matchRulesetFor(mode, null, arrangement),
     difficulty: getStoredDifficulty(),
     playerName: '',
-    playerCamo: getMultiplayerCamoSelection(specId),
+    // (the stored paint, custom paint included, as the page's own battle paints its tanks: it never leaves the page)
+    playerCamo: STORED_CAMO_SELECTION,
     playerEquipment: loadSelectedEquipment(specId, getSpec(specId)),
     autoCamoSpecIds: planBattleCamoOverrides(game, specId, resolved, randomRoster, camoPlan.nations, camoPlan.slots, camoPlan.formationLead, camoPlan.national),
-    selectionFor: getMultiplayerCamoSelection,
+    selectionFor: () => STORED_CAMO_SELECTION,
   });
   // the battle's ordinal is spent as setupBattle spends it: the next sortie plans the next roster
   game.battleCount++;
