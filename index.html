@@ -415,12 +415,12 @@
       transition: transform var(--dur-fast) var(--ease-camera);
     }
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
+    /* the star and its count take their button's ink, in the foot and in the credits (boot r19, r30) */
     .cot-github-stars {
       display: inline-flex; align-items: center; gap: 3px; padding-left: 7px;
-      border-left: 1px solid var(--line-3); color: var(--ink-2);
+      border-left: 1px solid var(--line-3); color: inherit;
       letter-spacing: .04em;
     }
-    .cot-boot-links .cot-github-stars { color: inherit; }
     .cot-github-stars svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
     .cot-github-stars [data-github-stars] {
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
@@ -517,11 +517,13 @@
       transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate calc(var(--dur-stage)*2) ease-in-out infinite; }
-    /* the prompt's key is the kit's key cap (components.css .cot-c-kbd), drawn here so the boot loads no kit */
+    /* the prompt's key is the kit's key cap (components.css .cot-c-kbd), drawn here so the boot loads no kit; set in the
+       sentence, the cap's text stands on the sentence's baseline (an inline flex box's own), not its box's middle (boot r28),
+       in a line as tall as the cap: a 1-line box left half-pixel leading, and the label painted a pixel off (boot r29) */
     .cot-boot-key {
-      display: inline-flex; align-items: center; height: 22px; margin-inline: 4px; padding: 0 6px; vertical-align: middle;
+      display: inline-flex; align-items: center; height: 22px; margin-inline: 4px; padding: 0 6px;
       border-radius: var(--control-radius); box-shadow: var(--ring-3);
-      font: 500 max(var(--fs-floor-11), var(--fs-11))/1 var(--font-data); color: var(--ink-1);
+      font: 500 max(var(--fs-floor-11), var(--fs-11))/22px var(--font-data); color: var(--ink-1);
     }
     /* Retry takes the tip's slot: a failure shows it without re-centring the card, 44 px under its notice (the stage row's
        11 px stay in place above it) */
@@ -1274,10 +1276,20 @@
       for (const type of ['keydown', 'keyup']) {
         dialog.addEventListener(type, (event) => event.stopPropagation());
       }
+      // The browser centres the dialog on a fraction of a pixel, and past half a pixel the title's caps painted a row
+      // off the portrait (boot r31). Its top margin takes the centred place rounded to a whole pixel, so everything in it
+      // lays out on whole rows and its size, so its padding, stays its content's (boot r32). It settles again whenever
+      // its content or the screen changes size.
+      const settle = () => {
+        dialog.style.marginTop = '';
+        dialog.style.marginTop = `${Math.round(dialog.getBoundingClientRect().top)}px`;
+      };
+      new ResizeObserver(() => { if (dialog.open) settle(); }).observe(dialog);
       open.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); }
+        if (!dialog.open) { boot?.classList.add('credits-open'); dialog.showModal(); settle(); }
       });
+      addEventListener('resize', () => { if (dialog.open) settle(); });
       close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
