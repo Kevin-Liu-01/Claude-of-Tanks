@@ -729,14 +729,19 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   const live = [{ type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,0,7,false' }, { type: 'ShaderMaterial', name: 'Released' }];
   const reveal = createHarness({ blackWatchdog: async () => { live.push({ name: 'Watchdog' }); return { failed: false }; } });
   reveal.ports.presentation.programs = () => live;
+  const watch = { origins: [], stopped: 0, stop() { watch.stopped++; } };
+  reveal.ports.presentation.watchProgramOrigins = () => watch;
   const primeReveal = reveal.lifecycle.primeReveal;
   reveal.lifecycle.primeReveal = async () => { live.splice(1, 1); live.push({ type: 'MeshDepthMaterial', name: '', cacheKey: 'depth,0,8,false' }); return primeReveal.call(reveal.lifecycle); };
   const { entry } = await enterRound(reveal);
   assert.equal(await entry, true);
   live.push({ type: 'ShaderMaterial', name: 'LiveFrame' });
+  watch.origins.push('ShaderMaterial<live-frame<fx<Scene');
   for (let i = 0; i < 4; i++) await tick();
   assert.deepEqual(reveal.ports.trace.revealPrograms, { made: 2, frames: 30, names: ['MeshDepthMaterial', 'ShaderMaterial:LiveFrame'],
-    diffs: ['2:8/7', 'new'] }, 'the reveal and the first live frames are counted, named and keyed against the warm; the watchdog\'s and a released program are not');
+    diffs: ['2:8/7', 'new'], origins: ['ShaderMaterial<live-frame<fx<Scene'] },
+    'the reveal and the first live frames are counted, named, keyed against the warm and traced to their draws; the watchdog\'s and a released program are not');
+  assert.equal(watch.stopped, 1, 'the draw watch ends with the receipt\'s frames');
   live.push({ name: 'Later' });
   for (let i = 0; i < 4; i++) await tick();
   assert.equal(reveal.ports.trace.revealPrograms.made, 2, 'the receipt stops after its frames');

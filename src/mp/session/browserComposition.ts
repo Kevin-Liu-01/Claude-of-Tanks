@@ -133,7 +133,7 @@ export interface BrowserLoadTrace {
    * found the first live frame linking the viewer's depth programs, 580-590 ms). `diffs`, beside each name: where its
    * cache key departs from the nearest program of its type that the warm made (`index:made/warmed`), or 'new'.
    */
-  revealPrograms?: { made: number; frames: number; names: string[]; diffs: string[] };
+  revealPrograms?: { made: number; frames: number; names: string[]; diffs: string[]; origins?: string[] };
 }
 
 /** A live program as the reveal receipt reads it (three's WebGLProgram: its material's type and name, its cache key). */
@@ -309,6 +309,11 @@ export interface BrowserPresentationPorts {
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   /** The renderer's live programs (renderer.info.programs: the material's type and name), for the revealPrograms receipt. */
   programs?(): readonly RevealProgram[] | null;
+  /**
+   * The draws that link a program while armed (`material<object<parent<grandparent`), for the receipt's `origins`; the
+   * watch ends at stop() or on its own after a few seconds.
+   */
+  watchProgramOrigins?(): { readonly origins: readonly string[]; stop(): void } | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -1154,23 +1159,27 @@ export function createBrowserComposition({
     return best ? best.slice(0, 4).join(' ') : 'new';
   };
 
-  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<RevealProgram>, frames: number): void => {
+  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<RevealProgram>, frames: number,
+    watch: { readonly origins: readonly string[] } | null): void => {
     const live = activation.programs?.();
     if (!live) return;
     const made = live.filter((program) => !baseline.has(program));
     const named = made.slice(0, 8), warmed = [...baseline];
     active.trace.revealPrograms = { made: made.length, frames, names: named.map(programLabel),
-      diffs: named.map((program) => programKeyDiff(program, warmed)) };
+      diffs: named.map((program) => programKeyDiff(program, warmed)), ...(watch ? { origins: [...watch.origins] } : {}) };
   };
 
   /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
-  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<RevealProgram>): Promise<void> => {
-    if (!activation.programs) return;
-    for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {
-      try { await load.nextFrame(); } catch { return; }
-      if (round !== active || active.failed) return;
-      noteRevealPrograms(active, baseline, frames);
-    }
+  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<RevealProgram>,
+    watch: { readonly origins: readonly string[]; stop(): void } | null): Promise<void> => {
+    try {
+      if (!activation.programs) return;
+      for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {
+        try { await load.nextFrame(); } catch { return; }
+        if (round !== active || active.failed) return;
+        noteRevealPrograms(active, baseline, frames, watch);
+      }
+    } finally { watch?.stop(); }
   };
 
   const markStage = (active: ActiveRound, stage: string): void => {
@@ -1604,6 +1613,7 @@ export function createBrowserComposition({
       }
       markStage(active, 'blackWatchdog');
       const revealBaseline = new Set(activation.programs?.() ?? []);
+      const revealWatch = activation.programs ? activation.watchProgramOrigins?.() ?? null : null;
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
@@ -1617,9 +1627,9 @@ export function createBrowserComposition({
       active.revealed = true;
       if (roomSession?.roomInfo.solo) session?.releaseCountdown?.();
       finishTrace(active, 'complete');
-      noteRevealPrograms(active, revealBaseline, 0);
+      noteRevealPrograms(active, revealBaseline, 0, revealWatch);
       settleEntry(true);
-      void countRevealPrograms(active, revealBaseline);
+      void countRevealPrograms(active, revealBaseline, revealWatch);
     } catch (error) {
       await failRound(active, error, active.activated ? 'reveal' : 'warm');
     }

@@ -779,6 +779,34 @@ function recordLightCensus(label: string): void {
   });
   (window.__LIGHT_CENSUS ??= {})[label] = { counts, lights };
 }
+/**
+ * (2026-10-27, the room-stalls lane) The draws that link a program while armed, each as `material<object<parent<grandparent`
+ * (at most eight), for the network entry's revealPrograms receipt: renderBufferDirect is wrapped only from arming to stop(),
+ * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
+ */
+const ORIGIN_WATCH_MS = 10_000;
+function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): void } {
+  const origins: string[] = [];
+  const previous = renderer.renderBufferDirect;
+  const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
+    const before = renderer.info.programs?.length ?? 0;
+    previous.call(this, camera, drawScene, geometry, material, object, group);
+    if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
+      const path: string[] = [material.type];
+      for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
+      origins.push(path.join('<'));
+    }
+  };
+  renderer.renderBufferDirect = watched;
+  let stopped = false;
+  const stop = (): void => {
+    if (stopped) return;
+    stopped = true;
+    if (renderer.renderBufferDirect === watched) renderer.renderBufferDirect = previous;
+  };
+  setTimeout(stop, ORIGIN_WATCH_MS);
+  return { origins, stop };
+}
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
@@ -3072,6 +3100,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
           )),
           programs: () => renderer.info.programs,
+          watchProgramOrigins,
         },
       activation: {
         game,
