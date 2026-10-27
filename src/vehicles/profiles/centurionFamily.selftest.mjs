@@ -7,7 +7,8 @@
 //     casting at least 1.10 m wide 0.30 m behind its front face (the wedge nose read 0.80);
 //   - the guns: the Mk 3's 20-pdr Type A swells only at its muzzle counterweight, the Strv 81B's Type B carries its short
 //     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along and stands shorter;
-//   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B) and none on the Mk 3 (roofWeaponPolicy.ts).
+//   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B, Sho't Kal) and none on the Mk 3 (roofWeaponPolicy.ts);
+//   - the Sho't Kal (release 262's new IDF Centurion): the Mk 5/2's L7 and its AVDS-1790 hump at 1.90 m.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -43,7 +44,7 @@ function gunRadii(gun, len) {
 }
 
 const report = {};
-for (const id of ['centurion3', 'centurion5_2', 'strv81']) {
+for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const root = tank.root, turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');
@@ -87,14 +88,23 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81']) {
     } else {
       assert.ok(bulge(0.40, 0.50) > tube * 1.35 && bulge(0.62, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 40-50 % along`);
     }
+    if (id === 'shot_kal') {
+      // the AVDS-1790 hump over the engine stands 1.90 m high behind the turret
+      const deck = new THREE.Raycaster(new THREE.Vector3(0.62, 4, -2.3), new THREE.Vector3(0, -1, 0));
+      const hull = []; root.traverse((o) => { if (o.isMesh && !under(turret, o) && !/procShadow/.test(o.name)) hull.push(o); });
+      const top = deck.intersectObjects(hull, false)[0]?.point.y ?? 0;
+      assert.ok(top > 1.88 && top < 1.95, `${id}: the AVDS deck at ${top.toFixed(3)} m`);
+    }
+
     const cupolaGun = [];
     turret.traverse((o) => { if (o.userData?.fitting === 'pintleMG' && o.parent?.userData?.fitting !== 'pintleMG') cupolaGun.push(o); });
     if (id === 'centurion3') assert.ok(carriesNoRoofWeapon(id) && cupolaGun.length === 0, `${id}: the Mk 3 carries no roof gun`);
     else assert.equal(cupolaGun.length, 1, `${id}: the Mk 5 pattern's cupola machine gun`);
-    report[id] = { length: +length.toFixed(3), width: +width.toFixed(3), roof: +roof.toFixed(3), noseWidth: +(half * 2).toFixed(2), gun: +len.toFixed(2) };
+    report[id] = { ...report[id], length: +length.toFixed(3), width: +width.toFixed(3), roof: +roof.toFixed(3), noseWidth: +(half * 2).toFixed(2), gun: +len.toFixed(2) };
   } finally {
     tank.dispose?.();
   }
 }
 assert.ok(report.centurion5_2.gun < report.centurion3.gun - 0.15, 'the L7 stands shorter than the 20-pdr');
-console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, three distinct marks PASS`);
+assert.equal(report.shot_kal.gun, report.centurion5_2.gun, 'the Sho\'t Kal keeps the Mk 5/2\'s L7');
+console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, four distinct marks PASS`);

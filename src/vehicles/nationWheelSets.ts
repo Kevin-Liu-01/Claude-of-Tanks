@@ -232,6 +232,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
+  // release 262 (the owner: the new Sho't "with proper equipment geometries"): the IDF kept the Centurion's running gear
+  shot_kal: { donor: 'challenger2e', reason: 'release 262: the Sho\'t Kal is a Centurion hull on its own Horstmann bogies -> the UK wheel the Mk 3 and Mk 5/2 draw, not the Merkava\'s' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

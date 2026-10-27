@@ -2688,11 +2688,11 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   ],
   // Release 262: the rebuilt Centurion family carries its own dischargers, whips and roof guns (profiles/centurionFamily.ts);
   // its decor is soft stowage only. The British marks a tarpaulin and packs, the Strv 81B the bundled camouflage nets of
-  // its 1950s photographs, the Sho't Kal the IDF's bedrolls and rations round its own basket and jerrycan cage.
+  // its 1950s photographs, the Sho't Kal the IDF's bedrolls and water cans round its own basket and jerrycan cage.
   centurion3: () => [
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
   centurion5_2: () => [
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
@@ -2706,8 +2706,8 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   ],
   shot_kal: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
-    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
