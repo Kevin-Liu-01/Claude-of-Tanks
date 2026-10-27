@@ -213,9 +213,9 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   P.addHatch('hull', cylY(0.30, 0.31, 0.05, 20), -0.46, ROOF_Y + 0.02, 2.30);
   P.add('hullDark', box(0.58, 0.012, 0.025), -0.46, ROOF_Y + 0.047, 2.30);
   P.add('hullDetail', box(0.10, 0.05, 0.12), -0.18, ROOF_Y + 0.025, 2.30);
-  for (const px of [-0.62, -0.30]) {
+  for (const px of [-0.66, -0.46, -0.26]) {
     const [pz, py] = onGlacis(0.93);
-    KIT.periscope(P, 'hullDetail', px, py + 0.03, pz, 0);
+    KIT.periscope(P, 'hullDetail', px, py + 0.03, pz, px * 0.25);
   }
   // Headlights on the glacis beside the front bins, each behind its guard hoop.
   for (const s of [-1, 1]) {
@@ -581,6 +581,11 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
   P.add('turret', box(0.24, 0.12, 0.30), -0.40, roofY + 0.05, 0.22);
   P.add('turretGlass', box(0.17, 0.05, 0.02), -0.40, roofY + 0.07, 0.375);
   KIT.periscope(P, 'turretDetail', 0.44, roofY + 0.04, -0.02, 0);
+  // the loader's and the gunner's forward vision periscopes at the roof's front edge, in armoured hoods
+  for (const [vx, vz, ry] of [[0.42, 0.52, 0.12], [-0.12, 0.56, -0.05]] as const) {
+    P.add('turret', box(0.20, 0.07, 0.16), vx, roofY + 0.02, vz - 0.02);
+    KIT.periscope(P, 'turretDetail', vx, roofY + 0.065, vz, ry);
+  }
   if (!m.mk5) {
     // the Mk 3's 2-inch bomb thrower in the roof's front left
     P.add('turretDark', xform(cylZ(0.035, 0.34, 10), 0, 0, 0, -0.7, 0.2, 0), 0.68, roofY - 0.02, 0.18);
@@ -627,92 +632,95 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
   mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 9740 }), cx, y0 + 0.02, cz, [0, Math.PI / 2, 0]);
 }
 
-/** Discharger No. 1 Mk 1: one six-tube block (two rows of three) high on each front corner of the casting, turned
- * outward, its bent guard bar round the muzzles. The Sho't Kal's were taken off (their empty brackets stay). */
-function buildSmokeDischargers(P: TankBuilderPort, m: MarkDesign): void {
+/** Discharger No. 1 Mk 1: one six-tube block (two rows of three) at each front corner of the casting, facing forward and
+ * a little outward (the head-on references), its guard bar round the muzzles. Owner 2026-10-27 ("add smoke canisters at
+ * front"): the Sho't Kal carries them too. */
+function buildSmokeDischargers(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
-    const yaw = s * 0.42, y = 0.60, z = 0.90;
-    const x = s * (castingHalfWidth(z - 0.06, y) + 0.05);
+    const yaw = s * 0.30, y = 0.56, z = 1.00;
+    const x = s * (castingHalfWidth(z - 0.04, y) + 0.06);
     const at = (lx: number, lz: number): [number, number] => [x + Math.cos(yaw) * lx + Math.sin(yaw) * lz, z - Math.sin(yaw) * lx + Math.cos(yaw) * lz];
-    // the mounting bracket welded to the cheek
-    const [ax, az] = at(-s * 0.02, -0.10);
-    P.add('turretDetail', xform(box(0.22, 0.10, 0.16), 0, 0, 0, 0, yaw, 0), ax, y - 0.08, az);
-    if (m.idf) continue;
-    P.add('turretDetail', xform(box(0.30, 0.25, 0.08), 0, 0, 0, 0, yaw, 0), x, y, z - 0.03);
+    // the mounting plate welded to the cheek and its bracket arm back into the casting
+    const [ax, az] = at(-s * 0.06, -0.12);
+    P.add('turretDetail', xform(box(0.24, 0.12, 0.20), 0, 0, 0, 0, yaw, 0), ax, y - 0.10, az);
+    P.add('turretDetail', xform(box(0.34, 0.28, 0.08), 0, 0, 0, 0, yaw, 0), x, y, z - 0.02);
     for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
-      const [px, pz] = at((col - 1) * 0.085, 0.06);
-      P.add('turretDetail', markSmokeTube(cylZ(0.036, 0.20, 10)), px, y + (row - 0.5) * 0.10, pz, -0.42, yaw, 0);
+      const [px, pz] = at((col - 1) * 0.10, 0.08);
+      P.add('turretDetail', markSmokeTube(cylZ(0.042, 0.22, 12)), px, y + (row - 0.5) * 0.115, pz, -0.38, yaw, 0);
+      P.add('turretDark', cylZ(0.030, 0.012, 10), px + Math.sin(yaw) * 0.10, y + (row - 0.5) * 0.115 + 0.04, pz + Math.cos(yaw) * 0.10 * 0.93, -0.38, yaw, 0);
     }
-    for (const lx of [-0.17, 0.17]) {
-      const [gx, gz] = at(lx, 0.08);
-      P.add('turretDark', xform(box(0.018, 0.018, 0.22), 0, 0, 0, 0, yaw, 0), gx, y + 0.14, gz);
+    for (const lx of [-0.19, 0.19]) {
+      const [gx, gz] = at(lx, 0.10);
+      P.add('turretDark', xform(box(0.018, 0.018, 0.24), 0, 0, 0, 0, yaw, 0), gx, y + 0.16, gz);
     }
-    const [bx, bz] = at(0, 0.19);
-    P.add('turretDark', xform(box(0.36, 0.018, 0.018), 0, 0, 0, 0, yaw, 0), bx, y + 0.14, bz);
+    const [bx, bz] = at(0, 0.22);
+    P.add('turretDark', xform(box(0.40, 0.018, 0.018), 0, 0, 0, 0, yaw, 0), bx, y + 0.16, bz);
   }
 }
 
-/** The mantlet, all moving with the gun: the cast mantlet (its curved face and the chin under the bore), the canvas
- * cover laced round the casting's opening (sloping back from a slack, pleated face to a strapped sleeve on the barrel),
- * the coaxial gun's boot on the left and the sight's armoured hood on the right (the Delft and Bovington photographs).
- * The Sho't Kal adds the canvas-covered searchlight its Alefs carried over the gun (EN). */
+/** The mantlet, all moving with the gun (owner 2026-10-27: "mantlets need to be wider, better"; the Hum3D Mk 3 and the
+ * Mk 13 head-on references): a wide cast block across most of the turret face (1.60 m), standing 15 cm proud of it, its
+ * face convex in plan, the gun's boss in the middle, the coaxial gun's port on the left, the sight's hooded aperture on
+ * the right and two lifting eyes on top; a canvas dust seal laced round its rim where it enters the casting. The Sho't
+ * Kal wears the green canvas cover of its photographs over the same block, its searchlight on top. */
 function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
-  // cast mantlet: a curved face in plan and in section, standing wholly inside its canvas
-  const rows: SolidSection[] = [0.06, 0.24, 0.36, 0.44].map((z, i) => {
-    const hw = [0.52, 0.51, 0.46, 0.36][i], top = [0.25, 0.25, 0.21, 0.15][i], bot = [-0.19, -0.19, -0.16, -0.11][i];
-    const ring: SectionPoint[] = [];
-    for (let k = 0; k < 14; k++) {
-      const a = -Math.PI / 2 + (k / 14) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
-      ring.push([Math.pow(Math.abs(c), 0.4) * Math.sign(c) * hw, Math.pow(Math.abs(sn), 0.4) * Math.sign(sn) * (sn > 0 ? top : -bot)]);
-    }
-    return { z, ring };
-  });
-  P.add('gunMount', sectionSolid(rows, { centeredSideQuads: true, smoothSideEdges: [...Array(14).keys()] }));
-  // the canvas cover: a slack bag whose top slopes back to the casting, its lower edge sagging between the lacing points
-  const drape = (z: number, hw: number, top: number, bot: number, sag: number, bulge = 0): SolidSection => {
+  const block = (z: number, hw: number, top: number, bot: number): SolidSection => {
     const ring: SectionPoint[] = [];
     for (let k = 0; k < 16; k++) {
       const a = -Math.PI / 2 + (k / 16) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
-      const r = Math.pow(Math.abs(c), 0.5) * Math.sign(c), q = Math.pow(Math.abs(sn), 0.5) * Math.sign(sn);
-      // a fold line runs round the bag where the canvas gathers: the contour bellies out between them
-      const belly = bulge * Math.abs(Math.sin(a * 2));
-      ring.push([r * (hw + belly), (sn > 0 ? q * (top + belly * 0.5) : q * bot) - (Math.abs(c) < 0.6 && sn < 0 ? sag : 0)]);
+      ring.push([Math.pow(Math.abs(c), 0.3) * Math.sign(c) * hw, Math.pow(Math.abs(sn), 0.3) * Math.sign(sn) * (sn > 0 ? top : -bot)]);
     }
     return { z, ring };
   };
-  P.add('gunMountCloth', sectionSolid([
-    drape(0.28, 0.65, 0.35, 0.26, 0.0), drape(0.36, 0.66, 0.34, 0.26, 0.03, 0.015), drape(0.43, 0.65, 0.31, 0.25, 0.06),
-    drape(0.49, 0.61, 0.28, 0.24, 0.07, 0.02), drape(0.54, 0.52, 0.25, 0.22, 0.05), drape(0.58, 0.36, 0.20, 0.19, 0.02),
-    drape(0.62, 0.17, 0.155, 0.155, 0.0),
+  // the casting: square-shouldered in section, its face rounding forward to the boss
+  P.add('gunMount', sectionSolid([
+    block(0.05, 0.80, 0.30, -0.21), block(0.40, 0.80, 0.30, -0.21), block(0.52, 0.78, 0.29, -0.205),
+    block(0.58, 0.74, 0.27, -0.195), block(0.62, 0.64, 0.23, -0.17), block(0.645, 0.46, 0.17, -0.13),
   ], { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
-  // pleats across the slack face, two creases running back from the sleeve, the lacing eyelets round the rear hem
-  for (const [fz, fy, fw, rx] of [[0.47, 0.19, 0.96, -0.6], [0.52, 0.05, 1.02, -0.2], [0.50, -0.12, 0.92, 0.4]] as const) {
-    P.add('gunMountCloth', xform(cylX(0.020, fw, 8), 0, 0, 0, rx, 0, 0), 0, fy, fz);
+  // the gun's boss: a raised collar the tube leaves through
+  P.add('gunMount', cylZ(0.175, 0.12, 24, 0.215), 0, 0, 0.69);
+  P.add('gunMountDark', xform(torus(0.18, 0.012, 24, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, 0.745);
+  // the coaxial gun's port (the Mk 3's Besa, the Mk 5's Browning) and the sight's hooded aperture
+  P.add('gunMount', cylZ(0.055, 0.08, 12, 0.07), 0.40, 0.04, 0.64);
+  P.add('gunMountDark', cylZ(0.018, m.mk5 ? 0.28 : 0.22, 8), 0.40, 0.04, 0.76);
+  P.add('gunMount', box(0.20, 0.06, 0.12), -0.40, 0.19, 0.62);
+  P.add('gunMountDark', box(0.14, 0.05, 0.012), -0.40, 0.15, 0.636);
+  for (const lx of [-0.52, 0.52]) {
+    P.add('gunMountDark', xform(torus(0.045, 0.014, 10, 6), 0, 0.04, 0, Math.PI / 2, 0, 0), lx, 0.30, 0.30);
+    P.add('gunMount', box(0.09, 0.03, 0.06), lx, 0.30, 0.30);
   }
-  for (const s of [-1, 1]) P.add('gunMountCloth', xform(cylZ(0.016, 0.30, 6), 0, 0, 0, 0.0, s * 0.55, 0), s * 0.30, 0.10, 0.46);
+  // the canvas dust seal laced round the block's rim where it enters the casting
+  P.add('gunMountCloth', sectionSolid([block(0.12, 0.835, 0.335, -0.245), block(0.22, 0.83, 0.33, -0.24)],
+    { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
   for (let k = 0; k < 9; k++) {
     const t = -1 + (2 * k) / 8;
-    P.add('gunMountDark', cylZ(0.012, 0.03, 6), t * 0.60, 0.33, 0.30);
-    P.add('gunMountDark', cylZ(0.012, 0.03, 6), t * 0.60, -0.25, 0.30);
+    P.add('gunMountDark', cylZ(0.010, 0.11, 6), t * 0.72, 0.335, 0.17);
   }
-  // the tapered canvas sleeve tied round the barrel with two straps and their buckles
-  P.add('gunMountCloth', cylZ(0.100, 0.36, 14, 0.135), 0, 0, 0.78);
-  for (const sz of [0.66, 0.94]) {
-    P.add('gunMountDark', cylZ(0.112 + (0.94 - sz) * 0.08, 0.025, 14), 0, 0, sz);
-    P.add('gunMountDark', box(0.03, 0.04, 0.03), 0.05, 0.11 + (0.94 - sz) * 0.08, sz);
-  }
-  // coaxial gun (the Mk 3's Besa, the Mk 5's Browning) left of the gun in a canvas boot; the sight's armoured hood right
-  P.add('gunMountCloth', cylZ(0.045, 0.10, 10, 0.06), 0.32, 0.03, 0.57);
-  P.add('gunMountDark', cylZ(0.016, m.mk5 ? 0.26 : 0.20, 8), 0.32, 0.03, 0.70);
-  P.add('gunMount', box(0.16, 0.10, 0.12), -0.34, 0.16, 0.50);
-  P.add('gunMountDark', box(0.11, 0.05, 0.012), -0.34, 0.15, 0.562);
   if (m.idf) {
-    // the canvas-covered searchlight on its bracket over the mantlet (Kahalani's Alef, EN)
-    P.add('gunMountDark', box(0.08, 0.10, 0.16), 0, 0.37, 0.50);
-    P.add('gunMountCloth', cylZ(0.165, 0.30, 16, 0.18), 0, 0.55, 0.55);
-    P.add('gunMountCloth', cylZ(0.16, 0.035, 16, 0.168), 0, 0.55, 0.715);
-    P.add('gunMountDark', xform(torus(0.165, 0.010, 16, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.55, 0.70);
-    P.add('gunMountCloth', xform(torus(0.17, 0.012, 16, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.55, 0.47);
+    // the green canvas cover over the block, sagging between its lacing points, its sleeve strapped to the barrel
+    const drape = (z: number, hw: number, top: number, bot: number, sag: number): SolidSection => {
+      const ring: SectionPoint[] = [];
+      for (let k = 0; k < 16; k++) {
+        const a = -Math.PI / 2 + (k / 16) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+        const r = Math.pow(Math.abs(c), 0.45) * Math.sign(c), q = Math.pow(Math.abs(sn), 0.45) * Math.sign(sn);
+        ring.push([r * hw, (sn > 0 ? q * top : q * bot) - (Math.abs(c) < 0.6 && sn < 0 ? sag : 0)]);
+      }
+      return { z, ring };
+    };
+    P.add('gunMountCloth', sectionSolid([
+      drape(0.24, 0.85, 0.35, 0.235, 0.0), drape(0.42, 0.85, 0.34, 0.235, 0.02), drape(0.56, 0.82, 0.32, 0.225, 0.03),
+      drape(0.63, 0.70, 0.28, 0.20, 0.02), drape(0.68, 0.40, 0.21, 0.18, 0.0), drape(0.72, 0.18, 0.16, 0.16, 0.0),
+    ], { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
+    for (const [fz, fy, fw] of [[0.60, 0.20, 1.30], [0.64, 0.04, 1.36], [0.61, -0.12, 1.22]] as const) {
+      P.add('gunMountCloth', xform(cylX(0.020, fw, 8), 0, 0, 0), 0, fy, fz);
+    }
+    P.add('gunMountCloth', cylZ(0.100, 0.30, 14, 0.13), 0, 0, 0.86);
+    for (const sz of [0.76, 0.98]) P.add('gunMountDark', cylZ(0.112 + (0.98 - sz) * 0.08, 0.025, 14), 0, 0, sz);
+    // the canvas-covered searchlight on its bracket over the cover (Kahalani's Alef, EN)
+    P.add('gunMountDark', box(0.08, 0.10, 0.16), 0, 0.39, 0.52);
+    P.add('gunMountCloth', cylZ(0.165, 0.30, 16, 0.18), 0, 0.57, 0.57);
+    P.add('gunMountCloth', cylZ(0.16, 0.035, 16, 0.168), 0, 0.57, 0.735);
+    P.add('gunMountDark', xform(torus(0.165, 0.010, 16, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0.57, 0.72);
   }
 }
 
@@ -765,7 +773,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   if (m.idf) buildIdfTurretRacks(P);
   yield 'centurionTurretCasting';
   buildRoof(P, m);
-  buildSmokeDischargers(P, m);
+  buildSmokeDischargers(P);
   yield 'centurionTurretFittings';
   buildMantlet(P, m);
   buildMainGun(P, m);

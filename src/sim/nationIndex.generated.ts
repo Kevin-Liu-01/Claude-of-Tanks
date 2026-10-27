@@ -113,6 +113,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["ajax","uk","modern",5],
   ["ares_apc","uk","modern",2],
   ["m60a1","usa","cold-war",1],
+  ["shot_kal","israel","cold-war",3],
   ["merkava1b","israel","cold-war",1],
   ["sabra_mk2","israel","modern",2],
   ["merkava2b","israel","cold-war",3],
