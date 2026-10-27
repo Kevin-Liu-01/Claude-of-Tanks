@@ -428,7 +428,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
   font-size:var(--battle-fs-11);letter-spacing:.01em;flex:none;margin-left:5px;vertical-align:1px;}
 /* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
-.cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
+.cot-es .es-tr .veh{display:flex;align-items:baseline;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
 .cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
 .cot-es .es-tr .veh .dt svg{display:inline-block;width:11px;height:11px;margin-right:2px;vertical-align:-1px}
 .cot-es .es-tr .veh b{color:${COL.gold};font-weight:700}
@@ -562,7 +562,8 @@ function detailGlyphs(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: 
   const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
   const parts = [kills > 0 ? `${uiIconSVG('skull', 11)}${kills}` : '', revives && deaths > 0 ? `${uiIconSVG('rematch', 11)}${deaths}` : '']
     .filter(Boolean);
-  return parts.length ? `<span class="counts num" aria-hidden="true"> · ${parts.join(' · ')}</span>` : '';
+  // (figures and glyphs, Latin in every script: marked so zh keeps them at the vehicle name's Latin size, endScreenPresentation)
+  return parts.length ? `<span class="counts num lat" aria-hidden="true"> · ${parts.join(' · ')}</span>` : '';
 }
 
 export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {

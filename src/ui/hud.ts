@@ -34,7 +34,7 @@ import { vehicleAction } from '../game/vehicleActions.ts';
 import { DESKTOP_OUTPUT_PIXEL_BUDGET } from '../engine/resolutionPolicy.ts';
 import { createUiCanvas, scratchCanvas, type UiCanvas } from './uiCanvas.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
-import { getLocale, t } from './i18n.ts';
+import { formatNumber, getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
@@ -489,6 +489,12 @@ interface HpBar {
   /** The transform last written and whether the plate shows. */
   lastTransform: string;
   shown: boolean;
+  /** The name changed while the bar was hidden: measured once it shows (updateHpBarLabel). */
+  measure: boolean;
+  /** This frame's projected anchor and range (updateHpBars places the nearest first). */
+  sx: number;
+  sy: number;
+  dist: number;
 }
 interface SpotMemory {
   vis: boolean;
@@ -2116,9 +2122,14 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
 .cot-tgt .nick{flex:none;font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
-.cot-tgt .tier{flex:none;font:600 var(--battle-fs-12)/1 var(--hud-font);color:var(--ink-3);}
-.cot-tgt .veh{flex:none;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3);
+.cot-tgt .tier{flex:none;font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-3);}
+/* (the tier and the vehicle in the UI face, "IX · T-90AM", as every vehicle line: the data face set it apart, r15) */
+.cot-tgt .veh{flex:none;font:500 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-3);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
+.cot-tgt .veh::before{content:'·';margin-right:var(--s2);}
+/* hung under the sight (positionTargetPlate): the diamond over the row, pointing up at the tank */
+.cot-tgt.below .bk{flex-direction:column-reverse;justify-content:flex-start;}
+.cot-tgt.below .anch{margin-top:0;margin-bottom:2px;}
 .cot-tgt .rng{flex:none;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3);}
 .cot-tgt .rng:empty{display:none;}
 /* (in the scope the range is the sight's own tag: the plate leaves it, UI-LOCKDOWN B8) */
@@ -2307,7 +2318,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
   const hpLayer = el('div', 'cot-hpbars', root);
-  const dmgLayer = el('div', 'cot-dmglayer', root);
+  // (the floating numbers over the hits are the damage dealt's one place, however many fly at once: UI-LOCKDOWN B16)
+  const dmgLayer = markDatum(el('div', 'cot-dmglayer', root), 'damage-dealt');
 
   // --- over-target marker plate (WoT aiming loop feedback) ---
   /** The width the plate keeps for its range ("1,240 m" at the data face's 12 px). */
@@ -2335,6 +2347,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const tgtRectScratch: TargetPlateRect = { cx: 0, hw: 0, top: 0, bottom: 0 };
   let tgtTransform = '';
   let tgtPendingTransform: string | null = null;
+  let tgtBelow = false, tgtPendingBelow = false; // the plate hung under the sight (positionTargetPlate), as written
+  let tgtLastHp = -1, tgtLastMaxHp = -1; // the hull points shown
   let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
   let aimTargetId: string | null = null;
   /** Whether the player has given or taken a hit this battle (re-armed when the HUD hides between battles). */
@@ -5729,7 +5743,12 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   // ---------- world-space tank nameplates ----------
-  const hpBarsSeen = new Set<string>();
+  const hpBarsSeen = new Set<HpBar>();
+  /** The frame's bars in view, nearest first, and the boxes of those placed (updateHpBars: reused, never reallocated). */
+  const hpBarOrder: HpBar[] = [];
+  const hpBarPlaced = Array.from({ length: 96 }, () => ({ x0: 0, y0: 0, x1: 0, y1: 0 }));
+  /** A hull bar's box (.cot-hpb: 40 px, the name, the bar and the side's pointer). */
+  const HP_BAR_H = 40;
   function shouldShowHpBar(tank: HudTank | null | undefined): tank is HudTank & {
     combat: CombatState;
   } {
@@ -5757,6 +5776,8 @@ export function initHud(bus: EventBus): HudRuntime {
   function createHpBar(tank: HudTank): HpBar {
     const ally = tank.team === ownSide();
     const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
+    // (hidden until placed: a bar the declutter holds back showed unplaced at the window's corner, gauntlet r15)
+    rootEl.style.display = 'none';
     rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>`
       + `<div class="tr"><div class="fl"></div></div>`;
     if (tank.spec) {
@@ -5777,6 +5798,10 @@ export function initHud(bus: EventBus): HudRuntime {
       layoutW: 128,
       lastTransform: '',
       shown: false,
+      measure: false,
+      sx: 0,
+      sy: 0,
+      dist: 0,
     };
     hpPool.set(tank.id, bar);
     return bar;
@@ -5787,14 +5812,21 @@ export function initHud(bus: EventBus): HudRuntime {
     if (bar.lastName === name) return;
     bar.nm.textContent = name;
     bar.lastName = name;
+    // (measured shown: a hidden bar's name measures nothing, the target plate's own trap, r14)
+    bar.measure = true;
+    if (bar.shown) measureHpBar(bar);
+  }
+
+  function measureHpBar(bar: HpBar): void {
+    bar.measure = false;
     const measured = Math.ceil(bar.nm.scrollWidth) + 26 + 5 + 14;
     bar.layoutW = Math.max(128, Math.min(280, measured));
     bar.root.style.width = `${bar.layoutW}px`;
   }
 
   function positionHpBar(bar: HpBar): void {
-    const plateX = _sx - bar.layoutW * 0.5;
-    const plateY = _sy - 42;
+    const plateX = bar.sx - bar.layoutW * 0.5;
+    const plateY = bar.sy - 42;
     // (written only when it moves, to the tenth of a pixel; shown once)
     const transform = `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0)`;
     if (transform !== bar.lastTransform) {
@@ -5802,7 +5834,8 @@ export function initHud(bus: EventBus): HudRuntime {
       bar.lastTransform = transform;
     }
     if (!bar.shown) { bar.root.style.display = 'block'; bar.shown = true; }
-    const opacity = Math.max(0.72, Math.min(1, 1.25 - _sDist / SPOT_RANGE_M));
+    if (bar.measure) measureHpBar(bar);
+    const opacity = Math.max(0.72, Math.min(1, 1.25 - bar.dist / SPOT_RANGE_M));
     if (Math.abs(opacity - bar.lastOp) <= 0.03) return;
     bar.root.style.opacity = opacity.toFixed(2);
     bar.lastOp = opacity;
@@ -5821,17 +5854,43 @@ export function initHud(bus: EventBus): HudRuntime {
     const seen = hpBarsSeen;
     seen.clear();
     const tanks = frame.tanks || [];
+    const order = hpBarOrder;
+    order.length = 0;
     for (let i = 0; i < tanks.length; i++) {
       const t = tanks[i];
       if (!shouldShowHpBar(t) || !projectHpBarAnchor(t, camera)) continue;
-      seen.add(t.id);
       const bar = hpPool.get(t.id) ?? createHpBar(t);
+      bar.sx = _sx; bar.sy = _sy; bar.dist = _sDist;
       updateHpBarLabel(bar, t);
-      positionHpBar(bar);
       updateHpBarFill(bar, t.combat);
+      // (nearest first: an insertion into the frame's short list, no sort allocation)
+      let at = order.length;
+      order.push(bar);
+      while (at > 0 && order[at - 1].dist > bar.dist) { order[at] = order[at - 1]; at--; }
+      order[at] = bar;
     }
-    for (const [id, bar] of hpPool) {
-      if (!seen.has(id) && bar.shown) { bar.root.style.display = 'none'; bar.shown = false; }
+    // Decluttered (gauntlet r15: the bars of tanks close in view struck through each other's labels, and a panel or the
+    // target plate covered a bar under it): the nearest first, a bar that would cross one shown, the target plate or the
+    // HUD's furniture (sightFurniture, measured each relayout) waits hidden until it clears.
+    const placed = hpBarPlaced;
+    let count = 0;
+    for (let i = 0; i < order.length; i++) {
+      const bar = order[i];
+      const x0 = bar.sx - bar.layoutW * 0.5, y0 = bar.sy - 42, x1 = x0 + bar.layoutW, y1 = y0 + HP_BAR_H;
+      let clear = sightFurnitureGap(x0, y0, x1, y1) >= 0
+        && !(tgtShown && tgtRect && x0 < tgtRect.cx + tgtRect.hw && x1 > tgtRect.cx - tgtRect.hw && y0 < tgtRect.bottom && y1 > tgtRect.top);
+      for (let k = 0; clear && k < count; k++) {
+        const other = placed[k];
+        if (x0 < other.x1 && x1 > other.x0 && y0 < other.y1 && y1 > other.y0) clear = false;
+      }
+      if (!clear || count >= placed.length) continue;
+      const box = placed[count++];
+      box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
+      seen.add(bar);
+      positionHpBar(bar);
+    }
+    for (const bar of hpPool.values()) {
+      if (!seen.has(bar) && bar.shown) { bar.root.style.display = 'none'; bar.shown = false; }
     }
   }
 
@@ -5940,8 +5999,9 @@ export function initHud(bus: EventBus): HudRuntime {
     // at both ends on each new target; the gauntlet's markers frames)
     showTargetPlate();
     // the hull points at their widest (they only fall from full), beside the bar
-    const full = String(Math.round(target.combat.maxHp));
-    tgtRefs.hp.textContent = `${full}/${full}`;
+    const full = formatNumber(Math.round(target.combat.maxHp));
+    tgtRefs.hp.textContent = `${full} / ${full}`;
+    tgtLastHp = -1;
     // the row: its padding, the silhouette, the callsign, the tier, the vehicle and the range's reserve; the bar's row
     const rowWidth = 20 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + Math.ceil(tgtRefs.tier.scrollWidth) + 8
       + Math.ceil(tgtRefs.veh.scrollWidth) + 8 + TARGET_RANGE_W;
@@ -5953,7 +6013,18 @@ export function initHud(bus: EventBus): HudRuntime {
   function positionTargetPlate(): void {
     const halfWidth = tgtPlateWidth * 0.5;
     const targetX = Math.max(halfWidth + 4, Math.min(w - halfWidth - 4, _sx));
-    const bottom = Math.max(72, Math.min(h - 12, _sy - 14));
+    let bottom = Math.max(72, Math.min(h - 12, _sy - 14));
+    // (over the tank where the HUD's furniture leaves it clear, else hung under the sight's ring, its diamond pointing up
+    // at the tank: a portrait phone's controls row and a landscape's ammunition card covered its name, gauntlet r15)
+    let below = false;
+    if (sightFurnitureGap(targetX - halfWidth, bottom - 64, targetX + halfWidth, bottom) < 0) {
+      const under = aimView.cy + clampRetR(smoothRadPx) + 12 + 64;
+      if (under <= h - 12 && sightFurnitureGap(targetX - halfWidth, under - 64, targetX + halfWidth, under) >= 0) {
+        bottom = under;
+        below = true;
+      }
+    }
+    tgtPendingBelow = below;
     const transform = `translate3d(${(targetX - halfWidth).toFixed(1)}px,${(bottom - 64).toFixed(1)}px,0)`;
     tgtPendingTransform = transform === tgtTransform ? null : transform;
     tgtRectScratch.cx = targetX; tgtRectScratch.hw = halfWidth; tgtRectScratch.top = bottom - 64; tgtRectScratch.bottom = bottom;
@@ -5977,8 +6048,14 @@ export function initHud(bus: EventBus): HudRuntime {
     const fraction = Math.max(0, Math.min(1, target.combat.hp / target.combat.maxHp));
     const hpWidth = `${(fraction * 100).toFixed(1)}%`;
     if (tgtRefs.fl.style.width !== hpWidth) tgtRefs.fl.style.width = hpWidth;
-    const hpText = `${Math.max(0, Math.round(target.combat.hp))}/${Math.round(target.combat.maxHp)}`;
-    if (tgtRefs.hp.textContent !== hpText) tgtRefs.hp.textContent = hpText;
+    // (the hull points as the HUD's hull readout writes them, "1,674 / 2,700": written when they change, the locale's
+    // formatter never per frame)
+    const hp = Math.max(0, Math.round(target.combat.hp)), maxHp = Math.round(target.combat.maxHp);
+    if (hp !== tgtLastHp || maxHp !== tgtLastMaxHp) {
+      tgtRefs.hp.textContent = `${formatNumber(hp)} / ${formatNumber(maxHp)}`;
+      tgtLastHp = hp;
+      tgtLastMaxHp = maxHp;
+    }
     showTargetPlate();
     const bar = hpPool.get(target.id);
     if (bar?.shown) { bar.root.style.display = 'none'; bar.shown = false; }
@@ -5986,6 +6063,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   /** The target plate's move held by positionTargetPlate, written once the reticle canvas has drawn. */
   function flushTargetPlateMove(): void {
+    if (tgtPendingBelow !== tgtBelow) { tgtEl.classList.toggle('below', tgtPendingBelow); tgtBelow = tgtPendingBelow; }
     if (tgtPendingTransform === null) return;
     tgtEl.style.transform = tgtPendingTransform;
     tgtTransform = tgtPendingTransform;
@@ -7894,9 +7972,9 @@ export function initHud(bus: EventBus): HudRuntime {
     // repaired:true = auto-repair finished (red → yellow). This used to toast
     // '<MODULE> DAMAGED' — a recovery announced as fresh damage (the audio
     // layer already said 'repairs' over it). WoT language: 'Track repaired'.
-    if (p.repaired) { showAlert(t('hud.alert.moduleRepaired', { label }), { icon, tone: 'success' }); return; }
-    showAlert(t(p.state === 'red' ? 'hud.alert.moduleDestroyed' : 'hud.alert.moduleDamaged', { label }),
-      { icon, tone: p.state === 'red' ? 'danger' : 'warning' });
+    // (a module damaged or knocked out is the status chip's appearing over the damage panel, never an alert as well:
+    // UI-LOCKDOWN B2, the registry's ruling; the repair finishing still says so)
+    if (p.repaired) showAlert(t('hud.alert.moduleRepaired', { label }), { icon, tone: 'success' });
   });
 
   // ---------- aim view assembly ----------

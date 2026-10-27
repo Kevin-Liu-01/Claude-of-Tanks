@@ -265,7 +265,7 @@ assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
   'aimed-at labels must not paint a broad dark rectangle over the battlefield');
 assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
   'world-space player and vehicle labels must never replace names with ellipses');
-assert.match(hud, /const plateX = _sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = _sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
+assert.match(hud, /const plateX = bar\.sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
   'world tank labels must remain centered on their literal projected tank anchors');
 assert.doesNotMatch(hud, /updateHpBars\._layout|layout\.sort|placed\.layoutY - 36/,
   'world tank labels must be allowed to overlap instead of entering screen-space lanes');

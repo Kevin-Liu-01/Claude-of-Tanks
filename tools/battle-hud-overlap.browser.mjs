@@ -87,7 +87,15 @@ try {
       await page.waitForFunction(() => !!window.__HUD_LAYOUT, { timeout: 60000 });
       // the layout's planners settle over a few frames (and the Watch bar's chunk lands)
       await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 600)));
-      const rects = await page.evaluate(measure, INSTRUMENTS);
+      // (the layout's passes settle over frames, and under load one lands after the first measure: measured until two
+      // in a row agree, the 844x390 notifications' aim chip read 50 px under its seat mid-settle in full runs, round 14)
+      let rects = await page.evaluate(measure, INSTRUMENTS);
+      for (let tries = 0; tries < 6; tries++) {
+        await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 250)));
+        const again = await page.evaluate(measure, INSTRUMENTS);
+        if (JSON.stringify(again) === JSON.stringify(rects)) break;
+        rects = again;
+      }
       const problems = [];
       for (let i = 0; i < rects.length; i++) {
         const a = rects[i];

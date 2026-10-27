@@ -812,6 +812,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // at 1440x900, gauntlet r14's overlap receipt)
     const specRoom = map && map.left > width / 2 && map.bottom > height - 16 - 64 ? 2 * (map.left - 8 - width / 2) : 0;
     setBodyVar('--hud-spec-max', specRoom > 0 ? `${Math.floor(specRoom)}px` : '');
+    // (the stick's centre over the floor: the drone's climb button sits level with it, 20-25 px under it it lined up with
+    // nothing, gauntlet r15)
+    const joy = touch ? read('.cot-touch.on .joy') : null;
+    setBodyVar('--hud-joy-mid', joy ? `${Math.round(height - (joy.top + joy.bottom) / 2)}px` : '');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
     // the team strip under the score (hudTeamPips.ts), where it shows; the objective under the score sits under it
@@ -1460,6 +1464,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-aim-warning-left', `${Math.floor(chipLeft)}px`);
     }
     let touchPlan = null;
+    // (no place clears both notices and the detection's would cross a panel: the alert stands in its place while it shows)
+    let detectionCovers = false;
     if (touch) {
       const boxes = (selector: string): TouchBox[] => {
         const out: TouchBox[] = [];
@@ -1501,12 +1507,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
         oneRow: width > height ? height <= 340 : width <= 340 });
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
+      // (a three-line alert over the sight sent DETECTED under it onto the damage panel at 844x390, the layout receipt)
+      if (!touchPlan.cleared) {
+        const w = touchPlan.noticeCompact ? TOUCH_COMPACT_NOTICE.w : noticeSize.w;
+        const box = { x0: width / 2 - w / 2, y0: noticeTop, x1: width / 2 + w / 2, y1: noticeTop + TOUCH_COMPACT_NOTICE.h };
+        detectionCovers = obstacles.some((o) => o.x0 < box.x1 && o.x1 > box.x0 && o.y0 < box.y1 && o.y1 > box.y0);
+      }
     }
     const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
       touchPlan.oneRow ? 'one-row' : '', touchPlan.dialOverSight ? 'dial-over-sight' : '', touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     // (one row: the alert stands in the detection's place while it shows, the detection under it)
     const sixthNode = touch ? root.querySelector<HTMLElement>('.cot-sixth') : null;
-    const underAlert = !!touchPlan?.oneRow && !!root.querySelector('.cot-alert.show');
+    const underAlert = (!!touchPlan?.oneRow || detectionCovers) && !!root.querySelector('.cot-alert.show');
     if (sixthNode && sixthNode.hasAttribute('data-under-alert') !== underAlert) sixthNode.toggleAttribute('data-under-alert', underAlert);
     if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;

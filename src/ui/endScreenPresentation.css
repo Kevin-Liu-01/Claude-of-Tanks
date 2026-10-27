@@ -208,7 +208,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debri
 body[data-cot-width] .cot-es.cot-es--record .es-tr .nm .rode{display:inline-flex;flex:none;align-self:center;margin-left:5px;color:var(--accent-hi)}
 /* (a Latin callsign keeps the Latin size in Chinese, whose lift is for Chinese labels: endScreen.ts marks it .lat) */
 :lang(zh-CN) .cot-es .es-tr .nm.lat{--battle-fs-12:12px}
-:lang(zh-CN) .cot-es .es-tr .vt.lat{font-size:calc(1em * 11 / 13)}
+:lang(zh-CN) .cot-es .es-tr :is(.vt,.counts).lat{font-size:calc(1em * 11 / 13)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
 /* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
    Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
@@ -220,7 +220,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-ban.w.bravo{color:var(--team-ene
 .cot-es--record .fg{display:inline-flex;flex:0 0 auto}
 .cot-es--record .fg.alpha{color:var(--team-own)}
 .cot-es--record .fg.bravo{color:var(--team-enemy)}
-.cot-es--record .es-ban .fg svg{width:.72em;height:.72em}
+/* (its ink on the chips' edge: the glyph's base begins 2.75 of its 24 units in, which set the title 12 px in at 1920 and
+   9 at 1440 against the flush plain report, gauntlet r15) */
+.cot-es--record .es-ban .fg svg{width:.72em;height:.72em;margin-left:calc(-.72em * 2.75 / 24)}
 .cot-es--record :is(.es-beat .lb,.es-score-side .sl) .fg svg{width:16px;height:16px}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .s-alpha .d{background:var(--team-own)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .s-bravo .d{background:var(--team-enemy)}
@@ -307,6 +309,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .si{grid-area:si;width:40px;h
 body[data-cot-width] .cot-es.cot-es--record .es-tr .identity{grid-area:id;display:flex;align-items:baseline;gap:var(--s2);min-width:0}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .nm{flex:0 1 auto;font:600 var(--battle-fs-13)/1.2 var(--font-ui)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .veh{flex:0 4 auto;min-width:0;margin:0;font:500 var(--battle-fs-12)/1.2 var(--font-ui);color:var(--ink-3)}
+/* (the wide tables' line is the 12 px step, lifted to 13 in Chinese: a Latin vehicle name at en's 12, 11/13 of it set it a
+   size smaller than in English, gauntlet r15) */
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-tr .vt.lat{font-size:calc(1em * 12 / 13)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .dt{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr :is(.kc,.dc){display:block;text-align:right;font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--ink-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-tr .kc{grid-area:kc}
@@ -347,6 +352,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{grid-column:2;align-self:center;min-height:var(--es-medal-h,64px);align-content:center;box-sizing:border-box}
   /* (its left edge on the tiles' column line: its own margin set it 16 px in, gauntlet r4 at 1024x600 and 900x700) */
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-best{margin-left:0}
+  /* (two equal columns a tile gap apart start the second on the fourth tile's line, the six tiles' own 6 px gap and 20 px
+     inset: the record column's 1.15fr split at 1024 and a gapless one at 900 set it 31 and 3 px off, gauntlet r15) */
+  body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal,
+  body[data-cot-width] .cot-es.cot-es--record .personal{grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:6px}
 }
 @media(max-height:450px) and (orientation:landscape){
   /* (the parts on the head's line: the title, the tabs and every part inside the plate start one s3 in, gauntlet r5) */

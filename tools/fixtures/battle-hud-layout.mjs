@@ -74,7 +74,8 @@ const player = tanks[0];
 // ?state=markers: the in-world markers over the tanks in view (the hull bars over allies and enemies, the target plate
 // over the enemy under the gun), a camera at the player's roof looking down the field where the other states have none
 const homes = tanks.map((tank) => tank.state.pos.clone());
-const MARKER_SEATS = [[8, 0, 150], [9, -38, 200], [10, 44, 240], [2, -26, 80], [3, 30, 104]];
+// (the other enemies wide of the plate over the one under the gun: the bars decluttered, a bar crossing it waits hidden)
+const MARKER_SEATS = [[8, 0, 150], [9, -95, 200], [10, 110, 240], [2, -26, 80], [3, 30, 104]];
 const markerCamera = new PerspectiveCamera(60, 1, 0.5, 4000);
 const flightCamera = new PerspectiveCamera(55, 1, 0.5, 6000);
 flightCamera.userData.thermalFlight = true;
@@ -246,7 +247,10 @@ function state(name) {
   // ?state=spectator-pick: the bar's picker of allies open over it (spectatorSwitcher.ts mountSpectateAllies)
   if(name==='spectator'||name==='spectator-pick'){
     const allies=tanks.filter(t=>t.team==='player'&&!t.isPlayer).map(t=>t.id);
-    hud.stageSpectateBar({id:allies[1],specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:allies.length,index:2,allies});
+    // (the bar names the ally the picker lists, its own callsign and vehicle: a staged Leopard beside the list's T-90AM
+    // read as one player in two tanks, gauntlet r15)
+    const seat=tanks.find((tank)=>tank.id===allies[1]);
+    hud.stageSpectateBar({id:seat.id,specId:seat.spec.id,name:seat.displayName,vehicle:seat.spec.name,count:allies.length,index:2,allies});
     if(name==='spectator-pick')requestAnimationFrame(()=>document.querySelector('.cot-spec .subject')?.click());
   }
   // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying

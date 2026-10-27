@@ -691,7 +691,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-sixth[data-under-alert]{visibility:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-touch-notices~='one-row'],[data-touch-notices~='uncleared']) .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
 /* (where the dial comes down over the resting sight, the idle reticle and its readouts stand down under it until the

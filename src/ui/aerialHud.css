@@ -214,7 +214,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 /* (the climb key is the kit's square control, Watch's climb rail's: a striped hexagon matched nothing else, gauntlet r3) */
 /* (and the rail's 56 px square, its glyph alone and its name spoken: a labelled 64 px tile beside the rail's bare ones read
    as two kits, gauntlet r5) */
-html[data-flight=drone] .cot-touch .flight-climb{width:56px;height:56px;border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-2);color:var(--ink-1)}
+html[data-flight=drone] .cot-touch .flight-climb{bottom:calc(var(--hud-joy-mid,58px) - 28px);width:56px;height:56px;border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-2);color:var(--ink-1)}
 html[data-flight=drone] .cot-touch .flight-climb>span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-accent);color:var(--accent-hi)}
 @media(pointer:coarse){
@@ -231,7 +231,8 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-flight-hud[data-kind=drone] .flight-view-track{gap:3px}
  .cot-flight-hud[data-kind=drone] .flight-hint,.cot-flight-hud[data-kind=drone] .flight-key{display:none}
 }
-@media(orientation:portrait){.cot-flight-hud[data-kind=drone] .flight-console{width:min(400px,calc(100% - 32px));bottom:max(175px,calc(env(safe-area-inset-bottom) + 150px))}}
+/* (on the portrait gutter of 12 px, as the map, the lanes and the toolbar over it: 16 px stood it off them, gauntlet r15) */
+@media(orientation:portrait){.cot-flight-hud[data-kind=drone] .flight-console{width:min(400px,calc(100% - 24px));bottom:max(175px,calc(env(safe-area-inset-bottom) + 150px))}}
 @media(forced-colors:active){
  .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return){outline:1px solid ButtonText}
  .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:3px solid Highlight}
@@ -299,6 +300,10 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
 .cot-flight-hud[data-kind=gunship] .flight-supply small{font:inherit;font-weight:700}
 .cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:absolute;top:5px;right:14px;font-size:var(--battle-fs-11)}
+/* (the vision switch's cap in the rack's own corner, as AMMO's, HEALTH's and the weapons': centred on its word, one cap
+   in the kit stood apart, gauntlet r15) */
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{position:relative}
+.cot-flight-hud[data-kind=gunship] .flight-view-switch .flight-key{position:absolute;top:5px;right:14px;font-size:var(--battle-fs-11)}
 .cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
 .cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:var(--battle-fs-11);color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:oklch(from var(--surface-hover) .38 c h / .933)}

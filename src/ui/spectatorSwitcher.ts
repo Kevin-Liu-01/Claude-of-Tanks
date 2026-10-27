@@ -84,6 +84,12 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   const host = document.createElement('div');
   pop.append(host);
   bar.append(pop);
+  // (the battle under the open list veiled whole, as a modal's scrim: half-covered, the lanes' "You" stuck out of its edge
+  // and the map was cut through, gauntlet r15; a press on it closes the list, as any press outside does)
+  const scrim = document.createElement('div');
+  scrim.className = 'cot-spec-scrim';
+  scrim.hidden = true;
+  bar.parentElement?.insertBefore(scrim, bar);
   let allies: readonly SpectateAlly[] = [];
   let current: string | null = null;
   let picker: ReturnType<typeof PickerModule.createPicker> | null = null;
@@ -119,6 +125,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   function close(): void {
     if (pop.hidden) return;
     pop.hidden = true;
+    scrim.hidden = true;
     bar.classList.remove('picking');
     subject?.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
@@ -126,6 +133,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   async function open(): Promise<void> {
     if (!allies.length) return;
     pop.hidden = false;
+    scrim.hidden = false;
     bar.classList.add('picking');
     subject?.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside, true);
@@ -188,7 +196,9 @@ export const spectatorSwitcherStyles = `
 /* the picker of allies over the bar, its left edge on the plate's: the kit picker's list, no favourites in a battle */
 /* (over every instrument while it is open, on the strong plate made opaque: under the map and the score its rows hid at
    320x568 and 568x256, and the feed read through the 96 % plate, gauntlet r14) */
-.cot-spec.picking{z-index:calc(var(--hud-layer-score) + 1)}
+.cot-spec.picking{z-index:calc(var(--hud-layer-score) + 2)}
+.cot-spec-scrim{position:absolute;inset:0;z-index:calc(var(--hud-layer-score) + 1);background:var(--battle-veil);pointer-events:auto}
+.cot-spec-scrim[hidden]{display:none}
 .cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
  flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);
  background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--surface-scene);box-shadow:var(--ring-1);
@@ -197,7 +207,7 @@ export const spectatorSwitcherStyles = `
 .cot-spec-pick .cot-c-picker__name{font-family:var(--font-display);font-weight:700}
 .cot-spec-pick[hidden]{display:none}
 .cot-spec-pick>.cot-c-picker{min-height:0;flex:1 1 auto;display:flex;flex-direction:column}
-.cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto}
+.cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto;padding-block:0;-webkit-mask-image:none;mask-image:none}
 .cot-spec-pick .cot-c-picker__fav{display:none}
 .cot-spec .portrait{display:grid;place-items:center;width:66px;height:52px;border:0;background:none;}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;}
@@ -248,7 +258,7 @@ export const spectatorSwitcherStyles = `
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
 @media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) auto 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
- .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
+ .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px var(--s2)}
  /* (the cycle group fills its column from the plate's edge: centred in it, it stood on nothing, gauntlet r3) */
  .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:auto;justify-self:stretch}
  .cot-spec .gar>span:last-child{display:block}

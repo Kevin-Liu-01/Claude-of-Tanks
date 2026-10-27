@@ -384,9 +384,10 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:14px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:15px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
-body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
+/* (15 px at the least: at 14 the 11 px names' descenders met the row's rule, gauntlet r15 at 568x256) */
+body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(15px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
 body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{height:26px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
