@@ -44,7 +44,8 @@
   --ink-1:var(--paper-50);--ink-2:var(--paper-300);--ink-3:var(--paper-500);--ink-4:var(--paper-700);--ink-on-accent:#140d03;
   --line-1:rgba(246,243,236,.07);--line-2:rgba(246,243,236,.13);--line-3:rgba(246,243,236,.24);--line-control:rgba(246,243,236,.38);
   --accent:var(--tungsten-500);--accent-hi:var(--tungsten-400);--accent-lo:var(--tungsten-600);--accent-wash:rgba(240,160,48,.12);
-  --focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--tungsten-400);
+  --focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--paper-50);
+  --focus-ink:var(--paper-50);
   --mode-standard:var(--modehue-standard);--mode-drone:var(--modehue-drone);--mode-zone-control:var(--modehue-zone-control);
   --mode-capture-the-flag:var(--modehue-capture-the-flag);--mode-frontline-assault:var(--modehue-frontline-assault);
   --mode-turbo-ball:var(--modehue-turbo-ball);--mode-mars:var(--modehue-mars);--mode-endless-horde:var(--modehue-endless-horde);
@@ -92,7 +93,7 @@
   --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.66),rgba(5,6,8,.46) 62%,rgba(5,6,8,0));
   --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-font:var(--font-ui);
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
-  --focus-bracket-color:var(--accent-hi);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
+  --focus-bracket-color:var(--focus-ink);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
   --focus-bracket-dur:var(--dur-fast);
   --media-toggle-z:4;
   --warn-hatch:8px;--team-squad-ring:0px;

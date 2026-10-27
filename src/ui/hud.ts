@@ -1723,7 +1723,7 @@ body.cot-touch-layout .cot-hud-gear{display:none;}
 .cot-ear-rows{min-height:0;overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;pointer-events:auto;}
 .cot-ear-rows::-webkit-scrollbar{display:none}
-.cot-ear-rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.cot-ear-rows:focus-visible{outline:1px solid var(--focus-ink);outline-offset:-1px}
 .cot-ear.dense .hd{padding:3px var(--s2);}
 .cot-ear.dense .cot-er{padding:1px var(--s2) 2px 6px;font-size:var(--battle-fs-11);}
 .cot-ear.dense.r .cot-er{padding:1px 6px 2px var(--s2);}
@@ -1958,7 +1958,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-special .sk{font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-3);border:1px solid var(--line-3);
   padding:1px var(--s1);line-height:13px;}
 .cot-special.active .sk{color:var(--accent-hi);border-color:var(--accent);}
-.cot-special:focus-visible,.cot-shell:focus-visible,.cot-con:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
+.cot-special:focus-visible,.cot-shell:focus-visible,.cot-con:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
 .cot-shells{position:absolute;z-index:var(--hud-layer-controls);bottom:16px;left:50%;transform:translateX(-50%);display:flex;
   gap:6px;pointer-events:auto;align-items:flex-end;}
@@ -2155,7 +2155,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-mm-size{flex:none;display:inline-flex;align-items:center;gap:var(--s1);height:22px;padding:0 2px 0 var(--s1);border:0;
   border-radius:var(--control-radius);background:none;color:var(--ink-2);font:inherit;cursor:pointer;pointer-events:auto;}
 .cot-mm-size:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-.cot-mm-size:focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px;}
+.cot-mm-size:focus-visible{outline:2px solid var(--focus-ink);outline-offset:1px;}
 .cot-mm-size[aria-pressed='true']{color:var(--accent-hi);}
 body.cot-touch-layout .cot-minimap{pointer-events:auto;cursor:pointer;}
 /* Detection is one compact instrument, revealed after the authoritative

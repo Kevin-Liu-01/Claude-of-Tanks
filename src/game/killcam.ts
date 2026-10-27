@@ -1223,7 +1223,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
   color:var(--ink-2);text-transform:uppercase;cursor:pointer;pointer-events:auto;}
 .cot-kc-skip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-.cot-kc-skip:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
+.cot-kc-skip:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
 /* (the kit's key cap, the HUD's: components .cot-c-kbd at the battle's 11 px) */
 .cot-kc-skip .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);

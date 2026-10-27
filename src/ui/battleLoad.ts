@@ -207,7 +207,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(16px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
-.cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.cot-bl .rows:focus-visible{outline:1px solid var(--focus-ink);outline-offset:-1px}
 /* (a list that scrolls shows whole rows: its height a whole number of its least rows' pitch, so the row at its foot is
    never cut across; and its cue, the end report's chevron over a fade, while more lies below: gauntlet r8 at 568x256) */
 .cot-bl .team{--bl-row-min:min(16px,var(--bl-row-height));position:relative;}
