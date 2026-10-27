@@ -173,14 +173,16 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   function render(): void {
     const vehicle = options.vehicle();
-    const current = items();
-    host.innerHTML = consumableSlotsView(current).map((view) =>
+    const views = consumableSlotsView(items());
+    host.innerHTML = views.map((view) =>
       // the equipment slot's primitive (one control, one selected state: .open), styled with the band (showroom.css)
       `<button type="button" class="eqslot csslot" data-slot="${view.slot}" data-item="${view.itemId}" ` +
-      `aria-label="${escapeAttr(`${t('settings.consumableSlot', { n: String(view.slot + 1) })}: ${tip(view.itemId)}`)}" ` +
+      `aria-label="${escapeAttr(`${t('garage.consumableSlot', { n: String(view.slot + 1) })}: ${tip(view.itemId)}`)}" ` +
       `data-tip="${escapeAttr(tip(view.itemId))}">${uiIconSVG(view.iconId, 22)}` +
       `<span class="sl">${escapeAttr(t(view.shortKey))}</span></button>`).join('');
-    if (vehicle) options.emit(CONSUMABLE_LOADOUT_EVENT, { specId: vehicle.id, items: [...current] });
+    // the settings rows (canvas-ui) read each slot's view: its action, item, name keys and glyph; at boot with the shown
+    // tank and on every change of tank or item
+    if (vehicle) options.emit(CONSUMABLE_LOADOUT_EVENT, { specId: vehicle.id, items: views });
   }
 
   const onHostClick = (event: MouseEvent): void => {

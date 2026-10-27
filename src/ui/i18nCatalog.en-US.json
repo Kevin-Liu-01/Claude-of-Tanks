@@ -1486,7 +1486,7 @@
   "consumable.lock.smoke": "Needs smoke dischargers",
   "consumable.lock.finiteAmmo": "Rounds are unlimited in this mode",
   "consumable.lock.mode": "Not allowed in this mode",
-  "settings.consumableSlot": "Consumable slot {n}",
+  "garage.consumableSlot": "Consumable slot {n}",
   "hud.alert.consumableNotNeeded": "{name}: not needed right now",
   "hud.alert.apsInterceptedOwn": "APS intercepted an incoming round",
   "hud.alert.apsInterceptedShot": "Your round was intercepted by APS",

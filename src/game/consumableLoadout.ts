@@ -21,7 +21,8 @@ export { CONSUMABLE_SLOTS, DEFAULT_CONSUMABLE_LOADOUT, type ConsumableId } from 
 /** The input actions the slots answer to (game/input.ts; keys 4/5/6, gamepad X/Y/B). */
 export const CONSUMABLE_SLOT_ACTIONS = Object.freeze(['consumable1', 'consumable2', 'consumable3'] as const);
 export type ConsumableSlotAction = typeof CONSUMABLE_SLOT_ACTIONS[number];
-/** The bus event the Garage sends when the shown tank or its loadout changes: `{ specId, items }` (the settings rows). */
+/** The bus event the Garage sends at boot and whenever the shown tank or its loadout changes: `{ specId, items }`, each
+ *  slot's view (consumableSlotsView); the settings rows read it. */
 export const CONSUMABLE_LOADOUT_EVENT = 'ui:consumableLoadout';
 /** The bus event a battle sends as it starts: the player's items within the mode's gate (the HUD tray). */
 export const BATTLE_CONSUMABLES_EVENT = 'ui:battleConsumables';

@@ -59,6 +59,6 @@ for (const locale of ['en-US', 'zh-CN']) {
     assert.ok([...catalog[`consumable.${stem}.short`]].length <= 10, `${locale}: ${item.id} short name fits the tile`);
     assert.ok(!catalog[`consumable.${stem}.effect`].includes('—'), `${locale}: ${item.id} effect has no em dash`);
   }
-  assert.ok(catalog['settings.consumableSlot'].includes('{n}'), `${locale}: the settings row label`);
+  assert.ok(catalog['garage.consumableSlot'].includes('{n}'), `${locale}: the Garage slot's label`);
 }
 console.log(`consumableLoadout.selftest: saves, gates, fits, ${view.length} slot views, picker groups and both catalogs passed`);
