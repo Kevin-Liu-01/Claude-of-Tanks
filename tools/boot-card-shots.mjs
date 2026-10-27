@@ -45,7 +45,9 @@ const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', 
 const rows = [];
 try {
   for (const size of SIZES) {
-    const page = await browser.newPage();
+    // a fresh profile per shot: a '/cn/' visit is remembered, and every later '/' then opened in Chinese
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
     await page.evaluateOnNewDocument(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true }));
     await page.setViewport({ width: size.width, height: size.height, deviceScaleFactor: size.dpr, isMobile: !!size.mobile, hasTouch: !!size.mobile });
     if (liveOrigin) {
@@ -67,9 +69,10 @@ try {
     await new Promise((r) => setTimeout(r, 1500));
     await page.screenshot({ path: join(out, `${size.name}-b.png`) });
     if (box.mark) await page.screenshot({ path: join(out, `${size.name}-mark.png`), clip: { x: Math.max(0, box.mark.x - 8), y: Math.max(0, box.mark.y - 8), width: box.mark.w + 16, height: box.mark.h + 16 } });
-    rows.push({ size: size.name, ...box });
+    const langOk = box.lang?.startsWith(size.path === '/cn/' ? 'zh' : 'en') === true;
+    rows.push({ size: size.name, ...box, langOk });
     console.log(`${size.name}: mark ${JSON.stringify(box.mark)} tank ${JSON.stringify(box.tank)} words ${JSON.stringify(box.words)}, ${box.animations} animations, lang ${box.lang}, overflowX ${box.overflowX}`);
-    await page.close();
+    await context.close();
   }
 } finally {
   await browser.close();
@@ -77,4 +80,6 @@ try {
   if (lock) await lock.release();
 }
 writeFileSync(join(out, 'boxes.json'), JSON.stringify(rows, null, 2));
-process.exit(0);
+const wrongLang = rows.filter((row) => !row.langOk).map((row) => row.size);
+if (wrongLang.length) console.log(`boot-card-shots: ${wrongLang.length} pages opened in the wrong language: ${wrongLang.join(', ')}`);
+process.exit(wrongLang.length ? 5 : 0);
