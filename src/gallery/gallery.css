@@ -537,7 +537,15 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
      the short stage's height */
   .views button{height:36px;min-width:36px}
   .layers button{height:40px;min-width:40px}
+  /* the list's chips, the dossier's tabs, segments and buttons and its action bar at a finger's size (the g18 critic at
+     390 x 844: 30 to 36 px) */
+  .browse :is(.cot-c-chip,.flags button,.toggles button){min-height:44px}
+  .dz-tabs .cot-c-tabs__tab{min-height:44px}
+  .dossier :is(.cot-c-seg__opt,.cot-c-btn){min-height:44px}
+  .acts :is(.cot-c-btn,a,button){min-height:44px;min-width:44px}
 }
+/* a tall touch screen's stage has the height for the rail and the dock at the full touch size */
+@media ((pointer: coarse) or (hover: none)) and (height >= 520px){.views button,.layers button{height:44px;min-width:44px}}
 /* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
 #dossier-anatomy figure img{cursor:zoom-in}
 #dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;align-content:center;row-gap:var(--s4);margin:0;padding:var(--s5);
@@ -557,6 +565,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   /* the stage and its turntable fit under the site bar */
   .stage{max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
-/* a short stacked stage sets its legend at the top beside the camera rail, off the tank framed low in it */
-@media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto;max-width:300px}}
+/* a short stacked stage sets its legend at the top beside the camera rail, off the tank framed low in it and off the layer
+   dock at the stage's top left (the g18 critic at 844 x 390: the band's left edge put it over the dock's buttons) */
+@media (height < 520px) and (width < 1100px){#viewport .legend:not(:empty){top:8px;bottom:auto;left:auto;right:calc(16px + 36px + var(--s2));
+  max-width:300px}}
 }

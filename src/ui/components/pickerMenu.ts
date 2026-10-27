@@ -113,8 +113,11 @@ export function placeMenu(
   const width = side ? Math.min(side.width, view.width)
     : Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
   const left = Math.max(edge, Math.min(side ? side.left : anchor.left, view.width - edge - width));
-  const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
-  const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
+  // a filling menu covers its room to the room's edge: a step short of it, the dossier's name showed its top above the menu
+  // (the g18 critic at 1280)
+  const roomEdge = bounds.fill ? 0 : MENU_EDGE;
+  const below = bounds.bottom - anchor.bottom - MENU_GAP - roomEdge;
+  const aboveRoom = anchor.top - bounds.top - MENU_GAP - roomEdge;
   const want = bounds.fill ? Number.POSITIVE_INFINITY : Math.min(height, cap);
   const above = below < Math.min(height, cap) && aboveRoom > below;
   const maxHeight = Math.max(0, bounds.fill ? (above ? aboveRoom : below) : Math.min(cap, above ? aboveRoom : below));
@@ -199,6 +202,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     const anchorEl = openFrom?.isConnected ? openFrom : trigger;
     const rect = anchorEl.getBoundingClientRect();
     pop.style.maxHeight = '';
+    pop.querySelector<HTMLElement>('.cot-c-picker__grid')?.style.removeProperty('max-height');
     pop.classList.remove('is-sheet');
     pop.classList.toggle('is-squat', squat);
     const natural = pop.scrollHeight;
@@ -234,6 +238,9 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     if (!Number.isFinite(foot)) return false;
     const cut = Math.floor(bottom - foot);
     if (cut < 2) return true;
+    // a filling menu keeps its room and its grid ends on the whole row, over the menu's own ground (shortened, an upward
+    // menu's top came off its room's edge)
+    if (pop.style.height) { grid.style.maxHeight = `${grid.clientHeight - cut}px`; return true; }
     const height = pop.getBoundingClientRect().height - cut;
     if (pop.style.height) pop.style.height = `${height}px`;
     else pop.style.maxHeight = `${height}px`;

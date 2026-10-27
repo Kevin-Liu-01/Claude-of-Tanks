@@ -724,7 +724,18 @@ function renderFacets(): void {
   const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
   // (laid over the list beside the stage, it stays shut: its count says how many are on)
   if (disclosure && more && !moreFacetsShown && !matchMedia(MORE_FACETS_OVER).matches) disclosure.open = true;
+  if (disclosure && !disclosure.dataset.fits) { disclosure.dataset.fits = '1'; disclosure.addEventListener('toggle', fitMoreFacets); }
   moreFacetsShown = true;
+}
+/** The plate over the list stands within the window under its summary and scrolls past that (the g18 critic at 1024 x 600:
+ *  its last row cut by the screen's foot, Sniper, Scout and Support out of reach). */
+function fitMoreFacets(this: HTMLDetailsElement): void {
+  const plate = this.querySelector<HTMLElement>(':scope>.toggles--glyphs');
+  if (!plate) return;
+  plate.style.removeProperty('max-height');
+  if (!this.open || !matchMedia(MORE_FACETS_OVER).matches) return;
+  const room = innerHeight - this.getBoundingClientRect().bottom - 12;
+  if (plate.getBoundingClientRect().height > room) plate.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
 }
 let moreFacetsShown = false;
 /** Where the open More filters lay a plate over the list (gallery.css); there they close as a menu does. */

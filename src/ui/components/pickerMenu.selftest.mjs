@@ -57,7 +57,7 @@ assert.deepEqual([spot.left, spot.width], [1038, 402], 'the room\'s edges, flush
 // Garage readout's rows cut under the rival menu)
 spot = placeMenu(trigger(160, 600, 330), { width: 2560, height: 1440 }, 200, false, false, { top: 72, bottom: 1300, left: 140, right: 700, fill: true });
 assert.equal(spot.above, false, 'a filling menu still opens below with room there');
-assert.deepEqual([spot.top, spot.maxHeight], [640, 652], 'from under the trigger (636 + 4) to the room\'s foot less its edge (1300 - 8), past the 420 px cap');
+assert.deepEqual([spot.top, spot.maxHeight], [640, 660], 'from under the trigger (636 + 4) to the room\'s foot itself (1300), past the 420 px cap');
 
 // a phone gets a bottom sheet across the window
 spot = placeMenu(trigger(20, 300, 200), { width: 390, height: 844 }, 400, true);
