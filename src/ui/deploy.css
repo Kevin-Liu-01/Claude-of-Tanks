@@ -620,6 +620,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-batt
    sheet, so it wins over the rules above at equal weight) */
 @container deploy-plate (max-width:420px){
   .cot-garage .cot-deploy-tank .cot-card{display:none;}
+  /* a phone's dock shows the tank as its card alone: with the card gone the slot goes too, so its gap does not push Watch
+     12 px off the gutter (r52) */
+  body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{display:none;}
   .cot-garage .cot-deploy-tank .head b img{display:block;}
   .cot-garage .cot-deploy-tank .head b>span{white-space:normal;overflow-wrap:anywhere;}
   .cot-garage .cot-battle-menu.open [data-battle-launch]{padding:0 var(--s4);}
