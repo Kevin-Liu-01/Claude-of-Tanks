@@ -185,8 +185,10 @@ export const INTERACTION_SITES = Object.freeze({
   // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
   'studio-production-format': { chooses: 'setting', options: 4, screen: 'studio', owner: PRODUCTION, build: 'segmented', marks: ['segmented:group', 'bespoke:option.dataset[key]'], lane: 'premiere-gallery-studio' },
   'studio-featured-tank': { chooses: 'tank', options: FLEET, screen: 'studio', owner: PRODUCTION, build: 'picker', marks: ['picker:studio-featured-tank'], lane: 'premiere-gallery-studio' },
-  'studio-site-take': { chooses: 'take', options: 63, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:take.id'], lane: 'premiere-gallery-studio' },
-  'studio-fleet-take': { chooses: 'take', options: 130, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:id===take.id'], lane: 'premiere-gallery-studio' },
+  /** The shelf's row of templates: the sequences, then the site's filmed scenes; a press stages one. */
+  'studio-site-take': { chooses: 'take', options: 84, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:template.id'], lane: 'premiere-gallery-studio' },
+  /** The template browser (owner 2026-10-27): every sequence, scene and tank's take, with a preview beside the cards. */
+  'studio-templates': { chooses: 'take', options: 214, screen: 'studio', owner: 'src/ui/studioTemplateSheet.ts', build: 'picker', marks: ['picker:studio-templates'], lane: 'premiere-gallery-studio' },
 
   // ---- the Tank Gallery (premiere-gallery-studio)
   'gallery-tank': { chooses: 'tank', options: FLEET, screen: 'gallery', owner: GALLERY, build: 'listbox', marks: [`${GALLERY_PAGE} listbox:#vehicleList`, 'bespoke:dataset.id'], lane: 'premiere-gallery-studio' },

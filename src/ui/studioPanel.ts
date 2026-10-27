@@ -614,6 +614,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const exitBtn = chipButton(t('studio.ws.exit'), 'close');
   exitBtn.appendChild(studioKeycap('F8'));
   exitBtn.addEventListener('click', () => S.exit());
+  // the pointer or the focus on Exit is the sign the Garage is next: a direct /studio visit builds its hero then (main.ts)
+  const exitIntent = (): void => { window.dispatchEvent(new Event('cot:studio-exit-intent')); };
+  exitBtn.addEventListener('pointerenter', exitIntent, { once: true });
+  exitBtn.addEventListener('focus', exitIntent, { once: true });
   // Queue · N (09-studio header): the render queue's deliveries, run one after another
   const queueBtn = chipButton(t('studio.ws.queue'), 'clock');
   queueBtn.classList.add('que');
@@ -1891,6 +1895,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       createdDialog.addEventListener('click', (event) => {
         if (event.target === createdDialog) createdDialog.close();
       });
+      // its keys and pointer stay in it: an Esc closing it never also exits the Studio (the runtime listens on the window)
+      for (const name of ['keydown', 'pointerdown', 'pointermove', 'pointerup', 'wheel']) {
+        createdDialog.addEventListener(name, (event) => event.stopPropagation());
+      }
       document.body.appendChild(dialog);
     }
     dialog.showModal();
@@ -1902,13 +1910,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   }
 
-  // --- the shelf (09-studio .shelf): the scenes made with the Studio, each staged as filmed ---------------------------
+  // --- the shelf (09-studio .shelf): the templates, the sequences then the filmed scenes, each staged by a press; the
+  // browser (studioTemplateSheet.ts) holds every one, the tanks' own takes too (owner 2026-10-27) ---------------------
   const shelfHead = el('div', 'h');
-  const shelfTitle = el('b');
-  shelfTitle.append(el('span', 't-accent', t('studio.ws.shelfLead')), t('studio.ws.shelfRest'));
+  const shelfTitle = el('b', null, t('studio.director.ui.templates'));
+  const shelfActs = el('div', 'acts');
   const archiveBtn = chipButton(t('studio.ws.allScenes'), 'media');
   archiveBtn.addEventListener('click', openArchive);
-  shelfHead.append(shelfTitle, archiveBtn);
+  shelfActs.append(archiveBtn);
+  shelfHead.append(shelfTitle, shelfActs);
   shelf.appendChild(shelfHead);
 
   // --- the timeline (09-studio .tl): transport, then a lane per camera, tank and effect under one playhead ---------
@@ -2041,6 +2051,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       row?.prepend(button);
     },
     takes: shelf,
+    browse: shelfActs,
     toggle: headRight,
     guides: vp,
     notice: (text, tone, detail) => api.notice(text, tone, detail),
@@ -2313,8 +2324,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         S.directProduction({ presetId: preset.id, format: S.productionFormat })
           .then(() => api.refreshAll())
           .catch((error: RuntimeValue) => api.notice(errorMessage(error), 'error'));
-      }, { keywords: `stage sequence director ${preset.id}` });
+      }, { searchOnly: true, keywords: `stage sequence template director ${preset.id}` });
     }
+    add('templates', t('studio.director.ui.templates'), () => productionPanel.openTemplates(),
+      { keywords: 'templates presets sequences takes scenes browse library' });
     add('export', t('studio.ws.exportFilm'), via(exportBtn), { keywords: 'export film render video' });
     add('link', t('studio.sceneLink.copyButton'), via(linkBtn), { keywords: 'copy scene link share' });
     add('queue', t('studio.ws.queueTitle'), () => toggleQueue(true), { keywords: 'render queue deliveries stills' });
@@ -2821,6 +2834,32 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     soundWave.classList.remove('stale');
   }
 
+  // --- the playhead, every frame (261): the scrub, the lanes' playhead and the frame readout follow the clock as it
+  // moves (they stepped four times a second while a take played), and an unchanged clock writes nothing ------------
+  let playheadMs = NaN, playheadDuration = NaN, readout = '';
+  function syncPlayhead(): void {
+    const ms = S.fxTimeMs, duration = S.durationMs;
+    if (ms !== playheadMs || duration !== playheadDuration) {
+      playheadMs = ms;
+      playheadDuration = duration;
+      const at = Math.max(0, Math.min(1, ms / Math.max(1, duration)));
+      scrub.max = String(duration);
+      if (document.activeElement !== scrub) scrub.value = String(ms);
+      scrub.style.setProperty('--fill', `${at * 100}%`);
+      playhead.style.setProperty('--t', String(at));
+    }
+    // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
+    // coordinates, which read as a debug overlay)
+    const frames = Math.round(duration / 1000 * 30);
+    const frame = Math.min(frames, Math.round(ms / 1000 * 30));
+    const camera = proControls ? S.getCamera() : null;
+    const place = camera ? `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°` : '';
+    const text = `${frame}/${frames}/${place}`;
+    if (text === readout) return;
+    readout = text;
+    frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })), ...(place ? [el('span', 'co', place)] : []));
+  }
+
   // --- public panel API -------------------------------------------------------
   let refreshAcc = 0, planAcc = 0;
   const api: StudioPanelRuntime = {
@@ -2970,16 +3009,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }
       const seconds = S.durationMs / 1000;
       if (Number(duration.input.value) !== seconds) duration.set(seconds);
-      scrub.max = String(S.durationMs);
-      if (document.activeElement !== scrub) scrub.value = String(S.fxTimeMs);
-      scrub.style.setProperty('--fill', `${Math.max(0, Math.min(100, (S.fxTimeMs / Math.max(1, S.durationMs)) * 100))}%`);
-      playhead.style.setProperty('--t', String(Math.max(0, Math.min(1, S.fxTimeMs / Math.max(1, S.durationMs)))));
+      syncPlayhead();
       if (planShown && !S.playing) planView.refreshTime();
       const rec = S.recordingStatus();
       setLabel(recordBtn, rec.active ? t('studio.stopRecording') : t('studio.recordVideo'));
       press(recordBtn, rec.active);
       recStatus.classList.toggle('on', rec.active);
-      recStatus.textContent = rec.active
+      const recText = rec.active
         ? t('studio.recordingStatus', {
           elapsed: (rec.elapsedMs / 1000).toFixed(1),
           total: (rec.durationMs / 1000).toFixed(1),
@@ -2988,13 +3024,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         : (rec.supported
           ? t('studio.recordReady')
           : t('studio.recordUnsupported'));
-      // the frame readout (09-studio .fc): the frame at 30 fps; Pro adds the camera's place and aim (Quick reads no raw
-      // coordinates, which read as a debug overlay)
-      const frames = Math.round(S.durationMs / 1000 * 30);
-      const frame = Math.min(frames, Math.round(S.fxTimeMs / 1000 * 30));
-      const camera = S.getCamera();
-      frameCounter.replaceChildren(el('b', null, t('studio.ws.frame', { frame, frames })),
-        ...(proControls ? [el('span', 'co', `${camera.pos.map((v) => v.toFixed(1)).join(', ')} · ${camera.yawDeg.toFixed(0)}° / ${camera.pitchDeg.toFixed(0)}°`)] : []));
+      if (recStatus.textContent !== recText) recStatus.textContent = recText;
     },
     refreshStoryboard() {
       const isRecording = S.recordingStatus().active;
@@ -3053,6 +3083,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       outlineCount('output', null);
     },
     tick(dt) {
+      syncPlayhead();
       refreshAcc += dt;
       planAcc += dt;
       // the plan follows the playhead at ~15 fps while the take plays

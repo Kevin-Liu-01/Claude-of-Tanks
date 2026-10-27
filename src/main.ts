@@ -4348,13 +4348,19 @@ entryTelemetry.send({
   timings: Object.fromEntries(Object.entries(BOOT_TIMINGS).filter(([, value]) => typeof value === 'number')),
 });
 // Direct Studio navigation skips garage-only construction on the critical
-// path. Build the workshop shell while idle; enterGarage() resumes the normal
-// quiet set-piece stream if the user later leaves Studio for the garage.
+// path. (261) The workshop shell and the hero wait for a sign the Studio is being
+// left (its Exit under the pointer or the focus, studioPanel.ts): built in the idle
+// after boot they cost the Studio 2.5-3 s of build and program links while it was
+// in use. An exit without that sign builds them behind its cover (garageReturn).
 if (STUDIO_BOOT_INTENT) {
-  requestQuietIdle(async () => {
-    await garageDressing.pump();
-    if (!pedestal.current) await pedestal.set(selectedVehicle.id, true);
-  });
+  const prepareGarageForExit = () => {
+    window.removeEventListener('cot:studio-exit-intent', prepareGarageForExit);
+    requestQuietIdle(async () => {
+      await garageDressing.pump();
+      if (!pedestal.current) await pedestal.set(selectedVehicle.id, true);
+    });
+  };
+  window.addEventListener('cot:studio-exit-intent', prepareGarageForExit);
 }
 // MOBILE r3: black-scene watchdog — the owner's iPhone passes every synthetic
 // probe yet renders the REAL scene's lit meshes black. Sample the actual

@@ -5,7 +5,7 @@
     "gallery-layer", "gallery-part", "gallery-tank", "garage-facets", "garage-featured-still",
     "garage-nation", "garage-paint-band", "garage-tank", "guide-pins", "guide-steps",
     "markup-annotation", "markup-primitive", "markup-scope", "photo-framing", "rooms-arrangement",
-    "rooms-operation", "scope-vision", "studio-commands", "studio-effect", "studio-fleet-take",
+    "rooms-operation", "scope-vision", "studio-commands", "studio-effect",
     "studio-hour", "studio-picture", "studio-sequence", "studio-site-take", "studio-state",
     "tech-tree-nation", "tech-tree-node"
   ],
