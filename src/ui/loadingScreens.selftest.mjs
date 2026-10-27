@@ -142,12 +142,22 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   assert.match(bootHtml, /data-datum="load-progress"><div class="cot-boot-fill"/, 'the main line is the load-progress datum');
   assert.match(bootSource, /stepSeg\(segs\.get\(curKey\)/, 'the current segment fills by the stage\'s real steps');
   assert.doesNotMatch(bootSource, /setInterval\([^)]*[Ss]eg|setTimeout\([^)]*[Ss]eg/, 'no timer moves a segment');
+  // boot r23: every lit segment is tungsten (a done class that changed colour waited on the busy main thread), both bars
+  // run on one track, and a stop collapses the row so Retry keeps its place under the notice
+  assert.match(bootHtml, /\.cot-boot-segs i\.done b \{ transform: scaleX\(1\); \}/, 'a done segment keeps the tungsten fill');
+  assert.match(bootHtml, /\.cot-boot-bar \{[^}]*background: var\(--boot-track\);/, 'the main line runs on the one track');
+  assert.match(bootHtml, /\.cot-boot-segs i \{[^}]*background: var\(--boot-track\);/, 'the stage row runs on the one track');
+  assert.match(bootHtml, /#cot-boot:has\(\.cot-boot-retry\.on\) \.cot-boot-segs \{ display: none; \}/, 'a stop collapses the stage row');
+  // the load column is the lockup's width on a desktop screen (tools/sync-brand-marks.mjs generates the factor)
+  assert.match(bootHtml, /\.cot-boot-inner\{--boot-lockup-k:\d\.\d{5}\}/, 'the lockup-width factor is generated');
+  assert.match(bootHtml, /\.cot-boot-inner \{[^}]*width: min\(calc\(var\(--boot-mark\) \* var\(--boot-lockup-k\)\), calc\(100vw - 32px\)\);/,
+    'the load column takes the lockup\'s width');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');
 assert.match(bootHtml,
-  /@media \(width < 768px\) \{\s*\.cot-boot-mark \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
+  /@media \(width < 768px\) \{\s*\.cot-boot-inner \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
 assert.ok(FEATURED_IMAGES.every((img) => img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)),
