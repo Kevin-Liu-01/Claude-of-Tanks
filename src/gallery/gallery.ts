@@ -892,6 +892,12 @@ function revealRowNow(row: HTMLElement, settle = true): void {
   const box = row.getBoundingClientRect();
   if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
   else if (box.bottom > list.bottom) vehicleList.scrollTop += box.bottom - list.bottom + 8;
+  // the list's top stands on a whole row (the g16 critic read a row the scroller's top cut as clipped by the toolbar)
+  const top = list.top;
+  const first = [...vehicleList.querySelectorAll<HTMLElement>('.it, .gh')].find((element) => element.getBoundingClientRect().bottom > top + 1);
+  const cut = first?.getBoundingClientRect();
+  const shown = row.getBoundingClientRect();
+  if (cut && cut.top < top - 0.5 && shown.top - (cut.bottom - top) >= top) vehicleList.scrollTop += cut.bottom - top;
   if (box.left < list.left) vehicleList.scrollLeft += box.left - list.left - 12;
   else if (box.right > list.right) vehicleList.scrollLeft += box.right - list.right + 12;
 }
