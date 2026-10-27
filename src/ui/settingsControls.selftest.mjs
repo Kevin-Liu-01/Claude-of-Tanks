@@ -59,7 +59,7 @@ assert.ok(['shell1', 'shell2', 'shell3'].every((id) => !('badge' in SETTINGS_ACT
 // The armour-overlay glyph follows the one icon rule (brand-ui BUI-F4): drawn once in the sprite, coloured by its
 // row's tone through currentColor, never with baked thickness colours.
 const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
-assert.match(armorSvg, /href="#i-armorFlashlight"/, 'the armour overlay draws its own glyph');
+assert.match(armorSvg, /href="#i-armorFlashlight-s"/, 'the armour overlay draws its own glyph (its 16-unit master: item 259)');
 assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries no baked colour');
 
 // (watch-mode-243 follow-up; 247) the pause veil is one plate: its title, Resume, and Settings with the menu's current

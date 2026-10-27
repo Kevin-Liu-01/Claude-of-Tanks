@@ -1103,7 +1103,7 @@
   "settings.language.zh": "中文",
   "settings.language.note": "Switches every UI string between English and Simplified Chinese. Tank names, nations and map names stay in their original form.",
   "settings.controls.note.part1": "Click a chip, then press any key, mouse button or wheel notch to rebind; pad chips listen for a controller button. Tap Esc to cancel; <b>hold Esc</b> to bind Escape itself. Right-click a chip to clear it.",
-  "settings.controls.note.part2": "What <b>Aim / Free Look</b> does (hold-to-aim, toggle-aim or classic free look) is picked on the GAMEPLAY tab. <b>Gun Hold (Free Aim)</b> preserves the current turret and gun lay while the sight keeps moving. Controller: left stick drives, right stick aims, RB holds the gun, START opens this menu.",
+  "settings.controls.note.part2": "<b>Gun Hold (Free Aim)</b> preserves the current turret and gun lay while the sight keeps moving. Controller: left stick drives, right stick aims, RB holds the gun, START opens this menu.",
   "settings.aim.note": "Hold-to-aim: hold RMB to zoom into sniper, release to return to your previous view (aim pitch is preserved both ways). Toggle-aim: tap RMB to enter or leave sniper. Gun hold: hold RMB to preserve the current turret and gun lay while freely moving the sight. Caps Lock is always the dedicated gun-hold action; Left Alt remains its secondary default. Release to let the gun catch up. Shift toggles sniper mode.",
   "settings.aim.sniper.touch": "Swipe sensitivity and smoothing apply directly to the battlefield aim pad. Sniper sensitivity stacks with each zoom step.",
   "settings.aim.sniper.mouse": "Sniper sensitivity stacks with the per-zoom reduction, so high zoom always aims finer. Type exact values in the number fields for precise tuning.",

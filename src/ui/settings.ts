@@ -320,7 +320,7 @@ const SETTINGS_CSS = `
   box-shadow:var(--e1-flush);}
 /* the heading sits on the rows' inset: its label starts at the row glyphs and its (i) ends at the controls' edge */
 .cot-set-card .cot-set-group{margin:0 0 var(--s1);padding-inline:var(--s2);}
-.cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
+.cot-set-hud-editor,.cot-set-link{margin-left:auto;flex-shrink:0;}
 /* a row's rule spans the content column (its padding's inner edges), so rules, headings and controls share one pair of edges */
 .cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:var(--s7);
   padding:var(--s1) var(--s2);background:linear-gradient(var(--line-1),var(--line-1)) center bottom/calc(100% - var(--s2) * 2) 1px no-repeat;
@@ -909,6 +909,22 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     return chip;
   }
 
+  /** Gunnery r1 (owner): what right-click does — hold-to-aim (default), toggle-aim or the classic gun-lock free look,
+   *  persisted as settings.rmbMode (main.ts routes the RMB-bound action per frame). Item 259 (the lead, bar line 13: one
+   *  datum, one place): its one control, under the RMB action's binding on Controls; Accessibility links here. */
+  function rmbModeRow(parent: HTMLElement): void {
+    const row = el('div', 'cot-set-row', parent);
+    row.id = 'cot-set-rmb-mode';
+    settingLabel(row, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
+    const modes: ReadonlyArray<readonly [RmbMode, string]> = [
+      ['hold', t('settings.rmb.hold')], ['toggle', t('settings.rmb.toggle')], ['freelook', t('settings.rmb.freelook')],
+    ];
+    mountSeg(row, segmented({ label: t('settings.rmb.label'), className: 'cot-set-rmb', value: input.getSettings().rmbMode,
+      options: modes.map(([value, label]) => ({ value, label })) }),
+      () => input.getSettings().rmbMode, (value) => input.setSetting('rmbMode', value));
+    el('div', 'cot-set-note', parent).textContent = t('settings.aim.note');
+  }
+
   function renderControls() {
     body.textContent = '';
     rowByAction.clear();
@@ -938,6 +954,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         pad: makeChip(def, 'pad', chipsWrap),
       };
       rowByAction.set(def.id, { row, chips });
+      if (def.id === 'freeCamera') rmbModeRow(card);
     }
     const note = el('div', 'cot-set-note', body);
     note.innerHTML =
@@ -1085,23 +1102,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const isometricNote = el('div', 'cot-set-note', aim);
     isometricNote.textContent = t('settings.camera.isometricNote');
 
-    // gunnery r1 (owner): what right-click does — hold-to-aim (default),
-    // toggle-aim, or the classic gun-lock free look. Persisted as
-    // settings.rmbMode; main.ts routes the RMB-bound action per frame.
-    const RMB_MODE_DEFS: ReadonlyArray<readonly [RmbMode, string]> = [
-      ['hold', t('settings.rmb.hold')],
-      ['toggle', t('settings.rmb.toggle')],
-      ['freelook', t('settings.rmb.freelook')],
-    ];
-    if (!touchLayout) {
-      const rmbRow = el('div', 'cot-set-row', aim);
-      settingLabel(rmbRow, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
-      mountSeg(rmbRow, segmented({ label: t('settings.rmb.label'), className: 'cot-set-rmb', value: input.getSettings().rmbMode,
-        options: RMB_MODE_DEFS.map(([value, label]) => ({ value, label })) }),
-        () => input.getSettings().rmbMode, (value) => input.setSetting('rmbMode', value));
-      const rmbNote = el('div', 'cot-set-note', aim);
-      rmbNote.textContent = t('settings.aim.note');
-    }
 
     const battle = groupCard(body, t('settings.battle.title'));
     const diffRow = el('div', 'cot-set-row', battle);
@@ -1536,6 +1536,24 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
           const others = prefs().toggles.filter((a) => a !== action);
           saveAccessibility({ toggles: mode === 'toggle' ? [...others, action] : others });
         });
+    }
+    // item 259 (bar line 13: one datum, one place): the RMB action's hold or toggle is its Right click mode on Controls;
+    // this row takes the player there (a mouse's choice: touch has neither)
+    if (!(input.isTouchLayout && input.isTouchLayout())) {
+      const rmbLink = el('div', 'cot-set-row', holds);
+      settingLabel(rmbLink, t('action.freeCamera'), SETTINGS_ACTION_ICONS.freeCamera);
+      const go = el('button', 'cot-set-link cot-c-btn cot-c-btn--36 cot-c-btn--secondary', rmbLink);
+      go.type = 'button';
+      el('span', '', go).textContent = t('settings.tab.controls');
+      go.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 16));
+      go.addEventListener('click', () => {
+        activeTab = 'controls';
+        renderTab();
+        const mode = body.querySelector<HTMLElement>('#cot-set-rmb-mode');
+        mode?.scrollIntoView({ block: 'center' });
+        mode?.querySelector<HTMLElement>('.cot-c-seg__opt[aria-checked="true"]')?.focus();
+        emit('ui:click', {});
+      });
     }
   }
 

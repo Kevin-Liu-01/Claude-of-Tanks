@@ -1,10 +1,12 @@
 // inputHoldToggle.selftest.mjs — hold or toggle for every hold action, and the perf meter off by default (brand-ui SPEC
 // 12.1.6 and 14; PLAN BUI-F9). Copyright © 2026 Kevin B. Liu.
 //
-//  1. Every hold action can toggle: the input layer's (fire, handbrake, gun hold, the RMB action) latch on one press and
-//     release on the next, from a key, a mouse button or a touch control; the physical release is ignored; a menu, a
-//     blur and a player who can no longer drive release every latch; RMB's own Toggle mode is never toggled twice;
-//     a toggled burst fires until the next press, which fires nothing. The HUD's roster key toggles too.
+//  1. Every hold action can toggle: the input layer's (fire, handbrake, gun hold) latch on one press and release on the
+//     next, from a key, a mouse button or a touch control; the physical release is ignored; a menu, a blur and a player
+//     who can no longer drive release every latch; a toggled burst fires until the next press, which fires nothing. The
+//     HUD's roster key toggles too. The RMB action's hold or toggle is its Right click mode alone (item 259, one datum):
+//     the generic latch never takes it, a toggle saved for it before carries over to Toggle Aim once, and the Settings
+//     panel sets it on Controls with Accessibility's link row pointing there.
 //  2. Every hold in the shell is accounted for: each key or pointer release handler outside the input layer is a hold
 //     action with a toggle path, or a gesture that is not a hold (drag, rebind capture), named below.
 //  3. The FPS/ping meter is off for new profiles and for profiles saved before the default changed; an explicit choice
@@ -15,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { createInput } from './input.ts';
 import { createPlayerFrameInput } from './playerFrameInput.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
-import { HOLD_ACTIONS } from '../ui/accessibilitySettings.ts';
+import { ACCESSIBILITY_KEY, HOLD_ACTIONS } from '../ui/accessibilitySettings.ts';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (path) => readFileSync(`${ROOT}${path}`, 'utf8');
@@ -35,7 +37,7 @@ const toggles = (...actions) => { A11Y.toggles = new Set(actions); };
 
 try {
   /* 1. hold or toggle ------------------------------------------------------------------------------------------ */
-  assert.deepEqual([...HOLD_ACTIONS], ['fire', 'handbrake', 'freeLook', 'freeCamera', 'rosters'], 'the hold actions');
+  assert.deepEqual([...HOLD_ACTIONS], ['fire', 'handbrake', 'freeLook', 'rosters'], 'the hold actions');
   {
     const input = fresh();
     toggles();
@@ -101,22 +103,34 @@ try {
     assert.equal(input.getState().fire, false, 'Hold again: a click is one buffered shot, then nothing');
   }
   {
-    // RMB: its own Toggle mode already toggles, so hold-or-toggle never doubles it; in Hold mode it latches the aim.
+    // RMB (item 259, one datum): its hold or toggle is the Right click mode alone; a stale latch flag never takes it.
     const input = fresh();
     toggles('freeCamera');
     input.setSetting('rmbMode', 'hold');
     window.dispatchEvent(mouse('mousedown', 2));
+    assert.equal(input.isDown('freeCamera'), true, 'Hold to Aim: the aim holds while the button is down');
     window.dispatchEvent(mouse('mouseup', 2));
-    assert.equal(input.isDown('freeCamera'), true, 'Hold mode + toggle: one press keeps the aim');
-    window.dispatchEvent(mouse('mousedown', 2));
-    assert.equal(input.isDown('freeCamera'), false, 'the next press lets it go');
-    window.dispatchEvent(mouse('mouseup', 2));
+    assert.equal(input.isDown('freeCamera'), false, 'and lets go with it: the generic latch never takes the RMB action');
     input.setSetting('rmbMode', 'toggle');
     window.dispatchEvent(mouse('mousedown', 2));
-    assert.equal(input.isDown('freeCamera'), true, 'Toggle mode reads the button level (its own toggle runs on the edge)');
+    assert.equal(input.isDown('freeCamera'), true, 'Toggle Aim reads the button level (its own toggle runs on the edge)');
     window.dispatchEvent(mouse('mouseup', 2));
-    assert.equal(input.isDown('freeCamera'), false, 'so the generic latch never doubles it');
+    assert.equal(input.isDown('freeCamera'), false);
     toggles();
+  }
+  {
+    // a toggle saved for the RMB action before item 259 carries over to Toggle Aim once and leaves the record (input.ts
+    // reads the record by its key's value, LEGACY_A11Y_KEY, so the accessibility module stays out of the boot graph)
+    assert.equal(ACCESSIBILITY_KEY, 'cot.accessibility.v1');
+    assert.match(read('src/game/input.ts'), /const LEGACY_A11Y_KEY = 'cot\.accessibility\.v1';/);
+    const stored = new Map([['cot.accessibility.v1', JSON.stringify({ toggles: ['fire', 'freeCamera'] })]]);
+    const input = fresh(stored);
+    assert.equal(input.getSettings().rmbMode, 'toggle', 'a saved RMB toggle becomes Toggle Aim');
+    assert.deepEqual(JSON.parse(stored.get('cot.accessibility.v1')).toggles, ['fire'], 'and leaves the accessibility record');
+    input.setSetting('rmbMode', 'hold');
+    assert.equal(fresh(stored).getSettings().rmbMode, 'hold', 'so a later Hold to Aim stands');
+    const free = new Map([['cot.accessibility.v1', JSON.stringify({ toggles: ['freeCamera'] })], ['cot.settings.v1', JSON.stringify({ rmbMode: 'freelook' })]]);
+    assert.equal(fresh(free).getSettings().rmbMode, 'freelook', 'a chosen mode other than Hold to Aim is kept');
   }
   // The HUD's roster key (Tab) and its blur release.
   const hud = read('src/ui/hud.ts');
@@ -124,7 +138,12 @@ try {
     'Tab toggles the rosters when the player chose toggle (key repeat never flips them)');
   assert.match(hud, /event\.code === 'Tab' && !A11Y\.toggles\.has\('rosters'\)\) collapseRosters\(\)/, 'and Tab up leaves them open then');
   // The settings panel offers the choice for every one of them.
-  assert.match(read('src/ui/settings.ts'), /for \(const action of HOLD_ACTIONS\) \{\s*a11ySeg\(holds,/, 'the Accessibility settings offer Hold / Toggle for each');
+  const settingsSource = read('src/ui/settings.ts');
+  assert.match(settingsSource, /for \(const action of HOLD_ACTIONS\) \{\s*a11ySeg\(holds,/, 'the Accessibility settings offer Hold / Toggle for each');
+  assert.match(settingsSource, /if \(def\.id === 'freeCamera'\) rmbModeRow\(card\);/, 'the Right click mode sits under the RMB binding on Controls');
+  assert.equal((settingsSource.match(/className: 'cot-set-rmb'/g) || []).length, 1, 'and nowhere else (one datum, one place)');
+  assert.match(settingsSource, /settingLabel\(rmbLink, t\('action\.freeCamera'\), SETTINGS_ACTION_ICONS\.freeCamera\);[\s\S]{0,200}cot-set-link/,
+    'Accessibility links to it');
 
   /* 2. every hold is accounted for ------------------------------------------------------------------------------- */
   // A release handler (keyup, pointerup / mouseup / touchend) is how a hold is built. Each one in the game shell is a
