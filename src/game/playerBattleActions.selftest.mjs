@@ -109,11 +109,29 @@ const rules = {
   },
   rulesetUnlimitedFor,
   hasConsumableRule(slot) { return slot >= 0 && slot < 3; },
-  cooldownRemaining(timeS, readyAtS) { return Math.max(0, readyAtS - timeS); },
-  resetConsumableCooldowns(readyAt) { readyAt.fill(0); },
-  startConsumableCooldown(readyAt, slot, timeS) {
+  // the page battle's item use (game/soloConsumables.ts, covered by sim/consumableRules.selftest): the default trio here
+  useSoloConsumable(entity, eventBus, slot, timeS) {
+    const item = ['repair', 'first_aid', 'extinguisher'][slot];
+    const readyAt = (entity.consumables ??= { readyAt: [0, 0, 0] }).readyAt;
+    if (readyAt[slot] > timeS) return { ok: false, item, reason: 'COOLDOWN', remainingS: readyAt[slot] - timeS };
+    let used = false;
+    if (slot === 0) {
+      for (const module of this.repairAllModules(entity.combat)) {
+        eventBus.emit('module:state', { id: entity.id, module, state: 'ok' });
+        used = true;
+      }
+    } else if (slot === 1) {
+      for (const name of Object.keys(entity.combat.crew)) {
+        if (entity.combat.crew[name] === false) { entity.combat.crew[name] = true; used = true; }
+      }
+    } else if (entity.combat.fire.burning) {
+      Object.assign(entity.combat.fire, { burning: false, ticksLeft: 0, tickTimer: 0 });
+      eventBus.emit('tank:fire', { id: entity.id, burning: false });
+      used = true;
+    }
+    if (!used) return { ok: false, item, reason: 'NOTHING' };
     readyAt[slot] = timeS + 35;
-    return { durationS: 35, readyAtS: readyAt[slot] };
+    return { ok: true, item, cooldownS: 35, readyAt: readyAt[slot], charges: null };
   },
   requestTankSelfRight(state) {
     if (!state.overturned || state._body.autoRighting) return false;

@@ -107,8 +107,9 @@ function touchFigure(): string {
     rungs: [{ src: '/media/docs-r1/controls-touch-640.webp', width: 296 }, { src, width: 887 }] }, false)}</figure>`;
 }
 
-/** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). */
-const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook', 'freeCamera'];
+/** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). Aim / free look's is its Right
+ *  click mode on Controls (item 259: one datum, one place). */
+const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook'];
 
 /** The key that switches the minimal battle HUD (src/ui/battleUiVisibility.ts; controls.selftest holds it to that file). */
 export const MINIMAL_HUD_KEY = 'F10';

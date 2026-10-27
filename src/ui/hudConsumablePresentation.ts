@@ -10,7 +10,8 @@ interface ConsumableSlotElements {
 interface ConsumableSlotOptions {
   elements: ConsumableSlotElements;
   locale(): string;
-  readyMark: string;
+  /** The ready tile's mark: ∞ for an unlimited item, or (2026-10-26, the catalog) the uses a charged item has left. */
+  readyMark: string | (() => string);
   readyLabel(): string;
   coolingLabel(seconds: number): string;
 }
@@ -55,9 +56,10 @@ export function createRetainedConsumableSlot({
         seconds = undefined;
       }
       if (!nextCooling) {
-        if (countText !== readyMark) {
-          countText = readyMark;
-          elements.count.textContent = readyMark;
+        const mark = typeof readyMark === 'function' ? readyMark() : readyMark;
+        if (countText !== mark) {
+          countText = mark;
+          elements.count.textContent = mark;
         }
         if (seconds !== null) {
           seconds = null;

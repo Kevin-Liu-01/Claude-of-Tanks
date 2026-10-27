@@ -3,6 +3,9 @@ import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts'
 import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
 import { killcamCameraFloor } from './killcamGround.ts';
+import {
+  captureEntityFrame, copyEntityFrame, copyModules, tracePoints, type EntityFrame,
+} from './killcamCapture.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
@@ -82,6 +85,7 @@ import { createElement as el, markDatum } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { notice } from '../ui/components/notice.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
@@ -298,7 +302,9 @@ interface ShellFiredPayload {
 }
 
 interface TrajectoryRecord {
-  pts: number[];
+  /** x y z a fixed step from the muzzle: a pooled buffer of TRAJ_MAX_PTS numbers, `count` of them written */
+  pts: Float64Array;
+  count: number;
   muzzle: Vec3Tuple;
   dir: Vec3Tuple;
   velocityMps: number;
@@ -311,14 +317,6 @@ interface TrajectoryRecord {
   weaponSound: string | null;
   muzzleIndex: number;
   recoilScale: number;
-}
-
-interface EntityFrame {
-  pose: ReplayPose;
-  crewAlive: Record<string, boolean> | null;
-  moduleStates: ModuleStates | null;
-  eraSpent: string[];
-  destroyed: boolean;
 }
 
 export interface ReplaySnapshot {
@@ -1223,7 +1221,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
   color:var(--ink-2);text-transform:uppercase;cursor:pointer;pointer-events:auto;}
 .cot-kc-skip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
-.cot-kc-skip:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
+.cot-kc-skip:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
 /* (the kit's key cap, the HUD's: components .cot-c-kbd at the battle's 11 px) */
 .cot-kc-skip .cot-c-kbd{min-width:22px;height:20px;padding:0 var(--s1);box-sizing:border-box;border:0;border-radius:var(--control-radius);
@@ -1241,6 +1239,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase;}
 .cot-kc-annot .hd .m svg{color:var(--kc-amber);}
 .cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
+/* (the death view leaves the shell and the attacker line to the killer card, and the title its own line: B15) */
+.cot-kc-annot :is(.shellrow,.w)[hidden],.cot-kc-title .s:empty{display:none;}
 .cot-kc-annot .shellrow>svg{color:var(--accent-hi);}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
   font-size:12.5px;letter-spacing:var(--track-label-s);color:var(--accent-hi);}
@@ -1260,13 +1260,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   vertical-align:1.5px;line-height:1.25;font-weight:700;}
 .cot-kc-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-4);letter-spacing:0em;
   text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 11px 0;padding:var(--s1) var(--s2);text-align:center;display:none;
-  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
-  letter-spacing:.18em;color:var(--danger);border:1px solid oklch(from var(--danger) l c h / .55);
-  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),var(--hud-plate));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
-.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:var(--battle-fs-13);color:var(--accent-hi);letter-spacing:.09em;}
-body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:var(--battle-fs-11);letter-spacing:.04em}
-.cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
+.cot-kc-banner{margin:7px 11px 0;display:none;}
+.cot-kc-banner.on{display:block;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
@@ -1437,8 +1432,20 @@ export function createKillCam(deps: KillcamDeps) {
 
   // ---- capture state ----
   let busRef: EventBus | null = null;      // bound in bindBus — replay lifecycle announcements
-  const traj = new Map<number, TrajectoryRecord>(); // shellId -> { pts:number[], muzzle:[3] }
-  const poseHistory = new Map<string, EntityFrame>(); // entity id -> prior fixed-step presentation state
+  const traj = new Map<number, TrajectoryRecord>(); // shellId -> { pts, count, muzzle:[3] }
+  // a leaving record's trace buffer, kept for the next shot (at most TRAJ_KEEP buffers): the step's appends allocate nothing
+  const trajPool: Float64Array[] = [];
+  const dropTraj = (shellId: number): void => {
+    const rec = traj.get(shellId);
+    if (!rec) return;
+    traj.delete(shellId);
+    trajPool.push(rec.pts);
+  };
+  const clearTraj = (): void => {
+    for (const rec of traj.values()) trajPool.push(rec.pts);
+    traj.clear();
+  };
+  const poseHistory = new Map<string, EntityFrame>(); // entity id -> its frame at the last fixed step (one a hull, refreshed in place)
   // physics lane (2026-10-10): each dead hull's turret flight as the step moved it, replayed by the impact beat exactly
   const turretTracks = new Map<string, TurretTrack>();
   const _turretPose = new Float64Array(7);
@@ -1461,26 +1468,6 @@ export function createKillCam(deps: KillcamDeps) {
   let pb: PlaybackBundle = null!; // playback bundle
   let dom: KillcamDom | null = null;
   let lastBeginWallMs = 0; // onset instrumentation (dead-air audit, r6)
-
-  function copyModules(ent: KillcamEntity | null): ModuleStates | null {
-    if (!ent?.combat?.modules) return null;
-    const states: ModuleStates = {};
-    for (const [key, value] of Object.entries(ent.combat.modules)) {
-      if (value) states[key] = value.state;
-    }
-    return states;
-  }
-
-  function captureEntityFrame(ent: KillcamEntity | null): EntityFrame | null {
-    if (!ent || !ent.state) return null;
-    return {
-      pose: captureReplayPose(ent.state),
-      crewAlive: ent.combat && ent.combat.crew ? { ...ent.combat.crew } : null,
-      moduleStates: copyModules(ent),
-      eraSpent: ent.combat && ent.combat.eraSpent ? [...ent.combat.eraSpent] : [],
-      destroyed: !!(ent.combat && ent.combat.destroyed),
-    };
-  }
 
   function clonePose(pose: ReplayPose | null | undefined): ReplayPose | null {
     return pose ? { ...pose, pos: cloneVec3Tuple(pose.pos) } : null;
@@ -1524,8 +1511,10 @@ export function createKillCam(deps: KillcamDeps) {
     const hdK = el('div', 'k', shellRow);
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
+    // (the ammunition rack's detonation is the kit's error notice, inline in the analysis with the rack's glyph: a danger
+    // banner of its own, its own plate, tracking and gradient, outside the one notice family, UI-LOCKDOWN B14)
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = `${uiIconSVG('ammoRack', 20)}<span>${t('killcam.ammoRackDetonation')}</span>`;
+    banner.innerHTML = notice({ severity: 'error', icon: 'ammoRack', text: t('killcam.ammoRackDetonation'), live: false });
     // killer card (death view only — populated per replay in beginXray)
     const killer = markDatum(el('div', 'cot-kc-killer', root), 'killer');
     killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
@@ -1670,16 +1659,6 @@ export function createKillCam(deps: KillcamDeps) {
     };
   }
 
-  function projectileTrajectoryPoints(
-    record: TrajectoryRecord | undefined,
-    impactPosition: Vec3Tuple,
-  ): number[] | null {
-    if (!record || record.pts.length < 3) return null;
-    const points = record.pts.slice();
-    points.push(impactPosition[0], impactPosition[1], impactPosition[2]);
-    return points;
-  }
-
   function projectileAttackerSnapshot(
     record: TrajectoryRecord | undefined,
     ev: KillcamHitEvent,
@@ -1704,12 +1683,13 @@ export function createKillCam(deps: KillcamDeps) {
   function makeSnapshot(ev: KillcamHitEvent, target: KillcamEntity): ReplaySnapshot {
     const rec = ev.shellId === null ? undefined : traj.get(ev.shellId);
     const now = captureEntityFrame(target);
-    const before = poseHistory.get(target.id) || now;
+    const held = poseHistory.get(target.id);
+    const before = held ? copyEntityFrame(held) : now;
     return {
       replayKind: 'projectile',
       ev: projectileHitEvent(ev),
       timeS: ev.timeS || 0,
-      trajPts: projectileTrajectoryPoints(rec, ev.pos),
+      trajPts: tracePoints(rec, ev.pos),
       // post-hit crew roster ({name:alive} from the sim's combat state, taken
       // AFTER damage resolved): the x-ray colors casualties from EARLIER hits
       // red too, not just the ones this shell caused.
@@ -1737,8 +1717,10 @@ export function createKillCam(deps: KillcamDeps) {
   ): ReplaySnapshot {
     const targetNow = captureEntityFrame(target);
     const attackerNow = captureEntityFrame(attacker);
-    const targetBefore = poseHistory.get(target.id) || targetNow;
-    const attackerBefore = poseHistory.get(attacker.id) || attackerNow;
+    const targetHeld = poseHistory.get(target.id);
+    const attackerHeld = poseHistory.get(attacker.id);
+    const targetBefore = targetHeld ? copyEntityFrame(targetHeld) : targetNow;
+    const attackerBefore = attackerHeld ? copyEntityFrame(attackerHeld) : attackerNow;
     return {
       replayKind: 'collision',
       ev: collisionHitEvent(ev, target, attacker, targetModulesHit),
@@ -1774,14 +1756,20 @@ export function createKillCam(deps: KillcamDeps) {
         const p = payload as ShellFiredPayload;
         if (traj.size >= TRAJ_KEEP) {
           const oldest = traj.keys().next().value;
-          if (oldest !== undefined) traj.delete(oldest);
+          if (oldest !== undefined) dropTraj(oldest);
         }
         const attackerEnt = getEntity ? getEntity(p.shooterId) : null;
         const attackerPose = attackerEnt && attackerEnt.state
           ? alignReplayPoseToShot(captureReplayPose(attackerEnt.state), p.dir, attackerEnt.spec)
           : null;
+        dropTraj(p.shellId);
+        const pts = trajPool.pop() ?? new Float64Array(TRAJ_MAX_PTS);
+        pts[0] = p.muzzlePos[0];
+        pts[1] = p.muzzlePos[1];
+        pts[2] = p.muzzlePos[2];
         traj.set(p.shellId, {
-          pts: [p.muzzlePos[0], p.muzzlePos[1], p.muzzlePos[2]],
+          pts,
+          count: 3,
           muzzle: cloneVec3Tuple(p.muzzlePos),
           dir: cloneVec3Tuple(p.dir),
           velocityMps: Number(p.velocityMps) || 0,
@@ -1799,10 +1787,10 @@ export function createKillCam(deps: KillcamDeps) {
       });
       bus.on('shell:expired', (payload) => {
         const p = payload as { shellId: number };
-        traj.delete(p.shellId);
+        dropTraj(p.shellId);
       });
       bus.on('ui:battleStart', () => {
-        traj.clear();
+        clearTraj();
         poseHistory.clear();
         turretTracks.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
@@ -1865,7 +1853,7 @@ export function createKillCam(deps: KillcamDeps) {
         // skip it — a previous battle's pendingDeath then seeded a replay
         // whose targetEnt belonged to a retired roster (stale visual, wrong
         // map pose).
-        traj.clear();
+        clearTraj();
         poseHistory.clear();
         turretTracks.clear();
         pendingDeath = pendingVictory = lastHitOnPlayer = null;
@@ -1890,14 +1878,21 @@ export function createKillCam(deps: KillcamDeps) {
       for (const shell of game.shells) {
         if (shell.dead) continue;
         const rec = traj.get(shell.id);
-        if (rec && rec.pts.length < TRAJ_MAX_PTS) {
-          rec.pts.push(shell.pos.x, shell.pos.y, shell.pos.z);
+        if (rec && rec.count < TRAJ_MAX_PTS) {
+          rec.pts[rec.count] = shell.pos.x;
+          rec.pts[rec.count + 1] = shell.pos.y;
+          rec.pts[rec.count + 2] = shell.pos.z;
+          rec.count += 3;
         }
       }
       for (const ent of game.tanks || []) {
         if (!ent || !ent.state || ent.modeActive === false) continue;
-        const frame = captureEntityFrame(ent);
-        if (frame) poseHistory.set(ent.id, frame);
+        const held = poseHistory.get(ent.id);
+        if (held) captureEntityFrame(ent, held);
+        else {
+          const frame = captureEntityFrame(ent);
+          if (frame) poseHistory.set(ent.id, frame);
+        }
         // a dead hull's turret: its pose this step, until it settles (one track a hull, from its launch)
         const turrets = game._wreckTurrets;
         if (!turrets || !ent.combat?.destroyed) continue;
@@ -2119,6 +2114,8 @@ export function createKillCam(deps: KillcamDeps) {
         barrelDot: pb.barrelDot,
         muzzle: pb.replayMuzzle ? pb.replayMuzzle.toArray() : null,
         pathStart: pb.pts && pb.pts.length ? pb.pts[0].toArray() : null,
+        // the replay's path: a captured trace has the muzzle, a point a fixed step and the impact; an uncaptured one two
+        pathPoints: pb.pts ? pb.pts.length : 0,
         projectile: pb.core ? pb.core.position.toArray() : null,
         impact: pb.pts && pb.pts.length ? pb.pts[pb.pts.length - 1].toArray() : null,
         flightElapsedS: pb.t,
@@ -2547,10 +2544,11 @@ export function createKillCam(deps: KillcamDeps) {
   function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
     const meta = d.hdMeta.querySelector('span');
     if (meta) meta.textContent = t('killcam.ballisticAnalysis');
-    appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
+    // (the death view's distance and damage are the killer card's, beside the analysis: UI-LOCKDOWN B15)
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
     appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
     appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
-    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
     appendPenetrationStat(d, event);
     appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
   }
@@ -2573,7 +2571,9 @@ export function createKillCam(deps: KillcamDeps) {
     const attackerName = attackerLabel(event);
     d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
     d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
-    d.titleS.textContent = finalBlow
+    // (in the death view the killer card names who and with what, the registry's place: the title's line, the analysis's
+    // shell and its attacker line leave it, UI-LOCKDOWN B15)
+    d.titleS.textContent = pb.isDeathView ? '' : finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
         attacker: attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
       })
@@ -2593,6 +2593,8 @@ export function createKillCam(deps: KillcamDeps) {
     d.hdW.append(attackerName || t('killcam.enemy'));
     d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
     d.hdW.append(event.targetName || '');
+    (d.hdK.parentElement ?? d.hdK).hidden = pb.isDeathView;
+    d.hdW.hidden = pb.isDeathView;
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -5226,7 +5228,7 @@ export function createKillCam(deps: KillcamDeps) {
     );
     appendKillerStat(
       d,
-      'Distance',
+      t('killcam.stat.distance'),
       `${Math.round(event.flightDistM || 0)} m`,
       '',
       'scope',
@@ -5460,7 +5462,8 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function addXrayDamageLabel(d: KillcamDom, event: KillcamHitEvent): void {
-    if ((event.damage || 0) <= 0) return;
+    // (the death view's damage is the killer card's row: UI-LOCKDOWN B15)
+    if ((event.damage || 0) <= 0 || pb.isDeathView) return;
     _p.set(...event.pos);
     addXrayLabel(d, _p, '', `−${Math.round(event.damage || 0)} HP`, '', true);
   }

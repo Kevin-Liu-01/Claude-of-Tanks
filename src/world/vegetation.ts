@@ -545,6 +545,8 @@ export interface VegetationRuntime {
     fovDegrees?: number | null,
     aimDistanceMeters?: number | null,
   ): void;
+  /** Item 259: Settings' See-through foliage (FOLIAGE_LENS_REACH): the camera's foliage fades, off by default. */
+  setSeeThrough(on: boolean): void;
   treeObstacles: TreeObstacle[];
   concealers: ConcealmentDisc[];
   /** Fell a trunk toward (dx, dz); `settled` lays it at its final pose at once (state that fell before this viewer looked). */
@@ -581,6 +583,9 @@ export interface VegetationRuntime {
   warmImpostorsAsync(waitLinks: () => Promise<void>): Promise<boolean>;
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
+  /** Item 259 (foliageSeeThrough.selftest): See-through foliage's state — the choice, the occlusion sweeps run so far, the
+   *  scope corridor's target, the crowns' and shrubs' near reach, the cluster-free near band's share. */
+  _seeThrough(): { on: boolean; sweeps: number; sniperTarget: number; crownReach: number; shrubReach: number; nearSee: number };
   _buildDetail?: VegetationBuildDetail;
   /** Ground lane (2026-10-03): the canopy's cover over the square (0..1, a 256² grid of 4 m texels, row-major z then
    * x, texel centres at -512 + (i + 0.5) × 4) — the terrain draws a forest floor under it and no field, the ground
@@ -2839,6 +2844,16 @@ const BARK_NEAR_DISSOLVE = Object.freeze([0.5, 1.0] as const);
  */
 const FOLIAGE_NEAR_REACH = Object.freeze({ crown: 1, shrub: 0.5 });
 /**
+ * Item 259 (the owner, 2026-10-26: "disable the thing that lets u see through greenery. it can be an optional thing u can
+ * enable in settings"): Settings › Graphics › See-through foliage, off by default (foliageSeeThrough.ts). Off, no foliage
+ * clears for the camera: the chase camera's occlusion fade (the trees in the camera→pivot capsule, the bushes beside the
+ * player) never runs, the scope corridor stays shut (here and in tallGrass.ts, through map.ts), and the near dissolve
+ * keeps only its lens band, the reach that holds every crown's and shrub's band inside 1 m of the camera as the bark's
+ * (BARK_NEAR_DISSOLVE): a card clears only as the camera touches it. A camera inside a shrub still clears that shrub
+ * (uCotInsideFade), and the LOD cross-fade is not a camera fade.
+ */
+const FOLIAGE_LENS_REACH = BARK_NEAR_DISSOLVE[1] / CANOPY_NEAR_DISSOLVE[1];
+/**
  * Trees round 4 (the gauntlet's wave 68 on the dolly's bush: "an upper cluster hangs into the sky with no visible stem"):
  * how far the near dissolve's per-cluster gate leans on the cluster's height in its shrub — a shrub carries no wood, so
  * its clusters leave from the top down and none is left over a thinned skirt; a crown's leave by the hash alone.
@@ -4267,6 +4282,15 @@ function* vegetationBuildSteps(
   // update() so mode switches don't pop.
   const uSniperFade = { value: 0 };
   let sniperFadeTarget = 0;
+  // item 259: See-through foliage (FOLIAGE_LENS_REACH), off by default. Off, the scope corridor's target stays 0, the
+  // occlusion sweep never runs, and the near dissolve keeps its lens band: the crowns' and shrubs' reach (the facing
+  // clusters' builds) and uCotNearSee (0 the lens band, 1 the whole band) for a canopy drawn without them (the phones'
+  // cards, the far lobes)
+  let seeThrough = false;
+  let occlusionSweeps = 0; // (the receipt's count: the frames the occlusion sweep ran)
+  const uCrownNearReach = { value: FOLIAGE_LENS_REACH };
+  const uShrubNearReach = { value: FOLIAGE_LENS_REACH };
+  const uCotNearSee = { value: 0 };
   // HIGH-ZOOM SCOPE HARD-CUT (controls_gunnery r4): at x4/x8 the screen-door
   // dither of the scope-corridor fade magnifies into a full-frame halftone
   // stipple (the r3 critic's "blanketed in dither"). Below ~15° FOV the
@@ -5086,6 +5110,10 @@ function* vegetationBuildSteps(
     shader.uniforms.uScopeHard = uScopeHard;
     shader.uniforms.uScopeDist = uScopeDist; // r5: corridor length = aim dist
     shader.uniforms.uFocusPos = uFocusPos;   // r2: occlusion-fade sight capsule
+    // item 259: a band reaching past the bark's keeps only its lens band while See-through foliage is off (uCotNearSee)
+    const nearLens: readonly [number, number] | null = nearD1 > BARK_NEAR_DISSOLVE[1]
+      ? [Math.min(nearD0, BARK_NEAR_DISSOLVE[0]), BARK_NEAR_DISSOLVE[1]] : null;
+    if (nearLens) shader.uniforms.uCotNearSee = uCotNearSee;
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nuniform float uWindTime;\nuniform vec2 uWindDir;\nuniform vec3 uWind;\nuniform vec3 uCamPos;\nuniform vec3 uCamFwd;\nuniform float uSniperFade;\nuniform float uScopeDist;\nuniform vec3 uFocusPos;\nattribute float aFlex;\nattribute float aFadeI;\nattribute float aLodF;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
@@ -5173,7 +5201,7 @@ function* vegetationBuildSteps(
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;\n#ifdef COT_LEAF_BILLBOARD\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
+      `#include <common>${nearLens ? '\nuniform float uCotNearSee;' : ''}\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;\n#ifdef COT_LEAF_BILLBOARD\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -5191,7 +5219,9 @@ function* vegetationBuildSteps(
         // round 3b: a grown cluster's near fade is its shrink (vCotGeoNear, CANOPY_NEAR_DISSOLVE), no dither
         fadeKeep *= mix(smoothstep(${nearD0.toFixed(2)} * vCotNearScale, ${nearD1.toFixed(2)} * vCotNearScale, length(vViewPosition)), 1.0, vCotGeoNear);
         #else
-        fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
+        fadeKeep *= ${nearLens
+    ? `smoothstep(mix(${nearLens[0].toFixed(2)}, ${nearD0.toFixed(2)}, uCotNearSee), mix(${nearLens[1].toFixed(2)}, ${nearD1.toFixed(2)}, uCotNearSee), length(vViewPosition))`
+    : `smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition))`};
         #endif
         // aa-r1 LOD cross-fade share (repartition transition, see update()):
         // rides the same IGN dissolve below — stable per-pixel pattern, no
@@ -5303,14 +5333,14 @@ function* vegetationBuildSteps(
    */
   const shrubFoliageHook = (shader: MaterialShader): void => {
     foliageWindHook(shader);
-    shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.shrub };
+    shader.uniforms.uCotNearReach = uShrubNearReach; // item 259: FOLIAGE_NEAR_REACH.shrub with See-through foliage, else the lens
     shader.uniforms.uCotGateLift = { value: FOLIAGE_GATE_LIFT.shrub };
     shader.uniforms.uCotInsideFade = { value: 1 };
     shader.uniforms.uCotShrubThin = uShrubThin;
   };
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
-    shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.crown };
+    shader.uniforms.uCotNearReach = uCrownNearReach; // item 259: FOLIAGE_NEAR_REACH.crown with See-through foliage, else the lens
     shader.uniforms.uCotShrubThin = { value: 0 };
     shader.uniforms.uCotGateLift = { value: FOLIAGE_GATE_LIFT.crown };
     shader.uniforms.uCotInsideFade = { value: 0 };
@@ -8614,8 +8644,10 @@ function* vegetationBuildSteps(
     // gameplay_feel r2: feed the camera->tank sight capsule to the vertex
     // shader — the fade only dithers fragments near the sight line, so
     // canopy half-off the corridor stays solid against open sky.
-    prepareOcclusionSegment(camPos, focusPos);
+    // item 259: no capsule while See-through foliage is off, so (every fade settled at 0 by setSeeThrough) no sweep runs
+    prepareOcclusionSegment(camPos, seeThrough ? focusPos : null);
     if (!occlusionSegment.active && !occlAny) return;
+    occlusionSweeps++;
     // dt = 0 (shot mode / deterministic captures) snaps: harness stays exact.
     const k = dt > 0 ? 1 - Math.exp(-dt / OCCL_TAU_S) : 1;
     // r3 (gameplay_feel): scrub sitting on/behind the hull opens up — bushes
@@ -9653,15 +9685,19 @@ function* vegetationBuildSteps(
     const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
     return a + (b - a) * fv;
   };
+  /** The rig's scope share (0 arcade, 1 scoped): it promotes the corridor's trees and sets the scope's hard cut whatever
+   *  See-through foliage says; the corridor's fade follows it only with See-through foliage on (item 259). */
+  let sniperShare = 0;
   function setSniperFade(
     f: number,
     immediate = false,
     fovDeg: number | null = null,
     aimDistM: number | null = null,
   ): void {
-    sniperFadeTarget = clamp(f, 0, 1);
+    sniperShare = clamp(f, 0, 1);
+    sniperFadeTarget = seeThrough ? sniperShare : 0;
     if (immediate) uSniperFade.value = sniperFadeTarget;
-    if (sniperFadeTarget < 0.5) uScopeHard.value = 0;
+    if (sniperShare < 0.5) uScopeHard.value = 0;
     else if (fovDeg != null) uScopeHard.value = fovDeg <= 15 ? 1 : 0;
     // r5: scope-ray corridor reaches the aimed point (see uScopeDist). The
     // 70 m floor keeps the r4 near-field behavior when aiming at a close
@@ -9669,9 +9705,28 @@ function* vegetationBuildSteps(
     if (aimDistM != null) uScopeDist.value = clamp(Math.max(70, aimDistM - 4), 70, 640);
     // hud_ui r6: zoom-scaled impostor→mesh promotion radius (aim corridor)
     const wasR = scopeZoomR;
-    scopeZoomR = (sniperFadeTarget >= 0.5 && fovDeg != null && fovDeg <= 15)
+    scopeZoomR = (sniperShare >= 0.5 && fovDeg != null && fovDeg <= 15)
       ? Math.min(720, treeNearIn * clamp(30 / fovDeg, 1, 3.4)) : 0;
     if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
+  }
+  /**
+   * Item 259: See-through foliage (FOLIAGE_LENS_REACH; off by default). Off, every tree and bush still fading snaps solid
+   * here, so the sweep has nothing left to visit and update() never runs it; the scope corridor eases shut and the near
+   * dissolve keeps its lens band.
+   */
+  function setSeeThrough(on: boolean): void {
+    if (on === seeThrough) return;
+    seeThrough = on;
+    uCrownNearReach.value = on ? FOLIAGE_NEAR_REACH.crown : FOLIAGE_LENS_REACH;
+    uShrubNearReach.value = on ? FOLIAGE_NEAR_REACH.shrub : FOLIAGE_LENS_REACH;
+    uCotNearSee.value = on ? 1 : 0;
+    sniperFadeTarget = on ? sniperShare : 0;
+    if (on || !occlAny) return;
+    prepareOcclusionSegment(uCamPos.value, null);
+    updateTreeOcclusionFades(1);
+    updateBushOcclusionFades(1);
+    occlAny = false;
+    if (_dirtyFadeAttrs.size > 0) flushTreeFadeUploads();
   }
 
   function dispose(): void {
@@ -9871,8 +9926,10 @@ function* vegetationBuildSteps(
     group.userData.outlandTrees = (group.userData.outlandTrees ?? 0) + batch.trees.length;
     return batch.trees.length;
   }
-  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, groundCoverSealSteps, treeObstacles, concealers,
+  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setSeeThrough, groundCoverSealSteps, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    _seeThrough: () => ({ on: seeThrough, sweeps: occlusionSweeps, sniperTarget: sniperFadeTarget, crownReach: uCrownNearReach.value,
+      shrubReach: uShrubNearReach.value, nearSee: uCotNearSee.value }),
     _woodsMask: woodsMask,
     _nearCull: nearCullState,
     _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,

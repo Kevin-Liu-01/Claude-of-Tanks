@@ -568,6 +568,10 @@ export function createGaragePedestalRuntime({
     stillCurrent: () => boolean = () => true,
     record: GarageSwitchRecord | null = null,
   ) => {
+    const timing: Record<string, number> = {};
+    const startedAt = now();
+    let slices = 0;
+    let result: ProgramPreparationOutcome | undefined;
     try {
       if (!prepareProgramSteps) {
         // Submit-only fallback: two frames give the linker a head start and
@@ -584,11 +588,7 @@ export function createGaragePedestalRuntime({
       // bounded slice per frame while the outgoing hero stays visible, and
       // reflect uniforms before the incoming hero is shown. A stale selection
       // stops waiting; the preparation owner keeps its own deadline.
-      const timing: Record<string, number> = {};
-      const startedAt = now();
       const steps = prepareProgramSteps(visual.root, timing);
-      let slices = 0;
-      let result: ProgramPreparationOutcome | undefined;
       try {
         for (;;) {
           if (!stillCurrent()) break;
@@ -609,8 +609,15 @@ export function createGaragePedestalRuntime({
           slices, waitMs: round1(now() - startedAt), timing,
         };
       }
-    } catch (_) {
-      // The first visible render remains the compatibility fallback.
+    } catch (error) {
+      // The first visible render remains the compatibility fallback; the record says the warm failed rather than
+      // reading as a warm that linked nothing (2026-10-26: the boot hero's warm threw unseen on every boot)
+      if (record) {
+        record.link = {
+          status: 'error', reason: String((error as Error)?.message ?? error).slice(0, 160), pending: null,
+          slices, waitMs: round1(now() - startedAt), timing,
+        };
+      }
     }
   };
 
@@ -795,8 +802,15 @@ export function createGaragePedestalRuntime({
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();
-      // and its programs link between frames before the post stage's first draws (boot included, as above)
-      const compileWork = warmPrograms(incoming, () => canStage() && buildToken === pollToken, record);
+      // its programs link between frames before its reveal. The boot hero's are the Garage GPU warm's (the post stage
+      // compiles and links the whole scene, the hero with it, before any scene frame: isBootCovering): its own warm here
+      // read the program warm owner before main.ts declares it and did nothing on every boot (2026-10-26)
+      const compileWork = isBootComplete()
+        ? warmPrograms(incoming, () => canStage() && buildToken === pollToken, record)
+        : Promise.resolve().then(() => {
+          record.link = { status: 'deferred', reason: 'boot: the Garage GPU warm links the boot hero', pending: null,
+            slices: 0, waitMs: 0, timing: {} };
+        });
       incoming.__pedestalCompileP = compileWork.finally(() => {
         incoming.__pedestalCompiling = false;
         incoming.__pedestalCompileP = null;

@@ -99,6 +99,8 @@ interface PlayMenuSelection {
   specId: string;
   mapId: string;
   equipment: string[];
+  /** The consumable in each slot (game/consumableLoadout.ts). */
+  consumables?: string[];
   camo: string;
 }
 
@@ -125,7 +127,7 @@ export interface PlayMenuOptions {
   maps?: PlayMenuMap[];
   vehicles?: PlayMenuVehicle[];
   getSelection(): PlayMenuSelection;
-  getVehicleLoadout?(specId: string): Pick<PlayMenuSelection, 'equipment' | 'camo'>;
+  getVehicleLoadout?(specId: string): Pick<PlayMenuSelection, 'equipment' | 'consumables' | 'camo'>;
   onSolo?(request?: { gameMode?: GameModeId; mapId?: string; campaignOperationId?: string }): RuntimeValue;
   /** Accepted native Ready gesture, never auto-join or replicated room state. */
   onReadyIntent?(): void;
@@ -666,7 +668,7 @@ export function createPlayMenu({
   getVehicleLoadout = (specId) => {
     const selection = getSelection();
     return specId === selection.specId
-      ? { equipment: selection.equipment, camo: selection.camo }
+      ? { equipment: selection.equipment, consumables: selection.consumables, camo: selection.camo }
       : { equipment: [], camo: 'factory' };
   },
   onSolo,
@@ -2111,7 +2113,7 @@ export function createPlayMenu({
     if (!specId || !isVehicleAllowed(specId)) return;
     const loadout = getVehicleLoadout(specId);
     command({ type: 'select_vehicle', specId });
-    command({ type: 'select_equipment', equipment: loadout.equipment });
+    command({ type: 'select_equipment', equipment: loadout.equipment, consumables: loadout.consumables ?? [] });
     command({ type: 'select_camo', camo: loadout.camo });
   });
   sizeSelect.addEventListener('change', () => {
@@ -2287,7 +2289,7 @@ export function createPlayMenu({
     if (me.specId !== selection.specId) {
       command({ type: 'select_vehicle', specId: selection.specId });
     }
-    command({ type: 'select_equipment', equipment: selection.equipment });
+    command({ type: 'select_equipment', equipment: selection.equipment, consumables: selection.consumables ?? [] });
     if (me.camo !== selection.camo) command({ type: 'select_camo', camo: selection.camo });
     if (role === 'host' && selection.mapId && state.mapId !== selection.mapId) {
       command({ type: 'set_map', mapId: selection.mapId });

@@ -19,7 +19,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, escapeHtml } from './dom.ts';
+import { createElement as el, escapeHtml, markDatum } from './dom.ts';
+import { NoticeQueue } from './components/notice.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -235,6 +236,8 @@ interface IncomingHitGroup {
   outcomes: Map<string, { label: string; count: number }>;
 }
 const INCOMING_FADE_MS = 4600;
+/** A hit row's whole time in the lane (it fades from INCOMING_FADE_MS). */
+const INCOMING_HOLD_MS = 5500;
 
 /** Only the latest still-visible run can merge; names/specs are not identities. */
 export function appendIncomingHit(
@@ -384,13 +387,8 @@ const SI_CSS = `
 /* (it keeps the outcome's glyph and drops the damage figure's: the arrow is the outcome, the other a unit's mark, and the
    narrow card's PENETRATION alone lost it at 900x700, gauntlet r8; a longer outcome ends in an ellipsis; from 210 px both
    fit, and the 900x700 card's 220 kept neither glyph in either script, r12) */
-@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}.cot-si-dmg svg{display:none;}}
+@container si-card (max-width:209px){.cot-si-badge{letter-spacing:.03em;}}
 .cot-si-badge{min-width:0;}.cot-si-badge>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* (the figure in the plate's ink beside the outcome's tone: an amber figure by an orange title was two oranges in one row,
-   gauntlet r7) */
-.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:0;font-weight:700;font-size:var(--battle-fs-20);
-  color:var(--ink-1);display:flex;justify-content:flex-end;align-items:center;gap:var(--s1);}
-.cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:var(--s2);}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:var(--s1);overflow:hidden;white-space:nowrap;}
@@ -505,6 +503,9 @@ const SI_CSS = `
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 .attacker{flex:0 1 auto;}
 .cot-si-toast .l1 .si{display:inline-block;width:29px;height:12px;flex:0 0 29px;}
+/* (on touch, with no roster column to line up with, the silhouette's ink on the lane's 12 px edge: its image's own
+   margin set it 4.5 px in from the "You" rows and the map, gauntlet r15) */
+body.cot-touch-layout .cot-si-toast .l1 .si{margin-left:-4px;}
 .cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
   font-size:var(--battle-fs-11);display:flex;align-items:center;gap:var(--s1);
   white-space:nowrap;}
@@ -780,9 +781,8 @@ function appendShotCardHeader(
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
-  const damage = el('span', 'cot-si-dmg', header);
-  damage.innerHTML = `${GLYPH.damage}<span>${ev.damage > 0 ? `−${formatNumber(Math.round(ev.damage))}` : '0'}</span>`;
-  if (!(ev.damage > 0)) damage.style.color = COL.dim;
+  // (the damage dealt is the floating number over the hit, never the card's figure as well: UI-LOCKDOWN B16, the
+  // registry's ruling; the card keeps the penetration, the angle, the armour and the outcome)
 }
 
 /** The round's type chip classes: a missile's chip carries its own class (class names, not copy). */
@@ -1072,7 +1072,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   const logObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(fitLog) : null;
   logObserver?.observe(logPanel);
   logPanel.tabIndex = 0;
-  const toastHost = el('div', 'cot-si-toasthost', root);
+  // (one place for the hits the player takes, however many rows are in flight: surfaceRegistry.ts hits)
+  const toastHost = markDatum(el('div', 'cot-si-toasthost', root), 'hits');
   toastHost.setAttribute('role', 'status');
   toastHost.setAttribute('aria-live', 'polite');
   const statsRoot = el('div', 'cot-si-stats');
@@ -1333,8 +1334,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!missileSplash) kv('angle', t('shotInfo.angle'), `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
     if (!missileSplash) kv('armor', t('killcam.stat.armor'), armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
-    // (a reference plate on the proving ground has no hull: no damage and no roll, no row)
-    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('damage', t('killcam.stat.damage'), `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    // (no damage row: the damage dealt is the floating number over the hit at the same moment, and a blocked hit's
+    // outcome says what its 0 would; the roll stays on card.dataset.dmgroll for traces: UI-LOCKDOWN B16)
     if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier
@@ -1439,19 +1440,53 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   // ---------- 3. incoming toasts ----------
-  let latestToast: { element: HTMLElement; group: IncomingHitGroup } | null = null;
-  const toastTimers = new Map<HTMLElement, { fade: TimerHandle; remove: TimerHandle }>();
-  function removeToast(toast: HTMLElement): void {
-    const timers = toastTimers.get(toast);
-    if (timers) { clearTimeout(timers.fade); clearTimeout(timers.remove); }
-    toastTimers.delete(toast);
-    if (latestToast?.element === toast) latestToast = null;
-    toast.remove();
+  // (the kit's notice queue, components/notice.ts, as the alert band's: as many rows as the lane holds, the newest in front
+  // and the oldest leaving for it, each row's time stopped while the game pauses; the rows keep the lane's plateless form
+  // and their seat, UI-LOCKDOWN B14)
+  let latestToast: { id: string; element: HTMLElement; group: IncomingHitGroup } | null = null;
+  const toastEls = new Map<string, HTMLElement>();
+  let toastSerial = 0;
+  let toastTimer: TimerHandle | null = null;
+  const toastQueue = new NoticeQueue(MAX_BATTLE_NOTIFICATIONS, () => performance.now(), {
+    show: (toast) => { const row = toastEls.get(toast.id); if (row && !row.isConnected) toastHost.prepend(row); },
+    update: () => {},
+    hide: (toast) => {
+      const row = toastEls.get(toast.id);
+      toastEls.delete(toast.id);
+      if (latestToast?.id === toast.id) latestToast = null;
+      row?.remove();
+    },
+  });
+  /** The rows' clock: each row fades INCOMING_FADE_MS into its time and leaves at its end. */
+  function scheduleToasts(): void {
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = null;
+    const now = performance.now();
+    let wake = Infinity;
+    for (const toast of toastQueue.shown) {
+      if (toast.remaining === null || toast.runningSince === null) continue;
+      const left = toast.remaining - (now - toast.runningSince);
+      const fadeIn = left - (INCOMING_HOLD_MS - INCOMING_FADE_MS);
+      if (fadeIn <= 0) toastEls.get(toast.id)?.classList.add('out');
+      else wake = Math.min(wake, fadeIn);
+      wake = Math.min(wake, Math.max(0, left));
+    }
+    if (wake === Infinity) return;
+    toastTimer = setTimeout(() => {
+      toastTimer = null;
+      for (const id of toastQueue.expired()) toastQueue.remove(id);
+      scheduleToasts();
+    }, Math.ceil(wake));
   }
   function clearToasts(): void {
-    for (const toast of toastTimers.keys()) removeToast(toast);
+    for (const toast of [...toastQueue.waiting, ...toastQueue.shown]) toastQueue.remove(toast.id);
     latestToast = null;
+    scheduleToasts();
   }
+  bus.on('ui:pause', (payload) => {
+    toastQueue.pause(!!(payload as { on?: boolean } | undefined)?.on);
+    scheduleToasts();
+  });
   function showToast(ev: ShotHitEvent, cls: HitOutcomePresentation): void {
     const previous = latestToast?.element.parentNode === toastHost ? latestToast : null;
     const group = appendIncomingHit(previous?.group ?? null, ev.attackerId,
@@ -1460,12 +1495,14 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const source = killSourceIdentity(ev.attackerSource);
     const name = attackerLabel(ev) || attacker?.name || t('hud.enemy');
     let toast: HTMLElement;
+    let id: string;
     if (previous?.group === group) {
       toast = previous.element;
-      const timers = toastTimers.get(toast)!;
-      clearTimeout(timers.fade); clearTimeout(timers.remove);
+      id = previous.id;
     } else {
-      toast = el('div', 'cot-si-toast', toastHost);
+      id = `hit-${++toastSerial}`;
+      toast = el('div', 'cot-si-toast');
+      toastEls.set(id, toast);
       toast.innerHTML = '<div class="l1"><span class="si" aria-hidden="true"></span>' +
         '<span class="attacker"></span><b></b></div>';
       const silhouette = toast.querySelector<HTMLElement>('.si')!;
@@ -1477,11 +1514,14 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         // (from the row's start, the column's 12 px line: centred in its box, a short hull began 7 px in, gauntlet r7)
         silhouette.style.maskPosition = silhouette.style.webkitMaskPosition = 'left center';
       } else silhouette.remove();
-      toastHost.prepend(toast);
     }
-    latestToast = { element: toast, group };
+    // (its time restarts with each hit it gathers; a newer row takes the place of the oldest, which leaves, never waits)
+    toastQueue.push(id, { text: '', durationMs: INCOMING_HOLD_MS, dismissible: false, priority: ++toastSerial });
+    for (const waiting of [...toastQueue.waiting]) toastQueue.remove(waiting.id);
+    latestToast = { id, element: toast, group };
     const damaging = group.damage > 0;
-    const summary = damaging ? `−${formatNumber(Math.round(group.damage))}` :
+    // (the damage taken is the hit-direction label's figure: the toast names the attacker and the shell, UI-LOCKDOWN B16)
+    const summary = damaging ? escapeHtml(ev.shellType || '') :
       group.outcome?.label || t('hud.incoming.mixedHits');
     const color = damaging ? COL.red : (group.outcome?.color || COL.dim);
     toast.dataset.damage = String(Math.round(group.damage));
@@ -1502,12 +1542,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toast.dataset.tip = group.count > 1 ? t('hud.incoming.stackSummary',
       { count: group.count, damage: Math.round(group.damage) }) + ' · ' + detail : detail;
     toast.setAttribute('aria-label', name + ' · ' + (toast.dataset.tip || ''));
-    toastTimers.set(toast, {
-      fade: setTimeout(() => toast.classList.add('out'), INCOMING_FADE_MS),
-      remove: setTimeout(() => removeToast(toast), 5500),
-    });
-    while (toastHost.children.length > MAX_BATTLE_NOTIFICATIONS)
-      removeToast(toastHost.lastElementChild as HTMLElement);
+    scheduleToasts();
   }
 
   // ---------- 4. session stats -> END SCREEN (killcam_endscreen r1) ----------

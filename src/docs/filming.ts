@@ -94,7 +94,7 @@ const takeLabel = (take: FilmingTake): string => t('docs.filming.viewer.take', {
 function viewerMarkup(): string {
   return `<div class="filming-viewer" data-filming-viewer role="region" aria-label="${t('docs.filming.viewer.aria')}">
     <figure class="filming-screen"><video data-filming-video muted loop playsinline controls preload="none"></video>
-      <figcaption><span><strong data-filming-stage-label></strong><small data-filming-stage-detail></small></span><b data-filming-take-label></b></figcaption></figure>
+      <figcaption><span><strong data-filming-stage-label></strong></span><b data-filming-take-label></b></figcaption></figure>
     <div class="filming-stage-bar" data-filming-stages></div>
     <p class="filming-stage-note" data-filming-stage-note></p>
     <figure class="filming-frames"><div class="filming-frame-row" data-filming-frames>${FRAME_TIMES.map((time) => `<span class="filming-frame" role="img" data-filming-frame="${time}"><b>${time} s</b></span>`).join('')}</div><figcaption data-filming-frames-caption></figcaption></figure>
@@ -166,10 +166,10 @@ export function mountFilming(article: HTMLElement): void {
   let take = FILMING_TAKES[0];
   let stages: StagePicker | null = null;
   let takes: StagePicker | null = null;
-  // the take's stages, in the rounds' order, each by its own picture (a number of its own beside the take's read as a
-  // second count)
+  // the take's stages, in the rounds' order, each by its own picture and its facts (when and how large it rendered: the
+  // caption names the stage only); no number of its own, which beside the take's read as a second count
   const stageItems = (): PickerItem[] => FILMING_STAGES.filter((s) => take.stages.includes(s)).map((s) => ({
-    id: s, name: holdNameText(STAGE_TEXT[s].label), facts: [], media: { poster: filmingPoster(take, s) },
+    id: s, name: holdNameText(STAGE_TEXT[s].label), facts: STAGE_TEXT[s].detail.split(' · '), media: { poster: filmingPoster(take, s) },
   }));
   let stage: FilmingStage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
 
@@ -177,7 +177,6 @@ export function mountFilming(article: HTMLElement): void {
     const text = STAGE_TEXT[stage];
     stages?.setValue(stage);
     field('stage-label').textContent = text.label;
-    field('stage-detail').textContent = text.detail;
     field('stage-note').textContent = text.note;
     field('take-label').textContent = takeLabel(take);
     video.setAttribute('aria-label', t('docs.filming.viewer.videoAria', { take: take.title, stage: text.label }));

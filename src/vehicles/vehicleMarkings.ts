@@ -121,7 +121,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t80u: anchor('turret', 'left', .33, .32, .24, -1),
   leclerc_xlr: anchor('turret', 'right', .26, .44, .24, 1),
   amx56: anchor('turret', 'left', .30, .44, .24, 1),
-  chieftain_mk10: anchor('turret', 'right', .30, .39, .24, 1),
+  // (main-reds-259: from .30/.39; there the re-solved insignia's film covered 71-74 % of its footprint, cut by the bustle's
+  // plate edges; at .40/.40 it stands whole on the flank, 100 %, its nine sightlines clear)
+  chieftain_mk10: anchor('turret', 'right', .40, .40, .24, 1),
   t72b3: anchor('turret', 'left', .31, .33, .24, -1),
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),

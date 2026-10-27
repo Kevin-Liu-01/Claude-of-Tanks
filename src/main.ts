@@ -155,7 +155,7 @@ import { installCampaignProgress } from './game/campaignProgress.ts';
 import { installServiceRecord } from './game/serviceRecord.ts';
 import { installMedalToasts } from './ui/medalToast.ts';
 import {
-  createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
+  createGarageStage, createGarageStageSteps, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
@@ -235,6 +235,7 @@ import type { MatchActor } from './mp/presentation/battlePresentation.ts';
 import type { LobbyIntent } from './mp/session/lobbyIntent.ts';
 import { createIntentCover } from './mp/session/intentCover.ts';
 import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
+import { consumableSpecFor, loadConsumables } from './game/consumableLoadout.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
@@ -867,12 +868,21 @@ bus.on('module:state', (payload) => {
 GARAGE_POS.y = 0;
 let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(
+  // (2026-10-26, the boot census) the stage a section at a time under the boot screen (one task of 120 ms on a cold
+  // desktop, 604 ms on the 4x phone), at the vehicle stage's cadence
+  const stageSteps = createGarageStageSteps(
     engineCtx,
     GARAGE_POS,
     selectedGarageVariantId,
     () => invalidateGaragePresentation(),
   );
+  const stageYield = createOpaqueLoadingYielder(12, 80);
+  let gs: ReturnType<typeof createGarageStage>;
+  for (;;) {
+    const step = stageSteps.next();
+    if (step.done) { gs = step.value; break; }
+    await stageYield();
+  }
   scene.add(gs.group);
   const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
@@ -933,7 +943,6 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
-let lastGarageProgramRoot: THREE.Object3D | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -959,8 +968,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
   restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
-    const programRoot = pedestal.current?.root ?? scene;
-    const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
+    // (2026-10-26, the rooms A/B) every covered return links the Garage's programs before its frames: a hero a battle
+    // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
+    // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
+    const programsNeedWarm = true;
     const receipt = await restoreGarageGpuPipeline({
       renderer,
       scene,
@@ -973,7 +984,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       programsNeedWarm,
       isCurrent,
     });
-    lastGarageProgramRoot = programRoot;
     return receipt;
   },
 });
@@ -1374,10 +1384,12 @@ const playSurface = createPlaySurfaceRuntime({
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
+        consumables: loadConsumables(garage.getSelected(), consumableSpecFor(getSpec(garage.getSelected()))),
         camo: getMultiplayerCamoSelection(garage.getSelected()),
       }),
       getVehicleLoadout: (specId: string) => ({
         equipment: loadSelectedEquipment(specId, getSpec(specId)),
+        consumables: loadConsumables(specId, consumableSpecFor(getSpec(specId))),
         camo: getMultiplayerCamoSelection(specId),
       }),
       isVehicleAllowed: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
@@ -2207,7 +2219,6 @@ createPointerLockFeedbackRuntime({
     spectating: !!killcam.spectate?.active,
   }),
   ensureTouchControls,
-  nextFrame,
 });
 
 // Shell inventory, consumable cooldowns, special actions, and the exact
@@ -2236,9 +2247,7 @@ playerBattleActions = createPlayerBattleActions({
     shellAmmunitionCapacity: battleClientAccess.shellAmmunitionCapacity,
     rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor,
     hasConsumableRule: battleClientAccess.hasConsumableRule,
-    cooldownRemaining: battleClientAccess.cooldownRemaining,
-    resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,
-    startConsumableCooldown: battleClientAccess.startConsumableCooldown,
+    useSoloConsumable: battleClientAccess.useSoloConsumable,
     requestTankSelfRight: battleClientAccess.requestTankSelfRight,
     requestTankJump: battleClientAccess.requestTankJump,
   },
@@ -3169,7 +3178,8 @@ function beginSoloOnHost(specId: string | null | undefined, mapId: string | null
   const chosen = specId ?? garage.getSelected();
   return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
     specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-    equipment: loadSelectedEquipment(chosen, getSpec(chosen)), camo: getMultiplayerCamoSelection(chosen),
+    equipment: loadSelectedEquipment(chosen, getSpec(chosen)),
+    consumables: loadConsumables(chosen, consumableSpecFor(getSpec(chosen))), camo: getMultiplayerCamoSelection(chosen),
   }, beginMultiplayerV2Battle, () => {
     noteSoloAuthority({ authority: 'page', reason: 'fallback' });
     return page();
@@ -3969,6 +3979,10 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
+  // (2026-10-26) the cloud decks are real before the warm uploads them: a worker past its deadline leaves them baking in
+  // slices, and the Garage's sky preset no longer bakes them in one task meanwhile (sky.ts applyPresentationPreset).
+  // The decks only: the volumetric layer's noise was never awaited here, and still shows when it arrives.
+  await sky.ensureCloudDecksChunked(() => nextFrame());
   BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,

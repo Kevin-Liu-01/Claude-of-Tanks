@@ -73,8 +73,9 @@ export function towerClock(sink: PartSink, face: Face, u: number, y: number, r: 
   for (let i = 0; i < n; i++) {
     const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2;
     // the roundel: its face, its outer edge back to the wall and its inner edge down to the dial
+    // (259, the phone census: the edge fine joinery, the roundel and its dial stood 5-11 cm off the tower at range)
     sink.quad(frame, at(a0, r, lip), at(a0, rim, lip), at(a1, rim, lip), at(a1, r, lip), { decor: true });
-    sink.quad(frame, at(a0, rim, lip), at(a0, rim, 0), at(a1, rim, 0), at(a1, rim, lip), { decor: true, fine: true });
+    sink.quad(frame, at(a0, rim, lip), at(a0, rim, 0), at(a1, rim, 0), at(a1, rim, lip), { decor: true });
     sink.quad(frame, at(a1, r, lip), at(a1, r, dial), at(a0, r, dial), at(a0, r, lip), { decor: true });
     // the chapter ring
     sink.quad('structureMetal', at(a0, r * 0.8, dial + 0.003), at(a0, r * 0.87, dial + 0.003), at(a1, r * 0.87, dial + 0.003), at(a1, r * 0.8, dial + 0.003), iron);

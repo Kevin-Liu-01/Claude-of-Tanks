@@ -6,7 +6,8 @@
 // its box is cut: the target plate measured itself hidden and cut its callsign and vehicle at both ends); and each side
 // in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond, the ally's chevron.
 // Runs in the page: page.evaluate(markerProblems, staged), staged true where the state puts tanks of both sides in view
-// and one under the gun (the layout fixture's ?state=markers).
+// and one under the gun (the layout fixture's ?state=markers). The bars are decluttered (hud.ts updateHpBars): two that
+// would cross never both show.
 
 /** The problems with the visible markers over tanks, as lines (empty when every one passes). */
 export function markerProblems(staged) {
@@ -45,9 +46,10 @@ export function markerProblems(staged) {
     const anchor = plate.querySelector('.anch');
     if (!anchor || !shown(anchor) || getComputedStyle(anchor).transform === 'none') problems.push('the target plate has no diamond');
   }
+  // (staged: the plate over the enemy under the gun and a hull bar beside it; of the bars that would cross, the nearer
+  // tank's shows, so a phone's narrow view keeps fewer of them, and under 300 px tall the panels leave a bar no place)
   if (staged) {
-    if (!bars.some(ally)) problems.push('no ally hull bar in view');
-    if (!bars.some((bar) => !ally(bar))) problems.push('no enemy hull bar in view');
+    if (!bars.length && innerHeight >= 300) problems.push('no hull bar in view');
     if (!plates.length) problems.push('no target plate over the enemy under the gun');
   }
   return problems;

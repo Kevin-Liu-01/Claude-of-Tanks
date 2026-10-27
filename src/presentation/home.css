@@ -21,7 +21,7 @@ body{--font-display:var(--font-ui);--font-body:var(--font-ui);margin:0;backgroun
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
 img{display:block;max-width:100%}
 /* the page's own focus outline; the kit's controls draw their ring (components.css), so they take no second outline */
-:focus-visible:not([class*='cot-c-']){outline:2px solid var(--accent-hi);outline-offset:4px}
+:focus-visible:not([class*='cot-c-']){outline:2px solid var(--focus-ink);outline-offset:4px}
 .home main{overflow:hidden}
 .home h1,.home h2,.home h3{text-wrap:balance}
 .shell,.home-shell{width:min(calc(100% - var(--home-gutter) * 2),var(--shell-max));margin-inline:auto}
@@ -101,7 +101,7 @@ img{display:block;max-width:100%}
 .hero__film{width:min(1280px,calc(100vw - 2 * var(--home-gutter) - 2px));max-width:none;padding:0;border:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e4);color:var(--ink-1)}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:50% 50%;background:var(--surface-scene)}
-.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);box-shadow:var(--btn-secondary-ring);color:var(--ink-1)}
+.hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}

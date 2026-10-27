@@ -10,20 +10,23 @@ import * as THREE from 'three';
 // scaled vehicle frame. Measured under the scaled rig, the hull's cells, plates, modules and crew stations were off by
 // the scale (the CR2's 10% small and 15.5 cm under its turret's ring, the Type 59's a metre long with its roof 68 cm over
 // its own turret pivot).
+//
+// 258 (vehicles-hit-volume-fit-258; the technical drawings' overlay-agreement receipt found it): every other non-uniform
+// hull scale is a presentation narrowing like the Improved's, and was measured unscaled, its shell wider or longer than
+// the hull drawn: the Sheridan pair's 0.928/0.965/1 (9 cm each side), the Namer's 0.95/1.012/0.976 (8 cm), the MBT-70's
+// z 0.94, the Merkava 4 Barak's x 0.972. Any hull rig scale off 1 is baked now; `id` is kept for the callers.
 export function rigidHullFrame(tank, id) {
+  void id;
   const hullRig = tank.root.getObjectByName('rig_hull');
   const scale = hullRig?.scale;
-  const uniform = scale && Math.abs(scale.x - 1) > 1e-6 && Math.abs(scale.y - scale.x) < 1e-9 && Math.abs(scale.z - scale.x) < 1e-9;
-  if (id !== 'leo2_improved' && !uniform) return;
-  const transform = id === 'leo2_improved' ? new THREE.Matrix4().makeScale(scale.x, 1, 1)
-    : new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z);
+  if (!scale || (Math.abs(scale.x - 1) < 1e-9 && Math.abs(scale.y - 1) < 1e-9 && Math.abs(scale.z - 1) < 1e-9)) return;
+  const transform = new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z);
   for (const child of hullRig.children) {
     if (child.matrixAutoUpdate) child.updateMatrix();
     child.matrix.premultiply(transform);
     child.matrixAutoUpdate = false;
   }
-  if (id === 'leo2_improved') hullRig.scale.x = 1;
-  else hullRig.scale.set(1, 1, 1);
+  hullRig.scale.set(1, 1, 1);
   tank.root.updateMatrixWorld(true);
 }
 

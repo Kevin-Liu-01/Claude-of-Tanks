@@ -587,7 +587,7 @@ export class ScriptedMatchServer {
       entityId: entity.entityId,
       modules: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       crewBits: 3,
-      equipment: [1000, 1000, 1000, 1000],
+      equipment: [1000, 1000, 1000, 1000, 1000],
       modeSpeedMultiplier: 1000,
       modeGravityScale: 1000,
       movementVersion: checkpoint ? checkpoint.version : 0,

@@ -50,6 +50,13 @@ export const PRACTICE_MODE_IDS = Object.freeze(['proving_ground'] as const);
 /** Every mode the simulation plays: the battle modes, then the practice modes. */
 export const GAME_MODE_IDS = Object.freeze([...BATTLE_MODE_IDS, ...PRACTICE_MODE_IDS] as const);
 
+/**
+ * The modes Deploy's mode picker offers (owner 2026-10-26: "make proving grround into a mode"): every battle mode in the
+ * presentation order, then the practice modes, solo only. The rooms and LAN cards keep MODE_PRESENTATION_ORDER, so no
+ * room lists a practice mode.
+ */
+export const DEPLOY_MODE_ORDER = Object.freeze([...MODE_PRESENTATION_ORDER, ...PRACTICE_MODE_IDS] as const);
+
 export type GameModeId = typeof GAME_MODE_IDS[number];
 type PracticeModeId = typeof PRACTICE_MODE_IDS[number];
 

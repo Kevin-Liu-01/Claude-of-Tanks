@@ -238,14 +238,17 @@ assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) &&
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
   'nine three-channel, two two-channel and one guided-primary loadout');
+// 259 (Main ruling 2026-10-26): the C2 fires the C2 Prototype's rounds, no missile rounds; the 120/44 takes standard
+// NATO rounds and no new-round procurement is named (arieteModernSpecs.selftest cites the 2025 delivery coverage)
 const arieteC2Rounds = TANK_SPECS.c2_ariete.gun.shells;
-assert.deepEqual(arieteC2Rounds, TANK_SPECS.c1_ariete.gun.shells,
-  'the C2 upgrade retains the definitive C1 ammunition without invented penetration or missile rounds');
+const withoutCadence = ({ reloadS, ...round }) => round;
+assert.deepEqual(arieteC2Rounds.map(withoutCadence), TANK_SPECS.c2_ariete_proto.gun.shells.map(withoutCadence),
+  "the C2 upgrade fires its prototype's ammunition, no invented missile rounds");
 assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.caliberMm,
   round.guided === true, shellAmmunitionCapacity(round)]), [
-  ['CL3143 APFSDS', 'APFSDS', 120, false, 24],
-  ['DM12A1 HEAT-MP', 'HEAT', 120, false, 16],
-  ['DM11 HE-FRAG', 'HE', 120, false, 12],
+  ['DM73 APFSDS', 'APFSDS', 120, false, 24],
+  ['DM12B HEAT-MP', 'HEAT', 120, false, 16],
+  ['DM11A1 Programmable', 'HE', 120, false, 12],
 ]);
 // 2026-09-22 cleanup: 675 -> 666 for the same three retired ww2 study variants; 2026-09-23: 666 -> 560
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).

@@ -9,7 +9,7 @@
 body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction:column;gap:var(--s3);overflow:hidden;min-height:0;flex:1}
 /* one inset on the header, the body and the footer: 16 over and under, 24 a side (a narrow or short window 12 and 16) */
 body .cot-modal-root.cot-hud-editor :is(.cot-modal__header,.cot-modal__body,.cot-modal__footer){padding:var(--s4) var(--s5)}
-.cot-hud-editor .hud-edit-part:focus-visible{outline:2px solid var(--accent-hi);outline-offset:3px}
+.cot-hud-editor .hud-edit-part:focus-visible{outline:2px solid var(--focus-ink);outline-offset:3px}
 .hud-edit-toolbar{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center}
 /* the layouts' plate is as tall as the toolbar's 36 px buttons (touch raises both to the floor) */
 .hud-edit-profiles .cot-c-seg__opt{height:30px}

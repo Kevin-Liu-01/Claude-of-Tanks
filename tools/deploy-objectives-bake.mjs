@@ -17,12 +17,14 @@ import { Vector3 } from 'three';
 import { createDedicatedWorldCollision } from '../server/dedicatedWorldCollision.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from '../src/sim/matchPlacement.ts';
 import { createMatchModeController } from '../src/sim/matchModes.ts';
-import { matchRulesetFor, rulesetObjectiveAxisM, terrainVariantFor } from '../src/sim/matchRuleset.ts';
+import { matchRulesetFor, rulesetBattlefield, rulesetObjectiveAxisM, terrainVariantFor } from '../src/sim/matchRuleset.ts';
+import { planSoloProvingRange } from '../src/game/provingRange.ts';
 import { BOT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 
-/** The modes whose opening objectives the Deploy map shows (Standard: the two spawns). */
-const MODES = ['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'turbo_ball', 'mars', 'ac130'];
+/** The modes whose opening objectives the Deploy map shows (Standard: the two spawns; the proving ground: its firing line
+ *  and lanes, on its one battlefield). */
+const MODES = ['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'turbo_ball', 'mars', 'ac130', 'proving_ground'];
 /** The serialized state's fields ui/minimapObjectives.ts reads. */
 const KEEP = ['id', 'perspectiveTeam', 'respawns', 'spawns', 'flags', 'zones', 'ball', 'goals', 'line'];
 const SIM_DT = 1 / 60;
@@ -49,6 +51,14 @@ function rounded(value) {
 function openingState(mapId, mode, world) {
   const ruleset = matchRulesetFor(mode, null, null);
   const field = world.heightField;
+  // the range: laid out as the battle lays it (game/provingRange.ts), on the one battlefield its ruleset names (null on
+  // every other: none is offered there)
+  if (ruleset.provingGround) {
+    if (rulesetBattlefield(mode) !== mapId) return null;
+    const layout = planSoloProvingRange(ruleset.provingGround, world);
+    return rounded({ id: mode, perspectiveTeam: 'alpha', spawns: [{ team: 'alpha', x: layout.origin.x, z: layout.origin.z }],
+      range: { lanes: layout.lanes.map((lane, index) => ({ index, x: lane.x, z: lane.z, rangeM: ruleset.provingGround.lanes[index].rangeM })) } });
+  }
   const placement = createMatchPlacement({
     mapId, heightField: field, obstacles: world.getObstacles(), queryObstacles: world.queryObstacles,
     anchors: matchPlacementAnchors(field._layout.spawns), mode, objectiveAxisM: rulesetObjectiveAxisM(ruleset),
@@ -101,7 +111,8 @@ for (const mapId of maps) {
     if (!world) { world = createDedicatedWorldCollision(mapId, { variant: variant || undefined }); worlds.set(variant, world); }
     entry.size = world.heightField.size ?? 1024;
     try {
-      entry.modes[mode] = openingState(mapId, mode, world);
+      const state = openingState(mapId, mode, world);
+      if (state) entry.modes[mode] = state;
     } catch (error) {
       console.warn(`[deploy-objectives] ${mapId} ${mode}: ${error?.message ?? error}`);
     }

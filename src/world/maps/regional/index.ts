@@ -260,14 +260,14 @@ function* buildRegionalPartsSteps(
     }
   }
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
-  // it is dressing, so the collision stays the desktop's
-  if (ctx.tier === 'mobile') {
-    for (const name of REGIONAL_BUCKETS) {
-      const list = parts[name];
-      if (!list?.some((g) => g.userData.fine)) continue;
-      for (const g of list) if (g.userData.fine) g.dispose();
-      parts[name] = list.filter((g) => !g.userData.fine);
-    }
+  // it is dressing, so the collision stays the desktop's. A desktop never builds what stands in for a part on a phone
+  // alone (EmitOptions.phoneOnly: a flush face where the desktop draws the part whole at any range)
+  const left = ctx.tier === 'mobile' ? (g: THREE.BufferGeometry) => !!g.userData.fine : (g: THREE.BufferGeometry) => !!g.userData.phoneOnly;
+  for (const name of REGIONAL_BUCKETS) {
+    const list = parts[name];
+    if (!list?.some(left)) continue;
+    for (const g of list) if (left(g)) g.dispose();
+    parts[name] = list.filter((g) => !left(g));
   }
   return parts;
 }

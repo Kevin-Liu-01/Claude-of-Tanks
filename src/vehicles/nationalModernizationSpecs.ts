@@ -8,6 +8,7 @@ import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 import {NATIONAL_DONOR_TURRETS,NATIONAL_GUN_PITCH_BY_YAW} from './nationalDonorTurrets.ts';
 import {bustleCutZ} from './donorBustleCut.ts';
+import {COMBAT_GUN_RIGS} from './combatGunRigs.generated.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -112,7 +113,11 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   s.armor.turretPivot=[...d.pivot];
   if(d.gunPitchByYawDeg)s.gunPitchByYawDeg=d.gunPitchByYawDeg.map(([yaw,pitch])=>[yaw,pitch] as const);
   s.armor.gunPivot=[...turret.armor.gunPivot];
-  s.armor.gunBarrel={...turret.armor.gunBarrel};
+  // The donor's combat barrel is its measured one (251: the census row draws the Type 96B's 110.5 mm tube, authored 71 mm):
+  // the concept, drawing the same gun, carries that barrel. The dimensions keep the authored length.
+  const donorRig=COMBAT_GUN_RIGS[d.donor];
+  s.armor.gunBarrel=donorRig?{...turret.armor.gunBarrel,lengthM:donorRig.lengthM,radiusM:donorRig.radiusM??turret.armor.gunBarrel.radiusM}
+    :{...turret.armor.gunBarrel};
   s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,
     heightM:d.heightM??design.heightM,
     overallLengthM:design.hullLength/2+d.pivot[2]+turret.armor.gunPivot[2]+turret.armor.gunBarrel.lengthM};

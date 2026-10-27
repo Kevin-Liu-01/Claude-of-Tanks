@@ -17,11 +17,13 @@ const EXACT_SCOPES = {
     ['turretDetail',[.3125,1.923176,.324152],[.5755,2.148824,.789848]],
     ['turretDark',[.3405,2.016,.78],[.5475,2.102,.8]],
   ],
+  // 231 (gun-hull-fleet, 31235a8c85): the T-80U casting rides 65 mm higher, its sights with it (y +.065, x and z kept;
+  // main-reds-259, measured on 257 abccee56a1)
   t80u: [
-    ['turretDetail',[.638,2.072,.156],[.828,2.206,.373]],
-    ['turretDetail',[-.919,2.036030,.327407],[-.594,2.175970,.740593]],
-    ['turretDark',[.660,2.117,.372],[.806,2.179,.386]],
-    ['turretDark',[-.8805,2.074,.731],[-.6325,2.148,.749]],
+    ['turretDetail',[.638,2.137,.156],[.828,2.271,.373]],
+    ['turretDetail',[-.919,2.101030,.327407],[-.594,2.240970,.740593]],
+    ['turretDark',[.660,2.182,.372],[.806,2.244,.386]],
+    ['turretDark',[-.8805,2.139,.731],[-.6325,2.213,.749]],
   ],
   t72b3: [
     ['turretDetail',[-.751,2.469,-.02155],[-.4773,2.7283,.16535]],
@@ -82,7 +84,7 @@ assert.equal(Object.values(EXACT_SCOPES).reduce((sum,parts)=>sum+parts.length,0)
 
 const NON_OPTIC_CENTERS = {
   t72b_1987:[.947,2.200,-.14],
-  t80u:[.5355,1.756,1.439],
+  t80u:[.5355,1.821,1.439], // 231: the casting 65 mm higher (31235a8c85), its projector with it
   t72b3:[-.61355,2.411,-.363], // Commander lid, not its optical head.
   t72b3m_2016:[-.62689,2.30722,-.24424],
   t72bu:[-.58057,2.227,-.03332],

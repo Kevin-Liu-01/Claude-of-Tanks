@@ -69,8 +69,12 @@ export interface SpectateAlly { readonly id: string; readonly name: string; read
  * backs out (a moved focus restored first), as every picker does. Q and E still step. The picker loads on the first
  * open, so a battle that never opens it carries none of it.
  */
-/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover. */
-const PICK_CEILINGS = '.cot-touch.on .mobile-chrome';
+/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover, and the score over its
+ *  column, whose figures it would cut through (gauntlet r17 at 568x256). The map and the objective over its column stand
+ *  down while it is open (pick-under), as the lanes and the rosters do (the HUD's spec-picking): kept as its ceiling, the
+ *  map left it one row at 568x256, the watched tank's, gauntlet r18. */
+const PICK_CEILINGS = '.cot-touch.on .mobile-chrome,.cot-top';
+const PICK_UNDER = '.cot-minimap,.cot-mode-status.show';
 
 export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => void): {
   update(allies: readonly SpectateAlly[], current: string | null): void;
@@ -82,8 +86,25 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   pop.hidden = true;
   // (the picker on its own host: an Esc it spends restoring stops there, short of the back-out on the pop below)
   const host = document.createElement('div');
-  pop.append(host);
+  // (its cue while more allies lie below the list's foot, on a strip of its own under the last whole row, the load card's:
+  // the sixth of six sat hidden with nothing saying the list scrolls, gauntlet r16)
+  const more = document.createElement('div');
+  more.className = 'more';
+  more.setAttribute('aria-hidden', 'true');
+  more.innerHTML = uiIconSVG('chevronDown', 14);
+  pop.append(host, more);
   bar.append(pop);
+  let grid: HTMLElement | null = null;
+  const markMore = (): void => {
+    if (!grid) return;
+    pop.classList.toggle('more', grid.scrollHeight - grid.scrollTop - grid.clientHeight > 2);
+  };
+  // (the battle under the open list veiled whole, as a modal's scrim: half-covered, the lanes' "You" stuck out of its edge
+  // and the map was cut through, gauntlet r15; a press on it closes the list, as any press outside does)
+  const scrim = document.createElement('div');
+  scrim.className = 'cot-spec-scrim';
+  scrim.hidden = true;
+  bar.parentElement?.insertBefore(scrim, bar);
   let allies: readonly SpectateAlly[] = [];
   let current: string | null = null;
   let picker: ReturnType<typeof PickerModule.createPicker> | null = null;
@@ -92,23 +113,44 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   // r14).
   function fit(): void {
     pop.style.maxHeight = '';
+    pop.classList.remove('scrolls');
+    // (as wide as the watched tank's plate it drops from: a fixed 358 px stopped 40 to 200 px short of it, or ran into the
+    // stepper beside it at 1024x600 and 568x256, gauntlet r16)
+    const plate = subject?.getBoundingClientRect();
+    pop.style.width = plate?.width ? `${Math.round(plate.right - bar.getBoundingClientRect().left)}px` : '';
     const barTop = bar.getBoundingClientRect().top;
     const box = pop.getBoundingClientRect();
+    for (const node of document.querySelectorAll<HTMLElement>(PICK_UNDER)) {
+      const over = node.getBoundingClientRect();
+      node.classList.toggle('pick-under', !!over.height && over.bottom < barTop && over.right > box.left && over.left < box.right);
+    }
     let ceiling = 8;
     for (const node of document.querySelectorAll<HTMLElement>(PICK_CEILINGS)) {
       const over = node.getBoundingClientRect();
       if (over.height && over.bottom < barTop && over.right > box.left && over.left < box.right) ceiling = Math.max(ceiling, over.bottom + 8);
     }
     const room = Math.min(box.height, barTop - 8 - ceiling);
-    const grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
     const first = grid?.children[0] as HTMLElement | undefined, second = grid?.children[1] as HTMLElement | undefined;
     if (!grid || !first || !second) { pop.style.maxHeight = `${Math.floor(room)}px`; return; }
-    const pitch = second.offsetTop - first.offsetTop, gap = pitch - first.offsetHeight;
-    // (the panel's padding and anything over the list, then the list's own padding round its rows)
+    // (the rows' boxes to the fraction: whole-pixel offsets lost a few px over six rows, and the last row's foot ran under
+    // the panel's in zh, gauntlet r16)
+    const firstBox = first.getBoundingClientRect();
+    const pitch = second.getBoundingClientRect().top - firstBox.top, gap = pitch - firstBox.height;
+    const total = grid.children.length;
+    // (the panel's padding and anything over the list, then the list's own padding round its rows; the cue's strip with
+    // them once the list scrolls)
     const style = getComputedStyle(grid);
-    const frame = pop.offsetHeight - grid.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-    const rows = Math.max(1, Math.floor((room - frame + gap) / pitch));
+    const frameOf = () => pop.getBoundingClientRect().height - grid!.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    let frame = frameOf();
+    let rows = Math.max(1, Math.floor((room - frame + gap + 0.5) / pitch));
+    if (rows < total) {
+      pop.classList.add('scrolls');
+      frame = frameOf();
+      rows = Math.max(1, Math.min(total, Math.floor((room - frame + gap + 0.5) / pitch)));
+    }
     pop.style.maxHeight = `${Math.ceil(frame + rows * pitch - gap)}px`;
+    markMore();
   }
   const items = (): PickerModule.PickerItem[] =>
     allies.map((ally) => ({ id: ally.id, name: ally.name, facts: ally.vehicle ? [ally.vehicle] : [] }));
@@ -119,14 +161,19 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   function close(): void {
     if (pop.hidden) return;
     pop.hidden = true;
+    scrim.hidden = true;
     bar.classList.remove('picking');
+    bar.parentElement?.classList.remove('spec-picking');
+    for (const node of document.querySelectorAll('.pick-under')) node.classList.remove('pick-under');
     subject?.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
   }
   async function open(): Promise<void> {
     if (!allies.length) return;
     pop.hidden = false;
+    scrim.hidden = false;
     bar.classList.add('picking');
+    bar.parentElement?.classList.add('spec-picking');
     subject?.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside, true);
     if (!picker) {
@@ -140,6 +187,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
       });
     } else picker.setItems(items(), current);
     fit();
+    grid?.addEventListener('scroll', markMore, { passive: true });
     picker.focus();
   }
   subject?.addEventListener('click', () => { if (pop.hidden) void open(); else close(); });
@@ -188,17 +236,35 @@ export const spectatorSwitcherStyles = `
 /* the picker of allies over the bar, its left edge on the plate's: the kit picker's list, no favourites in a battle */
 /* (over every instrument while it is open, on the strong plate made opaque: under the map and the score its rows hid at
    320x568 and 568x256, and the feed read through the 96 % plate, gauntlet r14) */
-.cot-spec.picking{z-index:calc(var(--hud-layer-score) + 1)}
+.cot-spec.picking{z-index:calc(var(--hud-layer-score) + 2)}
+.cot-spec-scrim{position:absolute;inset:0;z-index:calc(var(--hud-layer-score) + 1);background:var(--battle-veil);pointer-events:auto}
+.cot-spec-scrim[hidden]{display:none}
+/* (and the lanes and the rosters under it stand down: veiled, their rows read on at its edges as fragments, "_Long_Na…" at
+   844x390 and a roster row sliced at 1024x600, gauntlet r17) */
+.spec-picking :is(.cot-kill-lane,.cot-ear,.cot-ribbon),.spec-picking .pick-under{visibility:hidden}
+/* (a short landscape's rows on one line, the vehicle after the callsign, at the 44 px target (no favourite's star to
+   hold the kit's 60): two lines a row left room for one, r18) */
+@media (max-height:340px) and (orientation:landscape){
+ .cot-spec-pick .cot-c-picker__opt{min-height:44px;padding-block:var(--s1)}
+ .cot-spec-pick .cot-c-picker__words{flex-wrap:nowrap;align-items:baseline;gap:var(--s2)}
+ .cot-spec-pick .cot-c-picker__name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .cot-spec-pick .cot-c-picker__facts{flex:0 0 auto;flex-basis:auto}
+}
 .cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
  flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);
  background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--surface-scene);box-shadow:var(--ring-1);
  pointer-events:auto;overflow:hidden}
-/* (each ally's callsign in the display face, as the plate under the list names the watched one: one datum, one face) */
+/* (each ally's callsign in the display face, as the plate under the list names the watched one: one datum, one face; and
+   its vehicle in the plate's voice, the kit's body face read as another kit's, gauntlet r17) */
 .cot-spec-pick .cot-c-picker__name{font-family:var(--font-display);font-weight:700}
+.cot-spec-pick .cot-c-picker__facts{font:500 var(--battle-fs-12)/1.2 var(--font-ui)}
 .cot-spec-pick[hidden]{display:none}
 .cot-spec-pick>.cot-c-picker{min-height:0;flex:1 1 auto;display:flex;flex-direction:column}
-.cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto}
+.cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto;padding-block:0;-webkit-mask-image:none;mask-image:none}
 .cot-spec-pick .cot-c-picker__fav{display:none}
+.cot-spec-pick>.more{display:none;flex:none;justify-content:center;height:14px;color:var(--ink-2);visibility:hidden;pointer-events:none}
+.cot-spec-pick.scrolls>.more{display:flex}
+.cot-spec-pick.more>.more{visibility:visible}
 .cot-spec .portrait{display:grid;place-items:center;width:66px;height:52px;border:0;background:none;}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;}
 .cot-spec .identity{position:relative;display:flex;flex-direction:column;justify-content:center;gap:var(--s1);min-width:0;padding:0}
@@ -248,7 +314,7 @@ export const spectatorSwitcherStyles = `
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
 @media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) auto 48px;gap:var(--s2)}.cot-spec .gar>span:last-child{display:none}.cot-spec .nick{font-size:var(--battle-fs-14)}}
 @media(max-width:400px) and (orientation:portrait){
- .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
+ .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px var(--s2)}
  /* (the cycle group fills its column from the plate's edge: centred in it, it stood on nothing, gauntlet r3) */
  .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:auto;justify-self:stretch}
  .cot-spec .gar>span:last-child{display:block}

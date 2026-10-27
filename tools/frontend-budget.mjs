@@ -118,12 +118,33 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   (+630 raw; entry +45 B), Gallery +308 B (+502 raw, fleetFactory).
   // Requests unchanged. Over 257's pins: game +1,803 B (with the 128 B margin), entry +592 B, Gallery +1,545 B, home +334 B,
   // docs +94 B, 404 -18 B.
-  game: { brotliBytes: 1087118, requests: 128, entryBrotliBytes: 240549 },
-  cn: { brotliBytes: 1129376, requests: 129, entryBrotliBytes: 240549 },
-  gallery: { brotliBytes: 676045, requests: 75 },
-  home: { brotliBytes: 26542, requests: 8 },
-  docs: { brotliBytes: 33107, requests: 12 },
-  notFound: { brotliBytes: 16686, requests: 7 },
+  // 2026-10-27 (integrator 259, re-pinned at the release build of 2324d9313a; each share the local build of its merge commit
+  // against the one before, game brotli unless named; requests unchanged on every page):
+  // - Main's named shares: consumables-260 +4,334 B in the merged chain (+4,079 alone against its base; entry +1,031 / +837
+  //   alone, cn +5,007 / +4,738, docs +72 / +38; approved +4,020, entry +888, cn +4,664, docs +56); boot-259 +904 B (entry
+  //   +838; approved +1,001 / +914).
+  // - The heads' own: leo2a3-iv-260 (with tier-fairness-259) +413 B (Gallery +204); main-reds-hitmodel-259 +146 B (Gallery
+  //   +217); greenery-settings-259 +578 B (home +107, docs +221, Gallery +299, 404 +110); brand-ui-battle-242 -293 B (cn -379);
+  //   mp-room-leave-258 +260 B (entry +144); greenery-consumables-merge-259 -150 B; floating-decor-259 +106 B; hit-volume-fit
+  //   +64 B (Gallery +119); mp-room-entry-258 +677 B (entry +522); killcam-capture-259 +160 B; strv103-gunport -215 B;
+  //   drawings-overhaul-259 +41 B (its viewer a lazy chunk, no boot request); interaction-picker-254 +323 B (entry +382, inline
+  //   CSS +171); main-reds-repins-259 -197 B.
+  // Over 258's release build: game +7,176 B (entry +2,917), cn +7,719 B, Gallery +817 B, home +120 B, docs +314 B, 404 +120 B.
+  // 2026-10-27 (integrator 260, re-pinned at the release build of 1b30e7fda4; requests unchanged on every page):
+  // - Main's named shares: "consumables band: the slot fit and phone rows (with gallery-studio's 04c3954089)" +185 B game
+  //   and cn (approved), with Main's 10-27 slot hint (the chevron and the tip's kit count) +374 B game, +392 B cn, entry
+  //   +258 B; "Proving Ground mode, Deploy r40-r44, zh archive titles" (brand-ui-primitives-250 3f4ce8a0e1; approved home
+  //   +2, docs +78, Gallery +1).
+  // - The heads' own: brand-ui-battle-242 e92b4bc2ab (UI-LOCKDOWN B14, gauntlet r17) then 25355f1b24 (gauntlet r18, +167 B
+  //   game and cn between the two release builds, entry -23 B); garage-rail-end-loop 73b1dd157c and interaction-picker-254
+  //   4c781561fc (the boot card's 1 px fixes, inline) small; integ's --ring-hot token.
+  // Over 259's release build: game +1,200 B (entry +59 B), cn +1,261 B, Gallery +17 B, home +32 B, docs +124 B, 404 +15 B.
+  game: { brotliBytes: 1095494, requests: 128, entryBrotliBytes: 243525 },
+  cn: { brotliBytes: 1138356, requests: 129, entryBrotliBytes: 243525 },
+  gallery: { brotliBytes: 676879, requests: 75 },
+  home: { brotliBytes: 26694, requests: 8 },
+  docs: { brotliBytes: 33545, requests: 12 },
+  notFound: { brotliBytes: 16821, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

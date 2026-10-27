@@ -95,7 +95,7 @@ export function createInProcessMatchHost({
       if (existing) matchService.removeActor(config.roomId);
       matchService.createActor({
         roomId: config.roomId, mapId: config.mapId, mode: config.mode, seed: config.seed,
-        seats: config.seats.map((seat) => ({ seat: seat.seat, playerId: seat.playerId, name: seat.name, team: seat.team, specId: seat.specId, equipment: seat.equipment })),
+        seats: config.seats.map((seat) => ({ seat: seat.seat, playerId: seat.playerId, name: seat.name, team: seat.team, specId: seat.specId, equipment: seat.equipment, consumables: seat.consumables })),
         bots: config.bots, world, countdownS: config.countdownS ?? countdownS, battleLimitS,
         ruleset: hostRulesetFor(config.mode, config.arrangement, config.campaignOperationId),
         onVerdict: () => onVerdict?.(config.roomId),

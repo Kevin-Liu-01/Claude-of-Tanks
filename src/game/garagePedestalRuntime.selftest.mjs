@@ -102,6 +102,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
             nowMs += 5;
             yield;
           }
+          if (programOutcome?.throws) throw new Error(programOutcome.throws);
           return programOutcome;
         } finally {
           programClosures += 1;
@@ -241,9 +242,12 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   h.setSelected('bravo');
   await h.runtime.set('bravo');
   assert.equal(h.runtime.current?.specId, 'bravo');
-  // (2026-10-26) the boot screen's hero submits its programs too (its build and links no longer one task under the boot)
-  assert.equal(h.compileCalls, 2, 'the boot hero and the cold interactive hero each submit their exact programs');
-  assert.equal(h.frameCalls, 4, 'each submission settles behind two painted frames');
+  // (2026-10-26) the boot hero's programs are the Garage GPU warm's (no scene frame draws before it): its switch defers
+  // its own warm and records why; the cold interactive hero submits its exact programs
+  assert.equal(h.compileCalls, 1, 'only the post-boot hero submits its exact programs');
+  assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
+  const bootLink = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'alpha')?.link;
+  assert.equal(bootLink?.status, 'deferred', 'the boot hero records a deferred warm, never a silent one');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
   assert.ok(h.visuals[0].root.parent === null, 'parked hero leaves the active scene graph');
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
@@ -263,7 +267,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.runtime.current, h.visuals[0], 'cached reveal restores the exact original visual');
   assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.visuals[0].root]));
   assert.ok(h.visuals[1].root.parent === null);
-  assert.equal(h.compileCalls, 2, 'cached reattachment requires no shader rewarm (the boot hero and bravo submitted)');
+  assert.equal(h.compileCalls, 1, 'cached reattachment requires no shader rewarm');
   assert.deepEqual(h.releasedResources, []);
   assert.equal(h.presentationInvalidations, 4,
     'cached hero reveal follows the same invalidation contract');
@@ -661,13 +665,14 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   // and the switch record carries the link receipt.
   const h = createHarness({ programSlices: 3, programOutcome: { status: 'complete', pending: 0 } });
   await h.runtime.set('alpha');
-  assert.equal(h.programPrepared, 1, 'the boot hero links its programs between frames too');
+  // (2026-10-26) the boot hero's links are the Garage GPU warm's (no scene frame before it)
+  assert.equal(h.programPrepared, 0, 'the boot hero defers its program warm to the Garage GPU warm');
   h.setBootComplete(true);
   const framesBefore = h.frameCalls;
   await h.runtime.set('bravo');
   assert.equal(h.compileCalls, 0, 'strict preparation replaces the submit-only fallback');
-  assert.equal(h.programPrepared, 2);
-  assert.equal(h.programClosures, 2);
+  assert.equal(h.programPrepared, 1);
+  assert.equal(h.programClosures, 1);
   assert.equal(h.frameCalls - framesBefore, 3, 'one frame per preparation yield');
   assert.equal(h.runtime.current?.specId, 'bravo');
   const record = h.debugTarget.__GARAGE_SWITCH.at(-1);
@@ -688,15 +693,15 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.setBootComplete(true);
   const bravo = h.runtime.set('bravo');
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(h.programPrepared, 2, 'bravo is waiting on its first link slice (after the boot hero\'s)');
+  assert.equal(h.programPrepared, 1, 'bravo is waiting on its first link slice');
   const charlie = h.runtime.set('charlie');
   await charlie;
   assert.equal(h.runtime.current?.specId, 'charlie');
   gate.resolve();
   await bravo;
   assert.equal(h.runtime.current?.specId, 'charlie', 'the stale link wait cannot replace the newer hero');
-  assert.equal(h.programPrepared, 3);
-  assert.equal(h.programClosures, 3, 'every preparation is closed exactly once');
+  assert.equal(h.programPrepared, 2);
+  assert.equal(h.programClosures, 2, 'every preparation is closed exactly once');
   const stale = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
   assert.equal(stale.path, 'aborted');
   assert.equal(stale.abortReason, 'compile-stale');
@@ -770,13 +775,26 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.runtime.dispose();
 }
 
+{
+  // (2026-10-26) a program warm that throws says so in its switch record: the boot hero's threw unseen on every boot
+  const h = createHarness({ programSlices: 1, programOutcome: { throws: 'warm owner not initialized' } });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  await h.runtime.set('bravo');
+  const link = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo')?.link;
+  assert.equal(link?.status, 'error');
+  assert.match(link?.reason ?? '', /warm owner not initialized/);
+  assert.equal(h.runtime.current?.specId, 'bravo', 'the first visible render stays the fallback');
+  h.runtime.dispose();
+}
+
 console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, speculative neighbors, detached warm LRU, resource preservation and battle handoff passed');
 
 {
  const h=createHarness({deviceTier:'mobile',programSlices:2,programOutcome:{status:'complete',pending:0}});
  await h.runtime.set('alpha');h.setBootComplete(true);
  await h.runtime.set('bravo');
- assert.equal(h.programPrepared,2,'mobile also prepares links before revealing a new tank (the boot hero first)');
+ assert.equal(h.programPrepared,1,'mobile also prepares links before revealing a new tank');
  assert.equal(h.debugTarget.__GARAGE_SWITCH.at(-1).link.status,'complete');
  h.runtime.dispose();
 }

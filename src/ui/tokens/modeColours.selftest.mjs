@@ -90,8 +90,6 @@ const SITES = [
   ['tools/home-premiere.mjs', 'data-mode-tone="${id}"', "/home's modes rail carries its mode"],
   ['src/presentation/home.css', '.play-tile__nm .cot-i{flex:none;width:24px;height:24px;color:var(--mode-ink,var(--ink-2))}', "/home's rail glyphs paint the mode"],
   ['src/ui/garage.ts', "as import('./icons/spriteIndex.ts').IconId, tone: id,", "Deploy's mode picker cards carry their mode"],
-  ['src/ui/garage.ts', 'data-proving data-mode-tone="proving_ground"', "Deploy's Proving Ground carries its mode"],
-  ['src/ui/deploy.css', '.cot-garage .cot-deploy-proving .choice-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's Proving Ground glyph paints its mode (the mode cards are the kit picker's)"],
   ['src/ui/garage.ts', 'setupIcon.dataset.modeTone = mode;', "Deploy's heading glyph carries its mode (the chosen or the previewed one)"],
   ['src/ui/deploy.css', '.cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{color:var(--mode-ink,var(--ink-2));}', "Deploy's heading glyph paints the mode"],
   ['src/ui/serviceRecordView.ts', '<span data-mode-tone="${battle.mode}">', "a Record battle's place line carries its mode"],
