@@ -36,7 +36,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   upior: 'lift the hull and round over the next-generation IFV floors',
   // 2026-10-26 (259): same-tier fairness at the shown tiers IV and VII (fleetBalancePass applySameTierFairness)
   c1_ariete_preserie: 'take the Chieftain round, a quicker cycle and hull for same-tier fairness at IV',
-  leo2a3: 'slow the cycle for same-tier fairness at IV',
+  leo2a3: 'slow the cycle for same-tier fairness at IV; 260: a balance trim of the turret front (x0.9): no sourced period round defeats the basic package\'s turret front',
   chieftain_mk10: 'keep the Mk 9 rebuild on its donor\'s slower cycle and hull at IV',
   c2_ariete: 'trim the Tier X armour and hull it brought to VII and fire its prototype\'s rounds; the cadence stays over the C1',
   c2_ariete_proto: 'trim the Tier X armour it brought to VII and slow its cycle and aim',

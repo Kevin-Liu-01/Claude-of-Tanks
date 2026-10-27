@@ -185071,8 +185071,8 @@
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 600,
-            "keMm": 420,
-            "ceMm": 700,
+            "keMm": 378,
+            "ceMm": 630,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -185102,8 +185102,8 @@
             "hitboxId": "T02",
             "name": "turret_cheek_L",
             "physicalMm": 600,
-            "keMm": 420,
-            "ceMm": 700,
+            "keMm": 378,
+            "ceMm": 630,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -185133,8 +185133,8 @@
             "hitboxId": "T03",
             "name": "mantlet",
             "physicalMm": 350,
-            "keMm": 350,
-            "ceMm": 420,
+            "keMm": 315,
+            "ceMm": 378,
             "kind": "main",
             "turretLocal": true,
             "verts": [
@@ -185604,7 +185604,7 @@
         ]
       },
       "geometryHash": "92ce9520",
-      "metadataHash": "6e74d3ca",
+      "metadataHash": "6febeb4b",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.0146
@@ -185714,8 +185714,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22506,
-          "sha256": "b2dd82d81a75562af5f1cd96fbaaf11647fa90b10b69b5aea227580507c3c267"
+          "bytes": 22526,
+          "sha256": "b0898367e55d38f2d539fd377b742fd7c48fd92fa7f198c20c2434a2cf9b20ae"
         },
         "modulesSide": {
           "file": "leo2a3_modules_side.webp",
@@ -185745,7 +185745,7 @@
           "file": "leo2a3_technical.json",
           "mime": "application/json",
           "bytes": 4379,
-          "sha256": "b4e26833deb7938d408f3bbff3d316f1d8db424d9b6ab83676282661f34e3e6c"
+          "sha256": "ac49e02bfec8b0a062c0d2aa6a21b4830b326e62a1bfd5da8c0e87f9fd55bcb1"
         }
       }
     },
