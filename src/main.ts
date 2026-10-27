@@ -3944,8 +3944,9 @@ await bootStage('post', async () => {
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
   // (2026-10-26) the cloud decks are real before the warm uploads them: a worker past its deadline leaves them baking in
-  // slices, and the Garage's sky preset no longer bakes them in one task meanwhile (sky.ts applyPresentationPreset)
-  await bootCloudWarmP;
+  // slices, and the Garage's sky preset no longer bakes them in one task meanwhile (sky.ts applyPresentationPreset).
+  // The decks only: the volumetric layer's noise was never awaited here, and still shows when it arrives.
+  await sky.ensureCloudDecksChunked(() => nextFrame());
   BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,

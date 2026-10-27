@@ -48,7 +48,7 @@ import {
 import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts';
 import type { CloudscapeConfig } from './cloudscapes.ts';
 import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload } from './volumetricClouds.ts';
-import { bakeCloudNoise } from './cloudNoise.ts';
+import { bakeCloudNoise, bakeCloudNoiseKindSteps } from './cloudNoise.ts';
 
 type ColorTriple = readonly [number, number, number];
 type VectorPair = readonly [number, number];
@@ -141,6 +141,8 @@ interface SkyRig {
   horizonColor: THREE.Color;
   ensureCloudTextures(): void;
   ensureCloudTexturesChunked(tick?: () => Promise<void>): Promise<void>;
+  /** The two decks alone (the boot's Garage needs them, not the volumetric layer's noise). */
+  ensureCloudDecksChunked(tick?: () => Promise<void>): Promise<void>;
   bakeEnvironment(): void;
   applyFog(targetScene: THREE.Scene): void;
   applyPresentationPreset(
@@ -1788,6 +1790,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   // Round 68: the volumetric layer's noise bakes (cloudNoise.ts) in a second worker, the same contract as the
   // deck bakes: transferred buffers, a bounded wait, the synchronous bake as the fallback. Each buffer is
   // uploaded as it arrives; the layer shows once all three are in (updateCloudDecks re-evaluates then).
+  // (2026-10-26, the boot ABBA) a worker past its deadline keeps working: the fallback bakes the missing kinds in
+  // slices beside it, and whichever delivers a kind first installs it (one bake of them all is seconds of main thread).
   let cloudNoiseSettled = !volumetricClouds;
   const cloudNoiseUpload: CloudNoiseUpload = {};
   const installCloudNoise = (): void => {
@@ -1806,15 +1810,17 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         return null;
       }
       const deadline = createDeferredDeadline<void>(12000, () => {
-        console.warn('[sky] cloud noise worker timed out; baking the rest on the main thread');
-        worker.terminate();
+        console.warn('[sky] cloud noise worker timed out; baking the rest on the main thread in slices beside it');
         cloudNoiseSettled = true;
       });
       worker.onmessage = ({ data }: MessageEvent<{ kind: CloudNoiseKind; pixels: Uint8Array }>) => {
-        cloudNoiseUpload[data.kind] = data.pixels;
-        installCloudNoise();
+        if (!cloudNoiseUpload[data.kind]) {
+          cloudNoiseUpload[data.kind] = data.pixels;
+          installCloudNoise();
+        }
         if (CLOUD_NOISE_KINDS.every((kind) => cloudNoiseUpload[kind])) {
-          if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
+          worker.terminate();
+          if (deadline.settle(undefined)) cloudNoiseSettled = true;
         }
       };
       worker.onerror = (error) => {
@@ -1839,6 +1845,28 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     cloudNoiseSettled = true;
     installCloudNoise();
+  };
+  /** The same fallback a slice at a time, a frame between slices; a kind the worker delivers meanwhile ends its bake. */
+  const bakeCloudNoiseSliced = async (tick: () => Promise<void>): Promise<void> => {
+    if (!volumetricClouds) return;
+    for (const kind of CLOUD_NOISE_KINDS) {
+      if (cloudNoiseUpload[kind]) continue;
+      const steps = bakeCloudNoiseKindSteps(kind);
+      let sliceAt = performance.now();
+      for (let step = steps.next(); ; step = steps.next()) {
+        if (step.done) {
+          cloudNoiseUpload[kind] ??= step.value;
+          break;
+        }
+        if (performance.now() - sliceAt >= CLOUD_FALLBACK_SLICE_MS) {
+          await tick();
+          if (cloudNoiseUpload[kind]) break;
+          sliceAt = performance.now();
+        }
+      }
+      installCloudNoise();
+    }
+    cloudNoiseSettled = true;
   };
 
   // Per-deck flags keep a mid-flight synchronous activation idempotent.
@@ -1868,25 +1896,37 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
   };
-  // the chunked install in flight: the sky's presentation leaves the decks to it rather than bake them in one task
+  // the decks' chunked install in flight: the sky's presentation leaves them to it rather than bake them in one task
+  let decksInstall: Promise<void> | null = null;
   let chunkedInstall: Promise<void> | null = null;
-  /** Await off-main FBM, then install at most one canvas texture per tick. */
+  /** Await off-main FBM, then install at most one canvas texture per tick: the decks, then the volumetric layer. */
   const ensureCloudTexturesChunked = (tick?: () => Promise<void>): Promise<void> => {
     chunkedInstall ??= installCloudTexturesChunked(tick).finally(() => { chunkedInstall = null; });
     return chunkedInstall;
   };
+  const ensureCloudDecksChunked = (tick?: () => Promise<void>): Promise<void> => {
+    decksInstall ??= installCloudDecksChunked(tick).finally(() => { decksInstall = null; });
+    return decksInstall;
+  };
   const installCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
-    if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
+    // (2026-10-26) the decks first: waiting on the noise worker first held the decks, and the boot's Garage behind them
+    await ensureCloudDecksChunked(tick);
     // round 68: the volumetric layer's noise, then its programs, all under the caller's cover
     if (volumetricClouds) {
       if (cloudNoisePromise && !cloudNoiseSettled) await cloudNoisePromise;
-      if (!volumetricClouds.noiseReady) ensureCloudNoise();
+      if (!volumetricClouds.noiseReady) {
+        if (tick) await bakeCloudNoiseSliced(tick);
+        else ensureCloudNoise();
+      }
       // (2026-10-14) a parallel link, submitted before the next frame can draw the layer and awaited without blocking the
       // main thread (volumetricClouds.ts warmAsync)
       const linking = volumetricClouds.warmAsync();
       if (tick) await tick();
       await linking;
     }
+  };
+  const installCloudDecksChunked = async (tick?: () => Promise<void>): Promise<void> => {
+    if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
     if (!cirrusBaked) {
       const pixels = cloudWorkerResults?.cirrus ?? (tick ? await bakeCloudPixelsSliced('cirrus', tick) : null);
       // (the synchronous install may have run while the slices waited: keep its deck)
@@ -2125,6 +2165,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      */
     ensureCloudTextures,
     ensureCloudTexturesChunked,
+    ensureCloudDecksChunked,
     volumetricClouds,
 
     /**
@@ -2232,10 +2273,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       p: Partial<SkyPreset> | null | undefined,
       targetScene: THREE.Scene,
     ): void {
-      // deferred boot bake — decks must be real now; (2026-10-26) unless the chunked install is under way: a worker past
-      // its deadline left it baking in slices, and its caller (the boot's post stage, a world's activation) awaits it
-      // before any frame shows the decks
-      if (!chunkedInstall) ensureCloudTextures();
+      // deferred boot bake — decks must be real now; (2026-10-26) unless their chunked install is under way: a worker
+      // past its deadline left it baking in slices, and its caller (the boot's post stage, a world's activation) awaits
+      // it before any frame shows the decks
+      if (!decksInstall) ensureCloudTextures();
       preset = { ...DEFAULT_PRESET, ...(p || {}) };
       sunDir.setFromSphericalCoords(
         1,

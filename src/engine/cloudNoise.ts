@@ -31,12 +31,18 @@ function hash3(x: number, y: number, z: number, seed: number): number {
 
 const fade = (t: number): number => t * t * t * (t * (t * 6 - 15) + 10);
 
+function drainBake(steps: Generator<void, Uint8Array, void>): Uint8Array {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 /**
  * Tileable 2D gradient noise with `cells` lattice points along x and `cellsY` (default the same) along y —
  * unequal counts stretch the features along the axis with fewer cells (streets, fronts, cirrus streaks) —
  * accumulated into `out` × amp.
  */
-function perlin2(N: number, cells: number, seed: number, out: Float32Array, amp: number, cellsY = cells): void {
+function* perlin2(N: number, cells: number, seed: number, out: Float32Array, amp: number, cellsY = cells): Generator<void, void, void> {
   const g = new Float32Array(cells * cellsY * 2);
   for (let y = 0; y < cellsY; y++) for (let x = 0; x < cells; x++) {
     const a = hash3(x, y, 0, seed) * 6.283185307179586;
@@ -45,6 +51,7 @@ function perlin2(N: number, cells: number, seed: number, out: Float32Array, amp:
   const s = cells / N, sy = cellsY / N;
   const dot = (xi: number, yi: number, dx: number, dy: number): number => g[(yi * cells + xi) * 2] * dx + g[(yi * cells + xi) * 2 + 1] * dy;
   for (let y = 0; y < N; y++) {
+    if (y) yield;
     const py = (y + 0.5) * sy, cy = Math.floor(py), fy = py - cy, uy = fade(fy), y0 = cy % cellsY, y1 = (cy + 1) % cellsY;
     for (let x = 0; x < N; x++) {
       const px = (x + 0.5) * s, cx = Math.floor(px), fx = px - cx, ux = fade(fx), x0 = cx % cells, x1 = (cx + 1) % cells;
@@ -78,17 +85,18 @@ function cumulusCellAttributes(cells: number, seed: number): Float64Array {
  * with a hashed radius; the cell is present only where `gate` (a smooth mesoscale field) admits it, so cells
  * cluster into streets and clearings instead of a uniform pepper.
  */
-function cellField2(N: number, cells: number, seed: number, gate: Float32Array, gateBias: number, out: Float32Array, plateau = false): void {
+function* cellField2(N: number, cells: number, seed: number, gate: Float32Array, gateBias: number, out: Float32Array, plateau = false): Generator<void, void, void> {
   const s = cells / N;
   const attributes = cumulusCellAttributes(cells, seed);
   // Periodic domain distortion breaks the circular footprints and lattice without
   // adding any runtime texture lookup. Each mass still belongs to its weather group.
   const warpX = new Float32Array(N * N), warpY = new Float32Array(N * N);
-  perlin2(N, cells, seed + 211, warpX, 0.7);
-  perlin2(N, cells * 2, seed + 212, warpX, 0.3);
-  perlin2(N, cells, seed + 213, warpY, 0.7);
-  perlin2(N, cells * 2, seed + 214, warpY, 0.3);
+  yield* perlin2(N, cells, seed + 211, warpX, 0.7);
+  yield* perlin2(N, cells * 2, seed + 212, warpX, 0.3);
+  yield* perlin2(N, cells, seed + 213, warpY, 0.7);
+  yield* perlin2(N, cells * 2, seed + 214, warpY, 0.3);
   for (let y = 0; y < N; y++) {
+    yield;
     for (let x = 0; x < N; x++) {
       const px = (x + 0.5) * s + warpX[y * N + x] * 0.8;
       const py = (y + 0.5) * s + warpY[y * N + x] * 0.8;
@@ -133,11 +141,12 @@ function cellField2(N: number, cells: number, seed: number, gate: Float32Array, 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** Rank-equalise a field to a uniform histogram on (0, 1) (ties broken by index, so the result is deterministic). */
-function equalise(field: Float32Array): Float32Array {
+function* equalise(field: Float32Array): Generator<void, Float32Array, void> {
   const count = field.length;
   const order = new Uint32Array(count);
   for (let i = 0; i < count; i++) order[i] = i;
   order.sort((a, b) => field[a] - field[b] || a - b);
+  yield;
   const out = new Float32Array(count);
   for (let rank = 0; rank < count; rank++) out[order[rank]] = (rank + 0.5) / count;
   return out;
@@ -149,14 +158,16 @@ const toByte = (v: number): number => Math.round(clamp01(v) * 255);
  * `equalise` took a second for a 512² channel under load). Each value maps to its bin's mid-rank, so the result is
  * uniform to a bin's width and deterministic.
  */
-function equaliseHistogram(field: Float32Array): Float32Array {
+function* equaliseHistogram(field: Float32Array): Generator<void, Float32Array, void> {
   const count = field.length, BINS = 65536;
   let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < count; i++) { const v = field[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+  yield;
   const scale = hi > lo ? (BINS - 1) / (hi - lo) : 0;
   const bins = new Uint32Array(BINS);
   const bin = new Uint32Array(count);
   for (let i = 0; i < count; i++) { const b = Math.round((field[i] - lo) * scale); bin[i] = b; bins[b]++; }
+  yield;
   const mid = new Float32Array(BINS);
   let below = 0;
   for (let b = 0; b < BINS; b++) { mid[b] = (below + bins[b] * 0.5) / count; below += bins[b]; }
@@ -172,17 +183,18 @@ function equaliseHistogram(field: Float32Array): Float32Array {
  * strength per row, and a chain of rounded lumps riding on it (the cumulus of a street: separate but aligned,
  * soft gaps between — 71b's continuous roll read as a tube, 71a's cells gated onto rows as beads).
  */
-function streetRolls(N: number, rows: number, seed: number, out: Float32Array): void {
+function* streetRolls(N: number, rows: number, seed: number, out: Float32Array): Generator<void, void, void> {
   const wobble = new Float32Array(N * N);
-  perlin2(N, 2, seed, wobble, 0.55, 4); perlin2(N, 4, seed + 1, wobble, 0.25, 8);
+  yield* perlin2(N, 2, seed, wobble, 0.55, 4); yield* perlin2(N, 4, seed + 1, wobble, 0.25, 8);
   const amp = new Float32Array(N * N);
-  perlin2(N, 2, seed + 2, amp, 0.6, 3); perlin2(N, 4, seed + 3, amp, 0.3, 6);
+  yield* perlin2(N, 2, seed + 2, amp, 0.6, 3); yield* perlin2(N, 4, seed + 3, amp, 0.3, 6);
   // the roll's width varies along its length (71c: a constant width read as a tube)
   const widthN = new Float32Array(N * N);
-  perlin2(N, 3, seed + 5, widthN, 0.7, 5); perlin2(N, 6, seed + 6, widthN, 0.3, 10);
+  yield* perlin2(N, 3, seed + 5, widthN, 0.7, 5); yield* perlin2(N, 6, seed + 6, widthN, 0.3, 10);
   // Each wind street has its own population and spacing, rather than repeating
   // the same fourteen-bead cadence across the sky. The roll between lumps keeps 15 %.
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if (x === 0) yield;
     const i = y * N + x;
     const v = (y + 0.5) / N * rows + wobble[i] * 0.8;
     const row = Math.round(v);
@@ -221,26 +233,30 @@ function streetRolls(N: number, rows: number, seed: number, out: Float32Array): 
  *   A  fine breakup 0..1 (turrets, the base line's wander, thin edges)
  */
 export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
+  return drainBake(bakeCloudWeatherMapSteps(size, seed));
+}
+
+function* bakeCloudWeatherMapSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N;
   const meso = new Float32Array(count);
-  perlin2(N, 3, seed + 81, meso, 0.55); perlin2(N, 6, seed + 82, meso, 0.28); perlin2(N, 12, seed + 83, meso, 0.14);
+  yield* perlin2(N, 3, seed + 81, meso, 0.55); yield* perlin2(N, 6, seed + 82, meso, 0.28); yield* perlin2(N, 12, seed + 83, meso, 0.14);
   // the synoptic scale: two to three bands per tile, stretched (a front is longer than it is wide)
   const syn = new Float32Array(count);
-  perlin2(N, 2, seed + 71, syn, 0.6, 3); perlin2(N, 3, seed + 72, syn, 0.4, 5);
+  yield* perlin2(N, 2, seed + 71, syn, 0.6, 3); yield* perlin2(N, 3, seed + 72, syn, 0.4, 5);
   // the mesoscale field in 0..1 gates the cells, the synoptic field shifts the gate (−0.6..0.6 → 0..1)
   const gate = new Float32Array(count);
   for (let i = 0; i < count; i++) gate[i] = clamp01(meso[i] * 0.72 + syn[i] * 0.55 + 0.5);
   const cells = new Float32Array(count);
   // Jittered, warped lobes on a 600 m lattice overlap into irregular masses.
   // Unequal shoulders keep the admitted cores from becoming identical discs.
-  cellField2(N, 20, seed + 91, gate, 0.0, cells, true);
+  yield* cellField2(N, 20, seed + 91, gate, 0.0, cells, true);
   const bigCells = new Float32Array(count);
   // a few 1 km cells at a stricter gate
-  cellField2(N, 12, seed + 92, gate, -0.15, bigCells, true);
+  yield* cellField2(N, 12, seed + 92, gate, -0.15, bigCells, true);
   const fine = new Float32Array(count);
-  perlin2(N, 24, seed + 111, fine, 0.6); perlin2(N, 48, seed + 112, fine, 0.4);
+  yield* perlin2(N, 24, seed + 111, fine, 0.6); yield* perlin2(N, 48, seed + 112, fine, 0.4);
   const vigour = new Float32Array(count);
-  perlin2(N, 4, seed + 121, vigour, 0.6); perlin2(N, 8, seed + 122, vigour, 0.3); perlin2(N, 16, seed + 123, vigour, 0.1);
+  yield* perlin2(N, 4, seed + 121, vigour, 0.6); yield* perlin2(N, 8, seed + 122, vigour, 0.3); yield* perlin2(N, 16, seed + 123, vigour, 0.1);
   // the coverage fields, each equalised to a uniform histogram so a map's coverage c admits exactly the
   // fraction c of the field whatever the noise's own distribution: the cumuliform one carried by the cells
   // (the gate clusters them into groups along the synoptic bands), the stratiform one by the gate itself
@@ -253,7 +269,7 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
     // vigour leans toward the deep coverage (the convective groups) but keeps its own field
     vig[i] = vigour[i] * 0.6 + (m - 0.5) * 0.5;
   }
-  const equalisedCumulus = equalise(cumuliform), equalisedStratus = equalise(stratiform), equalisedVigour = equalise(vig);
+  const equalisedCumulus = yield* equalise(cumuliform), equalisedStratus = yield* equalise(stratiform), equalisedVigour = yield* equalise(vig);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
     out[i * 4] = toByte(equalisedCumulus[i]);
@@ -275,27 +291,31 @@ export function bakeCloudWeatherMap(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOIS
  *   A  cirrus fibres — finer strands along the same axis, 0..1
  */
 export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
+  return drainBake(bakeCloudWeatherStreetsSteps(size, seed));
+}
+
+function* bakeCloudWeatherStreetsSteps(size = CLOUD_WEATHER_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N;
   const rolls = new Float32Array(count);
-  streetRolls(N, 7, seed + 141, rolls);
+  yield* streetRolls(N, 7, seed + 141, rolls);
   // the lumps along a roll: 750 m and 375 m along the wind, a little shorter across
   const lumps = new Float32Array(count);
-  perlin2(N, 16, seed + 151, lumps, 0.6, 24); perlin2(N, 32, seed + 152, lumps, 0.4, 48);
+  yield* perlin2(N, 16, seed + 151, lumps, 0.6, 24); yield* perlin2(N, 32, seed + 152, lumps, 0.4, 48);
   const fine = new Float32Array(count);
-  perlin2(N, 24, seed + 161, fine, 0.6); perlin2(N, 48, seed + 162, fine, 0.4);
+  yield* perlin2(N, 24, seed + 161, fine, 0.6); yield* perlin2(N, 48, seed + 162, fine, 0.4);
   const anvil = new Float32Array(count);
-  perlin2(N, 2, seed + 171, anvil, 0.6, 3); perlin2(N, 4, seed + 172, anvil, 0.4, 6);
+  yield* perlin2(N, 2, seed + 171, anvil, 0.6, 3); yield* perlin2(N, 4, seed + 172, anvil, 0.4, 6);
   const streaks = new Float32Array(count);
-  perlin2(N, 2, seed + 181, streaks, 0.5, 12); perlin2(N, 4, seed + 182, streaks, 0.3, 24); perlin2(N, 8, seed + 183, streaks, 0.2, 48);
+  yield* perlin2(N, 2, seed + 181, streaks, 0.5, 12); yield* perlin2(N, 4, seed + 182, streaks, 0.3, 24); yield* perlin2(N, 8, seed + 183, streaks, 0.2, 48);
   const fibres = new Float32Array(count);
-  perlin2(N, 6, seed + 191, fibres, 0.6, 96); perlin2(N, 12, seed + 192, fibres, 0.4, 160);
+  yield* perlin2(N, 6, seed + 191, fibres, 0.6, 96); yield* perlin2(N, 12, seed + 192, fibres, 0.4, 160);
   const streets = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     // the chain's lumps carry the roll (depth 0.85 in streetRolls); the finer lump noise varies them a little
     const modulation = 1 - 0.2 * clamp01(0.5 - lumps[i] * 0.9);
     streets[i] = rolls[i] * modulation + fine[i] * 0.04;
   }
-  const eqStreets = equalise(streets), eqAnvil = equalise(anvil), eqStreaks = equalise(streaks);
+  const eqStreets = yield* equalise(streets), eqAnvil = yield* equalise(anvil), eqStreaks = yield* equalise(streaks);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
     out[i * 4] = toByte(eqStreets[i]);
@@ -313,6 +333,10 @@ export function bakeCloudWeatherStreets(size = CLOUD_WEATHER_SIZE, seed = CLOUD_
  * pattern. R = G = B = rank / (size² − 1), A = 255.
  */
 export function bakeCloudBlueNoise(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
+  return drainBake(bakeCloudBlueNoiseSteps(size, seed));
+}
+
+function* bakeCloudBlueNoiseSteps(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N, R = 6, sigma = 1.5;
   const kernel = new Float32Array((2 * R + 1) * (2 * R + 1));
   for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) kernel[(dy + R) * (2 * R + 1) + dx + R] = Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
@@ -333,6 +357,7 @@ export function bakeCloudBlueNoise(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SE
     return best;
   };
   for (let iter = 0; iter < count; iter++) {
+    if (iter && (iter & 31) === 0) yield;
     const cluster = argExt(1, true);
     binary[cluster] = 0; splat(cluster % N, Math.floor(cluster / N), -1);
     const voidT = argExt(0, false);
@@ -343,13 +368,13 @@ export function bakeCloudBlueNoise(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SE
   // phase 1: remove the tightest clusters of the initial pattern, ranking downward
   const work = Uint8Array.from(binary);
   let n = ones;
-  while (n > 0) { const c = argExt(1, true); binary[c] = 0; splat(c % N, Math.floor(c / N), -1); rank[c] = --n; }
+  while (n > 0) { if ((n & 31) === 0) yield; const c = argExt(1, true); binary[c] = 0; splat(c % N, Math.floor(c / N), -1); rank[c] = --n; }
   // phase 2: restore, then fill the largest voids upward
   for (let i = 0; i < count; i++) { binary[i] = work[i]; }
   energy.fill(0);
   for (let i = 0; i < count; i++) if (binary[i]) splat(i % N, Math.floor(i / N), 1);
   n = ones;
-  while (n < count) { const v = argExt(0, false); binary[v] = 1; splat(v % N, Math.floor(v / N), 1); rank[v] = n++; }
+  while (n < count) { if ((n & 31) === 0) yield; const v = argExt(0, false); binary[v] = 1; splat(v % N, Math.floor(v / N), 1); rank[v] = n++; }
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
     const b = toByte(rank[i] / (count - 1));
@@ -362,7 +387,7 @@ export function bakeCloudBlueNoise(size = CLOUD_BLUE_SIZE, seed = CLOUD_NOISE_SE
 export const CLOUD_LOCAL_SIZE = 512;
 
 /** Tileable 2D inverted Worley (1 − the squared F1 distance in cell units, clamped at 1), accumulated into `out` × amp. */
-function worley2(N: number, cells: number, seed: number, out: Float32Array, amp: number): void {
+function* worley2(N: number, cells: number, seed: number, out: Float32Array, amp: number): Generator<void, void, void> {
   const fp = new Float32Array(cells * cells * 2);
   for (let y = 0; y < cells; y++) for (let x = 0; x < cells; x++) {
     fp[(y * cells + x) * 2] = hash3(x, y, 9, seed);
@@ -370,6 +395,7 @@ function worley2(N: number, cells: number, seed: number, out: Float32Array, amp:
   }
   const s = cells / N;
   for (let y = 0; y < N; y++) {
+    if (y) yield;
     const py = (y + 0.5) * s, cy = Math.floor(py);
     for (let x = 0; x < N; x++) {
       const px = (x + 0.5) * s, cx = Math.floor(px);
@@ -401,27 +427,31 @@ function worley2(N: number, cells: number, seed: number, out: Float32Array, amp:
  *   A  cells — an inverted-Worley fbm at 1.2 and 0.6 km: a stratocumulus deck's cells (thick cores, thin borders)
  */
 export function bakeCloudLocalWeather(size = CLOUD_LOCAL_SIZE, seed = CLOUD_NOISE_SEED): Uint8Array {
+  return drainBake(bakeCloudLocalWeatherSteps(size, seed));
+}
+
+function* bakeCloudLocalWeatherSteps(size = CLOUD_LOCAL_SIZE, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
   const N = size, count = N * N;
   const clusterA = new Float32Array(count);
-  perlin2(N, 3, seed + 401, clusterA, 0.65); perlin2(N, 6, seed + 402, clusterA, 0.35);
+  yield* perlin2(N, 3, seed + 401, clusterA, 0.65); yield* perlin2(N, 6, seed + 402, clusterA, 0.35);
   const clusterB = new Float32Array(count);
-  perlin2(N, 4, seed + 403, clusterB, 0.6); perlin2(N, 8, seed + 404, clusterB, 0.4);
+  yield* perlin2(N, 4, seed + 403, clusterB, 0.6); yield* perlin2(N, 8, seed + 404, clusterB, 0.4);
   const cu = new Float32Array(count);
   // an fbm (each octave about half the last): the six-kilometre cells hold the field and the finer ones only break their
   // edges (at near-equal weights the half-kilometre octave cut every cell into a scatter of small puffs)
-  worley2(N, 8, seed + 411, cu, 0.50); worley2(N, 16, seed + 412, cu, 0.28); worley2(N, 32, seed + 413, cu, 0.15); worley2(N, 64, seed + 414, cu, 0.07);
+  yield* worley2(N, 8, seed + 411, cu, 0.50); yield* worley2(N, 16, seed + 412, cu, 0.28); yield* worley2(N, 32, seed + 413, cu, 0.15); yield* worley2(N, 64, seed + 414, cu, 0.07);
   const ac = new Float32Array(count);
-  worley2(N, 48, seed + 421, ac, 0.40); worley2(N, 96, seed + 422, ac, 0.36); worley2(N, 192, seed + 423, ac, 0.30);
+  yield* worley2(N, 48, seed + 421, ac, 0.40); yield* worley2(N, 96, seed + 422, ac, 0.36); yield* worley2(N, 192, seed + 423, ac, 0.30);
   const st = new Float32Array(count);
-  perlin2(N, 3, seed + 431, st, 0.5); perlin2(N, 6, seed + 432, st, 0.25); perlin2(N, 12, seed + 433, st, 0.14);
-  perlin2(N, 24, seed + 434, st, 0.07); perlin2(N, 48, seed + 435, st, 0.04);
+  yield* perlin2(N, 3, seed + 431, st, 0.5); yield* perlin2(N, 6, seed + 432, st, 0.25); yield* perlin2(N, 12, seed + 433, st, 0.14);
+  yield* perlin2(N, 24, seed + 434, st, 0.07); yield* perlin2(N, 48, seed + 435, st, 0.04);
   const ce = new Float32Array(count);
-  worley2(N, 40, seed + 441, ce, 0.65); worley2(N, 80, seed + 442, ce, 0.35);
+  yield* worley2(N, 40, seed + 441, ce, 0.65); yield* worley2(N, 80, seed + 442, ce, 0.35);
   for (let i = 0; i < count; i++) {
     cu[i] += clusterA[i] * 0.55;
     ac[i] += clusterB[i] * 0.6;
   }
-  const r = equaliseHistogram(cu), g = equaliseHistogram(ac), b = equaliseHistogram(st), a = equaliseHistogram(ce);
+  const r = yield* equaliseHistogram(cu), g = yield* equaliseHistogram(ac), b = yield* equaliseHistogram(st), a = yield* equaliseHistogram(ce);
   const out = new Uint8Array(count * 4);
   for (let i = 0; i < count; i++) {
     out[i * 4] = toByte(r[i]);
@@ -438,6 +468,18 @@ interface CloudNoiseBake {
   streets: Uint8Array;
   blue: Uint8Array;
   local: Uint8Array;
+}
+
+/**
+ * One kind's bake at its shipped size, yielding every row or so (2026-10-26, the boot ABBA: a noise worker past its
+ * deadline made the main-thread fallback a single bake of seconds; sky.ts now drives these slices under its frame
+ * budget). The same bytes as the synchronous bakes.
+ */
+export function bakeCloudNoiseKindSteps(kind: keyof CloudNoiseBake, seed = CLOUD_NOISE_SEED): Generator<void, Uint8Array, void> {
+  if (kind === 'weather') return bakeCloudWeatherMapSteps(CLOUD_WEATHER_SIZE, seed);
+  if (kind === 'streets') return bakeCloudWeatherStreetsSteps(CLOUD_WEATHER_SIZE, seed);
+  if (kind === 'blue') return bakeCloudBlueNoiseSteps(CLOUD_BLUE_SIZE, seed);
+  return bakeCloudLocalWeatherSteps(CLOUD_LOCAL_SIZE, seed);
 }
 
 export function bakeCloudNoise(seed = CLOUD_NOISE_SEED): CloudNoiseBake {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { bakeCirrusPixels, bakeCirrusPixelsSteps, bakeCumulusPixels, bakeCumulusPixelsSteps } from './skyCloudBake.ts';
+import { bakeCloudBlueNoise, bakeCloudNoiseKindSteps } from './cloudNoise.ts';
 
 const config = Object.freeze({
   seed: 777,
@@ -72,10 +73,31 @@ assert.match(chunked, /cloudWorkerResults\?\.cumulus \?\? \(tick \? await bakeCl
   'a missing cumulus result bakes in slices between the caller\'s frames');
 const sliced = sky.slice(sky.indexOf('async function bakeCloudPixelsSliced('), sky.indexOf('interface HorizonColorCache'));
 assert.match(sliced, /performance\.now\(\) - sliceAt >= CLOUD_FALLBACK_SLICE_MS\) \{\s*await tick\(\);/, 'a frame once a slice has used its budget');
-assert.match(sky, /if \(!chunkedInstall\) ensureCloudTextures\(\);/, 'the presentation never bakes the decks in one task while slices run');
+assert.match(sky, /if \(!decksInstall\) ensureCloudTextures\(\);/, 'the presentation never bakes the decks in one task while slices run');
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const postStage = main.slice(main.indexOf("await bootStage('post', async () => {"));
-assert.ok(postStage.indexOf('await bootCloudWarmP;') > 0 && postStage.indexOf('await bootCloudWarmP;') < postStage.indexOf('await warmGarageGpuPipeline({'),
-  'the boot waits for the decks before the Garage warm uploads them');
+const decksAwait = postStage.indexOf('await sky.ensureCloudDecksChunked(() => nextFrame());');
+assert.ok(decksAwait > 0 && decksAwait < postStage.indexOf('await warmGarageGpuPipeline({'),
+  'the boot waits for the decks (not the volumetric noise) before the Garage warm uploads them');
+const textures = sky.slice(sky.indexOf('const installCloudTexturesChunked = async'), sky.indexOf('const installCloudDecksChunked = async'));
+assert.ok(textures.indexOf('await ensureCloudDecksChunked(tick);') >= 0
+  && textures.indexOf('await ensureCloudDecksChunked(tick);') < textures.indexOf('await cloudNoisePromise'),
+  'the decks install before the volumetric layer waits on its noise worker');
+assert.match(textures, /if \(tick\) await bakeCloudNoiseSliced\(tick\);\s*else ensureCloudNoise\(\);/,
+  'a noise worker past its deadline leaves the missing kinds to slices, never one bake');
+const noiseDeadline = sky.slice(sky.indexOf('createDeferredDeadline<void>(12000'), sky.indexOf('worker.onmessage', sky.indexOf('createDeferredDeadline<void>(12000')));
+assert.doesNotMatch(noiseDeadline, /worker\.terminate\(\)/, 'the noise worker past its deadline keeps working beside the slices');
+
+// the noise kinds a slice at a time: the same bytes (blue at its shipped size; volumetricClouds.selftest pins every
+// kind's synchronous bytes, which now drain these same generators)
+const blue = drain(bakeCloudNoiseKindSteps('blue'));
+assert.equal(digest(blue.pixels), digest(bakeCloudBlueNoise()), 'blue noise in slices: the same bytes');
+assert.ok(blue.yields > 8, 'the blue noise yields inside its void-and-cluster passes');
+for (const kind of ['weather', 'streets', 'local']) {
+  const steps = bakeCloudNoiseKindSteps(kind);
+  let yields = 0;
+  for (let step = steps.next(); !step.done && yields < 4; step = steps.next()) yields++;
+  assert.equal(yields, 4, `${kind}: the bake yields within its first rows`);
+}
 
 console.log('skyCloudBake.selftest: deterministic cirrus and cumulus bytes, the same bytes in slices, and the sliced fallback passed');
