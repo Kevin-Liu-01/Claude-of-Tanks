@@ -32,8 +32,6 @@ interface ShadowCasterWarmupOptions {
    * room: a guest linked an unspotted M1A3's four depth programs in a live frame, the frame it was first spotted.
    */
   hiddenRoots?: () => Iterable<Object3D | null | undefined>;
-  /** (2026-10-27, diagnostics) the casters the warm batches will draw, once, before the first batch */
-  onCasters?: (casters: readonly Object3D[]) => void;
 }
 
 /** Show the hidden roots for one synchronous call; every one is hidden again before it returns or throws. */
@@ -401,7 +399,6 @@ async function warmFirstCascade(
   for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
   const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
   hidden.push(...withRootsShown(hidden, () => addNearDetailCasters(state, request.scene, casters)));
-  options.onCasters?.(casters.map((caster) => caster.object));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;

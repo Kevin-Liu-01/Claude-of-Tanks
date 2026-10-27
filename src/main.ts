@@ -101,7 +101,7 @@ import {
   warmGarageGpuPipeline,
   type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
-import { programKeyDiff, programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
+import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -788,7 +788,7 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(annotate?: (object: THREE.Object3D, material: THREE.Material) => string):
+function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string):
   { readonly origins: readonly string[]; stop(): void } {
   const origins: string[] = [];
   const previous = renderer.renderBufferDirect;
@@ -798,7 +798,7 @@ function watchProgramOrigins(annotate?: (object: THREE.Object3D, material: THREE
     if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
       const path: string[] = [material.type];
       for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(`${path.join('<')}${annotate?.(object, material) ?? ''}`);
+      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
     }
   };
   renderer.renderBufferDirect = watched;
@@ -1062,7 +1062,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     const programsNeedWarm = true;
     const dressingChunksFinished = await finishGarageDressingUnderCover(isCurrent);
     let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch; dressingChunks: number; dressingBuilt: boolean } | null = null;
-    const primeCasters = new Set<THREE.Object3D>();
     let receipt: GarageGpuRestoreReceipt;
     try {
       receipt = await restoreGarageGpuPipeline({
@@ -1076,37 +1075,13 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
         resourcesReleased,
         programsNeedWarm,
         isCurrent,
-        onPrimeCasters: (casters) => { for (const caster of casters) primeCasters.add(caster); },
         onProgramsWarmed: () => {
           late?.watch.stop();
-          // (a late draw's object tagged +added: not in the scene when the warm ended; +hidden: in it, off its visible walk;
-          // and its material's program key as the warm left it against the one it drew with: +warm:none, or the diff)
+          // (a late draw's object tagged +added: not in the scene when the warms ended; +hidden: in it, off its visible walk)
           const inScene = new Set<THREE.Object3D>(), shown = new Set<THREE.Object3D>();
-          const warmKeys = new Map<THREE.Material, string | null>();
-          const keyOf = (material: THREE.Material): string | null => ((renderer.properties.get(material) as
-            { currentProgram?: { cacheKey?: string } } | undefined)?.currentProgram?.cacheKey ?? null);
-          scene.traverse((object) => {
-            inScene.add(object);
-            const material = (object as THREE.Mesh).material;
-            for (const entry of Array.isArray(material) ? material : material ? [material] : []) {
-              if (!warmKeys.has(entry)) warmKeys.set(entry, keyOf(entry));
-            }
-          });
+          scene.traverse((object) => { inScene.add(object); });
           scene.traverseVisible((object) => { shown.add(object); });
-          const castAtWarm = new Map<THREE.Object3D, boolean>();
-          scene.traverse((object) => { castAtWarm.set(object, object.castShadow); });
-          const annotate = (object: THREE.Object3D, material: THREE.Material): string => {
-            let tag = !inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '';
-            if ((material as THREE.Material & { isMeshDepthMaterial?: boolean; isMeshDistanceMaterial?: boolean }).isMeshDepthMaterial
-              || (material as THREE.Material & { isMeshDistanceMaterial?: boolean }).isMeshDistanceMaterial) {
-              tag += `${primeCasters.has(object) ? ' +primed' : ''} +cast:${castAtWarm.get(object)}`;
-            }
-            if (!warmKeys.has(material)) return tag;
-            const warmKey = warmKeys.get(material), drawKey = keyOf(material);
-            if (!warmKey) return `${tag} +warm:none`;
-            const diff = drawKey ? programKeyDiff({ type: 'm', cacheKey: drawKey }, [{ type: 'm', cacheKey: warmKey }]) : '?';
-            return `${tag} +warm:${diff}`;
-          };
+          const annotate = (object: THREE.Object3D): string => (!inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '');
           late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins(annotate),
             dressingChunks: dressingBuildTimings().length, dressingBuilt: garageDressing.isBuilt() };
         },

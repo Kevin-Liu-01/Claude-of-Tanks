@@ -338,14 +338,16 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
       events.push('settle');
     } },
   };
-  // (2026-10-27, the room-stalls lane) the lateLinks receipt opens once the program warm is done, before any draw
+  // (2026-10-27, the room-stalls lane) the lateLinks receipt opens once the program warm and the shadow prime are done,
+  // before the upload and settle draws
   const prepared = await restoreGarageGpuPipeline({ ...options, programsNeedWarm: true,
+    lighting: { ...options.lighting, async primeShadowMaps() { events.push('shadows'); return [1]; } },
     onProgramsWarmed: () => { assert.deepEqual(reflected, new Set([heroMesh, background])); events.push('warmed'); } });
   assert.equal(prepared.programCohorts, 1, 'actual owner batches hero and background into one readiness cohort');
   assert.equal(prepared.programsPrepared, 2);
   assert.equal(prepared.programCohortMax, 2);
   assert.equal(prepared.programBudgetSlices, 0);
-  assert.deepEqual(events, ['warmed', 'upload', 'settle']);
+  assert.deepEqual(events, ['shadows', 'warmed', 'upload', 'settle']);
   events.length = 0;
   const repeat = await restoreGarageGpuPipeline({ ...options, programsNeedWarm: false,
     forwardPrograms: {
