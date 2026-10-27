@@ -21,14 +21,16 @@
 .cot-c-picker__more.is-back svg{transform:scaleX(-1)}
 /* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row */
 @media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
-.cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;padding-inline-end:var(--s6);overflow-x:auto;
-  overscroll-behavior-x:contain;scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 2 * var(--s6)),transparent);
-  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - 2 * var(--s6)),transparent)}
+/* the chips stand whole (wholeChips): one the row's edge would cut is hidden, and the more button says more
+   follow; no fade over a cut chip (the r25 critic read "Surv" and "ecent" under the fades as clipped words) */
+.cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;overflow-x:auto;
+  overscroll-behavior-x:contain;scrollbar-width:none}
 .cot-c-picker__chips::-webkit-scrollbar{display:none}
-.cot-c-picker__chips.is-scrolled{
-  -webkit-mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s6),var(--ink-1) calc(100% - 2 * var(--s6)),transparent);
-  mask-image:linear-gradient(90deg,transparent,var(--ink-1) var(--s6),var(--ink-1) calc(100% - 2 * var(--s6)),transparent)}
+/* a strip of whole chips (picker.ts wholeChips, the kit's picker rows, the Garage's nations, a sheet's facet rows): it stops
+   on chip starts, and a chip its edge would cut is hidden but focusable */
+.cot-c-whole{scroll-snap-type:x mandatory}
+.cot-c-whole>*{scroll-snap-align:start}
+.cot-c-whole>.is-cut{opacity:0;pointer-events:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
 /* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot

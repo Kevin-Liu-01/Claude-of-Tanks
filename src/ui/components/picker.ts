@@ -77,10 +77,30 @@ interface PickerController {
   dispose(): void;
 }
 
+/**
+ * A sideways strip of chips that shows only whole chips: one the strip's edge would cut is hidden (class is-cut) but stays
+ * in the tab order, so the focus scrolls it in, and the strip stops on chip starts (CSS .cot-c-whole). A surface keeps its
+ * own cue that more follow (a more button, a count). The r25 critic read "Surv", "ecent" and a flag's "1" at strip edges,
+ * under fades, as clipped words. Returns the disconnect; `onChange` hears the cut chips change.
+ */
+export function wholeChips(strip: HTMLElement, onChange?: () => void): () => void {
+  if (typeof IntersectionObserver !== 'function' || typeof MutationObserver !== 'function') return () => {};
+  strip.classList.add('cot-c-whole');
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) entry.target.classList.toggle('is-cut', entry.intersectionRatio < WHOLE_SHARE);
+    onChange?.();
+  }, { root: strip, threshold: [0, WHOLE_SHARE] });
+  const watch = (): void => { seen.disconnect(); for (const chip of strip.children) seen.observe(chip); };
+  const changes = new MutationObserver(watch);
+  watch();
+  changes.observe(strip, { childList: true });
+  return () => { seen.disconnect(); changes.disconnect(); };
+}
+/** The share of a chip that must show for it to count as whole (a subpixel edge does not cut it). */
+const WHOLE_SHARE = 0.98;
+
 /** Search and filters appear past this many items. */
 const SEARCH_FROM = 9;
-/** The width a surface may fade at the chip row's end (garage and showroom mask their last 40 px). */
-const CHIP_FADE = 48;
 /** Recents kept per memory key. */
 const RECENT_MAX = 6;
 
@@ -230,18 +250,17 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     const over = chipRow.scrollWidth > chipRow.clientWidth + 1;
     more.hidden = !over;
     more.classList.toggle('is-back', over && chipRow.scrollLeft + chipRow.clientWidth >= chipRow.scrollWidth - 1);
-    // scrolled, the row fades at its start too, so no chip stands cut at its left edge (the r22q critic)
-    chipRow.classList.toggle('is-scrolled', over && chipRow.scrollLeft > 1);
   };
   const chipsResize = new ResizeObserver(syncMore);
   chipsResize.observe(chipRow);
-  /** A pressed chip stands in the row's view, clear of a surface's end fade (the r20q critic: the pressed Protection chip
-   *  lay past the row's end, so nothing showed which filter was on). */
+  const unwholeChips = wholeChips(chipRow);
+  /** A pressed chip stands whole in the row's view (the r20q critic: the pressed Protection chip lay past the row's end,
+   *  so nothing showed which filter was on). */
   const revealChip = (chip: HTMLElement): void => {
     const row = chipRow.getBoundingClientRect();
     const box = chip.getBoundingClientRect();
     if (box.left < row.left) chipRow.scrollLeft -= row.left - box.left;
-    else if (box.right > row.right - CHIP_FADE) chipRow.scrollLeft += box.right - row.right + CHIP_FADE;
+    else if (box.right > row.right) chipRow.scrollLeft += box.right - row.right;
     syncMore();
   };
 
@@ -450,6 +469,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
       chipRow.removeEventListener('scroll', syncMore);
       grid.removeEventListener('scroll', markRowsBelow);
       chipsResize.disconnect();
+      unwholeChips();
       gridResize.disconnect();
       host.replaceChildren();
     },
