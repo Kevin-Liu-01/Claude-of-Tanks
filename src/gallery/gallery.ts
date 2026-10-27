@@ -1207,13 +1207,15 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
   const top = Math.max(0, bar ? bar.bottom : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
     const box = panel.getBoundingClientRect();
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
+    // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
+    // beside the menu (the 261 critic: the title sliced, "O" and "Ti" beside it)
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom), left: box.left, right: box.right };
   }
   return { top, bottom: innerHeight };
 }

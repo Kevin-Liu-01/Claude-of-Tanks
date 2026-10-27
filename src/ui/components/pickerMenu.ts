@@ -32,9 +32,9 @@ interface PickerMenuOptions {
   readonly filters?: readonly PickerFilter[];
   readonly memory?: string;
   readonly randomId?: string;
-  /** The room the menu stays in (CSS px, top to bottom), where the panel holding the trigger is not it: the Garage's
-   *  staging area keeps under the top bar. */
-  readonly bounds?: () => { readonly top: number; readonly bottom: number } | null;
+  /** The room the menu stays in (CSS px, top to bottom, with its sides where it is a panel), where the panel holding the
+   *  trigger is not it: the Garage's staging area keeps under the top bar, the Gallery's versus menu in its dossier. */
+  readonly bounds?: () => MenuRoom | null;
 }
 
 export interface PickerMenu {
@@ -64,6 +64,14 @@ const SHEET_BELOW = 520;
 const SHEET_TOP_SHORT = 48;
 /** A box under this height is no panel: the menu's room is the next one out (the window at the last). */
 const BOUNDS_MIN_H = 240;
+/** A panel at most this wide (a readout column, a dossier) is spanned by its menus: across the column a menu covers whole
+ *  rows of it, where one as wide as its trigger left slivers of the labels beside it (the 261 critic: "Dama|ge" beside the
+ *  rival's menu, a dossier's title sliced over the versus menu). Such a menu reaches the panel's far edge, its list's fade
+ *  saying there is more. */
+const SPAN_MAX_W = 520;
+
+/** The room a menu stands in: a panel's (with its sides) or the window's. */
+interface MenuRoom { readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number }
 
 interface MenuPlace {
   readonly sheet: boolean;
@@ -73,16 +81,19 @@ interface MenuPlace {
   readonly maxHeight: number;
   /** It stands above the trigger (no room below). */
   readonly above: boolean;
+  /** It spans its panel (a narrow column) to the panel's far edge. */
+  readonly span: boolean;
 }
 
 /**
  * Where the popover stands for a trigger at `anchor` in a `view` window: under the trigger, or above it when the room below
- * is short of what it needs and the room above is larger; as wide as the trigger within 280-480 px and inside the window;
- * at most min(60 % of the window, 420 px) tall (520 px for picture cards) and no taller than its side's room. The room is the window's, or `bounds`
- * (the trigger's scrolling panel: a dossier, a readout column), so the menu never runs over a site header or out of its
- * panel. A coarse pointer on a window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's
- * natural height (its content at full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand
- * two abreast. Pure.
+ * is short of what it needs and the room above is larger; as wide as the trigger, at least 280 px and at most 480 px unless
+ * the trigger is wider, inside its room; at most min(60 % of the window, 420 px) tall (520 px for picture cards) and no
+ * taller than its side's room. The room is the window's, or `bounds` (the panel holding the trigger: a dossier, a readout
+ * column, with its sides where it has them), so the menu never runs over a site header or out of its panel. A panel no
+ * wider than 520 px is spanned: the menu stands across its inner width and may reach its far edge. A coarse pointer on a
+ * window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's natural height (its content at
+ * full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand two abreast. Pure.
  */
 export function placeMenu(
   anchor: { readonly left: number; readonly top: number; readonly bottom: number; readonly width: number },
@@ -90,22 +101,26 @@ export function placeMenu(
   height: number,
   coarse: boolean,
   wide = false,
-  bounds: { readonly top: number; readonly bottom: number } = { top: 0, bottom: view.height },
+  bounds: MenuRoom = { top: 0, bottom: view.height },
 ): MenuPlace {
-  const cap = Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   if (coarse && (view.width < SHEET_BELOW || view.height < SHEET_BELOW)) {
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
-    return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
+    return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false, span: false };
   }
-  const width = Math.min(MENU_MAX_W, wide ? MENU_MAX_W : Math.max(MENU_MIN_W, anchor.width), view.width - MENU_EDGE * 2);
-  const left = Math.max(MENU_EDGE, Math.min(anchor.left, view.width - MENU_EDGE - width));
+  const lo = Math.max(MENU_EDGE, (bounds.left ?? 0) + MENU_EDGE);
+  const hi = Math.min(view.width, bounds.right ?? view.width) - MENU_EDGE;
+  const span = bounds.left !== undefined && bounds.right !== undefined && bounds.right - bounds.left <= SPAN_MAX_W;
+  const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
+  // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
+  const width = span ? hi - lo : Math.min(wide ? MENU_MAX_W : Math.max(MENU_MIN_W, Math.min(MENU_MAX_W, anchor.width), anchor.width), hi - lo);
+  const left = span ? lo : Math.max(lo, Math.min(anchor.left, hi - width));
   const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
   const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
   const want = Math.min(height, cap);
   const above = below < want && aboveRoom > below;
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
   const shown = Math.min(want, maxHeight);
-  return { sheet: false, left, top: above ? anchor.top - MENU_GAP - shown : anchor.bottom + MENU_GAP, width, maxHeight, above };
+  return { sheet: false, left, top: above ? anchor.top - MENU_GAP - shown : anchor.bottom + MENU_GAP, width, maxHeight, above, span };
 }
 
 let nextMenu = 0;
@@ -196,14 +211,14 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   /** The panel holding the trigger, the room the menu stays in: the nearest box that scrolls or clips its content (a
    *  dossier, a readout column, a drawer), or the window when there is none or it is too short (the 261 report: the
    *  rival menu hung past the dossier's foot). */
-  const boundsOf = (from: HTMLElement): { top: number; bottom: number } => {
+  const boundsOf = (from: HTMLElement): MenuRoom => {
     for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
       const style = win.getComputedStyle(node);
       if (style.overflowY === 'visible' && !/paint|content|strict/.test(style.contain)) continue;
       const box = node.getBoundingClientRect();
       const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
       // a short box (a row that clips its own text) is no panel: the one holding it is
-      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom };
+      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom, left: Math.max(0, box.left), right: Math.min(win.innerWidth, box.right) };
     }
     return { top: 0, bottom: win.innerHeight };
   };
@@ -227,7 +242,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.style.bottom = spot.sheet ? '0' : '';
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
-    if (!spot.sheet) trimToWholeRows(spot);
+    // a spanning menu reaches its panel's edge, its list's fade saying there is more; any other ends on a whole row
+    if (!spot.sheet && !spot.span) trimToWholeRows(spot);
     if (list && scrolled) list.scrollTop = scrolled;
   };
   /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:

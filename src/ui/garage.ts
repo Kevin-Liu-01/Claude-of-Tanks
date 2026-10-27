@@ -1254,7 +1254,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     slot.replaceWith(rivalHost);
     const peers = rivalPeers(spec);
     const items = peers.map((other) => ({ id: other.id, name: other.label?.displayName || other.name,
-      facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
+      // tier, then nation: every list of tanks reads its facts in one order (the Gallery's versus list, the 261 critic)
+      facts: [t('garage.card.tier', { tier: tierNumeral(other.id) || '' }), tNation(other.nation)], tags: [countryCodeOf(other)],
       media: { poster: tankThumbUrl(other.id), tank: true } }));
     const group = `${statGroupOf(spec)}|${spec.id}`;
     // the chip is the bars' legend: their notch, then "vs", the rival's picture and its name (the menu's nation stays in it)

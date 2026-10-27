@@ -204,8 +204,9 @@
 .cot-c-menu__pop.is-sheet{border-radius:var(--plate-radius) var(--plate-radius) 0 0;padding-bottom:max(var(--s2),env(safe-area-inset-bottom))}
 /* a sheet is named and closes from its head, over a scrim (the g13 critic: a headless sheet's edge sliced the page under it) */
 .cot-c-menu__head{display:none}
+/* its title stands on its rows' text (the sheet's 8 px and a row's 12 px inset; the 261 critic) */
 .cot-c-menu__pop.is-sheet .cot-c-menu__head{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
-  padding:0 0 var(--s2) var(--s2);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
+  padding:0 0 var(--s2) var(--s3);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
 .cot-c-menu__pop.is-sheet::backdrop{background:var(--scrim)}
 @media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
 @media (prefers-reduced-motion:reduce){.cot-c-menu__chev,.cot-c-menu__pop,.cot-c-menu__media,.cot-c-picker__thumb img{transition:none}}
