@@ -1297,7 +1297,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         const column = statsEl.getBoundingClientRect();
         return column.width ? { top: column.top, bottom: column.bottom, left: column.left, right: column.right } : null;
       },
-      filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
+      // a flag's chip names every nation under it, as the Gallery's versus list does ("Russia / Soviet Union")
+      filters: nations.length > 1 ? nations.map((code) => ({ id: code,
+        label: [...new Set(peers.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
       onChoose: (item) => {
         rivalChoice = item.id;
         emit('ui:click', {});

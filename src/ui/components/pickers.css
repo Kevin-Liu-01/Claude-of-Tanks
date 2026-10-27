@@ -27,6 +27,7 @@
 .cot-c-whole{scroll-snap-type:x mandatory}
 .cot-c-whole>*{scroll-snap-align:start}
 .cot-c-whole>.is-cut{opacity:0;pointer-events:none}
+.cot-c-picker__chips-tail{flex:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
 /* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot
@@ -108,7 +109,8 @@
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
   .cot-c-picker--list .cot-c-picker__opt{min-height:60px}
-  .cot-c-picker__more{--h:44px}
+  /* (the kit button's own size class is later in the cascade: two classes outrank it; the 261 critic, a 36 px arrow by 44 px chips) */
+  .cot-c-picker__more.cot-c-btn--36{--h:44px}
   :is(.cot-c-picker__chips>.cot-c-chip,.cot-c-picker__search){height:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }

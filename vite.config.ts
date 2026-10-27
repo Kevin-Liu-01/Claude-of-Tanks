@@ -446,7 +446,9 @@ export default defineConfig({
             // 2026-10-26 (premiere-gallery-studio, 258): the hero cards' tier chip (ui/heroCardChips.ts, 0.4 KB, the Garage's roster
             // at boot and the lazy shared hero tiles) rides here too: it reads the locale runtime as pickerText does, and on its
             // own it was one more game and cn boot request.
-            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (261, the dropdown audit): the kit menu over a form's <select> (ui/selectPickerMenu.ts: the Rooms fields,
+            // the Gallery's markup primitive) rides here too; on its own it was one more Gallery boot request.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|selectPickerMenu|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
             // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
             // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
