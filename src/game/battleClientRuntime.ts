@@ -26,12 +26,8 @@ export {
   shellAmmunitionCapacity,
 } from '../sim/ammunition.ts';
 export { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
-export {
-  cooldownRemaining,
-  resetConsumableCooldowns,
-  startConsumableCooldown,
-} from './consumables.ts';
-export { CONSUMABLE_RULES } from './consumables.ts';
+export { CONSUMABLE_SLOTS } from '../sim/consumableRules.ts';
+export { useSoloConsumable } from './soloConsumables.ts';
 export {
   advancePreBattleCountdown,
   resolveVisiblePreBattleSeconds,

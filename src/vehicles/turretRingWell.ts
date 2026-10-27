@@ -256,12 +256,12 @@ export function measureTurretRing(
   turretRig.updateWorldMatrix(true, true);
   const hullInverse = hullRig.matrixWorld.clone().invert();
   const seat = new THREE.Vector3().setFromMatrixPosition(turretRig.matrixWorld).applyMatrix4(hullInverse);
-  // `ringR` is a combat radius (vehicle-frame metres); the ring is measured in the hull rig's own frame, which a uniform
-  // rig scale shrinks by that scale (248: the CR2/CR3 families' 1.1, whose combat hull is measured in the scaled vehicle
-  // frame, tools/rigid-hull-frame.mjs)
-  const rigScale = hullRig.scale;
-  const uniformScale = Math.abs(rigScale.y - rigScale.x) < 1e-9 && Math.abs(rigScale.z - rigScale.x) < 1e-9 ? rigScale.x : 1;
-  const R = clamp(ringR / uniformScale, 0.3, 1.5);
+  // `ringR` is a combat radius (vehicle-frame metres, from the ring module's x extent: turretRingRadius); the ring is
+  // measured in the hull rig's own frame, which the rig's scale shrinks (248: the CR2/CR3 families' uniform 1.1, whose
+  // combat hull is measured in the scaled vehicle frame, tools/rigid-hull-frame.mjs; 258: every hull rig scale is, the
+  // Sheridan pair's .928 x and the Namer's .95 among them, and a non-uniform scale divides by its x, the axis the radius
+  // was read along, so the race keeps the drawn deck opening's ellipse)
+  const R = clamp(ringR / hullRig.scale.x, 0.3, 1.5);
   // the deck's top surface on a 2.5 cm grid round the seat (the highest up-facing opaque hull face per cell) and the
   // hull's underside (the lowest down-facing one: the belly, or a glacis running in under the ring)
   const cell = 0.025;

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { BoxGeometry, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
+import { readFileSync } from 'node:fs';
+import { BoxGeometry, Group, LOD, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import { createForwardProgramWarmOwner, ProgramUniformPreparationError } from './programWarm.ts';
 import {
   GarageRestoreAbandonedError,
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
+  selectLodLevelsFor,
 } from './garageGpuWarmRuntime.ts';
 
 const scene = new Scene();
@@ -74,6 +76,73 @@ assert.equal(timings.postPassMax, 5);
 assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 
 {
+  // (2026-10-26, the boot census) an owner that can submit the scene a slice at a time does, against the visible scene,
+  // before the shadow state's update: the one-task submission was 100-150 ms of a cold desktop's boot
+  const order = [];
+  const sliced = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() { order.push('light'); }, async primeShadowMaps() { return [1]; } },
+    forwardPrograms: {
+      compile() { assert.fail('the sliced submission replaces the one-task compile'); },
+      *compileSceneSteps(options) {
+        assert.ok(options.visibleRoot === scene, 'the visible scene, as compile() selects it');
+        assert.equal(options.sliceMs, 8);
+        for (let slice = 0; slice < 3; slice++) { order.push('slice'); yield; }
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: sliced,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => { order.push('yield'); },
+    warmScene: async () => [1],
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 6), ['slice', 'yield', 'slice', 'yield', 'slice', 'yield'], 'a yield between submission slices');
+  assert.ok(order.indexOf('light') > order.lastIndexOf('slice'), 'shadow state follows the whole submission');
+  assert.equal(sliced.postCompileSlices, 3);
+  assert.equal(order.at(-1), 'render');
+}
+
+{
+  // (2026-10-26, the live 258 census and the boot ABBA) the compiled programs' first use between frames, hidden LOD
+  // levels included, after the link wait and before the shadow prime and the warm's draws (which reach only the selected
+  // LOD level); initializeSteps would prepare only programs its own submission made, none after the full compile
+  const order = [];
+  const firstUse = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() {}, async primeShadowMaps() { order.push('shadows'); return [1]; } },
+    forwardPrograms: {
+      compile() { order.push('compile'); },
+      *initializeSteps() { assert.fail('the boot first-uses the compiled programs, not a second submission'); },
+      *prepareCompiledSteps(root, options) {
+        assert.ok(root === scene);
+        for (let slice = 0; slice < 2; slice++) { order.push('first-use'); yield; }
+        options.timing.uniformCount = 24;
+        options.timing.uniformReused = 3;
+        return { status: 'complete', pending: 0 };
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: firstUse,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => {},
+    awaitProgramLinks: async () => { order.push('links'); },
+    warmScene: async () => { order.push('draws'); return [1]; },
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 5), ['compile', 'links', 'first-use', 'first-use', 'shadows']);
+  assert.ok(order.indexOf('draws') > order.lastIndexOf('first-use'));
+  assert.equal(firstUse.firstUseSlices, 2);
+  assert.equal(firstUse.firstUsePrograms, 24);
+  assert.equal(firstUse.firstUseReused, 3);
+  assert.equal(firstUse.firstUsePending, undefined, 'a complete first use records nothing pending');
+}
+
+{
   const restoreCalls = [];
   let restoreClock = 0;
   const receipt = await restoreGarageGpuPipeline({
@@ -106,7 +175,7 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
         yield;
       },
       *linkerBreathingSlices(maxSlices) {
-        assert.equal(maxSlices, 8);
+        assert.equal(maxSlices, 240, 'the restore polls the links until done (bounded at about 4 s of covered frames)');
         restoreCalls.push(['linkerSteps']);
         yield;
       },
@@ -524,4 +593,29 @@ for (const abandonAt of ['program', 'linker', 'shadow', 'upload']) {
   assert.deepEqual(seen.at(-1), ['staticDormant', true], `${abandonAt}: the static presentation sleeps again`);
 }
 
-console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, fail-closed cancellation and abandonment passed');
+// (2026-10-26, the room-stalls lane) the restore warms the LOD levels the first Garage frame will draw: a hero's levels as
+// a far battle camera left them choose the close level for the Garage camera before any program is prepared
+{
+  const scene = new Scene(), lod = new LOD(), near = new Mesh(new BoxGeometry(), new MeshStandardMaterial()),
+    far = new Mesh(new BoxGeometry(), new MeshStandardMaterial());
+  lod.addLevel(near, 0); lod.addLevel(far, 40);
+  const fixed = new LOD(), fixedNear = new Mesh(new BoxGeometry()), fixedFar = new Mesh(new BoxGeometry());
+  fixed.addLevel(fixedNear, 0); fixed.addLevel(fixedFar, 40); fixed.autoUpdate = false;
+  scene.add(lod, fixed);
+  const battle = new PerspectiveCamera(); battle.position.set(0, 0, 200);
+  assert.equal(selectLodLevelsFor(scene, battle), 1, 'an auto-updating LOD chooses; one held by its owner does not');
+  assert.ok(!near.visible && far.visible, 'the battle camera left the far level shown');
+  fixedNear.visible = false; fixedFar.visible = true;
+  const garage = new PerspectiveCamera(); garage.position.set(0, 0, 6);
+  assert.equal(selectLodLevelsFor(scene, garage), 1);
+  assert.ok(near.visible && !far.visible, 'the Garage camera chooses the close level before the warm');
+  assert.ok(!fixedNear.visible && fixedFar.visible, 'a LOD with autoUpdate off keeps its level');
+  assert.equal(selectLodLevelsFor({}, garage), 0, 'a fake root has no LODs');
+  const source = readFileSync(new URL('./garageGpuWarmRuntime.ts', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('export async function restoreGarageGpuPipeline'));
+  assert.ok(body.indexOf('lodsSelected = selectLodLevelsFor(scene, camera);') > 0
+    && body.indexOf('lodsSelected = selectLodLevelsFor(scene, camera);') < body.indexOf('forwardPrograms.initializeSteps(scene'),
+    'the restore chooses the levels before it prepares their programs');
+}
+
+console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, fail-closed cancellation and abandonment passed; the restore warms the LOD levels the Garage camera draws');

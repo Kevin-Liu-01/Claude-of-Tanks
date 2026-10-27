@@ -209,10 +209,12 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     sink.span('structureMetal', px - 0.14, gm + 1.25, ez - t - 0.9, px + 0.14, gm + 1.5, ez - t - 0.6, { colour: shade(IRON, 1.5), decor: true });
     sink.cylinder('structureMetal', [px, gm + 1.62, ez - t - 0.75], 'y', 0.04, 0.2, 10, { colour: rgb(0xa8302a), decor: true }, 0.2, false);
     // (its spokes to the spindle: the integrity gate found the rim 10 cm clear of the riser)
-    for (const [dx, dz] of [[0.19, 0], [0, 0.19]] as const) bar(sink, 'structureMetal', [px - dx, gm + 1.64, ez - t - 0.75 - dz], [px + dx, gm + 1.64, ez - t - 0.75 + dz], 0.025, { colour: rgb(0xa8302a), decor: true, fine: true });
+    // (259, the phone census: and at range, the spokes fine joinery) the spokes at any range
+    for (const [dx, dz] of [[0.19, 0], [0, 0.19]] as const) bar(sink, 'structureMetal', [px - dx, gm + 1.64, ez - t - 0.75 - dz], [px + dx, gm + 1.64, ez - t - 0.75 + dz], 0.025, { colour: rgb(0xa8302a), decor: true });
   }
-  for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
-  bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
+  // (259) the sign's frame at any range: the board hangs from its rail
+  for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true });
+  bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true });
   sink.span('structureMetal', -0.45, gm + 1.3, vz0 - 0.04, 0.45, gm + 1.93, vz0 - 0.01, { colour: SIGN_YELLOW, decor: true });
   // the bund's drain sump in the inside corner with its grate and valve (R6: a berm has no expansion joints)
   const sx0 = -ex + t + 0.45, sz0 = -ez + t + 0.45, gsm = gl(sx0 + 0.4, sz0 + 0.4);

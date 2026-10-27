@@ -132,6 +132,18 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
 - Published `heightM` may include external sights, weapons and antennas. Those
   are never allowed to stretch the base shell; structural cupolas and hatches
   receive their own exact convex cells, while equipment remains external.
+- **A gun fixed in the hull is the gun** (259): the Strv 103 family's `hullGun`
+  stays out of the hull shell and its calibration, and the barrel is traced as
+  `armor.gunBarrel`. Inside the shell it plated the barrel as glacis to the
+  muzzle, bridged the nose to the tube with a convex face in air and stretched
+  the calibrated zones ~1.9 m forward, so the 103A's nose took side-armour labels
+  and its centre-mass shot met the wedge only through a gap mid-hull.
+  `fleetBalance` shoots each siege hull at its shell's mid-height: the wedge is the
+  first plate met, and a shot across the barrel meets no plate.
+- **A donor's drawn core measures with the donor's ring** (259): the ring
+  receipt's radius hint comes from the combat ring module, so a variant drawing
+  its donor's exact hull and turret (the PT-91M: `hullG.userData.pt91mDonor`)
+  measures with the donor's, and its seated turret is the donor's byte for byte.
 
 ## Probes / gates
 

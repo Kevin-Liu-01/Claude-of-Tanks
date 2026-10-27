@@ -19,7 +19,9 @@ import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
 // baseline's (a mask and those values; the version byte's high bit marks it): 253 -> ~152 bytes a snapshot while driving.
 // 8 (mp-scale-251, 2026-10-24): an event's payload is a tagged binary value instead of JSON (eventPayload.ts: keys from a
 // fixed table, numbers as varints at 4 decimals), length-prefixed: a 14v14 viewer's event bytes fall by about two thirds.
-export const WIRE_VERSION = 8;
+// 9 (consumables-260, 2026-10-26): the viewer's equipment multipliers gain `power` (VIEWER_EQUIPMENT), a Governor
+// Override's engine burst (sim/consumableRules.ts), so the predictor drives at the authority's power.
+export const WIRE_VERSION = 9;
 /**
  * 2 (P3b, 2026-09-29): entity rows carry the authority tick they were captured at (`EntityRow.tick`, ROW_GROUP.AGE on the
  * wire when it predates the packet) so the host's interest tiers may hold a far entity's row across snapshots and the
@@ -33,7 +35,9 @@ export const WIRE_VERSION = 8;
 // 9 (release 252, 2026-10-25): wire 8 (mp-scale-251's binary event payloads, per-viewer keyframe slots and budgets),
 // rooms sized by each mode's ruleset, the authority's equipment validation (equipment-249) and detMath in the authority:
 // a 251 tab and a 252 tab never share a match (the joining side reads "Refresh to join this match").
-export const PROTOCOL_VERSION = 9; // wire 8, ruleset room sizes, equipment validation, pinned math
+// 10 (consumables-260, 2026-10-26): wire 9 and the consumable catalog (each seat's consumables; consumable_used names
+// its item and charges): a 259 tab and a 260 tab never share a match.
+export const PROTOCOL_VERSION = 10; // wire 9, consumable loadouts
 
 export const TICK_HZ = 60;
 /**
@@ -255,7 +259,9 @@ export const INPUT_MARGIN_UNKNOWN = 127;
 /** Module and crew order of the viewer prediction section. */
 export const VIEWER_MODULES = Object.freeze(['engine', 'transmission', 'trackL', 'trackR', 'turretRing', 'gunMount', 'gun', 'missileRack', 'feedSystem', 'roofGun', 'autoloader', 'ammoRack', 'fuelTank', 'radio', 'optics'] as const);
 export const VIEWER_CREW = Object.freeze(['driver', 'gunner'] as const);
-export const VIEWER_EQUIPMENT = Object.freeze(['traverse', 'turret', 'aimTime', 'bloom'] as const);
+// wire 9 (2026-10-26): `power`, a Governor Override's engine burst (sim/consumableRules.ts), so the predictor drives
+// what the authority drives
+export const VIEWER_EQUIPMENT = Object.freeze(['traverse', 'turret', 'aimTime', 'bloom', 'power'] as const);
 export const MODULE_STATE_NAMES = Object.freeze(['ok', 'yellow', 'red'] as const);
 
 /** Known event kinds; 255 carries the type name inline. */

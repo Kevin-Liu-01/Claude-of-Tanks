@@ -46,17 +46,22 @@ function clearOf(r: Rect, v: Rect): Rect {
 const within = (v: Rect | null, x: number, z: number, m: number) => !!v && x > v.x0 - m && x < v.x1 + m && z > v.z0 - m && z < v.z1 + m;
 
 /**
- * The piers carried up past a tier's parapet as finials, a bay apart round the tier (skyline.ts pierFinials), none over a
- * collapsed corner's void: there they stood on the parapet laid over nothing.
+ * The piers carried up past a tier's parapet (`parapet` m over its `top`) as finials, a bay apart round the tier
+ * (skyline.ts pierFinials), none over a collapsed corner's void: there they stood on the parapet laid over nothing.
+ * (the owner, 2026-10-26, on Blackglass's Bund towers: "fix these floating bits around the building") each rises from its
+ * pier's head at the tier's top, before the parapet's face as its pier stands before the wall, the corner ones drawn in
+ * onto their face as the corner piers are: they stood from the parapet's top, 0.9 m over the piers' heads with no
+ * underside, and the corner ones half past the tier's corner on nothing.
  */
-function deckFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: RegionalBucket, gone: Rect | null): void {
+function deckFinials(sink: PartSink, r: Rect, top: number, parapet: number, bay: number, bucket: RegionalBucket, gone: Rect | null): void {
   for (const face of rectFaces(r)) {
     const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
     for (let k = 0; k <= n; k++) {
-      const u = -face.width / 2 + k * bw, corner = k === 0 || k === n, p = facePoint(face, u, 0, 0);
+      const at = -face.width / 2 + k * bw, corner = k === 0 || k === n, p = facePoint(face, at, 0, 0);
       if (within(gone, p[0], p[2], 0.4)) continue;
-      const h = corner ? 1.6 : 1.0;
-      faceBox(sink, bucket, face, u, y + h / 2, 0.26, corner ? 0.8 : 0.5, h, 0.5, { ...DECOR, fineSides: true }, { bottom: true });
+      const w = corner ? 0.8 : 0.5, u = corner ? at - Math.sign(at) * w / 2 : at, h = parapet + (corner ? 1.6 : 1.0);
+      // (an underside where it overhangs its pier's head: the corner pier's front order is narrower than the finial)
+      faceBox(sink, bucket, face, u, top + h / 2, 0.26, w, h, 0.5, { ...DECOR, fineSides: true }, corner ? undefined : { bottom: true });
     }
   }
 }
@@ -174,7 +179,7 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       // (the owner, 2026-10-21: the towers' "floating parts") over a collapsed corner the parapet and its finials stand on
       // the tier's standing L only: they were laid across the void, a roof and its finials over nothing
       for (const part of keep ?? [r]) sink.span(wall, part.x0, top, part.z0, part.x1, top + 0.9, part.z1);
-      deckFinials(sink, r, top + 0.9, facade.bay, wall, gone);
+      deckFinials(sink, r, top, 0.9, facade.bay, wall, gone);
       // (230, "underdesigned") the Art Deco chevrons along the setback's parapet; up each wide face of the first tier its
       // centre spine
       chevrons(sink, r, top + 0.08, dress.accent, gone, facade.bay);

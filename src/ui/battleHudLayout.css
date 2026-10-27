@@ -95,7 +95,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='ph
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-send{min-width:42px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-sub{height:auto;flex-wrap:wrap;gap:3px}
 /* The full report is a scrollable reader; it never paints over the map. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 
 /* Tablet mouse layouts cannot fit health, speed, six actions and a map on
    one row. Keep the ammo tray at floor level and lift the two instruments. */
@@ -173,7 +173,15 @@ body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
 body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
 /* the replay owns the screen: the battle's own strips outside the HUD's root step aside too (owner 2026-10-25, "fix
    overlapping uis") */
-body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints){visibility:hidden!important}
+body.cot-kc-live :is(.cot-mp-status.battle,.cot-medal-toasts,.cot-hints,.cot-battle-notices){visibility:hidden!important}
+/* the map's large step on a window up to 1024 px wide: the kill ribbon and the right-hand kill feed on its side stand down
+   while it is open, the map taking their room (battleHudLayout.ts data-hud-map-large) */
+body[data-cot-battle-layout][data-hud-map-large] .cot-ribbon,
+body[data-cot-battle-layout][data-hud-map-large='right'] .cot-kill-lane.r{display:none!important}
+/* the battle's notices (battleNotices.ts: the kit's region) under the centre's detection and alert, never on them, at the
+   planner's top (battleHudLayout.ts --hud-battle-notices-top; UI-LOCKDOWN B14): the pointer lock's notice and the
+   network's banner each stood fixed at the centre top, over the objective and each other */
+body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)))}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -691,7 +699,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{min-height:32px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] :is(.cot-sixth,.cot-alert){height:24px;min-height:0;padding-block:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-alert{width:max-content;max-width:var(--hud-touch-alert-w,248px);white-space:nowrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='one-row'] .cot-sixth[data-under-alert]{visibility:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-touch-notices~='one-row'],[data-touch-notices~='uncleared']) .cot-sixth[data-under-alert]{visibility:hidden}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
 /* (where the dial comes down over the resting sight, the idle reticle and its readouts stand down under it until the

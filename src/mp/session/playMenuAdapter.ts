@@ -62,7 +62,10 @@ interface RoomConnectRequest {
   roomsUrl: string;
   roomCode?: string;
   player: { id: string; name: string };
-  selection: { specId: string; mapId: string; gameMode?: string; equipment: string[]; camo: string; arrangement?: TeamArrangement | null };
+  selection: {
+    specId: string; mapId: string; gameMode?: string; equipment: string[]; consumables?: string[]; camo: string;
+    arrangement?: TeamArrangement | null;
+  };
   teamSize: number;
   /** A solo battle's room in the page (soloHostEntry.ts): its session says so (roomInfo.solo). */
   solo?: boolean;
@@ -272,7 +275,10 @@ export function createRoomConnectionAdapter({
     pending = attempt;
     onStatus({ state: 'connecting' });
     const mode: RoomMode = request.mode === 'lan' ? 'lan' : 'private';
-    const selection = { specId: request.selection.specId, equipment: [...(request.selection.equipment || [])], camo: request.selection.camo || 'factory' };
+    const selection = {
+      specId: request.selection.specId, equipment: [...(request.selection.equipment || [])],
+      consumables: [...(request.selection.consumables || [])], camo: request.selection.camo || 'factory',
+    };
     try {
       const room = request.kind === 'create'
         ? await client.create({

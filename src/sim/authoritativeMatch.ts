@@ -2,7 +2,7 @@ import type { ModeCheckpoint } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
+import { auxiliaryCapabilities, requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -56,10 +56,12 @@ import {
   createCombatState,
   isHeClass,
   repairAllModules,
+  repairModules,
   resolveHeBurst,
   resolveShellHit,
   selectFirstAvailableShell,
   selectShell,
+  strainModule,
   selectedWeaponModuleState,
   magazineReloadDenialReason,
   startMagazineReload,
@@ -105,7 +107,12 @@ import {
   collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
 } from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
-import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
+import {
+  APS_BURST_OFFSET_M, CONSUMABLE_SLOTS, DEFAULT_CONSUMABLE_LOADOUT, GOVERNOR_STRAIN_HP_FRACTION, apsIntercepts,
+  botConsumableLoadout, consumableSpottingIds, createConsumableState, jammerCovers, sanitizeConsumableLoadout,
+  suppressNewFire, tickConsumables, useConsumableSlot as useConsumableSlotRule,
+  type ConsumableHost, type ConsumableId, type ConsumableState,
+} from './consumableRules.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import type { AimIntentInput } from './aimIntent.ts';
@@ -115,11 +122,12 @@ import {
   createSpecialActionState,
   specialActionGuidesShell,
 } from './specialActions.ts';
-import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
+import { consumeAmmunition, hasAmmunition, replenishAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
-  rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor, type MatchRuleset,
+  consumableTiming, rulesetConsumableGate, rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor,
+  type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -165,6 +173,8 @@ export interface AuthoritativePlayerRecord {
   spawn?: AuthoritativeSpawn;
   bot?: boolean;
   equipment?: readonly string[] | null;
+  /** The consumable in each slot (2026-10-26, the catalog: sim/consumableRules.ts); absent carries the default trio. */
+  consumables?: readonly string[] | null;
   difficulty?: AiDifficulty;
 }
 
@@ -228,6 +238,11 @@ export interface AuthoritativeEntity {
   connected: boolean;
   kills: number;
   damage: number;
+  /** The consumable in each slot, kept across lives (sim/consumableRules.ts sanitizeConsumableLoadout). */
+  consumableItems: ConsumableId[];
+  /** This life's consumable cooldowns, charges and timed effects. */
+  consumables: ConsumableState;
+  /** consumables.readyAt itself, the field the bots' support chooser reads. */
   consumableReadyAt: number[];
   specialAction: SpecialActionState;
   aiCtl?: AuthoritativeAIController;
@@ -465,6 +480,8 @@ const CRUSH_PRESS_S = 0.45;
 const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
 const RAM_PAIR_COOLDOWN_S = 0.5;
+/** A Governor Override that ended strains the engine (one function for every tank: the tick allocates nothing). */
+const strainEngine = (combat: CombatState): boolean => strainModule(combat, 'engine', GOVERNOR_STRAIN_HP_FRACTION);
 const TEAM_ALPHA = 'alpha';
 const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
@@ -1011,6 +1028,8 @@ export function createAuthoritativeMatch({
       spec,
     );
     applyRulesetToCombat(combat, spec.gun.shells, ruleset, rulesetSeatHullScale(ruleset, team, bot));
+    const consumableItems = consumableLoadoutFor(spec, bot, record.consumables);
+    const consumables = createConsumableState(consumableItems, consumableTiming, combat);
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,
@@ -1026,7 +1045,9 @@ export function createAuthoritativeMatch({
       connected: true,
       kills: 0,
       damage: 0,
-      consumableReadyAt: [0, 0, 0],
+      consumableItems,
+      consumables,
+      consumableReadyAt: consumables.readyAt,
       specialAction: createSpecialActionState(spec),
     };
     bindSpecialActionState(entity); // round 34: fixed hydraulic guns spawn with suspension aim engaged
@@ -1066,7 +1087,10 @@ export function createAuthoritativeMatch({
     raycast: spottingRaycast,
     opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
     concealers: worldConcealers,
-    getEquipment: (entity) => entityById.get(entity.id)?.equip ?? null,
+    getEquipment: (entity) => {
+      const tank = entityById.get(entity.id);
+      return tank ? consumableSpottingIds(tank.consumables, tank.equip, timeS) : null;
+    },
     getCamoBonus: () => 0,
     rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
@@ -1212,7 +1236,8 @@ export function createAuthoritativeMatch({
     );
     // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
     applyRulesetToCombat(tank.combat, tank.spec.gun.shells, ruleset, healthScale);
-    tank.consumableReadyAt = [0, 0, 0];
+    tank.consumables = createConsumableState(tank.consumableItems, consumableTiming, tank.combat);
+    tank.consumableReadyAt = tank.consumables.readyAt;
     initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
@@ -1767,40 +1792,27 @@ export function createAuthoritativeMatch({
     });
   }
 
-  function repairConsumable(entity: AuthoritativeEntity): boolean {
-    const modules = repairAllModules(entity.combat);
-    for (const module of modules) emit('module_state', {
-      id: entity.id,
-      module,
-      state: 'ok',
-    });
-    return modules.length > 0;
+  /** A seat's consumables: a bot's role picks, a player's chosen items (or the default trio), within the mode's gate. */
+  function consumableLoadoutFor(
+    spec: AuthoritativeSpec, bot: boolean, chosen: readonly string[] | null | undefined,
+  ): ConsumableId[] {
+    const vehicle = { era: spec.era, role: spec.role, smoke: !!auxiliaryCapabilities(spec)?.smoke?.length };
+    const gate = rulesetConsumableGate(ruleset);
+    return bot ? botConsumableLoadout(vehicle, gate)
+      : sanitizeConsumableLoadout(Array.isArray(chosen) ? chosen : DEFAULT_CONSUMABLE_LOADOUT, vehicle, gate);
   }
 
-  function firstAidConsumable(entity: AuthoritativeEntity): boolean {
-    let used = false;
-    for (const crew of Object.keys(entity.combat.crew)) {
-      if (entity.combat.crew[crew] !== false) continue;
-      entity.combat.crew[crew] = true;
-      used = true;
-    }
-    return used;
-  }
-
-  function extinguisherConsumable(entity: AuthoritativeEntity): boolean {
-    if (!entity.combat.fire.burning) return false;
-    entity.combat.fire.burning = false;
-    entity.combat.fire.ticksLeft = 0;
-    entity.combat.fire.tickTimer = 0;
-    emit('tank_fire', { id: entity.id, burning: false });
-    return true;
-  }
-
-  function applyConsumable(entity: AuthoritativeEntity, bit: number): boolean {
-    if (bit === PLAYER_ACTION_BITS.REPAIR) return repairConsumable(entity);
-    if (bit === PLAYER_ACTION_BITS.FIRST_AID) return firstAidConsumable(entity);
-    if (bit === PLAYER_ACTION_BITS.EXTINGUISHER) return extinguisherConsumable(entity);
-    return false;
+  /** The authority's side of an item: modules, ammunition, smoke and the events a use emits. */
+  function consumableHost(entity: AuthoritativeEntity): ConsumableHost {
+    return {
+      timeS,
+      repairAll: () => repairAllModules(entity.combat),
+      repair: (names) => repairModules(entity.combat, names),
+      restock: (fraction) => replenishAmmunition(entity.combat, fraction).totalAdded,
+      smoke: auxiliaryCapabilities(entity.spec)?.smoke?.length ? entity.combat.auxiliary ?? null : null,
+      moduleRepaired: (module) => emit('module_state', { id: entity.id, module, state: 'ok' }),
+      fireOut: () => emit('tank_fire', { id: entity.id, burning: false }),
+    };
   }
 
   function useConsumableSlot(
@@ -1810,19 +1822,40 @@ export function createAuthoritativeMatch({
   ): void {
     const bit = 1 << slot;
     if (!(bits & bit)) return;
-    const remainingS = cooldownRemaining(timeS, entity.consumableReadyAt[slot]);
-    if (remainingS > 0) {
-      emit('consumable_denied', { id: entity.id, slot, reason: 'COOLDOWN', remainingS });
+    if (!ruleset.consumables) {
+      emit('consumable_denied', { id: entity.id, slot, reason: 'RULESET' });
       return;
     }
-    if (!applyConsumable(entity, bit)) {
-      emit('consumable_denied', { id: entity.id, slot, reason: 'NOTHING' });
+    const use = useConsumableSlotRule(entity.consumables, slot, entity.combat, consumableHost(entity), consumableTiming);
+    if (!use.ok) {
+      emit('consumable_denied', {
+        id: entity.id, slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
+        ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
+      });
       return;
     }
-    const cooldownS = CONSUMABLE_RULES[slot].cooldownS;
-    const readyAt = timeS + cooldownS;
-    entity.consumableReadyAt[slot] = readyAt;
-    emit('consumable_used', { id: entity.id, slot, cooldownS, readyAt });
+    emit('consumable_used', {
+      id: entity.id, slot, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
+    });
+  }
+
+  /** One tick of a crew's timed consumables: ended effects, a strained engine, a suppressed fire. */
+  function tickEntityConsumables(entity: AuthoritativeEntity): void {
+    const combat = entity.combat;
+    if (combat.destroyed) return;
+    const strained = tickConsumables(entity.consumables, combat, timeS, rng, strainEngine);
+    if (strained) emit('module_state', { id: entity.id, module: 'engine', state: combat.modules.engine?.state ?? 'yellow' });
+    if (suppressNewFire(entity.consumables, combat, timeS)) emit('tank_fire', { id: entity.id, burning: false });
+  }
+
+  /** A missile steered at a point is jammed when an enemy with its IR Jammer on stands there. */
+  function guidanceJammed(shooter: AuthoritativeEntity, aim: Vector3 | null | undefined): boolean {
+    if (!aim) return false;
+    for (const tank of entities) {
+      if (tank.team === shooter.team || tank.combat.destroyed) continue;
+      if (jammerCovers(tank.consumables, timeS, tank.state.pos.x, tank.state.pos.z, aim.x, aim.z)) return true;
+    }
+    return false;
   }
 
   function useConsumables(entity: AuthoritativeEntity): void {
@@ -1850,7 +1883,7 @@ export function createAuthoritativeMatch({
       if (requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) emit('tank_self_right', { id: entity.id });
       else requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
     }
-    for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
+    for (let slot = 0; slot < CONSUMABLE_SLOTS; slot++) {
       useConsumableSlot(entity, bits, slot);
     }
   }
@@ -2198,7 +2231,31 @@ export function createAuthoritativeMatch({
     if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock, target.modeGravityScale ?? 1);
   }
 
+  /**
+   * An armed APS charge met the round: it is spent short of the hull (no strike, no damage) and bursts off the face it was
+   * meant for. The burst sits along that face's normal, never back along the round's path, so a viewer that sees the
+   * struck tank but not the shooter learns no bearing (viewerShotEvent's rule).
+   */
+  function interceptShell(struck: AuthoritativeEntity, shell: DamageShell, hit: ArmorIntersection | undefined): void {
+    shell.dead = true;
+    const point = hit?.point ?? shell.pos;
+    const normal = (hit as { normal?: { x: number; y: number; z: number } } | undefined)?.normal;
+    const nx = normal?.x ?? 0, ny = normal?.y ?? 1, nz = normal?.z ?? 0;
+    const munition = munitionClassForShell(shell.spec);
+    emit('aps_intercept', {
+      id: struck.id, shooterId: shell.shooterId, shellId: shell.id, munition, chargeKg: munitionChargeKg(shell.spec, munition),
+      shellType: shell.spec.type, caliberMm: shell.spec.caliberMm, nx, ny, nz,
+      x: point.x + nx * APS_BURST_OFFSET_M, y: point.y + ny * APS_BURST_OFFSET_M, z: point.z + nz * APS_BURST_OFFSET_M,
+    });
+  }
+
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
+    // an armed APS charge meets a missile or HEAT round from the front arc before it strikes (sim/consumableRules.ts)
+    const struck = tankHit.target;
+    if (apsIntercepts(struck.consumables, timeS, shell.spec, struck.state.yaw, shell.vel.x, shell.vel.z)) {
+      interceptShell(struck, shell, tankHit.hits[0]);
+      return;
+    }
     knockTargetFromShell(tankHit.target, shell);
     const strike = tankHit.hits[0]?.point;
     if (strike) destruction.shellBurst(shell.spec, strike.x, strike.y, strike.z, shell.vel.x, shell.vel.z, shell.shooterId);
@@ -2231,7 +2288,8 @@ export function createAuthoritativeMatch({
     for (const shell of shells) {
       if (shell.dead) continue;
       const shooter = entityById.get(shell.shooterId);
-      if (shooter && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))) {
+      if (shooter && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))
+        && !guidanceJammed(shooter, shooter.input?.aimPoint)) {
         guideShellToward(shell, shooter.input?.aimPoint, dt);
       }
       stepShell(shell, dt);
@@ -2408,6 +2466,7 @@ export function createAuthoritativeMatch({
         applyNetworkInput(entity, inputs.get(entity.id));
       }
       useConsumables(entity);
+      tickEntityConsumables(entity);
     }
     // battle endings (2026-09-25): the verdict silences every trigger — bots and humans — while the ruleset's
     // hold keeps the field alive (the solo step does the same in state.ts silenceGunsAfterVerdict)

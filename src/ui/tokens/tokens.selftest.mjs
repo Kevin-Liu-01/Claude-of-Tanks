@@ -185,7 +185,7 @@ const SPEC_SHEET = `
 --ink-1:var(--paper-50);--ink-2:var(--paper-300);--ink-3:var(--paper-500);--ink-4:var(--paper-700);--ink-on-accent:#140d03;
 --line-1:rgba(246,243,236,.07);--line-2:rgba(246,243,236,.13);--line-3:rgba(246,243,236,.24);
 --accent:var(--tungsten-500);--accent-hi:var(--tungsten-400);--accent-lo:var(--tungsten-600);--accent-wash:rgba(240,160,48,.12);
---focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--tungsten-400);
+--focus-ring:0 0 0 2px var(--graphite-900),0 0 0 4px var(--paper-50);
 --team-own:var(--sky-400);--team-enemy:var(--vermilion-400);--team-squad:var(--mint-400);--team-neutral:var(--paper-100);
 --ok:var(--mint-400);--warn:var(--yellow-400);--danger:var(--vermilion-400);--info:var(--sky-200);
 --cot-user-text:1;--cot-type-scale:calc(var(--cot-ui-scale,1)*var(--cot-user-text));
@@ -286,8 +286,11 @@ floor('accent/page', contrast(opaque('accent'), page), 4.5);
 floor('accent-hi/page', contrast(opaque('accent-hi'), page), 4.5);
 floor('ink-on-accent/accent', contrast(opaque('ink-on-accent'), opaque('accent')), 4.5);
 for (const name of ['out-ricochet', 'out-nopen']) floor(`${name}/page`, contrast(opaque(name), page), 3);
-floor('focus ring/gap', contrast(opaque('tungsten-400'), opaque('graphite-900')), 3);
-floor('focus ring/page', contrast(opaque('tungsten-400'), page), 3);
+// focus is neutral (lead, 2026-10-26): the ring's outer edge and a focus outline are paper, never the accent of the one
+// selected state (SPEC 4.14 drew the ring in tungsten-400)
+assert.equal(TOKENS['focus-ink'], TOKENS['paper-50'], '--focus-ink is the neutral paper ink');
+floor('focus ring/gap', contrast(opaque('paper-50'), opaque('graphite-900')), 3);
+floor('focus ring/page', contrast(opaque('paper-50'), page), 3);
 assert.ok(rgbaOf('hud-plate')[3] >= 0.92, 'HUD plates are never below .92');
 assert.ok(rgbaOf('hud-plate-strong')[3] >= 0.96, 'strong HUD plates are .96 or more');
 

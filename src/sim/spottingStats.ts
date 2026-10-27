@@ -92,6 +92,8 @@ export const EQUIPMENT: Readonly<Record<string, EquipmentVisionEffect>> = {
   optics:     { label: 'Coated Optics',        view: 0.10 },
   exhaust_baffles: { label: 'Exhaust Baffles',  camo: 0.04 },
   thermal_sight:   { label: 'Thermal Sight',    view: 0.15 },
+  // the Fresh Foliage consumable while it is active (sim/consumableRules.ts CONSUMABLE_FOLIAGE_EQUIPMENT; 2026-10-26)
+  cs_foliage:      { label: 'Fresh Foliage',    camoStill: 0.12 },
 };
 
 /** The bounds stacked vision equipment stays in (2026-10-24, the larger catalog): every loadout the catalog allowed

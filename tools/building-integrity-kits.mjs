@@ -3,7 +3,7 @@
 // and the market set) with their catalog exterior, and every map's set pieces (landmarks) at their authored parameters,
 // each from several seeds on flat ground; and the ledger rows the selftest holds them to.
 import { ARCHITECTURE_STYLES, buildRegionalParts } from '../src/world/maps/regional/index.ts';
-import { streamFrom, hashSeed } from '../src/world/maps/regional/geometry.ts';
+import { streamFrom, hashSeed, FINE_CELLED_BUCKETS, DESKTOP_FINE_CELLED_BUCKETS } from '../src/world/maps/regional/geometry.ts';
 import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
 import { VILLAGE_BUILDERS } from '../src/world/maps/villageKit.ts';
 import { URBAN_BUILDERS } from '../src/world/maps/urbanKit.ts';
@@ -12,6 +12,9 @@ import { addCatalogExterior } from '../src/world/maps/exteriorDetailKit.ts';
 // (the looks lane, 2026-10-16) a cut hall's catalog openings settled as props.ts settles them after the catalog pass
 import { settleCatalogCuts } from '../src/world/maps/railKit.ts';
 import { LANDMARK_BUILDERS } from '../src/world/landmarks/index.ts';
+// (259) the Bund towers at each authored damage state (shanghaiBund.ts bundTower: the Settlement's stand at 0 or 1, Zhabei's
+// take any), which a kit build reaches only by its stream
+import { decoTower as bundDecoTower } from '../src/world/maps/regional/skylineDeco.ts';
 import { resolveLandmarkParams } from '../src/world/landmarks/plan.ts';
 
 /** Representative base footprints (info) of the plan ids (regionalArchitecture.selftest.mjs's table). */
@@ -52,8 +55,25 @@ function worstOf(rows) {
   return out;
 }
 
+/** The damage states' rows (--damage-states): each Bund crown on its plot at damage 0-3 (`damage/<crown>@<plot>:d<k>`). */
+const DAMAGE_PLOTS = [['pyramid', 'megatower'], ['stepped', 'arcology'], ['stepped', 'needletower']];
+
+/**
+ * What a view draws of a build's fine joinery (geometry.ts EmitOptions.fine): near the camera all of it; past the quality
+ * preset's fine-detail distance a desktop hides its celled buckets' (props.ts updateFineDetail); a phone builds none.
+ */
+const FINE_DRAWN = { near: true, far: (bucket) => !FINE_CELLED_BUCKETS.has(bucket) && !DESKTOP_FINE_CELLED_BUCKETS.has(bucket), phone: false };
+
+/** Whether two floating assemblies' boxes meet (within the contact's 5 cm): the same part in two views of a build. */
+function sameAssembly(a, b) {
+  const box = (f) => [f.at[0] - f.size[0] / 2, f.at[1], f.at[2] - f.size[2] / 2, f.at[0] + f.size[0] / 2, f.at[1] + f.size[1], f.at[2] + f.size[2] / 2];
+  const p = box(a), q = box(b);
+  return [0, 1, 2].every((i) => p[i] <= q[i + 3] + 0.05 && q[i] <= p[i + 3] + 0.05);
+}
+
 export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29], generic = true, landmarks = true, only = '',
-  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS, images = null, dedupeLandmarks = false }) {
+  onRow, packParts, analyseBuilding, severity, summarise, viewOptions = KIT_VIEW_OPTIONS, images = null, dedupeLandmarks = false, lod = 'near',
+  damageStates = false, strands = false }) {
   const wantKit = (id) => !kits.length || kits.includes(id);
   const wantBuilder = (id) => !builders.length || builders.includes(id);
   const mapOfStyle = new Map(); const mapConfigs = new Map();
@@ -61,12 +81,28 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
     const cfg = getMapConfig(mapId); mapConfigs.set(mapId, cfg);
     const arch = cfg.props?.architecture; if (arch && !mapOfStyle.has(arch)) mapOfStyle.set(arch, mapId);
   }
-  const analyse = (key, kit, builder, parts, seed, extra = {}) => {
-    const own = packParts(parts);
+  // `lod`: the view the census checks ('near', 'far', 'phone': FINE_DRAWN; a phone's build is the mobile tier's).
+  // `strands` (259; the owner, 2026-10-26, on Blackglass's Bund towers: "fix these floating bits around the building"):
+  // each row also counts the parts that float past the fine-detail distance and in a phone's build but not in the whole
+  // build (a front face whose sides were fine joinery, a sign on fine brackets): stranded, never by design
+  const analyse = (key, kit, builder, parts, seed, extra = {}, phoneParts = null) => {
+    const own = packParts(parts, { includeFine: FINE_DRAWN[lod] });
     if (!own.pos.length) return null;
     const r = analyseBuilding(own, { groundFn: () => 0, ...viewOptions, keepRasters: !!images });
     if (images) images(`${key.replace(/[^\w.-]+/g, '_')}_s${seed}`, r.rasters);
-    return { key, kit, builder, seed, tris: r.tris, severity: severity(r, builder, kit), summary: summarise(r, builder), detail: r, ...extra };
+    const row = { key, kit, builder, seed, tris: r.tris, severity: severity(r, builder, kit), summary: summarise(r, builder), detail: r, ...extra };
+    if (strands && lod === 'near') {
+      const designed = r.floatingAll ?? r.floating;
+      const stranded = (view, built) => {
+        const p = packParts(built, { includeFine: FINE_DRAWN[view] });
+        if (!p.pos.length) return [];
+        return analyseBuilding(p, { groundFn: () => 0, skipViews: true }).floating.filter((f) => !designed.some((d) => sameAssembly(f, d)));
+      };
+      const far = stranded('far', parts), phone = stranded('phone', phoneParts ?? parts);
+      row.summary.strandedFar = far.length; row.summary.strandedPhone = phone.length;
+      row.detail.stranded = { far: far.slice(0, 6), phone: phone.slice(0, 6) };
+    }
+    return row;
   };
   if (!only || only === 'kits') {
     for (const style of ARCHITECTURE_STYLES) {
@@ -78,16 +114,38 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
         const [w, d, h] = INFO[id] ?? [7, 9, 6];
         const perSeed = [];
         for (const seed of seeds) {
-          const parts = buildRegionalParts(style, {
+          const build = (tier) => buildRegionalParts(style, {
             structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
             wallBucket: seed % 2 ? 'plaster2' : 'stone', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3),
-            mapId, snowCap, tier: 'desktop',
+            mapId, snowCap, tier,
           }, streamFrom(seed * 3 + 5));
-          const row = analyse(`${style.id}/${id}`, style.id, id, parts, seed, { map: mapId });
+          const parts = build(lod === 'phone' ? 'mobile' : 'desktop');
+          const row = analyse(`${style.id}/${id}`, style.id, id, parts, seed, { map: mapId }, strands ? build('mobile') : null);
           if (row) perSeed.push(row);
         }
         if (perSeed.length) onRow(worstOf(perSeed));
       }
+    }
+  }
+  if (damageStates && (!only || only === 'damage') && wantKit('damage')) {
+    const shanghai = ARCHITECTURE_STYLES.find((s) => s.id === 'shanghai');
+    const mapId = mapOfStyle.get('shanghai') ?? 'selftest';
+    for (const [crown, plot] of DAMAGE_PLOTS) for (const damage of [0, 1, 2, 3]) {
+      const id = `${crown}@${plot}:d${damage}`;
+      if (!wantBuilder(id)) continue;
+      const style = { ...shanghai, builders: { [plot]: bundDecoTower({ crown, damage }) }, mapBuilders: undefined };
+      const [w, d, h] = INFO[plot];
+      const perSeed = [];
+      for (const seed of seeds) {
+        const build = (tier) => buildRegionalParts(style, {
+          structureId: plot, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+          wallBucket: seed % 2 ? 'plaster2' : 'stone', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3),
+          mapId, snowCap: false, tier,
+        }, streamFrom(seed * 3 + 5));
+        const row = analyse(`damage/${id}`, 'damage', id, build(lod === 'phone' ? 'mobile' : 'desktop'), seed, { map: mapId }, strands ? build('mobile') : null);
+        if (row) perSeed.push(row);
+      }
+      if (perSeed.length) onRow(worstOf(perSeed));
     }
   }
   if (generic && (!only || only === 'generic')) {
@@ -120,9 +178,10 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
         const perSeed = [];
         for (const seed of seeds) {
           const id = hashSeed(`landmark:${mapId}:${placement.kind}:${i}`, seed);
-          const built = builder({ kind: placement.kind, params: resolveLandmarkParams(placement), rng: streamFrom(id), variant: streamFrom(id ^ 0x5bd1e995),
-            age: streamFrom(id ^ 0x27d4eb2f), tier: 'desktop', groundFall: 0, brick: false, snowCap: false, mapId });
-          const row = analyse(`landmark/${mapId}:${placement.kind}#${i}`, 'landmark', placement.kind, built.parts, seed, { map: mapId, style: style ?? null });
+          const build = (tier) => builder({ kind: placement.kind, params: resolveLandmarkParams(placement), rng: streamFrom(id), variant: streamFrom(id ^ 0x5bd1e995),
+            age: streamFrom(id ^ 0x27d4eb2f), tier, groundFall: 0, brick: false, snowCap: false, mapId }).parts;
+          const row = analyse(`landmark/${mapId}:${placement.kind}#${i}`, 'landmark', placement.kind, build(lod === 'phone' ? 'mobile' : 'desktop'), seed,
+            { map: mapId, style: style ?? null }, strands ? build('mobile') : null);
           if (row) perSeed.push(row);
         }
         if (perSeed.length) onRow(worstOf(perSeed));
@@ -133,7 +192,7 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
 
 // ------------------------------------------------------------------------------------------------ ledger
 const AREA_KEYS = ['floatingM2', 'holeM2', 'insideM2', 'gapM2', 'invertedM2'];
-const COUNT_KEYS = ['floating', 'sliver'];
+const COUNT_KEYS = ['floating', 'sliver', 'strandedFar', 'strandedPhone'];
 
 /** One ledger row per checked building row: its numbers as the gate compares them. */
 export function ledgerRows(rows) {

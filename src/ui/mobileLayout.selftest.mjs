@@ -265,7 +265,7 @@ assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
   'aimed-at labels must not paint a broad dark rectangle over the battlefield');
 assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
   'world-space player and vehicle labels must never replace names with ellipses');
-assert.match(hud, /const plateX = _sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = _sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
+assert.match(hud, /const plateX = bar\.sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
   'world tank labels must remain centered on their literal projected tank anchors');
 assert.doesNotMatch(hud, /updateHpBars\._layout|layout\.sort|placed\.layoutY - 36/,
   'world tank labels must be allowed to overlap instead of entering screen-space lanes');
@@ -307,8 +307,10 @@ assert.match(shotInfo,
   /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
-  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*kv\('damage', t\('killcam\.stat\.damage'\),[^\n]*'w'\);[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
-  'the report must keep only angle, armor, damage, and penetration analysis rows');
+  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
+  'the report must keep only angle, armor and penetration analysis rows');
+// (its damage is the floating number's, UI-LOCKDOWN B16: no damage row)
+assert.doesNotMatch(shotInfo, /kv\('damage', t\('killcam\.stat\.damage'\)/, 'the shot card carries no damage row');
 assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
@@ -326,8 +328,14 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-height='short'\] \.cot-set-body\{min-height:0;flex:1 1 auto\}/,
   'short landscape settings must shrink their scroll body so the action footer stays on-screen');
 assert.match(settings,
-  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? t\('settings\.aim\.touch'\) : t\('settings\.aim\.mouse'\)[\s\S]*if \(!touchLayout\) \{[\s\S]*t\('settings\.rmb\.label'\)/,
-  'touch settings must show touch aiming language and omit mouse-only RMB controls');
+  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? t\('settings\.aim\.touch'\) : t\('settings\.aim\.mouse'\)/,
+  'touch settings must show touch aiming language');
+// item 259: the mouse-only Right click mode is on Controls (hidden on touch) and Accessibility's link to it is mouse-only
+assert.match(settings, /if \(input\.isTouchLayout && input\.isTouchLayout\(\)\) \{\s*activeTab = 'gameplay';[\s\S]{0,240}tb\.hidden = true;/,
+  'touch settings hide the Controls tab');
+assert.match(settings, /if \(def\.id === 'freeCamera'\) rmbModeRow\(card\);/, 'the Right click mode lives on Controls');
+assert.match(settings, /if \(!\(input\.isTouchLayout && input\.isTouchLayout\(\)\)\) \{\s*const rmbLink/,
+  'and touch settings omit the mouse-only RMB link');
 assert.match(settings,
   /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
   'touch settings controls must retain a 44 px finger-target floor');
@@ -420,7 +428,7 @@ for (const [source, pattern, label] of [
   [perfHud, /el\.id = 'cot-perfhud'/, 'performance dashboard'],
   [deviceDiag, /el\.id = 'cot-diag'/, 'compatibility diagnostics'],
   [renderer, /el\.id = 'cot-ctxlost'/, 'graphics recovery'],
-  [pointerLockFeedback, /element\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
+  [pointerLockFeedback, /notices = lazyBattleNotices,/, 'pointer-lock fallback'],
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
 // The public pages lay out at first paint, before or without JavaScript (brand-ui SPEC §5.5): their stylesheets read

@@ -4,7 +4,7 @@
 // window/door rhythm of each face. A style supplies a dialect: how a window, a door and (for half-timbered regions) a
 // framed wall are dressed. Every body is centred on the origin with its base at y = 0, like the props builders.
 import {
-  LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
+  FINE_FLUSH_MAX_DEPTH_M, LocalFrame, PartSink, bodyFaces, facePoint, faceBox, normalize3, UV_MEMBER,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
 import {
@@ -1321,8 +1321,14 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     const colour = spec.gutters.colour;
     const ex = rg.s + spec.roof.eave - 0.06, gy = eaveY - spec.roof.eave * rg.tanP - 0.1;
     const gz = roofD / 2 + (rg.kind === 'gable' ? spec.roof.verge : spec.roof.verge) - 0.05;
+    // (259, the phone census: its top 5 cm under the eave, the gutter hung in the air wherever its hangers, fine
+    // joinery, were not drawn) its back plate from its inner edge up into the covering's underside, on every tier
+    const under = eaveY - (ex - 0.07 - rg.s) * rg.tanP + 0.01;
     moveRoof(() => {
-      for (const side of [1, -1]) sink.span('structureMetal', side * ex - 0.07, gy - 0.07, -gz, side * ex + 0.07, gy + 0.05, gz, { colour, decor: true });
+      for (const side of [1, -1]) {
+        sink.span('structureMetal', side * ex - 0.07, gy - 0.07, -gz, side * ex + 0.07, gy + 0.05, gz, { colour, decor: true });
+        sink.span('structureMetal', side * (ex - 0.07), gy + 0.05, -gz, side * (ex - 0.06), under, gz, { colour, decor: true });
+      }
     });
     // downpipes stand on the ground storey's face; a swan-neck run joins each to the gutter
     const g0 = bodies[0];
@@ -1719,18 +1725,18 @@ export const H = {
   post(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     if (y1 - y0 < 0.02) return;
     captureMember('post', u, y0, u, y1, width, out, opts);
-    sink.member(bucket, facePoint(face, u, y0), facePoint(face, u, y1), width, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u, y0), facePoint(face, u, y1), width, out, face.out, { ...opts, joined: true });
   },
   /** a horizontal rail on a face from u0 to u1 at y */
   rail(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number, height: number, out: number, opts: EmitOptions & { ends?: boolean }): void {
     if (u1 - u0 < 0.02) return;
     captureMember('rail', u0, y, u1, y, height, out, opts);
-    sink.member(bucket, facePoint(face, u0, y), facePoint(face, u1, y), height, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u0, y), facePoint(face, u1, y), height, out, face.out, { ...opts, joined: true });
   },
   /** a diagonal brace between two face points */
   brace(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, y0: number, u1: number, y1: number, width: number, out: number, opts: EmitOptions): void {
     captureMember('brace', u0, y0, u1, y1, width, out, opts);
-    sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, opts);
+    sink.member(bucket, facePoint(face, u0, y0), facePoint(face, u1, y1), width, out, face.out, { ...opts, joined: true });
   },
   /**
    * A brace cut to its panel (the facade craft's round 6; wave 241: "the lower diagonal brace lapping across the post
@@ -1759,8 +1765,11 @@ export const H = {
     const frame = new LocalFrame(across, axis, face.out, facePoint(face, (u0 + u1) / 2, (y0 + y1) / 2, out / 2 - embed));
     const front = out - embed, back = -embed;
     const o: EmitOptions = { ...opts, uv: UV_MEMBER };
+    // (a framed wall's timber, as H's members: EmitOptions.joined: its face alone at range, the frame seated through its
+    // neighbours, its sides fine joinery to FINE_FLUSH_MAX_DEPTH_M; deeper, drawn at any range)
     sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, front)), o, frame);
-    const sides: EmitOptions = opts.decor && !opts.shadow ? { ...o, fine: opts.fineSides === 'near' || opts.fine === 'near' ? 'near' : true } : o;
+    const sides: EmitOptions = opts.decor && !opts.shadow && front <= FINE_FLUSH_MAX_DEPTH_M + 1e-6
+      ? { ...o, fine: opts.fineSides === 'near' || opts.fine === 'near' ? 'near' : true } : o;
     for (let i = 0; i < poly.length; i++) {
       const p = poly[i], q = poly[(i + 1) % poly.length];
       // a long side lies on one of the strip's edges, hw off its axis; every other edge is a cut end

@@ -833,7 +833,10 @@ const boilerStack: RegionalBuilder = (ctx) => {
     for (let y = hb + 0.6; y < H - 0.6; y += 2.4) {
       const f = (y - hb - 0.1) / (H - 0.5 - hb), zr = r0 + 0.14 + (r1 - r0) * f;
       const rs = y < H - 3.1 ? r0 + (r1 + 0.03 - r0) * (y - hb) / (H - 3.1 - hb) : r1 + 0.02;
-      for (const dx of [-0.18, 0.18]) sink.member('structureMetal', [dx, y, Math.sqrt(Math.max(0, rs * rs - dx * dx)) - 0.03], [dx, y, zr + 0.01], 0.03, 0.03, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);
+      // (259, the far-view census: all fine joinery, the rails stood 10 cm off the steel at range) the lowest and the
+      // highest at any range, the rails seated on them
+      const end = y === hb + 0.6 || y + 2.4 >= H - 0.6;
+      for (const dx of [-0.18, 0.18]) sink.member('structureMetal', [dx, y, Math.sqrt(Math.max(0, rs * rs - dx * dx)) - 0.03], [dx, y, zr + 0.01], 0.03, 0.03, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: !end }, 0);
     }
     sink.cylinder('structureMetal', [0, H + 0.02, 0], 'y', 0.12, r1 + 0.03, 12, { colour: rgb(0x1e1c1a), decor: true }, r1 + 0.03, false);
   });
