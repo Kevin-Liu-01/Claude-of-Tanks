@@ -1,5 +1,57 @@
 # KV-2 — reference packet
 
+## Current status — release 262 historical rebuild (2026-10-27)
+
+Owner, 2026-10-27: "also should update/redesign the m47, m46, and m48 pattons and kv 2" and, for the same batch,
+"update/redesign ... turrets and hullls as well based on proper historical referrences so they will no longer look so
+chungus". This round replaces the print-fitted hull and turret (the Comrade1280 Sketchfab print was the measurement
+oracle from July to October; `tools/procedural-fidelity.html` never gates kv2) with new geometry laid out from published
+dimensions, a 1941 German recognition sheet, a five-view scale drawing and museum photographs. Everything below this
+block is the print-era chronology, kept for its mechanism notes; its numbers no longer describe the build.
+
+**Configuration chosen: the 1941 production turret** (the "lowered" turret: vertical cheek plates, a big rear door with
+a ball-mounted DT beside it). The spec names no sub-type, and the first 24 tanks' 1940 turret (inclined riveted cheek
+plates, a different mantlet, no rear MG) is the rarer of the two (210 KV-2 built; 110 in 1940, 100 in 1941). The
+surviving tank in the Central Armed Forces Museum, Moscow (s/n 4744) carries this turret; the Verkhnyaya Pyshma tank is
+an early-turret reconstruction and is not used for turret geometry.
+
+### Sources
+
+| # | Source | What it fixes |
+|---|---|---|
+| S1 | ru.wikipedia КВ-2 and КВ-1 (performance tables) | KV-2 length 6950 mm, width 3320, height 3250, clearance 430; KV-1 hull length 6675; turret ring 1535 mm; track 700 mm wide, 160 mm pitch, 86-90 single-horn links; six double-rimmed small road wheels a side on torsion bars, three return rollers, rear sprocket, front idler; hull plates (front 75 mm/30° upper, 60/70° middle, 75/25° lower; sides 75 vertical; rear 60/50° upper, 75 curved lower); M-10T −3°..+18°, 24.3 calibres; 1940 vs lowered turret (inclined vs vertical cheek plates, rear door + DT) |
+| S2 | *Kennblätter fremden Geräts* D 50/5 Nr 450 (r), 1941-11-01 (Wikimedia Commons, `D50-5 Nr 450 (r) (1941-11-01).png`) | 15.2 cm KwH 450 (r) = M-10T: barrel L/24.5 = 3700 mm, bore 152.4 mm, half-jacketed tube, *Feuerhöhe* 2500 mm; side photograph of a production KV-2 |
+| S3 | the-blueprints.com "KV-2 big turret" five-view drawing (631×603 px; scaled by the 3.32 m width, 54 px/m, cross-checked by the 3.25 m height) | hull roof 1.62-1.67 m, fender shelf 1.37 m, upper hull = lower hull width (~1.86 m), turret 1.93-1.97 m wide, roof 3.24 m, rear soffit 1.85-1.89 m, turret body ~2.75-2.96 m long, drum ~1.0 m wide, gun box 0.60 × 0.69 m, barrel axis ~2.66 m, exposed barrel ~1.3 m, idler/sprocket centres ~0.84/0.87 m |
+| S4 | Wikimedia Commons, Central Armed Forces Museum KV-2 s/n 4744: `Кв-2 1.jpg`, `Кв-2 2.jpg` (front), `Кв-2 3.jpg`, `Башня КВ-2.jpg` (turret), `KV-2 rear view.jpg`, `Kv-2 in the Moscow museum of armed forces.jpg`, `Тяжелый танк КВ-2 1940 - panoramio.jpg`, `Kliment Voroshilov KV-2 (s-n 4744) ... (27083660079).jpg` (also captioned `Kv-2@kubinka.jpg`) | turret plan, mantlet drum and shield box, rear door (hinges on the tank's right, DT ball on its left), ring band, hull bow plates, MG ball on the tank's left, headlight on its right, fender shelves with triangular frames, rear wall height ≈ 1.34 m (rear photo, 1.94 m width) |
+| S5 | Wikimedia Commons wartime photos: `German soldiers inspecting KV-2 tank, 1941.jpg`, `Lida, Čyhunačnaja ... (06.1941).jpg` | production turret side and rear, stowage boxes on the rear fenders, rear overhang over the engine deck |
+| S6 | Wikimedia Commons, Parola Tank Museum KV-1E (`Kv1e m1941 parola 1-4.jpg`, `Parola Tank Museum 092-094 - KV-1E`) | the shared KV-1 hull: fender shelves below the roof line, the rounded lower rear plate, the bow plates (Parola holds no KV-2) |
+
+No Kubinka KV-2 walkaround is on Commons; the museum tank usually captioned "Kubinka" is the Moscow s/n 4744 tank.
+Copies of the Commons images and the measured crops are kept outside the repository in `~/cot-lanes/kv2-262-refs/`.
+
+### Gap table — print-era build vs sources (world metres, ground y = 0, bow +z, tank left +x)
+
+| Item | Print-era build (main @ b93941ce9d) | Source | 262 target |
+|---|---|---|---|
+| Hull length (plates) | −3.50..3.07 (6.57) + hook brackets to −3.615/3.26 | 6.675 (S1 KV-1) | nose 3.30, rear −3.375 (6.675) |
+| Upper hull | full-width deck slab ±1.44..±1.615 at 1.60-1.68, sponson walls to ±1.615 | hull box ≈1.86 wide, sides vertical belly to roof (S1, S3, S4) | box ±0.925, roof 1.65 |
+| Fenders | deck-level plane at 1.585-1.60, ±0.99..±1.615 | shelf 0.28 m under the roof (S3 1.37; S4/S6) | shelves at 1.37, ±0.925..±1.66, sloped front mudguards |
+| Bow | stepped bow 1.40/1.31/1.13 nose shelf | driver plate 30°, glacis 70° (20° above horizontal), lower plate 25° (S1) | 1.65→1.30 driver plate, glacis to 0.92 at 3.26, lower plate to the belly at 3.05 |
+| Stern | tail plate −3.50 + chamfers | upper 50°, lower plate curved 0-90° (S1, S4 rear, S6) | upper plate 1.65→1.31, vertical to 1.03, quarter-round to the belly |
+| Track | 0.645 wide, band 0.970..1.615 | 0.70 wide (S1) | 0.70, band 0.96..1.66 |
+| Return rollers | 3 × r 0.085 at y 1.04 | ~0.30 m diameter (S3, S4) | 3 × r 0.15 |
+| Turret width | 1.89 (walls ±0.945) | 1.93-1.97 (S3), = hull width (S3 plan) | 1.94 |
+| Turret roof | 3.09-3.17 + periscope pods to 3.27 | 3.24-3.25 to the roof (S1, S3) | roof 3.24, fittings above |
+| Turret length (body) | ≈2.75 with cheek wedges and a bulge | 2.75-2.96 (S3, S5) | 2.75, front plate at world 1.37 |
+| Rear overhang | skirt at 1.67 to −0.63, cheek wedges | soffit 1.85-1.89 over the deck (S3, S4) | soffit 1.91, rear wall 1.33 tall |
+| Rear door | 0.70 × 0.70 plate | ≈0.85-0.9 square, hinged on the tank's right, DT ball on its left (S4, S5) | 0.84 × 0.84, offset 0.20 to the right |
+| Mantlet | r 0.46 bolted disc + 1.00 × 0.62 × 0.50 box + cone + chin | cylindrical drum ≈0.95 Ø × 1.02 + shield box 0.60 × 0.69 (S3, S4) | drum r 0.47 × 1.04, box 0.62 × 0.72 × 0.58 with a chamfered chin |
+| Barrel | r 0.115, mouth at world 3.36 (inside the hooks) | 152.4 bore, 3.70 m L/24.5, half-jacketed (S2); muzzle ≈0.27 past the bow (6.95 overall, S1) | jacket r 0.132, tube r 0.111, muzzle at 3.57 |
+| Trunnion | world (0, 2.58, 1.00) | axis 2.50 (S2) - 2.66 (S3) | (0, 2.58, 1.37) |
+| Gun arc (spec) | +12 / −5 | +18 / −3 (S1) | spec unchanged (gameplay); clearance receipt covers −5..+18 |
+
+## Print-era chronology (2026-07-30 .. 2026-10-26)
+
 Soviet 1940 breakthrough heavy: the towering slab. Signature cues: enormous
 near-rectangular MT-1 turret (~half the vehicle height) with vertical sides
 and a chamfered front-top, short fat 152 mm M-10T howitzer in a boxy mantlet
