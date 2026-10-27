@@ -16,7 +16,8 @@ export function runCommand(command, args, options = {}) {
 
 export async function runCapturedCommand(command,args,options={},capture={}) {
   const lock=capture.lock ?? createCaptureLock();
-  await lock.acquire(capture.timeoutMs ?? 45*60*1000);
+  // the class (timing or render) comes from the command this runs, unless capture.lockClass names it
+  await lock.acquire(capture.timeoutMs ?? 45*60*1000,{command:[command,...args].join(' '),lockClass:capture.lockClass ?? null});
   const release=()=>lock.release();
   process.once('exit',release);
   const refresher=setInterval(()=>lock.refresh(),capture.refreshMs ?? 30000);
