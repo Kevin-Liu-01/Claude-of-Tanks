@@ -83,6 +83,9 @@ export interface MerkavaMantletSpec {
   readonly collarLen: number;
   /** Canvas dust boot behind the collar (0 for none). */
   readonly bootR: number;
+  /** The Mk 4's large pointed mantlet: a cylindrical housing of this radius from the block's face, ending in a cone
+   *  `pointLen` long down to the collar (absent: the block alone). */
+  readonly pointed?: { readonly r: number; readonly len: number; readonly pointLen: number };
 }
 
 /** Thermal-sleeve and evacuator layout of one barrel, measured along the bore from the trunnion (gun frame). */
@@ -162,10 +165,16 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
   P.add('gun', revolveZ(gun.barrel, seg));
   const m = gun.mantlet;
   P.add('gunMount', mantletGeometry(m));
+  if (m.pointed) {
+    const { r, len, pointLen } = m.pointed, z0 = m.frontZ - 0.10;
+    P.add('gunMount', revolveZ([[z0, 0], [z0, r], [m.frontZ + len, r], [m.frontZ + len + pointLen, m.collarR],
+      [m.frontZ + len + pointLen, 0]], seg));
+  }
   // gun shield collar: a cast ring round the barrel root, proud of the mantlet face
+  const c0 = m.frontZ + (m.pointed ? m.pointed.len + m.pointed.pointLen - 0.02 : -0.02);
   P.add('gunMount', revolveZ([
-    [m.frontZ - 0.02, 0], [m.frontZ - 0.02, m.collarR], [m.frontZ + m.collarLen * 0.6, m.collarR],
-    [m.frontZ + m.collarLen, m.collarR * 0.86], [m.frontZ + m.collarLen, 0],
+    [c0, 0], [c0, m.collarR], [c0 + 0.02 + m.collarLen * 0.6, m.collarR],
+    [c0 + 0.02 + m.collarLen, m.collarR * 0.86], [c0 + 0.02 + m.collarLen, 0],
   ], seg));
   if (m.bootR > 0) {
     // the canvas dust boot laid over the collar's front, gathered onto the barrel

@@ -228,7 +228,7 @@ function mg251Gun(muzzleWorldZ: number, pivotZ: number): MerkavaGunSpec {
     }),
     mantlet: { frontZ: face, depth: 0.60, halfWidth: 0.24, halfHeight: 0.21, rearGrowth: 0.05, collarR: 0.16,
       collarLen: collar, bootR: 0.17 },
-    muzzleReferenceSensor: false, overGunMachineGun: true, coaxX: 0.24,
+    muzzleReferenceSensor: false, overGunMachineGun: false, coaxX: 0.24,
   };
 }
 
@@ -265,35 +265,36 @@ const MK4_SKIRT: MerkavaSkirtSpec = {
 // The Mk 4 turret (Mk IV drawing; Latrun photos): a broad flat core, its roof armoured all over in steps, under a long
 // sharp nose reaching over the gun; flat stepped side modules.
 const MK4_SHELL: readonly TurretStation[] = [
-  { z: -2.60, base: [1.10, 0.18], shoulder: [1.14, 0.46], roof: [1.00, 0.80], crown: 0.83 },
-  { z: -1.80, base: [1.56, 0.12], shoulder: [1.60, 0.44], roof: [1.30, 0.88], crown: 0.94 },
-  { z: -0.40, base: [1.62, 0.10], shoulder: [1.64, 0.42], roof: [1.30, 0.88], crown: 0.94 },
-  { z: 0.60, base: [1.56, 0.10], shoulder: [1.54, 0.42], roof: [1.14, 0.84], crown: 0.90 },
-  { z: 1.40, base: [1.10, 0.12], shoulder: [1.04, 0.42], roof: [0.74, 0.70], crown: 0.74 },
-  { z: 2.10, base: [0.62, 0.16], shoulder: [0.56, 0.42], roof: [0.38, 0.56], crown: 0.58 },
-  { z: 2.50, base: [0.30, 0.22], shoulder: [0.28, 0.40], roof: [0.18, 0.48], crown: 0.49 },
+  { z: -2.60, base: [1.02, 0.18], ear: [1.12, 0.40], shoulder: [1.06, 0.56], roof: [0.96, 0.80], crown: 0.83 },
+  { z: -1.80, base: [1.48, 0.12], ear: [1.62, 0.38], shoulder: [1.54, 0.58], roof: [1.28, 0.88], crown: 0.94 },
+  { z: -0.40, base: [1.52, 0.10], ear: [1.66, 0.38], shoulder: [1.58, 0.58], roof: [1.28, 0.88], crown: 0.94 },
+  { z: 0.60, base: [1.46, 0.10], ear: [1.58, 0.38], shoulder: [1.48, 0.58], roof: [1.12, 0.84], crown: 0.90 },
+  { z: 1.40, base: [1.02, 0.12], ear: [1.10, 0.38], shoulder: [1.00, 0.56], roof: [0.72, 0.70], crown: 0.74 },
+  { z: 2.05, base: [0.58, 0.16], ear: [0.62, 0.36], shoulder: [0.54, 0.50], roof: [0.36, 0.58], crown: 0.60 },
+  { z: 2.42, base: [0.30, 0.22], ear: [0.31, 0.34], shoulder: [0.28, 0.44], roof: [0.18, 0.50], crown: 0.51 },
 ];
 
 // MG253 120 mm L/44 (FACTS: 5.30 m; the VIDCO sleeve in five segments; a large pointed mantlet): the evacuator about
 // 0.8 m ahead of the mantlet.
 function mg253Gun(muzzleWorldZ: number, pivotZ: number): MerkavaGunSpec {
-  const trunnion: [number, number, number] = [0, 0.39, 2.20];
+  const trunnion: [number, number, number] = [0, 0.39, 1.80];
   const muzzleZ = muzzleWorldZ - (pivotZ + trunnion[2]);
-  const face = 0.36, collar = 0.10;
-  const evacCentre = face + collar + 0.80;
+  // the block's face at the nose, the housing 0.30 m on and its cone 0.22 m to the collar (Latrun top photo)
+  const face = 0.62, collar = 0.08, tip = face + 0.30 + 0.22 + collar;
+  const evacCentre = tip + 0.40;
   const sleeveEnd = muzzleZ - 0.25;
   const front = evacCentre + 0.30, step = (sleeveEnd - front) / 4;
   return {
     model: 'MG253', caliberMm: 120, trunnion, muzzleZ,
     barrel: merkavaBarrelProfile({
-      rootZ: 0.12, rootR: 0.13, sleeve: [face + 0.04, sleeveEnd], sleeveR: 0.104,
-      clamps: [face + 0.36, front + step, front + 2 * step, front + 3 * step, sleeveEnd - 0.03],
+      rootZ: 0.30, rootR: 0.13, sleeve: [face + 0.04, sleeveEnd], sleeveR: 0.104,
+      clamps: [tip + 0.04, front + step, front + 2 * step, front + 3 * step, sleeveEnd - 0.03],
       clampR: 0.116, clampW: 0.042,
       evacuator: [evacCentre - 0.30, evacCentre + 0.30], evacuatorR: 0.160, evacuatorShoulder: 0.07,
       tubeR: 0.0811, muzzleZ, muzzleLip: [0.05, 0.088],
     }),
-    mantlet: { frontZ: face, depth: 0.62, halfWidth: 0.25, halfHeight: 0.21, rearGrowth: 0.05, collarR: 0.15,
-      collarLen: collar, bootR: 0.16 },
+    mantlet: { frontZ: face, depth: 0.62, halfWidth: 0.25, halfHeight: 0.21, rearGrowth: 0.05, collarR: 0.13,
+      collarLen: collar, bootR: 0, pointed: { r: 0.215, len: 0.30, pointLen: 0.22 } },
     muzzleReferenceSensor: false, overGunMachineGun: true, coaxX: 0.22,
   };
 }

@@ -34,7 +34,7 @@ function overGunMachineGun(P: TankBuilderPort, mark: MerkavaMark): void {
   if (!mark.gun.overGunMachineGun) return;
   const m = mark.gun.mantlet;
   const crown = m.halfHeight + 0.01;
-  const z = m.frontZ - m.depth * 0.35;
+  const z = Math.min(m.frontZ - m.depth * 0.35, m.frontZ - 0.12);
   P.add('gunMount', KIT.box(0.16, 0.06, 0.30), 0.0, crown + 0.03, z);
   P.add('gunMountDark', KIT.box(0.10, 0.05, 0.22), 0.0, crown + 0.085, z + 0.02);
   const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.0, seed: 445, tone: 'two-tone', ammo: true,
