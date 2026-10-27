@@ -49,6 +49,7 @@ import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts
 import type { CloudscapeConfig } from './cloudscapes.ts';
 import { CLOUD_NOISE_KINDS, VolumetricCloudLayer, type CloudNoiseKind, type CloudNoiseUpload } from './volumetricClouds.ts';
 import { bakeCloudNoise, bakeCloudNoiseKindSteps } from './cloudNoise.ts';
+import { reportWorkerRefused } from './workerRefusal.ts';
 
 type ColorTriple = readonly [number, number, number];
 type VectorPair = readonly [number, number];
@@ -1735,6 +1736,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       } catch (error) {
         cloudWorkerSettled = true;
         console.warn('[sky] cloud worker unavailable; using synchronous fallback:', errorMessage(error));
+        // (the capability gate's worker notice: this is the boot's first real worker, workerRefusal.ts)
+        reportWorkerRefused();
         return Promise.resolve(null);
       }
       const result: CloudWorkerResults = {};
@@ -1768,6 +1771,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       };
       worker.onerror = (error) => {
         console.warn('[sky] cloud worker failed; using synchronous fallback:', error.message);
+        reportWorkerRefused();
         finish(partialResult());
       };
       worker.onmessageerror = () => {
@@ -1782,6 +1786,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         });
       } catch (error) {
         console.warn('[sky] cloud worker could not start; using synchronous fallback:', errorMessage(error));
+        reportWorkerRefused();
         finish(partialResult());
       }
       return deadline.promise;
@@ -1807,6 +1812,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         worker = new Worker(new URL('./cloudNoiseWorker.ts', import.meta.url), { type: 'module' });
       } catch (error) {
         console.warn('[sky] cloud noise worker unavailable; baking on the main thread:', errorMessage(error));
+        reportWorkerRefused();
         return null;
       }
       const deadline = createDeferredDeadline<void>(12000, () => {
@@ -1825,12 +1831,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       };
       worker.onerror = (error) => {
         console.warn('[sky] cloud noise worker failed; baking on the main thread:', error.message);
+        reportWorkerRefused();
         if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
       };
       try {
         worker.postMessage({});
       } catch (error) {
         console.warn('[sky] cloud noise worker could not start; baking on the main thread:', errorMessage(error));
+        reportWorkerRefused();
         if (deadline.settle(undefined)) { worker.terminate(); cloudNoiseSettled = true; }
       }
       return deadline.promise;

@@ -222,70 +222,81 @@ assert.deepEqual([classifyMemory(undefined), classifyMemory(1), classifyMemory(4
 }
 
 {
-  // (2026-10-26, the boot ABBA) the worker start check waits for the first paint: the gate answers from the API's
-  // presence, and a refused worker adds its notice when the deferred check runs and drops the record confirm wrote
-  const deferredHost = (worker) => {
+  // (2026-10-26, the boot ABBA) no probe worker on the boot path: the gate answers from the API's presence, and a real
+  // worker's refusal (workerRefusal.ts) adds its notice and drops the record, on a probed or a cached boot
+  const watchingHost = (worker) => {
     const h = host({ worker });
-    const checks = [];
+    const watchers = [];
     let probes = 0;
-    const probeWorker = h.probeWorker;
     return Object.assign(h, {
       userAgent: 'test-agent', now: () => 1_000,
       hasWorkerApi: () => worker !== 'absent',
-      probeWorker: () => { probes += 1; return probeWorker(); },
-      deferWorkerProbe: (check) => checks.push(check),
-      checks, probes: () => probes,
+      probeWorker: () => { probes += 1; return true; },
+      watchWorkerRefusal: (refused) => watchers.push(refused),
+      watchers, probes: () => probes,
     });
   };
-  const screenOf = () => ({ stage: { textContent: '' }, retry: { textContent: '', classList: { add() {} }, onclick: null },
-    notice: { textContent: '', classes: [], classList: { add(name) { this.owner.classes.push(name); } } } });
+  const screenOf = () => {
+    const screenState = { stage: { textContent: '' }, retry: { textContent: '', classList: { add() {} }, onclick: null },
+      notice: { textContent: '', classes: [] } };
+    screenState.notice.classList = { add: (name) => screenState.notice.classes.push(name) };
+    return screenState;
+  };
   const gate = (h, screenState) => runBootCapabilityGate({ translate: t, send: () => assert.fail('no halt'), screen: screenState,
     host: h, halt: () => assert.fail('no halt'), reload: () => {} });
   {
-    const h = deferredHost('throws');
-    const screenState = screenOf(); screenState.notice.classList.owner = screenState.notice;
+    const h = watchingHost('ok');
+    const screenState = screenOf();
     const result = await gate(h, screenState);
     assert.equal(h.probes(), 0, 'no worker starts on the boot path');
-    assert.equal(h.checks.length, 1, 'the start check is deferred');
+    assert.equal(h.watchers.length, 1, 'the gate listens for a real worker\'s refusal');
     assert.equal(result.probe.worker, true);
     assert.deepEqual(result.verdict.notices, []);
     await result.confirm(fakeContext());
     assert.equal(h.store.size, 1, 'confirm records the verdict as before');
-    h.checks[0]();
-    assert.equal(h.probes(), 1);
-    assert.equal(result.probe.worker, false, 'a refused worker turns the probe false');
+    const record = [...h.store.entries()][0];
+    h.watchers[0]();
+    assert.equal(result.probe.worker, false, 'a refusal turns the probe false');
     assert.deepEqual(result.verdict.notices.map(({ code }) => code), ['worker_blocked']);
     assert.equal(screenState.notice.textContent, 'boot.gate.workerBlocked', 'the refused worker\'s sentence still shows');
     assert.deepEqual(screenState.notice.classes, ['on']);
-    assert.equal(h.store.size, 0, 'the record drops: the next boot checks again');
-  }
-  {
-    const h = deferredHost('ok');
-    const screenState = screenOf(); screenState.notice.classList.owner = screenState.notice;
-    const result = await gate(h, screenState);
-    await result.confirm(fakeContext());
-    h.checks[0]();
-    assert.equal(result.probe.worker, true);
-    assert.equal(screenState.notice.textContent, '', 'a worker that starts changes nothing');
-    assert.equal(h.store.size, 1);
-    const cachedHost = deferredHost('throws');
-    cachedHost.store.set(...h.store.entries().next().value);
-    const cached = await gate(cachedHost, screenOf());
+    assert.equal(h.store.size, 0, 'the record drops: the next boot answers again');
+    h.watchers[0]();
+    assert.deepEqual(screenState.notice.classes, ['on'], 'a second report changes nothing');
+    const cachedHost = watchingHost('ok');
+    cachedHost.store.set(...record);
+    const cachedScreen = screenOf();
+    const cached = await gate(cachedHost, cachedScreen);
     assert.equal(cached.source, 'cache');
-    assert.equal(cachedHost.checks.length, 0, 'a confirmed record still skips the worker check');
+    assert.equal(cachedHost.watchers.length, 1, 'a cached boot listens too');
+    cachedHost.watchers[0]();
+    assert.equal(cachedScreen.notice.textContent, 'boot.gate.workerBlocked');
+    assert.equal(cachedHost.store.size, 0);
   }
   {
-    const h = deferredHost('absent');
-    const screenState = screenOf(); screenState.notice.classList.owner = screenState.notice;
+    const h = watchingHost('absent');
+    const screenState = screenOf();
     const result = await gate(h, screenState);
     assert.equal(result.probe.worker, false, 'no Worker constructor: unsupported at once');
     assert.equal(screenState.notice.textContent, 'boot.gate.workerBlocked');
-    assert.equal(h.checks.length, 0, 'nothing left to check');
+    assert.equal(h.watchers.length, 0, 'nothing left to listen for');
   }
+  // the shared report: once, to every listener, and at once to a late one
+  const { onWorkerRefused, reportWorkerRefused } = await import('./workerRefusal.ts');
+  const heard = [];
+  onWorkerRefused(() => heard.push('early'));
+  onWorkerRefused(() => { throw new Error('a listener that throws'); });
+  onWorkerRefused(() => heard.push('second'));
+  reportWorkerRefused();
+  reportWorkerRefused();
+  onWorkerRefused(() => heard.push('late'));
+  assert.deepEqual(heard, ['early', 'second', 'late']);
   const gateSource = await readFile(new URL('./capabilityGate.ts', import.meta.url), 'utf8');
   const browserHost = gateSource.slice(gateSource.indexOf('export function browserCapabilityHost('));
-  assert.match(browserHost, /deferWorkerProbe: \(check\) => \{[\s\S]*requestIdleCallback\(\(\) => check\(\), \{ timeout: 2000 \}\)[\s\S]*requestAnimationFrame\(\(\) => \{ setTimeout\(idle, 0\); \}\)/,
-    'the browser host checks a frame after the first paint, in an idle slot');
+  assert.match(browserHost, /watchWorkerRefusal: onWorkerRefused,/, 'the browser host listens to the boot\'s real workers');
+  assert.doesNotMatch(browserHost, /new Worker\(/, 'and starts no worker of its own');
+  const skySource = await readFile(new URL('./sky.ts', import.meta.url), 'utf8');
+  assert.equal(skySource.match(/reportWorkerRefused\(\);/g)?.length, 6, 'both sky workers report a constructor, an error and a failed start');
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
