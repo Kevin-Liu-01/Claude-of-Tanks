@@ -162,6 +162,13 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
     'the mark box hangs its margin before the hull outside the column');
   assert.match(bootHtml, /\.cot-boot-inner \{[^}]*width: min\(calc\(var\(--boot-mark\) \* var\(--boot-lockup-k\)\), calc\(100vw - 32px\)\);/,
     'the load column takes the lockup\'s width');
+  // boot r25: the card's copy wraps greedily (pretty pulled a word short of the edge to spare a one-word last line), set
+  // on each so the game's :where(p) pretty cannot reach it; the credits' quiet action takes the foot's quiet type
+  assert.match(bootHtml, /\.cot-boot-stage \{[^}]*text-wrap: wrap;/, 'the stage line and its stop notice wrap greedily');
+  assert.match(bootHtml, /\.cot-boot-tip span \{ display: inline-block; text-wrap: wrap; \}/, 'the tip wraps greedily');
+  assert.match(bootHtml, /\.cot-credits p\{[^}]*text-wrap:wrap\}/, 'the credits copy wraps greedily');
+  assert.match(bootHtml, /\.cot-boot-links > \.cot-boot-link, \.cot-credits-actions \.cot-boot-link:last-child \{[^}]*text-transform: none;/,
+    'one quiet type for the foot buttons and the credits\' quiet action');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,

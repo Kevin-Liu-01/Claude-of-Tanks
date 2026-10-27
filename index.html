@@ -354,7 +354,7 @@
     }
     .cot-boot-stage {
       display: flex; flex-direction: column; justify-content: flex-end; min-height: 40px;
-      font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: pretty;
+      font-size: 14px; font-weight: 500; line-height: 20px; text-align: left; color: var(--ink-2); text-wrap: wrap;
     }
     .cot-boot-stage .num { font-size: 13px; font-weight: 500; color: var(--ink-3); line-height: 0; }
     /* one continuous tungsten fill: bootScreen.ts animates its scaleX on the compositor toward the real load */
@@ -384,10 +384,13 @@
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise var(--dur-screen) var(--ease-camera) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; text-wrap: pretty; }
+    /* the card's copy (the stage line and its stop notice, the tip, the credits) wraps greedily, its lines running to the
+       column's edge (boot r25); set here, it outranks the game's :where(p) pretty once that loads */
+    .cot-boot-tip span { display: inline-block; text-wrap: wrap; }
     .cot-boot-tip.fade { opacity: 0; }
-    /* Credits and GitHub: the kit's quiet buttons in the foot row, the version at its other end */
-    .cot-boot-links { position: absolute; left: 4px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
+    /* Credits and GitHub: the kit's quiet buttons in the foot row, the version at its other end; the Credits glyph's ink
+       starts 1 px into its box, so the row stands 1 px out and that ink takes the version's 16 px gutter (boot r25) */
+    .cot-boot-links { position: absolute; left: 3px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 0 18px; border: 0; border-radius: 2px;
@@ -396,8 +399,10 @@
       letter-spacing: var(--track-label-s); text-transform: uppercase; text-decoration: none;
       transition: transform var(--dur-fast) var(--ease-camera), background-color var(--dur-fast) ease;
     }
-    .cot-boot-links > .cot-boot-link {
-      width: auto; min-width: 0; height: 36px; padding: 0 12px; background: transparent; box-shadow: none; color: var(--ink-3);
+    .cot-boot-links > .cot-boot-link { width: auto; min-width: 0; height: 36px; padding: 0 12px; }
+    /* the kit's quiet button (components.css .cot-c-btn--quiet), one look for the foot's buttons and the credits' last action */
+    .cot-boot-links > .cot-boot-link, .cot-credits-actions .cot-boot-link:last-child {
+      background: transparent; box-shadow: none; color: var(--ink-3);
       font: 500 13px/1 var(--font-ui); letter-spacing: normal; text-transform: none;
     }
     #cot-boot.cot-boot-enter .cot-boot-links > .cot-boot-link {
@@ -430,7 +435,7 @@
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
     @media (pointer: coarse) { .cot-boot-links > .cot-boot-link { height: 44px; } }
-    @media (width <= 380px) { :root body .cot-boot-links { left: 8px; } :root body .cot-boot-links > .cot-boot-link { padding-inline: 8px; } }
+    @media (width <= 380px) { :root body .cot-boot-links { left: 7px; } :root body .cot-boot-links > .cot-boot-link { padding-inline: 8px; } }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
       .cot-boot-gate.on { animation: none; }
@@ -463,7 +468,7 @@
     /* the close button's corner: the title and any copy line beside it wrap short of it; lines below run to the edge */
     .cot-credits-copy::before{content:"";float:right;width:44px;height:44px;margin-left:var(--s3)}
     .cot-credits h2{margin:0 0 var(--s5);font:700 38px/1.06 var(--font-ui);letter-spacing:var(--track-title);text-box:trim-both cap alphabetic}
-    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:pretty}
+    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body);text-wrap:wrap}
     /* zh: a line breaks between any two characters, never before closing or after opening punctuation */
     .cot-credits p:lang(zh-CN){line-break:strict;text-spacing-trim:trim-both}
     .cot-credits-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
@@ -471,7 +476,7 @@
       font-size:13px;letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
       box-shadow:var(--btn-secondary-ring)}
     .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
-    .cot-credits-actions .cot-boot-link:last-child{margin-left:auto;padding-inline:0;background:transparent;box-shadow:none;color:var(--ink-3)}
+    .cot-credits-actions .cot-boot-link:last-child{margin-left:auto;padding-inline:0}
     .cot-credits-close{position:absolute;z-index:2;top:32px;right:32px;display:grid;place-items:center;
       width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--btn-secondary-ring);color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
