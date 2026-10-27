@@ -726,16 +726,16 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
 // trace names every program the renderer gained after the black watchdog, through the reveal, the fade and the first
 // frames after it. A program the watchdog made belongs to the covered warm, and one the renderer released is not counted.
 {
-  const live = [{ name: 'Warm' }, { name: 'Released' }];
+  const live = [{ type: 'MeshStandardMaterial', name: 'Warm' }, { type: 'ShaderMaterial', name: 'Released' }];
   const reveal = createHarness({ blackWatchdog: async () => { live.push({ name: 'Watchdog' }); return { failed: false }; } });
   reveal.ports.presentation.programs = () => live;
   const primeReveal = reveal.lifecycle.primeReveal;
-  reveal.lifecycle.primeReveal = async () => { live.splice(1, 1); live.push({ name: 'MeshDepthMaterial' }); return primeReveal.call(reveal.lifecycle); };
+  reveal.lifecycle.primeReveal = async () => { live.splice(1, 1); live.push({ type: 'MeshDepthMaterial', name: '' }); return primeReveal.call(reveal.lifecycle); };
   const { entry } = await enterRound(reveal);
   assert.equal(await entry, true);
-  live.push({ name: 'LiveFrame' });
+  live.push({ type: 'ShaderMaterial', name: 'LiveFrame' });
   for (let i = 0; i < 4; i++) await tick();
-  assert.deepEqual(reveal.ports.trace.revealPrograms, { made: 2, frames: 30, names: ['MeshDepthMaterial', 'LiveFrame'] },
+  assert.deepEqual(reveal.ports.trace.revealPrograms, { made: 2, frames: 30, names: ['MeshDepthMaterial', 'ShaderMaterial:LiveFrame'] },
     'the reveal and the first live frames are counted and named; the watchdog\'s and a released program are not');
   live.push({ name: 'Later' });
   for (let i = 0; i < 4; i++) await tick();

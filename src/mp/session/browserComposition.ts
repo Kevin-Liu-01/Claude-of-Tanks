@@ -303,8 +303,8 @@ export interface BrowserPresentationPorts {
   setWaitingForPeers(waiting: boolean): void;
   setGarageLighting(active: boolean): void;
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
-  /** The renderer's live programs (renderer.info.programs), for the trace's revealPrograms receipt. */
-  programs?(): readonly { name?: string }[] | null;
+  /** The renderer's live programs (renderer.info.programs: the material's type and name), for the revealPrograms receipt. */
+  programs?(): readonly { type?: string; name?: string }[] | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -1130,11 +1130,14 @@ export function createBrowserComposition({
     active.trace.totalMs = Math.round(at - active.trace.startedAt);
   };
 
+  const programLabel = (program: { type?: string; name?: string }): string =>
+    [program.type, program.name].filter(Boolean).join(':') || '?';
+
   const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<object>, frames: number): void => {
     const live = activation.programs?.();
     if (!live) return;
     const made = live.filter((program) => !baseline.has(program));
-    active.trace.revealPrograms = { made: made.length, frames, names: made.slice(0, 8).map((program) => program.name ?? '?') };
+    active.trace.revealPrograms = { made: made.length, frames, names: made.slice(0, 8).map(programLabel) };
   };
 
   /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
