@@ -37,6 +37,8 @@ interface ForwardProgramCompilePort {
   compile(root: Object3D): void;
   /** The same submission a slice at a time (programWarm.ts compileSceneSteps); the boot's warm prefers it. */
   compileSceneSteps?(options: { visibleRoot?: Object3D; sliceMs?: number }): Generator<void, void, void>;
+  /** Every program's first use between frames, hidden objects included (programWarm.ts initializeSteps). */
+  initializeSteps?(root: Object3D, stats: null, options: { requireCompletion?: boolean; includeHidden?: boolean }): Generator<void, void, void>;
 }
 
 type ForwardProgramRestorePort = Pick<
@@ -59,6 +61,8 @@ interface GaragePostWarmPort extends GaragePostRenderPort {
 interface GarageGpuWarmTimings {
   postCompile?: number;
   postCompileSlices?: number;
+  firstUse?: number;
+  firstUseSlices?: number;
   shadowPassMax?: number;
   shadowPasses?: number[];
   sceneUpload?: number;
@@ -349,6 +353,22 @@ export async function warmGarageGpuPipeline({
     const linkAt = now();
     try { await awaitProgramLinks(yieldGpuWarm); } catch { /* the renders below wait for them as before */ }
     timings.postLinkWait = Math.round(now() - linkAt);
+  }
+  // (2026-10-26, the live 258 census) every compiled program's first use, between frames, hidden objects included: the
+  // compile above reaches every LOD level of the hero, but the warm's draws below only the level its camera selects. On
+  // a 4x phone the showroom's camera then framed another level, and the first live frames first-used its ~20 programs
+  // (686 + 1144 ms, each first use ~60 ms behind a GPU flush)
+  if (forwardPrograms.initializeSteps) {
+    const firstUseAt = now();
+    let firstUseSlices = 0;
+    try {
+      for (const _ of forwardPrograms.initializeSteps(scene, null, { requireCompletion: true, includeHidden: true })) {
+        firstUseSlices += 1;
+        await yieldGpuWarm(true);
+      }
+    } catch { /* the draws below and the first frame remain the fallback */ }
+    timings.firstUse = Math.round(now() - firstUseAt);
+    timings.firstUseSlices = firstUseSlices;
   }
   const shadowPasses = await lighting.primeShadowMaps(
     renderer,

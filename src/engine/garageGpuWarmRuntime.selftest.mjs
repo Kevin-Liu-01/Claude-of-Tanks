@@ -104,6 +104,37 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 }
 
 {
+  // (2026-10-26, the live 258 census) every compiled program's first use between frames, hidden LOD levels included,
+  // after the link wait and before the shadow prime and the warm's draws (which reach only the selected LOD level)
+  const order = [];
+  const firstUse = {};
+  await warmGarageGpuPipeline({
+    renderer, scene, camera,
+    lighting: { update() {}, async primeShadowMaps() { order.push('shadows'); return [1]; } },
+    forwardPrograms: {
+      compile() { order.push('compile'); },
+      *initializeSteps(root, stats, options) {
+        assert.ok(root === scene);
+        assert.equal(stats, null);
+        assert.deepEqual(options, { requireCompletion: true, includeHidden: true }, 'hidden objects too: every LOD level');
+        for (let slice = 0; slice < 2; slice++) { order.push('first-use'); yield; }
+      },
+    },
+    post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
+    timings: firstUse,
+    reportProgress() {},
+    simDt: 1 / 60,
+    createYielder: () => async () => {},
+    awaitProgramLinks: async () => { order.push('links'); },
+    warmScene: async () => { order.push('draws'); return [1]; },
+    now: () => 0,
+  });
+  assert.deepEqual(order.slice(0, 5), ['compile', 'links', 'first-use', 'first-use', 'shadows']);
+  assert.ok(order.indexOf('draws') > order.lastIndexOf('first-use'));
+  assert.equal(firstUse.firstUseSlices, 2);
+}
+
+{
   const restoreCalls = [];
   let restoreClock = 0;
   const receipt = await restoreGarageGpuPipeline({
