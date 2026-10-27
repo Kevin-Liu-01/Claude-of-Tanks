@@ -326,7 +326,8 @@ const SETTINGS_CSS = `
   padding:var(--s1) var(--s2);background:linear-gradient(var(--line-1),var(--line-1)) center bottom/calc(100% - var(--s2) * 2) 1px no-repeat;
   transition:background-color var(--dur-fast) var(--ease-enter);}
 .cot-set-row:not(:has(~ .cot-set-row)){background-image:none;}
-.cot-set-row:has(.cot-c-seg__opt:disabled):not(:has(.cot-c-seg__opt:enabled)) .cot-setting-label-text{color:var(--ink-3);}
+/* a disabled row dims its glyph with its label (item 259: the category colour never says "active" on a disabled row) */
+.cot-set-row:has(.cot-c-seg__opt:disabled):not(:has(.cot-c-seg__opt:enabled)) :is(.cot-setting-label-text,.cot-setting-icon){color:var(--ink-3);}
 .cot-set-row:hover{background-color:var(--fill-faint);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
