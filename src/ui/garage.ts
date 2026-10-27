@@ -3016,7 +3016,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       slots.push(item
         ? `<button type="button" class="eqslot" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(slotLabel)}">` +
-          `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
+          `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span>` +
+          // a fitted slot opens the picker: the kit's chevron at its corner (Main's 10-27 ruling; an empty slot keeps its +)
+          `<span class="chev" aria-hidden="true">${uiIconSVG('chevronDown', 12)}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(tooltip)}">` +
           `<span class="plus" aria-hidden="true">+</span><span class="sl">${t('garage.equipment.empty.name')}</span></button>`);
