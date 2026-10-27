@@ -37,7 +37,7 @@ import { releaseAllCaptureHolds } from './capture-lock.mjs';
 /** The exit code of a process whose browser the guard killed. */
 export const BROWSER_GUARD_EXIT_CODE = 86;
 /** Machine-wide record of every trip, one JSON line each (the job's own log gets the `[browser-guard]` line). */
-export const BROWSER_GUARD_LOG = '/tmp/cot-browser-guard.log';
+const BROWSER_GUARD_LOG = '/tmp/cot-browser-guard.log';
 
 const GUARD_SWITCH = '--cot-browser-guard';
 const EXTRA_SWITCHES = Object.freeze(['--disable-back-forward-cache', '--disable-component-update', '--disable-sync',
@@ -279,7 +279,7 @@ const fmt = (mb) => `${(mb / 1024).toFixed(2)} GB`;
  * Watch the process tree of a browser already launched (rootPid leads its process group). Returns the guard record:
  * { label, rootPid, peakRendererMb, peakTreeMb, tripped (null, or the trip report), stop(), finish() }.
  */
-export function watchBrowserTree(target, rootPid, guardOptions = {}) {
+function watchBrowserTree(target, rootPid, guardOptions = {}) {
   const config = { ...browserGuardConfig(guardOptions), ...guardOptions.resolved };
   const label = guardOptions.label ?? (basename(process.argv[1] ?? 'node') || 'browser');
   const exit = guardOptions.exit !== false;
