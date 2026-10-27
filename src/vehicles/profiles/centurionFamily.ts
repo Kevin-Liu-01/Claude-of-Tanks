@@ -179,10 +179,9 @@ function buildSkirts(P: TankBuilderPort): void {
     for (let k = 0; k < 3; k++) {
       const za = SKIRT.panels[k] + 0.006, zb = SKIRT.panels[k + 1] - 0.006;
       if (k === 0) {
-        const [[r0, h0], [r1, h1], [, h2]] = SKIRT_REAR_HEM;
+        const [[, h0], [r1, h1], [, h2]] = SKIRT_REAR_HEM;
         plate(za, r1, h0, h1);
         plate(r1, zb, h1, h2);
-        void r0;
       } else {
         plate(za, zb, SKIRT.bot, SKIRT.bot, k === 2 ? zb - 0.42 : zb);
       }
@@ -641,8 +640,9 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   };
   if (m.idf) {
     // the company chevron, point down, on each middle side plate; the tank's number on the basket's sides
-    P.decal('hull', 'number', 'V', 0.55, [SKIRT.outer + 0.004, 1.10, -0.30], Math.PI / 2);
-    P.decal('hull', 'number', 'V', 0.55, [-SKIRT.outer - 0.004, 1.10, -0.30], -Math.PI / 2);
+    // (a 'number' decal draws the tank's tactical number; any other kind draws its own text)
+    P.decal('hull', 'chevron', 'V', 0.55, [SKIRT.outer + 0.004, 1.10, -0.30], Math.PI / 2);
+    P.decal('hull', 'chevron', 'V', 0.55, [-SKIRT.outer - 0.004, 1.10, -0.30], -Math.PI / 2);
   } else {
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.52, 0.48, -0.30], -Math.PI / 2);
   }
