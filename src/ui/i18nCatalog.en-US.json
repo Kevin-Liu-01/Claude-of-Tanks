@@ -602,7 +602,7 @@
   "studio.error.unknownTime": "Unknown time of day",
   "studio.error.webmCluster": "WebM cluster too long",
   "studio.error.worldNotActivated": "Studio world '{map}' was not activated",
-  "studio.film.summary": "{ratio} · {width}×{height} · {seconds} s · {frames} frames",
+  "studio.film.summary": "{width}×{height}",
   "studio.film.hint": "Every frame rendered offline with motion blur and anti-aliasing; nothing is dropped. The game's combat sound is mixed in.",
   "studio.film.unsupported": "Offline video encoding is unavailable in this browser",
   "studio.film.veilTitle": "Rendering film",

@@ -614,7 +614,7 @@
   "studio.error.unknownTime": "未知的时段",
   "studio.error.webmCluster": "WebM 簇过长",
   "studio.error.worldNotActivated": "场景工作室战场“{map}”未能激活",
-  "studio.film.summary": "{ratio} · {width}×{height} · {seconds} 秒 · {frames} 帧",
+  "studio.film.summary": "{width}×{height}",
   "studio.film.hint": "每一帧都离线渲染，带运动模糊与抗锯齿，不丢帧。并混入游戏中的战斗音效。",
   "studio.film.unsupported": "此浏览器不支持离线视频编码",
   "studio.film.veilTitle": "正在渲染影片",

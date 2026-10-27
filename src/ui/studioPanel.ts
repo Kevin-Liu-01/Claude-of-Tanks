@@ -428,18 +428,22 @@ const MAP_POP_MIN = 200;
 const MAP_POP_MAX = 560;
 const MAP_POP_GAP = 12;
 /** Under this much room below the card the picker cannot show its bar and two rows of cards: it opens as a sheet over
- * the inspector instead, grown to MAP_SHEET px where the screen has it (the s16 critic: on a phone, at 844 x 390, 1024 x
- * 600 and 1280 x 720 the popover cut its cards and the card above scrolled under the tab bar). */
+ * the Studio instead (the s16 critic: on a phone, at 844 x 390, 1024 x 600 and 1280 x 720 the popover cut its cards and
+ * the card above scrolled under the tab bar). */
 const MAP_POP_SHEET_BELOW = Number.POSITIVE_INFINITY; // the sheet at every size: one form (the s17 critic: a nested box at 1440 and up)
-const MAP_SHEET = 520;
-/** From 1440 px the sheet stands wider: four maps to a row and more of the biome chips beside the search (the s19 critic: a
- *  three-column strip at 1920 and 2560 with the filters past Winter behind the arrow). */
-const MAP_SHEET_WIDE = 760;
+/** The sheet stands centred over the Studio under its bar, this wide and tall where the screen has the room, with a
+ *  gutter on every side (the s20 critic: flush to the screen's right edge and foot, its top across the inspector's Map
+ *  section). From 1440 px it is wider and taller: the preview beside three maps to a row (the s19 and s20 critics: one
+ *  narrow column of maps beside a mostly empty preview at 1440 to 2560). */
+const MAP_SHEET = 760;
+const MAP_SHEET_HEIGHT = 560;
+const MAP_SHEET_WIDE = 1040;
+const MAP_SHEET_WIDE_HEIGHT = 640;
 const MAP_SHEET_WIDE_FROM = 1440;
 const MAP_SHEET_TOP = 56;
-/** A sheet taller than its inspector runs over the timeline to the screen's foot, less this (the s19 critic: at 1024 x 600
- *  the sheet ended at the timeline and held a row and a half of maps). */
-const MAP_SHEET_FOOT = 8;
+const MAP_SHEET_GUTTER = 16;
+/** A phone's gutter. */
+const MAP_SHEET_GUTTER_NARROW = 8;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
 const CONTROLS_MODE_KEY = 'cot.studio.controls';
 function readControlsMode(): 'quick' | 'pro' {
@@ -1023,16 +1027,36 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       mapPop.style.maxHeight = `${Math.round(Math.max(MAP_POP_MIN, Math.min(MAP_POP_MAX, innerHeight * 0.65, room)))}px`;
       return;
     }
-    // the inspector contains its paint: the sheet stands in the Studio's root, over the inspector's corner and grown up
-    // and left to MAP_SHEET where the screen has the room
+    // the inspector contains its paint: the sheet stands in the Studio's root, centred under the bar
     const host = mapPick.closest<HTMLElement>('.cot-studio');
     if (host && mapPop.parentElement !== host) host.append(mapPop);
-    const width = Math.min(innerWidth, Math.max(box.width, innerWidth >= MAP_SHEET_WIDE_FROM ? MAP_SHEET_WIDE : MAP_SHEET));
-    const height = Math.min(innerHeight - MAP_SHEET_TOP, Math.max(box.height, MAP_SHEET));
-    const right = Math.min(innerWidth, box.right);
-    const bottom = box.height < height ? innerHeight - MAP_SHEET_FOOT : Math.min(innerHeight, box.bottom);
-    mapPop.style.cssText = `left:${Math.round(Math.max(0, right - width))}px;width:${Math.round(width)}px;`
-      + `top:${Math.round(Math.max(MAP_SHEET_TOP, bottom - height))}px;height:${Math.round(Math.min(height, bottom - MAP_SHEET_TOP))}px`;
+    const wide = innerWidth >= MAP_SHEET_WIDE_FROM;
+    const gutter = innerWidth < 600 ? MAP_SHEET_GUTTER_NARROW : MAP_SHEET_GUTTER;
+    const width = Math.min(innerWidth - 2 * gutter, wide ? MAP_SHEET_WIDE : MAP_SHEET);
+    const tall = innerHeight - MAP_SHEET_TOP - gutter;
+    const height = Math.min(tall, wide ? MAP_SHEET_WIDE_HEIGHT : MAP_SHEET_HEIGHT);
+    mapPop.style.cssText = `left:${Math.round((innerWidth - width) / 2)}px;width:${Math.round(width)}px;`
+      + `top:${Math.round(MAP_SHEET_TOP + (tall - height) / 2)}px;height:${Math.round(height)}px`;
+    requestAnimationFrame(trimMapSheet);
+  }
+  /** The sheet ends on its maps' last whole row: it gives up the cut row's height, half above and half below (the s20
+   *  critic: its foot sliced the third and fourth rows of maps). */
+  function trimMapSheet(): void {
+    if (!mapPop.classList.contains('sheet') || !mapPop.classList.contains('open')) return;
+    const grid = mapPop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    if (!grid || grid.scrollHeight <= grid.clientHeight + 1) return;
+    const top = grid.getBoundingClientRect().top + grid.clientTop;
+    const bottom = top + grid.clientHeight - (parseFloat(getComputedStyle(grid).paddingBottom) || 0);
+    let foot = -Infinity;
+    for (const cell of grid.children) {
+      const cellBox = cell.getBoundingClientRect();
+      if (cellBox.height > 0 && cellBox.top >= top - 0.5 && cellBox.bottom <= bottom + 0.5) foot = Math.max(foot, cellBox.bottom);
+    }
+    const cut = Number.isFinite(foot) ? Math.floor(bottom - foot) : 0;
+    if (cut < 2) return;
+    const sheetBox = mapPop.getBoundingClientRect();
+    mapPop.style.height = `${Math.round(sheetBox.height - cut)}px`;
+    mapPop.style.top = `${Math.round(sheetBox.top + cut / 2)}px`;
   }
   function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
@@ -1757,12 +1781,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     try {
       const format = S.productionFormat;
       const { width, height } = filmOutputSize(format, Number(filmSize.seg.value));
-      const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value) }), 0, S.durationMs);
-      const summary = t('studio.film.summary', {
-        ratio: formatRatio(format),
-        width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
-      });
-      filmSummary.replaceChildren(...summary.split(' · ').map((part) => el('span', null, part)));
+      // the plan still checks the film (its error shows here); the summary names only the output's size, which nothing
+      // else on the screen says (the s20 critic: its ratio, length and frames repeated the top bar, the timeline and the
+      // viewport's frame count)
+      createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.seg.value), samples: Number(filmBlur.seg.value) }), 0, S.durationMs);
+      filmSummary.textContent = t('studio.film.summary', { width, height });
     } catch (error) {
       filmSummary.textContent = errorMessage(error);
     }
