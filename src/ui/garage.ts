@@ -4070,7 +4070,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = ruleset.scoreTarget ?? RULESET_SCORE_TARGETS[mode] ?? null;
     return {
       teams: t('garage.deploy.sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) }),
-      clock: clockText(ruleset.timeLimitS),
+      // no clock is the word, set as the other rules' words are (the range's "None" in the clock's mono read as a figure, r48)
+      clock: ruleset.timeLimitS == null ? null : clockText(ruleset.timeLimitS),
       respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
       victory: target == null ? null : String(target),
       gravity: ruleset.gravityScale === 1 ? null : `${Math.round(ruleset.gravityScale * 100) / 100} g`,
@@ -4100,7 +4101,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployRules.dataset.count = String(keys.length);
     deployRules.innerHTML = keys.map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
-      `<dd${key === 'clock' ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+      `<dd${key === 'clock' && facts.clock != null ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
   /** A roster card's copy for another surface: its hero render over its flag, decorative and inert. */
   function heroCopy(id: string): HTMLElement | null {

@@ -334,10 +334,11 @@ body[data-cot-panels] .cot-garage .cot-battle-details.is-picking .cot-deploy-fie
 }
 .cot-garage .cot-battle-menu.open .cot-battle-solo-options[data-more] :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){order:0;}
 /* the options take their room from the battlefield card, which may yield all of it: the pickers under them hold still */
-/* a tall screen's card yields the options their room and keeps its name over its art (its tag and map step aside) */
+/* a tall screen's card yields the options their room and keeps its name and count over its art (its tags and map step
+   aside; the count stays, the card barely shrinks, r48) */
 @media (min-height:1000px){
   body[data-cot-panels='persistent'] .cot-garage .cot-battle-details.is-more .cot-deploy-field{flex:1 1 0;min-height:0;}
-  .cot-garage .cot-battle-details.is-more .cot-deploy-field :is(.cot-deploy-field-all,.cot-deploy-field-mm,.cot-deploy-field-tags){display:none;}
+  .cot-garage .cot-battle-details.is-more .cot-deploy-field :is(.cot-deploy-field-mm,.cot-deploy-field-tags){display:none;}
 }
 /* below 1000 px tall (and on a phone) the card steps aside and the options keep its height */
 @media (max-height:999px){
