@@ -14,6 +14,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback = '') => {
@@ -23,7 +24,7 @@ const opt = (name, fallback = '') => {
   const index = args.indexOf(`--${name}`);
   return index >= 0 && args[index + 1] && !args[index + 1].startsWith('--') ? args[index + 1] : fallback;
 };
-const ids = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
+const ids = uniqueIds(opt('ids').split(',').map((id) => id.trim()).filter(Boolean), 'genDrawings --ids');
 const outDir = resolve(opt('out'));
 const views = opt('views', 'side,top,front').split(',').filter(Boolean);
 if (!ids.length || !opt('out')) {
