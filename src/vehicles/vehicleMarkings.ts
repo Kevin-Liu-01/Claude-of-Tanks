@@ -23,7 +23,7 @@ interface CountryMarking {
 interface VehicleMarkingSpec {
   readonly id?: string;
   readonly nation?: string;
-  readonly visual?: { readonly number?: string };
+  readonly visual?: { readonly number?: string; readonly insignia?: string };
 }
 
 export interface VehicleMarkingRecord {
@@ -354,6 +354,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   ua_t80bv: anchor('hull', 'left', 0.42, 0.63, 0.24, 1),
   t80u_kursk: anchor('turret', 'left', 0.35, 0.46, 0.24, 1),
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
+  bm_oplot_m: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
+  bm_oplot_t: anchor('turret', 'right', 0.33, 0.46, 0.24, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
   // AFV family: every marking uses a different physically ray-seated face.
   // Tall slab vehicles use their broad appliqué flanks; compact stations use
@@ -450,15 +452,19 @@ export function vehicleMarkingRecord(
   const country = COUNTRY_MARKINGS[countryCode] || COUNTRY_MARKINGS.xx;
   const tacticalNumber = cleanTacticalNumber(spec?.visual?.number, spec?.id);
   const designationPrefix = spec?.nation === 'USSR' ? 'SU' : country.designation;
+  // An export livery (the Oplot-T's Thai flag) paints its own insignia; the country, its filter and designation stay
+  // the building nation's.
+  const insignia = spec?.visual?.insignia && NATIONAL_INSIGNIA_PAINTERS[spec.visual.insignia]
+    ? spec.visual.insignia : country.insignia;
   return Object.freeze({
     schemaVersion: VEHICLE_MARKING_SCHEMA_VERSION,
     countryCode,
     countryLabel: country.countryLabel,
     filterLabel: country.filterLabel,
-    insignia: country.insignia,
+    insignia,
     tacticalNumber,
     designation: `${designationPrefix}-${tacticalNumber}`,
-    markingCode: `${countryCode.toUpperCase()}:${country.insignia}:${tacticalNumber}`,
+    markingCode: `${countryCode.toUpperCase()}:${insignia}:${tacticalNumber}`,
   });
 }
 
@@ -657,6 +663,19 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.stroke();
 }
 
+// The Thai tricolour (red, white, a double blue band, white, red) on the Royal Thai Army's Oplot-T.
+function drawThaiFlag({ ctx, cx, cy, size }: InsigniaPainterArgs): void {
+  const width = size * 0.92, height = size * 0.62, band = height / 6;
+  const x = cx - width / 2, y = cy - height / 2;
+  const bands: readonly [string, number][] = [['#b8333a', 1], ['#ece8dc', 1], ['#2d3a6b', 2], ['#ece8dc', 1], ['#b8333a', 1]];
+  let top = y;
+  for (const [colour, rows] of bands) {
+    ctx.fillStyle = colour;
+    ctx.fillRect(x, top, width, band * rows + 0.5);
+    top += band * rows;
+  }
+}
+
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#d6a74f';
   ctx.beginPath();
@@ -683,6 +702,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'ua-trident': drawUkraineTrident,
+  'th-flag': drawThaiFlag,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

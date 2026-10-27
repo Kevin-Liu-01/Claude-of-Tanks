@@ -9,7 +9,7 @@ import type { TreeTier } from './model.ts';
 
 const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   abramsx: 10, aft10: 3, ajax: 5, amx10p: 3, amx10p_25: 4, amx30: 1, amx30b: 1, amx30b2: 1, amx40: 3, amx40_proto: 3,
-  amx56: 9, ares_apc: 2, bmp2: 1, bmp3: 2, bmp3_rok: 3, bmp3m_dragun125: 10, bmpt_t90: 6, bmpt_terminator2: 5,
+  amx56: 9, ares_apc: 2, bm_oplot_m: 10, bm_oplot_t: 10, bmp2: 1, bmp3: 2, bmp3_rok: 3, bmp3m_dragun125: 10, bmpt_t90: 6, bmpt_terminator2: 5,
   borsuk: 5, bwp1: 3, c1_ariete: 6, c1_ariete_preserie: 4, c1_ariete_proto_serie1: 6, c2_ariete: 7,
   c2_ariete_proto: 7, carro45t: 2, centurion3: 2, centurion5_2: 3, challenger1_mk2: 8, challenger1_mk3: 8,
   challenger2: 9, challenger2e: 9, challenger3: 10, challenger3_proto: 8, chieftain3: 2, chieftain5: 2,

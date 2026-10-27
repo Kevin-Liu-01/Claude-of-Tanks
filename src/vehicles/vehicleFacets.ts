@@ -175,7 +175,7 @@ export const CLASS_MECHANICAL_ROLES: Readonly<Record<VehicleClass, readonly stri
 
 const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Object.freeze({
   mbt: Object.freeze([
-    'abramsx', 'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
+    'abramsx', 'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'bm_oplot_m', 'bm_oplot_t', 'c1_ariete', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'challenger1_mk2', 'challenger1_mk3',
     'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'kf51_evo',
@@ -255,7 +255,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'sabra_mk2', 'ua_m1a1', 'ua_m1a2_abrams',
   ]),
   flanker: Object.freeze([
-    'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
+    'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'bm_oplot_m', 'bm_oplot_t', 'c1_ariete', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'carro45t', 'k1a1', 'k1e1', 'k2_black_panther',
     'k2b', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a5', 'leopard2_proto', 'mbt70',
     'stb1', 't72_rys', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84', 't84bm_oplot_m', 'type10',
@@ -284,7 +284,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
 
 const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]>> = Object.freeze({
   service: Object.freeze([
-    'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bmp2', 'bmp3',
+    'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bm_oplot_m', 'bm_oplot_t', 'bmp2', 'bmp3',
     'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete', 'centurion3', 'centurion5_2',
     'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9040c', 'cv90_mk4', 'dardo', 'fv510', 'fv510_milan',
@@ -299,7 +299,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'pt91m', 'puma_s1', 'sabra_mk2', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b', 'strv121', 'strv122',
     'strv81', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022',
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk',
-    't84', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
+    't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
     't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tos1a_tagil', 'type10', 'type100',
     'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type96b', 'ua_challenger2', 'ua_m1a1',
     'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'ztz100',
@@ -312,7 +312,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'cv90105_tml', 'fv4034',
     'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
-    'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't90a_burlak',
+    'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't84', 't90a_burlak',
     't90a_burlak_proto', 'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther',
     'ztz100_prototype', 'ztz85_iii',
   ]),

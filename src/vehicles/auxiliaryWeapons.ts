@@ -95,7 +95,7 @@ const rh202:AuxiliaryWeaponProfile={
 // cannon ammunition. Keep this boot-light: no fleet builders or registry import.
 const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3m_2022:b32Heavy,
-  t84bm_oplot_m:b32Heavy,
+  t84bm_oplot_m:b32Heavy,bm_oplot_m:b32Heavy,bm_oplot_t:b32Heavy,
   t72b3m_hetman_ii:ubr6,
   t72b3_zubr_ii:wkmb,
   t80u_zoria:b32Heavy,

@@ -29,13 +29,15 @@ export const UKRAINE_TREE: NationTree = Object.freeze({
       id: 't72b3m_hetman', tier: 7, line: 'kharkiv', lane: 1, parents: ['t84bm_oplot_m'], slot: 'line',
       builds: ['t72b3m_hetman_ii'],
     }),
+    node({ id: 'bm_oplot_m', tier: 10, line: 'kharkiv', lane: 0, parents: ['t84bm_oplot_m'], slot: 'line' }),
+    node({ id: 'bm_oplot_t', tier: 10, line: 'kharkiv', lane: 1, parents: ['bm_oplot_m'], slot: 'line' }),
     // T-64 and T-80 upgrades
     node({ id: 't64bv_donbas', tier: 4, line: 'soviet', lane: 2, parents: [], slot: 'line' }),
     node({ id: 'ua_t80bv', tier: 5, line: 'soviet', lane: 3, parents: ['t64bv_donbas'], slot: 'line' }),
     node({ id: 't72b3_sich', tier: 7, line: 'soviet', lane: 2, parents: ['ua_t80bv'], slot: 'line' }),
     // Allied tanks
     node({
-      id: 'ua_m1a1', tier: 9, line: 'aid_mbt', lane: 0, parents: ['ua_t80bv'], slot: 'line',
+      id: 'ua_m1a1', tier: 9, line: 'aid_mbt', lane: 1, parents: ['ua_t80bv'], slot: 'line',
       builds: ['ua_m1a2_abrams'],
     }),
     node({ id: 'leo2a6_ua', tier: 9, line: 'aid_mbt', lane: 3, parents: ['ua_m1a1'], slot: 'line' }),

@@ -94,6 +94,8 @@ const FAMILY_UPGRADES = Object.freeze({
     ...after('t72b3', ['t72b3_sich', 't72b3_zubr', 't72b3_zubr_ii', 't72b3_qilin', 't72b3_bastion_m', 't72b3m_hetman',
       't72b3m_hetman_ii', 't72b3m_wilk', 't72b3m_kunlun', 't72b3m_bulat_m'])],
   t80: [['t80', 't80b'], ['t80b', 't80bv'], ['t80bv', 't80u'], ['t80bv', 'ua_t80bv'], ['t84', 't84bm_oplot_m'],
+    // 262: the T-84U Oplot (478DU9) -> the T-84BM Oplot-M (478DU9-1) -> its Thai export, the Oplot-T (478DU9-T)
+    ['t84bm_oplot_m', 'bm_oplot_m'], ['bm_oplot_m', 'bm_oplot_t'],
     ...after('t80u', ['t80u_kursk', 't80uk', 't84', 't80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'])],
   t90: [['t72bu', 't90_1992'], ['t90_1992', 't90'], ['t90a_2004', 't90a'], ['t90a_2006', 't90a_vladimir'],
     ['t90ms_2011', 't90ms_tagil'], ['t90sm_2013', 't90sm'], ['t90am', 't90m']],
@@ -113,7 +115,7 @@ for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displa
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
   ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
-  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100']]) {
+  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100'], ['t84', 't84bm_oplot_m']]) {
   assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
 }
 // no tier piles up: at most about 1.6x the average
@@ -142,6 +144,7 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above).
-assert.equal(digest, '14cae73ceb1ad491', `tree content changed: re-pin to ${digest} if deliberate`);
+// (FAMILY_UPGRADES above). 262 (owner 2026-10-27): the T-84BM Oplot-M and Oplot-T at X on the Kharkiv line after the
+// renamed T-84U Oplot; the M1A1 SA (Ukraine) moves to lane 1 so the Oplot-M's connector clears it.
+assert.equal(digest, 'e8cde9ca8888727a', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

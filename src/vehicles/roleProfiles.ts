@@ -154,6 +154,10 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   ua_t80bv: { doctrine: 'flanker', viewM: 395, still: 0.235, moving: 0.175 },
   t80u_kursk: { doctrine: 'flanker', viewM: 410, still: 0.234, moving: 0.174 },
   t84bm_oplot_m: { doctrine: 'flanker', viewM: 425, still: 0.229, moving: 0.169 },
+  // Release 262: the T-84BM Oplot-M and Oplot-T; the PNK-6 panorama gives the commander a hunter-killer view, the
+  // Oplot-T's air conditioner and APU box make it the easier one to spot
+  bm_oplot_m: { doctrine: 'flanker', viewM: 435, still: 0.226, moving: 0.166 },
+  bm_oplot_t: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.170 },
   ua_m1a1: { doctrine: 'flexible', viewM: 400, still: 0.176, moving: 0.116 },
   leo2a6_ua: { doctrine: 'flexible', viewM: 425, still: 0.168, moving: 0.108 },
   object695: { doctrine: 'support', viewM: 440, still: 0.275, moving: 0.215 },
