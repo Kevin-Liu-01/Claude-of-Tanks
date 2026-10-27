@@ -30,6 +30,9 @@ interface GarageConsumablesOptions {
   /** The room or a test drive holds the tank fixed. */
   readonly locked: () => boolean;
   readonly text: () => PickerText;
+  /** Fit the open picker's grid to its sheet (garage.ts: a phone's sheet fills its room with whole rows, as the
+   *  equipment's does). */
+  readonly fitGrid?: (grid: HTMLElement) => void;
   emit(name: string, payload: object): void;
 }
 
@@ -197,7 +200,11 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     for (const el of host.querySelectorAll<HTMLElement>('.csslot')) el.classList.toggle('open', Number(el.dataset.slot) === slot);
     // the persistent panel's title sits over the picker's bar, which starts after it (showroom.css --eq-title-w, as the
     // equipment picker measures its own)
-    requestAnimationFrame(() => panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`));
+    requestAnimationFrame(() => {
+      panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`);
+      const grid = pickerHost.querySelector<HTMLElement>('.cot-c-picker__grid');
+      if (grid) options.fitGrid?.(grid);
+    });
     picker.focus();
   }
 
