@@ -64,6 +64,12 @@ export function addChallenger1GunNose(P: TankBuilderPort): void {
   // The ring housing under the slab walls: the race collar, recessed in their shadow, from the hull's ring well (2.10 m
   // ring) up into the turret floor.
   P.add('turret', cylY(1.05, 1.05, .34, P.q ? 48 : 28), ...at(0, 1.675, D.turretPivot[2]));
+  // The gun well ahead of it, recessed the same way: the turret's lower front around the cradle, which holds the
+  // breech in at full elevation and the recoil stroke (the tube's underside reaches 1.71 m at +20 degrees).
+  P.add('turret', local(sectionSolid([
+    { z: 1.20, ring: turretRing(.55, 1.64, 1.83) }, { z: 1.98, ring: turretRing(.55, 1.64, 1.83) },
+    { z: 2.10, ring: turretRing(.50, 1.69, 1.83) },
+  ], { sideQuadDiagonal: 'convex' })));
 }
 
 /** A lidded stowage bin welded to a wall: the body, its lid lapping 1 cm over, the hinge line and two latches. */

@@ -9,8 +9,9 @@
   liked) under a new sleek turret (`src/vehicles/profiles/challenger1SleekTurret.ts`) drawn in the earlier Challenger 1
   build's design language ([challenger1.md](challenger1.md)): the asymmetric crown (commander's plateau high on the right,
   loader's roof lower on the left, a rolled ramp between), cheeks swept hard back from a pointed gun nose, long low
-  raked-nose bins, a stepped bustle with its rack. One cast loft: walls leaning in 9 degrees under rolled shoulders,
-  2.44 m over the foot (the earlier build's casting was 3.70 m after its 1.12 x 0.84 squash), the crown 2.38–2.46 m.
+  raked-nose bins, a stepped bustle with its rack. One cast loft: walls leaning in 15 degrees under 10 cm rolled shoulders,
+  2.40 m over the foot (the earlier build's casting was 3.70 m after its 1.12 x 0.84 squash), the crown 2.36–2.40 m
+  with the commander's plinth a 4 cm step, 4.36 m long with the raked bustle, 0.79 m of armour over the ring.
 - It shares the gun nose, slot, drum shield, canvas boot and L11A5 with the Mk 2 / Mk 3 (`addChallenger1GunNose`,
   `addChallenger1Gun`), so the gun-port receipt and the gun rig hold the same way.
 - Name: the Mk 1 is the one real Challenger 1 mark the fleet did not carry (109 built 1983–85, TOGS barbettes mostly

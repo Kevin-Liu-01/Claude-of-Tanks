@@ -43,8 +43,8 @@ mesh basket, the boot, the guards).
 | Height, turret roof | 2.42 (2.74 plateau squashed by 0.84) | 2.50 m (S6) | 2.48 m |
 | Height, commander's sight | ~2.75 | 2.95 m (S6) | 2.95 m (sight head) |
 | Turret width (armour) | **3.70 m** (1.12 squash) | ~2.55–2.75 m (S1 plan; 0.77 x hull width in S1 front) | **2.56 m** body, 2.90 over bins |
-| Turret length (armour) | 4.95 m | ~4.2 m body + bins (S1 plan) | 4.21 m body, 4.42 with bustle bin |
-| Turret wall height | 0.74 m (squashed) | ~0.85 m (S1 side) | 0.86 m slab sides |
+| Turret length (armour) | 4.95 m | ~4.2 m body + bins (S1 plan) | 4.06 m body, 4.51 with the bustle bin and basket |
+| Turret wall height | 0.74 m (squashed) | ~0.85 m (S1 side) | 0.87 m (0.62–0.66 m walls over the ring housing) |
 | Ground clearance | 0.52 | 0.50 m (S6) | 0.50 |
 | Road wheels | 6 x r 0.395 on 0.88 m | 6 aluminium, ~0.80–0.85 m, ~1.0 m pitch (S1, S6) | 6 x r 0.42 on 0.98 m (4.9 m on the ground) |
 | Return rollers | none (FSP-03 deferred) | 2 a side (S6) | 2 a side behind the skirts |
@@ -64,6 +64,6 @@ mesh basket, the boot, the guards).
 
 - Exhausts: no CR1 source places them; the rear-plate louvres follow the Challenger 2 hull (S6). Open.
 - The decor kit no longer draws a smoke pair, a whip, bow hooks (their bow slot left them in the air) or turret-side
-  track links (the flanks are bins, basket and barbette). It keeps the rear-deck tarp and rations, the bucket and the IR
-  light.
+  track links (the flanks are bins, basket and barbette). It keeps the rear-deck tarp and rations and the bucket; the IR
+  light is off the list too.
 - Fairness: see the lane report (the tier VIII strength line before and after).
