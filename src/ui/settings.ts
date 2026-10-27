@@ -109,7 +109,7 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
 type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'accessibility' | 'language';
 /** (item 259, the owner: "color code settings so its easier") each tab's glyph, in its category's colour (--settings-<tab>) */
 const TAB_GLYPHS: Readonly<Record<SettingsTab, UiIconId>> = Object.freeze({
-  controls: 'controller', gameplay: 'autoAim', sound: 'sound', graphics: 'graphics', accessibility: 'accessibility', language: 'globe',
+  controls: 'controller', gameplay: 'vehicle', sound: 'sound', graphics: 'gpu', accessibility: 'accessibility', language: 'globe',
 });
 const tabMarkup = (tab: SettingsTab, selected: boolean): string =>
   `<button class="cot-set-tab${selected ? ' sel' : ''}" data-tab="${tab}" data-settings-tone="${tab}" type="button" role="tab" id="cot-set-tab-${tab}"`
@@ -956,12 +956,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         const text = chipText(def.id, slotKey);
         const empty = text === '';
         const arrow = ARROW_KEY_GLYPHS[text];
+        // item 259 (the gauntlet's critics: typed arrows in the wheel's caps, and the word left in English in zh): a wheel
+        // notch is the wheel's word and the sprite's arrow
+        const wheel = /^WHEEL ([↑↓])$/.exec(text)?.[1];
         // an unbound slot is an empty cap (no dash in view) and an arrow key the sprite's arrow, each named for
         // assistive tech
         if (arrow) chip.innerHTML = uiIconSVG(arrow[0], 14);
+        else if (wheel) chip.innerHTML = `${t('settings.bind.wheel')} ${uiIconSVG(wheel === '↑' ? 'moveForward' : 'moveBack', 14)}`;
         else chip.textContent = empty ? '' : text;
         chip.classList.toggle('empty', empty);
-        const name = empty ? t('settings.bind.unbound') : arrow ? t(arrow[1]) : '';
+        const name = empty ? t('settings.bind.unbound') : arrow ? t(arrow[1])
+          : wheel ? t(wheel === '↑' ? 'settings.bind.wheelUp' : 'settings.bind.wheelDown') : '';
         if (name) chip.setAttribute('aria-label', name);
         else chip.removeAttribute('aria-label');
       }

@@ -4,8 +4,10 @@
 //
 //  1. tokens.json carries a settingshue primitive and a settings-<tab> semantic token for every Settings tab, and the
 //     generated tokens.css names each.
-//  2. Every hue holds 4.5:1 on the plates and keeps at least 8 ΔE (11 at the time of writing) from every other category,
-//     the accent, the teams, the squad and ink in every vision view (colorVision.ts).
+//  2. Every hue holds 4.5:1 on the plates and keeps at least 8 ΔE from every other category, the teams, the squad and ink,
+//     and 12 from the accent, in every vision view and by both CIE76 and CIEDE2000 (colorVision.ts). The gauntlet's
+//     critics read the first set (CIE76 only) under CIEDE2000, where Controls and Graphics came 5.3 apart and the
+//     Accessibility yellow 7.4 from the accent: a yellow beside the accent's selection reads as a second accent.
 //  3. settings.ts maps data-settings-tone=<tab> to --settings-ink for every tab, marks every tab and the body with it,
 //     and paints only glyphs, the selected tab's mark and the headings' rule with it: never text.
 //  4. One source: no category hue is written as a literal outside the token files.
@@ -13,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contrastRatio, deltaE, parseHex, VISION_VIEWS } from '../colorVision.ts';
+import { contrastRatio, deltaE, deltaE2000, parseHex, VISION_VIEWS } from '../colorVision.ts';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
@@ -44,10 +46,11 @@ for (const [tab, hex] of Object.entries(hexes)) {
   }
   const others = { ...Object.fromEntries(Object.entries(hexes).filter(([other]) => other !== tab)), ...KIT };
   for (const [other, otherHex] of Object.entries(others)) {
+    const need = other === 'accent' ? 12 : 8;
     for (const view of VISION_VIEWS) {
-      const d = deltaE(view, parseHex(hex), parseHex(otherHex));
+      const d = Math.min(deltaE(view, parseHex(hex), parseHex(otherHex)), deltaE2000(view, parseHex(hex), parseHex(otherHex)));
       floor = Math.min(floor, d);
-      assert.ok(d >= 8, `${tab} keeps 8 ΔE from ${other} in ${view} vision (${d.toFixed(1)})`);
+      assert.ok(d >= need, `${tab} keeps ${need} ΔE from ${other} in ${view} vision, CIE76 and CIEDE2000 (${d.toFixed(1)})`);
     }
   }
 }
@@ -66,6 +69,13 @@ assert.deepEqual(painted, [
   '.cot-set-tab.sel>span::after', // the selected tab's mark
   '.cot-setting-icon', // the rows' glyphs
 ], 'the category colour paints glyphs, marks and rules only, never text');
+
+// the stricter measure is the critics': Sharma, Wu and Dalal's CIEDE2000 reference pair (Lab 50/2.6772/-79.7751 and
+// 50/0/-82.7485, ΔE00 2.0425) is not reachable through sRGB here, so its definition is pinned on two sRGB pairs the critics
+// measured with their own tool: Controls #a292d7 and Graphics #c287bc 5.3 apart in protanopia, #f0d03c 7.4 from the accent
+// in deuteranopia
+assert.equal(deltaE2000('protan', parseHex('#a292d7'), parseHex('#c287bc')).toFixed(1), '5.3');
+assert.equal(deltaE2000('deutan', parseHex('#f0d03c'), parseHex('#f0a030')).toFixed(1), '7.4');
 
 // 4. one source: no category hue as a literal outside the token files
 const TOKEN_FILES = new Set(['src/ui/tokens/tokens.json', 'src/ui/tokens/tokens.css', 'src/ui/tokens/tokens.ts',

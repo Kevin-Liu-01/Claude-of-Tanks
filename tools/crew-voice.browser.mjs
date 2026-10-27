@@ -30,7 +30,7 @@ try {
       assert.equal(await field.inputValue(), 'national');
       assert.equal(await field.locator('option').count(), 14);
       assert.equal(await field.isVisible(), false, 'the shared dropdown replaces the native field');
-      assert.match(await trigger.getAttribute('aria-label'), locale === 'en-US' ? /Crew voices: National crews/ : /乘员语音: 各国乘员/);
+      assert.match(await trigger.getAttribute('aria-label'), locale === 'en-US' ? /Crew voices: National Crews/ : /乘员语音: 各国乘员/);
 
       for (const [pack, nation] of Object.entries(CREW_VOICE_NATIONS)) {
         const before = await page.evaluate(() => window.__CREW_VOICE_TEST.volumes.length);
