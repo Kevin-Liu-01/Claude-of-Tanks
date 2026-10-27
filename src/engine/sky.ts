@@ -40,7 +40,9 @@ import { HAZE_MATERIAL_FOG_SHARE } from './hazeLaw.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import {
   bakeCirrusPixels,
+  bakeCirrusPixelsSteps,
   bakeCumulusPixels,
+  bakeCumulusPixelsSteps,
   type CumulusBakeConfig,
 } from './skyCloudBake.ts';
 import { deriveCloudLayerPreset, type CloudLayerPreset } from './cloudPresets.ts';
@@ -1140,6 +1142,31 @@ function makeCirrusTexture(prebaked: CloudBakePixels | null = null): THREE.Canva
   return cloudTextureFromPixels(pixels, width, width);
 }
 
+/** A main-thread slice of the fallback bake (the frame budget it leaves the page). */
+const CLOUD_FALLBACK_SLICE_MS = 6;
+
+/**
+ * The synchronous fallback's same bytes a few rows at a time, a frame between slices (2026-10-26, the boot ABBA: a
+ * cloud worker past its 3 s deadline made the fallback one 1.1 s main-thread task on the boot screen).
+ */
+async function bakeCloudPixelsSliced(
+  kind: CloudKind,
+  tick: () => Promise<void>,
+): Promise<CloudBakePixels> {
+  const size = texSize(kind === 'cirrus' ? CIRRUS_TEX : CLOUD_TEX);
+  const steps = kind === 'cirrus'
+    ? bakeCirrusPixelsSteps(size, size, CLOUD_BAKE_CONFIG)
+    : bakeCumulusPixelsSteps(size, size, CLOUD_BAKE_CONFIG);
+  let sliceAt = performance.now();
+  for (let step = steps.next(); ; step = steps.next()) {
+    if (step.done) return { size, pixels: step.value };
+    if (performance.now() - sliceAt >= CLOUD_FALLBACK_SLICE_MS) {
+      await tick();
+      sliceAt = performance.now();
+    }
+  }
+}
+
 interface HorizonColorCache {
   context: WebGLRenderingContext | WebGL2RenderingContext;
   rendererInfo: THREE.WebGLRenderer['info'];
@@ -1841,8 +1868,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
   };
+  // the chunked install in flight: the sky's presentation leaves the decks to it rather than bake them in one task
+  let chunkedInstall: Promise<void> | null = null;
   /** Await off-main FBM, then install at most one canvas texture per tick. */
-  const ensureCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
+  const ensureCloudTexturesChunked = (tick?: () => Promise<void>): Promise<void> => {
+    chunkedInstall ??= installCloudTexturesChunked(tick).finally(() => { chunkedInstall = null; });
+    return chunkedInstall;
+  };
+  const installCloudTexturesChunked = async (tick?: () => Promise<void>): Promise<void> => {
     if (cloudWorkerPromise && !cloudWorkerSettled) await cloudWorkerPromise;
     // round 68: the volumetric layer's noise, then its programs, all under the caller's cover
     if (volumetricClouds) {
@@ -1855,13 +1888,20 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       await linking;
     }
     if (!cirrusBaked) {
-      cirrusBaked = true;
-      swapCloudTexture(cloudsFar, makeCirrusTexture(cloudWorkerResults?.cirrus ?? null));
+      const pixels = cloudWorkerResults?.cirrus ?? (tick ? await bakeCloudPixelsSliced('cirrus', tick) : null);
+      // (the synchronous install may have run while the slices waited: keep its deck)
+      if (!cirrusBaked) {
+        cirrusBaked = true;
+        swapCloudTexture(cloudsFar, makeCirrusTexture(pixels));
+      }
       if (tick) await tick();
     }
     if (!cumulusBaked) {
-      cumulusBaked = true;
-      swapCloudTexture(clouds, makeCloudTexture(cloudWorkerResults?.cumulus ?? null));
+      const pixels = cloudWorkerResults?.cumulus ?? (tick ? await bakeCloudPixelsSliced('cumulus', tick) : null);
+      if (!cumulusBaked) {
+        cumulusBaked = true;
+        swapCloudTexture(clouds, makeCloudTexture(pixels));
+      }
       if (tick) await tick();
     }
     if (cirrusBaked && cumulusBaked) cloudWorkerResults = null;
@@ -2192,7 +2232,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       p: Partial<SkyPreset> | null | undefined,
       targetScene: THREE.Scene,
     ): void {
-      ensureCloudTextures(); // deferred boot bake — decks must be real now
+      // deferred boot bake — decks must be real now; (2026-10-26) unless the chunked install is under way: a worker past
+      // its deadline left it baking in slices, and its caller (the boot's post stage, a world's activation) awaits it
+      // before any frame shows the decks
+      if (!chunkedInstall) ensureCloudTextures();
       preset = { ...DEFAULT_PRESET, ...(p || {}) };
       sunDir.setFromSphericalCoords(
         1,

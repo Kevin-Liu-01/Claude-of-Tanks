@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { bakeCirrusPixels, bakeCumulusPixels } from './skyCloudBake.ts';
+import { readFileSync } from 'node:fs';
+import { bakeCirrusPixels, bakeCirrusPixelsSteps, bakeCumulusPixels, bakeCumulusPixelsSteps } from './skyCloudBake.ts';
 
 const config = Object.freeze({
   seed: 777,
@@ -47,4 +48,34 @@ assert.ok(covered / (128 * 128) > 0.35 && covered / (128 * 128) < 0.55,
 assert.ok(dense / (128 * 128) > 0.10 && dense / (128 * 128) < 0.25,
   'the deck has coherent opaque bodies without becoming uniform overcast');
 
-console.log('skyCloudBake.selftest: deterministic cirrus and cumulus bytes passed');
+// (2026-10-26, the boot ABBA) the sliced bakes: the same bytes as the whole bakes, a yield every rowsPerStep rows (a
+// cloud worker past its deadline made the synchronous fallback one 1.1 s task; sky.ts now drives these under a budget)
+const drain = (steps) => {
+  let yields = 0;
+  let step = steps.next();
+  while (!step.done) { yields++; step = steps.next(); }
+  return { pixels: step.value, yields };
+};
+for (const rows of [1, 4, 7, 64]) {
+  const cumulusSteps = drain(bakeCumulusPixelsSteps(65, 65, config, rows));
+  assert.equal(digest(cumulusSteps.pixels), digest(bakeCumulusPixels(65, 65, config)), `cumulus in ${rows}-row slices: the same bytes`);
+  assert.equal(cumulusSteps.yields, Math.ceil(65 / rows) * 2 - 1, 'fields, then shading, a slice at a time');
+  const cirrusSteps = drain(bakeCirrusPixelsSteps(65, 65, config, rows));
+  assert.equal(digest(cirrusSteps.pixels), digest(bakeCirrusPixels(65, 65, config)), `cirrus in ${rows}-row slices: the same bytes`);
+  assert.equal(cirrusSteps.yields, Math.ceil(65 / rows) - 1);
+}
+const sky = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
+const chunked = sky.slice(sky.indexOf('const installCloudTexturesChunked = async'), sky.indexOf('const cloudsFar = mkCloudDeck('));
+assert.match(chunked, /cloudWorkerResults\?\.cirrus \?\? \(tick \? await bakeCloudPixelsSliced\('cirrus', tick\) : null\)/,
+  'a missing cirrus result bakes in slices between the caller\'s frames');
+assert.match(chunked, /cloudWorkerResults\?\.cumulus \?\? \(tick \? await bakeCloudPixelsSliced\('cumulus', tick\) : null\)/,
+  'a missing cumulus result bakes in slices between the caller\'s frames');
+const sliced = sky.slice(sky.indexOf('async function bakeCloudPixelsSliced('), sky.indexOf('interface HorizonColorCache'));
+assert.match(sliced, /performance\.now\(\) - sliceAt >= CLOUD_FALLBACK_SLICE_MS\) \{\s*await tick\(\);/, 'a frame once a slice has used its budget');
+assert.match(sky, /if \(!chunkedInstall\) ensureCloudTextures\(\);/, 'the presentation never bakes the decks in one task while slices run');
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const postStage = main.slice(main.indexOf("await bootStage('post', async () => {"));
+assert.ok(postStage.indexOf('await bootCloudWarmP;') > 0 && postStage.indexOf('await bootCloudWarmP;') < postStage.indexOf('await warmGarageGpuPipeline({'),
+  'the boot waits for the decks before the Garage warm uploads them');
+
+console.log('skyCloudBake.selftest: deterministic cirrus and cumulus bytes, the same bytes in slices, and the sliced fallback passed');
