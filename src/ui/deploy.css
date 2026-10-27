@@ -251,6 +251,10 @@ body[data-cot-width='tablet'] .cot-garage .cot-deploy-op{grid-template-columns:5
 /* the field clips nothing (its picker opens past its box): its art and its map clip themselves to its corners */
 .cot-garage .cot-deploy-field{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;flex:1 0 auto;
   min-height:clamp(112px,15vh,240px);border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--e1);}
+/* past half the plate's width the card's square map would starve its picture and name (the range at 2560): it stops
+   there, and the room it leaves opens the mode's picture under the rules */
+body:not([data-cot-panels='overlay']) .cot-garage .cot-battle-details:not(.is-picking) .cot-deploy-field:not(:has(.cot-deploy-field-pop:not([hidden]))){
+  max-height:50cqi;margin-top:auto;}
 .cot-garage .cot-deploy-field-card{position:relative;display:block;min-width:0;height:100%;padding:0;border:0;border-radius:var(--control-radius) 0 0 var(--control-radius);
   background:none;color:var(--ink-1);cursor:pointer;text-align:left;overflow:hidden;}
 .cot-garage .cot-deploy-field:has(.cot-deploy-field-mm img[hidden]) .cot-deploy-field-card{border-radius:var(--control-radius);}

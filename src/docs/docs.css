@@ -333,7 +333,6 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-screen figcaption{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:var(--s3) var(--s2);border-top:1px solid var(--line);background:var(--surface-raised)}
 .filming-screen figcaption span{display:grid;gap:3px}
 .filming-screen figcaption strong{font-size:max(var(--fs-floor-11),var(--fs-11))}
-.filming-screen figcaption small{color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 .filming-screen figcaption>b{color:var(--ink-1);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--mono);white-space:nowrap}
 /* the stages and the takes are the kit's pickers (cards): six stages a row under the screen, four takes a row under the story */
 .filming-stage-bar{margin:var(--s3) 0}

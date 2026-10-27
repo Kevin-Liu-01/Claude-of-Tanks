@@ -13,7 +13,7 @@
 }
 .media-library-head{display:grid;gap:14px;margin:0 0 22px}
 .media-library-set{margin:0 0 26px;content-visibility:auto;contain-intrinsic-size:auto 420px}
-.media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:var(--fs-11);letter-spacing:var(--track-label);text-transform:uppercase}
+.media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:var(--track-label);text-transform:uppercase}
 .media-library-grid{display:flex;flex-wrap:wrap;gap:var(--s2)}
 /* the collections are one strip at every width, its rule on the column's edges; a strip longer than the column scrolls
    sideways and fades its cut end */
