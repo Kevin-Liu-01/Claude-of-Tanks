@@ -4906,7 +4906,10 @@ function* vegetationBuildSteps(
         // placement changes, only when invisible distant chunks are generated.
         if (!deferFarGrass || Math.hypot(spawn.x - gc.cx, spawn.z - gc.cz) < initialGrassRadius) {
           beginGrassChunk(gc);
-          advanceGrassChunk(gc, true);
+          // (260, the rooms census: a near chunk's whole job was one 300 ms step of an async build) an async build takes
+          // the job a slice at a time (its 250 steps or 1.5 ms); the same job, the same tufts
+          if (deferFarGrass) while (!advanceGrassChunk(gc)) yield { stage: 'grassScatter', fine: true };
+          else advanceGrassChunk(gc, true);
         }
         yield { stage: 'grassScatter', fine: true, rowEnd: cx === CHUNKS - 1 };
       }
@@ -8012,7 +8015,10 @@ function* vegetationBuildSteps(
     retainedTextures.push(map);
     return [material, depth];
   }
-  function createBushes(): void {
+  // (260, the rooms census: the bushes were one 186 ms step of the vegetation build) a checkpoint after their geometries
+  // and after each pass; the same draws, placements and order
+  const BUSH_SLICE: BuildYield = { stage: 'bushes', fine: true };
+  function* createBushes(): Generator<BuildYield, void, void> {
     // trees round 2: the desktop shrubs take the place's foliage colour where the map palette names none (the phones
     // keep the palette as it is)
     // trees round 4: a place's own shrub colour (treeBiomes.ts shrubColour) wins over the bush slot's palette, as a form's
@@ -8093,6 +8099,7 @@ function* vegetationBuildSteps(
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit),
         buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
+    yield BUSH_SLICE;
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
@@ -8467,15 +8474,20 @@ function* vegetationBuildSteps(
       });
     }
     placeBushFringes();
+    yield BUSH_SLICE;
     placeBeltShrubs();
+    yield BUSH_SLICE;
     placeFieldBushes();
+    yield BUSH_SLICE;
     placeBushClumps();
     evenBushHalves();
+    yield BUSH_SLICE;
     createBushMeshes();
+    yield BUSH_SLICE;
     placeUnderstorey();
     createUnderstoreyMesh();
   }
-  createBushes();
+  yield* createBushes();
   placementAdmission=null;
 
   yield { stage: 'bushes' };

@@ -9252,6 +9252,8 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
+        // (260, the rooms census: the debris and the solids' placement were one 126 ms step) the solids their own step
+        yield { fine: true };
         // Separate hull/turret solids follow the exact visible yaw and slope pose.
         // A sideways gun must never turn the empty space beside a wreck into a wall.
         const placement = new THREE.Matrix4().makeRotationFromQuaternion(quat)

@@ -8274,7 +8274,8 @@ function* createSplatMaterialSteps(
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
   const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
-  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
+  // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
+  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {
@@ -9305,7 +9306,8 @@ function* terrainBuildSteps(
         total: CHUNKS * CHUNKS + 2,
       };
       const fine = needsFineGrid
-        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
+        // (260, the rooms census: eight rows, 792 height samples, were one 260 ms step under load) two rows a checkpoint
+        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress, 2) : null;
       if (fine) initialFineGridCount++;
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
