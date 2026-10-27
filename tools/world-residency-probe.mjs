@@ -9,6 +9,7 @@
 // residency acquisition". Both processes must receive that exact manifest.
 // Optional statistical retained allocations (never a heap-gate adjustment):
 //   --diagnostics-dir=/tmp/allocations --allocation-start-at=0:verdant --allocation-stop-at=1:verdant
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -196,7 +197,7 @@ try {
   if (!production) await server.listen();
   const address = server.httpServer.address();
   const url = `http://127.0.0.1:${address.port}/?tier=${tier}&gfxreset=1&nosplash=1`;
-  browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 600_000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 600_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--expose-gc'] });
   report.metadata.browserVersion = await browser.version();
   const page = await browser.newPage();

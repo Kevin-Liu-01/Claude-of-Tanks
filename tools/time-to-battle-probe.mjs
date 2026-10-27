@@ -18,6 +18,7 @@
 // each entry (attribution only: a profiled run's timings are not comparable with an unprofiled one).
 // Locks: the capture FIFO with --session-mutex (frame-budget-probe's acquireProbeLocks) unless a lane hold took them
 // (COT_LANE_HOLD=1).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
@@ -241,7 +242,7 @@ async function afterOpen({ gl0, t0 }) {
 
 async function catalogOf(port) {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'ttb-catalog-'));
-  const browser = await puppeteer.launch({ headless: 'new', userDataDir: dir, args: [...MAP_PROBE_BROWSER_ARGS] });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', userDataDir: dir, args: [...MAP_PROBE_BROWSER_ARGS] });
   try {
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
@@ -356,7 +357,7 @@ async function main(opt) {
           if (runs.every((run) => existsSync(fileOf(run)))) continue;
           if (Date.now() - startedAt + unitMs > budgetMs) { log(`budget: ${mapId} ${labels[i]} left for the next run`); left++; continue; }
           const dir = mkdtempSync(path.join(os.tmpdir(), 'ttb-profile-'));
-          const launch = () => puppeteer.launch({ headless: 'new', userDataDir: dir, protocolTimeout: 600000,
+          const launch = () => launchGuardedBrowser(puppeteer, { headless: 'new', userDataDir: dir, protocolTimeout: 600000,
             args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080', ...extraBrowserArgs] });
           let browser = await launch();
           try {

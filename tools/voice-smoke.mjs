@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // voice-smoke.mjs — play-path smoke for the national crew radio
 // (src/audio/crewRadio.ts, packs in public/audio/voice/<lang>/).
@@ -95,7 +96,7 @@ const LAUNCH_ARGS = [
   '--autoplay-policy=no-user-gesture-required',
 ];
 
-let browser = await puppeteer.launch({ headless: 'new', args: LAUNCH_ARGS });
+let browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: LAUNCH_ARGS });
 let page;
 const consoleErrors = [];
 async function openPage() {
@@ -160,7 +161,7 @@ try {
   if (!clockOk) {
     console.warn('[voice-smoke] headless AudioContext clock stalled — relaunching headful');
     await browser.close();
-    browser = await puppeteer.launch({ headless: false, args: LAUNCH_ARGS });
+    browser = await launchGuardedBrowser(puppeteer, { headless: false, args: LAUNCH_ARGS });
     consoleErrors.length = 0;
     await openPage();
     await bootIntoBattle();

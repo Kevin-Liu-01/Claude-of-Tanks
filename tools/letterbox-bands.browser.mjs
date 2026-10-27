@@ -15,6 +15,7 @@
 // One browser at a time, under the shared capture lock, with a 3 GB V8 heap per renderer; the run stops if any renderer
 // passes 6 GB. Vite gets its own cache directory, so it never shares the suite's. Writes report.json and one screenshot
 // per surface and size to --out (default .qa-dev/letterbox-bands); exits 1 on any band.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -121,7 +122,7 @@ async function main() {
   try {
     await server.listen();
     const base = `http://127.0.0.1:${server.httpServer.address().port}`;
-    browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 300000,
+    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 300000,
       args: ['--js-flags=--max-old-space-size=3072', '--no-sandbox', '--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist'] });
     const guard = setInterval(() => {
       if (rendererPeakKb(browser.process()?.pid) > RENDERER_LIMIT_KB) { aborted = 'a renderer passed 6 GB'; browser.process()?.kill('SIGKILL'); }

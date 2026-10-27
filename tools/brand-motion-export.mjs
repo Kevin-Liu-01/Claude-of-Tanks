@@ -6,6 +6,7 @@
 // Writes public/brand/motion/commander-loop.{mp4,webm,gif} (the tank alone, 1280x720; the GIF 640x360) and
 // public/brand/motion/title-card-loop.{mp4,webm} (the tank over the name on one line, 1080x1080). One headless browser
 // (3 GB heap) renders the frames; ffmpeg encodes them.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,7 +30,7 @@ const scenes = [
 ];
 
 mkdirSync(OUT, { recursive: true });
-const browser = await puppeteer.launch({ headless: 'shell', args: ['--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell', args: ['--js-flags=--max-old-space-size=3072'] });
 try {
   for (const scene of scenes.filter((item) => !process.argv[2] || item.name === process.argv[2])) {
     const frames = mkdtempSync(join(tmpdir(), `brand-motion-${scene.name}-`));

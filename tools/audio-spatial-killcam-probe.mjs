@@ -9,6 +9,7 @@
 //      cinematic bus,
 //   4. live combat ducks under that replay while the cinematic bus stays up.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { rmSync } from 'node:fs';
@@ -69,7 +70,7 @@ try {
   await server.listen();
   const url = `http://localhost:${server.config.server.port}/`;
   console.log(`[audio-spatial-killcam] vite up at ${url}`);
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     args: [
       '--use-gl=angle', '--enable-webgl', '--no-sandbox',

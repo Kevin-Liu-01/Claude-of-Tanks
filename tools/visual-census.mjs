@@ -23,6 +23,7 @@
 // --budget-min stops starting maps after that many minutes. A session mutex (an agent scratchpad's probe.lock) is
 // either the caller's, or with --probe-lock=<dir> the tool's own, taken only at the head of the FIFO so it is never
 // held while waiting in that queue (tools/visual-census-lock.mjs). Run it at nice 19.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -619,7 +620,7 @@ async function runCapture(options) {
     refresher.unref();
     server = await startServer(options);
     session.port = server.port;
-    browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
+    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
       args: [...MAP_PROBE_BROWSER_ARGS, `--window-size=${CENSUS_VIEWPORT.width},${CENSUS_VIEWPORT.height}`] });
     session.browserVersion = await browser.version();
     const baseUrl = `http://127.0.0.1:${server.port}`;

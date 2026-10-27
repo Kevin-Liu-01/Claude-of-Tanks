@@ -2,6 +2,7 @@
 // production build before release, then the live URL after manual deployment.
 // node tools/griffin-viper-garage-probe.mjs --url=http://localhost:7437 \
 //   --revision=<gated SHA> --out=/absolute/fresh-evidence-directory
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -29,7 +30,7 @@ try {
     `Served ${report.version}; expected clean revision ${revision.slice(0, 9)}. A push is not a deployment.`);
   await lock.acquire(45 * 60 * 1000);
   refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
-  browser = await puppeteer.launch({ headless: true,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });

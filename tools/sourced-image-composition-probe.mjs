@@ -4,6 +4,7 @@
 //   --dependency-root=/absolute/existing-install [--pairs=2] [--reuse-delay-ms=1000]
 //   [--mode=decode|worker|persistent-worker] (persistent: exactly one pair per nine cases)
 // Native runs require ordinary capture FIFO admission. No discarded warmups.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -329,7 +330,7 @@ async function runCompositionProbe(args) {
     const address = server.httpServer.address();
     const url = `http://127.0.0.1:${address.port}`;
     report.browserArgs = ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'];
-    browser = await puppeteer.launch({ headless: 'new', handleSIGINT: false, handleSIGTERM: false,
+    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
       timeout: 30000, protocolTimeout: settings.trialTimeoutMs, args: report.browserArgs });
     report.browserPid = browser.process()?.pid;
     if (interrupted) throw new Error(interrupted);

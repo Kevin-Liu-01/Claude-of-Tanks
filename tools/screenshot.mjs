@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Headless screenshot harness for critic agents.
 // Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2]
@@ -85,7 +86,7 @@ const actualPort = server.config.server.port;
 const url = `http://localhost:${actualPort}/`;
 console.log(`[shots] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
