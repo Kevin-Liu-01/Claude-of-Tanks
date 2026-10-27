@@ -817,8 +817,12 @@ function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): v
  * program linked there warns once, so the census's leave gate (no console warnings) holds the receipt at 0.
  */
 const GARAGE_LATE_LINK_FRAMES = 90;
+/** The workshop dressing's finished chunks, in order (garageDressing.ts group.userData.buildTimings). */
+const dressingBuildTimings = (): ReadonlyArray<{ chunk?: string }> =>
+  (garageDressing.group.userData.buildTimings as Array<{ chunk?: string }> | undefined) ?? [];
 async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
-  { baseline, watch }: { baseline: ReadonlySet<ReceiptProgram>; watch: ProgramOriginWatch }): Promise<void> {
+  { baseline, watch, dressingChunks, dressingBuilt }: { baseline: ReadonlySet<ReceiptProgram>; watch: ProgramOriginWatch;
+    dressingChunks: number; dressingBuilt: boolean }): Promise<void> {
   const entryInfo = renderer.info;
   try {
     receipt.lateLinks = programReceipt(renderer.info.programs ?? [], baseline, 0, watch);
@@ -832,6 +836,8 @@ async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
   if (!lateLinks?.made) return;
   // (short lines: the rooms census keeps a warning's first 240 characters; one for the restore, one for each program)
   const failures = receipt.programCompileFailures;
+  const since = dressingBuildTimings().slice(dressingChunks).map((timing) => timing.chunk ?? '?');
+  console.warn(`Garage late links: dressing built at the warm ${dressingBuilt}, chunks since ${since.length}: ${since.join(' ')}`);
   console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm; released ${lateLinks.released}; `
     + `warm ${receipt.programsPrepared ?? 0} prepared in ${receipt.programCohorts ?? 0} cohorts, ${receipt.programWarmSlices} slices, `
     + `deferred ${receipt.programWarmDeferred ?? 0}, compile failures ${failures?.count ?? 0}${failures?.first ? ` (${failures.first})` : ''}`);
@@ -1031,7 +1037,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
     // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
     const programsNeedWarm = true;
-    let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch } | null = null;
+    let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch; dressingChunks: number; dressingBuilt: boolean } | null = null;
     let receipt: GarageGpuRestoreReceipt;
     try {
       receipt = await restoreGarageGpuPipeline({
@@ -1047,7 +1053,8 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
         isCurrent,
         onProgramsWarmed: () => {
           late?.watch.stop();
-          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins() };
+          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins(),
+            dressingChunks: dressingBuildTimings().length, dressingBuilt: garageDressing.isBuilt() };
         },
       });
     } catch (error) {
