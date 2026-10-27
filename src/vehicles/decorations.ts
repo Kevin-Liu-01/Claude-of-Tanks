@@ -2704,6 +2704,11 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
   ],
+  centurion13: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
   shot_kal: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },

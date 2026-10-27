@@ -149,6 +149,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   centurion5_2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
   // the Sho't Kal: the Mk 5/2's flexible gun tank with the diesel's quicker pace and the IDF's taller whips
   shot_kal: { doctrine: 'flexible', viewM: 410, still: 0.190, moving: 0.130 },
+  // the Mk 13: the Mk 5/2's flexible gun tank; its searchlight drum makes it the easier one to spot
+  centurion13: { doctrine: 'flexible', viewM: 410, still: 0.195, moving: 0.135 },
   m46_patton: { doctrine: 'flexible', viewM: 375, still: 0.196, moving: 0.136 },
   m47_patton: { doctrine: 'flexible', viewM: 380, still: 0.194, moving: 0.134 },
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },

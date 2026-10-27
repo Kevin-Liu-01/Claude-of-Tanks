@@ -29,6 +29,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   chieftain_mk9: 'restore the late Chieftain as a competitive protected Tier VIII MBT; 259: at IV the armour bonus trimmed to 1.32, a slower cycle and less hull',
   centurion5_2: 'remove the Tier VIII Centurion survivability and mobility trough; 258: an engine over its shown-tier floor',
   shot_kal: '262: the new Sho\'t Kal shares the Mk 5/2 package (hull, armour factor, round, cadence) with its diesel\'s power',
+  centurion13: '262: the new Mk 13 shares the Mk 5/2 package (hull, armour factor, round, cadence, engine)',
   // 2026-10-26 (258): matchmaking reads the shown tier; these sat just under a shown-tier peer floor (applyShownTierFloors)
   bmpt_terminator2: 'lift the 30 mm round over the shown-tier IFV penetration floor',
   marder1a3: 'lift the 20 mm round over the shown-tier IFV penetration floor',

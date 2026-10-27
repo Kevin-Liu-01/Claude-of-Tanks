@@ -3721,6 +3721,8 @@ export const UK_PROFILES = {
   centurion5_2: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'mk5_2')) },
   // release 262: the IDF's Sho't Kal of 1973 on the rebuilt Centurion family
   shot_kal: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'shot_kal')) },
+  // release 262: the Mk 13 and its L2 searchlight on the rebuilt family
+  centurion13: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'mk13')) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows

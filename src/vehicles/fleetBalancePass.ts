@@ -123,8 +123,9 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'chieftain_mk9', { damage: 510, pen100: 700, pen1000: 640, pen2000: 580 });
     armor(registry, 'chieftain_mk9', 1.5);
   }
-  // release 262: the Sho't Kal (shotKalSpecs.ts) is the Mk 5/2's hull, turret and L7 and shares its package
-  for (const id of ['centurion5_2', 'shot_kal']) {
+  // release 262: the Sho't Kal (shotKalSpecs.ts) and the Mk 13 (centurion13Specs.ts) are the Mk 5/2's hull, turret and L7
+  // and share its package
+  for (const id of ['centurion5_2', 'shot_kal', 'centurion13']) {
     const tank = spec(registry, id);
     Object.assign(tank, {
       hp: 1900, enginePowerHp: 850, topSpeedKmh: 48, reverseSpeedKmh: 15,
@@ -398,6 +399,8 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
   // the Sho't Kal's AVDS-1790-2A diesel (750 hp against the Meteor's 650): the same shown-tier step over the Mk 5/2
   spec(registry, 'shot_kal').enginePowerHp = 960;
   spec(registry, 'shot_kal').reverseSpeedKmh = 17;
+  // the Mk 13 keeps the Mk 5/2's Meteor and its shown-tier engine
+  spec(registry, 'centurion13').enginePowerHp = 880;
   spec(registry, 'merkava2b').enginePowerHp = 1060;
   const t80bv = spec(registry, 't80bv');
   t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;

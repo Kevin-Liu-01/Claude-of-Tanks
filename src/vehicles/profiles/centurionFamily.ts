@@ -21,8 +21,9 @@ const { box, cylX, cylY, cylZ, torus, xform } = KIT;
 const slab = orientedSlab;
 
 /** The builds: the British Mk 3 (20-pdr), the British Mk 5/2 (105 mm L7), the Swedish Strv 81B (20-pdr) and the
- * Israeli Sho't Kal of 1973 (L7, the Continental AVDS-1790-2A conversion, IDF stowage; no Blazer armour). */
-export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal';
+ * Israeli Sho't Kal of 1973 (L7, the Continental AVDS-1790-2A conversion, IDF stowage; no Blazer armour) and the British
+ * Mk 13 (the Mk 10's L7A2 and glacis appliqué with the L2 infra-red searchlight and the .50 ranging gun). */
+export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal' | 'mk13';
 
 interface MarkDesign {
   /** Gun length ahead of the trunnion (muzzle face). */
@@ -34,13 +35,16 @@ interface MarkDesign {
   readonly swedish: boolean;
   /** The Sho't Kal: the AVDS-1790 engine deck, IDF racks, pintle Brownings and tall whips. */
   readonly idf: boolean;
+  /** The Mk 13: the L2 searchlight, the ranging gun, the thermal sleeve, the glacis appliqué and IR driving lights. */
+  readonly late: boolean;
 }
 
 const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
-  mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false },
-  mk5_2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false },
-  strv81: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: true, idf: false },
-  shot_kal: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: true },
+  mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false, late: false },
+  mk5_2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false },
+  strv81: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: true, idf: false, late: false },
+  shot_kal: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: true, late: false },
+  mk13: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: true },
 });
 
 // ---- hull datums (metres, hull frame) ----
@@ -235,6 +239,11 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
       P.add('hullDark', box(0.27, 0.025, 0.08), s * 0.82, hy + 0.215, hz + 0.09);
       P.add('hullDark', box(0.016, 0.20, 0.016), s * 0.82 + 0.10, hy + 0.11, hz + 0.13);
       P.add('hullDark', box(0.016, 0.20, 0.016), s * 0.82 - 0.10, hy + 0.11, hz + 0.13);
+      if (m.late) {
+        // the Mk 13's IR driving lamp behind a mesh guard
+        for (let k = 0; k < 4; k++) P.add('hullDark', box(0.22, 0.008, 0.008), s * 0.82, hy + 0.04 + k * 0.045, hz + 0.135);
+        for (let k = 0; k < 4; k++) P.add('hullDark', box(0.008, 0.17, 0.008), s * 0.82 - 0.075 + k * 0.05, hy + 0.11, hz + 0.137);
+      }
     } else {
       // a 0.2 m lamp standing proud of the glacis on its bracket, behind a guard hoop
       P.add('hullDetail', xform(box(0.08, 0.14, 0.10), 0, 0, 0, glacisPitch, 0, 0), s * 0.82, hy + 0.05, hz);
@@ -251,23 +260,29 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   // Glacis stowage: the Mk 3's two link positions; the Mk 5's bin to the left of centre with links; the Strv 81B's
   // link brackets in place of the bin (Svenska Wikipedia, Strv 81B; the KATF 1960 catalogue via the War Thunder forum).
   const [lz, ly] = onGlacis(0.50);
+  if (m.late) {
+    // the Mk 10/13's appliqué over the upper glacis between the lamps (its links ride on it)
+    const [az, ay] = onGlacis(0.55);
+    P.addExternalArmor('hull', xform(box(1.30, 0.05, 0.86), 0, 0, 0, glacisPitch, 0, 0), 0, ay + 0.03, az);
+  }
+  const lift = m.late ? 0.05 : 0;
   const links = (x: number, n: number, seed: number): void => {
     const run = FITTINGS.spareTrackLinks({ mats: P.mats, links: n, width: 0.58, pitch: 0.165, seed, rotation: [glacisPitch, 0, 0] });
-    run.position.set(x, ly + 0.012, lz);
+    run.position.set(x, ly + 0.012 + lift, lz);
     P.hullG.add(run);
   };
   if (m.swedish) {
     // the Strv 81B's link brackets in place of the Mk 5's bin (SV, F81)
     links(0.36, 3, 8150);
     links(-0.30, 3, 8151);
-  } else if (m.mk5) {
+  } else if (m.mk5 && !m.late) {
     P.add('hullDetail', xform(box(0.44, 0.20, 0.42), 0, 0.09, 0, glacisPitch, 0, 0), 0.38, ly, lz + 0.04);
     P.add('hullDark', xform(box(0.44, 0.012, 0.03), 0, 0.195, 0.17, glacisPitch, 0, 0), 0.38, ly, lz + 0.04);
     links(-0.28, 3, 5250);
   } else {
-    // the Mk 3's two link positions (W)
-    links(0.36, 3, 3250);
-    links(-0.30, 3, 3251);
+    // the Mk 3's two link positions (W); the Mk 13's links side by side on its appliqué (the head-on reference)
+    links(0.36, 3, m.late ? 1350 : 3250);
+    links(-0.30, 3, m.late ? 1351 : 3251);
   }
 }
 
@@ -534,14 +549,14 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
   P.addCupola('turret', cylY(0.40, 0.42, 0.10, 32), cx, roofY + 0.04, cz);
   KIT.cupola(P, 'turret', cx, roofY + 0.09, cz, 0.33, 0.13, 8);
   if (m.mk5 && !m.swedish && !m.idf) {
-    // the Mk 5's cupola machine-gun mount (a working station: VH.14, every drawn gun works)
+    // the cupola machine-gun mount of the Mk 5 and later marks (a working station: VH.14, every drawn gun works)
     P.addEquipment('turretDark', torus(0.30, 0.016, 28, 6), cx, roofY + 0.235, cz);
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.08, scale: 1.02, seed: 5,
       ammo: true, shield: 'low', barrelBridge: true, working: true, ridingCradle: true });
-    mg.name = 'centurion5_cupola_machine_gun';
+    mg.name = m.late ? 'centurion13_cupola_machine_gun' : 'centurion5_cupola_machine_gun';
     mg.position.set(cx + 0.06, roofY + 0.24, cz + 0.12);
     mg.rotation.y = 0.08;
-    mg.userData.stationVariant = 'centurion-mk5-cupola-mag58-r262';
+    mg.userData.stationVariant = m.late ? 'centurion-mk13-cupola-mag58-r262' : 'centurion-mk5-cupola-mag58-r262';
     mg.userData.forwardFacing = true;
     P.turretG.add(mg);
     P.turretG.userData.centurionRoofMachineGunReceipt = Object.freeze({
@@ -564,7 +579,7 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
       shield: true, ammo: true, seed: 8120, feed: 'right', working: true, ridingCradle: true }), cx + 0.05, roofY + 0.24, cz + 0.10,
     [0, -0.05, 0]);
   }
-  if (m.mk5 && !m.swedish && !m.idf) {
+  if (m.mk5 && !m.swedish && !m.idf && !m.late) {
     // the Delft Mk 5/2's searchlight: a box with its louvred front and mesh guard, on a bracket at the right front corner
     const lx = -0.86, ly = roofY + 0.14, lz = 0.58;
     P.add('turretDark', box(0.10, 0.14, 0.12), lx + 0.06, roofY - 0.01, lz - 0.02);
@@ -572,6 +587,23 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
     P.add('turretGlass', box(0.32, 0.22, 0.012), lx, ly + 0.06, lz + 0.152);
     for (let k = 0; k < 5; k++) P.add('turretDark', box(0.34, 0.010, 0.012), lx, ly - 0.05 + k * 0.055, lz + 0.162);
     P.add('turretDark', box(0.42, 0.03, 0.03), lx, ly + 0.225, lz);
+  }
+  if (m.late) {
+    // the Mk 13's L2 infra-red/white-light searchlight: a 0.56 m drum beside the gun at its height, outboard of the
+    // mantlet on the tank's left (to the right of the gun seen from ahead: the owner's Mk 13 head-on reference; owner
+    // 2026-10-27: "the light should be next to the gun ... on left side"), on an armoured arm out of the left cheek,
+    // ahead of the left discharger block
+    const sx = 1.11, sy = TRUNNION.y + 0.10, sz = 1.40, r = 0.28;
+    P.addEquipment('turretDetail', cylZ(r, 0.34, 32, r * 0.92), sx, sy, sz);
+    P.add('turretGlass', cylZ(r * 0.86, 0.02, 32), sx, sy, sz + 0.175);
+    P.add('turretDark', xform(torus(r * 0.93, 0.022, 32, 6), 0, 0, 0, 0, 0, 0), sx, sy, sz + 0.18);
+    for (let k = 0; k < 6; k++) P.add('turretDark', box(0.012, r * 1.7, 0.012), sx + (k - 2.5) * 0.08, sy, sz + 0.192);
+    // cooling fins on the drum's back and the arm from the cheek under it
+    for (let k = 0; k < 4; k++) P.add('turretDetail', cylZ(r * (0.78 - k * 0.08), 0.025, 24), sx, sy, sz - 0.19 - k * 0.035);
+    P.add('turretDetail', box(0.10, 0.10, 0.40), sx - 0.10, sy - r - 0.03, sz - 0.18);
+    P.add('turretDetail', box(0.20, 0.16, 0.14), castingHalfWidth(1.06, 0.30) - 0.02, sy - r - 0.03, 1.04);
+    P.add('turretDetail', box(0.30, 0.08, 0.10), (castingHalfWidth(1.06, 0.30) + sx - 0.10) / 2, sy - r - 0.03, 1.10);
+    P.add('turretDark', cylZ(0.020, 0.40, 8), sx - 0.18, sy - 0.12, sz - 0.30);
   }
   // Loader's hatch on the left: a low round lid on its hinge block.
   P.addHatch('turret', cylY(0.30, 0.31, 0.045, 24), 0.48, roofY + 0.015, -0.48);
@@ -685,6 +717,12 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
   P.add('gunMountDark', cylZ(0.018, m.mk5 ? 0.28 : 0.22, 8), 0.40, 0.04, 0.76);
   P.add('gunMount', box(0.20, 0.06, 0.12), -0.40, 0.19, 0.62);
   P.add('gunMountDark', box(0.14, 0.05, 0.012), -0.40, 0.15, 0.636);
+  if (m.late) {
+    // the Mk 13's .50 ranging gun in its armoured sleeve on the mantlet's upper left
+    P.add('gunMount', box(0.16, 0.13, 0.22), 0.26, 0.20, 0.62);
+    P.add('gunMountDark', cylZ(0.030, 0.42, 10, 0.034), 0.26, 0.20, 0.92);
+    P.add('gunMountDark', cylZ(0.040, 0.20, 12), 0.26, 0.20, 0.80);
+  }
   for (const lx of [-0.52, 0.52]) {
     P.add('gunMountDark', xform(torus(0.045, 0.014, 10, 6), 0, 0.04, 0, Math.PI / 2, 0, 0), lx, 0.30, 0.30);
     P.add('gunMount', box(0.09, 0.03, 0.06), lx, 0.30, 0.30);
@@ -728,7 +766,7 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
   const len = m.gunLen;
   if (m.gun === 'l7') {
     // 105 mm L7: the concentric bore evacuator a little behind mid-barrel, a plain muzzle
-    KIT.buildGun(P, { len, r: 0.074, evac: 0.45, evacR: 1.55, baseR: 0.15, collar: false });
+    KIT.buildGun(P, { len, r: 0.074, evac: 0.45, evacR: 1.55, baseR: 0.15, collar: false, sleeve: m.late });
     muzzleBore(P, { len, r: 0.074 });
   } else if (m.gun === '20pdrB') {
     // 20-pdr Type B: a short, nearly cylindrical fume-extractor can 47 % along (the Strv 81B photographs)

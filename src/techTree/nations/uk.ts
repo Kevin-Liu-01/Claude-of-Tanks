@@ -24,6 +24,8 @@ export const UK_TREE: NationTree = Object.freeze({
     // Centurion and Vickers
     node({ id: 'centurion3', tier: 2, line: 'centurion', lane: 3, parents: [], slot: 'line' }),
     node({ id: 'centurion5_2', tier: 3, line: 'centurion', lane: 3, parents: ['centurion3'], slot: 'line' }),
+    // release 262: the Mk 13 and its L2 searchlight
+    node({ id: 'centurion13', tier: 3, line: 'centurion', lane: 4, parents: ['centurion5_2'], slot: 'line' }),
     node({ id: 'vickers_mk1', tier: 2, line: 'centurion', lane: 4, parents: ['centurion3'], slot: 'line' }),
     node({ id: 'fv4034', tier: 4, line: 'centurion', lane: 3, parents: ['chieftain5'], slot: 'line' }),
     // Chieftain to Challenger 3

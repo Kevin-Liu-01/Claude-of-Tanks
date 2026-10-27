@@ -9,7 +9,7 @@
 //     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along and stands shorter;
 //   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B, Sho't Kal) and none on the Mk 3 (roofWeaponPolicy.ts);
 //   - the Sho't Kal (release 262's new IDF Centurion): the Mk 5/2's L7, its AVDS-1790 hump at 1.90 m, the commander's
-//     .50 and the loader's .30.
+//     .50 and the loader's .30; the Mk 13 (262's other new mark): the L7A2's thermal sleeve and one cupola gun.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -45,7 +45,7 @@ function gunRadii(gun, len) {
 }
 
 const report = {};
-for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal']) {
+for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const root = tank.root, turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');
@@ -86,6 +86,10 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal']) {
       assert.ok(bulge(0.9, 1.0) > tube * 1.25, `${id}: the Type A's muzzle counterweight`);
     } else if (id === 'strv81') {
       assert.ok(bulge(0.42, 0.52) > tube * 1.5 && bulge(0.6, 0.85) < tube * 1.3, `${id}: the Type B's fume extractor 42-52 % along`);
+    } else if (id === 'centurion13') {
+      // the sleeve clads the tube 52-82 % along: measure it against the bare tube between it and the muzzle
+      const bare = Math.min(...r.slice(35, 39).filter((x) => x > 0)), clad = Math.min(...r.slice(22, 32).filter((x) => x > 0));
+      assert.ok(bulge(0.40, 0.50) > bare * 1.35 && clad > bare * 1.12, `${id}: the L7A2's evacuator and thermal sleeve`);
     } else {
       assert.ok(bulge(0.40, 0.50) > tube * 1.35 && bulge(0.62, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 40-50 % along`);
     }
@@ -109,4 +113,5 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal']) {
 }
 assert.ok(report.centurion5_2.gun < report.centurion3.gun - 0.15, 'the L7 stands shorter than the 20-pdr');
 assert.equal(report.shot_kal.gun, report.centurion5_2.gun, 'the Sho\'t Kal keeps the Mk 5/2\'s L7');
-console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, four distinct marks PASS`);
+assert.equal(report.centurion13.gun, report.centurion5_2.gun, 'the Mk 13 keeps the L7');
+console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, five distinct marks PASS`);
