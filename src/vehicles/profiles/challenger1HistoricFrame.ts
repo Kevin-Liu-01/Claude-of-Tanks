@@ -15,7 +15,7 @@ export const CR1_HISTORIC = Object.freeze({
   gear: Object.freeze({
     // 650 mm track on 2.77 m centres (3.42 m over the tracks); six ~0.80 m wheels on a 0.98 m pitch give the
     // published 4.9 m on the ground
-    trackXc: 1.385, trackW: .65, wheelR: .40, wheelW: .36,
+    trackXc: 1.385, trackW: .65, wheelR: .42, wheelW: .36,
     wheelZs: Object.freeze([2.47, 1.49, .51, -.47, -1.45, -2.43]),
     idler: Object.freeze({ z: 3.66, y: .70, r: .27 }),
     sprocket: Object.freeze({ z: -3.30, y: .80, r: .30 }),
@@ -27,5 +27,14 @@ export const CR1_HISTORIC = Object.freeze({
 
 /** Op Granby applique cassettes outside the skirts (the Mk 3; its armour zones read them: sourceXWesternAuxArmor.ts). */
 export const CR1_GRANBY_APPLIQUE = Object.freeze({
-  innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .16, low: .50, high: 1.55, rear: -2.58, front: 3.30,
+  innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .16, low: .50, high: 1.44, rear: -2.58, front: 3.30,
+});
+/** Six box-section cassettes on a 0.77 m pitch with 6 cm joints, ahead of them the forward cassette over the idler. */
+export const CR1_GRANBY_CASSETTES = 6, CR1_GRANBY_PITCH = .77, CR1_GRANBY_JOINT = .06;
+/** The skirts: the armoured front section ([z, foot, top] stations, raked over the idler under the front guard) and the
+ *  five thin rear panels, all hung from the 1.42 m track-guard ledge outside the 1.71 m track edge. */
+export const CR1_SKIRT = Object.freeze({
+  top: 1.42,
+  front: Object.freeze([[1.56, .56, 1.42], [3.05, .56, 1.42], [3.40, .82, 1.33], [3.92, 1.02, 1.17]] as const),
+  panels: 5, rear: -3.22, panelFront: 1.52, gap: .025, firstFoot: .80, foot: .58,
 });

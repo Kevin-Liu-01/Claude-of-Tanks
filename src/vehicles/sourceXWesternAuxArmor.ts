@@ -4,7 +4,7 @@ import type { ArmorPlate } from '../sim/armor.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import { ARIETE_X_FAMILY_SCALE } from './profiles/arieteXFamilyFrame.ts';
-import { CR1_GRANBY_APPLIQUE } from './profiles/challenger1HistoricFrame.ts';
+import { CR1_GRANBY_APPLIQUE, CR1_GRANBY_CASSETTES, CR1_GRANBY_JOINT, CR1_GRANBY_PITCH, CR1_SKIRT } from './profiles/challenger1HistoricFrame.ts';
 
 type Point = [number, number, number];
 type Face = Point[];
@@ -180,25 +180,28 @@ function arieteSkirts(add: Sink): void {
 
 function challengerSkirts(add: Sink): void {
   // challenger1Historic.ts skirts()/granbyKit() (release 262): the Op Granby cassettes' outer faces, and the skirt
-  // behind them where a seam or an uncovered panel leaves it exposed (one inherited family charged per shot).
+  // behind them where a joint or an uncovered panel leaves it exposed (one inherited family charged per shot).
   const { innerX: skirtX, outerX, low, high, rear, front } = CR1_GRANBY_APPLIQUE;
-  const rail = 1.585, panels = 5, z0 = -3.22, z1 = 1.52, pitch = (z1 - z0) / panels;
-  const frontSkirt = [[1.56, .56], [2.86, .56], [3.18, .78], [3.36, 1.06]] as const;
+  const { top, panels, rear: z0, panelFront: z1, gap } = CR1_SKIRT, pitch = (z1 - z0) / panels;
   for (const side of [-1, 1] as const) {
     const name = `skirt_${sideName(side)}`;
     const oriented = (face: Face): Face => (normal(face)[0] * side < 0 ? [...face].reverse() : face);
     let inner: Face[] = [];
     for (let i = 0; i < panels; i++) {
-      const zc = z0 + pitch * (i + .5), half = (pitch - .025) / 2;
-      inner.push(sideFace(side * skirtX, i === 0 ? .80 : .58, rail, zc - half, zc + half));
+      const zc = z0 + pitch * (i + .5), half = (pitch - gap) / 2;
+      inner.push(sideFace(side * skirtX, i === 0 ? CR1_SKIRT.firstFoot : CR1_SKIRT.foot, top, zc - half, zc + half));
     }
-    for (let i = 0; i < frontSkirt.length - 1; i++) {
-      const [za, la] = frontSkirt[i], [zb, lb] = frontSkirt[i + 1];
-      inner.push(oriented([[side * skirtX, la, za], [side * skirtX, lb, zb], [side * skirtX, rail, zb], [side * skirtX, rail, za]]));
+    for (let i = 0; i < CR1_SKIRT.front.length - 1; i++) {
+      const [za, la, ha] = CR1_SKIRT.front[i], [zb, lb, hb] = CR1_SKIRT.front[i + 1];
+      inner.push(oriented([[side * skirtX, la, za], [side * skirtX, lb, zb], [side * skirtX, hb, zb], [side * skirtX, ha, za]]));
     }
     const covers: Face[] = [];
-    for (let i = 0; i < 7; i++) covers.push(sideFace(side * outerX, low, high, rear + i * .66, rear + i * .66 + .64));
-    covers.push(sideFace(side * outerX, low, high, 2.04, 2.86));
+    for (let i = 0; i < CR1_GRANBY_CASSETTES; i++) {
+      const a = rear + i * CR1_GRANBY_PITCH;
+      covers.push(sideFace(side * outerX, low, high, a, a + CR1_GRANBY_PITCH - CR1_GRANBY_JOINT));
+    }
+    const fz = rear + CR1_GRANBY_CASSETTES * CR1_GRANBY_PITCH;
+    covers.push(sideFace(side * outerX, low, high, fz, 2.86));
     covers.push(oriented([[side * outerX, low, 2.86], [side * outerX, .92, front], [side * outerX, high, front], [side * outerX, high, 2.86]]));
     covers.forEach((cover, index) => { inner = expose(inner, cover); add(name, cover, `applique-${side}-${index}`); });
     inner.forEach(face => add(name, face, `thin-${side}`));
