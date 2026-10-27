@@ -223,6 +223,8 @@ const touchChipParked = (width: number, height: number) => (width > height && he
 const OBJECTIVE_COMPACT_H = 340;
 /** The layout variables that place an element on the centre line, written unrounded. */
 const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
+/** The parked warning's height at the most, its words on two lines (battleHudLayout.css .cot-aim-notice). */
+const PARKED_CHIP_TALL = 48;
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
 const OBJECTIVE_SEAT_GAP = 4;
 const PARKED_CHIP_W = 106;
@@ -1561,6 +1563,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (touch) {
       setBodyVar('--hud-aim-warning-top', `${Math.floor(chipTop)}px`);
       setBodyVar('--hud-aim-warning-left', `${Math.floor(chipLeft)}px`);
+      // (and no wider than the second FIRE beside its row leaves it, its words wrapping: under the map's large step the
+      // parked notice ran 20 px onto the button at 844x390, the overlap receipt)
+      const altFire = read('.cot-touch.on .fire.alt');
+      const beside = altFire && altFire.left > chipLeft && altFire.top < chipTop + PARKED_CHIP_TALL && altFire.bottom > chipTop;
+      setBodyVar('--hud-aim-warning-max', beside && altFire ? `${Math.floor(altFire.left - 4 - chipLeft)}px` : '');
     }
     let touchPlan = null;
     // (no place clears both notices and the detection's would cross a panel: the alert stands in its place while it shows)

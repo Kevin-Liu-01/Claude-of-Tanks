@@ -586,7 +586,7 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
 .cot-battle-notices .cot-aim-notice .cot-c-notice__body{padding-top:0}
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px}
+  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}
 }
 /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
    300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
