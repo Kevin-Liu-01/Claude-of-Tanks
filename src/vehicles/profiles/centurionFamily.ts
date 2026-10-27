@@ -346,12 +346,12 @@ function buildHullKit(P: TankBuilderPort, m: MarkDesign): void {
     P.add('hullDark', cylZ(0.035, 0.40, 10), 1.56, GUARD_Y + 0.08, -1.98);
     P.add('hullDetail', box(0.18, 0.02, 0.46), 1.56, GUARD_Y + 0.175, -1.55);
   }
-  // shovel, pick helve and crowbar on the left bins' face, each in two clamps
-  KIT.shovelTool(P, 1.665, 1.62, 1.05, 1.0);
-  P.add('hullWood', cylZ(0.020, 0.95, 8), 1.665, 1.57, 0.20);
-  P.add('hullDark', xform(box(0.03, 0.18, 0.05), 0, 0, 0, 0, 0, 0), 1.665, 1.57, 0.70);
-  P.add('hullDark', cylZ(0.014, 1.10, 6), 1.665, 1.665, -0.25);
-  for (const cz of [-0.55, 0.05, 0.55, 0.80, 1.30]) P.add('hullDark', box(0.03, 0.13, 0.04), 1.652, 1.615, cz);
+  // shovel, pick helve and crowbar on the left bins' lids (outside the turret's sweep, under the bustle), in clamps
+  KIT.shovelTool(P, 1.57, ROOF_Y + 0.022, 1.05, 1.0);
+  P.add('hullWood', cylZ(0.020, 0.95, 8), 1.53, ROOF_Y + 0.021, 0.10);
+  P.add('hullDark', box(0.18, 0.03, 0.05), 1.53, ROOF_Y + 0.02, 0.60);
+  P.add('hullDark', cylZ(0.014, 1.10, 6), 1.60, ROOF_Y + 0.015, -0.40);
+  for (const cz of [-0.70, -0.10, 0.45, 0.80, 1.35]) P.add('hullDark', box(0.14, 0.012, 0.04), 1.56, ROOF_Y + 0.006, cz);
   // the travel lock folded down on the rear deck's edge (the gun rides in it on the march: the Strv 81B photograph)
   if (!m.swedish) {
     for (const s of [-1, 1]) P.add('hullDark', xform(box(0.05, 0.05, 0.42), 0, 0, 0, -0.15, s * 0.28, 0), s * 0.10, 1.77, -3.30);

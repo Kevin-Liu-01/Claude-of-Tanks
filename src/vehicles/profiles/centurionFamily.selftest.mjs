@@ -8,7 +8,8 @@
 //   - the guns: the Mk 3's 20-pdr Type A swells only at its muzzle counterweight, the Strv 81B's Type B carries its short
 //     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along and stands shorter;
 //   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B, Sho't Kal) and none on the Mk 3 (roofWeaponPolicy.ts);
-//   - the Sho't Kal (release 262's new IDF Centurion): the Mk 5/2's L7 and its AVDS-1790 hump at 1.90 m.
+//   - the Sho't Kal (release 262's new IDF Centurion): the Mk 5/2's L7, its AVDS-1790 hump at 1.90 m, the commander's
+//     .50 and the loader's .30.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -99,6 +100,7 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal']) {
     const cupolaGun = [];
     turret.traverse((o) => { if (o.userData?.fitting === 'pintleMG' && o.parent?.userData?.fitting !== 'pintleMG') cupolaGun.push(o); });
     if (id === 'centurion3') assert.ok(carriesNoRoofWeapon(id) && cupolaGun.length === 0, `${id}: the Mk 3 carries no roof gun`);
+    else if (id === 'shot_kal') assert.equal(cupolaGun.length, 2, `${id}: the commander's .50 and the loader's .30`);
     else assert.equal(cupolaGun.length, 1, `${id}: the Mk 5 pattern's cupola machine gun`);
     report[id] = { ...report[id], length: +length.toFixed(3), width: +width.toFixed(3), roof: +roof.toFixed(3), noseWidth: +(half * 2).toFixed(2), gun: +len.toFixed(2) };
   } finally {
