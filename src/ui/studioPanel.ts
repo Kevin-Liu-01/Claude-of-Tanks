@@ -23,6 +23,7 @@ import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { createPickerMenu } from './components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { createGarageCamoPicker } from './camoPicker.ts';
@@ -1028,8 +1029,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     mapPop.style.cssText = `left:${Math.round(Math.max(0, right - width))}px;width:${Math.round(width)}px;`
       + `top:${Math.round(Math.max(MAP_SHEET_TOP, bottom - height))}px;height:${Math.round(Math.min(height, bottom - MAP_SHEET_TOP))}px`;
   }
+  // the battlefield popover and the render queue are transient surfaces (components/surfaceStack.ts): one opens as the other
+  // closes, and Escape and a press outside are the stack's
+  const mapSurface: TransientSurface = {
+    id: 'studio-battlefield',
+    element: () => mapPop,
+    owns: (node) => mapPick.contains(node) || mapRow.row.contains(node),
+    close: (reason) => { toggleMapPick(false); if (reason === 'escape') mapBtn.focus(); },
+  };
   function toggleMapPick(open?: boolean): void {
     const next = open != null ? open : !mapPop.classList.contains('open');
+    if (next) openSurface(mapSurface, mapBtn); else closeSurface(mapSurface);
     mapPop.classList.toggle('open', next);
     mapBtn.setAttribute('aria-expanded', String(next));
     if (!next) { paintMapCard(null); return; }
@@ -1062,16 +1072,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       });
   }
   mapBtn.addEventListener('click', () => toggleMapPick());
-  mapPop.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      toggleMapPick(false);
-      mapBtn.focus();
-    }
-  });
-  document.addEventListener('pointerdown', (event) => {
-    if (mapPop.classList.contains('open') && !(event.target instanceof Node
-        && (mapPick.contains(event.target) || mapPop.contains(event.target) || mapRow.row.contains(event.target)))) toggleMapPick(false);
-  });
 
   // === TANKS group ===
   const tanksGroup = panelGroup('02', 'tanks', t('studioPanel.panel.tanks.title'));
@@ -2049,16 +2049,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // popover cut the state off below the presets
   queuePop.append(queueHead, queueList, queueEmpty, queuePresets, queueFoot);
   head.appendChild(queuePop);
-  queuePop.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    toggleQueue(false);
-    queueBtn.focus();
-  });
-  document.addEventListener('pointerdown', (event) => {
-    if (queuePop.hidden || !(event.target instanceof Node) || queuePop.contains(event.target) || queueBtn.contains(event.target)) return;
-    toggleQueue(false);
-  });
+  const queueSurface: TransientSurface = {
+    id: 'studio-queue',
+    element: () => queuePop,
+    owns: (node) => queueBtn.contains(node),
+    close: (reason) => { toggleQueue(false); if (reason === 'escape') queueBtn.focus(); },
+  };
   const presetName = (preset: QueuePreset): string => t(`studio.ws.queue.preset.${preset.id}`);
   /** "about 1.4 min · about 22 MB" in the page's language. */
   function costText(estimate: QueueJob['estimate']): string {
@@ -2071,6 +2067,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.seg.value), shotRuns(S.getStoryboard().shots, S.durationMs).length);
   }
   function toggleQueue(open = queuePop.hidden): void {
+    if (open) openSurface(queueSurface, queueBtn); else closeSurface(queueSurface);
     queuePop.hidden = !open;
     queueBtn.setAttribute('aria-expanded', String(open));
     // the popover opens under its button (a phone opens it from the palette, its button hidden: the stylesheet places it)

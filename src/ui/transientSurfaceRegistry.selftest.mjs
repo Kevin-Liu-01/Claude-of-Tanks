@@ -34,9 +34,9 @@ for (const [file, source] of text) {
     for (const quoted of match[1].matchAll(/(?<!=== )'([a-z0-9-]+)'/g)) note(quoted[1], file);
   }
   for (const match of source.matchAll(/pickSurface\('([a-z0-9-]+)'/g)) note(match[1], file);
-  for (const match of source.matchAll(/createPickerMenu\([^]{0,160}?\bid: '([a-z0-9-]+)'/g)) note(match[1], file);
+  for (const match of source.matchAll(/dialogSurface\([^,]+, '([a-z0-9-]+)'\)/g)) note(match[1], file);
+  for (const match of source.matchAll(/create\w*PickerMenu\([^]{0,160}?\bid: '([a-z0-9-]+)'/g)) note(match[1], file);
   for (const match of source.matchAll(/createModal\(\{[^}]*?surface:\s*'([a-z0-9-]+)'/g)) note(match[1], file);
-  for (const match of source.matchAll(/createCustomSelect\([^)]*\{\s*surface:\s*'([a-z0-9-]+)'/g)) note(match[1], file);
 }
 const unregistered = [...found].filter(([id]) => !ids.has(id)).map(([id, files]) => `${id} (${[...files].join(', ')})`);
 assert.deepEqual(unregistered, [], `surfaces with no registry row: ${unregistered.join('; ')}`);
@@ -48,14 +48,31 @@ for (const [id, row] of rows) {
 }
 
 // 3. Every module that opens a surface owns a row (the kit's own components open under their callers' ids).
-const KIT = new Set(['src/ui/components/surfaceStack.ts', 'src/ui/components/pickerMenu.ts', 'src/ui/customSelect.ts']);
+const KIT = new Set(['src/ui/components/surfaceStack.ts', 'src/ui/components/pickerMenu.ts']);
 const owners = new Set(rows.map(([, row]) => row.owner));
 for (const [file, source] of text) {
-  if (KIT.has(file) || !/\bopenSurface\(/.test(source)) continue;
+  if (KIT.has(file) || !/\b(?:openSurface|dialogSurface)\(/.test(source)) continue;
   assert.ok(owners.has(file), `${file} opens a surface but owns no row`);
 }
 
-// 4. Every row's place is whole: the surface it stands on is a row of its screen or a page-wide one, and every recipe
+// 4. Every dialog, popover and modal the source shows stands on the stack (owner 2026-10-27: "audit all dropdowns and ui
+// surfaces and make sure they share components"): a file that shows a modal or a popover, or marks a box a modal dialog,
+// opens it as a surface, builds it on the kit (the picker menu, the shared modal), or is an exempt with its reason.
+const OFF_STACK_EXEMPT = {
+  'src/ui/components/hoverTip.ts': 'the hover tip: a tooltip, never a surface (it takes no focus and no key)',
+  'src/ui/richTooltip.ts': "the service record's rich tip: a tooltip",
+  'src/ui/endScreen.ts': "the battle's report: the screen a battle ends on, not a surface over one",
+  'src/engine/renderer.ts': "the renderer's lost-context notice: the page's last state",
+  'src/audio/interfaceSounds.ts': "names the dialogs' roles to choose a sound; shows none",
+};
+const SHOWS = /\.showModal\(|\.showPopover\(|aria-modal|role',\s*'dialog'|role="dialog"/;
+const ON_STACK = /\b(?:openSurface|dialogSurface|createPickerMenu|createModal|createSelectPickerMenu)\(/;
+const offStack = [...text].filter(([file, source]) => !KIT.has(file) && !(file in OFF_STACK_EXEMPT) && !file.endsWith('transientSurfaceRegistry.ts')
+  && SHOWS.test(source) && !ON_STACK.test(source)).map(([file]) => file);
+assert.deepEqual(offStack, [], `dialogs or popovers off the surface stack: ${offStack.join(', ')}`);
+for (const file of Object.keys(OFF_STACK_EXEMPT)) assert.ok(text.has(file), `${file}: an exempt that is gone`);
+
+// 5. Every row's place is whole: the surface it stands on is a row of its screen or a page-wide one, and every recipe
 // presses at least one control.
 for (const [id, row] of rows) {
   for (const on of typeof row.on === 'string' ? [row.on] : Object.values(row.on ?? {})) assert.ok(ids.has(on), `${id}: it stands on ${on}, which has no row`);

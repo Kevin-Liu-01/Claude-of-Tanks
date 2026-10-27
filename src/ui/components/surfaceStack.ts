@@ -85,6 +85,14 @@ export function closeSurface(surface: TransientSurface): void {
   for (const old of above.slice(1).reverse()) old.close('replace');
 }
 
+/** A native modal <dialog> (a public page's trailer, its archive, its library) on the stack while it is open: opening it
+ *  closes what stood open, and Escape is the stack's. showModal() has no event: the open attribute says it opened. */
+export function dialogSurface(dialog: HTMLDialogElement, id: string): void {
+  const surface: TransientSurface = { id, element: () => dialog, close: () => dialog.close(), modal: true };
+  new MutationObserver(() => { if (dialog.open) openSurface(surface); else closeSurface(surface); })
+    .observe(dialog, { attributes: true, attributeFilter: ['open'] });
+}
+
 /* ------------------------------------------------------------------------------------------------- the page's keys */
 
 let installed = false;

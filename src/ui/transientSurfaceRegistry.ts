@@ -90,21 +90,34 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'gallery-rival': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-rival'), open: { docked: ['[data-picker-menu="gallery-rival"]'], folded: ['[data-picker-menu="gallery-rival"]'] } },
   'gallery-sort': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-sort'), open: { docked: ['[data-picker-menu="gallery-sort"]'], folded: ['[data-picker-menu="gallery-sort"]'] } },
   'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram.is-zoomed', modal: true, open: { docked: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'], folded: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'] } },
+  'markup-primitive': { screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', box: menuBox('markup-primitive'),
+    open: { docked: ['[data-mode="markup"]', '[data-markup-operation="add"]', '[data-picker-menu="markup-primitive"]'] } },
   'public-nav-menu': { screen: 'gallery', owner: 'src/presentation/publicNav.ts', box: '#public-nav-menu', open: { folded: ['.public-nav__menu-trigger'] } },
+
+  // the public pages' native dialogs (components/surfaceStack.ts dialogSurface)
+  'home-trailer': { screen: 'site', owner: 'src/presentation/homePage.ts', box: 'dialog[open]', modal: true,
+    open: { docked: ['[data-trailer-open]'], folded: ['[data-trailer-open]'] } },
+  'docs-archive': { screen: 'site', owner: 'src/docs/docs.ts', box: 'dialog[open]', modal: true, open: {} },
+  'media-library': { screen: 'site', owner: 'src/presentation/mediaLibrary.ts', box: 'dialog[open]', modal: true, open: {} },
+  'media-archive': { screen: 'site', owner: 'src/presentation/mediaArchive.ts', box: 'dialog[open]', modal: true, open: {} },
 
   // ---- the battle
   'spectate-ally': { screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', box: '.cot-spec-pop', open: {} },
+  // the touch layout's ammunition rack, opened from its slot
+  'hud-ammo-rack': { screen: 'battle', owner: 'src/ui/hud.ts', box: '.cot-shells.touch-open', open: {} },
 
   // ---- Rooms (the panel and its pickers over the Garage)
   'rooms-tank': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.vehicle-pick', on: 'rooms', open: {} },
   'rooms-battlefield': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.battlefield-pick', on: 'rooms', open: {} },
   'rooms-mode': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.mode-pick', on: 'rooms', open: {} },
-  'rooms-operation': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.cot-custom-select-list:popover-open', on: 'rooms', open: {} },
-  'rooms-arrangement': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: '.cot-custom-select-list:popover-open', on: 'rooms', open: {} },
-  // a select no census names (the kit's default id)
-  'select': { screen: 'rooms', owner: 'src/ui/customSelect.ts', box: '.cot-custom-select-list:popover-open', open: {} },
+  'rooms-operation': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: menuBox('rooms-operation'), on: 'rooms', open: {} },
+  'rooms-arrangement': { screen: 'rooms', owner: 'src/ui/playMenu.ts', box: menuBox('rooms-arrangement'), on: 'rooms', open: {} },
 
   // ---- the Studio
   'studio-actor': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: menuBox('studio-actor'), open: {} },
   'studio-featured-tank': { screen: 'studio', owner: 'src/ui/studioProductionPanel.ts', box: menuBox('studio-featured-tank'), open: {} },
+  'studio-picture': { screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', box: menuBox('studio-picture'), open: {} },
+  'studio-battlefield': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: '.cot-studio .mapPop.open', open: {} },
+  'studio-queue': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: '.st-queue', open: {} },
+  'studio-commands': { screen: 'studio', owner: 'src/ui/studioCommands.ts', box: '.st-cmd-box', modal: true, open: {} },
 } as const satisfies Readonly<Record<string, TransientSurfaceRow>>);

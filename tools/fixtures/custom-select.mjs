@@ -6,7 +6,7 @@ import '../../src/ui/components/pickers.css';
 import '../../src/ui/garage.css';
 import '../../src/ui/deploy.css';
 import '../../src/ui/showroom.css';
-import { createCustomSelect } from '../../src/ui/customSelect.ts';
+import { createSelectPickerMenu } from '../../src/ui/selectPickerMenu.ts';
 import { createBattleArrangementPanel } from '../../src/ui/battleArrangementPanel.ts';
 import { readTeamArrangement } from '../../src/game/teamArrangement.ts';
 import { MARS_GRAVITY_IDS, MARS_CACHE_IDS } from '../../src/sim/matchRuleset.ts';
@@ -24,12 +24,12 @@ if (new URLSearchParams(location.search).get('surface') === 'garage') {
 for (const [id,values] of [['gravity',MARS_GRAVITY_IDS],['caches',MARS_CACHE_IDS]]) {
   const select=document.getElementById(id);
   select.replaceChildren(...values.map(value=>new Option(t(`mars.${id}.${value}`),value)));
-  createCustomSelect(select);
+  createSelectPickerMenu(select, { id: `fixture-${id}` });
 }
 const arrangement=createBattleArrangementPanel(document.getElementById('arrangement'));
 arrangement.render('mars');
 const dynamic=document.getElementById('dynamic');
-const controller=createCustomSelect(dynamic);
+const controller=createSelectPickerMenu(dynamic, { id: 'fixture-dynamic' });
 let changes=0;
 dynamic.addEventListener('change',()=>changes++);
 window.__SELECT_TEST={arrangement,readTeamArrangement,dynamic,controller,changes:()=>changes};

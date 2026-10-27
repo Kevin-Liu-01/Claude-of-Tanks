@@ -1,4 +1,4 @@
-import { createCustomSelect } from './customSelect.ts';
+import { createSelectPickerMenu } from './selectPickerMenu.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
@@ -345,7 +345,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .arrange-fields .cot-c-menu__trigger{min-height:44px}
 /* numbers wear the data face, as the seats and the code do: the battle format and the arrangement's counts */
 .cot-play :is(.create-size,.room-size) .cot-c-seg__opt,.cot-play .sides-seg .cot-c-seg__opt:not([data-value='custom']),
-.cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) :is(.cot-custom-select-trigger,[role='option']),
+.cot-play .arrange-fields :is([data-arrange-field='allies'],[data-arrange-field='enemies'],[data-arrange-wave]) .cot-c-menu__name,
 .cot-play .arrange-fields input[type='number']{font-family:var(--font-data)}
 .cot-play :is(input,select):disabled{opacity:.55}
 .cot-play .code-input{font:700 var(--fs-18)/1 var(--font-data);letter-spacing:.16em;text-transform:uppercase}
@@ -524,9 +524,8 @@ body[data-cot-width='phone'] .cot-play .arrange-fields{grid-template-columns:min
 .cot-play .cot-teams .cot-c-seg{display:flex}
 .cot-play .cot-teams .cot-c-seg__opt{flex:1 1 0;min-width:0;height:38px}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
-/* the arrangement's pickers are the room's selects: the 44 px row and the thin chevron */
-.cot-play .cot-custom-select-trigger{position:relative;min-height:44px}
-.cot-play .cot-custom-select-trigger::after{position:absolute;right:var(--s4);top:50%;margin:0;border-right-width:1.5px;border-bottom-width:1.5px;color:var(--ink-2);transform:translateY(-68%) rotate(45deg)}
+/* the operation's and the arrangement's menus stand on the room's 44 px row */
+.cot-play .cot-select-menu .cot-c-menu__trigger{min-height:44px}
 .cot-play .rules-mode{height:clamp(340px,52vh,520px)}
 /* in a room the mode is the battlefield plate's first rule: Room Rules keeps the nations and the arrangement */
 .cot-play.lobby-active :is(.rules-mode,[data-selected-rule]){display:none}
@@ -1127,7 +1126,8 @@ export function createPlayMenu({
   bindBattlefieldControl();
   const operationField = requiredElement<HTMLElement>(root, '[data-operation-field]');
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
-  const operationDropdown = createCustomSelect(operationSelect, { surface: 'rooms-operation' });
+  // the room's operation and its arrangement's fields are the kit's picker menu over their selects (selectPickerMenu.ts)
+  const operationDropdown = createSelectPickerMenu(operationSelect, { id: 'rooms-operation' });
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps));
   const playersEl = requiredElement<HTMLElement>(root, '.players');
@@ -1223,7 +1223,7 @@ export function createPlayMenu({
   const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
   const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
   const arrangementDropdowns = [...arrangeSection.querySelectorAll<HTMLSelectElement>('select')].map(select =>
-    select.dataset.arrange === 'enemyNation' ? createEnemyNationSelect(select) : createCustomSelect(select, { surface: 'rooms-arrangement' }));
+    select.dataset.arrange === 'enemyNation' ? createEnemyNationSelect(select) : createSelectPickerMenu(select, { id: 'rooms-arrangement' }));
   const fillOptions = (select: HTMLSelectElement, entries: Array<[string, string]>, value: string): void => {
     select.innerHTML = entries.map(([id, label]) => `<option value="${id}"${id === value ? ' selected' : ''}>${label}</option>`).join('');
     select.value = value;

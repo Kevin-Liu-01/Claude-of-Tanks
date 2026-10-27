@@ -29,7 +29,7 @@ if (existsSync(out)) throw new Error(`${out} exists: the census never overwrites
 mkdirSync(out, { recursive: true });
 const LAYOUTS = option('layouts', 'docked,folded,pane').split(',');
 const LANGS = option('langs', 'en').split(',');
-const PAGES = option('pages', 'game,gallery').split(',');
+const PAGES = option('pages', 'game,gallery,home').split(',');
 const ONLY = option('only') ? new Set(option('only').split(',')) : null;
 const BATTLE = process.argv.includes('--battle');
 
@@ -43,8 +43,9 @@ const TURNED = { docked: { width: 1024, height: 600 }, folded: { width: 844, hei
 const RECIPES = { docked: 'docked', folded: 'folded', pane: 'folded' };
 const opened = new Set();
 const absent = new Map();
-const PAGE_SCREENS = { game: ['garage', 'deploy', 'settings'], gallery: ['gallery'] };
-const PAGE_PATH = { game: '/?nosplash=1', gallery: '/gallery' };
+const PAGE_SCREENS = { game: ['garage', 'deploy', 'settings'], gallery: ['gallery'], home: ['site'] };
+const PAGE_PATH = { game: '/?nosplash=1', gallery: '/gallery', home: '/home' };
+const PAGE_READY = { game: '[data-compare]', gallery: '#rivalMenu', home: '[data-trailer-open]' };
 const settle = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (line) => { console.log(line); appendFileSync(`${out}/surface-pairs.log`, `${line}\n`); };
 
@@ -148,7 +149,7 @@ async function runPage(browser, run, lang, pageName) {
   const url = `${base}${lang === 'zh' ? '/cn' : ''}${PAGE_PATH[pageName]}`;
   const load = async () => {
     await page.goto(url, { waitUntil: 'load', timeout: 180_000 }).catch(() => {});
-    await page.waitForSelector(pageName === 'game' ? '[data-compare]' : '#rivalMenu', { timeout: 300_000 });
+    await page.waitForSelector(PAGE_READY[pageName], { timeout: 300_000 });
     await settle(2500);
     // the Compare readout on (the rival's control in view from rest)
     if (pageName === 'game') await page.evaluate(() => { const chip = document.querySelector('[data-compare][aria-pressed="false"]'); if (chip?.getClientRects().length) chip.click(); });

@@ -150,8 +150,8 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-kind': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.modes'], lane: 'lead', path: 'start-room' },
   'rooms-create-size': { chooses: 'setting', options: 5, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.create-size'], lane: 'lead' },
   'rooms-battlefield': { chooses: 'battlefield', options: BATTLEFIELDS, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-battlefield'], lane: 'lead', path: 'rooms-map' },
-  /** The pre-picker battlefield dropdown's list, still in the lobby's markup beside the picker that replaced it. */
-  'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-control]', 'custom-select:operationDropdown'], lane: 'lead' },
+  /** The campaign operation: the kit's picker menu over the lobby's <select>, its storage (selectPickerMenu.ts, 261). */
+  'rooms-operation': { chooses: 'operation', options: 7, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-operation', 'select:[data-control]'], lane: 'lead' },
   'rooms-tank': { chooses: 'tank', options: FLEET, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-tank'], lane: 'lead' },
   'rooms-team': { chooses: 'team', options: 3, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.room-team'], lane: 'lead' },
   // the lobby's hand-rolled dropdown (bindMenuSelect) writes every list's selection: claimed here
@@ -160,7 +160,8 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-rules-mode': { chooses: 'mode', options: 13, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-rules-mode'], lane: 'lead' },
   'rooms-sides': { chooses: 'sides', options: 3, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.sides-seg'], lane: 'lead' },
   'rooms-brain': { chooses: 'setting', options: 2, screen: 'rooms', owner: ROOMS, build: 'segmented', marks: ['segmented:.brain-seg'], lane: 'lead' },
-  'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'custom-select', marks: ['select:[data-arrange]', 'custom-select:select'], lane: 'lead' },
+  // the arrangement's counts and teams: the kit's picker menu over their <select>s (selectPickerMenu.ts, 261)
+  'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-arrangement', 'select:[data-arrange]'], lane: 'lead' },
 
   // ---- the battle (premiere-battle)
   'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
@@ -179,7 +180,8 @@ export const INTERACTION_SITES = Object.freeze({
   'studio-camera': { chooses: 'setting', options: 2, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:camModeSeg', 'bespoke:c.mode'], lane: 'premiere-gallery-studio' },
   'studio-output': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:group'], lane: 'premiere-gallery-studio' },
   'studio-transition': { chooses: 'setting', options: 5, screen: 'studio', owner: STUDIO, build: 'segmented', marks: ['segmented:transition', 'bespoke:id===shot.transition'], lane: 'premiere-gallery-studio' },
-  'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'select', marks: ['select:select', 'select:format'], lane: 'premiere-gallery-studio' },
+  // the look and the aperture on the picker menu, the matte and the sensor (four each) on the segmented control (261)
+  'studio-picture': { chooses: 'view', options: 11, screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', build: 'picker', marks: ['picker:studio-picture', 'segmented:.studio-picture-seg'], lane: 'premiere-gallery-studio' },
   'studio-commands': { chooses: 'command', options: 60, screen: 'studio', owner: 'src/ui/studioCommands.ts', build: 'listbox', marks: ['listbox:list', 'bespoke:index===current'], lane: 'premiere-gallery-studio' },
   'studio-sequence': { chooses: 'shot', options: 8, screen: 'studio', owner: PRODUCTION, build: 'bespoke', marks: ['bespoke:cardId===id'], lane: 'premiere-gallery-studio' },
   // the Director's frame (4) and lens (3): one segmented helper (studioProductionPanel.ts segments) serves both
@@ -205,8 +207,9 @@ export const INTERACTION_SITES = Object.freeze({
   'damage-lab-kind': { chooses: 'filter', options: 4, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:kind===value'], lane: 'premiere-gallery-studio' },
   'damage-lab-target': { chooses: 'part', options: 20, screen: 'gallery', owner: 'src/gallery/damageWorkbench.ts', build: 'bespoke', marks: ['bespoke:lab!.selected'], lane: 'premiere-gallery-studio' },
   'markup-operation': { chooses: 'setting', options: 4, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:.markup-operation-grid', 'src/gallery/surfaceMarkup.ts bespoke:dataset.markupOperation'], lane: 'premiere-gallery-studio' },
-  'markup-scope': { chooses: 'setting', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupScope'], lane: 'premiere-gallery-studio' },
-  'markup-primitive': { chooses: 'setting', options: 6, screen: 'gallery', owner: GALLERY_PAGE, build: 'select', marks: ['select:#markupPrimitive'], lane: 'premiere-gallery-studio' },
+  // (261, the dropdown audit) the scope's two values on the segmented control, the primitive's six on the picker menu over its <select>
+  'markup-scope': { chooses: 'setting', options: 2, screen: 'gallery', owner: GALLERY_PAGE, build: 'segmented', marks: ['segmented:#markupScope'], lane: 'premiere-gallery-studio' },
+  'markup-primitive': { chooses: 'setting', options: 6, screen: 'gallery', owner: GALLERY_PAGE, build: 'picker', marks: ['select:#markupPrimitive', 'src/gallery/surfaceMarkup.ts picker:markup-primitive'], lane: 'premiere-gallery-studio' },
   'markup-annotation': { chooses: 'part', options: 12, screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', build: 'bespoke', marks: ['bespoke:annotation.id'], lane: 'premiere-gallery-studio' },
 
   // ---- the public pages: /home (the lead), the Field Manual (premiere-site)
