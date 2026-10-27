@@ -16,7 +16,7 @@ import {
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const UKRAINE_IDS = Object.freeze([
-  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1',
+  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 't64bm1m',
 ] as const);
 
 type UkraineStatOverrides = Partial<Pick<FleetTankSpec,
@@ -76,6 +76,16 @@ const UKRAINE_SPECS = {
     patches: ['#30382f', '#655f49', '#776c52'], camoScale: 0.48,
     dims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
     stats: { hp: 2050, enginePowerHp: 850, weightTons: 43.5, topSpeedKmh: 60 },
+  }),
+  // 262: the T-64BM1M, Kharkiv's Nizh-protected T-64B1 (the T-64B1M of the 2014 Congo order and the National Guard's
+  // BM1M), on the true T-64 base (profiles/t64bm1m.ts; docs/references/tanks/t64bm1m.md). The 6TD-1 (1,000 hp: Army
+  // Recognition 2014, MilitaryLand) and 45 t; 3.61 m over the Nizh side screens. Its frame and Nizh sectors are set with
+  // the other T-64s' (t64Armor.ts, fleetRenewalSpecs.ts).
+  t64bm1m: variant('t64bm1m', 't64bv1', {
+    name: 'T-64BM1M', number: '641', base: '#45503b', weather: '#5a604b',
+    patches: ['#2e362c', '#5f5d46', '#746a50'], camoScale: .50,
+    dims: { hullLengthM: 6.54, overallLengthM: 9.225, widthM: 3.61, heightM: 2.17 },
+    stats: { hp: 2150, enginePowerHp: 1000, weightTons: 45.0, topSpeedKmh: 65 },
   }),
   ua_t80bv: variant('ua_t80bv', 't80bv', {
     name: 'T-80BV (Ukraine)', number: 'UA 80', base: '#38483b', weather: '#4b5848',

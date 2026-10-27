@@ -1,6 +1,7 @@
 import {resizeAuthoredVehicle} from './vehicleSize.ts';
 import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
 import { buildT64BV2017 } from './t64bvK1.ts';
+import { buildT64BM1M } from './t64bm1m.ts';
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
 //
@@ -2011,6 +2012,7 @@ function buildUAM1A1(P: UkraineBuilderPort): void {
 
 export const UKRAINE_PROFILES = {
   t64bv_donbas: { build: (P: TankBuilderPort) => buildT64BV2017(P) },
+  t64bm1m: { build: (P: TankBuilderPort) => buildT64BM1M(P) },
   ua_t80bv: { build: (builder: ProfileBuilderPort) => buildUAT80BV(builder as UkraineBuilderPort) },
   t80u_kursk: { build: (builder: ProfileBuilderPort) => buildUAT80UKursk(builder as UkraineBuilderPort) },
   t84bm_oplot_m: { build: (builder: ProfileBuilderPort) => buildUAOplotM(builder as TankBuilderPort) },

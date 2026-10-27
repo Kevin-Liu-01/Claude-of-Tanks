@@ -4,6 +4,7 @@ import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {T80UK_X_GUN_PITCH_BY_YAW_DEG} from './t80uXArmor.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
+import {applyT64PhysicalFrame,T64_DATUMS} from './t64Armor.ts';
 import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
 import {OPLOT_FLANK_CASSETTE,oplotFlankCassetteSeat} from './oplotFlankLayout.ts';
 import type {FleetTankSpec} from './specContracts.ts';
@@ -51,7 +52,7 @@ registerFleetSpecs(registry,FLEET_RENEWAL_NEW_IDS,additions);
 
 export const FLEET_RENEWAL_DONORS=Object.freeze({
   t72b3m_2022:'t72b3m_2016',t72bu_1989:'t72bu',t80uk:'t80u',
-  t64bv1:'t72b3',t64bv_donbas:'t72b3',t72m1_jaguar:'t72b3',
+  t72m1_jaguar:'t72b3',
   t62mv1:'t62_1975',t72_rys:'t80u',
 });
 let synchronized=false;
@@ -83,6 +84,11 @@ export function synchronizeFleetRenewalMetadata():void{
     return target[id as string];
   }});
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
+  // 262 (owner 2026-10-27: the T-64s "are not based onn t64s rn"): every T-64 takes the true T-64 frame (t64Armor.ts) on
+  // the T-72B3's balanced combat record, in place of the T-72B3 study's dims and plates.
+  applyT64PhysicalFrame(TANK_SPECS.t64bv1,donors.t72b3,'bv1',T64_DATUMS.dims);
+  applyT64PhysicalFrame(TANK_SPECS.t64bv_donbas,donors.t72b3,'bv2017',T64_DATUMS.dims);
+  applyT64PhysicalFrame(TANK_SPECS.t64bm1m,donors.t72b3,'bm1m',{...T64_DATUMS.dims,widthM:3.61});
   TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
   // release 231: the T-80UK's own measured stops (its command kit over the rear deck; t80uXArmor.ts)
   TANK_SPECS.t80uk.gunPitchByYawDeg=T80UK_X_GUN_PITCH_BY_YAW_DEG;

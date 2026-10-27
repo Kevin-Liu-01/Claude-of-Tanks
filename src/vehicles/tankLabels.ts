@@ -298,6 +298,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // owner 2026-10-22: the Ukrainian Army's 2017 T-64BV modernisation (T-64BV zrazka 2017 roku); "Donbas" was the
   // kitbash source's label. The id stays.
   t64bv_donbas: { displayName: 'T-64BV mod. 2017', shortName: 'T-64BV mod. 2017', searchAliases: ['T-64BV Donbas'] },
+  t64bm1m: { displayName: 'T-64BM1M', shortName: 'T-64BM1M', searchAliases: ['T-64B1M', 'T-64BV-1M'] },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
   t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
   t84bm_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
