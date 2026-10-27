@@ -1271,7 +1271,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const nations = [...new Set(peers.map(countryCodeOf))];
     rivalMenu = createPickerMenu(rivalHost, {
       id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival', items,
-      filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
+      // a flag's chip names every nation under it, as the Gallery's versus list does ("Russia / Soviet Union")
+      filters: nations.length > 1 ? nations.map((code) => ({ id: code,
+        label: [...new Set(peers.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
       onChoose: (item) => {
         rivalChoice = item.id;
         emit('ui:click', {});

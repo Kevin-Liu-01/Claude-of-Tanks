@@ -70,6 +70,10 @@ assert.match(source, /onFocusOut[^\n]*preview\(null\)/, 'leaving the picker rest
 assert.match(source, /if \(!fine \|\| event\.pointerType === 'touch'\) return;/, 'touch never previews on hover: a tap chooses');
 assert.doesNotMatch(source, /createModal|<dialog|showModal/, 'choosing never opens a dialog');
 assert.match(source, /try \{ storage\.setItem/, 'storage writes are guarded');
+// (261) a list row's portrait loads ahead of its row: an observer rooted on the list watches the thumbnail's box (an image
+// with no source has no height, and a box of none never intersects)
+assert.match(source, /new IntersectionObserver\([\s\S]*?\{ root: grid, rootMargin: THUMB_AHEAD \}\)/, 'the portraits load from an observer rooted on the list');
+assert.match(source, /thumbs\.observe\(img\.parentElement!\)/, "it watches the thumbnail's box, never the empty image");
 
 // 6. The sheet: the kit's tokens, the chosen tile's accent wash and edge, 44 px touch targets.
 const sheet = read('./pickers.css');

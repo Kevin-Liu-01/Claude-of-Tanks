@@ -341,7 +341,7 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
     options$().forEach((element, i) => { element.id = `${uid}-${i}`; });
     for (const img of grid.querySelectorAll<HTMLImageElement>('.cot-c-picker__thumb img[data-src]')) {
-      if (thumbs) thumbs.observe(img);
+      if (thumbs) thumbs.observe(img.parentElement!);
       else { img.src = img.dataset.src!; delete img.dataset.src; }
     }
     empty.hidden = shown.length > 0;
@@ -443,12 +443,13 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const onInput = (): void => { query = { ...query, text: search.value }; render(); };
   // a list row's thumbnail shows once decoded (a cached one at once, in render): load events reach the grid in capture
   const onThumb = (event: Event): void => { if ((event.target as Element).parentElement?.classList.contains('cot-c-picker__thumb')) (event.target as Element).setAttribute('data-ready', ''); };
+  // (it watches the thumbnail's box: an image with no source yet has no height, and a box of none never intersects)
   const thumbs = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (!entry.isIntersecting) continue;
-      const img = entry.target as HTMLImageElement;
-      thumbs!.unobserve(img);
-      if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+      thumbs!.unobserve(entry.target);
+      const img = entry.target.querySelector<HTMLImageElement>('img[data-src]');
+      if (img) { img.src = img.dataset.src!; delete img.dataset.src; }
     }
   }, { root: grid, rootMargin: THUMB_AHEAD }) : null;
 
