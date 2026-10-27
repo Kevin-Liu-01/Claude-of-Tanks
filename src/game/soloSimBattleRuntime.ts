@@ -59,6 +59,8 @@ export interface SoloSimLoadTrace {
   boot?: { tick: number; bootMs: number } | null;
   compile?: { attempts: number; outcome: 'complete' | 'deferred'; pending: number | null; programs?: readonly BrowserPendingProgram[] };
   streamedRoster?: { actors: number; buildMs: number; ms: number };
+  /** (262) The opening warm's own time inside combatWarm, and what it reported (its pacing, texture staging, batches). */
+  openingEffects?: { ms: number; detail?: unknown };
   blackCheck?: unknown;
   failure?: { stage: string; message: string };
 }
@@ -267,8 +269,11 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
       check('panel');
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
-      await warm.openingEffects?.(fx, view, signal);
+      // (262) paced by frames, as the page's solo deployment warm: a room's GPU pacing cost the merged 7v7 entry 8 s loaded
+      const openingStartedAt = now();
+      const opening = await warm.openingEffects?.(fx, view, signal, { pacing: 'frame' });
       check('openingEffects');
+      active.trace.openingEffects = { ms: Math.round(now() - openingStartedAt), ...(opening == null ? {} : { detail: opening }) };
       warm.shotCards?.([...battlePresentation.actors.values()].map((actor) => actor.specId));
       markStage(active, 'combatWarm');
       // the other seats, taken in under the cover after the viewer's warms (deferRoster), their programs warmed

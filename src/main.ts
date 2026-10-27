@@ -2921,7 +2921,10 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // (2026-10-09) a slow mask link never refuses the round (damagePanelEntryMasks.ts)
             await prepareEntryPanelMasks(panel, entity.spec, entity.visual, deferredPanelMasks);
           },
-          openingEffects: async (fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal) => {
+          openingEffects: async (
+            fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal,
+            options?: { pacing?: 'gpu' | 'frame' },
+          ) => {
             const timing: ForwardProgramCompileTiming & {
               openingRenderMs?: number; openingPasses?: CoveredComposerWarmTiming['passes'];
             } = {
@@ -2936,9 +2939,14 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
             // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
             // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
+            // (262, the merged solo sim Worker's 7v7 entry: this pacing took its combat warm from 0.2-1.1 s to 8.3-9.2 s on a
+            // loaded machine) the Worker's sortie paces by frames, as the page's solo deployment warm does: no staging, no wait
+            const gpuPaced = options?.pacing !== 'frame';
             const forwardYield = createFrameBudgetYielder(8);
             const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
-            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
+            const textureStaging = gpuPaced
+              ? await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp })
+              : null;
             const forwardBatches: number[] = [];
             let catchUpFrames = 0;
             // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
@@ -2951,12 +2959,12 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               worldGroup: currentWorld()?.group,
               playerRoot: game.player?.visual?.root,
               warmRender,
-              preUpload: true,
+              preUpload: gpuPaced,
             })) {
               (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
               signal?.throwIfAborted();
               if (batch.phase !== 'upload') await forwardYield(true);
-              catchUpFrames += await waitForGpuCatchUp(catchUp);
+              if (gpuPaced) catchUpFrames += await waitForGpuCatchUp(catchUp);
             }
             const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
               totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
@@ -2994,7 +3002,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing, textureStaging, deploymentForward };
+            return { ...timing, pacing: gpuPaced ? 'gpu' : 'frame', textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {

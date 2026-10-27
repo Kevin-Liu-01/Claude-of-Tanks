@@ -268,12 +268,14 @@ for (const fail of [false, true]) {
   assert.equal(seen.length, 2);
 }
 
-// the room's opening warm opts in and lets the GPU catch up after every batch (main.ts openingEffects)
+// the room's opening warm opts in and lets the GPU catch up after every batch (main.ts openingEffects); (262) the solo sim
+// Worker's sortie (pacing 'frame') neither pre-uploads nor waits, as the page's solo deployment warm
 {
   const { readFileSync } = await import('node:fs');
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
   const opening = main.slice(main.indexOf('openingEffects: async'), main.indexOf('shotCards:', main.indexOf('openingEffects: async')));
-  assert.ok(opening.includes('preUpload: true,') && opening.includes('catchUpFrames += await waitForGpuCatchUp(catchUp);'),
+  assert.ok(opening.includes("const gpuPaced = options?.pacing !== 'frame';"), 'GPU pacing unless the caller asks for frames');
+  assert.ok(opening.includes('preUpload: gpuPaced,') && opening.includes('if (gpuPaced) catchUpFrames += await waitForGpuCatchUp(catchUp);'),
     'the room opening uploads each cohort ahead of its draws and waits for the GPU between batches');
 }
 

@@ -244,7 +244,12 @@ export interface BrowserWarmPorts {
   /** (battle-spikes-253) Start linking the player panel's programs at the warm's start (no wait): the panel stage below. */
   playerPanelPrograms?(view: BrowserWarmView, viewerId: string): void;
   compile?(signal?: AbortSignal): MaybePromise<{ preparation?: BrowserWarmPreparation; pendingPrograms?: readonly BrowserPendingProgram[] } | null | undefined>;
-  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * The battlefield's offscreen first draws, a cohort at a time, and the opening effects. A room's entry paces them on the
+   * GPU: textures staged one at a time and every batch waiting for the GPU to catch up. (262) The solo sim Worker's sortie
+   * passes `pacing: 'frame'`, a frame between batches as the page's solo deployment warm does, and no wait on the GPU.
+   */
+  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'frame' }): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;

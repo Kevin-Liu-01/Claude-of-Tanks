@@ -115,7 +115,7 @@ function ports(record, port, { openWorker, visibility } = {}) {
         prebuildRoster: (seats) => { record.push(`prebuild:${seats.map((seat) => (seat.isViewer ? 'viewer' : seat.playerId)).join(',')}`); return null; },
         nextFrame: () => sleep(1),
         setAdaptiveSuspended: (value) => record.push(`adaptive:${value}`),
-        recordTrace: (trace) => record.push(`trace:${trace.status}`),
+        recordTrace: (trace) => { record.trace = trace; record.push(`trace:${trace.status}`); },
       },
       roster: { vehicleName: (specId) => specId, emitBattleStart: () => record.push('battleStart'), setCamoBiome() {} },
       scene: {
@@ -126,7 +126,8 @@ function ports(record, port, { openWorker, visibility } = {}) {
       warm: {
         atmosphere: stage('atmosphere'), nightLighting: stage('nightLighting'), terrain: stage('terrain'), wrecks: stage('wrecks'),
         compile: async () => { record.push('compile'); return { preparation: { status: 'complete', pending: 0 } }; },
-        playerPanel: stage('playerPanel'), openingEffects: stage('openingEffects'),
+        playerPanel: stage('playerPanel'),
+        openingEffects: async (fx, view, signal, options) => { record.push(`openingEffects:${options?.pacing}`); return { pacing: options?.pacing }; },
         streamedVehicles: async (view) => { record.push(`streamedVehicles:${view.entities.size}`); },
         presentation: stage('openingGroundCover'), finalShadows: stage('finalShadows'),
       },
@@ -178,6 +179,10 @@ const sortie = { specId: 'm1a1_abrams_hc', mapId: 'verdant', mode: 'standard', s
     assert.equal(record.find((entry) => entry.startsWith('streamedVehicles:')), 'streamedVehicles:5', 'the other five seats taken in under the cover');
     assert.equal(record.find((entry) => entry.startsWith('activate:')), 'activate:player:m1a1_abrams_hc');
     assert.equal(record.at(-1), 'trace:complete');
+    // (262) the opening warm paced by frames, as the page's solo deployment warm, and its time and report in the trace
+    assert.equal(record.find((entry) => entry.startsWith('openingEffects:')), 'openingEffects:frame');
+    assert.equal(typeof record.trace.openingEffects?.ms, 'number');
+    assert.deepEqual(record.trace.openingEffects.detail, { pacing: 'frame' });
     const presentation = presentations[0];
     assert.equal(presentation.options.solo, true, 'its end is a solo battle\'s');
     assert.equal(presentation.options.deferRoster, true);
