@@ -27,6 +27,7 @@ import { cloneRehookedVehicleMaterial } from '../materials.ts';
 import { addShtoraEyes } from './shtora.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import { buildT55A } from './t54Family.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -2411,6 +2412,8 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
 // turretPivotZ stays hull-center relative; gun muzzle = zC+pivotZ+gunZ+len.
 // ---------------------------------------------------------------------------
 export const RUSSIA_PROFILES = {
+  // 262 (owner 2026-10-27): the T-55A on the T-54/T-55 family construction (profiles/t54Family.ts)
+  t55a: { build: buildT55A },
   t62_1975: { build: buildT62Obr1975 },
   t64bv1: { build: (P: TankBuilderPort) => buildT64BV1(P) },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the

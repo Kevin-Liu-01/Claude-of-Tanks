@@ -4,8 +4,13 @@
 
 Owner, verbatim: "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,
 turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well".
-Builder: `src/vehicles/profiles/type59.ts` (new geometry; the §5.304 r3 refit on the widened obr-1975 chassis, its 0.855
-rig scale, skirt and turret cassettes, glacis applique and oversized searchlight are retired). Target configuration: the
+Builder: `src/vehicles/profiles/t54Family.ts` (`buildType59`; new geometry; the §5.304 r3 refit on the widened obr-1975
+chassis, its 0.855 rig scale, skirt and turret cassettes, glacis applique and oversized searchlight are retired). Owner,
+mid-lane: "make the type 59 be based on a type 55 which we should add to russia. match the geometries well" — the Type 59
+now shares the T-55A's construction, measured from the owner-supplied T-55A model at one uniform scale
+(docs/references/tanks/t55a.md), and keeps its T-54A ventilator dome, smaller searchlight, loader's Type 54 and PLA
+fittings. Where the model and the photogrammetry below differ (wheels 0.81 m at 0.84 m pitch vs 0.78/0.79; dome 2.54 m vs
+2.15 m; roof 1.42 vs 1.45; bore 1.74 vs 1.81), the model governs by the owner's order. Target configuration: the
 PLA's Type 59 (WZ-120, licensed T-54A) of the 1960s-70s with the later-model IR searchlight.
 
 ### Sources
@@ -34,16 +39,16 @@ the photo scale governs. Turret width ≈2.15 m (top view, perspective-corrected
 | Hull length (body, nose to rear plate) | 6.04 m | ~5.67 m body (6.08 incl. drums) at 0.855 scale | 5.90 m nose to rear plate + 0.12 fender tips = 6.02 m; 6.51 m incl. rear drums |
 | Width over fenders | 3.27 m | 3.26 m (with 14 skirt panels) | 3.27 m (fenders ±1.635), no skirts |
 | Height to turret roof / cupola, w/o AA MG | 2.40 m | 2.615 m cupola crown, roof ~1.27 | dome crown 2.19 m, cupola 2.40 m, hull roof 1.45 m |
-| Track width / gauge | 0.58 m / 2.64 m | 0.489 m / 2.48 m | 0.58 m / 2.64 m |
-| Road wheels | 5, ~0.78 m, gap 1-2 | 5 × 0.72 m, gaps 0.99/0.84/0.87/0.87 | 5 × 0.78 m, gaps 1.05/0.79/0.79/0.79 |
+| Track width / gauge | 0.58 m / 2.64 m | 0.489 m / 2.48 m | 0.60 m / 2.65 m |
+| Road wheels | 5, ~0.78-0.83 m, gap 1-2 | 5 × 0.72 m, gaps 0.99/0.84/0.87/0.87 | 5 × 0.81 m, gaps 1.14/0.84/0.84/0.84 (the T-55A model) |
 | Return rollers | none | none | none |
-| Turret width × length × height over roof | ~2.15 × 2.56 × 0.74-0.80 m, cast egg dome | 2.76 × 2.96 × ~0.89 m, widened mushroom + cassettes | 2.16 × 2.56 × 0.74 m superellipse egg dome |
-| Turret ring position | over road wheel 3 (+0.31 m) | z +0.578 | z 0.00 (wheel 3 at −0.36) |
+| Turret width × length × height over roof | ~2.15 (photo) / 2.54 (T-55A model) × 2.6 × 0.78 m, cast dome | 2.76 × 2.96 × ~0.89 m, widened mushroom + cassettes | 2.54 × 2.61 × 0.78 m superellipse dome (the model) |
+| Turret ring position | over road wheel 3 | z +0.578 | z −0.08 (wheel 3 at −0.16) |
 | Mantlet | narrow slot with pleated canvas cover ~0.43 m wide | 0.62 × 0.50 canvas boot on a cast collar | 0.46 × 0.52 rounded canvas bag in the slot, root 0.40 m inside the casting |
-| Gun | 100 mm, L/53.5, bore axis 1.738 m, evacuator flush with the muzzle (0.87 m) | evacuator at the muzzle third (3.34..3.86), axis 1.58 m | evacuator flush with the muzzle, 0.87 m, axis 1.738 m, muzzle 2.87 m past the nose |
+| Gun | 100 mm, L/53.5, bore axis 1.738 m, evacuator flush with the muzzle | evacuator at the muzzle third (3.34..3.86), axis 1.58 m | evacuator at the muzzle (0.74 m), axis 1.74 m, muzzle 5.42 m (2.42 m past the nose) |
 | Commander's cupola | vehicle left | x −0.605 (vehicle RIGHT: mirrored) | +X (vehicle left), TPK-1 housing, OU-3 IR spot |
 | Loader's hatch + Type 54 12.7 mm | vehicle right | +0.55 (vehicle LEFT: mirrored) | −X (vehicle right), ring mount, working station |
-| IR searchlight | later models, right of / above the gun, gun-linked | 0.41 m drum on the vehicle's LEFT | 0.31 m lamp on the gun's right (−X), gun-linked arm |
+| IR searchlight | later models, right of / above the gun, gun-linked | 0.41 m drum on the vehicle's LEFT | 0.30 m lamp high on the gun's right (−X), gun-linked |
 | Glacis | 60° upper (from vertical), 55° lower, transverse splash board | applique ×3, IR pod | 60°/55° plates, splash board, headlights right, tow hooks, bow MG port right |
 | Engine deck / exhaust | louvres; exhaust on the left fender | snorkel ridge; muffler on the vehicle's RIGHT | two louvre beds + rear grille; exhaust outlet on the left fender (+X) |
 | Fender stowage | right: 3 fuel + 1 oil tank; left: boxes, tools | 9-bin rails both sides | right (−X): 4 flat tanks + pipe; left (+X): 4 lidded boxes, spare links |

@@ -531,7 +531,7 @@ const IDS_BY_LAYOUT = Object.freeze({
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b',
     'merkava4', 'merkava3d', 'merkava4_trophy', 'merkava4_barak',
   ],
-  sovietManual: ['t62_1975'],
+  sovietManual: ['t62_1975', 't55a'],
   nationalSmDiesel: [...NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model!==0).map(c=>c.id),...NATIONAL_LEGACY_IDS],
   nationalSmTurbine: NATIONAL_MODERNIZATION_CONFIG.filter(c=>c.model===0).map(c=>c.id),
   conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1','t64bv_donbas'],

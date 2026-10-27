@@ -102,6 +102,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262 (owner 2026-10-27): the owner-supplied T-55A (Alex.Ka., CC BY-NC-ND 4.0, LOCAL-ONLY), prepared to its vehicle
+  // meshes at one uniform scale by tools/source-x-oracle.mjs (docs/references/tanks/t55a.md). Its export fuses hull,
+  // turret and gun by material, so the whole nine-view silhouette, dims and floaters are the honest comparison.
+  t55a: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/t55a_x_source.glb',
+    fixedMount:true, componentMasks:false } },
   // RE-ONBOARD (§5.36, 2026-08-08): ahab bakes re-baked with the hull
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
   // These exports parent large fixed-hull regions under `Turret`; whole and

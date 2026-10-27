@@ -1,9 +1,9 @@
-// Release 262 (cn-type59-longwei lane, owner 2026-10-27): both rebuilt Chinese guns stay inside their mantlets over the
+// Release 262 (cn-type59-longwei lane, owner 2026-10-27): the rebuilt Type 59, the new T-55A and the Longwei keep their guns inside their mantlets over the
 // full elevation range the spec allows. At every degree from full depression to full elevation:
 //   - every sample of the tube behind the mantlet's front (pulled 4 mm in toward the bore axis) lies inside the mantlet,
 //     its canvas cover or the turret's own casting: no stretch of bare tube shows through the slot or the throat;
 //   - the mantlet's root section stays inside the casting: the slot never opens a gap behind the mantlet.
-// The Type 59's mantlet is the pleated canvas cover over the T-54A slot (profiles/type59.ts addMantletCover); the
+// The T-54/T-55 family's mantlet is the pleated canvas cover over the slot (profiles/t54Family.ts addMantletCover); the
 // Longwei's is the slim cast mantlet and its boot in the throat between the arrowhead cheeks (profiles/longwei.ts).
 // Inside tests count crossings of a near-vertical ray through each closed bucket. A negative control removes the
 // Type 59's cover and must expose the tube.
@@ -17,7 +17,8 @@ const RAY = new THREE.Vector3(0.013, 1, 0.007).normalize();
 
 const CASES = [
   // front: the mantlet's front in gun-local z; root: the root section's gun-local z; cover: the mantlet buckets
-  { id: 'type59', front: 0.82, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
+  { id: 'type59', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
+  { id: 't55a', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
   { id: 'ztz99_longwei', front: 0.70, root: -0.25, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
 ];
 
@@ -137,4 +138,4 @@ for (const c of CASES) {
     tank.dispose();
   }
 }
-console.log('cnGunMantlet.selftest: the Type 59 and Longwei guns stay inside their mantlets over their full elevation range');
+console.log('cnGunMantlet.selftest: the Type 59, T-55A and Longwei guns stay inside their mantlets over their full elevation range');

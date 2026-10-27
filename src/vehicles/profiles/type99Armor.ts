@@ -426,25 +426,49 @@ function longweiTurretPlates(): ArmorPlate[] {
   ];
 }
 
+/** The Longwei's hull (release 262, profiles/longwei.ts): the nose at (z 3.62, y 0.92) between a 22-degree upper and a
+ * 52-degree lower glacis, the 2.20 m tub over a 0.47 m belly, sponsons to ±1.70 m over a 1.30 m floor, the 1.50 m roof,
+ * the ramp to the 1.78 m powerpack deck, the inclined rear plate; the segmented skirts with one FY-5 course. Strengths
+ * carry the frame's (glacis 550/KE 500/CE 700 behind FY-4, sides 100, roofs and rear 45). */
+function longweiHullPlates(): ArmorPlate[] {
+  const glacisY = (z: number): number => 1.50 - (z - 2.18) * ((1.50 - 0.92) / (3.62 - 2.18));
+  return [
+    frontPlate('glacis_era_L', 15, -1.10, 0, [glacisY(3.24) + 0.06, 3.24], [glacisY(2.30) + 0.06, 2.30],
+      { kind: 'era', era: FY4 }),
+    frontPlate('glacis_era_R', 15, 0, 1.10, [glacisY(3.24) + 0.06, 3.24], [glacisY(2.30) + 0.06, 2.30],
+      { kind: 'era', era: FY4 }),
+    frontPlate('upper_glacis', 550, -1.10, 1.10, [0.92, 3.62], [1.50, 2.18], { keMm: 500, ceMm: 700 }),
+    frontPlate('sponson_front_L', 100, -1.70, -1.10, [1.30, 3.00], [1.50, 2.18], { keMm: 100, ceMm: 100 }),
+    frontPlate('sponson_front_R', 100, 1.10, 1.70, [1.30, 3.00], [1.50, 2.18], { keMm: 100, ceMm: 100 }),
+    frontPlate('lower_front', 100, -1.10, 1.10, [0.47, 3.27], [0.92, 3.62], { keMm: 130, ceMm: 130 }),
+    ...sidePlatePair('hull_side_lower_bow', 100, [3.27, 0.47, 1.30, 1.10], [1.84, 0.47, 1.30, 1.10], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_lower_center', 100, [1.84, 0.47, 1.30, 1.10], [-1.21, 0.47, 1.30, 1.10], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_lower_engine', 100, [-1.21, 0.47, 1.30, 1.10], [-3.18, 0.47, 1.30, 1.10], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_upper_bow', 100, [2.98, 1.30, 1.33, 1.70], [1.84, 1.30, 1.50, 1.70], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_upper_center', 100, [1.84, 1.30, 1.50, 1.70], [-1.02, 1.30, 1.50, 1.70], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_upper_ramp', 100, [-1.02, 1.30, 1.50, 1.70], [-1.42, 1.30, 1.78, 1.70], { keMm: 100, ceMm: 100 }),
+    ...sidePlatePair('hull_side_upper_engine', 100, [-1.42, 1.30, 1.78, 1.70], [-3.48, 1.30, 1.78, 1.70], { keMm: 100, ceMm: 100 }),
+    // one FY-5 course on the front three skirt panels, the segmented skirt the full length
+    ...sidePlatePair('skirt_era', 15, [2.80, 0.86, 1.17, 1.858], [-0.16, 0.86, 1.17, 1.858], { kind: 'era', era: FY4 }),
+    ...sidePlatePair('skirt_front', 8, [3.30, 0.62, 1.47, 1.836], [-0.16, 0.62, 1.47, 1.836], { kind: 'spaced' }),
+    ...sidePlatePair('skirt_rear', 8, [-0.16, 0.62, 1.47, 1.836], [-3.42, 0.62, 1.47, 1.836], { kind: 'spaced' }),
+    // Legacy fallback only. createTank replaces these with prisms derived from the six-wheel running gear.
+    ...sidePlatePair('track', 20, [3.45, 0.03, 1.28, 1.77], [-3.47, 0.03, 1.28, 1.77],
+      { kind: 'external', moduleLink: 'trackR' }).map((plate, index): ArmorPlate => ({
+      ...plate, name: index ? 'track_L' : 'track_R', moduleLink: index ? 'trackL' : 'trackR',
+    })),
+    rearPlate('hull_rear', 45, 1.62, -3.46, 0.64, 1.78),
+    deckPlate('hull_roof_fighting', 45, [2.18, 1.50, 1.67], [-1.02, 1.50, 1.67]),
+    deckPlate('hull_roof_powerpack_ramp', 45, [-1.02, 1.50, 1.67], [-1.42, 1.78, 1.67]),
+    deckPlate('hull_roof_engine', 45, [-1.42, 1.78, 1.68], [-3.48, 1.78, 1.68]),
+  ];
+}
+
 function longweiArmor(): ArmorEnvelope {
   const frame = type96BFrameArmor();
-  const hullPlates = frame.hullPlates
-    .filter((plate) => !/^skirt_(era|front|rear)_[LR]$/.test(plate.name))
-    .concat(
-      // release 262: one FY-5 course on the front three skirt panels, the segmented skirt the full length
-      ...sidePlatePair('skirt_era', 15,
-        [2.80, 0.86, 1.17, 1.858], [-0.16, 0.86, 1.17, 1.858],
-        { kind: 'era', era: FY4 }),
-      ...sidePlatePair('skirt_front', 8,
-        [3.30, 0.62, 1.47, 1.836], [-0.16, 0.62, 1.47, 1.836],
-        { kind: 'spaced' }),
-      ...sidePlatePair('skirt_rear', 8,
-        [-0.16, 0.62, 1.47, 1.836], [-3.42, 0.62, 1.47, 1.836],
-        { kind: 'spaced' }),
-    );
   return {
     ...frame,
-    hullPlates,
+    hullPlates: longweiHullPlates(),
     turretPlates: longweiTurretPlates(),
     modules: [
       ...frame.modules.filter((box) => box.module !== 'optics' && box.module !== 'radio'),

@@ -19,7 +19,7 @@
 // triangle is first-party procedural geometry; no source mesh is loaded. Authorship: Kevin B. Liu (NOTICE.md).
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
+import { KIT, FITTINGS, muzzleTipDot } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { eraCassette } from './modernizationFittings.ts';
 import { equipmentFoot, lowOptic, permanentParts, serviceCable, serviceCase } from './nationalChina.ts';
@@ -97,15 +97,44 @@ function faceEuler(n: THREE.Vector3): Vec3 {
 }
 
 // ---------------------------------------------------------------------------
-// Structural hull — the certified Type 99A print-loft hull (modern2.ts through release 232), unchanged.
+// Hull — release 262: a new hull on the ZTZ-99/99A family's proportions (owner 2026-10-27: "longweii needs a completely
+// new hhull too"). The certified print-loft hull of releases 232-261 is retired; the six measured wheel stations, the
+// ring seat (pivot 0/1.57/0.64) and the raised powerpack deck stay, so the turret's clearances and datums hold.
 // ---------------------------------------------------------------------------
-// §D frame: width anchor ±1.85; thick hull body -3.592..+3.52 m with a supported recovery loop to -4.242 m. Deck 1.50
-// front / 1.78 powerpack deck rear (ramp z -1.02..-1.42); glacis = two real planes (16.3-deg upper + 62-deg nose, break
-// at z 3.02 / y 1.215). Six wheel stations (pitch 0.901, r 0.405).
+// T-72/99 pattern: a pointed nose 0.92 m off the ground where a long 22-degree upper glacis meets a 52-degree lower
+// glacis; a 2.20 m tub between the tracks over a 0.47 m belly; sponsons out to ±1.70 m over the tracks, their fronts
+// sloped up behind the fender boxes; the fighting-compartment roof at 1.50 m, the powerpack deck raised to 1.78 m over
+// z -1.02..-1.42; an inclined rear plate with its access grille. Body -3.50..+3.62 m; 7.6 m with the stern rack.
+const HULL = Object.freeze({
+  noseZ: 3.62, noseY: 0.92, deckEdgeZ: 2.18, deckY: 1.50, engineY: 1.78, rampZ0: -1.02, rampZ1: -1.42,
+  bellyY: 0.47, bellyFrontZ: 3.27, rearTopZ: -3.50, rearKneeZ: -3.42, rearKneeY: 0.64, bellyRearZ: -3.18,
+  tubX: 1.10, sponsonX: 1.70, sponsonFloorY: 1.30, shoulderFrontZ: 3.00,
+});
+/** The upper glacis: y at z, from the deck edge (2.18, 1.50) down to the nose (3.62, 0.92), 21.9 degrees. */
+const GLACIS_TAN = (HULL.deckY - HULL.noseY) / (HULL.noseZ - HULL.deckEdgeZ);
+const glacisY = (z: number): number => HULL.deckY - (z - HULL.deckEdgeZ) * GLACIS_TAN;
+const GLACIS_ANGLE = Math.atan(GLACIS_TAN);
+const GLACIS_SIN = Math.sin(GLACIS_ANGLE), GLACIS_COS = Math.cos(GLACIS_ANGLE);
+/** Deck height at z over the tub and sponsons (the 1.50 roof, the ramp, the 1.78 powerpack deck). */
+function deckY(z: number): number {
+  if (z >= HULL.rampZ0) return HULL.deckY;
+  if (z <= HULL.rampZ1) return HULL.engineY;
+  return HULL.deckY + (HULL.rampZ0 - z) / (HULL.rampZ0 - HULL.rampZ1) * (HULL.engineY - HULL.deckY);
+}
+/** Stations at ≤0.35 m pitch through the given knots (every gate slice holds real section faces). */
+function stationsThrough(knots: readonly number[]): number[] {
+  const zs: number[] = [];
+  for (let i = 0; i < knots.length - 1; i++) {
+    const n = Math.max(1, Math.ceil((knots[i + 1] - knots[i]) / 0.35));
+    for (let k = 0; k < n; k++) zs.push(knots[i] + (knots[i + 1] - knots[i]) * k / n);
+  }
+  zs.push(knots.at(-1)!);
+  return zs;
+}
+
 function buildLongweiHullStructure(P: TankBuilderPort): void {
-  const { box, frustum, cylY, buildRunningGear, fenders, periscope, liftEye } = KIT;
-  const slab = orientedSlab;
-  buildRunningGear(P, {
+  const { box, cylY } = KIT;
+  KIT.buildRunningGear(P, {
     // Loose-part measurements of the reference running gear (datums only): r 0.405 m, 0.901 m pitch, the row 14 mm
     // forward; the wheels and linked course are the native system.
     style: 'rubber', wheelR: 0.405, wheelW: 0.24, wheelY: 0.4905, xc: 1.473,
@@ -119,46 +148,38 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
     trackW: 0.629, topY: 1.276, botY: 0.025, arms: true, paintedEnds: true, coveredTop: 1.0,
     contactZR: -2.35,
   });
-  // ---- hull core: raised central tub between the tracks (real suspension negative space) + full-width decks ----
-  P.add('hull', box(2.20, 0.625, 6.82), 0, 0.9925, -0.182);                    // belly ±1.10, y 0.68..1.305
-  P.add('hull', box(3.40, 0.16, 3.06), 0, 1.42, 0.50);                         // front sponson band ±1.70, y 1.34..1.50
-  P.add('hull', frustum(1.70, -1.02, -1.06, 1.70, -1.28, -1.42, 1.50, 1.78));  // powerpack ramp (one raked course)
-  P.add('hull', box(3.40, 0.44, 2.26), 0, 1.56, -2.53);                        // raised rear deck ±1.70, y 1.34..1.78
+  // ---- the tub between the tracks: belly, lower glacis, upper glacis to the deck, the ramp and the inclined rear ----
+  const tubTop = (z: number): number => Math.min(deckY(z), z > HULL.deckEdgeZ ? glacisY(z) : Infinity);
+  const tubBottom = (z: number): number => {
+    if (z >= HULL.bellyFrontZ) return HULL.bellyY + (z - HULL.bellyFrontZ) / (HULL.noseZ - HULL.bellyFrontZ) * (HULL.noseY - HULL.bellyY);
+    if (z <= HULL.rearKneeZ) return HULL.rearKneeY + (HULL.rearKneeZ - z) / (HULL.rearKneeZ - HULL.rearTopZ) * (deckY(z) - 0.10 - HULL.rearKneeY);
+    if (z <= HULL.bellyRearZ) return HULL.bellyY + (HULL.bellyRearZ - z) / (HULL.bellyRearZ - HULL.rearKneeZ) * (HULL.rearKneeY - HULL.bellyY);
+    return HULL.bellyY;
+  };
+  const tubZs = stationsThrough([HULL.rearTopZ, HULL.rearKneeZ, HULL.bellyRearZ, HULL.rampZ1, HULL.rampZ0, HULL.deckEdgeZ,
+    HULL.bellyFrontZ, HULL.noseZ - 0.004]);
+  P.add('hull', sectionSolid(tubZs.map((z) => {
+    let b = tubBottom(z), t = tubTop(z);
+    if (t - b < 0.04) { const m = (t + b) / 2; b = m - 0.02; t = m + 0.02; }
+    const c = Math.min(0.03, (t - b) / 4), w = HULL.tubX;
+    return { z, ring: [[-w, b], [w, b], [w, t - c], [w - c, t], [-w + c, t], [-w, t - c]] as SectionPoint[] };
+  })));
+  // ---- sponsons over the tracks: their floor 1.30, their tops the deck; each front a shoulder sloped down behind the
+  // fender box, the rear closed square at the rear plate ----
+  const sponsonTop = (z: number): number => (z <= HULL.deckEdgeZ ? deckY(z)
+    : HULL.deckY - (z - HULL.deckEdgeZ) / (HULL.shoulderFrontZ - HULL.deckEdgeZ) * (HULL.deckY - HULL.sponsonFloorY - 0.02));
+  for (const side of [-1, 1]) {
+    const zs = stationsThrough([HULL.rearTopZ + 0.02, HULL.rampZ1, HULL.rampZ0, HULL.deckEdgeZ, HULL.shoulderFrontZ]);
+    P.add('hull', sectionSolid(zs.map((z) => {
+      const r: SectionPoint[] = [[HULL.tubX - 0.02, HULL.sponsonFloorY], [HULL.sponsonX, HULL.sponsonFloorY],
+        [HULL.sponsonX, sponsonTop(z)], [HULL.tubX - 0.02, sponsonTop(z)]];
+      return { z, ring: side > 0 ? r : mirrorRing(r) };
+    })));
+  }
+  // the fender shelf from the sponson wall to the skirt band, the full length of the course
+  KIT.fenders(P, HULL.sponsonX - 0.02, 1.84, 1.475, HULL.rearTopZ - 0.02, 2.96, 0.03);
   P.add('hull', cylY(0.86, 0.86, 0.07, P.q ? 28 : 18), 0, 1.475, 0.28);        // turret ring seat
-  // The fender's outer edge runs 5 mm into the skirt's top band (inner face 1.835).
-  fenders(P, 1.12, 1.84, 1.47, -3.59, 3.46, 0.03);
-  // ---- GLACIS — two real planes: upper 16.3 deg y(z) = 1.50 - 0.284(z - 2.02) to the nose break (3.02, 1.215), then
-  // the 62-deg nose plate to the toe (3.30, 0.70); the lower bow drops to the belly. ----
-  P.add('hull', slab(                                                          // upper glacis center lane
-    [-1.08, 1.215, 3.02], [1.08, 1.215, 3.02], [1.08, 1.165, 2.90], [-1.08, 1.165, 2.90],
-    [-1.08, 1.50, 2.02], [1.08, 1.50, 2.02], [1.08, 1.50, 1.84], [-1.08, 1.50, 1.84]));
-  // Raised outer shoulder skins continue the glacis while leaving the terminal track lanes open underneath; their rear
-  // faces are 28-deg ramps that take the sky (round 3, 2026-10-07).
-  P.add('hull', slab(
-    [1.08, 1.50, 2.90], [1.70, 1.50, 2.90], [1.70, 1.47, 1.84], [1.08, 1.47, 1.84],
-    [1.08, 1.56, 3.02], [1.70, 1.56, 3.02], [1.70, 1.658, 2.20], [1.08, 1.658, 2.20]));
-  P.add('hull', slab(
-    [-1.70, 1.50, 2.90], [-1.08, 1.50, 2.90], [-1.08, 1.47, 1.84], [-1.70, 1.47, 1.84],
-    [-1.70, 1.56, 3.02], [-1.08, 1.56, 3.02], [-1.08, 1.658, 2.20], [-1.70, 1.658, 2.20]));
-  // Inner cheeks of the raised shoulders close the track lane's void under the skins' inner edges.
-  for (const s of [-1, 1]) {
-    const xi = s * 1.052, xo = s * 1.100;
-    P.add('hull', slab(
-      [xi, 1.48, 2.00], [xo, 1.48, 2.00], [xo, 1.206, 2.98], [xi, 1.206, 2.98],
-      [xi, 1.495, 2.00], [xo, 1.495, 2.00], [xo, 1.50, 2.98], [xi, 1.50, 2.98]));
-  }
-  P.add('hull', slab(                                                          // 62-deg nose plate
-    [-1.08, 0.70, 3.30], [1.08, 0.70, 3.30], [1.08, 0.70, 3.18], [-1.08, 0.70, 3.18],
-    [-1.08, 1.215, 3.02], [1.08, 1.215, 3.02], [1.08, 1.215, 2.86], [-1.08, 1.215, 2.86]));
-  P.add('hull', slab(                                                          // lower bow lane to the belly
-    [-1.08, 0.385, 3.34], [1.08, 0.385, 3.34], [1.08, 0.385, 3.20], [-1.08, 0.385, 3.20],
-    [-1.08, 0.70, 3.30], [1.08, 0.70, 3.30], [1.08, 0.70, 3.16], [-1.08, 0.70, 3.16]));
-  for (const s of [-1, 1]) {                                                   // glacis-to-sponson shoulder wedges
-    P.add('hull', slab(
-      [s * 1.08, 1.50, 3.10], [s * 1.70, 1.50, 2.96], [s * 1.70, 1.48, 2.86], [s * 1.08, 1.48, 3.00],
-      [s * 1.08, 1.57, 3.02], [s * 1.70, 1.57, 2.90], [s * 1.70, 1.52, 2.82], [s * 1.08, 1.52, 2.94]));
-  }
-  // ---- front fenders (release 262: the 99A's solid rounded boxes over the idlers) + flaps ----
+  // ---- front fenders (the 99A's solid rounded boxes over the idlers) + flaps ----
   for (const s of [-1, 1]) {
     const x0 = 1.13, x1 = 1.85, r = 0.06;
     const section = (lo: number, hi: number): SectionPoint[] => {
@@ -167,108 +188,109 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
       pts.push([x0, hi]);
       return s > 0 ? pts : mirrorRing(pts);
     };
-    P.add('hull', sectionSolid([[2.95, 1.30, 1.485], [3.30, 1.30, 1.485], [3.42, 1.285, 1.45], [3.50, 1.27, 1.38]]
+    P.add('hull', sectionSolid([[2.92, 1.30, 1.485], [3.30, 1.30, 1.485], [3.44, 1.285, 1.45], [3.54, 1.27, 1.36]]
       .map(([z, lo, hi]) => ({ z, ring: section(lo, hi) }))));
-    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.30, 0.028), s * 1.47, 1.11, 3.49);
+    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.30, 0.028), s * 1.47, 1.11, 3.53);
   }
-  // ---- stern: split transom (the low service face between the track lanes, outboard shoulders over the shoes) ----
-  P.add('hull', box(2.16, 0.86, 0.10), 0, 1.34, -3.47);
-  for (const s of [-1, 1]) P.add('hull', box(0.52, 0.30, 0.10), s * 1.42, 1.62, -3.47);
-  P.add('hull', box(2.06, 0.55, 0.09), 0, 0.68, -3.48);
+  // ---- stern: the rear access grille, tail lamps, tow hooks, flaps, the stern rack's shelf and its cable ----
+  const rearN = new THREE.Vector3(0, HULL.rearTopZ - HULL.rearKneeZ, -(HULL.engineY - HULL.rearKneeY)).normalize();
+  const rearTilt = Math.atan2(-rearN.y, -rearN.z);
+  const rearAt = (y: number): number => HULL.rearKneeZ + (y - HULL.rearKneeY) / (HULL.engineY - 0.10 - HULL.rearKneeY) * (HULL.rearTopZ - HULL.rearKneeZ);
+  P.add('hullDark', box(1.30, 0.50, 0.03), 0, 1.20, rearAt(1.20) - 0.004, rearTilt, 0, 0);       // access grille well
+  for (const k of KIT.grilleIndices(P.q, 7, 4)) {
+    const y = 0.98 + k * 0.07;
+    P.add('hullDetail', box(1.26, 0.024, 0.04), 0, y, rearAt(y) - 0.012, rearTilt, 0, 0);
+  }
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.58, 0.26, 0.05), s * 0.86, 1.58, -3.535);          // exhaust grilles
-    for (const k of KIT.grilleIndices(P.q, 4, 2)) {
-      P.add('hullDetail', box(0.54, 0.03, 0.05), s * 0.86, 1.49 + k * 0.06, -3.55);
-    }
-    P.add('hullRubber', box(0.60, 0.24, 0.028), s * 1.46, 1.62, -3.50);        // compact rear flaps above the wrap
-    P.add('hullDetail', box(0.07, 0.10, 0.09), s * 1.62, 1.54, -3.515);        // flap hinge straps
-    P.add('hullDetail', box(0.07, 0.10, 0.09), s * 1.30, 1.54, -3.515);
-    P.add('hullDetail', box(0.10, 0.16, 0.12), s * 0.65, 1.10, -3.54);         // tow hooks
+    P.add('hullDetail', box(0.16, 0.10, 0.06), s * 0.86, 1.56, rearAt(1.56) - 0.02, rearTilt, 0, 0);  // tail lamps
+    P.add('hullDetail', box(0.12, 0.14, 0.12), s * 0.62, 0.72, rearAt(0.72) - 0.04);                   // tow hook blocks
+    P.add('hullDark', KIT.torus(0.06, 0.016, 12), s * 0.62, 0.66, rearAt(0.66) - 0.10, Math.PI / 2 - 0.3, 0, 0);
+    P.add('hullRubber', box(0.60, 0.26, 0.028), s * 1.47, 1.34, HULL.rearTopZ - 0.04);                // rear flaps
+    P.add('hullDetail', box(0.07, 0.10, 0.09), s * 1.62, 1.46, HULL.rearTopZ - 0.02);
+    P.add('hullDetail', box(0.07, 0.10, 0.09), s * 1.30, 1.46, HULL.rearTopZ - 0.02);
   }
-  // convoy light plate, high on the transom over the stern box (the 99A's left-side exhaust port is gone: the slat
-  // cage hangs there and the engine breathes through the rear grilles)
-  P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.68, -3.54);
-  // The 7.76 m hull envelope ends in a broad recovery loop behind the -3.47 m transom: a shallow backed tray to z -4.25
-  // with the cable lying flat in it, its eyes and run clipped down.
-  P.add('hull', box(1.76, 0.040, 0.68), 0, 1.45, -3.91);
-  P.hullG.add(FITTINGS.towCable({ mats: P.mats, r: 0.024, seed: 12,
-    pts: [
-      [-0.70, 1.494, -4.10], [-0.55, 1.494, -4.135], [-0.30, 1.494, -4.205],
-      [0, 1.494, -4.24], [0.30, 1.494, -4.205], [0.55, 1.494, -4.135],
-      [0.70, 1.494, -4.10],
-    ] }));
-  for (const x of [-0.78, 0.78]) P.add('hullDetail', box(0.06, 0.03, 0.06), x, 1.484, -4.085);
-  for (const x of [-0.42, 0.42]) P.add('hullDetail', box(0.05, 0.03, 0.05), x, 1.484, -4.18);
-  // ---- driver's center hatch and periscopes on the 16.3-deg plane ----
-  P.add('hull', box(0.50, 0.05, 0.42), 0, 1.44, 2.22, -16.3 * D2R, 0, 0);
-  P.add('hullDark', box(0.44, 0.02, 0.36), 0, 1.468, 2.21, -16.3 * D2R, 0, 0);
-  periscope(P, 'hullDetail', -0.14, 1.505, 1.94);
-  periscope(P, 'hullDetail', 0.14, 1.505, 1.94);
+  // the stern rack: a backed shelf off the deck edge carrying the armoured bin, the tow cable laid flat behind it
+  P.add('hull', box(1.60, 0.040, 0.48), 0, 1.70, -3.72);
+  for (const x of [-0.70, 0.70]) P.add('hullDetail', box(0.08, 0.20, 0.44), x, 1.60, -3.70, 0.25, 0, 0);
+  P.hullG.add(FITTINGS.towCable({ mats: P.mats, r: 0.022, seed: 12,
+    pts: [[-0.66, 1.742, -3.88], [-0.35, 1.742, -3.93], [0, 1.742, -3.94], [0.35, 1.742, -3.93], [0.66, 1.742, -3.88]] }));
+  // ---- driver's hatch flush in the roof ahead of the ring, his three periscopes on the glacis ----
+  P.add('hull', box(0.56, 0.03, 0.46), 0, HULL.deckY + 0.012, 2.00);
+  P.addHatch('hull', KIT.cylY(0.22, 0.22, 0.025, P.q ? 24 : 14), 0, HULL.deckY + 0.034, 2.00);
+  for (const x of [-0.16, 0, 0.16]) {
+    const z = 2.32;
+    KIT.periscope(P, 'hullDetail', x, glacisY(z) + 0.03, z, x * 0.8);
+  }
   // ---- engine deck: grille field, intake mesh and the low filter hump; lift eyes ----
-  P.add('hullDark', box(1.55, 0.02, 1.30), 0, 1.785, -2.35);
+  P.add('hullDark', box(1.55, 0.02, 1.30), 0, HULL.engineY + 0.005, -2.40);
   for (const k of KIT.grilleIndices(P.q, 6, 3)) {
-    P.add('hullDetail', box(1.45, 0.02, 0.055), 0, 1.792, -1.90 - k * 0.16);
+    P.add('hullDetail', box(1.45, 0.02, 0.055), 0, HULL.engineY + 0.012, -1.95 - k * 0.16);
   }
-  P.add('hullDark', box(0.72, 0.02, 0.52), -0.52, 1.79, -1.62);
-  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the filter hump and its mesh 2-2.3 cm lower,
-  // tops 1.797/1.802 under the bustle armour's 1.81 foot (2.0 m off the ring's axis), and the front lift eyes 3 cm lower,
-  // under the turret's 1.603 sides)
-  P.add('hull', box(0.92, 0.05, 0.72), 0.48, 1.772, -1.72);
-  P.add('hullDark', box(0.80, 0.02, 0.60), 0.48, 1.792, -1.72);
-  liftEye(P, 'hullDetail', -1.30, 1.49, 1.70);
-  liftEye(P, 'hullDetail', 1.30, 1.49, 1.70);
-  liftEye(P, 'hullDetail', -1.30, 1.80, -3.05);
-  liftEye(P, 'hullDetail', 1.30, 1.80, -3.05);
+  P.add('hullDark', box(0.72, 0.02, 0.52), -0.52, HULL.engineY + 0.01, -1.66);
+  P.add('hull', box(0.92, 0.05, 0.72), 0.48, HULL.engineY - 0.008, -1.76);
+  P.add('hullDark', box(0.80, 0.02, 0.60), 0.48, HULL.engineY + 0.012, -1.76);
+  // the transverse exhaust louvre along the deck's rear edge
+  P.add('hullDark', box(1.90, 0.02, 0.20), 0, HULL.engineY + 0.006, -3.30);
+  for (const k of KIT.grilleIndices(P.q, 3, 2)) P.add('hullDetail', box(1.86, 0.018, 0.035), 0, HULL.engineY + 0.014, -3.23 - k * 0.06);
+  for (const [x, y, z] of [[-1.30, HULL.deckY, 1.70], [1.30, HULL.deckY, 1.70], [-1.30, HULL.engineY, -3.05], [1.30, HULL.engineY, -3.05]]) {
+    KIT.liftEye(P, 'hullDetail', x, y - 0.01, z);
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Hull dress
 // ---------------------------------------------------------------------------
 
-/** Glacis plane: the point s metres down-slope from the deck edge (z 2.02) at x. */
-const GLACIS_SIN = Math.sin(16.3 * D2R), GLACIS_COS = Math.cos(16.3 * D2R);
-const glacisY = (z: number): number => 1.50 - 0.284 * (z - 2.02);
-
 /**
- * The straight FY-5 glacis field: per side three columns in two rows plus one lower centre brick, square to the hull
- * (the 99A family's field is a chevron). The driver's hatch (x ±0.25, z 1.99..2.43) keeps its lane; every brick top
- * stays 15 cm or more under the main gun at full depression.
+ * The straight FY-5 glacis field (the Longwei's own; the 99A's is a chevron): per side three columns in three rows on
+ * the 22-degree plate, the driver's periscope lane clear; every brick top stays 15 cm or more under the main gun at full
+ * depression.
  */
 function addGlacisField(P: TankBuilderPort): void {
-  const bricks = (side: number): [number, number][] => [
-    [0.52, 0.30], [0.86, 0.30], [1.20, 0.30],
-    [0.18, 0.68], [0.52, 0.68], [0.86, 0.68], [1.20, 0.68],
-  ].map(([x, s]) => [side * x, s]);
-  const w = 0.30, h = 0.34, d = 0.07;
+  const w = 0.30, h = 0.30, d = 0.065;
   for (const side of [-1, 1] as const) {
     P.eraCluster(side < 0 ? 'glacis_era_L' : 'glacis_era_R', (put) => {
-      for (const [x, s] of bricks(side)) {
-        // bedded 5 mm into the plate along its normal (0, cos, sin)
+      for (const s of [0.42, 0.76, 1.10]) for (const x of [0.38, 0.70, 1.02]) {
+        // s metres down the plate from the deck edge; bedded 5 mm into the plate along its normal (0, cos, sin)
         const out = d / 2 - 0.005;
-        put(x, 1.50 - s * GLACIS_SIN + out * GLACIS_COS, 2.02 + s * GLACIS_COS + out * GLACIS_SIN,
-          -73.7 * D2R, 0, 0, w / 0.28, h / 0.13, d / 0.07);
+        put(side * x, HULL.deckY - s * GLACIS_SIN + out * GLACIS_COS, HULL.deckEdgeZ + s * GLACIS_COS + out * GLACIS_SIN,
+          -(Math.PI / 2 - GLACIS_ANGLE), 0, 0, w / 0.28, h / 0.13, d / 0.07);
       }
     });
   }
 }
 
-/**
- * Low armoured lamp cowls on the glacis's front corners, ahead of the brick field: the underside follows the plate at
- * three stations (6 mm in), the top is flat 95 mm over the plate's rear edge, the paired round lenses sit in the front
- * face under a proud brow. The main gun at -7 degrees passes 20 cm over them.
- */
-function addGlacisLamps(P: TankBuilderPort): void {
+/** Headlights on the front fender boxes (the 99A's): an armoured cowl with paired round lenses facing forward. */
+function addFenderLamps(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
-  const zr = 2.90, zf = 3.00, w = 0.26, top = glacisY(zr) + 0.095;
   for (const side of [-1, 1]) {
-    const x = side * 1.00;
-    P.addEquipment('hullDetail', sectionSolid([zr, (zr + zf) / 2, zf].map((z) => ({
-      z, ring: [[x - w / 2, glacisY(z) - 0.006], [x + w / 2, glacisY(z) - 0.006], [x + w / 2, top], [x - w / 2, top]] as SectionPoint[],
-    }))));
-    P.addEquipment('hullDetail', box(w + 0.012, 0.016, 0.045), x, top - 0.005, zf + 0.0125);
-    for (const dx of [-0.059, 0.059]) {
-      P.addEquipment('hullGlass', markVehicleNightLens(cylZ(0.040, 0.016, 16), 'headlight'), x + dx, top - 0.052, zf + 0.006);
+    const x = side * 1.36, z = 3.33, top = 1.485;
+    P.addEquipment('hullDetail', box(0.26, 0.12, 0.16), x, top + 0.055, z);
+    P.addEquipment('hullDetail', box(0.28, 0.016, 0.20), x, top + 0.122, z + 0.01);
+    for (const dx of [-0.06, 0.06]) {
+      P.addEquipment('hullGlass', markVehicleNightLens(cylZ(0.042, 0.016, 16), 'headlight'), x + dx, top + 0.055, z + 0.085);
     }
+  }
+}
+
+/**
+ * The nose: a slim bolted towing bar across the lower glacis just under the nose (the Longwei's), its two towing eyes,
+ * and below it the 99A's row of four appliqué boxes. The gun at -7 degrees passes well over both.
+ */
+function addNoseDress(P: TankBuilderPort): void {
+  const { box, cylZ } = KIT;
+  const lowerTan = (HULL.noseY - HULL.bellyY) / (HULL.noseZ - HULL.bellyFrontZ);
+  const lowerZ = (y: number): number => HULL.bellyFrontZ + (y - HULL.bellyY) / lowerTan;
+  const tilt = -(Math.PI / 2 - Math.atan(lowerTan));
+  P.add('hullDetail', box(1.90, 0.07, 0.04), 0, 0.84, lowerZ(0.84) + 0.012, tilt, 0, 0);
+  for (const x of [-0.84, -0.56, -0.28, 0.28, 0.56, 0.84]) P.add('hullDark', cylZ(0.014, 0.014, 8), x, 0.84, lowerZ(0.84) + 0.036, tilt, 0, 0);
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.08, 0.10, 0.10), side * 0.98, 0.80, lowerZ(0.80) + 0.03);
+    P.add('hullDark', place(KIT.torus(0.045, 0.014, 12), side * 0.98, 0.74, lowerZ(0.74) + 0.07, Math.PI / 2));
+  }
+  for (const x of [-0.66, -0.22, 0.22, 0.66]) {
+    P.add('hullDetail', box(0.40, 0.18, 0.07), x, 0.62, lowerZ(0.62) + 0.03, tilt, 0, 0);
+    for (const dx of [-0.15, 0.15]) P.add('hullDark', cylZ(0.013, 0.012, 8), x + dx, 0.66, lowerZ(0.66) + 0.066, tilt, 0, 0);
   }
 }
 
@@ -339,12 +361,12 @@ function addDeckStowage(P: TankBuilderPort): void {
 }
 
 /**
- * A low armoured tool box on the recovery tray's forward half (where the 99A family carries fuel drums), between the
- * two exhaust grilles and under the convoy light: bevelled, two latches, a hinge line and two webbing straps.
+ * A low armoured tool box on the stern rack (where the 99A family carries fuel drums), behind the exhaust louvre:
+ * bevelled, two latches, a hinge line and two webbing straps.
  */
 function addSternBin(P: TankBuilderPort): void {
   const { box } = KIT;
-  const x0 = -0.46, x1 = 0.46, z0 = -3.92, z1 = -3.62, y0 = 1.466, y1 = 1.62;
+  const x0 = -0.46, x1 = 0.46, z0 = -3.86, z1 = -3.56, y0 = 1.716, y1 = 1.87;
   const ring: SectionPoint[] = [[x0, y0], [x1, y0], [x1, y1 - 0.03], [x1 - 0.03, y1], [x0 + 0.03, y1], [x0, y1 - 0.03]];
   P.addEquipment('hullDetail', sectionSolid([{ z: z0, ring }, { z: z1, ring }]));
   P.addEquipment('hullDark', box(x1 - x0 - 0.08, 0.012, 0.012), 0, y1 - 0.004, z1 - 0.02);   // hinge line
@@ -354,41 +376,10 @@ function addSternBin(P: TankBuilderPort): void {
   }
 }
 
-/**
- * A slim bolted towing bar across the 62-degree nose plate (y 0.70 at z 3.30 to 1.215 at 3.02), 0.30 m down from the
- * nose break (release 262: 0.07 m deep and 0.035 m proud, after critics read the 0.14 m beam as a dozer blade), from
- * |x| 0.98, with eight bolt heads and a towing eye on a lug at each end; below it, on the near-vertical lower bow, the
- * 99A's row of four appliqué boxes. The gun at -7 degrees passes 0.35 m over the bar.
- */
-function addNoseBeam(P: TankBuilderPort): void {
-  const { cylY, torus, box } = KIT;
-  const up = new THREE.Vector3(0, 0.515, -0.28).normalize(), n = new THREE.Vector3(0, -up.z, up.y);
-  const at = (s: number, out: number): THREE.Vector3 =>
-    new THREE.Vector3(0, 1.215, 3.02).addScaledVector(up, -s).addScaledVector(n, out);
-  const section: ZY[] = [[0.335, -0.008], [0.33, 0.035], [0.27, 0.035], [0.265, -0.008]]
-    .map(([s, out]) => { const p = at(s, out); return [p.z, p.y] as const; });
-  P.add('hullDetail', loftX([-0.98, 0.98].map((x) => ({ x, ring: section }))));
-  const face = at(0.30, 0.035), tilt = Math.atan2(n.z, n.y);
-  for (const x of [-0.84, -0.56, -0.28, -0.08, 0.08, 0.28, 0.56, 0.84]) {
-    P.add('hullDark', place(cylY(0.016, 0.016, 0.012, 8), x, face.y + n.y * 0.004, face.z + n.z * 0.004, tilt));
-  }
-  // a lug off the beam's lower face, the eye standing face-forward through it, 2 cm clear of the plate at its foot
-  const lug = at(0.335, 0.02);
-  for (const side of [-1, 1]) {
-    P.add('hullDetail', box(0.05, 0.10, 0.10), side * 0.92, lug.y - 0.045, lug.z + 0.03);
-    P.add('hullDark', place(torus(0.045, 0.014, 12), side * 0.92, lug.y - 0.10, lug.z + 0.055, Math.PI / 2));
-  }
-  // the lower bow's appliqué row: four bolted boxes on the lane from y 0.385 to 0.70 (z 3.34 to 3.30)
-  for (const x of [-0.66, -0.22, 0.22, 0.66]) {
-    P.add('hullDetail', box(0.40, 0.22, 0.07), x, 0.55, 3.345, -0.12, 0, 0);
-    for (const dx of [-0.15, 0.15]) P.add('hullDark', KIT.cylZ(0.014, 0.012, 8), x + dx, 0.62, 3.385);
-  }
-}
-
 function dressLongweiHull(P: TankBuilderPort): void {
   addGlacisField(P);
-  addNoseBeam(P);
-  addGlacisLamps(P);
+  addNoseDress(P);
+  addFenderLamps(P);
   addSkirts(P);
   addDeckStowage(P);
   addSternBin(P);

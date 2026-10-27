@@ -7,10 +7,11 @@ turrets and hullls as well based on proper historical referrences so they will n
 Standing direction (owner 2026-10-21): the Longwei is the game's own ZTZ-99-lineage concept, redesigned "in the spirit" of
 the national modernization turrets (Qilin/Kunlun/Yun, Hetman II, Zubr) the owner ratified that day.
 
-Builder: `src/vehicles/profiles/longwei.ts`; combat envelope `src/vehicles/profiles/type99Armor.ts` (`longweiArmor`).
-The release-233 terraced front, its double skirt brick course, carrier, slat cage and dozer blade are retired. The
-certified Type 99A print-loft structural hull (running gear, belly, glacis planes, fenders, transom, recovery tray) and
-the gameplay datums (pivot 0/1.57/0.64, trunnion 0/0.3198/0.74, 6.454 m gun) are unchanged.
+Builder: `src/vehicles/profiles/longwei.ts`; combat envelope `src/vehicles/profiles/type99Armor.ts` (`longweiArmor`,
+`longweiHullPlates`). Owner, 2026-10-27, mid-lane: "longweii needs a completely new hhull too" — the certified print-loft
+hull of releases 232-261 is retired with the release-233 terraced front, its double skirt brick course, carrier, slat
+cage and dozer blade. Kept: the six measured wheel stations and the gameplay datums (pivot 0/1.57/0.64, trunnion
+0/0.3198/0.74, 6.454 m gun), so the turret's ring seat and the 1.78 m powerpack deck it clears hold.
 
 ### Sources
 | Key | Source | Used for |
@@ -34,7 +35,11 @@ correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, l
 ### Gap table (before = release 233 terraced design on main 260; after = release 262)
 | Item | ZTZ-99/99A source | Before | After |
 |---|---|---|---|
-| Hull length / gun forward | 7.6 m / 11.0 m | 7.81 m (with recovery tray) / 12.10 m | unchanged structural hull: 7.81 m / 12.10 m |
+| Hull length / gun forward | 7.6 m / 11.0 m | 7.81 m (with recovery tray) / 12.10 m | 7.58 m (stern rack to nose) / 11.80 m (the pinned 6.454 m gun on the pinned ring) |
+| Nose and glacis | pointed T-72/99 nose: long shallow upper glacis (~22°), steep lower glacis | 16.3° upper plate, 62° nose plate and a near-vertical lower bow (a 0.83 m front wall) | nose at 0.92 m where a 21.9° upper glacis meets a 52° lower glacis |
+| Belly / tub | ~0.45-0.5 m clearance, tub between the tracks | raised tub at 0.68 m with a lower bow lane to 0.385 | 2.20 m tub over a 0.47 m belly |
+| Sponsons, deck | sponsons over the tracks, roof ~1.5 m, raised engine deck | slab sponson band, shoulder skins | ±1.70 m sponsons with shoulders sloped behind the fender boxes, 1.50 roof, 1.78 powerpack deck |
+| Rear | inclined rear plate with a large access grille | split transom, recovery tray to −4.25 | inclined rear plate with a 7-slat access grille, lamps, tow hooks, stern rack with the bin |
 | Width | 3.5 m hull, 3.7 m over skirts | 3.73 m (double brick course to 1.866) | 3.73 m (single course inside 1.866) |
 | Road wheels / return rollers | 6 / 3-4 hidden by skirts | 6 / 3 | unchanged |
 | Turret width | 3.1-3.3 m over bins (oracle 3.45) | 3.41 m slab modules to ±1.70 | 3.14 m over the side modules (±1.57), 3.34 m to the smoke-tube tips |
@@ -48,7 +53,7 @@ correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, l
 | Smoke | five tubes a side at the turret front | two four-tube banks a side on the side modules | one five-tube bank a front corner |
 | Side armour | flat panels, bins with ERA on the 99A | three bolt-on spaced modules a side to ±1.70 | one slab module a side to ±1.57, two lidded bins |
 | Skirts | segmented panels, scalloped lower edge, access holes | carrier + 2 brick courses + slat cage | 8 segmented scalloped panels, one FY-5 course on the front three, access holes |
-| Bow | lower nose ERA row on the 99A | dozer blade under the nose | blade removed; the towing beam kept (Longwei identity) |
+| Bow | lower nose ERA row on the 99A, headlights on the fender boxes | dozer blade, 0.14 m towing beam, glacis lamp cowls | four appliqué boxes on the lower glacis, a slim towing bar under the nose, lamps on the fender boxes |
 | Identity kept | — | GL-5-style suite, straight FY-5 glacis grid, lamp cowls, towing beam, stern bin | kept (radar faces 10% smaller) |
 
 Combat envelope: the turret plates follow the drawn surfaces (cheek face, cheek top, mantlet, throat brow, side zones,

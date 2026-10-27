@@ -123,7 +123,8 @@ const SPECS: FleetTankSpec[] = [
   make('t62_1975', 'type59', 'Type 59', 'China',
     // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
     // the visual is profiles/type59.ts, the PLA Type 59 (licensed T-54A) rebuilt from the published dimensions and
-    // museum photographs (docs/references/tanks/type59.md §262). Stats stay the Type 59's; dims are the published
+    // museum photographs (docs/references/tanks/type59.md §262), on the T-55A's construction (profiles/t54Family.ts, the
+    // owner's 262 "make the type 59 be based on a type 55"). Stats stay the Type 59's; dims are the published
     // 6.04 m hull, 9.00 m gun forward, 3.27 m width and 2.40 m height without the AA gun ([CZ-T54A], [GS-59spec]).
     // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
     // Type 69 print remains the registered measurement oracle.
@@ -139,13 +140,32 @@ const SPECS: FleetTankSpec[] = [
       },
       dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.40,
         // the drawn envelope: rear drums to the fender tips, drums to the muzzle, the cupola crown band
-        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 9.26,
+        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 8.96,
         silhouetteHeightM: 2.40 },
       // china-palette hooks (PLA green family, ztz85_iii grammar — values
       // distinct per §H.4 family separation)
       visual: { marking: 'number', number: '406', base: '#374836',
         weather: '#49573f', patches: ['#2a3629', '#5c6349', '#6f684e'],
-        camoScale: 0.52, trackWidthM: 0.58 } }, TRIARIUS_T69),
+        camoScale: 0.52, trackWidthM: 0.60 } }, TRIARIUS_T69),
+  // Release 262 (owner 2026-10-27, "make the type 59 be based on a type 55 which we should add to russia. match the
+  // geometries well"): the T-55A (1963), profiles/t54Family.ts, the construction the Type 59 shares, measured from the
+  // owner-supplied T-55A model (a local-only comparison oracle under CC BY-NC-ND 4.0, never shipped:
+  // docs/references/tanks/t55a.md). The same 100 mm D-10T family gun and chassis as the Type 59, so the same numbers;
+  // dims are the published 6.04 m hull, 9.00 m gun forward (over the drums), 3.27 m width and 2.35 m to the roof.
+  make('t62_1975', 't55a', 'T-55A', 'USSR/Russia',
+    { hp: 1650, enginePowerHp: 580, weightTons: 36, topSpeedKmh: 50,
+      gun: {
+        caliberMm: 100, reloadS: 7.6,
+        shells: requireFleetSpec('t62_1975').gun.shells.map((round, index) => ({
+          ...round,
+          ...(index === 0 ? { name: '3BM8 APDS', dmg: 410, pen100Mm: 500, pen1000Mm: 450, pen2000Mm: 390 }
+            : index === 1 ? { name: '3BK5M HEAT', dmg: 410, pen100Mm: 430, pen1000Mm: 430 }
+              : { name: '3OF10 HE', dmg: 490 }),
+        })),
+      },
+      dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.35,
+        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 8.96, silhouetteHeightM: 2.40 },
+      visual: { marking: 'number', number: '214', trackWidthM: 0.60 } }),
   // -- T-80 turbine family ---------------------------------------------------
   make('t80uk', 't80', 'T-80', 'USSR/Russia',
     { hp: 1780, enginePowerHp: 1000, weightTons: 42, gun: { reloadS: 7.8 },

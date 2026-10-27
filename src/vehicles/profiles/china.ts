@@ -27,7 +27,7 @@ import { mount } from './fittingMount.ts';
 import { smokeSocketsFor } from '../vehicleAuxiliaryGeometry.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z, ZTZ99A2_BUSTLE_CUT_REAR_Z } from '../donorBustleCut.ts';
-import { buildType59 } from './type59.ts';
+import { buildType59 } from './t54Family.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];

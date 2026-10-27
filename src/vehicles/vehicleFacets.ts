@@ -200,7 +200,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
-    'carro45t', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'strv81', 'type59',
+    'carro45t', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'strv81', 't55a', 'type59',
   ]),
   heavy: Object.freeze([
     'kv2',
@@ -242,7 +242,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't72b_1987', 't72bu', 't72bu_1989',
     't72m1_jaguar', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria', 't90', 't90_1992', 't90a',
     't90a_2004', 't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m',
-    't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'type10_dozer', 'type59', 'type96_72_long',
+    't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'type10_dozer', 't55a', 'type59', 'type96_72_long',
     'type96_72m_lei', 'type96b', 'vt4a1', 'ztz100', 'ztz100_prototype', 'ztz85_iii', 'ztz99_longwei', 'ztz99a',
     'ztz99a2',
   ]),
@@ -301,7 +301,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk',
     't84', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
     't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tos1a_tagil', 'type10', 'type100',
-    'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type96b', 'ua_challenger2', 'ua_m1a1',
+    'type10_dozer', 't55a', 'type59', 'type74', 'type89', 'type90', 'type96b', 'ua_challenger2', 'ua_m1a1',
     'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'ztz100',
     'ztz99a', 'ztz99a2',
   ]),

@@ -1,16 +1,21 @@
-// Type 59 (WZ-120) — release 262 historical rebuild (owner 2026-10-27: "update/redesign ... type 59, turrets and hullls
-// as well based on proper historical referrences so they will no longer look so chungus").
+// The T-54/T-55 family — release 262 (owner 2026-10-27): "make the type 59 be based on a type 55 which we should add to
+// russia. match the geometries well", after "... type 59, turrets and hullls as well based on proper historical
+// referrences so they will no longer look so chungus".
 //
-// The licensed T-54A as the PLA fielded it through the 1960s-70s, authored new from the reference packet
-// (docs/references/tanks/type59.md §262): a 6.04 m by 3.27 m hull on a 2.64 m gauge with 580 mm track, five road wheels
-// a side with the T-54 gap between the first and second, a low cast egg-shaped dome 2.16 m wide and 0.74 m over the
-// roof, and the 100 mm Type 59 gun with its bore evacuator at the muzzle behind a canvas-covered mantlet slot.
+// One first-party construction for the Soviet T-55A (Russia) and the Chinese Type 59 (the licensed T-54A, China), its
+// datums measured from the owner-supplied T-55A model (docs/references/tanks/t55a.md: a local-only comparison oracle,
+// one declared uniform scale of 1.15 that lands it on the published 6.04 m hull and 3.27 m width; never loaded at
+// runtime) and checked against the Type 59 museum photographs (docs/references/tanks/type59.md §262): a 6.05 m hull
+// with a 34-degree upper and 37-degree lower glacis over a 0.40 m belly and a 1.42 m roof; five 0.81 m road wheels a side
+// with the wide first gap on a 2.65 m gauge; a low cast dome 2.55 m across rising 0.78 m; the 100 mm gun (bore axis
+// 1.74 m) with its evacuator by the muzzle behind a canvas-covered slot; three fuel tanks and the oil tank on the right
+// fender, boxes and the exhaust on the left, two 200 L drums across the stern.
 //
-// Sides follow the vehicle (this world's +Z hull has its LEFT at +X): the commander's cupola, the driver, the exhaust
-// and the left-fender stowage sit at +X; the loader's hatch with the Type 54 12.7 mm, the coaxial MG, the later-model
-// IR searchlight, the headlights and the external fuel tanks at -X. The 10%-wide obr-1975 chassis, the 0.855 rig
-// scale, the skirt and turret cassettes and the oversized searchlight of the r3 refit are retired.
-// Every triangle is first-party procedural geometry. Authorship: Kevin B. Liu (NOTICE.md).
+// Variants carry only their deltas: the T-55A's L-2 searchlight and OU-3 spot with the loader's DShK; the Type 59's
+// T-54A ventilator dome, its smaller searchlight and its Chinese fittings. Sides follow the vehicle (this world's +Z hull
+// has its LEFT at +X): the commander's cupola, the driver, the exhaust and the left-fender boxes at +X; the loader, the
+// coaxial MG, the searchlight, the headlights and the external tanks at -X. Every triangle is first-party procedural
+// geometry. Authorship: Kevin B. Liu (NOTICE.md).
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
@@ -26,40 +31,64 @@ const D2R = Math.PI / 180;
 // Hull datums (hull frame: y 0 = ground, +Z forward, +X the vehicle's left)
 // ---------------------------------------------------------------------------
 /** Ground clearance 0.425 m ([CZ-T54A]); the belly runs at it. */
-const BELLY_Y = 0.43;
-/** Hull roof and the turret-ring plane (side photo: 1.45 m, the Type 69 print 1.45-1.48). */
-const ROOF_Y = 1.45;
-/** Hull side plates between the tracks (the track's inner edge stands at 2.64 / 2 - 0.29 = 1.03). */
-const HULL_HALF_W = 0.99;
-/** Fender shelf over the tracks, to the 3.27 m width (side photo: its top 1.14-1.17 m). */
-const FENDER_Y = 1.15, FENDER_OUT = 1.635;
-/** Nose: the 60-degree (from vertical) upper glacis meets the 55-degree lower plate. */
-const NOSE_Z = 2.90, NOSE_Y = 0.80;
-const UPPER_GLACIS_TAN = Math.tan(30 * D2R), LOWER_GLACIS_TAN = Math.tan(35 * D2R);
+const BELLY_Y = 0.40;
+/** Hull roof and the turret-ring plane (the oracle's 1.40-1.45; the Type 59 photo's 1.45). */
+const ROOF_Y = 1.42;
+/** Hull sides: the upper hull ±1.07 over the track run, the lower tub ±0.98 inside the track's inner edge (1.016). */
+const HULL_HALF_W = 1.07, TUB_HALF_W = 0.98, TUB_TOP_Y = 0.98;
+/** Fender shelf over the tracks, to the 3.27 m width (the oracle's 1.15-1.24; the photo's 1.14-1.17). */
+const FENDER_Y = 1.17, FENDER_OUT = 1.635;
+/** Nose: the upper glacis (34 degrees off level, the oracle's line from the 2.10 m deck edge) meets the 37-degree
+ * lower plate 0.82 m off the ground. */
+const NOSE_Z = 3.00, NOSE_Y = 0.82;
+const UPPER_GLACIS_TAN = (1.42 - 0.82) / (3.00 - 2.10), LOWER_GLACIS_TAN = (0.82 - 0.40) / (3.00 - 2.45);
 const GLACIS_TOP_Z = NOSE_Z - (ROOF_Y - NOSE_Y) / UPPER_GLACIS_TAN;
 const BELLY_FRONT_Z = NOSE_Z - (NOSE_Y - BELLY_Y) / LOWER_GLACIS_TAN;
 const REAR_Z = -3.00;
 /** Upper glacis height at z. */
 const glacisY = (z: number): number => ROOF_Y - (z - GLACIS_TOP_Z) * UPPER_GLACIS_TAN;
 
-/** Running gear: five 0.78 m wheels, 0.79 m pitch, the 1.05 m first gap (side photo at the 6.04 m hull scale). */
-const WHEEL_R = 0.39;
-const WHEEL_ZS = [1.48, 0.43, -0.36, -1.15, -1.94];
-const TRACK_XC = 1.32, TRACK_W = 0.58;
+/** Running gear (the oracle at 1.15): five 0.81 m wheels, 0.84 m pitch behind the 1.14 m first gap, the 0.61 m course
+ * on a 2.65 m gauge, the sprocket aft and the idler forward. */
+const WHEEL_R = 0.405;
+const WHEEL_ZS = [1.82, 0.68, -0.16, -1.00, -1.84];
+const TRACK_XC = 1.323, TRACK_W = 0.60;
 
 // ---------------------------------------------------------------------------
 // Turret datums (turret frame: origin on the ring centre at the roof)
 // ---------------------------------------------------------------------------
-const TURRET_PIVOT: Vec3 = [0, ROOF_Y, 0.0];
-/** The cast dome: a plan egg about an apex 0.12 m behind the ring centre, 2.16 m wide, 1.44 m to its front and 1.12 m
- * to its rear, rising 0.74 m as a superellipse (exponent 2.5: a near-vertical lower band, a flattish crown). */
-const DOME = Object.freeze({ H: 0.74, cz: -0.12, side: 1.08, front: 1.44, rear: 1.12, nFront: 2.0, nRear: 2.4, vExp: 2.5, sink: 0.03 });
-/** The bore leaves the dome at about mid-height (side photo: axis 1.81-1.84 m, 55% of the dome; [GS-59spec] gives a
- * 1.738 m line-of-fire height): the trunnion stands 0.36 m over the ring, 0.62 m ahead of its centre. */
-const TRUNNION: Vec3 = [0, 0.36, 0.62];
-/** Muzzle 5.15 m ahead of the trunnion: 5.77 m ahead of the ring, 2.87 m past the nose. */
-const MUZZLE_Z = 5.15;
-const EVACUATOR_LEN = 0.87;
+/** The ring centre over the gap ahead of the third road wheel (the oracle's turret centre, z -0.05..-0.10). */
+const TURRET_PIVOT: Vec3 = [0, ROOF_Y, -0.08];
+/** The cast dome (the oracle): a near-round plan, 2.54 m wide, its crown 0.22 m behind the ring centre (1.58 m to the
+ * front casting, 1.03 m to the rear), rising 0.78 m as a superellipse (exponent 2.6: a steep lower band and the
+ * T-55's broad crown). */
+const DOME = Object.freeze({ H: 0.78, cz: -0.22, side: 1.27, front: 1.58, rear: 1.03, nFront: 2.1, nRear: 2.3, vExp: 2.6, sink: 0.03 });
+/** Bore axis 1.74 m over the ground (the oracle's muzzle; [GS-59spec] 1.738 m): the trunnion 0.32 m over the ring,
+ * 0.62 m ahead of its centre. */
+const TRUNNION: Vec3 = [0, 1.74 - ROOF_Y, 0.62];
+/** Muzzle 4.88 m ahead of the trunnion (the oracle's 5.42 m), 2.42 m past the nose; 9.0 m over the drums. */
+const MUZZLE_Z = 4.88;
+const EVACUATOR_LEN = 0.74;
+
+/** What each family member carries of its own. */
+interface T54Variant {
+  readonly id: 'type59' | 't55a';
+  readonly revision: string;
+  /** The T-54A's mushroom ventilator ahead of the loader (the T-55 deleted it). */
+  readonly ventDome: boolean;
+  /** The IR searchlight's lamp radius: the T-55A's L-2, the Type 59's smaller later-model lamp. */
+  readonly searchlightR: number;
+  /** The loader's 12.7 mm AA gun: the Type 59's Type 54; the 1963 T-55A (the oracle) carries none. */
+  readonly dshk: boolean;
+  readonly dshkName: string;
+  readonly dshkLabel: string;
+}
+const VARIANTS: Readonly<Record<T54Variant['id'], T54Variant>> = Object.freeze({
+  type59: Object.freeze({ id: 'type59', revision: 'type59-t55-family-r262', ventDome: true, searchlightR: 0.15,
+    dshk: true, dshkName: 'type59RoofDShK', dshkLabel: 'Type 54 DShK' }),
+  t55a: Object.freeze({ id: 't55a', revision: 't55a-r262', ventDome: false, searchlightR: 0.17,
+    dshk: false, dshkName: '', dshkLabel: '' }),
+});
 
 /** The dome's plan radius toward angle `t` (radians from +Z toward +X), about its apex. */
 function domePlanR(t: number): number {
@@ -158,12 +187,13 @@ function bentPlateX(pts: readonly (readonly [number, number])[], x0: number, x1:
 // Hull
 // ---------------------------------------------------------------------------
 
-/** The welded hull body: a flat-sided tub from the inclined rear plates to the nose, roof at 1.45 m, both glacis
- * plates at their published angles; stations every 0.35 m or less so every gate slice holds real section faces. */
+/** The welded hull: the upper hull (±1.07 m) over the track runs from the inclined rear plates to where the upper glacis
+ * meets it, the lower tub (±0.98 m, inside the track's inner edge) from the belly to the nose; both glacis plates at the
+ * oracle's angles; stations every 0.35 m or less so every gate slice holds real section faces. */
 function addHullBody(P: TankBuilderPort): void {
   const top = (z: number): number => {
     if (z >= GLACIS_TOP_Z) return glacisY(z);
-    if (z <= -2.55) return ROOF_Y - (-2.55 - z) / (-2.55 - REAR_Z) * 0.09;
+    if (z <= -2.55) return ROOF_Y - (-2.55 - z) / (-2.55 - REAR_Z) * 0.07;
     return ROOF_Y;
   };
   const bottom = (z: number): number => {
@@ -171,39 +201,46 @@ function addHullBody(P: TankBuilderPort): void {
     if (z <= -2.78) return BELLY_Y + (-2.78 - z) / (-2.78 - REAR_Z) * (0.62 - BELLY_Y);
     return BELLY_Y;
   };
-  const knots = [REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, BELLY_FRONT_Z, NOSE_Z - 0.002];
-  const zs: number[] = [];
-  for (let i = 0; i < knots.length - 1; i++) {
-    const n = Math.max(1, Math.ceil((knots[i + 1] - knots[i]) / 0.35));
-    for (let k = 0; k < n; k++) zs.push(knots[i] + (knots[i + 1] - knots[i]) * k / n);
-  }
-  zs.push(knots.at(-1)!);
-  const sections = zs.map((z) => {
-    let b = bottom(z), t = top(z);
+  const through = (knots: number[]): number[] => {
+    const zs: number[] = [];
+    for (let i = 0; i < knots.length - 1; i++) {
+      const n = Math.max(1, Math.ceil((knots[i + 1] - knots[i]) / 0.35));
+      for (let k = 0; k < n; k++) zs.push(knots[i] + (knots[i + 1] - knots[i]) * k / n);
+    }
+    zs.push(knots.at(-1)!);
+    return zs;
+  };
+  const ring = (w: number, b: number, t: number): SectionPoint[] => {
     if (t - b < 0.04) { const m = (t + b) / 2; b = m - 0.02; t = m + 0.02; }
-    const c = Math.min(0.03, (t - b) / 4), w = HULL_HALF_W;
-    const ring: SectionPoint[] = [[-w, b], [w, b], [w, t - c], [w - c, t], [-w + c, t], [-w, t - c]];
-    return { z, ring };
-  });
-  P.add('hull', sectionSolid(sections));
+    const c = Math.min(0.03, (t - b) / 4);
+    return [[-w, b], [w, b], [w, t - c], [w - c, t], [-w + c, t], [-w, t - c]];
+  };
+  // the upper hull ends where the glacis falls to its floor (the tub carries the nose on alone)
+  const upperEnd = GLACIS_TOP_Z + (ROOF_Y - (TUB_TOP_Y + 0.04)) / UPPER_GLACIS_TAN;
+  P.add('hull', sectionSolid(through([REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, upperEnd]).map((z) => ({
+    z, ring: ring(HULL_HALF_W, TUB_TOP_Y - 0.03, top(z)),
+  }))));
+  P.add('hull', sectionSolid(through([REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, BELLY_FRONT_Z, NOSE_Z - 0.002]).map((z) => ({
+    z, ring: ring(TUB_HALF_W, bottom(z), Math.min(top(z), TUB_TOP_Y + 0.02)),
+  }))));
 }
 
 /** Fenders: the flat shelves over both tracks, the curved front mudguards over the idlers (the T-54's deep scoops,
  * with a down-turned outer lip and three pressed ribs) and short rear flaps behind the sprockets. */
 function addFenders(P: TankBuilderPort): void {
   const { box } = KIT;
-  const shelfZ0 = -2.94, shelfZ1 = 2.56;
+  const shelfZ0 = -2.94, shelfZ1 = 2.58;
   KIT.fenders(P, HULL_HALF_W - 0.01, FENDER_OUT, FENDER_Y, shelfZ0, shelfZ1, 0.03);
-  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.70, FENDER_Y + 0.005], [2.82, FENDER_Y - 0.035],
-    [2.91, FENDER_Y - 0.10], [2.965, FENDER_Y - 0.19], [2.98, FENDER_Y - 0.26]];
+  const scoop: [number, number][] = [[shelfZ1 - 0.02, FENDER_Y + 0.015], [2.74, FENDER_Y + 0.005], [2.87, FENDER_Y - 0.035],
+    [2.97, FENDER_Y - 0.10], [3.035, FENDER_Y - 0.19], [3.05, FENDER_Y - 0.27]];
   for (const side of [-1, 1]) {
     const x0 = side > 0 ? HULL_HALF_W - 0.01 : -FENDER_OUT, x1 = side > 0 ? FENDER_OUT : -(HULL_HALF_W - 0.01);
     P.addMudguard('type59-front-scoop', 'hull', bentPlateX(scoop, x0, x1, 0.028));
     // the scoop's outer lip turns down 0.12 m along its curve
     P.add('hull', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, 0.12));
     // pressed stiffening ribs along the scoop
-    for (const rx of [0.25, 0.45, 0.65]) {
-      const x = side * (HULL_HALF_W + rx);
+    for (const f of [0.25, 0.5, 0.75]) {
+      const x = side * (HULL_HALF_W + (FENDER_OUT - HULL_HALF_W) * f);
       P.add('hullDetail', bentPlateX(scoop.slice(0, 5).map(([z, y]) => [z, y + 0.012] as [number, number]), x - 0.012, x + 0.012, 0.012));
     }
     // the rear flap behind the sprocket, turned down
@@ -218,10 +255,10 @@ function addFenders(P: TankBuilderPort): void {
  * (the upper run rides on the wheels). */
 function addRunningGear(P: TankBuilderPort): void {
   KIT.buildRunningGear(P, {
-    style: 'holes', wheelR: WHEEL_R, wheelW: 0.30, wheelY: 0.44, xc: TRACK_XC, dishR: 0.86,
+    style: 'holes', wheelR: WHEEL_R, wheelW: 0.32, wheelY: 0.45, xc: TRACK_XC, dishR: 0.86,
     wheelZs: [...WHEEL_ZS],
-    sprocket: { z: -2.68, y: 0.69, r: 0.29 }, idler: { z: 2.20, y: 0.65, r: 0.27 },
-    rollers: [], trackW: TRACK_W, topY: 0.86, botY: 0.02,
+    sprocket: { z: -2.54, y: 0.66, r: 0.27 }, idler: { z: 2.64, y: 0.77, r: 0.25 },
+    rollers: [], trackW: TRACK_W, topY: 0.90, botY: 0.02,
     contactZF: WHEEL_ZS[0] + 0.21, contactZR: WHEEL_ZS[4] - 0.21,
     paintedEnds: true, coveredTop: false, arms: true,
   });
@@ -231,7 +268,7 @@ function addRunningGear(P: TankBuilderPort): void {
  * hooks low on the plate, the bow MG port right of centre and the driver's hatch with its periscopes at the left. */
 function addHullFront(P: TankBuilderPort): void {
   const { box, cylY, cylZ, torus } = KIT;
-  const tilt = -30 * D2R;
+  const tilt = -Math.atan(UPPER_GLACIS_TAN);
   // splash board: a 0.10 m vertical strip across the plate a third of the way up
   {
     const z = 2.30, y = glacisY(z);
@@ -239,8 +276,8 @@ function addHullFront(P: TankBuilderPort): void {
     for (const x of [-0.90, 0.90]) P.add('hullDetail', box(0.03, 0.08, 0.10), x, y + 0.03, z - 0.04, tilt, 0, 0);
   }
   // headlights on a bracket at the right front (white lamp and the IR driving lamp)
-  for (const [x, ir] of [[-0.72, false], [-0.86, true]] as const) {
-    const z = 2.56, y = glacisY(z) + 0.10;
+  for (const [x, ir] of [[-0.18, false], [-0.32, true]] as const) {
+    const z = 2.30, y = glacisY(z) + 0.09;
     P.add('hullDetail', box(0.10, 0.10, 0.06), x, y - 0.065, z - 0.03, tilt, 0, 0);
     KIT.headlight(P, x, y, z, 0, ir ? 0.062 : 0.055, !ir);
     if (ir) P.add('hullDark', cylZ(0.052, 0.012, 14), x, y, z + 0.085);
@@ -253,7 +290,7 @@ function addHullFront(P: TankBuilderPort): void {
   }
   // bow MG port (SGMT-class 7.62 mm): a small boss on the plate right of centre
   {
-    const z = 2.10, y = glacisY(z);
+    const z = 2.26, y = glacisY(z);
     P.add('hullDetail', cylY(0.05, 0.06, 0.05, 12), -0.42, y + 0.012, z, tilt, 0, 0);
     P.add('hullDark', cylY(0.016, 0.016, 0.03, 8), -0.42, y + 0.04, z + 0.012, tilt, 0, 0);
   }
@@ -279,7 +316,7 @@ function addFenderStowage(P: TankBuilderPort): void {
   // right fender (-X): fuel and oil tanks
   const tanks: [number, number][] = [[1.30, 0.50], [0.38, -0.42], [-0.54, -1.34], [-1.48, -2.06]];
   for (const [z1, z0] of tanks) {
-    const h = 0.24, len = z1 - z0;
+    const h = 0.24;
     // a rounded flat tank: a quarter-round crown along both long edges
     const ring: SectionPoint[] = [];
     for (let i = 0; i <= 4; i++) { const a = (i / 4) * Math.PI / 2; ring.push([-xc + w / 2 - 0.07 + Math.cos(a) * 0.07, yb + h - 0.07 + Math.sin(a) * 0.07]); }
@@ -315,14 +352,14 @@ function addFenderStowage(P: TankBuilderPort): void {
 function addHullRear(P: TankBuilderPort): void {
   const { box, cylX, cylZ, torus } = KIT;
   // engine deck: two louvred grilles and the transverse rear grille on the sloped deck
-  for (const x of [-0.45, 0.45]) {
-    P.add('hullDark', box(0.80, 0.014, 1.00), x, ROOF_Y + 0.004, -2.02);
-    for (const k of KIT.grilleIndices(P.q, 7, 4)) P.add('hullDetail', box(0.76, 0.018, 0.05), x, ROOF_Y + 0.012, -1.60 - k * 0.135);
+  for (const x of [-0.46, 0.46]) {
+    P.add('hullDark', box(0.82, 0.014, 0.90), x, ROOF_Y + 0.004, -2.32);
+    for (const k of KIT.grilleIndices(P.q, 7, 4)) P.add('hullDetail', box(0.78, 0.018, 0.05), x, ROOF_Y + 0.012, -1.92 - k * 0.135);
   }
   P.add('hullDark', box(1.70, 0.012, 0.36), 0, ROOF_Y - 0.035, -2.75, -0.20, 0, 0);
   for (const k of KIT.grilleIndices(P.q, 3, 2)) P.add('hullDetail', box(1.64, 0.016, 0.04), 0, ROOF_Y - 0.02 - k * 0.022, -2.63 - k * 0.11, -0.20, 0, 0);
   // two 200 L drums across the stern on raked brackets
-  const drumY = 1.72, drumZ = -3.20, drumR = 0.29, drumX = 0.60, drumL = 0.86;
+  const drumY = 1.52, drumZ = -3.23, drumR = 0.28, drumX = 0.57, drumL = 0.88;
   // the drums are external fuel, not armour: equipment buckets keep them out of the combat hull
   for (const s of [-1, 1]) {
     P.addEquipment('hull', cylX(drumR, drumL, P.q ? 20 : 12), s * drumX, drumY, drumZ);
@@ -330,7 +367,7 @@ function addHullRear(P: TankBuilderPort): void {
     P.addEquipment('hullDark', cylX(drumR + 0.004, 0.014, P.q ? 20 : 12), s * drumX, drumY, drumZ);
     P.addEquipment('hullDark', box(0.04, 0.03, 0.62), s * drumX, drumY + drumR + 0.01, drumZ);           // strap
     for (const dx of [-0.26, 0.26]) {
-      P.addEquipment('hullDetail', box(0.07, 0.42, 0.07), s * drumX + dx, drumY - 0.36, REAR_Z - 0.05, 0.42, 0, 0); // raked bracket
+      P.addEquipment('hullDetail', box(0.07, 0.30, 0.07), s * drumX + dx, drumY - 0.30, REAR_Z - 0.06, 0.42, 0, 0); // raked bracket
       P.addEquipment('hullDetail', box(0.07, 0.06, 0.46), s * drumX + dx, drumY - drumR - 0.02, drumZ + 0.10);      // cradle
     }
   }
@@ -385,7 +422,7 @@ function skinAt(x: number, z: number): number {
 
 function addCommanderCupola(P: TankBuilderPort): void {
   const { box, cylY, cylZ } = KIT;
-  const x = 0.48, z = -0.42, base = skinAt(x, z) - 0.03, seg = P.q ? 28 : 14;
+  const x = 0.40, z = -0.24, base = skinAt(x, z) - 0.03, seg = P.q ? 28 : 14;
   // armoured ring standing 0.15 m over the skin, its bolt flange and four periscope heads round the forward arc
   P.addCupola('turret', cylY(0.285, 0.30, 0.18, seg), x, base + 0.09, z);
   P.add('turretDetail', cylY(0.325, 0.325, 0.022, seg), x, base + 0.04, z);
@@ -412,7 +449,7 @@ function addCommanderCupola(P: TankBuilderPort): void {
 
 function addLoaderHatch(P: TankBuilderPort): { x: number; z: number; top: number } {
   const { box, cylY } = KIT;
-  const x = -0.48, z = -0.18, base = skinAt(x, z) - 0.02, seg = P.q ? 28 : 14;
+  const x = -0.45, z = -0.67, base = skinAt(x, z) - 0.02, seg = P.q ? 28 : 14;
   P.add('turretDetail', cylY(0.30, 0.31, 0.05, seg), x, base + 0.025, z);
   P.addHatch('turret', cylY(0.255, 0.26, 0.035, seg), x, base + 0.065, z);
   P.add('turretDark', box(0.08, 0.035, 0.12), x - 0.26, base + 0.06, z);
@@ -421,24 +458,24 @@ function addLoaderHatch(P: TankBuilderPort): { x: number; z: number; top: number
   return { x, z, top: base + 0.085 };
 }
 
-function addTurretRoof(P: TankBuilderPort): void {
+function addTurretRoof(P: TankBuilderPort, v: T54Variant): void {
   const { box, cylY, sph } = KIT;
   addCommanderCupola(P);
   const loader = addLoaderHatch(P);
-  // Type 54 12.7 mm (DShK) on the loader's ring, barrel forward
-  {
+  // the 12.7 mm DShK on the loader's ring, barrel forward
+  if (v.dshk) {
     const dshk = FITTINGS.pintleMG({
       mats: P.mats, cls: 'dshk', scale: 1.0, tone: 'two-tone', elev: 0.06,
       ammo: true, shield: false, working: true, ridingCradle: true, seed: 6,
     });
-    dshk.name = 'type59RoofDShK';
+    dshk.name = v.dshkName;
     dshk.userData.cupolaSeat = 'loader';
     dshk.position.set(loader.x, loader.top - 0.01, loader.z + 0.30);
     P.turretG.add(dshk);
     P.add('turretDetail', box(0.10, 0.03, 0.10), loader.x, loader.top - 0.02, loader.z + 0.30);
   }
-  // mushroom ventilator ahead of the loader's hatch
-  {
+  // the T-54A's mushroom ventilator ahead of the loader's hatch
+  if (v.ventDome) {
     const x = -0.40, z = 0.34, base = skinAt(x, z) - 0.02;
     P.add('turret', cylY(0.12, 0.13, 0.06, P.q ? 20 : 12), x, base + 0.03, z);
     P.add('turret', KIT.xform(sph(0.14, P.q ? 20 : 12, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), x, base + 0.055, z);
@@ -453,10 +490,9 @@ function addTurretRoof(P: TankBuilderPort): void {
     const slit = p.clone().addScaledVector(n, 0.042);
     P.addModuleVisual('optics', 'turretGlass', box(0.07, 0.17, 0.008), slit.x, slit.y, slit.z, e.x, e.y, e.z);
   }
-  // periscope for the loader on the right front of the roof
-  {
-    const x = -0.70, z = 0.10;
-    KIT.periscope(P, 'turretDetail', x, skinAt(x, z) + 0.01, z, -0.3);
+  // the gunner's periscope ahead of the commander and the loader's on the right
+  for (const [x, z, a] of [[0.61, 0.44, 0.25], [-0.70, -0.20, -0.3]] as const) {
+    KIT.periscope(P, 'turretDetail', x, skinAt(x, z) + 0.01, z, a);
   }
   // radio antenna base at the rear of the roof
   {
@@ -479,8 +515,8 @@ function addTurretRoof(P: TankBuilderPort): void {
 function addMantletCover(P: TankBuilderPort): void {
   const { cylZ } = KIT;
   // [z, width, height]: a rounded canvas bag 0.46 m wide at the slot, gathered to a clamp on the tube
-  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.48, 0.46, 0.50], [0.58, 0.42, 0.45],
-    [0.68, 0.36, 0.38], [0.76, 0.29, 0.30], [0.83, 0.235, 0.235]];
+  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.66, 0.46, 0.50], [0.80, 0.42, 0.45],
+    [0.94, 0.36, 0.38], [1.06, 0.29, 0.30], [1.15, 0.235, 0.235]];
   const n = P.q ? 20 : 12, e = 2 / 3.2;   // superellipse exponent 3.2: a soft-cornered bag
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
@@ -492,9 +528,9 @@ function addMantletCover(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(2, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.122, 0.04, n), 0, 0, 0.82);
+  P.addGunExtraDark(cylZ(0.122, 0.04, n), 0, 0, 1.14);
   // the coaxial 7.62 mm's port in the cover, right of the gun
-  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.52);
+  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.72);
 }
 
 /** 100 mm Type 59 rifled gun (licensed D-10T): the tube tapers from the cover to the bore evacuator, which runs flush
@@ -503,19 +539,20 @@ function addMainGun(P: TankBuilderPort): void {
   const evStart = MUZZLE_Z - EVACUATOR_LEN;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    [0.30, 1.10, 0.100, 0.110], [1.10, 2.40, 0.088, 0.100], [2.40, evStart - 0.06, 0.078, 0.088],
-    [evStart - 0.06, evStart + 0.02, 0.092, 0.078], [evStart + 0.02, MUZZLE_Z - 0.04, 0.092, 0.092],
-    [MUZZLE_Z - 0.04, MUZZLE_Z, 0.084, 0.092],
-  ], { rings: [[evStart + 0.03, 0.095], [MUZZLE_Z - 0.06, 0.095]], muzzle: MUZZLE_Z });
+    [0.30, 1.25, 0.092, 0.104], [1.25, 2.30, 0.080, 0.092], [2.30, evStart - 0.06, 0.078, 0.080],
+    [evStart - 0.06, evStart + 0.02, 0.100, 0.078], [evStart + 0.02, MUZZLE_Z - 0.06, 0.100, 0.100],
+    [MUZZLE_Z - 0.06, MUZZLE_Z, 0.084, 0.100],
+  ], { rings: [[evStart + 0.03, 0.103], [MUZZLE_Z - 0.08, 0.103]], muzzle: MUZZLE_Z });
   muzzleBore(P, { r: 0.05 });
 }
 
 /** The later-model IR searchlight right of the gun on a short cradle arm, slaved in elevation (gun frame). */
-function addSearchlight(P: TankBuilderPort): void {
+function addSearchlight(P: TankBuilderPort, v: T54Variant): void {
   const { box, cylZ } = KIT;
-  const x = -0.40, y = 0.30, z = 0.74, r = 0.150;
-  P.add('gunMountLamp', box(0.26, 0.05, 0.10), -0.24, 0.12, 0.66);              // arm off the cradle
-  P.add('gunMountLamp', box(0.05, 0.16, 0.08), -0.36, 0.18, 0.68);              // riser to the stirrup
+  const r = v.searchlightR, x = -0.39 - r, y = 0.46, z = 0.58;
+  // the oracle's lamp rides high on the turret's right front, linked to the gun: a riser off the cradle's right cheek
+  P.add('gunMountLamp', box(0.22, 0.06, 0.10), -0.20, 0.16, 0.66);              // arm off the cradle
+  P.add('gunMountLamp', box(0.06, y - r - 0.16, 0.08), x + 0.06, (y - r + 0.16) / 2, z + 0.06);  // riser to the stirrup
   P.add('gunMountLamp', box(0.06, 0.12, 0.10), x, y - r - 0.03, z - 0.02);       // stirrup
   P.add('gunMountLamp', cylZ(r, 0.26, P.q ? 20 : 12), x, y, z);
   P.add('gunMountDark', cylZ(r + 0.008, 0.025, P.q ? 20 : 12), x, y, z + 0.135);   // bezel
@@ -523,51 +560,61 @@ function addSearchlight(P: TankBuilderPort): void {
   P.add('gunMountDark', cylZ(r * 0.72, 0.03, 12), x, y, z - 0.145);              // rear cap
 }
 
-function buildType59Turret(P: TankBuilderPort): void {
+function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.turretG.position.set(...TURRET_PIVOT);
   P.gunG.position.set(...TRUNNION);
   P.add('turret', castDome(P.q));
   addTurretRail(P, 0.30, 40 * D2R, 140 * D2R);
   addTurretRail(P, 0.30, -40 * D2R, -140 * D2R);
   addTurretRail(P, 0.34, 158 * D2R, 202 * D2R);
-  addTurretRoof(P);
+  addTurretRoof(P, v);
   addMantletCover(P);
   addMainGun(P);
-  addSearchlight(P);
+  addSearchlight(P, v);
   // turret numbers on the flanks
   const num = P.spec.visual.number || '';
   for (const side of [-1, 1]) {
     const t = side * 92 * D2R, h = 0.36, p = domePoint(t, h).addScaledVector(domeNormal(t, h), 0.008);
     P.decal('turret', 'number', num, 0.24, [p.x, p.y, p.z], side * Math.PI / 2);
   }
-  P.topY = 0.96;
+  P.topY = 1.00;
 }
 
-export function buildType59(P: TankBuilderPort): void {
+function buildT54Family(P: TankBuilderPort, v: T54Variant): void {
   addHullBody(P);
   addFenders(P);
   addRunningGear(P);
   addHullFront(P);
   addFenderStowage(P);
   addHullRear(P);
-  buildType59Turret(P);
-  P.hullG.userData.type59HistoricalReceipt = Object.freeze({
-    revision: 'type59-historical-r262',
-    hullBodyM: Object.freeze({ rearZ: REAR_Z, noseZ: NOSE_Z, fenderTipZ: 3.02, halfWidth: HULL_HALF_W, roofY: ROOF_Y, bellyY: BELLY_Y }),
+  buildFamilyTurret(P, v);
+  P.hullG.userData.t54FamilyReceipt = Object.freeze({
+    variant: v.id, revision: v.revision, oracleScale: 1.15,
+    hullBodyM: Object.freeze({ rearZ: REAR_Z, noseZ: NOSE_Z, fenderTipZ: 3.05, halfWidth: HULL_HALF_W, tubHalfWidth: TUB_HALF_W,
+      roofY: ROOF_Y, bellyY: BELLY_Y }),
     widthM: FENDER_OUT * 2,
-    upperGlacisDegFromVertical: 60, lowerGlacisDegFromVertical: 55,
+    upperGlacisDegFromLevel: Math.atan(UPPER_GLACIS_TAN) / D2R, lowerGlacisDegFromLevel: Math.atan(LOWER_GLACIS_TAN) / D2R,
     roadWheelStations: WHEEL_ZS.length, roadWheelDiameterM: WHEEL_R * 2,
     roadWheelPitchM: WHEEL_ZS[2] - WHEEL_ZS[3], firstGapM: WHEEL_ZS[0] - WHEEL_ZS[1],
     trackWidthM: TRACK_W, trackGaugeM: TRACK_XC * 2, returnRollers: 0,
     rearFuelDrums: 2, externalFuelTanksRight: 4, exhaustSide: 'left', driverSide: 'left',
-    legacyRefitRetired: true,
   });
-  P.turretG.userData.type59HistoricalReceipt = Object.freeze({
-    revision: 'type59-historical-r262',
+  P.turretG.userData.t54FamilyReceipt = Object.freeze({
+    variant: v.id, revision: v.revision,
     dome: Object.freeze({ widthM: DOME.side * 2, lengthM: DOME.front + DOME.rear, heightM: DOME.H, apexZ: DOME.cz }),
     pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
     muzzleLocalZ: MUZZLE_Z, evacuatorLengthM: EVACUATOR_LEN, evacuatorAtMuzzle: true, muzzleCounterweight: false,
     commanderCupolaSide: 'left', loaderHatchSide: 'right', searchlightSide: 'right', coaxSide: 'right',
-    searchlightDiameterM: 0.31, roofMachineGuns: Object.freeze(['Type 54 DShK']),
+    searchlightDiameterM: v.searchlightR * 2, ventilatorDome: v.ventDome, roofMachineGuns: Object.freeze(v.dshk ? [v.dshkLabel] : []),
   });
+}
+
+/** The Type 59 (WZ-120): the licensed T-54A, the T-55 construction with the T-54A's ventilator dome. */
+export function buildType59(P: TankBuilderPort): void {
+  buildT54Family(P, VARIANTS.type59);
+}
+
+/** The T-55A (1963): the family construction as the owner-supplied model draws it. */
+export function buildT55A(P: TankBuilderPort): void {
+  buildT54Family(P, VARIANTS.t55a);
 }

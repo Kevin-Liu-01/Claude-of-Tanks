@@ -532,7 +532,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
 
   ztz99_longwei: {
     id: 'ztz99_longwei', name: 'ZTZ-99 Longwei', nation: 'China', era: 'modern', role: 'mbt',
-    description: 'Original Chinese game concept: a terraced-front heavy PLA tank with a hard-kill protection suite on the Type 99A hull.',
+    description: 'Original Chinese game concept on the ZTZ-99A pattern: an arrowhead-front heavy PLA tank with a hard-kill protection suite.',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 12,
     hullTraverseDegS: 42,
@@ -548,15 +548,11 @@ export const MODERN2_SPECS: TankSpecRegistry = {
         shell('DTB-125 HE', 'HE', 125, 50, 50, 580, 900),
       ],
     },
-    // 2026-08-12 oracle re-measurement. The user-supplied Type 99A2 GLB is
-    // reference-only, but its physical envelope is the requested datum for
-    // this redesign: hull 7.76 m, muzzle-to-stern 11.66 m, width 3.70 m and
-    // 3.14 m to the broad panoramic/combat-station envelope (thin antenna
-    // whips are excluded). The prior 7.35/10.70/2.50 values described a
-    // different brochure datum and made an accurately measured build fail
-    // the dimensional gate for being accurate to the supplied model.
+    // Release 262 (owner 2026-10-27): the new hull is the ZTZ-99/99A's published 7.6 m with 3.7 m over the skirts
+    // (docs/references/tanks/ztz99_longwei.md §262); 11.80 m is the drawn stern-rack-to-muzzle span (the 6.454 m gun on
+    // the pinned ring datum). heightM keeps the broad panoramic/combat-station envelope; thin whips are excluded.
     dims: {
-      hullLengthM: 7.76, overallLengthM: 11.66, widthM: 3.7, heightM: 3.16,
+      hullLengthM: 7.6, overallLengthM: 11.8, widthM: 3.7, heightM: 3.16,
       // The fused source's 12%-thickness side-body trace is 7.079 m; its
       // published/full 7.76 m hull envelope includes thin guards and the
       // rear U-cable.  Keep gameplay on the full physical envelope while
@@ -567,8 +563,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
       // tips remain excluded from this datum.
       silhouetteHeightM: 3.17,
     },
-    // Segmented combat envelope following the release-233 terraced turret on
-    // the measured Type 99A hull (profiles/type99Armor.ts longweiArmor).
+    // Segmented combat envelope following release 262's arrowhead turret and
+    // new 99A-pattern hull (profiles/type99Armor.ts longweiArmor).
     armor: createType99Armor('ztz99_longwei'),
     visual: {
       // PLA woodland digital splinter (tight micro-square scale)

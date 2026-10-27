@@ -45,7 +45,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'challenger1_mk3',
     't72bu',
     'chieftain5',
-    't62_1975', 't64bv1', 't72bu_1989', 't80', 't80b', 't80bv',
+    't55a', 't62_1975', 't64bv1', 't72bu_1989', 't80', 't80b', 't80bv',
     't80uk', 'strv81', 'udes03', 'strv103a', 'strv103b',
     'chieftain3', 'chieftain_mk9', 'challenger1_mk2', 'fv4034', 'stb1', 'type74', 'type90_kyumaru',
     'type90a', 'm2a2_bradley', 'bmp2', 'bmp3', 'hayate_ifv', 'carro45t',
