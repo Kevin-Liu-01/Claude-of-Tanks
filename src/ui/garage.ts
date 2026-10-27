@@ -2289,7 +2289,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
-    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger, .cot-overview-more');
+    // the sheet's close shares the toggle: it shows only while the dossier is open (a kit restyle had dropped its trigger
+    // class on 10-25 and left the phone's X without a handler)
+    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger, .cot-overview-more, .cot-dossier-close');
     if (equipmentTrigger) {
       emit('ui:click', {});
       const closing = openGaragePanel() === 'equipment';

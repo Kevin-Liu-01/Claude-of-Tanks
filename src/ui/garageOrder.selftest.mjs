@@ -124,8 +124,8 @@ assert.match(garageSource,
   /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.vehicleDossier'\)\}"/,
   'compact dossier affordance labels its selected-tank details action');
 assert.match(garageSource,
-  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger, \.cot-overview-more'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
-  'the compact dossier affordance and the folded figures\' more button open the selected tank\'s dossier');
+  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger, \.cot-overview-more, \.cot-dossier-close'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
+  'the compact dossier affordance and the folded figures\' more button open the selected tank\'s dossier, and its sheet\'s close shuts it');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;z-index:3;left:var\(--hc-pad\);right:var\(--hc-pad\);bottom:calc\(var\(--hc-pad\) \* 0\.8\);[^}]*white-space:normal;/,
   'tank titles sit on the card padding as a stable bottom inset and wrap instead of truncating');
