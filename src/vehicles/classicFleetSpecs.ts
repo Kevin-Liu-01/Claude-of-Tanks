@@ -102,14 +102,19 @@ const SPECS: FleetTankSpec[] = [
   // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
   // builder code dormant in abrams.js; packet historical.
   make('m60a1', 'm46_patton', 'M46 Patton', 'USA',
+    // release 262: the M73 mount's +20 / -10 deg (Hunnicutt via docs/references/tanks/m46_patton.md)
     { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 },
+      gunElevationDeg: 20, gunDepressionDeg: 10,
       dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
       // bakeDirt deck equalizer (f243966): the Bergman refs paint from the
       // shared canvas with NO deck penalty — knob-on is ref-parity for this
       // print class (m47-top census gap 1029 -> 401 measured).
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm47_patton', 'M47 Patton', 'USA',
+    // release 262: the M78 mount's +19 / -10 deg (TM 9-2350-200-12 and Hunnicutt; the 1952 TM 9-718A gives -5, see
+    // docs/references/tanks/m47_patton.md)
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
+      gunElevationDeg: 19, gunDepressionDeg: 10,
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',

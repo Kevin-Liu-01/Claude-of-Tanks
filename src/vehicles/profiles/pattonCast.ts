@@ -320,7 +320,7 @@ interface PershingHullSpec {
 }
 
 function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string, HullFrame> {
-  const { box, cylX, cylY, cylZ, sph } = KIT;
+  const { box, cylX, cylY, cylZ } = KIT;
   const iw = H.xc - H.trackW / 2 - 0.04;           // tub half-width, inside the track lanes
   const deckAt = (z: number): number => {
     if (z >= H.knee[0]) return H.knee[1] + (H.toe[1] - H.knee[1]) * Math.min(1, (z - H.knee[0]) / (H.toe[0] - H.knee[0]));

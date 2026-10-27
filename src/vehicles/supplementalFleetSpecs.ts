@@ -253,7 +253,9 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 510 }),
         })),
       },
-      dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
+      dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.06 },
+      // release 262: +19 / -9 deg (Hunnicutt via docs/references/tanks/m48a5_patton.md)
+      gunElevationDeg: 19, gunDepressionDeg: 9,
       // 2026-10-26 (the trunnion at 2.10 under the compact A5 shield, patton.ts): measured by tools/gun-depression-sweep.mjs
       // (26 mm from the hull): the full -9 deg over the front 16 deg either side, the fender stowage's stops abeam and the
       // engine deck's -3 deg over the rear
