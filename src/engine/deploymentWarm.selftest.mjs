@@ -238,4 +238,43 @@ for (const fail of [false, true]) {
   geometry.dispose(); material.dispose();
 }
 
-console.log('deploymentWarm.selftest: bounded terrain/vegetation/props/player cohorts, descendant-safe masks, LOD/light/CSM restoration and iterator cleanup passed');
+// (2026-10-26, the room-stalls lane) preUpload: each cohort first renders with its drawn geometries' draw counts at 0 (an
+// 'upload' batch: three uploads the buffers and binds the programs, nothing draws), then draws; the counts come back
+{
+  const scene = new THREE.Scene(), world = new THREE.Group(), props = new THREE.Group();
+  props.name = 'props';
+  const shared = new THREE.BoxGeometry();
+  shared.setDrawRange(0, 30);
+  const meshes = Array.from({ length: 5 }, (_, i) => new THREE.Mesh(i < 2 ? shared : new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+  props.add(...meshes);
+  world.add(props);
+  scene.add(world);
+  const original = meshes.map((mesh) => mesh.geometry.drawRange.count);
+  const seen = [];
+  const run = (preUpload) => [...createDeploymentForwardWarmBatches({ scene, worldGroup: world, preUpload,
+    warmRender() {
+      seen.push(meshes.map((mesh) => (mesh.layers.mask === 0 ? 'masked' : mesh.geometry.drawRange.count)));
+    } })];
+  const batches = run(true);
+  assert.deepEqual(batches.map((batch) => batch.phase ?? 'draw'), ['upload', 'draw', 'upload', 'draw'],
+    'every cohort uploads before it draws');
+  assert.deepEqual(batches.map((batch) => batch.objects), [4, 4, 1, 1]);
+  assert.deepEqual(seen[0], [0, 0, 0, 0, 'masked'], 'the upload render draws nothing: its cohort\'s counts at 0, the rest masked');
+  assert.deepEqual(seen[1], [30, 30, ...original.slice(2, 4), 'masked'], 'the draw render meets the real counts');
+  assert.deepEqual(seen[2], ['masked', 'masked', 'masked', 'masked', 0]);
+  assert.deepEqual(meshes.map((mesh) => mesh.geometry.drawRange.count), original, 'every count restored, a shared geometry once');
+  seen.length = 0;
+  assert.ok(run(false).every((batch) => batch.phase === undefined), 'without preUpload the batches are as before');
+  assert.equal(seen.length, 2);
+}
+
+// the room's opening warm opts in and lets the GPU catch up after every batch (main.ts openingEffects)
+{
+  const { readFileSync } = await import('node:fs');
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const opening = main.slice(main.indexOf('openingEffects: async'), main.indexOf('shotCards:', main.indexOf('openingEffects: async')));
+  assert.ok(opening.includes('preUpload: true,') && opening.includes('catchUpFrames += await waitForGpuCatchUp(catchUp);'),
+    'the room opening uploads each cohort ahead of its draws and waits for the GPU between batches');
+}
+
+console.log('deploymentWarm.selftest: bounded terrain/vegetation/props/player cohorts, descendant-safe masks, LOD/light/CSM restoration and iterator cleanup passed; preUpload uploads each cohort with zero draw counts before it draws');
