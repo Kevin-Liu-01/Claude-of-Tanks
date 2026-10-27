@@ -187,6 +187,18 @@ body[data-cot-battle-layout][data-hud-map-large='right'] .cot-kill-lane.r{displa
 /* (as wide as its notice, to a cap: the kit's 420 px box wrapped the reconnect notice's line at 1440 and wider, where the
    type grows and the window has the room, gauntlet r17) */
 body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)));width:max-content;max-width:min(720px,calc(100vw - 32px))}
+/* (its notices on the battle's one notice plate, the centre's angled one, their glyph and words centred on their action:
+   in the kit's rounded plate a parked gun-limit chip read as another kit beside DETECTED, and the reconnect notice's line
+   stood 9 px over its Leave button's middle, gauntlet r18) */
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice{--notice-cut:polygon(var(--notice-point) 0,calc(100% - var(--notice-point)) 0,100% 50%,calc(100% - var(--notice-point)) 100%,var(--notice-point) 100%,0 50%);
+  --notice-point:8px;--notice-fill:var(--hud-plate-strong);--notice-line:var(--line-2);position:relative;align-items:center;border-radius:0;background:none;box-shadow:none;isolation:isolate}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before,body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{content:'';position:absolute;z-index:var(--z-under);pointer-events:none;clip-path:var(--notice-cut)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::before{inset:0;background:var(--notice-line)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice::after{inset:1px;background:var(--notice-fill)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=warning]{--notice-fill:color-mix(in srgb,var(--text-warn) 7%,var(--hud-plate-strong))}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice[data-severity=error]{--notice-fill:color-mix(in srgb,var(--text-danger) 9%,var(--hud-plate-strong))}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice:focus-visible{box-shadow:var(--focus-ring)}
+body[data-cot-battle-layout] .cot-battle-notices .cot-c-notice__body{padding-top:0}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -518,13 +530,14 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 /* A browser toolbar can leave less than 300 CSS pixels of landscape height.
    Keep one fire button, and give ammo and consumables separate 44px rows. FIRE stands as low as its label, 15 px under
-   it, stays on the screen (at 8 px the label ran off the bottom edge at 568x290), 3 px under the consumables at 568x256. */
+   it, stays on the screen (at 8 px the label ran off the bottom edge at 568x290), 8 px under the consumables at 568x256. */
 @media (max-height:299px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
-  /* (64 px, 2 px under the consumables, so its word shares AUTO AIM's and SCOPE's line: at 76 px on the floor its word sat
-     13 px under theirs and 4 px off the screen's foot, gauntlet r10) */
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:30px;width:64px;height:64px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt) svg{width:24px;height:38px}
+  /* (58 px, 8 px under the consumables as SCOPE beside it, so its word shares AUTO AIM's and SCOPE's line: at 76 px on the
+     floor its word sat 13 px under theirs and 4 px off the screen's foot, gauntlet r10; at 64 its ring came 2 px under the
+     consumables, r18) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:30px;width:58px;height:58px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt) svg{width:22px;height:35px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */
@@ -583,7 +596,6 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
    and no touch target over the joystick under it. */
 .cot-battle-notices .cot-aim-notice{align-items:center;gap:6px;min-width:32px;min-height:24px;padding:4px var(--s3);font:700 var(--battle-fs-11)/12px var(--hud-font,system-ui);text-transform:uppercase;pointer-events:none}
 .cot-battle-notices .cot-aim-notice .cot-c-notice__glyph,.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph svg{width:16px;height:16px}
-.cot-battle-notices .cot-aim-notice .cot-c-notice__body{padding-top:0}
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
   body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:var(--hud-aim-warning-max,240px)}

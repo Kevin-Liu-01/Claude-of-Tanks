@@ -361,6 +361,14 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 @media(min-width:701px) and (max-width:1279px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:repeat(6,minmax(0,1fr))}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:none}
+}
+/* (but with the room for it, 661 px tall and more, the card leads the tiles over their two rows of three, as on the wide
+   windows: standing down at 900x700 it left the report 144 px empty and the player's tank unnamed, gauntlet r18) */
+@media(min-width:701px) and (max-width:1279px) and (min-height:661px) and (max-height:760px){
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:grid;grid-row:span 2}
+}
+@media(min-width:701px) and (max-width:1279px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
   body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-stat-grid,.es-combat-details,.es-blow){grid-column:1/-1}
   body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1;border-bottom:0}

@@ -1783,7 +1783,9 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 /* the player's own kills and deaths: the player's word in the accent's ink (no plate and no stripe: the feed is bare
    text over the battlefield on both sides, as the rosters are) */
 .cot-kill-lane .cot-kf[data-relation=you] .k,.cot-kill-lane .cot-kf[data-relation=victim] .v,
-.cot-kill-lane .cot-kf[data-relation=ridden] :is(.k,.v){color:var(--accent-hi);}
+/* (the ridden tank's own name alone, the other in its side's ink: both in the accent, a Watch row's enemy victim read as
+   an ally, gauntlet r18) */
+.cot-kill-lane .cot-kf[data-relation=ridden][data-ridden=k] .k,.cot-kill-lane .cot-kf[data-relation=ridden][data-ridden=v] .v{color:var(--accent-hi);}
 /* (the player's own word never gives way: the other callsign takes the cut, gauntlet r1 at 390 portrait read "Y.") */
 .cot-kf[data-relation=you] .k,.cot-kf[data-relation=victim] .v{flex:none;}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
@@ -2067,7 +2069,9 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-con .key{position:absolute;top:3px;left:4px;font:500 var(--battle-fs-fig-11)/12px var(--font-data);color:var(--ink-2);
   letter-spacing:0;
   border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);padding:0 3px;z-index:2;}
-.cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
+/* (its count in the corner every count of the rack and the controls takes, the top right: under the glyph at the bottom
+   right it was the one count off that corner, gauntlet r18) */
+.cot-con .cnt{position:absolute;top:2px;right:4px;font-size:var(--battle-fs-11);font-weight:700;
   font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(var(--battle-veil) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
@@ -5300,7 +5304,10 @@ export function initHud(bus: EventBus): HudRuntime {
       // marker under it (the vision switch); a chip goes over the row
       // (over a chip placeAimWarning already set over the sight, where the row leaves it be)
       const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
-      y = Math.min(aboveSightTop(draw), chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
+      // (and, on a scope over 430 px tall, over the upper cross arm's end, as the marks under the sight keep off the lower
+      // one: over the ring alone the line took the upper arm's place at 320x568, gauntlet r18)
+      const armTop = h > 430 ? draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH : Infinity;
+      y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
         - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
       // (over the range tag too, where it hangs over the sight beside the row's columns)
       if (tag && tag.y1 < draw.cy) {
@@ -7448,7 +7455,10 @@ export function initHud(bus: EventBus): HudRuntime {
     item.dataset.killCause = presentation.cause;
     if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
-    else if (ridden && (payload.killerId === ridden || payload.id === ridden)) item.dataset.relation = 'ridden';
+    else if (ridden && (payload.killerId === ridden || payload.id === ridden)) {
+      item.dataset.relation = 'ridden';
+      item.dataset.ridden = payload.killerId === ridden ? 'k' : 'v';
+    }
     item.dataset.tip = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
       presentation.relationLabel].filter(Boolean).join(' · ');
     item.innerHTML = `<span class="k"></span>` + flag(kNation) +

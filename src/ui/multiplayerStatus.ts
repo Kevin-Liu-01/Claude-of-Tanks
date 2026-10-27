@@ -83,7 +83,9 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
 .cot-mp-strip .unit+.unit{padding-left:8px;border-left:1px solid rgba(171,190,204,.2)}
 .cot-mp-strip .unit b{font-size:11px;font-weight:700;line-height:1}
 .cot-mp-strip .unit i{font-style:normal;font-size:11px;font-weight:700;line-height:1;letter-spacing:.03em;color:var(--ink-3)}
-.cot-mp-strip.good .ping b{color:var(--text-ok)}.cot-mp-strip.degraded .ping b{color:var(--text-warn)}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:var(--text-danger)}
+.cot-mp-strip.good .ping b{color:var(--text-ok)}.cot-mp-strip.degraded .ping b{color:var(--text-warn)}.cot-mp-strip.bad .ping b{color:var(--text-danger)}
+/* (an offline link's empty round trip in the quiet ink: its glyph is the alarm, and a red dash read as a value, gauntlet r18) */
+.cot-mp-strip.offline .ping b{color:var(--ink-3)}
 /* (the strip's tones are the HUD's tokens: a mint ping and a pale-yellow HOST were colours of their own, gauntlet r7; the
    host badge is a role, in the accent, not a warning) */
 .cot-mp-strip .unit.host b{color:var(--accent-hi);letter-spacing:.12em}
@@ -157,7 +159,7 @@ body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:ce
 .cot-mp-strip .notice{display:none}
 /* (while the tile names an outage its word stands in the ping's line, the tile as wide as the word: under the ping, cut to
    the tile's 44 px, it read "Offli…" under a stale "42 MS", gauntlet r17) */
-body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;font-size:11px;line-height:12px;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;font-size:11px;line-height:12px;white-space:nowrap;text-transform:uppercase}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip.noted .unit.ping{display:none}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
 /* (touch names an outage on the tile itself: the battle's notice is read out, never drawn, and its leave stays in the panel) */
@@ -202,7 +204,8 @@ export function formatStrip(s: Readonly<NetworkStatusSnapshot>): StripText {
   const ping = s.health === 'offline' ? null : pingOf(s);
   const pingText = ping === null ? '—' : String(Math.max(0, Math.min(999, round(ping))));
   const seat = s.seat === null ? '' : t('mpStatus.seat', { seat: s.seat });
-  const roster = `${s.rosterCount}/${s.rosterCapacity}`;
+  // (spaced as the HUD's other fractions, "2,750 / 2,750", and held on one line: "28/28" was the one tight one, gauntlet r18)
+  const roster = `${s.rosterCount}\u00a0/\u00a0${s.rosterCapacity}`;
   const host = s.role === 'host' ? t('mpStatus.hostBadge') : '';
   return {
     health: s.health,
@@ -330,7 +333,7 @@ export function createMultiplayerStatusSurface({
   const rosterUnit = createElement('span', 'unit roster', strip);
   markDatum(rosterUnit, 'roster');
   const rosterValue = createElement('b', '', rosterUnit);
-  rosterValue.textContent = '0/28';
+  rosterValue.textContent = '0\u00a0/\u00a028';
   const touchNotice = createElement('span', 'notice', strip);
   // (the battle's banner is the kit's notice in the battle's region: a fixed box of its own sat at the centre top over the
   // pointer lock's notice and the objective, and the killcam's veil left it showing, UI-LOCKDOWN B14; the lobby's stays

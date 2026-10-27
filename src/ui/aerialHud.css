@@ -292,7 +292,9 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
 .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto;column-gap:7px;align-content:center}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1;grid-column:1;color:var(--flight-accent)}
 .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
-.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap}
+/* (its label in its row's ink, as the drone's and the cards beside it: in the switch's quieter ink it read as a disabled
+   card beside AMMO and HEALTH, gauntlet r18) */
+.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:var(--s1);font-size:var(--battle-fs-11);letter-spacing:0;white-space:nowrap;color:inherit}
 .cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
 .cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;position:absolute;left:var(--s3);right:var(--s3);bottom:5px;gap:var(--s1);height:3px}
 .cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:flex-start;gap:7px}
