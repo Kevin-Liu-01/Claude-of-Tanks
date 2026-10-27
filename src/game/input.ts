@@ -41,6 +41,9 @@ const BINDINGS2_KEY = 'cot.bindings2.v1'; // secondary keyboard/mouse map
 const BINDINGS_LAYOUT_KEY = 'cot.bindings.layout.v3'; // Shift aim + Caps free-look migration receipt
 const PAD_KEY = 'cot.padBindings.v1'; // gamepad button map (standard-mapping indices)
 const SETTINGS_KEY = 'cot.settings.v1';
+/** The accessibility record (accessibilitySettings.ts ACCESSIBILITY_KEY; inputHoldToggle.selftest pins the two equal): item
+ *  259 moves its RMB toggle to rmbMode once. */
+const LEGACY_A11Y_KEY = 'cot.accessibility.v1';
 
 // Aim smoothing: the EMA time constant is player-tunable (0 = raw 1:1 deltas).
 // settings.aimSmoothing 0..1 maps linearly to 0..MAX_SMOOTH_TAU_S; the default
@@ -696,6 +699,18 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       saveJson(SETTINGS_KEY, { ...storedSettings, crewVoice: settings.crewVoice });
     }
   }
+  // item 259 (the lead, bar line 13: one datum, one place): Aim / free look's hold or toggle is the Right click mode alone
+  // (Settings › Controls). An Accessibility toggle on the RMB action saved before it carries over to Toggle Aim once, and
+  // leaves the stored record, so a later choice of Hold to Aim stands
+  // (accessibilitySettings.ts ACCESSIBILITY_KEY, by its value: that module and its tokens stay out of the boot graph)
+  const storedA11y = loadJson(LEGACY_A11Y_KEY);
+  if (isRecord(storedA11y) && Array.isArray(storedA11y.toggles) && storedA11y.toggles.includes('freeCamera')) {
+    if (settings.rmbMode === 'hold') {
+      settings.rmbMode = 'toggle';
+      saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
+    }
+    saveJson(LEGACY_A11Y_KEY, { ...storedA11y, toggles: storedA11y.toggles.filter((action) => action !== 'freeCamera') });
+  }
 
   // --- live state ----------------------------------------------------------------
   const down = new Set<string>(); // active codes — Set semantics kill key-ghosting
@@ -835,9 +850,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     for (const source of toggled.values()) if (source === family) return true;
     return false;
   };
-  /** Hold-or-toggle: the player set this action to toggle (RMB's own Toggle mode already toggles; never twice). */
-  const togglesOn = (actionId: ActionId) => A11Y.toggles.has(actionId) &&
-    !(actionId === 'freeCamera' && settings.rmbMode === 'toggle');
+  /** Hold-or-toggle: the player set this action to toggle. The RMB action's is its own Right click mode alone (item 259:
+   *  one datum), never the generic latch. */
+  const togglesOn = (actionId: ActionId) => actionId !== 'freeCamera' && A11Y.toggles.has(actionId);
 
   function firePress(actionId: ActionId, code: string, evt?: Event) {
     // Latch the single-shot fire edge. Presses that could never fire anyway —

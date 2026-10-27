@@ -230,7 +230,9 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
   for (const k of [-1.5, 0, 1.5]) faceBox(sink, 'stone', face, u + k * step * 0.95, floorY - 0.3, 0.3, 0.2, 0.36, 0.6, { decor: true });
   faceBox(sink, 'structureMetal', face, u, floorY + 0.95, 0.86, step * 3 + 0.45, 0.04, 0.04, { colour: IRON, decor: true });
   // (the r2 sweep: the balusters stood 3 cm over the slab, floating) on it
-  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.49, 0.86, 0.025, 0.94, 0.025, { colour: IRON, decor: true, fine: true });
+  // (259, the far-view census: the rail on balusters all fine joinery stood 0.8 m over the slab at range) the end ones
+  // at any range
+  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.49, 0.86, 0.025, 0.94, 0.025, { colour: IRON, decor: true, fine: k > 0 && k < 12 });
 }
 
 interface DarOpts { storeys: 1 | 2; roof: 'tile' | 'earth'; qanatir?: boolean; stair?: boolean }
@@ -481,7 +483,9 @@ function campanile(sink: PartSink, W: number, D: number, naveTop: number, look: 
   sink.span('stone', x0, 0, z0, x1, oy, z1);
   openBelfry(sink, 'stone', cx, cz, T, oy, oy + oh + ow / 2, shaftTop, ow, rgb(0x6a5a3a), rgb(0x4a3a2a));
   recordShaft(sink, cx, cz, T, shaftTop + 0.3 + T * 0.95, 'stone');
-  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
+  // (259, the far-view census: a band 8 cm proud stood off the shaft on its top and underside, fine joinery hidden at
+  // range) whole at any range
+  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.span('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
   sink.span('stone', x0 - 0.15, shaftTop, z0 - 0.15, x1 + 0.15, shaftTop + 0.3, z1 + 0.15, { decor: true });
   const base = shaftTop + 0.3, apex: Vec3 = [cx, base + T * 0.95, cz];
   const corners: Array<[number, number]> = [[x0 - 0.1, z0 - 0.1], [x1 + 0.1, z0 - 0.1], [x1 + 0.1, z1 + 0.1], [x0 - 0.1, z1 + 0.1]];

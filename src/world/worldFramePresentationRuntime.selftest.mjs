@@ -16,8 +16,10 @@ const entity = {
 };
 const fades = [];
 const updates = [];
+const seeThrough = [];
 const world = {
   setSniperFade(...args) { fades.push(args); },
+  setFoliageSeeThrough(on) { seeThrough.push(on); },
   update(dtSeconds, cameraPosition, forward, focus, viewCamera) {
     updates.push({ dtSeconds, cameraPosition, forward: forward.toArray(),
       focus: focus?.toArray() ?? null, viewCamera });
@@ -26,15 +28,22 @@ const world = {
 const rig = { mode: 'ARCADE', aimDist: 260, externalActive: false };
 let dormant = false;
 let cameraFocus = entity;
+let foliage = false;
 const runtime = createWorldFramePresentationRuntime({
   camera,
   rig,
   getWorld: () => world,
   isWorldDormant: () => dormant,
   getCameraFocus: () => cameraFocus,
+  seeThroughFoliage: () => foliage,
 });
 
 runtime.update(1 / 60, true, false);
+assert.deepEqual(seeThrough, [false], 'item 259: the world takes See-through foliage every frame (off by default)');
+foliage = true;
+runtime.update(1 / 60, true, false);
+assert.equal(seeThrough.at(-1), true, 'and follows the choice');
+foliage = false;
 assert.deepEqual(fades.at(-1), [0, false, 37, 260]);
 assert.deepEqual(updates.at(-1).cameraPosition, camera.position);
 assert.deepEqual(updates.at(-1).focus, [2, 6, 4], 'focus lifts to turret height');
@@ -58,7 +67,8 @@ assert.equal(updates.at(-1).focus, null, 'missing occupied entity is safe');
 
 dormant = true;
 runtime.update(1 / 60, false, false);
-assert.equal(updates.length, 4, 'dormant Garage world performs no frame work');
-assert.equal(fades.length, 4);
+assert.equal(updates.length, 5, 'dormant Garage world performs no frame work');
+assert.equal(fades.length, 5);
+assert.equal(seeThrough.length, 5);
 
 console.log('worldFramePresentationRuntime.selftest: scope, occlusion and dormancy passed');

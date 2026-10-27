@@ -350,6 +350,7 @@
     "src/game/jevCommander.selftest.mjs": 15000,
     "src/game/juggernautVisual.selftest.mjs": 1000,
     "src/game/killcamAccess.selftest.mjs": 1000,
+    "src/game/killcamCapture.selftest.mjs": 1000,
     "src/game/killcamGhostPolicy.selftest.mjs": 1000,
     "src/game/killcamGround.selftest.mjs": 29000,
     "src/game/killcamObserverInput.selftest.mjs": 1000,

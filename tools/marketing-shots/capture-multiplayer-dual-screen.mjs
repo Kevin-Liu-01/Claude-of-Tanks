@@ -816,7 +816,7 @@ async function capture({ options, plan, seedInfo }) {
 
     // A degraded link paints a banner across both views ("Unstable connection · slow updates", src/ui/multiplayerStatus.ts):
     // shoot only while both links are healthy, waiting out a loaded machine's late snapshots
-    const linkHealthy = () => { const banner = document.querySelector('.cot-mp-banner'); return !banner || banner.hidden || getComputedStyle(banner).display === 'none'; };
+    const linkHealthy = () => { const banner = document.querySelector('.cot-battle-notices .cot-mp-notice:not([data-state="exit"])'); return !banner || getComputedStyle(banner).display === 'none'; };
     const healthyLinks = () => Promise.all([waitFor(pageA, linkHealthy, 'A link healthy', 180_000), waitFor(pageB, linkHealthy, 'B link healthy', 180_000)]);
     const shots = [];
     for (const name of options.framings) {

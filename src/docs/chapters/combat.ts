@@ -3,8 +3,8 @@
 // effectiveThickness, SHELL_BEHAVIOR), penetration against range (src/sim/ballistics.ts penAtDistanceMm, for the Leclerc
 // XLR's shells from the fleet's asset table) and spot range against camo (src/sim/spotting.ts spotRangeM). The rules
 // and numbers beside them are the sim's constants; the module table is src/sim/moduleCatalog.ts; the pictures are the
-// Leclerc XLR's own armour and module diagrams (public/icons, drawn from its combat data; since 253 their labels are DOM
-// text from its sidecar, src/ui/technicalDiagramLabels.ts technicalLabelsMarkup), the mechanics stills and the
+// Leclerc XLR's own armour and module drawings (258: public/icons/<id>_drawing*, its side plate and the overlay traced
+// from its combat anatomy, as static markup: src/ui/technicalDrawingMarkup.ts), the mechanics stills and the
 // battle shots in public/media/docs-r1 (the armour overlay, the kill cam, the spotting lamp); the overlay's key is
 // src/game/input.ts's default. Node only (tools/docs-prerender.mjs).
 import {
@@ -25,7 +25,8 @@ import { DEFAULT_BINDINGS, labelForCode } from '../../game/input.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { t } from '../../ui/i18n.ts';
-import { parseTechnicalLabels, technicalLabelsMarkup, type TechnicalLabelData } from '../../ui/technicalDiagramLabels.ts';
+import { parseTechnicalDrawing, type TechnicalDrawingData } from '../../ui/technicalDrawingData.ts';
+import { technicalDrawingMarkup } from '../../ui/technicalDrawingMarkup.ts';
 import { lineChart, type ChartSeries } from './charts.ts';
 import { fleetTanks, type FleetTank } from './fleet.ts';
 import type { RichSection } from './types.ts';
@@ -44,13 +45,10 @@ const list = (keys: ReadonlyArray<readonly [string, Readonly<Record<string, stri
 /** The reference tank whose shells the range chart draws (the fleet's quality exemplar). */
 const REFERENCE_TANK = 'leclerc_xlr';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-let referenceLabels: TechnicalLabelData | null = null;
-/** Its diagrams' label sidecar (tools/genIcons.mjs writes it beside them). */
-const labels = (): TechnicalLabelData => (referenceLabels ??= parseTechnicalLabels(
-  JSON.parse(readFileSync(join(ROOT, `public/icons/${REFERENCE_TANK}_technical.json`), 'utf8')), REFERENCE_TANK));
-/** The box the diagram labels are packed at: the narrowest the chapter shows a diagram (a phone's single column), so
- * they fit there and spread as the column grows. */
-const DIAGRAM_LABEL_BOX = Object.freeze({ width: 360, height: 180 });
+let referenceDrawing: TechnicalDrawingData | null = null;
+/** Its technical drawing's data (tools/genDrawings.mjs writes it beside its plates). */
+const drawing = (): TechnicalDrawingData => (referenceDrawing ??= parseTechnicalDrawing(
+  JSON.parse(readFileSync(join(ROOT, `public/icons/${REFERENCE_TANK}_drawing.json`), 'utf8')), REFERENCE_TANK));
 
 /** A docs-r1 still (public/media/docs-r1, the media lane's Field Manual shots) as a full-width figure. */
 const docsStill = (slot: string, alt: string): string => `<figure class="dm-figure">${pictureMarkup({ src: `/media/docs-r1/${slot}-1920.webp`, width: 1920, height: 1080,
@@ -132,11 +130,10 @@ export function combatSections(): RichSection[] {
   // the diagrams' labels are the picture's (aria-hidden), not the section's text: search leaves them out
   const overlays: string[] = [];
   const diagram = (view: 'armor' | 'modules', alt: string): string => {
-    const overlay = technicalLabelsMarkup(labels(), view, DIAGRAM_LABEL_BOX, { rowPx: 18 });
+    // the drawing and its key are the picture's (the key aria-hidden): search leaves them out
+    const overlay = technicalDrawingMarkup(drawing(), 'side', view, { alt });
     overlays.push(overlay);
-    return `<figure class="dm-diagram"><div class="dm-diagram__box">`
-      + `<img src="/icons/${REFERENCE_TANK}_${view}_side.webp" width="1024" height="512" alt="${esc(alt)}" loading="lazy" decoding="async">`
-      + `${overlay}</div><figcaption>${designationHtml(alt)}</figcaption></figure>`;
+    return `<figure class="dm-diagram">${overlay}<figcaption>${designationHtml(alt)}</figcaption></figure>`;
   };
   const overlayKey = DEFAULT_BINDINGS.hitboxOverlay;
   if (!overlayKey) throw new Error('docs: the armour overlay has no default key');

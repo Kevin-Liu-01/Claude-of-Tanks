@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-26T21:35:11.914Z",
+ "generatedAt": "2026-10-27T11:49:32.087Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -2157,14 +2157,26 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 350,
-   "seeThroughPx": 56,
-   "netSeeThroughPx": 6123,
+   "seeThroughPx": 0,
+   "netSeeThroughPx": 6326,
    "tris": 68799,
    "frame": [
     0,
     1.5,
     0.95,
     5.2
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "259 gun ports and own field kits, fewer kit loads lie over the ghillie nets and the 103A net drapes over its new gun housing, both stay sealed with 0 open and 0 see-through",
+     "by": "strv103-gunport-259",
+     "date": "2026-10-27",
+     "from": {
+      "seeThroughPx": 56,
+      "netSeeThroughPx": 6123
+     }
+    }
    ]
   },
   "strv103b": {
@@ -2173,13 +2185,25 @@
    "openViews": 0,
    "insideOutPx": 467,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 6413,
+   "netSeeThroughPx": 7248,
    "tris": 76303,
    "frame": [
     0,
     1.4,
     0.65,
     5.4
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "259 gun ports and own field kits, fewer kit loads lie over the ghillie nets and the 103A net drapes over its new gun housing, both stay sealed with 0 open and 0 see-through",
+     "by": "strv103-gunport-259",
+     "date": "2026-10-27",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 6413
+     }
+    }
    ]
   },
   "strv121": {
@@ -3330,8 +3354,8 @@
    "openPx": 8,
    "openViews": 0,
    "insideOutPx": 90,
-   "seeThroughPx": 90,
-   "netSeeThroughPx": 7503,
+   "seeThroughPx": 89,
+   "netSeeThroughPx": 8562,
    "tris": 137343,
    "frame": [
     0,
@@ -3348,6 +3372,26 @@
      "from": {
       "seeThroughPx": 91,
       "netSeeThroughPx": 7783
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "main-reds-259, the ghillie net re-drapes over the turret and gun the 240-243 lanes reshaped (first-parent from the 230 accept: 240 fleet pass a04759d1cb +98, 242 turret scale e0abd7721a +650 and f57a9ec9bc +85, 240b gun-hull 88d70fa408 +320, 243 triangle guns cf54ec44ba -215, 240 gun-hull fefd4615a6 +51), see-through holds at 89 (row 90), no opening",
+     "by": "kevinliu",
+     "date": "2026-10-27",
+     "from": {
+      "seeThroughPx": 90,
+      "netSeeThroughPx": 7503
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "259 merge, lane H's rigid roof stations (52d9280d67, 8556 on its head) and the hit-volume fit's ERA and skirt re-seat (2b4c2a32e1) re-drape the ghillie net over the turret and skirts, measured on the merged tree (integ 259) with see-through unchanged",
+     "by": "kevinliu",
+     "date": "2026-10-27",
+     "from": {
+      "seeThroughPx": 89,
+      "netSeeThroughPx": 8491
      }
     }
    ]

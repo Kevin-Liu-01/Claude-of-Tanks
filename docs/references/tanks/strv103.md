@@ -177,3 +177,23 @@ returned: casemate buildStrv103(P) + addStrv103BOraclePackage (the
 - §5.254 pairs: shots/sweden-undo/{before,after}/strv103/ (14 sheets each,
   captured at their respective trees, 0/14 byte-identical).
 The NEXT list above is suspended while the pre-wave build stands.
+
+## 259: gun port, nose screen, travel lock, flotation screen and the 103B's own field kit (2026-10-26)
+
+Owner: "dont allow the strv 103 bs gun to like glitch through the front of its gate. fix for the A and B! make all its
+deocrations specialized and customized heheh for both a and b". The builder is casemate.ts `buildStrv103` (id strv103b).
+
+- **Before (live 258):** the nose protection screen's centre bar (the "gate", x 0, z 2.58) ran 8.8 cm through the tube
+  (bore 1.56); the glacis louvre banks' inner edges ran 4-7 cm under it; the nose shelf tip and root stood 1-3 cm into its
+  belly; the glacis cut it from z 1.0 forward; a tilted exit sleeve sat beside it at z 1.15; the travel clamp lay buried in
+  the shelf.
+- **After:** the tube leaves through the glacis gun housing (z 0.92-2.50, level top 1.70) by a thin seal ring, and passes
+  the nose screen's opening (no centre bar; the bars at x +-0.25 stand 16 cm clear). The shelf tip and root drop to 1.445
+  and 1.43 (2.2 cm under the belly). The louvre banks narrow to stand outboard of the housing (x +-0.53, 0.66 wide). The
+  travel lock is the 103B's own A-frame yoke on the shelf at z 3.10: arms 5 cm outboard, head bar 1.8 cm over the tube,
+  saddle 1.2 cm under it. Receipt: `strv103GunPort.selftest.mjs` (hull pitch -13/0/+12).
+- **B-only fittings:** the flotation screen lies folded in its deck-edge trough: a canvas bellows roll along each run
+  (sides, front and rear) with clipped strut stations (sources: Wikipedia, hhogman.se "fitted flotation equipment"); the
+  103B keeps plain headlamps (the IR lamps went with the A).
+- **B field kit (decorations.ts `STRV103_DECOR`):** a rolled camouflage net, a water-can pair on the Nordic rack, a steel
+  ammunition box and three crew packs at the Gallery-markup roof points; no fleet cargo pools.

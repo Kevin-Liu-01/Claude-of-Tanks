@@ -307,7 +307,8 @@ export const oreBin: LandmarkBuilder = (ctx) => {
   sink.span('structureMetal', -g - 0.1, gy - 0.25, -g - 0.1, g + 0.1, gy, g + 0.1, { colour: IRON, decor: true });
   sink.span('structureMetal', -g + 0.05, gy - 0.6, -g + 0.05, g - 0.05, gy - 0.25, g - 0.05, { colour: shade(IRON, 0.8), decor: true });
   for (const sz of [-1, 1]) sink.span('structureMetal', -g - 0.25, gy - 0.32, sz * g - 0.05, g + 0.95, gy - 0.22, sz * g + 0.05, { colour: IRON, decor: true });
-  sink.span('structureMetal', g + 0.1, gy - 0.2, -0.06, g + 1.0, gy - 0.12, 0.06, { colour: shade(IRON, 1.3), decor: true, fine: true });
+  // (259, the phone census: the rack fine joinery, the hand wheel hung on nothing at range) the rack at any range
+  sink.span('structureMetal', g + 0.1, gy - 0.2, -0.06, g + 1.0, gy - 0.12, 0.06, { colour: shade(IRON, 1.3), decor: true });
   sheave(sink, [g + 1.0, gy - 0.16, 0], 0.32, 4, shade(IRON, 1.2), 0.05, { decor: true });
   // the head house on the hopper's lid where the conveyor delivers: the house grammar's sheet walls and roof, its door
   // to the walkway over the ladder, the conveyor's port in its front, a window on its side

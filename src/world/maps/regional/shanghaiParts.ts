@@ -253,7 +253,8 @@ export function nameBoard(sink: PartSink, face: Face, u: number, y: number, w: n
 export function lantern(sink: PartSink, face: Face, u: number, y: number, out = 0.5): void {
   const p = facePoint(face, u, y - 0.62, out);
   sink.cylinder('structureWood', p, 'y', 0.46, 0.17, 6, { colour: CHINA_RED, decor: true }, 0.17);
-  faceBox(sink, 'structureMetal', face, u, y - 0.08, out, 0.02, 0.16, 0.02, { colour: IRON, decor: true, fine: true });
+  // (259, the phone census: the cord fine joinery, the drum hung 9 cm under the eave on nothing) the cord at any range
+  faceBox(sink, 'structureMetal', face, u, y - 0.08, out, 0.02, 0.16, 0.02, { colour: IRON, decor: true });
 }
 
 /** Sandbags stacked across a doorway's foot (or a window's): courses of bags, `w` wide, `h` high, standing off the face. */

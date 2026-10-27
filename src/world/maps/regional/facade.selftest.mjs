@@ -46,10 +46,13 @@ function everything(parts) {
   }
   return out;
 }
+// (259) dressing counted whole, fine joinery and coarse together: a craft head stands in for the plain lintel
+// (openings.ts windowDressing), and deeper than geometry.ts FINE_SIDES_MAX_DEPTH_M its sides are drawn at range (they
+// seat its face on the wall) where the plain lintel's are fine joinery
 function roles(parts) {
   const out = {};
   for (const [bucket, list] of Object.entries(parts)) for (const g of list) {
-    const key = `${bucket}|${g.userData.noCollision ? (g.userData.fine ? 'f' : 'd') : 's'}`;
+    const key = `${bucket}|${g.userData.noCollision ? 'd' : 's'}`;
     out[key] = (out[key] ?? 0) + g.getAttribute('position').count;
   }
   return out;

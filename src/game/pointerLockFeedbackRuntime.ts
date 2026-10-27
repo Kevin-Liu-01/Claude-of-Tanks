@@ -1,5 +1,5 @@
 import { t } from '../ui/i18n.ts';
-import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { BattleNoticePort } from '../ui/battleNotices.ts';
 import type { EventBus } from './stateCore.ts';
 
 interface PointerLockInput {
@@ -22,12 +22,26 @@ interface PointerLockFeedbackRuntimeOptions {
   isBattleStageVisible(): boolean;
   canRecapturePointer(): boolean;
   ensureTouchControls(): Promise<TouchControlsLike | null>;
-  nextFrame(): Promise<RuntimeValue>;
+  /** The battle's notice region (ui/battleNotices.ts by default; a receipt passes its own). */
+  notices?: BattleNoticePort;
 }
 
 interface PointerLockFeedbackRuntime {
   dispose(): void;
 }
+
+// (the battle's region loads with the first notice: imported here, battleNotices.ts was a chunk of its own on the game
+// page's boot requests)
+let regionPort: Promise<BattleNoticePort> | null = null;
+const lazyBattleNotices: BattleNoticePort = {
+  show(options) {
+    regionPort ??= import('../ui/battleNotices.ts').then((module) => module.battleNotices);
+    void regionPort.then((port) => { port.show(options); }, () => {});
+  },
+  dismiss(id) {
+    if (regionPort) void regionPort.then((port) => { port.dismiss(id); }, () => {});
+  },
+};
 
 /**
  * Own pointer-lock recovery gestures and the durable cursor-aim notice.
@@ -42,13 +56,13 @@ export function createPointerLockFeedbackRuntime({
   isBattleStageVisible,
   canRecapturePointer,
   ensureTouchControls,
-  nextFrame,
+  notices = lazyBattleNotices,
 }: PointerLockFeedbackRuntimeOptions): PointerLockFeedbackRuntime {
   let disposed = false;
   let toastShown = false;
-  let toast: HTMLDivElement | null = null;
   let stageWaitTimer: ReturnType<typeof setTimeout> | null = null;
-  const toastTimers = new Set<ReturnType<typeof setTimeout>>();
+  /** The notice's id in the battle region (ui/battleNotices.ts: the kit's notice, UI-LOCKDOWN B14). */
+  const TOAST_ID = 'cot-pointer-lock';
 
   const clearStageWait = (): void => {
     if (stageWaitTimer !== null) clearTimeout(stageWaitTimer);
@@ -58,36 +72,16 @@ export function createPointerLockFeedbackRuntime({
   const removeToast = (): void => {
     toastShown = false;
     clearStageWait();
-    if (toast) toast.remove();
-    toast = null;
-    for (const timer of toastTimers) clearTimeout(timer);
-    toastTimers.clear();
+    notices.dismiss(TOAST_ID);
   };
 
+  // (the kit's warning in the battle's notice region, its time the kit's: a fixed amber box of its own sat at the centre
+  // top over the network's banner, UI-LOCKDOWN B14)
   const showToast = (): void => {
     if (disposed || !toastShown) return;
-    const element = document.createElement('div');
-    element.textContent = t('pointerLock.toast.unavailable');
-    element.className = 'cot-lock-toast';
-    element.style.cssText =
-      'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
-      'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
-      'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
-      'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
-      'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
-    document.body.appendChild(element);
-    toast = element;
-    void nextFrame().then(() => {
-      if (disposed || toast !== element) return;
-      const fade = setTimeout(() => { element.style.opacity = '0'; }, 4500);
-      const remove = setTimeout(() => {
-        element.remove();
-        toastTimers.delete(fade);
-        toastTimers.delete(remove);
-        if (toast === element) toast = null;
-      }, 5900);
-      toastTimers.add(fade);
-      toastTimers.add(remove);
+    notices.show({
+      id: TOAST_ID, className: 'cot-lock-notice', severity: 'warning', text: t('pointerLock.toast.unavailable'),
+      durationMs: 5900, dismissible: false,
     });
   };
 

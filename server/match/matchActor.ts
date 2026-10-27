@@ -60,6 +60,8 @@ export interface ActorSeatSpec {
   team: SeatTeam;
   specId: string;
   equipment?: readonly string[] | null;
+  /** The consumable in each slot (sim/consumableRules.ts); absent carries the default trio. */
+  consumables?: readonly string[] | null;
   /** A spawn override (the receipts place hulls at known distances); the layout's spawn otherwise. */
   spawn?: { x: number; z: number; yaw?: number };
 }
@@ -446,7 +448,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     if (spec.team === 'spectator') continue;
     const entityId = nextEntityId++;
     entityIdOf.set(spec.playerId, entityId);
-    players.push({ id: spec.playerId, specId: spec.specId, team: spec.team, equipment: spec.equipment ?? null, ...(spec.spawn ? { spawn: spec.spawn } : {}) });
+    players.push({
+      id: spec.playerId, specId: spec.specId, team: spec.team, equipment: spec.equipment ?? null,
+      consumables: spec.consumables ?? null, ...(spec.spawn ? { spawn: spec.spawn } : {}),
+    });
     rosterEntries.push({ entityId, seat: spec.seat, team: TEAM_ID[spec.team], bot: false, connected: false, playerId: spec.playerId, name: spec.name, specId: spec.specId });
   }
   for (const bot of bots) {

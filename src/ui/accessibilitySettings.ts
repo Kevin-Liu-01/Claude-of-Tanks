@@ -19,9 +19,10 @@ export const ACCESSIBILITY_KEY = 'cot.accessibility.v1';
 export const ACCESSIBILITY_EVENT = 'cot:accessibility';
 export const COLOR_PRESETS = ['default', 'deutan', 'protan', 'tritan', 'classic', 'custom'] as const;
 export const MOTION_MODES = ['system', 'reduce', 'full'] as const;
-/** Every action a player holds: each can be switched to press-to-toggle. freeCamera's own Toggle (settings.rmbMode)
- *  stays; this toggles whatever its Hold or Free-look mode does. rosters is the HUD's Tab key. */
-export const HOLD_ACTIONS = ['fire', 'handbrake', 'freeLook', 'freeCamera', 'rosters'] as const;
+/** Every action a player holds: each can be switched to press-to-toggle; rosters is the HUD's Tab key. Item 259 (one
+ *  datum, one place): the RMB action's hold or toggle is its Right click mode on Settings › Controls (settings.rmbMode),
+ *  so it is not one of these; Accessibility links to it. */
+export const HOLD_ACTIONS = ['fire', 'handbrake', 'freeLook', 'rosters'] as const;
 /** The numeric choices and their ranges: text size 80-200 %, HUD scale 75-150 % (SPEC 12.1.6), camera shake and flash
  *  intensity 0-100 %. The caption renderer (the HUD packages) adds the caption choices beside them. */
 export const RANGES = {

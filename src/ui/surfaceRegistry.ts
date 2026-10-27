@@ -189,6 +189,14 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'boot', owner: BOOT, surface: '#cot-boot-notice' },
     ],
   },
+  /** (item 259, the lead: one datum, one place) What right-click does (rmbMode: Hold to Aim, Toggle Aim, Free Look): one
+   *  control, on Controls under the RMB action's binding; Accessibility's Hold or toggle group links to it, never repeats it. */
+  'rmb-mode': {
+    labels: ['settings.rmb.label'],
+    places: [
+      { screen: 'settings', owner: 'src/ui/settings.ts', surface: '#cot-set-rmb-mode' },
+    ],
+  },
   /** The battle stands paused: the veil after a focus loss, the tag on Settings opened in a battle. */
   paused: {
     places: [
@@ -199,6 +207,20 @@ export const SURFACE_REGISTRY = Object.freeze({
   'kill-feed': {
     places: [
       { screen: 'battle', owner: HUD, surface: '.cot-killfeed' },
+    ],
+  },
+  /** The tank's own fire, modules and crew, with their severity and the repair's fill (UI-LOCKDOWN B2: the damage
+   *  panel's plan shows where each module sits, its glyphs a diagram beside the chips, never a word or a figure). */
+  'vehicle-status': {
+    places: [
+      { screen: 'battle', owner: 'src/ui/vehicleStatus.ts', surface: '.cot-vehicle-status' },
+    ],
+  },
+  /** The damage the player's hits deal: the numbers floating over them (UI-LOCKDOWN B16: the shot card keeps the
+   *  penetration, the angle, the armour and the outcome). */
+  'damage-dealt': {
+    places: [
+      { screen: 'battle', owner: HUD, surface: '.cot-dmgnum' },
     ],
   },
   /** The killcam's killer card (who destroyed the player, with what). */

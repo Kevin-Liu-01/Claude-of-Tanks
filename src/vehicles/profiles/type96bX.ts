@@ -297,7 +297,10 @@ export interface Type96TurretOptions {
 // (gunFloodlight.ts) right of the gun, its back 7 cm ahead of the cheek beside it (gun frame 0.33); its bracket runs on
 // the bore line, under the cheek's 0.33 lip at y 0.10, into the boot's 0.35 face 19 cm off the bore (the barrel's
 // collars are 16 cm)
-const TYPE96_GUN_FLOODLIGHT: GunFloodlightSeat = { side: 'right', x: .40, y: .02, backZ: .40, anchorX: .19, anchorY: 0, anchorZ: .31 };
+// (main-reds-259, Main's ruling: its own draw, gunMountLamp, so the boot, the measured source Object_6, keeps its envelope)
+const TYPE96_GUN_FLOODLIGHT: GunFloodlightSeat = {
+  side: 'right', x: .40, y: .02, backZ: .40, anchorX: .19, anchorY: 0, anchorZ: .31, bucket: 'gunMountLamp',
+};
 
 // The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
 const TYPE96_BOX_SIGHT = { x: 0, y: 2.278, z: 1.540, w: .25, h: .236, d: .396 } as const;

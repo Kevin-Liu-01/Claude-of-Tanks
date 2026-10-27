@@ -57,6 +57,17 @@ interface GermanVariantOptions {
   armorFactor?: number;
 }
 
+/** 258 (vehicles-hit-volume-fit-258): the A4M CAN's skirt plates come from the A2's hull and ran 25 cm past the skirt
+ * the A4M draws (and stopped 5 cm short of its nose): fitted to the drawn skirt's run, rear lip to nose. */
+function fitSkirtRun(spec: FleetTankSpec, rearZ: number, frontZ: number): FleetTankSpec {
+  for (const plate of spec.armor.hullPlates) {
+    if (!/^skirt_[LR]$/.test(plate.name ?? '')) continue;
+    const zs = plate.verts.map((vertex) => vertex[2]), lo = Math.min(...zs), hi = Math.max(...zs);
+    plate.verts = plate.verts.map(([x, y, z]) => [x, y, z === lo ? rearZ : z === hi ? frontZ : z]);
+  }
+  return spec;
+}
+
 function variant(
   id: string,
   donorId: string,
@@ -104,9 +115,12 @@ const GERMANY_SPECS = {
     dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.90 },
     stats: { hp: 2250, enginePowerHp: 1500, weightTons: 56.0, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 36, gunPitchDegS: 31 },
-    reloadS: 6.1, shellName: 'DM53 APFSDS', armorFactor: 1.08,
+    // 260 (fidelity): no armorFactor. The fourth batch changed radios, grilles, the gunner's chest rest and the
+    // ammunition hatch, not the armour (armedconflicts.com/-t84825); the first four batches (2A1-2A3) share the basic
+    // armour package and improved armour arrives with the sixth batch's 2A4 (joint-forces.com/features/31130).
+    reloadS: 6.1, shellName: 'DM53 APFSDS',
   }),
-  leo2a4m_can: variant('leo2a4m_can', 'leo2a2', {
+  leo2a4m_can: fitSkirtRun(variant('leo2a4m_can', 'leo2a2', {
     name: 'Leopard 2A4M CAN', number: 'A4M', scheme: 'stripes',
     base: '#4a5141', weather: '#656b58', patches: ['#2b3329', '#625941', '#77705b'],
     camoScale: 0.42,
@@ -118,7 +132,7 @@ const GERMANY_SPECS = {
     stats: { hp: 2450, enginePowerHp: 1500, weightTons: 61.8, topSpeedKmh: 68,
       reverseSpeedKmh: 31, turretTraverseDegS: 38, gunPitchDegS: 32 },
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,
-  }),
+  }), -3.605, 3.717),
   leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
     name: 'Leopard 2A4 OTCO', number: 'A6M', scheme: 'stripes',
     base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'],

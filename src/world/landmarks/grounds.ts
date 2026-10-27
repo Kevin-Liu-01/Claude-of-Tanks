@@ -180,7 +180,9 @@ export function grave(sink: PartSink, ground: GroundAt, x: number, z: number, ya
       sink.span('structureMetal', -0.26, -0.2, hz - 0.2, 0.26, 0.1, hz + 0.2, { colour: PLINTH_GREY, decor: true });
       sink.span('structureMetal', -0.17, 0.1, hz - 0.13, 0.17, 0.22, hz + 0.13, { colour: PLINTH_GREY, decor: true, fine: true });
       const h = 1.45, t = 0.065, latin: EmitOptions = { colour: WEATHERED_WOOD, decor: true };
-      sink.span('structureWood', -t, 0.18, hz - t, t, h, hz + t, latin);
+      // (259, the phone census: from the stepped base's top, fine joinery, the cross stood 8 cm over the plinth at range)
+      // from the plinth, through the base
+      sink.span('structureWood', -t, 0.1, hz - t, t, h, hz + t, latin);
       sink.span('structureWood', -t - 0.018, h, hz - t - 0.018, t + 0.018, h + 0.035, hz + t + 0.018, { ...latin, fine: true });
       sink.span('structureWood', -0.4, h - 0.47, hz - t * 0.85, 0.4, h - 0.34, hz + t * 0.85, latin);
       return;

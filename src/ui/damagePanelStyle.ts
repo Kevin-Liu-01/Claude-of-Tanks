@@ -13,8 +13,10 @@ export const DAMAGE_PANEL_CSS = `
 .cot-dp .hplabel{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 .cot-dp .hpnum{font:500 var(--battle-fs-28)/.9 var(--font-mono);color:var(--ink-1);}
 .cot-dp .hpmax{min-width:0;overflow:hidden;text-overflow:clip;font:500 var(--battle-fs-fig-12)/1 var(--font-mono);color:var(--ink-3);}
-.cot-dp .hptrack{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:2px;height:7px;margin-bottom:9px;}
-.cot-dp .hptrack i{background:var(--fill-scale);}
+.cot-dp .hptrack{display:flex;height:7px;margin-bottom:9px;}
+/* (whole-pixel cells sized by damagePanel.ts fitHpCells; until it measures, twenty flexed shares with a 2 px gap) */
+.cot-dp .hptrack i{flex:none;width:calc((100% - 38px) / 20);background:var(--fill-scale);}
+.cot-dp .hptrack i+i{margin-left:2px;}
 .cot-dp .hptrack i.on{background:var(--ink-1);}
 .cot-dp .hptrack[data-tone=warn] i.on{background:var(--warn);}
 .cot-dp .hptrack[data-tone=danger] i.on{background:var(--danger);}
@@ -29,15 +31,8 @@ export const DAMAGE_PANEL_CSS = `
 .cot-dp .equiprow .eq{display:grid;place-items:center;width:28px;height:26px;border-radius:var(--r1);box-shadow:var(--ring-2);
   color:var(--ink-2);}
 .cot-dp .equiprow .eq svg{display:block;}
-.cot-dp .fire{position:absolute;top:52px;left:13px;display:none;padding:4px 7px;border-radius:var(--r1);
-  font:600 var(--battle-fs-11)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--text-danger);
-  background:var(--hud-plate-strong);box-shadow:var(--battle-chip-danger);
-  animation:cotFirePulse var(--dur-stage) ease-in-out infinite alternate;}
-@media (prefers-reduced-motion:reduce){.cot-dp .fire{animation:none}}
 body.cot-touch-layout .cot-dp .hpnum{font-size:var(--battle-fs-18);}
 /* the narrow touch strip (112-150 px, the plan hidden there: touchControls.ts): the points and their maximum on one line */
 body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpnum{font-size:var(--battle-fs-15);}
 body.cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp .hpmax{font-size:var(--battle-fs-fig-11);}
-:lang(zh-CN) .cot-dp .fire{font-size:var(--battle-fs-13);}
-@keyframes cotFirePulse{from{opacity:.55}to{opacity:1}}
 `;

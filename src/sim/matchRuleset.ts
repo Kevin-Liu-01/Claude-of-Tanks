@@ -12,6 +12,7 @@ import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
 import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
 import { EQUIPMENT_BY_ID, type EquipmentCategoryId } from './equipmentRules.ts';
+import type { ConsumableGateContext, ConsumableId, ConsumableTiming } from './consumableRules.ts';
 
 /** A mode's refused equipment (MatchRuleset.equipmentBan). */
 interface EquipmentBan {
@@ -1059,6 +1060,8 @@ export interface MatchRuleset {
    *  and the authority drop them from every loadout (rulesetLoadout), so a seat cannot carry them in. */
   readonly equipmentBan?: EquipmentBan;
   readonly consumables: boolean;
+  /** Consumables the mode refuses beyond its own needs (2026-10-26, the larger catalog; rulesetAllowsConsumable). */
+  readonly consumableBan?: readonly ConsumableId[];
   /** Modules, crew and fires take damage. False (owner 2026-09-15, Turbo Ball: "make modules not break since
    * there's no consumables") keeps every critical system intact — hull hit points are the only thing a hit costs. */
   readonly criticalDamage: boolean;
@@ -2068,6 +2071,54 @@ export function rulesetAllowsEquipment(ruleset: Pick<MatchRuleset, 'equipmentSlo
   if (ban.items?.includes(id)) return false;
   const category = EQUIPMENT_BY_ID.get(id)?.cat;
   return !(category && ban.categories?.includes(category));
+}
+
+/**
+ * Each consumable's cooldown and uses per life (owner 2026-10-26: "have a much larger variety"; the catalog and its
+ * grounding: sim/consumableRules.ts, ~/cot-launch-state/streams/CONSUMABLES-259.md). The only timing table: the page
+ * battle, the authority, the HUD and the Garage all read it. The first three keep the kits' original cooldowns.
+ */
+export const CONSUMABLE_TIMING: Readonly<Record<ConsumableId, ConsumableTiming>> = Object.freeze({
+  repair: { cooldownS: 35, charges: null },
+  repair_large: { cooldownS: 60, charges: 2 },
+  track_links: { cooldownS: 12, charges: 3 },
+  first_aid: { cooldownS: 45, charges: null },
+  rations: { cooldownS: 60, charges: 2 },
+  extinguisher: { cooldownS: 25, charges: null },
+  fire_suppression: { cooldownS: 60, charges: 2 },
+  governor_override: { cooldownS: 45, charges: 2 },
+  ammo_restock: { cooldownS: 90, charges: 1 },
+  smoke_reload: { cooldownS: 40, charges: 2 },
+  foliage: { cooldownS: 60, charges: 2 },
+  aps_charge: { cooldownS: 45, charges: 2 },
+  ir_jammer: { cooldownS: 40, charges: 3 },
+});
+
+export function consumableTiming(id: ConsumableId): ConsumableTiming {
+  return CONSUMABLE_TIMING[id] ?? { cooldownS: 30, charges: null };
+}
+
+/**
+ * Whether a mode lets a crew carry a consumable: none when the mode has no consumables, none it bans, and no Fresh
+ * Foliage where every tank is always visible (concealment would do nothing, as scouting equipment is refused there).
+ */
+/** The parts of a ruleset the consumable gate reads (the page battle's narrower ruleset view fits it). */
+interface ConsumableRulesetView {
+  readonly consumables?: boolean;
+  readonly consumableBan?: readonly ConsumableId[];
+  readonly alwaysVisible?: boolean;
+  readonly ammo?: string;
+}
+
+export function rulesetAllowsConsumable(ruleset: ConsumableRulesetView, id: string): boolean {
+  if (ruleset.consumables === false) return false;
+  if (ruleset.consumableBan?.includes(id as ConsumableId)) return false;
+  return !(id === 'foliage' && ruleset.alwaysVisible);
+}
+
+/** A mode's gate for the consumable catalog (sim/consumableRules.ts consumableLock, sanitizeConsumableLoadout). */
+export function rulesetConsumableGate(ruleset: ConsumableRulesetView): ConsumableGateContext {
+  return { finiteAmmo: ruleset.ammo !== 'unlimited', allows: (id) => rulesetAllowsConsumable(ruleset, id) };
 }
 
 /**

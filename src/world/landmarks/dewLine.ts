@@ -201,7 +201,9 @@ function reflector(sink: PartSink, floor: number, rb: number, yc: number, R: num
   // its frame: the rim and the ribs, and the backing struts to the turning gear
   for (let i = 0; i <= cols; i += 2) bar(sink, 'structureMetal', at(i, 0), at(i, rows), 0.035, { colour: STEEL_DARK, ...dec });
   for (const j of [0, rows]) for (let i = 0; i < cols; i++) bar(sink, 'structureMetal', at(i, j), at(i + 1, j), 0.04, { colour: STEEL_DARK, ...dec });
-  for (const i of [2, 5, 8]) bar(sink, 'structureMetal', at(i, rows / 2), rot(0, yc - 0.3, back - 0.4), 0.04, { colour: STEEL_DARK, ...dec });
+  // (259, the far-view census: to a point 0.4 m behind the reflector, a metre off the axis, the struts held the dish
+  // clear of its gear) to the turning gear's rim on the reflector's side
+  for (const i of [2, 5, 8]) bar(sink, 'structureMetal', at(i, rows / 2), rot(0, yc - 0.42, -0.4), 0.04, { colour: STEEL_DARK, ...dec });
   // the feed horn at the focus on its two struts from the reflector's lower rim
   const focus = rot(0, yc - 0.1, back + R * 0.62);
   for (const i of [3, 7]) bar(sink, 'structureMetal', at(i, 0), focus, 0.03, { colour: STEEL, ...dec });

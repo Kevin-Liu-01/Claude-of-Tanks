@@ -3,6 +3,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { createRichTooltip } from './richTooltip.ts';
+import { markDatum } from './dom.ts';
 import { createVehicleStatusReader, vehicleStatusCapacity, MAX_VEHICLE_STATUS_BOXES,
   type ConcealmentStatus, type VehicleStatus } from './vehicleStatusPolicy.ts';
 
@@ -38,6 +39,8 @@ function detail(status: VehicleStatus): string {
 export function createVehicleStatusStrip() {
   ensureStyle('cot-vehicle-status-style',CSS,'surfaces');
   const root=document.createElement('div');root.className='cot-vehicle-status';root.hidden=true;
+  // fire's, the modules' and the crew's one place, with their severity and the repair's fill (UI-LOCKDOWN B2)
+  markDatum(root,'vehicle-status');
   root.setAttribute('role','group');root.setAttribute('aria-label',t('hud.status.title'));
   const read=createVehicleStatusReader();let active:readonly VehicleStatus[]=[];
   let capacity=MAX_VEHICLE_STATUS_BOXES;
