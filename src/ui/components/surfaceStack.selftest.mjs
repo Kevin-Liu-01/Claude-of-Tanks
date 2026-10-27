@@ -4,7 +4,7 @@
 // Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { closeSurface, isSurfaceOpen, openSurface, openSurfaceIds, planOpen, planPress, topSurface } from './surfaceStack.ts';
+import { closeSurface, openSurface, openSurfaceIds, planOpen, planPress } from './surfaceStack.ts';
 
 // stand-in nodes and boxes: a node is a path, a box holds the paths under its own
 const at = (path) => ({ path });
@@ -53,7 +53,7 @@ assert.deepEqual(openSurfaceIds(), ['garage-equipment'], 'opening an open surfac
 openSurface(consumables, at('band/cs0'));
 assert.deepEqual(log, ['garage-equipment:replace'], 'the consumables replace the equipment, in the same press');
 assert.deepEqual(openSurfaceIds(), ['garage-consumables']);
-assert.equal(isSurfaceOpen(equipment), false);
+assert.ok(!openSurfaceIds().includes('garage-equipment'));
 
 log.length = 0;
 openSurface(settings, at('header/gear'));
@@ -62,7 +62,7 @@ openSurface(quality, at('settings/quality'));
 assert.deepEqual(openSurfaceIds(), ['settings', 'settings-quality'], 'a menu inside Settings stands on it');
 openSurface(colours, at('settings/colours'));
 assert.deepEqual(openSurfaceIds(), ['settings', 'settings-colour-preset'], 'the next menu replaces the first, Settings stays');
-assert.equal(topSurface(), colours);
+assert.equal(openSurfaceIds().at(-1), 'settings-colour-preset');
 log.length = 0;
 closeSurface(settings);
 assert.deepEqual(log, ['settings-colour-preset:replace'], 'closing a surface closes the ones standing on it');

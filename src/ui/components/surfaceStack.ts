@@ -60,16 +60,6 @@ export function openSurfaceIds(): readonly string[] {
   return stack.map((surface) => surface.id);
 }
 
-/** The surface on top, or null. */
-export function topSurface(): TransientSurface | null {
-  return stack.at(-1) ?? null;
-}
-
-/** Whether `surface` is open (on the stack). */
-export function isSurfaceOpen(surface: TransientSurface): boolean {
-  return stack.includes(surface);
-}
-
 /**
  * `surface` opens from `opener` (its trigger; the focused control when none is given). Whatever stands at its level or
  * above closes now, with its exit motion, so the new surface enters as the old one leaves. Opening an open surface
