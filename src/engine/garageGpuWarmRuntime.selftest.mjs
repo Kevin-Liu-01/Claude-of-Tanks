@@ -104,8 +104,9 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
 }
 
 {
-  // (2026-10-26, the live 258 census) every compiled program's first use between frames, hidden LOD levels included,
-  // after the link wait and before the shadow prime and the warm's draws (which reach only the selected LOD level)
+  // (2026-10-26, the live 258 census and the boot ABBA) the compiled programs' first use between frames, hidden LOD
+  // levels included, after the link wait and before the shadow prime and the warm's draws (which reach only the selected
+  // LOD level); initializeSteps would prepare only programs its own submission made, none after the full compile
   const order = [];
   const firstUse = {};
   await warmGarageGpuPipeline({
@@ -113,11 +114,13 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     lighting: { update() {}, async primeShadowMaps() { order.push('shadows'); return [1]; } },
     forwardPrograms: {
       compile() { order.push('compile'); },
-      *initializeSteps(root, stats, options) {
+      *initializeSteps() { assert.fail('the boot first-uses the compiled programs, not a second submission'); },
+      *prepareCompiledSteps(root, options) {
         assert.ok(root === scene);
-        assert.equal(stats, null);
-        assert.deepEqual(options, { requireCompletion: true, includeHidden: true }, 'hidden objects too: every LOD level');
         for (let slice = 0; slice < 2; slice++) { order.push('first-use'); yield; }
+        options.timing.uniformCount = 24;
+        options.timing.uniformReused = 3;
+        return { status: 'complete', pending: 0 };
       },
     },
     post: { async warmFirstFrame() { return []; }, render() { order.push('render'); } },
@@ -132,6 +135,9 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
   assert.deepEqual(order.slice(0, 5), ['compile', 'links', 'first-use', 'first-use', 'shadows']);
   assert.ok(order.indexOf('draws') > order.lastIndexOf('first-use'));
   assert.equal(firstUse.firstUseSlices, 2);
+  assert.equal(firstUse.firstUsePrograms, 24);
+  assert.equal(firstUse.firstUseReused, 3);
+  assert.equal(firstUse.firstUsePending, undefined, 'a complete first use records nothing pending');
 }
 
 {
