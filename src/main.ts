@@ -1086,9 +1086,9 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // a free sortie on a local host (soloAuthorityFor: only ?soloAuthority=host since 256) enters through the network
-  // composition (mp/session/soloHostEntry.ts): the intent warms it and prepares the battle's host thread (its world, the
-  // player's anatomy, the bots' ground). By default the intent warms the page's own solo alone: no host Worker, no session
+  // the quick battle's authority (soloAuthorityFor): by default (261) the solo sim Worker, whose chunk and battlefield the
+  // intent prepares; under ?soloAuthority=host a local host, through the network composition (mp/session/soloHostEntry.ts),
+  // whose host thread it prepares; on the page (?soloAuthority=page, the mobile tier) the page's own solo alone
   preloadSoloBattle: () => {
     const { authority } = soloAuthorityFor('standard');
     if (authority === 'host') return Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]);
@@ -1367,8 +1367,8 @@ const multiplayerV2 = createCompositionAccess(loadMultiplayerV2Composition);
 // Plan step 11 (2026-10-13): a hosting tab that closes, reloads or navigates away hands its match on at once instead of
 // leaving its peers to the room's socket lease (the command leaves on the room socket inside the event).
 window.addEventListener('pagehide', () => { multiplayerV2.current?.handOffHosting('pagehide'); });
-// A free sortie on the solo sim Worker (RUST-ENGINE-DECISION §7 step 5): its own lazy chunk, loaded by the sortie alone
-// (soloAuthorityFor: only ?soloAuthority=worker until the owner's OK).
+// A free sortie on the solo sim Worker (RUST-ENGINE-DECISION §7; soloAuthorityFor): its own lazy chunk, loaded by the
+// Battle intent and the sortie alone.
 const soloSim = createCompositionAccess(loadSoloSimBattle);
 /** A network match owns the battle frame: a round loading or live, or a sortie on the solo sim Worker. */
 const networkMatchActive = (): boolean => !!multiplayerV2.current?.active || !!soloSim.current?.active;
@@ -3189,14 +3189,18 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
 }
 
 /**
- * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7 step 5). Every solo battle is the page's own simulation by
- * default (2026-10-26, release 256: the owner ruled that a solo game against bots must not create a multiplayer session).
- * `?soloAuthority=worker` puts a free sortie in a versus battle mode on the solo sim Worker (src/game/soloSimBattleRuntime.ts,
- * the rework: no room, session or multiplayer UI), pending the gates and the owner's OK; `?soloAuthority=host` still puts
- * it on a local host (mp/session/soloHostEntry.ts) until the rework replaces it. The campaign, a watched battle, the
- * practice and co-op modes, a battle Jev commands and a browser without Workers stay on the page even then.
+ * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7). A solo game against bots never creates a multiplayer
+ * session (the owner, 2026-10-26, release 256). Since release 261 (the owner's "yes", DECISIONS 2026-10-27) a free sortie
+ * in a mode whose parity the solo sim Worker has passed (SOLO_WORKER_MODES) runs on that Worker
+ * (src/game/soloSimBattleRuntime.ts: no room, session or multiplayer UI), and a Worker that cannot boot hands the battle to
+ * the page under the same cover. The campaign, a watched battle, the practice and co-op modes, the other versus modes until
+ * each passes its own parity check, a battle Jev commands, the mobile tier and a browser without Workers stay on the page.
+ * `?soloAuthority=page` keeps every battle on the page (diagnosis, rollback); `?soloAuthority=worker` puts any versus mode on
+ * the Worker, and `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|worker|page)\b/.exec(location.search)?.[1] ?? null;
+/** The modes a solo battle runs on the solo sim Worker by default: the quick battle's standard rules (phase 4's gates). */
+const SOLO_WORKER_MODES: ReadonlySet<string> = new Set(['standard']);
 function soloAuthorityFor(
   gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
 ): { authority: 'host' | 'worker' | 'page'; reason: string } {
@@ -3211,7 +3215,9 @@ function soloAuthorityFor(
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
   if (SOLO_AUTHORITY_PARAM === 'worker') return { authority: 'worker', reason: 'forced' };
-  return page('default');
+  if (!SOLO_WORKER_MODES.has(mode)) return page('parity');
+  if (getDeviceTier() === 'mobile') return page('mobile');
+  return { authority: 'worker', reason: 'default' };
 }
 
 /** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
@@ -3367,7 +3373,8 @@ async function beginSoloBattle({
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // the page's own simulation by default; a free sortie on a local host only under ?soloAuthority=host (soloAuthorityFor)
+  // (soloAuthorityFor) the solo sim Worker for a quick battle's standard rules, a local host under ?soloAuthority=host,
+  // else the page's own simulation
   const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
   noteSoloAuthority(authority);
   if (authority.authority === 'host') {
