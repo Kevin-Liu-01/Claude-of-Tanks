@@ -45,10 +45,11 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'garage-consumables': { screen: 'garage', owner: 'src/ui/garageConsumables.ts', box: '.cot-cspick',
     open: { docked: ['.cot-lt-consumables .csslot[data-slot="0"]'], folded: ['.cot-lt-consumables .csslot[data-slot="0"]'] } },
   'garage-paint-sheet': { screen: 'garage', owner: GARAGE, box: '.cot-leftcol', open: { docked: ['.cot-lt-paint-all'], folded: ['.cot-lt-paint-all'] } },
-  'garage-dossier': { screen: 'garage', owner: GARAGE, box: '.cot-garage .stats', modal: true, open: { folded: ['.cot-compact-equipment-trigger'] } },
-  // (folded, the Compare row stands in the dossier)
-  'garage-rival': { screen: 'garage', owner: GARAGE, box: menuBox('garage-rival'), on: { folded: 'garage-dossier' },
-    open: { docked: RIVAL_OPEN, folded: ['.cot-compact-equipment-trigger', ...RIVAL_OPEN] } },
+  // (folded, the overview's figures stand in the corner at rest: the dossier is that card opened over the stage)
+  'garage-dossier': { screen: 'garage', owner: GARAGE, box: '.cot-garage[data-garage-panel="equipment"] .stats', modal: true,
+    open: { folded: ['button[data-garage-panel="equipment"]'] } },
+  // (a folded layout shows no Compare row: showroom.css)
+  'garage-rival': { screen: 'garage', owner: GARAGE, box: menuBox('garage-rival'), open: { docked: RIVAL_OPEN } },
   'garage-staging': { screen: 'garage', owner: GARAGE, box: menuBox('garage-staging'), open: { docked: ['[data-picker-menu="garage-staging"]'] } },
   'garage-quick-mode': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-mode'), open: { docked: ['[data-battle-quick]'], folded: ['[data-battle-quick]'] } },
   'garage-quick-battlefield': { screen: 'garage', owner: GARAGE, box: menuBox('garage-quick-battlefield'), open: {} },
@@ -88,7 +89,7 @@ export const TRANSIENT_SURFACES = Object.freeze({
   // ---- the Tank Gallery and the public pages
   'gallery-rival': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-rival'), open: { docked: ['[data-picker-menu="gallery-rival"]'], folded: ['[data-picker-menu="gallery-rival"]'] } },
   'gallery-sort': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-sort'), open: { docked: ['[data-picker-menu="gallery-sort"]'], folded: ['[data-picker-menu="gallery-sort"]'] } },
-  'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram', modal: true, open: { docked: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'], folded: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'] } },
+  'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram.is-zoomed', modal: true, open: { docked: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'], folded: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'] } },
   'public-nav-menu': { screen: 'gallery', owner: 'src/presentation/publicNav.ts', box: '#public-nav-menu', open: { folded: ['.public-nav__menu-trigger'] } },
 
   // ---- the battle

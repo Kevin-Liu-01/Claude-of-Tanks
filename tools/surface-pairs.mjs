@@ -10,7 +10,10 @@
 // guarded browser (tools/browser-launch.mjs), one at a time.
 //
 //   node tools/surface-pairs.mjs --url=http://127.0.0.1:4173 --out=/absolute/new-dir
-//     [--layouts=docked,folded] [--langs=en,zh] [--pages=game,gallery] [--only=<id>,...] [--battle]
+//     [--layouts=docked,folded,pane] [--langs=en,zh] [--pages=game,gallery] [--only=<id>,...] [--battle]
+// 'docked' is a desktop (1440x900), 'folded' a touch phone (390x844), 'pane' a short window under a mouse (800x600): the last
+// two fold the Garage's panels and take the registry's folded recipes. A recipe whose first control a size never shows is
+// skipped there; every row the run's recipes name must open at one size at least.
 // Exit 1 on any failure; the report is <out>/surface-pairs.json, the log <out>/surface-pairs.log.
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
@@ -24,7 +27,7 @@ const out = option('out') && resolve(option('out'));
 if (!base || !out) throw new Error('Required: --url=http(s)://served-build --out=/absolute/new-dir');
 if (existsSync(out)) throw new Error(`${out} exists: the census never overwrites an earlier run`);
 mkdirSync(out, { recursive: true });
-const LAYOUTS = option('layouts', 'docked,folded').split(',');
+const LAYOUTS = option('layouts', 'docked,folded,pane').split(',');
 const LANGS = option('langs', 'en').split(',');
 const PAGES = option('pages', 'game,gallery').split(',');
 const ONLY = option('only') ? new Set(option('only').split(',')) : null;
@@ -33,8 +36,13 @@ const BATTLE = process.argv.includes('--battle');
 const VIEWPORTS = {
   docked: { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
   folded: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
+  pane: { width: 800, height: 600, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
 };
-const TURNED = { docked: { width: 1024, height: 600 }, folded: { width: 844, height: 390 } };
+const TURNED = { docked: { width: 1024, height: 600 }, folded: { width: 844, height: 390 }, pane: { width: 1280, height: 800 } };
+/** The registry's recipes a run's size takes. */
+const RECIPES = { docked: 'docked', folded: 'folded', pane: 'folded' };
+const opened = new Set();
+const absent = new Map();
 const PAGE_SCREENS = { game: ['garage', 'deploy', 'settings'], gallery: ['gallery'] };
 const PAGE_PATH = { game: '/?nosplash=1', gallery: '/gallery' };
 const settle = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -124,7 +132,8 @@ function judge(context, state, expected, { focus = expected.at(-1), within = fal
   log(`${problems.length ? 'FAIL' : 'ok  '} ${context.layout} ${context.lang} ${context.scenario}${context.a ? ` ${context.a}` : ''}${context.b ? ` -> ${context.b}` : ''}${problems.length ? `: ${problems.join('; ')}` : ''}`);
 }
 
-async function runPage(browser, layout, lang, pageName) {
+async function runPage(browser, run, lang, pageName) {
+  const layout = RECIPES[run];
   layoutNow = layout;
   const screens = PAGE_SCREENS[pageName];
   const candidates = rows.filter((row) => screens.includes(row.screen) && row.open[layout] && (!ONLY || ONLY.has(row.id)));
@@ -134,8 +143,8 @@ async function runPage(browser, layout, lang, pageName) {
   if (!candidates.length) return;
   const page = await browser.newPage();
   await page.evaluateOnNewDocument(holds);
-  await page.setViewport(VIEWPORTS[layout]);
-  page.on('pageerror', (error) => log(`pageerror ${layout} ${lang} ${pageName}: ${error.message}`));
+  await page.setViewport(VIEWPORTS[run]);
+  page.on('pageerror', (error) => log(`pageerror ${run} ${lang} ${pageName}: ${error.message}`));
   const url = `${base}${lang === 'zh' ? '/cn' : ''}${PAGE_PATH[pageName]}`;
   const load = async () => {
     await page.goto(url, { waitUntil: 'load', timeout: 180_000 }).catch(() => {});
@@ -154,7 +163,7 @@ async function runPage(browser, layout, lang, pageName) {
     const spot = await page.evaluate((sel) => {
       const el = [...document.querySelectorAll(sel)].find((node) => node.getClientRects().length && node.checkVisibility({ visibilityProperty: true }));
       if (!el) return null;
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      el.scrollIntoView({ block: 'center', inline: 'nearest' });
       const r = el.getBoundingClientRect();
       const x = r.left + r.width / 2, y = r.top + r.height / 2;
       const hit = document.elementFromPoint(x, y);
@@ -162,7 +171,7 @@ async function runPage(browser, layout, lang, pageName) {
     }, sel);
     if (!spot) return optional ? 'skipped' : 'missing';
     if (!spot.reachable) return optional ? 'skipped' : 'covered';
-    if (layout === 'folded') await page.touchscreen.tap(spot.x, spot.y);
+    if (VIEWPORTS[run].hasTouch) await page.touchscreen.tap(spot.x, spot.y);
     else { await page.mouse.move(spot.x, spot.y); await page.mouse.down(); await page.mouse.up(); }
     await settle(380);
     return 'pressed';
@@ -178,8 +187,10 @@ async function runPage(browser, layout, lang, pageName) {
     await settle(250);
   };
   const openRow = async (row) => {
-    for (const step of row.open[layout]) {
+    for (const [i, step] of row.open[layout].entries()) {
       const result = await press(step);
+      // a first control this size never shows: the row is absent here (it must open at another size)
+      if (i === 0 && result === 'missing') return 'absent';
       if (result === 'missing' || result === 'covered') return `${strip(step)} ${result}`;
     }
     if (!(await waitTop(row.id))) return 'it did not open';
@@ -192,16 +203,18 @@ async function runPage(browser, layout, lang, pageName) {
   const atRest = await state();
   const restProblems = Object.entries(atRest.open).filter(([, shown]) => shown).map(([id]) => `${id} in view at rest`);
   if (atRest.stack === null) restProblems.push('no surface stack on the page');
-  report.push({ layout, lang, scenario: 'rest', page: pageName, ok: !restProblems.length, problems: restProblems });
-  if (restProblems.length) failures.push({ layout, lang, scenario: 'rest', problems: restProblems });
-  log(`${restProblems.length ? 'FAIL' : 'ok  '} ${layout} ${lang} rest ${pageName}${restProblems.length ? `: ${restProblems.join('; ')}` : ''}`);
+  report.push({ layout: run, lang, scenario: 'rest', page: pageName, ok: !restProblems.length, problems: restProblems });
+  if (restProblems.length) failures.push({ layout: run, lang, scenario: 'rest', problems: restProblems });
+  log(`${restProblems.length ? 'FAIL' : 'ok  '} ${run} ${lang} rest ${pageName}${restProblems.length ? `: ${restProblems.join('; ')}` : ''}`);
 
   // every surface alone: it opens, Escape closes it, the focus goes back to its control
   for (const a of candidates) {
     await rest();
     const why = await openRow(a);
-    const context = { layout, lang, scenario: 'open', a: a.id };
-    if (why) { const entry = { ...context, ok: false, problems: [why] }; report.push(entry); failures.push(entry); log(`FAIL ${layout} ${lang} open ${a.id}: ${why}`); continue; }
+    const context = { layout: run, lang, scenario: 'open', a: a.id };
+    if (why === 'absent') { absent.set(a.id, [...(absent.get(a.id) ?? []), run]); log(`skip ${run} ${lang} open ${a.id}: absent at this size`); continue; }
+    if (!why) opened.add(a.id);
+    if (why) { const entry = { ...context, ok: false, problems: [why] }; report.push(entry); failures.push(entry); log(`FAIL ${run} ${lang} open ${a.id}: ${why}`); continue; }
     judge(context, await stateOwned(chain(a.id)), chain(a.id));
     await page.keyboard.press('Escape');
     await settle(450);
@@ -222,16 +235,16 @@ async function runPage(browser, layout, lang, pageName) {
       for (const step of lead) { const result = await press(step); if (result === 'missing' || result === 'covered') { reached = false; break; } }
       if (!reached) continue;
       const result = await press(stepsB.at(-1));
-      if (result !== 'pressed') { report.push({ layout, lang, scenario: 'pair', a: a.id, b: b.id, ok: true, skipped: `B's control ${result}` }); continue; }
+      if (result !== 'pressed') { report.push({ layout: run, lang, scenario: 'pair', a: a.id, b: b.id, ok: true, skipped: `B's control ${result}` }); continue; }
       await waitTop(b.id);
       await settle(300);
       const expected = chain(b.id);
-      judge({ layout, lang, scenario: 'pair', a: a.id, b: b.id }, await stateOwned(expected), expected);
+      judge({ layout: run, lang, scenario: 'pair', a: a.id, b: b.id }, await stateOwned(expected), expected);
       // Escape order: the top one, then the one under it
       if (onOf(b.id) === a.id) {
         await page.keyboard.press('Escape');
         await settle(450);
-        judge({ layout, lang, scenario: 'escape-order', a: a.id, b: b.id }, await stateOwned(chain(a.id)), chain(a.id));
+        judge({ layout: run, lang, scenario: 'escape-order', a: a.id, b: b.id }, await stateOwned(chain(a.id)), chain(a.id));
       }
     }
   }
@@ -243,23 +256,23 @@ async function runPage(browser, layout, lang, pageName) {
       await rest();
       if (await openRow(a)) continue;
       const switched = await press('.cot-cards .cot-card:not([aria-selected="true"])');
-      if (switched === 'pressed') { await settle(900); judge({ layout, lang, scenario: 'switch-tank', a: a.id }, await stateOwned([]), [], { focus: null }); }
+      if (switched === 'pressed') { await settle(900); judge({ layout: run, lang, scenario: 'switch-tank', a: a.id }, await stateOwned([]), [], { focus: null }); }
       // the nav's Deploy (or the phone's tab bar): Deploy replaces the surface
       await rest();
       if (await openRow(a)) continue;
-      if ((await press(layout === 'docked' ? '[data-nav="deploy"]' : '[data-tabbar="deploy"]')) === 'pressed') {
+      if ((await press('[data-nav="deploy"]')) === 'pressed' || (await press('[data-tabbar="deploy"]')) === 'pressed') {
         await waitTop('deploy');
         await settle(300);
-        judge({ layout, lang, scenario: 'nav-deploy', a: a.id }, await stateOwned(['deploy']), ['deploy']);
+        judge({ layout: run, lang, scenario: 'nav-deploy', a: a.id }, await stateOwned(['deploy']), ['deploy']);
       }
       // a resize (docked) or a rotation (folded) with the surface open: it stays whole inside the window, or closes clean
       await rest();
       if (await openRow(a)) continue;
-      await page.setViewport({ ...VIEWPORTS[layout], ...TURNED[layout] });
+      await page.setViewport({ ...VIEWPORTS[run], ...TURNED[run] });
       await settle(1200);
       const turned = await stateOwned(chain(a.id));
-      judge({ layout, lang, scenario: 'resize', a: a.id }, turned, turned.stack?.length ? chain(a.id) : [], { focus: null, within: true });
-      await page.setViewport(VIEWPORTS[layout]);
+      judge({ layout: run, lang, scenario: 'resize', a: a.id }, turned, turned.stack?.length ? chain(a.id) : [], { focus: null, within: true });
+      await page.setViewport(VIEWPORTS[run]);
       await settle(1200);
     }
     // the language switch with a surface open: nothing of the old page's surfaces survives into the new language's
@@ -272,7 +285,7 @@ async function runPage(browser, layout, lang, pageName) {
           await navigated;
           await page.waitForSelector('[data-compare]', { timeout: 300_000 }).catch(() => {});
           await settle(2500);
-          judge({ layout, lang, scenario: 'locale', a: first.id }, await stateOwned([]), [], { focus: null });
+          judge({ layout: run, lang, scenario: 'locale', a: first.id }, await stateOwned([]), [], { focus: null });
           await load();
         }
       }
@@ -284,7 +297,7 @@ async function runPage(browser, layout, lang, pageName) {
         if ((await press('.cot-battle')) === 'pressed') {
           await page.waitForFunction(() => document.body.classList.contains('cot-in-battle') || !!document.querySelector('.cot-hud:not([hidden])'), { timeout: 180_000 }).catch(() => {});
           await settle(2000);
-          judge({ layout, lang, scenario: 'battle', a: first.id }, await stateOwned([]), [], { focus: null });
+          judge({ layout: run, lang, scenario: 'battle', a: first.id }, await stateOwned([]), [], { focus: null });
         }
       }
     }
@@ -292,14 +305,21 @@ async function runPage(browser, layout, lang, pageName) {
   await page.close();
 }
 
-for (const layout of LAYOUTS) {
+for (const run of LAYOUTS) {
   const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--hide-scrollbars', '--use-angle=metal', '--autoplay-policy=no-user-gesture-required'] },
-    { label: `surface-pairs-${layout}` });
+    { label: `surface-pairs-${run}` });
   try {
-    for (const lang of LANGS) for (const pageName of PAGES) await runPage(browser, layout, lang, pageName);
+    for (const lang of LANGS) for (const pageName of PAGES) await runPage(browser, run, lang, pageName);
   } finally { await browser.close(); }
 }
+// every row the run's recipes name opened at one size at least
+for (const [id, runs] of absent) {
+  if (opened.has(id)) continue;
+  const entry = { layout: runs.join(','), lang: LANGS.join(','), scenario: 'never-opened', a: id, ok: false, problems: [`its first control shows at no size (${runs.join(', ')})`] };
+  report.push(entry); failures.push(entry); log(`FAIL never-opened ${id}: absent at ${runs.join(', ')}`);
+}
 const pairs = report.filter((entry) => entry.scenario === 'pair' && !entry.skipped).length;
+// (a pair's or a scenario's skip is reported, never counted as a pass of something that did not run)
 writeFileSync(`${out}/surface-pairs.json`, JSON.stringify({ base, layouts: LAYOUTS, langs: LANGS, pages: PAGES, pairs, failures, report }, null, 1));
 log(`surface-pairs: ${report.length} checks (${pairs} pairs), ${failures.length} failed`);
 process.exit(failures.length ? 1 : 0);

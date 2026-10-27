@@ -81,5 +81,8 @@ assert.match(source, /window\.addEventListener\('pointerdown', \(event\) => \{[\
 assert.doesNotMatch(source.slice(source.indexOf("addEventListener('pointerdown'")), /preventDefault|stopPropagation/,
   'the press goes on to its target: never swallowed');
 assert.match(source, /Object\.defineProperty\(window, '__cotSurfaces', \{ value: openSurfaceIds/, 'the census reads the open ids');
+assert.match(source, /const sweep = \(\): void => \{[\s\S]*?element\.getClientRects\(\)\.length\) continue;\s*closeSurface\(surface\);\s*surface\.close\('replace'\);/,
+  'a resize that hides an open surface closes it');
+assert.match(source, /window\.addEventListener\('cot:layoutchange', \(\) => \{ if \(stack\.length\) sweep\(\); \}\);/, 'so does a change of layout');
 
 console.log('surfaceStack.selftest: one surface per level (replace, stand on, close with its children), the outside press and Escape PASS');

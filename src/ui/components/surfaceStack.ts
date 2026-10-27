@@ -121,6 +121,22 @@ function install(): void {
     stack.pop();
     top!.close('outside');
   }, true);
+  // a resize or a rotation that hides an open surface (the phone's menu on a wide window) closes it: none stands open unseen.
+  // The sweep runs a frame after the resize and again once the page's layout has changed (responsiveLayout.ts)
+  const sweep = (): void => {
+    for (const surface of [...stack].reverse()) {
+      const element = surface.element();
+      if (!stack.includes(surface) || !element || element.getClientRects().length) continue;
+      closeSurface(surface);
+      surface.close('replace');
+    }
+  };
+  let resizeFrame = 0;
+  window.addEventListener('resize', () => {
+    if (resizeFrame || !stack.length) return;
+    resizeFrame = window.requestAnimationFrame(() => { resizeFrame = 0; sweep(); });
+  });
+  window.addEventListener('cot:layoutchange', () => { if (stack.length) sweep(); });
   Object.defineProperty(window, '__cotSurfaces', { value: openSurfaceIds, configurable: true });
 }
 install();
