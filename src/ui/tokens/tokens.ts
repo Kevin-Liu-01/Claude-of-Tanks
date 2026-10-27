@@ -268,6 +268,7 @@ export const TOKENS = {
   'ring-ok': 'inset 0 0 0 1px #5bd69b',
   'ring-warn': 'inset 0 0 0 1px #ffd15c',
   'ring-danger': 'inset 0 0 0 1px #ff5a4e',
+  'ring-hot': '0 0 0 2px #f6f3ec',
   'z-lift': '1',
   'z-under': '-1',
   'fill-faint': 'rgba(246,243,236,.03)',

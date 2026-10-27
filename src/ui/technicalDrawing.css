@@ -31,7 +31,7 @@
 .cot-td__badge,.cot-td__n{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;
   border-radius:8px;background:var(--tdl-tone);color:var(--ink-on-accent);font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .cot-td__badge{position:absolute;left:var(--td-x);top:var(--td-y);transform:translate(-50%,-50%) scale(calc(1/var(--td-zoom,1)))}
-.cot-td__badge.is-hot,.cot-td__row.is-hot .cot-td__n{box-shadow:0 0 0 2px var(--ink-1)}
+.cot-td__badge.is-hot,.cot-td__row.is-hot .cot-td__n{box-shadow:var(--ring-hot)}
 .cot-td.is-hot .cot-td__badge:not(.is-hot){opacity:.35}
 .cot-td__tip{position:absolute;left:var(--td-x);top:var(--td-y);transform:translate(12px,-120%);padding:2px 6px;
   border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-2);white-space:nowrap;pointer-events:none;
