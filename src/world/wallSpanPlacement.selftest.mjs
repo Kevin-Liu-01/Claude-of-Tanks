@@ -466,6 +466,13 @@ for (const seed of [1337, 2049, 7719]) {
       assert.equal(pool.imI, undefined);
       continue;
     }
+    // (260) the pool's shadow stand-in in its own slice: its mesh made, nothing published yet
+    if (checkpoint.stage === 'pool-caster-wallstone') {
+      assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-caster-wallstone' });
+      assert.equal(group.children.length, 0, 'no mesh is published at the caster checkpoint');
+      assert.equal(pool.imI, undefined);
+      continue;
+    }
     // (battle-spikes-253) and the broken form in its own slice: the intact pool published, the broken not yet
     if (checkpoint.stage === 'pool-broken-wallstone') {
       assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-broken-wallstone' });

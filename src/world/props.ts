@@ -12137,6 +12137,15 @@ ${snowCap ? `
     }
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
+    // (260, the room-stalls lane's Saltwind census: a pool's mesh, its tint and its shadow stand-in's build were one step of
+    // the 205-327 ms tasks) the stand-in its own step; a build closed here releases the pool's private mesh
+    let poolHeld = true;
+    try {
+      yield { fine: true, progress: false, stage: 'pool-caster-' + kind };
+      poolHeld = false;
+    } finally {
+      if (poolHeld) { geoI.dispose(); imI.dispose(); }
+    }
     const castsDynamicShadow = destructibleCastsShadow(meta);
     imI.castShadow = castsDynamicShadow;
     imI.receiveShadow = true;
