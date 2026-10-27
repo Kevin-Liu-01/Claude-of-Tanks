@@ -33,6 +33,15 @@ for(const preset of PRODUCTION_PRESETS){
   assert.equal(createProductionScene({presetId:preset.id,vehicleId:'leo2a4'},height).actors.find(a=>a.name==='lead').id,'leo2a4','the featured tank recasts the lead');
   assert.ok(['showcase','combat','environment'].includes(preset.category));
 }
+// a camera a building would hide gives way: with every left-hand rig blocked, each act takes the other side
+{
+  const preset=PRODUCTION_PRESETS[0];
+  const lead=preset.cast[0];
+  const rightOf=(pos)=>pos[0]>lead.at[0];
+  const clear=createProductionScene({presetId:preset.id},height,(from)=>rightOf(from));
+  assert(clear.storyboard.shots.every(shot=>rightOf(shot.pos)),'blocked rigs give way to the other side');
+  assert.deepEqual(createProductionScene({presetId:preset.id},height,()=>true),createProductionScene({presetId:preset.id},height),'a clear world keeps the authored rigs');
+}
 const target=[0,4,0], flat=()=>0;
 const wide=productionCamera('hero',target,0,flat), portrait=productionCamera('hero',target,0,flat,'portrait');
 const distance=c=>Math.hypot(...c.pos.map((v,i)=>v-target[i]));

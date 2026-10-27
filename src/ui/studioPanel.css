@@ -244,11 +244,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .st-camo .cot-c-picker__facts{display:none}
 .st-insp .cot-c-seg{display:flex;flex-wrap:wrap}
 .st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 var(--s3);font-size:max(var(--fs-floor-11),var(--fs-12))}
-/* the seven times of day stand in three even columns (every name with room round it, the columns aligned row to row) */
-.st-insp .cot-c-seg.times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.st-insp .cot-c-seg.times .cot-c-seg__opt{min-width:0;padding:0 var(--s2);white-space:nowrap}
-/* (a time alone on the last row takes the row: "Night" under two empty cells read as an orphan to the s20 critic) */
-.st-insp .cot-c-seg.times .cot-c-seg__opt:nth-child(3n+1):last-child{grid-column:1/-1}
+/* the time of day and the tank's state are the kit's picker menus (261 census), as wide as their section */
+.st-insp :is(.timeMenu,.stateMenu){width:100%}
+.st-insp :is(.timeMenu,.stateMenu) .cot-c-menu__trigger{width:100%}
 /* the map and tank pickers */
 .cot-studio .mapPick,.cot-studio .pick{position:relative;width:100%}
 .cot-studio .mapBtn{position:relative;display:block;width:100%;height:132px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);

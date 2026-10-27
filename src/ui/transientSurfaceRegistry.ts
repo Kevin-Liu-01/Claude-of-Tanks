@@ -89,9 +89,11 @@ export const TRANSIENT_SURFACES = Object.freeze({
   // ---- the Tank Gallery and the public pages
   'gallery-rival': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-rival'), open: { docked: ['[data-picker-menu="gallery-rival"]'], folded: ['[data-picker-menu="gallery-rival"]'] } },
   'gallery-sort': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-sort'), open: { docked: ['[data-picker-menu="gallery-sort"]'], folded: ['[data-picker-menu="gallery-sort"]'] } },
+  // (261) the camera's eight framings over the stage
+  'gallery-camera-view': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: menuBox('gallery-camera-view'), open: { docked: ['[data-picker-menu="gallery-camera-view"]'], folded: ['[data-picker-menu="gallery-camera-view"]'] } },
   'gallery-drawing': { screen: 'gallery', owner: 'src/gallery/gallery.ts', box: 'figure.diagram.is-zoomed', modal: true, open: { docked: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'], folded: ['#dossierTabs [data-tab="anatomy"]', '#diagramImage'] } },
   'markup-primitive': { screen: 'gallery', owner: 'src/gallery/surfaceMarkup.ts', box: menuBox('markup-primitive'),
-    open: { docked: ['[data-mode="markup"]', '[data-markup-operation="add"]', '[data-picker-menu="markup-primitive"]'] } },
+    open: { docked: ['.layers [data-value="markup"]', '[data-markup-operation="add"]', '[data-picker-menu="markup-primitive"]'] } },
   'public-nav-menu': { screen: 'gallery', owner: 'src/presentation/publicNav.ts', box: '#public-nav-menu', open: { folded: ['.public-nav__menu-trigger'] } },
 
   // the public pages' native dialogs (components/surfaceStack.ts dialogSurface)
@@ -118,6 +120,9 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'studio-featured-tank': { screen: 'studio', owner: 'src/ui/studioProductionPanel.ts', box: menuBox('studio-featured-tank'), open: {} },
   'studio-picture': { screen: 'studio', owner: 'src/ui/studioPicturePanel.ts', box: menuBox('studio-picture'), open: {} },
   'studio-battlefield': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: '.cot-studio .mapPop.open', open: {} },
+  // (261) the time of day and the selected tank's state: picker menus in the inspector (the census has no Studio page yet)
+  'studio-hour': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: menuBox('studio-hour'), open: {} },
+  'studio-state': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: menuBox('studio-state'), open: {} },
   'studio-queue': { screen: 'studio', owner: 'src/ui/studioPanel.ts', box: '.st-queue', open: {} },
   'studio-commands': { screen: 'studio', owner: 'src/ui/studioCommands.ts', box: '.st-cmd-box', modal: true, open: {} },
   // the template browser (owner 2026-10-27): every sequence, scene and tank's take, from the Director's door

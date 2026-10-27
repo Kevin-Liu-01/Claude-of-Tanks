@@ -819,30 +819,27 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
   mapPick.append(mapBtn, mapPop);
   secScene.appendChild(mapPick);
-  // the times of day: a segmented row (09-studio .seg), the times this map has enabled
-  const timeSeg = el('div', 'cot-c-seg times');
-  timeSeg.setAttribute('role', 'radiogroup');
-  wireRovingKeys(timeSeg);
-  timeSeg.setAttribute('aria-label', t('studioPanel.timeOfDay'));
-  const timeOptions = new Map<StudioTimeOfDay, HTMLButtonElement>();
+  // the times of day: the kit's picker menu (261 census: seven times, some a battlefield lacks), the battlefield's own
+  // times choosable; the change lights the scene before the menu takes another
+  const timeHost = el('div', 'timeMenu');
   let timeBusy = false;
-  for (const time of STUDIO_TIMES) {
-    const option = el('button', 'cot-c-seg__opt', t(`atmosphere.${time}`));
-    option.type = 'button';
-    option.setAttribute('role', 'radio');
-    option.dataset.value = time;
-    option.addEventListener('click', () => {
-      if (timeBusy || time === S.timeOfDay) return;
-      timeBusy = true;
-      for (const other of timeOptions.values()) other.disabled = true;
-      S.setTimeOfDay(time)
-        .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
-        .finally(() => { timeBusy = false; api.refreshMap(); });
-    });
-    timeOptions.set(time, option);
-    timeSeg.appendChild(option);
+  /** The times the scene's battlefield has (all seven until its light is read). */
+  let timesOpen: readonly StudioTimeOfDay[] = STUDIO_TIMES;
+  const timeItems = (): PickerItem[] => STUDIO_TIMES.map((time) => ({ id: time, name: t(`atmosphere.${time}`),
+    ...(timesOpen.includes(time) ? {} : { disabled: t('studioPanel.light.timeUnavailable') }) }));
+  function chooseTime(time: StudioTimeOfDay): void {
+    if (timeBusy || time === S.timeOfDay || !timesOpen.includes(time)) return;
+    timeBusy = true;
+    timeMenu.setDisabled(true);
+    S.setTimeOfDay(time)
+      .catch((error: RuntimeValue) => flashBusy(errorMessage(error)))
+      .finally(() => { timeBusy = false; timeMenu.setDisabled(S.recordingStatus().active); api.refreshMap(); });
   }
-  secScene.appendChild(timeSeg);
+  const timeMenu = createPickerMenu(timeHost, {
+    id: 'studio-hour', label: t('studioPanel.timeOfDay'), items: timeItems(), value: S.timeOfDay ?? 'day', layout: 'list', text: pickerText(),
+    onChoose: (item) => chooseTime(item.id as StudioTimeOfDay),
+  });
+  secScene.appendChild(timeHost);
 
   // --- the sun (media r5): bearing on a north-up compass (world +Z up, -X right, as the tactical map), lighting
   // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
@@ -979,11 +976,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     press(presetButtons[4], light.override?.sunAzimuthDeg === undefined);
     sunNote.textContent = light.space ? t('studioPanel.light.spaceNote') : '';
     press(lampBtn, light.headlights);
-    for (const [time, option] of timeOptions) {
-      option.disabled = timeBusy || !light.times.includes(time);
-      option.setAttribute('aria-checked', String(time === light.time));
-      option.tabIndex = time === light.time ? 0 : -1;
-    }
+    if (light.times.join() !== timesOpen.join()) {
+      timesOpen = light.times;
+      timeMenu.setItems(timeItems(), light.time);
+    } else timeMenu.setValue(light.time);
   }
   battlefieldGroup.body.append(secScene, secLight);
 
@@ -1227,24 +1223,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     onChoose: (patternId) => patchSel({ camo: patternId }),
     onMakeOwn: () => {},
   });
-  const stateSeg = el('div', 'cot-c-seg');
-  stateSeg.setAttribute('role', 'radiogroup');
-  wireRovingKeys(stateSeg);
-  stateSeg.setAttribute('aria-label', t('studioPanel.selected.stateLabel'));
-  const stateButtons = new Map<string, HTMLButtonElement>();
-  for (const sid of S.ACTOR_STATES) {
-    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.state.${sid}`));
-    option.type = 'button';
-    option.setAttribute('role', 'radio');
-    option.dataset.value = sid;
-    option.addEventListener('click', () => {
-      const a = S._internal.selected;
-      if (a) S.setActorState(a, sid);
-    });
-    stateButtons.set(sid, option);
-    stateSeg.appendChild(option);
-  }
-  paint.append(camoHost, inheritBtn, stateSeg);
+  // the selected tank's state: the kit's picker menu (261 census: six states)
+  const stateHost = el('div', 'stateMenu');
+  const stateMenu = createPickerMenu(stateHost, {
+    id: 'studio-state', label: t('studioPanel.selected.stateLabel'), value: S.ACTOR_STATES[0] ?? null, layout: 'list', text: pickerText(),
+    items: S.ACTOR_STATES.map((sid) => ({ id: sid, name: t(`studio.ws.state.${sid}`) })),
+    onChoose: (item) => { const a = S._internal.selected; if (a) S.setActorState(a, item.id); },
+  });
+  paint.append(camoHost, inheritBtn, stateHost);
   const delBtn = kitButton(t('studio.remove'), 'danger', 'trash');
   delBtn.classList.add('cot-c-btn--wide');
   delBtn.addEventListener('click', () => { const a = S._internal.selected; if (a) S.removeActor(a); });
@@ -2263,8 +2249,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     for (const option of snapButtons) {
       add(`snap-${option.dataset.value}`, t('studio.ws.cmd.snap', { name: text(option) }), via(option), { keywords: `snap ${option.dataset.value}` });
     }
-    for (const [time, button] of timeOptions) {
-      if (!button.disabled) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), via(button), { keywords: `light time ${time}` });
+    if (!timeBusy && !S.recordingStatus().active) {
+      for (const time of timesOpen) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), () => chooseTime(time), { keywords: `light time ${time}` });
     }
     for (const preset of PRODUCTION_PRESETS) {
       add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => {
@@ -2915,10 +2901,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (document.activeElement !== heading.input) heading.input.value = String(Math.round(a.pose.facingDeg));
       camoPicker.setTank(a.spec.id, specInfo(a.spec.id).nation ?? null, a.camo || '');
       inheritBtn.hidden = !a.camo;
-      for (const [sid, option] of stateButtons) {
-        option.setAttribute('aria-checked', String(sid === a.stateName));
-        option.tabIndex = sid === a.stateName ? 0 : -1;
-      }
+      stateMenu.setValue(a.stateName);
     },
     refreshEffects() {
       rebuildEffectList();
@@ -2989,7 +2972,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clearTrackBtn.disabled = isRecording || !S._internal.selected;
       duelBtn.disabled = isRecording || S._internal.actors.length < 2;
       railBtn.disabled = isRecording;
-      for (const option of timeOptions.values()) if (isRecording) option.disabled = true;
+      timeMenu.setDisabled(isRecording || timeBusy);
       rebuildStoryboard();
       updateFilmSummary();
       const board = S.getStoryboard();

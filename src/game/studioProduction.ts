@@ -103,7 +103,7 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Column advance', 'Second gun', 'Assault line'], headingDeg: -11.9,
     cast: [cast('lead', 'object148_proto', [-109.8, 4.9], -11.9, 20), cast('wing', 't90ms_2011', [-111, -12], -11.9, 20),
       cast('third', 't80u_kursk', [-106, -29], -11.9, 20), cast('fourth', 't72b3', [-109, -46], -11.9, 20)],
-    rigs: ['rear', 'track', 'hero', 'overhead'], subjects: ['lead', 'wing', 'lead'], camo: 'summer', dust: 0.55,
+    rigs: ['hero', 'rear', 'rear', 'overhead'], subjects: ['lead', 'wing', 'lead'], camo: 'summer', dust: 0.55,
     effects: [barrage('barrage-far', [-48, 80], 900, 6), fire('lead-fire', 'lead', 2300), fire('wing-fire', 'wing', 3500),
       fire('third-fire', 'third', 4500), barrage('barrage-near', [-60, 70], 5000), fire('lead-fire-two', 'lead', 6300)] },
   { id: 'night-knockout', title: 'Night knockout', description: 'Under a parachute flare a T-90 meets a Leopard at the church crossroads: the approach, the exchange, the kill.',
@@ -177,7 +177,7 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     map: 'verdant', timeOfDay: 'night', durationMs: 8000, category: 'combat',
     shots: ['Under the flare', 'The column', 'Into the barrage'], headingDeg: 144.1,
     cast: [cast('lead', 'challenger2', [-111.5, 107.9], 144.1, 18), cast('wing', 'leo2a4', [-117, 124], 144.1, 18), cast('third', 't72b3m_hetman', [-129, 137], 144.1, 18)],
-    rigs: ['track', 'hero', 'rear', 'overhead'], subjects: ['lead', 'wing', 'lead'], camo: 'digital', dust: 0.45,
+    rigs: ['rear', 'overhead', 'hero', 'overhead'], subjects: ['lead', 'wing', 'lead'], camo: 'digital', dust: 0.45,
     effects: [flare([-108, 86], 100), barrage('barrage-one', [-130, 66], 800, 6), fire('lead-fire', 'lead', 2500), fire('wing-fire', 'wing', 3600),
       barrage('barrage-two', [-100, 70], 4300), fire('third-fire', 'third', 5700)] },
   { id: 'alpine-village', title: 'Alpine village', description: 'A Leopard and a CV90 roll through the mountain village under the peaks.',
@@ -203,6 +203,11 @@ interface ProductionScene {
   camera: { pos: Vec3; lookAt: Vec3; fov: number };
 }
 type ProductionHeight = (x: number, z: number) => number;
+/** Whether a camera at `from` sees `to` (no building, roof or bank between them, and not inside one): the Studio's world
+ *  raycast. Without it every rig counts as clear. */
+type ProductionSight = (from: Vec3, to: Vec3) => boolean;
+/** The rigs an act tries after its own when its own is blocked, each on the authored side and then the other. */
+const RIG_FALLBACKS: readonly ProductionRigId[] = ['hero', 'rear', 'track', 'detail', 'overhead'];
 
 export function productionPreset(id: string): ProductionPreset {
   const preset = PRODUCTION_PRESETS.find(item => item.id === id);
@@ -268,7 +273,7 @@ export function productionShotNames(preset: ProductionPreset): [string, string, 
 }
 
 /** Terrain-relative authored locations keep recipes portable across renderer captures and the UI. */
-export function createProductionScene(options: ProductionOptions, height: ProductionHeight): ProductionScene {
+export function createProductionScene(options: ProductionOptions, height: ProductionHeight, sees?: ProductionSight): ProductionScene {
   const preset = productionPreset(options.presetId), format = options.format ?? 'landscape';
   productionAspect(format);
   const names = productionShotNames(preset);
@@ -287,22 +292,31 @@ export function createProductionScene(options: ProductionOptions, height: Produc
     const along = who.travel * tMs / 8000;
     return [who.at[0] + axisX * along, who.at[1] + axisZ * along];
   };
-  const shot = (tMs: number, act: 0 | 1 | 2, rig: ProductionRigId, cut = false) => {
+  const shot = (tMs: number, act: 0 | 1 | 2, rig: ProductionRigId, mirror: boolean, cut = false) => {
     const subject = member(preset.subjects[act]);
     const [x, z] = placeAt(subject, tMs);
     const target: Vec3 = [x, height(x, z) + 1.7, z];
     return { id: `production-${tMs}`, label: names[act], tMs,
-      ...productionCamera(rig, target, subject.facingDeg, height, format, preset.mirror),
+      ...productionCamera(rig, target, subject.facingDeg, height, format, mirror),
       transition: cut ? 'cut' : 'linear' };
+  };
+  const mirror = !!preset.mirror;
+  /** An act's two keys on the first rig pair that sees its subject at both: the authored rigs on their side, then on the
+   *  other, then the fallbacks; the authored pair when none is clear (on a battlefield the takes proved, rarely). */
+  const act = (act: 0 | 1 | 2, start: number, end: number, rigs: readonly [ProductionRigId, ProductionRigId], cut: boolean) => {
+    const tries: [ProductionRigId, ProductionRigId, boolean][] = [[rigs[0], rigs[1], mirror], [rigs[0], rigs[1], !mirror]];
+    if (sees) for (const rig of RIG_FALLBACKS) for (const side of [mirror, !mirror]) tries.push([rig, rigs[1] === rigs[0] ? rig : rigs[1], side]);
+    for (const [from, to, side] of tries) {
+      const keys = [shot(start, act, from, side, cut), shot(end, act, to, side)];
+      if (!sees || keys.every((key) => sees(key.pos, key.lookAt))) return keys;
+    }
+    return [shot(start, act, rigs[0], mirror, cut), shot(end, act, rigs[1], mirror)];
   };
   const [first, second, third, closing] = preset.rigs;
   const shots = [
-    shot(0, 0, first),
-    shot(2633.333, 0, first),
-    shot(2666.667, 1, second, true),
-    shot(5300, 1, second),
-    shot(5333.333, 2, third, true),
-    shot(8000, 2, closing),
+    ...act(0, 0, 2633.333, [first, first], false),
+    ...act(1, 2666.667, 5300, [second, second], true),
+    ...act(2, 5333.333, 8000, [third, closing], true),
   ];
   const keys = (who: ProductionCast) => [0, 8000].map(tMs => ({
     id: `${who.name}-${tMs}`, tMs, pos: placeAt(who, tMs),

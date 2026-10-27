@@ -166,24 +166,11 @@
     </aside>
 
     <section class="stage" id="viewport" aria-label="Interactive tank viewer" data-i18n-aria-label="gallery.viewer.aria">
-      <div class="layers" role="group" data-i18n-aria-label="gallery.view.modeDockAria">
-        <button type="button" data-mode="appearance" data-key="1" aria-pressed="true"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="vehicle" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-vehicle"/></svg><span data-i18n="gallery.view.mode.appearance">Exterior</span><kbd class="cot-c-kbd" aria-hidden="true">1</kbd></button>
-        <button type="button" data-mode="armor" data-key="2" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerArmor" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerArmor"/></svg><span data-i18n="gallery.view.mode.armor">Armor</span><kbd class="cot-c-kbd" aria-hidden="true">2</kbd></button>
-        <button type="button" data-mode="modules" data-key="3" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerXray" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerXray"/></svg><span data-i18n="gallery.view.mode.modules">Modules</span><kbd class="cot-c-kbd" aria-hidden="true">3</kbd></button>
-        <button type="button" data-mode="crew" data-key="4" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="team" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-team"/></svg><span data-i18n="gallery.view.mode.crew">Crew</span><kbd class="cot-c-kbd" aria-hidden="true">4</kbd></button>
-        <button type="button" data-mode="markup" data-key="5" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerMarkup" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerMarkup"/></svg><span data-i18n="gallery.view.mode.markup">Markup</span><kbd class="cot-c-kbd" aria-hidden="true">5</kbd></button>
-      </div>
+      <!-- the layers: the kit's segmented control, built by gallery.ts (keys 1 to 5) -->
+      <div id="layerDock" hidden></div>
 
-      <div class="views" role="group" data-i18n-aria-label="gallery.viewer.viewControlsAria">
-        <button type="button" data-view="hero" class="active" data-i18n="gallery.view.view.hero">Hero</button>
-        <button type="button" data-view="front" data-i18n="gallery.view.view.front">Front</button>
-        <button type="button" data-view="left" data-i18n="gallery.view.view.left">Left</button>
-        <button type="button" data-view="right" data-i18n="gallery.view.view.right">Right</button>
-        <button type="button" data-view="rear" data-i18n="gallery.view.view.rear">Rear</button>
-        <button type="button" data-view="top" data-i18n="gallery.view.view.top">Top</button>
-        <button type="button" data-view="elevated-left" data-i18n="gallery.view.view.elevatedLeft">Elev. L</button>
-        <button type="button" data-view="elevated-right" data-i18n="gallery.view.view.elevatedRight">Elev. R</button>
-      </div>
+      <!-- the camera's framings: the kit's picker menu, built by gallery.ts -->
+      <div class="views"></div>
 
       <div class="tools" role="group" data-i18n-aria-label="gallery.tool.aria">
         <button type="button" id="autoRotate" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="rematch" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-rematch"/></svg><span data-i18n="gallery.view.auto">Turntable</span></button>

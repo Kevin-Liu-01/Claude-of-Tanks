@@ -19,7 +19,7 @@ import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThum
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
-import { readMemory } from './components/picker.ts';
+import { createPicker, readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
@@ -2395,7 +2395,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintCamoSwatch(canvas, spec, patternId === CUSTOM_CAMO_ID && camoOpts?.getCustom
       ? customCamoPatternId(camoOpts.getCustom(spec.id)) : patternId);
   };
-  // The band's paint (the 245 redesign): what the tank wears, named, then three more to try in one press and every paint.
+  // The band's paint (the 245 redesign; the kit's picker since the 261 census): what the tank wears, named, then three
+  // more to try in one press, and every paint. A paint under a mouse or a pen, or under the keyboard's focus, shows on the
+  // hero at once (INTERACTION-REDESIGN B, main.ts garageCamoTryOn); leaving the row puts the worn paint back.
+  const paintPickerHost = document.createElement('div');
+  const paintAll = document.createElement('button');
+  paintAll.type = 'button';
+  paintAll.className = 'cot-c-btn cot-c-btn--icon cot-lt-paint-all';
+  paintAll.dataset.garagePanel = 'appearance';
+  paintAll.setAttribute('aria-controls', 'cot-garage-camos');
+  paintAll.setAttribute('aria-label', t('garage.tools.appearanceHint'));
+  paintAll.innerHTML = uiIconSVG('camouflage', 18);
+  paintEl.append(paintPickerHost, paintAll);
+  let bandPicker: ReturnType<typeof createPicker> | null = null;
   function refreshBandPaint(spec: GarageTankSpec, selectedPatternId: string): void {
     if (!camoOpts) { paintEl.hidden = true; return; }
     const patterns = camoOpts.patterns;
@@ -2404,75 +2416,35 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const memory = readMemory(`camo.${spec.id}`);
     const picks = [...new Set([selectedPatternId, ...memory.recent, ...memory.favourites, ...BAND_PAINT_PICKS])]
       .filter((id, index) => index === 0 || (id !== CUSTOM_CAMO_ID && patterns.includes(id))).slice(0, 4);
-    const allLabel = t('garage.tools.appearanceHint');
-    paintEl.innerHTML = picks.map((patternId, index) => {
-      const label = escapeHtmlAttribute(camoPatternLabel(patternId));
-      return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}">` +
-        (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
-    }).join('') +
-      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
-      `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
-    paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
-      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
-      button.prepend(canvas);
-      paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
-    });
-  }
-  paintEl.addEventListener('click', (event) => {
-    const target = eventElement(event);
-    if (target?.closest('[data-garage-panel]')) {
-      emit('ui:click', {});
-      setGaragePanel(openGaragePanel() === 'appearance' ? '' : 'appearance');
-      return;
+    const items = picks.map((patternId) => ({ id: patternId, name: camoPatternLabel(patternId) }));
+    if (bandPicker) bandPicker.setItems(items, selectedPatternId);
+    else {
+      bandPicker = createPicker(paintPickerHost, {
+        id: 'garage-paint-band', label: t('garage.tools.camos'), items, value: selectedPatternId, layout: 'swatches', text: pickerText(),
+        onPreview: (item) => { if (selectedId && !vehicleLocked) camoOpts?.preview?.(selectedId, item?.id ?? null); },
+        onChoose: (item) => {
+          if (!camoOpts || !selectedId || vehicleLocked) return;
+          emit('ui:click', {});
+          if (camoOpts.get(selectedId) !== item.id) wearCamo(item.id);
+          paintPickerHost.querySelector<HTMLElement>('.cot-c-picker__opt')?.focus({ preventScroll: true });
+        },
+      });
     }
-    const swatch = target?.closest<HTMLButtonElement>('[data-lt-paint]');
-    const patternId = swatch?.dataset.ltPaint;
-    if (!patternId || !camoOpts || !selectedId || vehicleLocked) return;
-    emit('ui:click', {});
-    if (camoOpts.get(selectedId) === patternId) return;
-    wearCamo(patternId);
-    paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
-  });
-
-  // the row's arrows (and Home and End) move between its paints and the every-paint button, the focus trying each on;
-  // Enter or Space wears one (the interaction census: the arrows stepped the tank from here)
-  paintEl.addEventListener('keydown', (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const items = [...paintEl.querySelectorAll<HTMLButtonElement>('button')];
-    const at = items.indexOf(document.activeElement as HTMLButtonElement);
-    if (at < 0) return;
-    const to = event.key === 'ArrowRight' ? Math.min(items.length - 1, at + 1) : event.key === 'ArrowLeft' ? Math.max(0, at - 1)
-      : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : -1;
-    if (to < 0) return;
-    event.preventDefault();
-    items[to].focus({ preventScroll: true });
-  });
-
-  // the try-on (INTERACTION-REDESIGN B): a paint under a mouse or a pen, or under the keyboard's focus, shows on the hero
-  // at once (main.ts garageCamoTryOn); leaving the row or the sheet puts the worn paint back. A touch shows nothing
-  // until its press wears the paint (a scroll over the sheet left a try-on behind).
-  function wireCamoTryOn(host: HTMLElement, selector: string, idOf: (option: HTMLElement) => string | undefined): void {
-    const tryOn = (patternId: string | null): void => {
-      if (selectedId && !vehicleLocked) camoOpts?.preview?.(selectedId, patternId);
-    };
-    host.addEventListener('pointerover', (event) => {
-      if (event.pointerType === 'touch') return;
-      const option = eventElement(event)?.closest<HTMLElement>(selector);
-      const patternId = option ? idOf(option) : undefined;
-      if (patternId) tryOn(patternId);
-    });
-    host.addEventListener('pointerleave', (event) => { if (event.pointerType !== 'touch') tryOn(null); });
-    host.addEventListener('focusin', (event) => {
-      const option = eventElement(event)?.closest<HTMLElement>(selector);
-      const patternId = option?.matches(':focus-visible') ? idOf(option) : undefined;
-      if (patternId) tryOn(patternId);
-    });
-    host.addEventListener('focusout', (event) => {
-      if (!(event.relatedTarget instanceof Node && host.contains(event.relatedTarget))) tryOn(null);
-    });
+    paintAll.setAttribute('aria-expanded', String(openGaragePanel() === 'appearance'));
+    // each paint's swatch, painted for this tank on the picker's drawn options
+    for (const option of paintPickerHost.querySelectorAll<HTMLElement>('.cot-c-picker__opt[data-id]')) {
+      const media = document.createElement('span');
+      media.className = 'cot-c-picker__media';
+      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
+      media.append(canvas);
+      option.prepend(media);
+      paintBandSwatch(canvas, spec, option.dataset.id || selectedPatternId);
+    }
   }
-  wireCamoTryOn(paintEl, '[data-lt-paint]', (option) => option.dataset.ltPaint);
+  paintAll.addEventListener('click', () => {
+    emit('ui:click', {});
+    setGaragePanel(openGaragePanel() === 'appearance' ? '' : 'appearance');
+  });
 
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
@@ -4556,7 +4528,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
     photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
     void photoMode.then(({ openPhotoMode }) => openPhotoMode({
-      stage: control.stage, showroom: control.showroom, still: control.still, keycap,
+      stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
       fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
       click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
     })).catch(() => { photoMode = null; });
