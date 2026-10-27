@@ -25,10 +25,13 @@ export const VEHICLE_COMPARISON_SOURCES = Object.freeze({
     autoPivot: true,
     paintUntextured: true,
   }),
+  // release 262: the owner-supplied ater.studio M48A5 (comparison only; docs/references/tanks/m48a5_patton.md)
   m48a5_patton: Object.freeze({
-    path: '/models/tanks/community/m48a5_atmodeler.glb',
-    turretNode: '^Turret$',
+    path: '/models/tanks/community/m48a5_patton_ater.glb',
+    turretNode: '^Turret_01_4$',
+    gunNode: '^gun_01_Shape_6$',
     autoPivot: true,
     paintUntextured: true,
+    yawOffset: Math.PI,
   }),
 });

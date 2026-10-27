@@ -1,5 +1,44 @@
 # M46 Patton — reference packet
 
+## Release 262 rebuild — current status (2026-10-27)
+
+- Owner: "also should update/redesign the m47, m46, and m48 pattons"; for the batch, "based on proper historical
+  referrences so they will no longer look so chungus".
+- Implementation: new M26-derived hull, Pershing turret, rotor shield and 90 mm M3A1 in
+  `src/vehicles/profiles/pattonCast.ts` (`buildM46CastSteps`); the old `buildPershing` path is deleted. Lane
+  `item/patton-family-262` (base `b93941ce9d`). The chronological record below describes the retired builds.
+- The August 2026 "lower turrets" pass (`6d44952320`) had compressed this casting to 0.78 of its height and widened its
+  cheeks; that squash is the main reason the old build read squat and bloated.
+
+| Source key | Source |
+|---|---|
+| WP46 | https://en.wikipedia.org/wiki/M46_Patton (Hunnicutt 2015 p.422) |
+| AFV46 / AFV26 | https://afvdatabase.com/usa/m46patton.html, https://afvdatabase.com/usa/m26pershing.html |
+| VK46 | https://www.valka.cz/topic/view/658 |
+| TMB | https://tankmuseum.org/article/the-patton-family/ |
+| Photos | Commons: `M46_Patton_-_Tancrémont_-_left_view.jpg`, `..._right_view.jpg`, `..._rear_view.jpg` (CC BY-SA 4.0, Brigade Piron); `M46_Patton_front-left_2017_Bovington.jpg` (CC BY-SA 4.0, Morio); `M46_Patton_–_Kubinka_Tank_Museum_(26177368769).jpg` (CC BY-SA 2.0, Alan Wilson) |
+| Oracle | `/models/tanks/community/recovered/m46_patton.glb` (Bergman, local-only; the turret proportions agree with the photographs) |
+
+| Item | Release 260 build | Source | Release 262 build |
+|---|---|---|---|
+| Hull length | 6.333 | 250.3 in = 6.358 m | tail -4.25 to toe 2.09 (6.34); 6.49 over the pintle and fittings |
+| Width | 3.504 | 138.3 in = 3.513 m over the sandshields | 3.513 |
+| Height over MG | 3.233 | 125.1 in = 3.178 m | M2 on its roof post (spec 3.18) |
+| Turret casting | 2.35 W × 0.81 H × 3.29 L, roof 2.54 (squashed 0.78) | Pershing turret, ring 69 in; ~2.78 m to the cupola top | 2.00 W × 0.87 H × 2.58 L; floor 1.74, roof 2.61, cupola 2.81 |
+| Mantlet | 1.43 m slab pair | 4.5 in Pershing rotor shield | D-section rotor shield, 1.02 wide, face radius 0.54 on the trunnion |
+| Gun axis / trunnion | 1.931 at z 1.21 | ~78 in (1.98 m) fire height | 2.07 (oracle) at z 0.40 |
+| Gun | M3A1, evacuator mid-tube | 90 mm M3A1: single-baffle brake, evacuator directly behind it | single-baffle brake 3.89-4.23, evacuator 3.36-3.86; muzzle 4.23 (8.48 overall) |
+| Gun limits | +20 / -9 | +20 / -10 | +20 / -10 with a measured depression curve |
+| Road wheels | 6, r 0.33 | 6 dual, ~26 in | 6, r 0.33, stations 1.02..-2.68 |
+| Return rollers | 3 | 5 dual (AFV46, Tancrémont photo) | 5 |
+| Track-tension wheel | none | small dual wheel behind the last road wheel | yes, r 0.20 at z -3.22 |
+| Track | 0.60 | 23 in (0.584) on 110 in centres | 0.584 on 2.794 centres |
+| Glacis | — | 4 in at 46° from vertical | 46° |
+| Mufflers | fender drums | rearward mufflers on the rear fenders | drums in the rear corners under the fenders, X end guards |
+| Bow MG | yes | .30 cal ball mount, right front | yes, right |
+
+## Historical record (release 260 and earlier)
+
 Exact vehicle: **Medium Tank M46 Patton** — re-engined M26 with the
 **90 mm M3A1** gun (bore evacuator + single-baffle muzzle brake) and the big
 fender **mufflers**; distinctive **track tension idler** below/ahead of the

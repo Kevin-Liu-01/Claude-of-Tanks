@@ -1,5 +1,43 @@
 # M47 Patton — reference packet
 
+## Release 262 rebuild — current status (2026-10-27)
+
+- Owner: "also should update/redesign the m47, m46, and m48 pattons"; for the batch, "based on proper historical
+  referrences so they will no longer look so chungus".
+- Implementation: the M46 hull with the M47's 60° glacis, the T42-derived turret (sloped nose, stepped long bustle,
+  stereo rangefinder ears), the narrow rotor shield and the 90 mm M36 in `src/vehicles/profiles/pattonCast.ts`
+  (`buildM47CastSteps`); the old `m47Cast` path is deleted. The August 2026 "lower turrets" pass had compressed this
+  casting to 0.65 of its height; the record below describes the retired builds.
+
+| Source key | Source |
+|---|---|
+| TM718A | TM 9-718A, 90-mm Gun Tank M47 (Jan 1952), https://archive.org/details/Tm9-718a — par. 4d, 5 (tabulated data), 248 (suspension), fig. 338 |
+| WP47 | https://en.wikipedia.org/wiki/M47_Patton (TM 9-2350-200-12, 1958; Hunnicutt 2015 p.425) |
+| AFV47 | https://afvdatabase.com/usa/m47patton.html |
+| TE-T42 | https://tanks-encyclopedia.com/coldwar/US/90mm-gun-tank-T42/ |
+| Photos | Commons: `Latrun_220917_M47_Patton_01.jpg` (CC BY-SA 4.0, Oren Rozen); `Brussels_military_museum_210422_Patton.jpg` (CC BY-SA 4.0, Oren Rozen); `M47_Patton_in_the_Musée_des_Blindés.jpg` (CC0); `M47_Patton_Fort_Meade.jpg` (CC0) |
+| Oracle | `/models/tanks/community/recovered/m47_patton.glb` (Bergman, local-only, turret re-seated) |
+
+| Item | Release 260 build | Source | Release 262 build |
+|---|---|---|---|
+| Hull length | 6.391 | 250 5/16 in = 6.358 m | tail -4.18 to toe 2.15 (6.33); 6.47 over the fittings |
+| Width | 3.51 | 138 1/4 in = 3.512 m | 3.513 |
+| Height | 3.300 | 131 in (3.327 m) with MG; 116 5/16 in (2.954 m) without | roof 2.80, cupola 2.96, M2 on the cupola (spec 3.35) |
+| Turret casting | 2.36 W × 0.80 H × 3.98 L, roof 2.50 (squashed 0.65) | T42 turret, ring 73 in | 2.02 W × 1.06 H × 3.41 L; floor 1.74, roof 2.80, bustle 2.60 to -2.67 |
+| Rangefinder ears | blister pads | stereoscopic rangefinder ends, both cheeks, upper front | armoured blisters at z 0.10, y 2.36 with lenses |
+| Gun axis / trunnion | 1.916 at z 1.30 | ~81 in (2.06 m) | 2.07 at z 0.48 |
+| Gun | M36, evacuator mid-tube, wide deflector | 90 mm M36 (T119E1), L/50; evacuator behind the muzzle device; cylindrical (T) blast deflector | tube to 4.33 (8.51 overall), evacuator 3.36-3.94, T deflector across the muzzle |
+| Gun limits | +20 / -9 | +19; -5 (TM 9-718A, 1952) or -10 (TM 9-2350-200-12, 1958; Hunnicutt) | +19 / -10 (the later standard) with a measured depression curve |
+| Road wheels | 6, r 0.31 | 6 dual, ~26 in | 6, r 0.33, stations 0.78..-2.70 |
+| Return rollers | 3 | 3 dual (TM 9-718A par. 248; Latrun photo) | 3 |
+| Track-tension wheel | none | auxiliary tension idler behind the last road wheel | yes, r 0.20 at z -3.25 |
+| Track | 0.60 | T80E6/T84E1, 23 in on 110 in centres | 0.584 on 2.794 centres |
+| Glacis | — | 4 in at 60° from vertical | 60° |
+| Bow MG | yes | .30 cal M1919A4 ball mount, right bow | yes, right |
+| Mufflers | fender drums | longer mufflers on the rear fenders than the M46 | 0.83 m drums in the rear corners |
+
+## Historical record (release 260 and earlier)
+
 Exact vehicle: **90mm Gun Tank M47 Patton II** — M46 chassis with the new
 long-nosed T42-derived turret: **needle-nose front, long rear bustle overhang,
 stereoscopic M12 rangefinder blisters on both cheeks**, bow MG (last US tank
