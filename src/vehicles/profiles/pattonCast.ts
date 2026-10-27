@@ -937,7 +937,7 @@ function* m48HullSteps(P: CastPort, H: M48HullSpec): Generator<string, HullFrame
   st.push({ z: 2.00, bot: belly, top: deck, hwTop: 1.52, hw: 1.62, hwBot: lw, yK: 1.34, yW: 1.42, roll: 0.30 });
   for (const [z, top, bot, hwt] of [...bow].reverse()) {
     const yK = Math.min(1.34, bot + (top - bot) * 0.55), yW = Math.min(1.42, bot + (top - bot) * 0.75);
-    st.push({ z, bot, top, hwTop: hwt - 0.04, hw: Math.min(1.62, hwt + 0.06), hwBot: Math.min(lw, hwt * 0.80), yK, yW,
+    st.push({ z, bot, top, hwTop: hwt - 0.04, hw: Math.min(1.62, hwt + 0.06), hwBot: Math.min(lw, hwt * 0.95), yK, yW,
       roll: z > 3.0 ? 0.6 : 0.4 });
   }
   P.add('hull', hullSolid(st, P.q));
