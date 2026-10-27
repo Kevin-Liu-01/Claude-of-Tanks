@@ -12,6 +12,7 @@
 import { t } from './i18n.ts';
 import { emptyState } from './components/components.ts';
 import { wholeChips } from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from './vehicleFacetIcons.ts';
 import {
@@ -298,9 +299,19 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     updateCues();
   }
 
+  // a transient surface (components/surfaceStack.ts): opening it closes whatever else is open at its level, and Escape (a
+  // search with text keeps its first, which clears it) and a press outside it are the stack's
+  const surface: TransientSurface = {
+    id: 'garage-filters',
+    element: () => panel,
+    owns: (node) => host.toggle.contains(node),
+    close: (reason) => setOpen(false, { restoreFocus: reason === 'escape' }),
+    keepsEscape: (event) => event.target === input && !!input.value,
+  };
   function setOpen(value: boolean, { restoreFocus = false } = {}): void {
     if (open === value) return;
     open = value;
+    if (value) openSurface(surface, host.toggle); else closeSurface(surface);
     panel.hidden = !value;
     host.toggle.setAttribute('aria-expanded', String(value));
     host.onOpenChange?.(value);
@@ -341,12 +352,9 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   closeButton.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
   panel.addEventListener('keydown', (event) => {
     const target = event.target;
+    // Escape in a non-empty search clears it first, like a native search field (the stack leaves it that one: keepsEscape)
     if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      // Escape in a non-empty search clears it first, like a native search field.
-      if (target === input && input.value) commit({ ...state, query: '' });
-      else setOpen(false, { restoreFocus: true });
+      if (target === input && input.value) { event.preventDefault(); event.stopPropagation(); commit({ ...state, query: '' }); }
       return;
     }
     // Typed keys belong to the field: the Garage's arrows (vehicle step) and the game's bindings never see them.
@@ -362,11 +370,6 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     }
   });
   window.addEventListener('resize', fit, { passive: true });
-  document.addEventListener('pointerdown', (event) => {
-    if (!open || !(event.target instanceof Node)) return;
-    if (panel.contains(event.target) || host.toggle.contains(event.target)) return;
-    setOpen(false);
-  }, true);
 
   render();
   return {

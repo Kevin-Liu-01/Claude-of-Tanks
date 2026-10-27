@@ -262,11 +262,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapBtn .mar{position:absolute;right:8px;bottom:6px;z-index:var(--z-lift);display:grid;place-items:center;width:24px;height:24px;
   border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-3);color:var(--ink-1)}
 .cot-studio .mapBtn:disabled{cursor:wait;opacity:.78}
-.cot-studio :is(.mapPop,.pickPop){position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;
+.cot-studio .mapPop{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;
   border-radius:var(--r1);background:var(--surface-menu);box-shadow:var(--e2)}
 .cot-studio .mapPop{max-height:min(65vh,560px)}
-.cot-studio .pickPop{max-height:340px}
-.cot-studio :is(.mapPop,.pickPop).open{display:flex}
+.cot-studio .mapPop.open{display:flex}
 /* the battlefield picker (battlefieldPicker.ts) fills the popover: its cards scroll under its search and biome chips, two
    to a row in the inspector (the battlefield card above is its preview) */
 .cot-studio .mapPop{padding:var(--s2)}
@@ -301,20 +300,6 @@ body:is([data-cot-width='phone'],[data-cot-input='coarse']) .cot-studio .mapPop 
 @media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 160px}}
 /* the scene's current map wears the kit's one selected state (wash and edge); the focus is the kit's neutral ring, so the
    two never read alike (the s18 critic: a wash with no edge beside an edge with no wash) */
-.cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
-  background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
-.cot-studio .pickBtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cot-studio .pickBtn .cot-c-sil{width:38px;height:12px}
-.cot-studio .pickPop .flt{margin:var(--s2);width:calc(100% - 16px)}
-.cot-studio .pickPop .lst{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.cot-studio .pgh{padding:var(--s2) var(--s3) var(--s1);color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-display)}
-.cot-studio .prow{display:flex;align-items:center;gap:var(--s2);width:100%;height:32px;padding:0 var(--s3);border:0;background:none;color:var(--ink-2);
-  font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-body);text-align:left}
-.cot-studio .prow .cot-c-sil{width:38px;height:12px}
-.cot-studio .prow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cot-studio .prow .e{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
-.cot-studio .prow.cur{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
-@media (hover:hover){.cot-studio .prow:hover{background:var(--surface-hover);color:var(--ink-1)}}
 /* the sun: a north-up compass (09-studio's light row, drawn) */
 .cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:var(--s3)}
 .cot-studio .sunDial{display:block;width:78px;height:78px;border-radius:50%;background:var(--fill-quiet);box-shadow:var(--ring-2);cursor:grab;touch-action:none}

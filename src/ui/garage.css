@@ -749,6 +749,14 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
   border:1px solid var(--line-3);box-shadow:var(--e3);
   padding:13px 14px var(--s3);}
 .cot-eqpick.open{display:block;}
+/* the equipment's and the consumables' pickers are transient surfaces (components/surfaceStack.ts): each fades a step up
+   into its place and out the same way, so the one that replaces the other enters as the other leaves (owner 2026-10-27);
+   display flips at the end of the exit, and a leaving picker takes no presses */
+.cot-eqpick{opacity:0;translate:0 var(--s2);transition:opacity var(--dur-fast) var(--ease-exit),translate var(--dur-fast) var(--ease-exit),
+  display var(--dur-fast) allow-discrete}
+.cot-eqpick:not(.open){pointer-events:none}
+.cot-eqpick.open{opacity:1;translate:none;transition-timing-function:var(--ease-enter)}
+@starting-style{.cot-eqpick.open{opacity:0;translate:0 var(--s2)}}
 .cot-eqpick .ph{display:flex;justify-content:space-between;align-items:center;
   margin-bottom:9px;}
 /* the picker's head reads as the paint sheet's does: a sentence-case title and the kit's bare close (the gauntlet 10-25:
@@ -1106,12 +1114,14 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stat
   border:1px solid var(--line-3);box-shadow:var(--e3);
 }
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>:is(.cot-technical-section,.cot-performance-section){display:none}
-body[data-cot-panels='overlay'] .cot-eqpick.open{
+/* (its place holds while it leaves: only display waits for .open) */
+body[data-cot-panels='overlay'] .cot-eqpick{
   left:auto;right:calc(max(var(--cot-overlay-edge),env(safe-area-inset-right)) + var(--cot-compact-stats-width) + 8px);
   top:calc(76px + var(--cot-room-row-space,0px));bottom:var(--cot-drawer-bottom);width:min(420px,calc(100vw - var(--cot-compact-stats-width) - (var(--cot-overlay-edge) * 3)));
-  max-height:none;display:flex;flex-direction:column;
+  max-height:none;flex-direction:column;
   padding:10px;
 }
+body[data-cot-panels='overlay'] .cot-eqpick.open{display:flex}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-eq-picker{flex:1 1 auto}
 body[data-cot-panels='overlay'] .cot-eqpick .cot-c-picker--swatches .cot-c-picker__grid{min-height:0;max-height:none;flex:1 1 auto;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));align-content:start}
 /* a Chinese effect line keeps its terms whole: the tiles take two to a phone's row, so no line starts with a comma */
@@ -1228,7 +1238,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats
   max-height:calc(var(--cot-viewport-height,100dvh) - max(120px,calc(env(safe-area-inset-top) + 114px))
     - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick.open{
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
   top:calc(max(120px,calc(env(safe-area-inset-top) + 114px)) + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
@@ -1291,7 +1301,7 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
   top:calc(72px + var(--cot-room-row-space,0px));width:var(--cot-compact-stats-width);
   max-height:calc(var(--cot-viewport-height,100dvh) - 72px - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
-body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick.open{
+body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick{
   left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
   top:calc(72px + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
@@ -1498,7 +1508,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-gallery-link{display:flex;align
 body[data-cot-input='coarse'] .cot-eqpick .ph{flex:0 0 44px;margin-bottom:var(--s1)}
 /* the phone picker is a sheet from the foot as tall as its tiles (a category of five is not a screen of empty plate), up to
    the screen */
-body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick.open{
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-eqpick{
   position:absolute;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
   top:auto;bottom:max(8px,env(safe-area-inset-bottom));width:auto;max-width:760px;margin-inline:auto;
   max-height:calc(100% - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));

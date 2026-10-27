@@ -9,6 +9,7 @@ import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { notice } from './components/notice.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { pickerText } from './pickerText.ts';
+import { tankThumbUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -91,7 +92,8 @@ const createPickerMenu = (host, options) => {
 const productionPreset = (id) => presets.find((preset) => preset.id === id);
 const context = { document, window, Event, createPickerMenu, createTemplateSheet, pickerText, PRODUCTION_PRESETS: presets, productionAspect, productionPreset,
   productionShotNames: (preset) => preset.shots, sequenceTemplates, takeTemplates, getLocale: () => locale, console, Promise, Error, fetch,
-  sceneLinkPath, t, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys };
+  sceneLinkPath, t, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys,
+  tankThumbUrl };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteTakes = siteTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;

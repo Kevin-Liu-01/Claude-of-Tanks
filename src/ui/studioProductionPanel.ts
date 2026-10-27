@@ -7,6 +7,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { createPickerMenu } from './components/pickerMenu.ts';
 import { pickerText } from './pickerText.ts';
+import { tankThumbUrl } from './icons.ts';
 import { getLocale, t } from './i18n.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
@@ -297,7 +298,8 @@ export function mountStudioProductionPanel(
     memory: 'studio-tank',
     items: [{ id: FEATURED_DEFAULT, name: productionLabel('defaultTank') }, ...S.TANK_IDS.map((id) => {
       const info = S.getSpecInfo(id);
-      return { id, name: info.name, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
+      // each tank's portrait, as every list of tanks shows it (owner 2026-10-27)
+      return { id, name: info.name, media: { poster: tankThumbUrl(id), tank: true }, ...(info.nation ? { facts: [t(`nation.${info.nation}`)] } : {}) };
     })],
     onChoose: (item) => { featured = item.id; },
   });

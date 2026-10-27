@@ -12,6 +12,7 @@ import { esc } from './components/escape.ts';
 import { prefersReducedMotion } from './accessibilityPreferences.ts';
 import { stillDataSaver } from '../presentation/responsivePicture.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { dialogSurface } from './components/surfaceStack.ts';
 import type { StudioTemplate } from './studioTemplates.ts';
 
 interface TemplateSheetOptions {
@@ -144,6 +145,9 @@ export function createTemplateSheet(options: TemplateSheetOptions): TemplateShee
       image.src = `/maps/cards/${template.map}.webp`;
     }, true);
     document.body.append(sheet);
+    // on the kit's surface stack while it is open (transientSurfaceRegistry.ts): it replaces what stood open, Escape is the
+    // stack's
+    dialogSurface(sheet, 'studio-templates');
     picker = createPicker(sheet.querySelector<HTMLElement>('.st-tpl__cards')!, {
       id: 'studio-templates', label: options.title, items, value, layout: 'cards', text: options.text, filters: options.filters,
       memory: 'studio-template',

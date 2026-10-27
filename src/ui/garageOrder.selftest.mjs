@@ -115,7 +115,8 @@ assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !==
 assert.match(garageSource, /const BAND_PAINT_PICKS: readonly string\[\] = Object\.freeze\(\['factory', 'auto',/,
   'the band keeps the service coat among its quick paints');
 assert.match(garageSource, /panel && \(isOverlayPanelLayout\(\) \|\| panel === 'appearance'\)/, 'every paint opens on a docked layout too');
-assert.match(garageSource, /button\[data-garage-panel="appearance"\], \.cot-modal-root'\)\) return;\s*setGaragePanel\(''\);\s*\}, true\);/,
+// every paint is a transient surface (components/surfaceStack.ts): the stack's outside press closes it
+assert.match(garageSource, /owns: \(node\) => node instanceof Element && !!node\.closest\(`button\[data-garage-panel="\$\{panel\}"\]`\)/,
   'a press outside every paint closes it (the root carries the panel attribute too, so only its button is exempt)');
 assert.match(garageSource,
   /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,

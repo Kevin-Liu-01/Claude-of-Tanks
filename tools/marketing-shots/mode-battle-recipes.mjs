@@ -1305,23 +1305,23 @@ async function openCrewRadio(ctx) {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.cot-set.open', { timeout: 8000 }).catch(() => null);
   // src/ui/settings.ts: tabs .cot-set-tab[data-tab], the Sound tab's crew row .cot-set-crew-row whose flag dropdown
-  // (customSelect.ts, created lazily with its flag art) opens .cot-custom-select-list in the page
+  // (the kit's picker menu, nationSelect.ts, each voice by its flag) opens its popover in the page
   const result = await page.evaluate(() => {
     const out = { open: !!document.querySelector('.cot-set.open') };
     const sound = document.querySelector('.cot-set-tab[data-tab="sound"]');
     if (sound) { sound.click(); out.tab = (sound.textContent || '').trim(); }
     return out;
   });
-  await page.waitForSelector('.cot-set-crew-row .cot-custom-select-trigger', { timeout: 8000 }).catch(() => null);
+  await page.waitForSelector('.cot-set-crew-row .cot-c-menu__trigger', { timeout: 8000 }).catch(() => null);
   const select = await page.evaluate(() => {
     const row = document.querySelector('.cot-set-crew-row');
     if (!row) return { found: false };
     row.scrollIntoView({ block: 'center' });
-    const trigger = row.querySelector('.cot-custom-select-trigger');
+    const trigger = row.querySelector('.cot-c-menu__trigger');
     if (trigger) trigger.click();
     return { found: true, trigger: !!trigger, text: (row.textContent || '').trim().slice(0, 80) };
   });
-  await page.waitForSelector('.cot-custom-select-list', { visible: true, timeout: 5000 }).catch(() => null);
+  await page.waitForSelector('.cot-c-menu__pop:popover-open', { visible: true, timeout: 5000 }).catch(() => null);
   return { ...result, select };
 }
 

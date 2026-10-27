@@ -113,17 +113,16 @@ assert.match(garage, /\.cot-garage\.has-room\{--cot-room-row-space:52px;\}/,
   'connected rooms must reserve a full touch-target row above compact previews and drawers');
 assert.match(playMenu, /\.cot-play button\[data-action="ready"\]\{min-height:44px\}/,
   'drawer readiness must retain a full-size touch target');
-assert.match(garage,
-  /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*setGaragePanel\(''\);/,
+// the disclosures, the drawers and Deploy are transient surfaces (components/surfaceStack.ts): opening one replaces the
+// open one in the same press, and Escape (the stack's, in the window's capture) closes only the top one
+assert.match(garage, /const openMobileNavigation = \(\) => \{\s*openSurface\(mobileNavSurface, mobileNavTrigger\);/,
   'page navigation must close garage disclosures instead of stacking over them');
-assert.match(garage,
-  /function openBattleMenu\(\)(?:: void)? \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
+assert.match(garage, /function openBattleMenu\(\)(?:: void)? \{[\s\S]*?openSurface\(deploySurface, battleModeBtn\);/,
   'battle selection must close garage disclosures instead of stacking over them');
-assert.match(garage,
-  /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\s*\|\| eventElement\(event\)\?\.closest\('\.cot-c-menu__pop'\)\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
+assert.match(garage, /close: \(reason\) => \{ if \(openGaragePanel\(\) === panel\) setGaragePanel\('', \{ restoreFocus: reason === 'escape' \}\); \}/,
   'Escape must close one garage drawer without leaking into the global Settings shortcut (an open picker menu takes its own)');
-assert.match(garage,
-  /if \(!battleMenu\.classList\.contains\('open'\) \|\| event\.code !== 'Escape'\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*closeBattleMenu\(\{ restoreFocus: true \}\);/,
+assert.doesNotMatch(garage, /event\.code !== 'Escape'\) return;/, 'no Garage surface keeps an Escape listener of its own');
+assert.match(garage, /id: 'deploy',[\s\S]*?close: \(reason\) => closeBattleMenu\(\{ restoreFocus: reason === 'escape' \}\),\s*modal: true,/,
   'Escape must close the Battle menu without leaking into another UI owner');
 
 assert.doesNotMatch(touch, /@media \([^)]*(?:width|height|orientation)/,

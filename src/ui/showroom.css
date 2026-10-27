@@ -200,6 +200,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 @container readout (width < 380px){
   .cot-garage .cot-compare:has(.cot-rival)>.cot-stat-title>span{display:none;}
   .cot-garage .cot-compare .cot-rival{max-width:none;}
+  /* then the "vs" word: the amber notch and the rival's picture carry the legend, so its name stays whole (the 261 critic:
+     zh "KF51 E…" at 1280, 1024 and 900) */
+  .cot-garage .cot-rival .cot-c-menu__trigger::before{content:'';padding-left:0;}
 }
 .cot-garage .cot-headline{display:grid;gap:var(--s3);}
 .cot-garage .cot-mag{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s1);margin-top:var(--s3);}

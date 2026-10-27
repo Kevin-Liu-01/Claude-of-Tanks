@@ -10,7 +10,7 @@
 // key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed
 // 20-cell scale, stat tiles and empty states. The vehicle identity (flag, silhouette, name) is identity.ts: its flags are
 // asset imports, and the core imports none. Plates are classes.
-// Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
+// Modal, select, slider and tooltip keep their existing owners (modal.ts, selectPickerMenu.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
 import { attrs, esc, type Attrs } from './escape.ts';
