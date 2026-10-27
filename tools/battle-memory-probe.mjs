@@ -19,6 +19,7 @@
 //   node tools/battle-memory-probe.mjs [--scenarios=urban:zone_control] [--size=14] [--battles=3] [--seconds=30]
 //        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--leak-check] [--retainers] [--gate] [--viewport=1920x1080] [--preset=high]
 //        [--authority=host] (255: the battles on a local host, ?soloAuthority=host; the debug entry keeps the page's otherwise)
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -281,7 +282,7 @@ async function probeScenario(options, scenario) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = options.size - 1, enemies = options.size;
-  const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
     args: [...MAP_PROBE_BROWSER_ARGS, `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] });
   const pid = browser.process()?.pid;
   let peak = { total: 0 };

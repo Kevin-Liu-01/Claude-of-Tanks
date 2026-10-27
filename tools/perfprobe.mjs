@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Performance probe harness (perf engineer tooling).
 // Usage: node tools/perfprobe.mjs [--seconds 60] [--width 1920] [--height 1080]
@@ -581,7 +582,7 @@ console.error(`[perf] ${production ? 'production preview' : 'vite dev'} up at ${
 
 const launchArgs = perfBrowserArgs(nativeCadence);
 const launchOptions={headless:'new',args:launchArgs};
-browser = await puppeteer.launch(nativeCadence ? nativeBrowserLaunchOptions(launchOptions) : launchOptions);
+browser = await launchGuardedBrowser(puppeteer, nativeCadence ? nativeBrowserLaunchOptions(launchOptions) : launchOptions);
 const nativeLaunch=nativeCadence ? verifyNativeBrowserLaunch(browser) : null;
 const browserVersion = await browser.version();
 const ownBrowserPid = browser.process() ? browser.process().pid : -1;

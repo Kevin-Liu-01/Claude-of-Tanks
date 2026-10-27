@@ -18,6 +18,7 @@
 //          markings), and the share of those pixels that toggle between consecutive frames (the flicker of it).
 // Each is counted over the markings' footprint, the props' footprint (fittings, stowage, ERA, lamps, guns, decor) and
 // the whole tank. A manual probe, not part of npm test. Never edit src while it runs (vite would reload the page).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -463,7 +464,7 @@ async function launchBrowser() {
   const args = swiftshader
     ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox']
     : ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'];
-  browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900_000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900_000,
     args: [...args, '--js-flags=--max-old-space-size=3072', `--window-size=${width},${height}`] });
   const pid = browser.process()?.pid;
   if (pid) {

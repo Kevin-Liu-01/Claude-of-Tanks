@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Full production Garage owners/catalogs: real taps, clipping, keyboard focus,
 // drawers and rotation. No renderer or simulated multiplayer transport claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -14,7 +15,7 @@ let server,browser;const reports=[],errors=[];
 try{
  server=await createServer({server:{host:'127.0.0.1',port:0,hmr:false}});await server.listen();
  const url=`http://127.0.0.1:${server.httpServer.address().port}`;
- browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+ browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
  for(const [name,width,height,locale='en-US'] of [
  ['phone',390,844],['narrow-phone',320,568],['landscape',844,390],['small-landscape',667,375],
  ['tiny-landscape',568,320],['short-landscape',568,256],['minimum-landscape',480,240],['chinese-landscape',568,256,'zh-CN'],

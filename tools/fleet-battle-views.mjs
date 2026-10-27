@@ -5,6 +5,7 @@
 // Usage:
 //   node tools/fleet-battle-views.mjs --out=/tmp/fleet-before
 //   node tools/fleet-battle-views.mjs --ids=m1a1_abrams_hc,t90am --distances=40,60,90
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
@@ -67,7 +68,7 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.httpServer.address().port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

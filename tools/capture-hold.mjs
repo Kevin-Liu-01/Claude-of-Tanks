@@ -12,7 +12,7 @@
 //     place: 'my-lane-item',                      // a killed run rejoins at its first stamp
 //     warm: async () => {                         // outside the lock: servers, browser, every page loaded to ready
 //       const server = await startViteChild({ root, mode: 'preview' });   // a built dist: no transforms at load
-//       const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 600_000, timeout: 180_000 });
+//       const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 600_000, timeout: 180_000 });
 //       const page = await warmPage(browser, `${server.url}/?studio=1&map=verdant`, { ready: 'window.__STUDIO?.ready' });
 //       return { pages: [page], page, close: async () => { await browser.close(); await server.close(); } };
 //     },
@@ -29,10 +29,16 @@
 // warmPage stubs the socket (stubViteSocket: a 'vite-hmr' socket never opens or closes, so the client never reloads),
 // startViteChild's dev servers run without one (`ws: false`), every page is checked after the thaw and re-warmed if it
 // lost its context, and a page frozen longer than `maxFrozenMinutes` is checked (and re-warmed) while still queued.
+//
+// Runaway browsers (2026-10-26, item 244): launch the hold's browser with tools/browser-launch.mjs launchGuardedBrowser.
+// A renderer past 6 GB (or its tree past 10 GB), warming or shooting, has the browser killed, a `[browser-guard]` line
+// naming this hold's label and its pages, the capture lock released at once (the queue moves on) and the process ended
+// with exit code 86.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { constants } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { setBrowserGuardContext } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -202,6 +208,7 @@ export async function runWarmHold({ label = 'capture', warm, shoot, holdMinutes 
   thaw = thawPage, check = checkPage, rewarm = rewarmPage } = {}) {
   if (typeof warm !== 'function' || typeof shoot !== 'function') throw new Error('runWarmHold needs warm() and shoot()');
   const say = (message) => log(`[${label} ${new Date().toISOString().slice(11, 19)}] ${message}`);
+  setBrowserGuardContext({ hold: label });
   const queuedAt = Date.now();
   const sessions = new Map(), frozenAt = new Map();
   let warmed, current = null;

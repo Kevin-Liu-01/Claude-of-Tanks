@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Production HUD canvas regression, with the real battlefield raster; no WebGL.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -13,7 +14,7 @@ const heartbeat=setInterval(()=>lock.refresh(),30000);
 let browser;
 const errors=[],reports=[];
 try{
-  browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+  browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
   for(const [name,width,height] of [['desktop',1440,900],['portrait',390,844],['landscape',844,390]]){
     const page=await browser.newPage({viewport:{width,height},hasTouch:name!=='desktop',deviceScaleFactor:2});
     page.on('pageerror',error=>errors.push(error.message));

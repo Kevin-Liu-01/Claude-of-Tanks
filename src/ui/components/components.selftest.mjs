@@ -237,4 +237,28 @@ assert.match(keycap('↑'), /data-icon="moveForward"/, 'the up arrow key draws t
 assert.doesNotMatch(keycap('→'), /→/, 'no typed arrow in a key cap');
 assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
 
+// One selected state (Main, 2026-10-26, after the gallery-studio critics flagged an amber toggle beside a grey choice):
+// a segmented option, a chip, a picked option and a toggle all wear the accent's wash and edge, and no surface re-draws a
+// selection on the grey hover plate.
+{
+  const kit = ['./components.css', './pickers.css'].map((file) => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
+  const rule = (selector) => kit.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{([^}]*)\\}`))?.[1] ?? '';
+  for (const [selector, fill] of [['.cot-c-seg__opt:is([aria-checked=true],[aria-selected=true])', /background:var\(--accent-wash\)/],
+    ['.cot-c-chip[aria-pressed=true]', /background:var\(--chip-fill-on\)/], ['.cot-c-picker__opt[aria-selected=true]', /background:var\(--chip-fill-on\)/],
+    ['.cot-c-toggle[aria-checked=true] .cot-c-toggle__track', /background:var\(--accent-wash\)/]]) {
+    const body = rule(selector);
+    assert.match(body, fill, `${selector} fills with the accent's wash`);
+    assert.match(body, /box-shadow:var\(--ring-accent\)/, `${selector} wears the accent's edge`);
+  }
+  assert.match(tokensCss, /--chip-fill-on:var\(--accent-wash\)/, 'the chip fill is the accent wash');
+  const { readdirSync } = await import('node:fs');
+  const sheets = (dir) => readdirSync(new URL(dir, import.meta.url), { withFileTypes: true }).flatMap((entry) => entry.isDirectory()
+    ? sheets(`${dir}${entry.name}/`) : /\.(css|ts)$/.test(entry.name) && !/\.selftest\./.test(entry.name) ? [new URL(`${dir}${entry.name}`, import.meta.url)] : []);
+  for (const file of [...sheets('../'), ...sheets('../../presentation/')]) {
+    for (const [, selector, body] of readFileSync(file, 'utf8').matchAll(/([^{}]*\[aria-(?:pressed|checked|selected)=['"]?true['"]?\][^{}]*)\{([^}]*)\}/g)) {
+      assert.doesNotMatch(body, /background:var\(--surface-hover\)/, `${file.pathname.split('/src/')[1]}: ${selector.trim().slice(0, 80)} draws a selection on the grey hover plate`);
+    }
+  }
+}
+
 console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); four tokens-only sheets in the components layer');

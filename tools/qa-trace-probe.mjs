@@ -3,6 +3,7 @@
 //   2. explicit `?debug=1` sessions get a bounded trace, telemetry, and
 //      touch-sized mark/copy/export controls.
 // Run after `npm run build` (or use `npm run qa:trace`).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -14,7 +15,7 @@ const server = await preview({
 const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : 5781;
 const base = `http://127.0.0.1:${port}/`;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 360000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

@@ -99,7 +99,7 @@ function viewerMarkup(): string {
     <p class="filming-stage-note" data-filming-stage-note></p>
     <figure class="filming-frames"><div class="filming-frame-row" data-filming-frames>${FRAME_TIMES.map((time) => `<span class="filming-frame" role="img" data-filming-frame="${time}"><b>${time} s</b></span>`).join('')}</div><figcaption data-filming-frames-caption></figcaption></figure>
     <div class="filming-take-story"><h3 data-filming-take-title></h3><p class="filming-take-meta" data-filming-take-meta></p><p data-filming-take-story></p>
-      <div class="filming-take-scene"><a data-filming-studio href="">${t('docs.filming.viewer.openStudio')}</a><a data-filming-scene href="" download>${t('docs.filming.viewer.sceneJson')}</a><small>${t('docs.filming.viewer.sceneNote')}</small></div></div>
+      <div class="filming-take-scene"><a class="cot-c-btn cot-c-btn--secondary cot-c-btn--36" data-filming-studio href="">${t('docs.filming.viewer.openStudio')}</a><a class="cot-c-btn cot-c-btn--secondary cot-c-btn--36" data-filming-scene href="" download>${t('docs.filming.viewer.sceneJson')}</a></div></div>
     <div class="filming-take-grid" data-filming-takes></div>
   </div>`;
 }
@@ -166,9 +166,10 @@ export function mountFilming(article: HTMLElement): void {
   let take = FILMING_TAKES[0];
   let stages: StagePicker | null = null;
   let takes: StagePicker | null = null;
-  // the take's stages, in the rounds' order, each by its own picture and its number in the run
+  // the take's stages, in the rounds' order, each by its own picture (a number of its own beside the take's read as a
+  // second count)
   const stageItems = (): PickerItem[] => FILMING_STAGES.filter((s) => take.stages.includes(s)).map((s) => ({
-    id: s, name: holdNameText(STAGE_TEXT[s].label), facts: [pad(FILMING_STAGES.indexOf(s) + 1)], media: { poster: filmingPoster(take, s) },
+    id: s, name: holdNameText(STAGE_TEXT[s].label), facts: [], media: { poster: filmingPoster(take, s) },
   }));
   let stage: FilmingStage = OPENING_STAGES.find((s) => take.stages.includes(s)) ?? take.stages[0];
 

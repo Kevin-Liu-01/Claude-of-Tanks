@@ -37,7 +37,9 @@ type EquipmentGroups = readonly { readonly category: { readonly id: string }; re
  * its reason.
  */
 export function equipmentPickerItems(groups: EquipmentGroups, openSlot: number, words: EquipmentPickerWords): PickerItem[] {
-  const items: PickerItem[] = [{ id: EQUIPMENT_EMPTY_ID, name: words.empty, tags: [] }];
+  // Empty answers every category, so a filtered grid still shows the slot's way back (the r22q critic: under Protection the
+  // fitted Empty left the grid and its readout stood alone)
+  const items: PickerItem[] = [{ id: EQUIPMENT_EMPTY_ID, name: words.empty, tags: groups.map((group) => group.category.id) }];
   for (const group of groups) {
     for (const { item, lock, fittedSlot } of group.items) {
       const facts = [words.effect(item.id)];

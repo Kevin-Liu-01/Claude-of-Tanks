@@ -37,6 +37,7 @@ await warmGarageGpuPipeline({
     },
   },
   post: {
+    msaaSamples: 4,
     async warmFirstFrame(yieldWarm) {
       await yieldWarm();
       return [{ label: 'scene', ms: 5 }, { label: 'grade', ms: 2 }];
@@ -53,6 +54,9 @@ await warmGarageGpuPipeline({
     assert.ok(activeCamera === camera);
     assert.equal(options.maxObjects, 64);
     assert.equal(options.maxWeight, 240_000);
+    // (2026-10-26, the boot census) every visible draw whatever the warm camera frames, at the scene pass's samples
+    assert.equal(options.uncull, true, 'the boot warm draws what the showroom camera will frame, not only the warm\'s view');
+    assert.equal(options.samples(), 4, 'into a target with the scene pass\'s samples');
     await options.yieldBeforeBatch(0);
     return [11, 4];
   },

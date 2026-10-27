@@ -5,6 +5,7 @@
 // Examples:
 //   node tools/fleet-surface-overlap-audit.mjs --ids=type10b --report-only
 //   node tools/fleet-surface-overlap-audit.mjs --check --out=/tmp/surface-overlaps.json
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
@@ -42,7 +43,7 @@ const tankAssets = JSON.parse(readFileSync(resolve(root, 'public/icons/tank-asse
 const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

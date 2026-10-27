@@ -17,6 +17,7 @@
 // saturates the half-float scene target (65504 on Metal, read back to prove the case ran) and opens no incident (the
 // round-2 probe called it a NaN); a real NaN over the scene target (from its bits) is still named nan-history.
 // It takes the capture lock itself (an owned lease, run-selftests.mjs) and the hardware ANGLE path.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
@@ -82,7 +83,7 @@ try {
   refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
   server = await createServer({ root: process.cwd(), logLevel: 'error', server: { host: '127.0.0.1', port: 0, hmr: false } });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 60_000, protocolTimeout: 300_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 60_000, protocolTimeout: 300_000,
     defaultViewport: null, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox',
       '--disable-dev-shm-usage', `--window-size=${VIEW.width},${VIEW.height + 120}`] }));
   report.launch = verifyNativeBrowserLaunch(browser);

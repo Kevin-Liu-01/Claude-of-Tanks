@@ -25,6 +25,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildZubrIIHull} from './zubrII.ts';
 import {buildNationalDonorTurret,donorTurretSeatY,nationalDonorTurret} from './nationalDonorTurret.ts';
+import {addRearSlopeFuelDrums} from './rearSlopeFuelDrums.ts';
 import {buildUkraineDonorKit,buildHetmanIIDonorKit} from './ukraineDonorTurretKit.ts';
 import {buildPolandDonorKit,buildZubrIIDonorKit} from './polandDonorTurretKit.ts';
 import {buildChinaDonorKit} from './chinaDonorTurretKit.ts';
@@ -96,6 +97,10 @@ const NATIONAL_GUN_FLOODLIGHTS:Readonly<Record<string,GunFloodlightSeat>>={
  t80u_zoria:{side:'right',x:.40,y:.02,backZ:1.05,anchorX:.19,anchorY:.05,anchorZ:.92},
 };
 
+// 2026-10-26 (owner): two fuel drums across the upper rear slope, on the Bulat-M and Bastion-M (the markup's plate) and,
+// beside their back drums, on the Qilin, Kunlun and Yun (rearSlopeFuelDrums.ts)
+const REAR_SLOPE_DRUM_IDS=new Set(['t72b3m_bulat_m','t72b3_bastion_m','t72b3_qilin','t72b3m_kunlun','t80u_yun']);
+
 function* build(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuild {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
@@ -109,6 +114,7 @@ function* build(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuil
   yield* fitDonorTurret(P,c.id,()=>({ua:buildUkraineDonorKit,pl:buildPolandDonorKit,cn:buildChinaDonorKit} as const)[c.package as 'ua'|'pl'|'cn'](P,c));
   // The Chinese concepts keep their rear field rack (cans and unditching log) on the native transom.
   if(c.package==='cn')addRearFieldStowage(P,true);
+  if(REAR_SLOPE_DRUM_IDS.has(c.id))addRearSlopeFuelDrums(P);
   P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:7,concept:true,
    preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',
    primaryTurret:`${donor.donor}-turret-with-national-up-armour`,turretDonor:donor.donor};
@@ -130,6 +136,7 @@ function* build(P:TankBuilderPort,c:NationalModernizationConfig):TankProfileBuil
  // its drone rides on a receiver laid across that wing (missionAttachmentReceiver.ts).
  if(c.id==='t80u_zoria')addMissionAttachmentReceiver(P,'t80u_zoria');
  if(c.id==='t72b3m_bulat_m')addRearFieldStowage(P,false);
+ if(REAR_SLOPE_DRUM_IDS.has(c.id))addRearSlopeFuelDrums(P);
  P.topY=nationalModernizationDesign(c).roofY;
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};

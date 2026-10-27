@@ -18,6 +18,7 @@
 // The Vite server (a child process), Chrome, the page and the tanks' warm-up run while the ticket waits
 // (tools/capture-hold.mjs, 2026-10-22): the hold renders only. Before, 70-143 s of each 103-212 s hold was setup.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -97,7 +98,7 @@ try {
       });
       let browser = null;
       try {
-        browser = await puppeteer.launch({
+        browser = await launchGuardedBrowser(puppeteer, {
           headless: 'new',
           timeout: 180_000,
           protocolTimeout: 15 * 60 * 1000,

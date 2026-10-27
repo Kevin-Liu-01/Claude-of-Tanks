@@ -27,6 +27,7 @@
 // other jobs interleave, and closes its Chrome while it waits; a memory-guard WARN or a `headroom can-start`
 // refusal waits, a PAUSE stops the run; one Chrome and one dev server.
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { spawnSync } from 'node:child_process';
@@ -175,7 +176,7 @@ async function buildSheets(browser, slot, { tile = 320, cols = 5, rows = 6 } = {
 }
 
 if (opt('sheet')) {
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-gpu'] });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox', '--disable-gpu'] });
   try {
     for (const slot of opt('sheet').split(',').filter(Boolean)) log(slot, (await buildSheets(browser, slot)).join(' '));
   } finally { await browser.close(); }
@@ -239,7 +240,7 @@ const holds = [];
 const holdLog = join(OUT, 'lock-holds.jsonl');
 async function launchBrowser() {
   if (browser) return browser;
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     protocolTimeout: 600000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--mute-audio',
@@ -479,6 +480,12 @@ async function runEntry(browserHandle, baseUrl, slot, entry, recipe, installMode
       };
     });
     log(`${slot}: battle live after ${Math.round((Date.now() - t0) / 1000)} s ${JSON.stringify(reached)}`);
+    // (2026-10-26, Main on the Deploy panel art: the map's air read as white specks behind the panel copy) with
+    // MB_NO_AMBIENCE=1, the map's airborne particles (world/mapAmbience.ts) off for the whole slot
+    if (process.env.MB_NO_AMBIENCE === '1') {
+      const off = await page.evaluate(() => { const a = window.__DEBUG?.mapAmbience; if (!a?.setEnabled) return false; a.setEnabled(false); return true; });
+      log(`${slot}: map ambience ${off ? 'off' : 'not reachable'}`);
+    }
     if (reached.timeOfDay && reached.timeOfDay !== hour) {
       const applied = await page.evaluate((time) => window.__SHOTS.battleTime(time), hour).catch(() => null);
       notes.push(`battle drew ${reached.timeOfDay}; applied ${hour} with __SHOTS.battleTime -> ${applied}`);
@@ -580,6 +587,15 @@ function makeContext({ page, slot, entry, recipe, dir, notes, errors, battle, ho
         const file = `c${String(n).padStart(3, '0')}.png`;
         const buffer = await page.screenshot({ type: 'png', optimizeForSpeed: true, captureBeyondViewport: false });
         writeFileSync(join(dir, file), buffer);
+        // (2026-10-24, the Premiere lead's Deploy tiles: "HUD-free frames of each mode's own moment") with
+        // MB_CLEAN=1, the same frozen frame once more with the HUD hidden, as c###-clean.png (--pick=<slot>:<n>-clean)
+        if (process.env.MB_CLEAN === '1') {
+          const mode = await page.evaluate(() => window.__MB.hudMode ?? 'full');
+          await page.evaluate(() => window.__MB.setHud('hidden'));
+          writeFileSync(join(dir, file.replace('.png', '-clean.png')),
+            await page.screenshot({ type: 'png', optimizeForSpeed: true, captureBeyondViewport: false }));
+          await page.evaluate((m) => window.__MB.setHud(m), mode);
+        }
         const line = { n, file, label, ...(state.meta || {}) };
         appendFileSync(metaPath, `${JSON.stringify(line)}\n`);
         if (cameras?.length > 1 && local % cameraEvery === 0) {

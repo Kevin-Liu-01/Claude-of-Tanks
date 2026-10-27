@@ -3,6 +3,7 @@
 // independently from live tanks and the wide establishing shots.
 //
 // Usage: node tools/world-wreck-visual-audit.mjs --out=/tmp/wreck.png
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -33,7 +34,7 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.httpServer.address().port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

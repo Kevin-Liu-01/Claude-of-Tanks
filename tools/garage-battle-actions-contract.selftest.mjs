@@ -259,6 +259,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     };
     await execute(probePath, {
       process, URL, console: { log() {} }, createHash, resolve,
+      // the guarded launch is tools/browser-launch.selftest.mjs's to prove; this fixture's browser is fake
+      launchGuardedBrowser: (launcher, options) => launcher.launch(options),
       setInterval: () => ({ unref() {} }), clearInterval() {},
       mkdir: async () => {}, readFile: async url => String(url).endsWith('.json') ? '{"boot.retry":"Retry"}' : 'source',
       writeFile: async (file, text) => writes.push({ file, value: JSON.parse(text) }),

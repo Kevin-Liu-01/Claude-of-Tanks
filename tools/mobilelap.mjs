@@ -9,6 +9,7 @@
 // Usage: node tools/mobilelap.mjs [--production] [--profile native|constrained|software]
 //   [--soak-cycles 2] [--out scorecard.json] [--trace-out trace.json]
 //   [--shots directory] [--tank m2a2_bradley]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -77,7 +78,7 @@ const url = new URL(`http://127.0.0.1:${port}/`);
 url.searchParams.set('tier', 'mobile');
 url.searchParams.set('gfxreset', '1');
 if (PRODUCTION) url.searchParams.set('debug', '1');
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new', protocolTimeout: 600000,
   args: [
     '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',

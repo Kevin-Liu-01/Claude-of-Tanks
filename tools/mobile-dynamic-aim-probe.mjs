@@ -2,6 +2,7 @@
 // input path (not direct input API calls) and proves quick release firing,
 // sustained hold-to-auto-fire, fire-button aim deltas, deadzone, cancellation,
 // both fire buttons, an autocannon IFV, and a conventional MBT.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -13,7 +14,7 @@ const server = await createServer({
   optimizeDeps: { entries: ['index.html'], include: ['three'] },
 });
 await server.listen();
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new', protocolTimeout: 360000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

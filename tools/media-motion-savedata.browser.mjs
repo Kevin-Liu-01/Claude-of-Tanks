@@ -12,6 +12,7 @@
 //      <meta name="cot-game-entry">), and nothing fetches it before the hover.
 //
 //   node tools/media-motion-savedata.browser.mjs [--url=http://127.0.0.1:4173] [--out=<dir>] [--pages=/home,/docs]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -59,7 +60,7 @@ const keepLock = setInterval(() => lock.refresh(), 30_000);
 const report = { base, flags: [], handoff: null, prefetch: null };
 let browser;
 try {
-  browser = await puppeteer.launch({ headless: true, channel: 'chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, channel: 'chrome', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 
   /** A fresh page with network logging: requests by id, with type, bytes, failure and CDP timestamps. */
   async function openPage({ reducedMotion = false, saveData = false, viewport = { width: 1440, height: 900 } } = {}) {
