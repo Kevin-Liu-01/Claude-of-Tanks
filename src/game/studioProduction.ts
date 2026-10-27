@@ -110,7 +110,7 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     map: 'winter', timeOfDay: 'night', durationMs: 8000, category: 'combat',
     shots: ['Flarelit approach', 'The exchange', 'Knockout'], headingDeg: 4.1,
     cast: [cast('lead', 't90_1992', [-79.9, -23.2], 4.1, 12, { turretDeg: 0 }), cast('wing', 'leo2a4', [-75, 59], 182, -4, { camo: 'winter' })],
-    rigs: ['track', 'hero', 'hero', 'overhead'], subjects: ['lead', 'lead', 'wing'], camo: 'winterbands', dust: 0.35,
+    rigs: ['track', 'rear', 'hero', 'overhead'], subjects: ['lead', 'lead', 'wing'], camo: 'winterbands', dust: 0.35,
     effects: [flare([-70, 31]), fire('lead-fire', 'lead', 3000), fire('wing-fire', 'wing', 4200), fire('lead-fire-two', 'lead', 5600),
       ...knockout('wing', 6066.667)] },
   { id: 'furnace-night', title: 'Furnace night', description: 'Two heavies roll under the ironworks gantries by flarelight, guns trained down the yard.',
@@ -189,7 +189,7 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     map: 'frontier', timeOfDay: 'sunset', durationMs: 8000, category: 'showcase',
     shots: ['Gun-first', 'Tracks at speed', 'Dust trail'], headingDeg: 2.2,
     cast: [cast('lead', 'kf51_evo', [26.5, 56.2], 2.2, 26)],
-    rigs: ['hero', 'track', 'detail', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'flecktarn', dust: 0.7 },
+    rigs: ['rear', 'track', 'detail', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'flecktarn', dust: 0.7 },
 ];
 export interface ProductionOptions { presetId: string; format?: ProductionFormat; vehicleId?: string }
 interface ProductionActor { id: string; name: string; pos: Vec2; facingDeg: number; turretDeg: number; camo: string; camoSeed: number }
