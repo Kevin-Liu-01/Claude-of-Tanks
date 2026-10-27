@@ -55,9 +55,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "k2b": {
     "fitting@hull(-1.28,1.55,-3.30)": -1,
   },
-  "kv2": {
-    "fitting@hull(1.32,1.72,1.10)": [1.4205, 1.72585, 1.56847, 0.04289, 0, 0, 0.99908, 1],
-  },
   "leo2a2": {
     "fitting@hull(-0.85,1.47,2.79)": [-0.57, 1.46177, 2.8292, 0.08087, 0.70247, 0.08087, 0.70247, 0],
   },

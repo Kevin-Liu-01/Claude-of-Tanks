@@ -50,6 +50,41 @@ Copies of the Commons images and the measured crops are kept outside the reposit
 | Trunnion | world (0, 2.58, 1.00) | axis 2.50 (S2) - 2.66 (S3) | (0, 2.58, 1.37) |
 | Gun arc (spec) | +12 / −5 | +18 / −3 (S1) | spec unchanged (gameplay); clearance receipt covers −5..+18 |
 
+### Construction (src/vehicles/profiles/soviet-heavy.ts, `KV2`)
+
+- **Hull:** one `sectionSolid` box ±0.925 from the 0.43 belly to the 1.65 roof; stations at every bow and stern plate
+  corner: the 0.40 m driver's plate at 30° (roof edge z 2.20), the glacis at 20° to the nose at 3.30 (0.93), the
+  lower plate at 25° to the belly at 3.085; the stern's upper plate (1.65 → 1.31 over 0.425 m, ~51° from vertical),
+  then the curved lower plate (vertical to 1.03, a 0.60 m quarter-round to the belly at −2.775). Weld beads on every
+  plate joint the eye follows; bolted roof and deck plate joints.
+- **Fenders:** 22 mm shelves at 1.37 from −3.34 to 2.30 with a 40 mm turned-down lip, sloped front mudguards to
+  (3.24, 1.18) with inner cheek plates down to the glacis edge (no open slot from the front), four flat-bar triangular
+  frames a side against the hull wall, bolt rows, two long stowage boxes on the rear fenders, shovel and axe (left),
+  screw jack and block (right).
+- **Fittings:** driver's vision block on the centre line, bow DT ball on the tank's left, headlight on its right,
+  two driver's periscopes and the radio operator's flush hatch ahead of the turret, the 71-TK-3 whip 2.19 m off the
+  ring axis (outside every turret sweep, 0.18 m under the tube at −5°), bolt row and towing eyes on the lower nose
+  plate, spare links on the glacis (VEH-13 run `kv-nose-deck-links`); engine access plate, two side intake louvres,
+  the transverse outlet louvre, two round transmission hatches, exhaust cowls on the upper rear plate, towing eyes on
+  the curved lower rear plate.
+- **Running gear:** the family `sovGear` at xc 1.31, a 0.70 m track (band 0.96..1.66), six 0.60 m road wheels a side
+  (span 4.60, centre −0.05) with the early stamped six-pocket face, three 0.30 m return rollers (y 0.995), sprocket
+  (−2.98, 0.80, r 0.33), idler (2.93, 0.80, r 0.30); the print-era cleat comb, guard rail and hangers are gone.
+- **Turret (ring at z 0.32, seat 1.67):** one `sectionSolid` of 75 mm plates: sides ±0.97, front plate at 1.05
+  (world 1.37) between 45° cheeks to ±0.85, a 0.13 m chamfer over the front plate up to the 1.57 roof (world 3.24),
+  rear plate at −1.70 (world −1.38), its last 0.63 m standing over the deck on a 0.24 soffit (world 1.91). Welds on
+  every corner and round the roof, floor bolts, two raised bolted bars either side of the mantlet, side stiffeners,
+  two grab handles, a pistol port and a browed vision slit a side, the 0.84 m rear door hung on the tank's right edge
+  with strap hinges and a bolt frame, the rear DT ball on the left, the commander's hatch at the left rear, two
+  periscope domes at the roof's front corners, the ventilator, a signal port and four lifting eyes.
+- **M-10T:** the cradle drum (r 0.50 × 1.08, rolled end edges, bolted end plates) turns on the trunnion at the
+  front plate (turret-local 0, 0.93, 1.05 = world 0, 2.60, 1.37); the 0.74 × 0.72 × 0.62 shield box with its chin
+  cut back and a raised tube boss; the tube to the mouth at gun-local 2.20 (world 3.57: 6.95 m overall) under a
+  half-jacket (r 0.132, S2's *Halbmantelrohr*) with its seam ring; the shadow-named bore device on a floorless void.
+- **Spec:** dims 6.675 hull / 6.95 overall / 3.32 / 3.25; combat pivots on the drawn trunnion (gun-barrel census
+  ALIGNED, offset 0 mm, angle 0, axial 0, radius −12 mm, no combat-rig row). Gameplay stats unchanged (the spec's
+  +12/−5 arc stays; S1 gives +18/−3: an owner decision).
+
 ## Print-era chronology (2026-07-30 .. 2026-10-26)
 
 Soviet 1940 breakthrough heavy: the towering slab. Signature cues: enormous

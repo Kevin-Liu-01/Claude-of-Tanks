@@ -1055,34 +1055,10 @@
    "hostSweep": []
   },
   "kv2": {
-   "inputHash": "de6b85ba308794af",
+   "inputHash": "ad205a1b40a7745b",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@addKV2FenderStowage@profiles/soviet-heavy.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.36,
-      "gap": 0.598,
-      "air": 0.042,
-      "hidden": 0,
-      "sunkMaxM": 0.011,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.955,
-      "host": "hull<addKV2FenderStowage@profiles/soviet-heavy.ts:329>"
-     }
-    },
-    {
-     "index": 1,
      "site": "adhoc:kv-nose-deck-links@<anon>@profiles/soviet-heavy.ts",
      "source": "adhoc",
      "frame": "hull",
@@ -1095,12 +1071,12 @@
       "support": 1,
       "gap": 0,
       "air": 0,
-      "hidden": 0.004,
-      "sunkMaxM": 0.007,
+      "hidden": 0,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.711,
-      "host": "hull<addKV2HullShellAndSponsons@profiles/soviet-heavy.ts:267>"
+      "exposure": 1,
+      "host": "hull<addKV2Hull@profiles/soviet-heavy.ts:252>"
      }
     }
    ],

@@ -383,8 +383,8 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
     P.add('hullDark', KIT.xform(cylX(0.034, 0.17, 8), 0, -0.02, 0.06), s * 0.55, y, z, lowerTilt, 0, 0);
   }
   // spare track links on the glacis (VEH-13: one registered run)
-  withSpareTrackRun(P, { site: 'kv-nose-deck-links', source: 'adhoc', rotation: [0, 0, 0] }, (port) => {
-    const tilt20 = Math.atan2(K.driverFootY - K.glacisEndY, K.glacisEndZ - K.driverFootZ);
+  const tilt20 = Math.atan2(K.driverFootY - K.glacisEndY, K.glacisEndZ - K.driverFootZ);
+  withSpareTrackRun(P, { site: 'kv-nose-deck-links', source: 'adhoc', rotation: [tilt20, 0, 0] }, (port) => {
     for (const [k, zc] of [[0, 2.62], [1, 2.78]] as const) {
       const y = kv2HullProfile(zc)[1] + 0.024;
       port.add('hullTrack', spareLinkBlock(0.5, 0.045, 0.15), -0.42, y, zc + k * 0.002, tilt20, 0, 0);
