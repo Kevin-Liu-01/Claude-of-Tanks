@@ -35,6 +35,7 @@
  * a budget fails; otherwise the exit code reflects only whether the run completed. Chrome runs under whatever the caller
  * wraps it in (the probe mutex, nice 19): the runner takes no lock itself.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import net from 'node:net';
@@ -271,7 +272,7 @@ try {
   origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
   step('vite', { origin, cacheDir });
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 600_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=640,400'],

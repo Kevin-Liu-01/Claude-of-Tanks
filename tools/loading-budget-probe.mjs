@@ -27,6 +27,7 @@
 // load time and loading-screen responsiveness are intentionally separate
 // contracts: a fast load with a frozen progress screen is still a failure.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { build, createServer, preview } from 'vite';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os, { tmpdir } from 'node:os';
@@ -191,7 +192,7 @@ console.log(`[loading-budget] strict budget <${limitMs} ms; maps=${maps.join(','
 console.log(`[loading-budget] battle click-to-control budget <${rolloutLimitMs} ms`);
 console.log(`[loading-budget] transition frame-gap budget <${stallLimitMs} ms`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

@@ -3,6 +3,7 @@
 //   E equals the numbered missile slot, click launches and consumes one round,
 //   cursor movement steers the missile, and its launcher reloads independently.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { existsSync } from 'node:fs';
@@ -33,7 +34,7 @@ try {
   const url = `http://localhost:${server.config.server.port}/?nogate&nosplash`;
   console.log(`[atgm-guidance] vite up at ${url}`);
   const systemChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     ...(existsSync(systemChrome) ? { executablePath: systemChrome } : {}),
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT90AWCastUnderside} from './t90AwXCastUnderside.ts';
 import {T90_AW_X_SOURCE_DATUMS as D} from '../t90AwXArmor.ts';
+import {seatTurretOverDeck} from '../turretSeatRace.ts';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.cast-underside-heldouts.json',import.meta.url),'utf8'));
 const pivot=new THREE.Vector3(...D.turretPivot),mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const key=p=>p.toArray().map(n=>Math.round(n*1e6)).join(',');
@@ -33,6 +34,31 @@ function ray(ms,origin,direction,far=2){return new THREE.Raycaster(new THREE.Vec
 function inside(m,p){
   const hs=new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(.371,.791,.486).normalize(),0,10).intersectObject(m,false);
   return hs.filter((h,i)=>!i||Math.abs(h.distance-hs[i-1].distance)>.000002).length%2===1;
+}
+// 243 seated the T-90's turret (triangle-guns, b8f5194c8b / 5f3ca8abff; turretSeatRace.ts seatTurretOverDeck: outside the
+// race's rim every corner under the seat plane comes up onto it, 1.5759-1.5779 here), so 53 of the 75 held-out floors read
+// the plane in the build. The build is read against the source casting (the helper's own geometry) under the same seat;
+// the helper alone still meets every source ray (main-reds-259).
+function seatedHelper(limits){
+  const hullG=new THREE.Group(),turretG=new THREE.Group(),meshes=helper(),disposables=[];
+  Object.assign(turretG.userData,limits);hullG.add(turretG);for(const m of meshes)turretG.add(m);hullG.updateMatrixWorld(true);
+  assert.ok(seatTurretOverDeck({specId:'t90',hullG,turretG,gunG:null,disposables})>0,'the seat moves the source casting');
+  return {meshes,dispose(){for(const g of disposables)g.dispose();for(const m of meshes)m.geometry.dispose();}};
+}
+function seatedRays(ms,seated,label){
+  const floors=new Map();
+  for(const r of packet.bottom){
+    const h=ray(ms,[r.x,1,r.z],[0,1,0]),s=ray(seated,[r.x,1,r.z],[0,1,0]);
+    assert.ok(h&&s&&Math.abs(h.point.y-s.point.y)<.006,`${label} seated source bottom ${r.x}/${r.z}: ${h?.point.y} vs ${s?.point.y}`);
+    assert.ok(s.point.y>ray(own,[r.x,1,r.z],[0,1,0]).point.y-.000002,'the seat only lifts the source floor');
+    floors.set(r,s.point.y);
+  }
+  // the bearing cavity's wall triangles reach past the rim, so the seat brings them up whole: the build and the seated
+  // source both read no wall at its 1.465 height (the helper above still keeps the source's open cavity)
+  for(const r of packet.aperture){const h=ray(ms,r.origin,r.direction,1),s=ray(seated,r.origin,r.direction,1);
+    assert.ok(h?s&&h.point.distanceTo(s.point)<.001:!s,'the bearing cavity is the seated source cavity');}
+  assert.equal(ray(ms,[0,1.45,0],[0,1,0],.05),undefined,'central low bearing height is genuine air, not a slab');
+  return floors;
 }
 function sourceRays(ms,label){
   for(const r of packet.bottom){
@@ -74,19 +100,26 @@ try{
     try{
       t.root.updateMatrixWorld(true);const original=t.root.getObjectByName('turret');assert.ok(original?.isMesh);
       const proxy=new THREE.Mesh(original.geometry,mat);proxy.matrixAutoUpdate=false;proxy.matrixWorld.copy(original.matrixWorld);
-      sourceRays([proxy],quality);
-      const shared=[.98,1.538,.116],hull=t.root.getObjectByName('hull'),hullProxy=new THREE.Mesh(hull.geometry,mat);
+      const seated=seatedHelper(t.root.getObjectByName('rig_turret').userData);
+      let floors;
+      try{floors=seatedRays([proxy],seated.meshes,quality);}finally{seated.dispose();}
+      assert.equal(packet.bottom.filter(r=>floors.get(r)-r.y>.006).length,53,`${quality}: the seat lifts the 53 floors outside the race's rim`);
+      // the seat lifts the turret off the hull outside the race's rim (0.821 m): [.98, 1.538, .116] is the seam now; inside the
+      // rim the bearing annulus still sits in the hull's permanent bearing
+      const shared=[.6,1.53,.116],seam=[.98,1.538,.116],hull=t.root.getObjectByName('hull'),hullProxy=new THREE.Mesh(hull.geometry,mat);
       hullProxy.matrixAutoUpdate=false;hullProxy.matrixWorld.copy(hull.matrixWorld);
       assert.ok(inside(proxy,shared)&&inside(hullProxy,shared),'actual permanent hull bearing and turret stock overlap without an invented support');
+      assert.ok(!inside(proxy,seam)&&inside(hullProxy,seam),'the seated turret stands clear of the hull past the rim');
       const surface=new THREE.Vector3().fromBufferAttribute(original.geometry.attributes.position,0).applyMatrix4(original.matrixWorld);
       assert.ok(surface.toArray().every(Number.isFinite));
       const yaw=.41,rig=t.root.getObjectByName('rig_turret');rig.rotation.y=yaw;t.root.updateMatrixWorld(true);proxy.matrixWorld.copy(original.matrixWorld);
       for(const r of packet.bottom.filter((_,i)=>i%8===0)){
         const p=new THREE.Vector3(r.x,1,r.z).sub(pivot).applyAxisAngle(new THREE.Vector3(0,1,0),yaw).add(pivot);
-        const expected=new THREE.Vector3(r.x,r.y,r.z).sub(pivot).applyAxisAngle(new THREE.Vector3(0,1,0),yaw).add(pivot);
+        // the seated floor at this ray, read at rest, carried through the yaw
+        const expected=new THREE.Vector3(r.x,floors.get(r),r.z).sub(pivot).applyAxisAngle(new THREE.Vector3(0,1,0),yaw).add(pivot);
         const h=ray([proxy],p.toArray(),[0,1,0]);assert.ok(h&&h.point.distanceTo(expected)<.006,'lower casting and bearing follow actual turret yaw');
       }
     }finally{t.dispose();}
   }
 }finally{for(const m of own)m.geometry.dispose();mat.dispose();}
-console.log('t90AwXCastUnderside:75 source floors+16 aperture rays high/low, closed outward annulus, 360 unchanged upper triangles, real fixed-ring contact and yaw pass');
+console.log('t90AwXCastUnderside:75 source floors+16 aperture rays (the build: the source casting seated, 53 floors on the seat plane) high/low, closed outward annulus, 360 unchanged upper triangles, real fixed-ring contact and yaw pass');

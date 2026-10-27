@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Real Settings + input store, independent of the GPU-heavy playable world.
 // Run under the shared capture lease (the same contract as custom-select.browser.mjs).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -11,7 +12,7 @@ const arg = (name, fallback) => process.argv.find(value => value.startsWith(`--$
 const { chromium } = await import(arg('playwright-module', 'playwright'));
 const out = resolve(arg('out', '.qa-dev/crew-voice'));
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const errors = [];
 let checked = 0;
 try {
@@ -30,7 +31,7 @@ try {
       assert.equal(await field.inputValue(), 'national');
       assert.equal(await field.locator('option').count(), 14);
       assert.equal(await field.isVisible(), false, 'the shared dropdown replaces the native field');
-      assert.match(await trigger.getAttribute('aria-label'), locale === 'en-US' ? /Crew voices: National crews/ : /乘员语音: 各国乘员/);
+      assert.match(await trigger.getAttribute('aria-label'), locale === 'en-US' ? /Crew voices: National Crews/ : /乘员语音: 各国乘员/);
 
       for (const [pack, nation] of Object.entries(CREW_VOICE_NATIONS)) {
         const before = await page.evaluate(() => window.__CREW_VOICE_TEST.volumes.length);

@@ -521,7 +521,10 @@ export function createGaragePedestalRuntime({
       // report is only for authoring; battle construction already omits it.
       eraVisualBindingReceipt: false,
     };
-    const steps = isBootComplete() ? createVisualSteps(specId, options) : null;
+    // (2026-10-26, the owner: "when i first login its rellly laggy and even the claude tank animation doesnnt play") the
+    // boot screen's hero builds a slice at a time too: built at once under the covered boot it was one 1.5 s task on a
+    // desktop (6.7 s on a 4x phone) while the boot screen's mark stood still
+    const steps = createVisualSteps(specId, options);
     const yieldForBudget = createBudgetYield(16);
     let visual: GaragePedestalVisual | null = null;
     let complete = false;
@@ -530,29 +533,23 @@ export function createGaragePedestalRuntime({
     phases.buildCheckpointCount = 0;
     phases.maxBuildStepMs = 0;
     try {
-      if (steps) {
-        while (stillCurrent()) {
-          const startedAt = now();
-          const result = steps.next();
-          const elapsed = now() - startedAt;
-          phases.buildMs += elapsed;
-          phases.maxBuildStepMs = Math.max(phases.maxBuildStepMs, elapsed);
-          if (result.done) {
-            complete = true;
-            visual = result.value;
-            break;
-          }
-          if (!stillCurrent()) return null;
-          const pausedAt = now();
-          if (result.value) await result.value;
-          else await yieldForBudget();
-          phases.buildYieldMs += now() - pausedAt;
-          phases.buildCheckpointCount += 1;
-        }
-      } else {
+      while (stillCurrent()) {
         const startedAt = now();
-        visual = createVisual(specId, options);
-        phases.buildMs = phases.maxBuildStepMs = now() - startedAt;
+        const result = steps.next();
+        const elapsed = now() - startedAt;
+        phases.buildMs += elapsed;
+        phases.maxBuildStepMs = Math.max(phases.maxBuildStepMs, elapsed);
+        if (result.done) {
+          complete = true;
+          visual = result.value;
+          break;
+        }
+        if (!stillCurrent()) return null;
+        const pausedAt = now();
+        if (result.value) await result.value;
+        else await yieldForBudget();
+        phases.buildYieldMs += now() - pausedAt;
+        phases.buildCheckpointCount += 1;
       }
       if (!visual || !stillCurrent()) return null;
       prepareVisual?.(visual, getSpec(specId));
@@ -561,7 +558,7 @@ export function createGaragePedestalRuntime({
     } finally {
       // A partial factory graph remains iterator-owned. Completion transfers
       // ownership here, but never into the scene/cache after a stale selection.
-      if (steps && !complete) steps.return(undefined as never);
+      if (!complete) steps.return(undefined as never);
       if (visual && !transferred) visual.dispose();
     }
   };
@@ -571,6 +568,10 @@ export function createGaragePedestalRuntime({
     stillCurrent: () => boolean = () => true,
     record: GarageSwitchRecord | null = null,
   ) => {
+    const timing: Record<string, number> = {};
+    const startedAt = now();
+    let slices = 0;
+    let result: ProgramPreparationOutcome | undefined;
     try {
       if (!prepareProgramSteps) {
         // Submit-only fallback: two frames give the linker a head start and
@@ -587,11 +588,7 @@ export function createGaragePedestalRuntime({
       // bounded slice per frame while the outgoing hero stays visible, and
       // reflect uniforms before the incoming hero is shown. A stale selection
       // stops waiting; the preparation owner keeps its own deadline.
-      const timing: Record<string, number> = {};
-      const startedAt = now();
       const steps = prepareProgramSteps(visual.root, timing);
-      let slices = 0;
-      let result: ProgramPreparationOutcome | undefined;
       try {
         for (;;) {
           if (!stillCurrent()) break;
@@ -612,8 +609,15 @@ export function createGaragePedestalRuntime({
           slices, waitMs: round1(now() - startedAt), timing,
         };
       }
-    } catch (_) {
-      // The first visible render remains the compatibility fallback.
+    } catch (error) {
+      // The first visible render remains the compatibility fallback; the record says the warm failed rather than
+      // reading as a warm that linked nothing (2026-10-26: the boot hero's warm threw unseen on every boot)
+      if (record) {
+        record.link = {
+          status: 'error', reason: String((error as Error)?.message ?? error).slice(0, 160), pending: null,
+          slices, waitMs: round1(now() - startedAt), timing,
+        };
+      }
     }
   };
 
@@ -798,9 +802,15 @@ export function createGaragePedestalRuntime({
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();
+      // its programs link between frames before its reveal. The boot hero's are the Garage GPU warm's (the post stage
+      // compiles and links the whole scene, the hero with it, before any scene frame: isBootCovering): its own warm here
+      // read the program warm owner before main.ts declares it and did nothing on every boot (2026-10-26)
       const compileWork = isBootComplete()
         ? warmPrograms(incoming, () => canStage() && buildToken === pollToken, record)
-        : Promise.resolve();
+        : Promise.resolve().then(() => {
+          record.link = { status: 'deferred', reason: 'boot: the Garage GPU warm links the boot hero', pending: null,
+            slices: 0, waitMs: 0, timing: {} };
+        });
       incoming.__pedestalCompileP = compileWork.finally(() => {
         incoming.__pedestalCompiling = false;
         incoming.__pedestalCompileP = null;

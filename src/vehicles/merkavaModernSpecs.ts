@@ -29,6 +29,18 @@ const SINAI_GRAY = Object.freeze({
   camoScale: 0.46,
 });
 
+/** 258 (vehicles-hit-volume-fit-258): the Barak and the Namer draw the Mk 4's chassis under a hull rig scale (the
+ * Barak's x .972, merkavaBarakBow.ts HULL_X_SCALE; the Namer's .95/1.012/.976, merkavaX.ts), so their drawn skirts are
+ * the Mk 4's scaled. The anatomy measures the hull in those proportions now (tools/rigid-hull-frame.mjs) but leaves the
+ * cloned spaced skirts where the Mk 4 stands them: scaled here with the rig, onto the skirt each draws (the Namer's had
+ * stood 11.6 cm outside it, the Barak's 4.7 cm). */
+function scaleSkirtsWithHullRig(spec: FleetTankSpec, scale: readonly [number, number, number]): void {
+  for (const plate of spec.armor.hullPlates) {
+    if (!/^skirt_[LR]$/.test(plate.name ?? '')) continue;
+    plate.verts = plate.verts.map(([x, y, z]) => [x * scale[0], y * scale[1], z * scale[2]]);
+  }
+}
+
 function mk4Variant(
   id: 'merkava4_trophy' | 'merkava4_barak',
   name: string,
@@ -91,6 +103,7 @@ function mk4Variant(
     spec.armor.turretPivot = [0, 1.615, -.3906];
     spec.armor.gunPivot = [0, .3884619, 2.3206];
   }
+  if (barak) scaleSkirtsWithHullRig(spec, [.972, 1, 1]);
   spec.visual = { ...SINAI_GRAY, number };
   return spec;
 }
@@ -105,6 +118,7 @@ function namerSpec(): FleetTankSpec {
   delete spec.balancePeerOf;
   delete spec.sourceStudyStatus;
   stripSilhouetteDimensions(spec.dims);
+  scaleSkirtsWithHullRig(spec, [.95, 1.012, .976]);
   Object.assign(spec, {
     balanceCohort: 'heavy-survivability',
     hp: 2650,

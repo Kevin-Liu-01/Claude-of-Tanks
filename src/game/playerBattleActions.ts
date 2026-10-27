@@ -2,6 +2,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { EventBus } from './stateCore.ts';
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import type { ActionId } from './input.ts';
+import {
+  BATTLE_CONSUMABLES_EVENT, battleConsumableGate, consumableSpecFor, loadConsumables,
+} from './consumableLoadout.ts';
 
 export interface ShellCard {
   name: string;
@@ -25,9 +28,7 @@ type ActionRules = Pick<BattleClientAccess,
   | 'hasAmmunition'
   | 'shellAmmunitionCapacity'
   | 'hasConsumableRule'
-  | 'cooldownRemaining'
-  | 'resetConsumableCooldowns'
-  | 'startConsumableCooldown'
+  | 'useSoloConsumable'
   | 'requestTankSelfRight'
   | 'requestTankJump'
   | 'rulesetUnlimitedFor'
@@ -131,7 +132,8 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
 
   const shellCards: ShellCard[] = [];
   let lastShells: ActionShell[] | null = null;
-  const consumableReadyAt = [0, 0, 0];
+  /** The tank setTank last named: its loadout is what the tray shows. */
+  let lastSpec: { id?: string; era?: string; role?: string } | null = null;
   const disposeCallbacks: Array<() => void> = [];
   const listen = (event: string, listener: (payload: RuntimeValue) => void): void => {
     disposeCallbacks.push(bus.on(event, listener));
@@ -236,38 +238,17 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:click', {});
       return;
     }
-    const remainingS = rules.cooldownRemaining(game.timeS, consumableReadyAt[slot]);
-    if (remainingS > 0) {
-      bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN', remainingS });
+    const use = rules.useSoloConsumable(player, bus, slot, game.timeS);
+    if (!use.ok) {
+      bus.emit('ui:consumableDenied', {
+        slot, reason: use.reason, ...(use.item ? { item: use.item } : {}),
+        ...(use.remainingS !== undefined ? { remainingS: use.remainingS } : {}),
+      });
       return;
     }
-    const combat = player.combat;
-    let used = false;
-    if (slot === 0) {
-      for (const name of rules.repairAllModules(combat)) {
-        bus.emit('module:state', { id: player.id, module: name, state: 'ok' });
-        used = true;
-      }
-    } else if (slot === 1) {
-      for (const name of Object.keys(combat.crew)) {
-        if (combat.crew[name] === false) {
-          combat.crew[name] = true;
-          used = true;
-        }
-      }
-    } else if (slot === 2 && combat.fire.burning) {
-      combat.fire.burning = false;
-      combat.fire.ticksLeft = 0;
-      combat.fire.tickTimer = 0;
-      bus.emit('tank:fire', { id: player.id, burning: false });
-      used = true;
-    }
-    if (!used) {
-      bus.emit('ui:consumableDenied', { slot, reason: 'NOTHING' });
-      return;
-    }
-    const cooldown = rules.startConsumableCooldown(consumableReadyAt, slot, game.timeS);
-    bus.emit('ui:consumableUsed', { slot, ...cooldown });
+    bus.emit('ui:consumableUsed', {
+      slot, ok: true, item: use.item, cooldownS: use.cooldownS, readyAt: use.readyAt, charges: use.charges,
+    });
     bus.emit('ui:click', {});
   });
 
@@ -427,6 +408,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     shellCards,
     setTank(spec) {
       lastShells = spec.gun.shells;
+      lastSpec = spec as { id?: string; era?: string; role?: string };
       shellCards.length = 0;
       for (const shell of spec.gun.shells) {
         shellCards.push({
@@ -455,7 +437,17 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       return shellCards.length === 0 || ((card?.count ?? 0) | 0) > 0;
     },
     resetConsumables() {
-      rules.resetConsumableCooldowns(consumableReadyAt);
+      // a life's cooldowns and charges are the tank's own (game/soloConsumables.ts createSoloConsumables at spawn); the
+      // tray learns its items: the page battle's tank carries them, and a network battle's are the ones the host derives
+      // the same way (the saved loadout within the mode's gate; sim/authoritativeMatch.ts consumableLoadoutFor)
+      // a round reset readies the page battle's kits (a new life makes a fresh state at spawn anyway)
+      const state = (game.player as { consumables?: { readyAt: number[] } } | null | undefined)?.consumables;
+      state?.readyAt.fill(0);
+      const specId = lastSpec?.id;
+      if (!specId) return;
+      const own = (game.player as { consumableItems?: readonly string[] } | null | undefined)?.consumableItems;
+      const items = own ?? loadConsumables(specId, consumableSpecFor(lastSpec), battleConsumableGate(game.ruleset));
+      bus.emit(BATTLE_CONSUMABLES_EVENT, { specId, items: [...items] });
     },
     dispose() {
       for (const dispose of disposeCallbacks.splice(0)) dispose();

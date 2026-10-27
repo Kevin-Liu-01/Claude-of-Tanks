@@ -4,6 +4,7 @@
 import { CREW_LABEL, MODULE_LABEL } from './moduleRegistry.ts';
 import { SPECIAL_ACTION_KINDS, specialActionDescriptor } from '../sim/specialActionPolicy.ts';
 import { displayTier } from '../techTree/tiers.ts';
+import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { t } from './i18n.ts';
 
 const MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({ trackL: 'track', trackR: 'track' });
@@ -42,6 +43,7 @@ interface GarageDossierSpec {
   };
   readonly gunDepressionDeg?: number;
   readonly gunElevationDeg?: number;
+  readonly gunPitchByYawDeg?: GunPitchByYawCurve;
 }
 
 interface GarageDossierRow {
@@ -242,6 +244,17 @@ export function garageSpecialSystem(
 }
 
 /** Stable selected-tank handoff into the public gallery. */
+/** The dossier's gun arc: depression and elevation, and, where the gun cannot come down to level over the rear (a
+ * bustle, an engine deck, the rear fuel drums: its measured curve's stop above zero anywhere from 150 deg aft), the
+ * highest of those rear stops. */
+export function garageGunArc(spec: GarageDossierSpec): string {
+  const arc = `\u2212${spec.gunDepressionDeg ?? 0}\u00b0 / +${spec.gunElevationDeg ?? 0}\u00b0`;
+  if (!spec.gunPitchByYawDeg) return arc;
+  let rear = -Infinity;
+  for (let yaw = 150; yaw <= 180; yaw++) rear = Math.max(rear, minimumMechanicalGunPitch(spec, yaw * Math.PI / 180) * 180 / Math.PI);
+  return rear > 0.05 ? `${arc} \u00b7 ${t('garage.dossier.armament.rearStop', { deg: rear.toFixed(1) })}` : arc;
+}
+
 export function garageGalleryHref(specId: string, layer = 'appearance'): string {
   const params = new URLSearchParams();
   if (specId) params.set('id', specId);

@@ -168,7 +168,7 @@ const CSS = `
 .cot-range-card .rc-foot button:hover{border-color:rgba(240,160,48,.6)}
 /* (INTERACTION-REDESIGN C, the census's proving-range row: the browser's default ring and 32 px controls on a fine pointer;
    the kit's focus ring, 36 px, and the kit's key cap) */
-.cot-range-card .rc-foot button:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+.cot-range-card .rc-foot button:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .cot-range-card .rc-foot button[aria-checked='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
 .cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
 .cot-range-card .rc-foot .cot-c-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 var(--s1);

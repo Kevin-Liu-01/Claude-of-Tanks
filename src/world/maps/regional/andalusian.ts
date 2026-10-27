@@ -244,7 +244,7 @@ function archFill(sink: PartSink, face: Face, uc: number, r: number, spring: num
  * A bell gable (espadaña) on a wall plane: a base course, two piers either side of the bell's opening, the head over it
  * and its pediment, the bell hung in the opening on an iron yoke, the cross on the apex. (u 0: its axis; y0: its foot.)
  */
-function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: number, bell: number, mobile: boolean, cross = true): void {
+function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: number, bell: number, cross = true): void {
   const ow = bell * 2.3, oh = bell * 3.0, base = y0 + 0.5, head = base + oh;
   wallPolygon(sink, 'plaster', face, [[-w / 2, y0], [w / 2, y0], [w / 2, base], [-w / 2, base]], depth);
   wallPolygon(sink, 'plaster', face, [[-w / 2, base], [-ow / 2, base], [-ow / 2, head], [-w / 2, head]], depth);
@@ -255,9 +255,8 @@ function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: numb
   wallPolygon(sink, 'plaster', face, [[-w / 2 - 0.08, top], [w / 2 + 0.08, top], [0, top + w * 0.32]], depth);
   const mid = facePoint(face, 0, 0, -depth / 2);
   sink.cylinder('structureMetal', [mid[0], base + oh * 0.28, mid[2]], 'y', bell * 1.05, bell, 10, { colour: BELL, decor: true }, bell * 0.5);
-  if (!mobile) {
-    faceBox(sink, 'structureMetal', face, 0, base + oh * 0.28 + bell * 1.12, -depth / 2, ow + 0.1, 0.07, 0.07, { colour: IRON, decor: true }, 'ends');
-  }
+  // the bar it hangs from, across the opening (259, the phone census: a phone's build left it out, the bell in the air)
+  faceBox(sink, 'structureMetal', face, 0, base + oh * 0.28 + bell * 1.12, -depth / 2, ow + 0.1, 0.07, 0.07, { colour: IRON, decor: true }, 'ends');
   // (a farm gate's gable carries none: over the trees round a cortijo the iron cross read as a floating marker, wave 108b)
   if (!cross) return;
   const apex = facePoint(face, 0, top + w * 0.32, -depth / 2);
@@ -699,7 +698,7 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     for (const s of [-1, 1]) faceBox(sink, 'stone', front, s * 1.0, floorY + 1.4, 0.05, 0.22, 2.8, 0.1, { decor: true });
     // the clock and bell gable over the middle bay, standing on the front wall's head: the clock on its lower block
     const gw = 4.4;
-    espadana(sink, front, eaveY + 1.9, gw * 0.62, 0.5, 0.3, st.mobile);
+    espadana(sink, front, eaveY + 1.9, gw * 0.62, 0.5, 0.3);
     wallPolygon(sink, 'plaster', front, [[-gw / 2, eaveY - 0.3], [gw / 2, eaveY - 0.3], [gw / 2, eaveY + 1.9], [-gw / 2, eaveY + 1.9]], 0.5);
     sink.band('stone', top.x1 - 0.5, eaveY + 1.9, -gw / 2 - 0.08, top.x1 + 0.1, eaveY + 2.1, gw / 2 + 0.08, { decor: true, shadow: true });
     // (round 3, gauntlet wave 108c: "no visible clock face" from the square: the dial 1.1 m across read as a dot at 60 m;
@@ -945,7 +944,7 @@ const ermita: RegionalBuilder = (ctx) => {
       const ridge = frame.roof.ridgeTopY;
       // (props census #5: the bell gable a crown of the roof in the house's plan: it falls with its roof section)
       roofCrown(sink, frame, { kind: 'bellcote', x0: -1.1, x1: 1.1, z0: D / 2 - 0.32, z1: D / 2, y0: ridge - 0.15, y1: ridge + 3.6, bucket: 'plaster' },
-        () => espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile));
+        () => espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27));
     });
     // the porch: two white pillars and a lean-to of tiles from the front wall
     const fz = zc + D / 2, pz = fz + porch;
@@ -1157,7 +1156,7 @@ const cortijo: RegionalBuilder = (ctx) => {
   const gd = zz1 - zz0 + 0.16;
   archFill(sink, gf, 0, gateW / 2, 2.45, 0.5, 3.3, gd, 'plaster', 'plaster2', false);
   wallPolygon(sink, 'plaster', gf, [[-pier - 0.35, 3.3], [pier + 0.35, 3.3], [pier + 0.35, 3.75], [-pier - 0.35, 3.75]], gd);
-  espadana(sink, gf, 3.75, 1.5, 0.4, 0.17, st.mobile, false);
+  espadana(sink, gf, 3.75, 1.5, 0.4, 0.17, false);
   gateUnit(sink, gf, 0, 0, gateW, 2.45, st.door, { bucket: 'plaster2', width: 0.12, out: 0.015 });
   // the patio's well: a whitewashed curb, an iron arch and its pulley
   const wx = gc, wz = -D * 0.1;

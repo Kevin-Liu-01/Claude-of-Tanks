@@ -8,7 +8,7 @@
 //      vehicle's own cartridge copy tuned apart (a Qilin-only 12.7 share), or a class re-tuned fails here. The class
 //      anchors and the 30 mm + 7.62 roofs carry the classes the authority's pins are measured on.
 //   3. The elevation ratchet: a mount scaled unevenly (y against z) carries its profile's elevationRad to another world
-//      angle, and a drone above that angle is safe from it. The eleven stations more than 3 degrees off are listed.
+//      angle, and a drone above that angle is safe from it. The seven stations more than 3 degrees off are listed.
 // What the levers do in a fight is pinned on the authority elsewhere: each class anchor's hovers at 33 m and 102 m and a
 // relaunched flight in src/sim/weaponReload.selftest.mjs (it already loads the authority and the solo battle), and every
 // level pilot run of the lone anchors (seeds 1-8) and the 30 mm + 7.62 roofs, exactly, with the owner's 4-11 of 48 band,
@@ -43,9 +43,10 @@ let stations = 0;
   const KNOWN = {
     'leo2a7v:leo2a7v_xRoofMachineGun': 21.3, 'leo2a5m:leo2a4m_xRoofMachineGun': 21.9, 'leo2a6m:leo2a6m_xRoofMachineGun': 28.0,
     'leo2a5:leo2a5_xRoofMachineGun': 29.2, 'challenger3_proto:fitting_browningDerived_m2': 31.0, 'challenger3:fitting_browningDerived_m2': 31.0,
-    'm551_sheridan:m551LoaderMg': 36.1, 'challenger1_mk2:challenger1LoaderL37': 48.0, 'challenger1_mk2:challenger1CommanderL37': 48.0,
-    't90am:t90mProryvRemoteKord': 55.1, 't90m_proryv:t90mProryvRemoteKord': 55.1,
+    'm551_sheridan:m551LoaderMg': 36.1,
   };
+  // 259: the squashed turrets' stations take the squash rigidly (turretRigScale.ts), as rig_gun does: the Challenger 1's
+  // L37s (counter-scaled by their builder) and the T-90AM and Proryv's Kord left the list, and the 235 bake's 19 never join
   const off = {};
   for (const id of Object.keys(AUXILIARY_INVENTORY)) for (const s of roofStations(id)) {
     if (Math.abs(s.elevationReachDeg - s.profileElevationDeg) > 3) off[`${id}:${s.name}`] = +s.elevationReachDeg.toFixed(1);

@@ -188,7 +188,7 @@ for (const name of ['geometry-gate', 'track-clip-audit', 'tank-standard-check',
   assert.match(source, /import \{ withIsolatedCaptureBrowser \} from '\.\/isolated-capture-browser\.mjs'/,
     `${name}: acquire through the isolated lifecycle`);
   assert.equal((source.match(/await withIsolatedCaptureBrowser\(/g) || []).length, 1);
-  assert.doesNotMatch(source, /(?:createServer\(|puppeteer\.launch\()/,
+  assert.doesNotMatch(source, /(?:createServer\(|puppeteer\.launch\(|launchGuardedBrowser\()/,
     `${name}: no unguarded shared-cache acquisition`);
 }
 

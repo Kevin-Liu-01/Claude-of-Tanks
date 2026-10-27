@@ -271,18 +271,27 @@ export const RECIPES = {
               look: at(out * 0.5, lat, 6), fov: 36, hud: 'noreticle' };
             const hoop = { kind: 'fixed', pos: pick([at(-30, lat * 0.2 + 4, 6), at(-30, lat * 0.2 - 4, 6), at(-22, lat * 0.2, 7)]),
               look: at(out - 5, lat, 3), fov: 30, hud: 'noreticle' };
-            return { round, ballOutM: out, lateralM: lat, pursuers, goal: goal.team, wide, hoop };
+            // (2026-10-26, the Deploy panel: "the ball whole and clearly in frame, the tank striking it or chasing it toward
+            // the goal") side-on at the ball's rest spot, where the player meets it, and behind-beside the run looking down
+            // it at the hoop: the tank, the whole ball and the goal in one frame (MB_TURBO_STRIKE=1 films these)
+            const strike = { kind: 'fixed', pos: pick([at(out + 6, lat + 30, 2.4), at(out + 6, lat - 30, 2.4), at(out + 10, lat + 24, 3), at(out + 10, lat - 24, 3)]),
+              look: at(out + 5, lat, 2.2), fov: 34, hud: 'noreticle' };
+            const chase = { kind: 'fixed', pos: pick([at(out + 34, lat + 12, 3.4), at(out + 34, lat - 12, 3.4), at(out + 40, lat + 8, 4)]),
+              look: at(out - 12, lat, 2.5), fov: 38, hud: 'noreticle' };
+            return { round, ballOutM: out, lateralM: lat, pursuers, goal: goal.team, wide, hoop, strike, chase };
           }
         }
         return null;
       };
       const follow = (azimuthDeg, distM, heightM) => ({ kind: 'follow', subject: 'player', azimuthDeg, distM, heightM, fov: 42, headingFrom: 'velocity', hud: 'noreticle' });
-      for (let round = 0; round < 4; round++) {
+      const strikeFilm = process.env.MB_TURBO_STRIKE === '1';
+      for (let round = 0; round < (strikeFilm ? 6 : 4); round++) {
         const staged = await ctx.eval(stage, round);
-        ctx.log(`round ${round + 1}`, JSON.stringify(staged && { ...staged, wide: undefined, hoop: undefined }));
+        ctx.log(`round ${round + 1}`, JSON.stringify(staged && { ...staged, wide: undefined, hoop: undefined, strike: undefined, chase: undefined }));
         if (!staged) { ctx.note('no open run at the enemy goal mouth was found'); break; }
         if (round === 0) ctx.note('each round stages the run at the enemy goal: ball (matchModeState.ball) at rest 50 m out, player 22 m behind it, the nearest tanks behind the player');
-        const camera = [staged.wide, follow(28, 17, 0.9), staged.hoop, follow(-32, 15, 1.2)][round];
+        const camera = strikeFilm ? [staged.strike, staged.chase][round % 2]
+          : [staged.wide, follow(28, 17, 0.9), staged.hoop, follow(-32, 15, 1.2)][round];
         await ctx.mb('setDrive', { to: 'ball', arriveM: 1, throttle: 1 });
         await ctx.capture({
           label: `ram ${round + 1}`, windowS: 10, cameras: [camera], everyS: 0.7, minGapMs: 300,

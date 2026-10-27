@@ -85,6 +85,8 @@
 body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* the equipment picker opens over the stage's top at a short window: the plate steps aside while it is open */
 .cot-garage.picker-open .cot-garage-variant-control{visibility:hidden;}
+/* the paint sheet stands over the plate's corner: one surface at a time (the r22q critic: the staging menu opened over it) */
+.cot-garage[data-garage-panel='appearance'] .cot-garage-variant-control{visibility:hidden;}
 .cot-nav .cot-github{position:relative;padding-inline:var(--s2);}
 .cot-nav .github-stars{padding-left:6px;border-left:1px solid var(--line-3);
   flex:0 0 auto;color:var(--text-accent);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0em;}
@@ -102,7 +104,7 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px;}
+  outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
 .cot-mobile-nav-menu[hidden]{display:none !important;}
 .cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
@@ -162,16 +164,11 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 .cot-battle .battle-word{text-indent:.24em;text-transform:uppercase;}
 .cot-battle-mode{position:relative;flex:0 0 32%;min-width:0;padding:1px var(--s4) 0 2px;border-left:1px solid var(--accent-lo);
   font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:0;text-align:center;}
-.cot-battle-mode::after{content:'';position:absolute;right:9px;top:50%;margin-top:-2px;
-  border-left:3px solid transparent;border-right:3px solid transparent;border-top:4px solid currentColor;
-  opacity:.82;transition:transform var(--dur-fast);}
-.cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
 /* Coarse pointers (2026-09-14, outside QA): the mode toggle decides what you are about to play and
    measured 38x44 beside the 114x44 BATTLE button — the easiest finger-miss on the screen. It takes a
    third of the control with a larger label; the semantic input attribute drives it, never a width query. */
 body[data-cot-input='coarse'] .cot-battle{flex:0 0 62%;}
 body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;padding:1px var(--s4) 0 6px;font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:var(--track-label-s);}
-body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-width:4px;border-right-width:4px;border-top-width:5px;}
 .cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
 /* The battle menu is the Deploy screen: src/ui/deploy.css draws it open, full screen. Closed, it takes no space. */
 .cot-battle-menu{box-sizing:border-box;display:none;color-scheme:dark;letter-spacing:normal;word-spacing:normal;
@@ -179,7 +176,7 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-solo-options{display:grid;gap:var(--s4);}
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:-3px;}
+  outline:2px solid var(--focus-ink);outline-offset:-3px;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:transform var(--dur-fast) ease-out;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:scale(.98);}
 .cot-battle-menu .cot-battle-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
@@ -218,7 +215,8 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-room-ready{flex-shrink:0;min-width:88px;font-size:max(var(--fs-floor-11),var(--fs-11));}
 .cot-room-ready[aria-pressed="true"]{border-color:var(--ok);color:var(--text-ok);}
 .cot-room-ready:disabled{opacity:.5;cursor:not-allowed;}
-.cot-room-ready:focus-visible,.cot-room-reminder:focus-visible{outline:2px solid var(--accent-hi);outline-offset:3px;}
+/* focus wears the kit's ring, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+.cot-room-ready:focus-visible,.cot-room-reminder:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .cot-room-ready:not(:disabled):hover{background:var(--surface-hover);}
 .cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
 .cot-room-reminder.ready .rr-dot{background:var(--ok);box-shadow:0 0 12px var(--ok)}.cot-room-reminder b{color:var(--accent-hi)}
@@ -355,14 +353,15 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   letter-spacing:0;text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
 .cot-technical-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-tab:hover,.cot-technical-tab:focus-visible{color:var(--accent-hi);border-color:var(--accent-lo);outline:none;}
+.cot-technical-tab:hover{color:var(--accent-hi);border-color:var(--accent-lo);}
+.cot-technical-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
 .cot-technical-figure{position:relative;margin:0;background:var(--surface-nav);border:1px solid var(--line-2);
   box-shadow:var(--e1);}
 .cot-technical-figure::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 24px rgba(0,0,0,.2);}
 .cot-technical-expand{position:relative;display:block;width:100%;padding:0;overflow:hidden;cursor:zoom-in;
   color:var(--ink-1);background:var(--surface-page);border:0;text-align:inherit;}
-.cot-technical-expand:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px;}
+.cot-technical-expand:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-technical-figure img{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain;
   background:var(--surface-page);transition:opacity var(--dur-fast) ease-out;}
 .cot-technical-expand-label{position:absolute;right:7px;bottom:7px;display:flex;align-items:center;gap:5px;
@@ -399,6 +398,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 /* the viewer is opaque, its head with it: the plate's translucent ground let the dossier's figures show through the title
    (the r19q critic; r20q: the modal's own sheet, in the same layer and inserted later, won at one class) */
 .cot-modal.cot-technical-viewer{background:var(--surface-nav);}
+/* the drawing's head is one line: its title and its close stand on one centre (the r22q critic: at 844 x 390 a finger's
+   44 px close sat 12 px under the title) */
+.cot-technical-viewer .cot-modal__header{align-items:center;}
 .cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
 .cot-technical-viewer-tab{min-height:38px;padding:0 var(--s3);color:var(--ink-3);background:var(--side-plate);
   border:1px solid var(--line-2);cursor:pointer;
@@ -406,7 +408,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   letter-spacing:var(--track-label-s);text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
 .cot-technical-viewer-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-viewer-tab:hover,.cot-technical-viewer-tab:focus-visible{color:var(--accent-hi);border-color:var(--accent);outline:none;}
+.cot-technical-viewer-tab:hover{color:var(--accent-hi);border-color:var(--accent);}
+.cot-technical-viewer-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
 .cot-technical-viewer-figure{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin:0;}
 /* the drawing is its own plate (its raster carries its ground): shrink-wrapped, never letterboxed inside a second plate
    (the r18 critic: a lighter inset rectangle with seams down both sides) */
@@ -467,7 +470,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-chip .lbl{font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-ui);}
 .cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 .cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
-.cot-country-chip.sel{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--seg-on-shadow);}
+.cot-country-chip.sel{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -659,7 +662,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-drawer-actions .cot-camo-nation{-
 .cot-custom-tool{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 var(--s2);border:1px solid var(--line-2);
   background:var(--scrim);color:var(--ink-3);cursor:pointer;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase;
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),transform var(--dur-fast)}.cot-custom-tool:active{transform:scale(.97)}
-.cot-custom-tool:hover,.cot-custom-tool:focus-visible{border-color:var(--accent);color:var(--ink-1);outline:none}
+.cot-custom-tool:hover{border-color:var(--accent);color:var(--ink-1)}
+.cot-custom-tool:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring)}
 .cot-custom-tool.on{border-color:var(--accent);color:var(--accent-hi);background:var(--accent-wash)}
 .cot-custom-assets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.cot-custom-assets .cot-custom-tool{min-height:46px;flex-direction:column;gap:3px}
 .cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);}
@@ -774,6 +778,9 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview{flex:none;block-size:9.5rem;margin-top:var(--s2);padding-top:var(--s2);border-top:1px solid var(--line-2);
   overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .cot-eqpreview{container-type:inline-size}
+/* a short landscape sheet sets the values beside the words in two rows: its readout's height gives the cards the rest (the
+   r22q critic: at 844 x 390 one row of cards was cut through its words over 85 px of empty readout) */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview{block-size:7rem}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
@@ -783,6 +790,13 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 /* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
 html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
+/* a narrow card sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by word and
+   the zh value ran over it) */
+.cot-eqpreview .metric{container-type:inline-size}
+@container (width < 220px){
+  .cot-eqpreview .metric-label,.cot-eqpreview .metric-values{grid-column:2/-1}
+  .cot-eqpreview .metric-values{justify-content:flex-start}
+}
 .cot-eqpreview .cot-eqtip[data-shut] .action{border-top:0;padding-top:0;color:var(--ink-2);text-transform:none}
 /* a wide readout in a sheet sets the values beside the item's words, so one fixed height holds them */
 @container (width >= 560px){
@@ -1024,7 +1038,6 @@ body[data-cot-panels='overlay'] .cot-battle-mode{flex:0 0 52px;min-width:44px;pa
 /* the split stays inside the button's face: a short rule, not the full-height border that overhung the hexagon */
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{border-left:0;
   background:linear-gradient(var(--btn-primary-press),var(--btn-primary-press)) left center/1px 56% no-repeat;}
-body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 
 body[data-cot-panels='overlay'] .cot-leftcol{display:none}
 body[data-cot-panels='overlay'] .cot-garage .stats{
@@ -1046,7 +1059,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger>span{
   padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:14px;height:14px}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px}
+  outline:2px solid var(--focus-ink);outline-offset:2px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
   display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
@@ -1177,7 +1190,6 @@ body[data-cot-width='phone'] .cot-battle-control{width:180px}
 body[data-cot-width='phone'] .cot-battle{font-size:max(13px,var(--fs-13));padding-left:5px;gap:5px}
 body[data-cot-width='phone'] .cot-battle .battle-active-icon{width:18px;height:18px}
 body[data-cot-width='phone'] .cot-battle-mode{font-size:max(var(--fs-floor-11),var(--fs-11));padding-right:13px}
-body[data-cot-width='phone'] .cot-battle-mode::after{right:5px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-battle-control{
   top:max(64px,calc(env(safe-area-inset-top) + 58px));
 }
@@ -1264,6 +1276,9 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
   left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));
   top:calc(72px + var(--cot-room-row-space,0px));bottom:max(8px,env(safe-area-inset-bottom));width:auto;
 }
+/* a short landscape sheet's cards carry the glyph and the name: the focused card's effects stand in the readout under them,
+   so a row of cards stands whole (the r23 critic: at 844 x 390 each zh card was cut through its second line of effects) */
+body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-eqpick .cot-c-picker__facts{display:none}
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats{
   width:min(320px,calc(100vw - 16px));max-height:none;
 }
@@ -1372,20 +1387,19 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
   white-space:nowrap;border:1px solid var(--line-3);background:var(--side-plate);color:var(--ink-1);
   font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:var(--track-label-s);cursor:pointer;}
 .cot-multiplayer-entry:hover{background:var(--surface-hover);border-color:var(--accent);color:var(--accent-hi);}
-.cot-multiplayer-entry:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+.cot-multiplayer-entry:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .has-room .cot-multiplayer-entry{display:none;}
 
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:var(--line-control);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry::before{content:'';position:absolute;inset:1px;z-index:-1;background:var(--surface-raised);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
-.cot-multiplayer-entry:hover,.cot-multiplayer-entry:focus-visible{background:var(--accent);color:var(--accent-hi);}
+.cot-multiplayer-entry:hover{background:var(--accent);color:var(--accent-hi);}
 
 /* every mode wears its own hue (owner 2026-10-25): the kit maps data-mode-tone=<mode id> to --mode-ink (components.css),
    the menu carries its selected mode's tone and every choice its own; a mode the kit does not name falls back to standard */
 .cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}
 .cot-battle-preview-icon,.cot-battle-preview h3{color:var(--mode-color);}
-.cot-battle-galaxy{border-color:#9977d8!important;background:radial-gradient(ellipse at 15% 10%,#6e40904a,transparent),#151127!important;color:#d7baff!important;}
 .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
 .cot-arrange-field{display:grid;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:0;}
 .cot-arrange-field[hidden]{display:none;}
@@ -1400,7 +1414,7 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{justify-content:flex-start;min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
-.cot-garage .cot-action{padding:0 var(--s1) 0 var(--s2);gap:var(--s1);color:var(--ink-1);}
+.cot-garage .cot-action{padding:0 var(--s2);gap:var(--s2);color:var(--ink-1);}
 .cot-garage .cot-action>span{white-space:nowrap;}
 .cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
 

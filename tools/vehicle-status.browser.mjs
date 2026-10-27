@@ -1,4 +1,5 @@
 // Real HUD integration; deterministic module states, no WebGL/performance claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -12,7 +13,7 @@ let browser;const results=[];const capture=createCaptureLock();
 function boxes(){return [...document.querySelectorAll('.cot-status-box:not([hidden])')].map(b=>({id:b.dataset.status,label:b.getAttribute('aria-label'),progress:b.style.getPropertyValue('--repair-fill'),tone:b.dataset.tone,...b.getBoundingClientRect().toJSON()}));}
 try{
  await capture.acquire(60000);
- await server.listen();browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch=false,locale='en-US']of [
  ['desktop',1440,900],['short',844,390],['portrait-mouse',540,720],['phone',390,844,true],
  ['landscape',667,375,true],['tiny',568,256,true],['zh',1366,768,false,'zh-CN']]){

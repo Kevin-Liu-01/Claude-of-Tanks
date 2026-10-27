@@ -21,9 +21,10 @@ import { ABRAMS_SOURCE_X_FRAME, ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSou
 
 const expected = [
   // 2026-09-15 owner roster pass: X studies carry the canonical names; M1A1 X / HA X retired
-  ['m1a2_abrams', 'm1a1_abrams_hc', 'M1A2 Abrams', 'USA', 10],
-  ['m1a2_abrams_tusk', 'm1a1_abrams_sa', 'M1A2 Abrams TUSK', 'USA', 10],
-  ['m1a2_abrams_sepv2', 'm1a1_abrams_aim', 'M1A2 Abrams SEPv2', 'USA', 10],
+  // 258: matchmaking reads the shown tier (owner 2026-10-26: the M1A2 family at IX, the SEPv3 at X)
+  ['m1a2_abrams', 'm1a1_abrams_hc', 'M1A2 Abrams', 'USA', 9],
+  ['m1a2_abrams_tusk', 'm1a1_abrams_sa', 'M1A2 Abrams TUSK', 'USA', 9],
+  ['m1a2_abrams_sepv2', 'm1a1_abrams_aim', 'M1A2 Abrams SEPv2', 'USA', 9],
   ['m1a2_abrams_sepv3', 'm1a1_abrams_fep', 'M1A2 Abrams SEPv3', 'USA', 10],
   ['ua_m1a2_abrams', 'ua_m1a1', 'M1A2 Abrams UA', 'Ukraine', 9],
 ];
@@ -38,7 +39,8 @@ for (const [id, donorId, name, nation, tier] of expected) {
   assert.equal(tankLabelRecord(spec).displayName, name);
   assert.equal(spec.nation, nation);
   assert.equal(tankTier(id), tier);
-  assert.equal(tankTier(id), tankTier(donorId));
+  // the M1A2 studies stand at or above the M1A1 donors they took their combat from (the M1A1 upgrades sit at VIII)
+  assert.ok(tankTier(id) >= tankTier(donorId), `${id} matches at or above its donor ${donorId}`);
   assert.equal(vehicleEraForId(id), vehicleEraForId(donorId));
   assert.equal(spec.balancePeerOf, donorId);
   assert.equal(ABRAMS_SOURCE_X_DONORS[id], donorId);

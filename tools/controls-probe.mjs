@@ -62,6 +62,7 @@
 // Exits non-zero on any failed assertion or page error.
 // Usage: node tools/controls-probe.mjs
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -108,7 +109,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[controls-probe] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

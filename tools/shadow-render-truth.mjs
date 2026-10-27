@@ -15,6 +15,7 @@
 //                (trunks, canopy proxies, bushes, props, tank, structures)
 // --gate exits 1 when determinism or cullParity fail (or, with --strict, when a
 // present caster class casts nothing). Output: JSON summary and diff PNGs.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -34,7 +35,7 @@ const strict = flag('strict');
 const PARITY_TOLERANCE_PX = Number(opt('tolerance', '25'));
 mkdirSync(out, { recursive: true });
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 10 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,720'],

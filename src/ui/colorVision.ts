@@ -91,6 +91,33 @@ export function deltaE(view: VisionView, a: Rgb, b: Rgb): number {
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
 
+/** CIEDE2000 ΔE between two colours as one vision view sees them (the stricter read of a near pair: item 259's
+ *  Settings colours hold both). */
+export function deltaE2000(view: VisionView, a: Rgb, b: Rgb): number {
+  const [l1, a1, b1] = labIn(view, a);
+  const [l2, a2, b2] = labIn(view, b);
+  const rad = Math.PI / 180;
+  const cBar = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;
+  const g = 0.5 * (1 - Math.sqrt(cBar ** 7 / (cBar ** 7 + 25 ** 7)));
+  const ap1 = (1 + g) * a1, ap2 = (1 + g) * a2;
+  const cp1 = Math.hypot(ap1, b1), cp2 = Math.hypot(ap2, b2);
+  const hue = (bb: number, ap: number): number => { const h = Math.atan2(bb, ap) / rad; return h < 0 ? h + 360 : h; };
+  const hp1 = cp1 === 0 ? 0 : hue(b1, ap1), hp2 = cp2 === 0 ? 0 : hue(b2, ap2);
+  const dL = l2 - l1, dC = cp2 - cp1;
+  let dh = 0;
+  if (cp1 * cp2 !== 0) dh = hp2 - hp1 > 180 ? hp2 - hp1 - 360 : hp2 - hp1 < -180 ? hp2 - hp1 + 360 : hp2 - hp1;
+  const dH = 2 * Math.sqrt(cp1 * cp2) * Math.sin((dh / 2) * rad);
+  const lBar = (l1 + l2) / 2, cpBar = (cp1 + cp2) / 2;
+  let hBar = hp1 + hp2;
+  if (cp1 * cp2 !== 0) hBar = Math.abs(hp1 - hp2) > 180 ? (hp1 + hp2 + (hp1 + hp2 < 360 ? 360 : -360)) / 2 : (hp1 + hp2) / 2;
+  const t = 1 - 0.17 * Math.cos((hBar - 30) * rad) + 0.24 * Math.cos(2 * hBar * rad) + 0.32 * Math.cos((3 * hBar + 6) * rad)
+    - 0.2 * Math.cos((4 * hBar - 63) * rad);
+  const sl = 1 + (0.015 * (lBar - 50) ** 2) / Math.sqrt(20 + (lBar - 50) ** 2);
+  const sc = 1 + 0.045 * cpBar, sh = 1 + 0.015 * cpBar * t;
+  const rt = -2 * Math.sqrt(cpBar ** 7 / (cpBar ** 7 + 25 ** 7)) * Math.sin(60 * Math.exp(-(((hBar - 275) / 25) ** 2)) * rad);
+  return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh));
+}
+
 interface ColourFailure {
   /** What failed: a ΔE pair ("own~enemy") or a text check ("own on surface-page"). */
   readonly check: string;

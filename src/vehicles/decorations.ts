@@ -2722,17 +2722,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  // The native 103A profile owns its secured starboard recovery rope. The
-  // generic casemate manifest otherwise adds a second looped cable in the
-  // garage; its side-placement fallback can stand that duplicate nearly
-  // vertical, while procedural-only Gallery builds correctly omit it.
-  // Preserve the rest of the deterministic cold-war dressing, but keep the
-  // recovery rope canonical so both surfaces render the same assembly.
-  // Round 5 (2026-10-08; wave 256 on the Strv 103A rear basket: "a tan box with two crossed olive poles and a black
-  // curved mark, is unidentifiable as any kit and reads as a cartoon face"): that was the casemate kit's stowed travel
-  // lock, seated in the tail rack. The 103A carries its gun's travel clamp on the beak (sweden.ts), so it takes none.
-  strv103a: (spec, rng) => defaultManifest(spec, rng)
-    .map((row) => (row.kit === 'cable' || row.kit === 'travelLock' ? { ...row, p: 0 } : row)),
   // --- Modern ---
   leo2a2: () => [
     // The family profile owns the complete hull-and-turret ghillie suit.
@@ -2933,6 +2922,30 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 };
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
+/**
+ * The Strv 103s' own field kit (259). Each load sits at a measured flat roof point: the 103A's beside and behind its
+ * cupolas (1.87-1.88 m from x -1.6 to -0.9 and 1.0 to 1.6, clear of the commander's ring, wave 216), the 103B's from the
+ * Gallery surface markup. The 103A (initial production, 1967-70, solid olive, no flotation fit) carries the early field
+ * set: a shovel and axe on its left fender, a canvas tarpaulin roll, a wooden ammunition crate, a fuel-can pair on the
+ * Nordic rack and two crew packs. The 103B (1970s, flotation screen round its deck) carries a rolled camouflage net, a
+ * water-can pair, a steel ammunition box and three crew packs; its tools ride in its fender boxes.
+ */
+const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifestRow[]>> = Object.freeze({
+  strv103a: (): DecorManifestRow[] => [
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: -0.18, along: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'slim', len: 1.0 }, slot: ['hullRoof', { x: 1.32, z: -0.66 }] },
+    { kit: 'bin', p: 1, v: { v: 'crate', w: 0.5, h: 0.24, d: 0.36 }, slot: ['hullRoof', { x: -1.22, z: -0.70 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: false }, slot: ['hullRoof', { x: 1.30, z: -1.42 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['hullRoof', { x: -1.24, z: 0.22 }] },
+  ],
+  strv103b: (): DecorManifestRow[] => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['hullRoof', { x: -0.25, z: -1.45 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRoof', { x: 0.65, z: -1.45 }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.28, d: 0.4 }, slot: ['hullRoof', { x: 1.15, z: -1.00 }] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['hullRoof', { x: -0.80, z: -0.20 }] },
+  ],
+});
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -2962,6 +2975,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
   ];
+  // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
+  // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
+  // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
+  if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3034,17 +3051,6 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     const routes = aftRoutes(seatSide, xOffset).filter(([slot]) => !slot.startsWith('turret'));
     return [...routes.filter(([slot]) => slot === 'hullRearRack'), ...routes.filter(([slot]) => slot !== 'hullRearRack')];
   };
-  const strvRoofRoutes = (x: number, z: number): Array<[string, DecorSlotArgs]> => [
-    ['hullRoof', { x, z }],
-  ];
-  // Round 4 (2026-10-07, wave 216 on the Strv 103A): the 103A has no turret either, so its turret routes probed the
-  // hull from an empty turret frame and the one load that found a seat was hung off a periscope dome. Its loads take
-  // the flat roof beside and behind the cupolas instead (measured: 1.87-1.88 m from x -1.6 to -0.9 and 1.0 to 1.6),
-  // clear of the commander's ring (KEEP_CLEAR_HULL), the front pair where the front three-quarter view sees them;
-  // the aft routes stay behind them.
-  const strvA = spec.id === 'strv103a';
-  const strvARoutes = (x: number, z: number, fallback: Array<[string, DecorSlotArgs]>): Array<[string, DecorSlotArgs]> =>
-    strvA ? [['hullRoof', { x, z }], ...fallback] : fallback;
   const normalPairedCanRoutes: Array<[string, DecorSlotArgs]> = [
       ['hullRearRack', { x: side * 0.22 }],
       ['turretRear', { side: -side }],
@@ -3110,51 +3116,41 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case')),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(0.65, -1.45) : strvARoutes(-1.22, -0.70, hardCaseRoutes(side, 0.12)) }],
+      slot: ['fleetCargo', { routes: hardCaseRoutes(side, 0.12) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft')),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(-0.25, -1.45) : strvARoutes(1.32, -0.66, aftRoutes(-side, 0.12)) }],
+      slot: ['fleetCargo', { routes: aftRoutes(-side, 0.12) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(serviceItem),
       // A fire extinguisher lies in a hull rack or on the deck; laid across
       // the turret roof it read as a red drum with a blue lens.
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(-1.05, -1.30)
-        : strvARoutes(-1.24, 0.22, serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
-          ? hullServiceRoutes(-side, 0.22)
-          : aftRoutes(-side, 0.22)) }],
+      slot: ['fleetCargo', { routes: serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
+        ? hullServiceRoutes(-side, 0.22)
+        : aftRoutes(-side, 0.22) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(pairedCans, 'rear-cans')),
-      // The 103B has no rotating turret: its water-can cradle sits at the
-      // exact roof point supplied by Gallery surface markup.
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(-0.80, -0.20) : strvARoutes(1.30, -1.42, normalPairedCanRoutes) }],
+      slot: ['fleetCargo', { routes: normalPairedCanRoutes }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case', 3)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(1.15, -1.00) : strvARoutes(-0.36, -1.26, hardCaseRoutes(-side, 0.02)) }],
+      slot: ['fleetCargo', { routes: hardCaseRoutes(-side, 0.02) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(service(2)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(0.85, -0.30) : strvARoutes(-1.25, -1.45, aftRoutes(side, 0.22)) }],
+      slot: ['fleetCargo', { routes: aftRoutes(side, 0.22) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft', 2)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
-        ? strvRoofRoutes(-0.25, -0.85) : strvARoutes(1.32, 0.22, aftRoutes(side, 0.02)) }],
+      slot: ['fleetCargo', { routes: aftRoutes(side, 0.02) }],
     },
   ];
   // opt-in branch bundles take their seats before loose cargo crowds the turret's rear quarters

@@ -35,6 +35,7 @@
 //    (critic r6: at 900 px the ∞ printed 12 px into APFSDS).
 // runCapture takes its browser and capture lock as arguments, so tools/hud-ammo-frame-ink.selftest.mjs drives the whole
 // flow against a recording page.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { resolve } from 'node:path';
 import { cropImage, decodePng, encodePng, inkGap, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
 
@@ -626,7 +627,7 @@ export async function runCapture({ chromium, lock, url, out, cases = CASES, stag
   const startedAt = Date.now();
   let browser = null;
   try {
-    browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+    browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
     for (const c of cases.filter((item) => !caseFilter || caseFilter.split(',').includes(item.name))) {
       const context = await browser.newContext({ viewport: { width: c.width, height: c.height }, hasTouch: c.touch,
         isMobile: c.touch, deviceScaleFactor: c.scale, reducedMotion: 'reduce' });

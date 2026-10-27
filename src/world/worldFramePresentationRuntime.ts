@@ -1,4 +1,5 @@
 import { Vector3, type Camera, type Object3D, type PerspectiveCamera } from 'three';
+import { foliageSeeThrough } from './foliageSeeThrough.ts';
 
 interface WorldFrameEntity {
   state?: object | null;
@@ -14,6 +15,7 @@ interface WorldFrameRig {
 
 interface WorldFrameTarget {
   setSniperFade(active: number, immediate: boolean, fov: number, aimDistance: number): void;
+  setFoliageSeeThrough(on: boolean): void;
   update(
     dtSeconds: number,
     cameraPosition: Vector3,
@@ -29,6 +31,8 @@ interface WorldFramePresentationRuntimeOptions {
   getWorld(): WorldFrameTarget | null;
   isWorldDormant(): boolean;
   getCameraFocus(): WorldFrameEntity | null;
+  /** Settings' See-through foliage (foliageSeeThrough.ts; a receipt passes its own). */
+  seeThroughFoliage?(): boolean;
 }
 
 export interface WorldFramePresentationRuntime {
@@ -46,6 +50,7 @@ export function createWorldFramePresentationRuntime({
   getWorld,
   isWorldDormant,
   getCameraFocus,
+  seeThroughFoliage = () => foliageSeeThrough.get(),
 }: WorldFramePresentationRuntimeOptions): WorldFramePresentationRuntime {
   const forward = new Vector3();
   const occlusionFocus = new Vector3();
@@ -55,6 +60,8 @@ export function createWorldFramePresentationRuntime({
       const world = getWorld();
       if (!world || isWorldDormant()) return;
 
+      // item 259: off (the default), no foliage clears for the camera (the world keeps the choice; a repeat is free)
+      world.setFoliageSeeThrough(seeThroughFoliage());
       world.setSniperFade(
         rig.mode === 'SNIPER' ? 1 : 0,
         false,

@@ -9,8 +9,10 @@
 // its position times the squash, its rotation kept (Euler untouched), the squash seen through that rotation times its
 // own scale; a rest rotation that would shear under the squash cannot, so that child is wrapped in a section group that
 // carries it. rig_gun takes its trunnion at the squashed seat and the squash times its own scale, which is 1 wherever
-// the builder counter-scaled it, so the gun pitches rigidly about the drawn trunnion. rig_turret is left at scale 1 and
-// every world vertex at rest stays where it was. Pure Three.js: no factory state.
+// the builder counter-scaled it, so the gun pitches rigidly about the drawn trunnion. A remote roof station pitches its
+// own barrel the same way (259): its seat takes the squash and its scale the squashed width on every axis, so the
+// authority's roof frame lays the profile's elevation (the station stands at its width instead of the casting's height).
+// rig_turret is left at scale 1 and every other world vertex at rest stays where it was. Pure Three.js: no factory state.
 import * as THREE from 'three';
 
 /** The squash a non-uniform rig_turret carried, now on its children (rig_turret.userData.turretSectionScale). */
@@ -83,14 +85,21 @@ function composedFromTransform(object: THREE.Object3D): boolean {
   return true;
 }
 
-/** S·T(p)·R·Sc(c) = T(S∘p)·R·Sc(d∘c) when Rᵀ·S·R is the diagonal d. */
-function takeSquash(object: THREE.Object3D, squash: THREE.Vector3): boolean {
+/** S·T(p)·R·Sc(c) = T(S∘p)·R·Sc(d∘c) when Rᵀ·S·R is the diagonal d. A rigid child keeps d∘c's width on every axis. */
+function takeSquash(object: THREE.Object3D, squash: THREE.Vector3, rigid = false): boolean {
   const through = composedFromTransform(object) ? squashThrough(object, squash) : null;
   if (!through) return false;
   object.position.multiply(squash);
   object.scale.multiply(through);
+  if (rigid) object.scale.setScalar(object.scale.x);
   if (!object.matrixAutoUpdate) object.updateMatrix();
   return true;
+}
+
+/** A remote roof station the authority lays (vehicle-controls-inventory's roof guns): it pitches its own barrel. */
+function isRoofStation(object: THREE.Object3D): boolean {
+  const data = object.userData;
+  return data.remoteControlled === true && data.firingAxis === '+Z' && !data.primaryWeapon && data.hasWeapon !== false;
 }
 
 /**
@@ -106,7 +115,10 @@ export function bakeTurretRigScale(turretG: THREE.Object3D, gunG: THREE.Object3D
   for (const child of [...turretG.children]) {
     // a vehicle marking keeps the seat its solver recorded (vehicleMarkingSeatGroups): it takes a section, never the
     // squash (243: strv81's sideways insignia took it, its local seat no longer the generated one)
-    if (child === gunG || (child.userData.vehicleMarking !== true && takeSquash(child, squash))) continue;
+    // a roof station pitches inside its own frame, as rig_gun does, so it takes the squash rigidly (259: under the
+    // squash the Challenger 2's 43 deg laid 52.5 and the Merkavas' 36-39; the Challenger 1's builder counter-scales
+    // its L37s, which stand at 1 either way)
+    if (child === gunG || (child.userData.vehicleMarking !== true && takeSquash(child, squash, isRoofStation(child)))) continue;
     // keeps the child's place among its siblings: the coplanar depth layers follow the traversal order
     const section = new THREE.Group();
     section.name = `turretSection_${child.name || child.type}`;

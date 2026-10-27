@@ -17,13 +17,14 @@
 @layer surfaces{
 /* The page declares the shell family ('Cot UI': IBM Plex Sans at 400/500, Chakra Petch at 600/700), not a second copy
    of Plex Sans (the type head's budget, typeSystem.selftest.mjs): the direction's body voice, 400/500 here, reads it. */
-:root{color-scheme:dark;--font:var(--font-ui);--font-body:var(--font-ui);--g-browse:clamp(248px,18.6vw,360px);--g-dossier:clamp(360px,28vw,480px);
+:root{color-scheme:dark;--font:var(--font-ui);--font-body:var(--font-ui);--g-browse:clamp(248px,18.6vw,max(360px,17vw));--g-dossier:clamp(360px,28vw,max(480px,24vw));
   --g-pad:16px}
 *{box-sizing:border-box}
 html,body{width:100%;margin:0;background:var(--surface-page);color:var(--ink-1)}
 body{overflow:hidden;font:500 var(--fs-12)/1.45 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button{cursor:pointer}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+/* focus is the kit ring's paper hue, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
 [hidden]{display:none!important}
 /* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway */
 html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:hidden;
@@ -44,7 +45,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .search{margin:0}
 .search__field{display:flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s2) 0 var(--s3);border-radius:var(--control-radius);
   box-shadow:var(--ring-2);color:var(--ink-3);font:400 var(--fs-13)/1 var(--font-body);cursor:text}
-.search__field:focus-within{box-shadow:var(--ring-accent)}.search__field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.search__field:has(input:focus-visible){box-shadow:var(--focus-ring)}
 .search__field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;color:var(--ink-1);font:inherit;outline:none}
 .search__field input::placeholder{color:var(--ink-3)}
 .search__field input::-webkit-search-cancel-button{display:none}
@@ -109,7 +110,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
 .fam .it[aria-selected=true] .cot-c-sil{color:var(--ink-1)}
-.fam .it:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
+.fam .it:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px}
 .it__art{display:none}
 .fam[data-layout=grid]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:var(--s1)}
 .fam[data-layout=grid] .fam__group{display:contents}
@@ -131,6 +132,10 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   padding:3px var(--s1);border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--ink-1);line-height:0}
 .fam[data-layout=grid] .it__class svg{display:block;width:12px;height:12px}
 .fam[data-layout=grid] .it:has(.it__class) .e{top:36px}
+/* a hero card's tier chip (heroCardChips.ts) takes the top-left corner; the cloth flag behind the tank is the nation there */
+.it__art .hc-tier{display:none}
+.fam[data-layout=grid] .it__art.cot-hc .hc-tier{display:block}
+.fam[data-layout=grid] .it:has(.it__art.cot-hc .hc-tier)>.cot-c-flag{display:none}
 .fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
@@ -329,7 +334,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   background:linear-gradient(90deg,var(--fill-scale) var(--lo,0%),var(--accent) var(--lo,0%) var(--hi,0%),var(--fill-scale) var(--hi,0%))}
 .sl input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
 .sl input::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
-.sl input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sl input:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
 .sl input:disabled{opacity:.4}
 .acts{display:flex;gap:var(--s2);padding:var(--s3) var(--g-pad);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .acts #testDrive{flex:1;min-width:0}
@@ -478,9 +483,12 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 }
 /* the anatomy drawing at the window's size (its labels are drawn into the image); a press or Escape closes it */
 #dossier-anatomy figure img{cursor:zoom-in}
-#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;margin:0;padding:var(--s5);
+#dossier-anatomy figure.is-zoomed{position:fixed;inset:0;z-index:var(--z-toast);display:grid;place-items:center;align-content:center;row-gap:var(--s4);margin:0;padding:var(--s5);
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
-#dossier-anatomy figure.is-zoomed img{width:auto;max-width:100%;max-height:100%;height:auto;cursor:zoom-out}
+/* the drawing (2:1) takes the window's room: its height from the viewport, as a grid row's percentage did not bound it
+   (the g14 critic: at 844 x 390 its key ran under the window's foot, at 2560 it stood at its natural 40 % width) */
+#dossier-anatomy figure.is-zoomed img{width:min(100%,calc((100dvh - 2 * var(--s5)) * 2));max-width:none;height:auto;
+  max-height:calc(100dvh - 2 * var(--s5));cursor:zoom-out}
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
   /* the stage and its turntable fit under the site bar */

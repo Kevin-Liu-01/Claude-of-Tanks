@@ -42,6 +42,15 @@ const TURRET_FRONT_COMPENSATION: Readonly<Record<string, number>> = Object.freez
 });
 const TURRET_FRONT_ZONE = /cheek|wedge|front|mantlet|gun_notch/i;
 
+/** Scales a turret's mantlet and gun-notch plates (KE and CE) alone. */
+function mantlet(registry: TankSpecRegistry, id: string, factor: number): void {
+  for (const plate of spec(registry, id).armor.turretPlates) {
+    if (plate.kind !== 'main' || !/mantlet|gun_notch/i.test(plate.name)) continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 function turretFront(registry: TankSpecRegistry, id: string, factor: number): void {
   for (const plate of spec(registry, id).armor.turretPlates) {
     if (plate.kind !== 'main' || !TURRET_FRONT_ZONE.test(plate.name) || /side|cupola/i.test(plate.name)) continue;
@@ -374,3 +383,85 @@ export function applyModernEraFold(registry: TankSpecRegistry): void {
   // no longer the Raijū's tuning, so no longer its balance peer
   delete spec(registry, 'type89').balancePeerOf;
 }
+
+/**
+ * 2026-10-26 (258): matchmaking reads the shown tier (tier.ts), so the audit groups every vehicle with its shown-tier
+ * peers (balanceAudit.ts). Six sat just under a peer floor there; each is lifted just over it, to about two thirds of its
+ * group's median: the BMPT Terminator 2's 30 mm and the Marder 1A3's 20 mm rounds, the Centurion 5/2's and Merkava 2B's
+ * engines, the T-80BV's aim and the Upiór's hull and round. Runs with the era fold, before the tactical role balance.
+ */
+export function applyShownTierFloors(registry: TankSpecRegistry): void {
+  primary(registry, 'bmpt_terminator2', { pen100: 125, pen1000: 112, pen2000: 100 });
+  primary(registry, 'marder1a3', { pen100: 76, pen1000: 68, pen2000: 60 });
+  spec(registry, 'centurion5_2').enginePowerHp = 880;
+  spec(registry, 'merkava2b').enginePowerHp = 1060;
+  const t80bv = spec(registry, 't80bv');
+  t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;
+  spec(registry, 'upior').hp = 1820;
+  primary(registry, 'upior', { pen100: 158, pen1000: 143, pen2000: 128 });
+}
+
+/**
+ * 2026-10-26 (259, Main's IV/VII balance round): same-tier fairness at the shown tiers IV and VII, measured by the
+ * same-tier MBT round robin on the balance range (balanceSimulation.ts: six seeds, both range ends, 120 m, the
+ * centre-of-mass aim). That aim meets a low Soviet-pattern turret on its mantlet or its sloped roof and a taller Western
+ * tank on its glacis, so the Soviet line bounced while every Western round went through.
+ * - Tier IV: the T-64BV, T-72M1, PT-91M and T-80B take a thicker mantlet, the pen to bite a Western glacis, a quicker
+ *   autoloader and hull. The FV4034's turret compensation and the Chieftain Mk 9's armour bonus, both set against the
+ *   251 tier-8 rounds, are trimmed; the Mk 10, its second-wave rebuild, keeps its cycle and hull. The C1 pre-series
+ *   takes the Chieftain's round.
+ * - Tier VII: the C2 Ariete pair brought Tier X armour (the 251 table) down to VII and is trimmed to it. The C2 keeps
+ *   its cadence over the C1 (arieteModernSpecs) and fires its prototype's rounds, so the Hetmans' Relikt cheeks no
+ *   longer shut it out; the prototype cycles slower. The T-72B3 Sich's weaker donor hull takes hull and a quicker
+ *   autoloader; the Husarz and the Wilk take hull.
+ * Runs after the shown-tier floors, before the tactical role balance.
+ */
+export function applySameTierFairness(registry: TankSpecRegistry): void {
+  // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
+  for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
+    primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
+    spec(registry, id).hp = 2150;
+  }
+  primary(registry, 'pt91m', { pen100: 790, pen1000: 730, pen2000: 647 });
+  primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
+  for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
+  spec(registry, 't80b').gun.aimTimeS = 1.85;
+  for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
+  cannonReload(registry, 't80b', 6.2);
+  cannonReload(registry, 'pt91m', 6.0);
+  // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round
+  turretFront(registry, 'fv4034', 0.85);
+  spec(registry, 'fv4034').hp = 2000;
+  // the Mk 9's 1.5 armour (applyFleetBalancePass) made it a protected Tier VIII MBT; at IV it keeps 1.32
+  armor(registry, 'chieftain_mk9', 0.88);
+  // the Mk 10 is the Mk 9's second-wave rebuild and keeps its weapon and hull (sourceXSecondWave)
+  for (const id of ['chieftain_mk9', 'chieftain_mk10']) {
+    cannonReload(registry, id, 7.0);
+    spec(registry, id).hp = 2000;
+  }
+  cannonReload(registry, 't80bv', 7.4);
+  spec(registry, 't80bv').hp = 2100;
+  cannonReload(registry, 'leo2a3', 6.4);
+  // 260 (a balance trim, not fidelity): IV fairness; no sourced period round defeats the basic package's turret front
+  turretFront(registry, 'leo2a3', 0.9);
+  primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
+  cannonReload(registry, 'c1_ariete_preserie', 6.0);
+  spec(registry, 'c1_ariete_preserie').hp = 2300;
+
+  // Tier VII: the C2 Ariete pair against the modernized T-72B3/T-80U line
+  armor(registry, 'c2_ariete', 0.65);
+  spec(registry, 'c2_ariete').hp = 2400;
+  // the C2 fires its prototype's rounds (Main ruling 2026-10-26: the 120/44 takes standard NATO rounds and no new-round
+  // procurement is named; arieteModernSpecs.selftest cites it). Copied before the prototype's cadence below, so the C2
+  // keeps its own 5.4 s cycle.
+  spec(registry, 'c2_ariete').gun.shells = structuredClone(spec(registry, 'c2_ariete_proto').gun.shells);
+  cannonReload(registry, 'c2_ariete_proto', 6.3);
+  spec(registry, 'c2_ariete_proto').gun.aimTimeS = 1.6;
+  armor(registry, 'c2_ariete_proto', 0.7);
+  spec(registry, 't72b3_sich').hp = 2850;
+  // the gun's cadence only: its rounds stay the T-90SM's (ammunitionFlow) and carry none of their own
+  spec(registry, 't72b3_sich').gun.reloadS = 6.0;
+  for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
+}
+

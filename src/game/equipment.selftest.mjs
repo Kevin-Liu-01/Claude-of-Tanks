@@ -26,6 +26,7 @@ import { createShell } from '../sim/ballistics.ts';
 import {
   EQUIPMENT as SPOT_EQUIP, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
+import { CONSUMABLE_BY_ID, CONSUMABLE_FOLIAGE_EQUIPMENT } from '../sim/consumableRules.ts';
 import { Vector3 } from 'three';
 
 let failures = 0;
@@ -90,8 +91,13 @@ console.log('[1] catalog integrity');
     const hasSim = Object.keys(it.effects || {}).length > 0;
     assert(hasSim || it.spot, `'${it.id}' has at least one REAL effect (sim or spotting)`);
   }
-  // spotting table carries no orphaned ids
+  // spotting table carries no orphaned ids; the one consumable entry (consumables-260: the Fresh Foliage item's
+  // cs_foliage, sim/consumableRules.ts CONSUMABLE_FOLIAGE_EQUIPMENT) is the consumables catalog's, not equipment
   for (const sid of Object.keys(SPOT_EQUIP)) {
+    if (sid === CONSUMABLE_FOLIAGE_EQUIPMENT) {
+      assert(CONSUMABLE_BY_ID.has('foliage') && !EQUIPMENT_BY_ID.has(sid), `spotting item '${sid}' is the foliage consumable's`);
+      continue;
+    }
     assert(EQUIPMENT_BY_ID.has(sid), `spotting item '${sid}' exists in the catalog`);
   }
 }

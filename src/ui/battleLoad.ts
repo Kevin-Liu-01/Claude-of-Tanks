@@ -207,7 +207,7 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),minmax(min(16px,var(--bl-row-height)),var(--bl-row-height)));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
-.cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.cot-bl .rows:focus-visible{outline:1px solid var(--focus-ink);outline-offset:-1px}
 /* (a list that scrolls shows whole rows: its height a whole number of its least rows' pitch, so the row at its foot is
    never cut across; and its cue, the end report's chevron over a fade, while more lies below: gauntlet r8 at 568x256) */
 .cot-bl .team{--bl-row-min:min(16px,var(--bl-row-height));position:relative;}
@@ -514,6 +514,15 @@ export interface PendingBattlefield {
   readonly mapId: string;
   readonly mapName?: string;
   readonly thumb?: string;
+  /** The battle's planned teams (rosterState.planBattleSeats): the cover lists every seat on both sides from its first
+   *  frame, before the loading owner has even arrived (the owner, 2026-10-26: "fix team lists in loading state"). */
+  readonly allies?: readonly BattleLoadRosterRow[];
+  readonly enemies?: readonly BattleLoadRosterRow[];
+  readonly teams?: BattleLoadTeams | null;
+  /** The battle's mode and whether it is a campaign operation: the rules row (the mode chip, the clock) from the first
+   *  frame, so the loading owner's show does not grow the head under the sides (phones dropped them 25-50 px). */
+  readonly modeId?: string;
+  readonly campaign?: boolean;
 }
 
 /**
@@ -929,15 +938,23 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     showPending(map?: string | PendingBattlefield | null, seats: BattleLoadSeats | null = null) {
       const pending = typeof map === 'string' ? { mapId: map } : map ?? null;
       const chosen: PendingBattlefield | null = pending?.mapId && pending.mapId !== 'random' ? pending : null;
+      const planned = pending?.allies?.length || pending?.enemies?.length ? pending : null;
+      // (the seats a side wherever rows go: the larger of its planned rows and the entry's count, never a side at 0)
+      const side = (rows: readonly BattleLoadRosterRow[] | undefined, open: number | undefined): number =>
+        Math.max(rows?.length ?? 0, open ?? 0) || PENDING_ROSTER_SLOTS;
+      const sides = planned ? { allies: side(planned.allies, seats?.allies), enemies: side(planned.enemies, seats?.enemies) } : seats;
       api.show({
         mapName: chosen?.mapName ?? '',
         mode: t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
-        allies: [],
-        enemies: [],
-        ...(seats ? { seats } : { slots: PENDING_ROSTER_SLOTS }),
+        ...(pending?.modeId ? { modeId: pending.modeId } : {}),
+        ...(pending?.campaign ? { campaign: true } : {}),
+        allies: planned?.allies ?? [],
+        enemies: planned?.enemies ?? [],
+        ...(sides ? { seats: sides } : { slots: PENDING_ROSTER_SLOTS }),
       });
+      if (planned) api.rosters(planned.allies ?? [], planned.enemies ?? [], planned.teams ?? null, sides);
     },
 
     /**

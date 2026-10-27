@@ -586,7 +586,8 @@ export const trailer: RegionalBuilder = (ctx) => {
     }
     for (const s2 of [-1, 1]) {
       const x = du + s2 * (deckW / 2 - 0.05);
-      board(sink, 'structureWood', [x, deckTop + 0.028, dz1 - 0.04], [x, floor + 0.88, dz1 - 0.04], [1, 0, 0], 0.08, 0.08, 0.01, { colour: PLANK, decor: true, fine: true });
+      // (259, the far-view census: the posts fine joinery, the handrail stood over the deck on nothing at range)
+      board(sink, 'structureWood', [x, deckTop + 0.028, dz1 - 0.04], [x, floor + 0.88, dz1 - 0.04], [1, 0, 0], 0.08, 0.08, 0.01, { colour: PLANK, decor: true });
       board(sink, 'structureWood', [x, floor + 0.6, T / 2 + 0.05], [x, floor + 0.6, dz1 - 0.08], [0, 1, 0], 0.09, 0.04, 0.006, { colour: PLANK, decor: true, fine: true });
     }
     board(sink, 'structureWood', [du - deckW / 2, floor + 0.915, dz1 - 0.04], [du + deckW / 2, floor + 0.915, dz1 - 0.04], [0, 0, 1], 0.14, 0.07, 0.012, { colour: PLANK, decor: true });
@@ -636,17 +637,18 @@ export const hayShed: RegionalBuilder = (ctx) => {
         if (x + dx < -L / 2 || x + dx > L / 2) continue;
         pole(sink, [x, H - 1.0, z], [x + dx, H - 0.25, z], 0.05, pick(look, JUNIPER), true);
       }
-      // the truss across: its tie, its rafters to the ridge, a king post
+      // the truss across: its tie and a king post
       pole(sink, [x, H - 0.05, -half], [x, H - 0.05, half], 0.06, JUNIPER_DARK, true);
-      for (const z of [-half, half]) pole(sink, [x, H, z], [x, H + rise, 0], 0.06, JUNIPER_DARK, true);
       pole(sink, [x, H - 0.05, 0], [x, H + rise - 0.05, 0], 0.05, JUNIPER_DARK, true);
     }
-    // the purlins along the rafters
-    for (const t of [0.15, 0.5, 0.85]) for (const side of [-1, 1]) {
-      const z = side * half * (1 - t), y = H + rise * t + 0.06;
-      chamferedBeam(sink, 'structureWood', 'x', -L / 2, L / 2, z, y + 0.04, 0.05, 0.04, 0.01, { colour: JUNIPER_DARK, decor: true, uv: UV_MEMBER });
-    }
   });
+  // the trusses' rafters to the ridge and the purlins along them, the roof on them (259, the phone census: a phone's
+  // build left them out with the rest of the dressing, and its roof stood over the plates on nothing)
+  for (const x of xs) for (const z of [-half, half]) pole(sink, [x, H, z], [x, H + rise, 0], 0.06, JUNIPER_DARK, true);
+  for (const t of [0.15, 0.5, 0.85]) for (const side of [-1, 1]) {
+    const z = side * half * (1 - t), y = H + rise * t + 0.06;
+    chamferedBeam(sink, 'structureWood', 'x', -L / 2, L / 2, z, y + 0.04, 0.05, 0.04, 0.01, { colour: JUNIPER_DARK, decor: true, uv: UV_MEMBER });
+  }
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.45, verge: 0.4, thickness: 0.03, bucket: 'roof', ridge: 'saddle' };
   sink.placed(Math.PI / 2, 0, 0.14, 0, () => emitRoof(sink, roofGeometry(Dd, L, H, roof), roof));
   sink.dressing(mobile, () => {

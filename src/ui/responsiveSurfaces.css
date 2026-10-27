@@ -245,10 +245,7 @@ body[data-cot-width='tablet'] .cot-set-ftr{padding:var(--s3) var(--s4)}
 /* PLAY / PRIVATE ROOM ---------------------------------------------------- */
 body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 body[data-cot-panels='overlay'] .cot-play .panel{width:min(960px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain}
-body[data-cot-width='tablet'] .cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='tablet'] .cot-play .room-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-body[data-cot-width='compact'] .cot-play .modes,
-body[data-cot-width='phone'] .cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .rules,
 body[data-cot-width='phone'] .cot-play .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='compact'] .cot-play .room-actions,

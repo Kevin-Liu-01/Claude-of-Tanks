@@ -1,5 +1,6 @@
 // Committed DOM regression using production report, record, roster and feed owners.
 // Run under tools/capture-command.mjs; no simulation or WebGL is required.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -11,7 +12,7 @@ const server=await createServer({server:{host:'127.0.0.1',port:0},logLevel:'erro
 let browser;
 try {
  await server.listen();const port=server.httpServer.address().port;
- browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch] of [['desktop',1440,900,false],['portrait',390,844,true],['landscape',667,375,true],['tiny-landscape',568,256,true]]) {
   const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,reducedMotion:'reduce'});
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));

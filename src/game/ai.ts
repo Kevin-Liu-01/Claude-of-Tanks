@@ -43,6 +43,8 @@ import {
 } from '../sim/damage.ts';
 import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
+import { DEFAULT_CONSUMABLE_LOADOUT, consumableActive, type ConsumableId, type ConsumableState } from '../sim/consumableRules.ts';
+import { totalAmmunition, totalAmmunitionCapacity } from '../sim/ammunition.ts';
 import {
   CLEARANCE_SKIP_BRIDGE,
   CLEARANCE_SKIP_CRUSHABLE,
@@ -158,6 +160,10 @@ interface AiEntity {
   state: TankState;
   combat?: CombatState;
   consumableReadyAt?: number[];
+  /** The consumable in each slot (sim/consumableRules.ts); absent is the default trio. */
+  consumableItems?: readonly string[];
+  /** This life's consumable state: a timed item already running or a slot out of charges is not pressed again. */
+  consumables?: ConsumableState;
   specialAction?: { kind: string; active: boolean } | null;
   input: AiInput;
 }
@@ -193,6 +199,12 @@ interface HitReactionInfo {
 interface AiSupportContext {
   safeToReloadMagazine?: boolean;
   wantsSuspensionAim?: boolean;
+  /** A visible target in the line of fire. */
+  engaged?: boolean;
+  /** Falling back, seeking cover or ordered to retreat. */
+  retreating?: boolean;
+  /** The hull is standing still. */
+  stationary?: boolean;
 }
 
 /** Postures a commander can order (game/jevCommander.ts; docs/JEV-COMMANDER.md). */
@@ -242,6 +254,40 @@ function needsModuleRepair(combat: CombatState): boolean {
   return damagedModules >= 2;
 }
 
+/** The order a bot weighs its consumables in: a fire, then repairs, then the crew, then everything else. */
+const SUPPORT_PASSES = Object.freeze([0, 1, 2, 3] as const);
+function consumablePass(item: string): number {
+  if (item === 'extinguisher' || item === 'fire_suppression') return 0;
+  if (item === 'repair' || item === 'repair_large' || item === 'track_links') return 1;
+  if (item === 'first_aid') return 2;
+  return 3;
+}
+
+function hullShare(combat: CombatState): number {
+  return combat.maxHp > 0 ? combat.hp / combat.maxHp : 1;
+}
+
+/** Whether a bot wants a slot's item now (the item's trigger; sim/consumableRules.ts says what each one does). */
+function wantsConsumable(entity: AiEntity, item: string, combat: CombatState, context: AiSupportContext): boolean {
+  switch (item) {
+    case 'extinguisher': return !!combat.fire?.burning;
+    case 'fire_suppression': return !!combat.fire?.burning || (!!context.engaged && hullShare(combat) < 0.5);
+    case 'repair': case 'repair_large': return needsModuleRepair(combat);
+    case 'track_links': return combat.modules.trackL?.state === 'red' || combat.modules.trackR?.state === 'red';
+    case 'first_aid': return hasInjuredCrew(combat);
+    case 'rations': case 'aps_charge': return !!context.engaged;
+    case 'ir_jammer': return !!context.engaged && hullShare(combat) < 0.75;
+    case 'foliage': return !!context.engaged && !!context.stationary;
+    case 'governor_override': return !!context.retreating && Math.abs(entity.state.speed) > 2;
+    case 'ammo_restock': {
+      const capacity = totalAmmunitionCapacity(combat);
+      return capacity > 0 && totalAmmunition(combat) / capacity < 0.35;
+    }
+    case 'smoke_reload': return (combat.auxiliary?.smokeCharges ?? 3) === 0;
+  }
+  return false;
+}
+
 function hasInjuredCrew(combat: CombatState): boolean {
   const crew = combat.crew;
   for (const name in crew) {
@@ -277,14 +323,16 @@ export function chooseAiSupportActionBits(
   // throttle and steer kept resetting the settle, and no bot ever asked for the self-right a player has. An
   // overturned hull asks for it (both authorities consume the bit) and finishStep holds its drive still.
   if (entity.state?.overturned === true) return PLAYER_ACTION_BITS.SELF_RIGHT;
-  if (combat.fire?.burning && supportActionReady(entity, 2, timeS)) {
-    return PLAYER_ACTION_BITS.EXTINGUISHER;
-  }
-  if (needsModuleRepair(combat) && supportActionReady(entity, 0, timeS)) {
-    return PLAYER_ACTION_BITS.REPAIR;
-  }
-  if (hasInjuredCrew(combat) && supportActionReady(entity, 1, timeS)) {
-    return PLAYER_ACTION_BITS.FIRST_AID;
+  // the catalog (2026-10-26): each slot's item by its own trigger, a fire first, then repairs, then the crew
+  const items = entity.consumableItems ?? DEFAULT_CONSUMABLE_LOADOUT;
+  for (const pass of SUPPORT_PASSES) {
+    for (let slot = 0; slot < items.length; slot++) {
+      const item = items[slot]!;
+      if (consumablePass(item) !== pass || !supportActionReady(entity, slot, timeS)) continue;
+      const state = entity.consumables;
+      if (state && (state.charges[slot] === 0 || consumableActive(state, item as ConsumableId, timeS))) continue;
+      if (wantsConsumable(entity, item, combat, context)) return 1 << slot;
+    }
   }
   if (wantsSpecialAction(entity, context)) {
     return PLAYER_ACTION_BITS.SPECIAL_ACTION;
@@ -6580,6 +6628,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     supportContext.wantsSuspensionAim = !!target && losClear
       && Math.abs(entity.state.speed) < 1.5
       && Math.abs(input.throttle) < 0.2;
+    supportContext.engaged = !!target && losClear;
+    supportContext.retreating = mode === 'seekCover' || timeS < fallbackUntilS || (orderActive() && order!.posture === 'retreat');
+    supportContext.stationary = Math.abs(entity.state.speed) < 0.5;
     input.actionBits = chooseAiSupportActionBits(entity, timeS, supportContext);
     abilityContext.retreating = mode === 'seekCover' || timeS < fallbackUntilS
       || (reaction !== null && timeS < reactUntilS) || (orderActive() && order!.posture === 'retreat');

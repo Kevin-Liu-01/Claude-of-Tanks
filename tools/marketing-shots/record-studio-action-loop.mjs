@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
 // Render the presentation's canonical in-engine Studio action loop, including
 // the live Scene Studio controls and cinematic timeline.
@@ -92,7 +93,7 @@ try {
   const url = `http://localhost:${server.config.server.port}/`;
   console.log(`[studio-action] vite up at ${url}`);
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     // the readiness step below may take its map, image and font limits (180 s + 30 s + 15 s)
     protocolTimeout: 600_000,
