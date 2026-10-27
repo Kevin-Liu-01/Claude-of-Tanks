@@ -769,6 +769,7 @@
   "garage.gallery.title": "战斗画廊",
   "garage.gallery.prevShot": "上一张",
   "garage.gallery.nextShot": "下一张",
+  "garage.gallery.shot": "第 {n} 张，共 {count} 张",
   "garage.record.title": "本地战绩",
   "garage.record.eyebrow": "本地指挥档案",
   "garage.record.heading": "服役记录",

@@ -757,6 +757,7 @@
   "garage.gallery.title": "Battle gallery",
   "garage.gallery.prevShot": "Previous shot",
   "garage.gallery.nextShot": "Next shot",
+  "garage.gallery.shot": "Picture {n} of {count}",
   "garage.record.title": "Record",
   "garage.record.eyebrow": "Local commander profile",
   "garage.record.heading": "Service record",

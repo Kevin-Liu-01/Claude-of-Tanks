@@ -868,16 +868,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     panel.setAttribute('aria-label', t('garage.gallery.title'));
     panel.innerHTML =
       `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
-      `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">&#8249;</button>` +
-      `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">&#8250;</button>` +
+      `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">${uiIconSVG('chevronLeft', 14)}</button>` +
+      `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">${uiIconSVG('chevronRight', 14)}</button>` +
       `<div class="fcap"></div></div>` +
-      `<div class="ftitle cot-sidebar-section-title"><span class="fdots">` +
-      FEATURED_SHOTS.map(() => '<span></span>').join('') +
+      `<div class="ftitle cot-sidebar-section-title"><span class="fdots" role="group" aria-label="${t('garage.gallery.title')}">` +
+      FEATURED_SHOTS.map((_, n) => `<button type="button" tabindex="-1" aria-label="${escapeHtmlAttribute(t('garage.gallery.shot', { n: n + 1, count: FEATURED_SHOTS.length }))}"></button>`).join('') +
       `</span></div>`;
     root.appendChild(panel);
     const layers = panel.querySelectorAll<HTMLElement>('.fly');
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
-    const dots = panel.querySelectorAll<HTMLElement>('.fdots span');
+    const dots = panel.querySelectorAll<HTMLButtonElement>('.fdots button');
     const shotEl = requiredElement<HTMLElement>(panel, '.fshot');
     let idx = -1;
     let front = 0;
@@ -896,6 +896,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       layers[front ^ 1].classList.remove('on');
       capEl.textContent = t(FEATURED_SHOTS[i].capKey, FEATURED_SHOTS[i].capVars);
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      // the picture in view is the dots' one tab stop (the arrows step the rotation from it)
+      for (const dot of dots) { dot.tabIndex = -1; dot.removeAttribute('aria-current'); }
+      dots[i].tabIndex = 0;
+      dots[i].setAttribute('aria-current', 'true');
       idx = i;
     };
     const preload = (i: number, cb: (url: string) => void, priority: ImagePriority = 'low'): void => {
@@ -995,6 +999,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       e.stopPropagation(); advance(); rearm();
     });
     dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
+    // the keys (261, the lead's follow-up): the arrows, Home and End move the rotation from the dots and the focus with it
+    requiredElement<HTMLElement>(panel, '.fdots').addEventListener('keydown', (event) => {
+      const count = FEATURED_SHOTS.length;
+      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: count - 1 } as Record<string, number>)[event.key];
+      if (to === undefined || idx < 0) return;
+      event.preventDefault();
+      const next = (to + count) % count;
+      jump(next);
+      rearm();
+      dots[next].focus({ preventScroll: true });
+    });
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);
     return {

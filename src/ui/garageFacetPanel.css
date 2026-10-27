@@ -65,24 +65,14 @@
 .cot-facet-rowwrap{position:relative;min-width:0;padding-top:9px;border-top:1px solid var(--line-1);}
 /* min-width:0: a wrapper's automatic minimum is its row's one-line width, which widened a phone's panel and page */
 .cot-facet-row{display:flex;flex-wrap:wrap;gap:5px;}
-.cot-facet-option{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:var(--s1) 10px 3px;cursor:pointer;
-  color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-2);
-  border-bottom:2px solid var(--line-3);outline:none;white-space:nowrap;
-  font:700 max(var(--fs-floor-12),var(--fs-12)) var(--facet-font);letter-spacing:0;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
-.cot-facet-option svg{display:block;flex:0 0 auto;color:var(--ink-2);transition:color var(--dur-fast);}
+/* each value is the kit's chip (components.css .cot-c-chip: its fill, edge, hover plate, focus ring and the one pressed
+   state, 261); the facet keeps its glyphs' sizes and its counts' step */
+.cot-facet-option{white-space:nowrap;}
+.cot-facet-option svg{display:block;flex:0 0 auto;}
 .cot-facet-option[data-facet='vehicleClass'] svg{width:32px;height:16px;}
 .cot-facet-option[data-facet='battleRole'] svg,.cot-facet-option[data-facet='era'] svg{width:17px;height:17px;}
-.cot-facet-option .ct{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;color:var(--ink-3);}
-.cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:var(--ink-1);border-color:var(--line-control);}
-.cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:var(--ink-1);}
-.cot-facet-option:focus-visible{outline:none;box-shadow:var(--focus-ring);}
-/* the chosen value reads as chosen: an amber fill, edge and glyph */
-.cot-facet-option[aria-pressed='true']{color:var(--ink-1);border-color:var(--accent);border-bottom-color:var(--accent);
-  background:var(--accent-wash);box-shadow:var(--ring-accent);}
-.cot-facet-option[aria-pressed='true'] svg{color:var(--accent-hi);}
-.cot-facet-option[aria-pressed='true'] .ct{color:var(--accent-hi);}
+.cot-facet-option .cot-c-chip__count{font-size:max(var(--fs-floor-11),var(--fs-11));}
 .cot-facet-option:disabled{cursor:default;opacity:.5;}
-.cot-facet-option:disabled svg{color:var(--ink-4);}
 .cot-facet-empty{padding:var(--s3);}
 .cot-facet-empty[hidden]{display:none;}
 /* Phones: each facet is one swipeable line of chips, so the panel stays short above the roster; the side with more
@@ -144,5 +134,5 @@ body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-search{order
 body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close,.cot-facet-search input){min-height:44px;}
 body[data-cot-input='coarse'] .cot-facet-search input{height:44px;}
 body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
-@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close{transition:none;}}
+@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-clear,.cot-facet-close{transition:none;}}
 }

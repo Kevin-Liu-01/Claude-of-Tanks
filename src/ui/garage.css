@@ -923,10 +923,18 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
 /* the rotation's marks ride on the picture, after it in the order, so above it */
 .cot-featured .ftitle{position:absolute;right:var(--s2);bottom:var(--s2);display:flex;}
 .cot-featured .fdots{display:flex;gap:2px;flex:0 0 auto;}
-.cot-featured .fdots span{width:3px;height:6px;flex:0 0 3px;background:var(--line-control);
+/* each dot is a button (the picture's name, one tab stop, the arrows from it), its mark 3 x 6 px and its press a step
+   taller than the mark (261: mouse-only spans) */
+.cot-featured .fdots button{position:relative;width:3px;height:6px;flex:0 0 3px;padding:0;border:0;background:var(--line-control);
   transition:background var(--dur-base);cursor:pointer;}
-.cot-featured .fdots span:hover{background:var(--ink-1);}
-.cot-featured .fdots span.on{background:var(--accent);}
+.cot-featured .fdots button::after{content:'';position:absolute;inset:-8px -1px;}
+.cot-featured .fdots button:hover{background:var(--ink-1);}
+.cot-featured .fdots button:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
+.cot-featured .fdots button.on{background:var(--accent);}
+/* a touch screen steps the rotation with the 44 px arrows over the picture: twenty dots cannot each take a finger, so there
+   they mark the picture in view and take no press */
+body[data-cot-input='coarse'] .cot-featured .fdots{pointer-events:none;}
+body[data-cot-input='coarse'] .cot-featured .fnav{min-width:44px;min-height:44px;opacity:.92;}
 .cot-featured .fshot{position:relative;isolation:isolate;width:100%;height:104px;overflow:hidden;
   border:1px solid var(--line-3);cursor:pointer;background:var(--surface-page);
   box-shadow:var(--e2);transition:border-color var(--dur-fast);}
