@@ -36,11 +36,18 @@ const SAME_SURFACE_COS = Math.cos((35 * Math.PI) / 180);
 /** Opposite faces this close (m) and this nearly opposite (|cos|) are a crack between slices, not armour skin. */
 const CRACK_M = 0.04;
 const CRACK_FACING = 0.995;
+const CRACK_CAP_Z = 0.985;
+/** Crack-cut pieces under this (m²) are clipping slivers. */
+const MIN_KEPT_M2 = 1e-5;
 /** Facets meeting at more than this (70°) are a corner and outlined even within one zone; the cells' slicing wedges
  * fold less. */
 const CORNER_COS = Math.cos((70 * Math.PI) / 180);
-/** A facet narrower than about this (m: its area over its longest edge) is a sliver and draws no outline. */
+/**
+ * A facet narrower than about this (m: its area over its longest edge) is a sliver: it draws no outline, and its
+ * neighbours draw none along it. A crack's cut leaves rims of the tilted caps a few centimetres wide: RIM_WIDTH_M.
+ */
 const SLIVER_WIDTH_M = 0.015;
+const RIM_WIDTH_M = 0.06;
 /** Panels under this area (m²) are slivers, fans and fittings, not armour plates. */
 const MIN_PANEL_M2 = 0.06;
 /** A zone whose largest panel is smaller than this (m²) is noise (slivers of slice caps): it keeps no panel of its own. */
@@ -70,6 +77,8 @@ interface ArmorPanelFacet {
   readonly skin: number;
   /** Its zone (armorZones.ts): the authored plate it belongs to. */
   readonly plate: unknown;
+  /** What a crack's cut left of a slice cap: a rim, outlined only where it is wide (RIM_WIDTH_M). */
+  readonly rim?: boolean;
 }
 
 interface ArmorPanel {
@@ -190,11 +199,12 @@ function edgeAdjacency(facets: readonly ArmorPanelFacet[]): {
 
 /**
  * Slices of the cells that stop a few centimetres short of each other leave a crack: the two caps either side face
- * each other, both outer skin, and seen edge-on from the side they draw as lines. Facets facing each other (opposite
- * normals) across less than CRACK_M, one's centre over the other, are the inside of the armour: both go.
+ * each other, both outer skin, and seen edge-on from the side they draw as lines. Where slice caps (facing along the
+ * hull, CRACK_CAP_Z) face each other across less than CRACK_M, that part of each is the inside of the armour and is
+ * cut away; a cap's ring that faces nothing is a real step and stays. Only caps: a fender or skirt cell is a thin
+ * slab too, and its faces are armour.
  */
 function dropCracks(facets: ArmorPanelFacet[]): void {
-  const drop = new Set<number>();
   const order = facets.map((_, index) => index).sort((a, b) => facets[a].centroid[0] - facets[b].centroid[0] || a - b);
   const reach = facets.map((facet) => {
     let radius = 0;
@@ -203,30 +213,71 @@ function dropCracks(facets: ArmorPanelFacet[]): void {
   });
   let widest = 0;
   for (const radius of reach) widest = Math.max(widest, radius);
-  const over = (top: ArmorPanelFacet, below: ArmorPanelFacet): boolean => {
-    const depth = dot(below.normal, sub(top.centroid, below.points[0]));
-    if (Math.abs(depth) > CRACK_M) return false;
-    const projected: SkinPoint = [top.centroid[0] - below.normal[0] * depth, top.centroid[1] - below.normal[1] * depth,
-      top.centroid[2] - below.normal[2] * depth];
-    for (let i = 0; i < below.points.length; i++) {
-      const a = below.points[i], b = below.points[(i + 1) % below.points.length];
-      if (dot(cross(sub(b, a), sub(projected, a)), below.normal) < 0) return false;
-    }
-    return true;
+  const partners = new Map<number, number[]>();
+  const pair = (a: number, b: number): void => {
+    const list = partners.get(a);
+    if (list) list.push(b); else partners.set(a, [b]);
   };
   for (let i = 0; i < order.length; i++) {
     const a = facets[order[i]];
+    if (Math.abs(a.normal[2]) < CRACK_CAP_Z) continue;
     for (let j = i + 1; j < order.length; j++) {
       const b = facets[order[j]];
       if (b.centroid[0] - a.centroid[0] > reach[order[i]] + widest + CRACK_M) break;
       if (dot(a.normal, b.normal) > -CRACK_FACING || distance(a.centroid, b.centroid) > reach[order[i]] + reach[order[j]] + CRACK_M) continue;
-      if (over(a, b) || over(b, a)) { drop.add(order[i]); drop.add(order[j]); }
+      if (Math.abs(dot(a.normal, sub(b.centroid, a.points[0]))) > CRACK_M) continue;
+      pair(order[i], order[j]);
+      pair(order[j], order[i]);
     }
   }
-  if (!drop.size) return;
-  let kept = 0;
-  for (let index = 0; index < facets.length; index++) if (!drop.has(index)) facets[kept++] = facets[index];
-  facets.length = kept;
+  if (!partners.size) return;
+  // each cap keeps what its partners do not face: the facing parts are cut away along the partners' outlines
+  const out: ArmorPanelFacet[] = [];
+  facets.forEach((facet, index) => {
+    const others = partners.get(index);
+    if (!others) { out.push(facet); return; }
+    let pieces: SkinPoint[][] = [facet.points as SkinPoint[]];
+    for (const other of others) {
+      const cover = facets[other];
+      const next: SkinPoint[][] = [];
+      for (const piece of pieces) {
+        let rest = piece;
+        for (let k = 0; k < cover.points.length && rest.length >= 3; k++) {
+          const a = cover.points[k], b = cover.points[(k + 1) % cover.points.length];
+          const side = cross(sub(b, a), cover.normal);
+          const size = Math.sqrt(dot(side, side));
+          if (!(size > 1e-12)) continue;
+          const n: SkinPoint = [side[0] / size, side[1] / size, side[2] / size];
+          const offset = -dot(n, a);
+          const outside = clipBelow(rest, [-n[0], -n[1], -n[2]], -offset);
+          if (outside.length >= 3) next.push(outside);
+          rest = clipBelow(rest, n, offset);
+        }
+      }
+      pieces = next;
+    }
+    for (const piece of pieces) {
+      const kept = facetOf(piece, facet.normal, facet.skin, facet.plate);
+      if (kept && kept.area > MIN_KEPT_M2) out.push({ ...kept, rim: true });
+    }
+  });
+  facets.length = 0;
+  facets.push(...out);
+}
+
+/** Sutherland–Hodgman: the part of a convex polygon where n·x + c <= 0. */
+function clipBelow(points: readonly SkinPoint[], normal: readonly number[], offset: number): SkinPoint[] {
+  const out: SkinPoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const da = dot(normal, a) + offset, db = dot(normal, b) + offset;
+    if (da <= 0) out.push(a);
+    if ((da < 0 && db > 0) || (da > 0 && db < 0)) {
+      const t = da / (da - db);
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+    }
+  }
+  return out;
 }
 
 interface Group {
@@ -492,20 +543,24 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
 
   // a facet edge is outlined where most of it runs along another zone or round a corner (CORNER: the silhouette's
   // edges): the plates' borders, never a fold or a panel change within one plate (its colours show that). An edge with
-  // nothing beside it (a crack between slices) and a sliver (a slice cap's exposed rim, seen edge-on) outline nothing:
-  // the skin is closed, so a border always has its other side
+  // nothing beside it (a crack between slices) and a sliver (a slice cap's exposed rim, seen edge-on) outline nothing,
+  // nor do its neighbours along it: the skin is closed, so a border always has its other side
   const borders = new Uint8Array(edgeStart[facets.length]);
+  const quietFacet = facets.map((facet) => {
+    let longest = 0;
+    for (let i = 0; i < facet.points.length; i++) longest = Math.max(longest, distance(facet.points[i], facet.points[(i + 1) % facet.points.length]));
+    return facet.area < (facet.rim ? RIM_WIDTH_M : SLIVER_WIDTH_M) * longest;
+  });
   for (let index = 0; index < facets.length; index++) {
     const facet = facets[index];
     const zone = panels[facetPanel[index]].plate;
-    let longest = 0;
-    for (let i = 0; i < facet.points.length; i++) longest = Math.max(longest, distance(facet.points[i], facet.points[(i + 1) % facet.points.length]));
-    if (facet.area < SLIVER_WIDTH_M * longest) continue;
+    if (quietFacet[index]) continue;
     for (let i = 0; i < facet.points.length; i++) {
       const edge = edgeStart[index] + i;
       const length = distance(facet.points[i], facet.points[(i + 1) % facet.points.length]);
       let loud = 0;
       for (const [next, overlap] of along[edge]) {
+        if (quietFacet[next]) continue;
         if (panels[facetPanel[next]].plate !== zone || dot(facets[next].normal, facet.normal) < CORNER_COS) loud += overlap;
       }
       borders[edge] = loud >= length * 0.5 ? 1 : 0;
