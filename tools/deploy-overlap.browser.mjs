@@ -15,6 +15,7 @@
 //     [--out=outputs/deploy-overlap]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { datumProblems } from './datum-census.mjs';
 import { DEPLOY_MODE_ORDER } from '../src/sim/gameModeCatalog.ts';
 
@@ -70,7 +71,7 @@ function measure(rows) {
         + (selector === 'words' ? ` "${el.textContent.trim().slice(0, 24)}"` : ''), x, y, right, bottom })) };
 }
 
-const browser = await puppeteer.launch({ headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
 const report = [];
 let failures = 0;
 try {
