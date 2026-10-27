@@ -61,6 +61,7 @@ for (const locale of ['en-US', 'zh-CN']) {
     assert.ok(!catalog[`consumable.${stem}.effect`].includes('—'), `${locale}: ${item.id} effect has no em dash`);
   }
   assert.ok(catalog['garage.consumableSlot'].includes('{n}'), `${locale}: the Garage slot's label`);
+  assert.ok(catalog['garage.consumableChoices'].includes('{n}'), `${locale}: the slot tip's count of kits`);
 }
 // the band's consumable slot reads its name whole at every size (the 259 release cut "REPA…" and "MED…"): at least its
 // name's width, and the name never clipped or set with an ellipsis
@@ -73,4 +74,10 @@ assert.match(showroom, /\.cot-garage \.cot-lt-consumables \.eqslot \.sl\{max-wid
 assert.match(showroom, /body\[data-cot-panels='overlay'\] \.cot-lt-band:has\(\.cot-lt-consumables\)\{flex-wrap:wrap;/, 'a phone band wraps');
 assert.match(showroom, /\.cot-lt-band:has\(\.cot-lt-consumables\)>\.cot-lt-group:has\(>\.cot-lt-paint\)\{flex:1 0 100%;/,
   'the paint takes its own row on a phone');
+// every slot that opens a picker wears the kit's chevron (Main, 2026-10-27): the consumables use the equipment slot's
+// .chev markup, which gallery-studio's showroom.css rule places in the corner
+const consumableUi = readFileSync(new URL('../ui/garageConsumables.ts', import.meta.url), 'utf8');
+assert.match(consumableUi, /<span class="chev" aria-hidden="true">\$\{uiIconSVG\('chevronDown', 12\)\}<\/span><\/button>/,
+  'each consumable slot ends with the chevron');
+assert.match(consumableUi, /t\('garage\.consumableChoices', \{ n: String\(n\) \}\)/, 'the slot tip counts the kits');
 console.log(`consumableLoadout.selftest: saves, gates, fits, ${view.length} slot views, picker groups and both catalogs passed`);
