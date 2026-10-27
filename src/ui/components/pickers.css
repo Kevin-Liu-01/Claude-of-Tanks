@@ -101,7 +101,8 @@
 @media (pointer:coarse){
   .cot-c-picker__fav{width:44px;height:44px}
   .cot-c-picker--list .cot-c-picker__opt{min-height:60px}
-  .cot-c-picker__more{--h:44px}
+  /* (the kit button's own size class is later in the cascade: two classes outrank it; the 261 critic, a 36 px arrow by 44 px chips) */
+  .cot-c-picker__more.cot-c-btn--36{--h:44px}
   :is(.cot-c-picker__chips>.cot-c-chip,.cot-c-picker__search){height:44px}
   .cot-c-picker__cell:has([aria-selected=true]) .cot-c-picker__fav{opacity:1}
 }

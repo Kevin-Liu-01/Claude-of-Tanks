@@ -55,6 +55,9 @@ const MENU_MAX_H = 420;
 /** A menu of picture cards stands taller, so two rows of its cards show whole (a battlefield card with its two lines is
  *  183 px: 420 px held one row, the battle card's quick menu, owner 10-26). */
 const MENU_MAX_H_CARDS = 520;
+/** A list's portraits fetched before it opens: all of a set this small, else this many on each side of its choice. */
+const WARM_ALL = 40;
+const WARM_AROUND = 12;
 /** Its distance from the trigger and from the window's edges. */
 const MENU_GAP = 4;
 const MENU_EDGE = 8;
@@ -111,11 +114,14 @@ export function placeMenu(
   const hi = Math.min(view.width, bounds.right ?? view.width) - MENU_EDGE;
   const span = bounds.left !== undefined && bounds.right !== undefined && bounds.right - bounds.left <= SPAN_MAX_W;
   const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
+  // a spanning menu reaches its panel's far edge itself (inside its 1 px rule): a panel scrolls its rows to its edge, so a
+  // gap there showed the foot of a row under the menu (the 261 critic: zh 900's 自动机枪)
+  const far = span ? 1 : MENU_EDGE;
   // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
   const width = span ? hi - lo : Math.min(wide ? MENU_MAX_W : Math.max(MENU_MIN_W, Math.min(MENU_MAX_W, anchor.width), anchor.width), hi - lo);
   const left = span ? lo : Math.max(lo, Math.min(anchor.left, hi - width));
-  const below = bounds.bottom - anchor.bottom - MENU_GAP - MENU_EDGE;
-  const aboveRoom = anchor.top - bounds.top - MENU_GAP - MENU_EDGE;
+  const below = bounds.bottom - anchor.bottom - MENU_GAP - far;
+  const aboveRoom = anchor.top - bounds.top - MENU_GAP - far;
   const want = Math.min(height, cap);
   const above = below < want && aboveRoom > below;
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
@@ -207,6 +213,20 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   };
 
   const isOpen = (): boolean => trigger.getAttribute('aria-expanded') === 'true';
+  /** A list's pictures fetched before it shows, so its rows draw whole as it opens (the 261 critic: three portraits still
+   *  loading in a list just opened): a short set as it is made or changed, a longer one around its choice once the pointer
+   *  or the focus reaches the trigger. */
+  let warmed = '';
+  const warm = (): void => {
+    if (options.layout !== 'list') return;
+    const at = Math.max(0, items.findIndex((item) => item.id === value));
+    const near = items.length <= WARM_ALL ? items : items.slice(Math.max(0, at - WARM_AROUND), at + WARM_AROUND);
+    const posters = near.map((item) => item.media?.poster).filter((src): src is string => !!src);
+    const key = posters.join('|');
+    if (!posters.length || key === warmed) return;
+    warmed = key;
+    for (const src of posters) { const img = new Image(); img.decoding = 'async'; img.src = src; }
+  };
   const coarse = (): boolean => typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
   /** The panel holding the trigger, the room the menu stays in: the nearest box that scrolls or clips its content (a
    *  dossier, a readout column, a drawer), or the window when there is none or it is too short (the 261 report: the
@@ -358,9 +378,12 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   };
   trigger.addEventListener('click', onTrigger);
   trigger.addEventListener('keydown', onTriggerKey);
+  trigger.addEventListener('pointerenter', warm);
+  trigger.addEventListener('focus', warm);
   head.querySelector('.cot-c-menu__close')?.addEventListener('click', onClose);
   pop.addEventListener('focusout', onPopFocusOut);
   paint(null);
+  if (items.length <= WARM_ALL) warm();
 
   const api: PickerMenu = {
     setItems(next, nextValue) {
@@ -368,6 +391,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       if (nextValue !== undefined) value = nextValue;
       if (picker) picker.setItems(items, value);
       if (!previewed) paint(null);
+      if (items.length <= WARM_ALL) warm();
       placeSoon();
     },
     setValue(id) {
@@ -386,6 +410,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       if (placeFrame) win.cancelAnimationFrame(placeFrame);
       trigger.removeEventListener('click', onTrigger);
       trigger.removeEventListener('keydown', onTriggerKey);
+      trigger.removeEventListener('pointerenter', warm);
+      trigger.removeEventListener('focus', warm);
       pop.removeEventListener('focusout', onPopFocusOut);
       head.querySelector('.cot-c-menu__close')?.removeEventListener('click', onClose);
       picker?.dispose();
