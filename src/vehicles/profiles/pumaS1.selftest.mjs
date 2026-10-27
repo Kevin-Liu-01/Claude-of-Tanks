@@ -9,7 +9,7 @@ import { tankTier } from '../tier.ts';
 const spec = getSpec('spz_wotan');
 assert.ok(spec, 'SPz Puma S1 is registered');
 assert.equal(spec.name, 'SPz Wotan');
-assert.equal(tankTier(spec.id), 10, 'Puma S1 is Tier X');
+assert.equal(tankTier(spec.id), 6, 'Puma S1 matches at its shown Tier VI (258)');
 assert.equal(spec.role, 'ifv');
 assert.equal(spec.weightTons, 43);
 assert.deepEqual(spec.dims, {

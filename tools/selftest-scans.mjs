@@ -78,6 +78,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // item 259: every source, for a Settings category hue written outside the token files
   'src/ui/tokens/settingsColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
+  // one selected state (interaction-picker-254 a311036509): every sheet and module under src/ui and src/presentation
+  'src/ui/components/components.selftest.mjs': lists('src/ui/**/*.{css,ts}', 'src/presentation/**/*.{css,ts}'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
