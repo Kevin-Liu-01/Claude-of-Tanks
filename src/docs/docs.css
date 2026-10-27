@@ -365,12 +365,13 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .filming-take-grid{margin-top:var(--s2)}
 .filming-take-grid .cot-c-picker__grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .filming-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:28px 0 0;border:1px solid var(--line);background:var(--line)}
-.filming-numbers div{min-width:0;padding:16px 14px;background:var(--surface-raised)}
+.filming-numbers div{min-width:0;padding:15px;background:var(--surface-raised)}
 .filming-numbers dt{color:var(--ink);font-size:var(--docs-fluid-1);font-weight:700;line-height:1;letter-spacing:var(--track-title);white-space:nowrap}
 .filming-numbers dd{margin:8px 0 0;color:var(--ink-3);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase}
 /* the steps stand the manual's 12 px under the figures, on the figures' own plate (14 px and a second fill, r37) */
 .filming-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;margin:var(--s3) 0 0;padding:0;border:1px solid var(--line);background:var(--line);list-style:none}
-.filming-steps li{display:grid;grid-template-rows:auto auto auto 1fr;gap:8px;min-width:0;padding:16px 14px;background:var(--surface-raised)}
+/* a cell's content stands 16 px in with the grid's 1 px line, as the archive card's glyph plate does (15/17 px, r39) */
+.filming-steps li{display:grid;grid-template-rows:auto auto auto 1fr;gap:8px;min-width:0;padding:15px;background:var(--surface-raised)}
 /* a step's glyph stands on the manual's one glyph plate (the build facts' and the archive card's) */
 .filming-step-icon{display:grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--line-3);background:var(--fill-soft)}
 .filming-step-icon svg{display:block;width:27px;height:27px}
