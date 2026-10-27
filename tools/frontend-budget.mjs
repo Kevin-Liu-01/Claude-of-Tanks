@@ -132,9 +132,9 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // Over 258's release build: game +7,176 B (entry +2,917), cn +7,719 B, Gallery +817 B, home +120 B, docs +314 B, 404 +120 B.
   // 2026-10-27 (integrator 260, re-pinned at the release build of 1b30e7fda4; requests unchanged on every page):
   // - Main's named shares: "consumables band: the slot fit and phone rows (with gallery-studio's 04c3954089)" +185 B game
-  //   and cn (approved), with Main's 10-27 slot hint (the chevron and the tip's kit count) +374 B game, +392 B cn, entry
-  //   +258 B; "Proving Ground mode, Deploy r40-r44, zh archive titles" (brand-ui-primitives-250 3f4ce8a0e1; approved home
-  //   +2, docs +78, Gallery +1).
+  //   and cn (approved); "slot hint: the chevron (with gallery-studio's 9ca7e1da93) and the tip's count of kits" +374 B
+  //   game, +392 B cn, entry +258 B; "Proving Ground mode, Deploy r40-r44, zh archive titles" (brand-ui-primitives-250
+  //   3f4ce8a0e1; approved home +2, docs +78, Gallery +1).
   // - The heads' own: brand-ui-battle-242 e92b4bc2ab (UI-LOCKDOWN B14, gauntlet r17) then 25355f1b24 (gauntlet r18, +167 B
   //   game and cn between the two release builds, entry -23 B); garage-rail-end-loop 73b1dd157c and interaction-picker-254
   //   4c781561fc (the boot card's 1 px fixes, inline) small; integ's --ring-hot token.
