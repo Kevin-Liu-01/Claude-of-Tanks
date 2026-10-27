@@ -105,6 +105,12 @@ const SPECS: FleetTankSpec[] = [
     // release 262: the M73 mount's +20 / -10 deg (Hunnicutt via docs/references/tanks/m46_patton.md)
     { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 },
       gunElevationDeg: 20, gunDepressionDeg: 10,
+      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull) on the release-262 build: the full -10 deg over
+      // the front 46 deg either side, the fender bins abeam, the engine deck and its corner mufflers over the rear
+      gunPitchByYawDeg: [[0, -10], [46, -10], [48, -8.3], [49, -7.8], [52, -7.1], [53, -6.9], [56, -6.8], [79, -8.9],
+        [80, -9.2], [81, -10], [89, -10], [91, -9.3], [92, -9.1], [115, -7.8], [117, -7.5], [119, -7.5], [124, -8.7],
+        [125, -7.4], [126, -6.7], [128, -6.3], [140, -4.8], [144, -4.8], [147, -5.1], [148, -5.5], [149, -4.7], [150, -3],
+        [151, -2.1], [152, -1.7], [153, -1.4], [156, -1.1], [159, -1.2], [161, -2], [162, -2.6], [163, -4.4], [180, -4.9]],
       dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
       // bakeDirt deck equalizer (f243966): the Bergman refs paint from the
       // shared canvas with NO deck penalty — knob-on is ref-parity for this
@@ -115,10 +121,12 @@ const SPECS: FleetTankSpec[] = [
     // docs/references/tanks/m47_patton.md)
     { hp: 1550, weightTons: 46, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 6.8 },
       gunElevationDeg: 19, gunDepressionDeg: 10,
-      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull): the full -10 deg over the front 142 deg either
-      // side, the engine deck and its corner mufflers' stops over the rear
-      gunPitchByYawDeg: [[0, -10], [142, -10], [147, -8.4], [148, -7.5], [149, -7], [152, -6.2], [153, -6], [157, -6.1],
-        [161, -6.4], [162, -6], [163, -5.7], [165, -5.6], [180, -5.9]],
+      // measured by tools/gun-depression-sweep.mjs (26 mm from the hull) on the release-262 build: the full -10 deg over
+      // the front 46 deg either side, the fender bins abeam, the engine deck and its corner mufflers over the rear
+      gunPitchByYawDeg: [[0, -10], [46, -10], [48, -8.7], [49, -8.2], [53, -7.2], [56, -7.2], [78, -9.5], [80, -10],
+        [93, -10], [117, -8.1], [119, -8.1], [120, -8.3], [123, -9.6], [125, -7.6], [126, -7], [140, -5], [143, -5],
+        [147, -5.4], [148, -5], [149, -3.8], [150, -2.9], [151, -2.2], [152, -1.8], [156, -1.2], [158, -1.2], [160, -1.7],
+        [161, -2.5], [163, -6.2], [166, -6.1], [180, -6.4]],
       dims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
       visual: { bakeDirtDeckEq: true } }),
   make('m60a1', 'm60a3', 'M60A3', 'USA',

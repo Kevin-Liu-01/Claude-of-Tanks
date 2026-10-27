@@ -2,7 +2,7 @@
 // referrences so they will no longer look so chungus"): the rebuilt M46, M47 and M48A5 (profiles/pattonCast.ts) hold
 // their published proportions, measured from the built tanks, not from their authored numbers:
 // - hull length with fenders, width and the casting heights against docs/references/tanks/<id>.md (Hunnicutt, TM 9-718A,
-//   AFV Database; the owner-supplied M48A5 model);
+//   AFV Database; the owner-supplied M48A5 model, whose dome is 2.48 m wide and 0.91 m floor to roof);
 // - the turret castings are no longer squat or bloated: each mark's casting height and width sit in its source band,
 //   and the three marks are told apart by their castings (the M47's long turret, the M46's short Pershing box, the
 //   M48A5's wide egg);
@@ -22,7 +22,7 @@ import { properSurfaceCrossings, shellEdgeTopology } from '../../../tools/base-s
 const SOURCES = {
   m46_patton: { hullLength: 6.358, width: 3.513, turretWidth: [1.90, 2.10], castHeight: [0.84, 1.00], rollers: 5, tension: true, glacis: [44, 48] },
   m47_patton: { hullLength: 6.358, width: 3.512, turretWidth: [1.90, 2.10], castHeight: [0.95, 1.15], rollers: 3, tension: true, glacis: [58, 62] },
-  m48a5_patton: { hullLength: 6.871, width: 3.632, turretWidth: [2.30, 2.48], castHeight: [0.76, 0.92], rollers: 5, tension: false, glacis: [55, 65] },
+  m48a5_patton: { hullLength: 6.871, width: 3.632, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: false, glacis: [55, 65] },
 };
 const box = (o) => new THREE.Box3().setFromObject(o);
 const within = (v, [lo, hi]) => v >= lo && v <= hi;
@@ -85,5 +85,5 @@ for (const [id, src] of Object.entries(SOURCES)) {
 const { m46_patton: m46, m47_patton: m47, m48a5_patton: m48 } = shells;
 assert.ok(m47.turretL / m47.turretW > 1.55, `the M47's long T42 casting (${(m47.turretL / m47.turretW).toFixed(2)} length/width)`);
 assert.ok(m46.turretL / m46.turretW < 1.40, `the M46's short Pershing casting (${(m46.turretL / m46.turretW).toFixed(2)})`);
-assert.ok(m48.turretW > m46.turretW + 0.25 && m48.turretL / m48.turretW < 1.35, 'the M48A5\'s wide egg dome');
+assert.ok(m48.turretW > m46.turretW + 0.25 && m48.turretL / m48.turretW < 1.40, 'the M48A5\'s wide egg dome');
 console.log('pattonCastProportions: the M46, M47 and M48A5 castings, hulls and running gear hold their sources PASS');

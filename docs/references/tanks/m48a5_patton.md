@@ -12,9 +12,14 @@ on the M48A1 hull and no track-tension wheel. Earlier history of this id (the AT
 - Owner request: "also should update/redesign the m47, m46, and m48 pattons"; for the batch, "update/redesign ...
   turrets and hullls as well based on proper historical referrences so they will no longer look so chungus". Mid-run,
   2026-10-27: "use this patton for the m48" with `~/Downloads/m48a5_patton.glb`.
-- Implementation: new hull, turret and gun in `src/vehicles/profiles/pattonCast.ts` (`buildM48A5CastSteps`). The old
-  `buildM48` and its configs were deleted from `patton.ts`.
-- Qualification: see the release-262 receipts table at the end.
+- Later the same day: "just redesign the m48 off of the model. add all the equipment, completely update hull and
+  shapinngm, etc, reseat equipment annd attachments and add new ones", "match its geometry!", "def smooth it out too.
+  match geometry better", "fix therr matnlet and the drum should be oone of its wheels", "make sure to use our proper
+  tank generation workfloow".
+- Implementation: new hull, turret and gun in `src/vehicles/profiles/pattonCast.ts` (`buildM48A5CastSteps`): landmark
+  lofts of the owner model (below), its equipment reseated on them. The old `buildM48` and its configs were deleted
+  from `patton.ts`.
+- Qualification: the evidence matrix at the end.
 - Publication: lane branch only; integration through Claude of Tanks Main (release 262).
 
 ## Sources
@@ -31,6 +36,47 @@ on the M48A1 hull and no track-tension wheel. Earlier history of this id (the AT
 The ATModeler print (`m48a5_atmodeler.glb`) is retired as the comparison oracle: it has seven road wheels, a 12.6°
 pitched tube and a primitive dome (its gate packet read 59.6). Full research notes:
 `~/cot-lanes/patton-262-evidence/references-research.md`.
+
+## Source and comparison contract (owner model)
+
+- Mode: supplied-model target (`docs/tank-generation/README.md`, "New tank from this GLB"), existing id `m48a5_patton`
+  kept; the owner chose the model's proportions.
+- Raw: `~/Downloads/m48a5_patton.glb`, glTF binary, 13,253,388 bytes, sha256 `a7c37097…89c7fc` (full hash in Sources);
+  separate nodes `track_L`/`track_R`, `exportChassL1`/`R1` (running gear), `Hull_5`, `Turret_01_4`, `gun_01_Shape_6`;
+  no LODs, no duplicate vehicles. Its stowed "drum" on the bustle's right rear is a spare road wheel (owner,
+  2026-10-27).
+- Oracle: the same bytes at `public/models/tanks/community/m48a5_patton_ater.glb` (gitignored), registered in
+  `tools/vehicleComparisonSources.mjs`, `tools/procedural-fidelity.html` and `tools/visual-evaluator-page.html`.
+- Transform: rigid only, a 180 deg turn about y (`yawOffset: Math.PI`; the model faces -z), metres, scale 1, ground at
+  y 0. No per-axis warp.
+- Datums (measured on the oracle): ground 0; belly 0.38; turret deck 1.51 with a raised race collar r 1.24 to 1.633;
+  driver's deck 1.47-1.53; engine deck crown 1.85; turret yaw centre z 0.58 (the dome's floor circle, r 1.24); gun bore
+  axis y 1.921 (the 258 fix's 2.10 was for the old 1.80 deck), trunnion z 1.514, muzzle z 5.827; road wheels r 0.33 at
+  z 2.049, 1.262, 0.469, -0.309, -1.085, -1.959, y 0.41; return rollers r 0.18 at y 1.123, z 1.544 … -1.671; idler
+  z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.954 m centres (xc 1.477).
+- Published versus source: AFV48 hull with fenders 6.871 m (model 6.93); fire height 78.8 in = 2.00 m (model 1.92).
+- Rejected source parts: none; the model's fused stowage (bags, boxes) is rebuilt as first-party primitives at its
+  measured seats.
+
+## Construction work order (landmark sheet)
+
+- Shape sentence: a cast boat hull whose bilge bulges to 1.33 m half-width at 1.05-1.10 m high, waists in to 1.07 m under
+  a deck edge at 1.51 (front) and 1.62 (engine deck), with a raised engine-deck hump 1.85 m high and a boat bow rolling
+  down to a 1.07 m nose; an egg-shaped dome 2.48 m wide on its floor, roof 2.54, nose at z 1.86 and tail rolled under to
+  -1.51; a thin cast gun shield leaning back 25 deg from 0.43 m ahead of the trunnion; the searchlight on posts ahead of it.
+- Hull: 24 landmark stations (keel, chine knee, widest bilge, waist, deck edge, engine-deck hump, crown) read off the
+  oracle's sections; the curve between landmarks is a first-party quadratic span with a measured bulge
+  (`M48_HULL`). Dome: 23 stations with knots at the floor corner and 18/52/84 % of each station's height plus the roof
+  edge (`M48_DOME`), so the loft never twists. HIGH inserts one Catmull-Rom station between rows and shades every span
+  as one casting; LOW keeps the measured rows.
+- Equipment reseated on the new surfaces (`landmarkSeat` topAt/sideAt): fenders with inner front skirts and idler braces;
+  fender boxes; the left front round lid; the right front bar; driver's hatch and three periscopes; headlight groups
+  with guards; bow and rear towing eyes; engine-deck hinges; the rear grille doors, tail lights and guards, final
+  drives, pintle; low-profile cupola with the domed hatch and the commander's M60D on a rim pintle; loader's hatch with
+  hinges and M60D on a post; gunner's sight hood; rangefinder ends; front lifting eye; the bustle rack round the tail
+  with the spare road wheel (the running gear's own `m60a3-cast-spoke` construction), bedroll and bags; the ventilator;
+  jerrycan; the flank racks (two tiers of ammunition boxes on the left, boxes and a bag on the right) under handrails;
+  helmets; antennas; the shield's boss, ports, searchlight posts and rails.
 
 ## Gap table — release 260 build vs sources vs release 262 build
 
