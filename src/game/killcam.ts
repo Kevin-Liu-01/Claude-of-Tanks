@@ -1241,6 +1241,8 @@ body.cot-touch-layout .cot-kc-skip .cot-c-kbd{display:none;}
   font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase;}
 .cot-kc-annot .hd .m svg{color:var(--kc-amber);}
 .cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
+/* (the death view leaves the shell and the attacker line to the killer card, and the title its own line: B15) */
+.cot-kc-annot :is(.shellrow,.w)[hidden],.cot-kc-title .s:empty{display:none;}
 .cot-kc-annot .shellrow>svg{color:var(--accent-hi);}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
   font-size:12.5px;letter-spacing:var(--track-label-s);color:var(--accent-hi);}
@@ -2547,10 +2549,11 @@ export function createKillCam(deps: KillcamDeps) {
   function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
     const meta = d.hdMeta.querySelector('span');
     if (meta) meta.textContent = t('killcam.ballisticAnalysis');
-    appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
+    // (the death view's distance and damage are the killer card's, beside the analysis: UI-LOCKDOWN B15)
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
     appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
     appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
-    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
+    if (!pb.isDeathView) appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
     appendPenetrationStat(d, event);
     appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
   }
@@ -2573,7 +2576,9 @@ export function createKillCam(deps: KillcamDeps) {
     const attackerName = attackerLabel(event);
     d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
     d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
-    d.titleS.textContent = finalBlow
+    // (in the death view the killer card names who and with what, the registry's place: the title's line, the analysis's
+    // shell and its attacker line leave it, UI-LOCKDOWN B15)
+    d.titleS.textContent = pb.isDeathView ? '' : finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
         attacker: attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
       })
@@ -2593,6 +2598,8 @@ export function createKillCam(deps: KillcamDeps) {
     d.hdW.append(attackerName || t('killcam.enemy'));
     d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
     d.hdW.append(event.targetName || '');
+    (d.hdK.parentElement ?? d.hdK).hidden = pb.isDeathView;
+    d.hdW.hidden = pb.isDeathView;
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -5226,7 +5233,7 @@ export function createKillCam(deps: KillcamDeps) {
     );
     appendKillerStat(
       d,
-      'Distance',
+      t('killcam.stat.distance'),
       `${Math.round(event.flightDistM || 0)} m`,
       '',
       'scope',
@@ -5460,7 +5467,8 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function addXrayDamageLabel(d: KillcamDom, event: KillcamHitEvent): void {
-    if ((event.damage || 0) <= 0) return;
+    // (the death view's damage is the killer card's row: UI-LOCKDOWN B15)
+    if ((event.damage || 0) <= 0 || pb.isDeathView) return;
     _p.set(...event.pos);
     addXrayLabel(d, _p, '', `−${Math.round(event.damage || 0)} HP`, '', true);
   }

@@ -1330,8 +1330,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!missileSplash) kv('angle', t('shotInfo.angle'), `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
     if (!missileSplash) kv('armor', t('killcam.stat.armor'), armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
-    // (a reference plate on the proving ground has no hull: no damage and no roll, no row)
-    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('damage', t('killcam.stat.damage'), `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    // (no damage row: the damage dealt is the floating number over the hit at the same moment, and a blocked hit's
+    // outcome says what its 0 would; the roll stays on card.dataset.dmgroll for traces: UI-LOCKDOWN B16)
     if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier

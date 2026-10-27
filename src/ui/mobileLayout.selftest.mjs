@@ -307,8 +307,10 @@ assert.match(shotInfo,
   /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
-  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*kv\('damage', t\('killcam\.stat\.damage'\),[^\n]*'w'\);[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
-  'the report must keep only angle, armor, damage, and penetration analysis rows');
+  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
+  'the report must keep only angle, armor and penetration analysis rows');
+// (its damage is the floating number's, UI-LOCKDOWN B16: no damage row)
+assert.doesNotMatch(shotInfo, /kv\('damage', t\('killcam\.stat\.damage'\)/, 'the shot card carries no damage row');
 assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
 assert.doesNotMatch(shotInfo, /modChips\(ev, card\)|el\('div', 'cot-si-zone', diag\)|el\('div', 'cot-si-pencap', rows\)/,
