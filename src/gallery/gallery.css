@@ -25,7 +25,8 @@
 html,body{width:100%;margin:0;background:var(--surface-page);color:var(--ink-1)}
 body{overflow:hidden;font:500 var(--fs-12)/1.45 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button{cursor:pointer}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+/* focus is the kit ring's paper hue, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
 [hidden]{display:none!important}
 /* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway */
 html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:hidden;
@@ -46,7 +47,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .search{margin:0}
 .search__field{display:flex;align-items:center;gap:var(--s2);height:36px;padding:0 var(--s2) 0 var(--s3);border-radius:var(--control-radius);
   box-shadow:var(--ring-2);color:var(--ink-3);font:400 var(--fs-13)/1 var(--font-body);cursor:text}
-.search__field:focus-within{box-shadow:var(--ring-accent)}.search__field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.search__field:has(input:focus-visible){box-shadow:var(--focus-ring)}
 .search__field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;color:var(--ink-1);font:inherit;outline:none}
 .search__field input::placeholder{color:var(--ink-3)}
 .search__field input::-webkit-search-cancel-button{display:none}
@@ -111,7 +112,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
 .fam .it[aria-selected=true] .cot-c-sil{color:var(--ink-1)}
-.fam .it:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
+.fam .it:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px}
 .it__art{display:none}
 .fam[data-layout=grid]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:var(--s1)}
 .fam[data-layout=grid] .fam__group{display:contents}
@@ -336,7 +337,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   background:linear-gradient(90deg,var(--fill-scale) var(--lo,0%),var(--accent) var(--lo,0%) var(--hi,0%),var(--fill-scale) var(--hi,0%))}
 .sl input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
 .sl input::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
-.sl input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sl input:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
 .sl input:disabled{opacity:.4}
 .acts{display:flex;gap:var(--s2);padding:var(--s3) var(--g-pad);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .acts #testDrive{flex:1;min-width:0}

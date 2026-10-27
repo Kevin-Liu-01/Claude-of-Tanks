@@ -49,7 +49,8 @@ body[data-cot-panels='persistent'] .cot-stations{display:block;position:absolute
 .cot-station[aria-selected='true']{color:var(--ink-1);
   background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--accent-wash);}
 .cot-station[aria-selected='true'] .cot-i{color:var(--accent);}
-.cot-station:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+/* (an inset focus line where a clipping row would cut the ring: the ring's own paper hue, never the accent) */
+.cot-station:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 
 /* ---- the readout: each station shows its own sections, sized to the column and never scrolled ---- */
 /* it sizes to its content, up to the room over the battle card (owner 10-26: a third of it stood empty under the actions) */
@@ -340,7 +341,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 /* the slot being fitted wears the kit's one selected state, the accent's wash and edge (the lead's 10-26 ruling; the r25
    critic read the edge alone as a second selected look) */
 .cot-garage .cot-lt-loadout .eqslot.open{background:var(--accent-wash);box-shadow:var(--ring-accent);}
-.cot-garage .cot-lt-loadout .eqslot:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+.cot-garage .cot-lt-loadout .eqslot:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 /* the paint: what the tank wears, named; three more to try; every paint */
 .cot-lt-swatch{position:relative;width:40px;height:100%;flex:none;padding:0;border:0;border-radius:var(--control-radius);overflow:hidden;
   background:var(--plate-fill);box-shadow:var(--ring-2);cursor:pointer;}
@@ -351,7 +352,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-swatch .nm{position:absolute;left:2px;right:2px;bottom:2px;padding:3px var(--s1);background:var(--glyph-plate);
   color:var(--ink-1);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;}
-.cot-lt-swatch:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
+.cot-lt-swatch:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 @media (hover:hover){.cot-lt-swatch:not(.is-on):hover{outline:1px solid var(--line-control);outline-offset:-1px;}}
 .cot-lt-band .cot-c-btn{--h:var(--slot,56px);height:100%;}
 .cot-lt-paint-all[aria-expanded='true'],.cot-lt-acts [data-lt-callouts][aria-pressed='true']{box-shadow:var(--ring-accent);color:var(--accent);}
@@ -482,7 +483,7 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-mode{grid-column:2;grid
   body[data-cot-panels='persistent'] .cot-battle-mode:hover{background:var(--surface-raised);}
   body[data-cot-panels='persistent'] .cot-battle-mode:hover .sum-pic{transform:scale(1.04);}
 }
-body[data-cot-panels='persistent'] .cot-battle-mode:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+body[data-cot-panels='persistent'] .cot-battle-mode:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 /* the card's corner control (owner 10-26): the kit's icon button on its media plate over the picture, the sprite's chevron
    turning while its menus (the mode, then the battlefield) are open; it was a drawn triangle on a dark square */
 .cot-battle-quick{display:none;}
@@ -537,7 +538,7 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-tabbar{pos
 .cot-tabbar button svg{width:22px;height:22px;}
 .cot-tabbar button[aria-current='page']{color:var(--ink-1);}
 .cot-tabbar button[aria-current='page']::before{content:'';position:absolute;left:22%;right:22%;top:-1px;height:2px;background:var(--accent);}
-.cot-tabbar button:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-4px;}
+.cot-tabbar button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-4px;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-multiplayer-entry,.cot-nav .cot-mobile-nav-trigger){display:none;}
 /* the battle card: the picture and its two lines on the left, Deploy on the right */
 body[data-cot-panels='overlay'] .cot-battle-control{display:flex;transform:none;border-radius:var(--plate-radius);
@@ -588,7 +589,7 @@ body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stat
 .cot-overview-more{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more{display:grid;place-items:center;align-self:stretch;width:40px;padding:0;border:0;
   border-left:1px solid var(--line-1);background:transparent;color:var(--ink-2);cursor:pointer;}
-body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 /* the name over the band: the flag and tier lead the name; the slots and paint under it; the acts at the stage's edge */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--s2);position:absolute;
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
