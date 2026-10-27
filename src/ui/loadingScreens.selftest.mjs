@@ -143,13 +143,23 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   assert.match(bootSource, /stepSeg\(segs\.get\(curKey\)/, 'the current segment fills by the stage\'s real steps');
   assert.doesNotMatch(bootSource, /setInterval\([^)]*[Ss]eg|setTimeout\([^)]*[Ss]eg/, 'no timer moves a segment');
   // boot r23: every lit segment is tungsten (a done class that changed colour waited on the busy main thread), both bars
-  // run on one track, and a stop collapses the row so Retry keeps its place under the notice
-  assert.match(bootHtml, /\.cot-boot-segs i\.done b \{ transform: scaleX\(1\); \}/, 'a done segment keeps the tungsten fill');
+  // run on one track; r24: a stop hides the row in place so the lockup stays still, and a full fill at rest drops its
+  // compositor layer, which snapped a pixel short of the track's painted end
+  assert.match(bootHtml, /\.cot-boot-segs i\.done b \{ transform: scaleX\(1\); will-change: auto; \}/,
+    'a done segment keeps the tungsten fill, painted on its track\'s own pixels');
+  assert.match(bootHtml, /\.cot-boot-fill\.full \{ will-change: auto; \}/, 'the finished main line drops its layer');
+  assert.match(bootSource, /if \(to >= 1\) motion\.onfinish = \(\) => \{ elFill\.style\.transform = 'scaleX\(1\)'; elFill\.classList\.add\('full'\); motion\.cancel\(\); \};/,
+    'the finished main line rests as a style, its motion dropped');
   assert.match(bootHtml, /\.cot-boot-bar \{[^}]*background: var\(--boot-track\);/, 'the main line runs on the one track');
   assert.match(bootHtml, /\.cot-boot-segs i \{[^}]*background: var\(--boot-track\);/, 'the stage row runs on the one track');
-  assert.match(bootHtml, /#cot-boot:has\(\.cot-boot-retry\.on\) \.cot-boot-segs \{ display: none; \}/, 'a stop collapses the stage row');
-  // the load column is the lockup's width on a desktop screen (tools/sync-brand-marks.mjs generates the factor)
-  assert.match(bootHtml, /\.cot-boot-inner\{--boot-lockup-k:\d\.\d{5}\}/, 'the lockup-width factor is generated');
+  assert.match(bootHtml, /#cot-boot:has\(\.cot-boot-retry\.on\) \.cot-boot-segs \{ visibility: hidden; \}/,
+    'a stop hides the stage row in place: the card does not re-centre');
+  assert.doesNotMatch(bootHtml, /\.cot-boot-retry\.on\) \.cot-boot-(?:segs|bar) \{ display: none; \}/, 'no stop collapses a bar');
+  // the load column is the lockup's ink on a desktop screen, the hull's rear to the stack's right edge
+  // (tools/sync-brand-marks.mjs generates both factors), and the mark box's margin before the hull hangs outside it
+  assert.match(bootHtml, /\.cot-boot-inner\{--boot-lockup-k:\d\.\d{5};--boot-ink-in:0\.\d{5}\}/, 'the lockup-ink factors are generated');
+  assert.match(bootHtml, /\.cot-boot-mark \{[^}]*margin: 0 0 0 calc\(var\(--boot-mark\) \* var\(--boot-ink-in\) \* -1\);/,
+    'the mark box hangs its margin before the hull outside the column');
   assert.match(bootHtml, /\.cot-boot-inner \{[^}]*width: min\(calc\(var\(--boot-mark\) \* var\(--boot-lockup-k\)\), calc\(100vw - 32px\)\);/,
     'the load column takes the lockup\'s width');
 }

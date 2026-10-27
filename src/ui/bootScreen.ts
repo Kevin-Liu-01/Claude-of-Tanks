@@ -338,8 +338,11 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     const from = fillNow();
     if (to <= from + 0.0005) return;
     fillMotion?.cancel();
-    fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
+    const motion = fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
       { duration: reducedMotion ? 0 : finished ? DONE_MS : STEP_MS, easing: 'ease-out', fill: 'forwards' });
+    // the full line rests as a style, its motion and layer dropped (.cot-boot-fill.full): a held compositor fill snaps a
+    // whole pixel short of the track's painted end (boot r24)
+    if (to >= 1) motion.onfinish = () => { elFill.style.transform = 'scaleX(1)'; elFill.classList.add('full'); motion.cancel(); };
   }
 
   // The stage row under the fill (owner, 2026-10-26: "a segmented loading along with the main loading line"): one segment

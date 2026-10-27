@@ -273,9 +273,9 @@
         linear-gradient(180deg, oklch(from var(--surface-scene) l c h / .78) 0%, oklch(from var(--surface-scene) l c h / .44) 28%, oklch(from var(--surface-scene) l c h / .42) 58%, oklch(from var(--surface-scene) l c h / .86) 100%),
         radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
-    /* the load column is the lockup's width (boot r23's design round): the stage line, both bars and the tip share the
-       lockup's two edges, and the invitation, the gate prompt and Retry its centre. --boot-mark is the tank's width;
-       --boot-lockup-k (generated below) is the whole lockup's width in tank widths */
+    /* the load column is the lockup's ink (boot r23's design round, r24's hull edge): the stage line, both bars and the tip
+       start on the hull's rear and end on the stack's right edge, and the invitation, the gate prompt and Retry stand on
+       its centre. --boot-mark is the tank's width; --boot-lockup-k (generated below) is the ink's width in tank widths */
     .cot-boot-inner {
       --boot-mark: clamp(216px, 15vw, 224px);
       position: relative; z-index: 2; width: min(calc(var(--boot-mark) * var(--boot-lockup-k)), calc(100vw - 32px)); text-align: center;
@@ -287,7 +287,11 @@
        level with the tank's drawing; the one place the words stack. --boot-mark is the tank's width, and the generated
        rules below size the gap and the stack from it. The tank rolls along on the compositor, so a busy main thread never
        stops it (src/ui/brandMarkMotion.ts; reduced motion shows the still) */
-    .cot-boot-mark { grid-area: mark; display: flex; align-items: flex-start; justify-content: center; margin: 0 auto; color: var(--ink-1); }
+    /* the mark box's margin before the hull (--boot-ink-in) hangs outside the column, so the lockup's ink centres in it */
+    .cot-boot-mark {
+      grid-area: mark; display: flex; align-items: flex-start; justify-content: center;
+      margin: 0 0 0 calc(var(--boot-mark) * var(--boot-ink-in) * -1); color: var(--ink-1);
+    }
     .cot-boot-mark .mkl { flex: none; width: var(--boot-mark); }
     /* cot:brand-motion */
     .mkl{--mk-loop:1.2s;position:relative;aspect-ratio:184/106}
@@ -314,7 +318,7 @@
     @keyframes mkl-sway{0%,100%{transform:none}50%{transform:rotate(-5deg)}}
     @keyframes mkl-puff{0%{opacity:.5;transform:none}100%{opacity:0;transform:translate(-343.8%,-156.3%) scale(3.2)}}
     @media (prefers-reduced-motion:reduce){.mkl *{animation:none}.mkl-puff{display:none}}
-    .cot-boot-inner{--boot-lockup-k:2.03348}
+    .cot-boot-inner{--boot-lockup-k:2.01174;--boot-ink-in:0.02174}
     .cot-boot-mark{gap:calc(var(--boot-mark) * 0.07609)}
     .cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * 0.52989);margin-top:calc(var(--boot-mark) * 0.03533)}
     /* /cot:brand-motion */
@@ -364,7 +368,10 @@
     .cot-boot-segs { display: flex; gap: 4px; height: 3px; margin-top: 8px; }
     .cot-boot-segs i { position: relative; flex: 1 1 0; overflow: hidden; background: var(--boot-track); }
     .cot-boot-segs b { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: var(--accent); will-change: transform; }
-    .cot-boot-segs i.done b { transform: scaleX(1); }
+    /* at rest a full fill paints on its track's own pixels: a held compositor layer snaps a whole pixel short of the track's
+       painted end (boot r24), so a done segment and the finished main line drop theirs */
+    .cot-boot-segs i.done b { transform: scaleX(1); will-change: auto; }
+    .cot-boot-fill.full { will-change: auto; }
 
     /* --- tips + gate ------------------------------------------------------- */
     /* the tip stands on the load column's left edge, under the stage line and the bars: one column, one edge */
@@ -377,7 +384,7 @@
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise var(--dur-screen) var(--ease-camera) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; text-wrap: balance; }
+    .cot-boot-tip span { display: inline-block; text-wrap: pretty; }
     .cot-boot-tip.fade { opacity: 0; }
     /* Credits and GitHub: the kit's quiet buttons in the foot row, the version at its other end */
     .cot-boot-links { position: absolute; left: 4px; bottom: 12px; z-index: 2; display: flex; gap: 4px; }
@@ -511,10 +518,11 @@
       border-radius: var(--control-radius); box-shadow: var(--ring-3);
       font: 500 max(var(--fs-floor-11), var(--fs-11))/1 var(--font-data); color: var(--ink-1);
     }
-    /* Retry takes the tip's slot: a failure shows it without re-centring the card */
+    /* Retry takes the tip's slot: a failure shows it without re-centring the card, 44 px under its notice (the stage row's
+       11 px stay in place above it) */
     .cot-boot-retry {
-      grid-area: slot; align-self: center; justify-self: center; display: none;
-      height: 44px; margin: 0; padding: 0 18px; white-space: nowrap;
+      grid-area: slot; align-self: start; justify-self: center; display: none;
+      height: 44px; margin: 21px 0 0; padding: 0 18px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: var(--btn-primary-fill); color: var(--btn-primary-ink); box-shadow: var(--btn-primary-shadow); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
@@ -526,7 +534,8 @@
        tip step aside, the reason stands centred under the mark, and the tank holds still */
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
-    #cot-boot:has(.cot-boot-retry.on) .cot-boot-segs { display: none; }
+    /* both bars step aside in place, so the card and its lockup stay still when loading stops */
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-segs { visibility: hidden; }
     .cot-boot-load { position: relative; }
     .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
     .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -576,7 +585,7 @@
       .cot-boot-inner { --boot-mark: calc((100vw - 32px) / var(--boot-lockup-k)); }
       .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
-      .cot-boot-retry { justify-self: stretch; align-self: start; margin-top: 32px; }
+      .cot-boot-retry { justify-self: stretch; align-self: start; margin-top: 21px; }
     }
     @media (pointer: coarse) { .cot-boot-foot { bottom: 25.5px; } }
     /* a narrow phone: the version stands over the foot row's right end */
@@ -588,15 +597,15 @@
     }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
-      .cot-boot-inner { --boot-mark: min(36vh, 150px); width: min(760px, calc(100vw - 32px)); }
+      .cot-boot-inner { --boot-mark: min(36vh, 150px); width: min(900px, calc(100vw - 32px)); }
       .cot-boot-invite { margin-top: 12px; }
       #cot-boot.has-invite .cot-boot-inner { --boot-mark: min(28vh, 116px); }
       #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
       .cot-boot-gate { margin-top: 12px; }
-      /* Retry sits under the notice, centred between it and the row's 44 px touch buttons: 25 px each side */
-      .cot-boot-retry { align-self: start; margin-top: 13px; }
+      /* Retry sits under the notice, centred between it and the row's 44 px touch buttons: 27 px under it, 28 over them */
+      .cot-boot-retry { align-self: start; margin-top: 4px; }
     }
     }
     /* Baseline for visible game scrollbars (the line ramp on the scene), in base: a component that hides its rail (a chip
