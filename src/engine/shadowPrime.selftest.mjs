@@ -793,6 +793,8 @@ await withFixture(async (f) => {
   const cutout = new THREE.MeshStandardMaterial({ map: new THREE.Texture(), alphaTest: 0.5 });
   const displaced = new THREE.MeshStandardMaterial({ displacementMap: new THREE.Texture() });
   caster('p1', plain); caster('p2', plain); caster('p3', plain); caster('cut', cutout); caster('p4', plain); caster('disp', displaced);
+  caster('normals', plain);
+  scene.getObjectByName('normals').geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(9), 3));
   const target = { value: null, face: 0, mip: 0 };
   const renderer = Object.assign(Object.create(THREE.WebGLRenderer.prototype), {
     info: {}, shadowMap: { render() {}, type: THREE.PCFSoftShadowMap },
@@ -804,7 +806,8 @@ await withFixture(async (f) => {
   const sizes = [];
   await primeShadowCascades({ renderer, scene, camera, lights: [light], count: 1,
     casterWarmup: { onBatch: (batch) => sizes.push(batch.casterCount) } });
-  assert.deepEqual(sizes, [3, 2, 1], 'p1-p3 (one new variant), cut and p4 (cut new), disp (new): one new variant a batch');
+  assert.deepEqual(sizes, [3, 2, 1, 1],
+    'p1-p3 (one new variant), cut and p4 (cut new), disp (new), and a plain caster with normals (new): one new variant a batch');
 }
 
 console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; a hull\'s near shadow detail warms where it brings a new variant');

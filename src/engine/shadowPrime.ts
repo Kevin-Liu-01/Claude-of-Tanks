@@ -130,17 +130,23 @@ interface CasterState {
  */
 function depthVariant(object: Object3D): string {
   const caster = object as Object3D & { isInstancedMesh?: boolean; isSkinnedMesh?: boolean; isBatchedMesh?: boolean;
-    instanceColor?: unknown; geometry?: BufferGeometry; material?: Material | Material[]; customDepthMaterial?: Material };
+    instanceColor?: unknown; morphTexture?: unknown; geometry?: BufferGeometry; material?: Material | Material[];
+    customDepthMaterial?: Material };
   const morph = caster.geometry?.morphAttributes;
   const morphs = `${morph?.position?.length ?? 0}${morph?.normal ? 'n' : ''}${morph?.color ? 'c' : ''}`;
+  // (the geometry's own attributes key the program too: vertexNormals and vertexUv1s-3s; the 260 census's last receipt
+  // program, an instanced plain caster, matched a warmed variant here and its program did not)
+  const attributes = caster.geometry?.attributes;
+  const geometry = `${attributes?.normal ? 'N' : ''}${attributes?.uv1 ? '1' : ''}${attributes?.uv2 ? '2' : ''}`
+    + `${attributes?.uv3 ? '3' : ''}`;
   const materials = Array.isArray(caster.material) ? caster.material : caster.material ? [caster.material] : [];
   const parts = materials.map((material) => {
     const m = material as Material & { map?: unknown; alphaMap?: unknown; displacementMap?: unknown; displacementScale?: number };
     return `${(m.map || m.alphaMap) && m.alphaTest > 0 ? 'a' : ''}${m.displacementMap && m.displacementScale !== 0 ? 'd' : ''}`
       + `${m.shadowSide ?? m.side}`;
   });
-  return `${caster.isInstancedMesh ? 'i' : ''}${caster.instanceColor ? 'c' : ''}${caster.isSkinnedMesh ? 's' : ''}`
-    + `${caster.isBatchedMesh ? 'b' : ''}m${morphs}`
+  return `${caster.isInstancedMesh ? 'i' : ''}${caster.instanceColor ? 'c' : ''}${caster.morphTexture ? 'M' : ''}`
+    + `${caster.isSkinnedMesh ? 's' : ''}${caster.isBatchedMesh ? 'b' : ''}m${morphs}${geometry}`
     + `:${caster.customDepthMaterial?.uuid ?? ''}:${[...new Set(parts)].sort().join(',')}`;
 }
 
