@@ -13,6 +13,7 @@ import {
   HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_NAME_LINE_HEIGHT, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss,
   heroTankFiles, type HeroFacing,
 } from './heroCardPolicy.ts';
+import { heroTierChipHTML } from './heroCardChips.ts';
 
 interface HeroLayerRow {
   readonly sha: readonly string[];
@@ -191,6 +192,14 @@ export async function decorateHeroTile(tile: HTMLElement, specId: string, option
   host.className = 'hc-host';
   host.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
   if (!decorateHeroCard(host, specId, manifest, options)) return false;
+  // every tile wears its tier chip from the tier table (heroCardChips.ts): the end screen, the Studio, the tech tree
+  host.insertAdjacentHTML('beforeend', heroTierChipHTML(specId));
+  // and its class by glyph under the chip, as the Garage roster's cards do (owner 10-26: "the tank type icon in the top
+  // right of each hero card"), from the facet tables the Garage and the Gallery split off already
+  void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts')]).then(([facets, icons]) => {
+    const value = facets.vehicleClassForId(specId);
+    if (value && host.isConnected) host.insertAdjacentHTML('beforeend', `<span class="hc-class" aria-hidden="true">${icons.vehicleClassGlyphSVG(value, 12)}</span>`);
+  }).catch(() => {});
   tile.append(host);
   return true;
 }

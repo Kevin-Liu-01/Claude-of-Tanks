@@ -396,7 +396,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side{display:flex;align-items:baseline;gap:var(--s2);min-width:0}
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side b{font:700 var(--battle-fs-13)/1 var(--font-ui);color:var(--team-own)}
   body[data-cot-width] .cot-es.cot-es--record .es-roster.foe .es-roster-cols .side b{color:var(--team-enemy)}
-  body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side :is(.tot,.alive){font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2)}
+  /* (the side's score leads its head in the bright ink, as the wide tables' does, its survivors after it in the data
+     face: both in the grey data face, the count's slash read taller than the score, gauntlet r14 at 844x390) */
+  body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side .tot{font:700 var(--battle-fs-13)/1 var(--font-ui);color:var(--ink-1)}
+  body[data-cot-width] .cot-es.cot-es--record .es-roster-cols .side .alive{font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-2)}
   /* (the side's head on the rows' left edge, its tally's glyph a gap from its figures: it began 46 px in, on nothing, and
      read "✓5/21", gauntlet r5) */
   body[data-cot-width] .cot-es.cot-es--record .es-roster-cols{padding-left:var(--s2)}

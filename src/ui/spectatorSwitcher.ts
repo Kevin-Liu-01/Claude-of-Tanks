@@ -69,6 +69,9 @@ export interface SpectateAlly { readonly id: string; readonly name: string; read
  * backs out (a moved focus restored first), as every picker does. Q and E still step. The picker loads on the first
  * open, so a battle that never opens it carries none of it.
  */
+/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover. */
+const PICK_CEILINGS = '.cot-touch.on .mobile-chrome';
+
 export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => void): {
   update(allies: readonly SpectateAlly[], current: string | null): void;
   close(): void;
@@ -84,6 +87,29 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   let allies: readonly SpectateAlly[] = [];
   let current: string | null = null;
   let picker: ReturnType<typeof PickerModule.createPicker> | null = null;
+  // The list's height on opening: under the touch toolbar over it (a layer of its own the list cannot cover: it covered
+  // the list's top at 320x568), and whole rows (the last one ran under the panel's foot at 320x568 and 844x390, gauntlet
+  // r14).
+  function fit(): void {
+    pop.style.maxHeight = '';
+    const barTop = bar.getBoundingClientRect().top;
+    const box = pop.getBoundingClientRect();
+    let ceiling = 8;
+    for (const node of document.querySelectorAll<HTMLElement>(PICK_CEILINGS)) {
+      const over = node.getBoundingClientRect();
+      if (over.height && over.bottom < barTop && over.right > box.left && over.left < box.right) ceiling = Math.max(ceiling, over.bottom + 8);
+    }
+    const room = Math.min(box.height, barTop - 8 - ceiling);
+    const grid = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    const first = grid?.children[0] as HTMLElement | undefined, second = grid?.children[1] as HTMLElement | undefined;
+    if (!grid || !first || !second) { pop.style.maxHeight = `${Math.floor(room)}px`; return; }
+    const pitch = second.offsetTop - first.offsetTop, gap = pitch - first.offsetHeight;
+    // (the panel's padding and anything over the list, then the list's own padding round its rows)
+    const style = getComputedStyle(grid);
+    const frame = pop.offsetHeight - grid.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    const rows = Math.max(1, Math.floor((room - frame + gap) / pitch));
+    pop.style.maxHeight = `${Math.ceil(frame + rows * pitch - gap)}px`;
+  }
   const items = (): PickerModule.PickerItem[] =>
     allies.map((ally) => ({ id: ally.id, name: ally.name, facts: ally.vehicle ? [ally.vehicle] : [] }));
   const outside = (event: PointerEvent): void => {
@@ -93,12 +119,14 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
   function close(): void {
     if (pop.hidden) return;
     pop.hidden = true;
+    bar.classList.remove('picking');
     subject?.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
   }
   async function open(): Promise<void> {
     if (!allies.length) return;
     pop.hidden = false;
+    bar.classList.add('picking');
     subject?.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside, true);
     if (!picker) {
@@ -111,6 +139,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
         onChoose: (item) => { close(); subject?.focus(); onChoose(item.id); },
       });
     } else picker.setItems(items(), current);
+    fit();
     picker.focus();
   }
   subject?.addEventListener('click', () => { if (pop.hidden) void open(); else close(); });
@@ -144,7 +173,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
 export const spectatorSwitcherStyles = `
 .cot-spec{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:16px;transform:translate(-50%,12px);
  display:none;grid-template-columns:minmax(0,1fr) auto auto;align-items:stretch;gap:var(--s2);
- width:min(620px,calc(100vw - 32px));min-width:0;padding:0;border:0;background:none;box-shadow:none;
+ width:min(620px,calc(100vw - 32px),var(--hud-spec-max,100vw));min-width:0;padding:0;border:0;background:none;box-shadow:none;
  pointer-events:none;opacity:0;color:var(--ink-1);font-family:var(--font-ui);
  transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-fast) var(--ease-enter);}
 .cot-spec.show{display:grid}.cot-spec.in{opacity:1;transform:translate(-50%,0)}
@@ -157,9 +186,15 @@ export const spectatorSwitcherStyles = `
 .cot-spec .subject:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 @media(hover:hover){.cot-spec .subject:hover{box-shadow:var(--ring-3)}}
 /* the picker of allies over the bar, its left edge on the plate's: the kit picker's list, no favourites in a battle */
+/* (over every instrument while it is open, on the strong plate made opaque: under the map and the score its rows hid at
+   320x568 and 568x256, and the feed read through the 96 % plate, gauntlet r14) */
+.cot-spec.picking{z-index:calc(var(--hud-layer-score) + 1)}
 .cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
- flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);background:var(--hud-plate-strong);box-shadow:var(--ring-1);
+ flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);
+ background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--surface-scene);box-shadow:var(--ring-1);
  pointer-events:auto;overflow:hidden}
+/* (each ally's callsign in the display face, as the plate under the list names the watched one: one datum, one face) */
+.cot-spec-pick .cot-c-picker__name{font-family:var(--font-display);font-weight:700}
 .cot-spec-pick[hidden]{display:none}
 .cot-spec-pick>.cot-c-picker{min-height:0;flex:1 1 auto;display:flex;flex-direction:column}
 .cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto}
@@ -201,6 +236,9 @@ export const spectatorSwitcherStyles = `
 @media(hover:hover){.cot-spec :is(.cycle,.gar):hover:not(:disabled){box-shadow:var(--ring-3)}.cot-spec .gar:hover{background:var(--btn-primary-hover)}}
 @keyframes cotSpecSw{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 .cot-spec .who.sw{animation:cotSpecSw var(--dur-fast) var(--ease-enter)}
+/* (the wide windows' room for the watched callsign at the plate's 18 px: at 620 px "Commander_Lon…" kept 13 characters at
+   1920 and 2560, where 900x700 showed all 21, gauntlet r14) */
+@media(min-width:1280px){.cot-spec{width:min(720px,calc(100vw - 32px),var(--hud-spec-max,100vw))}}
 @media(max-width:900px){
  .cot-spec{grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
  .cot-spec .subject{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s2);height:56px;padding:0 var(--s3) 0 var(--s2)}

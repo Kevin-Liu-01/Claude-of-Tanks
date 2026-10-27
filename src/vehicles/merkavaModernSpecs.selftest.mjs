@@ -55,7 +55,7 @@ for (const spec of [trophy, barak]) {
     [[900, 820, 740, 550], [680, 680, 680, 510], [45, 45, 45, 620]],
     `${spec.id}: canonical M338/M325/M339 balance`,
   );
-  assert.equal(tankTier(spec.id), 10, `${spec.id}: tier X`);
+  assert.equal(tankTier(spec.id), 9, `${spec.id}: tier IX (258: the shown tier)`);
   assert.equal(internalLayoutFor(spec.id).layoutKey, 'merkava');
 }
 assert.equal(barak.gun.shells[0].dmg, trophy.gun.shells[0].dmg,
@@ -71,7 +71,7 @@ const namer = TANK_SPECS.namer_ifv;
 assert.deepEqual(namer.dims,
   { hullLengthM: 7.319995, overallLengthM: 7.482503, widthM: 3.58012, heightM: 2.699992 },
   'Namer gameplay height uses its broad unmanned-station roof facet');
-assert.equal(tankTier('namer_ifv'), 9);
+assert.equal(tankTier('namer_ifv'), 4); // 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
 assert.equal(namer.role, 'ifv');
 assert.equal(namer.balanceCohort, 'heavy-survivability',
   'Namer does not redefine scout-IFV mobility medians');
@@ -103,8 +103,8 @@ assert.equal(namerLayout.systems.missileRack, null);
 
 assert.deepEqual(
   ['merkava3_baz', 'merkava3d', 'merkava4', 'merkava4b'].map(tankTier),
-  [9, 9, 9, 9],
-  'Mk 3D and baseline Mk 4 identities stay at tier IX',
+  [8, 8, 9, 9],
+  'the Mk 3 Baz and 3D at VIII, the baseline Mk 4s at IX (258: the shown tier)',
 );
 // 2026-10-01: the role balance (0e5fc79e2) layers each vehicle's doctrine onto the authored accuracy and aim time
 // below; the authored envelopes are unchanged and the doctrine factors are the tactical-role regression's.
@@ -137,7 +137,7 @@ for (let index = 1; index < indexes.length; index += 1) {
   assert.equal(indexes[index], indexes[index - 1] + 1, 'Israeli lineage remains contiguous');
 }
 assert.deepEqual(israel.map(tankTier), israel.map(tankTier).sort((a, b) => a - b),
-  'Israeli garage progression is tier-monotonic; Namer stays before the Tier-X Mk.4 configurations');
+  'Israeli garage progression is tier-monotonic (258: the shown tiers; the Namer at IV before the Merkava 3)');
 
 const lazy = readFileSync(new URL('./fleetFactory.ts', import.meta.url), 'utf8');
 const eager = readFileSync(new URL('./profiledProcedurals.ts', import.meta.url), 'utf8');
