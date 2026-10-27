@@ -252,9 +252,9 @@ async function playBattle(page, cdp, mode, size, waitFor, firstBattle) {
   const frames = Math.max(1, frames1 - frames0);
   const state = await page.evaluate(() => {
     const game = window.__DEBUG.game, network = window.__DEBUG.network;
-    // the entry's own stages: the composition's load trace on the host, the solo loading's in the page; and the world
-    // activation's (both modes: was the battlefield cached, how long its build took)
-    const trace = window.__NETWORK_LOAD ?? window.__BATTLE_LOAD ?? null;
+    // the entry's own stages: the composition's load trace on the host, the solo sim's on the Worker, the solo loading's in
+    // the page; and the world activation's (both modes: was the battlefield cached, how long its build took)
+    const trace = window.__NETWORK_LOAD ?? window.__SOLO_SIM_LOAD ?? window.__BATTLE_LOAD ?? null;
     const world = window.__WORLD_LOAD ?? null;
     const hostBoot = window.__HOST_BOOT ?? null;
     return { streamedRoster: trace?.streamedRoster ?? null, tanks: (game.rosterTanks ?? game.tanks).length, timeS: game.timeS ?? null,
@@ -375,7 +375,8 @@ try {
     for (let c = 0; c < cycles; c++) order.push(...(c % 2 ? [subject, 'page'] : ['page', subject]));
     if (smoke) order.splice(0, order.length, subject);
     for (const mode of order) {
-      const result = await run(mode, size).catch((error) => ({ mode, size, failed: String(error).slice(0, 6000) }));
+      const load = loadavg()[0];
+      const result = { ...(await run(mode, size).catch((error) => ({ mode, size, failed: String(error).slice(0, 6000) }))), load };
       report.runs.push(result);
       console.log('run', JSON.stringify(result));
       writeFileSync(out, `${JSON.stringify(report, null, 1)}\n`);
