@@ -323,14 +323,15 @@ function addHullRear(P: TankBuilderPort): void {
   for (const k of KIT.grilleIndices(P.q, 3, 2)) P.add('hullDetail', box(1.64, 0.016, 0.04), 0, ROOF_Y - 0.02 - k * 0.022, -2.63 - k * 0.11, -0.20, 0, 0);
   // two 200 L drums across the stern on raked brackets
   const drumY = 1.72, drumZ = -3.20, drumR = 0.29, drumX = 0.60, drumL = 0.86;
+  // the drums are external fuel, not armour: equipment buckets keep them out of the combat hull
   for (const s of [-1, 1]) {
-    P.add('hull', cylX(drumR, drumL, P.q ? 20 : 12), s * drumX, drumY, drumZ);
-    for (const e of [-drumL / 2 + 0.01, drumL / 2 - 0.01]) P.add('hullDark', cylX(drumR + 0.006, 0.018, P.q ? 20 : 12), s * drumX + e, drumY, drumZ);
-    P.add('hullDark', cylX(drumR + 0.004, 0.014, P.q ? 20 : 12), s * drumX, drumY, drumZ);
-    P.add('hullDark', box(0.04, 0.03, 0.62), s * drumX, drumY + drumR + 0.01, drumZ);                    // strap
+    P.addEquipment('hull', cylX(drumR, drumL, P.q ? 20 : 12), s * drumX, drumY, drumZ);
+    for (const e of [-drumL / 2 + 0.01, drumL / 2 - 0.01]) P.addEquipment('hullDark', cylX(drumR + 0.006, 0.018, P.q ? 20 : 12), s * drumX + e, drumY, drumZ);
+    P.addEquipment('hullDark', cylX(drumR + 0.004, 0.014, P.q ? 20 : 12), s * drumX, drumY, drumZ);
+    P.addEquipment('hullDark', box(0.04, 0.03, 0.62), s * drumX, drumY + drumR + 0.01, drumZ);           // strap
     for (const dx of [-0.26, 0.26]) {
-      P.add('hullDetail', box(0.07, 0.42, 0.07), s * drumX + dx, drumY - 0.36, REAR_Z - 0.05, 0.42, 0, 0); // raked bracket
-      P.add('hullDetail', box(0.07, 0.06, 0.46), s * drumX + dx, drumY - drumR - 0.02, drumZ + 0.10);      // cradle
+      P.addEquipment('hullDetail', box(0.07, 0.42, 0.07), s * drumX + dx, drumY - 0.36, REAR_Z - 0.05, 0.42, 0, 0); // raked bracket
+      P.addEquipment('hullDetail', box(0.07, 0.06, 0.46), s * drumX + dx, drumY - drumR - 0.02, drumZ + 0.10);      // cradle
     }
   }
   // BDSh smoke canisters on the rear plate
