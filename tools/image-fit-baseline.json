@@ -24,7 +24,6 @@
       ".media-archive-card img"
     ],
     "src/ui/deploy.css": [
-      ".cot-garage .cot-deploy-proving-art",
       ".cot-garage .cot-deploy-camp>img",
       ".cot-garage .cot-deploy-brief-art img",
       ".cot-garage .cot-deploy-field-mm img"
