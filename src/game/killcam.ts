@@ -2114,6 +2114,8 @@ export function createKillCam(deps: KillcamDeps) {
         barrelDot: pb.barrelDot,
         muzzle: pb.replayMuzzle ? pb.replayMuzzle.toArray() : null,
         pathStart: pb.pts && pb.pts.length ? pb.pts[0].toArray() : null,
+        // the replay's path: a captured trace has the muzzle, a point a fixed step and the impact; an uncaptured one two
+        pathPoints: pb.pts ? pb.pts.length : 0,
         projectile: pb.core ? pb.core.position.toArray() : null,
         impact: pb.pts && pb.pts.length ? pb.pts[pb.pts.length - 1].toArray() : null,
         flightElapsedS: pb.t,
