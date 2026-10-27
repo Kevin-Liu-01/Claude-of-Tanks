@@ -150,7 +150,7 @@ function isShadowDrawable(object: Object3D): object is ShadowDrawable {
     || ('isPoints' in object && object.isPoints === true);
 }
 
-function collectWarmCasters(state: PrimeState, scene: Object3D): CasterState[] {
+function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
   const casters: CasterState[] = [];
   const vsm = state.shadowMap.type === VSMShadowMap;
   // (battle-spikes-253) The shadow router exposes the shadow-only proxies while the shadow map traverses: batch them with
@@ -316,31 +316,6 @@ function renderWarmBatch(
   }
 }
 
-/**
- * (2026-10-27, the room-stalls lane) The levels an LOD holds hidden at the prime (three shows the one its camera distance
- * selects) whose casters bring a depth-program variant no caster before them has, with those casters: shown, as the
- * hidden roots are, only inside the collection and each batch render. The 260 rooms census read two depth programs
- * linked after the reveal, each one numPointLights apart from a twin an earlier warm made, where a live frame selected
- * another level (the 580 ms guard frame's gearTrackPadsSimplified<LOD among them).
- */
-function freshLodLevels(state: PrimeState, scene: Scene, casters: CasterState[], shown: readonly Object3D[]): Object3D[] {
-  const levels: Object3D[] = [];
-  withRootsShown(shown, () => scene.traverseVisible((object) => {
-    const lod = object as Object3D & { isLOD?: boolean; levels?: ReadonlyArray<{ object: Object3D }> };
-    if (lod.isLOD && lod.levels) for (const level of lod.levels) if (!level.object.visible) levels.push(level.object);
-  }));
-  if (levels.length === 0) return levels;
-  const seen = new Set(casters.map((caster) => caster.variant));
-  const fresh: Object3D[] = [];
-  for (const level of levels) {
-    const own = withRootsShown([...shown, level], () => collectWarmCasters(state, level));
-    if (!own.some((caster) => !seen.has(caster.variant))) continue;
-    for (const caster of own) { seen.add(caster.variant); casters.push(caster); }
-    fresh.push(level);
-  }
-  return fresh;
-}
-
 async function warmFirstCascade(
   state: PrimeState, request: ShadowPrimeRequest, target: WebGLRenderTarget,
   options: ShadowCasterWarmupOptions,
@@ -348,7 +323,6 @@ async function warmFirstCascade(
   const hidden: Object3D[] = [];
   for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
   const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
-  hidden.push(...freshLodLevels(state, request.scene, casters, hidden));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;
