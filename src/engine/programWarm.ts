@@ -41,14 +41,22 @@ function isWebGLProgram(value: ThreeWebGLProgram['program']): value is WebGLProg
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * The first program from `cursor` whose link is still pending (its index), or `programs.length` when none is. With a
+ * `deadline` (a time on `context.now`'s clock) the walk also stops once the deadline passes and returns the next index
+ * to ask, so one slice never queries the renderer's whole program list (2026-10-26, the room-stalls lane: leaving a room,
+ * one Garage restore poll walked every program the battle left, 1.13 s of getProgramParameter in one task).
+ */
 function firstPendingProgram(
   context: FirstUseWarmContext,
   completionToken: number,
   programs: readonly CapturedProgram[],
   cursor: number,
+  deadline = Number.POSITIVE_INFINITY,
 ): number {
   const { gl, timing, now, existingPrograms } = context;
   for (; cursor < programs.length; cursor += 1) {
+    if (cursor > 0 && diagnosticNow(now) >= deadline) return cursor;
     if (!context.valid()) return programs.length;
     const entry = programs[cursor];
     if (!capturedProgramIsLive(context.renderer, entry) || reuseReflectedProgram(context, entry)) continue;
@@ -211,7 +219,8 @@ interface ProgramWarmLifetime {
   /**
    * (battle-spikes-253) The context's link-poll gate (gpuCatchUp.ts), shared by every drain on it: a drain after
    * another finds the last mark already signalled instead of spending its first poll placing one (one per wreck visual
-   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns.
+   * doubled a room's wreck warm, nav-perf's root-s: 2.2 -> 4.3 s). Drains that overlap take turns. A drain that starts
+   * past the mark's age re-marks it first (beginDrain: a Garage return's link drain met a mark from before the battle).
    */
   catchUp?: GpuCatchUpGate;
 }
@@ -823,6 +832,8 @@ function pendingProgramNotes(pending: readonly CapturedProgram[]): PendingProgra
  * returning-tab freeze: the Garage hero's drain cut short left its links to a synchronous first render.
  */
 export const STRICT_DRAIN_STALL_MS = 2_000;
+/** The completion queries one linker breathing slice may spend before it yields (firstPendingProgram's deadline). */
+const LINKER_SLICE_QUERY_MS = 8;
 
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
@@ -858,6 +869,8 @@ function* initializeMaterialProgramSteps(
   // a query behind a deep queue blocked a Garage return 1.3 s. A held poll takes no round, and a GPU still behind is
   // not a stalled cohort; the wall-clock budget still ends the drain.
   const gate = extension ? (context.lifetime.catchUp ??= createGpuCatchUpGate(context.gl)) : null;
+  // a mark a drain long past left vouches for nothing since (gpuCatchUp.ts beginDrain)
+  gate?.beginDrain();
   try {
     for (;;) {
       if (gate && entries.some((entry) => !entry.initialized && !entry.failed) && !gate.caughtUp()) {
@@ -1359,10 +1372,13 @@ export function createForwardProgramWarmOwner({
       const context = { renderer, gl, valid, now, timing, existingPrograms, lifetime };
       // (battle-spikes-253) a slice asks only once the GPU has caught up to the previous slice (gpuCatchUp.ts)
       const gate = lifetime.catchUp ??= createGpuCatchUpGate(gl);
+      gate.beginDrain();
       for (let slice = 0; slice < maxSlices; slice += 1) {
         if (!valid()) return;
         if (gate.caughtUp()) {
-          cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor);
+          // (a slice asks for at most LINKER_SLICE_QUERY_MS, then gives the frame back and goes on from there)
+          cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor,
+            diagnosticNow(now) + LINKER_SLICE_QUERY_MS);
           if (cursor === programs.length) return;
         } else recordCompileTiming(timing, 'gpuBehind', 1);
         finishPoll();
