@@ -64,11 +64,11 @@ const SHEET_BELOW = 520;
 const SHEET_TOP_SHORT = 48;
 /** A box under this height is no panel: the menu's room is the next one out (the window at the last). */
 const BOUNDS_MIN_H = 240;
-/** A panel at most this wide (a readout column, a dossier) is spanned by its menus: across the column a menu covers whole
+/** A panel at most this wide (a readout column, a dossier, up to a 2560 window's) is spanned by its menus: across the column a menu covers whole
  *  rows of it, where one as wide as its trigger left slivers of the labels beside it (the 261 critic: "Dama|ge" beside the
  *  rival's menu, a dossier's title sliced over the versus menu). Such a menu reaches the panel's far edge, its list's fade
  *  saying there is more. */
-const SPAN_MAX_W = 520;
+const SPAN_MAX_W = 640;
 
 /** The room a menu stands in: a panel's (with its sides) or the window's. */
 interface MenuRoom { readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number }
@@ -91,7 +91,7 @@ interface MenuPlace {
  * the trigger is wider, inside its room; at most min(60 % of the window, 420 px) tall (520 px for picture cards) and no
  * taller than its side's room. The room is the window's, or `bounds` (the panel holding the trigger: a dossier, a readout
  * column, with its sides where it has them), so the menu never runs over a site header or out of its panel. A panel no
- * wider than 520 px is spanned: the menu stands across its inner width and may reach its far edge. A coarse pointer on a
+ * wider than 640 px is spanned: the menu stands across its inner width and may reach its far edge. A coarse pointer on a
  * window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's natural height (its content at
  * full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand two abreast. Pure.
  */

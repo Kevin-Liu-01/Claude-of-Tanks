@@ -1211,13 +1211,13 @@ function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
   const top = Math.max(0, bar ? bar.bottom : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
-  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
-    const box = panel.getBoundingClientRect();
-    // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
-    // beside the menu (the 261 critic: the title sliced, "O" and "Ti" beside it)
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom), left: box.left, right: box.right };
-  }
-  return { top, bottom: innerHeight };
+  if (!panel) return { top, bottom: innerHeight };
+  // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
+  // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
+  const box = panel.getBoundingClientRect();
+  const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
+  return { top: scrolls ? Math.max(top, box.top) : top, bottom: scrolls ? Math.min(innerHeight, box.bottom) : innerHeight,
+    left: box.left, right: box.right };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */

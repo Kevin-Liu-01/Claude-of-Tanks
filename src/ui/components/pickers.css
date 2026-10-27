@@ -22,6 +22,7 @@
 @media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
 .cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;overflow:hidden}
 .cot-c-picker__chips>[data-off]{visibility:hidden}
+.cot-c-picker__chips-tail{flex:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
 /* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot
