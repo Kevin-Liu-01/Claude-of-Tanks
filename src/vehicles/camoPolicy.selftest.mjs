@@ -121,9 +121,11 @@ assert.equal(camoMatchesTag('digitaldesert', 'USA', 'winter'), false);
 assert.equal(camoMatchesTag('unknown', 'USA', 'all'), true,
   'All remains the non-destructive catalog view');
 assert.equal(hasSignatureCamo('abramsx'), true);
-assert.equal(hasSignatureCamo('m1a1_abrams_hc'), false);
+// the M1A1 HC took its USAREUR three-tone Signature in abrams-m60-distinct-233 (715151d24c); the Marder stays without one
+assert.equal(hasSignatureCamo('m1a1_abrams_hc'), true);
+assert.equal(hasSignatureCamo('marder1a3'), false);
 assert.equal(hasSignatureCamo(null), false);
-assert.equal(signatureCamoPatternId('m1a1_abrams_hc'), null);
+assert.equal(signatureCamoPatternId('m1a1_abrams_hc'), 'sig_m1a1_abrams_hc');
 assert.equal(signatureCamoPatternId('marder1a3'), null,
   'a service-preset source does not accidentally become a Signature default');
 assert.equal(signatureCamoPatternId(null), null);
@@ -300,7 +302,9 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_amx10p_25') + 1], 'n
 // after GT, so every production index holds (camoCatalogProductionIndices.selftest.mjs)
 const gtIndex = CAMO_PATTERN_IDS.indexOf('gt');
 assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored paints retain their catalog positions');
-assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker'], 'GT, then later paints, append without shifting saved catalog indices');
+// 233 appended three Signatures (715151d24c) and the Type 10 (Dozer) its stock coat (2facf33e95) after them
+assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep',
+  'sig_m60a3', 'paint_type10_dozer'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');

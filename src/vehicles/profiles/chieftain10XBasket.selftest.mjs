@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { addChieftain10XBasket } from './chieftain10XBasket.ts';
+import { TURRET_SEAT_COLLAR_NAME, seatTurretOverDeck } from '../turretSeatRace.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Fixed, complete-source turret witnesses, not isolated candidate targets.
@@ -77,6 +78,9 @@ function otherBuffers(root) {
     // These two merged buckets are independently covered above at every
     // original primitive submission, excluding ONLY the named replacement.
     if (['turret', 'turretDetail'].includes(m.name)) return;
+    // 252's ring collar (turretSeatRace.ts addSeatCollar, ce10d80591) is drawn from the turret's own lowest surface at the
+    // race (its top 4 mm into it), so the legacy stand-in's underside moves it: turret-derived, not hull/gear/gun/roof
+    if (m.name === TURRET_SEAT_COLLAR_NAME) return;
     hash.update(m.name).update(JSON.stringify(m.matrixWorld.elements));
     bufferHash(hash, m.geometry);
     if (m.instanceMatrix) {
@@ -117,6 +121,34 @@ function surfaces(meshes, yawAngle = 0) {
     'independent source floor aperture / transverse basket window remains actual air');
 }
 
+// 240's turret seat (turretSeatRace.ts seatTurretOverDeck; first red at 246) brings every corner of a turret triangle
+// reaching past the race's rim (0.9016 m off the ring's axis) up onto its 1.62-1.636 plane, and collapses a part it lifts
+// whole. The basket's outer trays, return and link reach 1.15 m, under the 1.566 deck: the seat folds them into the
+// turret's underside (244 of 788 triangles), which moves 4 witnesses and the hanging link. The isolated basket keeps every
+// complete-source check; the build is read against that source basket under the same seat (main-reds-259).
+function seatedSource(rig) {
+  const hullG = new THREE.Group(), turretG = new THREE.Group(), seated = [], disposables = [];
+  Object.assign(turretG.userData, rig.userData); hullG.add(turretG);
+  addChieftain10XBasket({ addEquipment(bucket, geometry) { const m = new THREE.Mesh(geometry, material); turretG.add(m); seated.push(m); } }, [0, 0, 0]);
+  hullG.updateMatrixWorld(true);
+  assert.ok(seatTurretOverDeck({ specId: 'chieftain_mk10', hullG, turretG, gunG: null, disposables }) > 0, 'the seat folds the basket parts past the rim');
+  return { seated, dispose() { for (const g of disposables) g.dispose(); for (const m of seated) m.geometry.dispose(); } };
+}
+const SEATED_RAYS = [...witnesses.map(([origin, dir, axis]) => [origin, dir, axis]),
+  [[3, 1.1, -.12], [-1, 0, 0], 0], [[3, 1.15, -.115], [-1, 0, 0], 0], [[3, 1.38, .10], [-1, 0, 0], 0], [[3, 1.3, 1], [-1, 0, 0], 0],
+  [[.4, .81, .3], [0, -1, 0], 1], [[-3, .9, .1], [1, 0, 0], 0], [[-3, 1.1, -.35], [1, 0, 0], 0]];
+function seatedSurfaces(meshes, reference, yawAngle = 0) {
+  const rotation = new THREE.Matrix4().makeRotationY(yawAngle);
+  const point = p => new THREE.Vector3(...p).sub(pivot).applyMatrix4(rotation).add(pivot);
+  const direction = d => new THREE.Vector3(...d).transformDirection(rotation);
+  for (const [origin, dir, axis] of SEATED_RAYS) {
+    const hit = ray(meshes, point(origin).toArray(), direction(dir).toArray()), want = ray(reference, origin, dir);
+    const neutral = hit?.point.clone().sub(pivot).applyMatrix4(rotation.clone().invert()).add(pivot);
+    if (!want) assert.equal(hit, undefined, `seated basket: air at ${origin}`);
+    else near(neutral?.getComponent(axis), want.point.getComponent(axis), .000015, 'the build is the complete-source basket under the seat');
+  }
+}
+
 function support(parts, structural) {
   const named = name => parts.filter(p => p.name === name);
   near(ray(named('floor'), [-.55, 1, .45], [0, -1, 0])?.point.y
@@ -143,6 +175,7 @@ addChieftain10XBasket({ addEquipment(bucket, geometry) {
   m.updateMatrixWorld(true); parts.push(m);
 } }, [0, 0, 0]);
 try {
+  surfaces(parts);
   for (const quality of ['high', 'low']) {
     const before = build(quality, true), after = build(quality);
     try {
@@ -153,16 +186,19 @@ try {
       assert.ok(after.names.includes('floor') && after.names.includes('rightObliqueSupport'));
       const yaw = after.tank.root.getObjectByName('rig_turret'), meshes = [];
       yaw.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking && !m.name.startsWith('procShadow_')) meshes.push(m); });
-      surfaces(meshes);
+      const reference = seatedSource(yaw);
+      try {
+      seatedSurfaces(meshes, reference.seated);
       support(parts, meshes.filter(m => m.name === 'turret'));
       const detail = meshes.find(m => m.name === 'turretDetail');
       const fixed = detail.matrixWorld.clone();
       after.tank.root.getObjectByName('rig_gun').rotation.x = -.2;
       after.tank.root.updateMatrixWorld(true);
       assert.ok(detail.matrixWorld.equals(fixed), 'basket never follows gun pitch');
-      yaw.rotation.y = .63; after.tank.root.updateMatrixWorld(true); surfaces(meshes, .63);
+      yaw.rotation.y = .63; after.tank.root.updateMatrixWorld(true); seatedSurfaces(meshes, reference.seated, .63);
       yaw.rotation.y = 0; after.tank.root.getObjectByName('rig_gun').rotation.x = 0;
-      after.tank.root.updateMatrixWorld(true); surfaces(meshes);
+      after.tank.root.updateMatrixWorld(true); seatedSurfaces(meshes, reference.seated);
+      } finally { reference.dispose(); }
       const resources = new Set(meshes.map(m => m.geometry)), disposed = new Set();
       for (const g of resources) g.addEventListener('dispose', () => disposed.add(g));
       after.tank.dispose(); after.tank = null;
