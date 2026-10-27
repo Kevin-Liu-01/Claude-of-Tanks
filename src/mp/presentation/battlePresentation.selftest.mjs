@@ -345,6 +345,49 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
+// The session's verdict (the newest snapshot's meta, or the room's match status) lands ahead of the presented kill. While
+// frames flow it waits for the `match_ended` event in tick order, or the grace, so the final-kill replay has its kill;
+// with no frames flowing it presents at once.
+{
+  const order = [];
+  const room = async () => {
+    const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, result: null };
+    state.killcam = { recordSimStep() {}, onShellHit(ev) { order.push(['hit', ev.shellId]); } };
+    const p = createBattlePresentation({
+      engineCtx: { scene, anisotropy: 1 }, game: state, verdictGraceMs: 500,
+      bus: { emit(type, payload) { if (type === 'battle:ended') order.push(['ended', payload.result]); } },
+      createTankVisual: fakeVisual, prepareVisualTextures: async () => {}, clock: () => nowMs,
+    });
+    await p.applyRoster(roster, context);
+    p.applyFrame(frame());
+    return { p, state };
+  };
+  const kill = { kind: 'shell_hit', payload: { shellId: 21, shooterId: 'foe', targetId: 'me', kind: 'pen', damage: 900, destroyed: true,
+    pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 120 } };
+  const eventContext = { own: false, feedbackPredicted: false };
+
+  const first = await room();
+  first.p.settleVerdict(VERDICT.BRAVO, 'elimination');
+  assert.equal(first.state.result, null, 'the session\'s verdict waits while frames flow');
+  first.p.applyEvent(kill, eventContext);
+  first.p.applyEvent({ kind: 'match_ended', payload: { result: 'bravo', reason: 'elimination' } }, eventContext);
+  assert.deepEqual(order, [['hit', 21], ['ended', 'defeat']], 'the kill reaches the killcam before the verdict presents');
+  first.p.dispose();
+
+  const second = await room();
+  second.p.settleVerdict(VERDICT.ALPHA, 'elimination');
+  nowMs += 600;
+  second.p.applyFrame(frame({ tick: 141 }));
+  assert.equal(second.state.result, 'victory', 'without its event, the session\'s verdict presents after the grace');
+  second.p.dispose();
+
+  const third = await room();
+  nowMs += 600;
+  third.p.settleVerdict(VERDICT.ALPHA, 'host_ended');
+  assert.equal(third.state.result, 'victory', 'with no frames flowing, the session\'s verdict presents at once');
+  third.p.dispose();
+}
+
 // Announced opponents are listed even before their first spotted snapshot.
 {
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null };
@@ -637,7 +680,7 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   p.dispose();
 }
 
-console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, the killcam step capture, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
+console.log('mp battle presentation: roster → hidden visuals, a deferred roster taken in later (built, or from its prebuild, the viewer first), frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, the killcam step capture, settled destroyed lists vs live prop falls, verdicts (the session verdict after its kill), disconnect, spectator perspective, prediction world, the authority\'s detonations as munition:blast pass');
 
 {
  const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};
