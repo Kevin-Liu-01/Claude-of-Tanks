@@ -961,7 +961,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     maxDamage: number,
     revives: boolean,
   ): void {
-    const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${result.isPlayer ? ' me' : ''}${result.dead ? ' dead' : ''}`, listRoot);
+    // (a watched battle's row of the tank the viewer rode last is no row of theirs: the spectator's mark and a neutral ring,
+    // never the player's gold plate, which read as "mine" in Watch, gauntlet r17)
+    const own = result.isPlayer ? watchedView ? ' ridden' : ' me' : '';
+    const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${own}${result.dead ? ' dead' : ''}`, listRoot);
     row.setAttribute('role', 'listitem');
     // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);

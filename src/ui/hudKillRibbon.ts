@@ -64,6 +64,12 @@ body:not(.cot-touch-layout):is([data-cot-width='tablet'],[data-cot-width='laptop
    the side: at 900x700 it read "Commander…", r5) */
 .cot-ribbon.tight .cause,.cot-ribbon.tight .sil{display:none}
 .cot-ribbon.tight .x{min-width:44px;padding:0 10px}
+/* (and its word at the label size, untracked, its gaps 8 px, the callsign a step smaller: the 14 px tracked word left a
+   16-character callsign 13 at 900x700, gauntlet r17) */
+.cot-ribbon.tight .top{gap:8px;padding-left:12px}
+.cot-ribbon.tight .w{font-size:var(--battle-fs-12);letter-spacing:0}
+.cot-ribbon.tight .cs{font-size:var(--battle-fs-15)}
+:lang(zh-CN) .cot-ribbon.tight .w{font-size:var(--battle-fs-13)}
 .cot-ribbon.on.cramped,.cot-ribbon.cramped{opacity:0;visibility:hidden}
 .cot-ribbon .stream{display:flex;gap:16px;padding:7px 14px;border-top:1px solid var(--line-1);font:500 var(--battle-fs-13)/1 var(--font-data);color:var(--accent)}
 .cot-ribbon .stream>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
