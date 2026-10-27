@@ -121,19 +121,12 @@ function make(
 // T-54 rows retired with the hidden fleet on 2026-09-23.)
 const SPECS: FleetTankSpec[] = [
   make('t62_1975', 'type59', 'Type 59', 'China',
-    // §5.304 REDESIGN (owner order verbatim 2026-08-17: "update our t62 obr
-    // 1975 10% wider and then redeisgn our type 59 to be based off of
-    // that"): the visual is profiles/china.ts buildType59 — the WZ-120
-    // (T-54A-family) dome + 100 mm kit on the WIDENED obr-1975 chassis.
-    // Stats stay the Type 59's; dims RE-DERIVE from the widened base
-    // (hull/width = the t62_1975 rows, height = the authored cupola crown,
-    // overall = the authored 100 mm gun-forward total). silhouette* rows
-    // are type59's OWN gate-measured envelope (they also override the
-    // donor-inherited t62_1975 print rows — the §5.259 leak class, which
-    // zeroed this id's dims row until this landing). The LastTriarius
-    // Type 69 print remains the registered measurement oracle; its gate
-    // deltas vs this owner-decreed redesign are documented divergence
-    // (docs/references/tanks/type59.md §5.304), never chased back.
+    // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
+    // the visual is profiles/type59.ts, the PLA Type 59 (licensed T-54A) rebuilt from the published dimensions and
+    // museum photographs (docs/references/tanks/type59.md §262). Stats stay the Type 59's; dims are the published
+    // 6.04 m hull, 9.00 m gun forward, 3.27 m width and 2.40 m height without the AA gun ([CZ-T54A], [GS-59spec]).
+    // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
+    // Type 69 print remains the registered measurement oracle.
     { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
       gun: {
         caliberMm: 100, reloadS: 7.6,
@@ -144,17 +137,15 @@ const SPECS: FleetTankSpec[] = [
               : { dmg: 490 }),
         })),
       },
-      dims: { hullLengthM: 5.67, overallLengthM: 8.14, widthM: 3.11, heightM: 2.23,
-        // gate-measured authored envelope (§5.304 run receipts: 12%-band
-        // body trace includes the base's drum/fender tail like t62_1975's;
-        // height p95 = the cupola crown band)
-        silhouetteHullLengthM: 6.09, silhouetteOverallLengthM: 8.14,
-        silhouetteHeightM: 2.24 },
+      dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.40,
+        // the drawn envelope: rear drums to the fender tips, drums to the muzzle, the cupola crown band
+        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 9.26,
+        silhouetteHeightM: 2.40 },
       // china-palette hooks (PLA green family, ztz85_iii grammar — values
       // distinct per §H.4 family separation)
       visual: { marking: 'number', number: '406', base: '#374836',
         weather: '#49573f', patches: ['#2a3629', '#5c6349', '#6f684e'],
-        camoScale: 0.52 } }, TRIARIUS_T69),
+        camoScale: 0.52, trackWidthM: 0.58 } }, TRIARIUS_T69),
   // -- T-80 turbine family ---------------------------------------------------
   make('t80uk', 't80', 'T-80', 'USSR/Russia',
     { hp: 1780, enginePowerHp: 1000, weightTons: 42, gun: { reloadS: 7.8 },

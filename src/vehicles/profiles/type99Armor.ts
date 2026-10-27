@@ -353,26 +353,36 @@ function type96BFrameArmor(): ArmorEnvelope {
   };
 }
 
-// ZTZ-99 Longwei, release 233 (profiles/longwei.ts): the terraced front, slab side modules and long bustle. Plate
-// strengths carry the retired turret's values (cheek 700 / KE 600 / CE 850 behind FY-4, sides 300, bustle 55, roof 45);
-// the hull keeps its body plates, with the skirt zones following the new brick courses, carrier and slat cage.
-const LONGWEI_THROAT_X = 0.36;
-const longweiFrontZ = (ax: number, y: number): number => 1.22 - (ax - LONGWEI_THROAT_X) * 0.295 - (0.03 / 0.36) * (y - 0.02);
-/** The upper tier's face (0.26 m behind the lower tier's top edge, leaning 0.06 m back over its height). */
-const longweiUpperZ = (ax: number, top: boolean): number => longweiFrontZ(ax, 0.38) - 0.26 - (top ? 0.06 * (0.655 - 0.44) / 0.215 : 0);
+// ZTZ-99 Longwei, release 262 (profiles/longwei.ts): the arrowhead cheeks, slab side modules, bins and bustle of the
+// 99A-proportioned turret. Plate strengths carry release 233's values (cheek 700 / KE 600 / CE 850 behind FY-4, sides
+// 300, bustle 55, roof 45, mantlet 380); every quad is the drawn surface. The cheek geometry (longwei.ts): the front line
+// runs from (|x| 0.30, z 1.45) to (1.42, 0.72), the face from y 0.05 up to 0.54 leaning back 0.08 m, the top rising to
+// the roof line (0.76) 0.40 m behind the front edge.
+const LONGWEI_THROAT_X = 0.30, LONGWEI_CHEEK_OUTER_X = 1.42;
+const LONGWEI_CHEEK_SWEEP = (1.45 - 0.72) / (1.42 - 0.30);
+const longweiCheekZ = (ax: number): number => 1.45 - (ax - LONGWEI_THROAT_X) * LONGWEI_CHEEK_SWEEP;
+/** A point on the cheek face at |x| ax, height y in 0.05..0.54. */
+const longweiCheekFace = (side: number, ax: number, y: number): MutableVec3 =>
+  [side * ax, y, longweiCheekZ(ax) - 0.08 * (y - 0.05) / (0.54 - 0.05)];
 
 function longweiTurretPlates(): ArmorPlate[] {
-  // the brick field's outer face: the lower tier's plane moved 64 mm out along its normal
-  const brickFace = (side: number, ax: number, y: number): MutableVec3 => {
-    const n = [0.295, 0.03 / 0.36, 1], len = Math.hypot(n[0], n[1], n[2]), out = 0.064 / len;
-    return [side * ax + side * n[0] * out, y + n[1] * out, longweiFrontZ(ax, y) + n[2] * out];
+  // the cassette field's outer face: the cheek face moved out 59 mm along its normal
+  const faceNormal = (side: number): MutableVec3 => {
+    const a = longweiCheekFace(side, LONGWEI_THROAT_X, 0.05), b = longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.05);
+    const c = longweiCheekFace(side, LONGWEI_THROAT_X, 0.54);
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    if (n[2] < 0) n = n.map((k) => -k);
+    const len = Math.hypot(n[0], n[1], n[2]);
+    return [n[0] / len, n[1] / len, n[2] / len];
   };
-  const face = (side: number, ax: number, y: number): MutableVec3 => [side * ax, y, longweiFrontZ(ax, y)];
-  const upper = (side: number, ax: number, top: boolean): MutableVec3 => (top
-    ? [side * ax, 0.655, longweiUpperZ(ax, true)]
-    : [side * ax, 0.38, longweiFrontZ(ax, 0.38)]);
-  // the 45-degree plan bevels at the tiers' outer corners (lower from 1.40 to 1.58, upper from 1.30 to 1.48)
-  const corner = (side: number, ax: number, y: number, from: number, z: number): MutableVec3 => [side * ax, y, z - (ax - from)];
+  const out = (side: number, p: MutableVec3, d: number): MutableVec3 => {
+    const n = faceNormal(side);
+    return [p[0] + n[0] * d, p[1] + n[1] * d, p[2] + n[2] * d];
+  };
+  const top = (side: number, ax: number, rear: boolean): MutableVec3 => (rear
+    ? [side * ax, 0.76, longweiCheekZ(ax) - 0.40]
+    : [side * ax, 0.54, longweiCheekZ(ax) - 0.08]);
   const plates: ArmorPlate[] = [];
   for (const side of [1, -1]) {
     const tag = side > 0 ? 'R' : 'L';
@@ -380,39 +390,39 @@ function longweiTurretPlates(): ArmorPlate[] {
       side > 0 ? [a, b, c, d] : [b, a, d, c]);
     plates.push(
       armorPlate(`turret_era_${tag}`, 15, quad(
-        brickFace(side, 0.39, 0.09), brickFace(side, 1.37, 0.09),
-        brickFace(side, 1.37, 0.35), brickFace(side, 0.39, 0.35)), { kind: 'era', era: FY4 }),
+        out(side, longweiCheekFace(side, 0.375, 0.06), 0.059), out(side, longweiCheekFace(side, 1.305, 0.06), 0.059),
+        out(side, longweiCheekFace(side, 1.305, 0.49), 0.059), out(side, longweiCheekFace(side, 0.375, 0.49), 0.059)),
+      { kind: 'era', era: FY4 }),
       armorPlate(`turret_cheek_${tag}`, 700, quad(
-        face(side, LONGWEI_THROAT_X, 0.02), face(side, 1.40, 0.0711),
-        face(side, 1.40, 0.38), face(side, LONGWEI_THROAT_X, 0.38)), { keMm: 600, ceMm: 850 }),
-      armorPlate(`turret_cheek_corner_${tag}`, 700, quad(
-        corner(side, 1.40, 0.0711, 1.40, longweiFrontZ(1.40, 0.0711)), corner(side, 1.58, 0.08, 1.40, longweiFrontZ(1.58, 0.08)),
-        corner(side, 1.58, 0.38, 1.40, longweiFrontZ(1.58, 0.38)), corner(side, 1.40, 0.38, 1.40, longweiFrontZ(1.40, 0.38))),
-        { keMm: 600, ceMm: 850 }),
+        longweiCheekFace(side, LONGWEI_THROAT_X, 0.05), longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.05),
+        longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.54), longweiCheekFace(side, LONGWEI_THROAT_X, 0.54)),
+      { keMm: 600, ceMm: 850 }),
       armorPlate(`turret_cheek_upper_${tag}`, 700, quad(
-        upper(side, 0.365, false), upper(side, 1.30, false),
-        upper(side, 1.30, true), upper(side, 0.365, true)), { keMm: 600, ceMm: 850 }),
-      armorPlate(`turret_cheek_upper_corner_${tag}`, 700, quad(
-        corner(side, 1.30, 0.44, 1.30, longweiUpperZ(1.30, false)), corner(side, 1.48, 0.44, 1.30, longweiUpperZ(1.48, false)),
-        corner(side, 1.48, 0.655, 1.30, longweiUpperZ(1.48, true)), corner(side, 1.30, 0.655, 1.30, longweiUpperZ(1.30, true))),
-        { keMm: 600, ceMm: 850 }),
+        top(side, LONGWEI_THROAT_X, false), top(side, LONGWEI_CHEEK_OUTER_X, false),
+        top(side, LONGWEI_CHEEK_OUTER_X, true), top(side, LONGWEI_THROAT_X, true)),
+      { keMm: 600, ceMm: 850 }),
     );
   }
   return [
     ...plates,
-    frontPlate('mantlet', 380, -0.31, 0.31, [0.05, 1.20], [0.57, 1.20],
+    // the mantlet's face (gun frame 0.52..0.60 at the trunnion's z 0.74) and the throat brow over it
+    frontPlate('mantlet', 380, -0.25, 0.25, [0.09, 1.30], [0.54, 1.30],
       { keMm: 380, ceMm: 450, gunFollow: true }),
+    frontPlate('turret_brow', 300, -0.32, 0.32, [0.54, 1.11], [0.78, 1.11], { keMm: 300, ceMm: 420 }),
+    // the side modules: the forward zone over the crew, the middle zone over the ring's rear quarter
     ...sidePlatePair('turret_side_forward', 300,
-      [0.52, 0.04, 0.645, 1.68], [-1.08, 0.04, 0.645, 1.68], { keMm: 300, ceMm: 420 }),
+      [0.50, 0.04, 0.71, 1.57], [-0.30, 0.04, 0.71, 1.57], { keMm: 300, ceMm: 420 }),
+    ...sidePlatePair('turret_side_middle', 300,
+      [-0.30, 0.04, 0.71, 1.57], [-1.05, 0.04, 0.71, 1.57], { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_side_rear', 300,
-      [-1.08, 0.04, 0.66, 1.40], [-1.75, 0.36, 0.66, 1.30], { keMm: 300, ceMm: 420 }),
+      [-1.05, 0.04, 0.70, 1.30], [-1.75, 0.36, 0.70, 1.24], { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_bustle_side', 55,
-      [-1.75, 0.36, 0.68, 1.30], [-2.80, 0.38, 0.68, 1.22], { keMm: 55, ceMm: 55 }),
+      [-1.75, 0.36, 0.70, 1.24], [-2.30, 0.38, 0.70, 1.10], { keMm: 55, ceMm: 55 }),
     ...sidePlatePair('turret_stowage_screen', 10,
-      [-1.16, 0.36, 0.69, 1.56], [-2.62, 0.36, 0.69, 1.56], { kind: 'spaced' }),
-    rearPlate('turret_rear', 55, 1.16, -2.86, 0.40, 0.70),
-    deckPlate('turret_roof_forward', 45, [0.86, 0.712, 1.20], [-1.75, 0.70, 1.14]),
-    deckPlate('turret_roof_bustle', 45, [-1.75, 0.70, 1.14], [-2.86, 0.70, 1.00]),
+      [-1.07, 0.36, 0.73, 1.54], [-2.22, 0.36, 0.73, 1.54], { kind: 'spaced' }),
+    rearPlate('turret_rear', 55, 1.06, -2.30, 0.38, 0.75),
+    deckPlate('turret_roof_forward', 45, [0.66, 0.78, 1.12], [-1.75, 0.78, 1.08]),
+    deckPlate('turret_roof_bustle', 45, [-1.75, 0.78, 1.08], [-2.30, 0.75, 0.96]),
   ];
 }
 
@@ -421,15 +431,15 @@ function longweiArmor(): ArmorEnvelope {
   const hullPlates = frame.hullPlates
     .filter((plate) => !/^skirt_(era|front|rear)_[LR]$/.test(plate.name))
     .concat(
+      // release 262: one FY-5 course on the front three skirt panels, the segmented skirt the full length
       ...sidePlatePair('skirt_era', 15,
-        [2.80, 0.565, 1.215, 1.862], [-1.47, 0.565, 1.215, 1.862],
+        [2.80, 0.86, 1.17, 1.858], [-0.16, 0.86, 1.17, 1.858],
         { kind: 'era', era: FY4 }),
       ...sidePlatePair('skirt_front', 8,
-        [3.30, 0.52, 1.47, 1.836], [-1.62, 0.52, 1.47, 1.836],
+        [3.30, 0.62, 1.47, 1.836], [-0.16, 0.62, 1.47, 1.836],
         { kind: 'spaced' }),
-      // slat cage over the engine bay
       ...sidePlatePair('skirt_rear', 8,
-        [-1.66, 0.56, 1.47, 1.862], [-3.42, 0.56, 1.47, 1.862],
+        [-0.16, 0.62, 1.47, 1.836], [-3.42, 0.62, 1.47, 1.836],
         { kind: 'spaced' }),
     );
   return {
@@ -438,13 +448,14 @@ function longweiArmor(): ArmorEnvelope {
     turretPlates: longweiTurretPlates(),
     modules: [
       ...frame.modules.filter((box) => box.module !== 'optics' && box.module !== 'radio'),
-      moduleBox('radio', [-0.90, 0.40, -2.70], [-0.28, 0.68, -1.80], true),
-      moduleBox('optics', [-0.95, 0.70, -0.15], [1.02, 1.62, 0.45], true),
+      moduleBox('radio', [-0.90, 0.40, -2.25], [-0.28, 0.72, -1.80], true),
+      moduleBox('optics', [-1.00, 0.76, -0.15], [0.92, 1.40, 0.48], true),
     ],
+    // the 99A's crew layout: the gunner on the vehicle's left (+X), the commander on its right
     crew: [
       ...frame.crew.filter((box) => !box.turretLocal),
-      crewBox('gunner', [-0.88, 0.10, -0.95], [-0.14, 0.82, 0.30], true),
-      crewBox('commander', [0.14, 0.12, -0.95], [0.92, 0.88, 0.25], true),
+      crewBox('gunner', [0.14, 0.10, -0.95], [0.88, 0.82, 0.30], true),
+      crewBox('commander', [-0.92, 0.12, -1.05], [-0.14, 0.88, 0.15], true),
     ],
   };
 }

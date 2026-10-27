@@ -1,4 +1,62 @@
-# Type 59 — reference packet (NEW BUILD, §5.45 no-builder queue → russia lane 2026-08-08)
+# Type 59 — reference packet
+
+## §262 historical rebuild (release 262, owner 2026-10-27) — CURRENT
+
+Owner, verbatim: "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,
+turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well".
+Builder: `src/vehicles/profiles/type59.ts` (new geometry; the §5.304 r3 refit on the widened obr-1975 chassis, its 0.855
+rig scale, skirt and turret cassettes, glacis applique and oversized searchlight are retired). Target configuration: the
+PLA's Type 59 (WZ-120, licensed T-54A) of the 1960s-70s with the later-model IR searchlight.
+
+### Sources
+| Key | Source | Used for |
+|---|---|---|
+| CZ-T54A | armedconflicts.com/T-54A-t37189 (Tank-21-1, *T-54A Technical Description*, ČSĽA 1959) | hull, width, height 2.40 w/o AA MG, clearance, track, gauge, contact |
+| GS-59spec | globalsecurity.org/military/world/china/type-59-specs.htm (Chinese spec table) | bore-axis height 1.738 m, gun range −5/+18, same hull figures |
+| WP-59, WP-T55, RU-T54 | Wikipedia (en: Type 59, T-54/T-55; ru: Т-54) | layout, gun, fender tanks, exhaust side, glacis angles 60°/55° |
+| FAS-T54 | man.fas.org/dod-101/sys/land/row/t54tank.htm | wheel gap, ring over wheel 3, rear drums, searchlight right of the gun |
+| Photo A | commons: `T-59_MBT_pic-020.JPG` (Alf van Beem, CC0), near-orthographic right side | wheel stations, turret length/height, hull roof, fender line (measured at the 6.04 m hull scale) |
+| Photo B | commons: `Type_59_tank_in_Military_Museum_of_the_Chinese_People's_Revolution_20180219.jpg` (Tyg728, CC BY-SA 4.0) | front three-quarter: canvas mantlet, splash board, headlights |
+| Photo C | commons: `Type_59_tank_-_above.jpg` (Max Smith, PD) | turret plan, hatch layout (commander left, loader + DShK right, vent ahead of the loader) |
+| Photo D | commons: `T-59_MBT_pic-015.JPG` (Alf van Beem, CC0) | rear drums, rear plate |
+| Photo E | commons: `Type_1959_Medium_Tank.jpg` (1959 official, PD) | the muzzle evacuator on the earliest Type 59 |
+
+Photogrammetry (Photo A at the 6.04 m hull scale, 121 px/m; the Type 69 print agrees on pitch within 2%): road wheels
+0.78 m across at a 0.79 m pitch, the first gap 1.05 m, hub span 3.42 m (ground contact 3.84 m extends ~0.21 m past each
+end wheel); sprocket hub 0.74 m behind wheel 5, 0.69 m up; idler hub 0.72 m ahead of wheel 1, 0.65 m up; turret casting
+2.56 m long, its centre 0.40 m ahead of wheel 3; hull roof 1.45 m; dome crown 2.16-2.19 m; fender top 1.12 m. A
+widely quoted 830 mm wheel diameter does not fit the 6.04 m hull in any photo (wheels nearly touch at D/p 0.98-0.99), so
+the photo scale governs. Turret width ≈2.15 m (top view, perspective-corrected; floor: 1.80 m ring + 160 mm walls).
+
+### Gap table (before = r3 refit on main 260; after = release 262)
+| Item | Source | Before | After |
+|---|---|---|---|
+| Hull length (body, nose to rear plate) | 6.04 m | ~5.67 m body (6.08 incl. drums) at 0.855 scale | 5.90 m nose to rear plate + 0.12 fender tips = 6.02 m; 6.51 m incl. rear drums |
+| Width over fenders | 3.27 m | 3.26 m (with 14 skirt panels) | 3.27 m (fenders ±1.635), no skirts |
+| Height to turret roof / cupola, w/o AA MG | 2.40 m | 2.615 m cupola crown, roof ~1.27 | dome crown 2.19 m, cupola 2.40 m, hull roof 1.45 m |
+| Track width / gauge | 0.58 m / 2.64 m | 0.489 m / 2.48 m | 0.58 m / 2.64 m |
+| Road wheels | 5, ~0.78 m, gap 1-2 | 5 × 0.72 m, gaps 0.99/0.84/0.87/0.87 | 5 × 0.78 m, gaps 1.05/0.79/0.79/0.79 |
+| Return rollers | none | none | none |
+| Turret width × length × height over roof | ~2.15 × 2.56 × 0.74-0.80 m, cast egg dome | 2.76 × 2.96 × ~0.89 m, widened mushroom + cassettes | 2.16 × 2.56 × 0.74 m superellipse egg dome |
+| Turret ring position | over road wheel 3 (+0.31 m) | z +0.578 | z 0.00 (wheel 3 at −0.36) |
+| Mantlet | narrow slot with pleated canvas cover ~0.43 m wide | 0.62 × 0.50 canvas boot on a cast collar | 0.46 × 0.52 rounded canvas bag in the slot, root 0.40 m inside the casting |
+| Gun | 100 mm, L/53.5, bore axis 1.738 m, evacuator flush with the muzzle (0.87 m) | evacuator at the muzzle third (3.34..3.86), axis 1.58 m | evacuator flush with the muzzle, 0.87 m, axis 1.738 m, muzzle 2.87 m past the nose |
+| Commander's cupola | vehicle left | x −0.605 (vehicle RIGHT: mirrored) | +X (vehicle left), TPK-1 housing, OU-3 IR spot |
+| Loader's hatch + Type 54 12.7 mm | vehicle right | +0.55 (vehicle LEFT: mirrored) | −X (vehicle right), ring mount, working station |
+| IR searchlight | later models, right of / above the gun, gun-linked | 0.41 m drum on the vehicle's LEFT | 0.31 m lamp on the gun's right (−X), gun-linked arm |
+| Glacis | 60° upper (from vertical), 55° lower, transverse splash board | applique ×3, IR pod | 60°/55° plates, splash board, headlights right, tow hooks, bow MG port right |
+| Engine deck / exhaust | louvres; exhaust on the left fender | snorkel ridge; muffler on the vehicle's RIGHT | two louvre beds + rear grille; exhaust outlet on the left fender (+X) |
+| Fender stowage | right: 3 fuel + 1 oil tank; left: boxes, tools | 9-bin rails both sides | right (−X): 4 flat tanks + pipe; left (+X): 4 lidded boxes, spare links |
+| Rear | two 200 L drums on brackets, BDSh smoke canisters | drums (T-62 chassis) | 2 transverse drums on raked brackets, 2 BDSh canisters, tail lamps, tow hooks |
+
+Retained by owner ruling, not changed here: the national road-wheel face (2026-09-22 standard: Chinese hulls draw the
+ZTZ-100 construction; a period T-54 "starfish" wheel needs an owner exception), the fleet decor (smoke banks that
+carry the smoke consumable, cargo). Gameplay stats unchanged; spec dims move to the published 6.04 / 9.00 / 3.27 / 2.40.
+The spec's inherited T-62 gun range (−9/+20) is wider than the Type 59's −5/+18: an owner decision, reported.
+
+---
+
+## Earlier history: the §5.45 new build (russia lane 2026-08-08), superseded by §262
 
 Exact vehicle: **Type 59 (WZ-120)** — the licensed T-54A: T-54A silhouette
 with the hemispherical dome turret, 100 mm Type 59 gun (D-10T2S line) with
