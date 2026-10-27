@@ -8,7 +8,7 @@ import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
 
 const LINE = ['udes03', 'strv103a', 'strv103b'];
-const TIERS = [8, 9, 10];
+const TIERS = [1, 2, 2]; // 258: matchmaking reads the shown tier (the 257 capability re-tier)
 const MIN_HP = [1400, 1800, 2400];
 const MIN_ALPHA = [400, 420, 440];
 const MIN_PEN = [300, 320, 350];
@@ -18,7 +18,7 @@ const MAX_AIM_TIME_S = [1.4, 1.25, 1.05];
 
 const specs = LINE.map(getSpec);
 assert.deepEqual(LINE.map(tankTier), TIERS,
-  'Swedish siege TDs progress through tiers VIII, IX and X');
+  'Swedish siege TDs match at their shown tiers I, II and II');
 assert.deepEqual(NATIVE_FAMILY_ORDER.sweden.slice(1, 4), LINE,
   'garage progression keeps UDES 03 directly ahead of both S-Tanks');
 

@@ -2238,7 +2238,9 @@ export function createGarageDressing(
       // every hook carries a load that reads as one (2026-10-10, wave 377: "the crane's turret-lift ring hangs empty",
       // "the crane chains above the tank hang empty"): the turret-basket rings gave way to a pack and a final drive
       ['east_rear', 13.2, 9.2, 'powerpack'],
-      ['west_front', -12.0, -9.2, 'final-drive'],
+      // (out along its bridge: at 12 m its load hung 2 m from the Garage camera once it looked down on the hero, owner
+      // 10-26, and filled the frame's top right)
+      ['west_front', -17.0, -9.2, 'final-drive'],
       ['west_center', -14.4, 0, 'final-drive'],
       ['west_rear', -13.2, 9.2, 'powerpack'],
     ] as const) {

@@ -14,6 +14,22 @@ const BOT_CALLSIGNS = [
   'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
 ] as const;
 
+/**
+ * The pool past the first 24, probed only once those are taken, so a field of 24 bots or fewer names them as before
+ * (Main 2026-10-26: a 21 v 21 field's 41 bots, and a room's fills to 32 a side, ran the 24 out into repeated Bot_N names
+ * on the load card and the HUD). 72 in all: a 32 v 32 room's 63 bots with room to spare.
+ */
+const MORE_BOT_CALLSIGNS = [
+  'TurretTina', 'MantletMarco', 'SchurzenSam', 'GunneryGus', 'TrackPin_Tom', 'BoreSighter',
+  'HEATwave', 'APFSDarla', 'Kugelblitz_K', 'SnorkelSven', 'CromwellCarl', 'WaffleTrack',
+  'IdlerIvan', 'SprocketSue', 'BrewUpBert', 'Smokescreen_S', 'TatraTibor', 'PancerzPiotr',
+  'SisuSeppo', 'StrvStina', 'MotiMerkava', 'KwonK2', 'HetzerHans', 'BersaglieriBea',
+  'LeclercLou', 'RatelRudi', 'RaijinRyo', 'YanType59', 'OplotOlek', 'BorisBMP',
+  'WieselWilli', 'PumaPaula', 'CarinaCV90', 'AldoAriete', 'TankerTam', 'MudGuardMo',
+  'Crabwalk_C', 'HatchOpenHal', 'PintlePat', 'GlacisGreta', 'ReactiveRex', 'SpallSy',
+  'RollbackRoy', 'DieselDora', 'MuzzleBrakeMax', 'Rangefinder_R', 'LaserLaszlo', 'CupolaKai',
+] as const;
+
 export const PLAYER_CALLSIGN = 'Claude';
 
 /** FNV-1a over the string's UTF-16 units. */
@@ -24,14 +40,20 @@ export function hashCallsign(s: string): number {
 }
 
 /** A bot's callsign: hashed off its entity id and its vehicle (`specId`: the tank's spec id, null without a spec), the
- *  next free one where it meets one already `used`, a numbered fallback when the pool is spent. */
+ *  next free one where it meets one already `used`: the first 24, then the rest of the pool, then a numbered name, the
+ *  first number free (a field past all 72). */
 export function botCallsign(id: string, specId: string | null | undefined, used: ReadonlySet<string>): string {
-  const start = hashCallsign(String(id) + (specId ? tankSeedId(specId) : '')) % BOT_CALLSIGNS.length; // schema-1 spelling
-  for (let n = 0; n < BOT_CALLSIGNS.length; n++) {
-    const candidate = BOT_CALLSIGNS[(start + n) % BOT_CALLSIGNS.length];
-    if (!used.has(candidate)) return candidate;
+  const seed = hashCallsign(String(id) + (specId ? tankSeedId(specId) : '')); // schema-1 spelling
+  for (const pool of [BOT_CALLSIGNS, MORE_BOT_CALLSIGNS]) {
+    const start = seed % pool.length;
+    for (let n = 0; n < pool.length; n++) {
+      const candidate = pool[(start + n) % pool.length];
+      if (!used.has(candidate)) return candidate;
+    }
   }
-  return `Bot_${(hashCallsign(String(id)) % 90) + 10}`;
+  const first = (hashCallsign(String(id)) % 90) + 10;
+  for (let n = 0; n <= used.size; n++) if (!used.has(`Bot_${first + n}`)) return `Bot_${first + n}`;
+  return `Bot_${first + used.size + 1}`;
 }
 
 export interface CallsignTank {

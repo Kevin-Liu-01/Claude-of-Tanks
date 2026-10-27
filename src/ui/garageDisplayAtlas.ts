@@ -35,6 +35,12 @@ export function garageDisplayRect(name: string): KitAtlasRect {
   throw new Error(`garage display atlas has no rect '${name}'`);
 }
 
+/** A rect's width over its height in atlas pixels: a face that shows it whole keeps its proportions. */
+export function garageDisplayRectAspect(name: string): number {
+  const { px } = garageDisplayRect(name) as KitAtlasRect & { readonly px: readonly number[] };
+  return px[2] / px[3];
+}
+
 /**
  * The atlas picture for a hall sign's legend (garage r9 K3: "less text, more pictograms, no sentences"): bay labels
  * become their numerals, hazards their ISO-7010-style pictograms, a bay's service label the vehicle's readout.

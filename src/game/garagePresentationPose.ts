@@ -6,11 +6,14 @@ export const GARAGE_PRESENTATION_POSE = Object.freeze({
   // sits to world +X: the glacis faces the viewer while the bow and gun extend
   // toward screen-left in the canonical Verdant composition.
   heroHeadingRad: 0,
-  cameraOffsetM: Object.freeze([7.4, 2.75, 8] as const),
+  // the camera looks down on the hero, about 14 degrees, so its roof, hatches and engine deck read and it sits on the
+  // turntable (owner 10-26: "make the camera look down on the tanks more instead of looking straight on"; it stood at 6).
+  // 18 degrees or more stood the camera 7-8.5 m up, among the Verdant hall's crane chains and bridges.
+  cameraOffsetM: Object.freeze([7.4, 4.32, 8] as const),
   cameraLookHeightM: 1.6,
   cameraFovDeg: 42,
   cameraAzimuthRad: Math.PI / 4,
-  cameraPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8)),
+  cameraPitchRad: Math.atan2(4.32 - 1.6, Math.hypot(7.4, 8)),
 });
 
 export const GARAGE_HERO_HEADING_RAD = GARAGE_PRESENTATION_POSE.heroHeadingRad;

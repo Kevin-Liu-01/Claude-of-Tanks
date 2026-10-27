@@ -264,11 +264,17 @@ for (const module of panelModulesShowingFleet) {
   // (245) the Field Manual's data-built chapters (src/docs/chapters) run in Node only, at prerender (tools/docs-prerender.mjs):
   // no page imports them, and their words come from both catalogs whole
   const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/') && !file.startsWith('src/docs/chapters/'));
-  assert.deepEqual(importers, module === PANEL_ENTRY || module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/garage.ts'] : [],
+  // (the stand-alone hero tiles read a vehicle's class for its glyph alone, aria-hidden: no word of the slice; checked below)
+  assert.deepEqual(importers, module === PANEL_ENTRY ? ['src/ui/garage.ts'] : module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/garage.ts', 'src/ui/heroCard.ts'] : [],
     `${module} shows the fleet slice; its importers outside the panel load it without the slice: ${importers.join(', ')}`);
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.ok(!gameClosure.has('src/ui/fleetStrings.ts'), 'the game loads the fleet slice only with the panel');
+{
+  const heroCard = readFileSync(resolve(ROOT, 'src/ui/heroCard.ts'), 'utf8');
+  const reads = [...heroCard.matchAll(/\bfacets\.(\w+)/g)].map((match) => match[1]);
+  assert.deepEqual([...new Set(reads)], ['vehicleClassForId'], 'the hero tiles read only a vehicle\'s class from the facet tables (its glyph, no words)');
+}
 assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
   /facetPanel \?\?= Promise\.all\(\[import\('\.\/garageFacetPanel\.ts'\), import\('\.\/garageFacetPanel\.css'\),\s*import\('\.\/fleetStrings\.ts'\)\.then\(\(strings\) => strings\.ensureFleetStrings\(\)\)\]\)\s*\.then\(\(\[\{ mountGarageFacetPanel \}\]\) => mountGarageFacetPanel\(/,
   'the Filter panel mounts once its strings are resident');

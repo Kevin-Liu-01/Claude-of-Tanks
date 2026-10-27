@@ -28,7 +28,7 @@ for (const functionName of [
 
 const expected = Object.freeze({
   cv90: Object.freeze({
-    name: 'CV90', tier: 9, caliber: 40, weight: 37,
+    name: 'CV90', tier: 4, caliber: 40, weight: 37, // 258: the shown tier
     dims: Object.freeze({ hullLengthM: 5.904, overallLengthM: 6.57, widthM: 3.258, heightM: 3.06 }),
     hullReceiptKey: 'cv90IndependentHullReceipt',
     turretReceiptKey: 'cv90IndependentTurretReceipt',
@@ -44,7 +44,7 @@ const expected = Object.freeze({
     rearTrackDepartureZ: -2.45,
   }),
   cv90_mk4_concept: Object.freeze({
-    name: 'CV90 Mk 4 Concept', tier: 10, caliber: 50, weight: 40,
+    name: 'CV90 Mk 4 Concept', tier: 7, caliber: 50, weight: 40, // 258: the shown tier
     dims: Object.freeze({ hullLengthM: 6.282, overallLengthM: 7.596, widthM: 3.636, heightM: 3.528 }),
     hullReceiptKey: 'cv90MkivIndependentHullReceipt',
     turretReceiptKey: 'cv90MkivIndependentTurretReceipt',

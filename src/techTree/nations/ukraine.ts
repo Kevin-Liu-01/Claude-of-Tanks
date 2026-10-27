@@ -22,7 +22,7 @@ export const UKRAINE_TREE: NationTree = Object.freeze({
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // T-84 and Oplot
-    node({ id: 't84', tier: 5, line: 'kharkiv', lane: 1, parents: ['t64bv_donbas'], slot: 'line' }),
+    node({ id: 't84', tier: 6, line: 'kharkiv', lane: 0, parents: ['t64bv_donbas'], slot: 'line' }),
     node({ id: 't80u_kursk', tier: 6, line: 'kharkiv', lane: 1, parents: ['t84'], slot: 'line' }),
     node({ id: 't84bm_oplot_m', tier: 7, line: 'kharkiv', lane: 0, parents: ['t80u_kursk'], slot: 'line' }),
     node({
