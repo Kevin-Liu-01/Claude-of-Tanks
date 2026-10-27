@@ -9,7 +9,10 @@ const arg = (name,fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','.qa-dev/battle-load-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+// (--channel=chromium: Playwright's bundled headless shell, where the installed Chrome's channel hangs; --executable=<path>: a
+// headless shell already on disk when the Playwright found wants another build)
+const channel = arg('channel','chrome'), executablePath = arg('executable','');
+const browser = await chromium.launch({headless:true,...(channel==='chromium'?{}:{channel}),...(executablePath?{executablePath}:{}),args:['--disable-gpu']});
 const reports=[];
 const errors=[];
 function measure() {
@@ -119,6 +122,32 @@ try {
       if(filling&&filling.seats===s) assert.deepEqual(boxes,filling.boxes,`${name} ${allies}v${enemies} of ${s}: seats fill in place`);
       filling={seats:s,boxes};
     }
+    // A sortie's planned teams (rosterState.planBattleSeats; the seam with soloBattleEntryRuntime): the press's cover names
+    // every seat from its first frame, and the loading owner's show and fill keep its boxes. A 4 v 12 plan and a plan that
+    // names one side only seat each named side as named, none open, and never leave a side empty.
+    const boxes=m=>m.teams.map(team=>[team.x,team.y,team.width,team.height,team.open,team.rows.map(row=>[row.x,row.y,row.width,row.height])]);
+    for (const [allies,enemies,seats] of [[7,7,{allies:7,enemies:7}],[14,14,{allies:14,enemies:14}],[4,12,null],[4,12,{allies:4,enemies:12}],[7,0,{allies:7,enemies:7}],[0,7,null]]) {
+      const at=`${name} planned ${allies}v${enemies}${seats?` of ${seats.allies}v${seats.enemies}`:''}`;
+      await page.evaluate(([a,e,s])=>window.__LOAD_LAYOUT.pending(a,e,s),[allies,enemies,seats]);
+      await settle(page);
+      const m=await page.evaluate(measure);
+      for (const [i,count] of [allies,enemies].entries()) {
+        const team=m.teams[i];
+        assert.ok(team.rows.length>0,`${at} team ${i}: no side is empty`);
+        if(count) {
+          assert.equal(team.rows.length,count,`${at} team ${i}: the planned rows`);
+          assert.equal(team.open,0,`${at} team ${i}: a named side opens no seat`);
+        }
+        assertWholeRows(team,m.area,`${at} team ${i}`);
+      }
+      assert.equal(m.teams[0].cards,m.teams[1].cards,`${at}: both sides in one form`);
+      if(allies&&enemies) {
+        await page.evaluate(([a,e])=>window.__LOAD_LAYOUT.planned(a,e),[allies,enemies]);
+        await settle(page);
+        assert.deepEqual(boxes(await page.evaluate(measure)),boxes(m),`${at}: the loading owner's show and fill keep the cover's rows`);
+      }
+      reports.push({name,planned:[allies,enemies],seats,...m});
+    }
     await page.evaluate(()=>window.__LOAD_LAYOUT.roster(7,7));
     // (the cards decorated, their layers still held: each keeps its silhouette, never an empty plate)
     if((await page.evaluate(measure)).teams[0].cards) {
@@ -138,5 +167,5 @@ try {
   }
   assert.deepEqual(errors,[],'browser errors');
   await writeFile(resolve(out,'report.json'),JSON.stringify(reports,null,2));
-  console.log(`PASS: ${reports.length} roster layouts; constant row heights, independent centering, bounds, late silhouettes and countdown stability, no empty side, one form for both sides, whole rows at full height where they fit, no bare card while its layers load and seats filling in place.`);
+  console.log(`PASS: ${reports.length} roster layouts; constant row heights, independent centering, bounds, late silhouettes and countdown stability, no empty side, one form for both sides, whole rows at full height where they fit, no bare card while its layers load, seats filling in place, and a planned roster named from the cover's first frame (4 v 12 and one side named alike).`);
 } finally { await browser.close(); }

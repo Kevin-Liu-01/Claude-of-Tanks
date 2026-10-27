@@ -43,7 +43,12 @@ function syncFile(relativePath, expected) {
 // stack to its right, sized in the mark's width (--boot-mark) by BRAND_BOOT_STACK; the layers' rules in the boot sheet.
 const [, markTop, markWidth] = BRAND_TANK_VIEWBOX.split(' ').map(Number);
 const share = (units) => (units / markWidth).toFixed(5);
-const stackCss = `.cot-boot-mark{gap:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.gap)})}\n`
+// the lockup's whole width in mark widths (the tank, the gap, the stack at its height by its viewBox): the card's load
+// column takes it, so the stage line, both bars and the tip share the lockup's two edges
+const [stackW, stackH] = brandWordmarkStack().match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+const lockupK = (1 + (BRAND_BOOT_STACK.gap + BRAND_BOOT_STACK.height * stackW / stackH) / markWidth).toFixed(5);
+const stackCss = `.cot-boot-inner{--boot-lockup-k:${lockupK}}\n`
+  + `.cot-boot-mark{gap:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.gap)})}\n`
   + `.cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.height)});`
   + `margin-top:calc(var(--boot-mark) * ${share(BRAND_BOOT_STACK.top - markTop)})}`;
 let index = replaceBetween(read('index.html'), '<!-- cot:boot-lockup -->', '<!-- /cot:boot-lockup -->',

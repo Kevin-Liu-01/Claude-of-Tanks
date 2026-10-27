@@ -27,7 +27,7 @@ for(const row of baseline.rows){
 await ensureInteriorFills(['m6_linebacker','m3a3_bradley']);
 for(const id of ['m6_linebacker','m3a3_bradley'])assert.ok(hasInteriorFills(id),`${id}: final interior geometry must be loaded before the opening/contact checks`);
 const spec=getSpec('m6_linebacker');
-assert.equal(tankTier(spec.id),10);
+assert.equal(tankTier(spec.id),5); // 258: matchmaking reads the shown tier
 assert.equal(spec.name,'M6 Linebacker');
 assert.equal(spec.gun.shells.filter(s=>s.guided).length,1);
 const missile=spec.gun.shells.find(s=>s.guided);

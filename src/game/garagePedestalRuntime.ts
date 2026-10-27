@@ -521,7 +521,10 @@ export function createGaragePedestalRuntime({
       // report is only for authoring; battle construction already omits it.
       eraVisualBindingReceipt: false,
     };
-    const steps = isBootComplete() ? createVisualSteps(specId, options) : null;
+    // (2026-10-26, the owner: "when i first login its rellly laggy and even the claude tank animation doesnnt play") the
+    // boot screen's hero builds a slice at a time too: built at once under the covered boot it was one 1.5 s task on a
+    // desktop (6.7 s on a 4x phone) while the boot screen's mark stood still
+    const steps = createVisualSteps(specId, options);
     const yieldForBudget = createBudgetYield(16);
     let visual: GaragePedestalVisual | null = null;
     let complete = false;
@@ -530,29 +533,23 @@ export function createGaragePedestalRuntime({
     phases.buildCheckpointCount = 0;
     phases.maxBuildStepMs = 0;
     try {
-      if (steps) {
-        while (stillCurrent()) {
-          const startedAt = now();
-          const result = steps.next();
-          const elapsed = now() - startedAt;
-          phases.buildMs += elapsed;
-          phases.maxBuildStepMs = Math.max(phases.maxBuildStepMs, elapsed);
-          if (result.done) {
-            complete = true;
-            visual = result.value;
-            break;
-          }
-          if (!stillCurrent()) return null;
-          const pausedAt = now();
-          if (result.value) await result.value;
-          else await yieldForBudget();
-          phases.buildYieldMs += now() - pausedAt;
-          phases.buildCheckpointCount += 1;
-        }
-      } else {
+      while (stillCurrent()) {
         const startedAt = now();
-        visual = createVisual(specId, options);
-        phases.buildMs = phases.maxBuildStepMs = now() - startedAt;
+        const result = steps.next();
+        const elapsed = now() - startedAt;
+        phases.buildMs += elapsed;
+        phases.maxBuildStepMs = Math.max(phases.maxBuildStepMs, elapsed);
+        if (result.done) {
+          complete = true;
+          visual = result.value;
+          break;
+        }
+        if (!stillCurrent()) return null;
+        const pausedAt = now();
+        if (result.value) await result.value;
+        else await yieldForBudget();
+        phases.buildYieldMs += now() - pausedAt;
+        phases.buildCheckpointCount += 1;
       }
       if (!visual || !stillCurrent()) return null;
       prepareVisual?.(visual, getSpec(specId));
@@ -561,7 +558,7 @@ export function createGaragePedestalRuntime({
     } finally {
       // A partial factory graph remains iterator-owned. Completion transfers
       // ownership here, but never into the scene/cache after a stale selection.
-      if (steps && !complete) steps.return(undefined as never);
+      if (!complete) steps.return(undefined as never);
       if (visual && !transferred) visual.dispose();
     }
   };
@@ -798,9 +795,8 @@ export function createGaragePedestalRuntime({
       phases.decorMs = Math.round(Number(incoming.root.userData.decorBuildMs) || 0);
       incoming.__pedestalCompiling = true;
       phaseAt = now();
-      const compileWork = isBootComplete()
-        ? warmPrograms(incoming, () => canStage() && buildToken === pollToken, record)
-        : Promise.resolve();
+      // and its programs link between frames before the post stage's first draws (boot included, as above)
+      const compileWork = warmPrograms(incoming, () => canStage() && buildToken === pollToken, record);
       incoming.__pedestalCompileP = compileWork.finally(() => {
         incoming.__pedestalCompiling = false;
         incoming.__pedestalCompileP = null;

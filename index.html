@@ -273,8 +273,12 @@
         linear-gradient(180deg, oklch(from var(--surface-scene) l c h / .78) 0%, oklch(from var(--surface-scene) l c h / .44) 28%, oklch(from var(--surface-scene) l c h / .42) 58%, oklch(from var(--surface-scene) l c h / .86) 100%),
         radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
+    /* the load column is the lockup's width (boot r23's design round): the stage line, both bars and the tip share the
+       lockup's two edges, and the invitation, the gate prompt and Retry its centre. --boot-mark is the tank's width;
+       --boot-lockup-k (generated below) is the whole lockup's width in tank widths */
     .cot-boot-inner {
-      position: relative; z-index: 2; width: min(760px, calc(100vw - 32px)); text-align: center;
+      --boot-mark: clamp(216px, 15vw, 224px);
+      position: relative; z-index: 2; width: min(calc(var(--boot-mark) * var(--boot-lockup-k)), calc(100vw - 32px)); text-align: center;
       display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "mark" "invite" "load" "slot";
     }
 
@@ -283,7 +287,7 @@
        level with the tank's drawing; the one place the words stack. --boot-mark is the tank's width, and the generated
        rules below size the gap and the stack from it. The tank rolls along on the compositor, so a busy main thread never
        stops it (src/ui/brandMarkMotion.ts; reduced motion shows the still) */
-    .cot-boot-mark { --boot-mark: clamp(150px, 15vw, 224px); grid-area: mark; display: flex; align-items: flex-start; justify-content: center; margin: 0 auto; color: var(--ink-1); }
+    .cot-boot-mark { grid-area: mark; display: flex; align-items: flex-start; justify-content: center; margin: 0 auto; color: var(--ink-1); }
     .cot-boot-mark .mkl { flex: none; width: var(--boot-mark); }
     /* cot:brand-motion */
     .mkl{--mk-loop:1.2s;position:relative;aspect-ratio:184/106}
@@ -310,6 +314,7 @@
     @keyframes mkl-sway{0%,100%{transform:none}50%{transform:rotate(-5deg)}}
     @keyframes mkl-puff{0%{opacity:.5;transform:none}100%{opacity:0;transform:translate(-343.8%,-156.3%) scale(3.2)}}
     @media (prefers-reduced-motion:reduce){.mkl *{animation:none}.mkl-puff{display:none}}
+    .cot-boot-inner{--boot-lockup-k:2.03348}
     .cot-boot-mark{gap:calc(var(--boot-mark) * 0.07609)}
     .cot-boot-mark .wm-stack{display:block;flex:none;width:auto;height:calc(var(--boot-mark) * 0.52989);margin-top:calc(var(--boot-mark) * 0.03533)}
     /* /cot:brand-motion */
@@ -349,13 +354,24 @@
     }
     .cot-boot-stage .num { font-size: 13px; font-weight: 500; color: var(--ink-3); line-height: 0; }
     /* one continuous tungsten fill: bootScreen.ts animates its scaleX on the compositor toward the real load */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .22); }
+    /* one track under both bars: 3:1 on the scene, and the tungsten fill 3:1 on it (boot r23) */
+    .cot-boot-load { --boot-track: oklch(from var(--ink-1) l c h / .37); }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: var(--boot-track); }
     .cot-boot-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: var(--accent); will-change: transform; }
+    /* the stages under it, one segment each (owner, 2026-10-26: "a segmented loading along with the main loading line,
+       like it was before"): a done stage solid, the current one filled by its real steps, the rest dim. The inline painter
+       fills the download's segment with the files; bootScreen.ts steps the others' scaleX on the compositor */
+    .cot-boot-segs { display: flex; gap: 4px; height: 3px; margin-top: 8px; }
+    .cot-boot-segs i { position: relative; flex: 1 1 0; overflow: hidden; background: var(--boot-track); }
+    .cot-boot-segs b { position: absolute; inset: 0; transform: scaleX(0); transform-origin: 0 50%; background: var(--accent); will-change: transform; }
+    .cot-boot-segs i.done b { transform: scaleX(1); }
 
     /* --- tips + gate ------------------------------------------------------- */
+    /* the tip stands on the load column's left edge, under the stage line and the bars: one column, one edge */
     .cot-boot-tip {
-      grid-area: slot; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px auto 0; overflow: hidden;
-      font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
+      grid-area: slot; justify-self: start; box-sizing: border-box; height: 84px; max-width: 560px; margin: 24px 0 0; overflow: hidden;
+      text-align: left;
+      font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-3);
       opacity: 1; transition: opacity var(--dur-base) var(--ease-camera);
     }
     #cot-boot.cot-boot-enter .cot-boot-tip {
@@ -403,7 +419,7 @@
     .cot-github-stars:has([data-github-stars-state='unavailable']) { visibility: hidden; }
     .cot-boot-link:hover { color: var(--ink-1); background: var(--surface-hover); }
     .cot-boot-link:active { transform: translateY(var(--btn-press-drop)); transition-duration: var(--dur-instant); }
-    .cot-boot-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .cot-boot-link:focus-visible { outline: 2px solid var(--focus-ink); outline-offset: 3px; }
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
     @media (pointer: coarse) { .cot-boot-links > .cot-boot-link { height: 44px; } }
@@ -453,7 +469,7 @@
       width:44px;height:44px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;box-shadow:var(--btn-secondary-ring);color:var(--ink-2);cursor:pointer}
     .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
     .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
-    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--focus-ink);outline-offset:3px}
     /* a phone (the responsiveLayout.ts phone and compact bands, < 768 px): the splash's own media query, since the
        credits can open before any module writes body[data-cot-width] */
     @media (width < 768px) {
@@ -505,11 +521,12 @@
       letter-spacing: var(--track-label-s); text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
-    .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .cot-boot-retry:focus-visible { outline: 2px solid var(--focus-ink); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
     #cot-boot:is(:has(.cot-boot-retry.on), :has(.cot-boot-gate.on)) .cot-boot-tip { visibility: hidden; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-bar { visibility: hidden; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-segs { display: none; }
     .cot-boot-load { position: relative; }
     .cot-boot-alert { display: none; flex: none; font-size: 14px; line-height: 20px; color: var(--text-danger); }
     .cot-boot-alert svg { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
@@ -556,7 +573,7 @@
       animation: cot-boot-fade var(--dur-screen) var(--ease-camera) .18s backwards;
     }
     @media (width < 768px) {
-      .cot-boot-mark { --boot-mark: 128px; }
+      .cot-boot-inner { --boot-mark: calc((100vw - 32px) / var(--boot-lockup-k)); }
       .cot-boot-load { margin-top: 45px; }
       .cot-boot-tip { height: 144px; }
       .cot-boot-retry { justify-self: stretch; align-self: start; margin-top: 32px; }
@@ -571,9 +588,9 @@
     }
     /* a short landscape screen: no tips; the slot keeps Retry's room so a failure still moves nothing */
     @media (height < 520px) {
-      .cot-boot-mark { --boot-mark: min(36vh, 150px); }
+      .cot-boot-inner { --boot-mark: min(36vh, 150px); width: min(760px, calc(100vw - 32px)); }
       .cot-boot-invite { margin-top: 12px; }
-      #cot-boot.has-invite .cot-boot-mark { --boot-mark: min(28vh, 116px); }
+      #cot-boot.has-invite .cot-boot-inner { --boot-mark: min(28vh, 116px); }
       #cot-boot.has-invite .cot-boot-load { margin-top: 0; }
       .cot-boot-load { margin-top: 33px; }
       .cot-boot-tip { height: 48px; margin-top: 12px; visibility: hidden; }
@@ -962,6 +979,9 @@
         const fill = document.getElementById('cot-boot-fill');
         const share = Number(fill && fill.parentElement && fill.parentElement.getAttribute('data-download-share')) || 0;
         if (fill && share) fill.style.transform = `scaleX(${(share * Math.min(network.scripts, network.expected) / network.expected).toFixed(4)})`;
+        // the download's own segment shows the same files across its whole width
+        const seg = document.querySelector('#cot-boot-segs [data-seg="download"] b');
+        if (seg) seg.style.transform = `scaleX(${(Math.min(network.scripts, network.expected) / network.expected).toFixed(4)})`;
         // the count ticks in place, so it wears the data face (.num); an engine without replaceChildren keeps plain text
         if (typeof stage.replaceChildren !== 'function' || typeof document.createElement !== 'function') {
           stage.textContent = `${MESSAGES.downloading} · ${counted}`;
@@ -1150,12 +1170,13 @@
         <svg class="wm-stack" viewBox="0 0 3946 2184" aria-hidden="true" focusable="false"><path transform="translate(-55.0 -142.0)" style="fill:currentColor" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495Z"/><path transform="translate(-5085.0 596.0)" style="fill:var(--accent)" d="M5085 619.8V372.2L5143.2 314H5314.8L5373.1 372.2V619.8L5314.8 678H5143.2ZM5290.9 634.3 5323.1 602.1V389.9L5290.9 357.7H5167.1L5134.9 389.9V602.1L5167.1 634.3ZM5529.1 314H5768.3V357.7H5579V478.3H5743.3V522H5579V678H5529.1Z"/><rect style="fill:var(--accent)" x="831.0" y="1051.0" width="3115.0" height="90.0"/><path transform="translate(-6811.5 1342.0)" style="fill:currentColor" d="M7020.5 257H6811.5V142H7365.5V257H7156.5V842H7020.5ZM7591.5 142H7715.5L7971.5 842H7833.5L7776.5 687H7530.5L7473.5 842H7335.5ZM7746.5 575 7653.5 309H7651.5L7561.5 575ZM8081.5 142H8203.5L8515.5 617H8517.5V142H8648.5V842H8526.5L8214.5 368H8212.5V842H8081.5ZM8818.5 142H8954.5V435H9060.5L9229.5 142H9382.5L9177.5 491L9399.5 842H9243.5L9059.5 551H8954.5V842H8818.5ZM9469.5 734V634H9603.5V693L9636.5 726H9843.5L9877.5 692V576L9844.5 543H9579.5L9471.5 435V250L9579.5 142H9895.5L10003.5 250V351H9869.5V291L9836.5 258H9638.5L9605.5 291V394L9638.5 427H9903.5L10011.5 535V732L9901.5 842H9577.5Z"/></svg>
         <!-- /cot:boot-lockup --></div>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite" data-datum="room-code"></div>
-      <div class="cot-boot-load" data-datum="load-progress">
+      <div class="cot-boot-load">
         <div class="cot-boot-meta">
           <span class="cot-boot-alert" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5v6.5M12 16.5v.5"/></svg><svg viewBox="0 0 24 24" focusable="false"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0ZM12 6.5V12l3.5 2.5"/></svg></span>
           <div class="cot-boot-stage" id="cot-boot-stage" data-datum="load-stage" role="status" aria-live="polite" aria-atomic="true">Starting engine</div>
         </div>
-        <div class="cot-boot-bar" data-download-share=".2"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
+        <div class="cot-boot-bar" data-download-share=".2" data-datum="load-progress"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
+        <div class="cot-boot-segs" id="cot-boot-segs" data-datum="load-stage-progress" aria-hidden="true"><i data-seg="download" class="now"><b></b></i><i data-seg="renderer"><b></b></i><i data-seg="sky"><b></b></i><i data-seg="lighting"><b></b></i><i data-seg="garage"><b></b></i><i data-seg="vehicle"><b></b></i><i data-seg="hud"><b></b></i><i data-seg="ui"><b></b></i><i data-seg="audio"><b></b></i><i data-seg="post"><b></b></i><i data-seg="ready"><b></b></i></div>
         <div class="cot-boot-notice" id="cot-boot-notice" aria-live="polite" data-datum="notices"></div>
       </div>
 
@@ -1220,7 +1241,7 @@
           ? (chineseRoute ? 'LAN 对战' : 'LAN Battle')
           : (chineseRoute ? '私人对战' : 'Private Battle');
         const invitationTitle = hostName
-          ? (chineseRoute ? '加入 ' + hostName + ' 的' + (/^[A-Z]/.test(battleLabel) ? ' ' : '') + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
+          ? (chineseRoute ? '加入' + (/^[\x21-\x7e]/.test(hostName) ? ' ' : '') + hostName + (/[\x21-\x7e]$/.test(hostName) ? ' ' : '') + '的' + (/^[A-Z]/.test(battleLabel) ? ' ' : '') + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
           : (chineseRoute ? '加入私人对战 ' + roomCode : 'Join Private Battle ' + roomCode);
         invite.textContent = invitationTitle;
         invite.classList.add('on');

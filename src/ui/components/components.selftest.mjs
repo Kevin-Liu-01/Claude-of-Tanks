@@ -260,6 +260,18 @@ assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
       assert.doesNotMatch(body, /background:var\(--surface-hover\)/, `${file.pathname.split('/src/')[1]}: ${selector.trim().slice(0, 80)} draws a selection on the grey hover plate`);
     }
   }
+  // focus never wears the accent (lead, 2026-10-26, the Garage r25 critic read a focused card's tungsten ring as a second
+  // selected look): the ring is --focus-ring and an outline is --focus-ink, both paper
+  // (each match starts at the literal ':focus-visible', so a large source without one costs a single indexOf)
+  const focusSources = [...sheets('../../'), new URL('../../../index.html', import.meta.url)];
+  for (const file of focusSources) {
+    const text = readFileSync(file, 'utf8');
+    if (!text.includes(':focus-visible')) continue;
+    for (const match of text.matchAll(/:focus-visible[^{};]*\{([^}]*)\}/g)) {
+      assert.doesNotMatch(match[1], /outline:[^;]*var\(--(?:accent|accent-hi|accent-lo|tungsten-\d+)\)/,
+        `${file.pathname.split('/src/')[1] ?? 'index.html'}: ${text.slice(Math.max(0, match.index - 60), match.index).split(/[}\n]/).pop()}:focus-visible outlines focus in the accent`);
+    }
+  }
 }
 
 console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); four tokens-only sheets in the components layer');

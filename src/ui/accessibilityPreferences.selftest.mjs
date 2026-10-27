@@ -157,7 +157,7 @@ const body = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
 const defaults = parseDecls(/^:root\{([^}]*)\}/m.exec(body)[1]);
 // The surface tokens (245's split: tools/gen-tokens.mjs writes the tokens one page reads to src/ui/tokens/surface-*.css,
 // which that page's own sheet imports after tokens.css) join the defaults: on their page the cascade reads both sheets.
-for (const surface of ['surface-home', 'surface-docs', 'surface-gallery']) {
+for (const surface of ['surface-home', 'surface-docs', 'surface-gallery', 'surface-deploy']) {
   const sheet = read(`src/ui/tokens/${surface}.css`).replace(/\/\*[\s\S]*?\*\//g, '');
   for (const [k, v] of parseDecls(/:root\{([^}]*)\}/.exec(sheet)[1])) if (!defaults.has(k)) defaults.set(k, v);
 }

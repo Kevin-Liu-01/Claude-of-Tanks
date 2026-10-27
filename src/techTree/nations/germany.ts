@@ -27,7 +27,9 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({ id: 'leopard2_proto', tier: 3, line: 'leopard2', lane: 0, parents: ['leo1a5'], slot: 'line' }),
     node({ id: 'leo2a2', tier: 3, line: 'leopard2', lane: 4, parents: ['leopard2_proto'], slot: 'line' }),
     node({ id: 'leo2a4_v', tier: 8, line: 'leopard2', lane: 5, parents: ['leo2a2'], slot: 'line' }),
-    node({ id: 'leo2a5', tier: 9, line: 'leopard2', lane: 1, parents: ['leo2a4_v'], slot: 'line' }),
+    node({
+      id: 'leo2a5', tier: 9, line: 'leopard2', lane: 1, parents: ['leo2a4_v'], slot: 'line', builds: ['leo2a5m'],
+    }),
     node({ id: 'leo2a6m', tier: 9, line: 'leopard2', lane: 3, parents: ['leo2a5'], slot: 'line' }),
     node({ id: 'leo2a7v', tier: 10, line: 'leopard2', lane: 3, parents: ['leo2a6m'], slot: 'line' }),
     node({ id: 'kf51_panther', tier: 10, line: 'leopard2', lane: 1, parents: ['leo2a7v'], slot: 'line' }),
@@ -36,7 +38,6 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({ id: 'leo2a3', tier: 4, line: 'leopard_side', lane: 3, parents: ['leo2a2'], slot: 'line' }),
     node({ id: 'leo2a6', tier: 9, line: 'leopard_side', lane: 0, parents: ['leo2a5'], slot: 'line' }),
     node({ id: 'leo2_improved', tier: 8, line: 'leopard_side', lane: 0, parents: ['leo2a4'], slot: 'line' }),
-    node({ id: 'leo2a5m', tier: 7, line: 'leopard_side', lane: 0, parents: ['leo2a3'], slot: 'line' }),
     node({
       id: 'kf51_evo', tier: 10, line: 'leopard_side', lane: 0, parents: ['kf51_panther'], slot: 'line',
       builds: ['kf51_u'],

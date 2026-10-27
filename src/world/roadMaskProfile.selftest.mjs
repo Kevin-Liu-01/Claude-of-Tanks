@@ -49,7 +49,9 @@ assert.match(terrain, /segDist\(\(tx \+ 0\.5\) \/ T - HALF, \(tz \+ 0\.5\) \/ T 
 assert.match(terrain, /const x = \(tx \+ 0\.5\) \/ T - HALF/);
 assert.match(terrain, /const z = \(tz \+ 0\.5\) \/ T - HALF/);
 assert.match(terrain, /const s = texSize\(512\), T = s \/ MAP_SIZE;/, 'no resolution or memory increase');
+// (2026-10-22, 78e29e114b: the centres hoisted into locals that feed both outlines, the straight and the ragged one; the
+// straight stamp's output byte-identical across that change on every map's straight aprons at 512 and 256 texels)
 assert.match(readFileSync(new URL('./hardstandSurface.ts', import.meta.url), 'utf8'),
-  /signedDistance\(strip, \(ix \+ 0\.5\) \* step - halfMap, \(iz \+ 0\.5\) \* step - halfMap\)/,
+  /const x = \(ix \+ 0\.5\) \* step - halfMap, z = \(iz \+ 0\.5\) \* step - halfMap;\s*\/\/[^\n]*\n\s*const edge = ragged > 0 \? roundedDistance\(strip, x, z, round\) \+ ragged \* paintBite\(x, z\) : signedDistance\(strip, x, z\);/,
   'the runway stamp uses the same physical pixel centres');
 console.log('roadMaskProfile.selftest: 72 road bearings retain smooth edges and solid centres at desktop/mobile mask resolution');

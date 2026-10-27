@@ -104,7 +104,7 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px;}
+  outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
 .cot-mobile-nav-menu[hidden]{display:none !important;}
 .cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
@@ -176,7 +176,7 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-battle-solo-options{display:grid;gap:var(--s4);}
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:-3px;}
+  outline:2px solid var(--focus-ink);outline-offset:-3px;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:transform var(--dur-fast) ease-out;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:scale(.98);}
 .cot-battle-menu .cot-battle-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
@@ -1075,7 +1075,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger>span{
   padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:14px;height:14px}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px}
+  outline:2px solid var(--focus-ink);outline-offset:2px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
   display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
@@ -1416,7 +1416,6 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
    the menu carries its selected mode's tone and every choice its own; a mode the kit does not name falls back to standard */
 .cot-battle-menu,.cot-garage [data-mode-tone]{--mode-color:var(--mode-ink,var(--mode-standard));}
 .cot-battle-preview-icon,.cot-battle-preview h3{color:var(--mode-color);}
-.cot-battle-galaxy{border-color:#9977d8!important;background:radial-gradient(ellipse at 15% 10%,#6e40904a,transparent),#151127!important;color:#d7baff!important;}
 .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;}
 .cot-arrange-field{display:grid;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:700;letter-spacing:0;}
 .cot-arrange-field[hidden]{display:none;}

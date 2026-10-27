@@ -135,7 +135,7 @@
   "href": "/docs/tanks#tiers",
   "title": "Tiers and nations",
   "chapter": "Tanks and equipment",
-  "text": "A tank's tier is its column in its nation's tech tree. X 28 IX 35 VIII 29 VII 18 VI 19 V 16 IV 19 III 19 II 19 I 19 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
+  "text": "A tank's tier is its column in its nation's tech tree. X 28 IX 36 VIII 29 VII 17 VI 20 V 15 IV 19 III 19 II 19 I 19 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
  },
  {
   "href": "/docs/tanks#equipment",
@@ -657,6 +657,6 @@
   "href": "/docs/filming#topic-section-11",
   "title": "The pictures",
   "chapter": "Filming the media",
-  "text": "Every picture filmed for the game, grouped by what it shows."
+  "text": ""
  }
 ]

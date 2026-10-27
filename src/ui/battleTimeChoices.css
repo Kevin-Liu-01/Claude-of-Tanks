@@ -14,7 +14,7 @@
 .cot-time-choice input:checked+.cot-time-content{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1);}
 .cot-time-choice input:checked+.cot-time-content .cot-time-check{background:var(--accent);border-color:var(--accent);color:var(--ink-on-accent);}
 .cot-time-choice input:checked+.cot-time-content .cot-time-check svg{opacity:1;}
-.cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid var(--accent);outline-offset:2px;}
+.cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-time-choice input:disabled{cursor:default;}
 .cot-time-choice input:disabled:not(:checked)+.cot-time-content{opacity:.55;}
 .cot-battle-times small{flex-basis:100%;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.5;}

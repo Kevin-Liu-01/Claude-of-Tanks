@@ -6,19 +6,13 @@ import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 import { k2SourceMetadata } from './xk2Specs.ts';
 import { donorSpec } from './donorSpecs.ts';
 import { assertCurrentT90MLampSeats } from './historicalT90MLamps.test-support.mjs';
 import { VEHICLE_ROLE_PROFILES } from './roleProfiles.ts';
 import { tacticalRoleHandling } from './tacticalRoleBalance.ts';
 
-// 2026-09-15 owner rulings: the four T-90 X studies are tier X ("all should be tier 10 and prominent");
-// evening: "make the leopard 2a5m, leopard 2a5, leopard 2a6 tier 10" (the 2A5M and 2A5 studies live here).
-// Every other X study still may not out-tier its donor without an explicit ruling here.
-// 2026-09-23 (owner: "no hidden tanks"): the merkava4 donor record retired, so tier.ts no longer carries the row the
-// no-implicit-increase check read for its study; the donor's last published tier (IX at a10d0a30b) is pinned here.
-const OWNER_TIER_RULINGS = Object.freeze({ k2_black_panther: 10, t90a: 10, t90a_vladimir: 10, t90m: 10, t90sm: 10, leo2a5m: 10, leo2a5: 10,
-  merkava4: 9 });
 // Donor records retired with the hidden fleet (2026-09-23): no buildable original remains to differ from.
 const RETIRED_DONORS = new Set(['merkava4']);
 
@@ -48,7 +42,9 @@ for (const id of SOURCE_X_IDS) {
   assert.equal(ALL_TANK_IDS.filter(value => value === id).length, 1, `${id}: exactly one selectable row`);
   // 2026-09-15 owner roster pass: the X suffix is retired — the study carries the canonical public name
   assert.ok(!spec.name.endsWith(' X'), `${id}: no X suffix on a shipped study`);
-  assert.equal(tankTier(id), OWNER_TIER_RULINGS[id] ?? tankTier(donor), `${id}: no implicit combat tier increase`);
+  // 258: a study's tier is its reviewed column in the tree table (src/techTree/tiers.ts, pinned by techTree.selftest's
+  // digest), never one a rebuild inherits from its donor
+  assert.equal(tankTier(id), displayTier(id), `${id}: matches at its shown tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'), `${id}: independently demand-loaded builder`);
