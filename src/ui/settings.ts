@@ -34,7 +34,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
-import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import type { PickerItem } from './components/picker.ts';
@@ -79,6 +79,7 @@ import {
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
+import { foliageSeeThrough } from '../world/foliageSeeThrough.ts';
 
 /** A key cap that reads in Chinese (the mouse's 左键 and 右键): the hint strip sets it in the labels' face and size. */
 const CJK_CAP = /[\u3400-\u9fff]/;
@@ -106,6 +107,31 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
 });
 
 type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'accessibility' | 'language';
+/** (item 259, the owner: "color code settings so its easier") each tab's glyph, in its category's colour (--settings-<tab>) */
+const TAB_GLYPHS: Readonly<Record<SettingsTab, UiIconId>> = Object.freeze({
+  controls: 'controller', gameplay: 'autoAim', sound: 'sound', graphics: 'graphics', accessibility: 'accessibility', language: 'globe',
+});
+const tabMarkup = (tab: SettingsTab, selected: boolean): string =>
+  `<button class="cot-set-tab${selected ? ' sel' : ''}" data-tab="${tab}" data-settings-tone="${tab}" type="button" role="tab" id="cot-set-tab-${tab}"`
+  + ` aria-selected="${selected}" tabindex="${selected ? 0 : -1}" aria-controls="cot-set-tabpanel"><span>`
+  + `${uiIconSVG(TAB_GLYPHS[tab], 20, 'currentColor', 'cot-set-tab-glyph')}<span class="cot-set-tab-name">${t(`settings.tab.${tab}`)}</span></span></button>`;
+
+/** A consumable slot's item as Settings shows it: the progression lane's `ui:consumableLoadout` items (CONSUMABLES-259:
+ *  `{ slot, action, itemId, nameKey, shortKey, iconId }`), read by their action. */
+interface ConsumableSlotItem {
+  readonly itemId: string;
+  readonly nameKey: string;
+  readonly iconId: UiIconId;
+}
+const CONSUMABLE_SLOT_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const satisfies readonly ActionId[];
+type ConsumableSlotAction = typeof CONSUMABLE_SLOT_ACTIONS[number];
+/** Today's three, each slot's item until a loadout says otherwise. */
+const DEFAULT_CONSUMABLE_SLOTS: Readonly<Record<ConsumableSlotAction, ConsumableSlotItem>> = Object.freeze({
+  consumable1: { itemId: 'repair', nameKey: 'action.consumable1', iconId: 'repair' },
+  consumable2: { itemId: 'medkit', nameKey: 'action.consumable2', iconId: 'medkit' },
+  consumable3: { itemId: 'extinguisher', nameKey: 'action.consumable3', iconId: 'extinguisher' },
+});
+const isConsumableSlotAction = (id: string): id is ConsumableSlotAction => (CONSUMABLE_SLOT_ACTIONS as readonly string[]).includes(id);
 type BindingSlotKey = BindingSlot | 'pad';
 type NumericSettingKey =
   | 'sensitivity'
@@ -259,7 +285,18 @@ const SETTINGS_CSS = `
 .cot-set-tab.sel{color:var(--ink-1);}
 /* the underline is the label's: a tab's box may be wider (the touch floor) and its label keeps the gutter */
 .cot-set-tab>span{position:relative;align-self:stretch;display:flex;align-items:center;}
-.cot-set-tab.sel>span::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+.cot-set-tab.sel>span::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--settings-ink,var(--accent));}
+/* (item 259, the owner: "color code settings so its easier") a tab stands its category's glyph over its name, so the row
+   keeps the names' width; the category's colour (--settings-<tab>, settingsColours.selftest) is the tab's glyph and mark,
+   the body's headings' rule and its rows' glyphs, never text (the labels, values and the kit's one selected state stay) */
+.cot-set-tab>span{flex-direction:column;justify-content:center;gap:3px;padding-block:6px;}
+.cot-set-tab-glyph{flex:none;color:var(--settings-ink);}
+.cot-settings [data-settings-tone='controls']{--settings-ink:var(--settings-controls);}
+.cot-settings [data-settings-tone='gameplay']{--settings-ink:var(--settings-gameplay);}
+.cot-settings [data-settings-tone='sound']{--settings-ink:var(--settings-sound);}
+.cot-settings [data-settings-tone='graphics']{--settings-ink:var(--settings-graphics);}
+.cot-settings [data-settings-tone='accessibility']{--settings-ink:var(--settings-accessibility);}
+.cot-settings [data-settings-tone='language']{--settings-ink:var(--settings-language);}
 /* scrolling rows: a thin scrollbar and overflow-gated fade masks (.fade-top/.fade-bot set from the scroll position) */
 .cot-set-body{flex:1;overflow-y:auto;padding:var(--s1) var(--s5) var(--s4);min-height:280px;
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;}
@@ -276,7 +313,7 @@ const SETTINGS_CSS = `
 /* a section's header: the plate header's label and rule (no tick) */
 .cot-set-group{display:flex;align-items:center;gap:var(--s3);margin:var(--s4) 0 var(--s1);
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
-.cot-set-group::after{content:'';flex:1;height:1px;background:var(--line-1);}
+.cot-set-group::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--settings-ink,var(--line-1)),var(--line-1) 70%);}
 .cot-set-group:first-child{margin-top:var(--s3);}
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
 .cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
@@ -294,11 +331,13 @@ const SETTINGS_CSS = `
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
   font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
-/* a setting's glyph: one grey, the accent only on a shell slot's number */
+/* a setting's glyph: its category's colour (item 259) */
 /* a row's glyph starts on its box's edge, so the glyph, the heading's label and the control under it share one edge */
-.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--ink-2);}
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center start;color:var(--settings-ink,var(--ink-2));}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
 .cot-setting-label-text{min-width:0;}
+/* a consumable slot's item beside the slot's name (item 259) */
+.cot-set-item{min-width:0;color:var(--ink-3);}
 /* the rows in a conflict: the notice's warning tone, no stripe */
 .cot-set-row.conflict{background-color:color-mix(in srgb,var(--text-warn) 9%,transparent);}
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-warn);}
@@ -575,13 +614,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<span class="cot-set-paused"${datumAttr('paused')}>${t('settings.paused')}</span>` +
     `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs" role="tablist" aria-label="${t('settings.title')}">` +
-    // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
-    `<button class="cot-set-tab sel" data-tab="controls" type="button" role="tab" id="cot-set-tab-controls" aria-selected="true" tabindex="0" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.controls')}</span></button>` +
-    `<button class="cot-set-tab" data-tab="gameplay" type="button" role="tab" id="cot-set-tab-gameplay" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.gameplay')}</span></button>` +
-    `<button class="cot-set-tab" data-tab="sound" type="button" role="tab" id="cot-set-tab-sound" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.sound')}</span></button>` +
-    `<button class="cot-set-tab" data-tab="graphics" type="button" role="tab" id="cot-set-tab-graphics" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.graphics')}</span></button>` +
-    `<button class="cot-set-tab" data-tab="accessibility" type="button" role="tab" id="cot-set-tab-accessibility" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.accessibility')}</span></button>` +
-    `<button class="cot-set-tab" data-tab="language" type="button" role="tab" id="cot-set-tab-language" aria-selected="false" tabindex="-1" aria-controls="cot-set-tabpanel"><span>${t('settings.tab.language')}</span></button>` +
+    // every tab is its category's glyph and its name (item 259; the 10-24 sweep took the controls tab's action count)
+    (['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'] as const).map((tab) => tabMarkup(tab, tab === 'controls')).join('') +
     `</div>` +
     // a binding conflict: the kit's warning notice with its two actions (its text is set when it shows)
     notice({ severity: 'warning', text: '', className: 'cot-set-conflict', actions: [
@@ -799,6 +833,39 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   // --- CONTROLS tab -----------------------------------------------------------
   const rowByAction = new Map<ActionId, ActionBindingRow>();
+  /** (item 259, the owner: "update equipment slots in settings") each consumable slot's item: today's three until the
+   *  progression lane's `ui:consumableLoadout` names the chosen tank's (CONSUMABLES-259). */
+  const consumableSlots: Record<ConsumableSlotAction, ConsumableSlotItem> = { ...DEFAULT_CONSUMABLE_SLOTS };
+  const consumableLabels = new Map<ConsumableSlotAction, HTMLSpanElement>();
+  /** An action's name: a consumable's is its slot's ("Consumable slot 1"), its item beside it. */
+  const actionName = (def: ActionDefinition): string => {
+    const slot = CONSUMABLE_SLOT_ACTIONS.indexOf(def.id as ConsumableSlotAction);
+    return slot >= 0 ? t('settings.consumableSlot', { n: slot + 1 }) : t(def.label);
+  };
+  /** A consumable slot's label: its item's glyph, the slot's name and its item's name. */
+  function paintConsumableLabel(action: ConsumableSlotAction): void {
+    const lb = consumableLabels.get(action);
+    if (!lb) return;
+    const item = consumableSlots[action];
+    const glyph = lb.querySelector<HTMLElement>('.cot-setting-icon');
+    if (glyph && glyph.dataset.item !== item.itemId) { glyph.innerHTML = uiIconSVG(item.iconId, 16); glyph.dataset.item = item.itemId; }
+    const name = lb.querySelector<HTMLElement>('.cot-set-item');
+    if (name) name.textContent = t(item.nameKey);
+  }
+  function adoptConsumableLoadout(payload: RuntimeValue): void {
+    const items = (payload as { items?: unknown } | null)?.items;
+    if (!Array.isArray(items)) return;
+    const known = new Set<string>(uiIconIds());
+    for (const action of CONSUMABLE_SLOT_ACTIONS) {
+      const raw = items.find((item: unknown) => (item as { action?: unknown } | null)?.action === action) as
+        { itemId?: unknown; nameKey?: unknown; iconId?: unknown } | undefined;
+      const fresh = raw && typeof raw.itemId === 'string' && typeof raw.nameKey === 'string'
+        ? { itemId: raw.itemId, nameKey: raw.nameKey, iconId: (typeof raw.iconId === 'string' && known.has(raw.iconId) ? raw.iconId : 'shell') as UiIconId }
+        : DEFAULT_CONSUMABLE_SLOTS[action]; // an empty slot shows today's item
+      consumableSlots[action] = fresh;
+      paintConsumableLabel(action);
+    }
+  }
   /** An arrow key's cap: the sprite's arrow and its spoken name (the input layer labels them ↑ ↓ ← →). */
   const ARROW_KEY_GLYPHS: Readonly<Record<string, readonly [UiIconId, string]>> = {
     '↑': ['moveForward', 'settings.bind.arrowUp'], '↓': ['moveBack', 'settings.bind.arrowDown'],
@@ -821,7 +888,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
-    const labelText = t(def.label);
+    const labelText = actionName(def);
     chip.dataset.tip = slotKey === 'pad'
       ? `${labelText}, ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
       : `${labelText}, ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
@@ -844,6 +911,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   function renderControls() {
     body.textContent = '';
     rowByAction.clear();
+    consumableLabels.clear();
     const colhdr = el('div', 'cot-set-colhdr', body);
     colhdr.innerHTML =
       '<span class="act">' + t('settings.bind.colAction') + '</span><span>' + t('settings.bind.primary') + '</span><span>' + t('settings.bind.secondary') + '</span><span class="pad">' + t('settings.bind.pad') + '</span>';
@@ -856,7 +924,12 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       }
       const row = el('div', 'cot-set-row', card);
       row.dataset.action = def.id;
-      settingLabel(row, t(def.label), SETTINGS_ACTION_ICONS[def.id]);
+      const lb = settingLabel(row, actionName(def), SETTINGS_ACTION_ICONS[def.id]);
+      if (isConsumableSlotAction(def.id)) {
+        el('span', 'cot-set-item', lb);
+        consumableLabels.set(def.id, lb);
+        paintConsumableLabel(def.id);
+      }
       const chipsWrap = el('div', 'chips', row);
       const chips = {
         0: makeChip(def, 0, chipsWrap),
@@ -1263,6 +1336,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }
     showPreview(selected);
 
+    // item 259 (the owner, 2026-10-26: "disable the thing that lets u see through greenery. it can be an optional thing u
+    // can enable in settings"): the camera's foliage fades, off by default; the world takes the choice on its next frame
+    const view = groupCard(body, t('settings.graphics.view'));
+    const foliageRow = el('div', 'cot-set-row', view);
+    settingLabel(foliageRow, t('settings.graphics.foliage'), SETTINGS_OPTION_ICONS.foliageSeeThrough);
+    const foliageOn = (): 'on' | 'off' => (foliageSeeThrough.get() ? 'on' : 'off');
+    mountSeg(foliageRow, segmented({ label: t('settings.graphics.foliage'), className: 'cot-set-onoff', value: foliageOn(),
+      options: [{ value: 'off', label: t('settings.off') }, { value: 'on', label: t('settings.on') }] }),
+      foliageOn, (value) => foliageSeeThrough.set(value === 'on'));
+
     // entry telemetry (2026-09-24): the anonymous load/crash beacon
     // (docs/ENTRY-RESILIENCE.md) is a player choice stored beside the presets.
     const diagnostics = groupCard(body, t('settings.diagnostics.title'));
@@ -1479,6 +1562,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       t.tabIndex = on ? 0 : -1;
       if (on) root.querySelector('.cot-set-body')?.setAttribute('aria-labelledby', t.id);
     }
+    body.dataset.settingsTone = activeTab; // item 259: the tab's colour on its rows' glyphs and headings' rules
     resetBtn.hidden = !(activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility');
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
@@ -1814,6 +1898,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     clearConflict();
     if (activeTab === 'graphics') {
       stagedPreset = getDeviceTier() === 'mobile' ? 'mobile' : 'auto';
+      foliageSeeThrough.set(false);
       renderTab();
       return;
     }
@@ -1944,6 +2029,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       kcReplay = false;
     });
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
+    bus.on('ui:consumableLoadout', adoptConsumableLoadout); // item 259: the slots show the chosen tank's items
     bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
     bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
     // the player's first hit given or taken this battle (hud.ts): the strip has done its work

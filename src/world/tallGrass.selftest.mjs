@@ -466,7 +466,8 @@ assert.match(map, /splatNoise: sampleSplatNoise,/, 'thinned by the terrain\'s ow
 assert.match(map, /tallGrass\.update\(dt, cameraPos, focusPos, cameraFwd\)/, 'the frame update streams the rings and steps the press');
 assert.match(map, /tallGrass\.dispose\(\)/, 'released with the world');
 assert.match(map, /tallGrass\.setWindTime\(t\)/, 'frozen with the world clock');
-assert.match(map, /tallGrass\.setSniperFade\(f, immediate\)/, 'cleared from the scope with the tufts');
+assert.match(map, /tallGrass\.setSniperFade\(foliageSeeThrough \? f : 0, immediate\)/,
+  'cleared from the scope with the tufts (item 259: with See-through foliage on)');
 assert.ok(map.includes('setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),')
   && map.includes('releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),'), 'the world folds the materials into the cascaded-shadow setup');
 assert.equal(PRESETS.high.tallGrass, 1); assert.equal(PRESETS.ultra.tallGrass, 1); assert.equal(PRESETS.medium.tallGrass, 0.5); assert.equal(PRESETS.low.tallGrass, 0.25);

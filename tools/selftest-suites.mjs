@@ -1006,6 +1006,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // colour-vision floors from the token values; the legacy names alias the tokens
     'src/ui/tokens/tokens.selftest.mjs',
     'src/ui/tokens/modeColours.selftest.mjs',
+    // item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs and rules only
+    'src/ui/tokens/settingsColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
@@ -2052,6 +2054,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/canopyNeedleTransmit.selftest.mjs', // GND (2026-10-15): a back-lit needle crown transmits its needles' dulled green, never a lime glow (Kestrel chase-s)
     'src/world/vegetationResources.selftest.mjs',
     'src/world/foliageOcclusionSweep.selftest.mjs',
+    'src/world/foliageSeeThrough.selftest.mjs', // item 259: See-through foliage is off by default, and off clears no foliage
     'src/world/authoredTreePlacement.selftest.mjs',
     'src/world/tidalMangrove.selftest.mjs',
     'src/world/vegetationClearance.selftest.mjs',
