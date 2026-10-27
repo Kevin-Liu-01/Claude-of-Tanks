@@ -11,6 +11,7 @@ import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { roofSheet, beamBetween } from './measuredPrimitives.ts';
 import { addChallenger1HistoricTurret } from './challenger1HistoricTurret.ts';
+import { addChallenger1SleekTurret } from './challenger1SleekTurret.ts';
 import { CR1_HISTORIC as D, CR1_GRANBY_APPLIQUE, CR1_GRANBY_CASSETTES, CR1_GRANBY_PITCH, CR1_GRANBY_JOINT, CR1_SKIRT, type Challenger1Mark } from './challenger1HistoricFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -209,7 +210,8 @@ export function buildChallenger1Historic(P: TankBuilderPort, mark: Challenger1Ma
   for (const side of [-1, 1]) skirts(P, side);
   if (mark === 'mk3') granbyKit(P);
   runningGear(P);
-  addChallenger1HistoricTurret(P, mark);
+  if (mark === 'mk1') addChallenger1SleekTurret(P);
+  else addChallenger1HistoricTurret(P, mark);
   markings(P);
   // The turret's underside stands its seam over the 1.58 m roof plate; the engine deck behind the bulkhead is 10 cm
   // higher, so the bustle (whose floor is 1.70) may rise that far over it (turretSeatRace.ts).

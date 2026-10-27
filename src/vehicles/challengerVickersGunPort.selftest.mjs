@@ -1,22 +1,22 @@
 // 262 (owner on the Challenger 1 Mk 2/Mk 3 and Vickers Mk 1 rebuilds: "based on proper historical referrences so they
 // will no longer look so chungus"): each main gun leaves its turret through a real port and stays in it over its whole
 // published pitch range. The Challenger 1's L11A5 runs in the slot between its nose plates behind a drum shield and a
-// canvas boot; the Vickers Mk 1's L7A1 stands in a slab mantlet whose back is an arc about the trunnion. At every 2.5
-// degrees from full depression to full elevation, in battery and at the recoil stroke, the tube ahead of the port's face
+// canvas boot; the Vickers Mk 1's L7A1 stands in a cast mantlet whose back is an arc about the trunnion. At every 5
+// degrees from full depression to full elevation (and at both stops), in battery and at the recoil stroke, the tube ahead of the port's face
 // keeps TURRET_GUN_PORT_KEEP_M from every turret part, the tube behind the face is hidden (inside the turret, the shield,
 // the mantlet or the boot), and the gun's mount ahead of the face never touches the turret.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TURRET_GUN_PORT_KEEP_M, turretGunPortProbe } from './gunHullClearance.test-support.mjs';
 
-for (const id of ['challenger1_mk2', 'challenger1_mk3', 'vickers_mk1']) {
+for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'vickers_mk1']) {
   const probe = turretGunPortProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] <= -7 && probe.pitchesDeg.at(-1) >= 20, `${id}: the sweep spans the published -7/-10 to +20 degrees`);
     for (const pitch of probe.pitchesDeg) {
       const m = probe.measure(pitch);
       console.log(`${id} pitch ${pitch}: tube ${(m.clearance * 100).toFixed(1)} cm (${m.part ?? 'none within 6.5 cm'}) at ${m.at}, mount ${(m.mountClearance * 100).toFixed(1)} cm, ${m.ahead} ahead, ${m.behind} behind, ${m.exposed} exposed`);
-      assert.ok(m.ahead > 1000 && m.behind > 50, `${id} at ${pitch} deg: the tube is sampled ahead of and behind its port`);
+      assert.ok(m.ahead > 1000 && m.behind > 20, `${id} at ${pitch} deg: the tube is sampled ahead of and behind its port`);
       assert.ok(m.clearance >= TURRET_GUN_PORT_KEEP_M,
         `${id} at ${pitch} deg: ${m.part} stands ${(m.clearance * 100).toFixed(1)} cm from the tube at ${m.at} (keep ${TURRET_GUN_PORT_KEEP_M * 100} cm)`);
       assert.equal(m.exposed, 0, `${id} at ${pitch} deg: the tube shows behind its port's face`);

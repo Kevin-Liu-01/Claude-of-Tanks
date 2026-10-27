@@ -6,7 +6,7 @@ import { TANK_SPECS } from './specs.ts';
 import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { ARIETE_X_FAMILY_SCALE as ARIETE_SCALE } from './profiles/arieteXFamilyFrame.ts';
-import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
+import { CR1_GRANBY_APPLIQUE as GRANBY, CR1_GRANBY_PITCH, CR1_GRANBY_JOINT } from './profiles/challenger1HistoricFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 
@@ -20,7 +20,8 @@ const cases = {
   leo2a6: { counts: [20, 0] },
   strv122: { counts: [676, 66] },
   c1_ariete: { counts: [210, 0] },
-  challenger1_mk3: { counts: [156, 0] },
+  // release 262: the rebuilt Op Granby cassettes over the rebuilt skirts (challenger1Historic.ts)
+  challenger1_mk3: { counts: [38, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
@@ -93,8 +94,8 @@ for (const [id, expected] of Object.entries(cases)) {
 
 // Historical donor slabs floating outside real stock must not be accepted.
 for (const [id, x, y, z] of [['leo2a6', 1.91003491, .5, 0], ['strv122', 1.89504, .5, 2],
-  ['c1_ariete', 1.82505556, .75, -2], ['challenger1_mk3', 1.83477273, .6, 0]]) {
-  const scale = id === 'c1_ariete' ? ARIETE_SCALE : id === 'challenger1_mk3' ? 1.10 : 1;
+  ['c1_ariete', 1.82505556, .75, -2], ['challenger1_mk3', 2.05, .6, 0]]) {
+  const scale = id === 'c1_ariete' ? ARIETE_SCALE : 1;
   for (const side of [-1, 1]) assert.equal(shot(id, [side * (x * scale + .005), y * scale, z * scale],
     [side * (x * scale - .005), y * scale, z * scale]).length, 0,
     `${id}: old unsupported side slab remains gameplay air`);
@@ -110,11 +111,12 @@ for (const side of [-1, 1]) {
   const gap = shot('c1_ariete', arietePoint([side * 2, .9, .405]), arietePoint([side * 1.48, .9, .405]));
   assert.equal(gap.length, 1, 'real Ariete outer gap exposes only the actual inner leaf');
   close(gap[0].point.x, (side < 0 ? -1.529119 : 1.5299605) * ARIETE_SCALE, 'Ariete inner leaf through outer seam');
-  for (const [rawZ, rawY, rawX] of [[-90, 40, 76.181099 - .43307], [-90, 58, 76.181099], [-73.365, 40, 70]]) {
-    const p = c1Point(side * rawX, rawY, rawZ).map(value => value * 1.10);
-    const hits = shot('challenger1_mk3', [side * 2.2, p[1], p[2]], [side * 1.65, p[1], p[2]]);
-    assert.equal(hits.length, 1, 'Challenger field/rim/real course seam charges one exposed inherited family');
-    close(hits[0].point.x, p[0], 'Challenger exact recessed sheet or raised rim');
+  // a cassette's face, the skirt behind a joint between two cassettes, and an uncovered rear skirt panel
+  const joint = GRANBY.rear + CR1_GRANBY_PITCH - CR1_GRANBY_JOINT / 2;
+  for (const [y, z, x] of [[1.0, -2.0, GRANBY.outerX], [1.0, joint, GRANBY.innerX], [1.0, -3.0, GRANBY.innerX]]) {
+    const hits = shot('challenger1_mk3', [side * 2.2, y, z], [side * 1.65, y, z]);
+    assert.equal(hits.length, 1, 'Challenger cassette/joint/uncovered panel charges one exposed inherited family');
+    close(hits[0].point.x, side * x, 'Challenger exact cassette face or exposed skirt');
   }
   const roof = shot('strv122', [side * .7, 2.6, 1.4], [side * .7, 2.25, 1.4]);
   assert.equal(roof.length, 1); close(roof[0].point.y, 2.3499142857142856, 'Strv actual forward cheek roof, not lower coarse shell');

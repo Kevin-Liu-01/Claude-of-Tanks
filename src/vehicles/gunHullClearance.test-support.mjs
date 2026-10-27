@@ -355,8 +355,10 @@ export function turretGunPortProbe(id) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor: false });
   tank.root.updateMatrixWorld(true);
   const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
-  const port = turret?.userData.gunPort;
-  if (!turret || !gun || !recoil || !port) { tank.dispose(); throw new Error(`${id}: no rig_turret.userData.gunPort receipt`); }
+  const receipt = turret?.userData.gunPort;
+  if (!turret || !gun || !recoil || !receipt) { tank.dispose(); throw new Error(`${id}: no rig_turret.userData.gunPort receipt`); }
+  // a builder that scales its whole vehicle afterwards (uk.ts applyCompleteVehicleScale) authors the face unscaled
+  const port = { ...receipt, faceZ: receipt.faceZ * (receipt.scale ?? 1) };
   const recoiling = new Set(); recoil.traverse((o) => recoiling.add(o));
   const gunMeshes = meshesUnder(gun), tube = gunMeshes.filter((m) => recoiling.has(m)), mount = gunMeshes.filter((m) => !recoiling.has(m));
   const turretMeshes = meshesUnder(turret, [gun]);
@@ -366,8 +368,8 @@ export function turretGunPortProbe(id) {
   const RAY_DIRS = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [1, 1, 0], [-1, 1, 0]].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
   const pitchesDeg = [];
   const lo = -(spec.gunDepressionDeg ?? 0), hi = spec.gunElevationDeg ?? 14;
-  for (let p = lo; p < hi; p += 2.5) pitchesDeg.push(+p.toFixed(2));
-  pitchesDeg.push(hi);
+  for (let p = Math.ceil(lo / 5) * 5; p < hi; p += 5) if (p > lo) pitchesDeg.push(p);
+  pitchesDeg.unshift(lo); pitchesDeg.push(hi);
   const restZ = recoil.position.z;
   const measure = (pitchDeg) => {
     gun.rotation.x = -pitchDeg * DEG;
@@ -375,10 +377,13 @@ export function turretGunPortProbe(id) {
     tInv.copy(turret.matrixWorld).invert();
     const soup = meshTriangles(turretMeshes, tInv), grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 });
     const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
-    const covers = [...turretMeshes, ...mount].filter((m) => !m.isInstancedMesh).map((m) => {
+    // the hiding parts near the port: every turret and mount mesh whose box reaches within 1.5 m of the face's centre
+    const faceCentre = new THREE.Vector3(0, gun.position.y, port.faceZ).applyMatrix4(turret.matrixWorld), reachBox = new THREE.Box3();
+    const covers = [...turretMeshes, ...mount].filter((m) => !m.isInstancedMesh && reachBox.setFromObject(m).distanceToPoint(faceCentre) < 1.5).map((m) => {
       const o = new THREE.Mesh(m.geometry, twoSided); o.matrixAutoUpdate = false; o.matrixWorld.copy(m.matrixWorld); return o;
     });
     let clearance = Infinity, part = null, at = null, exposed = 0, ahead = 0, behind = 0, mountClearance = Infinity, mountPart = null;
+    const exposedAt = [];
     for (const stroke of GUN_RECOIL_STROKES_M) {
       recoil.position.z = restZ - stroke;
       tank.root.updateMatrixWorld(true);
@@ -390,11 +395,11 @@ export function turretGunPortProbe(id) {
           ahead++;
           const d = grid.distance(local.x, local.y, local.z);
           if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = local.toArray().map((c) => +c.toFixed(3)); }
-        } else if (local.z < port.faceZ - .005 && (i / 3) % 4 === 0) {
+        } else if (local.z < port.faceZ - .005 && local.z > port.faceZ - 1.2 && (i / 3) % 6 === 0) {
           behind++;
           for (const dir of RAY_DIRS) {
             raycaster.set(v, dir.clone().transformDirection(turret.matrixWorld));
-            if (!raycaster.intersectObjects(covers, false).length) { exposed++; break; }
+            if (!raycaster.intersectObjects(covers, false).length) { exposed++; if (exposedAt.length < 12) exposedAt.push({ at: local.toArray().map((c) => +c.toFixed(3)), stroke, dir: dir.toArray() }); break; }
           }
         }
       }
@@ -408,7 +413,7 @@ export function turretGunPortProbe(id) {
       if (d < mountClearance) { mountClearance = d; mountPart = grid.nearest < 0 ? null : partOf(grid.nearest); }
     }
     gun.rotation.x = 0;
-    return { pitchDeg, clearance, part, at, exposed, ahead, behind, mountClearance, mountPart };
+    return { pitchDeg, clearance, part, at, exposed, exposedAt, ahead, behind, mountClearance, mountPart };
   };
   return {
     id, port, pitchesDeg, measure,

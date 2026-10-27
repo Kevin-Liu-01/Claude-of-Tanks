@@ -2685,6 +2685,12 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
     { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
   ],
+  challenger1_mk1: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
+  ],
   challenger1_mk3: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
@@ -3901,6 +3907,8 @@ const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, n
   // Release 262: the rebuilt turret's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
   challenger1_mk2: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
   challenger1_mk3: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  // the Mk 1's sleek turret: its low cupola (right) and loader's hatch (left)
+  challenger1_mk1: [[-0.50, -0.45, 0.60], [0.50, -0.70, 0.52]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */

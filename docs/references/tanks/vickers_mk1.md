@@ -1,5 +1,54 @@
 # Vickers MBT Mk.1 / Vijayanta (`vickers_mk1`) — reference packet
 
+## Current status — release 262 (2026-10-27)
+
+- Owner request: the Vickers among the tanks to redesign "based on proper historical referrences so they will no longer
+  look so chungus"; then, after seeing the lane's from-references rebuild: **"wait make the vickers look like it did
+  before, just smoothed out and upgraded to our modern aestehtic"** and "really lock in manntlets and stuff and turret
+  boxes and stuff". The later ruling governs this id: the earlier build's hull, scale (0.95 compact), turret footprint,
+  crown and stowage layout stay; the work is an upgrade of that build, not new proportions.
+- The from-references rebuild (hull 7.29 m, 2.44 m roof, welded box turret, commander right) is kept out of the
+  playable; its source is in the lane history (item/vickers-cr1-262 WIP 0eca6ada5e) and its measurements below.
+- Implementation (uk.ts, the 262 upgrade block above `addVickersMk1Hull`):
+  - the turret casting: one smooth cast loft (`vickersCasting`) through the earlier slab stack's outline (the belt, the
+    face, the high crown plateau and the right shoulder falling outboard, the rear taper and the bustle), shoulders and
+    walls smooth-shaded; it replaces eleven overlapping slabs and boxes;
+  - the mantlet: a cast block on the gun (`vickersMantlet`, arced back about the trunnion, rounded front) with its dust
+    cover and the 12.7 mm ranging gun's port; the L7A1 now trunnions 4 cm inside the casting's face (z 1.20, was 0.60:
+    the earlier collar rose out of the fixed housing at elevation), the tube unchanged at rest (`vickersGun`);
+  - the turret boxes: the two-tier flank bins as lidded bins with hinge rods and latches on brackets
+    (`vickersFlankBins`), a welded tube rack on the bustle (`vickersBustleRack`);
+  - the hull: the three stepped rear-deck tiers are one raised deck through their heights (`vickersRearDeck`).
+- Receipts: the gun-port receipt (`challengerVickersGunPort.selftest.mjs`) holds the tube in its mantlet over the whole
+  pitch range; the depression curve and the release chain are in the lane report.
+
+## Historical references (collected for this lane)
+
+| Ref | What | Licence |
+|---|---|---|
+| V1 | Vijayanta right side, no skirts (Commons "Vijayanta Tank. (30549684774)", Mohit S) | CC BY 2.0 |
+| V2 | front-left (Commons "Vijayanta Tank. (31605997941)", Mohit S) | CC BY 2.0 |
+| V3 | head-on (Commons "Vijayanta Vickers MBT. (49141057446)", Mohit S) | CC BY 2.0 |
+| V4 | Port Blair front-right with side plates (Commons, Biswarup Ganguly) | CC BY-SA 3.0 |
+| V5 | Pune right profile (Commons "National War Memorial tank", Pogaface) | CC BY-SA 3.0 |
+| V6 | dimensions: en/fr Wikipedia "Vickers MBT" and "Vijayanta", tanks-encyclopedia.com, militaryfactory.com | text |
+
+## Gap table — the kept (earlier) look against the sources
+
+| Quantity | Source | Earlier build = 262 (0.95 scale) | Note |
+|---|---:|---:|---|
+| Hull length | 7.29 / 7.56 / 7.92 m (sources conflict); photo ratios favour 7.1–7.3 (V1) | 7.15 m | owner keeps the earlier length |
+| Overall, gun forward | 9.73–9.79 m | 9.24 m | |
+| Width | 3.168 m | 3.01 m | |
+| Height, turret roof / cupola | 2.438 / 2.64 m | 2.56 / 2.82 m (MG) | |
+| Ground clearance | 0.41 m | 0.46 m | |
+| Track width / centres | 0.52 / 2.53 m | 0.47 / 2.25 m | |
+| Road wheels / return rollers | 6 / 3 a side, torsion bars (V1, V6) | 6 / 3 | |
+| Turret | welded, flat roof, slab mantlet, cupola right (V1–V4) | cast-look loft (the earlier build's curved casting), crown left, cupola at +x | owner keeps the earlier layout; mirrored against the real crew positions |
+| Gun | L7A1, fume extractor ~35–45 % out, no sleeve | L7A1 with extractor at ~40 %, plain tube | |
+
+## Earlier packet (2026-08)
+
 Exact variant: Vickers MBT Mk.1 (Vijayanta production form) — L7A1 105 mm,
 6-wheel flat-run gear, low curved cast/welded turret with flank stowage bins.
 Scout stub: docs/references/tanks/scout-gen2-vickers_mk1.md (dims sources).

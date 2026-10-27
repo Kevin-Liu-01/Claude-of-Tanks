@@ -874,8 +874,6 @@
     "src/vehicles/profiles/bradleyRunningGear.selftest.mjs": 16000,
     "src/vehicles/profiles/browningMachineGunStandard.selftest.mjs": 2000,
     "src/vehicles/profiles/carro45tRoof.selftest.mjs": 29000,
-    "src/vehicles/profiles/challenger1XSourceHood.selftest.mjs": 18000,
-    "src/vehicles/profiles/challenger1XSupplied.selftest.mjs": 19000,
     "src/vehicles/profiles/challenger2Family.selftest.mjs": 32000,
     "src/vehicles/profiles/challenger2Geometry.selftest.mjs": 14000,
     "src/vehicles/profiles/challenger3HullClosure.selftest.mjs": 18000,

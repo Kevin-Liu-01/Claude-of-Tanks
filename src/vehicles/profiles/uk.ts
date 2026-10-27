@@ -4028,6 +4028,33 @@ const VICKERS_REAR3 = [   // ±0.55 tier (side silhouette line)
   [-1.45, 1.72], [-1.65, 1.786], [-2.28, 1.786], [-2.42, 1.762], [-2.66, 1.745],
 ];
 
+/** The Vickers' raised rear deck: one loft through the earlier ±0.95 / ±0.78 / ±0.55 tier lines (each held up to the
+ *  one outside it where it has not begun), floored at 1.30. */
+function vickersRearDeck(P: UKGeometryPort): void {
+  const zs = [...new Set([...VICKERS_REAR1, ...VICKERS_REAR2, ...VICKERS_REAR3].map((p) => p[0]))].filter((z) => z <= -.77 && z >= -3.46).sort((a, b) => a - b);
+  const within = (line: ProfileCurve, z: number) => z <= Math.max(...line.map((p) => p[0])) + 1e-6 && z >= Math.min(...line.map((p) => p[0])) - 1e-6;
+  const sections = zs.map((z) => {
+    const h1 = lineAt(VICKERS_REAR1, z), h2 = within(VICKERS_REAR2, z) ? Math.max(h1 + .004, lineAt(VICKERS_REAR2, z)) : h1 + .004;
+    const h3 = within(VICKERS_REAR3, z) ? Math.max(h2 + .004, lineAt(VICKERS_REAR3, z)) : h2 + .004;
+    return { z, ring: [[-.95, 1.30], [.95, 1.30], [.95, h1], [.80, h2], [.56, h3], [-.56, h3], [-.80, h2], [-.95, h1]] as [number, number][] };
+  });
+  // emitted as short courses sharing their end sections (the earlier tiers' 0.45 m segments): one seamless surface, and
+  // no single part large enough to set the combat hull's roof (gen-combat-anatomy reads the largest structural parts)
+  const at = (z: number) => {
+    const i = Math.max(1, sections.findIndex((q) => q.z >= z)), a = sections[i - 1], b = sections[i], t = (z - a.z) / (b.z - a.z);
+    return { z, ring: a.ring.map(([x, y], k) => [x, y + (b.ring[k][1] - y) * t] as [number, number]) };
+  };
+  const cuts = [...new Set([...sections.map((q) => q.z), ...Array.from({ length: 6 }, (_, i) => -3.40 + i * .45)])].sort((x, y) => x - y);
+  let run: typeof sections = [];
+  for (const z of cuts) {
+    run.push(at(z));
+    if (run.length > 1 && (run[run.length - 1].z - run[0].z >= .44 || z === cuts[cuts.length - 1])) {
+      P.add('hull', sectionSolid(run, { smoothSideEdges: [2, 3, 5, 6] }));
+      run = [at(z)];
+    }
+  }
+}
+
 function addVickersMk1Hull(P: UKBuilderPort): void {
   // Keep the measured deck and full exterior sponson sides, but open the
   // concealed underside over the native return run.  The center body stays
@@ -4057,9 +4084,9 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   loftBand(P, 'hull', 1.50, 0.05, [[-3.19, 1.547], [-3.49, 1.547]], () => 1.36, -3.19, -3.49);
   // rear-deck superstructure tiers (see width taper note above; inset thin
   // so the front-view top plane reaches the tier's own width line)
-  loftBand(P, 'hull', 0.95, 0.015, VICKERS_REAR1, () => 1.30, -0.77, -3.46, seg5(-0.77, -3.46));
-  loftBand(P, 'hull', 0.78, 0.015, VICKERS_REAR2, () => 1.55, -0.98, -3.10, seg5(-0.98, -3.1));
-  loftBand(P, 'hull', 0.55, 0.015, VICKERS_REAR3, () => 1.60, -1.45, -2.66, seg5(-1.45, -2.66));
+  // 262 upgrade (owner 2026-10-27: "smoothed out"): the three stepped tiers are one raised deck through their heights,
+  // the slopes between them rolled (the louvres and filler pod still stand on the 1.786 crown)
+  vickersRearDeck(P);
   // glacis band: full width to 3.00 (ref plan holds ±1.585 to ext 1.95).
   // Floor lifts to 1.23 past 2.72 where the raised idler wrap crowns at
   // 1.19 (containment) — the glacis IS a plate over the idler there.

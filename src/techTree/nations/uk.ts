@@ -32,6 +32,8 @@ export const UK_TREE: NationTree = Object.freeze({
       builds: ['chieftain3'],
     }),
     node({ id: 'challenger1_mk2', tier: 8, line: 'challenger', lane: 1, parents: ['chieftain5'], slot: 'line' }),
+    // release 262: the Mk 1, the earlier design's sleek turret on the rebuilt hull
+    node({ id: 'challenger1_mk1', tier: 8, line: 'challenger', lane: 0, parents: ['chieftain5'], slot: 'line' }),
     node({
       id: 'challenger1_mk3', tier: 8, line: 'challenger', lane: 2, parents: ['challenger1_mk2', 'fv4034'],
       slot: 'line',

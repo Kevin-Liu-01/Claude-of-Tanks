@@ -116,6 +116,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['K2B Black Panther', 'Korean stealth K2'],
   },
   chieftain3: { displayName: 'Chieftain Mk 3' },
+  challenger1_mk1: { displayName: 'Challenger 1 Mk 1' },
   challenger1_mk2: { displayName: 'Challenger 1 Mk 2' },
   fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
   challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },

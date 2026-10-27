@@ -42,6 +42,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   kv2: { doctrine: 'siege', viewM: 340, still: 0.108, moving: 0.058 },
   chieftain3: { doctrine: 'precision', viewM: 380, still: 0.245, moving: 0.155 },
   chieftain_mk9: { doctrine: 'precision', viewM: 390, still: 0.245, moving: 0.155 },
+  challenger1_mk1: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
   challenger1_mk2: { doctrine: 'precision', viewM: 395, still: 0.238, moving: 0.148 },
   fv4034: { doctrine: 'precision', viewM: 390, still: 0.241, moving: 0.151 },
   challenger2: { doctrine: 'precision', viewM: 410, still: 0.238, moving: 0.148 },

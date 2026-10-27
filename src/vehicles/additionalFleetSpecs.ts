@@ -239,9 +239,8 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
   return spec;
 }
 
-const SPECS: FleetTankSpec[] = [
-  make('challenger2', 'challenger1_mk2', 'Challenger 1 Mk.3', 'UK',
-    {
+/** The Challenger 1 combat row (release 262: the Mk 1 and the Mk 2 share it; a fresh object per call). */
+const challenger1Row = (): VariantPatch => ({
       // Tier IX late-Cold-War heavy MBT: strong protection and a dependable
       // rifled-gun cycle, paid for with lower agility than its faster peers.
       hp: 2350,
@@ -260,7 +259,13 @@ const SPECS: FleetTankSpec[] = [
           shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
         ],
       },
-      dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
+      dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } });
+
+const SPECS: FleetTankSpec[] = [
+  make('challenger2', 'challenger1_mk2', 'Challenger 1 Mk.3', 'UK', challenger1Row()),
+  // Release 262 (owner 2026-10-27, "so we can have annother mk"): the Mk 1, the earlier design's sleek turret on the
+  // rebuilt hull, on the Mk 2's combat row.
+  make('challenger2', 'challenger1_mk1', 'Challenger 1 Mk 1', 'UK', challenger1Row()),
   make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },

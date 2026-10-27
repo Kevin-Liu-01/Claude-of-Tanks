@@ -46,6 +46,12 @@ const SLOT = .25;
 
 function shell(P: TankBuilderPort): void {
   P.add('turret', local(sectionSolid(BODY.map(([z, w, lo, hi]) => ({ z, ring: turretRing(w, lo, hi) })), { sideQuadDiagonal: 'convex' })));
+  addChallenger1GunNose(P);
+}
+
+/** The gun nose ahead of the 2.06 m station (both plates either side of the slot), the slot's chin and the race
+ *  collar: shared by every Challenger 1 turret, whose body meets the nose at that station (half-width 0.66, 1.70-2.29). */
+export function addChallenger1GunNose(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('turret', local(sectionSolid(NOSE.map(([z, w, lo, hi]) => ({ z, ring: sided([
       [SLOT, lo + .04], [w - .03, lo], [w, lo + .04], [w, hi - .035], [w - .035, hi], [SLOT, hi],
@@ -180,20 +186,23 @@ function smoke(P: TankBuilderPort): void {
 
 /** L11A5 120 mm rifled gun on its trunnion: drum shield, recessed canvas boot, a thermal sleeve tapering from 0.24 m to
  *  0.19 m with its straps, the fume extractor at mid-length and the muzzle reference mirror. */
-function gun(P: TankBuilderPort): void {
+export function addChallenger1Gun(P: TankBuilderPort): void {
   const T = D.trunnion[2];
   const lathe = (rows: readonly (readonly [number, number])[], segments = P.q ? 32 : 18): THREE.BufferGeometry =>
     new THREE.LatheGeometry(rows.map(([z, r]) => new THREE.Vector2(r, z - T)), segments).rotateX(Math.PI / 2);
   const sleeve = (z: number): number => .12 - .025 * (z - 2.40) / (7.18 - 2.40);
-  P.add('gun', lathe([[1.05, 0], [1.05, .125], [2.40, .125], [2.40, sleeve(2.40)], [4.58, sleeve(4.58)], [4.62, .138],
+  // (the tube's hidden rear ends just behind the drum shield, 0.30 m behind the trunnion: at full elevation it stays over
+  // the turret's underside, which the seat lifts up to 12 cm over the engine deck, turretSeatRiseM)
+  P.add('gun', lathe([[1.78, 0], [1.78, .125], [2.40, .125], [2.40, sleeve(2.40)], [4.58, sleeve(4.58)], [4.62, .138],
     [5.20, .138], [5.24, sleeve(5.24)], [7.18, sleeve(7.18)], [7.20, .088], [7.39, .088], [7.39, 0]]));
   for (const z of [2.66, 3.16, 3.66, 4.16, 5.64, 6.14, 6.64]) {
     const r = sleeve(z) + .005;
     P.add('gunDark', lathe([[z - .016, r - .012], [z - .016, r], [z + .016, r], [z + .016, r - .012]], P.q ? 24 : 14));
   }
-  // muzzle reference system mirror on its bracket over the muzzle
-  P.add('gunDark', box(.07, .05, .16), 0, .135, 7.25 - T);
-  P.add('gunDark', box(.03, .05, .05), 0, .10, 7.28 - T);
+  // muzzle reference system mirror on a slim strut over the muzzle (held clear of the tube's own section, so the drawn
+  // bore axis the gun-barrel census fits stays the tube's)
+  P.add('gunDark', box(.07, .05, .14), 0, .175, 7.25 - T);
+  P.add('gunDark', box(.02, .07, .03), 0, .12, 7.27 - T);
   // drum shield behind the nose slot, turning with the gun about the trunnion, and the canvas boot from inside the slot
   // onto the sleeve
   P.add('gunMount', cylX(.235, SLOT * 2 - .03, P.q ? 28 : 16), 0, 0, 0);
@@ -208,8 +217,10 @@ export function addChallenger1HistoricTurret(P: TankBuilderPort, mark: Challenge
   togsBarbette(P);
   roofFittings(P);
   smoke(P);
-  gun(P);
+  addChallenger1Gun(P);
   P.turretG.userData.challenger1Turret = Object.freeze({ mark, widthM: 2.56, roofY: 2.48, slotHalfWidthM: SLOT, noseZ: NOSE[NOSE.length - 1][0] });
   // the gun-port receipt's face (turret frame): the nose plates' front, ahead of which the tube runs in the open
-  P.turretG.userData.gunPort = Object.freeze({ faceZ: NOSE[NOSE.length - 1][0] - PZ, kind: 'slot' });
+  P.turretG.userData.gunPort = Object.freeze({ faceZ: CHALLENGER1_PORT_FACE_Z - PZ, kind: 'slot' });
 }
+/** The nose plates' front (vehicle frame), the gun-port receipt's face. */
+export const CHALLENGER1_PORT_FACE_Z = NOSE[NOSE.length - 1][0];

@@ -1,6 +1,7 @@
 // Challenger 1 datums (release 262), from the published dimensions and the measured drawings in
 // docs/references/tanks/challenger1_mk2.md. Vehicle frame: ground y = 0, hull nose z = +4.165, +x the vehicle's left.
-export type Challenger1Mark = 'mk2' | 'mk3';
+/** mk2 and mk3 share the historical turret (the mk3 in its Op Granby fit); mk1 carries the sleek turret on the same hull. */
+export type Challenger1Mark = 'mk1' | 'mk2' | 'mk3';
 type Point = readonly [number, number, number];
 
 export const CR1_HISTORIC = Object.freeze({
