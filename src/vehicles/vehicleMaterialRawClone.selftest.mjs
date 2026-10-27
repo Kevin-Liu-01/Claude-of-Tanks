@@ -61,7 +61,7 @@ const BARE_HOOK_ALLOWED = new Map();
 const PROFILE_HOOK = /\.onBeforeCompile\s*=/g;
 const PROFILE_HOOK_CHAINS = new Map([
   ['src/vehicles/profiles/challenger.ts', 1], // the Challenger lift, over `prev`
-  ['src/vehicles/profiles/merkava.ts', 1], // roofLift, over `prev`
+  // (262: the Merkava family builder carries no shader hook; the old roofLift chain retired with the merkava.ts pile)
   ['src/vehicles/profiles/uk.ts', 1], // inkLift, over `prev`
 ]);
 

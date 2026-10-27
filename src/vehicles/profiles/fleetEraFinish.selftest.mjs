@@ -12,7 +12,7 @@ const ERA_VEHICLE_IDS = Object.freeze([
   'type10b', 'c2_ariete_proto', 'leo2a4_otco', 'leo2_improved', 'leclerc_s1',
   'ztz99_longwei', 'ztz99a', 'ztz99a2', 'object148_proto',
   'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
-  'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',
+  'merkava2b', 'merkava2d', 'merkava3c',
   'merkava3_baz', 'merkava4b', 'amx30b2', 'm60a3',
   't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
   'leo2a6_ua', 't72m1_jaguar', 'pt91a_twardy',
@@ -95,7 +95,9 @@ for (const id of ERA_VEHICLE_IDS) {
 // These closely related donors intentionally carry passive applique or plain
 // armor only. They guard against family inheritance turning ordinary boxes,
 // sensors, or the early T-80 brow into false ERA.
-for (const id of ['m1a1', 'm1a1ha', 't80', 't80b']) {
+// (262: the Merkava Mk 1B too: its refit added the ball-and-chain and smoke, not turret armour; the family rebuild
+// dropped the old pile's invented cheek cassettes)
+for (const id of ['m1a1', 'm1a1ha', 't80', 't80b', 'merkava1b']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'low',
