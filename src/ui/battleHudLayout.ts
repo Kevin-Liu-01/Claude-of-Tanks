@@ -223,6 +223,8 @@ const touchChipParked = (width: number, height: number) => (width > height && he
 const OBJECTIVE_COMPACT_H = 340;
 /** The layout variables that place an element on the centre line, written unrounded. */
 const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
+/** A short landscape's joystick and its gutter under it, from the window's foot (touchControls.ts: 108 px over 24). */
+const TOUCH_JOY_FOOTPRINT = 132;
 /** The parked warning's height at the most, its words on two lines (battleHudLayout.css .cot-aim-notice). */
 const PARKED_CHIP_TALL = 48;
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
@@ -439,7 +441,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
         writeObjective('side', place);
       }
       // (and over a flight's console: the gunship's weapon cards stood 2.5 px under it at 568x256, gauntlet r11)
-      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
+      // (the joystick's place where it is hidden, spectating, in Watch or a flight: the seat as the battle's, never one
+      // that a hidden stick frees, which seated the spectate bar's and one locale's Watch objective under the map at
+      // 568x256 and the rest under the score, gauntlet r18)
+      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height - TOUCH_JOY_FOOTPRINT, read('.cot-touch.on .fire.alt')?.top ?? height,
         read('.cot-flight-hud:not([hidden]) .flight-console')?.top ?? height, height) - 8;
       // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
       if (shown.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }

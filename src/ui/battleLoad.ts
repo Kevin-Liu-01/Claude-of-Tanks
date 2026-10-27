@@ -345,6 +345,9 @@ ${PORTRAIT_ROWS} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT_ROWS} .cot-bl .team.foe .row .sil{grid-column:2;}
 ${PORTRAIT_ROWS} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
 ${PORTRAIT_ROWS} .cot-bl .row .nm{grid-row:1;}${PORTRAIT_ROWS} .cot-bl .row .cs{grid-row:2;margin:0;}
+/* (an open seat's waiting mark on one line, mirrored on the enemy side as its rows are: in the two-line grid its glyph
+   stood at the left of an enemy seat and its line had no width, gauntlet r18 at 390x844 and 320x568) */
+${PORTRAIT_ROWS} .cot-bl .row.slot{display:flex;align-items:center;gap:6px;}${PORTRAIT_ROWS} .cot-bl .team.foe .row.slot{flex-direction:row-reverse;}
 /* (each line one height in both scripts, so a row's lines stand level with the row's opposite: zh's 13 px "你" set the
    player's lines 2 px off the foe's, gauntlet r10) */
 /* (15 and 13 px, a pixel over and under them in the 32 px row: at 16 and 14 the descenders sat on its rule, r15) */

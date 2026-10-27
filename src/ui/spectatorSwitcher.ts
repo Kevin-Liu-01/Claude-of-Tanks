@@ -69,11 +69,12 @@ export interface SpectateAlly { readonly id: string; readonly name: string; read
  * backs out (a moved focus restored first), as every picker does. Q and E still step. The picker loads on the first
  * open, so a battle that never opens it carries none of it.
  */
-/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover, and the map, the score
- *  and the objective over its column, whose edges it would cut through (gauntlet r17: its top ran through the score's
- *  figures at 568x256 and across the map at 844x390 and 320x568). The lanes and the rosters it would cut stand down while
- *  it is open (the HUD's spec-picking). */
-const PICK_CEILINGS = '.cot-touch.on .mobile-chrome,.cot-minimap,.cot-top,.cot-mode-status.show';
+/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover, and the score over its
+ *  column, whose figures it would cut through (gauntlet r17 at 568x256). The map and the objective over its column stand
+ *  down while it is open (pick-under), as the lanes and the rosters do (the HUD's spec-picking): kept as its ceiling, the
+ *  map left it one row at 568x256, the watched tank's, gauntlet r18. */
+const PICK_CEILINGS = '.cot-touch.on .mobile-chrome,.cot-top';
+const PICK_UNDER = '.cot-minimap,.cot-mode-status.show';
 
 export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => void): {
   update(allies: readonly SpectateAlly[], current: string | null): void;
@@ -119,6 +120,10 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     pop.style.width = plate?.width ? `${Math.round(plate.right - bar.getBoundingClientRect().left)}px` : '';
     const barTop = bar.getBoundingClientRect().top;
     const box = pop.getBoundingClientRect();
+    for (const node of document.querySelectorAll<HTMLElement>(PICK_UNDER)) {
+      const over = node.getBoundingClientRect();
+      node.classList.toggle('pick-under', !!over.height && over.bottom < barTop && over.right > box.left && over.left < box.right);
+    }
     let ceiling = 8;
     for (const node of document.querySelectorAll<HTMLElement>(PICK_CEILINGS)) {
       const over = node.getBoundingClientRect();
@@ -159,6 +164,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     scrim.hidden = true;
     bar.classList.remove('picking');
     bar.parentElement?.classList.remove('spec-picking');
+    for (const node of document.querySelectorAll('.pick-under')) node.classList.remove('pick-under');
     subject?.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
   }
@@ -235,7 +241,15 @@ export const spectatorSwitcherStyles = `
 .cot-spec-scrim[hidden]{display:none}
 /* (and the lanes and the rosters under it stand down: veiled, their rows read on at its edges as fragments, "_Long_Na…" at
    844x390 and a roster row sliced at 1024x600, gauntlet r17) */
-.spec-picking :is(.cot-kill-lane,.cot-ear,.cot-ribbon){visibility:hidden}
+.spec-picking :is(.cot-kill-lane,.cot-ear,.cot-ribbon),.spec-picking .pick-under{visibility:hidden}
+/* (a short landscape's rows on one line, the vehicle after the callsign, at the 44 px target (no favourite's star to
+   hold the kit's 60): two lines a row left room for one, r18) */
+@media (max-height:340px) and (orientation:landscape){
+ .cot-spec-pick .cot-c-picker__opt{min-height:44px;padding-block:var(--s1)}
+ .cot-spec-pick .cot-c-picker__words{flex-wrap:nowrap;align-items:baseline;gap:var(--s2)}
+ .cot-spec-pick .cot-c-picker__name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .cot-spec-pick .cot-c-picker__facts{flex:0 0 auto;flex-basis:auto}
+}
 .cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
  flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);
  background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--surface-scene);box-shadow:var(--ring-1);
