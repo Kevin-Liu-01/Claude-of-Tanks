@@ -87,13 +87,17 @@ try {
     for (const mode of MODES) {
       if (arg('mode', '') && !arg('mode', '').split(',').includes(mode)) continue;
       for (const state of ['rest', 'more']) {
-        await page.evaluate((id, open) => {
+        // a mode without further options to open (the range: its one switch stands in the row) has no 'more' state
+        const applies = await page.evaluate((id, open) => {
           document.querySelector(`[data-deploy-modes] .cot-c-picker__opt[data-id="${id}"]`)?.click();
           const more = document.querySelector('.cot-deploy-more');
+          if (open && !more?.checkVisibility()) return false;
           if ((more?.getAttribute('aria-expanded') === 'true') !== open) more?.click();
           // the column at its top, as the screen opens
           for (const el of document.querySelectorAll('.cot-battle-details,.cot-battle-menu-scroll')) el.scrollTop = 0;
+          return true;
         }, mode, state === 'more');
+        if (!applies) continue;
         await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 300)));
         const { compact, rects } = await page.evaluate(measure, ROWS);
         const problems = [];

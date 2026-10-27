@@ -257,8 +257,11 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   const scrollers = [...menu.querySelectorAll<HTMLElement>('.cot-battle-details,.cot-battle-mode-list,.cot-deploy-campaign')];
   // the battlefield's and the rules' resting heights (read here, after layout, never in a press): an open picker or the
   // further options take exactly that room, so nothing under them moves
+  // the tab strip, sideways: a phone's fade shows only where its tabs overflow (deploy.css)
+  const tabStrip = menu.querySelector<HTMLElement>('.cot-deploy-tabs');
   const markScrollers = (): void => {
     for (const el of scrollers) el.classList.toggle('is-scrollable', el.scrollHeight > el.clientHeight + 1);
+    tabStrip?.classList.toggle('is-scrollable', tabStrip.scrollWidth > tabStrip.clientWidth + 1);
     if (!details || details.classList.contains('is-picking') || details.classList.contains('is-more')) return;
     const field = details.querySelector<HTMLElement>('.cot-deploy-field');
     const rules = details.querySelector<HTMLElement>('.cot-deploy-rules');
@@ -268,6 +271,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   if (typeof ResizeObserver === 'function') {
     const sizes = new ResizeObserver(markScrollers);
     for (const el of scrollers) { sizes.observe(el); for (const child of el.children) sizes.observe(child); }
+    if (tabStrip) sizes.observe(tabStrip);
   }
 
   function renderTiers(): void {
@@ -346,6 +350,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
         again.setAttribute('aria-label', full);
       }
       placeDetails();
+      // the range has no further options to open (its switch stands in the row): one left open by another mode closes
+      if (options.hasAttribute('data-range')) setMore(false);
       renderTiers();
       const seconds = host.loadEstimateS();
       estimate.textContent = seconds ? t('garage.deploy.loadEstimate', { value: String(seconds) }) : '';

@@ -256,9 +256,10 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-dossier-head::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 86% 0,var(--accent-wash),transparent 30%);}
 .cot-dossier-title{display:flex;align-items:center;gap:9px;padding-right:72px;}
+/* the tier on the cards' neutral plate, its numeral in ink (an accent fill made the tier a second primary, Main 10-27) */
 .cot-tier-plate{height:25px;min-width:31px;padding:0 6px;display:grid;place-items:center;
-  color:var(--ink-on-accent);background:var(--accent);border:1px solid var(--accent-hi);
-  font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;box-shadow:var(--e1);}
+  color:var(--ink-1);background:var(--scrim);border:1px solid var(--line-3);
+  font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;}
 .cot-garage .stats h3{font-size:max(17px,var(--fs-16));font-weight:700;letter-spacing:var(--track-title);color:var(--ink-1);
   min-width:0;line-height:1.1;text-wrap:balance;}
 /* the compact overlay head (phones) gives a long name a second line instead of cutting it ("M1A1 …", "C1 Ariete Prot…") */
@@ -552,7 +553,8 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px var(--s1) 2px;
   font:500 var(--hc-tier)/1 var(--font-mono);letter-spacing:0;
   color:var(--ink-3);background:var(--scrim);border:1px solid var(--line-3);}
-.cot-card .hc-tier b{font-weight:500;color:var(--text-accent);}
+/* the numeral in ink: the accent stays on the primary action, the selection and the direction's marks (Main 10-27) */
+.cot-card .hc-tier b{font-weight:500;color:var(--ink-1);}
 /* Facing left (policy v5, owner 2026-10-20 "Whole tank faces left"): the flag holds the rear-top (right) corner,
    so the tier chip and the dev tag take the bow-side (left) one, as the compositor draws them. */
 .cot-hc[data-hero-facing='left'] .hc-tier,.cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:6px;}
@@ -1373,7 +1375,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-
 html[lang^='zh'] .cot-lt-id .lt-tier{gap:0;}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
-.cot-lt-id .lt-tier b{color:var(--accent);}
+.cot-lt-id .lt-tier b{color:var(--ink-1);}
 body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossier-head .sub,.stats-ti){display:none;}
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);

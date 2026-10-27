@@ -4078,24 +4078,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       boss: ruleset.juggernaut ? t('garage.deploy.times', { value: String(ruleset.juggernaut.hpScale) }) : null,
       equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
       ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
-      // the range (the proving ground): its lanes, its plate rack, its moving-target switch, and the player alone on it
+      // the range (the proving ground): its lanes, its plate rack and the player alone on it (its targets are its switch's)
       lanes: ruleset.provingGround ? String(ruleset.provingGround.lanes.length) : null,
       plates: ruleset.provingGround ? String(ruleset.provingGround.plateRack.plates.length) : null,
-      moving: ruleset.provingGround ? t(ruleset.provingGround.moving ? 'garage.deploy.targetsMoving' : 'garage.deploy.targetsStill') : null,
       solo: ruleset.provingGround ? t('garage.deploy.solo') : null,
     };
   }
   type DeployFacts = ReturnType<typeof deployFacts>;
   const DEPLOY_FACT_ICON = {
     teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell',
-    gravity: 'modeMars', speed: 'speed', boss: 'shield', lanes: 'statRange', plates: 'layerArmor', moving: 'speed', solo: 'team',
+    gravity: 'modeMars', speed: 'speed', boss: 'shield', lanes: 'statRange', plates: 'layerArmor', solo: 'team',
   } as const;
   function renderDeployRules(mode: GameModeId): void {
     const facts: DeployFacts = deployFacts(mode);
     // the team size shows on its own control (surface registry S3): the rules lead with the mode's own rule, if it has one
     const special = (['gravity', 'speed', 'boss'] as const).find((key) => facts[key] != null);
-    // the range's card: its lanes, plates and moving targets, the player alone, no clock, its rounds
-    const keys = facts.lanes != null ? ['lanes', 'plates', 'moving', 'solo', 'clock', 'ammo'] as const
+    // the range's card: its lanes and plates, the player alone, no clock, its rounds; its targets show on their own switch
+    // in the options' row, as the team size does (surface registry S3)
+    const keys = facts.lanes != null ? ['lanes', 'plates', 'solo', 'clock', 'ammo'] as const
       : ['clock', 'respawn', 'victory', ...(special ? [special] : []), 'equipment', 'ammo'] as const;
     deployRules.dataset.count = String(keys.length);
     deployRules.innerHTML = keys.map((key) =>
@@ -4260,6 +4260,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     timeOptions.hidden = shown || range;
     galaxySky.hidden = !shown;
     soloOptions.hidden = !solo;
+    // the range's one setting (its targets) stands in the row in the gear's place: no further options to open (deploy.css)
+    soloOptions.toggleAttribute('data-range', range);
     teamOptions.hidden = isWaveMode(battleGameMode) || range;
     refreshBattleTimes(shown);
     timeHint.textContent = t(shown ? 'garage.battle.nightGalaxy' : 'garage.battle.timeHint');
