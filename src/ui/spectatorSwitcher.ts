@@ -69,8 +69,11 @@ export interface SpectateAlly { readonly id: string; readonly name: string; read
  * backs out (a moved focus restored first), as every picker does. Q and E still step. The picker loads on the first
  * open, so a battle that never opens it carries none of it.
  */
-/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover. */
-const PICK_CEILINGS = '.cot-touch.on .mobile-chrome';
+/** What the picker of allies opens under (fit): the touch layer's toolbar, which it cannot cover, and the map, the score
+ *  and the objective over its column, whose edges it would cut through (gauntlet r17: its top ran through the score's
+ *  figures at 568x256 and across the map at 844x390 and 320x568). The lanes and the rosters it would cut stand down while
+ *  it is open (the HUD's spec-picking). */
+const PICK_CEILINGS = '.cot-touch.on .mobile-chrome,.cot-minimap,.cot-top,.cot-mode-status.show';
 
 export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => void): {
   update(allies: readonly SpectateAlly[], current: string | null): void;
@@ -155,6 +158,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     pop.hidden = true;
     scrim.hidden = true;
     bar.classList.remove('picking');
+    bar.parentElement?.classList.remove('spec-picking');
     subject?.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', outside, true);
   }
@@ -163,6 +167,7 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     pop.hidden = false;
     scrim.hidden = false;
     bar.classList.add('picking');
+    bar.parentElement?.classList.add('spec-picking');
     subject?.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', outside, true);
     if (!picker) {
@@ -228,12 +233,17 @@ export const spectatorSwitcherStyles = `
 .cot-spec.picking{z-index:calc(var(--hud-layer-score) + 2)}
 .cot-spec-scrim{position:absolute;inset:0;z-index:calc(var(--hud-layer-score) + 1);background:var(--battle-veil);pointer-events:auto}
 .cot-spec-scrim[hidden]{display:none}
+/* (and the lanes and the rosters under it stand down: veiled, their rows read on at its edges as fragments, "_Long_Na…" at
+   844x390 and a roster row sliced at 1024x600, gauntlet r17) */
+.spec-picking :is(.cot-kill-lane,.cot-ear,.cot-ribbon){visibility:hidden}
 .cot-spec-pick{position:absolute;left:0;bottom:calc(100% + var(--s2));width:min(360px,100%);max-height:min(60vh,420px);display:flex;
  flex-direction:column;box-sizing:border-box;padding:var(--s2);border-radius:var(--r1);
  background:linear-gradient(var(--hud-plate-strong),var(--hud-plate-strong)),var(--surface-scene);box-shadow:var(--ring-1);
  pointer-events:auto;overflow:hidden}
-/* (each ally's callsign in the display face, as the plate under the list names the watched one: one datum, one face) */
+/* (each ally's callsign in the display face, as the plate under the list names the watched one: one datum, one face; and
+   its vehicle in the plate's voice, the kit's body face read as another kit's, gauntlet r17) */
 .cot-spec-pick .cot-c-picker__name{font-family:var(--font-display);font-weight:700}
+.cot-spec-pick .cot-c-picker__facts{font:500 var(--battle-fs-12)/1.2 var(--font-ui)}
 .cot-spec-pick[hidden]{display:none}
 .cot-spec-pick>.cot-c-picker{min-height:0;flex:1 1 auto;display:flex;flex-direction:column}
 .cot-spec-pick .cot-c-picker__grid{min-height:0;overflow:auto;padding-block:0;-webkit-mask-image:none;mask-image:none}

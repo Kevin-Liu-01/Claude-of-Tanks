@@ -77,7 +77,7 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
 .cot-mp-strip .glyph svg{width:16px;height:16px}
 .cot-mp-strip.degraded .glyph{color:var(--text-warn);--i-b3:.22}
 .cot-mp-strip.bad .glyph{color:var(--text-danger);--i-b2:.22;--i-b3:.22}
-.cot-mp-strip.offline .glyph{color:var(--text-danger);--i-b1:.22;--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.offline .glyph{color:var(--text-danger);--i-b1:.45;--i-b2:.45;--i-b3:.45}
 .cot-mp-strip.unknown .glyph{color:var(--ink-3);--i-b2:.22;--i-b3:.22}
 .cot-mp-strip .unit{display:inline-grid;grid-template-columns:auto auto;align-items:baseline;column-gap:4px}
 .cot-mp-strip .unit+.unit{padding-left:8px;border-left:1px solid rgba(171,190,204,.2)}
@@ -141,8 +141,7 @@ body[data-cot-width='phone'] .cot-mp-banner{width:calc(100vw - (var(--cot-edge) 
    reader; an outage is announced and also named on the button itself. */
 body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
   left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
-/* (a column sized to its widest line, 44 px at least: zh's "42 毫秒" broke 秒 out of the fixed 44 px tile, gauntlet r8;
-   the notice takes the tile's width, never widens it) */
+/* (a column sized to its widest line, 44 px at least: zh's "42 毫秒" broke 秒 out of the fixed 44 px tile, gauntlet r8) */
 /* (the touch chrome's 48 px, the row it shares on a portrait phone: at 44 it ended 4 px over the chrome's foot, gauntlet r12) */
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;min-width:44px;height:48px;padding:3px;gap:2px;flex-direction:column;justify-content:center;font-size:11px}
 body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping){display:none}
@@ -156,7 +155,10 @@ body.cot-touch-layout .cot-mp-status.battle .unit.ping b{font-weight:700}
 body.cot-touch-layout .cot-mp-status.battle .unit.ping i{font-size:var(--battle-fs-11);color:var(--ink-2)}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
-body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:0;min-width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* (while the tile names an outage its word stands in the ping's line, the tile as wide as the word: under the ping, cut to
+   the tile's 44 px, it read "Offli…" under a stale "42 MS", gauntlet r17) */
+body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;font-size:11px;line-height:12px;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip.noted .unit.ping{display:none}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
 /* (touch names an outage on the tile itself: the battle's notice is read out, never drawn, and its leave stays in the panel) */
 body.cot-touch-layout .cot-battle-notices .cot-mp-notice{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -196,7 +198,8 @@ interface StripText {
 
 /** The strip's four cells and its accessible summary. */
 export function formatStrip(s: Readonly<NetworkStatusSnapshot>): StripText {
-  const ping = pingOf(s);
+  // (an offline link has no round trip: its last one read live in the danger ink beside "Offline", gauntlet r17)
+  const ping = s.health === 'offline' ? null : pingOf(s);
   const pingText = ping === null ? '—' : String(Math.max(0, Math.min(999, round(ping))));
   const seat = s.seat === null ? '' : t('mpStatus.seat', { seat: s.seat });
   const roster = `${s.rosterCount}/${s.rosterCapacity}`;
@@ -443,6 +446,8 @@ export function createMultiplayerStatusSurface({
       setHealthClass(strip, 'cot-mp-strip', text.health);
       setHealthClass(panel, 'cot-mp-panel', text.health);
     }
+    // (after the health's class, which sets the strip's whole class: the tile's word stands in its ping's line)
+    strip.classList?.toggle('noted', !!shortNotice);
     write(pingValue, text.ping);
     write(pingUnit, text.pingUnit);
     if (hostUnit.hidden !== !text.host) hostUnit.hidden = !text.host;

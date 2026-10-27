@@ -399,6 +399,13 @@ body[data-cot-height='short'] .cot-bl .team.long .row .fl[data-nation]{width:12p
 body[data-cot-height='short'] .cot-bl .team.long .row{gap:var(--s2)}
 body[data-cot-height='short'] .cot-bl .row .nm{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .foot{padding-top:5px}
+/* (on a short window's and a portrait phone's card the countdown stands in the progress row's place when it comes, its
+   own row's room going to the rosters: reserved under the bar, its 30 px left fourteen a side two rows short at 844x390
+   over an empty band, gauntlet r17) */
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .foot{position:relative}
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .count{position:absolute;inset:0;height:auto;margin:0;
+  display:flex;align-items:center;justify-content:center;line-height:1}
+body:is([data-cot-height='short'],[data-cot-width='phone'][data-cot-orientation='portrait']) .cot-bl .foot:has(>.count:not(:empty)) .fmeta{visibility:hidden}
 body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}
 body[data-cot-height='short'] .cot-bl .fstage{font-size:var(--battle-fs-11)}
 body[data-cot-height='short'] .cot-bl .fpct{font-size:var(--battle-fs-13)}
@@ -689,6 +696,9 @@ body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-tou
 body.cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-drive{
   left:max(126px,calc(env(safe-area-inset-left) + 126px));transform:scale(.68);
 }
+/* (the second FIRE over the dial's centre: 126 px and half its 73 px, less the button's 28; at 140 it stood 5 px right of
+   it at 844x390, gauntlet r17) */
+body[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-touch .fire.alt{left:max(134px,calc(env(safe-area-inset-left) + 134px))}
 /* (every touch dial drops its unit and end marks: touchControls.ts) */
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-minimap{width:calc(92px * var(--mm-k,1))!important;height:calc(92px * var(--mm-k,1))!important}
 /* touchControls is battle-lazy and injects its base placement after this

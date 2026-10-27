@@ -671,8 +671,8 @@ try {
       && aerialCss.includes("@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}")
       && aerialCss.includes("body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}")
       && aerialCss.includes('left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))'), 'the switch\'s seats mirror each other');
-    assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{transform:translateY(calc(-50% - var(--hud-vision-rise,0px)))}"),
-      'the left seat rises over what meets its foot alone');
+    assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{transform:translate(calc(0px - var(--hud-vision-shift,0px)),calc(-50% - var(--hud-vision-rise,0px)))}"),
+      'the left seat rises over what meets its foot alone, its left edge on that one\'s');
     assert.ok(layoutSourceR10.includes('const edge = width < 540 ? 112 : 180;') && layoutSourceR10.includes('const reach = Math.max(Math.min(width, height) * 0.15 + 8, 80);'),
       'the solver models those seats');
   } finally {

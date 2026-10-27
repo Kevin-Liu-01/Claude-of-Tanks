@@ -48,6 +48,11 @@ installResponsiveLayout();
 const bus = createBus();
 const input = createInput();
 const hud = initHud(bus);
+// (the nations' flags land before the first kill, as in a battle, whose load screen imports them long before one: the
+// HUD imports them on demand, and the fixture's kills come at once, so some sizes' feeds drew flags and others none,
+// gauntlet r17)
+await import('../../src/ui/flags.ts');
+await new Promise((resolve) => setTimeout(resolve, 0));
 // (a gentle field under the battle, as a battle's map hands the HUD one: the minimap draws its relief and the drone reads
 // its altitude off it; without one the altitude read a dash, gauntlet r5)
 hud.buildMinimap({size:1024, minY:0, maxY:24, getHeightAt:(x,z)=>8+6*Math.sin(x/140)*Math.cos(z/170), getGroundType:()=>'grass'});
@@ -237,6 +242,9 @@ function state(name) {
   // Cross the real 30-frame FPS threshold; single-frame fixtures miss this plate.
   for(let i=0;i<31;i++)hud.update(frame);
   panel.update(player.combat);
+  // (a watched battle is watched from its start, so its kills are never the viewer's: the watch side before the first,
+  // as watchRuntime.ts sets it; set after them, the lane read "You" in Watch, gauntlet r17)
+  if(name.startsWith('watch-'))hud.setWatchSide('player');
   // (the first battles' strip stands at the rollout, before the player's first engagement: no kills staged)
   for(let i=0;i<(name==='hints'?0:name==='feed-burst'?14:3);i++){
     bus.emit('mode:respawn',{id:tanks[8].id});
@@ -280,7 +288,6 @@ function state(name) {
   // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying
   if(name.startsWith('watch-')){
     const view=name.slice(6), seat=tanks[3];
-    hud.setWatchSide('player');
     void import('../../src/ui/watchHud.ts').then(({createWatchHud})=>{
       const watch=createWatchHud(()=>hud.root,{cycle(){},drone(){},toggleSeat(){},setClimb(){}});
       watch.update({view,tank:view==='drone'?null:{id:seat.id,team:'player',spec:{id:seat.spec.id,name:seat.spec.name,nation:seat.spec.nation}},

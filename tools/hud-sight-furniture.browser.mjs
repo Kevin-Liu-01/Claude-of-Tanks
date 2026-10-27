@@ -31,7 +31,7 @@ const SIZES = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700,
   [740, 360, true], [640, 360, true], [375, 667, true]];
 const NAMES = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
-  '.cot-scope-vision', '.cot-aim-warning', '.flight-identity', '.cot-ear'];
+  '.cot-scope-vision', '.cot-aim-warning', '.cot-battle-notices .cot-aim-notice', '.flight-identity', '.cot-ear'];
 
 const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const sizes = {};

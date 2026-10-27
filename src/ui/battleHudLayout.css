@@ -128,11 +128,14 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-dp{left:270px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,var(--hud-dp-cap,30vw),150px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(var(--hud-dp-least,112px),var(--hud-dp-cap,30vw),150px)!important}
 /* (a tight landscape's plate stops 6 px short of AUTO AIM's word, 2 px wider than its 50 px button at right 158 px: the
    plate's edge met the word at 568x256, gauntlet r8) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height-density='tight'][data-cot-orientation='landscape'] .cot-dp{--hud-dp-cap:min(30vw,100vw - 432px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
+/* (a narrow portrait's plate 104 px wide, its figures on 4 px insets, 8 px and more off the joystick's ring and the FIRE's:
+   at its 112 px least its top corners came 3-5 px from both at 320x568, gauntlet r17) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-dp{--hud-dp-least:104px;padding-inline:4px}
 /* Spectating has no driving/weapon actions. Keep just navigation and the
    spectator strip at the floor, leaving chat above it. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating :is(.cot-dp,.cot-drive,.cot-touch .joy,.cot-touch .round){display:none!important}
@@ -181,7 +184,9 @@ body[data-cot-battle-layout][data-hud-map-large='right'] .cot-kill-lane.r{displa
 /* the battle's notices (battleNotices.ts: the kit's region) under the centre's detection and alert, never on them, at the
    planner's top (battleHudLayout.ts --hud-battle-notices-top; UI-LOCKDOWN B14): the pointer lock's notice and the
    network's banner each stood fixed at the centre top, over the objective and each other */
-body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)))}
+/* (as wide as its notice, to a cap: the kit's 420 px box wrapped the reconnect notice's line at 1440 and wider, where the
+   type grows and the window has the room, gauntlet r17) */
+body[data-cot-battle-layout] .cot-battle-notices[data-placement=top]{top:var(--hud-battle-notices-top,calc(76px + env(safe-area-inset-top,0px)));width:max-content;max-width:min(720px,calc(100vw - 32px))}
 
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
@@ -363,11 +368,13 @@ body[data-cot-battle-layout] .cot-kill-lane{container:kill-lane/inline-size}
 /* A lane narrower still stacks each row (battleHudLayout.ts FEED_STACK_W): the killer on its own line, the cause and the
    victim under it, 38 px a row (two lanes side by side at 390x844 read "Command…", gauntlet r8) */
 body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 100%;text-align:right}
-/* (the victim on the cause's line, held to the line less the cause's glyph and gap: a wrapping row breaks an item at its
+/* (the killer's flag beside it on its line, the victim's beside it on the cause's: three items on one line under a 100 %
+   killer sent the victim to a third line, cut by the row's 38 px, at 568x256, gauntlet r17) */
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 calc(100% - 20px);text-align:right}
+/* (the victim on the cause's line, held to the line less the cause's glyph, its flag and their gaps: a wrapping row breaks an item at its
    whole callsign's width before it can shrink, and the victim fell to a third line, the row's 38 px spilling under the
    toolbar, gauntlet r9) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:calc(100% - 20px)}
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:calc(100% - 40px)}
 /* (and a narrow personal lane gives its rows' inner end 4 px, the screen-edge gutter kept: its victims read "Commande…"
    at 136 px, 320x568) */
 @container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}
@@ -570,15 +577,21 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout{--mm-tiny:84px}
 }
 
+/* UI-LOCKDOWN B14: where a touch layout parks the chip off the sight it is the kit's notice in the battle's region (hud.ts
+   syncAimNotice), and the region stands where the chip parked; on touch it shows no other notice (the network's is the
+   strip's words for a screen reader there: multiplayerStatus.ts). The chip's compact plate, its glyph and 11 px words,
+   and no touch target over the joystick under it. */
+.cot-battle-notices .cot-aim-notice{align-items:center;gap:6px;min-width:32px;min-height:24px;padding:4px var(--s3);font:700 var(--battle-fs-11)/12px var(--hud-font,system-ui);text-transform:uppercase;pointer-events:none}
+.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph,.cot-battle-notices .cot-aim-notice .cot-c-notice__glyph svg{width:16px;height:16px}
+.cot-battle-notices .cot-aim-notice .cot-c-notice__body{padding-top:0}
 @media (max-height:549px) and (orientation:landscape){
   /* (the parked chip keeps its words: gauntlet r3 read a glyph in a square under the map) */
-  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px;min-width:32px;font-size:var(--battle-fs-11);line-height:12px;padding:4px var(--s3);white-space:normal}
-  .cot-hud .cot-aim-warning{padding:4px var(--s3);box-sizing:border-box}
+  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:max-content;max-width:240px}
 }
 /* (as tall as the detection and the alert over the sight, one notice height on touch: 24 against 31, gauntlet r7; under
    300 px tall the map and the joystick leave it 29 px, and it keeps its own height, the layout receipt at 568x256) */
 @media (max-height:549px) and (min-height:300px) and (orientation:landscape){
-  .cot-hud .cot-aim-warning{min-height:32px}
+  body.cot-touch-layout .cot-battle-notices .cot-aim-notice{min-height:32px}
 }
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
@@ -588,9 +601,9 @@ body:not(.cot-touch-layout) .cot-aim-warning{font-size:var(--battle-fs-13);lette
    row, giving way while a notice shows (battleHudLayout.ts slotChip; under the map it met the systems slot, the layout
    receipt at 320x568) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{left:50%;top:var(--hud-aim-warning-top,204px);transform:translateX(-50%);width:max-content;max-width:var(--hud-touch-alert-w,176px);min-width:32px;height:24px;font-size:var(--battle-fs-11);line-height:12px;padding:0 var(--s2);white-space:nowrap;display:flex;align-items:center}
-  .cot-hud .cot-aim-warning{padding:0 var(--s2)}
-  .cot-aim-warning[data-under-notice]{visibility:hidden}
+  body[data-cot-battle-layout].cot-touch-layout .cot-battle-notices[data-placement=top]{top:var(--hud-aim-warning-top,204px);width:max-content;max-width:var(--hud-touch-alert-w,176px)}
+  body.cot-touch-layout .cot-battle-notices .cot-aim-notice{height:24px;min-height:0;padding:0 var(--s2);white-space:nowrap}
+  .cot-battle-notices[data-under-notice] .cot-aim-notice{visibility:hidden}
 }
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
@@ -721,9 +734,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
    row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
    touch target), each a tile as everywhere on touch */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap;row-gap:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap;row-gap:4px;justify-content:center}
 /* (a short last row keeps the rows' tile width, never stretching to fill: its two tiles ran half as wide again as the
-   three over them at 320x568, gauntlet r8) */
+   three over them at 320x568, gauntlet r8; centred under them, closed up as every touch row: left under the first two it
+   left the third place empty, gauntlet r17) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:0 0 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}
 /* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
    index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
