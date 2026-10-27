@@ -274,7 +274,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
   const lockState = await page.evaluate(() => ({
     locked: window.__DEBUG.input.isLocked(),
     cursorAim: window.__DEBUG.input.isCursorAim(),
-    toast: !!document.querySelector('.cot-lock-toast'),
+    toast: !!document.querySelector('.cot-battle-notices .cot-lock-notice:not([data-state="exit"])'),
   }));
   const verifyLockPresentation = () => {
     if (stubNoLock) {
@@ -748,7 +748,7 @@ async function runDenyRetryMode() {
     attempts: window.__LOCK_ATTEMPTS ? window.__LOCK_ATTEMPTS() : -1,
     locked: window.__DEBUG.input.isLocked(),
     cursorAim: window.__DEBUG.input.isCursorAim(),
-    toast: !!document.querySelector('.cot-lock-toast'),
+    toast: !!document.querySelector('.cot-battle-notices .cot-lock-notice:not([data-state="exit"])'),
     fired: window.__PROBE.fired,
   }));
 

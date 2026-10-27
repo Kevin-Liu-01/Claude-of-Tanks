@@ -7,7 +7,8 @@
  * model (link, round trip, cadence, buffer, loss, corrections, traffic,
  * reconnects, room, region); a banner names what is happening when the link
  * is degraded, reconnecting ("attempt 2 · next try in 3 s"), stalled, dropped
- * by the server or lost, without ever taking the pointer; the Leave battle
+ * by the server or lost, without ever taking the pointer (in battle the kit's
+ * notice in the battle's region, battleNotices.ts); the Leave battle
  * control lives in the panel, in the banner once the link is bad, and behind
  * the leave action (armed on the first press, confirmed by a second inside
  * the window). Every rule the surface shows comes from
@@ -19,6 +20,7 @@ import { createElement, datumGlyph, markDatum } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { t } from './i18n.ts';
+import { battleNotices, type BattleNoticePort } from './battleNotices.ts';
 import type { NetworkBanner, NetworkHealth, NetworkHealthReason, NetworkStatusSnapshot } from '../mp/session/networkStatus.ts';
 
 const STYLE_ID = 'cot-mp-status-style';
@@ -28,6 +30,8 @@ const MP_LINK_CLASS = 'cot-mp-battle';
 let linkHolders = 0;
 export const MP_STATUS_PANEL_STORAGE_KEY = 'cot.mp.netpanel';
 export const LEAVE_CONFIRM_MS = 2500;
+/** The battle banner's id in the battle's notice region. */
+const BATTLE_NOTICE_ID = 'cot-mp-banner';
 
 interface StorageLike {
   getItem(key: string): string | null;
@@ -45,6 +49,8 @@ interface MultiplayerStatusSurfaceOptions {
   storage?: StorageLike | null;
   now?: () => number;
   leaveConfirmMs?: number;
+  /** Where the battle host's banner shows (the battle's notice region by default; a receipt passes its own). */
+  notices?: BattleNoticePort;
 }
 
 interface MultiplayerStatusSurface {
@@ -103,10 +109,9 @@ body[data-cot-battle-layout]:not(.cot-touch-layout):not([data-cot-width='phone']
 body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:not(.ping){display:none}
 .cot-mp-banner.migrating{color:#cbeaff;border-color:rgba(174,193,207,.55)}
-.cot-mp-banner{position:fixed;left:50%;top:88px;transform:translate(-50%,0);z-index:91;min-width:220px;max-width:calc(100vw - 32px);box-sizing:border-box;
+.cot-mp-banner{box-sizing:border-box;min-width:220px;
   padding:8px 16px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;
   font:700 11px ${FONT_COND};letter-spacing:.12em;text-align:center;text-transform:uppercase;pointer-events:none}
-.cot-mp-banner.lobby{position:static;transform:none;max-width:none}
 .cot-mp-banner[hidden]{display:none}
 .cot-mp-banner.bad,.cot-mp-banner.offline{color:var(--text-danger);border-color:rgba(255,103,91,.7)}
 .cot-mp-banner .leave{display:none;margin:8px auto 0}
@@ -128,7 +133,6 @@ body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:
 body.cot-touch-layout .cot-mp-strip{min-height:44px;padding:6px 12px}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-mp-status{
   top:calc(max(8px,env(safe-area-inset-top)) + 134px);left:calc(max(8px,env(safe-area-inset-left)) + 100px);right:auto;align-items:flex-start}
-body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-mp-banner{top:calc(max(8px,env(safe-area-inset-top)) + 240px)}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-mp-status{
   top:calc(max(8px,env(safe-area-inset-top)) + 84px);right:max(10px,env(safe-area-inset-right))}
 body[data-cot-width='phone'] .cot-mp-panel{width:calc(100vw - (var(--cot-edge) * 2));max-width:none}
@@ -151,8 +155,9 @@ body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:ce
 .cot-mp-strip .notice{display:none}
 body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:0;min-width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
-body.cot-touch-layout .cot-mp-banner.battle{position:fixed;width:1px!important;height:1px;min-width:0;padding:0;border:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body.cot-touch-layout .cot-mp-banner.battle .leave{display:none}
+/* (touch names an outage on the tile itself: the battle's notice is read out, never drawn, and its leave stays in the panel) */
+body.cot-touch-layout .cot-battle-notices .cot-mp-notice{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body.cot-touch-layout .cot-battle-notices .cot-mp-notice .cot-c-notice__acts{display:none}
 body.cot-debug-hud .cot-mp-status.battle{display:none!important}`;
 
 // ------------------------------------------------------------ pure formatting (receipt-tested)
@@ -227,13 +232,17 @@ export function formatBanner(banner: NetworkBanner): string {
   }
 }
 
-/** The panel's rows, label then value, in display order. */
-export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>): Array<[string, string]> {
+/** The panel's rows, label then value, in display order. With `stripCells` (the strip shows its seat and seated cells
+ *  beside the ping) the panel leaves those to it, and gives the round trip's median and spread, not its figure again
+ *  (UI-LOCKDOWN B12); a folded strip shows its ping alone, and the panel keeps them. */
+export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>, stripCells = false): Array<[string, string]> {
   const rows: Array<[string, string]> = [];
   if (s.attached) {
     const link = t(`mpStatus.link.${s.link}`);
     rows.push([t('mpStatus.row.link'), s.transport === 'reconnecting' ? `${link} · ${t('mpStatus.value.attempt', { attempt: s.reconnectAttempt })}` : link]);
-    rows.push([t('mpStatus.row.rtt'), s.rttMs === null ? '—' : t('mpStatus.value.rtt', { ms: round(s.rttMs), median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })]);
+    rows.push([t('mpStatus.row.rtt'), s.rttMs === null ? '—' : stripCells
+      ? t('mpStatus.value.rttSpread', { median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })
+      : t('mpStatus.value.rtt', { ms: round(s.rttMs), median: round(s.rttMedianMs ?? s.rttMs), jitter: round(s.rttJitterMs) })]);
     rows.push([t('mpStatus.row.updates'), t('mpStatus.value.hz', { hz: s.snapshotHz.toFixed(1), expected: s.expectedSnapshotHz })]);
     rows.push([t('mpStatus.row.age'), t('mpStatus.value.ago', { ms: round(s.snapshotAgeMs) })]);
     rows.push([t('mpStatus.row.buffer'), t('mpStatus.value.buffer', { ms: round(s.interpolationDelayMs), frames: s.bufferedFrames })]);
@@ -254,6 +263,7 @@ export function formatPanelRows(s: Readonly<NetworkStatusSnapshot>): Array<[stri
   const roomPhase = s.roomPhase ? ` · ${t(`mpStatus.roomPhase.${s.roomPhase}`)}` : '';
   rows.push([t('mpStatus.row.room'), s.roomRttMs === null ? `${room}${roomPhase}` : `${room}${roomPhase} · ${t('mpStatus.value.ms', { ms: round(s.roomRttMs) })}`]);
   rows.push([t('mpStatus.row.region'), s.roomRegion ?? '—']);
+  if (stripCells) return rows;
   rows.push([t('mpStatus.row.seat'), s.seat === null ? '—' : String(s.seat)]);
   rows.push([t('mpStatus.row.roster'), `${s.rosterCount} / ${s.rosterCapacity}`]);
   return rows;
@@ -284,6 +294,7 @@ export function createMultiplayerStatusSurface({
   storage = null,
   now = () => performance.now(),
   leaveConfirmMs = LEAVE_CONFIRM_MS,
+  notices = battleNotices,
 }: MultiplayerStatusSurfaceOptions = {}): MultiplayerStatusSurface {
   ensureStyle(STYLE_ID, MP_STATUS_CSS, 'surfaces');
   const parent = container ?? document.body;
@@ -315,14 +326,19 @@ export function createMultiplayerStatusSurface({
   const rosterValue = createElement('b', '', rosterUnit);
   rosterValue.textContent = '0/28';
   const touchNotice = createElement('span', 'notice', strip);
-  const banner = createElement('div', `cot-mp-banner ${host}`, host === 'battle' ? document.body : root);
-  banner.setAttribute('role', 'status');
-  banner.setAttribute('aria-live', 'polite');
-  banner.hidden = true;
-  const bannerText = createElement('span', 'text', banner);
-  const bannerLeave = createElement('button', 'cot-mp-leave leave', banner);
-  bannerLeave.type = 'button';
-  bannerLeave.textContent = t('mpStatus.leave');
+  // (the battle's banner is the kit's notice in the battle's region: a fixed box of its own sat at the centre top over the
+  // pointer lock's notice and the objective, and the killcam's veil left it showing, UI-LOCKDOWN B14; the lobby's stays
+  // inline in its root)
+  const banner = host === 'battle' ? null : createElement('div', `cot-mp-banner ${host}`, root);
+  banner?.setAttribute('role', 'status');
+  banner?.setAttribute('aria-live', 'polite');
+  if (banner) banner.hidden = true;
+  const bannerText = banner && createElement('span', 'text', banner);
+  const bannerLeave = banner && createElement('button', 'cot-mp-leave leave', banner);
+  if (bannerLeave) {
+    bannerLeave.type = 'button';
+    bannerLeave.textContent = t('mpStatus.leave');
+  }
   const panel = createElement('div', 'cot-mp-panel unknown', root);
   panel.id = 'cot-mp-panel';
   panel.setAttribute('role', 'region');
@@ -345,6 +361,8 @@ export function createMultiplayerStatusSurface({
   let lastSnapshot: Readonly<NetworkStatusSnapshot> | null = null;
   let lastBanner: NetworkBanner = null;
   let lastBannerText = '';
+  /** The battle notice as last raised ('' when none shows). */
+  let noticeKey = '';
   let lastHealth: NetworkHealth | null = null;
   let disposed = false;
 
@@ -357,7 +375,8 @@ export function createMultiplayerStatusSurface({
 
   function paintPanel(s: Readonly<NetworkStatusSnapshot>): void {
     write(panelVerdict, `${healthLabel(s.health)} · ${reasonLabel(s.healthReason)}`);
-    const rows = formatPanelRows(s);
+    // (the strip's seat cell shown beside its ping: not folded to the ping alone, multiplayerStatus's data-compact)
+    const rows = formatPanelRows(s, (seatUnit.getClientRects?.().length ?? 0) > 0);
     while (rowNodes.length < rows.length) {
       const row = createElement('div', 'row', panelRows);
       rowNodes.push({ label: createElement('span', '', row), value: createElement('b', '', row) });
@@ -379,13 +398,34 @@ export function createMultiplayerStatusSurface({
     const shown = text.length > 0;
     panelNotice.hidden = !shown;
     if (panelNotice.textContent !== text) panelNotice.textContent = text;
-    if (banner.hidden === shown) banner.hidden = !shown;
-    if (!shown) { lastBannerText = ''; return; }
-    if (text !== lastBannerText) { lastBannerText = text; bannerText.textContent = text; }
+    // (while the panel is open its notice holds the text, never the banner as well: UI-LOCKDOWN B13)
+    const bannerShown = shown && !panelOpen;
     const severe = armed || s.health === 'bad' || s.health === 'offline';
     const migrating = fact?.kind === 'migrating' && !armed;
-    const className = `cot-mp-banner ${host} ${s.health}${migrating ? ' migrating' : ''}${severe && onLeave && !migrating ? ' leaving' : ''}`;
+    const leaving = severe && !!onLeave && !migrating;
+    if (!banner || !bannerText) { paintNotice(bannerShown ? text : '', fact, armed, migrating, leaving); return; }
+    if (banner.hidden === bannerShown) banner.hidden = !bannerShown;
+    if (!shown) { lastBannerText = ''; return; }
+    if (text !== lastBannerText) { lastBannerText = text; bannerText.textContent = text; }
+    const className = `cot-mp-banner ${host} ${s.health}${migrating ? ' migrating' : ''}${leaving ? ' leaving' : ''}`;
     if (banner.className !== className) banner.className = className;
+  }
+
+  // The battle's banner: raised again only when its sentence, its tone or its leave changes (the countdown's second).
+  function paintNotice(text: string, fact: NetworkBanner, armed: boolean, migrating: boolean, leaving: boolean): void {
+    if (!text) {
+      if (noticeKey) { noticeKey = ''; notices.dismiss(BATTLE_NOTICE_ID); }
+      return;
+    }
+    // (a link the match has let go is the kit's error; a new host its information; the rest, the link's state, its warning)
+    const severity = migrating ? 'info' : !armed && (fact?.kind === 'dropped' || fact?.kind === 'failed') ? 'error' : 'warning';
+    const key = `${severity} ${leaving ? 1 : 0} ${text}`;
+    if (key === noticeKey) return;
+    noticeKey = key;
+    notices.show({
+      id: BATTLE_NOTICE_ID, className: 'cot-mp-notice', severity, text, durationMs: null, dismissible: false, priority: 1,
+      actions: leaving ? [{ label: t('mpStatus.leave'), keep: true, run: leaveNow }] : [],
+    });
   }
 
   function set(s: Readonly<NetworkStatusSnapshot>, fact: NetworkBanner, nowMs: number = now()): void {
@@ -420,6 +460,7 @@ export function createMultiplayerStatusSurface({
     strip.setAttribute('title', t(open ? 'mpStatus.toggleAria.hide' : 'mpStatus.toggleAria.show'));
     try { storage?.setItem(MP_STATUS_PANEL_STORAGE_KEY, open ? '1' : '0'); } catch { /* storage may be blocked */ }
     if (open && lastSnapshot) paintPanel(lastSnapshot);
+    if (lastSnapshot) paintBanner(lastSnapshot, lastBanner, now());
   }
 
   function pressLeave(): 'armed' | 'left' | 'ignored' {
@@ -436,7 +477,7 @@ export function createMultiplayerStatusSurface({
     if (event.key === 'Escape' && panelOpen) { event.preventDefault(); event.stopPropagation(); togglePanel(false); strip.focus(); }
   });
   panelLeave.addEventListener('click', leaveNow);
-  bannerLeave.addEventListener('click', leaveNow);
+  bannerLeave?.addEventListener('click', leaveNow);
   strip.setAttribute('title', t('mpStatus.toggleAria.show'));
   let remembered = false;
   try { remembered = storage?.getItem(MP_STATUS_PANEL_STORAGE_KEY) === '1'; } catch { remembered = false; }
@@ -462,7 +503,8 @@ export function createMultiplayerStatusSurface({
     dispose() {
       if (disposed) return;
       disposed = true;
-      banner.remove();
+      banner?.remove();
+      if (noticeKey) { noticeKey = ''; notices.dismiss(BATTLE_NOTICE_ID); }
       root.remove();
       if (host === 'battle') {
         if (--linkHolders === 0) document.body?.classList?.remove(MP_LINK_CLASS);

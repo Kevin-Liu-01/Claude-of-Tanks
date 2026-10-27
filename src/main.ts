@@ -2209,7 +2209,6 @@ createPointerLockFeedbackRuntime({
     spectating: !!killcam.spectate?.active,
   }),
   ensureTouchControls,
-  nextFrame,
 });
 
 // Shell inventory, consumable cooldowns, special actions, and the exact

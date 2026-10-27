@@ -2007,7 +2007,7 @@ Object.assign(RECIPES, {
             window.__MB.setDrive(to ? { to, arriveM: 5, throttle: 1 } : { to: 'point:0,0', arriveM: 40, throttle: 1 });
             window.__MB.setHud('full');
           }, spot || null);
-          await c.page.addStyleTag({ content: '.cot-mp-banner{display:none!important}' });
+          await c.page.addStyleTag({ content: '.cot-battle-notices .cot-mp-notice{display:none!important}' });
         }
         let seen = [null, null];
         for (let i = 0; i < 150; i++) {
@@ -2025,7 +2025,7 @@ Object.assign(RECIPES, {
           const g = window.__DEBUG.game; return g.player ? [Math.round(g.player.state.pos.x), Math.round(g.player.state.pos.z), g.tanks.length] : null;
         })))));
         if (seen[0] == null || seen[1] == null) ctx.note(`the seats did not both see each other (A ${seen[0]}, B ${seen[1]})`);
-        ctx.note('the network-quality banner (.cot-mp-banner) is hidden: it reported the capture machine\'s load, two live battles in one headless Chrome');
+        ctx.note('the network-quality banner (.cot-mp-notice) is hidden: it reported the capture machine\'s load, two live battles in one headless Chrome');
         // each client's own chase view with its gun on the other tank (the staging's camera); the last two rounds
         // in the sights
         const view = (kind) => Promise.all([A, B].map((c) => c.page.evaluate((k) => {

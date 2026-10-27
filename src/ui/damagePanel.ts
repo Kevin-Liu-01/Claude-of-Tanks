@@ -204,6 +204,8 @@ export interface DamagePanelController {
 
 /** The hull points bar's cells (the direction's .seg20). */
 const HP_CELLS = 20;
+/** The hull bar's least gap between cells (damagePanelStyle.ts .hptrack). */
+const HP_CELL_GAP = 2;
 
 function canvas2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext('2d');
@@ -511,14 +513,30 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   // the hull points over the direction's 20-cell bar (brand-ui H4): each cell 5 % of the hull, lit while it stands
   root.innerHTML =
     `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num"${datumAttr('hp')}>—</span><small class="hpmax num"></small></div>` +
-    `<div class="hptrack" aria-hidden="true"></div>` +
-    `<div class="fire">${t('damagePanel.onFire')}</div>`;
+    `<div class="hptrack" aria-hidden="true"></div>`;
+  // (no ON FIRE word on the plan: the status chips over the panel are fire's, module's and crew's one place, with their
+  // severity and the repair's fill, vehicleStatus.ts; UI-LOCKDOWN B2, the registry's ruling)
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
   const hpMax = requiredElement<HTMLElement>(root, '.hpmax');
   const hpTrack = requiredElement<HTMLElement>(root, '.hptrack');
   const hpCells = Array.from({ length: HP_CELLS }, () => hpTrack.appendChild(document.createElement('i')));
+  // Whole-pixel cells: twenty in a fractional width rounded some to 2 px and some to 3 (gauntlet r15). Each takes the
+  // same whole width; the pixels left over widen the gaps one each, spread along the bar (measured on a resize only).
+  const fitHpCells = (): void => {
+    const width = hpTrack.clientWidth;
+    if (!(width > 0)) return;
+    const gaps = (HP_CELLS - 1) * HP_CELL_GAP;
+    const cell = Math.max(1, Math.floor((width - gaps) / HP_CELLS));
+    const spare = Math.max(0, width - gaps - cell * HP_CELLS);
+    for (let i = 0; i < HP_CELLS; i++) {
+      const extra = i === 0 ? 0 : Math.floor((spare * i) / (HP_CELLS - 1)) - Math.floor((spare * (i - 1)) / (HP_CELLS - 1));
+      const style = hpCells[i].style;
+      style.width = `${cell}px`;
+      style.marginLeft = i === 0 ? '0' : `${HP_CELL_GAP + extra}px`;
+    }
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(fitHpCells).observe(hpTrack);
   let hpLit = -1;
-  const fireEl = requiredElement<HTMLElement>(root, '.fire');
 
   // Fixed camera-up stage. Fit the armored vehicle body rather than the full
   // muzzle sweep: the barrel may reach the canvas edge, while the hull and
@@ -541,7 +559,6 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   let spec: DamagePanelTankSpec | null = null;
   let combat: DamagePanelCombatState | null = null;
   let lastHpText = '';
-  let lastFireOn: boolean | null = null;
 
   // --- r9 pose: the panel is CAMERA-UP ---------------------------------------
   // hud.update feeds hull yaw, hull-relative turret yaw and camera yaw every
@@ -1039,11 +1056,6 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       if ((hpTrack.dataset.tone ?? '') !== tone) hpTrack.dataset.tone = tone;
       lastHpText = txt;
     }
-    const burning = !!(combat.fire && combat.fire.burning);
-    if (burning !== lastFireOn) {
-      fireEl.style.display = burning ? 'block' : 'none';
-      lastFireOn = burning;
-    }
   }
 
   /** Build a fully-healthy CombatState-shaped object for this spec. */
@@ -1103,7 +1115,6 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
     if ('pose' in sample) applyPoseSample(sample.pose);
     combat = isFullCombatState(sample) ? sample : combatFromSample(sample);
     lastHpText = '';
-    lastFireOn = null;
     lastDrawSig = null;
     refreshDom();
     draw();
@@ -1142,7 +1153,6 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
       maskSourceVisual = sourceVisual;
       combat = healthyCombat();
       lastHpText = '';
-      lastFireOn = null;
       masks = null;
       tints = null;
       anchors = null;
