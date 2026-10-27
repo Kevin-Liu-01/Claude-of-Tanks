@@ -396,6 +396,11 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
   body[data-cot-panels='persistent'] .cot-lt-head:has(~ .cot-lt-band .cot-lt-consumables) .cot-lt-id{flex-wrap:wrap;max-width:100%;}
   body[data-cot-panels='persistent'] .cot-garage .cot-lt-band:has(.cot-lt-consumables) .eqslot{width:50px;}
 }
+/* a consumable's slot reads its short name whole at every size, as an act does: as wide as its name needs, never
+   narrower than the band's slot (the 259 release cut "REPA…" and "MED…"). The zh names stand at the 13 px reading
+   floor, so four characters need 56 px at the 1.08 scale */
+.cot-garage .cot-lt-consumables .eqslot{min-width:max-content;}
+.cot-garage .cot-lt-consumables .eqslot .sl{max-width:none;overflow:visible;text-overflow:clip;}
 /* the equipment picker opens over the stage above the band, every item in view */
 body[data-cot-panels='persistent'] .cot-eqpick{--lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + var(--s1));
   left:var(--edge);right:auto;top:auto;bottom:calc(var(--band-bottom) + var(--slot) + var(--lt-cap) + var(--s2));

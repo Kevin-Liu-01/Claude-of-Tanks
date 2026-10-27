@@ -56,10 +56,16 @@ for (const locale of ['en-US', 'zh-CN']) {
   for (const item of CONSUMABLE_CATALOG) {
     const stem = consumableNameKey(item.id).slice('consumable.'.length, -'.name'.length);
     for (const field of ['name', 'short', 'effect']) assert.ok(catalog[`consumable.${stem}.${field}`], `${locale}: ${item.id} ${field}`);
-    // the band's slots are 50-68 px, as the equipment slots' short names are (gallery-studio, 2026-10-26): no ellipsis
+    // short enough for the band's 50-68 px slots (gallery-studio, 2026-10-26); a slot grows to a longer name, never cuts it
     assert.ok([...catalog[`consumable.${stem}.short`]].length <= (locale === 'zh-CN' ? 4 : 7), `${locale}: ${item.id} short name fits the slot`);
     assert.ok(!catalog[`consumable.${stem}.effect`].includes('—'), `${locale}: ${item.id} effect has no em dash`);
   }
   assert.ok(catalog['garage.consumableSlot'].includes('{n}'), `${locale}: the Garage slot's label`);
 }
+// the band's consumable slot reads its name whole at every size (the 259 release cut "REPA…" and "MED…"): at least its
+// name's width, and the name never clipped or set with an ellipsis
+const showroom = readFileSync(new URL('../ui/showroom.css', import.meta.url), 'utf8');
+assert.match(showroom, /\.cot-garage \.cot-lt-consumables \.eqslot\{min-width:max-content;\}/, 'the consumable slot is as wide as its name');
+assert.match(showroom, /\.cot-garage \.cot-lt-consumables \.eqslot \.sl\{max-width:none;overflow:visible;text-overflow:clip;\}/,
+  'the consumable slot never cuts its name');
 console.log(`consumableLoadout.selftest: saves, gates, fits, ${view.length} slot views, picker groups and both catalogs passed`);
