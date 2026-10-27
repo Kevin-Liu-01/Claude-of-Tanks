@@ -211,7 +211,10 @@ export const jamesway: RegionalBuilder = (ctx) => {
     sink.recess = 0.05;
     try { windowUnit(sink, endW, 0, winY, 0.7, 0.6, WINDOW, rng, 0.4); } finally { sink.recess = 0; }
     const px = vx0 - bayW * 0.6, py = fl + r + 0.9;
-    sink.cylinder('structureMetal', [px, fl + r - 0.1, zc + r * 0.35], 'y', 1.1, 0.08, 8, { colour: STEEL_DARK, decor: true });
+    // (259, the far-view census: from 10 cm under the crown's height, the mast stood 5 cm over the curved roof where it
+    // stands, on its fine guys alone) its foot in the roof
+    const mb = fl + r * 0.92;
+    sink.cylinder('structureMetal', [px, mb, zc + r * 0.35], 'y', fl + r + 1.0 - mb, 0.08, 8, { colour: STEEL_DARK, decor: true });
     sink.cylinder('structureMetal', [px, py, zc + r * 0.35], 'y', 0.12, 0.16, 8, { colour: STEEL_DARK, decor: true }, 0.04);
     for (const [dx, dz] of [[1.2, 0.6], [-1.2, 0.6], [0, -1.0]] as const) {
       sink.member('structureMetal', [px, py - 0.1, zc + r * 0.35], [px + dx, fl + r * 0.8, zc + r * 0.35 + dz], 0.012, 0.012, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true, fine: true }, 0);

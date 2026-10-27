@@ -281,7 +281,9 @@ export function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly num
  * up through the boards, pale against the weathered planks.
  */
 function sunburst(sink: PartSink, face: Face, y: number, r: number, fine: boolean): void {
-  const o = 0.03;
+  // (259, the far-view census: laid 3 cm off the gable, the rays stood off it on their sides alone, fine joinery hidden
+  // at range) the rays on the gable's face, their backs in it
+  const o = 0;
   sink.cylinder('structureWood', facePoint(face, 0, y, 0), face.out[0] !== 0 ? 'x' : 'z', 0.05, r * 0.32, 10,
     { colour: PALE, decor: true }, r * 0.32, true, 0, Math.PI);
   const n = 9;

@@ -1,18 +1,22 @@
 {
- "about": "Building integrity census (node tools/building-integrity-check.mjs --source=kits --profile=gate): one row per kit builder, generic catalog builder and authored set piece, its numbers from one seed on flat ground. tools/building-integrity-check.selftest.mjs holds every row: no row may add a floating part or a sliver, or more than max(0.05 m2, 10 %) on any open kind's worst view, and every builder needs a row. After a deliberate change rewrite the rows with --update-ledger and give the cause in the commit.",
+ "about": "Building integrity census (node tools/building-integrity-check.mjs --source=kits --profile=gate): one row per kit builder, generic catalog builder, authored set piece and Bund tower damage state, its numbers from one seed on flat ground. tools/building-integrity-check.selftest.mjs holds every row: no row may add a floating part or a sliver, or more than max(0.05 m2, 10 %) on any open kind's worst view, no row strands a part past the fine-detail distance or in a phone's build (strandedFar, strandedPhone: 0), and every builder needs a row. After a deliberate change rewrite the rows with --update-ledger and give the cause in the commit.",
  "rows": {
   "sarajevo/broadcasttower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 3.583,
-   "gapM2": 164.368,
+   "insideM2": 1.493,
+   "gapM2": 131.506,
    "invertedM2": 0
   },
   "longleaf/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -22,6 +26,8 @@
   "andalusian/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.429,
@@ -31,6 +37,8 @@
   "landmark/reservoir:valveTower#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 51.006,
    "insideM2": 0,
@@ -40,6 +48,8 @@
   "generic/megatower": {
    "floating": 1,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 2.515,
    "holeM2": 0,
    "insideM2": 0,
@@ -49,6 +59,8 @@
   "arctic/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -58,6 +70,8 @@
   "longleaf/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.517,
@@ -67,15 +81,19 @@
   "sarajevo/terracetower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 33.486,
+   "insideM2": 2.298,
    "gapM2": 3.936,
    "invertedM2": 0
   },
   "navajo/minaret": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -85,6 +103,8 @@
   "generic/arcology": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -94,6 +114,8 @@
   "arctic/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 14.088,
@@ -103,33 +125,41 @@
   "landmark/whiteout:fuelTankFarm#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 13.854,
-   "gapM2": 5.176,
+   "insideM2": 0,
+   "gapM2": 3.522,
    "invertedM2": 0
   },
   "sarajevo/megatower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 33.1,
+   "insideM2": 2.316,
    "gapM2": 0,
    "invertedM2": 0
   },
   "landmark/saltwind:campanile#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 13.012,
+   "gapM2": 12.382,
    "invertedM2": 0
   },
   "generic/terracetower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -139,24 +169,30 @@
   "landmark/copper_mesa:fuelTankFarm#10": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 14.431,
-   "gapM2": 2.452,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "landmark/whiteout:fuelTankFarm#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 14.431,
-   "gapM2": 2.452,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "sarajevo/needletower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -166,6 +202,8 @@
   "shanghai/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -175,6 +213,8 @@
   "queenstown/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -184,15 +224,19 @@
   "mekong/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.337,
-   "gapM2": 3.897,
+   "insideM2": 0,
+   "gapM2": 1.064,
    "invertedM2": 0
   },
   "arctic/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.456,
@@ -202,24 +246,30 @@
   "glencanyon/arcology": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.025,
+   "gapM2": 0.648,
    "invertedM2": 0
   },
   "andalusian/farmhouse": {
    "floating": 1,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.616,
-   "holeM2": 3.572,
+   "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.965,
+   "gapM2": 0.724,
    "invertedM2": 0
   },
   "bengal/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.032,
@@ -229,6 +279,8 @@
   "chouf/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -238,6 +290,8 @@
   "landmark/copper_mesa:oreCars#8": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 4.516,
    "insideM2": 4.052,
@@ -246,7 +300,9 @@
   },
   "queenstown/factory": {
    "floating": 0,
-   "sliver": 300,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 9.892,
@@ -255,7 +311,9 @@
   },
   "sarajevo/firestation": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.483,
    "insideM2": 2.092,
@@ -265,15 +323,19 @@
   "chouf/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 2.9,
+   "gapM2": 2.023,
    "invertedM2": 0
   },
   "bengal/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.086,
@@ -283,6 +345,8 @@
   "longleaf/rangerlodge": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -292,6 +356,8 @@
   "landmark/copper_mesa:oreCars#18": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 3.349,
    "insideM2": 1.83,
@@ -301,6 +367,8 @@
   "landmark/copper_mesa:headframe#13": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 3.589,
    "insideM2": 0,
@@ -310,24 +378,30 @@
   "hessian/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.227,
-   "gapM2": 2.06,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "eifel/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.227,
-   "gapM2": 2.06,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "landmark/copper_mesa:headframe#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 3.884,
    "insideM2": 0.813,
@@ -337,6 +411,8 @@
   "landmark/copper_mesa:headframe#14": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 4.203,
    "insideM2": 0,
@@ -346,15 +422,19 @@
   "longleaf/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 1.914,
+   "gapM2": 1.948,
    "invertedM2": 0
   },
   "kyushu/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 6.956,
@@ -364,6 +444,8 @@
   "savoyard/alpine": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -373,6 +455,8 @@
   "landmark/copper_mesa:headframe#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 4.237,
    "insideM2": 0,
@@ -382,24 +466,30 @@
   "kolkhoz/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.202,
    "gapM2": 1.677,
-   "invertedM2": 0.434
+   "invertedM2": 0.217
   },
   "siwa/caravanserai": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.616,
+   "insideM2": 2.222,
    "gapM2": 0,
    "invertedM2": 0
   },
   "bengal/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.058,
@@ -409,24 +499,30 @@
   "generic/compound": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.289,
+   "insideM2": 6.196,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/compoundSouk": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.091,
+   "insideM2": 5.743,
    "gapM2": 0,
    "invertedM2": 0
   },
   "navajo/caravanserai": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 5.769,
@@ -436,24 +532,30 @@
   "siwa/compoundSouk": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 5.725,
+   "insideM2": 2.679,
    "gapM2": 0,
    "invertedM2": 0
   },
   "wadirum/caravanserai": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.439,
-   "gapM2": 0.308,
-   "invertedM2": 3.691
+   "insideM2": 0,
+   "gapM2": 0.358,
+   "invertedM2": 0
   },
   "sarajevo/factory": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -463,15 +565,19 @@
   "siwa/compound": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 5.1,
+   "insideM2": 2.714,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/broadcasttower": {
    "floating": 1,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 2.515,
    "holeM2": 0,
    "insideM2": 0,
@@ -481,6 +587,8 @@
   "landmark/copper_mesa:oreCars#9": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.136,
@@ -490,6 +598,8 @@
   "dalmatian/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -499,24 +609,30 @@
   "mekong/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 4.146,
+   "insideM2": 2.754,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.072,
+   "insideM2": 0.057,
    "gapM2": 0,
    "invertedM2": 0
   },
   "shanghai/depot": {
    "floating": 4,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.476,
    "holeM2": 0,
    "insideM2": 0,
@@ -525,7 +641,9 @@
   },
   "andalusian/cornershop": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 1.263,
    "insideM2": 0,
@@ -535,6 +653,8 @@
   "landmark/copper_mesa:oreBin#4": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.22,
@@ -544,6 +664,8 @@
   "ksar/caravanserai": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.324,
    "insideM2": 0.936,
@@ -553,15 +675,19 @@
   "landmark/copper_mesa:oreBin#6": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 1.774,
-   "insideM2": 0.274,
-   "gapM2": 2.842,
+   "holeM2": 0,
+   "insideM2": 0.29,
+   "gapM2": 1.81,
    "invertedM2": 0
   },
   "landmark/saltwind:houseRow#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.178,
@@ -570,7 +696,9 @@
   },
   "andalusian/rowhouse": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.896,
    "insideM2": 0,
@@ -580,6 +708,8 @@
   "shanghai/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.105,
@@ -588,7 +718,9 @@
   },
   "savoyard/tavern": {
    "floating": 1,
-   "sliver": 40,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.714,
    "holeM2": 0,
    "insideM2": 0,
@@ -598,6 +730,8 @@
   "generic/rangerlodge": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.149,
@@ -607,15 +741,19 @@
   "wadirum/compoundSouk": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 2.796
+   "invertedM2": 0
   },
   "sarajevo/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.463,
@@ -625,6 +763,8 @@
   "arctic/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.208,
    "insideM2": 0,
@@ -634,6 +774,8 @@
   "ksar/compound": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.384,
    "insideM2": 0.416,
@@ -642,16 +784,20 @@
   },
   "savoyard/chapel": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.502,
+   "gapM2": 0.43,
    "invertedM2": 0
   },
   "wadirum/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.748,
@@ -661,6 +807,8 @@
   "glencanyon/needletower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -670,6 +818,8 @@
   "queenstown/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.269,
@@ -679,6 +829,8 @@
   "breton/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -688,6 +840,8 @@
   "savoyard/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -697,6 +851,8 @@
   "generic/shed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -706,6 +862,8 @@
   "generic/alpine": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -715,6 +873,8 @@
   "ksar/compoundSouk": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.384,
    "insideM2": 0.48,
@@ -724,15 +884,19 @@
   "landmark/steppe:grainElevator#1": {
    "floating": 0,
    "sliver": 128,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.244,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/logcabin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -742,6 +906,8 @@
   "sarajevo/civichall": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -751,6 +917,8 @@
   "hostomel/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.928,
@@ -760,6 +928,8 @@
   "glencanyon/civichall": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.148,
@@ -769,6 +939,8 @@
   "kohima/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.401,
@@ -778,6 +950,8 @@
   "mekong/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -787,6 +961,8 @@
   "dalmatian/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -796,24 +972,30 @@
   "navajo/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.477,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "breton/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.243,
+   "insideM2": 0.143,
    "gapM2": 0.972,
    "invertedM2": 0
   },
   "landmark/delta:bengalTemple#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -823,6 +1005,8 @@
   "hostomel/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.828,
@@ -832,15 +1016,19 @@
   "mekong/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.736,
+   "insideM2": 1.766,
    "gapM2": 0,
    "invertedM2": 0
   },
   "andalusian/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -850,6 +1038,8 @@
   "chouf/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -858,7 +1048,9 @@
   },
   "andalusian/civichall": {
    "floating": 0,
-   "sliver": 6,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -867,16 +1059,20 @@
   },
   "glencanyon/depot": {
    "floating": 0,
-   "sliver": 24,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.437,
+   "insideM2": 1.454,
    "gapM2": 0,
    "invertedM2": 0
   },
   "wadirum/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.036,
@@ -886,6 +1082,8 @@
   "saar/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -895,6 +1093,8 @@
   "generic/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -904,33 +1104,41 @@
   "wadirum/compound": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 1.397
+   "invertedM2": 0
   },
   "mekong/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.371,
+   "insideM2": 0.523,
    "gapM2": 0,
    "invertedM2": 0
   },
   "andalusian/tavern": {
    "floating": 1,
-   "sliver": 5,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.251,
    "holeM2": 0,
-   "insideM2": 0.132,
+   "insideM2": 0.088,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/civichall": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.401,
@@ -940,15 +1148,19 @@
   "longleaf/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.256,
+   "insideM2": 1.189,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/lighthouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -958,6 +1170,8 @@
   "longleaf/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.972,
@@ -967,24 +1181,30 @@
   "navajo/compound": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.082,
+   "insideM2": 1.08,
    "gapM2": 0,
    "invertedM2": 0
   },
   "kohima/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 4.268,
+   "insideM2": 4.307,
    "gapM2": 0,
    "invertedM2": 0
   },
   "dalmatian/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.587,
@@ -994,6 +1214,8 @@
   "chouf/rangerlodge": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1003,6 +1225,8 @@
   "hostomel/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1010,26 +1234,32 @@
    "invertedM2": 0
   },
   "navajo/depot": {
-   "floating": 2,
+   "floating": 0,
    "sliver": 0,
-   "floatingM2": 0.088,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.259,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "ksar/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 0.143,
-   "insideM2": 0.673,
+   "holeM2": 0,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "generic/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1039,6 +1269,8 @@
   "chouf/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.092,
@@ -1048,6 +1280,8 @@
   "longleaf/logcabin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1057,6 +1291,8 @@
   "navajo/adobe": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.797,
@@ -1066,6 +1302,8 @@
   "kyushu/factory": {
    "floating": 1,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.388,
    "holeM2": 0,
    "insideM2": 0.269,
@@ -1074,16 +1312,20 @@
   },
   "savoyard/logcabin": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.072,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "generic/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1093,6 +1335,8 @@
   "saar/shed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.733,
@@ -1102,6 +1346,8 @@
   "generic/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1111,6 +1357,8 @@
   "shanghai/civichall": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1120,6 +1368,8 @@
   "dalmatian/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1128,7 +1378,9 @@
   },
   "andalusian/chapel": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1137,7 +1389,9 @@
   },
   "chouf/church": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.524,
@@ -1147,6 +1401,8 @@
   "dalmatian/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1156,15 +1412,19 @@
   "dalmatian/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.126,
+   "gapM2": 0.138,
    "invertedM2": 0
   },
   "andalusian/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1174,6 +1434,8 @@
   "generic/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1182,16 +1444,20 @@
   },
   "kyushu/shed": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.433,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "shanghai/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1201,6 +1467,8 @@
   "generic/minaret": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.346,
@@ -1210,15 +1478,19 @@
   "andalusian/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.071,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "sarajevo/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.279,
@@ -1228,6 +1500,8 @@
   "shanghai/factory": {
    "floating": 1,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0.033,
    "holeM2": 0,
    "insideM2": 0,
@@ -1237,6 +1511,8 @@
   "bengal/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.244,
@@ -1246,6 +1522,8 @@
   "wadirum/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.243,
@@ -1254,7 +1532,9 @@
   },
   "savoyard/rangerlodge": {
    "floating": 0,
-   "sliver": 7,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1264,6 +1544,8 @@
   "longleaf/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.294,
@@ -1273,6 +1555,8 @@
   "ksar/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.216,
@@ -1282,8 +1566,10 @@
   "siwa/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 0.058,
+   "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
@@ -1291,6 +1577,8 @@
   "generic/netyard": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1300,6 +1588,8 @@
   "generic/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.101,
@@ -1309,24 +1599,30 @@
   "siwa/bathhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.087,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "kohima/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.086,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "hessian/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1336,6 +1632,8 @@
   "hessian/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1345,6 +1643,8 @@
   "hessian/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1354,6 +1654,8 @@
   "hessian/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1363,6 +1665,8 @@
   "hessian/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1372,6 +1676,8 @@
   "hessian/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1381,6 +1687,8 @@
   "hessian/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1390,6 +1698,8 @@
   "hessian/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1399,6 +1709,8 @@
   "hessian/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.39,
@@ -1407,7 +1719,9 @@
   },
   "hessian/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1417,6 +1731,8 @@
   "hessian/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1426,15 +1742,19 @@
   "hessian/mill": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 13.243,
-   "gapM2": 0.692,
+   "insideM2": 9.651,
+   "gapM2": 0.101,
    "invertedM2": 0
   },
   "savoyard/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1444,6 +1764,8 @@
   "savoyard/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1453,6 +1775,8 @@
   "savoyard/yardshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1461,7 +1785,9 @@
   },
   "savoyard/onionchurch": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1470,7 +1796,9 @@
   },
   "savoyard/depot": {
    "floating": 0,
-   "sliver": 8,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1479,7 +1807,9 @@
   },
   "savoyard/ruin": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.39,
@@ -1489,6 +1819,8 @@
   "savoyard/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1498,6 +1830,8 @@
   "dalmatian/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1507,6 +1841,8 @@
   "dalmatian/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1516,6 +1852,8 @@
   "dalmatian/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.087,
@@ -1525,6 +1863,8 @@
   "dalmatian/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1534,6 +1874,8 @@
   "dalmatian/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1543,6 +1885,8 @@
   "dalmatian/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1552,6 +1896,8 @@
   "dalmatian/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1561,6 +1907,8 @@
   "breton/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1570,6 +1918,8 @@
   "breton/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1579,6 +1929,8 @@
   "breton/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1588,6 +1940,8 @@
   "breton/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1597,6 +1951,8 @@
   "breton/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1606,6 +1962,8 @@
   "breton/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1615,6 +1973,8 @@
   "breton/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.301,
@@ -1624,6 +1984,8 @@
   "breton/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1633,6 +1995,8 @@
   "breton/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1642,15 +2006,19 @@
   "breton/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.343,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
   "kolkhoz/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1660,6 +2028,8 @@
   "kolkhoz/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1669,6 +2039,8 @@
   "kolkhoz/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1678,6 +2050,8 @@
   "kolkhoz/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.696,
@@ -1687,6 +2061,8 @@
   "kolkhoz/mill": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.223,
@@ -1696,6 +2072,8 @@
   "kolkhoz/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1705,6 +2083,8 @@
   "kolkhoz/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1714,6 +2094,8 @@
   "kolkhoz/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1722,7 +2104,9 @@
   },
   "polder/cottage": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1731,7 +2115,9 @@
   },
   "polder/farmhouse": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1740,7 +2126,9 @@
   },
   "polder/tavern": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1750,6 +2138,8 @@
   "polder/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1759,6 +2149,8 @@
   "polder/mill": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.448,
@@ -1768,6 +2160,8 @@
   "polder/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1777,6 +2171,8 @@
   "polder/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1786,6 +2182,8 @@
   "polder/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1795,6 +2193,8 @@
   "polder/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.245,
@@ -1804,6 +2204,8 @@
   "polder/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1813,6 +2215,8 @@
   "eifel/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1822,6 +2226,8 @@
   "eifel/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1831,6 +2237,8 @@
   "eifel/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1840,6 +2248,8 @@
   "eifel/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1849,6 +2259,8 @@
   "eifel/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1858,6 +2270,8 @@
   "eifel/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1867,6 +2281,8 @@
   "eifel/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.39,
@@ -1876,6 +2292,8 @@
   "eifel/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1885,6 +2303,8 @@
   "eifel/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1894,6 +2314,8 @@
   "eifel/rangerlodge": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1903,6 +2325,8 @@
   "eifel/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1912,6 +2336,8 @@
   "eifel/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1921,6 +2347,8 @@
   "mekong/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.23,
@@ -1930,6 +2358,8 @@
   "mekong/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1939,6 +2369,8 @@
   "mekong/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1948,6 +2380,8 @@
   "mekong/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.281,
@@ -1957,6 +2391,8 @@
   "mekong/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1966,6 +2402,8 @@
   "bengal/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.134,
@@ -1975,6 +2413,8 @@
   "bengal/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1984,6 +2424,8 @@
   "bengal/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1993,6 +2435,8 @@
   "bengal/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2002,6 +2446,8 @@
   "bengal/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2011,6 +2457,8 @@
   "bengal/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2020,6 +2468,8 @@
   "bengal/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2029,6 +2479,8 @@
   "bengal/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.889,
@@ -2038,6 +2490,8 @@
   "franconian/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2047,6 +2501,8 @@
   "franconian/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2056,6 +2512,8 @@
   "franconian/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2065,6 +2523,8 @@
   "franconian/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2074,6 +2534,8 @@
   "franconian/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.39,
@@ -2083,6 +2545,8 @@
   "franconian/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2092,6 +2556,8 @@
   "franconian/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2101,6 +2567,8 @@
   "franconian/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2110,6 +2578,8 @@
   "franconian/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2119,6 +2589,8 @@
   "franconian/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2128,6 +2600,8 @@
   "ksar/adobe": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2137,6 +2611,8 @@
   "ksar/minaret": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.287,
@@ -2146,6 +2622,8 @@
   "ksar/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2155,6 +2633,8 @@
   "ksar/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2164,6 +2644,8 @@
   "ksar/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2173,6 +2655,8 @@
   "arctic/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2182,6 +2666,8 @@
   "arctic/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2191,6 +2677,8 @@
   "arctic/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2200,6 +2688,8 @@
   "arctic/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2209,6 +2699,8 @@
   "siwa/adobe": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2218,6 +2710,8 @@
   "siwa/minaret": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2227,6 +2721,8 @@
   "siwa/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2236,6 +2732,8 @@
   "siwa/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.232,
@@ -2245,6 +2743,8 @@
   "siwa/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2254,6 +2754,8 @@
   "wadirum/adobe": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2263,6 +2765,8 @@
   "wadirum/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.819,
@@ -2272,15 +2776,19 @@
   "wadirum/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.755,
+   "insideM2": 0.16,
    "gapM2": 0,
    "invertedM2": 0
   },
   "wadirum/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2290,6 +2798,8 @@
   "wadirum/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2299,6 +2809,8 @@
   "wadirum/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2308,6 +2820,8 @@
   "wadirum/minaret": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2317,6 +2831,8 @@
   "ruhr/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2326,6 +2842,8 @@
   "ruhr/terrace": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2335,6 +2853,8 @@
   "ruhr/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2344,6 +2864,8 @@
   "ruhr/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2353,6 +2875,8 @@
   "ruhr/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2362,6 +2886,8 @@
   "ruhr/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.46,
@@ -2371,6 +2897,8 @@
   "ruhr/shed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2380,6 +2908,8 @@
   "ruhr/stack": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2389,6 +2919,8 @@
   "kohima/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2398,6 +2930,8 @@
   "kohima/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2407,6 +2941,8 @@
   "kohima/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2416,6 +2952,8 @@
   "kohima/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2425,6 +2963,8 @@
   "kohima/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2434,6 +2974,8 @@
   "kohima/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.468,
@@ -2443,6 +2985,8 @@
   "kohima/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2452,6 +2996,8 @@
   "kohima/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.086,
@@ -2461,6 +3007,8 @@
   "hostomel/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.171,
@@ -2470,6 +3018,8 @@
   "hostomel/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.168,
@@ -2479,6 +3029,8 @@
   "hostomel/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.568,
@@ -2488,6 +3040,8 @@
   "hostomel/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.215,
@@ -2496,7 +3050,9 @@
   },
   "kyushu/depot": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2506,15 +3062,19 @@
   "kyushu/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.194,
+   "insideM2": 1.674,
    "gapM2": 0,
    "invertedM2": 0
   },
   "kyushu/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 8.876,
@@ -2524,6 +3084,8 @@
   "kyushu/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2533,6 +3095,8 @@
   "kyushu/stack": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2542,6 +3106,8 @@
   "kyushu/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.521,
@@ -2551,6 +3117,8 @@
   "kyushu/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2560,6 +3128,8 @@
   "kyushu/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.232,
@@ -2568,7 +3138,9 @@
   },
   "queenstown/gantry": {
    "floating": 0,
-   "sliver": 56,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.54,
@@ -2577,7 +3149,9 @@
   },
   "queenstown/depot": {
    "floating": 0,
-   "sliver": 152,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2587,15 +3161,19 @@
   "queenstown/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 30.605,
+   "gapM2": 28.535,
    "invertedM2": 0
   },
   "queenstown/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2605,6 +3183,8 @@
   "queenstown/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.651,
@@ -2614,6 +3194,8 @@
   "glencanyon/megatower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2622,16 +3204,20 @@
   },
   "glencanyon/terracetower": {
    "floating": 0,
-   "sliver": 96,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 11.475,
-   "gapM2": 105.141,
+   "gapM2": 106.719,
    "invertedM2": 0
   },
   "glencanyon/broadcasttower": {
    "floating": 0,
-   "sliver": 96,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.02,
@@ -2640,16 +3226,20 @@
   },
   "glencanyon/parkingdeck": {
    "floating": 0,
-   "sliver": 96,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 12.074,
-   "gapM2": 5.474,
+   "insideM2": 12.091,
+   "gapM2": 5.366,
    "invertedM2": 0
   },
   "glencanyon/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2659,6 +3249,8 @@
   "glencanyon/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.794,
@@ -2668,6 +3260,8 @@
   "glencanyon/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2677,6 +3271,8 @@
   "glencanyon/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2685,7 +3281,9 @@
   },
   "glencanyon/containerRow": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2695,6 +3293,8 @@
   "glencanyon/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2704,24 +3304,30 @@
   "glencanyon/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.144,
-   "gapM2": 34.087,
+   "insideM2": 0.118,
+   "gapM2": 33.206,
    "invertedM2": 0
   },
   "glencanyon/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.232,
+   "insideM2": 0.072,
    "gapM2": 0,
    "invertedM2": 0
   },
   "navajo/compoundSouk": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2731,6 +3337,8 @@
   "navajo/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.125,
@@ -2740,6 +3348,8 @@
   "navajo/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2749,6 +3359,8 @@
   "navajo/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.72,
@@ -2758,24 +3370,30 @@
   "navajo/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.116,
+   "insideM2": 0.143,
    "gapM2": 0,
    "invertedM2": 0
   },
   "navajo/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.88,
-   "gapM2": 18.182,
+   "insideM2": 0.795,
+   "gapM2": 17.865,
    "invertedM2": 0
   },
   "navajo/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.756,
@@ -2785,6 +3403,8 @@
   "navajo/ramada": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2794,6 +3414,8 @@
   "navajo/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2803,6 +3425,8 @@
   "saar/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2811,7 +3435,9 @@
   },
   "saar/terrace": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2820,7 +3446,9 @@
   },
   "saar/warehouse": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2830,6 +3458,8 @@
   "saar/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2839,6 +3469,8 @@
   "saar/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2848,6 +3480,8 @@
   "saar/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.46,
@@ -2857,6 +3491,8 @@
   "saar/stack": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2866,6 +3502,8 @@
   "saar/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.953,
@@ -2875,6 +3513,8 @@
   "saar/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.429,
@@ -2884,15 +3524,19 @@
   "saar/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.424,
+   "insideM2": 0,
    "gapM2": 59.136,
    "invertedM2": 0
   },
   "saar/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2902,6 +3546,8 @@
   "shanghai/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2911,6 +3557,8 @@
   "shanghai/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.603,
@@ -2920,33 +3568,41 @@
   "shanghai/megatower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 46.998,
    "gapM2": 0,
    "invertedM2": 0
   },
   "shanghai/arcology": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 0,
-   "insideM2": 0,
+   "holeM2": 1.3,
+   "insideM2": 33.795,
    "gapM2": 0,
-   "invertedM2": 0
+   "invertedM2": 2.6
   },
   "shanghai/needletower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 18.462,
    "gapM2": 0,
    "invertedM2": 0
   },
   "shanghai/terracetower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2956,6 +3612,8 @@
   "shanghai/broadcasttower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2965,6 +3623,8 @@
   "shanghai/parkingdeck": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2974,6 +3634,8 @@
   "longleaf/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2983,6 +3645,8 @@
   "longleaf/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2992,6 +3656,8 @@
   "longleaf/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3001,15 +3667,19 @@
   "sarajevo/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.058,
-   "gapM2": 0.768,
+   "insideM2": 0.23,
+   "gapM2": 0.661,
    "invertedM2": 0
   },
   "sarajevo/arcology": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3019,6 +3689,8 @@
   "sarajevo/parkingdeck": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3028,6 +3700,8 @@
   "sarajevo/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3037,6 +3711,8 @@
   "sarajevo/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3046,6 +3722,8 @@
   "andalusian/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 4.169,
@@ -3055,6 +3733,8 @@
   "andalusian/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3064,6 +3744,8 @@
   "andalusian/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3072,7 +3754,9 @@
   },
   "andalusian/granary": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3082,6 +3766,8 @@
   "chouf/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3091,6 +3777,8 @@
   "chouf/adobe": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3100,6 +3788,8 @@
   "chouf/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3109,6 +3799,8 @@
   "chouf/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3117,7 +3809,9 @@
   },
   "chouf/granary": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3127,6 +3821,8 @@
   "chouf/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3136,6 +3832,8 @@
   "chouf/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.215,
@@ -3145,6 +3843,8 @@
   "generic/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3154,6 +3854,8 @@
   "generic/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3163,6 +3865,8 @@
   "generic/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3172,6 +3876,8 @@
   "generic/terrace": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3181,6 +3887,8 @@
   "generic/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3190,15 +3898,19 @@
   "generic/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 25.559,
+   "gapM2": 20.81,
    "invertedM2": 0
   },
   "generic/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.286,
@@ -3208,6 +3920,8 @@
   "generic/stack": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3217,6 +3931,8 @@
   "generic/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3226,6 +3942,8 @@
   "generic/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3235,6 +3953,8 @@
   "generic/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3244,6 +3964,8 @@
   "generic/mill": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.072,
@@ -3253,6 +3975,8 @@
   "generic/onionchurch": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3262,6 +3986,8 @@
   "generic/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3271,6 +3997,8 @@
   "generic/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3280,6 +4008,8 @@
   "generic/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3289,15 +4019,19 @@
   "generic/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.929,
+   "gapM2": 0.731,
    "invertedM2": 0
   },
   "generic/caravanserai": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3307,6 +4041,8 @@
   "generic/foundryoffice": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3316,6 +4052,8 @@
   "generic/needletower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3325,6 +4063,8 @@
   "generic/parkingdeck": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3334,6 +4074,8 @@
   "landmark/urban:townGate#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3343,6 +4085,8 @@
   "landmark/urban:townGate#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3352,6 +4096,8 @@
   "landmark/urban:fountain#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3361,6 +4107,8 @@
   "landmark/steppe:path#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3370,6 +4118,8 @@
   "landmark/steppe:kolkhozArch#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3379,6 +4129,8 @@
   "landmark/verdant:kolkhozArch#7": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3388,6 +4140,8 @@
   "landmark/delta:path#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3397,24 +4151,30 @@
   "landmark/polders:liftBridge#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.281,
+   "gapM2": 2.988,
    "invertedM2": 0
   },
   "landmark/polders:windmill#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.458,
-   "gapM2": 3.142,
+   "gapM2": 2.683,
    "invertedM2": 0
   },
   "landmark/polders:outfall#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3424,15 +4184,19 @@
   "landmark/polders:windmill#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.224,
+   "insideM2": 0.392,
    "gapM2": 8.173,
    "invertedM2": 0
   },
   "landmark/polders:outfall#6": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3442,15 +4206,19 @@
   "landmark/copper_mesa:conveyor#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 21.172,
+   "gapM2": 19.37,
    "invertedM2": 0
   },
   "landmark/copper_mesa:conveyor#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3460,6 +4228,8 @@
   "landmark/copper_mesa:guyedMast#12": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3469,6 +4239,8 @@
   "landmark/whiteout:moduleTrain#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3478,6 +4250,8 @@
   "landmark/whiteout:radomeTower#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3487,6 +4261,8 @@
   "landmark/whiteout:troposcatter#7": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3496,6 +4272,8 @@
   "landmark/whiteout:guyedMast#11": {
    "floating": 0,
    "sliver": 24,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3505,6 +4283,8 @@
   "landmark/whiteout:guyedMast#13": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3514,6 +4294,8 @@
   "landmark/whiteout:jamesway#14": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3523,6 +4305,8 @@
   "landmark/whiteout:airstrip#32": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3532,6 +4316,8 @@
   "landmark/orchard:path#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3541,6 +4327,8 @@
   "landmark/orchard:fountain#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3550,6 +4338,8 @@
   "landmark/orchard:stairway#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3559,6 +4349,8 @@
   "landmark/orchard:stairway#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3568,6 +4360,8 @@
   "landmark/orchard:path#4": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3577,6 +4371,8 @@
   "landmark/orchard:stairway#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3586,6 +4382,8 @@
   "landmark/orchard:stairway#7": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3595,6 +4393,8 @@
   "landmark/orchard:path#8": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3604,6 +4404,8 @@
   "landmark/orchard:stairway#9": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3613,6 +4415,8 @@
   "landmark/orchard:path#10": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3622,15 +4426,19 @@
   "landmark/longleaf:fireLookout#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.218,
-   "gapM2": 71.574,
+   "insideM2": 0.235,
+   "gapM2": 42.826,
    "invertedM2": 0
   },
   "landmark/saltwind:piazza#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3640,6 +4448,8 @@
   "franconian/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.065,
@@ -3649,6 +4459,8 @@
   "franconian/firestation": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.763,
@@ -3658,6 +4470,8 @@
   "franconian/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3667,6 +4481,8 @@
   "franconian/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3676,15 +4492,19 @@
   "ruhr/factory": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.673,
+   "insideM2": 1.743,
    "gapM2": 0,
    "invertedM2": 0
   },
   "breton/netyard": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.144,
@@ -3694,6 +4514,8 @@
   "eifel/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3703,6 +4525,8 @@
   "hostomel/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3712,6 +4536,8 @@
   "nordland/netyard": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3721,15 +4547,19 @@
   "tselina/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 10.126,
+   "insideM2": 2.822,
    "gapM2": 0,
    "invertedM2": 0
   },
   "nordland/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 4.84,
@@ -3739,6 +4569,8 @@
   "lorrain/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3748,6 +4580,8 @@
   "nordland/fishery": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.933,
@@ -3757,6 +4591,8 @@
   "lorrain/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3766,15 +4602,19 @@
   "goral/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.491,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "lorrain/market": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.428,
@@ -3784,8 +4624,10 @@
   "lorrain/marketRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
-   "holeM2": 0.745,
+   "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
@@ -3793,6 +4635,8 @@
   "lorrain/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0.608,
    "insideM2": 0,
@@ -3802,6 +4646,8 @@
   "goral/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.434,
@@ -3811,15 +4657,19 @@
   "lorrain/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.058,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "goral/depot": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.153,
@@ -3829,6 +4679,8 @@
   "goral/logcabin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3838,6 +4690,8 @@
   "goral/alpine": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3847,6 +4701,8 @@
   "goral/rangerlodge": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3856,6 +4712,8 @@
   "goral/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3865,6 +4723,8 @@
   "goral/onionchurch": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3874,6 +4734,8 @@
   "goral/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3883,6 +4745,8 @@
   "goral/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3892,6 +4756,8 @@
   "goral/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3901,6 +4767,8 @@
   "goral/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3910,6 +4778,8 @@
   "nordland/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3919,6 +4789,8 @@
   "nordland/logcabin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3928,6 +4800,8 @@
   "nordland/alpine": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3937,6 +4811,8 @@
   "nordland/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3946,6 +4822,8 @@
   "nordland/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3955,6 +4833,8 @@
   "nordland/boatshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3964,6 +4844,8 @@
   "nordland/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3973,6 +4855,8 @@
   "nordland/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.2,
@@ -3982,6 +4866,8 @@
   "nordland/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3991,6 +4877,8 @@
   "lorrain/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4000,6 +4888,8 @@
   "lorrain/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4009,6 +4899,8 @@
   "lorrain/tavern": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4018,6 +4910,8 @@
   "lorrain/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4027,6 +4921,8 @@
   "lorrain/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4036,6 +4932,8 @@
   "lorrain/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4045,6 +4943,8 @@
   "lorrain/tower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4054,6 +4954,8 @@
   "lorrain/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4063,6 +4965,8 @@
   "tselina/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4072,6 +4976,8 @@
   "tselina/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4081,6 +4987,8 @@
   "tselina/cornershop": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4090,6 +4998,8 @@
   "tselina/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4099,6 +5009,8 @@
   "tselina/elevator": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4108,15 +5020,19 @@
   "tselina/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 9.616,
+   "gapM2": 9.864,
    "invertedM2": 0
   },
   "tselina/shed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4126,6 +5042,8 @@
   "tselina/watertower": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4135,15 +5053,8 @@
   "tselina/stack": {
    "floating": 0,
    "sliver": 0,
-   "floatingM2": 0,
-   "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
-   "invertedM2": 0
-  },
-  "tselina/containerRow": {
-   "floating": 0,
-   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4153,6 +5064,8 @@
   "tselina/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4162,6 +5075,8 @@
   "tselina/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4171,6 +5086,8 @@
   "tselina/ruin": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4180,6 +5097,8 @@
   "franconian/bergfried": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4189,6 +5108,8 @@
   "franconian/palas": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4198,6 +5119,8 @@
   "landmark/urban:houseRow#4": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.312,
@@ -4207,6 +5130,8 @@
   "landmark/urban:houseRow#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4216,6 +5141,8 @@
   "landmark/polders:church#7": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4225,6 +5152,8 @@
   "franconian/warehouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.163,
@@ -4234,15 +5163,19 @@
   "landmark/airfield:aircraftWreck#8": {
    "floating": 0,
    "sliver": 2,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 122.997,
-   "gapM2": 757.26,
+   "insideM2": 122.999,
+   "gapM2": 714.128,
    "invertedM2": 0
   },
   "landmark/airfield:floodMast#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.504,
@@ -4252,6 +5185,8 @@
   "lorrain/rowhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4261,6 +5196,8 @@
   "landmark/verdant:church#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4270,6 +5207,8 @@
   "landmark/verdant:granary#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.837,
@@ -4279,6 +5218,8 @@
   "landmark/monsoon:tennisCourt#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4288,6 +5229,8 @@
   "landmark/verdant:windmill#9": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.588,
@@ -4297,6 +5240,8 @@
   "landmark/verdant:windmill#10": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.171,
@@ -4306,6 +5251,8 @@
   "nordland/lighthouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4315,6 +5262,8 @@
   "breton/lighthouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4324,6 +5273,8 @@
   "nordland/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4333,6 +5284,8 @@
   "hostomel/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4342,6 +5295,8 @@
   "hostomel/woodshed": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4351,6 +5306,8 @@
   "landmark/verdant:churchyard#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4360,6 +5317,8 @@
   "landmark/verdant:path#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4369,6 +5328,8 @@
   "landmark/verdant:stationHall#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4378,6 +5339,8 @@
   "landmark/verdant:waterTower#4": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4387,6 +5350,8 @@
   "landmark/verdant:parkSquare#8": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4396,6 +5361,8 @@
   "landmark/fjord:stabbur#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4405,6 +5372,8 @@
   "landmark/fjord:hayRack#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4414,6 +5383,8 @@
   "landmark/polders:garden#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4423,6 +5394,8 @@
   "landmark/longleaf:garden#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4432,6 +5405,8 @@
   "landmark/verdant:waterTower#6": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4441,6 +5416,8 @@
   "landmark/fjord:fishRack#22": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4450,6 +5427,8 @@
   "landmark/monsoon:colonialBungalow#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4459,6 +5438,8 @@
   "olympus/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.169,
@@ -4468,6 +5449,8 @@
   "olympus/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.231,
@@ -4477,6 +5460,8 @@
   "glencanyon/fieldHeadquarters": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.768,
@@ -4486,6 +5471,8 @@
   "glencanyon/church": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4495,6 +5482,8 @@
   "glencanyon/shoppingCentre": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4504,6 +5493,8 @@
   "landmark/polders:churchyard#8": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4513,6 +5504,8 @@
   "landmark/polders:path#9": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4522,6 +5515,8 @@
   "littrow/barn": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.116,
@@ -4531,6 +5526,8 @@
   "littrow/chapel": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.072,
@@ -4540,6 +5537,8 @@
   "littrow/farmhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4549,6 +5548,8 @@
   "littrow/granary": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4558,6 +5559,8 @@
   "littrow/schoolhouse": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.15,
@@ -4567,6 +5570,8 @@
   "littrow/cottage": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4576,6 +5581,8 @@
   "littrow/mill": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4585,6 +5592,8 @@
   "littrow/gantry": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4594,6 +5603,8 @@
   "littrow/containerRow": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.257,
@@ -4603,6 +5614,8 @@
   "landmark/moon:relayRepeater#9": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4612,6 +5625,8 @@
   "landmark/moon:isruWorks#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4621,6 +5636,8 @@
   "landmark/moon:solarTower#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4630,6 +5647,8 @@
   "landmark/moon:apolloSite#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4639,6 +5658,8 @@
   "landmark/moon:isruWorks#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4648,6 +5669,8 @@
   "landmark/moon:solarTower#5": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4657,6 +5680,8 @@
   "landmark/moon:stationDome#7": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4666,6 +5691,8 @@
   "landmark/frontier:townHall#0": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.276,
@@ -4675,6 +5702,8 @@
   "landmark/frontier:church#1": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 4.12,
@@ -4684,6 +5713,8 @@
   "landmark/frontier:path#2": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4693,6 +5724,8 @@
   "landmark/frontier:fountain#3": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4702,6 +5735,8 @@
   "landmark/frontier:churchyard#4": {
    "floating": 0,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -4711,12 +5746,168 @@
   "landmark/coastal:harbour#0": {
    "floating": 2,
    "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
    "floatingM2": 8.746,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@arcology:d3": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 7.387,
+   "insideM2": 41.158,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/pyramid@megatower:d0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 46.998,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/pyramid@megatower:d1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 46.998,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/pyramid@megatower:d2": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 46.998,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/pyramid@megatower:d3": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 40.388,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@arcology:d0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 1.3,
+   "insideM2": 33.795,
+   "gapM2": 0,
+   "invertedM2": 2.6
+  },
+  "damage/stepped@arcology:d1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 1.3,
+   "insideM2": 33.795,
+   "gapM2": 0,
+   "invertedM2": 2.6
+  },
+  "damage/stepped@arcology:d2": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 1.3,
+   "insideM2": 33.795,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@needletower:d3": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 19.214,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@needletower:d0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 18.462,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@needletower:d1": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 18.462,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "damage/stepped@needletower:d2": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 18.462,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/ruinspires:parkSquare#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/blackglass:parkSquare#0": {
+   "floating": 0,
+   "sliver": 0,
+   "strandedFar": 0,
+   "strandedPhone": 0,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-23T17:17:02.254Z"
+ "updatedAt": "2026-10-27T05:42:36.900Z"
 }

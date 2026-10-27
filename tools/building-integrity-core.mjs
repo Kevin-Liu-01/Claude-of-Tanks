@@ -153,7 +153,9 @@ function floatingParts(pos, flags, bucketOf, buckets, ground) {
     const r = weld.find(vid[t * 3]); let k = pieceIndex.get(r); if (k === undefined) { k = pieceIndex.size; pieceIndex.set(r, k); } pieceOfTri[t] = k;
   }
   const pieces = pieceIndex.size;
-  const tol = CONTACT_VOXEL_M, tol2 = tol * tol;
+  // (259) a millimetre over the voxel: a part laid exactly 5 cm off its wall (a segmental head's face, a fineSides box at
+  // geometry.ts FINE_SIDES_MAX_DEPTH_M) touches it, whatever the float32 positions round to
+  const tol = CONTACT_VOXEL_M + 0.001, tol2 = tol * tol;
   // each piece: its triangles, box and area; grounded when a vertex reaches the ground
   const triStart = new Int32Array(pieces + 1); for (let t = 0; t < triCount; t++) triStart[pieceOfTri[t] + 1]++;
   for (let c = 0; c < pieces; c++) triStart[c + 1] += triStart[c];
@@ -600,6 +602,8 @@ export function analyseBuilding(own, { occluders = null, groundFn = () => 0, ele
   for (const f of floating) { f.shownM2 = f.shownM2 ?? 0; f.hidden = f.shownM2 < MIN_CLUSTER_M2; }
   result.floating = floating.filter((f) => !f.hidden);
   result.hiddenFloating = floating.length - result.floating.length;
+  // (every assembly, the hidden too: the census's strand check reads what floats in the whole build by design)
+  Object.defineProperty(result, 'floatingAll', { value: floating });
   result.views = list.length; result.res = res; result.pxM = +(2 * r / res).toFixed(3); result.enclosedM3 = envelope.enclosedM3;
   for (const [name, list2] of Object.entries(kinds)) {
     const byView = new Map();

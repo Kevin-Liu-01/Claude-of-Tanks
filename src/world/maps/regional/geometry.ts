@@ -35,6 +35,22 @@ export const BUCKET_UV_DENSITY: Readonly<Record<RegionalBucket, number>> = Objec
   regionalPlaster: 0.42, regionalPlaster2: 0.42, regionalPlaster3: 0.42, regionalStone: 0.5, regionalRoof: 0.5,
 });
 
+/**
+ * The deepest a part may stand off what it is seated on and still draw its sides as fine joinery (EmitOptions.fineSides):
+ * the building-integrity census's contact (tools/building-integrity-core.mjs CONTACT_VOXEL_M). A deeper part's sides are
+ * what join its face to the wall: a phone, which never builds the fine joinery, and a long view, which hides it, left
+ * the face alone in the air (the owner, 2026-10-26, on Blackglass's Bund towers: "fix these floating bits around the
+ * building. not sure if theyre jsut not loading in": the stepped crown's fins and the setbacks' finials, 0.36-0.5 m deep).
+ */
+export const FINE_SIDES_MAX_DEPTH_M = 0.05;
+/**
+ * The props buckets whose fine joinery props.ts draws only within the quality preset's fine-detail distance of the camera
+ * (its fine-detail cells, updateFineDetail): on every tier, and on a desktop as well these. Every other bucket's fine
+ * pieces draw at any range; a phone builds no fine joinery at all (index.ts buildRegionalParts).
+ */
+export const FINE_CELLED_BUCKETS: ReadonlySet<string> = new Set(['structureWood', 'regionalStone']);
+export const DESKTOP_FINE_CELLED_BUCKETS: ReadonlySet<string> = new Set(['structureMetal', 'regionalPlaster']);
+
 export type RegionalParts = Record<RegionalBucket, THREE.BufferGeometry[]>;
 /**
  * Drops the zero-area and sliver triangles (longer than 0.5 m with an altitude under 1/1000 of their length: the rule of
@@ -123,8 +139,9 @@ export interface EmitOptions {
   tag?: 'renderLoss';
   /**
    * a box seated on a wall (a timber, a shutter leaf): its outward face reads at any range, its sides and caps are
-   * fine joinery (`fine`). Honoured by `box` for non-casting dressing; `member` sets it on every framing member.
-   * 'near': those faces are near fine joinery (`fine` 'near'), on a box's `coarse` faces' complement as well
+   * fine joinery (`fine`). Honoured by `box` for non-casting dressing no deeper than FINE_SIDES_MAX_DEPTH_M; `member`
+   * sets it on every framing member. 'near': those faces are near fine joinery (`fine` 'near'), on a box's `coarse`
+   * faces' complement as well
    */
   fineSides?: boolean | 'near';
   /**
@@ -335,8 +352,10 @@ export class PartSink {
     const o = { ...opts, uv: opts.uv ?? (frame ? MEMBER : WORLD) };
     const lf = o.uv.kind === 'member' ? (local ?? new LocalFrame(IDENTITY.ax, IDENTITY.ay, IDENTITY.az, centre)) : undefined;
     // the faces that stay coarse (a long view reads them) while every other face is fine joinery: `coarse`, or under
-    // fineSides the +z face (a face frame's outward axis); non-casting dressing only
-    const keep = opts.decor && !opts.shadow ? coarse ?? (opts.fineSides ? { pz: true } : null) : null;
+    // fineSides the +z face (a face frame's outward axis) of a box no deeper than FINE_SIDES_MAX_DEPTH_M; non-casting
+    // dressing only
+    const sides = !!opts.fineSides && half[2] * 2 <= FINE_SIDES_MAX_DEPTH_M + 1e-6;
+    const keep = opts.decor && !opts.shadow ? coarse ?? (sides ? { pz: true } : null) : null;
     const fine = { ...o, fine: o.fine === 'near' || o.fineSides === 'near' ? 'near' as const : true };
     const at = (face: keyof FaceSkip) => (keep && !keep[face] ? fine : o);
     // +x, -x, +y, -y, +z, -z faces (corners ccw from outside)

@@ -542,20 +542,22 @@ export function trimRun(sink: PartSink, bucket: RegionalBucket, face: Face, u0: 
  */
 export function doorCanopy(sink: PartSink, face: Face, u: number, y: number, w: number,
   style: { kind: 'shed' | 'gable'; bucket: RegionalBucket; colour?: Rgb; timber: Rgb; depth?: number }): void {
-  const depth = style.depth ?? 0.85, span = w + 0.7, t = 0.07, wall = y + 0.32;
+  const depth = style.depth ?? 0.85, span = w + 0.7, t = 0.07, wall = y + 0.32, drop = 0.28;
   const paint = style.colour ? { colour: style.colour } : {};
   const timber = { ...DECOR, colour: style.timber };
+  // the front beam's centre: under a shed's slab where it falls past the beam (259, the phone census: at the gable's
+  // height, wall - 0.04, it stood 7 cm over the shed's slab on brackets drawn near the camera only), a gable's at its eaves
+  const by = style.kind === 'shed' ? wall + 0.02 - drop * (depth - 0.1) / depth - 0.045 : wall - 0.04;
   // the brackets: a post-less knee from the wall up to the canopy's front beam
   for (const side of [-1, 1]) {
     const cu = u + side * (span / 2 - 0.12);
-    sink.member('structureWood', facePoint(face, cu, wall - 0.62, 0.02), facePoint(face, cu, wall - 0.06, depth - 0.12), 0.08, 0.08, face.u,
+    sink.member('structureWood', facePoint(face, cu, by - 0.58, 0.02), facePoint(face, cu, by - 0.02, depth - 0.12), 0.08, 0.08, face.u,
       { ...timber, exposed: true, fine: 'near' }, 0);
-    faceBox(sink, 'structureWood', face, cu, wall - 0.04, (depth - 0.08) / 2, 0.08, 0.08, depth - 0.08, { ...timber, fine: 'near' });
+    faceBox(sink, 'structureWood', face, cu, by, (depth - 0.08) / 2, 0.08, 0.08, depth - 0.08, { ...timber, fine: 'near' });
   }
-  faceBox(sink, 'structureWood', face, u, wall - 0.04, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: 'near' });
+  faceBox(sink, 'structureWood', face, u, by, depth - 0.1, span - 0.1, 0.09, 0.09, { ...timber, fineSides: 'near' });
   if (style.kind === 'shed') {
     // one slab from the wall falling to the front beam
-    const drop = 0.28;
     const a = facePoint(face, u - span / 2, wall + 0.02, 0), b = facePoint(face, u + span / 2, wall + 0.02, 0);
     const c = facePoint(face, u + span / 2, wall + 0.02 - drop, depth), d = facePoint(face, u - span / 2, wall + 0.02 - drop, depth);
     const n = normalize3([face.out[0] * drop, depth, face.out[2] * drop]);
