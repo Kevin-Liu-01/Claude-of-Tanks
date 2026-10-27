@@ -381,8 +381,10 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i++) P.add('hullDetail', box(0.46, 0.025, 0.035),
       side * 1.30, 1.415, -2.45 + i * 0.92);
-    P.add('hullDark', box(0.40, 0.070, 0.035), side * 1.31, 1.405, -2.76);
-    P.add('hullDark', box(0.42, 0.070, 0.035), side * 1.31, 1.405, 2.72);
+    // (262) the fender end strips hang under the fender's edge: standing 4 cm proud they held the gun up at the front
+    // quarters
+    P.add('hullDark', box(0.40, 0.070, 0.035), side * 1.31, 1.355, -2.76);
+    P.add('hullDark', box(0.42, 0.070, 0.035), side * 1.31, 1.355, 2.72);
   }
   // Driver's hatch, periscopes, twin light clusters, tow fixtures and cable.
   P.add('hull', cylY(0.23, 0.24, 0.040, 16), -0.48, 1.335, 1.64);

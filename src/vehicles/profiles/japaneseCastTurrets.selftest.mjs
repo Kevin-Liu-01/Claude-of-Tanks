@@ -11,6 +11,7 @@ const CASES = {
     height: [0.60, 0.65],
     heightScale: 0.45,
     shellHeightM: 0.48,
+    markerLights: 2,
   },
   type74: {
     family: 'type74-leopard-generation-cast',
@@ -20,6 +21,8 @@ const CASES = {
     height: [0.61, 0.66],
     heightScale: 0.5,
     shellHeightM: 0.48,
+    // 262: the production tank's front corners carry its smoke dischargers, not lamps
+    markerLights: 0,
   },
 };
 
@@ -52,7 +55,7 @@ for (const [id, expected] of Object.entries(CASES)) {
     creaseAngleDeg: 40,
     heightScale: expected.heightScale,
     shellHeightM: expected.shellHeightM,
-    roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: 2, opticHeads: 1 },
+    roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: expected.markerLights, opticHeads: 1 },
   }, `${id}: publishes the shared polygonal-cast turret construction receipt`);
 
   const hullBounds = new THREE.Box3().setFromObject(hull);

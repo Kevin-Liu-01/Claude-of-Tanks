@@ -181,6 +181,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // each gun pitches in its own shield, seated in a channel cut into its own turret front, clear of it and filling it
     // over the whole travel
     'src/vehicles/japaneseMantlet.selftest.mjs',
+    // 262 (owner: "we should upgrade the hulls and everything about the tanks too"): the STB-1's and the Type 74's guns
+    // keep off their rebuilt hulls at every yaw on their source travel and published curves
+    'src/vehicles/japaneseGunHull.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',

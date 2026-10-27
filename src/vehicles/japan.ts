@@ -36,6 +36,7 @@ type JapaneseStatOverrides = Partial<Pick<FleetTankSpec,
   | 'hullTraverseDegS'
   | 'turretTraverseDegS'
   | 'gunPitchDegS'
+  | 'gunPitchByYawDeg'
 >>;
 
 type JapaneseGunOverrides = Partial<Pick<FleetGunSpec,

@@ -3179,7 +3179,9 @@ function buildType74(P: MiscBuilderPort): void {
   for (const s of [-1, 1]) cagedLampBox(P, { x: s * 1.27, y: 1.215, z: 2.62, w: 0.44, h: 0.18, d: 0.26, side: s,
     lamps: ['marker', 'ir', 'head'], bars: 4 });
   {                                                                            // §I fittings: tow cable draped across the glacis crest
-    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.32, 2.60], [0, 1.42, 2.28], [0.90, 1.32, 2.60]], seed: 11 });
+    // (262) laid along the glacis crest rather than draped over the deck ahead of the turret, where the gun's -6 degrees
+    // met it (the NDA photographs: the rope runs across the top of the upper glacis)
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.325, 2.62], [0, 1.395, 2.50], [0.90, 1.325, 2.62]], seed: 11 });
     P.hullG.add(cable);
   }
   liftEye(P, 'hullDetail', -1.38, 1.41, -1.75);
@@ -3285,7 +3287,8 @@ function buildType74(P: MiscBuilderPort): void {
     creaseAngleDeg: 40,
     heightScale: 0.5,
     shellHeightM: 0.48,
-    roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: 2, opticHeads: 1 },
+    // (262: the front-corner lamps gave way to the production tank's smoke dischargers)
+    roofEquipment: { cupolas: 2, machineGuns: 1, markerLights: 0, opticHeads: 1 },
   };
   P.add('turret', frustum(0.90, -0.50, -2.02, 0.62, -0.60, -1.80, 0.05, 0.50)); // bustle taper (world 1.47..1.92, tail -1.52)
   P.add('turret', box(1.50, 0.14, 1.10), 0, 0.06, -0.65);                      // ring seat course closes dome underside to the deck (§B2)
