@@ -571,18 +571,20 @@ body[data-cot-panels='overlay'] .cot-battle-control{display:flex;transform:none;
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-control{top:auto;width:auto;
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-stack-gap));height:var(--cot-dock-h);}
+/* (the two lines stand centred beside the picture, which keeps the card's height: rows 2 and 3 hold the battlefield and the
+   mode, and the mode takes a second line where its name is wider than a narrow card) */
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{order:-1;flex:1 1 auto;align-self:stretch;display:grid;grid-template-columns:auto minmax(0,1fr);
-  grid-template-rows:1fr 1fr;align-items:center;gap:0 var(--s2);min-width:0;height:auto;padding:var(--s1) var(--s6) var(--s1) var(--s1);
+  grid-template-rows:1fr auto auto 1fr;align-items:center;gap:0 var(--s2);min-width:0;height:auto;padding:var(--s1) var(--s6) var(--s1) var(--s1);
   border:0;background:transparent;color:var(--ink-1);text-align:left;letter-spacing:0;text-transform:none;}
 body[data-cot-panels='overlay'] .cot-battle-mode .sum-pic{position:relative;display:block;grid-row:1/-1;grid-column:1;align-self:stretch;
   width:84px;height:auto;clip-path:none;border-radius:var(--control-radius);overflow:hidden;background:var(--surface-raised) center/cover no-repeat;}
 body[data-cot-panels='overlay'] .cot-battle-mode .sum-icon{display:none;}
 body[data-cot-panels='overlay'] .cot-battle-mode .sum-map{position:static;width:auto;height:auto;margin:0;clip-path:none;
-  grid-column:2;grid-row:1;align-self:end;min-width:0;overflow:hidden;
+  grid-column:2;grid-row:2;min-width:0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;opacity:1;color:var(--ink-1);
   font:600 max(var(--fs-floor-11),var(--fs-13))/1.15 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-body[data-cot-panels='overlay'] .cot-battle-mode .sum-mode{position:static;width:auto;height:auto;grid-column:2;grid-row:2;align-self:start;
-  min-width:0;overflow:hidden;clip-path:none;white-space:nowrap;text-overflow:ellipsis;color:var(--ink-2);
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-mode{position:static;width:auto;height:auto;grid-column:2;grid-row:3;
+  min-width:0;overflow:hidden;clip-path:none;white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:var(--ink-2);
   font:500 max(var(--fs-floor-11),var(--fs-12))/1.2 var(--font-body);}
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle{flex:0 0 42%;justify-content:center;gap:var(--s2);padding:0 var(--s3);
   border-radius:var(--plate-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);color:var(--btn-primary-ink);
@@ -709,6 +711,12 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-mode .sum-pic{width:64px;}
   /* the acts lie in a row at the stage's top right, clear of the fleet's tools under them */
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{flex-direction:row;}
+}
+/* a narrow column on its side (under 360 px: 46vw under 783 px) gives the card's picture a square of the card's height, so
+   the battlefield and the mode read whole beside the corner control and Deploy (Main's 667 x 375 shot cut "RAND…" and
+   "Stand…") */
+@media (width < 783px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-mode .sum-pic{width:calc(var(--cot-battle-h) - 2 * var(--s1));}
 }
 /* a narrow phone's band (under 340 px: a phone under 360 px) narrows its slots to the touch floor */
 @container lt (width < 340px){
