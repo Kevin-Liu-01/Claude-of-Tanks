@@ -530,13 +530,14 @@ export interface VegetationRuntime {
   groundCoverSealSteps(blocked: GroundCoverBlocked): Generator<void, void, void>;
   /** Trees perf (2026-10-07): `viewCamera` — the camera this frame's main pass renders with; its view culls the near
    * pools (any other camera still draws them whole); none (the warm, the Studio, the receipts): every near tree draws. */
+  /** True when this update built the tree partition whole (the world's first; map.ts staggers the sward's cold fill). */
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
     cameraForward?: THREE.Vector3 | null,
     focusPosition?: THREE.Vector3 | null,
     viewCamera?: THREE.Camera | null,
-  ): void;
+  ): boolean;
   setWindTime(timeSeconds: number): void;
   setSniperFade(
     fraction: number,
@@ -9073,13 +9074,14 @@ function* vegetationBuildSteps(
     const gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
     return gap < treeNearOut * OUTLAND_NEAR_SCALE + 6;
   }
-  function repartitionTrees(camPos: THREE.Vector3): void {
-    if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
+  function repartitionTrees(camPos: THREE.Vector3): boolean {
+    if (!_partitionBuilt) { rebuildPartitionFull(camPos); return true; }
     for (const t of trees) repartitionTree(t, camPos);
     for (const batch of outlandBatches) {
       if (!outlandBatchLive(batch, camPos)) continue;
       for (const t of batch.trees) repartitionTree(t, camPos);
     }
+    return false;
   }
   /** One-time full partition build (map load / world rebuild): plain full
    * uploads, and seeds the slot bookkeeping the incremental path maintains. */
@@ -9362,25 +9364,26 @@ function* vegetationBuildSteps(
     }
   }
 
-  function updatePartitionCaches(camPos: THREE.Vector3): void {
+  /** True when it built the tree partition whole. */
+  function updatePartitionCaches(camPos: THREE.Vector3): boolean {
     const carpetCellX = Math.floor(camPos.x / CARPET_CELL);
     const carpetCellZ = Math.floor(camPos.z / CARPET_CELL);
     if (carpetCellX !== _carpetCellX || carpetCellZ !== _carpetCellZ) {
       _carpetCellX = carpetCellX;
       _carpetCellZ = carpetCellZ;
       rebuildCarpet(camPos);
-      return;
+      return false;
     }
     if (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending) {
       scopeRepartitionPending = false;
       _lastCam.copy(camPos);
-      repartitionTrees(camPos);
-      return;
+      return repartitionTrees(camPos);
     }
     // Stagger a tree repartition against carpet construction/publication, but
     // keep advancing a stationary camera's unfinished first carpet. Changing
     // cells coalesces to the newest target without discarding completed cells.
     if (!carpetWork.complete) rebuildCarpet(camPos);
+    return false;
   }
 
   // Trees perf (2026-10-07): the near pools' cull volume (the runs, above the partition): the main camera's view
@@ -9482,8 +9485,8 @@ function* vegetationBuildSteps(
     camFwd: THREE.Vector3 | null = null,
     focusPos: THREE.Vector3 | null = null,
     viewCamera: THREE.Camera | null = null,
-  ): void {
-    if (disposed) return;
+  ): boolean {
+    if (disposed) return false;
     // Round 77b: the impostor atlas bakes here, before this frame's render and outside any render pass (the first
     // frame, and again after a GPU suspension disposed it); a no-op once baked and without a renderer.
     treeImpostors?.ensureBaked();
@@ -9515,10 +9518,11 @@ function* vegetationBuildSteps(
     // Rebuild only after crossing a 16 m cache-cell boundary. The previous
     // seven-meter distance trigger uploaded several MB while merely orbiting
     // the camera; the circular shader fade keeps this coarser recenter hidden.
-    updatePartitionCaches(camPos);
+    const partitioned = updatePartitionCaches(camPos);
     tickLodTransitions(dt); // aa-r1: advance LOD cross-fades (dt 0 snaps)
     updateNearViewCull(viewCamera); // trees perf: this frame's runs (after the partition moved trees between tiers)
     updateOcclusionFade(dt, camPos, focusPos);
+    return partitioned;
   }
 
   /** Round 79: the near tier's shadow reach this frame — the farthest near-slot tree (planar) and the tallest one. */

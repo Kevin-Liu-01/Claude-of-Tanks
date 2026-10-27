@@ -9404,6 +9404,8 @@ function* terrainBuildSteps(
           finishHorizonRingGeometry(horizonMesh.geometry, {
             ground: heightField, shoreAt, foldAt, roadExits: ringInfo.roadExits ?? null, columns, bands,
           });
+          // (260, the rooms census: the ring's finish and its ground binding were one step of the world build)
+          yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
         }
         bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
           columns, bands, continuousGround: true, ground: heightField, seamFinished: true,

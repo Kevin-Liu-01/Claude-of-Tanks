@@ -58,6 +58,16 @@ for (const [kind, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) for (co
       assert.ok(bytes < flat, `${kind}/${builder}/${seed}: the index saves bytes (${bytes} < ${flat})`);
       const expected = fingerprint(geometry, calls, tail);
       assert.equal(fingerprint(repeat, again.calls, again()), expected, `${kind}/${builder}/${seed}: a rebuild reproduces the streams and the RNG tail`);
+      if (builder === 'build') {
+        // (260) the stepped bake the props pools pace through: the same draws, streams, bounds and RNG tail
+        const stepped = seeded(seed), steps = receipt.buildSteps(stepped);
+        let step = steps.next(), checkpoints = 0;
+        while (!step.done) { checkpoints++; step = steps.next(); }
+        try {
+          assert.equal(fingerprint(step.value, stepped.calls, stepped()), expected, `${kind}/${seed}: the stepped bake is the bake`);
+          assert.ok(checkpoints > 0, `${kind}: the bake checkpoints`);
+        } finally { step.value.dispose(); }
+      }
       savings += flat - bytes; cases++;
       if (kind !== 'truck' || builder !== 'build' || seed !== 1337) continue;
       // reject a one-bit attribute change and an index-order mutation

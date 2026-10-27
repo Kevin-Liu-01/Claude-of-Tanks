@@ -76,7 +76,7 @@ assert.equal(sliced, false, 'the synchronous assembly keeps its group as built')
 assert.match(map, /const world = await assembleWorldPaced\(engineCtx, config, heightField, terrain, vegetation, props,\s*fineSlices \? \(\) => step\('Sealing the battlefield', 0\.99\) : null\);/);
 assert.match(map, /engineCtx\.scene\.add\(group\);\n  if \(sliced\) group\.visible = false;/, 'hidden from its scene add');
 assert.match(map, /if \(sliced\) group\.visible = true;\n  return \{/, 'visible again at its last step');
-assert.equal((map.slice(map.indexOf('function* assembleWorldSteps('), map.indexOf('if (sliced) group.visible = true;')).match(/\n  yield;\n/g) ?? []).length, 7,
+assert.equal((map.slice(map.indexOf('function* assembleWorldSteps('), map.indexOf('if (sliced) group.visible = true;')).match(/\n  yield;\n/g) ?? []).length, 10,
   'the assembly\'s own steps');
 assert.match(map, /yield\* timedSteps\(vegetation\.groundCoverSealSteps\(groundCoverClearance\(\)\), groundCoverSeal\);/);
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
