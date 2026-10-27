@@ -24,6 +24,10 @@ assert.equal(placeMenu(trigger(100, 200, 900), view, 300, false).width, 480, 'ne
 // a set of picture cards takes the widest room (its pictures two abreast), still inside the window
 assert.equal(placeMenu(trigger(100, 200, 300), view, 300, false, true).width, 480, 'cards: the widest room');
 assert.equal(placeMenu(trigger(20, 200, 300), { width: 420, height: 800 }, 300, false, true).width, 420 - 16, 'cards: inside a narrow window');
+// picture cards stand two rows tall (a 183 px battlefield card held one row under 420 px): 520 px where the window has it
+assert.equal(placeMenu(trigger(1500, 860, 32), { width: 1920, height: 1080 }, 1600, false, true).maxHeight, 520, 'cards: min(60 % of 1080, 520)');
+assert.equal(placeMenu(trigger(1500, 860, 32), { width: 1920, height: 1080 }, 1600, false, false).maxHeight, 420, 'a list keeps 420');
+assert.equal(placeMenu(trigger(1500, 560, 32), { width: 1440, height: 800 }, 1600, false, true).maxHeight, 480, 'cards: min(60 % of 800, 520)');
 
 // inside the window: a trigger at the right edge moves the menu in
 spot = placeMenu(trigger(1300, 200, 120), view, 300, false);

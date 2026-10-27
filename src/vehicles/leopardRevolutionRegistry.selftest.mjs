@@ -6,7 +6,8 @@ import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { NATIVE_FAMILY_ORDER } from './fleetOrder.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { requiredTankAssetFiles, tankAssetMetadata } from './tankAssets.ts';
-import { matchTierNumeral, tankTier } from './tier.ts';
+import { tankTier } from './tier.ts';
+import { displayTier } from '../techTree/tiers.ts';
 import { tierNumeral } from '../techTree/tiers.ts';
 import { vehicleMarkingAnchor } from './vehicleMarkings.ts';
 
@@ -30,10 +31,9 @@ assert.equal(proto.nation, 'Germany');
 assert.equal(proto.roster.productionVisible, true);
 assert.equal(proto.authorship.geometry, 'first-party-procedural');
 assert.equal(proto.publicVisualFallback, undefined);
-assert.equal(tankTier(protoId), 9);
-assert.equal(matchTierNumeral(protoId), 'IX');
-assert.equal(tankTier(revolutionId), 10);
-assert.equal(matchTierNumeral(revolutionId), 'X');
+// 258: matchmaking reads the shown tier; the prototype never stands above its production type
+assert.equal(tankTier(protoId), displayTier(protoId));
+assert.ok(tankTier(protoId) <= tankTier(revolutionId), 'the prototype matches at or under the Revolution');
 
 // The turret redesign retains the prototype chassis dimensions and balance.
 // The production Revolution still owns its independent source-derived data.

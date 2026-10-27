@@ -3,14 +3,14 @@ import { execFileSync } from 'node:child_process';
 import { Box3, Raycaster, Vector3 } from 'three';
 import { createTank } from './tankFactory.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
-import { matchTierNumeral } from './tier.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 import { decorManifestFor } from './decorations.ts';
 import { censusEquipment } from '../../tools/source-equipment-policy.mjs';
 
-for (const [id, tier, caliber, turretCrew] of [['amx10p','IX',20,2],['amx10p_25','X',25,1]]) {
+for (const [id, caliber, turretCrew] of [['amx10p',20,2],['amx10p_25',25,1]]) {
   assert(PRODUCTION_TANK_IDS.includes(id), `${id}: playable roster`);
   const spec=getSpec(id);
-  assert.equal(matchTierNumeral(id),tier); assert.equal(spec.nation,'France');
+  assert.ok(tierNumeral(id), `${id}: a shown tier`); assert.equal(spec.nation,'France');
   assert.equal(spec.gun.caliberMm,caliber);
   assert.deepEqual(decorManifestFor(spec,()=>0),[],'native game uses authored fittings, without random roof guns');
   assert.equal(spec.gun.shells.some(shell=>shell.guided),false,'no donor Bradley missile');

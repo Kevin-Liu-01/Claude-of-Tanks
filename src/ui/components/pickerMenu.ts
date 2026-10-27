@@ -50,6 +50,9 @@ export interface PickerMenu {
 const MENU_MIN_W = 280;
 const MENU_MAX_W = 480;
 const MENU_MAX_H = 420;
+/** A menu of picture cards stands taller, so two rows of its cards show whole (a battlefield card with its two lines is
+ *  183 px: 420 px held one row, the battle card's quick menu, owner 10-26). */
+const MENU_MAX_H_CARDS = 520;
 /** Its distance from the trigger and from the window's edges. */
 const MENU_GAP = 4;
 const MENU_EDGE = 8;
@@ -73,7 +76,7 @@ interface MenuPlace {
 /**
  * Where the popover stands for a trigger at `anchor` in a `view` window: under the trigger, or above it when the room below
  * is short of what it needs and the room above is larger; as wide as the trigger within 280-480 px and inside the window;
- * at most min(60 % of the window, 420 px) tall and no taller than its side's room. The room is the window's, or `bounds`
+ * at most min(60 % of the window, 420 px) tall (520 px for picture cards) and no taller than its side's room. The room is the window's, or `bounds`
  * (the trigger's scrolling panel: a dossier, a readout column), so the menu never runs over a site header or out of its
  * panel. A coarse pointer on a window under 520 px wide or tall gets a bottom sheet across it. `height` is the popover's
  * natural height (its content at full room); `wide` (a set of picture cards) takes the widest room, so its pictures stand
@@ -87,7 +90,7 @@ export function placeMenu(
   wide = false,
   bounds: { readonly top: number; readonly bottom: number } = { top: 0, bottom: view.height },
 ): MenuPlace {
-  const cap = Math.min(view.height * 0.6, MENU_MAX_H);
+  const cap = Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   if (coarse && (view.width < SHEET_BELOW || view.height < SHEET_BELOW)) {
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false };
@@ -255,6 +258,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     win.removeEventListener('resize', placeSoon);
     doc.removeEventListener('pointerdown', onOutside, true);
     const back = openFrom?.isConnected ? openFrom : trigger;
+    if (openFrom?.hasAttribute('aria-haspopup')) openFrom.setAttribute('aria-expanded', 'false');
     openFrom = null;
     if (restoreFocus) back.focus({ preventScroll: true });
   }
@@ -265,6 +269,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     openFrom = from && from !== trigger ? from : null;
     ensurePicker();
     trigger.setAttribute('aria-expanded', 'true');
+    // a control that opens it for the trigger (a phone's menu item, an icon on a card) says it is open too
+    if (openFrom?.hasAttribute('aria-haspopup')) openFrom.setAttribute('aria-expanded', 'true');
     pop.showPopover();
     place();
     win.addEventListener('scroll', placeSoon, { capture: true, passive: true });

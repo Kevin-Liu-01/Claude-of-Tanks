@@ -86,8 +86,9 @@ export function snippetOf(text: string, query: string, room = 64): string {
   if (start > lineStart) { const space = text.indexOf(' ', start); if (space >= 0 && space < at) start = space + 1; }
   if (end < lineEnd) { const space = text.lastIndexOf(' ', end); if (space > at) end = space; }
   const cut = text.slice(start, end).trim();
-  // a snippet that ends on its sentence's full stop needs no ellipsis after it
-  return `${start > lineStart ? '…' : ''}${cut}${end < lineEnd && !/[.。]$/.test(cut) ? '…' : ''}`;
+  // a snippet that ends on its sentence's full stop needs no ellipsis after it; Chinese takes its own (……)
+  const dots = /[\u3400-\u9fff]/.test(cut) ? '……' : '…';
+  return `${start > lineStart ? dots : ''}${cut}${end < lineEnd && !/[.。]$/.test(cut) ? dots : ''}`;
 }
 
 export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {

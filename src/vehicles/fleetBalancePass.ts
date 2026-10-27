@@ -374,3 +374,21 @@ export function applyModernEraFold(registry: TankSpecRegistry): void {
   // no longer the Raijū's tuning, so no longer its balance peer
   delete spec(registry, 'type89').balancePeerOf;
 }
+
+/**
+ * 2026-10-26 (258): matchmaking reads the shown tier (tier.ts), so the audit groups every vehicle with its shown-tier
+ * peers (balanceAudit.ts). Six sat just under a peer floor there; each is lifted just over it, to about two thirds of its
+ * group's median: the BMPT Terminator 2's 30 mm and the Marder 1A3's 20 mm rounds, the Centurion 5/2's and Merkava 2B's
+ * engines, the T-80BV's aim and the Upiór's hull and round. Runs with the era fold, before the tactical role balance.
+ */
+export function applyShownTierFloors(registry: TankSpecRegistry): void {
+  primary(registry, 'bmpt_terminator2', { pen100: 125, pen1000: 112, pen2000: 100 });
+  primary(registry, 'marder1a3', { pen100: 76, pen1000: 68, pen2000: 60 });
+  spec(registry, 'centurion5_2').enginePowerHp = 880;
+  spec(registry, 'merkava2b').enginePowerHp = 1060;
+  const t80bv = spec(registry, 't80bv');
+  t80bv.gun.aimTimeS = Math.round(t80bv.gun.aimTimeS * 0.93 * 100) / 100;
+  spec(registry, 'upior').hp = 1820;
+  primary(registry, 'upior', { pen100: 158, pen1000: 143, pen2000: 128 });
+}
+

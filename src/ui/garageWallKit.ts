@@ -1,5 +1,5 @@
 import { KitBuilder } from './garageKitGeometry.ts';
-import { garageDisplayRect } from './garageDisplayAtlas.ts';
+import { garageDisplayRect, garageDisplayRectAspect } from './garageDisplayAtlas.ts';
 
 /**
  * K2, wall systems (garage r9). Outdoor perimeter runs follow a polyline on the ground, each module standing on a
@@ -32,7 +32,11 @@ export const GARAGE_WALL_BUDGETS: Readonly<Record<KitWallKind, number>> = Object
  * A mural on a module's face (the frame's +Z face at z): a stencil ('stencil.*', paint with alpha) is a DECAL painted on
  * the concrete; a banner or crest rect is an atlas face (DISPLAY-LIT).
  */
-function mural(b: KitBuilder, rect: string, cx: number, cy: number, z: number, w: number, h: number): void {
+function mural(b: KitBuilder, rect: string, cx: number, cy: number, z: number, faceW: number, faceH: number): void {
+  // the picture keeps its proportions inside the face: a wide banner on a fence panel was squashed into a block, its name
+  // condensed (owner 10-26: the name is one horizontal line)
+  const aspect = garageDisplayRectAspect(rect);
+  const w = Math.min(faceW, faceH * aspect), h = w / aspect;
   if (rect.startsWith('stencil.')) {
     b.decal([cx - w / 2, cy - h / 2, z + 0.004], [cx + w / 2, cy - h / 2, z + 0.004], [cx + w / 2, cy + h / 2, z + 0.004],
       [cx - w / 2, cy + h / 2, z + 0.004], garageDisplayRect(rect));
@@ -85,10 +89,7 @@ export function buildWallRun(b: KitBuilder, kind: KitWallKind, points: ReadonlyA
         b.box(0, 0.2, 0, step - 0.02, 0.4, 1.4, b.jitter(skin.concrete, 0.025), { bevel: 0, noBottom: true });
         b.box(0, 0.4 + (h - 0.4) / 2, 0, step - 0.03, h - 0.4, 0.26, b.jitter(skin.concrete, 0.025), { bevel: 0.03, noBottom: true });
         b.box(0, h + 0.05, 0, 0.3, 0.1, 0.06, skin.steel, { bevel: 0, noBottom: true }); // lifting eye
-        if (params.mural && index % muralEvery === 0) {
-          const wide = params.mural.includes('wordmark') || params.mural.includes('banner.h');
-          mural(b, params.mural, 0, h * 0.55, 0.13, step * 0.92, wide ? step * 0.92 * 0.19 : step * 0.92);
-        }
+        if (params.mural && index % muralEvery === 0) mural(b, params.mural, 0, h * 0.55, 0.13, step * 0.92, step * 0.92);
       }));
     }
     case 'heras': {

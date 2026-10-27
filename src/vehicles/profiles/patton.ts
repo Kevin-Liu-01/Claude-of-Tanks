@@ -47,6 +47,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
+import { moldedBox } from '../accessoryPrimitives.ts';
 import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -678,6 +679,8 @@ interface M48BuildConfig {
     readonly axisY: number;
     readonly rootZ: number;
     readonly len: number;
+    /** The A5's compact cast shield and canvas mantlet cover (2026-10-26), for a trunnion high over its deck. */
+    readonly compactMantlet?: boolean;
   };
 }
 
@@ -6459,16 +6462,33 @@ function* buildM48Steps(P: PattonBuilderPort, cfg: M48BuildConfig): TankProfileB
     // mantlet: the M48's wide rounded shield casting at the dome face —
     // rounded core + shield slab + rotor boot (§B3.1 MANTLETS-MANDATORY),
     // all riding the gun (gun-local coords)
-    P.addGunExtra(box(1.02, 0.72, 0.36), 0, 0.08, 0.20);
-    P.addGunExtra(KIT.xform(cylX(0.27, 1.00, P.q ? 20 : 12), 0, 0, 0), 0, 0.08, 0.36);
-    P.addGunExtraDark(box(0.82, 0.38, 0.14), 0, 0.07, 0.12);
-    P.addGunExtraDark(cylZ(0.175, 0.06, 12), 0, 0, 0.55);
-    P.addGunExtra(cylZ(0.155, 0.38, 12, 0.108), 0, 0, 0.78); // tapered root sleeve
+    if (cfg.gun.compactMantlet) {
+      // 2026-10-26 (the owner: "make the m48a5 have a better turret with its mantlet def moved up a lil more, its
+      // glitching through hull rn"): the old 0.72 m slab hung 0.28 m under the axis, 13-19 cm into the 1.78-1.87 deck
+      // ahead of the dome at rest. The A5's cast shield is now a rounded casting over the axis (0.10 under it to 0.44
+      // over), its rounded nose narrowed inside the deck's periscope guards, and the canvas mantlet cover runs from the
+      // shield to the gun's root; with the axis at 2.10 every part keeps 15 mm or more over the deck at -9 deg.
+      P.addGunExtra(moldedBox(1.00, 0.54, 0.30, 0.09, P.q ? 3 : 2, 0.05), 0, 0.17, 0.18);
+      P.addGunExtra(KIT.xform(cylX(0.20, 0.86, P.q ? 20 : 12), 0, 0, 0), 0, 0.09, 0.32);
+      P.addGunExtraDark(box(0.82, 0.38, 0.14), 0, 0.07, 0.12);
+      // canvas mantlet cover, 0.18 at the shield to 0.12 at the root, with two lashing bands just proud of it
+      P.add('gunMountCloth', cylZ(0.12, 0.30, P.q ? 16 : 10, 0.18), 0, 0.03, 0.47);
+      for (const z of [0.38, 0.52]) P.add('gunMountCloth', cylZ(0.184 - (z - 0.32) * 0.2, 0.025, P.q ? 16 : 10), 0, 0.03, z);
+      P.addGunExtraDark(cylZ(0.13, 0.05, 12), 0, 0, 0.635);
+    } else {
+      P.addGunExtra(box(1.02, 0.72, 0.36), 0, 0.08, 0.20);
+      P.addGunExtra(KIT.xform(cylX(0.27, 1.00, P.q ? 20 : 12), 0, 0, 0), 0, 0.08, 0.36);
+      P.addGunExtraDark(box(0.82, 0.38, 0.14), 0, 0.07, 0.12);
+      P.addGunExtraDark(cylZ(0.175, 0.06, 12), 0, 0, 0.55);
+    }
+    // tapered root sleeve (the compact A5's slimmer at its front: at -9 deg its lower edge stays over the deck's guards)
+    P.addGunExtra(cylZ(cfg.gun.compactMantlet ? 0.125 : 0.155, 0.38, 12, 0.108), 0, 0, 0.78);
     // Raised M48A5 gunner/searchlight housing, carried by the mantlet rather
     // than left as a turret-side floater.
     P.addGunExtra(box(0.567, 0.427, 0.453), 0, 0.375, 0.709);
     P.addGunExtraDark(box(0.43, 0.30, 0.025), 0, 0.375, 0.948);
-    buildGun(P, { len: cfg.gun.len, r: 0.076, sleeve: false, evac: null, evacR: 1.62, collar: false, baseR: 0.15 });
+    buildGun(P, { len: cfg.gun.len, r: 0.076, sleeve: false, evac: null, evacR: 1.62, collar: false,
+      baseR: cfg.gun.compactMantlet ? 0.13 : 0.15 });
     { // M68 bore-evacuator collar at the print's own band (world z' 4.26..4.42)
       const gseg = P.q ? 20 : 12;
       P.add('gun', cylZ(0.125, 0.44, gseg), 0, 0, 2.213);
@@ -7479,7 +7499,9 @@ export const PATTON_PROFILES = {
       },
       // (2026-10-25: the gun keeps its 1.93 world axis, toward the packet's 2.017, now in the turret, which sits 55 mm
       // lower on its ring: at 1.875 the seated dome's side underside, 1.88, left the axis behind the trunnion in sight)
-      gun: { rootZ: 1.514, axisY: 1.93, len: 4.19 },
+      // 2026-10-26 (the owner: the mantlet "moved up a lil more, its glitching through hull"): the trunnion at 2.10, the
+      // compact cast shield and its canvas cover; the dome's cast chin shows under the shield
+      gun: { rootZ: 1.514, axisY: 2.10, len: 4.19, compactMantlet: true },
     })),
   },
   m60a2: {

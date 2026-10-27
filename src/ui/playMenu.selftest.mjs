@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const source = await readFile(new URL('./playMenu.ts', import.meta.url), 'utf8');
 const responsive = await readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
-assert.deepEqual([...source.matchAll(/\{ value: '(private|lan|[a-z]+)', label: t\('playMenu\.\1\.title'\)/g)].map(match => match[1]),
+assert.deepEqual([...source.matchAll(/\{ value: '(private|lan|[a-z]+)', label: t\('playMenu\.kind\.\1'\)/g)].map(match => match[1]),
   ['private', 'lan'], 'only supported room kinds have player-facing entry controls');
 assert.deepEqual([...source.matchAll(/class="mode" data-mode="([^"]+)"/g)].map(match => match[1]), ['solo'], 'and solo its own link');
 assert.doesNotMatch(source, /rankedServiceClient|rankedQueueLifecycle|onRankedStart|data-ranked|data-mode="ranked"/,

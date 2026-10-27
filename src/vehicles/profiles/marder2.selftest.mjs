@@ -9,7 +9,7 @@ import { censusEquipment } from '../../../tools/source-equipment-policy.mjs';
 import { ensureInteriorFills } from '../interiorFills.ts';
 
 const id='marder2',s=getSpec(id);
-assert.equal(s.name,'Marder 2');assert.equal(tankTier(id),10);
+assert.equal(s.name,'Marder 2');assert.equal(tankTier(id),5); // 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
 assert.equal(s.gun.caliberMm,50);assert.equal(s.gun.shells.some(r=>r.guided),false);
 assert.equal(s.gun.launcherMuzzles,undefined);
 const independent=['spz_wotan','puma_s1','kurganets25','borsuk'];

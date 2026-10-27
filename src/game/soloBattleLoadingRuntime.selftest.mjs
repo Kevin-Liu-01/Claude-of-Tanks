@@ -512,6 +512,26 @@ console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm, rev
  assert.deepEqual(cards,['t90am']);game.tanks[0].visual=playerVisual;
  delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
 }
+// the owner, 2026-10-26: "fix team lists in loading state": a planned roster draws both teams, nations and all, on the
+// card's first frame (no rows held open); the roster stage then draws the seated battle's rows over them
+{
+ const shows=[],drawn=[],asked=[];
+ const plannedAllies=[{id:'m1a1_abrams_hc',isPlayer:true},{id:'leopard_2a7v',callsign:'Viper'}],plannedEnemies=[{id:'t90am',callsign:'Hammer'}];
+ const entry=createSoloBattleLoadingRuntime({...loadingOptions,
+  plannedRosters:(specId,request)=>{asked.push([specId,request]);return {allies:plannedAllies,enemies:plannedEnemies,teamNations:{teamNations:'mono',allied:'us',enemy:'ru',notes:[]}};},
+  battleLoad:{...loadingOptions.battleLoad,show:(options)=>{shows.push(options);events.push('loader:show');},
+   rosters:(allies,enemies,teams)=>{drawn.push([allies,enemies,teams]);}},
+ });
+ await entry.begin('m1a1_abrams_hc',null,{randomRoster:false});
+ assert.deepEqual(asked,[['m1a1_abrams_hc',{randomRoster:false,gameMode:'standard',campaignOperationId:null,watch:false}]]);
+ assert.deepEqual(shows[0].allies,plannedAllies,'the card shows the planned allies from its first frame');
+ assert.deepEqual(shows[0].enemies,plannedEnemies,'and the planned enemies');
+ assert.equal(shows[0].slots,undefined,'no rows held open');
+ assert.deepEqual(drawn[0].slice(0,2),[plannedAllies,plannedEnemies],'its flags drawn with them');
+ assert.ok(drawn[0][2],'the TEAM NATIONS flags');
+ assert.equal(drawn.length,2,'and the roster stage draws the seated rows once more');
+ delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
+}
 // (ac130-fx-228) an escort on the pilot's own garage spec (the allied pool's [player] fallback) keeps its texture
 // preparation and its builder: only the plan's first entry, the pilot, is dropped
 {

@@ -11,7 +11,7 @@ const spec = getSpec(id);
 assert.equal(spec.name, 'Leopard 2A6 UA');
 assert.equal(spec.nation, 'Ukraine');
 assert.equal(spec.variantOf, 'leo2a4_otco');
-assert.equal(tankTier(id), 10, 'Leopard 2A6 UA is a Tier X playable');
+assert.equal(tankTier(id), 9, 'Leopard 2A6 UA is a Tier IX playable (258: the owner\'s 2A6 anchor)');
 assert.equal(spec.role, 'mbt');
 
 const sectorNames = [

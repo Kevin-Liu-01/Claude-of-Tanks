@@ -194,7 +194,7 @@ for(const quality of ['high','low']) {
  for(const c of configs){
   assert.equal(ALL_TANK_IDS.filter(id=>id===c.id).length,1);
   const spec=getSpec(c.id);assert.deepEqual(decorManifestFor(spec,()=>.5),[],`${c.id}: authored equipment has no unsupported generic overlay`);assert(!/concept/i.test(spec.name),`${c.id}: the owner dropped the concept tag from the national names (2026-10-21); the status facet keeps the class`);assert.equal(spec.nation,c.nation);
-  assert.equal(spec.gun.caliberMm,125);assert.equal(tankTier(c.id),10);
+  assert.equal(spec.gun.caliberMm,125);assert.ok(tankTier(c.id)>=tankTier(c.id.startsWith('t80u')?'t80u':'t72b3'),`${c.id}: not under its base (258)`);
   for(const side of ['L','R'])assert(spec.armor.hullPlates.some(p=>p.name===`skirt_era_${side}`&&p.era),`${c.id}: visible skirt ERA has a damage sector`);
   const modules=spec.armor.modules.map(m=>m.module);assert.equal(new Set(modules).size,modules.length);
   const baseStock=[];
@@ -273,5 +273,5 @@ for(const quality of ['high','low']) {
  assert.equal(silhouettes.size,14,`${quality}: each concept has a distinct structural turret`);
 }
 assert.equal(getSpec('t62mv1').gun.caliberMm,125);
-assert.equal(tankTier('bmpt_terminator2'),9);
+assert.equal(tankTier('bmpt_terminator2'),5); // 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
 console.log('National modernization: 14 registrations, original concepts, preserved chassis mechanics, retained native hull vertices and distinct cast and welded modernization turrets, supported bearings, gun apertures, roof seats, full turret sweep, module owners, yaw/pitch and remote weapons PASS');

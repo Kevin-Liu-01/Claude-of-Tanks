@@ -475,6 +475,23 @@ maps and 444 in the main pass (16-31 a tank under 30 m, 13-22 at 30-180 m, 4-12 
 world's shadow draws hold at 312-424 in every battle although a static shadow cache exists: the next run samples its
 decisions (`staticCacheFrame`) and the tanks' parts by pass before a lever is chosen.
 
+### The plan (2026-10-26)
+
+In order of draws saved per unit of risk, each step A/B'd with `--draw-attribution` at 7v7, 14v14 and 21v21 on
+Steinburg and Verdant (paired, one build, ABBA):
+
+1. **The world's shadow casters (312-424 draws a frame).** The static shadow cache exists, yet these hold in every
+   battle: sample its decisions (`staticCacheFrame`) to find which statics miss it (cascade refits, epochs, roots outside
+   a static nest) and close the misses. This lane's alone; the cache's receipts (shadowStaticCache.selftest) pin it.
+2. **The tanks' mid band (13-22 draws a tank at 30-180 m).** The far LOD (farLod.ts, past 180 m) already merges every
+   visible static draw per owner and material in the owner's frame, then clusters it. The same merge without the
+   clustering is a mid LOD: the detail parked as the far LOD parks it, the silhouette exact, about 5-8 draws a tank.
+   Render-only (armor, modules and crew read their own records), but it is the vehicles lane's builder and its CPU pair
+   receipts; agreed with that lane first.
+3. **The tanks' shadow draws (333 a frame).** The mid band's merged owners draw the shadow pass too, in place of
+   per-part casters.
+Not taken: instancing across the roster (pose and damage state differ per tank; duplicate picks are few).
+
 ## The HUD's frame cost (UI-LOCKDOWN part E: 0.5 ms a frame)
 
 The Steinburg 14v14 profile: code under the HUD's sources costs 20.8 ms a second (about 1 ms a frame there).

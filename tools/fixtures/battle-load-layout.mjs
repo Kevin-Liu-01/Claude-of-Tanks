@@ -29,6 +29,17 @@ window.__LOAD_LAYOUT = {
   screen,
   // (with `seats`, a roster still filling: each side holds that many rows, the seats not yet named open)
   roster(allies, enemies, seats) { screen.rosters(rows(allies,true), rows(enemies,false), null, seats ? {allies:seats, enemies:seats} : null); },
+  // (a sortie's planned teams on the press's cover, the entry's seats a side beside them: soloBattleEntryRuntime's showPending)
+  pending(allies, enemies, seats) {
+    screen.showPending({mapId:'urban', mapName:'Steinburg', thumb:'/maps/urban.webp', modeId, allies:rows(allies,true), enemies:rows(enemies,false)}, seats);
+  },
+  // (the loading owner's first show and fill with the same plan: soloBattleLoadingRuntime's begin)
+  planned(allies, enemies) {
+    const seats = {allies, enemies};
+    screen.show({mapName:'Steinburg', mode:battleLoadModeLabel(modeId), thumb:'/maps/urban.webp', biome:'urban', modeId,
+      allies:rows(allies,true), enemies:rows(enemies,false), seats});
+    screen.rosters(rows(allies,true), rows(enemies,false), null, seats);
+  },
 };
 const params = new URLSearchParams(location.search);
 // ?map=<id>&name=<its name>[&mode=<mode id>]: a battlefield as the game passes it (its art, its baked plan on the plate beside the tip, the mode's objectives on it);
