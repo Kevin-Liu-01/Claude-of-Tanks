@@ -497,16 +497,29 @@ await withFixture(async (f) => {
   hull.add(stowed);
   const hidden = f.addCaster('detail-hidden', 3, { parent: stowed, castShadow: false });
   hidden.material.displacementMap = new THREE.Texture();
-  markVehicleShadowDetail(hull, { detail: [plain, cut, hidden], proxies: [] });
+  // a detail mesh in a level its LOD holds hidden warms with its level shown inside each batch; the level's own caster
+  // joins the list and casts only in its batch
+  const lod = new THREE.LOD();
+  hull.add(lod);
+  const nearLevel = new THREE.Group(), farLevel = new THREE.Group();
+  lod.addLevel(nearLevel, 0);
+  lod.addLevel(farLevel, 50);
+  const pads = f.addCaster('detail-pads', 3, { parent: farLevel, castShadow: false });
+  pads.material.side = THREE.DoubleSide;
+  f.addCaster('far-sibling', 3, { parent: farLevel });
+  farLevel.visible = false;
+  markVehicleShadowDetail(hull, { detail: [plain, cut, hidden, pads], proxies: [] });
   const castAtYield = [];
   await f.run({ casterWarmup: { maxCastersPerBatch: 8,
     yieldBeforeBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
     onBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
   } });
-  assert.deepEqual(f.cohorts, [['seen'], ['detail-cut'], ['seen'], ['seen']],
-    'the cut-out detail warms in its own batch; the plain one repeats a warmed variant; neither reaches a final cascade');
+  assert.deepEqual(f.cohorts, [['seen'], ['detail-cut'], ['detail-pads', 'far-sibling'], ['seen'], ['seen']],
+    'the cut-out and the hidden level\'s double-sided detail warm in batches of their own; the plain one repeats a warmed '
+    + 'variant; none reaches a final cascade');
   assert.ok(castAtYield.every((cast) => cast === false), 'the detail casts at no yield');
-  assert.deepEqual([plain.castShadow, cut.castShadow, hidden.castShadow, stowed.visible], [false, false, false, false]);
+  assert.deepEqual([plain.castShadow, cut.castShadow, hidden.castShadow, pads.castShadow, stowed.visible, farLevel.visible],
+    [false, false, false, false, false, false]);
   f.restored(true);
 });
 

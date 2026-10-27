@@ -175,7 +175,7 @@ function warmCasterState(object: ShadowDrawable): CasterState | null {
     variant: depthVariant(object) };
 }
 
-function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
+function collectWarmCasters(state: PrimeState, scene: Object3D): CasterState[] {
   const casters: CasterState[] = [];
   const vsm = state.shadowMap.type === VSMShadowMap;
   // (battle-spikes-253) The shadow router exposes the shadow-only proxies while the shadow map traverses: batch them with
@@ -199,24 +199,41 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
  * from the Garage's light set; the 580-590 ms guard frame). Each visible detail mesh that brings a variant no caster
  * before it has joins the warm batches, casting inside its own batch's render only.
  */
-function addNearDetailCasters(state: PrimeState, scene: Scene, casters: CasterState[]): void {
+function addNearDetailCasters(state: PrimeState, scene: Scene, casters: CasterState[]): Object3D[] {
   const casterMask = state.cameraMask | (1 << SHADOW_ONLY_LAYER);
   const seen = new Set(casters.map((caster) => caster.variant));
   const listed = new Set(casters.map((caster) => caster.object));
+  // (a detail mesh in a level its LOD holds hidden, gearTrackPadsSimplified<LOD among them: the level is shown inside each
+  // batch render as a hidden root is, and its own casters join the list so they cast in their own batch only)
+  const levels: Object3D[] = [];
   for (const root of scene.children) {
     const detail = root.visible ? vehicleShadowDetailOf(root) : null;
     if (!detail) continue;
     for (const mesh of detail.detail) {
       if (listed.has(mesh) || !isShadowDrawable(mesh) || !(mesh.layers.mask & casterMask)) continue;
+      const hiddenLevels: Object3D[] = [];
       let shown = true;
-      for (let node: Object3D | null = mesh; node && node !== root; node = node.parent) if (!node.visible) { shown = false; break; }
+      for (let node: Object3D | null = mesh; node && node !== root; node = node.parent) {
+        if (node.visible) continue;
+        if ((node.parent as (Object3D & { isLOD?: boolean }) | null)?.isLOD) { hiddenLevels.push(node); continue; }
+        shown = false;
+        break;
+      }
       const caster = shown ? warmCasterState(mesh) : null;
       if (!caster || seen.has(caster.variant)) continue;
       seen.add(caster.variant);
       listed.add(mesh);
       casters.push({ ...caster, forceCast: true });
+      for (const level of hiddenLevels) {
+        if (levels.includes(level)) continue;
+        levels.push(level);
+        for (const other of withRootsShown([level], () => collectWarmCasters(state, level))) {
+          if (!listed.has(other.object)) { listed.add(other.object); seen.add(other.variant); casters.push(other); }
+        }
+      }
     }
   }
+  return levels;
 }
 
 function warmBatches(casters: readonly CasterState[], options: ShadowCasterWarmupOptions) {
@@ -364,7 +381,7 @@ async function warmFirstCascade(
   const hidden: Object3D[] = [];
   for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
   const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
-  withRootsShown(hidden, () => addNearDetailCasters(state, request.scene, casters));
+  hidden.push(...withRootsShown(hidden, () => addNearDetailCasters(state, request.scene, casters)));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;
