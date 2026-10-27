@@ -239,6 +239,8 @@ const distributed = new Set();
 for (const id of ALL_TANK_IDS) {
   // 259: the Strv 103s carry their own period kit (below), never the fleet's cargo pools
   if (id === 'strv103a' || id === 'strv103b') continue;
+  // 262: the Type 74 and the STB-1 carry their sourced equipment in their builders (below)
+  if (id === 'type74' || id === 'stb1') continue;
   const manifest = decorManifestFor(getSpec(id), () => 0.5);
   const cargo = manifest.filter((row) => row.kit === 'cargo' && (row.p ?? 1) > 0);
   assert.equal(cargo.length, 7, `${id}: deterministic manifest includes a seven-piece field load`);
@@ -297,6 +299,13 @@ for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs'
 }
 assert.notDeepEqual(decorManifestFor(strvSpec('strv103a'), () => 0.5), decorManifestFor(strvSpec('strv103b'), () => 0.5),
   'the 103A and the 103B carry different kits');
+
+// 262: the production Type 74 keeps only its crew packs in the bustle basket; the trials STB-1 carries no field load
+// (stub specs, as above: the Japanese rows register lazily)
+const japanSpec = (id) => ({ id, nation: 'Japan', era: 'cold-war' });
+assert.deepEqual(decorManifestFor(japanSpec('type74'), () => 0.5).map((row) => [row.kit, row.slot[0]]), [['packs', 'turretRear']],
+  'type74: its crew packs in the bustle basket, nothing from the cargo pools');
+assert.deepEqual(decorManifestFor(japanSpec('stb1'), () => 0.5), [], 'stb1: the trials prototype carries no field load');
 
 const annotatedRoofHit = {
   p: new THREE.Vector3(-0.80187, 1.82439, -0.19998),

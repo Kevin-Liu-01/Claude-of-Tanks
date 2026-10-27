@@ -2713,15 +2713,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type74: () => [
-    { kit: 'aamg', p: 1, v: { v: 'm2' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
-    { kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] },
-    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  ],
   // --- Modern ---
   leo2a2: () => [
     // The family profile owns the complete hull-and-turret ghillie suit.
@@ -2946,6 +2937,18 @@ const STRV103_DECOR: Readonly<Record<'strv103a' | 'strv103b', () => DecorManifes
   ],
 });
 
+// 262 (owner on the STB-1 and the Type 74: "we should upgrade the hulls and everything about the tanks too"): both now
+// carry their sourced equipment in their builders (the production tank's M2, smoke dischargers at the turret's front
+// corners, the gun-riding searchlight, the bow shackles, the fender lockers and mufflers; the prototype's remote gun,
+// rear-side smoke and silencer). No photograph shows a production Type 74 with jerry cans or a rear rack, so neither
+// takes the fleet's cargo pools: the Type 74 its crew packs in the bustle basket, the trials prototype nothing.
+const JAPAN_74_DECOR: Readonly<Record<'type74' | 'stb1', () => DecorManifestRow[]>> = Object.freeze({
+  type74: (): DecorManifestRow[] => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+  ],
+  stb1: (): DecorManifestRow[] => [],
+});
+
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   const twin = DECOR_TWIN.get(spec.id);
   if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
@@ -2979,6 +2982,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  if (spec.id === 'type74' || spec.id === 'stb1') return JAPAN_74_DECOR[spec.id]();
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
