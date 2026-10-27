@@ -999,6 +999,7 @@ function* assembleWorldSteps(
   /** Whether the build left structures' damage measures to the idle measurer (the world's update, DEFERRED_MEASURE_MS a
    *  frame: round 4's load-time budget). */
   let deferredMeasures = true;
+  let nonFiniteCameraWarned = false; // (rel259) the world update's non-finite camera, said once
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
   const getStructureDamage = (structureIdx: number): StructureDamageSeam | null => {
     const cached = structureSeams.get(structureIdx);
@@ -1210,6 +1211,16 @@ function* assembleWorldSteps(
       focusPos: THREE.Vector3 | null = null,
       viewCamera: THREE.Camera | null = null,
     ) {
+      // (rel259, the integrator on Blackglass: a capture that set the shot camera to a non-finite position made the grass
+      // carpet's cell request throw "Invalid grass carpet cell" every frame, so no shot frame rendered) a camera that is not
+      // finite leaves the world's camera-driven streaming where it stands, and says so once
+      if (!Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.y) || !Number.isFinite(cameraPos.z)) {
+        if (!nonFiniteCameraWarned) {
+          nonFiniteCameraWarned = true;
+          console.warn(`[world] the camera's position is not finite (${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}): the world holds until it is`);
+        }
+        return;
+      }
       terrain.userData.updateLOD(cameraPos);
       // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
       groundCoverCraters.sync(boundGroundOverlay);

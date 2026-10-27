@@ -79,6 +79,9 @@ assert.match(map, /if \(sliced\) group\.visible = true;\n  return \{/, 'visible 
 assert.equal((map.slice(map.indexOf('function* assembleWorldSteps('), map.indexOf('if (sliced) group.visible = true;')).match(/\n  yield;\n/g) ?? []).length, 7,
   'the assembly\'s own steps');
 assert.match(map, /yield\* timedSteps\(vegetation\.groundCoverSealSteps\(groundCoverClearance\(\)\), groundCoverSeal\);/);
+// (rel259) a camera that is not finite holds the world's streaming (the grass carpet's cell request threw every frame)
+assert.match(map, /update\([\s\S]{0,240}\) \{\n[\s\S]{0,400}if \(!Number\.isFinite\(cameraPos\.x\) \|\| !Number\.isFinite\(cameraPos\.y\) \|\| !Number\.isFinite\(cameraPos\.z\)\) \{[\s\S]{0,300}return;\n      \}\n      terrain\.userData\.updateLOD\(cameraPos\);/,
+  'a non-finite camera returns before the terrain, the vegetation and the sward stream from it');
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetation, /function\* groundCoverSealSteps\(blocked: GroundCoverBlocked\)[\s\S]{0,1800}if \(mesh\.instanceColor\) mesh\.instanceColor\.needsUpdate = true;\n      yield;\n    \}/,
   'the seal yields after each grass mesh it compacts');
