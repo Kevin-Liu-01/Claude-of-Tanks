@@ -110,13 +110,15 @@ export function placeMenu(
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false, span: false };
   }
-  const lo = Math.max(MENU_EDGE, (bounds.left ?? 0) + MENU_EDGE);
-  const hi = Math.min(view.width, bounds.right ?? view.width) - MENU_EDGE;
   const span = bounds.left !== undefined && bounds.right !== undefined && bounds.right - bounds.left <= SPAN_MAX_W;
+  // a spanning menu meets its panel's inner box (inside its rule) on its sides and its far edge: a panel scrolls its rows to
+  // its edge and a dossier's picture runs to its sides, so a gap there showed them beside the menu (the 261 critics: zh
+  // 900's 自动机枪, the Gallery hero's 7 px strips)
+  const inset = span ? 0 : MENU_EDGE;
+  const lo = Math.max(span ? 0 : MENU_EDGE, (bounds.left ?? 0) + inset);
+  const hi = Math.min(view.width, bounds.right ?? view.width) - inset;
   const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
-  // a spanning menu reaches its panel's far edge itself (inside its 1 px rule): a panel scrolls its rows to its edge, so a
-  // gap there showed the foot of a row under the menu (the 261 critic: zh 900's 自动机枪)
-  const far = span ? 1 : MENU_EDGE;
+  const far = inset;
   // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
   const width = span ? hi - lo : Math.min(wide ? MENU_MAX_W : Math.max(MENU_MIN_W, Math.min(MENU_MAX_W, anchor.width), anchor.width), hi - lo);
   const left = span ? lo : Math.max(lo, Math.min(anchor.left, hi - width));
@@ -235,10 +237,12 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
       const style = win.getComputedStyle(node);
       if (style.overflowY === 'visible' && !/paint|content|strict/.test(style.contain)) continue;
+      // its inner box: inside its rule and its scrollbar
       const box = node.getBoundingClientRect();
-      const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
+      const inner = { left: box.left + node.clientLeft, top: box.top + node.clientTop };
+      const top = Math.max(0, inner.top), bottom = Math.min(win.innerHeight, inner.top + node.clientHeight);
       // a short box (a row that clips its own text) is no panel: the one holding it is
-      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom, left: Math.max(0, box.left), right: Math.min(win.innerWidth, box.right) };
+      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom, left: Math.max(0, inner.left), right: Math.min(win.innerWidth, inner.left + node.clientWidth) };
     }
     return { top: 0, bottom: win.innerHeight };
   };

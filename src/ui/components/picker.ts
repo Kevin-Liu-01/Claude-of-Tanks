@@ -262,7 +262,8 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   chipsResize.observe(chipRow);
   /** The page that starts at `chip` (the row's own start for the first). */
   const pageTo = (chip: HTMLElement | undefined): void => {
-    chipRow.scrollLeft = chip ? chipRow.scrollLeft + chip.getBoundingClientRect().left - chipRow.getBoundingClientRect().left : 0;
+    // (rounded up: a fractional offset the scroll truncates left the page 1 px in, the 261 critic at en 1440)
+    chipRow.scrollLeft = chip ? Math.ceil(chipRow.scrollLeft + chip.getBoundingClientRect().left - chipRow.getBoundingClientRect().left) : 0;
     syncMore();
   };
   /** The next page: from the first chip the row's end cuts or hides, or back to the start after the last. */
