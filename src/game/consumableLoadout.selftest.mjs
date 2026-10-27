@@ -49,14 +49,15 @@ assert.equal(entry('smoke_reload').lock, 'smoke');
 assert.equal(entry('first_aid').fittedSlot, 1);
 assert.equal(entry('foliage').lock, null);
 
-// the i18n catalogs name every item in both locales, short names inside the tile's ten characters
+// the i18n catalogs name every item in both locales, short names inside the band slot (7 Latin, 4 CJK characters)
 const { readFileSync } = await import('node:fs');
 for (const locale of ['en-US', 'zh-CN']) {
   const catalog = JSON.parse(readFileSync(new URL(`../ui/i18nCatalog.${locale}.json`, import.meta.url), 'utf8'));
   for (const item of CONSUMABLE_CATALOG) {
     const stem = consumableNameKey(item.id).slice('consumable.'.length, -'.name'.length);
     for (const field of ['name', 'short', 'effect']) assert.ok(catalog[`consumable.${stem}.${field}`], `${locale}: ${item.id} ${field}`);
-    assert.ok([...catalog[`consumable.${stem}.short`]].length <= 10, `${locale}: ${item.id} short name fits the tile`);
+    // the band's slots are 50-68 px, as the equipment slots' short names are (gallery-studio, 2026-10-26): no ellipsis
+    assert.ok([...catalog[`consumable.${stem}.short`]].length <= (locale === 'zh-CN' ? 4 : 7), `${locale}: ${item.id} short name fits the slot`);
     assert.ok(!catalog[`consumable.${stem}.effect`].includes('—'), `${locale}: ${item.id} effect has no em dash`);
   }
   assert.ok(catalog['garage.consumableSlot'].includes('{n}'), `${locale}: the Garage slot's label`);
