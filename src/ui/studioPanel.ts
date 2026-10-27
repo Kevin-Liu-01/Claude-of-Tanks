@@ -12,7 +12,7 @@ import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPic
  * (createStudioPanel below; its rules are studioPanel.css).
  */
 import { ensureFonts } from './fonts.ts';
-import { iconUrl } from './icons.ts';
+import { iconUrl, tankThumbUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { markDatum } from './dom.ts';
@@ -22,6 +22,8 @@ import { flagIconUrl } from './flags.ts';
 import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
+import { createPickerMenu } from './components/pickerMenu.ts';
+import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { createGarageCamoPicker } from './camoPicker.ts';
 import { camoTagNation } from '../vehicles/camoPolicy.ts';
@@ -1214,90 +1216,38 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const selEmpty = el('div', 'note', t('studioPanel.emptySelected'));
   tanksGroup.body.append(selEmpty, secSel);
 
-  // === ADD TANKS section: the roster picker (flag, silhouette, name, era), add in view or click to place ===
+  // === ADD TANKS section: the roster on the kit's picker menu (each tank's portrait, its name and era), add in view or
+  // click to place. A hand-made list until 261 (owner 2026-10-27: every list of tanks shows each tank, one row look)
   const secActors = section('addTanks', t('studioPanel.section.addTanks'), 'zoomIn');
   let pickedId = 'm1a1_abrams_hc';
   const pick = el('div', 'pick');
-  const pickBtn = el('button', 'pickBtn');
-  pickBtn.type = 'button';
-  const pickIdentity = el('span', 'id');
-  const pickName = el('span', 'nm', '');
-  const pickArrow = el('span', 'ar');
-  pickArrow.innerHTML = uiIconSVG('chevronDown', 16);
-  pickBtn.append(pickIdentity, pickName, pickArrow);
-  const pickPop = el('div', 'pickPop');
-  const pickFlt = document.createElement('input');
-  pickFlt.type = 'search';
-  pickFlt.className = 'flt';
-  pickFlt.placeholder = t('studioPanel.picker.filterPlaceholder');
-  pickFlt.setAttribute('aria-label', t('studioPanel.picker.filterPlaceholder'));
-  const pickList = el('div', 'lst');
-  pickPop.append(pickFlt, pickList);
-  pick.append(pickBtn, pickPop);
   secActors.appendChild(pick);
 
   const specInfo = (id: string): StudioSpecInfo => {
     try { return S.getSpecInfo(id); } catch (_) { return { id, name: id, era: '' }; }
   };
+  // the playable roster first, then the development builds, each group a filter chip
+  const actorItems = (): PickerItem[] => [...S.TANK_IDS].sort((a, b) => Number(!!specInfo(a).developmentOnly) - Number(!!specInfo(b).developmentOnly)).map((id) => {
+    const info = specInfo(id);
+    const tag = info.developmentOnly ? info.rosterTag || t('studioPanel.picker.devFallback')
+      : info.era ? vehicleEraLabelI18n(info.era, t, { short: true }) : '';
+    return { id, name: info.name, ...(tag ? { facts: [tag] } : {}), media: { poster: tankThumbUrl(id), tank: true },
+      tags: [info.developmentOnly ? 'development' : 'production'] };
+  });
+  const actorMenu = createPickerMenu(pick, {
+    id: 'studio-actor', label: t('studioPanel.section.addTanks'), items: actorItems(), value: pickedId, layout: 'list', text: pickerText(),
+    memory: 'studio-actor',
+    filters: [{ id: 'production', label: t('studioPanel.picker.productionGroup') }, { id: 'development', label: t('studioPanel.picker.developmentGroup') }],
+    onChoose: (item) => { pickedId = item.id; },
+  });
   function setPicked(id: string): void {
     pickedId = id;
-    pickName.textContent = specInfo(id).name;
-    pickIdentity.replaceChildren(...identity(id));
+    actorMenu.setValue(id);
   }
-  function buildPickList(filter = ''): void {
-    pickList.textContent = '';
-    const f = filter.trim().toLowerCase();
-    const groups: ReadonlyArray<readonly [string, string[]]> = [
-      [t('studioPanel.picker.productionGroup'), S.TANK_IDS.filter((id) => !specInfo(id).developmentOnly)],
-      [t('studioPanel.picker.developmentGroup'), S.TANK_IDS.filter((id) => specInfo(id).developmentOnly)],
-    ];
-    for (const [label, ids] of groups) {
-      const hits = ids.filter((id) => {
-        if (!f) return true;
-        const info = specInfo(id);
-        return id.toLowerCase().includes(f) || String(info.name).toLowerCase().includes(f);
-      });
-      if (!hits.length) continue;
-      pickList.appendChild(el('div', 'pgh', label));
-      for (const id of hits) {
-        const info = specInfo(id);
-        const row = el('button', 'prow' + (id === pickedId ? ' cur' : ''));
-        row.type = 'button';
-        row.append(...identity(id));
-        row.appendChild(el('span', 'nm', info.name));
-        const tagText = info.developmentOnly ? info.rosterTag || t('studioPanel.picker.devFallback')
-          : info.era ? vehicleEraLabelI18n(info.era, t, { short: true }) : '';
-        if (tagText) row.appendChild(el('span', 'e', tagText));
-        row.addEventListener('click', () => {
-          setPicked(id);
-          togglePick(false);
-        });
-        pickList.appendChild(row);
-      }
-    }
+  function togglePick(open: boolean): void {
+    if (open) actorMenu.open();
+    else actorMenu.close();
   }
-  function togglePick(open?: boolean): void {
-    const o = open != null ? open : !pickPop.classList.contains('open');
-    pickPop.classList.toggle('open', o);
-    if (o) {
-      pickFlt.value = '';
-      buildPickList();
-      pickFlt.focus();
-    }
-  }
-  pickBtn.addEventListener('click', () => togglePick());
-  pickFlt.addEventListener('input', () => buildPickList(pickFlt.value));
-  pickFlt.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') togglePick(false);
-    if (e.key === 'Enter') {
-      const first = pickList.querySelector<HTMLElement>('.prow');
-      if (first) first.click();
-    }
-  });
-  document.addEventListener('pointerdown', (e) => {
-    if (pickPop.classList.contains('open') &&
-        !(e.target instanceof Node && pick.contains(e.target))) togglePick(false);
-  });
   setPicked(pickedId);
 
   const addRow2 = el('div', 'grid');

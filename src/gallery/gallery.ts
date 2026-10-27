@@ -35,11 +35,12 @@ import {
 } from './surfaceMarkup.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { flagIconCode } from '../ui/flagCodes.ts';
-import { iconUrl } from '../ui/icons.ts';
+import { iconUrl, tankThumbUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
@@ -1008,7 +1009,16 @@ diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.h
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
 // a press shows the drawing at the window's size, named by its overlay's header; a press or Escape puts it back
 const diagramFigure = diagramImage.closest('figure')!;
+// the zoomed drawing is a modal transient surface (src/ui/components/surfaceStack.ts): opening it closes an open menu, a
+// press on it puts it back, and Escape is the stack's
+const diagramSurface: TransientSurface = {
+  id: 'gallery-drawing',
+  element: () => diagramFigure,
+  close: (reason) => { setDiagramZoom(false); if (reason === 'escape') diagramImage.focus({ preventScroll: true }); },
+  modal: true,
+};
 const setDiagramZoom = (on: boolean): void => {
+  if (on) openSurface(diagramSurface, diagramImage); else closeSurface(diagramSurface);
   diagramFigure.classList.toggle('is-zoomed', on);
   // the dossier's scroll fade is a mask, which masks a fixed descendant to the column too: it lifts while a drawing is
   // zoomed (the g13 critic: the zoom showed only through the dossier, its drawing under the stage)
@@ -1023,9 +1033,6 @@ diagramFigure.addEventListener('click', () => setDiagramZoom(!diagramFigure.clas
 diagramImage.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')); }
 });
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && diagramFigure.classList.contains('is-zoomed')) { event.stopPropagation(); setDiagramZoom(false); }
-}, true);
 function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
@@ -1191,7 +1198,7 @@ function populateRivals(): void {
   const items = [...records].sort((a, b) => (order.get(flagIconCode(a.nation)) ?? 99) - (order.get(flagIconCode(b.nation)) ?? 99)
     || a.displayName.localeCompare(b.displayName, getLocale())).map((record) => ({
     id: record.id, name: record.displayName, facts: [t('gallery.tier', { tier: record.tierNumeral }), nationName(record.nation)],
-    tags: [flagIconCode(record.nation)], media: { poster: iconUrl(record.id, 'side') },
+    tags: [flagIconCode(record.nation)], media: { poster: tankThumbUrl(record.id), tank: true },
   }));
   if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
   rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,

@@ -2,6 +2,7 @@ import { createCustomSelect } from './customSelect.ts';
 import { createBattlefieldPicker, type BattlefieldCard, type BattlefieldPicker } from './battlefieldPicker.ts';
 import { pickerText } from './pickerText.ts';
 import { createPicker, type PickerItem } from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { createModePicker, modeRuleLines, type ModeCard, type ModePicker } from './modePicker.ts';
 import { battlefieldFacts } from './battlefieldFacts.ts';
 import type { IconId } from './icons/icon.ts';
@@ -950,8 +951,14 @@ export function createPlayMenu({
     });
   }
   let previewVehicle: (id: string | null) => void = () => {};
+  // the room's pickers are transient surfaces (components/surfaceStack.ts) standing on the room's panel: one opens as the
+  // other closes, in the same press, and Escape and a press outside close the open one
+  const pickSurface = (id: string, pick: HTMLElement, trigger: HTMLElement, close: (restoreFocus: boolean) => void): TransientSurface =>
+    ({ id, element: () => pick, owns: (node) => trigger.contains(node), close: (reason) => close(reason === 'escape') });
+  const vehicleSurface = pickSurface('rooms-tank', vehiclePick, vehicleTrigger, (restoreFocus) => closeVehiclePick(restoreFocus));
   function closeVehiclePick(restoreFocus = false): void {
     if (vehiclePick.hidden) return;
+    closeSurface(vehicleSurface);
     vehiclePick.hidden = true;
     vehicleTrigger.setAttribute('aria-expanded', 'false');
     previewVehicle(null);
@@ -960,8 +967,7 @@ export function createPlayMenu({
   function toggleVehiclePick(): void {
     if (!vehiclePick.hidden) { closeVehiclePick(true); return; }
     if (vehicleSelect.disabled) return;
-    closeBattlefieldPick();
-    closeModePick();
+    openSurface(vehicleSurface, vehicleTrigger);
     vehiclePick.hidden = false;
     vehicleTrigger.setAttribute('aria-expanded', 'true');
     if (vehiclePicker) vehiclePicker.setValue(vehicleSelect.value);
@@ -989,11 +995,6 @@ export function createPlayMenu({
     }
     vehiclePicker.focus();
   }
-  vehiclePick.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    closeVehiclePick(true);
-  });
   bindVehicleControl();
   for (const setting of [createSizeSelect, teamSelect, sizeSelect]) bindSegmentedSetting(setting);
   // a deployment wears its team's mark, as the roster draws it
@@ -1059,8 +1060,10 @@ export function createPlayMenu({
     return { id: map.id, name: map.name, facts: mapRegionTags(map.id).slice(0, 2).map((tag) => t(`camoTag.${tag}`)),
       media: { poster: poster.src, srcset: poster.srcset }, hero: poster.hero, loop: poster.loop, tags: [...mapRegionTags(map.id)] };
   }
+  const battlefieldSurface = pickSurface('rooms-battlefield', battlefieldPick, mapTrigger, (restoreFocus) => closeBattlefieldPick(restoreFocus));
   function closeBattlefieldPick(restoreFocus = false): void {
     if (battlefieldPick.hidden) return;
+    closeSurface(battlefieldSurface);
     battlefieldPick.hidden = true;
     battlefieldCard.classList.remove('picking');
     mapTrigger.setAttribute('aria-expanded', 'false');
@@ -1069,8 +1072,7 @@ export function createPlayMenu({
   function toggleBattlefieldPick(): void {
     if (!battlefieldPick.hidden) { closeBattlefieldPick(true); return; }
     if (mapSelect.disabled) return;
-    closeVehiclePick();
-    closeModePick();
+    openSurface(battlefieldSurface, mapTrigger);
     battlefieldPick.hidden = false;
     battlefieldCard.classList.add('picking');
     mapTrigger.setAttribute('aria-expanded', 'true');
@@ -1121,16 +1123,11 @@ export function createPlayMenu({
     const room = placed.top - (panel.getBoundingClientRect().top + sticky + 12);
     if (under > 0 && room > 0) panel.scrollTop += Math.min(under, room);
   }
-  battlefieldPick.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    closeBattlefieldPick(true);
-  });
   // after the trigger, the picker's place and the map table above it exist
   bindBattlefieldControl();
   const operationField = requiredElement<HTMLElement>(root, '[data-operation-field]');
   const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
-  const operationDropdown = createCustomSelect(operationSelect);
+  const operationDropdown = createCustomSelect(operationSelect, { surface: 'rooms-operation' });
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps));
   const playersEl = requiredElement<HTMLElement>(root, '.players');
@@ -1226,7 +1223,7 @@ export function createPlayMenu({
   const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
   const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
   const arrangementDropdowns = [...arrangeSection.querySelectorAll<HTMLSelectElement>('select')].map(select =>
-    select.dataset.arrange === 'enemyNation' ? createEnemyNationSelect(select) : createCustomSelect(select));
+    select.dataset.arrange === 'enemyNation' ? createEnemyNationSelect(select) : createCustomSelect(select, { surface: 'rooms-arrangement' }));
   const fillOptions = (select: HTMLSelectElement, entries: Array<[string, string]>, value: string): void => {
     select.innerHTML = entries.map(([id, label]) => `<option value="${id}"${id === value ? ' selected' : ''}>${label}</option>`).join('');
     select.value = value;
@@ -1410,8 +1407,10 @@ export function createPlayMenu({
   const modeGlyph = requiredElement<HTMLElement>(modeTrigger, '[data-select-glyph]');
   const modeValue = requiredElement<HTMLElement>(modeTrigger, '[data-select-value]');
   const modePick = requiredElement<HTMLElement>(root, '.mode-pick');
+  const modeSurface = pickSurface('rooms-mode', modePick, modeTrigger, (restoreFocus) => closeModePick(restoreFocus));
   function closeModePick(restoreFocus = false): void {
     if (modePick.hidden) return;
+    closeSurface(modeSurface);
     modePick.hidden = true;
     modeTrigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus) modeTrigger.focus();
@@ -1419,8 +1418,7 @@ export function createPlayMenu({
   function toggleModePick(): void {
     if (!modePick.hidden) { closeModePick(true); return; }
     if (modeTrigger.disabled) return;
-    closeBattlefieldPick();
-    closeVehiclePick();
+    openSurface(modeSurface, modeTrigger);
     modePick.hidden = false;
     modeTrigger.setAttribute('aria-expanded', 'true');
     if (lobbyModePicker) lobbyModePicker.setCards(modeCards(currentArrangement), selectedGameMode);
@@ -1438,11 +1436,6 @@ export function createPlayMenu({
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     if (modePick.hidden) toggleModePick();
-  });
-  modePick.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    closeModePick(true);
   });
   /** The Mode trigger names the room's mode in its hue; a guest, or a room past waiting, reads it disabled. */
   function showModeTrigger(fromLobby: boolean): void {
@@ -2167,12 +2160,11 @@ export function createPlayMenu({
   root.addEventListener('keydown', (event) => {
     if (event.defaultPrevented) { event.stopPropagation(); return; }
     containModalTab(event, panel, closeBtn);
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      hide();
-    }
     event.stopPropagation();
   });
+  // the room's panel is a modal transient surface (components/surfaceStack.ts): opening it closes what the Garage has open,
+  // its pickers stand on it, and Escape (the stack's) closes the top one
+  const roomsSurface: TransientSurface = { id: 'rooms', element: () => panel, close: () => hide(), modal: true };
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
   function show(
@@ -2203,6 +2195,7 @@ export function createPlayMenu({
     operationDropdown.close();
     closePicks();
     const restoreFocus = !handedOff && root.contains(document.activeElement);
+    closeSurface(roomsSurface);
     root.classList.remove('show');
     // Closing the presentation must never mean leaving an established room.
     // The live lobby state remains authoritative while the player browses the
@@ -2216,6 +2209,7 @@ export function createPlayMenu({
   function revealMenu(): void {
     if (!root.classList.contains('show') && document.activeElement instanceof HTMLElement
         && !root.contains(document.activeElement)) returnFocus = document.activeElement;
+    if (!root.classList.contains('show')) openSurface(roomsSurface, returnFocus);
     root.classList.add('show');
   }
   function dispose(): void {

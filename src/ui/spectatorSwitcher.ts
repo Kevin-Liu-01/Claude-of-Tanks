@@ -1,6 +1,7 @@
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import type * as PickerModule from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 
 const SAFE_SPEC_ID = /^[a-z0-9_]+$/;
 
@@ -61,7 +62,7 @@ export function spectatorSwitcherMarkup(): string {
 }
 
 /** One ally the bar's picker offers: the roster's callsign, and the tier and vehicle under it. */
-export interface SpectateAlly { readonly id: string; readonly name: string; readonly vehicle: string }
+export interface SpectateAlly { readonly id: string; readonly name: string; readonly vehicle: string; readonly specId?: string }
 
 /**
  * INTERACTION-REDESIGN C (the spectator bar was "a stepper, not a picker of allies"): the plate opens the kit picker
@@ -153,29 +154,35 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     markMore();
   }
   const items = (): PickerModule.PickerItem[] =>
-    allies.map((ally) => ({ id: ally.id, name: ally.name, facts: ally.vehicle ? [ally.vehicle] : [] }));
-  const outside = (event: PointerEvent): void => {
-    const target = event.target as Node;
-    if (!pop.contains(target) && !subject?.contains(target)) close();
+    allies.map((ally) => ({ id: ally.id, name: ally.name, facts: ally.vehicle ? [ally.vehicle] : [],
+      // each ally's tank, as every list of tanks shows it (owner 2026-10-27): its portrait, the row's thumbnail
+      ...(ally.specId && SAFE_SPEC_ID.test(ally.specId) ? { media: { poster: `/icons/thumbs/${ally.specId}_angle.webp`, tank: true } } : {}) }));
+  // a transient surface (components/surfaceStack.ts): Escape (which backs out of the list, never on to the pause veil) and a
+  // press outside it are the stack's
+  const surface: TransientSurface = {
+    id: 'spectate-ally',
+    element: () => pop,
+    owns: (node) => !!subject?.contains(node),
+    close: (reason) => { close(); if (reason === 'escape') subject?.focus(); },
   };
   function close(): void {
     if (pop.hidden) return;
+    closeSurface(surface);
     pop.hidden = true;
     scrim.hidden = true;
     bar.classList.remove('picking');
     bar.parentElement?.classList.remove('spec-picking');
     for (const node of document.querySelectorAll('.pick-under')) node.classList.remove('pick-under');
     subject?.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('pointerdown', outside, true);
   }
   async function open(): Promise<void> {
     if (!allies.length) return;
+    openSurface(surface, subject);
     pop.hidden = false;
     scrim.hidden = false;
     bar.classList.add('picking');
     bar.parentElement?.classList.add('spec-picking');
     subject?.setAttribute('aria-expanded', 'true');
-    document.addEventListener('pointerdown', outside, true);
     if (!picker) {
       const [{ createPicker }, { pickerText }] = await Promise.all([import('./components/picker.ts'), import('./pickerText.ts')]);
       if (pop.hidden || picker) return;
@@ -191,14 +198,6 @@ export function mountSpectateAllies(bar: HTMLElement, onChoose: (id: string) => 
     picker.focus();
   }
   subject?.addEventListener('click', () => { if (pop.hidden) void open(); else close(); });
-  // (Esc the picker leaves, once nothing is left to restore, backs out of it, never on to the pause veil)
-  pop.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    event.stopPropagation();
-    close();
-    subject?.focus();
-  });
   return {
     update(next, at): void {
       allies = next;

@@ -5,13 +5,15 @@
 // an arrangement count, an enemy nation. It replaces raw selects and createCustomSelect for sets over five (a setting of
 // two to five values stays on the segmented control). The trigger shows the chosen item (its picture or glyph, its name and
 // one fact) and a chevron that turns while open. The popover is the kit picker (picker.ts) in the top layer, under the
-// trigger or above it when there is no room below, as wide as the trigger within 280-480 px; a phone gets a bottom sheet.
-// Pointing at or focusing an option previews it on the trigger and through onPreview; one press chooses, closes and
-// gives the focus back to the trigger; Esc, a press outside or a Tab out closes with nothing changed. One menu is open at a
-// time, and a scroll under it keeps it anchored. The placement is pure (placeMenu) and pinned by the selftest; its CSS is
-// pickers.css.
+// trigger or above it when there is no room below, as wide as the trigger within 280-480 px and inside the panel that holds
+// the trigger; a phone gets a bottom sheet. Pointing at or focusing an option previews it on the trigger and through
+// onPreview; one press chooses, closes and gives the focus back to the trigger; Esc, a press outside or a Tab out closes
+// with nothing changed. It is a transient surface (surfaceStack.ts): opening it closes whatever else is open at its level,
+// in the same press, and it fades out as the next one fades in. A page scroll under it keeps it anchored; its own list's
+// scroll is its own. The placement is pure (placeMenu) and pinned by the selftest; its CSS is pickers.css.
 
 import { createPicker, type PickerFilter, type PickerItem, type PickerText } from './picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './surfaceStack.ts';
 import { icon } from '../icons/icon.ts';
 import { esc } from './escape.ts';
 
@@ -30,7 +32,7 @@ interface PickerMenuOptions {
   readonly filters?: readonly PickerFilter[];
   readonly memory?: string;
   readonly randomId?: string;
-  /** The room the menu stays in (CSS px, top to bottom), where the trigger's scrolling panel is not it: the Garage's
+  /** The room the menu stays in (CSS px, top to bottom), where the panel holding the trigger is not it: the Garage's
    *  staging area keeps under the top bar. */
   readonly bounds?: () => { readonly top: number; readonly bottom: number } | null;
 }
@@ -60,7 +62,7 @@ const MENU_EDGE = 8;
  *  window above it. */
 const SHEET_BELOW = 520;
 const SHEET_TOP_SHORT = 48;
-/** A scrolling panel under this height is no bound: the menu takes the window's room. */
+/** A panel under this height is no bound: the menu takes the window's room. */
 const BOUNDS_MIN_H = 240;
 
 interface MenuPlace {
@@ -107,8 +109,6 @@ export function placeMenu(
 }
 
 let nextMenu = 0;
-/** The menu open now: opening another closes it. */
-let openMenu: { close(): void } | null = null;
 
 /** The picker menu in `host` (its contents become the trigger); the popover joins the document's body. */
 export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions): PickerMenu {
@@ -149,27 +149,57 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   (host.closest('dialog') ?? doc.body).append(pop);
 
   const itemOf = (id: string | null): PickerItem | null => (id === null ? null : items.find((item) => item.id === id) ?? null);
-  /** The trigger shows `item` (a preview) or the chosen one: its picture or glyph, its name, its first fact. */
+  /** The trigger shows `item` (a preview) or the chosen one: its picture or glyph, its name, its first fact. A picture is
+   *  kept while it stays the same, and a new one shows once it has decoded (pickers.css [data-ready]): the old one holds
+   *  until then, and a first one fades in rather than leaving an empty frame (the 261 report: a blank square, then the
+   *  rival). */
+  let mediaEl: HTMLElement | null = null;
+  const pictureEl = (picture: string, tank: boolean): HTMLElement => {
+    if (mediaEl?.dataset.src === picture) return mediaEl;
+    const box = doc.createElement('span');
+    box.className = `cot-c-menu__media${tank ? ' is-tank' : ''}`;
+    box.dataset.src = picture;
+    const img = doc.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.src = picture;
+    box.append(img);
+    const ready = (): void => { box.toggleAttribute('data-ready', true); };
+    if (img.complete && img.naturalWidth) ready();
+    else img.decode().then(ready, ready);
+    return (mediaEl = box);
+  };
   const paint = (item: PickerItem | null): void => {
     const shown = item ?? itemOf(value);
     const picture = shown?.media?.poster ?? shown?.media?.mosaic?.[0];
-    const media = picture
-      ? `<span class="cot-c-menu__media"><img src="${esc(picture)}" alt="" decoding="async"></span>`
-      : shown?.chip ? `<span class="cot-c-menu__glyph cot-c-picker__chip"><img src="${esc(shown.chip)}" alt="" decoding="async"></span>`
-      : shown?.glyph ? `<span class="cot-c-menu__glyph"${shown.tone ? ` data-mode-tone="${esc(shown.tone)}"` : ''}>${icon(shown.glyph, { size: 18 })}</span>` : '';
     const fact = shown?.facts?.[0];
-    trigger.innerHTML = `${media}<span class="cot-c-menu__words"><span class="cot-c-menu__name">${esc(shown?.name ?? '')}</span>`
-      + `${fact ? `<span class="cot-c-menu__fact">${esc(fact)}</span>` : ''}</span>`
-      + `<span class="cot-c-menu__chev">${icon('chevronDown', { size: 16 })}</span>`;
+    const words = doc.createElement('span');
+    words.className = 'cot-c-menu__words';
+    words.innerHTML = `<span class="cot-c-menu__name">${esc(shown?.name ?? '')}</span>${fact ? `<span class="cot-c-menu__fact">${esc(fact)}</span>` : ''}`;
+    const chev = doc.createElement('span');
+    chev.className = 'cot-c-menu__chev';
+    chev.innerHTML = icon('chevronDown', { size: 16 });
+    let lead: HTMLElement | null = null;
+    if (picture) lead = pictureEl(picture, !!shown?.media?.tank);
+    else if (shown?.chip || shown?.glyph) {
+      lead = doc.createElement('span');
+      lead.className = `cot-c-menu__glyph${shown.chip ? ' cot-c-picker__chip' : ''}`;
+      if (shown.tone && !shown.chip) lead.dataset.modeTone = shown.tone;
+      lead.innerHTML = shown.chip ? `<img src="${esc(shown.chip)}" alt="" decoding="async">` : icon(shown.glyph!, { size: 18 });
+    }
+    trigger.replaceChildren(...(lead ? [lead] : []), words, chev);
     trigger.setAttribute('aria-label', shown ? `${options.label}: ${shown.name}` : options.label);
   };
 
   const isOpen = (): boolean => trigger.getAttribute('aria-expanded') === 'true';
   const coarse = (): boolean => typeof win.matchMedia === 'function' && win.matchMedia('(pointer: coarse)').matches;
-  /** The trigger's scrolling panel, the room the menu stays in (the window when there is none, or it is too short). */
+  /** The panel holding the trigger, the room the menu stays in: the nearest box that scrolls or clips its content (a
+   *  dossier, a readout column, a drawer), or the window when there is none or it is too short (the 261 report: the
+   *  rival menu hung past the dossier's foot). */
   const boundsOf = (from: HTMLElement): { top: number; bottom: number } => {
     for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
-      if (!/auto|scroll/.test(win.getComputedStyle(node).overflowY)) continue;
+      const style = win.getComputedStyle(node);
+      if (style.overflowY === 'visible' && !/paint|content|strict/.test(style.contain)) continue;
       const box = node.getBoundingClientRect();
       const top = Math.max(0, box.top), bottom = Math.min(win.innerHeight, box.bottom);
       return bottom - top >= BOUNDS_MIN_H ? { top, bottom } : { top: 0, bottom: win.innerHeight };
@@ -180,6 +210,9 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     if (!isOpen()) return;
     const anchorEl = openFrom?.isConnected ? openFrom : trigger;
     const rect = anchorEl.getBoundingClientRect();
+    // measuring the natural height lets the list grow whole, which drops its scroll: it is put back after
+    const list = pop.querySelector<HTMLElement>('.cot-c-picker__grid');
+    const scrolled = list?.scrollTop ?? 0;
     pop.style.maxHeight = '';
     pop.classList.remove('is-sheet');
     const natural = pop.scrollHeight;
@@ -194,6 +227,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.style.width = `${spot.width}px`;
     pop.style.maxHeight = `${spot.maxHeight}px`;
     if (!spot.sheet) trimToWholeRows(spot);
+    if (list && scrolled) list.scrollTop = scrolled;
   };
   /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:
    *  the staging cards' names and a rival row sliced). An upward menu keeps its foot on its trigger. */
@@ -218,6 +252,12 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   const placeSoon = (): void => {
     if (placeFrame) return;
     placeFrame = win.requestAnimationFrame(() => { placeFrame = 0; place(); });
+  };
+  // a scroll under the menu moves its anchor; its own list's scroll is the list's (the 261 report: the wheel's scroll
+  // reached the window's capture, the menu was placed again, and the re-measure put the list back at its top)
+  const onScroll = (event: Event): void => {
+    if (event.target instanceof Node && pop.contains(event.target)) return;
+    placeSoon();
   };
 
   const ensurePicker = (): void => {
@@ -250,13 +290,12 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   /** Close; `restoreFocus` gives the focus back to the trigger. A preview still showing is put back first. */
   function close(restoreFocus = false): void {
     if (!isOpen()) return;
+    closeSurface(surface);
     trigger.setAttribute('aria-expanded', 'false');
     if (pop.matches(':popover-open')) pop.hidePopover();
-    if (openMenu === api) openMenu = null;
     if (previewed) { previewed = null; paint(null); options.onPreview?.(null); }
-    win.removeEventListener('scroll', placeSoon, true);
+    win.removeEventListener('scroll', onScroll, true);
     win.removeEventListener('resize', placeSoon);
-    doc.removeEventListener('pointerdown', onOutside, true);
     const back = openFrom?.isConnected ? openFrom : trigger;
     if (openFrom?.hasAttribute('aria-haspopup')) openFrom.setAttribute('aria-expanded', 'false');
     openFrom = null;
@@ -264,25 +303,28 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
   }
   function open(from?: HTMLElement): void {
     if (isOpen() || trigger.disabled) return;
-    openMenu?.close();
-    openMenu = api;
     openFrom = from && from !== trigger ? from : null;
+    openSurface(surface, openFrom ?? trigger);
     ensurePicker();
     trigger.setAttribute('aria-expanded', 'true');
     // a control that opens it for the trigger (a phone's menu item, an icon on a card) says it is open too
     if (openFrom?.hasAttribute('aria-haspopup')) openFrom.setAttribute('aria-expanded', 'true');
     pop.showPopover();
     place();
-    win.addEventListener('scroll', placeSoon, { capture: true, passive: true });
+    win.addEventListener('scroll', onScroll, { capture: true, passive: true });
     win.addEventListener('resize', placeSoon);
-    doc.addEventListener('pointerdown', onOutside, true);
     // the focus lands on the chosen option, where the arrows start
     picker?.focus();
   }
-  const onOutside = (event: PointerEvent): void => {
-    const target = event.target as Node | null;
-    if (target && (pop.contains(target) || trigger.contains(target) || openFrom?.contains(target))) return;
-    close();
+  /** Its place on the page's surface stack: Escape (which restores and closes in one press) and a press outside are the
+   *  stack's, which close only the top surface; a search with text keeps its Escape (it clears first). */
+  const surface: TransientSurface = {
+    id: options.id,
+    element: () => pop,
+    owns: (node) => trigger.contains(node) || !!openFrom?.contains(node),
+    close: (reason) => close(reason === 'escape'),
+    keepsEscape: (event) => event.target instanceof HTMLInputElement && event.target.type === 'search' && !!event.target.value
+      && pop.contains(event.target),
   };
   const onTrigger = (): void => { if (isOpen()) close(true); else open(); };
   const onTriggerKey = (event: KeyboardEvent): void => {
@@ -290,24 +332,16 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     event.preventDefault();
     open();
   };
-  // Esc restores and closes in one press (the picker's own Esc would only restore first), before any surface hears it
   const onClose = (): void => close(true);
-  const onPopKey = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    event.stopPropagation();
-    close(true);
-  };
   const onPopFocusOut = (event: FocusEvent): void => {
     const next = event.relatedTarget as Node | null;
     if (next && (pop.contains(next) || next === trigger || next === openFrom)) return;
-    // a Tab out, or the focus moving anywhere else: closed with nothing changed (a pointer press is onOutside's)
+    // a Tab out, or the focus moving anywhere else: closed with nothing changed (a pointer press is the stack's)
     if (next) close();
   };
   trigger.addEventListener('click', onTrigger);
   trigger.addEventListener('keydown', onTriggerKey);
   head.querySelector('.cot-c-menu__close')?.addEventListener('click', onClose);
-  pop.addEventListener('keydown', onPopKey, true);
   pop.addEventListener('focusout', onPopFocusOut);
   paint(null);
 
@@ -335,7 +369,6 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       if (placeFrame) win.cancelAnimationFrame(placeFrame);
       trigger.removeEventListener('click', onTrigger);
       trigger.removeEventListener('keydown', onTriggerKey);
-      pop.removeEventListener('keydown', onPopKey, true);
       pop.removeEventListener('focusout', onPopFocusOut);
       head.querySelector('.cot-c-menu__close')?.removeEventListener('click', onClose);
       picker?.dispose();

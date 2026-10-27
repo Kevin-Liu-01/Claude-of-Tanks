@@ -2648,7 +2648,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const ally = (lastTanksRef || []).find((t) => t && t.id === id) || null;
       const allyTier = ally?.spec?.id ? tierNumeral(ally.spec.id) : '';
       const vehicle = ally?.spec?.name ?? '';
-      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle };
+      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle, specId: ally?.spec?.id };
     }), p.id ?? null);
     const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)

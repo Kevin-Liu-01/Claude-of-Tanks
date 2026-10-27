@@ -912,6 +912,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/camoPicker.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
+    // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
+    // every surface the source opens registered with its owner and its place
+    'src/ui/components/surfaceStack.selftest.mjs',
+    'src/ui/transientSurfaceRegistry.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',

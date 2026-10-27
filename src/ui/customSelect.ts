@@ -1,6 +1,7 @@
 import { ensureStyle } from './styleLayers.ts';
 import { icon } from './icons/icon.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 
 let nextId = 0;
 
@@ -9,6 +10,8 @@ export interface CustomSelectController { refresh(): void; close(): void }
 interface CustomSelectOptions {
   label?: string;
   iconHTML?: (value: string) => string;
+  /** Its transient-surface id (src/ui/transientSurfaceRegistry.ts); 'select' for one no census names. */
+  surface?: string;
 }
 export function createCustomSelect(select: HTMLSelectElement, config: CustomSelectOptions = {}): CustomSelectController {
   const label = config.label ?? select.closest('label')?.querySelector('span')?.textContent ?? select.getAttribute('aria-label') ?? '';
@@ -73,7 +76,16 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   }
   select.hidden = true; select.style.display = 'none'; select.tabIndex = -1; select.setAttribute('aria-hidden', 'true');
   select.after(trigger, list);
+  // a transient surface (components/surfaceStack.ts): opening it closes whatever else is open at its level, and Escape and a
+  // press outside it are the stack's
+  const surface: TransientSurface = {
+    id: config.surface ?? 'select',
+    element: () => list,
+    owns: (node) => trigger.contains(node),
+    close: (reason) => close(reason === 'escape'),
+  };
   function close(restoreFocus = false): void {
+    closeSurface(surface);
     if (list.matches(':popover-open')) list.hidePopover();
     trigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus) trigger.focus({ preventScroll: true });
@@ -103,6 +115,7 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
     refresh();
     if (trigger.disabled) return;
     positionList();
+    openSurface(surface, trigger);
     list.showPopover(); positionList(); trigger.setAttribute('aria-expanded', 'true');
     revealMenuSelectOption(list, options[index] && !options[index].disabled ? options[index] : options.find(option => !option.disabled)!);
   }
@@ -130,7 +143,6 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   list.addEventListener('keydown', event => {
     if (event.key !== 'Tab') event.stopPropagation();
     const index = options.indexOf(document.activeElement as HTMLButtonElement);
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); return; }
     if (event.key === 'Tab') { close(true); return; }
     let next = event.key === 'ArrowDown' ? (index + 1) % options.length
       : event.key === 'ArrowUp' ? (index - 1 + options.length) % options.length
@@ -149,7 +161,8 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
   list.addEventListener('toggle', () => {
     const open = list.matches(':popover-open'); trigger.setAttribute('aria-expanded', String(open));
     if (open) { window.addEventListener('resize', reposition); document.addEventListener('scroll', reposition, true); }
-    else { window.removeEventListener('resize', reposition); document.removeEventListener('scroll', reposition, true); }
+    // (the browser's light dismiss closes it too: the stack lets it go)
+    else { closeSurface(surface); window.removeEventListener('resize', reposition); document.removeEventListener('scroll', reposition, true); }
   });
   select.addEventListener('change', refresh);
   refresh();

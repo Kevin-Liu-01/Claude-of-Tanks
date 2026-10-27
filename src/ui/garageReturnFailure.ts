@@ -36,7 +36,7 @@ export function createGarageReturnFailurePresenter(
 
 // Imported by main only after a failed action, not on boot or a good rematch.
 export const showGarageReturnFailure = createGarageReturnFailurePresenter(
-  () => createModal({ size: 'small' }),
+  () => createModal({ size: 'small', surface: 'garage-return-failure' }),
   () => t('boot.retry'),
 );
 
@@ -49,7 +49,7 @@ export const hideGarageReturnFailure = (): void => showGarageReturnFailure.hide(
  * silent return (soloBattleEntryRuntime.ts). Demand-loaded like the return notice.
  */
 export const showSoloEntryFailure = createGarageReturnFailurePresenter(
-  () => createModal({ size: 'small' }),
+  () => createModal({ size: 'small', surface: 'battle-entry-failure' }),
   () => t('battle.entryFailed.title'),
   (reason) => t('battle.entryFailed.body', { reason }),
 );
