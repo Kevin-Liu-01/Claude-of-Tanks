@@ -284,8 +284,10 @@ assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIAN
 // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
 // S-tank carries its own period kit (decorations.ts STRV103_DECOR), every load at a measured flat roof point or on its
 // fender, none from the fleet cargo pools and none on the virtual turret rig.
+// (a stub spec: this receipt's module graph registers the base fleet only, and the 103A is a Swedish fleet row)
+const strvSpec = (id) => ({ id, nation: 'Sweden', era: 'cold-war', armor: { turretless: true } });
 for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs']], ['strv103b', ['camonet', 'jerry', 'bin', 'packs']]]) {
-  const manifest = decorManifestFor(getSpec(id), () => 0.5);
+  const manifest = decorManifestFor(strvSpec(id), () => 0.5);
   assert.deepEqual(manifest.map((row) => row.kit), kits, `${id}: its own field kit, in order`);
   assert.ok(manifest.every((row) => (row.p ?? 1) === 1 && (row.slot[0] === 'hullRoof' || row.slot[0] === 'fender')),
     `${id}: every load is always carried, at a measured roof point or on a fender`);
@@ -293,7 +295,7 @@ for (const [id, kits] of [['strv103a', ['tools', 'tarp', 'bin', 'jerry', 'packs'
   assert.ok(roof.every((a, i) => roof.every((b, j) => i === j || Math.hypot(a.x - b.x, a.z - b.z) > 0.6)),
     `${id}: the roof loads keep 0.6 m apart`);
 }
-assert.notDeepEqual(decorManifestFor(getSpec('strv103a'), () => 0.5), decorManifestFor(getSpec('strv103b'), () => 0.5),
+assert.notDeepEqual(decorManifestFor(strvSpec('strv103a'), () => 0.5), decorManifestFor(strvSpec('strv103b'), () => 0.5),
   'the 103A and the 103B carry different kits');
 
 const annotatedRoofHit = {
