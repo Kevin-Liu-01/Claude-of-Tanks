@@ -1,4 +1,4 @@
-import type { Object3D, Scene } from 'three';
+import type { BufferGeometry, Object3D, Scene } from 'three';
 
 interface ShadowState {
   autoUpdate: boolean;
@@ -31,12 +31,15 @@ interface CohortRenderContext {
   contentRoots: readonly Object3D[];
   warmRender: () => void;
   now: () => number;
+  preUpload: boolean;
 }
 
 export interface DeploymentForwardWarmBatch {
   label: string;
   objects: number;
   ms: number;
+  /** 'upload': the cohort's buffers uploaded with every draw count at 0, ahead of its draws (the preUpload option) */
+  phase?: 'upload';
 }
 
 interface DeploymentForwardWarmOptions {
@@ -46,6 +49,15 @@ interface DeploymentForwardWarmOptions {
   playerRoot?: Object3D | null;
   warmRender: () => void;
   now?: () => number;
+  /**
+   * (2026-10-26, the room-stalls lane) each cohort first renders with every draw count at 0, uploading its vertex and
+   * index buffers and binding its programs without a draw, and yields that as an 'upload' batch before its draws: a
+   * caller that waits for the GPU between batches (gpuCatchUp.ts) then issues each cohort's uploads to an idle GPU
+   * process, never behind the first-draw pipeline builds of the draws just ahead of them in the same cohort (the room
+   * A/B: a 2.9 MB bufferData waited 2.2 s inside a cohort draw). Run it after the programs' first-use drain: the pass
+   * binds every program. Default off (the solo deployment's batches are unchanged).
+   */
+  preUpload?: boolean;
 }
 
 export interface IsolatedForwardWarmOptions {
@@ -127,24 +139,34 @@ export function renderWithoutShadowUpdates(lights: readonly ShadowLight[], rende
  * met its first draw live, when a camera was thrown onto it (a Watch hop, the
  * killcam, spectating: up to 7.4 s of GPU work on a cold pipeline cache). */
 function renderSelectedCohort(
-  root: Object3D, selected: ReadonlySet<Object3D> | null, render: () => void,
+  root: Object3D, selected: ReadonlySet<Object3D> | null, render: () => void, zeroDraws = false,
 ): void {
   const masks: Array<{ object: Object3D; mask: number }> = [];
   const lods: Array<{ object: WarmLod; autoUpdate: boolean | undefined }> = [];
   const culled: Object3D[] = [];
+  // (zeroDraws: the drawn geometries' draw counts at 0 for this render — three's projectObject still uploads every
+  // vertex attribute and renderBufferDirect binds the program and the index buffer, but nothing draws)
+  const counts = new Map<BufferGeometry, number>();
   root.traverseVisible((object) => {
     const lod = object as WarmLod;
     if (lod.isLOD) lods.push({ object: lod, autoUpdate: lod.autoUpdate });
     if (!isRenderable(object)) return;
     if (selected && !selected.has(object)) masks.push({ object, mask: object.layers.mask });
-    else if (object.frustumCulled) culled.push(object);
+    else {
+      if (object.frustumCulled) culled.push(object);
+      const geometry = (object as Object3D & { geometry?: BufferGeometry; isBatchedMesh?: boolean }).geometry;
+      if (zeroDraws && geometry?.drawRange && !(object as { isBatchedMesh?: boolean }).isBatchedMesh
+        && !counts.has(geometry)) counts.set(geometry, geometry.drawRange.count);
+    }
   });
   try {
     for (const { object } of lods) object.autoUpdate = false;
     for (const { object } of masks) object.layers.mask = 0;
     for (const object of culled) object.frustumCulled = false;
+    for (const geometry of counts.keys()) geometry.drawRange.count = 0;
     render();
   } finally {
+    for (const [geometry, count] of counts) geometry.drawRange.count = count;
     for (const object of culled) object.frustumCulled = true;
     for (const state of masks) state.object.layers.mask = state.mask;
     for (const state of lods) state.object.autoUpdate = state.autoUpdate;
@@ -162,6 +184,7 @@ function renderCohort(
   root: Object3D,
   visibleChildren: ReadonlySet<Object3D> | null = null,
   visibleObjects: ReadonlySet<Object3D> | null = null,
+  zeroDraws = false,
 ): number {
   const hidden: Object3D[] = [];
   for (const candidate of context.contentRoots) {
@@ -174,7 +197,7 @@ function renderCohort(
   }
   const startedAt = context.now();
   try {
-    renderSelectedCohort(root, visibleObjects, context.warmRender);
+    renderSelectedCohort(root, visibleObjects, context.warmRender, zeroDraws);
   } catch {
     // The complete covered scene render remains the compatibility fallback.
   } finally {
@@ -195,8 +218,13 @@ function* warmWorldRoot(
     const cohortSize = bounded ? 4 : Math.max(1, renderables.length);
     for (let index = 0; index < renderables.length; index += cohortSize) {
       const cohort = renderables.slice(index, index + cohortSize);
+      const batchLabel = renderables.length > cohortSize ? `${label}:${index / cohortSize + 1}` : label;
+      if (context.preUpload) {
+        yield { label: batchLabel, objects: cohort.length, phase: 'upload',
+          ms: renderCohort(context, root, new Set([child]), new Set(cohort), true) };
+      }
       yield {
-        label: renderables.length > cohortSize ? `${label}:${index / cohortSize + 1}` : label,
+        label: batchLabel,
         objects: cohort.length,
         ms: renderCohort(context, root, new Set([child]), new Set(cohort)),
       };
@@ -212,8 +240,12 @@ function* warmPlayerRoot(
   const cohortSize = 3;
   for (let index = 0; index < renderables.length; index += cohortSize) {
     const cohort = renderables.slice(index, index + cohortSize);
+    const batchLabel = `${root.name || root.type}:${index / cohortSize + 1}`;
+    if (context.preUpload) {
+      yield { label: batchLabel, objects: cohort.length, phase: 'upload', ms: renderCohort(context, root, null, new Set(cohort), true) };
+    }
     yield {
-      label: `${root.name || root.type}:${index / cohortSize + 1}`,
+      label: batchLabel,
       objects: cohort.length,
       ms: renderCohort(context, root, null, new Set(cohort)),
     };
@@ -282,10 +314,11 @@ export function* createDeploymentForwardWarmBatches({
   playerRoot = null,
   warmRender,
   now = () => performance.now(),
+  preUpload = false,
 }: DeploymentForwardWarmOptions): Generator<DeploymentForwardWarmBatch> {
   const contentRoots = visibleContentRoots(scene, sceneLightRoots(scene));
   const context: CohortRenderContext = {
-    contentRoots, now,
+    contentRoots, now, preUpload,
     warmRender: () => renderWithoutShadowUpdates(csmLights ?? [], warmRender),
   };
 
@@ -295,6 +328,10 @@ export function* createDeploymentForwardWarmBatches({
     } else if (root === playerRoot) {
       yield* warmPlayerRoot(root, context);
     } else {
+      if (context.preUpload) {
+        yield { label: root.name || root.type, objects: root.children.length, phase: 'upload',
+          ms: renderCohort(context, root, null, null, true) };
+      }
       yield {
         label: root.name || root.type,
         objects: root.children.length,
