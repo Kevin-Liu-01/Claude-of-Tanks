@@ -108,8 +108,6 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--ink-1);}
 .cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 /* the operation's fixed-width facts (clock, stars, meter) lead, so they line up row to row; the place follows and wraps */
-/* an operation's title holds one place in its row however its meta wraps (the rows share a title line) */
-body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op>span:nth-child(3){align-self:start;margin-top:var(--s2);}
 .cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s4);margin-top:var(--s2);font:500 max(var(--fs-floor-12),var(--fs-12))/1.2 var(--font-body);color:var(--ink-2);}
 .cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s2);}
 /* the map's name takes a line of its own under the operation's figures in every row, so the rows' lines align */
@@ -130,12 +128,12 @@ body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op>span:nth-child(3){
 .cot-garage .cot-deploy-op-map{display:block;height:66px;border-radius:var(--control-radius);background:var(--surface-raised) center/cover no-repeat;}
 /* beside the screen the six operations share their column's height (a tall window's list ended half way down it, r41-r44);
    a short column keeps each row's own height and scrolls. A taller row's map grows with it, a wider strip on a wider
-   column, and its number stands at the row's top with the title (centred, it fell below the title) */
+   column, and its number, words and lock stand together in the row's middle (the words pinned to the top of a tall row
+   while the lock stood centred read as two alignments, r45) */
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open .cot-deploy-campaign:not([hidden]){display:flex;flex-direction:column;}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-ops{flex:1 0 auto;grid-auto-rows:minmax(min-content,1fr);}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op{grid-template-columns:72px clamp(176px,22%,320px) minmax(0,1fr) auto;}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-map{height:100%;min-height:66px;max-height:200px;}
-body[data-cot-panels='persistent'] .cot-garage .cot-deploy-op-index{align-self:start;}
 /* a tall window (rows about 200 px) sets the rows' number, name and figures a step larger, with the brief after it (below):
    small type at the top of a tall row read as a line, not the picture's caption (r44 at 2560) */
 @media (min-height:1200px){
@@ -554,7 +552,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-me
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-mode-list{overflow:visible;gap:var(--s2);}
 body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-keys){display:none;}
 /* a phone's column gives the mode picker a definite height (as the battlefield picker's), its cards scrolling in place */
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-modes{flex:none;height:clamp(200px,min(52dvh,100dvh - 190px),520px);min-height:0;margin-bottom:var(--s3);}
+/* (its foot stands clear of the dock's fade too: a 390 px tall phone's floor of 200 px set the chosen last card's ring and
+   name under it, r45) */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-modes{flex:none;height:clamp(160px,min(52dvh,100dvh - 190px - var(--s5)),520px);min-height:0;margin-bottom:var(--s3);}
 /* the head's last battle again, as "Again" (91's .bar .again), and the Deploy bar's estimate */
 .cot-garage .cot-deploy-again .short{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again{order:1;margin:0 0 0 auto;}
