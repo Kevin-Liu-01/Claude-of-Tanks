@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { primeShadowCascades } from './shadowPrime.ts';
+import { markVehicleShadowDetail } from './nearVehicleShadowDetail.ts';
 import { createLighting } from './lighting.ts';
 import { setPresetName } from './quality.ts';
 
@@ -479,6 +480,36 @@ await withFixture(async (f) => {
   f.restored(true);
 });
 
+// (2026-10-27, the room-stalls lane) a hull's near shadow detail (castShadow false outside its cascade's pass) warms where
+// a mesh brings a depth variant no caster before it has: it casts inside its own batch only and in no final cascade; a
+// mesh repeating a warmed variant, and a hidden one, stay out
+await withFixture(async (f) => {
+  f.addCaster('seen', 3);
+  const hull = new THREE.Group();
+  hull.name = 'hull-root';
+  f.scene.add(hull);
+  const plain = f.addCaster('detail-plain', 3, { parent: hull, castShadow: false });
+  const cut = f.addCaster('detail-cut', 3, { parent: hull, castShadow: false });
+  cut.material.map = new THREE.Texture();
+  cut.material.alphaTest = 0.5;
+  const stowed = new THREE.Group();
+  stowed.visible = false;
+  hull.add(stowed);
+  const hidden = f.addCaster('detail-hidden', 3, { parent: stowed, castShadow: false });
+  hidden.material.displacementMap = new THREE.Texture();
+  markVehicleShadowDetail(hull, { detail: [plain, cut, hidden], proxies: [] });
+  const castAtYield = [];
+  await f.run({ casterWarmup: { maxCastersPerBatch: 8,
+    yieldBeforeBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
+    onBatch() { castAtYield.push(cut.castShadow); f.bindingsRestored(); },
+  } });
+  assert.deepEqual(f.cohorts, [['seen'], ['detail-cut'], ['seen'], ['seen']],
+    'the cut-out detail warms in its own batch; the plain one repeats a warmed variant; neither reaches a final cascade');
+  assert.ok(castAtYield.every((cast) => cast === false), 'the detail casts at no yield');
+  assert.deepEqual([plain.castShadow, cut.castShadow, hidden.castShadow, stowed.visible], [false, false, false, false]);
+  f.restored(true);
+});
+
 await withFixture(async (f) => {
   f.renderer.shadowMap.type = THREE.VSMShadowMap;
   const parent = f.addCaster('vsm-parent', 3, { receiveShadow: true });
@@ -763,4 +794,4 @@ await withFixture(async (f) => {
   assert.deepEqual(sizes, [3, 2, 1], 'p1-p3 (one new variant), cut and p4 (cut new), disp (new): one new variant a batch');
 }
 
-console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch');
+console.log('shadowPrime.selftest: exact cascades, weighted caster warmup, task boundaries, lifetime and restoration passed; every prime render counts the live camera\'s lights; one new depth variant a warm batch; a hull\'s near shadow detail warms where it brings a new variant');

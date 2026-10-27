@@ -3,6 +3,7 @@ import {
   type BufferGeometry, type Camera, type DirectionalLight, type Material,
   type Object3D, type Scene, type WebGLRenderer,
 } from 'three';
+import { vehicleShadowDetailOf } from './nearVehicleShadowDetail.ts';
 import { SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 const SHADOW_PRIME_LAYER = 31;
@@ -117,6 +118,8 @@ interface CasterState {
   vertexCount: number;
   /** what keys its depth program apart from another caster's (depthVariant) */
   variant: string;
+  /** a near-vehicle detail mesh (castShadow false outside its cascade's pass): it casts inside its own batch only */
+  forceCast?: boolean;
 }
 
 /**
@@ -127,15 +130,17 @@ interface CasterState {
  */
 function depthVariant(object: Object3D): string {
   const caster = object as Object3D & { isInstancedMesh?: boolean; isSkinnedMesh?: boolean; isBatchedMesh?: boolean;
-    geometry?: BufferGeometry; material?: Material | Material[]; customDepthMaterial?: Material };
-  const morphs = caster.geometry?.morphAttributes?.position?.length ?? 0;
+    instanceColor?: unknown; geometry?: BufferGeometry; material?: Material | Material[]; customDepthMaterial?: Material };
+  const morph = caster.geometry?.morphAttributes;
+  const morphs = `${morph?.position?.length ?? 0}${morph?.normal ? 'n' : ''}${morph?.color ? 'c' : ''}`;
   const materials = Array.isArray(caster.material) ? caster.material : caster.material ? [caster.material] : [];
   const parts = materials.map((material) => {
     const m = material as Material & { map?: unknown; alphaMap?: unknown; displacementMap?: unknown; displacementScale?: number };
     return `${(m.map || m.alphaMap) && m.alphaTest > 0 ? 'a' : ''}${m.displacementMap && m.displacementScale !== 0 ? 'd' : ''}`
       + `${m.shadowSide ?? m.side}`;
   });
-  return `${caster.isInstancedMesh ? 'i' : ''}${caster.isSkinnedMesh ? 's' : ''}${caster.isBatchedMesh ? 'b' : ''}m${morphs}`
+  return `${caster.isInstancedMesh ? 'i' : ''}${caster.instanceColor ? 'c' : ''}${caster.isSkinnedMesh ? 's' : ''}`
+    + `${caster.isBatchedMesh ? 'b' : ''}m${morphs}`
     + `:${caster.customDepthMaterial?.uuid ?? ''}:${[...new Set(parts)].sort().join(',')}`;
 }
 
@@ -150,6 +155,26 @@ function isShadowDrawable(object: Object3D): object is ShadowDrawable {
     || ('isPoints' in object && object.isPoints === true);
 }
 
+/** A drawable's warm state, or null where it would submit nothing (no vertices, an empty range, no visible material). */
+function warmCasterState(object: ShadowDrawable): CasterState | null {
+  const { geometry, material } = object;
+  const vertexCount = geometry.getAttribute('position')?.count ?? 0;
+  const cornerCount = geometry.index?.count ?? vertexCount;
+  const start = geometry.drawRange.start;
+  const end = Math.min(start + geometry.drawRange.count, cornerCount);
+  if (vertexCount <= 0 || end <= start) return null;
+  const draws = Array.isArray(material)
+    ? geometry.groups.some(group => material[group.materialIndex ?? 0]?.visible
+      && Math.min(end, group.start + group.count) > Math.max(start, group.start))
+    : material.visible;
+  if (!draws) return null;
+  const batched = object as BatchedCaster;
+  return { object, castShadow: object.castShadow,
+    receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled,
+    perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount,
+    variant: depthVariant(object) };
+}
+
 function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
   const casters: CasterState[] = [];
   const vsm = state.shadowMap.type === VSMShadowMap;
@@ -160,23 +185,38 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
     if (!isShadowDrawable(object)) return;
     if (!(object.layers.mask & casterMask)) return;
     if (!object.castShadow && !(vsm && object.receiveShadow)) return;
-    const { geometry, material } = object;
-    const vertexCount = geometry.getAttribute('position')?.count ?? 0;
-    const cornerCount = geometry.index?.count ?? vertexCount;
-    const start = geometry.drawRange.start;
-    const end = Math.min(start + geometry.drawRange.count, cornerCount);
-    if (vertexCount <= 0 || end <= start) return;
-    const draws = Array.isArray(material)
-      ? geometry.groups.some(group => material[group.materialIndex ?? 0]?.visible
-        && Math.min(end, group.start + group.count) > Math.max(start, group.start))
-      : material.visible;
-    const batched = object as BatchedCaster;
-    if (draws) casters.push({ object, castShadow: object.castShadow,
-      receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled,
-      perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount,
-      variant: depthVariant(object) });
+    const caster = warmCasterState(object);
+    if (caster) casters.push(caster);
   });
   return casters;
+}
+
+/**
+ * (2026-10-27, the room-stalls lane) A near hull's real armour and running gear (nearVehicleShadowDetail.ts) cast only
+ * inside the cascade pass that covers it, castShadow false outside it: the collection above never met them, and the
+ * first live frame that framed the player's tank linked their depth programs (the 260 rooms census, both seats, traced
+ * to their draws: gearRoadWheelTires, gearEndWheelBody and m1a3_ghillie_hull_net of rig_hull<tank_m1a3, each 34:8/7
+ * from the Garage's light set; the 580-590 ms guard frame). Each visible detail mesh that brings a variant no caster
+ * before it has joins the warm batches, casting inside its own batch's render only.
+ */
+function addNearDetailCasters(state: PrimeState, scene: Scene, casters: CasterState[]): void {
+  const casterMask = state.cameraMask | (1 << SHADOW_ONLY_LAYER);
+  const seen = new Set(casters.map((caster) => caster.variant));
+  const listed = new Set(casters.map((caster) => caster.object));
+  for (const root of scene.children) {
+    const detail = root.visible ? vehicleShadowDetailOf(root) : null;
+    if (!detail) continue;
+    for (const mesh of detail.detail) {
+      if (listed.has(mesh) || !isShadowDrawable(mesh) || !(mesh.layers.mask & casterMask)) continue;
+      let shown = true;
+      for (let node: Object3D | null = mesh; node && node !== root; node = node.parent) if (!node.visible) { shown = false; break; }
+      const caster = shown ? warmCasterState(mesh) : null;
+      if (!caster || seen.has(caster.variant)) continue;
+      seen.add(caster.variant);
+      listed.add(mesh);
+      casters.push({ ...caster, forceCast: true });
+    }
+  }
 }
 
 function warmBatches(casters: readonly CasterState[], options: ShadowCasterWarmupOptions) {
@@ -292,6 +332,7 @@ function renderWarmBatch(
       // frame that frames it, at the battle's light counts (nav-perf's program log, root-p: five such programs at 1.2 s).
       if (index >= start && index < end) {
         object.frustumCulled = false;
+        if (casters[index]!.forceCast) object.castShadow = true;
         // a batched caster (the field boundary works) culls its items again inside its own shadow hook: all of them
         // outside the box submit nothing, so its depth program waited too. Rebuild its list with every item in it.
         if (casters[index]!.perObjectCulled) {
@@ -323,6 +364,7 @@ async function warmFirstCascade(
   const hidden: Object3D[] = [];
   for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
   const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
+  withRootsShown(hidden, () => addNearDetailCasters(state, request.scene, casters));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;
