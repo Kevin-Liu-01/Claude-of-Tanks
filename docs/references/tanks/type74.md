@@ -471,3 +471,27 @@ STB-1 against Type 74 (`docs/references/tanks/stb1.md`): the prototype's mask is
 deeper-chinned, its canvas narrower, its port on the upper left, its collar plain, and it carries no searchlight.
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
 
+## Hull (262 rebuild)
+
+Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too". Builder: `buildType74`
+(`src/vehicles/profiles/misc.ts`) with the fittings in `src/vehicles/profiles/japaneseHullKit.ts`. Photographs:
+[glacis, low front](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_left_front_low-angle_view_at_Camp_Katsura_November_11,_2018.jpg),
+[headlight box](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_headlight_(right)_right_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg),
+[right side](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_Right_Side_View_at_Camp_Katsura_September_18,_2016.jpg),
+[rear](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_behind_view_at_Camp_Katsura_November_11,_2018.jpg),
+[left rear, muffler](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_Left_Rear_View_at_Camp_Katsura_September_18,_2016.jpg).
+
+| Feature | Main b93941ce9d (before) | Source | 262 (after) |
+|---|---|---|---|
+| Nose | A V in plan: the glacis and chin swept 0.20 m aft at the corners round a centre crease | A broad flat upper glacis meets a steep flat lower plate at a straight crease across the nose; two tow shackles on the lower plate; the lower plate's corners chamfered **[photo]** | Flat upper glacis (29 degrees) and flat reverse-raked lower plate meeting on a straight welded crease at +3.35, chamfered lower corners, two clevis shackles |
+| Lamps | One round headlight and a guard ring on each fender | At each front corner a recessed box behind a tubular cage: amber marker, blackout lamp, IR lamp and sealed-beam headlight **[photo]**; "infrared driving lights" ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | A caged four-lamp box at each front corner (marker over blackout lamp, IR lamp, headlight), the cage four bars |
+| Front mudguards | Rubber flaps hung from the fender ends | Separate angled plates with two ribs **[photo]** | Angled ribbed mudguard plates |
+| Stern | A flat tail block hung low with an exhaust notch and twin meshed outlets, a raised rack shelf with a tarp roll | A sloped rear plate with a large bolted access door, a horizontal pipe rail with clamps, two low tow shackles and big tow eyes at the top corners **[photo]** | The sloped rear plate (16.7 degrees) with the bolted door, pipe rail and clamps, shackles and tow eyes; the rear deck runs flat to it |
+| Exhaust | Twin outlets in the tail notch | Pipes and silencers on the running boards behind the turret ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)); a long tubular muffler cover on each rear fender ending in a short outlet turned rearward and outward **[photo]** | A muffler cover on each rear fender run, its outlet turned rearward and outward; round tail lamps at the fenders' rear corners |
+| Fender stowage | Two jerry cans standing on the left rear fender (the barrel ran through them at the rear arcs) | No jerry cans on any production vehicle photographed; a bin ahead of the muffler on the right fender **[photo]** | Jerry cans removed; the lockers ahead of the mufflers |
+| Driver | A flush hatch and two periscopes | Front left, single-piece hatch, three JM17 periscopes ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | Three periscopes ahead of the hatch |
+| Track | The Japanese staggered-rib shoe | Double-pin with bolted end connectors and tall centre guides **[photo]** | The double-pin shoe |
+| Smoke dischargers | Three tubes on each turret side, mid-turret | Turret front corners **[photo]** (the prototypes: rear sides) | Three tubes at each front corner of the turret, fired forward and outward; the invented corner marker lamps they replace are gone |
+| Commander's cupola | Six periscopes | Five periscopes round the hatch ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)) | Five |
+| Gun travel | −10/+15 at the gun | −6/+9 at the gun; the hull's hydropneumatic pitch adds the rest | −6/+9 at the gun; the special action's hull pitch (±8, pinned) carries it to −14/+17; per-yaw depression curves keep the gun off the hull |
+

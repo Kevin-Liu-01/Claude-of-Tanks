@@ -133,7 +133,11 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   [/(?:m6_linebacker|m2a2_bradley|m3a3_bradley|m2a3_bradley|spz_puma|marder1a3|cv90)/, 'compact-ifv'],
   [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],
-  [/(?:stb1|type74|type90|type10|type89)(?:$|_)/, 'japanese-modular'],
+  // 262 (photographs, docs/references/tanks/type74.md and stb1.md "Hull"): the production Type 74 runs a double-pin track
+  // with bolted end connectors; the STB-1's shows chevron grousers where it wraps the idler
+  [/(?:^|_)type74(?:$|_)/, 'nato-double-pin'],
+  [/(?:^|_)stb1(?:$|_)/, 'soviet-single-pin'],
+  [/(?:type90|type10|type89)(?:$|_)/, 'japanese-modular'],
   [/(?:merkava)/, 'merkava-heavy'],
   [/(?:t62|t64|t72|t80|t84|t90|pt91|type59|ztz85|type99|ztz99|vt4|t14|ua_t)/, 'soviet-single-pin'],
 ]);

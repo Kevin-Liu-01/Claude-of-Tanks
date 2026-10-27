@@ -14,7 +14,7 @@ Builder: `src/vehicles/profiles/japan.ts` (`buildSTB1`); its gun mount and the t
 - STB-3 got a longer turret with flatter side walls and lost the raised commander's station
   ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660); [en.wikipedia Type 74](https://en.wikipedia.org/wiki/Type_74_tank)).
 - Hydropneumatic suspension ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)). Its own gun limits are not
-  published; the build keeps the shared spec travel (−10/+15 at the gun, the hull's ±8 on top).
+  published; the build takes the production gun's −6/+9 (262), the hull's ±8 hydropneumatic pitch on top.
 
 ## Mantlet (261 rebuild)
 
@@ -42,3 +42,25 @@ commander's station and the remote AA machine gun are sourced and stay.
 
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs` (the gun stays inside its shield over the whole travel; the
 STB-1's and the Type 74's shields are different castings).
+
+## Hull (262 rebuild)
+
+Owner, 2026-10-27: "we should upgrade the hulls and everything about the tanks too"; Main: the prototype must read as
+different from the production tank from the hull up. Builder: `addSTB1HullBody` / `addSTB1HullHardwareAndRunningGear`
+(`src/vehicles/profiles/japan.ts`) with the fittings in `src/vehicles/profiles/japaneseHullKit.ts`.
+
+| Feature | STB-1 before (b93941ce9d) | STB-1 source | STB-1 after (262) | Production Type 74 (262) |
+|---|---|---|---|---|
+| Rear plate | Sloped and tucked (the loft's last station) | Vertical ([wikiwiki](https://wikiwiki.jp/warthunder/STB-2), archived STB-1 text) | Vertical, full section to the stern, with two low tow shackles | Sloped, bolted access door, pipe rail, tow eyes |
+| Exhaust | A canister on each rear fender | One mesh-guarded cylinder on the left rear fender **[photo]** | One silencer in a mesh guard (hoops and bars) on the left rear fender; a locker on the right | Muffler covers on both rear fenders |
+| Track | The Japanese staggered-rib shoe | Chevron grousers where it wraps the idler **[photo]**; the STT test hull first ran Type 61 tracks | The single-pin chevron shoe | Double-pin with end connectors |
+| Lamps | A three-lamp bank in an armoured shoe on each shoulder | Cage-guarded boxes at both front corners **[photo]** | A taller, narrower caged box on each front fender (three bars; marker and two headlights) | Four-lamp boxes, four-bar cages |
+| Nose | A dark band and a bar across the lower nose, tow eyes on its underside | A flat glacis with a cable loop and tow fittings on the lower plate **[photo]** | The band and bar replaced by two clevis shackles on the nose plate; the cable loop kept | Straight crease, chamfered lower corners, two shackles |
+| Pioneer tools | None aft | On the left rear deck **[photo]** | A shovel on the left rear deck, between the radiator field and the silencer | On the left fender |
+| Smoke dischargers | Turret rear sides | Turret rear sides **[photo]** | Unchanged | Turret front corners |
+| Commander's station | Raised two-tier drum with the remote AA machine gun | Raised station, remote AA M2 aimed by periscope ([ja.wikipedia](https://ja.wikipedia.org/wiki/74式戦車)) | Unchanged | Low cupola, M2 on a pintle |
+| Gun travel | −10/+15 at the gun | Not published | −6/+9 at the gun (the shared figure) with the hull pitch, per-yaw curves | The same |
+
+Not modelled: the STB-1's forward-opening "gunner's hatch" (ja.wikipedia) — which roof hatch the article means is not
+clear from the photographs.
+

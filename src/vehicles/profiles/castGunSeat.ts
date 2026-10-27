@@ -48,7 +48,7 @@ export function clipStock(source: THREE.BufferGeometry, plane: CutPlane): THREE.
   const corner = (i: number): Corner => ({
     p: new THREE.Vector3().fromBufferAttribute(pos, i),
     n: nor ? new THREE.Vector3().fromBufferAttribute(nor, i) : new THREE.Vector3(),
-    uv: uvs ? new THREE.Vector2().fromBufferAttribute(uvs, i) : new THREE.Vector2(),
+    uv: uvs ? new THREE.Vector2(uvs.getX(i), uvs.getY(i)) : new THREE.Vector2(),
   });
   const emit = (a: Corner, b: Corner, d: Corner) => {
     for (const k of [a, b, d]) { out.p.push(k.p.x, k.p.y, k.p.z); out.n.push(k.n.x, k.n.y, k.n.z); out.uv.push(k.uv.x, k.uv.y); }

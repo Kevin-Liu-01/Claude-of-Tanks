@@ -20,6 +20,7 @@ import { mount as mountFitting } from './fittingMount.ts';
 import { sampleConvexArmorFace as sampleFace } from './armorFaceSampling.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addSTB1Mantlet } from './japaneseMantlets.ts';
+import { cagedLampBox, guardedSilencer, towShackle } from './japaneseHullKit.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -289,7 +290,9 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
   // narrow lower tub, full-width shoulder flare, falling glacis and tucked
   // chin.  Each interval is one closed outward-wound volume.
   const hullRows = [
-    { z: -3.03, b: 0.58, s: 1.15, t: 1.25, w: 0.82, ws: 0.95, wt: 1.08 },
+    // 262: the prototype's rear plate stands vertical (the production tank's slopes): the last station keeps the full
+    // section to the stern, its belly only tucked
+    { z: -3.03, b: 0.36, s: 1.28, t: 1.38, w: 0.96, ws: 1.02, wt: 1.40 },
     { z: -2.72, b: 0.30, s: 1.28, t: 1.38, w: 0.98, ws: 1.04, wt: 1.42 },
     { z: -1.60, b: 0.23, s: 1.27, t: 1.38, w: 0.98, ws: 1.04, wt: 1.46 },
     { z:  1.58, b: 0.23, s: 1.26, t: 1.36, w: 0.98, ws: 1.04, wt: 1.46 },
@@ -318,8 +321,8 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
   }
   P.add('hullDetail', box(1.50, 0.035, 0.045), 0, 1.08, 2.48, -0.50, 0, 0);
 
-  // Low squared stern, cooling banks and source-specific external exhaust.
-  P.add('hull', box(1.82, 0.79, 0.10), 0, 0.75, -2.98);
+  // The vertical stern plate, its cooling banks and tow fittings.
+  P.add('hull', box(1.88, 0.92, 0.06), 0, 0.84, -3.04);
   P.add('hull', box(2.72, 0.055, 0.54), 0, 1.38, -2.70);
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.62, 0.30, 0.028), side * 0.63, 0.91, -3.04);
@@ -329,15 +332,12 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
     // (release 240: both fender boxes 3.5 cm lower, tops 1.42-1.425, under the bustle's 1.439 floor that turns over them)
     P.add('hull', box(0.34, 0.12, 0.62), side * 1.29, 1.365, -1.62);
     P.add('hull', box(0.34, 0.11, 0.72), side * 1.29, 1.365, -0.55);
-    // Source-specific horizontal muffler canister on the exposed rear
-    // fender, including both closed end bands and a short deck return.
-    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 0.50 m aft, -1.76..-2.68, wholly past
-    // the bustle's low floor (1.439 to 2.05 m off the ring's axis, 1.548 to 2.25); its front stood 20 cm in it.
-    P.add('hullDetail', cylZ(0.145, 0.92, 18), side * 1.30, 1.49, -2.22);
-    for (const z of [-2.68, -1.76]) P.add('hullDark', cylZ(0.158, 0.030, 18),
-      side * 1.30, 1.49, z);
-    P.add('hullDetail', box(0.035, 0.15, 0.34), side * 1.30, 1.42, -2.62);
+    towShackle(P, side * 0.55, 0.62, -3.07, -1);
   }
+  // 262: the prototype's exhaust is one silencer in a mesh guard on the left rear fender (1969 photograph; the production
+  // tank carries muffler covers on both), aft of the bustle's sweep as the canisters before it were
+  guardedSilencer(P, -1.30, 1.385, -1.76, -2.68, 0.105, -1);
+  P.add('hull', box(0.34, 0.11, 0.62), 1.29, 1.36, -2.22);                     // the right rear fender's locker
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.34, 0.16, 0.035), side * 0.91, 1.04, -3.075);
     for (const dx of [-0.08, 0.08]) P.add('hullDetail', cylZ(0.045, 0.018, 12),
@@ -358,7 +358,7 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
 }
 
 function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
-  const { box, cylY, torus, buildRunningGear, fenders, headlight, liftEye, periscope } = KIT;
+  const { box, cylY, torus, buildRunningGear, fenders, liftEye, periscope } = KIT;
 
   // Thin broken fenders and fully exposed native track run.  Source has no
   // full-height side skirts; the five suspension stations remain countable.
@@ -389,19 +389,14 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   P.add('hullDark', box(0.37, 0.014, 0.045), -0.48, 1.36, 1.64);
   for (const x of [-0.68, -0.48, -0.28]) periscope(P, 'hullDetail', x, 1.37, 1.88);
   for (const side of [-1, 1]) {
-    // The oracle carries a three-lamp bank in one armored fender shoe on
-    // each shoulder.  The former isolated pin lights disappeared at normal
-    // board scale and did not explain the source's frontal identity.
-    P.add('hull', box(0.53, 0.13, 0.24), side * 1.00, 1.38, 2.30,
-      -0.24, 0, 0);
-    for (let lamp = 0; lamp < 3; lamp++) headlight(P,
-      side * (0.84 + lamp * 0.16), 1.44, 2.39, -0.24, 0.050);
-    P.add('hullDetail', torus(0.082, 0.014, 14), side * 0.54, 0.55, 2.82,
-      Math.PI / 2, 0, 0);
+    // 262: a caged lamp box at each front corner, on the fender (1969 photograph): the prototype's box is taller and
+    // narrower than the production one, its cage three bars, its lamps a marker and two headlights
+    cagedLampBox(P, { x: side * 1.26, y: 1.413, z: 2.58, w: 0.36, h: 0.20, d: 0.20, side, lamps: ['marker', 'head', 'head'], bars: 3 });
+    towShackle(P, side * 0.42, 0.72, 3.02, 1);
     liftEye(P, 'hullDetail', side * 1.18, 1.33, 1.85, side * 0.24);
   }
-  P.add('hullDark', box(1.88, 0.29, 0.035), 0, 0.53, 2.84);
-  P.add('hullDetail', box(1.62, 0.035, 0.045), 0, 0.69, 2.865);
+  // the pioneer tools on the left rear deck
+  KIT.shovelTool(P, -1.04, 1.385, -2.45);                                     // between the radiator field and the silencer
   mount(P, FITTINGS.towCable({
     mats: P.mats,
     pts: [[-0.95, 1.16, 2.28], [0, 1.29, 2.00], [0.95, 1.16, 2.28]],

@@ -35,7 +35,10 @@ const TYPE74_SPEC = {
     noseDownDeg: 8, noseUpDeg: 8, rateDegS: 7,
     compressionM: 0.32, droopM: 0.32,
   },
-  turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 15, gunDepressionDeg: 10,
+  // 262 (Main's ruling on the owner's STB-1 / Type 74 rebuild): the gun's own source travel, −6/+9 (JGSDF; ArmedConflicts
+  // −6.5/+9.5); the hydropneumatic hull pitch below (the special action, which bots engage when halted on a target)
+  // carries it to −14/+17. It was −10/+15 at the gun.
+  turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 9, gunDepressionDeg: 6,
   gun: {
     caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
     bloom: BLOOM_MODERN,

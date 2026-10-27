@@ -34,6 +34,8 @@ import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import { refineCastLoft } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { addType74Mantlet } from './japaneseMantlets.ts';
+import { cagedLampBox, mufflerCover, ribbedMudguard, tailLamp, towShackle, uTowEye } from './japaneseHullKit.ts';
+import { beamBetween } from './measuredPrimitives.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -3044,7 +3046,7 @@ function buildType74(P: MiscBuilderPort): void {
   const { rng } = P;
   // ---- LOW hull: tub between the tracks, thin high sponson course, sharp
   // two-plane crease glacis, flat louvred rear deck, 1.447 rear rack shelf ----
-  P.add('hull', box(1.96, 0.56, 6.25), 0, 0.585, -0.175);                      // tub x ±0.98, belly 0.305 (ref front bots 0.302-0.34), z -3.30..+2.95 (front hides behind the chin rake, §B1)
+  P.add('hull', box(1.96, 0.56, 6.20), 0, 0.585, -0.15);                       // tub x ±0.98, belly 0.305 (ref front bots 0.302-0.34), z -3.25..+2.95 (its ends hide behind the nose and the sloped rear plate)
   P.add('hull', box(3.00, 0.04, 4.42), 0, 1.375, 0.21);                        // main deck 1.395 (ref deck corners 1.375-1.402), z -2.00..+2.42
   P.add('hull', frustum(1.50, -2.00, -2.74, 1.46, -2.04, -2.74, 1.30, 1.372)); // rear louvre deck, slight fall 1.395 -> 1.372
   for (const s of [-1, 1]) {
@@ -3058,52 +3060,51 @@ function buildType74(P: MiscBuilderPort): void {
     P.add('hull', box(0.50, 0.405, 4.75), s * 1.255, 1.1725, -0.025);
     // tub-to-deck inboard wall (channel-pan class: INBOARD of the band inner
     // face 1.04 by 3+ cm — §B2 metal where the real hull has metal)
-    P.add('hull', box(0.06, 0.53, 6.48), s * 0.945, 1.10, -0.06);
+    P.add('hull', box(0.06, 0.53, 6.28), s * 0.945, 1.10, 0.04);                // z -3.10..+3.18: inside the sloped rear plate
   }
-  // BOW (T74R5b, §B8.1 gate-2 rework — the first pass ran the glacis at 11°
-  // from horizontal and the front read as a wall): two-plane 29° glacis with
-  // the PRONOUNCED center crease (outer corners swept 0.12 aft both at crest
-  // and toe) + reverse-raked chin plate tucking to the belly. Slope motivates
-  // the mass (§B1): deck ends at the crest z +2.42, tub front hides behind
-  // the chin. Lower edges taper to x ±0.98 (§B4: the idler wrap owns
-  // x 1.01..1.59).
-  // Nose edge (the V ridge where glacis meets chin): center (0, 0.89, 3.37)
-  // -> outer (±0.98, 0.91, 3.17), sweep 0.20 (~9°/side — the visible crease).
+  // BOW (262, the owner's hull pass; the photographs in docs/references/tanks/type74.md "Hull"): a broad flat upper
+  // glacis meets a steep flat lower plate at a straight crease across the nose (the 0.20 m V sweep the print read is not
+  // the vehicle's), the lower plate's outer corners chamfered back to the hull sides, two clevis tow shackles on it. The
+  // upper glacis keeps its 29 degrees and the crest its 1.385 deck line; the nose stays at +3.35.
+  P.add('hull', slab(                                                          // upper glacis, crease to crest
+    [-0.98, 0.87, 3.35], [0.98, 0.87, 3.35], [0.98, 0.91, 3.31], [-0.98, 0.91, 3.31],
+    [-1.02, 1.365, 2.48], [1.02, 1.365, 2.48], [1.02, 1.395, 2.42], [-1.02, 1.395, 2.42]));
+  P.add('hull', slab(                                                          // lower nose plate, reverse-raked to the belly
+    [-0.86, 0.42, 3.10], [0.86, 0.42, 3.10], [0.86, 0.42, 3.04], [-0.86, 0.42, 3.04],
+    [-0.98, 0.89, 3.37], [0.98, 0.89, 3.37], [0.98, 0.89, 3.31], [-0.98, 0.89, 3.31]));
   for (const s of [-1, 1]) {
-    // FSP-05 (2026-09-25): the crest ring paired the nose-BOTTOM edge with the
-    // crest-FRONT edge and the nose-top edge with the crest-rear edge, so the two
-    // skins crossed mid-plate (a bow-tie section orientedSlab cannot repair —
-    // 2,836 inside-out px, the fleet's largest hull read). Underside now runs
-    // nose-bottom -> crest-rear and the top skin nose-top -> crest-front; the
-    // eight corners and every silhouette are unchanged.
-    P.add('hull', slab(                                                        // GLACIS half-plane: nose edge -> crest (29° from horizontal). Crest
-      [s * 0.02, 0.87, 3.35], [s * 0.98, 0.89, 3.15], [s * 0.98, 0.93, 3.19], [s * 0.02, 0.91, 3.39],
-      [s * 0.02, 1.385, 2.44], [s * 1.02, 1.385, 2.24], [s * 1.02, 1.385, 2.30], [s * 0.02, 1.385, 2.50]));
-    // outer x ±1.02: the real glacis is the plate BETWEEN the fenders — the
-    // full-1.50 wing swept the taper edge through the idler wrap (track-clip
-    // front 17/22, §B4) and the fenders carry the outboard bow anyway.
-    P.add('hull', slab(                                                        // CHIN half-plate, reverse-raked, same V sweep (tucks to the belly)
-      [s * 0.02, 0.42, 3.16], [s * 0.98, 0.44, 2.98], [s * 0.98, 0.44, 2.86], [s * 0.02, 0.42, 3.04],
-      [s * 0.02, 0.89, 3.37], [s * 0.98, 0.91, 3.17], [s * 0.98, 0.91, 3.05], [s * 0.02, 0.89, 3.25]));
+    P.add('hull', slab(                                                        // the lower plate's chamfered corner back to the side
+      [s * 0.86, 0.42, 3.07], [s * 0.98, 0.42, 2.96], [s * 0.98, 0.42, 2.92], [s * 0.86, 0.42, 3.03],
+      [s * 0.98, 0.89, 3.34], [s * 0.985, 0.89, 3.30], [s * 0.985, 0.89, 3.26], [s * 0.98, 0.89, 3.30]));
+    towShackle(P, s * 0.46, 0.70, 3.205, 1);
   }
-  // V splash rail hugging the glacis planes (photo tell; <=2cm proud)
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.72, 0.035, 0.05), s * 0.38, 1.175, 2.86, -0.505, s * 0.10, 0);
-  // stern: tail plate INBOARD of the exposed sprocket wraps (ref plan rear:
-  // wrap -3.37 at x 1.01-1.57, plate -3.36..-3.38 center, exhaust notch
-  // -3.20 at x 0.68-0.94) + rear rack shelf at the print's 1.447 line
-  P.add('hull', box(1.32, 0.84, 0.10), 0, 0.86, -3.33);                        // tail plate center x ±0.66, y 0.44..1.28, face -3.38
+  P.add('hullDark', box(1.96, 0.014, 0.03), 0, 0.89, 3.355);                  // the weld bead along the crease
+  // STERN (262): the production tank's sloped rear plate, inboard of the exposed sprocket wraps (x 1.01-1.57), with
+  // its large bolted access door, the pipe rail and its clamps, two low tow shackles and the big tow eyes at the top
+  // corners; the rear deck runs flat to it. The exhausts leave through the mufflers on the rear fenders (below).
+  const rearZ = (y: number): number => -3.40 + ((y - 0.44) / 0.932) * 0.28;    // the plate's outer face, 16.7 deg off vertical
+  P.add('hull', box(1.96, 0.04, 0.38), 0, 1.352, -2.93);                       // rear deck plate z -2.74..-3.12, top 1.372
+  P.add('hull', slab(
+    [-0.98, 0.44, -3.36], [0.98, 0.44, -3.36], [0.98, 0.44, -3.40], [-0.98, 0.44, -3.40],
+    [-0.98, 1.372, -3.08], [0.98, 1.372, -3.08], [0.98, 1.372, -3.12], [-0.98, 1.372, -3.12]));
+  P.add('hull', slab(                                                          // the short lower plate under it to the belly
+    [-0.98, 0.305, -3.21], [0.98, 0.305, -3.21], [0.98, 0.305, -3.25], [-0.98, 0.305, -3.25],
+    [-0.98, 0.44, -3.36], [0.98, 0.44, -3.36], [0.98, 0.44, -3.40], [-0.98, 0.44, -3.40]));
+  const lean = Math.atan2(0.28, 0.932);
+  P.add('hull', box(0.94, 0.52, 0.024), 0, 0.90, rearZ(0.90) - 0.012, lean, 0, 0);          // the access door
+  P.add('hullDark', box(0.97, 0.55, 0.012), 0, 0.90, rearZ(0.90) - 0.004, lean, 0, 0);       // its seam
+  for (let k = 0; k < 18; k++) {
+    const t = k / 18, along = t < 0.5 ? (t / 0.5) * 2 - 1 : ((t - 0.5) / 0.5) * 2 - 1, top = t < 0.5;
+    const bx = along * 0.43, by = 0.90 + (top ? 0.235 : -0.235);
+    P.add('hullDetail', cylZ(0.012, 0.016, 8), bx, by, rearZ(by) - 0.028, lean, 0, 0);
+  }
+  P.add('hullDetail', box(0.16, 0.025, 0.035), 0.30, 0.78, rearZ(0.78) - 0.03, lean, 0, 0);  // the door's handle
+  for (const x of [-0.82, 0, 0.82]) P.add('hullDetail', box(0.05, 0.06, 0.07), x, 1.24, rearZ(1.24) - 0.03, lean, 0, 0);
+  P.add('hullDetail', beamBetween([-0.86, 1.24, rearZ(1.24) - 0.06], [0.86, 1.24, rearZ(1.24) - 0.06], 0.02, 12)); // pipe rail
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.31, 0.84, 0.08), s * 0.815, 0.86, -3.17);              // exhaust notch panels, recessed to -3.21
-    P.add('hull', slab(                                                        // notch side cheeks close the recess (§B2)
-      [s * 0.66, 0.44, -3.21], [s * 0.97, 0.44, -3.21], [s * 0.97, 0.44, -3.13], [s * 0.66, 0.44, -3.13],
-      [s * 0.66, 1.28, -3.21], [s * 0.97, 1.28, -3.21], [s * 0.97, 1.28, -3.13], [s * 0.66, 1.28, -3.13]));
-    // twin exhaust outlets WITH mesh on the notch panels (identity kit)
-    P.add('hullDark', box(0.24, 0.20, 0.025), s * 0.815, 1.06, -3.205);
-    for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.22, 0.018, 0.02), s * 0.815, 0.99 + k * 0.065, -3.212);
-    P.add('hullDark', box(0.10, 0.09, 0.03), s * 0.88, 1.16, -3.225);          // taillights on the notch panels (the wrap owns x>1.0 at the tail, §B4)
+    towShackle(P, s * 0.55, 0.56, rearZ(0.56), -1);
+    uTowEye(P, s * 0.86, 1.372, -3.04);
   }
-  P.add('hull', box(2.00, 0.055, 0.60), 0, 1.4195, -2.99);                     // rear rack shelf 1.447 top (ref 1.447 flat, z -2.69..-3.29; bottom 1.392 = sprocket shoe crown 1.355 + §B4 margin)
-  P.add('hull', box(1.90, 0.10, 0.08), 0, 1.246, -3.30);                       // tail corner step (ref 1.296 @ -3.23 -> lip 1.27)
   fenders(P, 1.05, 1.57, 1.375, -3.42, 3.05, 0.028);                         // full length: the rear flaps hang from the fender end over the sprocket
   // owner 2026-10-25 (the modernisation): the fender's support gussets along its outer edge and a weld seam along the
   // sponson band (the long plain side read as a slab). Gussets hang 0.075 under the 1.375 fender line, 0.2 m clear of
@@ -3123,8 +3124,8 @@ function buildType74(P: MiscBuilderPort): void {
   // driver LEFT: flush hatch + periscopes on the fore deck
   P.add('hull', cylY(0.23, 0.23, 0.035, 14), -0.52, 1.398, 2.00);
   P.add('hullDark', cylY(0.236, 0.236, 0.012, 14), -0.52, 1.393, 2.00);
-  periscope(P, 'hullDetail', -0.52, 1.425, 2.27);
-  periscope(P, 'hullDetail', -0.26, 1.425, 2.27);
+  // (262) the three JM17 periscopes ahead of the single-piece hatch (HistoryOfWar)
+  for (const x of [-0.70, -0.52, -0.34]) periscope(P, 'hullDetail', x, 1.425, 2.27);
   // ENGINE DECK (owner 2026-10-25, the modernisation: the four flat dark louvre slabs read as a bare plate). On the flat
   // 1.395 deck behind the ring, two radiator grilles in raised frames over dark wells, a hinged access plate between
   // them and two filler caps; on the 1.395 -> 1.372 rear deck, the cooling-air louvre banks. Everything stands at most
@@ -3159,42 +3160,37 @@ function buildType74(P: MiscBuilderPort): void {
     // z 3.12; sprocket shoe top 1.071 at z -3.40)
     // owner 2026-10-19 (flaps sweep): the bow flap started 45 mm past the fender's end and 20 mm under it; it now hangs
     // from that end (front face 2.5 mm past it, top 1.37 inside the 1.361-1.389 plate)
-    mudflap(P, s * 1.2835, 1.26, 3.035, 0.52, 0.22);
+    ribbedMudguard(P, s * 1.31, 1.385, 3.04, 0.50, 0.30, 0.6);               // (262) the front mudguard, an angled ribbed plate
     mudflap(P, s * 1.2835, 1.26, -3.40, 0.52, 0.20);
-    // 2026-10-19 (owner float sweep): the tow eyes stood 26-42 mm proud of the chin plate; pushed back onto it.
-    P.snapGroup(`type74-tow-eye-${s}`, () => P.add('hullDetail', torus(0.075, 0.014, 10), s * 0.55, 0.58, 3.215, Math.PI / 2, 0, 0),
-      { reachM: 0.08, direction: [0, 0, -1] }); // tow eyes on the chin plate
     // rear-view mirror arms folded low over the front fenders
-    P.add('hullDetail', box(0.035, 0.22, 0.035), s * 1.42, 1.46, 2.66, 0, 0, s * 0.30);
-    P.add('hullDark', box(0.15, 0.19, 0.03), s * 1.475, 1.505, 2.66);
+    P.add('hullDetail', box(0.035, 0.22, 0.035), s * 1.45, 1.50, 2.82, 0, 0, s * 0.30);
+    P.add('hullDark', box(0.15, 0.19, 0.03), s * 1.505, 1.545, 2.82);
   }
   // fender stowage bins + pioneer tools + headlight pods with guards
   // (release 240, the owner: "make sure all tank turrets are clear of hulls": the four are low lockers, their lids 3 cm
   // under the turret's overhang at 1.465-1.47, which swings over all of them and in which they stood 3 cm)
-  bin(P, -1.28, 1.405, -1.35, 0.40, 0.06, 1.00);
+  bin(P, -1.28, 1.405, -0.75, 0.40, 0.06, 0.90);                                // (262) ahead of the left muffler
   bin(P, -1.28, 1.405, 0.35, 0.40, 0.06, 0.85);
-  bin(P, 1.28, 1.405, -0.90, 0.40, 0.06, 1.00);
+  bin(P, 1.28, 1.405, -0.85, 0.40, 0.06, 0.80);                                 // (262) the bin ahead of the right muffler
   bin(P, 1.28, 1.405, 0.60, 0.40, 0.06, 0.80);
   shovelTool(P, -1.27, 1.40, 1.85);
-  // 2026-10-19 (owner float sweep): the lamps and their guard rings stood 15 mm over the fender; seated.
-  headlight(P, -1.26, 1.443, 2.98, -0.22, 0.05);
-  headlight(P, 1.26, 1.443, 2.98, -0.22, 0.05);
-  P.add('hullDetail', torus(0.072, 0.012, 12), -1.26, 1.443, 3.05);
-  P.add('hullDetail', torus(0.072, 0.012, 12), 1.26, 1.443, 3.05);
+  // (262) the lamp boxes at the hull's front corners behind their tubular cages: amber marker and blackout lamp
+  // outboard, the IR lamp, the sealed-beam headlight inboard (NDA 2024 photographs)
+  for (const s of [-1, 1]) cagedLampBox(P, { x: s * 1.27, y: 1.403, z: 2.62, w: 0.44, h: 0.17, d: 0.19, side: s,
+    lamps: ['marker', 'ir', 'head'], bars: 4 });
   {                                                                            // §I fittings: tow cable draped across the glacis crest
     const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.32, 2.60], [0, 1.42, 2.28], [0.90, 1.32, 2.60]], seed: 11 });
     P.hullG.add(cable);
   }
   liftEye(P, 'hullDetail', -1.38, 1.41, -1.75);
   liftEye(P, 'hullDetail', 1.38, 1.41, -1.75);
-  {                                                                            // §I fittings: two water cans strapped on the left fender run
-    // (release 240, the owner: "make sure all tank turrets are clear of hulls": on the rear run, 2.8 m off the ring's
-    // axis, past the bustle's corners; beside the turret they stood 40 cm into its overhang)
-    const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 5 });
-    cans.position.set(-1.28, 1.39, -2.30);
-    P.hullG.add(cans);
+  // (262) the exhaust: a long tubular muffler cover along each rear fender run, its outlet turned rearward and outward
+  // (HistoryOfWar; the Katsura photographs), 0.19 m tall so the bustle baskets swing 2.7 cm over it; the two water cans
+  // that stood here are not on the vehicle (no photograph shows them) and the barrel ran through them at the rear arcs
+  for (const s of [-1, 1]) {
+    mufflerCover(P, s * 1.32, 1.403, -1.30, -3.20, 0.095, s);
+    tailLamp(P, s * 1.47, 1.403, -3.40);
   }
-  stowage(P, 'hullCloth', rng, [[0.55, 1.50, -2.99, 0.52, 0.10, 0.5]]);        // strapped tarp roll on the rack shelf (d 0.5: stays inside the -3.29 shelf edge)
   P.decal('hull', 'number', '74-4302', 0.22, [-0.60, 1.15, 2.92], 0, -0.51);
   // FIVE big near-touching wheels (pitch 0.8675, r 0.42 — count them law),
   // dead track (no rollers), raised idler, HIGH rear drive sprocket: the
@@ -3299,7 +3295,7 @@ function buildType74(P: MiscBuilderPort): void {
   // photo split, packet-documented) with the M2 pintle = published-2.48
   // heightM p95 anchor; low oval loader hatch ring LEFT (ref left-shoulder
   // 2.10-2.13 front-view band)
-  cupola(P, 'turret', 0.40, 0.46, -0.46, 0.20, 0.16, 6);                       // planted on the low cast crown
+  cupola(P, 'turret', 0.40, 0.46, -0.46, 0.20, 0.16, 5);                       // planted on the low cast crown
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the Type 74's roof M2)
   const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7, working: true, ridingCradle: true });
   m2.name = 'type74RoofM2';
@@ -3320,13 +3316,12 @@ function buildType74(P: MiscBuilderPort): void {
   // 2026-10-19 (owner float sweep): the ammo box stood 14 mm off the cupola and its end plate 7 mm off the box; seated.
   P.add('turretDetail', box(0.23, 0.17, 0.16), 0.680, 0.66, -0.63);
   P.add('turretDark', box(0.025, 0.11, 0.12), 0.806, 0.66, -0.63);
-  for (const side of [-1, 1]) {
-    // 2026-10-19 (owner float sweep): the right lamp stood 21 mm off the shell; each lamp seats on it.
-    P.snapGroup(`type74-marker-lamp-${side}`, () => {
-      P.add('turretDetail', cylZ(0.056, 0.105, 12), side * 0.82, 0.31, 0.92);
-      P.add('turretGlass', cylZ(0.040, 0.018, 12), side * 0.82, 0.31, 0.981);
-      P.add('turretDark', box(0.135, 0.024, 0.024), side * 0.82, 0.378, 0.93);
-    }, { reachM: 0.05 });
+  // (262) the production tank's smoke dischargers: three tubes at each front corner of the turret (the prototypes carried
+  // theirs on the rear sides), fired forward and outward
+  for (const s of [-1, 1]) {
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, splay: s * 0.62, pitch: -0.42, seed: 9 + s });
+    smoke.position.set(s * 0.80, 0.33, 0.70);
+    P.turretG.add(smoke);
   }
   // 261: the IR/white searchlight rides the gun on its cradle (addType74Mantlet below)
   // stowage BASKETS hugging the bustle flanks (identity: turret rear sides;
@@ -3352,9 +3347,6 @@ function buildType74(P: MiscBuilderPort): void {
     const whipF = FITTINGS.antennaWhip({ mats: P.mats, h: 0.98, rake: s * 0.05, seed: 3 + s });
     whipF.position.set(s * 0.80, 0.44, -1.43);                                 // on the roof edge inboard of the basket (at 0.94 it stood over the gap beside it; the factory seats it on the roof)
     P.turretG.add(whipF);
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, splay: s * 1.12, seed: 9 });
-    smoke.position.set(s * 0.84, 0.40, -0.70);
-    P.turretG.add(smoke);
     // dome grab rails
     P.add('turretDetail', box(0.02, 0.02, 0.85), s * 0.99, 0.31, -0.35);
     for (const dz of [-0.72, -0.02]) P.add('turretDetail', box(0.05, 0.016, 0.016), s * 0.965, 0.31, -0.35 + dz + 0.35);
