@@ -150,7 +150,9 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 .cot-garage .cot-deploy-brief-art{grid-column:1/-1;position:relative;aspect-ratio:16/9;max-height:42vh;overflow:hidden;
   border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);}
 .cot-garage .cot-deploy-brief-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.cot-garage .cot-deploy-brief-head{grid-column:1;display:flex;align-items:center;gap:var(--s4);min-width:0;}
+/* the operation's number and its title stand on one baseline, the title's last line where it wraps (centred, they sat 6-9 px
+   apart, r41) */
+.cot-garage .cot-deploy-brief-head{grid-column:1;display:flex;align-items:last baseline;gap:var(--s4);min-width:0;}
 .cot-garage .cot-deploy-brief-ix{flex:none;font:700 var(--fs-52)/.9 var(--font-display);color:var(--ink-3);}
 .cot-garage .cot-deploy-brief[data-status='cleared'] .cot-deploy-brief-ix{color:var(--ink-1);}
 .cot-garage .cot-deploy-brief-name{margin:0;min-width:0;font:700 var(--fs-28)/1.05 var(--font-display);text-transform:uppercase;
@@ -379,7 +381,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-deploy-field-head .cot-deploy-fie
 .cot-garage .cot-deploy-more{display:grid;place-items:center;width:40px;height:40px;margin-left:auto;padding:0;border:0;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-2);cursor:pointer;}
 .cot-garage .cot-deploy-more svg{width:18px;height:18px;}
-.cot-garage .cot-deploy-more[aria-expanded='true']{color:var(--ink-1);background:var(--surface-hover);}
+/* open, the gear takes the kit's one selected state, so it reads as the open disclosure rather than a hover (r41) */
+.cot-garage .cot-deploy-more[aria-expanded='true']{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);}
 @media (hover:hover){.cot-garage .cot-deploy-more:hover{color:var(--ink-1);}}
 .cot-garage .cot-battle-menu.open [data-team-options]>.cot-battle-menu-label,
 .cot-garage .cot-battle-menu.open .cot-battle-times legend,
@@ -420,10 +423,14 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-ga
 .cot-garage .cot-battle-menu.open :is(.cot-teams button,.cot-battle-sides .cot-c-seg__opt){height:34px;}
 .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:40px;}
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
-/* a segmented setting fills its cell, its values sharing the width (Respawn delay's five, the juggernaut's two roles) */
-.cot-garage .cot-battle-menu.open .cot-arrange-seg{display:flex;}
-.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;min-width:0;padding-inline:var(--s1);}
-/* (the kit's 13 px sides on five values overflowed a narrow plate's cell: Respawn delay's 15 left the plate at 1024 x 600) */
+/* a segmented setting is as wide as its values beside the screen, as the sides and the team size are (filling its cell
+   stretched the range's Still and Moving to half the plate, r41), and fills its row on a phone as theirs do; a narrow plate
+   tightens its values' sides, since the kit's 13 px on five values overflowed the cell (Respawn delay's 15 at 1024 x 600) */
+.cot-garage .cot-battle-menu.open .cot-arrange-seg{justify-self:start;max-width:100%;}
+.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 auto;min-width:0;}
+@container deploy-plate (max-width:420px){.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{padding-inline:var(--s1);}}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-seg{display:flex;justify-self:stretch;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;}
 .cot-garage .cot-battle-menu.open .cot-arrange-field[data-mode-field='juggernautRole']{grid-column:1/-1;}
 
 /* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */
