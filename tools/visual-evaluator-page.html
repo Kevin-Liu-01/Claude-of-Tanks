@@ -37,6 +37,7 @@ import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-refe
 import { SOURCE_WORLD_FRAMES } from '/tools/source-world-registration.mjs';
 import { comparisonCameras } from '/tools/source-comparison-cameras.mjs';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
 
 const out = document.getElementById('out');
 const say = (t) => { out.textContent = t; };
@@ -65,6 +66,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   c1_ariete: SECOND_WAVE_X_REFERENCE_OVERRIDES.c1_ariete,
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...ARES_APC_X_REFERENCE_OVERRIDES,
+  ...OPLOT_BM_X_REFERENCE_OVERRIDES,
   // c1_ariete_preserie (misc quarantine oracle — mirrors procedural-fidelity.html verbatim)
   c1_ariete_preserie: { source:'glb', glb:{ path:'/models/tanks/community/ariete-dustymojito.glb',
     turretNode:'^Turret$', autoPivot:true } },

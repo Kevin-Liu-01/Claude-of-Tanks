@@ -504,6 +504,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/profiles/aresApcX.selftest.mjs',
     'tools/ares-apc-x-reference.selftest.mjs',
+    // 262: the T-84BM Oplot-M's registered comparison oracle
+    'tools/oplot-bm-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',

@@ -52,6 +52,23 @@ in [bm_oplot_t.md](bm_oplot_t.md).
   width; the build hangs them at +-1.89); its gun reaches 9.92 m overall (published 9.72); its road-wheel stations are
   unevenly pitched (kept as measured: z 2.52, 1.66, 0.73, -0.07, -1.03, -1.89).
 
+## Measured sections (build frame, metres; tools: lane `slices.py` / `loops.py` cuts of the oracle at the scales above)
+
+Round 3 (owner 2026-10-27: "match the geometry a lot better, fix and smooth this out a lot better") replaced the
+round-1/2 boxes with lofts through these sections.
+
+| Part | Section data |
+| --- | --- |
+| Hull body | half-width 1.10, belly 0.42 (z -2.95..2.86), deck 1.46 (z -3.20..2.14); glacis 2.14 -> nose 3.48 at 0.86; lower plate 2.86 -> 3.54 at 0.72 |
+| Fender ledges | x 1.08..1.80, y 1.20..1.46 from z -3.05 to 2.30, falling to 0.91..1.22 at z 3.46 |
+| Skirt boxes | inner 1.80, outer face 1.86 at the deck to 2.08 at y 0.95; top 1.46 to z 1.80 then down to 1.27 at 3.30; nose rolls to (0.86..0.98, 1.98) at z 3.78; rear end z -3.06 |
+| Rubber skirt | x 2.05..2.07, from 0.975 down to 0.22 (z -1.55..2.60), raked to 0.78 at z -2.96 and 0.51 at 3.24 |
+| Turret body (ring frame, z local = hull z - 0.19) | half-width 0.86 / 1.00 / 1.23 / 1.47 / 1.23 / 1.08 at z -1.28 / -0.69 / -0.09 / 0.51 / 0.81 / 0.97; roof 0.69 falling to 0.58 at the nose; bevelled top edges |
+| Cheek Duplet stacks | columns |x| 0.41-0.72, 0.735-1.00, 1.015-1.20, 1.215-1.40, 1.415-1.58 (+ flank 1.595-1.72), two courses y 0.09-0.30 / 0.31-0.52, fronts on z = 1.82 - 0.847 (|x| - 1.0) |
+| Flank ERA / smoke housings | ERA from the body side to |x| 1.72 over z -0.39..0.40 (local); housings |x| 0.86-1.64 over z -1.04..-0.39, y 0.13-0.58 |
+| Bustle | box x -0.75..+0.40, z -1.98..-1.26, y 0.10/0.15..0.68; right bin x -1.43..-0.83, z -2.24..-0.99; left rail basket x 0.42..1.34 |
+| Gun | trunnion (0, 0.295, 1.30); shield +-0.26 x -0.21..+0.17 from gun z -0.33 to 0.27; fume extractor gun z 2.50..3.30 (hull z 4.0..4.8) |
+
 ## Construction
 
 - Hull: T-80UD-lineage loft (deck 1.455, 68 degree upper glacis from z 2.42 to the nose at 0.96, lower plate to the

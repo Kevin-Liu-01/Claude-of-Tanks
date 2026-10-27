@@ -102,14 +102,14 @@ const UKRAINE_SPECS = {
   bm_oplot_m: variant('bm_oplot_m', 't84', {
     name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#56603f', weather: '#68704f', patches: [],
     camoScale: 0.50,
-    dims: { hullLengthM: 7.075, overallLengthM: 9.72, widthM: 3.78, heightM: 2.20 },
+    dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
   bm_oplot_t: variant('bm_oplot_t', 't84', {
     name: 'T-84BM Oplot-T', number: '231', scheme: 'nato', base: '#b99c6c', weather: '#c6ab7e',
     patches: ['#7e4c37', '#5c4232', '#a17f58'], camoScale: 0.58,
-    dims: { hullLengthM: 7.075, overallLengthM: 9.72, widthM: 3.78, heightM: 2.20 },
+    dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
@@ -168,24 +168,25 @@ const UKRAINE_SPECS = {
   for (const id of ['bm_oplot_m', 'bm_oplot_t'] as const) {
     const spec = UKRAINE_SPECS[id];
     const frame = modernArmor({
-      hl: 3.5375, hw: 1.70, inW: 1.06, floor: 0.44, trkTop: 1.07, roofY: 1.455,
+      // the installed frame: the print at the registered uniform 4.10 (oplotBMLayout.ts OPLOT_BM_SCALE)
+      hl: 3.461, hw: 1.743, inW: 1.097, floor: 0.43, trkTop: 1.097, roofY: 1.497,
       turretPivot: [...OPLOT_BM_FRAME.turret], gunPivot: [...OPLOT_BM_FRAME.gun],
       barrelLenM: OPLOT_BM_FRAME.barrelM, barrelRadM: OPLOT_BM_FRAME.barrelR,
       glacis: [500, 560, 650], lower: [100, 140, 160], side: [80, 95, 110], skirt: [10, 12, 12],
-      rear: 45, roof: 40, tw: 1.50, tFrontZ: 1.78, tRearZ: -2.26, tH: 0.70,
+      rear: 45, roof: 40, tw: 1.51, tFrontZ: 1.49, tRearZ: -2.03, tH: 0.707,
       cheek: [650, 620, 700], tSide: [300, 340, 400], tRear: 60, tRoof: 45, mantlet: [350, 400, 450],
       bustleAmmo: true,
     });
     frame.hullPlates.push(
-      era(OPLOT_BM_ERA.glacis, [-1.10, 1.20, 3.10], [1.10, 1.20, 3.10], [-1.10, 1.42, 2.62], DUPLET),
-      era(OPLOT_BM_ERA.skirtL, [1.89, 0.98, -1.90], [1.89, 0.98, 3.00], [1.89, 1.42, -1.90], DUPLET_SKIRT),
-      era(OPLOT_BM_ERA.skirtR, [-1.89, 0.98, 3.00], [-1.89, 0.98, -1.90], [-1.89, 1.42, 3.00], DUPLET_SKIRT),
+      era(OPLOT_BM_ERA.glacis, [-1.13, 1.23, 3.03], [1.13, 1.23, 3.03], [-1.13, 1.455, 2.56], DUPLET),
+      era(OPLOT_BM_ERA.skirtL, [2.02, 1.00, -1.86], [2.02, 1.00, 2.93], [2.02, 1.455, -1.86], DUPLET_SKIRT),
+      era(OPLOT_BM_ERA.skirtR, [-2.02, 1.00, 2.93], [-2.02, 1.00, -1.86], [-2.02, 1.455, 2.93], DUPLET_SKIRT),
     );
     frame.turretPlates.push(
-      era(OPLOT_BM_ERA.turretL, [0.37, 0.08, 1.80], [1.50, 0.08, 1.30], [0.37, 0.60, 1.80], DUPLET),
-      era(OPLOT_BM_ERA.turretR, [-1.50, 0.08, 1.30], [-0.37, 0.08, 1.80], [-1.50, 0.60, 1.30], DUPLET),
-      era(OPLOT_BM_ERA.flankL, [1.54, 0.06, -0.60], [1.50, 0.06, 0.90], [1.54, 0.62, -0.60], DUPLET),
-      era(OPLOT_BM_ERA.flankR, [-1.50, 0.06, 0.90], [-1.54, 0.06, -0.60], [-1.50, 0.62, 0.90], DUPLET),
+      era(OPLOT_BM_ERA.turretL, [0.42, 0.09, 1.865], [1.62, 0.09, 1.33], [0.42, 0.53, 1.865], DUPLET),
+      era(OPLOT_BM_ERA.turretR, [-1.62, 0.09, 1.33], [-0.42, 0.09, 1.865], [-1.62, 0.53, 1.33], DUPLET),
+      era(OPLOT_BM_ERA.flankL, [1.763, 0.09, -0.40], [1.763, 0.09, 1.20], [1.763, 0.575, -0.40], DUPLET),
+      era(OPLOT_BM_ERA.flankR, [-1.763, 0.09, 1.20], [-1.763, 0.09, -0.40], [-1.763, 0.575, 1.20], DUPLET),
     );
     spec.armor = frame;
     spec.visual.trackWidthM = 0.58;

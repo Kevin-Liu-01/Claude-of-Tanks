@@ -2,13 +2,27 @@
 // (profiles/oplotBM.ts): the turret ring, trunnion and barrel, and the gameplay ERA sectors. Pure data, boot-light.
 // First-party: Kevin B. Liu (NOTICE.md).
 
-/** Ring (hull frame), trunnion (turret frame) and barrel datums; the muzzle stands at hull z 6.18 (9.72 m overall). */
-export const OPLOT_BM_FRAME = Object.freeze({
-  turret: Object.freeze([0, 1.47, 0.19] as const),
+/** The build authors every station at 4.0 times the print and bakes this one uniform factor at the end
+ * (resizeAuthoredVehicle): the registered comparison scale 4.10 (tools/source-world-registration.mjs bm_oplot_m). */
+export const OPLOT_BM_SCALE = 1.025;
+
+/** Authoring-frame datums: the ring (hull frame), the trunnion (turret frame) and the print's 4.92 m barrel. */
+export const OPLOT_BM_AUTHORING = Object.freeze({
+  turret: Object.freeze([0, 1.47, 0.181] as const),
   gun: Object.freeze([0, 0.295, 1.30] as const),
-  barrelM: 4.69,
+  barrelM: 4.92,
   barrelR: 0.112,
   boreR: 0.0625,
+});
+
+const scaled = (v: readonly number[]): [number, number, number] => [v[0] * OPLOT_BM_SCALE, v[1] * OPLOT_BM_SCALE, v[2] * OPLOT_BM_SCALE];
+
+/** The installed (spec and combat-rig) frame: the authoring datums at the registered scale. */
+export const OPLOT_BM_FRAME = Object.freeze({
+  turret: Object.freeze(scaled(OPLOT_BM_AUTHORING.turret)),
+  gun: Object.freeze(scaled(OPLOT_BM_AUTHORING.gun)),
+  barrelM: OPLOT_BM_AUTHORING.barrelM * OPLOT_BM_SCALE,
+  barrelR: OPLOT_BM_AUTHORING.barrelR * OPLOT_BM_SCALE,
 });
 
 /** One seed plate per sector in the spec; the combat anatomy replaces each with its cassette lids. */

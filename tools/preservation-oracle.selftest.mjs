@@ -11,16 +11,17 @@ import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from './second-wave-x-reference-ove
 import { ABRAMS_X_REFERENCE_OVERRIDES } from './abrams-x-reference-overrides.ts';
 import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from './supplied-source-reference-overrides.mjs';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from './oplot-bm-x-reference-overrides.ts';
 
 const page = fs.readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
 const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n\});/)[1];
 const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE, ZTZ100_PROTOTYPE_BASELINE,
   T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES,
-  ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES });
+  ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES, OPLOT_BM_X_REFERENCE_OVERRIDES });
 const modernIsraeliSources = Object.fromEntries(
   ['merkava4_trophy', 'merkava4_barak', 'namer_ifv'].map(id => [id, WEST_X_REFERENCE_OVERRIDES[id]]),
 );
-for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES, ...modernIsraeliSources})) {
+for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES, ...OPLOT_BM_X_REFERENCE_OVERRIDES, ...modernIsraeliSources})) {
   assert.equal(registry[id], source, 'actual fixed source registration survives the VM fixture');
   assert.equal(requiredMinimumForQualityBar(source.qualityBar), 92);
   assert.equal(validatedPreservationOracle(source, id), null, 'new source builds cannot use a preservation exemption');
