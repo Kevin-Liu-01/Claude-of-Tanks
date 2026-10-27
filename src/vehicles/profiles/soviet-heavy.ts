@@ -366,10 +366,10 @@ function addKV2HullFittings(P: SovietHeavyBuilderPort): void {
   P.add('hullDark', cylY(0.25, 0.25, 0.006, 20), 0.42, K.roof + 0.002, 1.66);                             // hatch seam
   P.add('hullDetail', cylY(0.23, 0.23, 0.012, 20), 0.42, K.roof + 0.006, 1.66);                           // hatch lid
   P.add('hullDetail', box(0.10, 0.012, 0.05), 0.42, K.roof + 0.008, 1.40);                                // hinge
-  // the 71-TK-3's whip on the glacis' left edge, 2.19 m off the ring's axis: outside the shield box's sweep (2.03 m)
-  // and the rear overhang's (1.96 m)
+  // the 71-TK-3's whip on the driver's plate's left edge, 2.19 m off the ring's axis: outside the shield box's sweep
+  // (2.03 m) and the rear overhang's (1.96 m), its tip 0.18 m under the tube laid at -5 degrees over it
   {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.86, r: 0.011, rake: 0.07, seed: 4 });
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.70, r: 0.011, rake: 0.07, seed: 4 });
     whip.position.set(0.80, kv2HullProfile(2.36)[1], 2.36);
     P.hullG.add(whip);
   }
@@ -526,7 +526,7 @@ function kv2TurretSection(z: number): [halfW: number, floor: number, roof: numbe
 }
 
 function addKV2Turret(P: SovietHeavyBuilderPort): void {
-  const K = KV2, { box, cylX, cylY, cylZ } = KIT;
+  const K = KV2, { box, cylX, cylZ } = KIT;
   P.turretG.position.set(0, K.ringY, K.ringZ);
   // 75 mm rolled plates (S1), the 1941 production turret: vertical sides and cheeks, a short chamfer over the front
   // plate, the rear 0.7 m standing over the engine deck. The roof edges carry a 15 mm bevel.
@@ -633,7 +633,7 @@ function addKV2TurretRoof(P: SovietHeavyBuilderPort): void {
 }
 
 function addKV2Howitzer(P: SovietHeavyBuilderPort): void {
-  const K = KV2, { box, cylX, cylZ } = KIT;
+  const K = KV2, { cylX, cylZ } = KIT;
   // 152 mm M-10T (S2: L/24.5, 3.70 m, half-jacketed). The cylindrical cradle drum turns in the front plate on the
   // trunnion axis, the armoured box over the recoil cylinders bolted to its face; both pitch with the gun.
   P.gunG.position.set(0, K.trunnionY, K.tFront);

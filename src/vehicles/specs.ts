@@ -414,13 +414,14 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
         shell('G-530 semi-AP', 'AP', 152, 130, 114, 760, 436),
       ],
     },
-    dims: { hullLengthM: 6.95, overallLengthM: 6.95, widthM: 3.32, heightM: 3.25 },
-    // 230 gun-barrel alignment: the turret ring, trunnion and M-10T tube where profiles/soviet-heavy.ts seats them
-    // (rig_turret 0,1.67,0.32; rig_gun 0,0.91,0.68; mouth at 2.37, drawn tube 125 mm). The old placeholder frame put
-    // the combat turret 0.42 m aft and the barrel 0.43 m under the drawn one (tools/gun-barrel-align-census.mjs).
+    // 262 historical rebuild (docs/references/tanks/kv2.md): the KV-1 hull is 6.675 m (ru.wikipedia KV-1), the KV-2
+    // 6.95 m with the howitzer forward (ru.wikipedia KV-2); 3.32 m over the tracks, 3.25 m to the turret roof.
+    dims: { hullLengthM: 6.675, overallLengthM: 6.95, widthM: 3.32, heightM: 3.25 },
+    // the ring at z 0.32 on the 1.67 seat; the M-10T trunnion on the turret's front plate (turret-local 0, 0.93, 1.05 =
+    // world 0, 2.60, 1.37), the tube 2.20 m to the mouth, 0.11-0.13 m in radius (profiles/soviet-heavy.ts KV2)
     armor: communityArmor({
-      lenM: 6.95, widM: 3.32, hgtM: 3.25, turretPivot: [0, 1.67, 0.32],
-      gunPivot: [0, 0.91, 0.68], barrelLenM: 2.37, barrelRadM: 0.125,
+      lenM: 6.675, widM: 3.32, hgtM: 3.25, turretPivot: [0, 1.67, 0.32],
+      gunPivot: [0, 0.93, 1.05], barrelLenM: 2.20, barrelRadM: 0.12,
       frontMm: 75, sideMm: 75, rearMm: 60, roofMm: 30,
       tFrontMm: 75, tSideMm: 75, tRearMm: 75, mantletMm: 110,
     }),
