@@ -23,7 +23,7 @@ assert.equal(spec.name, 'Ares APC');
 assert.equal(spec.nation, 'UK');
 assert.equal(spec.role, 'ifv');
 assert.equal(spec.gun.caliberMm, 12.7);
-assert.equal(tankTier(ID), 7);
+assert.equal(tankTier(ID), 2); // 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
 assert.equal(vehicleEraForId(ID), 'modern');
 assert.equal(FLEET_GROUP_BY_ID[ID], 'aresApcX');
 assert.equal(MODEL_SOURCE[ID].source, 'procedural');

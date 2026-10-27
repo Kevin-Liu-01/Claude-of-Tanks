@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Committed DOM regression: production help/modal owners, no game renderer or GPU capture.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/field-guide'));await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const reports=[],errors=[];
 try{
  for(const [name,width,height,locale] of [['desktop',1440,1000,'en-US'],['portrait',390,844,'en-US'],['landscape',844,390,'en-US'],['short-landscape',568,320,'en-US'],['chinese',667,375,'zh-CN']]){

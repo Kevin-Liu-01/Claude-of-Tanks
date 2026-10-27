@@ -2,6 +2,7 @@
 // This closes the blind spot in networkidle-based probes: hidden asset warming
 // used to produce repeated 100-400 ms frames after the playable UI appeared.
 // Usage: node tools/garage-entry-performance-probe.mjs --url=http://127.0.0.1:4178
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 
 const argv = process.argv.slice(2);
@@ -13,7 +14,7 @@ const baseUrl = option('url', 'http://127.0.0.1:4178').replace(/\/$/, '');
 const cpuRate = Math.max(1, Number(option('cpu-rate', '4')) || 4);
 const sampleMs = Math.max(1_000, Number(option('sample-ms', '5000')) || 5_000);
 const gate = !argv.includes('--no-gate');
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

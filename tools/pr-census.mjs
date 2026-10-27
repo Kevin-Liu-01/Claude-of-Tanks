@@ -31,6 +31,7 @@
 //   per-frame mean;
 // - three's program cache keys hold shader-cache ids and onBeforeCompile sources, which move between builds without any
 //   shader change: --program-dump identifies each live program by its compiled GLSL instead.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from 'node:fs';
@@ -417,7 +418,7 @@ async function capture(opt) {
         servers.set(job.root, await startViteChild({ root: job.root, mode: 'preview', config: { root: job.root, configFile: false, logLevel: 'error',
           build: { outDir: 'dist' }, preview: { host: '127.0.0.1', port: 5481 + servers.size, strictPort: false } } }));
       }
-      browser = await puppeteer.launch({ ...mapProbeLaunchOptions({ width, height, protocolTimeout: 900000 }), timeout: 180000 });
+      browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width, height, protocolTimeout: 900000 }), timeout: 180000 });
       const entries = [];
       for (const job of batch) {
         try {

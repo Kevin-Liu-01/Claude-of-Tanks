@@ -143,7 +143,7 @@ const pins = [
   [/row\.lineTop = line\.round \? 14\.7 : 10;\s+row\.lineFoot = line\.round \? 4\.7 : 1\.1;/, R.readoutAbovePx === 14.7 && R.readoutBelowPx === 4.7],
   [/out\.top = 11\.9 - drop; out\.foot = drop \+ 1\.3;/, R.zoomAbovePx === 11.9 && R.zoomBelowPx === 1.3],
   [/\.width \+ 24 \+ 40 \+ 1\.2;/, true], [/const TAG_GROUP_GAP = 16;/, R.rowGroupPx === 16],
-  [new RegExp(String.raw`const SNIPER_ROW_PLACES: readonly \(readonly \[SniperRowMode, boolean, boolean, boolean\]\)\[\] = \[\s+\['stack', false, false, false\], \['zoomBeside', false, false, false\], \['chipBeside', false, false, true\],\s+\['stack', true, false, true\], \['zoomBeside', true, false, true\], \['rowBeside', false, false, false\],\s+\['rowAbove', false, false, false\], \['rowAbove', true, false, true\], \['stack', false, true, false\], \['stack', true, true, true\],\s+\['rowAbove', false, true, false\], \['rowAbove', true, true, true\],\s+\];`), true],
+  [new RegExp(String.raw`const SNIPER_ROW_PLACES: readonly \(readonly \[SniperRowMode, boolean, boolean, boolean\]\)\[\] = \[\s+\['stack', false, false, false\], \['zoomBeside', false, false, false\], \['chipBeside', false, false, true\],\s+\['stack', true, false, true\], \['zoomBeside', true, false, true\], \['rowBeside', false, false, false\],\s+\['rowAbove', false, true, false\], \['rowAbove', true, true, true\], \['stack', false, true, false\], \['stack', true, true, true\],\s+\];`), true],
   // the range tag at the 4:30, past a rack, or at the 1:30
   [/const offset = 0\.7071 \* \(draw\.radius \+ 9\);/, true], [/const rackClear = draw\.magazine \? draw\.magazineHalfW \+ 10 - 4 : 0;/, true],
   [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear, HIT_SHARD_CLEAR\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],

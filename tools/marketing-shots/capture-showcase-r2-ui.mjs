@@ -3,6 +3,7 @@
 // deterministic public hooks then stage every requested state at a 4K backing
 // resolution without changing live gameplay.
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -60,7 +61,7 @@ try {
   await server.listen();
   const baseUrl = `http://localhost:${server.config.server.port}`;
   console.log(`[showcase-r2-ui] vite up at ${baseUrl}/`);
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     protocolTimeout: 300000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

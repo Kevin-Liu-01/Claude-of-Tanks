@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -13,7 +14,7 @@ const server = await createServer({
 await server.listen();
 const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : 5173;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });

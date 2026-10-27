@@ -1,5 +1,6 @@
 // Recovered from the owner-preserved Studio packet da7e96085; current TypeScript
 // runtime and shared FIFO own execution. Capture/encode must not overlap probes.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 await acquireCaptureLock(45 * 60 * 1000);
 process.once('exit', releaseCaptureLock);
@@ -296,7 +297,7 @@ async function goto(page, path) {
   });
 }
 
-const browser = await puppeteer.launch(nativeBrowserLaunchOptions({
+const browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({
   headless: 'new',
   args: [
     '--use-gl=angle',

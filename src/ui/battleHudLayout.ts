@@ -155,6 +155,8 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
  *  touch warning chip the reticle seats under the sight itself (data-seat, hud.ts) is one of the reticle's marks. A shot
  *  report, the open combat log and the centre notices are passing overlays the reticle never dodges, or its marks would
  *  jump as they come and go (only the vision switch keeps clear of the right lane's: seatScopeVision). */
+/** How much further than the reticle's 3 px gap its marks keep from a round touch control (publishSightFurniture). */
+const ROUND_CONTROL_PAD = 5;
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-pips.show', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
@@ -503,7 +505,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     clearSightFurniture();
     for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
       const box = shownBox(node);
-      if (box) addSightFurniture(box.left, box.top, box.right, box.bottom);
+      if (!box) continue;
+      // (a round control's ring keeps the reticle's marks the layout's 8 px off, their 3 px gap and ROUND_CONTROL_PAD:
+      // the scope's line ended 5 px over the second FIRE's ring at 320x568, gauntlet r14)
+      const pad = node.matches?.('.cot-touch.on .round') ? ROUND_CONTROL_PAD : 0;
+      addSightFurniture(box.left - pad, box.top - pad, box.right + pad, box.bottom + pad);
     }
     // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
     // land on any frame of that, its first included; r10e)
@@ -802,6 +808,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.mapSlot;
     }
     const map = read('.cot-minimap');
+    // (the spectate bar, centred on the floor, ends 8 px short of a map in its band: at 720 px it met the map's larger step
+    // at 1440x900, gauntlet r14's overlap receipt)
+    const specRoom = map && map.left > width / 2 && map.bottom > height - 16 - 64 ? 2 * (map.left - 8 - width / 2) : 0;
+    setBodyVar('--hud-spec-max', specRoom > 0 ? `${Math.floor(specRoom)}px` : '');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
     // the team strip under the score (hudTeamPips.ts), where it shows; the objective under the score sits under it
@@ -827,7 +837,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       chipsBeside = besideRight || overMap;
       setBodyVar('--hud-pips-top', `${Math.round(besideRight && objective && chipsNow ? objective.top + (objective.height - chipsNow.height) / 2
         : overMap && objective ? objective.bottom + 8 : under + PIPS_GAP)}px`);
-      setBodyVar('--hud-pips-left', besideRight && objective ? `${Math.round(objective.right + 6)}px` : overMap ? '8px' : '');
+      // (over the map on its left edge: at 8 px the chips' row stood 4 px left of the map under it, gauntlet r14 at 320x568)
+      setBodyVar('--hud-pips-left', besideRight && objective ? `${Math.round(objective.right + 6)}px` : overMap ? `${Math.round(map?.left ?? 12)}px` : '');
       setBodyVar('--hud-pips-shift', chipsBeside ? '0px' : '');
       chips = chipsBeside ? null : read('.cot-pips.show');
     }
@@ -1326,17 +1337,24 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (29 - pitchOff <= pitchOff) { if (leftLater) leftAnchor += 29 - pitchOff; else rightAnchor += 29 - pitchOff; }
       else if (leftLater) rightAnchor += pitchOff; else leftAnchor += pitchOff;
     }
-    const wideFeedRows = touch && width < height && width < 600 && !!map && map.left < width / 2
-      ? Math.floor((leftAnchor - 8 - rightAnchor + 3) / 29) : 0;
-    const wideFeed = wideFeedRows >= 2;
-    const wideFeedWidth = wideFeed ? width - map!.right - 8 : 0;
+    // (its rows counted at the pitch they take: a feed under FEED_STACK_W stacks them 41 px apart, and rows counted at 29
+    // ran its last row 10 px into the personal lane in the drone's feed at 320x568, gauntlet r14)
+    const wideFeedRoom = touch && width < height && width < 600 && !!map && map.left < width / 2 ? width - map.right - 8 : 0;
+    const wideFeedRows = wideFeedRoom > 0
+      ? Math.floor((leftAnchor - 8 - rightAnchor + 3) / (wideFeedRoom < FEED_STACK_W ? FEED_STACK_PITCH : 29)) : 0;
+    // (one row is enough where the half lane would stack too: the two lanes side by side in one band read as one line at
+    // 320x568 and kept no common baseline at 390x844 in the flights, gauntlet r14)
+    const wideFeed = wideFeedRows >= (sideWidth < FEED_STACK_W ? 1 : 2);
+    const wideFeedWidth = wideFeed ? wideFeedRoom : 0;
     setBodyVar('--hud-kill-right-width', wideFeed ? `${Math.floor(wideFeedWidth)}px` : '');
     // (... and the personal lane under it the window's width, the global feed's rows ending above it: in half the window
     // its callsigns read "Commander_Long…" beside a damage row printing the whole name, gauntlet r5)
     // (never under the ammunition and the consumables where they stand beside it: at 320x568 the lane and the hit rows
     // ran under the column right of the sight, the layout receipt)
     let besideColumn = width - 24;
-    for (const box of [ammo, read('.cot-cons')]) {
+    // (Watch's rail of controls at the right edge too: the drone's personal lane ran 46 px under it at 390x844, the overlap
+    // receipt in round 14)
+    for (const box of [ammo, read('.cot-cons'), read('.cot-watch-rail')]) {
       // (beside the rows' band from the lane's anchor: its floor can stand over the anchor, a portrait phone's systems slot)
       if (box && box.left > width / 2 && box.top < Math.max(leftEnd, leftAnchor + 3 * 29) && box.bottom > leftAnchor) besideColumn = Math.min(besideColumn, box.left - 8);
     }
@@ -1348,9 +1366,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
     killRight?.toggleAttribute?.('data-stack', rightPitch !== 29);
     // (a portrait phone's hit rows at the feed's width, min(320 px, the window less 24): battleHudLayout.css)
     setBodyVar('--hud-feed-width', touch && width < height && besideColumn < Math.min(320, width - 24) ? `${Math.floor(besideColumn)}px` : '');
+    // A flight's sight at the centre (aerialHud.css .flight-sight) ends a lane that crosses it: a portrait phone's lanes run
+    // to the column right of the sight, and the drone's personal lane ran its third row through it at 320x568, gauntlet r14.
+    // (and on a portrait phone the tank's reticle, its band around the centre: Watch's ride ran a feed row through the idle
+    // ring at 320x568, gauntlet r14)
+    const flightSight = read('.cot-flight-hud:not([hidden]) .flight-sight');
+    const sight = flightSight ?? (touch && width < height ? { left: width / 2 - SIGHT_BAND_ABOVE, right: width / 2 + SIGHT_BAND_ABOVE,
+      top: height / 2 - SIGHT_BAND_ABOVE, bottom: height / 2 + SIGHT_BAND_BELOW } : null);
+    const sightFloor = (anchor: number, crosses: boolean) =>
+      sight && crosses && sight.bottom + 8 > anchor ? sight.top - 8 : Infinity;
+    const leftReach = touch && width < height ? Math.max(sideWidth, wideFeed ? wideLeftFeed : besideColumn) : sideWidth;
     // (on mouse the plan's countdown band above already keeps the lanes off it)
-    const leftKillBottom = !plan && countdown && countdown.left < sideWidth
-      && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd;
+    const leftKillBottom = Math.min(!plan && countdown && countdown.left < sideWidth
+      && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd,
+    sightFloor(leftAnchor, !!sight && sight.left - 8 < leftReach));
     const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
@@ -1368,15 +1397,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     root.classList.toggle('micro-shot-report', dockReport && report.height < MICRO_REPORT_H);
     const rightKillBottom = !plan && countdown && countdown.right > width - sideWidth
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
+    const rightReach = wideFeed ? width - wideFeedWidth : width - sideWidth;
+    const rightKillEnd = Math.min(rightKillBottom, rightKillFloor, rightEnd,
+      sightFloor(rightAnchor, !!sight && sight.right + 8 > rightReach));
     const killRowsRight = Math.min(wideFeed ? wideFeedRows : Infinity,
-      battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, killRight?.childElementCount || 0, rightPitch));
+      battleNotificationRows(rightKillEnd - rightAnchor, killRight?.childElementCount || 0, rightPitch));
     setRows(killRight, killRowsRight);
     const killHeightRight = Math.max(0, killRowsRight * rightPitch - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     // A portrait phone's personal lane takes the width to the ammunition column where the global feed's room (its rows'
     // capacity, never the rows it holds, so nothing moves as kills come and go) leaves its band: beside an empty half its
     // victims read "Commander…" at 320x568, gauntlet r9.
-    const rightRoomRows = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, MAX_BATTLE_NOTIFICATIONS, rightPitch);
+    const rightRoomRows = battleNotificationRows(rightKillEnd - rightAnchor, MAX_BATTLE_NOTIFICATIONS, rightPitch);
     const rightRoomBottom = rightAnchor + Math.max(0, rightRoomRows * rightPitch - 3);
     const leftAlone = touch && width < height && !wideFeed && killRowsLeft > 0
       && (rightRoomRows === 0 || rightRoomBottom <= leftAnchor - 8 || rightAnchor >= leftKillBottom);

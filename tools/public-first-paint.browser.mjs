@@ -14,6 +14,7 @@
 //     [--compare=<another run's first-paint.json>]   (also diff this run's JavaScript layouts against an earlier run)
 // Writes first-paint.json and first-viewport screenshots; exits 1 when a page's two layouts differ (or, with --compare,
 // when a JavaScript layout moved).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -85,7 +86,7 @@ function differences(a, b, height) {
   return { compared, rows };
 }
 
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu', '--hide-scrollbars'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu', '--hide-scrollbars'] });
 const report = { origin, tolerance, pages: {} };
 let failed = 0;
 try {

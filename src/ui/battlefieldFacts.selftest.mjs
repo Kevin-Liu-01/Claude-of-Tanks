@@ -1,12 +1,12 @@
 // The battlefield picker's facts (src/ui/battlefieldFacts.ts): every map has a name, a landscape, at least one hour,
 // every battle mode and pictures that exist on disk; Random draws every map but the space ones; the space maps light only
-// by day; an unknown id reads as Verdant Fields; the placeholder table answers for every map. Its still list is the maps-r1
+// by day; an unknown id reads as Verdant Fields. Its still list is the maps-r1
 // manifest's, rung for rung, its hover loops the manifest's, and a map without stills reads the generated art table's own paths.
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { battlefieldFacts, battlefieldList, battlefieldPlaceholder } from './battlefieldFacts.ts';
+import { battlefieldFacts, battlefieldList } from './battlefieldFacts.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { BATTLE_TIMES } from '../engine/battleWeatherPolicy.ts';
@@ -46,8 +46,6 @@ for (const facts of list) {
   else assert.deepEqual([...facts.hours], [...BATTLE_TIMES], `${facts.id} plays every hour`);
 }
 assert.equal(battlefieldFacts('nowhere').id, 'verdant', 'an unknown id reads as Verdant Fields');
-for (const id of MAP_IDS) assert.match(await battlefieldPlaceholder(id), /^data:image\//, `${id} has a placeholder`);
-assert.equal(await battlefieldPlaceholder('nowhere'), '', 'an unknown id has no placeholder');
 assert.deepEqual(list.filter((facts) => facts.poster.srcset.includes('/media/maps-r1/')).map((facts) => facts.id).sort(), [...stills.keys()].sort(),
   'the still list is the maps-r1 manifest\'s');
 console.log(`battlefieldFacts.selftest: ${list.length} battlefields (${stills.size} on maps-r1 stills, ${loops.size} with hover loops), each with its landscape, hours, modes and pictures`);

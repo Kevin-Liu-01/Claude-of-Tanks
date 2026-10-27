@@ -48,6 +48,7 @@
 // first (world-residency-acquisition's settleResidencyTerrain: the lookahead built job by job until none is pending at the
 // camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
@@ -1154,7 +1155,7 @@ async function run(options) {
     return { action: 'measure', accepted: j.accepted };
   };
   try {
-    browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
+    browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
       args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', '--window-size=1920,1080'] });
     const queue = [...todo];
     let revisited = false;

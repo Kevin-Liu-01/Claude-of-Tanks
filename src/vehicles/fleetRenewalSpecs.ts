@@ -73,8 +73,15 @@ export function synchronizeFleetRenewalMetadata():void{
   if(synchronized)return;
   synchronized=true;
   // Snapshot before any reverse donor links are updated (the historical X
-  // registrations originated from these older slots).
-  const donors=structuredClone(TANK_SPECS);
+  // registrations originated from these older slots). (2026-10-26, the boot census) Only the donors read below: a clone
+  // of the whole fleet was the boot screen's largest single cost in the fleet chunk's evaluation. A read outside the
+  // list throws at import, so a donor added below is listed here with it.
+  const donorIds=new Set([...Object.values(FLEET_RENEWAL_DONORS),'t90sm','t72b_1987','t62_1975','t80u','t84','t72b3m_2016','t72b3','type96b']);
+  const snapshot=Object.fromEntries([...donorIds].map(id=>[id,structuredClone(TANK_SPECS[id])])) as Record<string,FleetTankSpec>;
+  const donors=new Proxy(snapshot,{get(target,id){
+    if(typeof id==='string'&&!(id in target))throw new Error(`fleet renewal: donor '${id}' is not in the snapshot`);
+    return target[id as string];
+  }});
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
   TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
   // release 231: the T-80UK's own measured stops (its command kit over the rear deck; t80uXArmor.ts)

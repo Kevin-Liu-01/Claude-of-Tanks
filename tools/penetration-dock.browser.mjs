@@ -1,4 +1,5 @@
 // Production HUD geometry regression. No WebGL or frame-rate claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -23,7 +24,7 @@ function unchanged(before,after,label){
  else assert.ok(Math.min(after.map.right,after.card.right)<=Math.max(after.map.left,after.card.left)||after.card.top>=after.map.bottom+11.5,`${label}: top-mounted map overlaps report`);
 }
 try{
- await server.listen();browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch=false,locale='en-US']of [
   ['desktop',1440,900],['laptop',1366,768],['small',1024,600],['short',844,390],['portrait-mouse',820,1180],
   ['compact-mouse',540,720],['narrow-mouse',390,844],['touch',667,375,true],['tiny-touch',568,256,true],['zh',1366,768,false,'zh-CN']]){

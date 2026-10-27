@@ -1,4 +1,5 @@
 // DOM-only regression: real production HUD + settings. Run under capture-command queue.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir,writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -10,7 +11,7 @@ const server=await createServer({server:{host:'127.0.0.1',port:5358},logLevel:'e
 let browser;
 try{
  await server.listen();const port=server.httpServer.address().port;
- browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+ browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
  const results=[];
  for(const [name,width,height,touch] of [['desktop',1440,900,false],['portrait',390,844,true],['landscape',667,375,true],['tiny-landscape',568,256,true]]){
   const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,reducedMotion:'reduce'});

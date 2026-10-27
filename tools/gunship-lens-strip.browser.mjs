@@ -11,6 +11,7 @@
 // <tag>-<view>-<lens>-<gun>-f<N>.png beside <tag>-manifest.json. `--soft` renders on SwiftShader without the lock (a
 // smoke test of the harness, never a verdict frame).
 //   node tools/gunship-lens-strip.browser.mjs --runs=base:dist-base:desktop+phone:daylight+thermal [--stamp=<ms>]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { preview } from 'vite';
@@ -82,7 +83,7 @@ async function filmBuild(run, manifest) {
   const port = server.httpServer.address().port;
   const args = ['--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
     ...(soft ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-gl=angle'])];
-  const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000, args,
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000, args,
     executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
   try {
     for (const viewName of run.views) {

@@ -6,6 +6,7 @@
 // Optional --timeout-ms=180000 --cover-limit-ms=500 --observe-held-ms=1500.
 // No server/build, debug entry, runtime substitution, audio/device changes, or
 // rendering overrides. Delays exactly one real loading-module network request.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -133,7 +134,7 @@ try {
   scenarioStartedAt = performance.now();
   const { default: puppeteer } = await import('puppeteer');
   // Puppeteer owns the fresh temporary profile and its bounded launch timeout.
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 30000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30000,
     protocolTimeout: 15000, handleSIGINT: false, handleSIGTERM: false,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   active();

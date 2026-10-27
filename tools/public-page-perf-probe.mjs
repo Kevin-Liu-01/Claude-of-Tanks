@@ -7,6 +7,7 @@
 // The probe keeps navigation and scroll measurements separate so the initial
 // critical path cannot be hidden by below-fold media work.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 
 const argv = process.argv.slice(2);
@@ -25,7 +26,7 @@ if (!['mobile', 'desktop'].includes(profile)) {
   throw new Error(`Unknown profile '${profile}' (expected mobile or desktop)`);
 }
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });

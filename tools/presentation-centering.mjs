@@ -8,6 +8,7 @@
 //   node tools/presentation-centering.mjs --sync-assets --ids=a,b
 //   node tools/presentation-centering.mjs --rekey   # move renamed ids' rows (tank id alias layer), no capture
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createServer } from 'vite';
@@ -125,7 +126,7 @@ const origin = boundOrigin(server);
 // navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
 // COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
 const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'presentation-centering', ready: 'window.__ICONS_READY === true' });
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

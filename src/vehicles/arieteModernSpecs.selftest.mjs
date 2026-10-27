@@ -22,15 +22,16 @@ import { auditFleetBalance, sustainedPrimaryDpm } from './balanceAudit.ts';
 // order, paint and lazy-registration contracts below are live.
 assert.equal(TANK_SPECS.c1_ariete_proto_serie1.name, 'C1 Ariete Prototype (Serie 1)');
 assert.equal(TANK_SPECS.c2_ariete_proto.name, 'C2 Ariete Prototype');
-assert.equal(tankTier('c1_ariete_proto_serie1'), 9);
-assert.equal(tankTier('c2_ariete_proto'), 10);
+// 258: matchmaking reads the shown tier (the approved 257 capability re-tier)
+assert.equal(tankTier('c1_ariete_proto_serie1'), 6);
+assert.equal(tankTier('c2_ariete_proto'), 7);
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.ok(!SECOND_WAVE_X_IDS.includes('c2_ariete'), 'new C2 is not inserted into the historical source wave');
 assert.deepEqual(FLEET_GROUP_IDS.arieteX, ['c1_ariete', 'c2_ariete']);
 
 assert.equal(ARIETE_X_FAMILY_SCALE, 1.12 * 1.10, 'fixed owner-directed enlargement');
 const c1 = TANK_SPECS.c1_ariete, c2 = TANK_SPECS.c2_ariete;
-for (const [spec, datums, tier] of [[c1, C1, 10], [c2, C2, 10]]) {
+for (const [spec, datums, tier] of [[c1, C1, 6], [c2, C2, 7]]) {
   assert.equal(ALL_TANK_IDS.filter(id => id === spec.id).length, 1);
   assert.ok(PRODUCTION_TANK_IDS.includes(spec.id));
   assert.equal(tankTier(spec.id), tier);

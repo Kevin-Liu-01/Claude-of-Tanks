@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { pathToFileURL } from 'node:url';
 
 function validateScenario(mapId, cpuRate) {
@@ -32,7 +33,7 @@ async function createBenchmarkServer(options) {
 
 async function launchBenchmarkBrowser(options) {
   const { default: puppeteer } = await import('puppeteer');
-  return puppeteer.launch(options);
+  return launchGuardedBrowser(puppeteer, options);
 }
 
 async function closeBenchmarkResources(session, browser, server, failed) {

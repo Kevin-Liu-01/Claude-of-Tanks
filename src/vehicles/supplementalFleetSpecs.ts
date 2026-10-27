@@ -254,6 +254,13 @@ const SPECS: FleetTankSpec[] = [
         })),
       },
       dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
+      // 2026-10-26 (the trunnion at 2.10 under the compact A5 shield, patton.ts): measured by tools/gun-depression-sweep.mjs
+      // (26 mm from the hull): the full -9 deg over the front 16 deg either side, the fender stowage's stops abeam and the
+      // engine deck's -3 deg over the rear
+      gunPitchByYawDeg: [[0, -9], [16, -9], [18, -7.1], [19, -6.7], [31, -5.8], [33, -5.8], [41, -7.4], [44, -6.9], [46, -6.9],
+        [54, -8.4], [56, -7.5], [58, -7.5], [61, -7.8], [62, -7.5], [65, -7.5], [76, -9], [104, -9], [107, -8], [109, -7], [110, -6.6],
+        [115, -5.9], [119, -5.8], [120, -6.1], [123, -7.5], [137, -5.6], [138, -5.4], [139, -4.4], [140, -4], [142, -3.7], [148, -3],
+        [180, -3]],
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 2250, enginePowerHp: 750, weightTons: 52, reverseSpeedKmh: 18,

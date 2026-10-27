@@ -789,6 +789,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
+    // launch in the checkout goes through it
+    'tools/browser-launch.selftest.mjs',
+    'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
@@ -874,6 +878,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
@@ -950,6 +955,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -2360,6 +2366,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
+    'src/ui/garageBattleQuick.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',

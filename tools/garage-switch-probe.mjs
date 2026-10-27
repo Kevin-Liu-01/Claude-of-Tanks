@@ -53,6 +53,7 @@
 //
 // Exit 0 = all phases pass (convergence) / no errors and, with --gate, budget met.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -329,7 +330,7 @@ async function runConvergence({ root, rounds, clicks, seed, skipA, skipC }) {
   const { server, close } = await startServer({ root, portBand: 7100, rng });
   const url = `http://127.0.0.1:${serverPort(server)}/`;
   console.log(`[garage-switch-probe] vite up at ${url} (root ${root}, seed ${seed})`);
-  const browser = await puppeteer.launch({ headless: 'new', args: BROWSER_ARGS });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: BROWSER_ARGS });
   let failures = 0;
 
   async function phaseAB() {
@@ -674,7 +675,7 @@ export async function runProfile(options = {}) {
   const url = garageSwitchUrl(`http://127.0.0.1:${serverPort(server)}/`, { tier }).href;
   const serving = dist ? `production preview of ${dist}` : `vite dev server (root ${root})`;
   log(`[garage-switch-probe] ${serving} at ${url}`);
-  const browser = await puppeteer.launch(nativeBrowserLaunchOptions({
+  const browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({
     headless: 'new', args: BROWSER_ARGS, protocolTimeout: 240000,
   }));
   const errors = [];

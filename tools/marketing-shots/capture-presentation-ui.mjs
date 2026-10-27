@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
 // Capture the public Gallery, Scene Studio, and responsive mobile command deck
 // that sit beside tools/screenshot.mjs's deterministic game-state views in the
@@ -55,7 +56,7 @@ try {
   await server.listen();
   const baseUrl = `http://localhost:${server.config.server.port}`;
   console.log(`[presentation-ui] vite up at ${baseUrl}/`);
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     protocolTimeout: 300000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
