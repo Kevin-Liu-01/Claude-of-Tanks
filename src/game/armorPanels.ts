@@ -11,8 +11,10 @@
 //     few, and a real crease starts the next;
 //   - slivers and fans (a panel under MIN_PANEL_M2) join the neighbour they share the most border with, whatever its
 //     plate, unless the sliver is all its zone has;
-//   - a facet poking into a neighbour (more border with it than with its own panel) moves across, so borders between
-//     panels run straight instead of in teeth;
+//   - neighbouring panels of one zone that still fit one slab merge (the small steps between the cells' slices);
+//   - a facet poking into a neighbouring panel of its zone (more border with it than with its own) moves across, so
+//     borders between panels run straight instead of in teeth;
+//   - lines are drawn on zone borders and corners only: panels of one zone show their colours, not a line;
 //   - each panel aims a few samples (one per ~SAMPLE_AREA_M2, at most MAX_SAMPLES) at points spread over it; the
 //     flashlight blends their penetration estimates, weighted by the area each stands for, into one colour.
 //
@@ -27,9 +29,21 @@ const PANEL_SLAB_M = 0.1;
 const PANEL_SPREAD_COS = 0.5;
 /** A facet moves into a neighbouring panel (border smoothing) only within this of that panel's normal (40°). */
 const NEIGHBOUR_CREASE_COS = Math.cos((40 * Math.PI) / 180);
+/** Two panels of one zone merge (steps between the cells' slices) only within this of each other's normal (45°). */
+const MERGE_COS = Math.cos((45 * Math.PI) / 180);
+/** Neighbouring pieces this close in direction (35°) are one surface: their zones' border may be straightened. */
+const SAME_SURFACE_COS = Math.cos((35 * Math.PI) / 180);
+/** Opposite faces this close (m) and this nearly opposite (|cos|) are a crack between slices, not armour skin. */
+const CRACK_M = 0.04;
+const CRACK_FACING = 0.995;
+/** Facets meeting at more than this (70°) are a corner and outlined even within one zone; the cells' slicing wedges
+ * fold less. */
+const CORNER_COS = Math.cos((70 * Math.PI) / 180);
+/** A facet narrower than about this (m: its area over its longest edge) is a sliver and draws no outline. */
+const SLIVER_WIDTH_M = 0.015;
 /** Panels under this area (m²) are slivers, fans and fittings, not armour plates. */
 const MIN_PANEL_M2 = 0.06;
-/** A zone smaller than this (m²) in total is noise: it never keeps a panel of its own. */
+/** A zone whose largest panel is smaller than this (m²) is noise (slivers of slice caps): it keeps no panel of its own. */
 const MIN_ZONE_M2 = 0.02;
 /** A facet moves to the neighbouring panel it shares more border with only while it is this small a part of its own. */
 const SMOOTH_SHARE = 0.3;
@@ -37,12 +51,16 @@ const SMOOTH_PASSES = 3;
 /** One sample per this much panel area (m²), at most MAX_SAMPLES. */
 const SAMPLE_AREA_M2 = 0.6;
 const MAX_SAMPLES = 4;
-/** Edges this close to one line (m) and overlapping by more than EDGE_OVERLAP_M are one shared edge. */
-const EDGE_LINE_M = 2e-3;
+/**
+ * Edges this close to one line (m) and overlapping by more than EDGE_OVERLAP_M are one shared edge: neighbouring
+ * slices of the cells meet up to a few centimetres apart (a step and its sliver of cap between), and still border.
+ */
+const EDGE_LINE_M = 0.04;
 const EDGE_OVERLAP_M = 2e-3;
-const GRID_M = 0.25;
+/** Edges this parallel (|cos|) may be one line (about 11°). */
+const PARALLEL_DOT = 0.98;
 
-export interface ArmorPanelFacet {
+interface ArmorPanelFacet {
   /** Convex, counter-clockwise about the normal. */
   readonly points: readonly SkinPoint[];
   readonly normal: SkinPoint;
@@ -54,7 +72,7 @@ export interface ArmorPanelFacet {
   readonly plate: unknown;
 }
 
-export interface ArmorPanel {
+interface ArmorPanel {
   /** The zone: the authored plate most of the panel resolves to. */
   readonly plate: unknown;
   /** Area-weighted mean outward normal. */
@@ -66,13 +84,14 @@ export interface ArmorPanel {
   readonly weights: readonly number[];
 }
 
-export interface ArmorPanelSet {
+interface ArmorPanelSet {
   readonly skin: readonly ArmorSkinPanel[];
   readonly facets: readonly ArmorPanelFacet[];
   readonly panels: readonly ArmorPanel[];
   /** The panel of each facet. */
   readonly facetPanel: Int32Array;
-  /** Whether each facet edge (points[i] → points[i + 1]) is on a panel border: its per-facet offset into `borders`. */
+  /** Whether each facet edge (points[i] → points[i + 1]) is outlined (a zone border or a crease): its per-facet offset
+   * into `borders`. */
   readonly edgeStart: Int32Array;
   readonly borders: Uint8Array;
 }
@@ -121,54 +140,100 @@ function edgeAdjacency(facets: readonly ArmorPanelFacet[]): {
     }
   });
   edgeStart[facets.length] = edges.length;
-  const grid = new Map<string, number[]>();
-  const cellsOf = (edge: Edge): string[] => {
-    const b: SkinPoint = [edge.a[0] + edge.dir[0] * edge.length, edge.a[1] + edge.dir[1] * edge.length, edge.a[2] + edge.dir[2] * edge.length];
-    const lo = [0, 1, 2].map((axis) => Math.floor((Math.min(edge.a[axis], b[axis]) - EDGE_LINE_M) / GRID_M));
-    const hi = [0, 1, 2].map((axis) => Math.floor((Math.max(edge.a[axis], b[axis]) + EDGE_LINE_M) / GRID_M));
-    const keys: string[] = [];
-    for (let x = lo[0]; x <= hi[0]; x++) for (let y = lo[1]; y <= hi[1]; y++) for (let z = lo[2]; z <= hi[2]; z++) keys.push(`${x},${y},${z}`);
-    return keys;
-  };
-  edges.forEach((edge, index) => {
-    if (!(edge.length > EDGE_OVERLAP_M)) return;
-    for (const key of cellsOf(edge)) {
-      let list = grid.get(key);
-      if (!list) { list = []; grid.set(key, list); }
-      list.push(index);
+  // facet pairs whose bounds (grown by the line tolerance) overlap, by a sweep along x; then their edge pairs
+  const bounds = facets.map((facet) => {
+    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+    for (const point of facet.points) for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], point[axis] - EDGE_LINE_M); max[axis] = Math.max(max[axis], point[axis] + EDGE_LINE_M);
     }
+    return { min, max };
   });
+  const byX = facets.map((_, index) => index).sort((a, b) => bounds[a].min[0] - bounds[b].min[0] || a - b);
   const neighbours = facets.map(() => new Map<number, number>());
   const along: Array<Array<[number, number]>> = edges.map(() => []);
-  const tested = new Set<number>();
-  for (const list of grid.values()) {
-    for (let i = 0; i < list.length; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        const p = list[i] < list[j] ? list[i] : list[j], q = list[i] < list[j] ? list[j] : list[i];
-        const e = edges[p], f = edges[q];
-        if (e.facet === f.facet) continue;
-        const pair = p * edges.length + q;
-        if (tested.has(pair)) continue;
-        tested.add(pair);
-        const fb: SkinPoint = [f.a[0] + f.dir[0] * f.length, f.a[1] + f.dir[1] * f.length, f.a[2] + f.dir[2] * f.length];
-        const ra = sub(f.a, e.a), rb = sub(fb, e.a);
-        const ta = dot(ra, e.dir), tb = dot(rb, e.dir);
-        const offA = Math.hypot(ra[0] - e.dir[0] * ta, ra[1] - e.dir[1] * ta, ra[2] - e.dir[2] * ta);
-        const offB = Math.hypot(rb[0] - e.dir[0] * tb, rb[1] - e.dir[1] * tb, rb[2] - e.dir[2] * tb);
-        if (offA > EDGE_LINE_M || offB > EDGE_LINE_M) continue;
-        const overlap = Math.min(e.length, Math.max(ta, tb)) - Math.max(0, Math.min(ta, tb));
-        if (!(overlap > EDGE_OVERLAP_M)) continue;
-        along[p].push([f.facet, overlap]);
-        along[q].push([e.facet, overlap]);
-        neighbours[e.facet].set(f.facet, (neighbours[e.facet].get(f.facet) || 0) + overlap);
-        neighbours[f.facet].set(e.facet, (neighbours[f.facet].get(e.facet) || 0) + overlap);
+  for (let i = 0; i < byX.length; i++) {
+    const a = byX[i], A = bounds[a];
+    for (let j = i + 1; j < byX.length; j++) {
+      const b = byX[j], B = bounds[b];
+      if (B.min[0] > A.max[0]) break;
+      if (B.min[1] > A.max[1] || B.max[1] < A.min[1] || B.min[2] > A.max[2] || B.max[2] < A.min[2]) continue;
+      for (let p = edgeStart[a]; p < edgeStart[a + 1]; p++) {
+        const e = edges[p];
+        if (!(e.length > EDGE_OVERLAP_M)) continue;
+        const ex = e.a[0], ey = e.a[1], ez = e.a[2], dx = e.dir[0], dy = e.dir[1], dz = e.dir[2];
+        for (let q = edgeStart[b]; q < edgeStart[b + 1]; q++) {
+          const f = edges[q];
+          if (!(f.length > EDGE_OVERLAP_M)) continue;
+          // one line: nearly parallel (a short edge off the line cannot overlap it by much), both ends on it
+          const parallel = dx * f.dir[0] + dy * f.dir[1] + dz * f.dir[2];
+          if (parallel < PARALLEL_DOT && parallel > -PARALLEL_DOT) continue;
+          const ax = f.a[0] - ex, ay = f.a[1] - ey, az = f.a[2] - ez;
+          const ta = ax * dx + ay * dy + az * dz;
+          const ox = ax - dx * ta, oy = ay - dy * ta, oz = az - dz * ta;
+          if (ox * ox + oy * oy + oz * oz > EDGE_LINE_M * EDGE_LINE_M) continue;
+          const bx = ax + f.dir[0] * f.length, by = ay + f.dir[1] * f.length, bz = az + f.dir[2] * f.length;
+          const tb = bx * dx + by * dy + bz * dz;
+          const px = bx - dx * tb, py = by - dy * tb, pz = bz - dz * tb;
+          if (px * px + py * py + pz * pz > EDGE_LINE_M * EDGE_LINE_M) continue;
+          const overlap = Math.min(e.length, Math.max(ta, tb)) - Math.max(0, Math.min(ta, tb));
+          if (!(overlap > EDGE_OVERLAP_M)) continue;
+          along[p].push([b, overlap]);
+          along[q].push([a, overlap]);
+          neighbours[a].set(b, (neighbours[a].get(b) || 0) + overlap);
+          neighbours[b].set(a, (neighbours[b].get(a) || 0) + overlap);
+        }
       }
     }
   }
   return { neighbours, edges, edgeStart, along };
 }
 
-interface Group { plate: unknown; sum: SkinPoint; area: number; facets: Set<number>; points: SkinPoint[] }
+/**
+ * Slices of the cells that stop a few centimetres short of each other leave a crack: the two caps either side face
+ * each other, both outer skin, and seen edge-on from the side they draw as lines. Facets facing each other (opposite
+ * normals) across less than CRACK_M, one's centre over the other, are the inside of the armour: both go.
+ */
+function dropCracks(facets: ArmorPanelFacet[]): void {
+  const drop = new Set<number>();
+  const order = facets.map((_, index) => index).sort((a, b) => facets[a].centroid[0] - facets[b].centroid[0] || a - b);
+  const reach = facets.map((facet) => {
+    let radius = 0;
+    for (const point of facet.points) radius = Math.max(radius, distance(point, facet.centroid));
+    return radius;
+  });
+  let widest = 0;
+  for (const radius of reach) widest = Math.max(widest, radius);
+  const over = (top: ArmorPanelFacet, below: ArmorPanelFacet): boolean => {
+    const depth = dot(below.normal, sub(top.centroid, below.points[0]));
+    if (Math.abs(depth) > CRACK_M) return false;
+    const projected: SkinPoint = [top.centroid[0] - below.normal[0] * depth, top.centroid[1] - below.normal[1] * depth,
+      top.centroid[2] - below.normal[2] * depth];
+    for (let i = 0; i < below.points.length; i++) {
+      const a = below.points[i], b = below.points[(i + 1) % below.points.length];
+      if (dot(cross(sub(b, a), sub(projected, a)), below.normal) < 0) return false;
+    }
+    return true;
+  };
+  for (let i = 0; i < order.length; i++) {
+    const a = facets[order[i]];
+    for (let j = i + 1; j < order.length; j++) {
+      const b = facets[order[j]];
+      if (b.centroid[0] - a.centroid[0] > reach[order[i]] + widest + CRACK_M) break;
+      if (dot(a.normal, b.normal) > -CRACK_FACING || distance(a.centroid, b.centroid) > reach[order[i]] + reach[order[j]] + CRACK_M) continue;
+      if (over(a, b) || over(b, a)) { drop.add(order[i]); drop.add(order[j]); }
+    }
+  }
+  if (!drop.size) return;
+  let kept = 0;
+  for (let index = 0; index < facets.length; index++) if (!drop.has(index)) facets[kept++] = facets[index];
+  facets.length = kept;
+}
+
+interface Group {
+  plate: unknown; sum: SkinPoint; area: number; facets: Set<number>; points: SkinPoint[];
+  /** The group's corners' extent along its mean normal (the slab), kept while growing. */
+  low: number; high: number;
+}
 
 const meanNormal = (group: Group): SkinPoint => {
   const size = Math.hypot(group.sum[0], group.sum[1], group.sum[2]) || 1;
@@ -215,15 +280,35 @@ function panelSamples(facets: readonly ArmorPanelFacet[], members: readonly numb
 
 function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeof zonePlates>[0]): ArmorPanelSet {
   const zones = zonePlates(plates);
-  const facets: ArmorPanelFacet[] = [];
+  const zoneOf = new Map<unknown, number>();
+  zones.forEach((zone, index) => zoneOf.set(zone.plate, index));
+  // the skin's pieces as the authority zones them (each the plate its face resolves to); a piece may change only to
+  // the zone of a neighbour on the same surface, so the classifier straightens the borders the authority zigzags and
+  // never re-zones a face it gives one plate whole
+  const base: ArmorPanelFacet[] = [];
   skin.forEach((panel, index) => {
     for (const piece of panel.pieces) {
-      for (const part of zones.length ? splitByZones(zones, piece, panel.normal) : [{ zone: -1, points: piece }]) {
-        const facet = facetOf(part.points, panel.normal, index, part.zone >= 0 ? zones[part.zone].plate : panel.plate);
-        if (facet) facets.push(facet);
-      }
+      const facet = facetOf(piece, panel.normal, index, panel.plate);
+      if (facet) base.push(facet);
     }
   });
+  const baseNeighbours = zones.length ? edgeAdjacency(base).neighbours : [];
+  const facets: ArmorPanelFacet[] = [];
+  base.forEach((piece, index) => {
+    const own = zoneOf.get(piece.plate);
+    const allowed = new Set<number>();
+    if (own !== undefined) allowed.add(own);
+    for (const next of baseNeighbours[index]?.keys() || []) {
+      const zone = zoneOf.get(base[next].plate);
+      if (zone !== undefined && dot(base[next].normal, piece.normal) >= SAME_SURFACE_COS) allowed.add(zone);
+    }
+    if (allowed.size < 2) { facets.push(piece); return; }
+    for (const part of splitByZones(zones, piece.points as SkinPoint[], piece.normal, allowed)) {
+      const facet = facetOf(part.points, piece.normal, piece.skin, part.zone >= 0 ? zones[part.zone].plate : piece.plate);
+      if (facet) facets.push(facet);
+    }
+  });
+  dropCracks(facets);
   const plateOf = (facet: number): unknown => facets[facet].plate;
   const { neighbours, edgeStart, along } = edgeAdjacency(facets);
 
@@ -233,7 +318,7 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
   const order = facets.map((_, index) => index).sort((a, b) => facets[b].area - facets[a].area || a - b);
   for (const seed of order) {
     if (owner[seed] >= 0) continue;
-    const group: Group = { plate: plateOf(seed), sum: [0, 0, 0], area: 0, facets: new Set(), points: [] };
+    const group: Group = { plate: plateOf(seed), sum: [0, 0, 0], area: 0, facets: new Set(), points: [], low: 0, high: 0 };
     const id = groups.length;
     groups.push(group);
     const add = (index: number): void => {
@@ -242,15 +327,23 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
       group.area += facets[index].area;
       for (let axis = 0; axis < 3; axis++) group.sum[axis] += facets[index].normal[axis] * facets[index].area;
       group.points.push(...facets[index].points);
+      const normal = meanNormal(group);
+      group.low = Infinity; group.high = -Infinity;
+      for (const point of group.points) {
+        const value = dot(normal, point);
+        if (value < group.low) group.low = value;
+        if (value > group.high) group.high = value;
+      }
     };
-    // the slab test: every corner of the panel with the candidate within PANEL_SLAB_M about the trial mean plane
+    // the slab test: the panel's corners and the candidate's within PANEL_SLAB_M along the panel's mean normal
     const fits = (index: number): boolean => {
-      const facet = facets[index];
-      const trial = meanNormal({ ...group, sum: [group.sum[0] + facet.normal[0] * facet.area,
-        group.sum[1] + facet.normal[1] * facet.area, group.sum[2] + facet.normal[2] * facet.area] });
-      let low = Infinity, high = -Infinity;
-      for (const point of group.points) { const value = dot(trial, point); low = Math.min(low, value); high = Math.max(high, value); }
-      for (const point of facet.points) { const value = dot(trial, point); low = Math.min(low, value); high = Math.max(high, value); }
+      const normal = meanNormal(group);
+      let low = group.low, high = group.high;
+      for (const point of facets[index].points) {
+        const value = dot(normal, point);
+        if (value < low) low = value;
+        if (value > high) high = value;
+      }
       return high - low <= PANEL_SLAB_M;
     };
     add(seed);
@@ -278,23 +371,20 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
     owner[index] = to;
   };
 
-  // slivers and fans join the neighbour they share the most border with; a zone's largest panel stays unless the
-  // zone is noise
-  const zoneArea = new Map<unknown, number>();
-  for (const group of groups) zoneArea.set(group.plate, (zoneArea.get(group.plate) || 0) + group.area);
-  const protectedGroup = (id: number): boolean => {
-    const group = groups[id];
-    if ((zoneArea.get(group.plate) || 0) < MIN_ZONE_M2) return false;
-    for (let other = 0; other < groups.length; other++) {
-      if (other !== id && groups[other].facets.size && groups[other].plate === group.plate && groups[other].area > group.area) return false;
-    }
-    return true;
-  };
+  // slivers and fans join the neighbour they share the most border with; a zone's largest panel stays unless it too
+  // is a sliver
+  const isolated = new Set<number>();
+  const largest = new Map<unknown, number>();
+  groups.forEach((group, id) => {
+    const held = largest.get(group.plate);
+    if (held === undefined || group.area > groups[held].area) largest.set(group.plate, id);
+  });
+  const protectedGroup = (id: number): boolean => largest.get(groups[id].plate) === id && groups[id].area >= MIN_ZONE_M2;
   for (;;) {
     let smallest = -1;
     for (let id = 0; id < groups.length; id++) {
       const group = groups[id];
-      if (!group.facets.size || group.area >= MIN_PANEL_M2 || protectedGroup(id)) continue;
+      if (!group.facets.size || group.area >= MIN_PANEL_M2 || isolated.has(id) || protectedGroup(id)) continue;
       if (smallest < 0 || group.area < groups[smallest].area) smallest = id;
     }
     if (smallest < 0) break;
@@ -311,11 +401,56 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
       const score = length * (groups[other].plate === groups[smallest].plate ? 2 : 1) * Math.max(0.2, dot(own, meanNormal(groups[other])));
       if (score > best) { best = score; target = other; }
     }
-    if (target < 0) { zoneArea.set(groups[smallest].plate, 0); groups[smallest].area = Math.max(groups[smallest].area, MIN_PANEL_M2); continue; }
+    if (target < 0) { isolated.add(smallest); continue; }
     for (const index of [...groups[smallest].facets]) move(index, target);
   }
 
-  // borders run straight: a facet with more border on a neighbouring panel than on its own moves across
+  // the steps between slices: neighbouring panels of one zone whose union still fits one slab merge, the longest
+  // shared border first
+  const slabUnion = (first: Iterable<number>, second: Iterable<number>, normal: SkinPoint): number => {
+    let low = Infinity, high = -Infinity;
+    for (const members of [first, second]) for (const index of members) for (const point of facets[index].points) {
+      const value = dot(normal, point);
+      low = Math.min(low, value); high = Math.max(high, value);
+    }
+    return high - low;
+  };
+  const version = new Int32Array(groups.length);
+  const failed = new Map<number, number>();
+  for (;;) {
+    const pairs = new Map<number, number>();
+    for (let index = 0; index < facets.length; index++) {
+      for (const [next, length] of neighbours[index]) {
+        const a = owner[index], b = owner[next];
+        if (a >= b || groups[a].plate !== groups[b].plate) continue;
+        const key = a * groups.length + b;
+        pairs.set(key, (pairs.get(key) || 0) + length);
+      }
+    }
+    const order = [...pairs].sort((x, y) => y[1] - x[1] || x[0] - y[0]);
+    let merged = false;
+    // one pass merges every pair it can whose panels have not changed in it, the longest shared border first
+    const touched = new Set<number>();
+    for (const [key] of order) {
+      const a = Math.floor(key / groups.length), b = key % groups.length;
+      if (touched.has(a) || touched.has(b)) continue;
+      const stamp = version[a] * 65536 + version[b];
+      if (failed.get(key) === stamp) continue;
+      const normal = meanNormal({ ...groups[a], sum: [groups[a].sum[0] + groups[b].sum[0], groups[a].sum[1] + groups[b].sum[1], groups[a].sum[2] + groups[b].sum[2]] });
+      if (dot(meanNormal(groups[a]), meanNormal(groups[b])) < MERGE_COS || slabUnion(groups[a].facets, groups[b].facets, normal) > PANEL_SLAB_M) {
+        failed.set(key, stamp);
+        continue;
+      }
+      for (const index of [...groups[b].facets]) move(index, a);
+      version[a]++; version[b]++;
+      touched.add(a); touched.add(b);
+      merged = true;
+    }
+    if (!merged) break;
+  }
+
+  // borders within a zone run straight: a facet with more border on a neighbouring panel of its zone than on its own
+  // moves across (zone borders are straight already)
   for (let pass = 0; pass < SMOOTH_PASSES; pass++) {
     let moved = 0;
     for (let index = 0; index < facets.length; index++) {
@@ -327,7 +462,7 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
       const own = shared.get(id) || 0;
       let target = -1, best = own;
       for (const [other, length] of shared) {
-        if (other === id || length <= best) continue;
+        if (other === id || length <= best || groups[other].plate !== group.plate) continue;
         if (dot(facets[index].normal, meanNormal(groups[other])) < NEIGHBOUR_CREASE_COS) continue;
         best = length; target = other;
       }
@@ -355,16 +490,25 @@ function buildPanelSet(skin: readonly ArmorSkinPanel[], plates: Parameters<typeo
   const facetPanel = new Int32Array(facets.length);
   for (let index = 0; index < facets.length; index++) facetPanel[index] = panelOf.get(owner[index]) as number;
 
-  // a facet edge is a border unless most of it runs along facets of its own panel
+  // a facet edge is outlined where most of it runs along another zone or round a corner (CORNER: the silhouette's
+  // edges): the plates' borders, never a fold or a panel change within one plate (its colours show that). An edge with
+  // nothing beside it (a crack between slices) and a sliver (a slice cap's exposed rim, seen edge-on) outline nothing:
+  // the skin is closed, so a border always has its other side
   const borders = new Uint8Array(edgeStart[facets.length]);
   for (let index = 0; index < facets.length; index++) {
     const facet = facets[index];
+    const zone = panels[facetPanel[index]].plate;
+    let longest = 0;
+    for (let i = 0; i < facet.points.length; i++) longest = Math.max(longest, distance(facet.points[i], facet.points[(i + 1) % facet.points.length]));
+    if (facet.area < SLIVER_WIDTH_M * longest) continue;
     for (let i = 0; i < facet.points.length; i++) {
       const edge = edgeStart[index] + i;
       const length = distance(facet.points[i], facet.points[(i + 1) % facet.points.length]);
-      let own = 0;
-      for (const [next, overlap] of along[edge]) if (facetPanel[next] === facetPanel[index]) own += overlap;
-      borders[edge] = own < length * 0.5 ? 1 : 0;
+      let loud = 0;
+      for (const [next, overlap] of along[edge]) {
+        if (panels[facetPanel[next]].plate !== zone || dot(facets[next].normal, facet.normal) < CORNER_COS) loud += overlap;
+      }
+      borders[edge] = loud >= length * 0.5 ? 1 : 0;
     }
   }
   return { skin, facets, panels, facetPanel, edgeStart, borders };

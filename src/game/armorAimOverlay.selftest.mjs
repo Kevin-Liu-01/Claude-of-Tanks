@@ -126,6 +126,29 @@ assert(entry.frames.every((frame) => frame.mesh.visible),
 assert(secondEntry.frames.every((frame) => frame.mesh.visible),
   'scope keeps every visible enemy armor overlay active');
 assert(entry.frames[0].color.version > 0, 'penetration samples update vertex colors');
+// 262: one colour per panel, blended from its samples (a 150 mm round on a 50 mm face: green); every vertex of a
+// panel takes it
+{
+  const frame = entry.frames[0];
+  const color = frame.color;
+  const position = frame.geometry.getAttribute('position');
+  const green = new THREE.Color(0x48d985);
+  for (const panel of frame.samples) {
+    assert.ok(panel.points.length >= 1 && panel.points.length === panel.weights.length, 'each panel aims weighted samples');
+    const first = frame.targets[panel.start];
+    for (let index = panel.start; index < panel.end; index++) {
+      const vertex = frame.targets[index];
+      assert.ok(Math.abs(color.getX(vertex) - color.getX(first)) + Math.abs(color.getY(vertex) - color.getY(first))
+        + Math.abs(color.getZ(vertex) - color.getZ(first)) < 1e-6, 'a panel is one colour');
+    }
+    let front = true;
+    for (let index = panel.start; index < panel.end; index++) if (position.getZ(frame.targets[index]) < 1) { front = false; break; }
+    if (front) {
+      assert.ok(Math.abs(color.getX(first) - green.r) + Math.abs(color.getY(first) - green.g) + Math.abs(color.getZ(first) - green.b) < 1e-6,
+        'the face the round meets head-on is penetrable (green)');
+    }
+  }
+}
 assert.equal(secondEntry.frames[0].color.version, 0,
   'one update retains the original single-batch penetration-query budget');
 
