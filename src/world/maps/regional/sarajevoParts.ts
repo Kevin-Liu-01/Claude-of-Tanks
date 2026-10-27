@@ -58,8 +58,9 @@ export function unhcrSheet(sink: PartSink, face: Face, u: number, y: number, w: 
   } else facePanel(sink, 'structureMetal', face, u, y + h / 2, o, w + 0.08, h + 0.08, white);
   const batten: Rgb = [0.42, 0.35, 0.27];
   // (the battens nailed to the wall: on its face, the sheet held proud by them)
-  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten, fine: true });
+  // (259, the phone census: fine joinery, a phone never built them and the sheet hung 5-8 cm off the wall) at any range
+  faceBox(sink, 'structureWood', face, u, y + h + 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten });
+  faceBox(sink, 'structureWood', face, u, y - 0.04, 0.04, w + 0.16, 0.06, 0.08, { ...DECOR, colour: batten });
 }
 
 /**

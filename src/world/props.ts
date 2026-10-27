@@ -70,7 +70,7 @@ import { railBerthReaches } from './railSpurs.ts'; // the buildings lane: no sta
 import { composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
 import { drapedRect } from './landmarks/grounds.ts';
-import { PartSink } from './maps/regional/geometry.ts';
+import { DESKTOP_FINE_CELLED_BUCKETS, FINE_CELLED_BUCKETS, PartSink } from './maps/regional/geometry.ts';
 import type { LandmarkPlacement } from './landmarks/types.ts';
 import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWorks.ts'; // the field boundaries' works and their LOD
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
@@ -11583,8 +11583,8 @@ ${snowCap ? `
     // fine render work on the main render (paint, the dirt run off the sills, pilasters) cull by the same cells on a
     // desktop build (maps/regional/facade.ts); the metal's batch takes the place of its always-drawn mesh, so it costs no
     // draw, the render's one (the second and third renders' few fine pieces stay in their meshes). A phone builds none.
-    const CELLED = new Set(['structureWood', 'regionalStone']);
-    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
+    const CELLED = FINE_CELLED_BUCKETS;
+    const DESKTOP_CELLED = DESKTOP_FINE_CELLED_BUCKETS;
     const FINE_CELL_M = 120;
     // facades lane (2026-10-06, Steinburg's round-2 cost: 124k of the craft's 164k fine triangles at the chase view lay
     // past 80 m, a 120 m cell showing from 120 m off): the craft's finest pieces (geometry.ts EmitOptions.fine 'near': a

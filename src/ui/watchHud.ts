@@ -140,7 +140,8 @@ html[data-watch=ride] body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-h
    bar wrapped onto the sight, the slots, the dial and the drone's rail, gauntlet r8) */
 @media(max-height:299px) and (orientation:landscape){
  .cot-watch{left:50%;right:auto;transform:translateX(-50%);flex-wrap:nowrap}
- .cot-watch .who{flex:none;width:160px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
+ /* (the plate its name's width, to 210 px: at 160 px "VIII · Leopard 2A4 V" lost its suffix, gauntlet r15) */
+ .cot-watch .who{flex:none;width:max-content;min-width:160px;max-width:210px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{display:none}
  .cot-watch .wb{height:34px;min-width:34px;padding:0 var(--s1)}.cot-watch .wb.seat{min-width:44px}
  html[data-watch=ride] body.cot-touch-layout .cot-watch{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 46px)}

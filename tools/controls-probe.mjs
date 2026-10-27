@@ -62,6 +62,7 @@
 // Exits non-zero on any failed assertion or page error.
 // Usage: node tools/controls-probe.mjs
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -108,7 +109,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[controls-probe] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
@@ -273,7 +274,7 @@ async function runMode(mode, { stubNoLock, width, height }) {
   const lockState = await page.evaluate(() => ({
     locked: window.__DEBUG.input.isLocked(),
     cursorAim: window.__DEBUG.input.isCursorAim(),
-    toast: !!document.querySelector('.cot-lock-toast'),
+    toast: !!document.querySelector('.cot-battle-notices .cot-lock-notice:not([data-state="exit"])'),
   }));
   const verifyLockPresentation = () => {
     if (stubNoLock) {
@@ -747,7 +748,7 @@ async function runDenyRetryMode() {
     attempts: window.__LOCK_ATTEMPTS ? window.__LOCK_ATTEMPTS() : -1,
     locked: window.__DEBUG.input.isLocked(),
     cursorAim: window.__DEBUG.input.isCursorAim(),
-    toast: !!document.querySelector('.cot-lock-toast'),
+    toast: !!document.querySelector('.cot-battle-notices .cot-lock-notice:not([data-state="exit"])'),
     fired: window.__PROBE.fired,
   }));
 

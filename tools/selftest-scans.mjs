@@ -92,6 +92,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
   // 255 (triangle 253 item A): every shipped diagram label sidecar's colours name a tone
   'src/ui/technicalDiagramLabels.selftest.mjs': lists('public/icons/*_technical.json'),
+  // drawings-overhaul-259: the fleet's technical drawings (COT_DRAWINGS_DIR for a review run lists that folder instead)
+  'src/ui/technicalDrawing.selftest.mjs': lists('public/icons/*_drawing.json'),
   // release 230 type package: the shipped faces, every shipped source and document, and no Monument font file anywhere
   'src/ui/typeSystem.selftest.mjs': lists('public/**/*.{woff2,woff,ttf,otf}', 'tools/**/*.{woff2,woff,ttf,otf}',
     'src/**/*.{ts,css,js,mjs}', 'site/**/*.html', 'tools/fixtures/*.html'),
@@ -168,6 +170,7 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/i18nLazyCatalog.selftest.mjs': tracked('src/**/*.ts'),
   'src/vehicles/vehicleNightLighting.selftest.mjs': tracked('src/vehicles/**'),
   'tools/attribution-audit.mjs': tracked('**'),
+  'tools/browser-launch-census.selftest.mjs': tracked('{api,scripts,server,src,tools}/**'),
   'tools/local-import-integrity.selftest.mjs': tracked('{api,server,src,tools}/**'),
   'tools/object3d-assert-lint.mjs': tracked('**/*.selftest.mjs', '**/*.test-support.mjs'),
   'tools/public-repo-hygiene.selftest.mjs': tracked('**'),

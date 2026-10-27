@@ -9,6 +9,7 @@ import {
 } from '../../vehicles/vehicleFacets.ts';
 import { EQUIP_CATEGORIES, EQUIP_SLOTS, EQUIPMENT_CATALOG, type EquipmentItem } from '../../game/equipment.ts';
 import { CONSUMABLE_RULES } from '../../game/consumables.ts';
+import { CONSUMABLE_ICONS, consumableEffectKey, consumableNameKey } from '../../game/consumableLoadout.ts';
 import { AERIAL_RULES } from '../../sim/matchRuleset.ts';
 import { SMOKE_COOLDOWN_S } from '../../sim/auxiliarySystems.ts';
 import { SMOKE_DURATION_S } from '../../sim/smokeScreen.ts';
@@ -106,13 +107,12 @@ function equipmentSection(): string {
     + `<figure class="dm-figure dm-figure--crop">${station}</figure><div class="dm-equips">${groups}</div>`;
 }
 
-const KIT_NAMES: Readonly<Record<string, string>> = { repair: 'hud.consumable.repair', first_aid: 'hud.consumable.firstAid', extinguisher: 'hud.consumable.extinguisher' };
-const KIT_ICONS: Readonly<Record<string, IconId>> = { repair: 'repair', first_aid: 'team', extinguisher: 'extinguisher' };
 
 function kitsSection(): string {
   const drone = AERIAL_RULES.drone;
-  const kits = CONSUMABLE_RULES.map((rule) => `<li>${icon(KIT_ICONS[rule.id] ?? 'repair', { size: 20 })}<div><b>${esc(t(KIT_NAMES[rule.id] ?? rule.label))}</b>`
-    + `<span>${esc(t('docs.tanks.cooldown', { value: String(rule.cooldownS) }))}</span></div></li>`).join('');
+  // the catalog (2026-10-26): every consumable with its glyph, name, effect and cooldown (game/consumableLoadout.ts)
+  const kits = CONSUMABLE_RULES.map((rule) => `<li>${icon(CONSUMABLE_ICONS[rule.id], { size: 20 })}<div><b>${esc(t(consumableNameKey(rule.id)))}</b>`
+    + `<span>${esc(t(consumableEffectKey(rule.id)))} · ${esc(t('docs.tanks.cooldown', { value: String(rule.cooldownS) }))}</span></div></li>`).join('');
   const systems: Array<[IconId, string, Record<string, string>]> = [
     ['smoke', 'docs.tanks.smoke', { screen: String(SMOKE_DURATION_S), cooldown: String(SMOKE_COOLDOWN_S) }],
     ['modeDrone', 'docs.tanks.drone', { battery: String(drone.batteryS), range: String(drone.rangeM), spot: String(drone.spotRangeM), cooldown: String(drone.cooldownS) }],

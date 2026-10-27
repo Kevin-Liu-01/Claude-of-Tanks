@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // audio-mix-balance.mjs — browser gate for the mix itself (src/audio/audioEngine.ts):
 // what a player actually hears, measured on the master output through the
@@ -154,7 +155,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[mix] vite up at ${url}`);
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'] });
 const report = { garage: null, bed: null, shots: {}, destruction: null, radio: null, density: null, drone: null, gunship: null, errors: [] };
 const fail = (msg) => { report.errors.push(msg); console.error('[mix] FAIL: ' + msg); };
 const consoleErrors = [];

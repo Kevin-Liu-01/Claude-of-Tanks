@@ -94,7 +94,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-proving-art{order:2;flex:none;width:86px;height:48px;object-fit:cover;border-radius:var(--r1);}
 .cot-garage .cot-deploy-proving>svg:last-child{order:3;flex:none;color:var(--ink-3);}
 @media (hover:hover){.cot-garage .cot-deploy-proving:hover{background-color:var(--surface-hover);}}
-.cot-garage .cot-deploy-proving:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cot-garage .cot-deploy-proving:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-garage .cot-deploy-lower:empty{display:none;}
 /* before the first battle the campaign card takes the band's first half */
 .cot-garage .cot-deploy-camp:only-child{grid-column:1/-1;}

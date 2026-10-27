@@ -13,6 +13,7 @@
 // --vehicle-fixtures=m1a3,mbt70,t90am,t90m_proryv --expected-build-index-hash=<sha256>
 // Or one FIRST battle selected as night before entry (3 desktop Urban/m1a3 shots):
 // --cold-night-entry --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -1098,7 +1099,7 @@ try {
     previewSockets.add(socket);
     socket.once('close', () => previewSockets.delete(socket));
   });
-  browser = await puppeteer.launch({ headless: true, protocolTimeout: 360_000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 360_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox'] });
   report.chromePid = browser.process()?.pid ?? null; save();
   report.browserVersion = await within(browser.version(), 10_000, 'Browser version');

@@ -13,6 +13,7 @@
 // never run one beside `npm test` or `tank:release:check`. The server binds 127.0.0.1 on 5300 + (pid % 90) and
 // walks upward when busy (owner rule: probe servers live in 5300–5399, never on 5197–5199); vite serves the tree
 // live, so do not edit tracked source while a run is capturing.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -209,7 +210,7 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
     reportOptimizerReloads(server);
     await server.listen();
     const port = server.httpServer.address().port;
-    browser = await puppeteer.launch(mapProbeLaunchOptions(launch));
+    browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions(launch));
     return await run({ server, browser, port, baseUrl: `http://127.0.0.1:${port}`, cacheDir: cache.dir });
   } catch (error) {
     primaryFailed = true;
@@ -242,7 +243,7 @@ export async function withDistProbeSession({ root, dist, launch = {} }, run) {
       preview: { host: '127.0.0.1', port: MAP_PROBE_PORT_BASE + (process.pid % MAP_PROBE_PORT_SPAN), strictPort: false },
     });
     const port = server.httpServer.address().port;
-    browser = await puppeteer.launch(mapProbeLaunchOptions(launch));
+    browser = await launchGuardedBrowser(puppeteer, mapProbeLaunchOptions(launch));
     return await run({ server, browser, port, baseUrl: `http://127.0.0.1:${port}`, cacheDir: null });
   } catch (error) {
     primaryFailed = true;

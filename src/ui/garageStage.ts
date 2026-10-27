@@ -315,12 +315,33 @@ const loadPlatformKit = async () => {
 };
 type GaragePlatformKitModules = Awaited<ReturnType<typeof loadPlatformKit>>;
 
+/** The stage built at once (a caller with no frame to spare). */
 export function createGarageStage(
   engineCtx: GarageStageEngineContext,
   pos: THREE.Vector3,
   initialVariantId = '',
   requestRender: () => void = () => {},
 ): GarageStageRuntime {
+  const steps = createGarageStageSteps(engineCtx, pos, initialVariantId, requestRender);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+/**
+ * The stage a section at a time (2026-10-26, the boot census: built at once it was one task of 120 ms on a cold desktop
+ * and 604 ms on the 4x phone, under the boot screen): each yield follows one of its procedural textures or structures
+ * (the hall floor finish, the daylight, the podium's paint, the wall and roof textures, the hall, its shell, trusses,
+ * lamps, floods, pipe brackets, the workshop props, the foreground staging). The same objects in the same order and the
+ * same random draws as the one-call build.
+ */
+export function* createGarageStageSteps(
+  engineCtx: GarageStageEngineContext,
+  pos: THREE.Vector3,
+  initialVariantId = '',
+  requestRender: () => void = () => {},
+): Generator<void, GarageStageRuntime, void> {
   const rng = mulberry32(90210);
   const group = new THREE.Group();
   group.position.copy(pos);
@@ -536,6 +557,7 @@ export function createGarageStage(
     group.add(mesh);
   }
   addHallFloorFinish();
+  yield;
 
   // Daylight in the hall (GA.05; the critic panel: "the roof lights and clerestories show sky, but no daylight reaches the
   // floor ... a cool rect light or baked patch under each roof-light strip and the shutter opening"): soft patches of
@@ -600,6 +622,7 @@ export function createGarageStage(
     group.add(mesh);
   }
   addHallDaylight();
+  yield;
   addOutdoorSeed('facility-instance-color', seedStandard({
     color: 0xffffff,
     roughness: 0.88,
@@ -724,6 +747,7 @@ export function createGarageStage(
     dither(g, podiumTextureSize, podiumTextureSize, rng, 0.05);
   }
   paintPodiumTexture();
+  yield;
   const podTopMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(podTopC, { aniso })),
     color: 0xffffff, roughness: 0.64, metalness: 0.1,
@@ -894,6 +918,7 @@ export function createGarageStage(
   // boot cover above, so the hall adds no shader program. The fake-bounce emissives are warm neutrals now (wave 402:
   // "the hall drowned in a flat dark-navy cast").
   const wallTexBase = makeWallTexture(rng);
+  yield;
   const wallMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(wallTexBase, { aniso, repeat: [3, 1] })),
     roughness: 0.7, metalness: 0.22,
@@ -901,6 +926,7 @@ export function createGarageStage(
   }));
   track(wallMat);
   const roofDeck = makeRoofDeckTexture(rng);
+  yield;
   // the roof's underside is a light grey liner (GA.05, the critic panel: "the roof underside is tinted brown and reads as
   // rust ... a white or grey liner panel; take the warmth from the lamp colour"): a neutral bounce, not a brown glow
   const ceilMat = shadowMat(new THREE.MeshStandardMaterial({
@@ -910,6 +936,7 @@ export function createGarageStage(
   }));
   track(ceilMat);
   const hall = buildVerdantHallParts(HW, WALL_H);
+  yield;
   const hallSteelMat = track(shadowMat(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.58, metalness: 0.4, emissive: 0x100e0b, emissiveIntensity: 0.5,
   })));
@@ -947,6 +974,7 @@ export function createGarageStage(
     group.userData.verdantHall = hall.stats;
   }
   addHangarShell();
+  yield;
   const trussMat = shadowMat(new THREE.MeshStandardMaterial({
     color: 0x4f514d, roughness: 0.6, metalness: 0.5,
     emissive: 0x15130f, emissiveIntensity: 0.45,
@@ -985,6 +1013,7 @@ export function createGarageStage(
     chordGeo.dispose(); webGeo.dispose(); purlinGeo.dispose();
   }
   addRoofTrusses();
+  yield;
   const architecture = createGarageArchitectureController(engineCtx || {}, group, requestRender);
   const verdantLights: THREE.Light[] = [];
 
@@ -1023,6 +1052,7 @@ export function createGarageStage(
     }
   }
   addHighbayLamps();
+  yield;
 
   // hud_ui r5: third highbay DIRECTLY over the turntable (dressing only — no
   // extra live light) carrying a faint volumetric cone down to the podium, so
@@ -1178,6 +1208,7 @@ export function createGarageStage(
     }
   }
   addWallFloods();
+  yield;
 
   // --- wall dressing: pipes, signage, second light pool (west + north) -------
   // The camera frames the north/west corner; without dressing the upper-left
@@ -1211,6 +1242,7 @@ export function createGarageStage(
     }
   }
   addWallPipeBrackets();
+  yield;
   // vertical drop with a valve wheel near the workbench
   const dropGeo = track(new THREE.CylinderGeometry(0.09, 0.09, 4.3, 10));
   const drop = new THREE.Mesh(dropGeo, pipeMat);
@@ -1501,6 +1533,7 @@ export function createGarageStage(
   }
   };
   addWorkshopProps();
+  yield;
 
   // --- foreground staging (r4): the camera-side floor below the dais edge
   // rendered as featureless charcoal (critique: "dead empty floor"). WoT
@@ -1611,6 +1644,7 @@ export function createGarageStage(
     }
   };
   addForegroundStaging();
+  yield;
 
   // Everything authored above except the turntable and variant architecture
   // belongs to the original Verdant indoor set. Hiding this explicit owner

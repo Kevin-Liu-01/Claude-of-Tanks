@@ -8,6 +8,7 @@ import {
 import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
 import { ProgramUniformPreparationError } from './programWarm.ts';
 import type {
+  ForwardProgramCompileTiming,
   ForwardProgramWarmOwner,
   ForwardProgramWarmStats,
 } from './programWarm.ts';
@@ -35,6 +36,10 @@ interface GarageLightingRestorePort extends GarageLightingWarmPort {
 
 interface ForwardProgramCompilePort {
   compile(root: Object3D): void;
+  /** The same submission a slice at a time (programWarm.ts compileSceneSteps); the boot's warm prefers it. */
+  compileSceneSteps?(options: { visibleRoot?: Object3D; sliceMs?: number }): Generator<void, void, void>;
+  /** The compiled programs' first use between frames, hidden objects included (programWarm.ts prepareCompiledSteps). */
+  prepareCompiledSteps?: ForwardProgramWarmOwner['prepareCompiledSteps'];
 }
 
 type ForwardProgramRestorePort = Pick<
@@ -56,6 +61,13 @@ interface GaragePostWarmPort extends GaragePostRenderPort {
 
 interface GarageGpuWarmTimings {
   postCompile?: number;
+  postCompileSlices?: number;
+  firstUse?: number;
+  /** Programs first-used, and those already reflected, by the boot's first-use step; pending when its budget ended. */
+  firstUsePrograms?: number;
+  firstUseReused?: number;
+  firstUsePending?: number;
+  firstUseSlices?: number;
   shadowPassMax?: number;
   shadowPasses?: number[];
   sceneUpload?: number;
@@ -108,6 +120,29 @@ export interface GarageGpuRestoreReceipt {
   settleFrameMs: number;
   /** Programs still linking when the readiness proof ran out of time; the covered settle frame linked them (2026-10-10). */
   programWarmDeferred?: number | null;
+  /** LODs whose level was chosen for the Garage camera before the program warm (selectLodLevelsFor); absent with none */
+  lodsSelected?: number;
+  /** the link poll's completion queries: how many, the longest and their total (ms); absent when it asked none */
+  linkerQueries?: { count: number; maxMs: number; totalMs: number };
+}
+
+/**
+ * (2026-10-26, the room-stalls lane) Every auto-updating LOD under `root` chooses its level for `camera`, as the next
+ * frame drawn from that camera will. Leaving a room, the Garage restore warmed the hero's LOD levels as the battle's
+ * camera last chose them; the first Garage frames switched them and made the close level's programs inside the frame
+ * (the rooms census, the leave: gear suspension bosses, track pads, decor steel, turret cloth, decor canvas, 0.7-1.15 s
+ * each on their links). Returns how many LODs chose.
+ */
+export function selectLodLevelsFor(root: Object3D, camera: Camera): number {
+  if (typeof root.traverse !== 'function') return 0;
+  camera.updateMatrixWorld?.();
+  root.updateMatrixWorld?.();
+  let selected = 0;
+  root.traverse((object) => {
+    const lod = object as Object3D & { isLOD?: boolean; autoUpdate?: boolean; update?(camera: Camera): void };
+    if (lod.isLOD && lod.autoUpdate !== false && typeof lod.update === 'function') { lod.update(camera); selected += 1; }
+  });
+  return selected;
 }
 
 interface GarageGpuRestoreOptions {
@@ -141,7 +176,14 @@ export class GarageRestoreAbandonedError extends Error {
 }
 
 const GARAGE_CRITICAL_SHADOW_CASCADES = 2;
-const GARAGE_LINKER_BREATHING_SLICES = 8;
+/**
+ * (2026-10-26, the room-stalls lane: leaving a room for the Garage, four frames bound programs whose links were not done,
+ * 670-923 ms each) the restore polls the links under the cover until every one reports done: the breathing slices end
+ * the moment the last link completes (programWarm.ts linkerBreathingSlices), so this many frames (about 4 s) bounds only
+ * a link that never reports, where the covered exact frame links it as before. Was 8, which let a deep queue's links
+ * reach the Garage's frames.
+ */
+const GARAGE_LINKER_BREATHING_SLICES = 240;
 
 /**
  * Garage return is already covered by a fully painted transition. Yielding
@@ -211,8 +253,12 @@ export async function restoreGarageGpuPipeline({
   let programWarmDeferred: number | null | undefined;
 
   lighting.setStaticPresentationDormant(false);
+  let lodsSelected = 0;
+  const linkerTiming: ForwardProgramCompileTiming = {};
   try {
     lighting.update(true);
+    // the levels the first Garage frame will draw, chosen before the warm prepares their programs (selectLodLevelsFor)
+    lodsSelected = selectLodLevelsFor(scene, camera);
     // A changed hero can also change the Garage's material/light program set.
     // Residency alone is not a readiness proof for the background, fittings or
     // workshop vehicles. Prepare every visible draw against the real Garage
@@ -226,7 +272,7 @@ export async function restoreGarageGpuPipeline({
           assertCurrent,
         );
         linkerSlices = await drainWarmSteps(
-          forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES),
+          forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES, linkerTiming),
           yieldProgramReadiness,
           assertCurrent,
         );
@@ -292,6 +338,9 @@ export async function restoreGarageGpuPipeline({
     sceneUploadMax: Math.max(0, ...sceneUploadBatches),
     settleFrameMs,
     ...(programWarmDeferred === undefined ? {} : { programWarmDeferred }),
+    ...(lodsSelected ? { lodsSelected } : {}),
+    ...(linkerTiming.queryCount ? { linkerQueries: { count: linkerTiming.queryCount,
+      maxMs: Math.round(linkerTiming.maxQueryMs ?? 0), totalMs: Math.round(linkerTiming.queryMs ?? 0) } } : {}),
   };
 }
 
@@ -318,23 +367,57 @@ export async function warmGarageGpuPipeline({
   now = () => performance.now(),
   awaitProgramLinks,
 }: GarageGpuWarmOptions): Promise<void> {
-  const compileAt = now();
-  try { forwardPrograms.compile(scene); } catch { /* first real render is fallback */ }
-  timings.postCompile = Math.round(now() - compileAt);
-
-  lighting.update(true);
   const yieldGpuFrame = createYielder(16);
   let pulse = 0;
   const yieldGpuWarm: WarmYield = async (force = false) => {
     reportProgress(Math.min(0.94, 0.04 + pulse++ * 0.035));
     return yieldGpuFrame(force);
   };
+  // (2026-10-26, the boot census) the visible scene's submission a slice at a time when the owner can (one task of
+  // 100-150 ms on a cold desktop otherwise), against the same production target
+  const compileAt = now();
+  let compileSlices = 0;
+  try {
+    if (forwardPrograms.compileSceneSteps) {
+      for (const _ of forwardPrograms.compileSceneSteps({ visibleRoot: scene, sliceMs: 8 })) {
+        compileSlices += 1;
+        await yieldGpuWarm();
+      }
+    } else forwardPrograms.compile(scene);
+  } catch { /* first real render is fallback */ }
+  timings.postCompile = Math.round(now() - compileAt);
+  timings.postCompileSlices = compileSlices;
+
+  lighting.update(true);
 
   await yieldGpuWarm(true);
   if (awaitProgramLinks) {
     const linkAt = now();
     try { await awaitProgramLinks(yieldGpuWarm); } catch { /* the renders below wait for them as before */ }
     timings.postLinkWait = Math.round(now() - linkAt);
+  }
+  // (2026-10-26, the live 258 census and the boot ABBA) every compiled program's first use, between frames, hidden
+  // objects included: the compile above reaches every LOD level of the hero, but the warm's draws below only the level
+  // its camera selects. On a 4x phone the showroom's camera then framed another level, and the first live frames
+  // first-used its ~20 programs (686 + 1144 ms); with a busy GPU process the warm's own upload draws first-used the
+  // rest (24 at ~60 ms, each behind a GPU flush)
+  if (forwardPrograms.prepareCompiledSteps) {
+    const firstUseAt = now();
+    const firstUseTiming: { uniformCount?: number; uniformReused?: number } = {};
+    let firstUseSlices = 0;
+    try {
+      const steps = forwardPrograms.prepareCompiledSteps(scene, { timing: firstUseTiming });
+      let step = steps.next();
+      for (; !step.done; step = steps.next()) {
+        firstUseSlices += 1;
+        await yieldGpuWarm(true);
+      }
+      if (step.value.status !== 'complete') timings.firstUsePending = step.value.pending ?? -1;
+    } catch { /* the draws below and the first frame remain the fallback */ }
+    timings.firstUse = Math.round(now() - firstUseAt);
+    timings.firstUseSlices = firstUseSlices;
+    timings.firstUsePrograms = firstUseTiming.uniformCount ?? 0;
+    timings.firstUseReused = firstUseTiming.uniformReused ?? 0;
   }
   const shadowPasses = await lighting.primeShadowMaps(
     renderer,

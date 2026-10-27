@@ -1,7 +1,5 @@
 import { createGuidePhoto } from './infoGuidePhoto.ts';
 import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
-import { iconUrl } from './icons.ts';
-import type { TechnicalLabelData } from './technicalDiagramLabels.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
@@ -108,65 +106,29 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
   figure.append(legend);
   const caption = document.createElement('figcaption'); caption.textContent = t('fieldGuide.diagram'); figure.append(caption);
   }
-  // The authored diagrams use this tank's real armor/module/crew volumes.
-  const views = id === 'crew' ? ['crew_side', 'modules_side', 'armor_side']
-    : id === 'protection' ? ['armor_side', 'modules_side', 'crew_side']
-    : ['modules_side', 'crew_side', 'armor_side'];
-  let vehicleImage: HTMLImageElement | null = null;
+  // 258: the tank's technical drawing (src/ui/technicalDrawing.ts: its side, top and front plates under the overlay
+  // traced from its combat anatomy, the views and kinds as tabs), mounted the first time the panel opens (the viewer's
+  // module loads with the panel, not with the guide), on the kind this guide is about
+  const kind = id === 'crew' ? 'crew' : id === 'protection' ? 'armor' : 'modules';
   let technicalDetails: HTMLDetailsElement | null = null;
   if (vehicle && VEHICLE_TECHNICAL_GUIDES.has(id)) {
     technicalDetails = document.createElement('details'); technicalDetails.className = 'cot-guide__technical';
     const summary = document.createElement('summary'); summary.textContent = t('fieldGuide.capture.selected', { vehicle: vehicle.name });
     const technicalFigure = document.createElement('figure'); technicalFigure.className = 'cot-guide__figure';
-    technicalDetails.append(summary, technicalFigure);
-    vehicleImage = document.createElement('img');
-    vehicleImage.style.cssText = 'display:block;width:100%;height:auto;max-height:480px;object-fit:contain';
-    vehicleImage.alt = vehicle.name; vehicleImage.loading = 'lazy';
-    vehicleImage.dataset.vehicleId = vehicle.id;
+    const drawingBox = document.createElement('div'); drawingBox.className = 'cot-guide__diagram';
+    drawingBox.dataset.vehicleId = vehicle.id;
     const vehicleCaption = document.createElement('figcaption');
     vehicleCaption.textContent = vehicle.name + ' · ' + t('garage.dossier.dossier.techViews');
-    const diagramControls = document.createElement('div'); diagramControls.className = 'cot-guide__steps';
-    const labels: Record<string, string> = { armor_side: 'armorSide', modules_side: 'modulesSide', crew_side: 'crewSide' };
-    // 253: the diagrams carry no text; their labels are DOM text from the tank's sidecar, mounted while the panel is open
-    // (the caption names the vehicle, so the overlay draws no header)
-    const diagramBox = document.createElement('div'); diagramBox.className = 'cot-guide__diagram';
-    diagramBox.append(vehicleImage);
-    let view = views[0]!, labelData: Promise<TechnicalLabelData | null> | null = null;
-    let mounted: { dispose(): void } | null = null;
-    // (the labels' module loads with the panel, not with the guide)
-    const labelsModule = (): Promise<typeof import('./technicalDiagramLabels.ts')> => import('./technicalDiagramLabels.ts');
-    const mountLabels = (): void => {
-      mounted?.dispose(); mounted = null;
-      if (!technicalDetails!.open) return;
-      const shown = view;
-      void labelsModule().then(async (labels) => {
-        const kind = labels.technicalKindOfView(shown);
-        if (!kind) return;
-        labelData ??= fetch(labels.technicalLabelsUrl(vehicle.id)).then((response) => (response.ok ? response.json() : null))
-          .then((json) => (json ? labels.parseTechnicalLabels(json, vehicle.id) : null)).catch(() => null);
-        const data = await labelData;
-        if (!data || shown !== view || !technicalDetails!.open) return;
-        mounted?.dispose();
-        mounted = labels.mountTechnicalDiagramLabels(diagramBox, data, kind, null, { header: false, image: vehicleImage });
+    technicalFigure.append(drawingBox, vehicleCaption);
+    technicalDetails.append(summary, technicalFigure);
+    let mounted = false;
+    technicalDetails.addEventListener('toggle', () => {
+      if (mounted || !technicalDetails!.open) return;
+      mounted = true;
+      void import('./technicalDrawing.ts').then(({ mountTechnicalDrawing }) => {
+        mountTechnicalDrawing(drawingBox, vehicle.id, { kind, alt: vehicle.name }).ready.catch(() => {});
       });
-    };
-    technicalDetails.addEventListener('toggle', mountLabels);
-    for (const option of views) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'cot-guide__step';
-      button.textContent = t(`garage.dossier.image.${labels[option]}`);
-      button.setAttribute('aria-pressed', String(option === views[0]));
-      button.addEventListener('click', () => {
-        view = option;
-        vehicleImage!.src = iconUrl(vehicle.id, option);
-        vehicleImage!.alt = `${vehicle.name} · ${button.textContent}`;
-        for (const other of diagramControls.querySelectorAll('button')) other.setAttribute('aria-pressed', String(other === button));
-        mountLabels();
-      });
-      diagramControls.append(button);
-    }
-    vehicleImage.src = iconUrl(vehicle.id, views[0]);
-    vehicleImage.alt = `${vehicle.name} · ${t(`garage.dossier.image.${labels[views[0]]}`)}`;
-    technicalFigure.append(diagramBox, vehicleCaption, diagramControls);
+    });
   }
   const steps = document.createElement('div'); steps.className = 'cot-guide__steps'; steps.setAttribute('role','group'); steps.setAttribute('aria-label',t('fieldGuide.steps'));
   const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');

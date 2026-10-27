@@ -474,7 +474,9 @@ export function souqStall(sink: PartSink, look: () => number, W: number, D: numb
       faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.09, rw, h, 0.012, { colour, decor: true });
       y += h;
     }
-    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.02, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true, fine: true });
+    // (259, the phone census: the pegs fine joinery, the rod and its kilim hung 8 cm off the plaster on nothing) the pegs
+    // at any range
+    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.02, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true });
     const rod = facePoint(wall, u - rw / 2 - 0.04, y + 0.02, 0.09);
     sink.cylinder('structureWood', rod, 'x', rw + 0.08, 0.02, 6, { colour: palm, decor: true });
     for (let j = 0, m = Math.round(rw / 0.07); j < m; j++) faceBox(sink, 'structureWood', wall, u - rw / 2 + 0.035 + j * 0.07, y0 - 0.05, 0.09, 0.02, 0.1, 0.006, { colour: [0.82, 0.76, 0.62], decor: true, fine: true });

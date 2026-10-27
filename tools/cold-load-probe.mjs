@@ -4,6 +4,7 @@
 // It verifies a constrained first load and intentionally fails the first main
 // chunk request to prove the inline boot recovery reloads exactly once.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 
 const argv = process.argv.slice(2);
@@ -26,7 +27,7 @@ const maxFirstVisitWallMs = Math.max(1000,
 const maxFirstVisitAppMs = Math.max(500,
   Number(option('max-app-ms', '2500')) || 2500);
 const compactOutput = option('summary', '0') === '1';
-const launchBrowser = () => puppeteer.launch({
+const launchBrowser = () => launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

@@ -43,6 +43,8 @@ function fixture({ queued = false, hungFixture = false, hungClose = false,
     } };
   const ports = {
     process, console: { log() {} }, createHash, resolve, join, tmpdir: () => '/fixture/tmp',
+    // the guarded launch is tools/browser-launch.selftest.mjs's to prove; this fixture's browser is fake
+    launchGuardedBrowser: (launcher, options) => launcher.launch(options),
     mkdir: async path => calls.push(['mkdir', path]),
     mkdtemp: async prefix => { calls.push(['mkdtemp', prefix]); return prefix + 'owned'; },
     readFile: async () => 'frozen-source',

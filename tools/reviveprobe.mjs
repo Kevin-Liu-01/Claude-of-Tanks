@@ -1,6 +1,7 @@
 // Headless verify: tank visuals must be fully revived on battle restart,
 // including a restart issued WHILE the kill-cam replay (x-ray ghost) is live.
 // Run from the repo root: node <this file>
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -24,7 +25,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[revive] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

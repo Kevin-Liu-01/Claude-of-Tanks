@@ -12,6 +12,11 @@ import {
   type AuthoritativeWorldCollision,
 } from '../sim/authoritativeMatch.ts';
 import type { HeightField } from '../world/terrain.ts';
+import { chooseAiSupportActionBits } from '../game/ai.ts';
+import { botConsumableLoadout } from '../sim/consumableRules.ts';
+import { matchRulesetFor, rulesetConsumableGate } from '../sim/matchRuleset.ts';
+import { auxiliaryCapabilities } from '../sim/auxiliarySystems.ts';
+import { TANK_SPECS } from './specs.ts';
 
 const SIM_DT = 1 / 60;
 const FLAT_NORMAL = new Vector3(0, 1, 0);
@@ -84,6 +89,8 @@ interface BalanceDuelOptions {
   bShellSlot?: number;
   /** If set, drive toward the opponent until this separation is reached. */
   advanceToM?: number;
+  /** 2026-10-26 (the consumable catalog): each tank carries its bots' loadout and uses it through the bots' chooser. */
+  consumables?: boolean;
 }
 
 interface BalanceDuelReceipt {
@@ -110,6 +117,7 @@ export interface BalanceSeriesOptions {
   aShellSlot?: number;
   bShellSlot?: number;
   advanceToM?: number;
+  consumables?: boolean;
 }
 
 interface BalanceSeriesReceipt {
@@ -165,6 +173,22 @@ function fireInput(
   };
 }
 
+/** A range tank's consumables: its bots' role picks within the Standard battle's gate. */
+function rangeLoadout(specId: string): string[] {
+  const spec = TANK_SPECS[specId];
+  const vehicle = { era: spec?.era, role: spec?.role, smoke: !!auxiliaryCapabilities({ id: specId })?.smoke?.length };
+  return botConsumableLoadout(vehicle, rulesetConsumableGate(matchRulesetFor('standard')));
+}
+
+/** The bots' support choice (a consumable, a magazine) on a range tank that is engaged and standing still. */
+function withSupport(
+  input: AuthoritativePlayerInput, entity: AuthoritativeEntity, timeS: number, on: boolean,
+): AuthoritativePlayerInput {
+  if (!on) return input;
+  input.actionBits = chooseAiSupportActionBits(entity, timeS, { engaged: true, stationary: true, safeToReloadMagazine: false });
+  return input;
+}
+
 /**
  * Run one stationary duel on a level, obstacle-free range. Both vehicles use
  * the same authoritative movement, gun laying, dispersion, armor, modules,
@@ -181,6 +205,7 @@ export function runBalanceDuel({
   aShellSlot = 0,
   bShellSlot = 0,
   advanceToM,
+  consumables = false,
 }: BalanceDuelOptions): BalanceDuelReceipt {
   const alphaId = swapSides ? bId : aId;
   const bravoId = swapSides ? aId : bId;
@@ -196,12 +221,14 @@ export function runBalanceDuel({
         specId: alphaId,
         team: 'alpha',
         spawn: { x: 0, z: -distanceM / 2, yaw: 0 },
+        ...(consumables ? { consumables: rangeLoadout(alphaId) } : {}),
       },
       {
         id: 'range-bravo',
         specId: bravoId,
         team: 'bravo',
         spawn: { x: 0, z: distanceM / 2, yaw: Math.PI },
+        ...(consumables ? { consumables: rangeLoadout(bravoId) } : {}),
       },
     ],
   });
@@ -220,8 +247,8 @@ export function runBalanceDuel({
     match.step({
       dt: SIM_DT,
       inputs: new Map([
-        ['range-alpha', fireInput(alpha, bravo, alphaSlot, advanceToM)],
-        ['range-bravo', fireInput(bravo, alpha, bravoSlot, advanceToM)],
+        ['range-alpha', withSupport(fireInput(alpha, bravo, alphaSlot, advanceToM), alpha, match.timeS, consumables)],
+        ['range-bravo', withSupport(fireInput(bravo, alpha, bravoSlot, advanceToM), bravo, match.timeS, consumables)],
       ]),
     });
   }

@@ -29,7 +29,8 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildFieldWallFine, buildFieldWallFineSteps, buildFieldWorks, trimFieldWorksOvershoots } from './fieldWorks.ts';
 import { DRY_WALL_CROWN_V, DRY_WALL_FACE_V, DRY_WALL_STONE_MID_V, DRY_WALL_STONE_V, DRY_WALL_TILE_M, paintDryWallBuffers } from './fieldWallFace.ts';
 import { FIELD_STONE_HEARTING_V, liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
-import { FIELD_MUD_PLAIN_V, mudEarthOfGround, paintFieldMudBuffers, tintFieldMudToEarth } from './fieldMudSurface.ts';
+import { FIELD_MUD_PLAIN_V, FIELD_MUD_PRINT_SEED, mudEarthOfGround, paintFieldMudBuffers, tintFieldMudToEarth } from './fieldMudSurface.ts';
+import { surfacePaintKey } from './surfacePaintPrefetch.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralTexture.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -370,12 +371,14 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   globalThis.ImageData = class { constructor(data, w, h) { this.data = data; this.width = w; this.height = h; } };
   globalThis.document = { createElement() { const canvas = { width: 0, height: 0 }; canvas.getContext = () => ({ putImageData(image) { canvas.pixels = image.data; } }); return canvas; } };
   try {
+    // (259: the mud print comes through paintedAhead since da78a88d96, battle-spikes-253b — painted inline here, no
+    // prefetch holding it, as the synchronous build paints it)
     const api = new Function('THREE', 'toTexture', 'normalFromHeight', 'applyTone', 'paintFieldStoneBuffers', 'liftFieldStoneMean',
-      'paintFieldMudBuffers', 'tintFieldMudToEarth', 'paintDryWallBuffers', stripTypeScriptTypes(
-        declarations(['clamp', 'surfaceFromHeight', 'flipPrintRows', 'makeFieldStone', 'makeFieldMud', 'makeDryWall'])
+      'paintFieldMudBuffers', 'tintFieldMudToEarth', 'paintDryWallBuffers', 'surfacePaintKey', 'FIELD_MUD_PRINT_SEED', stripTypeScriptTypes(
+        declarations(['clamp', 'surfaceFromHeight', 'flipPrintRows', 'paintedAhead', 'makeFieldStone', 'makeFieldMud', 'makeDryWall'])
       ) + '\nreturn { makeFieldStone, makeFieldMud, makeDryWall };')(THREE, textureFromRgbaPixels, normalTextureFromHeight,
       (px, tone) => { assert.equal(tone, null, 'no tone law here: a tone colours the texels, it moves no row'); return px; },
-      paintFieldStoneBuffers, liftFieldStoneMean, paintFieldMudBuffers, tintFieldMudToEarth, paintDryWallBuffers);
+      paintFieldStoneBuffers, liftFieldStoneMean, paintFieldMudBuffers, tintFieldMudToEarth, paintDryWallBuffers, surfacePaintKey, FIELD_MUD_PRINT_SEED);
     const S = 128, earth = mudEarthOfGround(0xad9b7c);
     // the painters' own rows (the stone lifted and the mud tinted as their builders do, before any reversal)
     const stone = drain(paintFieldStoneBuffers(S)).px.slice(); liftFieldStoneMean(stone, S);

@@ -228,7 +228,7 @@ export const NEAR_SHADOW_DETAIL_NAMES: ReadonlySet<string> = new Set([
   'hull', 'hullDark', 'hullDetail', 'hullExternalArmor', 'hullEquipment', 'hullTrackGuardL', 'hullTrackGuardR',
   'hullRubber', 'hullFixedPaintedBodywork', 'hullOpenLattice',
   'turret', 'turretDark', 'turretDetail', 'turretExternalArmor', 'turretEquipment',
-  'gun', 'gunDark', 'gunMount', 'gunMountDark',
+  'gun', 'gunDark', 'gunMount', 'gunMountLamp', 'gunMountDark',
   'gearTrackBandL', 'gearTrackBandR', 'gearEndWheelBody', 'gearEndWheelHardware',
   // instanced running gear: one draw each
   'gearRoadWheelDiscs', 'gearRoadWheelTires', 'gearReturnRollerDiscs', 'gearReturnRollerTires', 'gearTrackPadsSimplified',

@@ -12,6 +12,7 @@
 //              PNG (supported by every current browser and Windows Vista+).
 // SVGs are rasterized via data-URI <img> onto <canvas>, so only pure-path SVGs
 // (no <text>) are size-faithful; brand marks here are pure paths by design.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -24,7 +25,7 @@ if (!mode || !svgPath || !outPath) {
 const svgText = readFileSync(resolve(svgPath), 'utf8');
 const svgUri = `data:image/svg+xml;base64,${Buffer.from(svgText).toString('base64')}`;
 
-const browser = await puppeteer.launch({ headless: 'shell' });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell' });
 const page = await browser.newPage();
 
 if (mode === 'sheet') {

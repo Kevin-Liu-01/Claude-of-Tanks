@@ -7,7 +7,8 @@
  * reloads and "A game file did not load": is WebGL2 there at all, did the
  * driver refuse a context, how many texture units does the fragment stage
  * expose (the terrain material binds a fixed number), which renderer family
- * is this, is storage usable, can a worker start. Each hard failure maps to
+ * is this, is storage usable, can a worker start (2026-10-26: told by the boot's
+ * own workers, workerRefusal.ts, instead of a probe worker). Each hard failure maps to
  * one sentence and one action on the inline boot screen and one beacon.
  *
  * The verdict is cached (2026-10-02): a repeat boot of the same browser skips
@@ -22,6 +23,7 @@
  * cached verdict clears it too.
  */
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { onWorkerRefused } from './workerRefusal.ts';
 
 /**
  * Samplers the terrain fragment program binds (src/world/terrain.ts, the
@@ -82,8 +84,16 @@ interface CapabilityProbeHost {
   createCanvas(): { getContext(name: string, attributes?: Record<string, RuntimeValue>): RuntimeValue } | null;
   deviceMemory?: number;
   storage?: { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void } | null;
-  /** Start and stop a trivial worker; throw or return false when workers are blocked. */
-  probeWorker(): boolean;
+  /** Start and stop a trivial worker; throw or return false when workers are blocked (hosts without watchWorkerRefusal). */
+  probeWorker?(): boolean;
+  /**
+   * (2026-10-26, the boot ABBA) Learn of a refused worker from the boot's real workers instead of starting one: the
+   * probe's blob worker cost the boot screen 0.1–0.84 s under load, in an idle slot or not. With it, the probe answers
+   * from hasWorkerApi and a refusal adds its notice when a real worker reports it; absent, probeWorker runs inline.
+   */
+  watchWorkerRefusal?(refused: () => void): void;
+  /** The Worker constructor exists (the inline answer while the real workers start). */
+  hasWorkerApi?(): boolean;
   /** Part of the cached verdict's key; absent means the verdict is never cached. */
   userAgent?: string;
   /** Wall clock for the record's age (ms). */
@@ -223,6 +233,10 @@ function probeStorage(storage: CapabilityProbeHost['storage']): boolean {
   }
 }
 
+function workerStarts(host: CapabilityProbeHost): boolean {
+  try { return host.probeWorker?.() === true; } catch (_) { return false; }
+}
+
 /** Ask a throwaway WebGL2 context and the host what this browser can do. */
 export function probeCapabilities(host: CapabilityProbeHost): CapabilityProbe {
   const probe: CapabilityProbe = {
@@ -230,7 +244,8 @@ export function probeCapabilities(host: CapabilityProbeHost): CapabilityProbe {
     maxTextureUnits: 0, maxTextureSize: 0, vertexTextureUnits: 0, colorBufferFloat: false,
     storage: probeStorage(host.storage), worker: false, memoryClass: classifyMemory(host.deviceMemory),
   };
-  try { probe.worker = host.probeWorker() === true; } catch (_) { probe.worker = false; }
+  if (host.watchWorkerRefusal) probe.worker = host.hasWorkerApi?.() === true;
+  else probe.worker = workerStarts(host);
   let gl: ProbeCanvasContext | null = null;
   try {
     const canvas = host.createCanvas();
@@ -400,6 +415,17 @@ export function runBootCapabilityGate(options: BootCapabilityGateOptions): Promi
     probe, verdict, source: cached ? 'cache' : 'probe',
     confirm: (gl) => confirmBootCapability(result, gl, options).then((next) => Object.assign(result, next)),
   };
+  if (probe.worker && host.watchWorkerRefusal) {
+    // a real worker's refusal adds its notice and drops any record, so the next boot answers again (result.probe:
+    // confirm may have replaced it with the real context's)
+    host.watchWorkerRefusal(() => {
+      if (!result.probe.worker) return;
+      result.probe.worker = false;
+      result.verdict = evaluateCapabilityGate(result.probe, options.translate, options.requiredTextureUnits);
+      presentCapabilityVerdict(result.verdict, options.screen, options.reload);
+      clearCachedCapability(host.storage);
+    });
+  }
   return Promise.resolve(result);
 }
 
@@ -461,7 +487,7 @@ export function capabilityProbeForced(search: string): boolean {
   try { return new URLSearchParams(search || '').get('gate')?.toLowerCase() === 'fresh'; } catch (_) { return false; }
 }
 
-/** The browser host: a detached canvas, navigator memory, localStorage and a blob worker. */
+/** The browser host: a detached canvas, navigator memory, localStorage, and the boot's real workers' refusals. */
 export function browserCapabilityHost(): CapabilityProbeHost {
   return {
     createCanvas: () => document.createElement('canvas'),
@@ -470,16 +496,8 @@ export function browserCapabilityHost(): CapabilityProbeHost {
     userAgent: typeof navigator.userAgent === 'string' ? navigator.userAgent : '',
     now: () => Date.now(),
     fresh: capabilityProbeForced(typeof location !== 'undefined' ? location.search : ''),
-    probeWorker: () => {
-      if (typeof Worker !== 'function' || typeof Blob !== 'function' || typeof URL?.createObjectURL !== 'function') return false;
-      const url = URL.createObjectURL(new Blob(['self.close()'], { type: 'text/javascript' }));
-      try {
-        new Worker(url).terminate();
-        return true;
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    },
+    hasWorkerApi: () => typeof Worker === 'function',
+    watchWorkerRefusal: onWorkerRefused,
   };
 }
 

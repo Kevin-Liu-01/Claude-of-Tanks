@@ -10,6 +10,7 @@
 //   4. spotted linger expires
 // Exits non-zero on any failure or page console error.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -26,7 +27,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[spot] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

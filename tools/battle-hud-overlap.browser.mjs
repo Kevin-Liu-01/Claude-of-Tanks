@@ -16,6 +16,7 @@
 // probe is the cheap pass over every state, and runs on Puppeteer against an existing dev server:
 //   node tools/battle-hud-overlap.browser.mjs --url=http://127.0.0.1:5189 [--case=1440x900,390x844] [--state=gunship]
 //     [--out=outputs/battle-hud-overlap]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { datumProblems } from './datum-census.mjs';
@@ -32,13 +33,13 @@ await mkdir(out, { recursive: true });
 export const CASES = [['2560x1440', 2560, 1440, false], ['1920x1080', 1920, 1080, false], ['1440x900', 1440, 900, false],
   ['1280x720', 1280, 720, false], ['1024x600', 1024, 600, false], ['900x700', 900, 700, false],
   ['390x844', 390, 844, true], ['844x390', 844, 390, true]];
-export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
+export const STATES = ['idle', 'countdown', 'hints', 'notifications', 'notices', 'reports', 'combined', 'feed-burst', 'large-map', 'special',
   'sniper', 'ammo-reload-sniper', 'ammo-reload-sniper-report', 'spectator', 'watch-ride', 'watch-drone', 'gunship', 'drone',
   'mode-zone_control', 'mode-capture_the_flag', 'mode-endless_horde', 'mp-host', 'mp-client', 'markers'];
 /** The HUD's instruments, each a box another may not cross. */
 export const INSTRUMENTS = ['.cot-top', '.cot-pips.show', '.cot-mode-status.show', '.cot-net', '.cot-mp-status.battle',
   '.cot-ear.l', '.cot-ear.r', '.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show', '.cot-ribbon.on',
-  '.cot-medal-toasts', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
+  '.cot-medal-toasts', '.cot-battle-notices .cot-c-notice', '.cot-revive', '.cot-prebattle', '.cot-prebattle-rules', '.cot-aim-warning:not([hidden])',
   '.cot-si-toasthost', '.cot-si-log.open', '.cot-si-cardhost:not(:empty)', '.cot-room-chat:not([hidden])', '.cot-spec.show',
   '.cot-watch', '.cot-watch-rail', '.cot-hints.show', '.cot-drive', '.cot-dp', '.cot-minimap', '.cot-shell', '.cot-con', '.cot-vehicle-controls',
   '.cot-flight-hud .flight-console', '.cot-flight-hud .gunship-solution', '.cot-scope-vision',
@@ -66,7 +67,7 @@ function measure(instruments) {
 }
 
 const allowed = (a, b) => ALLOWED.find(([x, y]) => (a.selector === x && b.selector === y) || (a.selector === y && b.selector === x));
-const browser = await puppeteer.launch({ headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--disable-gpu', '--js-flags=--max-old-space-size=3072'] });
 const report = [];
 let failures = 0;
 try {
@@ -87,7 +88,15 @@ try {
       await page.waitForFunction(() => !!window.__HUD_LAYOUT, { timeout: 60000 });
       // the layout's planners settle over a few frames (and the Watch bar's chunk lands)
       await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 600)));
-      const rects = await page.evaluate(measure, INSTRUMENTS);
+      // (the layout's passes settle over frames, and under load one lands after the first measure: measured until two
+      // in a row agree, the 844x390 notifications' aim chip read 50 px under its seat mid-settle in full runs, round 14)
+      let rects = await page.evaluate(measure, INSTRUMENTS);
+      for (let tries = 0; tries < 6; tries++) {
+        await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 250)));
+        const again = await page.evaluate(measure, INSTRUMENTS);
+        if (JSON.stringify(again) === JSON.stringify(rects)) break;
+        rects = again;
+      }
       const problems = [];
       for (let i = 0; i < rects.length; i++) {
         const a = rects[i];

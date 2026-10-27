@@ -11,6 +11,7 @@
 // Asserts the §5.362 throw table: belt 5.5-7.7 cm rapid shudder, ATGM/MBT
 // cannon recuperate (>= 6 cm floor / ~13 cm at 120 mm).
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -47,7 +48,7 @@ try {
   await server.listen();
   const url = `http://localhost:${server.config.server.port}/`;
   console.log(`[ifv-recoil] vite up at ${url}`);
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });

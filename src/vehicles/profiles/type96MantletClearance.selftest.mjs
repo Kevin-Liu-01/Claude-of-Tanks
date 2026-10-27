@@ -140,7 +140,8 @@ for (const id of ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei
     const T = grid(soup(turret, gun, /Shadow|_ghillie_|InteriorFill/, toTurret));
     const sightTris = [];
     gun.traverse((o) => {
-      if (!o.isMesh || !/^gunMount/.test(o.name)) return;
+      // (the gun floodlight's drum and bracket ride their own draw, gunMountLamp, since main-reds-259: lamp, not sight)
+      if (!o.isMesh || !/^gunMount/.test(o.name) || o.name === 'gunMountLamp') return;
       const tri = soup(o, null, /Shadow/, toGun);
       for (let i = 0; i < tri.length; i += 9) {
         const ys = [tri[i + 1], tri[i + 4], tri[i + 7]], xs = [tri[i], tri[i + 3], tri[i + 6]];

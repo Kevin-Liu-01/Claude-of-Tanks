@@ -19,7 +19,11 @@ function checkCast(turret, all, frame) {
   for (const [x, z, y, tolerance] of [[0, -.95, 1.804111, .0003],
     [.5, -.85, 1.795251, .0003], [.8, -.9, 1.807130, .001],
     [0, -1.4, 1.844132, .0003], [.5, -1.5, 1.853056, .0003],
-    [.5, -.65, 1.578238, .0002], [0, -.5, 1.512957, .00001]]) {
+    // seated (turretSeatRace.ts seatTurretOverDeck, the 240 turret-seat program): outside the race's rim (keep 0.9016 m
+    // off the ring's axis) every turret corner below the seat plane comes up onto it, 1.636 here (the 1.566 ring deck plus
+    // gap and rise), so the source's casting floor (1.578238) and stepped bearing underside (1.512957) read the plane
+    // (main-reds-259, measured on 257 abccee56a1)
+    [.5, -.65, 1.636, .0002], [0, -.5, 1.636, .00001]]) {
     near(worldValue(turret, frame, [x, 0, z], [0, 1, 0], 1), y, tolerance,
       'measured raised casting floor or stepped bearing underside');
   }

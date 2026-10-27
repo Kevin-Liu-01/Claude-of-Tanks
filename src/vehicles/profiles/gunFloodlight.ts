@@ -24,15 +24,18 @@ export interface GunFloodlightSeat {
   readonly anchorZ: number;
   readonly radius?: number;
   readonly depth?: number;
+  /** The drum's and bracket's draw: the mount's own (default), or `gunMountLamp`, the mount's paint as a draw of its own,
+   *  where the mount is a measured source part whose stock the lamp must not join. */
+  readonly bucket?: 'gunMount' | 'gunMountLamp';
 }
 
 /** The floodlight's drum, rim, lens, rear cap and bracket on the gun mount; its seat is recorded on the gun rig. */
 export function addGunFloodlight(P: TankBuilderPort, seat: GunFloodlightSeat): void {
   const { box, cylX, cylZ } = KIT;
-  const { side, y, backZ, anchorX, anchorY, anchorZ } = seat;
+  const { side, y, backZ, anchorX, anchorY, anchorZ, bucket = 'gunMount' } = seat;
   const s = side === 'right' ? -1 : 1, r = seat.radius ?? 0.12, depth = seat.depth ?? 0.22, x = s * seat.x, zc = backZ + depth / 2;
   const segments = P.q ? 20 : 12;
-  P.add('gunMount', cylZ(r, depth, segments), x, y, zc);
+  P.add(bucket, cylZ(r, depth, segments), x, y, zc);
   P.add('gunMountDark', cylZ(r + 0.008, 0.024, segments), x, y, backZ + depth - 0.012);
   P.add('gunMountGlass', markVehicleNightLens(cylZ(r * 0.84, 0.006, segments), 'headlight', { searchlight: true }),
     x, y, backZ + depth + 0.001);
@@ -40,9 +43,9 @@ export function addGunFloodlight(P: TankBuilderPort, seat: GunFloodlightSeat): v
   // the bracket: a boss on the drum's inboard side, a cross arm to the foot's line, and the foot run back into the mantlet
   const drumIn = seat.x - Math.sqrt(Math.max(0, r * r - (anchorY - y) ** 2)) + 0.01;
   P.add('gunMountDark', cylX(0.035, 0.04, 12), s * (drumIn - 0.01), anchorY, zc);
-  P.add('gunMount', box(drumIn - anchorX, 0.04, 0.05), s * (anchorX + drumIn) / 2, anchorY, zc);
-  P.add('gunMount', box(0.045, 0.04, zc + 0.025 - anchorZ), s * anchorX, anchorY, (zc + 0.025 + anchorZ) / 2);
+  P.add(bucket, box(drumIn - anchorX, 0.04, 0.05), s * (anchorX + drumIn) / 2, anchorY, zc);
+  P.add(bucket, box(0.045, 0.04, zc + 0.025 - anchorZ), s * anchorX, anchorY, (zc + 0.025 + anchorZ) / 2);
   P.gunG.userData.gunFloodlight = Object.freeze({
-    side, axis: Object.freeze([x, y, zc]), radius: r, depth, owner: 'gunMount', searchlight: true,
+    side, axis: Object.freeze([x, y, zc]), radius: r, depth, owner: bucket, searchlight: true,
   });
 }

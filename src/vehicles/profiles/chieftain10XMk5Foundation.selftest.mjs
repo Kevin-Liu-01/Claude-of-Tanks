@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildChieftainMk10X, CHIEFTAIN10_X_DATUMS } from './chieftain10X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { renderedMarkingFootprints } from '../markingFootprints.test-support.mjs';
 
 const hash = x => createHash('sha256').update(x).digest('hex');
 const stable = v => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object'
@@ -198,53 +198,38 @@ function checkMk5(quality, coldSpec) {
   } finally { tank.dispose(); }
 }
 
-function paintGeometryShape(mesh, vertices) {
-  assert.ok(!mesh.isInstancedMesh, 'no physical instances can be treated as paint');
-  const g = mesh.geometry;
-  assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv']);
-  for (const [key, size] of [['position', 3], ['normal', 3], ['uv', 2]]) {
-    assert.equal(g.attributes[key].count, vertices); assert.equal(g.attributes[key].itemSize, size);
-  }
-  assert.equal(g.index?.count, vertices / 4 * 6);
-  const indices = [], uvs = [];
-  for (let start = 0; start < vertices; start += 4) {
-    indices.push(...[0, 2, 1, 2, 3, 1].map(i => i + start));
-    uvs.push(0, 1, 1, 1, 0, 0, 1, 0);
-  }
-  assert.deepEqual(Array.from(g.index.array), indices);
-  assert.deepEqual(Array.from(g.attributes.uv.array), uvs);
-}
-
-function paintBatchHash(matrices) {
-  const pieces = matrices.map(matrix => new THREE.PlaneGeometry(1, 1)
-    .applyMatrix4(new THREE.Matrix4().fromArray(matrix)));
-  let merged;
-  try { merged = mergeGeometries(pieces, false); return geometryHash(merged); }
-  finally { merged?.dispose(); pieces.forEach(g => g.dispose()); }
-}
-
-function verifiedPaint(root, quality, currentHighMatrices) {
+// 2026-10-23 (lane 243, markingFilm.ts; the owner: "insignias and marks on tanks are still glitching, for example if u
+// drag them around the tank gallery"): every seated marking is a film cut to the armour under its seat, not a unit
+// quad, so the paint is read through the footprints each draw records (markingFootprints.test-support.mjs, the fleet's
+// marking receipts' law): every painted triangle inside its seat's footprint, at least MIN_PAINT_COVERAGE of each painted
+// (main-reds-259; the quad pins went stale with 243, surfacing at 249 once this receipt's earlier red had cleared)
+const MIN_PAINT_COVERAGE = .75;
+function verifiedPaint(root, quality, currentHighPositions) {
   const paint = [];
   root.traverse(m => { if (m.isMesh && m.userData.vehicleMarking) paint.push(m); });
   assert.equal(paint.length, quality === 'high' ? 2 : 1, 'exactly the existing paint pair, with no extra mesh');
   for (const m of paint) assert.equal(m.parent.name, 'rig_turret', 'same actual owning rig');
   if (quality === 'high') {
-    const unit = new THREE.PlaneGeometry(1, 1);
-    try {
-      for (const [i, m] of paint.entries()) {
-        paintGeometryShape(m, 4); assert.equal(m.name, MARKING_NAMES[i]);
-        assert.equal(geometryHash(m.geometry), geometryHash(unit), 'complete unit marking quad (live PlaneGeometry(1, 1))');
-        for (const scale of m.scale.toArray()) near(scale, .24, 1e-12, 'unchanged full-size paint footprint');
-        assert.equal(m.userData.surfaceSupported, true, 'live solve seats the actual paint on physical stock');
-        currentHighMatrices.push(m.matrix.toArray());
-      }
-    } finally { unit.dispose(); }
+    for (const [i, m] of paint.entries()) {
+      assert.equal(m.name, MARKING_NAMES[i]);
+      assert.equal(m.userData.markingFilm, true, 'the marking is painted on its armour (a film, not a floating quad)');
+      assert.equal(renderedMarkingFootprints(m, { minCoverage: MIN_PAINT_COVERAGE, label: m.name }).length, 1);
+      for (const scale of m.scale.toArray()) near(scale, .24, 1e-12, 'unchanged full-size paint footprint');
+      assert.equal(m.userData.surfaceSupported, true, 'live solve seats the actual paint on physical stock');
+      currentHighPositions.push(m.position.clone());
+    }
   } else {
-    const m = paint[0]; paintGeometryShape(m, 8);
+    const m = paint[0];
     assert.equal(m.name, 'mobileStaticBatch_0'); assert.equal(m.userData.mobileStaticBatch, true);
-    assert.equal(currentHighMatrices.length, 2);
-    assert.equal(geometryHash(m.geometry), paintBatchHash(currentHighMatrices),
-      'every low batch byte is exactly the two actual high-detail paint contributions, with no physical stock');
+    assert.equal(currentHighPositions.length, 2);
+    // the batch holds exactly the two seats' paint, every triangle inside one of them, with no physical stock
+    const footprints = renderedMarkingFootprints(m, { minCoverage: MIN_PAINT_COVERAGE, label: m.name });
+    assert.equal(footprints.length, 2, 'the low batch carries the two seats\' paint');
+    for (const [i, footprint] of footprints.entries()) {
+      near(m.parent.worldToLocal(footprint.center.clone()).distanceTo(currentHighPositions[i]), 0, 1e-6,
+        'each low footprint stands on its high seat');
+      near(footprint.u.length(), .24, 1e-6, 'full-size low footprint'); near(footprint.v.length(), .24, 1e-6, 'full-size low footprint');
+    }
   }
   return new Set(paint);
 }
@@ -257,8 +242,8 @@ function preservationNegativeControls(root, paint) {
   root.traverse(m => { if (m.isMesh && (m.name === 'mobileStaticBatch_0' || m.userData.carvedBoreStock) && !paint.has(m)) physical.push(m); });
   assert.ok(physical.length, 'the actual physical batch is still compared, despite its identical name');
   for (const m of physical) {
-    assert.throws(() => paintGeometryShape(m, 8), assert.AssertionError,
-      'an actual physical batch cannot pass the two-quad paint authentication');
+    assert.throws(() => renderedMarkingFootprints(m), assert.AssertionError,
+      'an actual physical batch cannot pass the marking paint authentication');
   }
 }
 
@@ -392,7 +377,7 @@ function posedEquipment(root) {
 
 sharedWiring();
 const coldMk5Spec = stable(getSpec('chieftain5'));
-const currentPaintMatrices = [];
+const currentPaintPositions = [];
 let warmedMk5Hash;
 for (const quality of ['high', 'low']) {
   const afterOwnBuild = checkMk5(quality, coldMk5Spec);
@@ -400,7 +385,7 @@ for (const quality of ['high', 'low']) {
   warmedMk5Hash = afterOwnBuild;
   const { tank, stillbrew, casting } = measuredMk10(quality);
   try {
-    const paint = verifiedPaint(tank.root, quality, currentPaintMatrices);
+    const paint = verifiedPaint(tank.root, quality, currentPaintPositions);
     if (quality === 'low') preservationNegativeControls(tank.root, paint);
     assert.deepEqual(stillbrew.map(s => s.tag).sort(), ['port', 'spine', 'starboard']);
     checkDatums(tank.root); sourceCasting(tank.root, casting); posedEquipment(tank.root);

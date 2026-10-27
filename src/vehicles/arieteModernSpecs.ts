@@ -44,8 +44,9 @@ function createArieteC2(): FleetTankSpec {
     turretTraverseDegS: 44, gunPitchDegS: 36,
     gunDepressionDeg: 9, gunElevationDeg: 20, gunPitchByYawDeg: ARIETE_C2_X_GUN_PITCH_BY_YAW_DEG,
   });
-  // Retain C1's manual 120 mm ammunition, penetration and damage. The tier
-  // step improves stabilization and cycle time, not invented missile rounds.
+  // The tier step improves stabilization and cycle time, not invented missile
+  // rounds. 259: the C2 fires its prototype's 120 mm rounds, copied in
+  // fleetBalancePass applySameTierFairness (after the lazy prototype registers).
   Object.assign(spec.gun, {
     reloadS: 5.4, baseAccuracy: .26, aimTimeS: 1.45,
     bloom: { move: .040, hullRot: .055, turret: .040, afterShot: 1.9 },

@@ -3,6 +3,7 @@
 // Render every procedural structure from eight deterministic viewpoints and
 // combine visual-frame checks with the geometry-derived collision fit score.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createServer } from 'vite';
@@ -55,7 +56,7 @@ const server = await createServer({
 await server.listen();
 const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

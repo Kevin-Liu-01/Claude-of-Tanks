@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Native-only exact-pass pixel regression, not a production timing benchmark.
 // Run: node tools/late-fx-matrix.browser.selftest.mjs [--out=/absolute/new-directory]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -117,7 +118,7 @@ try {
     } }],
   });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new',
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
     timeout: 30_000, protocolTimeout: 60_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);

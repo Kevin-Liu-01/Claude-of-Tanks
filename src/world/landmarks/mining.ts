@@ -45,7 +45,8 @@ export const oreCars: LandmarkBuilder = (ctx) => {
     for (const sx of [-1, 1]) bar(sink, 'structureMetal', [sx * gauge / 2, ga + 0.38, a], [sx * gauge / 2, gb + 0.38, b], 0.08, { colour: IRON, decor: true });
   }
   // (the connectivity sweep, 217: the rails stood 2 cm over the sleepers) the sleepers up to the rails' foot
-  for (let z = zA + 0.3; z <= zB - 0.3; z += 0.7) { const g = track(z); sink.span('structureWood', -0.95, g + 0.2, z - 0.1, 0.95, g + 0.345, z + 0.1, { colour: TIMBER, decor: true, fine: true }); }
+  // (259, the phone census: fine joinery, so a phone's rails and the cars on them stood 14 cm over the ballast) at any range
+  for (let z = zA + 0.3; z <= zB - 0.3; z += 0.7) { const g = track(z); sink.span('structureWood', -0.95, g + 0.2, z - 0.1, 0.95, g + 0.345, z + 0.1, { colour: TIMBER, decor: true }); }
   // the cars
   for (let k = 0; k < n; k++) {
     const cz = z0 + 1.2 + (k + 0.5) * pitch, tone = lerp(ORE, RUST, ctx.variant() * 0.6);

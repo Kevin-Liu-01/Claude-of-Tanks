@@ -10,6 +10,7 @@
 // --reference DIR (2026-10-15, the Kestrel water plan's phase 2): beside each plate, the same capture with the water,
 // bog and ice paint left off (DIR/<map>-world.webp) — the world from straight above, to hold the plate's water against.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -64,7 +65,7 @@ const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : server.config.server.port;
 const url = `http://127.0.0.1:${port}/?qa=1`;
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

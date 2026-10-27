@@ -100,7 +100,9 @@ const armed=TANK_SPECS.m1a1_abrams_hc,gun=auxiliaryCapabilities(armed).guns[0];
 {
  // The replay places each part where its turned mount carries it (the 2026-10-08 OBB-centre defect mirrored a
  // rear-facing barrel forward through T-72B3M's dock): the turned centre is exact and a dock on it is hit.
- const part=gun.collisionParts[0],box=new Box3(new Vector3(...part.min),new Vector3(...part.max)),center=box.getCenter(new Vector3());
+ // (the part furthest off the pivot: the HC's M2 lists its cradle block, 3 cm off, first and the barrel second)
+ const offset=(p)=>Math.hypot(...p.min.map((v,i)=>(v+p.max[i])/2));
+ const part=gun.collisionParts.reduce((a,b)=>offset(b)>offset(a)?b:a),box=new Box3(new Vector3(...part.min),new Vector3(...part.max)),center=box.getCenter(new Vector3());
  const transform=new Matrix4().compose(new Vector3(...gun.position),new Quaternion(...gun.rotation).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),Math.PI*.9)),new Vector3(...gun.scale)).multiply(new Matrix4().makeTranslation(...gun.pivot));
  const placed=new OBB(new Vector3(),box.getSize(new Vector3()).multiplyScalar(.5)).applyMatrix4(transform.clone().multiply(new Matrix4().makeTranslation(center.x,center.y,center.z)));
  const truth=center.clone().applyMatrix4(transform);

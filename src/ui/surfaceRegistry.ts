@@ -209,6 +209,20 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'battle', owner: HUD, surface: '.cot-killfeed' },
     ],
   },
+  /** The tank's own fire, modules and crew, with their severity and the repair's fill (UI-LOCKDOWN B2: the damage
+   *  panel's plan shows where each module sits, its glyphs a diagram beside the chips, never a word or a figure). */
+  'vehicle-status': {
+    places: [
+      { screen: 'battle', owner: 'src/ui/vehicleStatus.ts', surface: '.cot-vehicle-status' },
+    ],
+  },
+  /** The damage the player's hits deal: the numbers floating over them (UI-LOCKDOWN B16: the shot card keeps the
+   *  penetration, the angle, the armour and the outcome). */
+  'damage-dealt': {
+    places: [
+      { screen: 'battle', owner: HUD, surface: '.cot-dmgnum' },
+    ],
+  },
   /** The killcam's killer card (who destroyed the player, with what). */
   killer: {
     places: [
@@ -276,10 +290,17 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'record', owner: 'src/ui/serviceRecordView.ts', surface: '.cot-record-plate' },
     ],
   },
+  /** The whole load's progress: the load screen's meta line, the boot card's main line. */
   'load-progress': {
     places: [
       { screen: 'load', owner: LOAD, surface: '.foot .fmeta' },
-      { screen: 'boot', owner: BOOT, surface: '.cot-boot-load' },
+      { screen: 'boot', owner: BOOT, surface: '.cot-boot-bar' },
+    ],
+  },
+  /** The boot's stage progress (owner, 2026-10-26): one segment per stage under the main line, done, current or to come. */
+  'load-stage-progress': {
+    places: [
+      { screen: 'boot', owner: BOOT, surface: '#cot-boot-segs' },
     ],
   },
   /** The boot card's status line (the stage, or the stop state's message). */

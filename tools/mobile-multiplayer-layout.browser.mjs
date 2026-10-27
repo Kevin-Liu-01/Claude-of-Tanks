@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Production lobby/status owners with deterministic state. Transport proof is mp-p2p-e2e --mobile.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/mobile-multiplayer'));await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const reports=[],errors=[];let currentPage=null,currentLabel="";
 const modes=['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars'];
 try {

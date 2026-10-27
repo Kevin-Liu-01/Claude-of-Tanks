@@ -12,6 +12,7 @@
 //   console    errors and warnings, the press's eight seconds and the boot before it
 //
 //   node tools/gate-audio-probe.mjs --base=<label>=<url> --base=<label>=<url> --out=<dir> [--runs=4]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -53,7 +54,7 @@ const PROBE = `(() => {
 })();`;
 
 async function probe(base) {
-  const browser = await puppeteer.launch({ headless: false, defaultViewport: null,
+  const browser = await launchGuardedBrowser(puppeteer, { headless: false, defaultViewport: null,
     args: ['--mute-audio', '--window-size=1440,960', '--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist',
       // the builds are served as cot.test (a non-loopback name, as the other recorders serve them)
       `--host-resolver-rules=MAP ${new URL(base.url).hostname} 127.0.0.1`] });
