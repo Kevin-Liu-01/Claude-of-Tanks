@@ -495,7 +495,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
-.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
+/* (it stands on the window's right edge under the header, so it covers the inspector whole: from the header's tool group it
+   ended mid-inspector at 1024 and 900 and left its words cut beside it: the s19 critic) */
+.st-queue{position:fixed;top:calc(50px + 4px);right:var(--s2);display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
   max-height:calc(100dvh - 72px);padding:var(--s4) var(--s3) var(--s3);overflow-y:auto;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 /* the queue takes the window's height, so it scrolls only on a short screen, where its drawn scrollbar is the cue (its
@@ -525,7 +527,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 /* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
 .st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:var(--s8) var(--s4) var(--s4);
   pointer-events:auto;background:var(--scrim)}
-.st-cmd-box{--st-cmd-row:34px;display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
+.st-cmd-box{--st-cmd-row:34px;--st-cmd-max:min(60vh,520px);display:flex;flex-direction:column;width:min(560px,100%);max-height:var(--st-cmd-max);overflow:hidden;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 .cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 var(--s4);border-bottom:1px solid var(--line-1);border-radius:0;
   background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
@@ -533,7 +535,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 /* the list stops halfway down a row, so a list that goes on always shows the next row's top (on a phone it ended on a
    row's edge, and the commands under it read as missing); the foot dims that row rather than hiding it, and the last
    row scrolls clear of the fade */
-.st-cmd-list{min-height:0;max-height:calc(round(down,min(60vh,520px) - 48px - var(--s2) - var(--st-cmd-row) / 2,var(--st-cmd-row)) + var(--s2) + var(--st-cmd-row) / 2);
+.st-cmd-list{min-height:0;max-height:calc(round(down,var(--st-cmd-max) - 48px - var(--s2) - var(--st-cmd-row) / 2,var(--st-cmd-row)) + var(--s2) + var(--st-cmd-row) / 2);
   padding:var(--s2) var(--s2) var(--s6);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
   -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent));
   mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent))}
@@ -542,6 +544,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
 .st-cmd-empty{padding:var(--s4) var(--s4);color:var(--ink-3);font:400 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-body)}
+/* a phone or a short window gives the palette the screen's height under its head (the s19 critic: four rows at 844 x 390
+   over an empty dim, and on a phone its foot sliced the workspace strip) */
+body:is([data-cot-width='phone'],[data-cot-height='short']) .st-cmd-box{--st-cmd-max:calc(var(--cot-viewport-height,100dvh) - var(--s8) - var(--s4))}
 
 /* ------------------------------------------------------------------------------------------- the film veil */
 .cot-studio .filmVeil{position:absolute;inset:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;align-items:center;justify-content:center;
