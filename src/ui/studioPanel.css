@@ -740,8 +740,10 @@ body[data-cot-input='coarse']:is([data-cot-width='phone'],[data-cot-width='compa
 /* ------------------------------------------------- the template browser (studioTemplateSheet.ts, owner 2026-10-27) */
 /* one sheet over a scrim: the template under the pointer or the focus, large, beside the cards (above them where the sheet
    is narrower, gone on a phone where a tap stages); the whole screen on a phone or a short window, as Field frames */
-.cot-studio-templates{--font-display:var(--font-ui);box-sizing:border-box;width:min(1320px,calc(100vw - 2 * var(--s5)));
-  height:min(880px,calc(100dvh - 2 * var(--s5)));max-width:none;max-height:none;margin:auto;padding:0;border:0;border-radius:var(--r2);
+/* the sheet grows with the screen's type (the tpl261b capture: at 1920 a card's "Cinder Junction · Golden hour" ended in an
+   ellipsis in a 1320 px sheet) */
+.cot-studio-templates{--font-display:var(--font-ui);box-sizing:border-box;width:min(max(1320px,78vw),1680px,calc(100vw - 2 * var(--s5)));
+  height:min(max(880px,82dvh),1160px,calc(100dvh - 2 * var(--s5)));max-width:none;max-height:none;margin:auto;padding:0;border:0;border-radius:var(--r2);
   background:var(--surface-page);box-shadow:var(--e4);color:var(--ink-1);font-family:var(--font-ui);overflow:hidden}
 /* (the sheet is the size container: a container query styles the container's descendants, never the container itself) */
 .cot-studio-templates[open]{display:flex;flex-direction:column;container-type:inline-size}
@@ -756,6 +758,12 @@ body[data-cot-input='coarse']:is([data-cot-width='phone'],[data-cot-width='compa
 .st-tpl__cards{display:flex;min-width:0;min-height:0}
 .st-tpl__cards>.cot-c-picker{flex:1}
 .cot-studio-templates .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(176px,1fr))}
+/* a card's battlefield and hour stand whole: a pair longer than the card takes a second line, never an ellipsis, and no
+   line opens on a separator (the 261 critic's M4): every fact carries its dot in a 1.2 em lead that the facts' clip cuts
+   off wherever a fact starts a line */
+.cot-studio-templates .cot-c-picker__facts{flex-wrap:wrap;flex-basis:calc(100% + 1.2em);gap:0;margin-left:-1.2em;clip-path:inset(0 0 0 1.2em)}
+.cot-studio-templates .cot-c-picker__facts>span{overflow:visible}
+.cot-studio-templates .cot-c-picker__facts>span::before{content:'·';display:inline-block;width:1.2em;margin:0;text-align:center}
 .st-tpl__preview{display:flex;flex-direction:column;gap:var(--s3);min-width:0;min-height:0;margin:0;overflow-y:auto;scrollbar-width:thin;
   scrollbar-color:var(--line-3) transparent}
 .st-tpl__hero{position:relative;flex:none;aspect-ratio:16/9;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--ring-1)}
