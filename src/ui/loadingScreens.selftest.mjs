@@ -179,6 +179,8 @@ assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
     'the zoomed stage row keeps one gap');
   // boot r28: centred as a box, the key cap's text sat 1 px off the prompt's baseline (en above, zh below)
   assert.doesNotMatch(bootHtml, /\.cot-boot-key \{[^}]*vertical-align/, 'the key cap\'s text stands on the prompt\'s baseline');
+  // boot r29: in a line box shorter than its font the label rounded a pixel off the sentence at half the sub-pixel places
+  assert.match(bootHtml, /\.cot-boot-key \{[^}]*height: 22px;[^}]*\/22px var\(--font-data\)/, 'the key cap\'s line is the cap\'s height');
 }
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
