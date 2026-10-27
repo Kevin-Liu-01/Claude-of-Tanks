@@ -100,14 +100,14 @@ const UKRAINE_SPECS = {
     armorFactor: 1.12,
   }),
   bm_oplot_m: variant('bm_oplot_m', 't84', {
-    name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#56603f', weather: '#68704f', patches: [],
+    name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#66704c', weather: '#77805a', patches: [],
     camoScale: 0.50,
     dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
   bm_oplot_t: variant('bm_oplot_t', 't84', {
-    name: 'T-84BM Oplot-T', number: '231', scheme: 'nato', base: '#b99c6c', weather: '#c6ab7e',
+    name: 'T-84BM Oplot-T', number: '231', scheme: 'nato', base: '#b39466', weather: '#c3a578',
     patches: ['#7e4c37', '#5c4232', '#a17f58'], camoScale: 0.58,
     dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.5, topSpeedKmh: 70, reverseSpeedKmh: 30,

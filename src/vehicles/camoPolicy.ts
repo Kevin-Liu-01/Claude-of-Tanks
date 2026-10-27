@@ -121,10 +121,14 @@ const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as con
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
-type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
+/** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks. */
+const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t'] as const);
+type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -150,6 +154,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_GT,
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
+  ...AUTHORED_PAINT_IDS_AFTER_262,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -795,6 +800,9 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz100_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
+  bm_oplot_m: 'paint_bm_oplot_m',
+  bm_oplot_t: 'paint_bm_oplot_t',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

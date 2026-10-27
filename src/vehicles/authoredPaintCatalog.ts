@@ -2,11 +2,13 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 21 entries over 80 vehicles.
+// 23 entries over 82 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
   'paint_ares_apc_x',
+  'paint_bm_oplot_m',
+  'paint_bm_oplot_t',
   'paint_bmpt_terminator2',
   'paint_chieftain5',
   'paint_cn_t80u_modern',
@@ -46,6 +48,8 @@ export interface AuthoredPaintEntry {
 export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.freeze([
   {id: 'paint_amx40',lead: 'amx40_proto',sourceTankIds: ['amx40_proto','amx40'],nation: 'France',label: 'French Plain Khaki',tags: ['fr','desert','geometric','signature'],visual: {scheme: 'solid',base: '#96835a',weather: '#a4916a',patches: []}},
   {id: 'paint_ares_apc_x',lead: 'ares_apc',sourceTankIds: ['ares_apc'],nation: 'UK',label: 'British Three-Tone Woodland',tags: ['uk','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4e5940',weather: '#60694f',patches: ['#252a22','#544233','#72745d'],camoScale: 0.44}},
+  {id: 'paint_bm_oplot_m',lead: 'bm_oplot_m',sourceTankIds: ['bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Plain Olive',tags: ['ua','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#66704c',weather: '#77805a',patches: []}},
+  {id: 'paint_bm_oplot_t',lead: 'bm_oplot_t',sourceTankIds: ['bm_oplot_t'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Desert',tags: ['ua','desert','organic','signature'],visual: {scheme: 'nato',base: '#b39466',weather: '#c3a578',patches: ['#7e4c37','#5c4232','#a17f58'],camoScale: 0.58}},
   {id: 'paint_bmpt_terminator2',lead: 'bmpt_terminator2',sourceTankIds: ['bmpt_terminator2'],nation: 'Russia',label: 'Russian Digital Woodland',tags: ['ru','woodland','digital','signature'],visual: {scheme: 'digital',base: '#35452f',weather: '#3f4d36',patches: ['#243128','#4d4a37','#5a523e'],camoScale: 0.5,solidWeatheringIntensity: 0.03}},
   {id: 'paint_chieftain5',lead: 'chieftain3',sourceTankIds: ['chieftain3','chieftain_mk9','vickers_mk1','centurion3','centurion5_2','chieftain_mk10','chieftain5'],nation: 'UK',label: 'British Bands Woodland',tags: ['uk','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#3f4a36',weather: '#4a5540',patches: ['#1d1f1c','#33402c'],camoScale: 0.55}},
   {id: 'paint_cn_t80u_modern',lead: 't80u_yun',sourceTankIds: ['t80u_yun','t72b3m_kunlun','t72b3_qilin'],nation: 'China',label: 'PLA Digital Woodland',tags: ['cn','woodland','digital','signature'],visual: {scheme: 'digital',base: '#626c43',weather: '#4a5c42',patches: ['#303d34','#a5aa77']}},
