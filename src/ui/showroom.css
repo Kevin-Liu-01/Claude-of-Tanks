@@ -653,6 +653,29 @@ body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
 }
 body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
+/* a phone's band holds the consumables on two rows: the six slots on the first (the equipment's, then the consumables')
+   and the paint under them. Eight touch targets and their two rules are wider than any phone's band (at 390 x 844 a
+   consumable ran under the paint and Equipment's third slot under the consumables), and the band shows every slot */
+body[data-cot-panels='overlay'] .cot-lt-band:has(.cot-lt-consumables){flex-wrap:wrap;row-gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){flex:1 0 100%;padding-left:0;border-left:0;}
+/* (upright, the paint's row has the room for the worn paint's name and a second paint to try) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-band:has(.cot-lt-consumables) .cot-lt-paint{align-self:stretch;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-band:has(.cot-lt-consumables) .cot-lt-swatch:nth-child(3):not(.cot-lt-paint-all){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-band:has(.cot-lt-consumables) .cot-lt-swatch.is-on .nm{display:block;}
+/* the first row holds four zh characters in each consumable (61 px) beside 48 px equipment slots from a 360 px band and
+   44 px ones from 340 px; under 340 px the consumables show their glyphs alone, their names in the slot's tip and
+   accessible name */
+@container lt (width < 372px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-band:has(.cot-lt-consumables) :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:48px;}
+}
+@container lt (width < 360px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-band:has(.cot-lt-consumables) :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:44px;}
+  body[data-cot-panels='overlay'] .cot-lt-band:has(.cot-lt-consumables){column-gap:var(--s1);}
+  body[data-cot-panels='overlay'] .cot-lt-band:has(.cot-lt-consumables)>*+*{padding-left:var(--s1);}
+}
+@container lt (width < 340px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-consumables .eqslot .sl{display:none;}
+}
 body[data-cot-panels='overlay'] :is(.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.empty,.cot-lt-paint-all){background:var(--surface-menu);}
 /* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
@@ -694,6 +717,19 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-
 @container lt (width < 350px){
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band{gap:var(--s1);}
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band>*+*{padding-left:var(--s1);}
+}
+/* the column on its side takes the band's two rows: 44 px slots, and the figures' first three on one row (the dossier
+   keeps every figure one press away) under the band's second row; under 386 px the figures drop their scales and the
+   column its gaps to the small step, so the battle card keeps its place */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--slot:44px;--cot-figures-h:60px;
+  --cot-lt-cap:calc(max(var(--fs-floor-11),var(--fs-11)) + 2px + var(--s1));}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band:has(.cot-lt-consumables){row-gap:var(--cot-col-gap);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] .cot-garage:not([data-garage-panel='equipment']) .stats{
+  top:calc(var(--cot-col-top) + var(--cot-name-h) + 2 * (var(--cot-lt-cap) + var(--slot)) + 3 * var(--cot-col-gap));}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:none;}
+@media (height < 386px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--cot-figures-h:44px;--cot-col-gap:var(--s1);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
 }
 /* a very short window on its side (a browser bar over a phone, the 240 px minimum) closes the column up: a smaller name,
    44 px slots, three figures without their scales and a lower battle card. No band or density edge falls between this

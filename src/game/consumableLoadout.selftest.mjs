@@ -68,4 +68,9 @@ const showroom = readFileSync(new URL('../ui/showroom.css', import.meta.url), 'u
 assert.match(showroom, /\.cot-garage \.cot-lt-consumables \.eqslot\{min-width:max-content;\}/, 'the consumable slot is as wide as its name');
 assert.match(showroom, /\.cot-garage \.cot-lt-consumables \.eqslot \.sl\{max-width:none;overflow:visible;text-overflow:clip;\}/,
   'the consumable slot never cuts its name');
+// a phone's band takes the consumables on a first row of six slots, the paint on its own row (eight touch targets
+// and two rules are wider than a phone's band)
+assert.match(showroom, /body\[data-cot-panels='overlay'\] \.cot-lt-band:has\(\.cot-lt-consumables\)\{flex-wrap:wrap;/, 'a phone band wraps');
+assert.match(showroom, /\.cot-lt-band:has\(\.cot-lt-consumables\)>\.cot-lt-group:has\(>\.cot-lt-paint\)\{flex:1 0 100%;/,
+  'the paint takes its own row on a phone');
 console.log(`consumableLoadout.selftest: saves, gates, fits, ${view.length} slot views, picker groups and both catalogs passed`);
