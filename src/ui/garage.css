@@ -443,8 +443,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
   grid-template-columns:auto minmax(0,1fr);column-gap:var(--s2);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
-/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows */
-.cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
+/* every nation stays reachable: the track scrolls under fades at its ends (has-more-left / -right), no boxed arrows; it
+   holds the rail's one row, which the end counts share (an auto row put the phone's flags on the cards: r26) */
+.cot-country-chips{grid-column:3;grid-row:1;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px calc(3px + var(--rail-end,0px)) var(--s1) 3px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x mandatory;scroll-padding-inline:0;touch-action:pan-x;
