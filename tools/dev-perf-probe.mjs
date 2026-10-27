@@ -6,6 +6,7 @@
 //   constrained 2x CDP CPU, 4 logical cores, 4 GB reported memory
 //   software    constrained CPU plus SwiftShader (stress floor, not an iGPU model)
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -170,7 +171,7 @@ try {
   await server.listen();
   const launchArgs = ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'];
   if (selected.softwareGPU) launchArgs.push('--use-angle=swiftshader', '--enable-unsafe-swiftshader');
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new', protocolTimeout: Math.max(30000, Math.min(300000, openTimeoutMs + 15000)),
     args: launchArgs,
   });

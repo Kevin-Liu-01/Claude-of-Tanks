@@ -167,11 +167,10 @@ assert.match(notFoundHtml, /<script type="module" src="\/src\/presentation\/notF
   'the 404 keeps its own runtime (it imports the shell\'s)');
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+assert.match(gameHtml, /\.cot-boot-links\s*\{[^}]*display: flex; gap: 4px;/,
+  'boot utility controls are one row of quiet buttons in the foot (the 2026-10-26 boot redesign)');
 assert.match(gameHtml,
-  /\.cot-boot-links\s*\{[^}]*display: grid; grid-template-columns: repeat\(2, 1fr\); width: max-content;/,
-  'boot utility controls must share the widest control\'s intrinsic width');
-assert.match(gameHtml,
-  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 18px;/,
+  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 12px;/,
   'boot utility controls must keep balanced content-driven horizontal padding');
 assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
   'boot utility controls must not return to the fixed width that cramped GitHub');

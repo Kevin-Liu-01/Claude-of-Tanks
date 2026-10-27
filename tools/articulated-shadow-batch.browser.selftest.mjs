@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Native exact composed-PCF/coverage/submission regression, never an FPS or full-game benchmark.
 // node tools/articulated-shadow-batch.browser.selftest.mjs [--out=/absolute/new-directory]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -117,7 +118,7 @@ try {
     } }],
   });
   await bounded(server.listen(), 15_000, 'owned Vite listen');
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 60_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 60_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser); report.browserVersion = await browser.version();
   page = await browser.newPage(); await page.setViewport({ width: 320, height: 240, deviceScaleFactor: 1 });

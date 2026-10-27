@@ -2,6 +2,7 @@
 // hashes/dimensions, live geometry and metadata freshness, plus a visible
 // muzzle-bore marker for every selected vehicle.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -142,7 +143,7 @@ await server.listen();
 // navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
 // COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
 const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'tank-assets-check', ready: 'window.__ICONS_READY === true' });
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

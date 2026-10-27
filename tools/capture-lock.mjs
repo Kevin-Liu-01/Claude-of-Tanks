@@ -594,6 +594,23 @@ export function stampBehindWaiting(stamp, { pattern = /perf/i, queueDir = DEFAUL
  * lock; refresh() and release() return true when they acted on this instance's own hold, false (and touch nothing) when
  * it holds nothing or the lock at the path is no longer its own (logged).
  */
+// Every lock instance of this process that holds the lock now, for releaseAllCaptureHolds.
+const heldLocks = new Set();
+
+/**
+ * Release every capture hold this process has (2026-10-26, item 244): the browser guard (tools/browser-launch.mjs) calls
+ * it once it has killed a runaway browser, before the process exits, so the queue moves on at once instead of after the
+ * dead owner's lock goes stale. `reason` goes into each release's hold-log line. Returns the tickets released.
+ */
+export function releaseAllCaptureHolds(reason = null) {
+  const tickets = [];
+  for (const lock of [...heldLocks]) {
+    const ticket = lock.heldTicket;
+    if (lock.release(reason)) tickets.push(ticket);
+  }
+  return tickets;
+}
+
 export function createCaptureLock({
   lockDir = DEFAULT_LOCK_DIR,
   queueDir = DEFAULT_QUEUE_DIR,
@@ -683,6 +700,7 @@ export function createCaptureLock({
           const claimed = claimOwnedLock(lockDir, { ticket: ownTicket });
           if (claimed) {
             hold = claimed;
+            heldLocks.add(api);
             if (place) { try { unlinkSync(placePath(queueDir, place)); } catch { /* gone */ } }
             appendHoldLog(logFile, { e: 'hold', pid: process.pid, ticket: ownTicket, waitedMs: Date.now() - startedAt, warmMs,
               command: process.argv.slice(1).join(' ').slice(0, 300) });
@@ -714,13 +732,15 @@ export function createCaptureLock({
     return refreshOwnedLock(hold, { log });
   }
 
-  function release() {
+  /** `reason` (optional) is recorded on the hold-log line (the browser guard's release says why). */
+  function release(reason = null) {
     if (!hold) return false;
     const releasing = hold;
     hold = null;
+    heldLocks.delete(api);
     const released = releaseOwnedLock(releasing, { log });
     appendHoldLog(logFile, { e: 'release', pid: process.pid, ticket: releasing.ticket, released,
-      heldMs: Date.now() - Date.parse(releasing.token.startedAt) });
+      heldMs: Date.now() - Date.parse(releasing.token.startedAt), ...(typeof reason === 'string' && reason ? { reason } : {}) });
     return released;
   }
 
@@ -745,7 +765,9 @@ export function createCaptureLock({
     }).length;
   }
 
-  return { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; } };
+  const api = { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; },
+    get heldTicket() { return hold?.ticket ?? null; } };
+  return api;
 }
 
 const sharedCaptureLock = createCaptureLock();

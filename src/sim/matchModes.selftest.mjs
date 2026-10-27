@@ -578,7 +578,8 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const { readFileSync } = await import('node:fs');
   const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
   const play = readFileSync(new URL('../ui/playMenu.ts', import.meta.url), 'utf8');
-  assert.match(garage, /const cards = \(\): import\('\.\/modePicker\.ts'\)\.ModeCard\[\] => MODE_PRESENTATION_ORDER\.map\(/, 'Deploy\'s mode picker reads the order');
+  // (the Garage's mode cards serve Deploy's picker and the battle card's quick menu since gallery-studio's 93c306ceea: modeCards)
+  assert.match(garage, /const modeCards = \(\): import\('\.\/modePicker\.ts'\)\.ModeCard\[\] => MODE_PRESENTATION_ORDER\.map\(/, 'Deploy\'s mode picker reads the order');
   assert.match(play, /MODE_PRESENTATION_ORDER as readonly string\[\]\)\.indexOf\(id\)/, 'the room mode cards sort by it');
   assert.doesNotMatch(garage + play, /deployCardsHTML\(\['|leadingModes/, 'no surface keeps its own mode list');
 }

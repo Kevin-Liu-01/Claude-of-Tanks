@@ -44,6 +44,7 @@
  * command does the same.
  */
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
@@ -716,7 +717,7 @@ async function capture({ options, plan, seedInfo }) {
     log(`vite ${origin} (cache ${options.cacheDir})`);
 
     const puppeteer = (await import('puppeteer')).default;
-    browser = await puppeteer.launch({
+    browser = await launchGuardedBrowser(puppeteer, {
       headless: true,
       protocolTimeout: 360_000,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-background-timer-throttling',
@@ -958,7 +959,7 @@ async function compose({ options, record, framing }) {
   });
   const puppeteer = (await import('puppeteer')).default;
   // software only: the composition never touches the GPU the capture lock guards
-  const browser = await puppeteer.launch({
+  const browser = await launchGuardedBrowser(puppeteer, {
     headless: true, args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--force-color-profile=srgb'],
   });
   let composed;

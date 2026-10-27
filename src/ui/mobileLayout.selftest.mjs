@@ -248,8 +248,11 @@ assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input
   'settings and F8 must converge on the same diagnostics visibility path');
 assert.doesNotMatch(perfHud, /cot\.perfhud\.v1|PROD_BUILD/,
   'the diagnostics panel must not retain a second private persistence or production gate');
-assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:31px[^}]*contain:layout paint style/,
+assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:40px[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
+// (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"; tools/marker-census.mjs renders it)
+assert.doesNotMatch(hud, /class="flg"|tgtRefs\.flg|\.cot-(?:hpb|tgt) [^{]*\.cot-flag/,
+  'no marker over a tank carries a nation flag');
 assert.match(hud, /bar\.layoutW = Math\.max\(128, Math\.min\(280, measured\)\)/,
   'ambient labels must expand once to preserve complete vehicle names');
 assert.match(hud, /targetX = Math\.max\(halfWidth \+ 4, Math\.min\(w - halfWidth - 4, _sx\)\)/,

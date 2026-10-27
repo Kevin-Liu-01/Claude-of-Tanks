@@ -32,6 +32,7 @@
 // relayouts under the pinch (an origin/main before the 2026-10-16 fix exits 1 here: that is the negative control); 2 on
 // a usage error. A manual probe: it needs a browser and a served build, so it is not part of npm test.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -766,7 +767,7 @@ function optionsOrExit(argv) {
 async function main() {
   const options = optionsOrExit(process.argv.slice(2));
   const { default: puppeteer } = await import('puppeteer');
-  const browser = await puppeteer.launch({
+  const browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     // a waitForFunction is one awaited CDP call: it must outlive the longest wait the run allows
     protocolTimeout: Math.max(options.readyTimeoutMs, options.battleTimeoutMs) + 120000,

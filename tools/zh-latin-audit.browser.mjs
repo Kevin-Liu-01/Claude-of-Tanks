@@ -13,6 +13,7 @@
 // 1366x768 and 390x844 touch. Needs a dev server on --url (vite) and Playwright with Chrome.
 //
 //   node tools/zh-latin-audit.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/zh-audit [--locale=zh-CN] [--case=a,b]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -149,7 +150,7 @@ for (const [view, width, height, touch] of VIEWPORTS) {
 }
 
 const { chromium } = await import(arg('playwright-module', 'playwright'));
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const screens = [];
 const errors = [];
 try {

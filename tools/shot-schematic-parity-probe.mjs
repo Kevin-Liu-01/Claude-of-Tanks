@@ -1,6 +1,7 @@
 // Native exact-pixel regression. Owns an ordinary FIFO lease, Vite source-fixture
 // server and one fresh Chromium process. This is NOT a timing certification.
 // node tools/shot-schematic-parity-probe.mjs --out=/absolute/new-directory [--port=5944]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -86,7 +87,7 @@ try {
       });
     } }] }); active();
   await server.listen(); active();
-  browser = await puppeteer.launch({ headless: 'new', handleSIGINT: false, handleSIGTERM: false,
+  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
     timeout: 30_000, protocolTimeout: 65_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }); active();
   report.browser = { version: await browser.version(), pid: browser.process()?.pid };

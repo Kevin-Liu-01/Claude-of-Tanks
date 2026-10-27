@@ -806,12 +806,15 @@ function groupRecords(list: GalleryRecord[]): RosterGroup[] {
 }
 
 let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest; classes: typeof import('../vehicles/vehicleFacets.ts');
-  glyphs: typeof import('../ui/vehicleFacetIcons.ts') } | null = null;
-Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css'), import('../vehicles/vehicleFacets.ts'), import('../ui/vehicleFacetIcons.ts')])
-  .then(async ([module, , classes, glyphs]) => {
+  glyphs: typeof import('../ui/vehicleFacetIcons.ts'); chips: typeof import('../ui/heroCardChips.ts') } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
+  .then(async ([module]) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
-    heroCards = { module, manifest, classes, glyphs };
+    // the class glyph and the tier chip ride with the cards (the chunk the card module already pulls)
+    const [classes, glyphs, chips] = await Promise.all([import('../vehicles/vehicleFacets.ts'), import('../ui/vehicleFacetIcons.ts'),
+      import('../ui/heroCardChips.ts')]);
+    heroCards = { module, manifest, classes, glyphs, chips };
     const mask = module.heroCardFlagMask(manifest);
     vehicleList.style.setProperty('--hc-flag-mask', mask);
     takeMedia.style.setProperty('--hc-flag-mask', mask);
@@ -834,7 +837,7 @@ function rowMarkup(record: GalleryRecord): string {
     ? `<span class="it__class" role="img" aria-label="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}" data-tip="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}">`
       + `${heroCards.glyphs.vehicleClassGlyphSVG(classId, 12)}</span>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
-    + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}${classPlate}`
+    + `<span class="it__art">${heroCards ? heroCards.chips.heroTierChipHTML(record.id) : ''}</span>${flag(record.nation, 'sm')}${silhouette(record.id)}${classPlate}`
     + `<span class="it__name"${rowTip(record)}>${esc(keepDesignation(rowName(record)))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {
@@ -1192,8 +1195,20 @@ function populateRivals(): void {
   }));
   if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
   rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
-    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival',
+    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival', bounds: rivalMenuBounds,
     filters: flagCodes.map((code) => ({ id: code, label: flagLabel(code) })), onChoose: (item) => setRival(item.id, true) });
+}
+/** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
+ * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
+function rivalMenuBounds(): { top: number; bottom: number } {
+  const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
+  const top = Math.max(0, bar ? bar.bottom : 0);
+  const panel = document.querySelector<HTMLElement>('.dossier-scroll');
+  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
+    const box = panel.getBoundingClientRect();
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
+  }
+  return { top, bottom: innerHeight };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */

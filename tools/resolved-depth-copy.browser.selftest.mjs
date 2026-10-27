@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Native-only focused regression. Run: node tools/resolved-depth-copy.browser.selftest.mjs
 // This is a source/pinned-Three pixel gate, not a production loading benchmark.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -71,7 +72,7 @@ try {
     } }],
   });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new',
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
     timeout: 30_000, protocolTimeout: 30_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);

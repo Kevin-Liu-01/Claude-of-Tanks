@@ -13,6 +13,7 @@
 // Preview a subset with --only=game,home,docs-models before regenerating all.
 // Every labelled card is rendered twice: public/brand/og/<id>.jpg for the English page and public/brand/og/zh/<id>.jpg,
 // the same picture with the label in the zh-CN catalog's words, for its /cn twin (src/presentation/localizedHtml.ts).
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -103,7 +104,7 @@ export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
 
 async function generateOgImages(cards = OG_IMAGE_CARDS) {
   mkdirSync(OUTPUT, { recursive: true });
-  const browser = await puppeteer.launch({
+  const browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     // (the capture-browser rule, 2026-10-23: every capture browser runs with a 3 GB JavaScript heap)
     args: ['--js-flags=--max-old-space-size=3072', '--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],

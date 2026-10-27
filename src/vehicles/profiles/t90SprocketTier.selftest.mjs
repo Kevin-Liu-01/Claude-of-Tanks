@@ -88,8 +88,8 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
 }
 
 // The UI shows each vehicle's column in its national tree (owner 2026-10-25; re-tiered by capability for 257).
-// Matchmaking: 257 moved the obr. 1992 and the Burlak Prototype to IX so the T-90 lineage never steps down; the MS stays X.
-for (const [id, gameplay, shown] of [['t90_1992', 9, 'VII'], ['t90a_burlak_proto', 9, 'IX'], ['t90ms_2011', 10, 'IX']]) {
+// Matchmaking reads the shown tier since 258.
+for (const [id, gameplay, shown] of [['t90_1992', 7, 'VII'], ['t90a_burlak_proto', 9, 'IX'], ['t90ms_2011', 9, 'IX']]) {
   assert.equal(tankTier(id), gameplay, `${id}: gameplay tier is ${gameplay}`);
   assert.equal(tierNumeral(id), shown, `${id}: UI tier is its tree column, ${shown}`);
 }

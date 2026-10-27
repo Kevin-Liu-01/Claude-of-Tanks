@@ -115,8 +115,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // and every hull mesh, both sides, each degree's shallowest neighbour): over the B3 hull's glacis-corner fittings at
   // yaw 24-30 (5.4 deg at worst) and the skirts' rear modules at 142-151 (5.3 deg); full 6 deg elsewhere.
   t72b3_qilin: { donor: 'type96b', pivot: TYPE96B_ON_T72B3, roofY: .70, ...TYPE96B_RIM_SOCKET, heightM: 3.097,
-    gunPitchByYawDeg: [[0, -6], [22, -6], [28, -5.4], [30, -5.4], [32, -6], [140, -6], [145, -5.3], [147, -5.3], [153, -6],
-      [180, -6]],
+    gunPitchByYawDeg: [[0, -6], [22, -6], [28, -5.4], [30, -5.4], [32, -6], [140, -6], [141, -5.9], [142, -5.7], [143, -5.6], [144, -5.4], [145, -5.3], [147, -5.3], [149, -5.5], [150, -5.7], [153, -6], [154, -5.9], [161, 8.1], [162, 9.2], [163, 9.6], [169, 10.2], [171, 10.2], [172, 10.3], [173, 10.5], [180, 10.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
   // Release 227 (cnClearance, 2026-10-17): the gun's depression by turret yaw, measured: at each degree the deepest pitch
@@ -128,8 +127,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // the engine deck's cooling panels (3.4-5.7 deg): the Type 96B's trunnion stands 0.26 m over the ring, and at -6 deg
   // the barrel meets the deck itself there.
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, ...TYPE96B_RIM_SOCKET, heightM: 3.35,
-    gunPitchByYawDeg: [[0, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
-      [155, -4.9], [158, -4.8], [162, -3.8], [163, -3.7], [166, -3.7], [178, -4], [180, -4.5]],
+    gunPitchByYawDeg: [[0, -6], [110, -6], [111, -5.3], [114, -5.3], [115, -5.7], [116, -6], [118, -6], [119, -5.9], [124, -5.9], [125, -5.8], [130, -5.8], [131, -5.7], [133, -5.7], [134, -5.5], [135, -5.2], [136, -5], [137, -4.7], [138, -4.5], [139, -4.2], [140, -4.1], [141, -3.9], [143, -3.7], [144, -3.5], [145, -3.4], [148, -3.4], [150, -3.6], [151, -3.6], [153, -3.8], [154, -4.3], [155, -4.7], [156, -3.5], [162, 8.5], [163, 9.5], [164, 9.8], [169, 10.3], [170, 10.3], [171, 10.4], [172, 10.4], [173, 10.5], [180, 10.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
     // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation; the box sight
@@ -145,8 +143,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // depresses 6 deg (it had 3.4-4.9 deg over the 226 lamp brows at yaw 22-33); aft of 158 deg the barrel passes over
   // the hull deck's rear edge, the engine deck's cooling panels, their leafy net and the slatted transom (3.4-5.1 deg).
   t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.392, -.607], heightM: 3.212,
-    gunPitchByYawDeg: [[0, -6], [157, -6],
-      [159, -5.1], [160, -4.9], [163, -4.5], [166, -4.5], [167, -4], [169, -3.5], [172, -3.4], [174, -3.4], [180, -3.6]],
+    gunPitchByYawDeg: [[0, -6], [140, -6], [154, -6], [155, -4.7], [162, 9.3], [163, 10.4], [164, 10.6], [166, 10.8], [167, 10.8], [169, 11], [170, 11], [171, 11.1], [172, 11.1], [173, 11.2], [176, 11.2], [177, 11.3], [180, 11.3]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
   // Release 230 (the 230 turret land, after round 11's fix of the other three T-72B3M turrets): the same 16 mm shallower
@@ -183,7 +180,14 @@ export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONO
  * - the rear: the barrel over the engine deck's grilles, its deck cases and cabinets and their nets (the Zubrs need about
  *   level at 149-157, the Hetman II +2.4 over its T-72B3M engine deck, the Wilk +0.6), the T-80Us' rear hull from 141-159;
  * - straight ahead on the Bulat-M and Bastion-M, the mantlet's chin over the glacis armour and the driver's periscope
- *   (-2.9 and -3.9 at yaw 0-20).
+ *   (-2.9 and -3.9 at yaw 0-20);
+ * - 2026-10-26: the two fuel drums across the upper rear slope (rearSlopeFuelDrums.ts) on the Bulat-M, Bastion-M, Qilin,
+ *   Kunlun and Yun: over the rear's last 20 deg the gun clears their tops at +5.2 (the B3 and B3M decks) to +10.5/+11.3
+ *   (the Type 96B guns on the Qilin, Kunlun and Yun). Each row is the shallower, degree by degree, of its published stop
+ *   and the re-sweep with the drums, its onset then ramped at 2 deg per degree of yaw (never below the sweep): the low
+ *   stop is a clamp (movement.ts), so the sweep's 12 deg step at the drums' outer ends would snap the gun up as the
+ *   turret swings over them. A full 0.59 m drum on that slope cannot sit under the old stops: the gun passed 4 to 10 cm
+ *   over the deck's rear edge.
  * Two standing mantlet conflicts no depression stop cures were left to the geometry:
  * - the T-72B3M turret's mantlet underside 6-18 mm over the driver's hatch at yaw 0-25 at every pitch (Hetman, Hetman II,
  *   Zubr, Zubr II; the fleet T-72B3M has it too);
@@ -205,6 +209,6 @@ export const NATIONAL_GUN_PITCH_BY_YAW: Readonly<Record<string, readonly (readon
   t80u_husarz: [[0,-6],[139,-6],[150,-4.4],[151,-4.1],[152,-3.9],[156,-3.9],[161,-4.5],[162,-4.1],[165,-3.9],[177,-4.1],[180,-4.5]],
   t72b3m_wilk: [[0,-6],[25,-6],[30,-5.3],[33,-5.3],[37,-6],[124,-6],[125,-5.9],[136,-5.2],[139,-4.5],[141,-4.3],[142,-2],[143,-0.6],[144,-0.1],[149,0.5],[152,0.6],[157,0.5],[161,0],[162,-0.4],[163,-1.6],[164,-4.2],[179,-4.4],[180,-4.6]],
   t80u_bars_m: [[0,-6],[155,-6],[159,-5],[163,-4.5],[169,-4.6],[179,-5],[180,-5.3]],
-  t72b3m_bulat_m: [[0,-3.6],[1,-3.3],[2,-3.1],[15,-2.9],[17,-3.4],[19,-4.6],[20,-4.6],[21,-5.7],[22,-6],[25,-6],[30,-5.3],[32,-5.1],[34,-5.1],[35,-5.2],[37,-5.6],[38,-6],[43,-6],[44,-5.9],[46,-5.9],[47,-6],[54,-6],[56,-5.8],[65,-5.7],[66,-5.1],[67,-4.7],[68,-4.5],[71,-4.5],[72,-4.6],[75,-5.8],[87,-5.7],[89,-4.5],[91,-4.3],[93,-4.3],[94,-4.5],[95,-4.9],[96,-5.6],[109,-5.6],[111,-4.4],[113,-4.1],[115,-4.1],[117,-4.6],[120,-5.5],[124,-5.4],[127,-5.4],[129,-5.6],[130,-4.9],[131,-4.5],[137,-4.2],[138,-3.7],[139,-3.5],[144,-3.6],[152,-4.3],[153,-3.6],[154,-2.2],[155,-1.6],[156,-1.3],[161,-1.1],[163,-1.2],[164,-1.5],[165,-2.3],[166,-4.7],[179,-5],[180,-5.2]],
-  t72b3_bastion_m: [[0,-4.4],[5,-3.9],[7,-3.9],[11,-4.7],[17,-4.7],[20,-4.8],[22,-6],[73,-6],[75,-5.6],[77,-5.6],[80,-6],[100,-6],[103,-5.4],[105,-5.4],[106,-5.5],[108,-6],[128,-6],[129,-5.4],[130,-5],[136,-4.8],[137,-4.2],[138,-4],[139,-3.9],[142,-3.9],[149,-4.8],[152,-5.3],[154,-3.9],[155,-3.4],[158,-2.9],[162,-2.9],[163,-3],[164,-3.4],[165,-4.4],[166,-6],[180,-6]],
+  t72b3m_bulat_m: [[0,-3.6],[1,-3.3],[2,-3.1],[5,-3.1],[6,-3],[11,-3],[12,-2.9],[15,-2.9],[16,-3.1],[17,-3.4],[19,-4.6],[20,-4.6],[21,-5.7],[22,-6],[25,-6],[26,-5.9],[27,-5.7],[28,-5.6],[29,-5.4],[32,-5.1],[34,-5.1],[35,-5.2],[37,-5.6],[38,-6],[43,-6],[44,-5.9],[46,-5.9],[47,-6],[54,-6],[56,-5.8],[60,-5.8],[61,-5.7],[65,-5.7],[66,-5.1],[67,-4.7],[68,-4.5],[71,-4.5],[72,-4.6],[75,-5.8],[81,-5.8],[82,-5.7],[87,-5.7],[89,-4.5],[91,-4.3],[93,-4.3],[94,-4.5],[95,-4.9],[96,-5.6],[109,-5.6],[111,-4.4],[112,-4.2],[113,-4.1],[115,-4.1],[116,-4.3],[120,-5.5],[122,-5.5],[123,-5.4],[127,-5.4],[129,-5.6],[130,-4.9],[131,-4.5],[132,-4.5],[134,-4.3],[135,-4.3],[136,-4.2],[137,-4.2],[138,-3.7],[139,-3.5],[140,-3.5],[141,-3.5],[142,-3.6],[144,-3.6],[148,-4],[149,-4],[152,-4.3],[153,-3.6],[154,-2.2],[155,-1.6],[156,-1.3],[157,-1.2],[159,-1.2],[160,0.7],[161,2.7],[162,4.2],[163,4.9],[164,5],[165,5],[166,5.1],[167,5.1],[168,5.2],[172,5.2],[173,5.3],[177,5.3],[178,5.2],[180,5.2]],
+  t72b3_bastion_m: [[0,-4.4],[5,-3.9],[7,-3.9],[11,-4.7],[18,-4.7],[19,-4.8],[20,-4.8],[22,-6],[73,-6],[75,-5.6],[77,-5.6],[78,-5.7],[79,-5.9],[80,-6],[100,-6],[103,-5.4],[105,-5.4],[106,-5.5],[107,-5.8],[108,-6],[128,-6],[129,-5.4],[130,-5],[131,-5],[132,-4.9],[134,-4.9],[135,-4.8],[136,-4.8],[137,-4.2],[138,-4],[139,-3.9],[140,-3.9],[142,-3.9],[143,-4],[144,-4.2],[147,-4.5],[148,-4.7],[149,-4.8],[150,-5],[151,-5.1],[152,-5.3],[154,-3.9],[155,-3.4],[156,-3.2],[157,-3.1],[158,-1.7],[160,2.3],[161,4],[162,4.7],[163,4.9],[164,4.9],[165,5],[166,5],[167,5.1],[170,5.1],[171,5.2],[180,5.2]],
 };

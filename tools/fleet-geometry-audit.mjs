@@ -4,6 +4,7 @@
 //   node tools/fleet-geometry-audit.mjs
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
 //   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
@@ -44,7 +45,7 @@ const registeredIds = Object.keys(tankAssets.tanks || {});
 const ids = selectedIds.length ? selectedIds : registeredIds;
 const port = server.httpServer.address().port;
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

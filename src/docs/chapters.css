@@ -103,7 +103,9 @@
 .dm-section>h3,.dm-pair h3,.dm-equip>h3{margin:var(--s5) 0 var(--s3);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
 .dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--ink-1);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
 .dm-link:hover span{text-decoration:underline;text-underline-offset:3px}
-.dm-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);margin-top:var(--s4)}
+/* nine classes: three rows of three wherever three fit (four across left one alone), two across on a phone with the
+   odd last one across both */
+.dm-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(max(200px,calc((100% - 2 * var(--s3)) / 3)),1fr));gap:var(--s3);margin-top:var(--s4)}
 .dm-classes+p{margin-top:var(--s3)}
 .dm-class{display:grid;grid-template-rows:auto 1fr;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-hc{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--surface-scene);--hc-band:10px;--hc-share:0.74;--hc-hshare:0.72;--hc-cxr:0.5;--hc-flag-mask:var(--docs-hc-flag-mask)}
@@ -209,9 +211,10 @@
 .dm-map:target{box-shadow:var(--ring-2)}
 @media (width < 768px){
   .dm-pair{grid-template-columns:minmax(0,1fr)}
-  .dm-classes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dm-classes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+  .dm-classes>.dm-class:last-child:nth-child(odd){grid-column:1/-1}
   .dm-class__body{padding:8px 9px 10px}
-  .dm-maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dm-maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
   .dm-map__name{padding:7px 8px;font-size:max(var(--fs-floor-12),var(--fs-13))}
   .dm-bars b{min-width:3.5em}
 }
@@ -288,7 +291,7 @@
   .dm-touch{grid-template-columns:minmax(0,1fr);gap:var(--s3)}
   .dm-watch-shots{grid-template-columns:minmax(0,1fr);gap:var(--s3)}
   .dm-watch-shots .dm-figure--phone img{width:min(320px,70vw)}
-  .dm-takes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dm-takes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
   .dm-bars--wide li{flex-wrap:wrap;gap:4px 10px}
   .dm-bars--wide b{min-width:0;flex:1 0 100%}
   .dm-seats{grid-template-columns:minmax(0,1fr);padding:var(--s3)}

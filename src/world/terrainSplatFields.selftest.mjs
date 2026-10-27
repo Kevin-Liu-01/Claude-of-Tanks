@@ -102,6 +102,8 @@ function fixture({ closeThrows = false } = {}) {
     // ground lane (2026-10-03, the land-use bake): a small real mask, so the bake (64 texels a side: no extra build
     // step) and its stack (stackLandUseBake) run as they do in the game
     const makeMaskTexture = () => own(new THREE.DataTexture(new Uint8Array(64 * 64 * 4), 64, 64, THREE.RGBAFormat));
+    // (battle-spikes-253, 5cc91e072a) the material's steps take the mask's own steps; this fixture's mask is the stub above
+    function* makeMaskTextureSteps(...args) { return makeMaskTexture(...args); }
     const MASK_STACK_GUTTER = 64, MAP_SIZE = 1024;
     // (2026-10-04, the tier gate: the material reads the live preset — High here, its change listener a no-op)
     const resolvePresetName = () => 'high', onPresetChange = () => () => true;

@@ -57,7 +57,7 @@ const DOCS: readonly string[] = [
 /** The landing page (src/presentation/home.css). */
 const HOME: readonly string[] = [
   ...PUBLIC_NAV,
-  '.btn', '.hero__stats li', '.press__stats dt', '.v5-social-card__identity em', '.v5-social-card__identity small', '.v5-social-metrics',
+  '.btn', '.hero__stats li', '.press__stats dt', '.v5-social-card__identity small', '.v5-social-metrics',
   '.press__date',
 ];
 
