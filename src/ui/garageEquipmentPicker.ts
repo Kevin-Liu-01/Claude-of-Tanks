@@ -84,23 +84,31 @@ export interface GarageEquipmentPicker {
   dispose(): void;
 }
 
-/** The equipment picker in `host`: the kit picker, each card its item's glyph. */
-export function createGarageEquipmentPicker(options: GarageEquipmentPickerOptions): GarageEquipmentPicker {
-  const { host } = options;
-  let picker: ReturnType<typeof createPicker> | null = null;
-  /** Each option the picker drew takes its item's glyph as its picture (a microtask after the picker's render). */
+/**
+ * The Garage pickers' item cards (equipment, consumables): each option the kit picker draws in `host` takes its item's
+ * badge (equipIcons.ts) as its picture, a microtask after the picker's render and on every later render.
+ */
+export function badgeCards(host: HTMLElement, glyph: (itemId: string) => string): { hydrate(): void; dispose(): void } {
   const hydrate = (): void => {
     for (const option of host.querySelectorAll<HTMLElement>('.cot-c-picker__opt[data-id]')) {
       const id = option.dataset.id;
       if (!id || option.querySelector('.cot-c-picker__media')) continue;
       const media = document.createElement('span');
       media.className = 'cot-c-picker__media cot-eq-glyph';
-      media.innerHTML = options.glyph(id);
+      media.innerHTML = glyph(id);
       option.prepend(media);
     }
   };
   const observer = typeof MutationObserver === 'function' ? new MutationObserver(hydrate) : null;
   observer?.observe(host, { childList: true, subtree: true });
+  return { hydrate, dispose: () => observer?.disconnect() };
+}
+
+/** The equipment picker in `host`: the kit picker, each card its item's glyph. */
+export function createGarageEquipmentPicker(options: GarageEquipmentPickerOptions): GarageEquipmentPicker {
+  const { host } = options;
+  let picker: ReturnType<typeof createPicker> | null = null;
+  const cards = badgeCards(host, options.glyph);
 
   // a shut item answers where the picker previews nothing: its reason on hover, focus and press
   const shutOf = (target: EventTarget | null): HTMLElement | null =>
@@ -143,12 +151,12 @@ export function createGarageEquipmentPicker(options: GarageEquipmentPickerOption
         onPreview: (item) => options.onPreview(item ? item.id : null),
         onChoose: (item) => options.onChoose(toItem(item.id)),
       });
-      hydrate();
+      cards.hydrate();
     },
     focus() { picker?.focus(); },
     grid() { return host.querySelector<HTMLElement>('.cot-c-picker__grid'); },
     dispose() {
-      observer?.disconnect();
+      cards.dispose();
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('pointerout', onOut);
       host.removeEventListener('focusin', onFocusIn);

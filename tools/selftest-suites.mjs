@@ -1021,6 +1021,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tokens/modeColours.selftest.mjs',
     // item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs and rules only
     'src/ui/tokens/settingsColours.selftest.mjs',
+    // 261 (owner: consumables "represented uniquely but as cool-y as eqquipment"): the item badge's category hues, one
+    // token group, consumables CVD-checked against equipment, Settings, teams and ink
+    'src/ui/tokens/badgeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
