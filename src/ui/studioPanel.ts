@@ -1624,7 +1624,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const filmSizeRow = el('div', 'film-rows');
   const filmSize = labelledSegments(t('studio.film.size'),
     FILM_RESOLUTIONS.map((resolution) => [String(resolution), `${resolution}p`] as const), String(FILM_RESOLUTIONS[0]));
-  const filmFps = labelledSegments(t('studio.film.rate'), [24, 30, 60].map((fps) => [String(fps), t('studio.film.fpsOption', { fps })] as const), '30');
+  // the choices are bare rates under their heading: "24 FPS" as a choice read to the datum census as a live frame-rate
+  // figure outside its registered place (UI-LOCKDOWN C, s19)
+  const filmFps = labelledSegments(t('studio.film.frameRate'), [24, 30, 60].map((fps) => [String(fps), String(fps)] as const), '30');
   filmSizeRow.append(filmSize.row, filmFps.row);
   secCap.appendChild(filmSizeRow);
   const filmBlurRow = el('div', 'film-rows');

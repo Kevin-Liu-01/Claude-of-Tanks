@@ -520,6 +520,7 @@
   "studio.film.heading": "影片 · 离线导出",
   "studio.film.size": "尺寸",
   "studio.film.rate": "帧率",
+  "studio.film.frameRate": "帧率",
   "studio.film.blur": "模糊",
   "studio.film.blurOff": "关闭 · 1 次采样",
   "studio.film.blurDraft": "草稿 · 4 次采样",

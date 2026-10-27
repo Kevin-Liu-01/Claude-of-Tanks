@@ -508,6 +508,7 @@
   "studio.film.heading": "Film · offline export",
   "studio.film.size": "Size",
   "studio.film.rate": "Rate",
+  "studio.film.frameRate": "Frame rate",
   "studio.film.blur": "Blur",
   "studio.film.blurOff": "Off · 1 sample",
   "studio.film.blurDraft": "Draft · 4 samples",
