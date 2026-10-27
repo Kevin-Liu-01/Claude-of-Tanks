@@ -16,7 +16,7 @@ import {
   consumableNameKey, consumablePickerGroups, consumableShortKey, consumableSpecFor, consumableSlotsView, fitConsumable,
   isConsumableId, loadConsumables, saveConsumables, type ConsumableId,
 } from '../game/consumableLoadout.ts';
-import { CONSUMABLE_CATEGORIES } from '../sim/consumableRules.ts';
+import { CONSUMABLE_CATEGORIES, type ConsumableLock } from '../sim/consumableRules.ts';
 
 interface GarageConsumablesOptions {
   /** The band group the slots render into. */
@@ -79,21 +79,45 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   };
   const tip = (id: ConsumableId): string => `${t(consumableNameKey(id))}: ${t(consumableEffectKey(id))}`;
 
-  /** The readout under the grid: the item under the pointer or the focus, else the slot's own — its name, effect,
-   *  cooldown and uses. */
+  // each item's category and lock as the open picker shows them (the readout's eyebrow and its reason)
+  const shown = new Map<ConsumableId, { readonly category: string; readonly lock: ConsumableLock | null }>();
+
+  /**
+   * The readout under the grid, built as the equipment picker's (garage.ts equipmentReadout, its .cot-eqtip): the item
+   * under the pointer or the focus, else the slot's own. Its category with its cooldown and uses, its name, what it does,
+   * and a shut item's reason.
+   */
   function readout(id: ConsumableId | null): void {
-    if (!id) { readoutEl.textContent = ''; return; }
+    if (!id) { readoutEl.replaceChildren(); return; }
     const view = consumableSlotsView([id])[0]!;
+    const facts = shown.get(id);
     const uses = view.charges == null ? '∞' : t('garage.consumable.uses', { n: String(view.charges) });
-    readoutEl.innerHTML = `<b>${escapeAttr(t(view.nameKey))}</b><span>${escapeAttr(t(view.effectKey))}</span>` +
-      `<span class="num">${escapeAttr(t('garage.consumable.cooldown', { s: String(view.cooldownS) }))} · ${escapeAttr(uses)}</span>`;
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'eyebrow';
+    eyebrow.textContent = [facts ? t(consumableCategoryKey(facts.category)) : '',
+      t('garage.consumable.cooldown', { s: String(view.cooldownS) }), uses].filter(Boolean).join(' · ');
+    const name = document.createElement('strong');
+    name.textContent = t(view.nameKey);
+    const detail = document.createElement('span');
+    detail.className = 'detail';
+    detail.textContent = t(view.effectKey);
+    const action = document.createElement('span');
+    action.className = 'action';
+    action.textContent = facts?.lock ? t(consumableLockKey(facts.lock)) : '';
+    const body = document.createElement('div');
+    body.className = 'cot-eqtip';
+    if (facts?.lock) body.dataset.shut = '';
+    body.append(eyebrow, name, detail, action);
+    readoutEl.replaceChildren(body);
   }
 
   function pickerItems(current: readonly ConsumableId[]): PickerItem[] {
     const vehicle = options.vehicle();
     const out: PickerItem[] = [];
+    shown.clear();
     for (const group of consumablePickerGroups(current, vehicle ? vehicleFacts(vehicle) : null)) {
       for (const { item, lock, fittedSlot } of group.items) {
+        shown.set(item.id, { category: group.category.id, lock });
         const facts = [t(consumableEffectKey(item.id))];
         if (fittedSlot >= 0 && fittedSlot !== openSlot) facts.push(t('garage.equipment.tag.slot', { slot: fittedSlot + 1 }));
         out.push({
@@ -147,6 +171,9 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     panel.classList.add('open');
     root.classList.add('picker-open');
     for (const el of host.querySelectorAll<HTMLElement>('.csslot')) el.classList.toggle('open', Number(el.dataset.slot) === slot);
+    // the persistent panel's title sits over the picker's bar, which starts after it (showroom.css --eq-title-w, as the
+    // equipment picker measures its own)
+    requestAnimationFrame(() => panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`));
     picker.focus();
     document.addEventListener('keydown', onKeydown);
     document.addEventListener('mousedown', onOutside, true);
