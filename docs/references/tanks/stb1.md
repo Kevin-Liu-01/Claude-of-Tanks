@@ -96,6 +96,11 @@ cupola), z 0.989 and −0.074 (its 6.85 m hull to our 6.77, nose at +3.37).
 | Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | a 0.33 m drum in a 0.475 m channel and a domed oval face, its rim, two ports, a thick collar |
 | Searchlight | a six-lens box on the mask's left (x −0.14..−0.73), its foot at the bore, its top level with the crown | the same, riding the gun |
 
+Handedness: the model is in glTF chirality (its searchlight and commander's station on the vehicle's left and right);
+both tanks author their handed kit in the program frame (+x = the vehicle's right), so head-on beside the model they
+read mirrored. Per the PROGRAM-FRAME CHIRALITY LAW (`docs/BUILD-STANDARD.md` §A) this is not a defect; a fleet x-flip
+is the owner's call.
+
 Conflicts between the model and the sources, settled for the model (the owner's instruction):
 
 - **Searchlight.** The model carries a six-lens searchlight box; ja.wikipedia records a passive night sight on STB-1 and
