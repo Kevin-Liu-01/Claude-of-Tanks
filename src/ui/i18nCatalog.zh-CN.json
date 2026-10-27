@@ -1524,6 +1524,7 @@
   "consumable.lock.smoke": "需要烟幕弹发射器",
   "consumable.lock.finiteAmmo": "本模式弹药无限",
   "consumable.lock.mode": "本模式不可用",
+  "garage.consumableChoices": "可选 {n} 种",
   "garage.consumableSlot": "消耗品槽位 {n}",
   "hud.alert.consumableNotNeeded": "{name}：当前无需使用",
   "hud.alert.apsInterceptedOwn": "主动防护系统拦截了来袭弹药",
