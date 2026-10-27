@@ -21,6 +21,47 @@ in [bm_oplot_t.md](bm_oplot_t.md).
 - Tiers (shown and matchmaking, src/techTree/tiers.ts): Object 478DU2 VI, T-84U Oplot VI, Oplot-M X, Oplot-T X.
 - Branch: `item/oplot-262` from origin/main 7d045a7588.
 
+## Run packet (docs/tank-generation/templates/run-packet.md)
+
+- Mode: independent source-backed X build (`bm_oplot_m`) plus an explicit first-party derivative (`bm_oplot_t`,
+  variant deltas in [bm_oplot_t.md](bm_oplot_t.md)); historical preservation of `t84` / `t84bm_oplot_m` (geometry
+  untouched, names and tiers only; the T-84U's ammunition per Main's ruling).
+- Owned files: `src/vehicles/profiles/oplotBM.ts`, `src/vehicles/oplotBMLayout.ts`, the Oplot rows of
+  `src/vehicles/ukraine.ts`, `tools/oplot-bm-x-reference-overrides.ts` and its selftest, `src/vehicles/oplotBMGun.selftest.mjs`,
+  this packet; registry rows for the two ids. Integrator: Main (release 262).
+- Raw source: `~/cot-lanes/oplot-ref/ukrainian_t-84bm_oplot-m.glb`, SHA-256
+  `761c8698003c6729f5fe6ed719eafa437be95b13694734375084977ae75a3d8f`, 5,318,120 B, binary glTF, 13 meshes / 18,992
+  triangles, named nodes (HULL, HULL ARMOR, HULL POKLOP, SKIRT, KOLLO, GUS, TUR, TUR ARMOR, TUR POKLOP, `default076`
+  turret interior, three loose MG meshes); no animation, skins, duplicate vehicle or LOD. Owner-supplied comparison drop,
+  CC BY-NC 4.0 (docs/ATTRIBUTION.md); reference-only.
+- Registration (frozen before optimization): `node tools/source-x-oracle.mjs --prepare=<raw> --recipe=.qa-dev/oplot262/bm_oplot_m_x.recipe.json`
+  with axes `[-x, y, -z]` (bow to +Z, determinant +1), uniform scale **4.10**, translation `[-0.0226, -0.1476, 0.8098]`
+  (track span centred, ground y 0, hull z span centred: source datums only). The scale is the one uniform value that
+  keeps the published hull (7.075 m), width over the tracks (3.40 m) and turret roof (2.215-2.285 m) each within 3%.
+  Canonical oracle `public/models/community-candidates/bm_oplot_m_x_source.glb` (ignored), SHA-256
+  `d2adad43bba88a867f743aeeacf969587e7be0c2bbcaeee0259218f3145ab22a`, bounds 4.30 x 3.86 x 10.02 m, nothing omitted.
+  Certificate `tools/source-world-registration.mjs` `bm_oplot_m` (fused: the 125 mm gun is part of TUR, so no honest
+  moving gun owner; whole-vehicle comparison at rest), override `qualityBar: 'exemplar'` (92 per view and component).
+- Published-figure conflicts (recorded, not resolved by distortion): the print's skirts flare to 4.30 m overall width
+  (published 3.775 m); its hull at 4.10 is 6.92 m (-2.2%); with the gun 10.02 m (published 9.72, +3.1%); road wheels
+  0.343 m radius (670 mm published, +2.5%).
+- Construction frame: authored at 4.0 times the print (turret about its ring), baked once to 4.10 by
+  `resizeAuthoredVehicle(P, OPLOT_BM_SCALE = 1.025)`; the spec, the combat rig and the certificate share that frame.
+
+### Evidence matrix (current revision; see the round log)
+
+| Gate | Status | Command / artifact | Result |
+| --- | --- | --- | --- |
+| Source/conversion/frame integrity | PASS | source-x-oracle --inspect/--prepare; `tools/oplot-bm-x-reference.selftest.mjs` | hashes pinned, no omissions |
+| Registered silhouettes (92 every view) | PENDING | `procedural-fidelity.mjs --ids=bm_oplot_m --check --board --neutral-board` (queued) | |
+| Geometry gate (92 every component, 3% dims) | PENDING | `geometry-gate.mjs --ids=bm_oplot_m --check` (queued) | |
+| Independent critic (9/10 every view) | NOT RUN | blind critic on GPU renders | |
+| Turret parenting / winding / track clip | PENDING | turret-parent-audit, winding-audit --check, track-clip-audit --exact --strict (queued) | |
+| Gun clearance over -5..+14 | PENDING | gun-depression-sweep (r4 running) then `oplotBMGun.selftest.mjs` | |
+| Anatomy, fills, markings, seats, spare, ledger, gun lines | NOT RUN | lane chain after geometry freezes | |
+| Assets / hero cards / drawings / centering | NOT RUN | after the chain | |
+| Composed release (lane) | NOT RUN | `tank:release:check -- --ids=... --gate --lane` | |
+
 ## Sources
 
 - Oracle (private, never shipped): "Ukrainian T-84BM Oplot-M" by 42manako (Sketchfab), CC-BY-NC-4.0, SHA-256 prefix

@@ -224,11 +224,18 @@ function buildTurretShell(P: TankBuilderPort): void {
     // Cheek stacks: five columns a side, two courses, their fronts on the arrowhead's sweep.
     const columns: readonly [number, number, number][] = [[0.41, 0.72, 0.93], [0.735, 1.00, 0.93], [1.015, 1.20, 0.80],
       [1.215, 1.40, 0.62], [1.415, 1.58, 0.40]];
+    // The stacks' undersides rise toward the nose (the print: 0.09 at z 0.95, 0.24 at the front), so each column is
+    // two slabs whose courses split at their own mid-height.
+    const under = (z: number): number => ERA_Y0 + Math.max(0, z - 0.95) * 0.17;
     for (const [x0, x1, back] of columns) {
-      const plan: Plan = [[x0, back], [x1, back], [x1, eraFront(x1)], [x0, eraFront(x0)]];
+      const f0 = eraFront(x0), f1 = eraFront(x1);
       const outward: [number, number, number] = x0 >= 1.0 ? [side(s, 0.646), 0, 0.763] : [0, 0, 1];
-      for (const [y0, y1] of [[ERA_Y0, 0.297], [0.313, ERA_Y1]] as const) {
-        eraBlock(P, front, planPrism(sidedPlan(plan, s), y0, y1), outward);
+      const at = (x: number, y: number, z: number): [number, number, number] => [side(s, x), y, z];
+      const mid = (z: number): number => (under(z) + ERA_Y1) / 2;
+      for (const [lo, hi] of [[(z: number) => under(z), (z: number) => mid(z) - 0.008], [(z: number) => mid(z) + 0.008, () => ERA_Y1]] as const) {
+        eraBlock(P, front, orientedSlab(
+          at(x0, lo(back), back), at(x1, lo(back), back), at(x1, lo(f1), f1), at(x0, lo(f0), f0),
+          at(x0, hi(back), back), at(x1, hi(back), back), at(x1, hi(f1), f1), at(x0, hi(f0), f0)), outward);
       }
     }
     // Flank layer: the outer course from the smoke housings to the arrowhead, and the fill against the body side.
@@ -239,8 +246,8 @@ function buildTurretShell(P: TankBuilderPort): void {
     // flank seams: three vertical joints
     for (const z of [0.0, 0.42, 0.84]) P.add('turretDark', box(0.012, 0.44, 0.014), side(s, 1.727), 0.325, z);
     // Smoke-launcher housing on the rear flank, four tube mouths a side canted forward and out.
-    P.add('turret', planPrism(sidedPlan([[0.86, -1.04], [1.58, -1.04], [1.64, -0.39], [1.09, -0.39]], s), 0.13, 0.58));
-    P.add('turretDark', planPrism(sidedPlan([[1.10, -1.00], [1.57, -1.00], [1.62, -0.43], [1.30, -0.43]], s), 0.575, 0.586));
+    P.add('turret', planPrism(sidedPlan([[0.86, -1.04], [1.58, -1.04], [1.64, -0.39], [1.09, -0.39]], s), 0.13, ROOF_Y - 0.01));
+    P.add('turretDark', planPrism(sidedPlan([[1.10, -1.00], [1.57, -1.00], [1.62, -0.43], [1.30, -0.43]], s), ROOF_Y - 0.015, ROOF_Y - 0.004));
     for (const [y, z] of [[0.27, -0.62], [0.27, -0.48], [0.44, -0.62], [0.44, -0.48]] as const) {
       const xFace = 1.58 + (z + 1.04) * (0.06 / 0.65);
       P.add('turretDark', cylX(0.048, 0.06, 16), side(s, xFace + 0.02), y, z, 0, side(s, -0.35), 0);
@@ -249,15 +256,15 @@ function buildTurretShell(P: TankBuilderPort): void {
   }
   // Ammunition bustle (offset to the right, as the print), its blow-off roof panels; the right-side stowage bin.
   P.add('turret', sectionSolid([
-    { z: -1.98, ring: [[-0.75, 0.15], [0.40, 0.15], [0.40, 0.60], [0.34, 0.66], [-0.69, 0.66], [-0.75, 0.60]] },
+    { z: -1.98, ring: [[-0.75, 0.30], [0.40, 0.30], [0.40, 0.60], [0.34, 0.66], [-0.69, 0.66], [-0.75, 0.60]] },
     { z: -1.26, ring: [[-0.75, 0.10], [0.40, 0.10], [0.40, 0.62], [0.34, 0.68], [-0.69, 0.68], [-0.75, 0.62]] },
   ]));
   for (const x of [-0.45, 0.10]) P.add('turretDark', box(0.50, 0.008, 0.60), x, 0.666, -1.62);
   P.add('turret', sectionSolid([
-    { z: -2.24, ring: [[-1.43, 0.14], [-0.83, 0.14], [-0.83, 0.61], [-0.87, 0.65], [-1.39, 0.65], [-1.43, 0.61]] },
+    { z: -2.24, ring: [[-1.43, 0.32], [-0.83, 0.32], [-0.83, 0.61], [-0.87, 0.65], [-1.39, 0.65], [-1.43, 0.61]] },
     { z: -0.99, ring: [[-1.43, 0.14], [-0.83, 0.14], [-0.83, 0.61], [-0.87, 0.65], [-1.39, 0.65], [-1.43, 0.61]] },
   ]));
-  P.add('turretDark', box(0.012, 0.40, 1.20), -1.436, 0.40, -1.615);
+  P.add('turretDark', box(0.012, 0.28, 1.10), -1.436, 0.47, -1.60);
   for (const z of [-2.00, -1.62, -1.24]) P.add('turretDark', box(0.016, 0.06, 0.05), -1.44, 0.58, z);
 }
 
@@ -273,12 +280,15 @@ function buildMantlet(P: TankBuilderPort): void {
 }
 
 function buildRoof(P: TankBuilderPort): void {
-  // Commander's domed cupola (right) with its vision blocks, the gunner's hatch (left).
-  P.addCupola('turret', cylY(0.25, 0.33, 0.13, 32), -0.62, ROOF_Y + 0.06, -0.42);
-  P.addHatch('turret', cylY(0.22, 0.25, 0.06, 28), -0.62, ROOF_Y + 0.15, -0.42);
-  for (let i = 0; i < 5; i++) {
-    const a = -0.9 + i * 0.45;
-    P.add('turretGlass', box(0.08, 0.04, 0.02), -0.62 + Math.sin(a) * 0.285, ROOF_Y + 0.08, -0.42 + Math.cos(a) * 0.285, -0.35, a, 0);
+  // Commander's domed cupola (right, the print's 0.6 m dome standing 0.38 m over the roof) with its vision blocks round
+  // the base ring; the gunner's hatch (left).
+  P.addCupola('turret', cylY(0.30, 0.33, 0.10, 32), -0.62, ROOF_Y + 0.05, -0.42);
+  P.addHatch('turret', KIT.xform(new THREE.SphereGeometry(0.30, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.78, 1]),
+    -0.62, ROOF_Y + 0.10, -0.42);
+  P.add('turretDark', cylY(0.10, 0.12, 0.05, 20), -0.62, ROOF_Y + 0.335, -0.42);
+  for (let i = 0; i < 6; i++) {
+    const a = -1.1 + i * 0.44;
+    P.add('turretGlass', box(0.09, 0.05, 0.02), -0.62 + Math.sin(a) * 0.31, ROOF_Y + 0.075, -0.42 + Math.cos(a) * 0.31, -0.30, a, 0);
   }
   P.addHatch('turret', cylY(0.24, 0.25, 0.05, 28), 0.58, ROOF_Y + 0.025, -0.52);
   KIT.periscope(P, 'turretDetail', 0.58, ROOF_Y + 0.02, -0.20);
@@ -306,11 +316,12 @@ function buildRoof(P: TankBuilderPort): void {
 
   // Varta: the jammer heads forward of the stacks' outer corners on two bars each; laser-warning heads aft.
   for (const s of [-1, 1]) {
-    const hz = 1.86, hx = side(s, 1.22);
-    for (const y of [0.17, 0.44]) P.addEquipment('turretDark', box(0.035, 0.035, 0.30), hx, y, eraFront(1.22) + 0.13);
-    P.addEquipment('turretDetail', box(0.26, 0.25, 0.22), hx, 0.305, hz);
-    P.addEquipment('turretDark', cylZ(0.095, 0.03, 24), hx, 0.305, hz + 0.12);
-    P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.08, 0.01, 24), 'shtora'), hx, 0.305, hz + 0.137);
+    // (the print's heads stand at |x| 1.05, centre 0.40, a hand's width ahead of the stacks)
+    const hx = side(s, 1.05), hy = 0.40, hz = eraFront(1.05) + 0.15;
+    for (const y of [hy - 0.08, hy + 0.08]) P.addEquipment('turretDark', box(0.035, 0.035, 0.16), hx, y, hz - 0.17);
+    P.addEquipment('turretDetail', box(0.24, 0.24, 0.20), hx, hy, hz);
+    P.addEquipment('turretDark', cylZ(0.092, 0.03, 24), hx, hy, hz + 0.11);
+    P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.078, 0.01, 24), 'shtora'), hx, hy, hz + 0.127);
     P.addEquipment('turretDetail', cylY(0.05, 0.06, 0.07, 14), side(s, 0.74), ROOF_Y + 0.03, -1.12);
     P.addEquipment('turretDark', cylY(0.035, 0.035, 0.03, 14), side(s, 0.74), ROOF_Y + 0.08, -1.12);
   }
@@ -319,10 +330,11 @@ function buildRoof(P: TankBuilderPort): void {
     P.add('turretFittingPaint', box(0.11, 0.022, 0.07), ex, ROOF_Y + 0.008, ez);
     P.add('turretFittingPaint', new THREE.TorusGeometry(0.042, 0.012, 8, 12, Math.PI), ex, ROOF_Y + 0.016, ez);
   }
-  for (const x of [-0.68, 0.34]) {
-    P.add('turretDark', box(0.07, 0.06, 0.07), x, 0.68, -1.90);
-    P.add('turretDark', cylY(0.012, 0.009, 1.70, 8), x, 1.55, -1.90);
-  }
+  // the whips: the print's tall one on the roof behind the PNK-6 (right), a shorter one on the bustle's left corner
+  P.add('turretDark', box(0.07, 0.06, 0.07), -0.40, ROOF_Y + 0.02, -1.17);
+  P.add('turretDark', cylY(0.012, 0.008, 1.70, 8), -0.40, ROOF_Y + 0.89, -1.17);
+  P.add('turretDark', box(0.07, 0.06, 0.07), 0.34, 0.68, -1.90);
+  P.add('turretDark', cylY(0.012, 0.009, 1.20, 8), 0.34, 1.30, -1.90);
 }
 
 function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
@@ -353,8 +365,9 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
 }
 
 function buildRemoteWeapon(P: TankBuilderPort): void {
-  // KT-12.7 laid from the PNK-6 (the commander's sight controls the remote AA gun, KMDB): on the roof's right rear edge.
-  addFieldRoofWeapon(P, [-0.90, ROOF_Y, -0.70], 12.7, 'KT-12.7 remote anti-aircraft gun', 0.0, 0.92);
+  // KT-12.7 laid from the PNK-6 (the commander's sight controls the remote AA gun, KMDB): on the roof's right rear edge
+  // behind the cupola, its base ring overhanging onto the smoke housing's roof-flush top.
+  addFieldRoofWeapon(P, [-0.97, ROOF_Y, -0.86], 12.7, 'KT-12.7 remote anti-aircraft gun', 0.0, 0.92);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -362,7 +375,8 @@ function buildRemoteWeapon(P: TankBuilderPort): void {
 
 function buildGun(P: TankBuilderPort): void {
   P.gunG.position.set(...OPLOT_BM_AUTHORING.gun);
-  ruSaddle(P, { rollR: 0.18, rollW: 0.36, tubeR: 0.10, rootR: 0.20, rootL: 0.50 });
+  // root cone narrowed to 0.15 (it flared to 0.20 at its front and met the driver's hatch rim at the -5 degree stop)
+  ruSaddle(P, { rollR: 0.18, rollW: 0.36, tubeR: 0.10, rootR: 0.15, rootL: 0.50 });
   ruBoot(P, { pts: [[0.27, 0.27, 0.24, -0.01], [0.38, 0.25, 0.23, 0.0], [0.50, 0.24, 0.24, 0.0]] });
   // KBA-3: the thermal sleeve in sections with clamp bands, the fume extractor at mid-length (print z 4.0-4.85 at
   // the hull), the muzzle reference collar.
