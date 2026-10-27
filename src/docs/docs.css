@@ -321,7 +321,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .manual-record summary strong{color:var(--accent-hi);margin-right:12px}.manual-record summary span{color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .manual-record dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;margin:12px 0 18px}
 .manual-record dt{font-size:max(var(--fs-floor-12),var(--fs-12));color:var(--ink-3)}.manual-record dd{margin:4px 0;color:var(--ink-1)}
-.manual-record :focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.manual-record :focus-visible{outline:2px solid var(--focus-ink);outline-offset:4px}
 .docs-chapter-grid a.docs-chapter-wide{grid-column:1/-1;grid-template-rows:260px auto auto}
 .docs-chapter-grid a.docs-chapter-wide img{object-position:50% 50%}
 @media (768px <= width < 1100px){.docs-chapter-grid a.docs-chapter-wide{grid-template-rows:230px auto auto}}

@@ -104,7 +104,7 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px;}
+  outline:2px solid var(--focus-ink);outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
 .cot-mobile-nav-menu[hidden]{display:none !important;}
 .cot-mobile-nav-menu{position:absolute;top:calc(100% + 8px);right:0;width:238px;padding:7px;
@@ -176,7 +176,7 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-battle-solo-options{display:grid;gap:var(--s4);}
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:-3px;}
+  outline:2px solid var(--focus-ink);outline-offset:-3px;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]){transition:transform var(--dur-fast) ease-out;}
 .cot-battle-menu :is([data-battle-launch],[data-battle-close]):active{transform:scale(.98);}
 .cot-battle-menu .cot-battle-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
@@ -215,7 +215,8 @@ body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;paddi
 .cot-room-ready{flex-shrink:0;min-width:88px;font-size:max(var(--fs-floor-11),var(--fs-11));}
 .cot-room-ready[aria-pressed="true"]{border-color:var(--ok);color:var(--text-ok);}
 .cot-room-ready:disabled{opacity:.5;cursor:not-allowed;}
-.cot-room-ready:focus-visible,.cot-room-reminder:focus-visible{outline:2px solid var(--accent-hi);outline-offset:3px;}
+/* focus wears the kit's ring, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+.cot-room-ready:focus-visible,.cot-room-reminder:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .cot-room-ready:not(:disabled):hover{background:var(--surface-hover);}
 .cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
 .cot-room-reminder.ready .rr-dot{background:var(--ok);box-shadow:0 0 12px var(--ok)}.cot-room-reminder b{color:var(--accent-hi)}
@@ -352,14 +353,15 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   letter-spacing:0;text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
 .cot-technical-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-tab:hover,.cot-technical-tab:focus-visible{color:var(--accent-hi);border-color:var(--accent-lo);outline:none;}
+.cot-technical-tab:hover{color:var(--accent-hi);border-color:var(--accent-lo);}
+.cot-technical-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
 .cot-technical-figure{position:relative;margin:0;background:var(--surface-nav);border:1px solid var(--line-2);
   box-shadow:var(--e1);}
 .cot-technical-figure::after{content:'';position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 24px rgba(0,0,0,.2);}
 .cot-technical-expand{position:relative;display:block;width:100%;padding:0;overflow:hidden;cursor:zoom-in;
   color:var(--ink-1);background:var(--surface-page);border:0;text-align:inherit;}
-.cot-technical-expand:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px;}
+.cot-technical-expand:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-technical-figure img{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain;
   background:var(--surface-page);transition:opacity var(--dur-fast) ease-out;}
 .cot-technical-expand-label{position:absolute;right:7px;bottom:7px;display:flex;align-items:center;gap:5px;
@@ -406,7 +408,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
   letter-spacing:var(--track-label-s);text-transform:uppercase;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
 .cot-technical-viewer-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
-.cot-technical-viewer-tab:hover,.cot-technical-viewer-tab:focus-visible{color:var(--accent-hi);border-color:var(--accent);outline:none;}
+.cot-technical-viewer-tab:hover{color:var(--accent-hi);border-color:var(--accent);}
+.cot-technical-viewer-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
 .cot-technical-viewer-figure{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin:0;}
 /* the drawing is its own plate (its raster carries its ground): shrink-wrapped, never letterboxed inside a second plate
    (the r18 critic: a lighter inset rectangle with seams down both sides) */
@@ -659,7 +662,8 @@ body[data-cot-input='coarse'] .cot-garage .cot-drawer-actions .cot-camo-nation{-
 .cot-custom-tool{min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 var(--s2);border:1px solid var(--line-2);
   background:var(--scrim);color:var(--ink-3);cursor:pointer;font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);letter-spacing:0;text-transform:uppercase;
   transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast),transform var(--dur-fast)}.cot-custom-tool:active{transform:scale(.97)}
-.cot-custom-tool:hover,.cot-custom-tool:focus-visible{border-color:var(--accent);color:var(--ink-1);outline:none}
+.cot-custom-tool:hover{border-color:var(--accent);color:var(--ink-1)}
+.cot-custom-tool:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring)}
 .cot-custom-tool.on{border-color:var(--accent);color:var(--accent-hi);background:var(--accent-wash)}
 .cot-custom-assets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.cot-custom-assets .cot-custom-tool{min-height:46px;flex-direction:column;gap:3px}
 .cot-custom-colors{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2);}
@@ -1055,7 +1059,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger>span{
   padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{width:14px;height:14px}
 body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger:focus-visible{
-  outline:2px solid var(--accent-hi);outline-offset:2px}
+  outline:2px solid var(--focus-ink);outline-offset:2px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-garage-panel-scrim{display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{
   display:flex;z-index:11;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
@@ -1383,14 +1387,14 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
   white-space:nowrap;border:1px solid var(--line-3);background:var(--side-plate);color:var(--ink-1);
   font:700 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:var(--track-label-s);cursor:pointer;}
 .cot-multiplayer-entry:hover{background:var(--surface-hover);border-color:var(--accent);color:var(--accent-hi);}
-.cot-multiplayer-entry:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+.cot-multiplayer-entry:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .has-room .cot-multiplayer-entry{display:none;}
 
 .cot-multiplayer-entry{border:0;padding:0 25px;isolation:isolate;background:var(--line-control);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
 .cot-multiplayer-entry::before{content:'';position:absolute;inset:1px;z-index:-1;background:var(--surface-raised);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
-.cot-multiplayer-entry:hover,.cot-multiplayer-entry:focus-visible{background:var(--accent);color:var(--accent-hi);}
+.cot-multiplayer-entry:hover{background:var(--accent);color:var(--accent-hi);}
 
 /* every mode wears its own hue (owner 2026-10-25): the kit maps data-mode-tone=<mode id> to --mode-ink (components.css),
    the menu carries its selected mode's tone and every choice its own; a mode the kit does not name falls back to standard */

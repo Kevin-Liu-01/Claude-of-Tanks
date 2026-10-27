@@ -20,7 +20,7 @@ const CSS = `
 .cot-status-box svg{width:23px;height:23px;position:relative;z-index:var(--z-lift)}
 .cot-status-fill{position:absolute;inset:0;background:currentColor;opacity:.25;transform-origin:bottom;transform:scaleY(var(--repair-fill,0));pointer-events:none;}
 .cot-status-mark{position:absolute;bottom:1px;right:2px;z-index:var(--z-lift);min-width:9px;text-align:center;font:700 var(--battle-fs-11)/1 var(--font-ui);color:inherit}
-.cot-status-box:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+.cot-status-box:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .cot-status-box:hover{background:var(--hud-plate-strong)}
 .cot-status-summary{white-space:pre-line}
 .cot-touch-layout .cot-status-box{flex-basis:44px;height:44px;padding:9px}

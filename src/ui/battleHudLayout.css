@@ -95,7 +95,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='ph
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-send{min-width:42px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-sub{height:auto;flex-wrap:wrap;gap:3px}
 /* The full report is a scrollable reader; it never paints over the map. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 
 /* Tablet mouse layouts cannot fit health, speed, six actions and a map on
    one row. Keep the ammo tray at floor level and lift the two instruments. */

@@ -290,10 +290,17 @@ export const SURFACE_REGISTRY = Object.freeze({
       { screen: 'record', owner: 'src/ui/serviceRecordView.ts', surface: '.cot-record-plate' },
     ],
   },
+  /** The whole load's progress: the load screen's meta line, the boot card's main line. */
   'load-progress': {
     places: [
       { screen: 'load', owner: LOAD, surface: '.foot .fmeta' },
-      { screen: 'boot', owner: BOOT, surface: '.cot-boot-load' },
+      { screen: 'boot', owner: BOOT, surface: '.cot-boot-bar' },
+    ],
+  },
+  /** The boot's stage progress (owner, 2026-10-26): one segment per stage under the main line, done, current or to come. */
+  'load-stage-progress': {
+    places: [
+      { screen: 'boot', owner: BOOT, surface: '#cot-boot-segs' },
     ],
   },
   /** The boot card's status line (the stage, or the stop state's message). */
