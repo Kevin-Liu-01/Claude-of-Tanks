@@ -23,6 +23,7 @@
  * Ports are OS-assigned (never 5197–5199); `--port=<n>` pins the Vite port.
  * Screenshots and report.json land in `--out`.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
@@ -190,7 +191,7 @@ try {
   const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
   step('vite', { origin, cacheDir });
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: !headful,
     protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',

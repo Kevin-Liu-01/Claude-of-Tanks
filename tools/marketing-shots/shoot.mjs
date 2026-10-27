@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from '../capture-lock.mjs';
 // tools/marketing-shots/shoot.mjs — marketing screenshot batch driver.
 //
@@ -91,7 +92,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[marketing-shots] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 300000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],

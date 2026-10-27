@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Refresh the instructional manual photographs, not public promotional selections.
 // nice -n 19 node tools/field-guide-capture.mjs [--only=crew,modules] [--out=public/field-guide]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
 import {mkdirSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
@@ -28,7 +29,7 @@ process.once('SIGINT',()=>cleanup().then(()=>process.exit(130)));
 process.once('SIGTERM',()=>cleanup().then(()=>process.exit(143)));
 try{
   server=await createServer({root:process.cwd(),logLevel:'error',server:{port:5206,strictPort:false,hmr:false,watch:{ignored:['**/*']}}});await server.listen();
-  browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox']}));
+  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox']}));
   const launch=verifyNativeBrowserLaunch(browser),page=await browser.newPage();
   await page.setViewport({width:1600,height:900,deviceScaleFactor:1});
   page.on('pageerror',error=>errors.push(error.message));

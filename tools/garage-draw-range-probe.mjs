@@ -3,6 +3,7 @@
 // frames per pose and synchronous control/A/B/negative framebuffer captures.
 // Owns the shared FIFO lease; do not wrap in another capture-command lease.
 // node tools/garage-draw-range-probe.mjs --url=http://127.0.0.1:4178 --out=/absolute/fresh-directory
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -226,7 +227,7 @@ async function main() {
   try {
     await lock.acquire();
     refresher = setInterval(() => lock.refresh(), 30_000); refresher.unref();
-    browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', protocolTimeout: 120_000,
+    browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', protocolTimeout: 120_000,
       args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
     report.nativeLaunch = verifyNativeBrowserLaunch(browser);
     const page = await browser.newPage(); await page.setViewport(report.viewport);

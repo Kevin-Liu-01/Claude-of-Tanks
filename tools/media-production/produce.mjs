@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
@@ -148,7 +149,7 @@ try {
   server=await createServer({root:process.cwd(),logLevel:'error',server:{host:'127.0.0.1',port,strictPort:true,hmr:false,watch:{ignored:['**/*']}}}); await server.listen();
   // Our signal handler owns shutdown and the receipt/lock finally block.
   // Puppeteer's default SIGTERM handler exits before that cleanup can run.
-  browser=await puppeteer.launch({headless:true,handleSIGINT:false,handleSIGTERM:false,handleSIGHUP:false,protocolTimeout:300000,args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']});
+  browser=await launchGuardedBrowser(puppeteer, {headless:true,handleSIGINT:false,handleSIGTERM:false,handleSIGHUP:false,protocolTimeout:300000,args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']});
   for (const map of maps) {
     if(interrupted)break;
     if (receipt.maps.some(row=>row.map===map&&row.complete)) { console.log(`[media] preserved ${map}`); continue; }

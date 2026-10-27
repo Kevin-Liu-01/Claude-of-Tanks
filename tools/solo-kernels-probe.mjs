@@ -9,6 +9,7 @@
 //   node tools/solo-kernels-probe.mjs [--map=verdant] [--seconds=20] [--cycles=2] [--check]
 //   node tools/solo-kernels-probe.mjs --check-only --maps=all [--seconds=10]   (every battlefield)
 //   (report: .qa-dev/solo-kernels-<map>.json, or .qa-dev/solo-kernels-check.json)
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
@@ -30,7 +31,7 @@ const vite = await createServer({ root, cacheDir: resolve(root, '.qa-dev/solo-ke
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 await vite.listen();
 const origin = `http://127.0.0.1:${port}`;
-const browser = await puppeteer.launch({ headless: true, protocolTimeout: 600_000,
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600_000,
   args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--use-angle=metal', '--enable-gpu'] });
 
 async function battlePage(mode) {

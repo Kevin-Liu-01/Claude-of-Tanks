@@ -13,6 +13,7 @@
 // --ids (2026-10-16, changed-only): capture only those tanks and keep every other row exactly as recorded (an id with no
 // row is always captured), so a scoped run writes the bytes a whole-fleet run would when the other rows are current;
 // --check --ids verifies those tanks. The freeze is a nightly or explicit whole-fleet record, not a release step.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -45,7 +46,7 @@ const server = await createServer({
 });
 await server.listen();
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

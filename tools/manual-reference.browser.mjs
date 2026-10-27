@@ -1,11 +1,12 @@
 // Committed public-page regression: source organization must preserve live URLs.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.slice(name.length+3)||fallback;
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/manual-browser'));await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const errors=[],checked=[];
 const reference=JSON.parse(await readFile(new URL('../src/docs/reference.generated.json',import.meta.url),'utf8'));
 const topics=[['vehicles',reference.vehicles.length],['worlds',reference.maps.length],['simulation',reference.modes.length]];

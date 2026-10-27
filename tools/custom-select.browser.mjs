@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Actual shared component + mode owner; verifies state writes and keyboard/popover behavior.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -7,7 +8,7 @@ const arg=(name,fallback)=>process.argv.find(v=>v.startsWith(`--${name}=`))?.sli
 const {chromium}=await import(arg('playwright-module','playwright'));
 const out=resolve(arg('out','.qa-dev/custom-select'));
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const errors=[];let checked=0;
 try {
   for(const [name,width,height,touch] of [['desktop',1280,800,false],['phone',390,844,true],['landscape',844,390,true]]) {

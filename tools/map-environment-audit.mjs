@@ -25,6 +25,7 @@
 // are optional because the numeric gate is useful in CI while visual review is
 // a release gate owned by humans/critic agents.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -842,7 +843,7 @@ try {
   if (!production) await server.listen();
   const address = server.httpServer.address();
   const port = address.port;
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     // The natural workshop deadline is 180 s; preserve its own bounded error.
     protocolTimeout: 240000,

@@ -10,6 +10,7 @@
 // TaskDuration over a quiet window. taskCoreEquivalent=1 means one CPU core
 // was occupied continuously for the complete window; unlike FPS this exposes
 // expensive work on a static Garage frame.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -163,7 +164,7 @@ const port = typeof address === 'object' && address
   ? address.port
   : server.config.server.port;
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 600_000,
   args: [

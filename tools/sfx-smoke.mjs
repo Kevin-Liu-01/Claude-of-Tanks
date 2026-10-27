@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // sfx-smoke.mjs — end-to-end gate for the generated SFX banks
 // (src/audio/audioEngine.ts, assets in public/audio/sfx/).
@@ -103,7 +104,7 @@ const LAUNCH_ARGS = [
   '--autoplay-policy=no-user-gesture-required',
 ];
 
-let browser = await puppeteer.launch({ headless: 'new', args: LAUNCH_ARGS });
+let browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: LAUNCH_ARGS });
 let page;
 const consoleErrors = [];
 async function openPage() {
@@ -153,7 +154,7 @@ try {
   if (!clockOk) {
     console.warn('[sfx-smoke] headless AudioContext clock stalled — relaunching headful');
     await browser.close();
-    browser = await puppeteer.launch({ headless: false, args: LAUNCH_ARGS });
+    browser = await launchGuardedBrowser(puppeteer, { headless: false, args: LAUNCH_ARGS });
     consoleErrors.length = 0;
     await openPage();
     await bootIntoBattle();

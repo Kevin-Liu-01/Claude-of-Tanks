@@ -1,5 +1,6 @@
 // Real first-paint HTML and UI fonts under delayed/failed delivery and warm cache.
 // Only game simulation boot is stubbed; fonts, CSS and sign painting are production code.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -41,7 +42,7 @@ try{
     });
   }}],server:{host:'127.0.0.1',port:0,hmr:false,watch:null}});
   await server.listen();const base=`http://127.0.0.1:${server.httpServer.address().port}`;
-  browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:true,args:['--no-sandbox']}));
+  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--no-sandbox']}));
   for(const [name,width,height] of [['desktop',1440,900],['phone-landscape',568,320]]){
     const context=await browser.createBrowserContext(),page=await context.newPage();
     await page.setViewport({width,height});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);

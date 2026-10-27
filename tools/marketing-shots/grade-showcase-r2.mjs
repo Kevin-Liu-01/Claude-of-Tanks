@@ -2,6 +2,7 @@
 // receives contact-sheet review; this gate rejects incomplete, blank, clipped,
 // flat, undersized, or incorrectly dimensioned masters.
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -23,7 +24,7 @@ const pngSize = (buffer) => {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 };
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setContent('<canvas id="canvas" width="320" height="180"></canvas>');
 

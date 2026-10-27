@@ -8,6 +8,7 @@
 //        --dir shots/marketing-modern/raw --out shots/marketing-modern/sheets \
 //        --tile 320 --cols 5 [--rows 2] [--no-labels]
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -54,7 +55,7 @@ if (!groups.size) {
   process.exit(1);
 }
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setContent('<canvas id="c"></canvas>');
 

@@ -1,4 +1,5 @@
 // Production Garage DOM regression, with isolated saved records. No WebGL/performance claims.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -10,7 +11,7 @@ const server=await createServer({server:{host:'127.0.0.1',port:5362,hmr:false},l
 let browser;const results=[];
 try{
  await server.listen();const url=`http://127.0.0.1:${server.httpServer.address().port}`;
- browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+ browser=await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
  for(const [name,width,height,locale='en-US']of [['desktop',1440,1000],['portrait',390,844],['narrow',320,568],['landscape',667,375],['tiny',568,256],['zh',667,375,'zh-CN']]){
   if(arg('case','')&&arg('case','')!==name)continue;
   const context=await browser.newContext({viewport:{width,height},hasTouch:width<800,isMobile:width<800,reducedMotion:'reduce'});

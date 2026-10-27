@@ -29,6 +29,7 @@
 // a tank lane's tank:anatomy:update re-renders the readouts, so the plain check only WARNS when they moved (the r9
 // engineering critic: the core suite went red on every foreign re-render) and names the refresh. A rebrand or a
 // release that wants the atlas current runs the strict check, then garage:atlas:update.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -300,7 +301,7 @@ function rng(seed) {
 
 async function rasteriseBrand(jobs) {
   const puppeteer = (await import('puppeteer')).default;
-  const browser = await puppeteer.launch({ headless: 'shell', args: ['--no-sandbox'] });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell', args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage();
     await page.setContent('<!doctype html><html><body style="margin:0;background:transparent"></body></html>');

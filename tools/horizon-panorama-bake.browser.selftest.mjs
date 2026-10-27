@@ -17,6 +17,7 @@
 // A re-pin needs a new capture and a wave. HORIZON_BAKE_MEASURE=<runs> prints the proxy of that many fresh pages and
 // its spread instead of asserting.
 //   node tools/horizon-panorama-bake.browser.selftest.mjs
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -86,7 +87,7 @@ try {
     } }],
   });
   await server.listen();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new',
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
     timeout: 30_000, protocolTimeout: 300_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);

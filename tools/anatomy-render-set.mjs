@@ -18,6 +18,7 @@
 //   hitbox    exact combat shapes    (BEFORE: Modules + the workbench hitbox toggle · AFTER: Modules + Hit volumes)
 //   killcam   the dev shot runtime's killcam_xray stage on the same target (seeds 9001, 4242, 555, 77)
 // Output: <out>/<side>/<id>-<view>-<desktop|phone>.jpg (the #viewport stage) and …-page.jpg (the whole window).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -178,7 +179,7 @@ async function captureItem({ side, part }) {
 }
 
 try {
-  browser = await puppeteer.launch({ channel: 'chrome', headless: true,
+  browser = await launchGuardedBrowser(puppeteer, { channel: 'chrome', headless: true,
     args: swiftshader ? ['--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars']
       : ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
   for (const item of plan) {
