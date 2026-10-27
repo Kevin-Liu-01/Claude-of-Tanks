@@ -22,9 +22,11 @@ standard ride height, IR/white-light searchlight left of the mantlet.
   bustle (STB-1 lineage, reads like a lower, sleeker M60A1 needle-nose);
   commander's rotating cupola RIGHT with a 12.7 mm M2 on a pintle, low oval
   loader hatch LEFT; roof otherwise clean.
-- Mantlet/gun mount: rounded cast mantlet saddle around a bare rifled tube
-  with a fat mid-tube fume extractor; big rectangular searchlight box
-  mounted LEFT of the mantlet (white/IR light).
+- Mantlet/gun mount: a large external cast mask under a laced canvas cover,
+  the J1 telescope port right of the gun and the coaxial MG port left, a
+  collar with a flared hood; a bare rifled tube with a fat mid-tube fume
+  extractor; the IR/white searchlight on a cradle LEFT of the gun base,
+  riding the gun (see "Mantlet (261 rebuild)").
 - Hull front: LOW-SLUNG hull — sharp shallow glacis with a pronounced
   center crease, flush driver hatch left, very low sponson line; the whole
   vehicle sits close to the ground at standard trim.
@@ -442,3 +444,30 @@ The `8319dbb8` Native2026 experiment was superseded by the authoritative
 since that restoration and was removed from source as dead code in September
 2026. The measurements above remain as historical authoring evidence; the
 playable continues to use original first-party procedural geometry.
+
+## Mantlet (261 rebuild)
+
+Owner, 2026-10-27: "the stb 1 and type 74 still need completgely new mantlets and turret geometrry around the mantlets".
+Builder: `src/vehicles/profiles/japaneseMantlets.ts` (`addType74Mantlet`), called from `buildType74`. Rows marked
+**[photo]** are read from photographs, not stated by a source. Program frame (BUILD-STANDARD §A): +x is the vehicle's
+right.
+
+Photographs: [head-on, light fitted, both port caps](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg);
+[light cradle and link bars](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_(95-1548)_Infrared_projector_left_front_view_at_National_Defense_Academy_of_Japan_November_9,_2024.jpg);
+[Tsuchiura left front, light removed](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_left_front_view_at_Camp_Tsuchiura_September_28,_2025.jpg);
+[Tsuchiura right front, J1 port and lacing](https://commons.wikimedia.org/wiki/File:JGSDF_Type_74_Tank_right_front_view_at_Camp_Tsuchiura_September_28,_2025.jpg).
+
+| Feature | Main b93941ce9d (before) | Source | 261 (after) |
+|---|---|---|---|
+| Gun shield | A bare drum (r 0.22 × 0.62 m) with a ball and a taper collar, a canvas sleeve on the tube root | A large external mask of Japan's own design ([en.wikipedia](https://en.wikipedia.org/wiki/Type_74_tank); [ArmedConflicts](https://www.armedconflicts.com/topic/view/660)); a laced canvas cover about half the turret front's width and nearly its height **[photo]** | A broad cast mask, 0.93 m wide and 0.36 m tall, on a 0.18 m drum; its underside rises to the face so it keeps 2 cm over the deck at full depression; the laced canvas gathered over the drum and crown under three straps, the cast face bare round the ports and collar |
+| Turret front round it | The cast dome's face with a slab "brow" box over the drum | Rounded one-piece cast, no distinct brow; a lifting eye on the upper front edge either side of the mask **[photo]** | A channel cut into the cast shell: cheek walls 0.48 m either side of the gun with 15 mm seams, a concave receiver 20 mm behind the drum, trunnion pins into the walls; no brow; the two lifting eyes |
+| Coaxial MG port | A dark stub right of the saddle | Vehicle **left**, a small screw-capped port a little over the bore ([trafficnews 125989](https://trafficnews.jp/post/125989)) | Armoured boss with the 7.62 mm muzzle at x −0.285, 46 mm over the bore |
+| Sight port | None on the front | The J1 monocular telescope's capped port on the vehicle **right** ([trafficnews 125989](https://trafficnews.jp/post/125989)); the J2 gunner's periscope in the roof ([HistoryOfWar](https://www.historyofwar.org/articles/weapons_type74japan.html)) | J1 lens boss at x +0.235, 58 mm over the bore (the roof periscope is unchanged) |
+| IR searchlight | A turret-fixed box left of the drum (x −0.62) with a hood, guard bars and fins; it did not move with the gun | On a cradle beside the gun base, vehicle **left**; aimed by a clamp bolt in the cradle; rear corners chamfered to the turret ([trafficnews 81654/3](https://trafficnews.jp/post/81654/3)); square front with a 2 × 3 pane grid, top above the roof, two parallel bars from the cradle to the collar **[photo]**; fitted from the mid-1980s ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660)) | Rides the gun: a deck plate and foot on the mask's left side and an outer rib, the lamp house with chamfered rear corners, a framed six-pane lamp (a searchlight lens at night), lid seam and handles, and the two bars to the collar |
+| Collar | A plain taper collar | A cylindrical collar with a flared half-round hood over its top **[photo]** | Collar r 0.135 m with the flared half-round hood and a dark seal round the barrel |
+| Gun travel | −10/+15 at the gun (spec) | −6/+9 (or −6.5/+9.5) at the gun, −12/+15 with the suspension ([ArmedConflicts](https://www.armedconflicts.com/topic/view/660); GlobalSecurity) | Unchanged spec; the shield is held over the whole −10..+15 |
+
+STB-1 against Type 74 (`docs/references/tanks/stb1.md`): the prototype's mask is narrower (0.79 m), rounder and
+deeper-chinned, its canvas narrower, its port on the upper left, its collar plain, and it carries no searchlight.
+Receipt: `src/vehicles/japaneseMantlet.selftest.mjs`.
+

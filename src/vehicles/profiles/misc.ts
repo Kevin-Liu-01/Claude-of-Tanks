@@ -33,6 +33,7 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 import { KIT, FITTINGS, MUDGUARDS, convexSlab } from './kit.ts';
 import { refineCastLoft } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import { addType74Mantlet } from './japaneseMantlets.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
@@ -3275,7 +3276,8 @@ function buildType74(P: MiscBuilderPort): void {
       centerHeight: 0.465,
     },
   ]);
-  P.add('turret', toCreasedNormals(polyMultiLoft(type74Cast.plan, type74Cast.rings), Math.PI / 4.5));
+  // 261: the shell is added by addType74Mantlet, cut for the mask's seat (profiles/japaneseMantlets.ts)
+  const castShell = toCreasedNormals(polyMultiLoft(type74Cast.plan, type74Cast.rings), Math.PI / 4.5);
   P.turretG.userData.japaneseCastTurretReceipt = {
     family: 'type74-leopard-generation-cast',
     authoredStations: type74CastPlan.length,
@@ -3326,21 +3328,7 @@ function buildType74(P: MiscBuilderPort): void {
       P.add('turretDark', box(0.135, 0.024, 0.024), side * 0.82, 0.378, 0.93);
     }, { reachM: 0.05 });
   }
-  // big IR/white searchlight box LEFT of the mantlet (the signature box):
-  // hood lip + split doors + glass slit + cable conduit (§B3 tells)
-  P.add('turret', box(0.44, 0.36, 0.42), -0.62, 0.29, 1.19, 0, 0.06, 0);       // body seated against the dome face
-  P.add('turret', box(0.46, 0.05, 0.10), -0.62, 0.49, 1.36, 0, 0.06, 0);       // hood lip
-  P.add('turretDark', box(0.37, 0.28, 0.03), -0.615, 0.29, 1.405, 0, 0.06, 0);
-  P.add('turretGlass', box(0.30, 0.20, 0.016), -0.615, 0.30, 1.42, 0, 0.06, 0);
-  P.add('turretDark', box(0.014, 0.34, 0.36), -0.62, 0.29, 1.19, 0, 0.06, 0);
-  P.add('turretDetail', box(0.06, 0.20, 0.06), -0.58, 0.10, 1.02);
-  P.add('turretDetail', box(0.028, 0.028, 0.62), -0.88, 0.29, 0.62, 0, -0.35, 0);
-  // owner 2026-10-25 (the modernisation): the searchlight's guard bars over the glass, the cooling fins on its back
-  // half and the door hinge pins (the bare box read as a crate)
-  for (let k = 0; k < 6; k++) P.add('turretDetail', box(0.014, 0.25, 0.018), -0.745 + k * 0.05, 0.30, 1.433, 0, 0.06, 0);
-  for (const dy of [-0.13, 0.13]) P.add('turretDetail', box(0.30, 0.016, 0.018), -0.615, 0.30 + dy, 1.433, 0, 0.06, 0);
-  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.40, 0.035, 0.014), -0.625, 0.487, 1.03 + k * 0.055, 0, 0.06, 0);
-  for (const dy of [-0.10, 0.10]) P.add('turretDetail', cylY(0.016, 0.016, 0.07, 8), -0.395, 0.29 + dy, 1.40);
+  // 261: the IR/white searchlight rides the gun on its cradle (addType74Mantlet below)
   // stowage BASKETS hugging the bustle flanks (identity: turret rear sides;
   // pipe rails + mesh + cloth load; outer face ±1.30 inside the §D ±1.59
   // width guard; front-view 1.92-2.0 band at x 1.04-1.31 = the ref's own)
@@ -3374,19 +3362,12 @@ function buildType74(P: MiscBuilderPort): void {
   }
   P.decal('turret', 'number', P.spec.visual.number || '74', 0.26, [0.90, 0.22, -0.35], Math.PI / 2, 0, 0.08);
   P.decal('turret', 'number', P.spec.visual.number || '74', 0.26, [-0.90, 0.22, -0.35], -Math.PI / 2, 0, -0.08);
-  // L7A1 105 mm on the print's 1.57-1.60 bore line: rounded cast saddle
-  // (§B3.1 mantlet mass), bare rifled tube, fat fume extractor, and a
-  // measured muzzle station that closes the authoritative 9.08 m envelope.
+  // L7A1 105 mm on the print's 1.57-1.60 bore line in the production tank's external mask (261, owner: "completely new
+  // mantlets and turret geometry around the mantlets"): the cast mask, its laced canvas, the J1 and coaxial ports, the
+  // collar and hood, the searchlight on its cradle and the seat cut into the cast shell (profiles/japaneseMantlets.ts).
   P.gunG.position.set(0, 0.18, 1.15);                                          // bore world 1.60, trunnion +1.65
-  trunnionRoll(P, 0.22, 0.62, { ballR: 0.19, ballZ: 0.18 });
-  P.addGunExtra(cylZ(0.16, 0.28, 12, 0.135), 0, 0, 0.30);                      // cast collar taper
-  P.addGunExtraDark(cylZ(0.024, 0.09, 8), 0.25, 0.05, 0.20);                   // coax port RIGHT of the saddle
-  // owner 2026-10-25 (the modernisation): the canvas mantlet boot the Type 74 fights in (it rides the gun), from the
-  // cast face round the saddle to the collar, its folds held by three straps; the cast brow keeps its seat above it
-  P.add('turret', box(0.64, 0.18, 0.34), 0, 0.32, 1.30, -0.52, 0, 0);          // cast brow over the saddle
-  P.add('gunMountCanvasSkin', cylZ(0.205, 0.30, 18, 0.255), 0, 0, 0.17);
-  for (const [z, r] of [[0.08, 0.250], [0.17, 0.233], [0.26, 0.214]]) P.add('gunMountDark', torus(r, 0.011, 18), 0, 0, z);
-  buildGun(P, { len: 3.91, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.15 });
+  addType74Mantlet(P, castShell);
+  buildGun(P, { len: 3.91, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.105 }); // the root inside the collar
   P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 3.85);                             // muzzle reference step at the measured overall-length station
   muzzleBore(P, 0.062, 3.895);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)
   P.topY = 0.90;

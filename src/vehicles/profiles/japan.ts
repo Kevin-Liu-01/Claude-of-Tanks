@@ -19,6 +19,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as mountFitting } from './fittingMount.ts';
 import { sampleConvexArmorFace as sampleFace } from './armorFaceSampling.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addSTB1Mantlet } from './japaneseMantlets.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -427,7 +428,9 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   });
 }
 
-function addSTB1CastTurret(P: JapaneseBuilderPort): void {
+/** The STB-1's turret castings around its shell; returns the shell itself (turret frame, at its authored height), which
+ * addSTB1Mantlet cuts for the mask's seat once the turret's height squash is applied. */
+function addSTB1CastTurret(P: JapaneseBuilderPort): THREE.BufferGeometry {
   const { box, cylY, torus, polyMultiLoft, frustum, liftEye } = KIT;
 
   // The prototype casting shares the Leopard 1 generation's low, faceted
@@ -478,7 +481,7 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
       centerHeight: raiseSTBCastY(0.49),
     },
   ]);
-  P.add('turret', toCreasedNormals(polyMultiLoft(stbCast.plan, stbCast.rings), Math.PI / 4.5), 0, 0, -0.03);
+  const castShell = toCreasedNormals(polyMultiLoft(stbCast.plan, stbCast.rings), Math.PI / 4.5).translate(0, 0, -0.03);
   P.turretG.userData.japaneseCastTurretReceipt = {
     family: 'stb-leopard-generation-cast',
     authoredStations: stbCastPlan.length,
@@ -538,20 +541,8 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
     }
   }
 
-  // Signature left-front multi-pane searchlight: solid armored cradle,
-  // hood, six luminous panes and a conduit seated back into the cheek.
-  P.add('turret', box(0.54, 0.40, 0.38), 0.73, 0.52, 1.04, -0.05, 0, 0);
-  P.add('turret', box(0.58, 0.055, 0.13), 0.73, 0.75, 1.15, -0.05, 0, 0);
-  P.add('turretDark', box(0.48, 0.33, 0.028), 0.73, 0.52, 1.242);
-  for (let row = 0; row < 3; row++) for (let col = 0; col < 2; col++) {
-    P.add('turretGlass', box(0.160, 0.080, 0.018), 0.642 + col * 0.176,
-      0.42 + row * 0.112, 1.262);
-  }
-  P.add('turretDetail', box(0.085, 0.42, 0.085), 0.73, 0.27, 0.92);
-  // owner 2026-10-25 (the modernisation): guard bars over the six panes and cooling fins on the cradle's back
-  for (let k = 0; k < 5; k++) P.add('turretDetail', box(0.014, 0.36, 0.018), 0.57 + k * 0.08, 0.52, 1.274);
-  for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.46, 0.04, 0.014), 0.73, 0.735, 0.92 + k * 0.06);
-  P.add('turretDark', box(0.025, 0.025, 0.76), 1.02, 0.49, 0.62, 0, 0.32, 0);
+  // 261: no searchlight. The STB-1 carried a passive night sight; the infrared searchlight came with STB-2
+  // (docs/references/tanks/stb1.md).
 
   // Offset rangefinder blisters and their backed optic faces give the side
   // elevation the same asymmetric equipment cadence as the source print.
@@ -578,6 +569,7 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): void {
     P.add('turretDetail', box(0.24, 0.028, 0.045), x, 0.80, z, 0, yaw, 0);
     P.add('turretDetail', box(0.045, 0.12, 0.045), x, 0.75, z, 0, yaw, 0);
   }
+  return castShell;
 }
 
 function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
@@ -673,25 +665,14 @@ function addSTB1TurretBasket(P: JapaneseBuilderPort): void {
   whips(P, 0.72, -1.56, 1140, 0.83);
 }
 
-function addSTB1GunAndFinish(P: JapaneseBuilderPort): void {
-  const { box, cylZ, buildGun } = KIT;
-  const seg = P.q ? 36 : 18;
+function addSTB1GunAndFinish(P: JapaneseBuilderPort, castShell: THREE.BufferGeometry): void {
+  const { cylZ, buildGun } = KIT;
 
-  // Rounded cast saddle and long bare L7 tube.  The gun group remains the
-  // only pitch owner; the searchlight and all roof equipment yaw with turret.
-  P.addGunExtra(box(0.66, 0.38, 0.20), 0, 0, 0.28);
-  const saddle = KIT.sph(0.26, seg);
-  saddle.scale(1.48, 0.90, 0.82);
-  P.addGunExtra(saddle, 0, 0, 0.46);
-  P.addGunExtra(cylZ(0.145, 0.34, seg, 0.115), 0, 0, 0.66);
-  P.addGunExtraDark(cylZ(0.031, 0.10, 10), 0.27, 0.07, 0.50);
+  // The long bare L7 tube; the gun group remains the only pitch owner. Its mask (261) is built once the turret is at its
+  // final height, below.
   buildGun(P, { len: 4.72, r: 0.062, sleeve: false, evac: 0.46,
-    evacR: 1.72, collar: false, baseR: 0.145 });
+    evacR: 1.72, collar: false, baseR: 0.10 });
   P.add('gunDark', cylZ(0.067, 0.075, 12), 0, 0, 4.695);
-  // owner 2026-10-25 (the modernisation): the canvas boot over the tube's root ahead of the saddle, three straps
-  // holding its folds (it rides the gun)
-  P.add('gunMountCanvasSkin', cylZ(0.128, 0.20, seg, 0.168), 0, 0, 0.78);
-  for (const [z, r] of [[0.72, 0.163], [0.79, 0.151], [0.86, 0.139]]) P.add('gunMountDark', KIT.torus(r, 0.009, 18), 0, 0, z);
 
   // Compress every already-transformed turret primitive around the local
   // ring datum. This catches canted cheek plates, baskets and roof hardware
@@ -709,6 +690,9 @@ function addSTB1GunAndFinish(P: JapaneseBuilderPort): void {
     if (child === P.gunG || !child.name.startsWith('fitting_')) continue;
     child.position.y *= STB_TURRET_HEIGHT_SCALE;
   }
+  // 261 (owner: "completely new mantlets and turret geometry around the mantlets"): the prototype's own compact mask in
+  // a seat cut into the squashed cast shell (profiles/japaneseMantlets.ts)
+  addSTB1Mantlet(P, castShell.scale(1, STB_TURRET_HEIGHT_SCALE, 1));
 
   P.decal('turret', 'number', 'STB-1', 0.21,
     [-1.23, 0.47 * STB_TURRET_HEIGHT_SCALE, -0.54], -Math.PI / 2);
@@ -719,10 +703,10 @@ function buildSTB1(P: JapaneseBuilderPort): void {
   prepareSTB1Rig(P);
   addSTB1HullBody(P);
   addSTB1HullHardwareAndRunningGear(P);
-  addSTB1CastTurret(P);
+  const castShell = addSTB1CastTurret(P);
   addSTB1RoofEquipment(P);
   addSTB1TurretBasket(P);
-  addSTB1GunAndFinish(P);
+  addSTB1GunAndFinish(P, castShell);
 }
 
 function addSTC2TrialsPackage(P: JapaneseBuilderPort): void {
