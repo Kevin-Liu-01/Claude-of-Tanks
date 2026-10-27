@@ -2,6 +2,7 @@
 // verify native rim seating, inward walls, and recessed floors; image probes
 // verify that the real recess reads clearly under the gallery lighting.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -38,7 +39,7 @@ const origin = boundOrigin(server);
 let browser = null;
 let page = null;
 const openProbePage = async () => {
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });

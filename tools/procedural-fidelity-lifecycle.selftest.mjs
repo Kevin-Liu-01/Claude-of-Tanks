@@ -9,11 +9,11 @@ import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from '.
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 9, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 10, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
   'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
-  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions',
+  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions', 'launchGuardedBrowser',
   source.replace(/^import .+;\n/gm, ''));
 
 // The server binds BOUND_PORT, not the port it asked for (a busy port moved on, R4c 2026-10-16): every URL must use it.
@@ -110,7 +110,9 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
     await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
       { fixture_x:'fixture', unregistered_tank:'fixture', ztz100_prototype:'modern2', object695:'modern2', type100:'modern2' },
       validateSelectedIds, partitionConceptIds, readConceptDesign,
-      boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions);
+      boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions,
+      // the guarded launch is tools/browser-launch.selftest.mjs's to prove; this fixture's browser is fake
+      (launcher, options) => launcher.launch(options));
   }
   catch (error) { failure = error; }
   return { events, logs, writes, primary, cleanup, failure, process, gotos };

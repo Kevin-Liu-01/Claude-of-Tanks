@@ -57,6 +57,7 @@
  * from the environment only, never printed): the first document request asks for the bypass cookie, then request
  * interception is switched off so every request (dedicated workers included) rides the cookie.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, statSync, writeFileSync } from 'node:fs';
 import { loadavg, tmpdir } from 'node:os';
@@ -203,7 +204,7 @@ async function main() {
   const started = Date.now();
   const log = (m) => console.log(`[sweep ${String(Math.round((Date.now() - started) / 1000)).padStart(5)}s] ${m}`);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const launch = () => puppeteer.launch({
+  const launch = () => launchGuardedBrowser(puppeteer, {
     headless: flag('headful') ? false : 'new', protocolTimeout: 600000, ...(executablePath ? { executablePath } : {}),
     ...(fresh === 'browser' ? { userDataDir: mkdtempSync(path.join(tmpdir(), 'cot-sweep-profile-')) } : {}),
     args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',

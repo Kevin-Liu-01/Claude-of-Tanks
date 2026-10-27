@@ -4,6 +4,7 @@
 // — the union points the CPU law is held to (vehicleGroundOcclusion.selftest.mjs) and the wraps, shoes, gap fade and
 // tilted receivers — must equal its CPU twin: the bare geometry of one hull, then snow under a sun with two hulls.
 // Uniforms come from the module's own packing; the float target is read back exactly.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
@@ -30,7 +31,7 @@ let browser, refresh;
 try {
   await lock.acquire(45 * 60_000);
   refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
-  browser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 60_000,
+  browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', timeout: 30_000, protocolTimeout: 60_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] }));
   report.launch = verifyNativeBrowserLaunch(browser);
   const page = await browser.newPage();

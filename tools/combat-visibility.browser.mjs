@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {createServer} from 'vite';
@@ -9,7 +10,7 @@ await acquireCaptureLock(60000);
 let browser,server;const errors=[],out='.qa-dev/combat-visibility';mkdirSync(out,{recursive:true});
 try{
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5208,strictPort:true,hmr:false}});await server.listen();
- browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox']}));
+ browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox']}));
  const page=await browser.newPage();await page.setViewport({width:1200,height:700});page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:5208/tools/fixtures/combat-visibility.html');
  await page.waitForFunction('window.__LOD_QA',{timeout:120000});

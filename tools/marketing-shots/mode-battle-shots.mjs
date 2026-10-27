@@ -27,6 +27,7 @@
 // other jobs interleave, and closes its Chrome while it waits; a memory-guard WARN or a `headroom can-start`
 // refusal waits, a PAUSE stops the run; one Chrome and one dev server.
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { spawnSync } from 'node:child_process';
@@ -175,7 +176,7 @@ async function buildSheets(browser, slot, { tile = 320, cols = 5, rows = 6 } = {
 }
 
 if (opt('sheet')) {
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-gpu'] });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox', '--disable-gpu'] });
   try {
     for (const slot of opt('sheet').split(',').filter(Boolean)) log(slot, (await buildSheets(browser, slot)).join(' '));
   } finally { await browser.close(); }
@@ -239,7 +240,7 @@ const holds = [];
 const holdLog = join(OUT, 'lock-holds.jsonl');
 async function launchBrowser() {
   if (browser) return browser;
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     protocolTimeout: 600000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--mute-audio',

@@ -2,6 +2,7 @@
  * Videos include boot/staging. PNGs are read immediately after real game renders.
  * Chromium emulation is not physical Safari or frame-time certification.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -706,8 +707,8 @@ export async function runMotionProbe({ root, output, cases, playwrightModule, ex
     refresh = setInterval(refreshCaptureLock, 60_000); refresh.unref();
     if (report.errors.length || buildHash() !== hash) throw new Error('Interrupted or approved build changed before launch');
     server = await preview({ root, logLevel: 'error', preview: { host: '127.0.0.1', port: 5876, strictPort: true } });
-    browserOwner = await chromium.launchServer({ headless: true, channel: 'chromium',
-      args: ['--use-gl=angle', '--enable-webgl'], host: '127.0.0.1', timeout: 30000 });
+    browserOwner = await launchGuardedBrowser(chromium, { headless: true, channel: 'chromium',
+      args: ['--use-gl=angle', '--enable-webgl'], host: '127.0.0.1', timeout: 30000 }, { method: 'launchServer' });
     browser = await chromium.connect(browserOwner.wsEndpoint(), { timeout: 30000 });
     report.browser = { version: browser.version(), executable: chromium.executablePath(),
       channel: 'chromium', headless: 'new', args: ['--use-gl=angle', '--enable-webgl'],

@@ -7,6 +7,7 @@
 // toward (or ballistically above) the camera marker.
 //
 // Usage: node tools/reticle-shot-parity-probe.mjs [--screenshot /tmp/reticle.png]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { GRAVITY_SCALE } from '../src/sim/ballistics.ts';
@@ -43,7 +44,7 @@ try {
   await server.listen();
   const url = `http://localhost:${server.config.server.port}/?nosplash`;
   console.log(`[reticle-shot-parity] target ${url}`);
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: 'new',
     protocolTimeout: 360000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
