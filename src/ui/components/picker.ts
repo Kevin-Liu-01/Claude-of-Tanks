@@ -284,8 +284,8 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   const gridResize = new ResizeObserver(markRowsBelow);
   gridResize.observe(grid);
-  // The grid opens with its choice in view on whole rows: the chosen row on top, or near the end the first row from which
-  // the chosen one shows. A row cut under the bar would read as a loose caption (Rooms r25).
+  // The grid opens with its choice in view on whole rows: the chosen row on top, or near the end the whole row nearest the
+  // end from which the chosen one shows. A row cut under the bar would read as a loose caption (Rooms r25).
   const scrollToChosen = (): void => {
     const chosen = options$().find((element) => element.getAttribute('aria-selected') === 'true');
     if (!chosen || grid.scrollHeight <= grid.clientHeight) return;
@@ -296,8 +296,11 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     const top = chosen.getBoundingClientRect().top - origin;
     if (top <= end) { grid.scrollTop = top; return; }
     const view = grid.clientHeight - pad - (parseFloat(style.paddingBottom) || 0);
-    const rows = options$().map((element) => element.getBoundingClientRect().top - origin).filter((row) => row + view >= top + chosen.offsetHeight);
-    grid.scrollTop = Math.min(end, rows.length ? Math.min(...rows) : end);
+    // the choice cannot reach the top: the whole row nearest the list's end from which it shows, so it stands as high as it
+    // can (Rooms r37: the first such row left a whole row above the choice)
+    const rows = options$().map((element) => element.getBoundingClientRect().top - origin)
+      .filter((row) => row <= end && row + view >= top + chosen.offsetHeight);
+    grid.scrollTop = rows.length ? Math.max(...rows) : end;
   };
   const revealChosen = (): void => { scrollToChosen(); markRowsBelow(); };
   const render = (): void => {
