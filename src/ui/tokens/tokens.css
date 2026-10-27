@@ -11,6 +11,8 @@
   --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
   --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
   --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
+  --settingshue-controls:#6d86ff;--settingshue-gameplay:#bff18b;--settingshue-sound:#6cf6fd;--settingshue-graphics:#ba8ac5;
+  --settingshue-accessibility:#c0789b;--settingshue-language:#55a57d;
   --paper-50:#f6f3ec;--paper-100:#ece8de;--paper-300:#c9c5bb;--paper-500:#9a9a95;--paper-600:#7c8187;--paper-700:#5d636a;
   --tungsten-300:#ffd08a;--tungsten-400:#ffbd5c;--tungsten-500:#f0a030;--tungsten-600:#c97f1c;--tungsten-800:#4a2e0a;
   --sky-400:#57b8ff;--sky-200:#b8e0ff;--vermilion-400:#ff5a4e;--mint-400:#5bd69b;--yellow-400:#ffd15c;
@@ -50,6 +52,9 @@
   --mode-turbo-ball:var(--modehue-turbo-ball);--mode-mars:var(--modehue-mars);--mode-endless-horde:var(--modehue-endless-horde);
   --mode-gun-game:var(--modehue-gun-game);--mode-juggernaut:var(--modehue-juggernaut);--mode-infected:var(--modehue-infected);
   --mode-realistic:var(--modehue-realistic);--mode-ac130:var(--modehue-ac130);--mode-proving-ground:var(--modehue-proving-ground);
+  --settings-controls:var(--settingshue-controls);--settings-gameplay:var(--settingshue-gameplay);--settings-sound:var(--settingshue-sound);
+  --settings-graphics:var(--settingshue-graphics);--settings-accessibility:var(--settingshue-accessibility);
+  --settings-language:var(--settingshue-language);
   --team-own:var(--sky-400);--team-enemy:var(--vermilion-400);--team-squad:var(--mint-400);--team-neutral:var(--paper-100);
   --ok:var(--mint-400);--warn:var(--yellow-400);--danger:var(--vermilion-400);--info:var(--sky-200);
   --text-own:var(--team-own);--text-enemy:var(--team-enemy);--text-squad:var(--team-squad);--text-ok:var(--ok);

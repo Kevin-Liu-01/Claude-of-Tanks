@@ -366,6 +366,8 @@ export interface WorldRuntime {
     fovDegrees?: number | null,
     aimDistanceMeters?: number | null,
   ): void;
+  /** Item 259: Settings' See-through foliage (vegetation.ts FOLIAGE_LENS_REACH), off by default. */
+  setFoliageSeeThrough(on: boolean): void;
   group: THREE.Group;
   _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue; props: RuntimeValue };
   /** Round 73: the tall-grass tier (diagnostics and the round's probes). */
@@ -852,6 +854,10 @@ function* assembleWorldSteps(
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
   group.add(tallGrass.group);
+  // item 259: Settings' See-through foliage (vegetation.ts FOLIAGE_LENS_REACH), off by default, and the rig's scope share
+  // the tall grass's corridor follows only with it on
+  let foliageSeeThrough = false;
+  let sniperShare = 0;
   yield;
   // item 45 (2026-10-22; the ground lane's track marks of 2026-10-08 re-cut): the ruts behind the tanks — a ring of strips
   // that modulate the drawn ground, laid from the simulation's tank poses (stampTrackMarks), sized by the quality preset
@@ -1275,8 +1281,18 @@ function* assembleWorldSteps(
       fovDeg: number | null = null,
       aimDistM: number | null = null,
     ) {
+      sniperShare = f;
       vegetation.setSniperFade(f, immediate, fovDeg, aimDistM);
-      tallGrass.setSniperFade(f, immediate); // round 73: the blades clear the scope corridor with the tufts
+      // round 73: the blades clear the scope corridor with the tufts (item 259: with See-through foliage on)
+      tallGrass.setSniperFade(foliageSeeThrough ? f : 0, immediate);
+    },
+    /** Item 259: Settings' See-through foliage: the camera's foliage fades (the chase camera's occlusion fade, the scope
+     *  corridor, the near dissolve past the lens), off by default. */
+    setFoliageSeeThrough(on: boolean) {
+      if (on === foliageSeeThrough) return;
+      foliageSeeThrough = on;
+      vegetation.setSeeThrough(on);
+      tallGrass.setSniperFade(on ? sniperShare : 0);
     },
     group,
   };

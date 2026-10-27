@@ -326,8 +326,14 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-height='short'\] \.cot-set-body\{min-height:0;flex:1 1 auto\}/,
   'short landscape settings must shrink their scroll body so the action footer stays on-screen');
 assert.match(settings,
-  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? t\('settings\.aim\.touch'\) : t\('settings\.aim\.mouse'\)[\s\S]*if \(!touchLayout\) \{[\s\S]*t\('settings\.rmb\.label'\)/,
-  'touch settings must show touch aiming language and omit mouse-only RMB controls');
+  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? t\('settings\.aim\.touch'\) : t\('settings\.aim\.mouse'\)/,
+  'touch settings must show touch aiming language');
+// item 259: the mouse-only Right click mode is on Controls (hidden on touch) and Accessibility's link to it is mouse-only
+assert.match(settings, /if \(input\.isTouchLayout && input\.isTouchLayout\(\)\) \{\s*activeTab = 'gameplay';[\s\S]{0,240}tb\.hidden = true;/,
+  'touch settings hide the Controls tab');
+assert.match(settings, /if \(def\.id === 'freeCamera'\) rmbModeRow\(card\);/, 'the Right click mode lives on Controls');
+assert.match(settings, /if \(!\(input\.isTouchLayout && input\.isTouchLayout\(\)\)\) \{\s*const rmbLink/,
+  'and touch settings omit the mouse-only RMB link');
 assert.match(settings,
   /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
   'touch settings controls must retain a 44 px finger-target floor');
