@@ -788,7 +788,7 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): void } {
+function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string): { readonly origins: readonly string[]; stop(): void } {
   const origins: string[] = [];
   const previous = renderer.renderBufferDirect;
   const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
@@ -797,7 +797,7 @@ function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): v
     if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
       const path: string[] = [material.type];
       for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(path.join('<'));
+      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
     }
   };
   renderer.renderBufferDirect = watched;
@@ -1053,7 +1053,12 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
         isCurrent,
         onProgramsWarmed: () => {
           late?.watch.stop();
-          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins(),
+          // (a late draw's object tagged +added: not in the scene when the warm ended; +hidden: in it, off its visible walk)
+          const inScene = new Set<THREE.Object3D>(), shown = new Set<THREE.Object3D>();
+          scene.traverse((object) => { inScene.add(object); });
+          scene.traverseVisible((object) => { shown.add(object); });
+          late = { baseline: new Set(renderer.info.programs ?? []),
+            watch: watchProgramOrigins((object) => (!inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '')),
             dressingChunks: dressingBuildTimings().length, dressingBuilt: garageDressing.isBuilt() };
         },
       });
