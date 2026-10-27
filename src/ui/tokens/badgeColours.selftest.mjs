@@ -5,13 +5,20 @@
 //
 //  1. tokens.json component.surface-badge carries badge-equip-<category> for the equipment picker's five categories and
 //     badge-cons-<category> for every consumable category (sim/consumableRules.ts), in its own sheet and module.
-//  2. Every consumable hue holds 3:1 on the plates (a graphic: the frame around the ink glyph, WCAG 1.4.11) and keeps at
-//     least 8 ΔE from every other badge hue, the Settings tabs, the teams, the squad and ink, and 12 from the accent, in
-//     every vision view by CIE76 and CIEDE2000 (colorVision.ts): beside the battle tray's team marks a consumable frame
-//     never reads as a side, and beside a selection never as the accent. The equipment's five keep their hues; their own
-//     close pairs (recon and protection 0.9 apart for a deuteranope) are the equipment set's, told apart by the glyph.
+//  2. Every badge hue holds 3:1 on the plates (a graphic: the frame around the ink glyph, WCAG 1.4.11) and keeps at least
+//     8 ΔE from every other badge hue, equipment's and consumables', in every vision view by CIE76 and CIEDE2000
+//     (colorVision.ts). A consumable hue also keeps 8 from the Settings tabs, the teams, the squad and ink, and 12 from the
+//     accent: beside the battle tray's team marks its frame never reads as a side, and beside a selection never as the
+//     accent. An equipment hue keeps 8 from the accent: its badge shows only in the Garage's picker and band and the
+//     manual (the HUD's equipment readout draws the bare glyph in ink). Firepower stays gold, as near the accent as that
+//     allows. Main, 2026-10-27, 261's follow-up: the equipment's own pairs were under the bar (recon and protection 0.9
+//     apart for a deuteranope), so its five hues moved the least that clears it, keeping their categories and meanings
+//     and their brightness on the dark plates.
 //  3. equipIcons.ts frames every badge from the module, so the badge has one source: no badge hue as a literal outside the
 //     token files.
+//  4. On paper (the manual printed): each category has a paper hue (tokens.json surface-badge-paper, its own sheet, no
+//     module) that holds 3:1 on paper and white, the eleven 8 ΔE apart in every vision view, and chapters.css's print
+//     rules give every category of both families its paper frame and the glyph the paper ink.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -28,9 +35,13 @@ const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const group = JSON.parse(read('src/ui/tokens/tokens.json')).component['surface-badge'];
 assert.equal(group.$sheet, 'src/ui/tokens/surface-badge.css', 'the badge hues have their own sheet');
 assert.equal(group.$module, 'src/ui/tokens/surface-badge.ts', 'and their own module, so the boot\'s tokens.ts carries none');
-const EQUIPMENT = { firepower: '#d9a451', recon: '#79afc0', mobility: '#a4b66d', protection: '#9ea7c4', survival: '#c48e70' };
-for (const [category, hex] of Object.entries(EQUIPMENT)) {
-  assert.equal(group[`badge-equip-${category}`]?.value, hex, `badge-equip-${category} keeps the equipment picker's hue`);
+const EQUIPMENT_CATEGORIES = ['firepower', 'recon', 'mobility', 'protection', 'survival'];
+const EQUIPMENT = {};
+for (const category of EQUIPMENT_CATEGORIES) {
+  const hex = group[`badge-equip-${category}`]?.value;
+  assert.ok(parseHex(hex), `tokens.json: badge-equip-${category} is a hex hue`);
+  assert.equal(SURFACE_TOKENS[`badge-equip-${category}`], hex, `surface-badge.ts carries badge-equip-${category} (node tools/gen-tokens.mjs)`);
+  EQUIPMENT[category] = hex;
 }
 const consumables = {};
 for (const category of CONSUMABLE_CATEGORIES) {
@@ -66,12 +77,27 @@ for (const [category, hex] of Object.entries(consumables)) {
     assert.ok(d >= need, `badge-cons-${category} keeps ${need} ΔE from ${other} in every vision view, CIE76 and CIEDE2000 (${d.toFixed(1)})`);
   }
 }
+for (const [category, hex] of Object.entries(EQUIPMENT)) {
+  for (const [plate, bg] of Object.entries(PLATES)) {
+    const ratio = contrastRatio(parseHex(hex), parseHex(bg));
+    assert.ok(ratio >= 3, `badge-equip-${category} ${hex} holds 3:1 on the ${plate} (${ratio.toFixed(2)})`);
+  }
+  const others = {
+    ...Object.fromEntries(Object.entries(EQUIPMENT).filter(([other]) => other !== category).map(([k, v]) => [`badge-equip-${k}`, v])),
+    accent: KIT.accent,
+  };
+  for (const [other, otherHex] of Object.entries(others)) {
+    const d = near(hex, otherHex);
+    floor = Math.min(floor, d);
+    assert.ok(d >= 8, `badge-equip-${category} keeps 8 ΔE from ${other} in every vision view, CIE76 and CIEDE2000 (${d.toFixed(1)})`);
+  }
+}
 
 // 3. the badge frames from the module: each category's hue reaches its badge, and no badge hue is a literal elsewhere
 assert.match(equipIconSVG('rammer', 38), new RegExp(`stroke="${EQUIPMENT.firepower}"`), 'an equipment badge frames in its token');
 assert.match(consumableIconSVG('extinguisher', 38), new RegExp(`stroke="${consumables.fire}"`), 'a consumable badge frames in its token');
 const TOKEN_FILES = new Set(['src/ui/tokens/tokens.json', 'src/ui/tokens/surface-badge.css', 'src/ui/tokens/surface-badge.ts',
-  'src/ui/tokens/badgeColours.selftest.mjs']);
+  'src/ui/tokens/surface-badge-paper.css', 'src/ui/tokens/badgeColours.selftest.mjs']);
 const literal = new RegExp([...Object.values(EQUIPMENT), ...Object.values(consumables)].map((hex) => hex.slice(1)).join('|'), 'i');
 const walk = (dir, out = []) => {
   for (const name of readdirSync(join(ROOT, dir))) {
@@ -83,4 +109,39 @@ const walk = (dir, out = []) => {
 };
 assert.deepEqual(walk('src').filter((path) => !TOKEN_FILES.has(path) && literal.test(read(path))), [], 'badge hues live only in the token files');
 
-console.log(`badgeColours.selftest: ${CONSUMABLE_CATEGORIES.length} consumable categories beside the equipment's 5, one token each, 3:1 on the plates, ${floor.toFixed(1)} ΔE from every badge, Settings, team and ink hue at worst PASS`);
+// 4. on paper: a paper hue per category, 3:1 on paper and white, the eleven 8 ΔE apart; the manual's print rules map each
+const paperGroup = JSON.parse(read('src/ui/tokens/tokens.json')).component['surface-badge-paper'];
+assert.equal(paperGroup.$sheet, 'src/ui/tokens/surface-badge-paper.css', 'the paper hues have their own sheet');
+assert.equal(paperGroup.$module, undefined, 'and no module: only the print rules read them');
+const PAPER = { paper: '#f6f3ec', white: '#ffffff' };
+const paperHues = {};
+for (const [family, categories] of [['equip', EQUIPMENT_CATEGORIES], ['cons', CONSUMABLE_CATEGORIES]]) {
+  for (const category of categories) {
+    const hex = paperGroup[`badge-${family}-${category}-paper`]?.value;
+    assert.ok(parseHex(hex), `tokens.json: badge-${family}-${category}-paper is a hex hue`);
+    for (const [surface, bg] of Object.entries(PAPER)) {
+      const ratio = contrastRatio(parseHex(hex), parseHex(bg));
+      assert.ok(ratio >= 3, `badge-${family}-${category}-paper ${hex} holds 3:1 on ${surface} (${ratio.toFixed(2)})`);
+    }
+    paperHues[`${family}-${category}`] = hex;
+  }
+}
+let paperFloor = Infinity;
+const paperKeys = Object.keys(paperHues);
+for (let i = 0; i < paperKeys.length; i++) for (let j = i + 1; j < paperKeys.length; j++) {
+  const d = near(paperHues[paperKeys[i]], paperHues[paperKeys[j]]);
+  paperFloor = Math.min(paperFloor, d);
+  assert.ok(d >= 8, `on paper, ${paperKeys[i]} keeps 8 ΔE from ${paperKeys[j]} in every vision view (${d.toFixed(1)})`);
+}
+const chapters = read('src/docs/chapters.css');
+assert.ok(chapters.includes("@import url('../ui/tokens/surface-badge-paper.css');"), 'chapters.css imports the paper hues');
+const print = /@media print\{([\s\S]*?)\n\}/.exec(chapters)?.[1] ?? '';
+assert.ok(print.includes(':is([data-equipment-icon],[data-consumable-icon])[data-icon-category]>g{color:var(--badge-paper-ink)}'), 'printed, the glyph takes the paper ink');
+for (const [family, attr, categories] of [['equip', 'equipment', EQUIPMENT_CATEGORIES], ['cons', 'consumable', CONSUMABLE_CATEGORIES]]) {
+  for (const category of categories) {
+    assert.ok(print.includes(`[data-${attr}-icon][data-icon-category='${category}']>path{stroke:var(--badge-${family}-${category}-paper);fill:var(--badge-${family}-${category}-paper)}`),
+      `printed, a ${attr} badge of ${category} frames in its paper hue`);
+  }
+}
+
+console.log(`badgeColours.selftest: the equipment's 5 and the consumables' ${CONSUMABLE_CATEGORIES.length} categories, one token each, 3:1 on the plates, ${floor.toFixed(1)} ΔE apart at worst; on paper 3:1 and ${paperFloor.toFixed(1)} ΔE apart PASS`);

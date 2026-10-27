@@ -5,11 +5,11 @@
 
 /** The group's tokens by their CSS custom-property name (without "--"), resolved at the default presets. */
 export const SURFACE_TOKENS = {
-  'badge-equip-firepower': '#d9a451',
+  'badge-equip-firepower': '#cda869',
   'badge-equip-recon': '#79afc0',
-  'badge-equip-mobility': '#a4b66d',
-  'badge-equip-protection': '#9ea7c4',
-  'badge-equip-survival': '#c48e70',
+  'badge-equip-mobility': '#98ba91',
+  'badge-equip-protection': '#a2abac',
+  'badge-equip-survival': '#c87e5c',
   'badge-cons-repair': '#bccbd5',
   'badge-cons-crew': '#856280',
   'badge-cons-fire': '#ad5349',
