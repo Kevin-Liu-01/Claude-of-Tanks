@@ -5,7 +5,8 @@
 // densely, so a fix can never pass while a part still goes through another. Each tank is built once and every check
 // reads that build.
 //  1. The main gun (every mesh under rig_gun, the recoiling parts at recoil 0 and 0.135 m) keeps 25 mm from every hull
-//     mesh (nets included) at every turret yaw, at the published depression stop for that yaw, at zero and at full
+//     mesh (nets included) at every turret yaw, at the published depression stop for that yaw, at zero (where the stop
+//     lets the gun reach it: the rear drums' positive stops, as gunHullClearance.test-support.mjs) and at full
 //     elevation (the boot over the driver's hatch at full elevation, the barrel over the deck and the Yun's cooling-panel
 //     slats). Yaw is swept at 5 degrees and refined at 1 degree within 6 degrees of any sample under 60 mm, of every
 //     depression-curve breakpoint and over the rear deck (165-195 degrees); the hull is cut to the gun's swept annulus.
@@ -151,7 +152,7 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
       return yawSweep((yd) => {
         const yaw = yd * DEG, T = yawPose(turret.position, turret.quaternion, yaw), lo = minimumMechanicalGunPitch(curveSpec, yaw);
         let r = { d: Infinity };
-        for (const pitch of [lo, 0, elev]) {
+        for (const pitch of lo < 0 ? [lo, 0, elev] : [lo, elev]) {
           const M = T.clone().multiply(pitchPose(gun.position, pitch));
           for (const [pts, backs] of [[gunFixed, [0]], [gunRecoil, [0, .135]]]) for (const back of backs) {
             const d = minDistance(pts, M, gunHullGrid, stop, back); if (d < r.d) r = { d, pitch };

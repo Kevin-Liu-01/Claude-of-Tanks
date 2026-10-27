@@ -29,6 +29,7 @@
 // graphicsDiagnostics.sceneWatchdogs retains bounded phase/generation-owned
 // render/enqueue/wait and sync-fallback rows on the same performance.now clock.
 // These are attribution-only wall timings, not GPU duration or a health gate.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -222,7 +223,7 @@ try {
   assertProbeActive();
   refresher = setInterval(() => lock.refresh(), 30_000);
   refresher.unref();
-  browser = await puppeteer.launch({ headless: 'new', handleSIGINT: false, handleSIGTERM: false,
+  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', handleSIGINT: false, handleSIGTERM: false,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   assertProbeActive();
   report.browserVersion = await browser.version();
@@ -274,7 +275,8 @@ try {
   if (garageGestureAudioGate) await runGarageAudioGesture();
   // Explicitly choose the ordinary Bots entry using the actual mode picker.
   await page.click('.cot-battle-mode');
-  await page.click('.cot-battle-choice[data-mode="solo"]');
+  await page.waitForSelector('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]', { visible: true });
+  await page.click('[data-deploy-modes] .cot-c-picker__opt[data-id="standard"]');
   await runAction('battle', '.cot-battle');
   await finishFixtureBattle();
   await runAction('battle-again', '.cot-es [data-es-action="again"]');

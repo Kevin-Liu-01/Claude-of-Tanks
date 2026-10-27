@@ -8,8 +8,8 @@
 // re-run of this tool on new public/brand art with no geometry change.
 //
 // Inputs (only these; never public/media/modern, showcase-r2, garage-environments-r2 or presentation-r1):
-//   - public/brand: logo-mark.svg, logo-mark-metal.svg, logo-mark-bw.svg, logo-full.svg, logo-full-metal.svg (the
-//     current brand; rasterised by the repo's puppeteer Chrome so the embedded Inter wordmark renders exactly)
+//   - public/brand: logo-mark.svg, logo-mark-metal.svg, logo-mark-bw.svg and wordmark.svg (the horizontal wordmark, one
+//     line on every sign; rasterised by the repo's puppeteer Chrome)
 //   - public/media/site50-r14/stills: the featured battlefield stills the game already shows
 //   - public/icons: the exhibit tanks' armour and module readouts
 //   - public/maps/thumbs: the ten Garage maps
@@ -29,6 +29,7 @@
 // a tank lane's tank:anatomy:update re-renders the readouts, so the plain check only WARNS when they moved (the r9
 // engineering critic: the core suite went red on every foreign re-render) and names the refresh. A rebrand or a
 // release that wants the atlas current runs the strict check, then garage:atlas:update.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -62,22 +63,26 @@ const GARAGES = Object.freeze([
 ]);
 /** A Garage whose map has no still of its own shows its sister map's (Redrock shares the Sirocco desert still). */
 const MEDIA_ALIASES = Object.freeze({ badlands: 'desert' });
-/** Monitor readouts: the five exhibits' own armour and module sheets. */
+/** Monitor readouts: the five exhibits' own armour and module sheets (253: 2x WebP with no text; DOM labels cannot
+ * reach a 3D monitor and at monitor scale the baked ones were never legible). */
 const READOUTS = Object.freeze([
-  ['readout.armor.abrams', 'm1a1_abrams_hc_armor_side.png'],
-  ['readout.modules.abrams', 'm1a1_abrams_hc_modules_side.png'],
-  ['readout.armor.leopard', 'leo2a4m_armor_side.png'],
-  ['readout.modules.t90', 't90am_modules_side.png'],
-  ['readout.armor.k2', 'xk2_black_panther_armor_side.png'],
-  ['readout.modules.burlak', 't90a_burlak_proto_modules_side.png'],
+  ['readout.armor.abrams', 'm1a1_abrams_hc_armor_side.webp'],
+  ['readout.modules.abrams', 'm1a1_abrams_hc_modules_side.webp'],
+  ['readout.armor.leopard', 'leo2a4m_armor_side.webp'],
+  ['readout.modules.t90', 't90am_modules_side.webp'],
+  ['readout.armor.k2', 'xk2_black_panther_armor_side.webp'],
+  ['readout.modules.burlak', 't90a_burlak_proto_modules_side.webp'],
 ]);
 const PICTOGRAMS = Object.freeze([
   'extinguisher', 'callpoint', 'ear', 'eye', 'head', 'gloves', 'overhead', 'forklift', 'electric', 'flammable',
   'tankcrossing', 'nosmoking', 'eyewash', 'firstaid', 'exit', 'speed10',
 ]);
+// the name is the horizontal wordmark, one line everywhere it hangs (owner 10-26: "for all words of 'claude of tanks', it
+// should be horizontal, not the words stacked on top of each other"): a sign wide enough carries the line; a narrow
+// banner carries the crest and no words, never a stacked or turned name
 const BRAND = Object.freeze({
   mark: 'public/brand/logo-mark.svg', markMetal: 'public/brand/logo-mark-metal.svg', markBw: 'public/brand/logo-mark-bw.svg',
-  full: 'public/brand/logo-full.svg', fullMetal: 'public/brand/logo-full-metal.svg',
+  word: 'public/brand/wordmark.svg',
 });
 
 const stillPath = (id) => {
@@ -296,7 +301,7 @@ function rng(seed) {
 
 async function rasteriseBrand(jobs) {
   const puppeteer = (await import('puppeteer')).default;
-  const browser = await puppeteer.launch({ headless: 'shell', args: ['--no-sandbox'] });
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell', args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage();
     await page.setContent('<!doctype html><html><body style="margin:0;background:transparent"></body></html>');
@@ -333,40 +338,41 @@ async function generate() {
     { key: 'mark', file: BRAND.mark, w: 512, h: 512 },
     { key: 'markMetal', file: BRAND.markMetal, w: 512, h: 512 },
     { key: 'markBw', file: BRAND.markBw, w: 512, h: 512 },
-    { key: 'full', file: BRAND.full, w: 2000, h: 840 },
-    { key: 'fullMetal', file: BRAND.fullMetal, w: 2000, h: 840 },
+    // the wordmark's 9956 x 700 box, at about four times the widest sign's pixels
+    { key: 'word', file: BRAND.word, w: 2844, h: 200 },
   ]);
   const img = {};
   for (const [key, buffer] of brand) img[key] = await loadImage(buffer);
 
-  /** The wordmark alone: the lockup's text, right of its crest, trimmed to its pixels. */
-  const wordmarkOf = (image) => {
+  /** An image trimmed to its pixels (the wordmark's box carries a margin). */
+  const trimmed = (image) => {
     const probe = createCanvas(image.width, image.height);
     const g = probe.getContext('2d');
     g.drawImage(image, 0, 0);
-    // the text starts after the first clear gap of columns right of the crest
-    const full = g.getImageData(0, 0, image.width, image.height).data;
-    const columnInk = (x) => { for (let y = 0; y < image.height; y += 1) if (full[(y * image.width + x) * 4 + 3] > 24) return true; return false; };
-    let x0 = Math.round(image.width * 0.3), gap = 0;
-    for (let x = x0; x < image.width * 0.6; x += 1) {
-      gap = columnInk(x) ? 0 : gap + 1;
-      if (gap >= 10) { x0 = x; break; }
-    }
-    while (x0 < image.width && !columnInk(x0)) x0 += 1;
-    const data = g.getImageData(x0, 0, image.width - x0, image.height).data;
+    const data = g.getImageData(0, 0, image.width, image.height).data;
     let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1;
-    const rowW = image.width - x0;
     for (let y = 0; y < image.height; y += 1) {
-      for (let x = 0; x < rowW; x += 1) {
-        if (data[(y * rowW + x) * 4 + 3] > 24) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+      for (let x = 0; x < image.width; x += 1) {
+        if (data[(y * image.width + x) * 4 + 3] > 24) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
       }
     }
     const crop = createCanvas(maxX - minX + 1, maxY - minY + 1);
-    crop.getContext('2d').drawImage(probe, x0 + minX, minY, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    crop.getContext('2d').drawImage(probe, minX, minY, crop.width, crop.height, 0, 0, crop.width, crop.height);
     return crop;
   };
-  const word = wordmarkOf(img.full);
-  const wordMetal = wordmarkOf(img.fullMetal);
+  /** The wordmark in brushed metal: its own shapes filled with the crest plate's steel. */
+  const metalOf = (image) => {
+    const out = createCanvas(image.width, image.height);
+    const g = out.getContext('2d');
+    g.drawImage(image, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    const steel = g.createLinearGradient(0, 0, 0, image.height);
+    steel.addColorStop(0, '#e3e6e8'); steel.addColorStop(0.45, '#9aa1a6'); steel.addColorStop(0.55, '#7d848a'); steel.addColorStop(1, '#c8cdd1');
+    g.fillStyle = steel; g.fillRect(0, 0, image.width, image.height);
+    return out;
+  };
+  const word = trimmed(img.word);
+  const wordMetal = metalOf(word);
 
   const albedo = createCanvas(W, H);
   const a = albedo.getContext('2d');
@@ -488,14 +494,19 @@ async function generate() {
       weave(g, r.x, r.y, r.w, r.h, 11);
       pinstripes(g, r.x, r.y, r.w, r.h, 7, 3);
       fit(g, img.mark, r.x + 14, r.y + 22, r.w - 28, r.w - 28);
-      // the wordmark runs up the banner
-      g.save();
-      g.translate(r.x + r.w / 2, r.y + r.w + 8 + (r.h - r.w - 70) / 2);
-      g.rotate(-Math.PI / 2);
-      const len = r.h - r.w - 70, tall = r.w * 0.5;
-      fit(g, word, -len / 2, -tall / 2, len, tall);
-      g.restore();
+      // a regimental pennant under the crest, no words: the name is only ever one horizontal line (owner 10-26), which a
+      // banner this narrow cannot carry legibly, so the wide signs beside it say it
+      const cx = r.x + r.w / 2, top = r.y + r.w + 24, foot = r.y + r.h - 56;
       g.fillStyle = '#e8ad48';
+      for (const dx of [-7, 4]) g.fillRect(cx + dx, top, 3, foot - top);
+      const arm = r.w * 0.3, rise = arm * 0.62, bar = 9;
+      for (let i = 0; i < 3; i += 1) {
+        const y = top + (foot - top) * 0.36 + i * (rise + 12);
+        g.beginPath();
+        g.moveTo(cx - arm, y); g.lineTo(cx, y + rise); g.lineTo(cx + arm, y);
+        g.lineTo(cx + arm, y + bar); g.lineTo(cx, y + rise + bar); g.lineTo(cx - arm, y + bar);
+        g.closePath(); g.fill();
+      }
       for (let i = 0; i < 3; i += 1) g.fillRect(r.x + r.w / 2 - 22 + i * 18, r.y + r.h - 34, 8, 8);
     },
     'brand.banner.h': (g, r) => {

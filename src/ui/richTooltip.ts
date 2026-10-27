@@ -61,7 +61,8 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
   tip.addEventListener('pointerenter', () => clearTimeout(timer)); tip.addEventListener('pointerleave', leave);
   window.addEventListener('pointerdown', outside, true); window.addEventListener('keydown', key, true);
   window.addEventListener('resize', hide); host.addEventListener('scroll', scroll, true);
-  return { hide, dispose() {
+  // show: a caller whose content was not ready (content() returned null) shows it once it is
+  return { hide, show, dispose() {
     hide(); tip.remove(); delete host.dataset.richTipTargets; host.removeEventListener('pointerover', enter); host.removeEventListener('pointerout', leave);
     host.removeEventListener('focusin', focus); host.removeEventListener('focusout', leave); host.removeEventListener('click', click);
     window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', key, true);

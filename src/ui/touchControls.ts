@@ -59,7 +59,7 @@ const CSS = `
   border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid var(--line-control);
   background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);
   box-shadow:0 6px 18px oklch(from var(--surface-scene) l c h / .52),inset 0 0 0 4px oklch(from var(--surface-scene) l c h / .3),inset 0 1px 4px oklch(from var(--ink-1) l c h / .18);
-  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,box-shadow var(--dur-instant) ease;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-touch .round::before{content:"";position:absolute;inset:7px;border-radius:50%;pointer-events:none;
   border:1px solid var(--line-1);}
 .cot-touch .round:active,.cot-touch .round.down{transform:scale(.94);border-color:var(--accent);
@@ -102,7 +102,7 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
   display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden;
   opacity:0;transform:scale(.78);border-radius:50%;border:1.5px solid oklch(from var(--danger) l c h / .7);
   background:var(--battle-chip-plate);color:oklch(from var(--danger) .77 .137 h);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .48);
-  transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease,border-color var(--dur-instant) ease;}
+  transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease;}
 .cot-touch .fire-cancel b{font:400 var(--battle-fs-28)/1 ${FONT_COND};}
 .cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:.82;transform:scale(1);}
 .cot-touch.fire-cancel-hot .fire-cancel{opacity:1;color:var(--ink-1);border-color:var(--danger);background:oklch(from var(--danger) .35 .131 h / .94);
@@ -138,7 +138,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
   border:1px solid var(--touch-edge);border-bottom:2px solid var(--line-control);border-radius:2px;
   background:linear-gradient(180deg,var(--hud-plate-strong),var(--touch-panel));
   color:var(--ink-1);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),inset 0 1px oklch(from var(--ink-1) l c h / .05);
-  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease;}
+  transition:transform var(--dur-instant) ease-out;}
 .cot-touch .quick:active{transform:scale(.95);border-color:var(--accent);color:var(--accent-hi);background:var(--hud-plate-strong);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;line-height:1;
@@ -166,7 +166,7 @@ body.cot-touch-layout .cot-shells{left:auto;right:max(14px,env(safe-area-inset-r
   width:52px;height:52px;display:block;transform:none;z-index:24;overflow:visible;}
 body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:52px;height:52px;
   opacity:0;pointer-events:none;transform:scale(.94);transform-origin:right center;
-  transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
+  transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
 /* (the tray's way is the sprite's chevron, hud.ts .tchev: a typed "‹" was a glyph of its own, gauntlet bar line 3) */
 body.cot-touch-layout .cot-shell.sel .tchev{display:flex;position:absolute;left:2px;top:40%;transform:translateY(-50%);color:var(--accent-hi);}
@@ -684,6 +684,8 @@ export function createTouchControls({
       fireGesture.move(e.pointerId, e.clientX, e.clientY); renderFireGesture();
     });
     fire.addEventListener('pointerup', (e) => finishFire(e, true));
+    // (a key's or an assistive tool's press on FIRE fires one round, the gesture's tap)
+    fire.addEventListener('click', (e) => { if (e.detail === 0) { e.preventDefault(); input.tapVirtual('fire'); } });
     fire.addEventListener('pointercancel', (e) => finishFire(e, false));
     fire.addEventListener('lostpointercapture', (e) => finishFire(e, false));
   }
@@ -703,26 +705,37 @@ export function createTouchControls({
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) releaseAllTouch();
   });
-  root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); e.stopPropagation(); input.tapVirtual(getFlightKind()==='gunship'?'zoomIn':'sniperToggle'); bus.emit('ui:click', {});
+  // (INTERACTION-REDESIGN C, the census's touch row: the round actions answer on pointerdown, so a thumb's press acts at
+  // once; a click with no pointer behind it, a key's on a focused button or an assistive tool's, acts as well, where a
+  // tap's own click, after its pointerdown already acted, does not)
+  const onKeyClick = (button: HTMLButtonElement, act: () => void): void => {
+    button.addEventListener('click', (e) => { if (e.detail === 0) { e.preventDefault(); act(); } });
+  };
+  const scopeButton = root.querySelector<HTMLButtonElement>('.scope')!;
+  const toggleScope = (): void => { input.tapVirtual(getFlightKind()==='gunship'?'zoomIn':'sniperToggle'); bus.emit('ui:click', {}); };
+  scopeButton.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation(); toggleScope();
   });
+  onKeyClick(scopeButton, toggleScope);
   // round 30: the rocket jump / flip button — pointerdown so it fires while the other thumb steers
   const jumpButton = root.querySelector<HTMLButtonElement>('.jump')!;
+  const selfRight = (): void => { bus.emit('ui:selfRight', {}); bus.emit('ui:click', {}); };
   jumpButton.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
-    bus.emit('ui:selfRight', {});
-    bus.emit('ui:click', {});
+    selfRight();
   });
+  onKeyClick(jumpButton, selfRight);
   bus.on('ui:jumpAvailable', (payload) => {
     const { on } = payload as { on?: boolean };
     jumpButton.hidden = !on;
   });
   const autoAim = root.querySelector<HTMLButtonElement>('.autoaim')!;
+  const toggleAutoAim = (): void => { bus.emit('ui:autoAimToggle', {}); bus.emit('ui:click', {}); };
   autoAim.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation();
-    bus.emit('ui:autoAimToggle', {});
-    bus.emit('ui:click', {});
+    toggleAutoAim();
   });
+  onKeyClick(autoAim, toggleAutoAim);
   bus.on('ui:autoAimState', (payload) => {
     const { on } = payload as { on?: boolean };
     autoAim.classList.toggle('on', !!on);

@@ -1,4 +1,5 @@
 // Actual Garage engine, batching and cache-return coverage for the complete RWS.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -14,7 +15,7 @@ try {
   await lock.acquire(10800000); refresh=setInterval(()=>lock.refresh(),30000);
   server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:0,hmr:false,watch:{ignored:['**/*']}}});
   await server.listen(); const port=server.httpServer.address().port;
-  browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
+  browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
   const page=await browser.newPage(); page.on('pageerror',e=>report.errors.push(e.message));
   await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
   await page.goto(`http://127.0.0.1:${port}/?qa=1&nosplash=1`,{waitUntil:'domcontentloaded',timeout:180000});

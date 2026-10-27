@@ -26,6 +26,7 @@ import { createMatchControl } from './control.ts';
 import type { MatchStartRequest } from './control.ts';
 import { serverWorldKernels } from './simKernels.ts';
 import type { WorldKernelModule } from '../../src/world/wasmWorldKernels.ts';
+import { simKernelsFailureReason, type SimKernelsStatus } from '../../src/world/simKernelsStatus.ts';
 
 const HELLO_TIMEOUT_MS = 5000;
 const WS_PATH = '/match';
@@ -73,6 +74,8 @@ interface MatchServiceStats {
   uptimeS: number;
   rssMb: number;
   tickMs: { p50: number; p95: number; max: number };
+  /** Whether the dedicated worlds step on the world kernels, and why not (`/metrics`; docs/RUST-KERNELS.md). */
+  kernels: SimKernelsStatus;
 }
 
 export interface MatchService {
@@ -260,12 +263,16 @@ export async function createMatchService({
   }
   const origins = parseAllowedOrigins(allowedOrigins);
   await ensureAuthorityFleet();
-  // (on by default; a binary the image lacks or that does not compile leaves the TypeScript, said once)
+  // (on by default; a binary the image lacks or that does not compile leaves the TypeScript: said once with its reason,
+  // and in /metrics)
+  let kernelsFailure: string | null = null;
   const worldKernels = kernelOption !== undefined ? kernelOption : await serverWorldKernels().catch((error: unknown) => {
-    log.warn('world kernels did not load: the TypeScript runs', { error: String(error) });
+    kernelsFailure = simKernelsFailureReason(error);
+    log.warn('world kernels did not load: the TypeScript runs', { reason: kernelsFailure, error: String(error) });
     return null;
   });
-  log.info('world kernels', { kernels: worldKernels ? 'wasm' : 'ts' });
+  const kernels: SimKernelsStatus = worldKernels ? { mode: 'wasm' } : { mode: 'ts', reason: kernelsFailure ?? 'off' };
+  log.info('world kernels', { kernels: kernels.mode, ...(kernels.reason ? { reason: kernels.reason } : {}) });
   const actors = new Map<string, MatchActor>();
   const startedAt = wallClock();
   const counters = { connections: 0, rejectedUpgrades: 0, rejectedHellos: 0 };
@@ -306,6 +313,7 @@ export async function createMatchService({
       bytesOut: sum.bytesOut,
       bytesIn: sum.bytesIn,
       uptimeS: Math.round((wallClock() - startedAt) / 1000),
+      kernels,
       rssMb: Math.round(process.memoryUsage().rss / 1048576),
       tickMs: sum.tickMs,
     };

@@ -6,7 +6,13 @@
    (src/ui/tokens/tokens.css, imported above, so every page that links this sheet has them). */
 @layer components{
 /* the gutter steps at the layout's band edges (16 / 24 / 32 / 44 px), on the spacing grid at every width */
-:root{--shell-gutter:16px;--shell-max:1600px;--shell-nav-h:64px}
+:root{--shell-gutter:16px;--shell-max:1600px}
+/* the bar is its primary's height and one even inset above it and below it at every width: the kit's 48 px button
+   from 768 px up in a 64 px bar (8 px), the 44 px touch target on a phone in the 56 px bar the gallery's sticky tabs
+   sit under (6 px). The bar's rule hangs under its box,
+   so the space under the primary equals the space over it. */
+:root{--shell-nav-cta-h:var(--btn-h-m);--shell-nav-pad:var(--s2);--shell-nav-h:calc(var(--shell-nav-cta-h) + 2 * var(--shell-nav-pad))}
+@media (width < 768px){:root{--shell-nav-cta-h:var(--target-min);--shell-nav-pad:calc(var(--s3) / 2)}}
 @media (width >= 520px){:root{--shell-gutter:24px}}
 @media (width >= 768px){:root{--shell-gutter:32px}}
 @media (width >= 1100px){:root{--shell-gutter:44px}}
@@ -34,7 +40,8 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-skip:focus{transform:none}
 
 /* the bar: static chrome, sticky on every page (the landing floats it over its hero until the page scrolls) */
-.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);border-bottom:1px solid var(--line-1);background:var(--surface-nav)}
+.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);background:var(--surface-nav)}
+.public-nav::after{content:'';position:absolute;inset:100% 0 auto;height:1px;background:var(--line-1);pointer-events:none}
 .public-nav__inner{display:flex;align-items:center;gap:var(--s5);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));height:100%;margin-inline:auto}
 .public-nav__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
 .public-nav__links{position:relative;display:flex;align-items:center;gap:var(--s6);margin-left:var(--s5)}
@@ -45,18 +52,20 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__icon{opacity:.82}
 .public-nav__tools{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .public-nav__lang,.public-footer__lang{display:inline-flex;height:36px;border:1px solid var(--line-2);border-radius:var(--control-radius);overflow:hidden}
-.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
+.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:0 11px;font:600 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .public-nav__lang a:hover,.public-footer__lang a:hover{color:var(--ink-1)}
 :root:not(:lang(zh)) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
-:root:lang(zh) :is(.public-nav__lang,.public-footer__lang) a[hreflang='zh-CN']{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--seg-on-shadow)}
+:root:lang(zh) :is(.public-nav__lang,.public-footer__lang) a[hreflang='zh-CN']{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent)}
 .public-nav__icon-link{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--control-radius);color:var(--ink-2);transition:color var(--dur-fast) var(--ease-enter)}
 .public-nav__icon-link:hover{color:var(--ink-1)}
-.public-nav__cta{margin-left:var(--s2)}
+/* the primary: one height with the bar at every width (above); the language switch beside it shares that height */
+.public-nav__cta{--h:var(--shell-nav-cta-h);margin-left:var(--s2)}
+.public-nav__lang{height:var(--shell-nav-cta-h)}
 .public-nav__cta svg{width:16px;height:16px}
 .public-nav__menu-trigger{display:none;place-items:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-1);cursor:pointer}
 .public-nav__menu[hidden]{display:none}
-.public-nav__menu{position:fixed;inset:var(--shell-nav-h) 0 0;z-index:var(--z-menu);display:flex;flex-direction:column;gap:var(--s5);padding:var(--s5) var(--shell-gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px));
+.public-nav__menu{position:fixed;inset:calc(var(--shell-nav-h) + 1px) 0 0;z-index:var(--z-menu);display:flex;flex-direction:column;gap:var(--s5);padding:var(--s5) var(--shell-gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px));
   overflow:auto;background:var(--surface-page)}
 .public-nav__menu-links{display:flex;flex-direction:column}
 .public-nav__menu-links a{height:60px;gap:var(--s3);font:600 var(--fs-24)/1 var(--font-ui);color:var(--ink-1);border-bottom:1px solid var(--line-1)}
@@ -89,7 +98,6 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   .public-footer__lang{justify-self:start}
 }
 @media (width < 768px){
-  :root{--shell-nav-h:56px}
   .public-nav__tools>.public-nav__lang,.public-nav__tools>.public-nav__icon-link{display:none}
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
@@ -97,18 +105,17 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
    row a 44 px target on touch */
 @media (width < 520px){.public-footer__links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--s4)}
   .public-footer__links a{min-height:var(--btn-h-m)}}
-/* touch, at any width (a landscape phone is wider than the phone band): the bar's Play, the language switches, the icon
-   links and the footer links are 44 px targets */
+/* touch, at any width (a landscape phone is wider than the phone band): the bar's Play and language switch (by their
+   height above), the footer's language switch, the icon links and the footer links are 44 px targets */
 @media (pointer:coarse){
-  .public-nav__cta{--h:var(--btn-h-m)}
-  :is(.public-nav__lang,.public-footer__lang){height:var(--btn-h-m)}
+  .public-footer__lang{height:var(--btn-h-m)}
   .public-nav__icon-link{width:var(--btn-h-m);height:var(--btn-h-m)}
   .public-footer__links a{min-height:var(--btn-h-m)}
 }
 /* a phone (the 520 px band edge) keeps the menu button on the bar: Play now becomes its glyph (named, its tip on hover); the
    menu repeats it in full */
 @media (width < 520px){
-  .public-nav__cta{width:var(--btn-h-s);padding:0}
+  .public-nav__cta{width:var(--h);padding:0}
   .public-nav .cot-wordmark{--wordmark-h:11px}
   .public-nav__cta span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }

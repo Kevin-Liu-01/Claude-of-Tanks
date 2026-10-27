@@ -32,6 +32,7 @@ import { MIGRATION_EVENT_KIND } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostPrepareConfig, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 import { loadCollisionWorld } from './worldCollision.ts';
 import { compileWorldKernels, type WorldKernelModule } from '../../world/wasmWorldKernels.ts';
+import { simKernelsFailureReason, type SimKernelsStatus } from '../../world/simKernelsStatus.ts';
 import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import { prepareAuthorityGround } from '../../sim/authoritativeMatch.ts';
 
@@ -89,6 +90,14 @@ function worldKernelModule(url: string): Promise<WorldKernelModule> {
   }
   return module;
 }
+/** Why a world was built without the kernels its boot named (simKernelsFailureReason): the fallback stays, observable. */
+const kernelsFailures = new WeakMap<object, string>();
+/** Whether a booted world steps on the kernels, and why not ('off': the boot named none; 'terrain': no collision world). */
+function kernelsStatusOf(world: ActorWorldCollision | 'terrain', config: WorldConfig): SimKernelsStatus {
+  if (world !== 'terrain' && world.kernelSupportField) return { mode: 'wasm' };
+  if (!config.simKernelsUrl) return { mode: 'ts', reason: 'off' };
+  return { mode: 'ts', reason: world === 'terrain' ? 'terrain' : kernelsFailures.get(world) ?? 'unknown' };
+}
 
 export interface MatchHostCore {
   readonly actor: MatchActor | null;
@@ -137,12 +146,18 @@ const rosterSpecIds = (config: HostBootConfig): string[] => [
 export function createMatchHostCore({
   port,
   // the mode's battlefield variant (Frontline's carved trenches) is the world the authority plays: its own manifest
-  buildWorld = async (config) => (config.manifestBase
-    ? loadCollisionWorld(config.mapId, config.manifestBase, {
-      variant: terrainVariantFor(config.mode),
-      // (a module that does not arrive or compile leaves this host's world on the TypeScript, the same match)
-      kernels: config.simKernelsUrl ? await worldKernelModule(config.simKernelsUrl).catch(() => null) : null,
-    }) : 'terrain'),
+  buildWorld = async (config) => {
+    if (!config.manifestBase) return 'terrain';
+    // a module that does not arrive or compile leaves this host's world on the TypeScript, the same match; its reason
+    // rides the boot's 'ready' (kernelsStatusOf), which the page reports (simKernelsReport.ts)
+    let failure: string | null = null;
+    const kernels = config.simKernelsUrl
+      ? await worldKernelModule(config.simKernelsUrl).catch((error: unknown) => { failure = simKernelsFailureReason(error); return null; })
+      : null;
+    const world = await loadCollisionWorld(config.mapId, config.manifestBase, { variant: terrainVariantFor(config.mode), kernels });
+    if (failure) kernelsFailures.set(world, failure);
+    return world;
+  },
   now = () => (typeof performance === 'object' ? performance.now() : Date.now()),
   wallClock = () => Date.now(),
   schedule,
@@ -158,6 +173,8 @@ export function createMatchHostCore({
 }: MatchHostCoreOptions): MatchHostCore {
   let actor: MatchActor | null = null;
   let config: HostBootConfig | null = null;
+  // the page's word on its solo match's countdown ('countdown'): null until it speaks, then it outranks the boot's holdCountdown
+  let countdownHeld: boolean | null = null;
   // a standby's preparation (§13.21): the world it is building and the battlefield it is for; a boot of that battlefield takes it
   let prepared: { key: string; world: Promise<ActorWorldCollision | 'terrain'> } | null = null;
   let bootedPrepared: boolean | null = null;
@@ -459,16 +476,23 @@ export function createMatchHostCore({
     prepared = null;
     bootedPrepared = ready !== null;
     const world$ = ready ? ready.catch(() => { bootedPrepared = false; return buildWorld(next); }) : buildWorld(next);
+    let worldMs = 0, fleetMs = 0;
+    const worldTimed = world$.then((built) => { worldMs = Math.round(now() - bootStarted); return built; });
+    const fleetTimed = ensureAuthorityFleet(rosterSpecIds(next)).then((fleet) => { fleetMs = Math.round(now() - bootStarted); return fleet; });
+    // (it starts beside the migration key now: a failure is the Promise.all's below, never an unhandled rejection meanwhile)
+    fleetTimed.catch(() => {});
     migrationKey = await deriveMigrationKey(next.hostSecret);
-    const [world] = await Promise.all([world$, ensureAuthorityFleet(rosterSpecIds(next))]);
+    const [world] = await Promise.all([worldTimed, fleetTimed]);
     // a core stopped while its world loaded (the seat left the battle mid-entry) never starts an actor: its stop found none to stop
     if (bootGeneration !== generation || disposed || stopped) return;
     const resume = next.resume;
+    const actorStarted = now();
     const created = createMatchActor({
       roomId: next.roomId, mapId: next.mapId, mode: next.mode, seed: next.seed,
       seats: next.seats.map((seat) => ({ ...seat })), bots: next.bots.map((bot) => ({ ...bot })),
       ruleset: hostRulesetFor(next.mode, next.arrangement, next.campaignOperationId),
       countdownS: next.countdownS, ...(next.battleLimitS != null ? { battleLimitS: next.battleLimitS } : {}),
+      holdCountdown: countdownHeld ?? next.holdCountdown === true,
       world, now, ...(schedule ? { schedule } : {}), autoStart: false,
       ...(endedLingerTicks !== undefined ? { endedLingerTicks } : {}),
       resume: resume ? { tick: resume.resumeTick, battleTimeMs: resume.battleTimeMs } : null,
@@ -501,7 +525,9 @@ export function createMatchHostCore({
     } else {
       created.start();
     }
-    post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
+    const bootMs = Math.round(now() - bootStarted);
+    post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume, kernels: kernelsStatusOf(world, next),
+      timings: { worldMs, fleetMs, actorMs: Math.round(now() - actorStarted), bootMs, prepared: bootedPrepared === true } });
     log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
     for (const playerId of pendingRevokes) created.revokeSeat(playerId);
@@ -550,6 +576,7 @@ export function createMatchHostCore({
     if (disposed) return;
     switch (message.type) {
       case 'boot':
+        countdownHeld = null;
         void boot(message.config).catch((error: unknown) => {
           post({ type: 'boot_failed', error: error instanceof Error ? error.message : String(error) });
         });
@@ -570,6 +597,19 @@ export function createMatchHostCore({
       }
       case 'link_pressure': links.get(message.peer)?.setPressure(message.bufferedAmount); return;
       case 'stop': stop(message.reason, message.detail); return;
+      case 'countdown': {
+        // (a release before the actor exists — the page revealed while the world still loaded — is the boot's to apply)
+        countdownHeld = message.held;
+        actor?.holdCountdown(message.held);
+        return;
+      }
+      case 'pause': {
+        if (!actor) return;
+        if (message.paused) actor.pause();
+        else actor.resume();
+        post({ type: 'paused', paused: actor.paused, tick: actor.tick });
+        return;
+      }
       case 'stats': { const summary = stats(); if (summary) post({ type: 'stats', stats: summary }); return; }
       default: return;
     }

@@ -80,6 +80,7 @@
  *   the disc; with --times=day the disc saturates the half-float target and the row, a natural one, must open nothing)
  *   and guardtiming (the guard's own main-thread and probe GPU ms over the window that follows, measured in the page)
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, mkdtempSync, writeFileSync, appendFileSync, existsSync, renameSync } from 'node:fs';
 import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
@@ -307,7 +308,7 @@ async function launchBrowser(fresh) {
       // (round 3) a lean profile: no HTTP or GPU-program disk cache kept (a fresh profile starts empty either way)
       ...(fatProfile ? [] : ['--disk-cache-size=1048576', '--media-cache-size=1048576', '--disable-gpu-shader-disk-cache'])],
   });
-  browser = await puppeteer.launch(launchOptions);
+  browser = await launchGuardedBrowser(puppeteer, launchOptions);
   return browser;
 }
 
@@ -332,7 +333,7 @@ for (let i = 0; i < ${Math.min(6, level * 2)}; i++) new Worker(URL.createObjectU
 const stressGame = opt('stress-game', '');
 async function startStressGame(base) {
   if (!stressGame || stressBrowser) return;
-  stressBrowser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: null, protocolTimeout: 600_000,
+  stressBrowser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: null, protocolTimeout: 600_000,
     userDataDir: (() => { const d = mkdtempSync(path.join(tmpdir(), 'cot-bwr-stressgame-')); ownTemp.push(d); return d; })(), ignoreDefaultArgs: ['--enable-automation'],
     args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', `--window-size=${vw},${vh + 120}`] }));
   const p = await stressBrowser.newPage();
@@ -341,7 +342,7 @@ async function startStressGame(base) {
   const url = new URL(base); url.searchParams.set('nosplash', '1'); url.searchParams.set('telemetry', 'off');
   await p.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 240_000 });
   await p.waitForFunction(() => window.__GAME_READY === true && !!document.querySelector('.cot-battle'), { timeout: 240_000, polling: 250 });
-  await p.evaluate((id) => { const b = document.querySelector(`.cot-map-card .mthumb.${CSS.escape(id)}`)?.closest('.cot-map-card')?.querySelector('.cot-map-select'); b?.click(); }, stressGame);
+  await chooseMap(p, stressGame);
   await p.evaluate(() => document.querySelector('.cot-battle')?.click());
   await p.waitForFunction(() => { const h = document.querySelector('.cot-hud'); return !!h && getComputedStyle(h).display !== 'none' && !document.querySelector('.cot-bl.on'); }, { timeout: 240_000, polling: 500 }).catch(() => {});
   // the load's own player drives in circles so its frames keep changing
@@ -351,7 +352,7 @@ async function startStressGame(base) {
 async function startStress() {
   if (stressGame) return startStressGame(await baseUrl.cached);
   if (!stress || stressBrowser) return;
-  stressBrowser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: { width: 1920, height: 1080 },
+  stressBrowser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: { width: 1920, height: 1080 },
     userDataDir: (() => { const d = mkdtempSync(path.join(tmpdir(), 'cot-bwr-stress-')); ownTemp.push(d); return d; })(),
     args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox'] }));
   const p = await stressBrowser.newPage();
@@ -509,16 +510,26 @@ async function boot(page, base) {
 // ---------------------------------------------------------------------------------------------------------------------
 // player actions
 // ---------------------------------------------------------------------------------------------------------------------
+/** Choose a battlefield on Deploy's battlefield picker: its field opens the picker (loaded on first use), one press on a
+ *  card chooses it. True once the card reads as chosen. */
+function chooseMap(page, map) {
+  return page.evaluate(async (id) => {
+    const option = () => document.querySelector(`[data-deploy-bf] .cot-c-picker__opt[data-id="${CSS.escape(id)}"]`);
+    const field = document.querySelector('[data-deploy-field]');
+    if (!field) return false;
+    if (document.querySelector('[data-deploy-field-pop]')?.hidden !== false) field.click();
+    for (let i = 0; i < 150 && !option(); i++) await new Promise((resolve) => setTimeout(resolve, 100));
+    const card = option();
+    if (!card) return false;
+    if (card.getAttribute('aria-selected') !== 'true') card.click();
+    else document.querySelector('[data-deploy-field-close]')?.click();
+    return card.getAttribute('aria-selected') === 'true';
+  }, map);
+}
+
 async function selectMapAndBattle(page, map, dwell = true) {
   if (dwell && garageDwellS > 0) await sleep(garageDwellS * 1000);
-  const picked = await page.evaluate((id) => {
-    const thumb = document.querySelector(`.cot-map-card .mthumb.${CSS.escape(id)}`);
-    const button = thumb?.closest('.cot-map-card')?.querySelector('.cot-map-select');
-    if (!button) return false;
-    const card = button.closest('.cot-map-card');
-    if (!card.classList.contains('sel')) button.click();
-    return card.classList.contains('sel');
-  }, map);
+  const picked = await chooseMap(page, map);
   if (!picked) throw new Error(`map card ${map} not found or not selected`);
   // the real BATTLE control (trusted pointer events); an in-page click as the fallback when it is covered
   try {

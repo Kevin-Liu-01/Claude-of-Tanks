@@ -18,6 +18,7 @@ import type { RtcClientLink, RtcHostAcceptor, RtcHostAcceptorStats } from '../ma
 import { CLOSE_REASON } from '../wire/constants.ts';
 import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
+import { reportSimKernels } from '../../world/simKernelsReport.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
 type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
@@ -82,6 +83,14 @@ export interface MatchHost {
   /** One display frame: deliver the loopback frames, sample the uplink, report pressure. */
   pump(nowMs?: number): void;
   requestStats(): void;
+  /**
+   * Pause or resume this host's own solo match (MatchActor.pause: refused for a match with more than one human seat);
+   * `paused` follows the actor's answer.
+   */
+  setPaused(paused: boolean): void;
+  readonly paused: boolean;
+  /** Hold or release this host's solo match's countdown (HostBootConfig.holdCountdown): the page releases it at its reveal. */
+  holdCountdown(held: boolean): void;
   stats(): MatchHostStats;
   /** The room removed `playerId` mid-match (kick or leave): drop its peer link and refuse its seat token. */
   revokeSeat(playerId: string): void;
@@ -120,6 +129,7 @@ export function createMatchHost({
   let ready = false;
   let lastReport: HostMatchReport | null = null;
   let coreStats: HostCoreStats | null = null;
+  let paused = false;
   let reports = 0;
   let peerSeq = HOST_LOOPBACK_PEER;
   const bridges = new Map<number, { link: RtcClientLink; playerId: string; lastPressure: number }>();
@@ -182,6 +192,10 @@ export function createMatchHost({
         for (const bytes of queuedLoopback.splice(0)) post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: bytes.buffer }, [bytes.buffer]);
         setState('live', message.resumed ? 'resumed' : 'started');
         onLog('info', 'host live', { tick: message.tick, entities: message.entities, resumed: message.resumed });
+        // what the host's authority steps on; a failed load of the kernels is reported, never silent
+        if (message.kernels) reportSimKernels('host', message.kernels);
+        // the boot's timings beside the entry's own trace (window.__NETWORK_LOAD), for the probes
+        if (message.timings) (globalThis as { __HOST_BOOT?: unknown }).__HOST_BOOT = message.timings;
         return;
       case 'boot_failed':
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
@@ -208,15 +222,26 @@ export function createMatchHost({
         entry.link.close(message.reason, message.detail);
         return;
       }
-      case 'report':
+      case 'report': {
         lastReport = message.report;
         reports++;
+        // (battle-spikes-253) Once this seat stopped hosting (a leave, a migration away, a Garage return), the core's
+        // drain still posts the stopped actor's last heartbeat. It reaches the room after the departure the session sent
+        // on the same stop (declineHost, or the host_changed that stopped it), so the room refuses it: host_only where
+        // another seat took the match, invalid_command where it ended. Two warnings on every room leave (nav-perf's
+        // census). Only a report that carries the end is still the room's business after a stop.
+        const draining = state === 'stopped' || state === 'failed';
+        if (draining && message.report.phase !== 'ended') return;
         void Promise.resolve(room.reportMatch(message.report)).catch((error: unknown) => {
-          onLog('warn', 'match report refused', { error: error instanceof Error ? error.message : String(error) });
+          onLog(draining ? 'info' : 'warn', 'match report refused', { error: error instanceof Error ? error.message : String(error) });
         });
         return;
+      }
       case 'stats':
         coreStats = message.stats;
+        return;
+      case 'paused':
+        paused = message.paused;
         return;
       case 'log':
         onLog(message.level, message.message, message.fields);
@@ -327,6 +352,9 @@ export function createMatchHost({
     start,
     pump,
     requestStats: () => post({ type: 'stats' }),
+    setPaused: (next) => post({ type: 'pause', paused: next }),
+    holdCountdown: (held) => post({ type: 'countdown', held }),
+    get paused() { return paused; },
     revokeSeat(playerId) {
       post({ type: 'seat_revoke', playerId });
       acceptor?.drop(playerId, CLOSE_REASON.ROOM_CLOSED, 'removed from the room');

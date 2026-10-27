@@ -7,7 +7,7 @@
 //   - the idle measurer measures what is left, a slice at a time, and holds one map's parts at most.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { describeStructure, measureDeferredStructures } from './structureDamageSeam.ts';
+import { describeStructure, measureDeferredStructures, measureOtherMapStructures } from './structureDamageSeam.ts';
 
 /** A box's triangles (non-indexed). */
 function box(x0, y0, z0, x1, y1, z1) {
@@ -71,7 +71,28 @@ assert.equal(left, 0, 'nothing left to measure');
 // ---- one map's parts held at most: a tool building map after map (no idle measurer) has the last map's measured first
 describe(houseParts(), 'deferred-d'); describe(houseParts(), 'deferred-d');
 const e = describe(houseParts(), 'deferred-e');
-assert.equal(measureDeferredStructures(0), 0, "another map's described structures measured before the next map's join the queue");
+// (battle-spikes-253) the next map's own, measured a step a slice (the read-back, the intact form, the enclosure a part
+// and a band a step): the queue held only it, another map's measured before it joined
+let slices = 1;
+while (measureDeferredStructures(0) > 0) slices++;
+assert.ok(slices > 3, `the last one measured in steps (${slices} slices)`);
 assert.ok(e.enclosure && e.intact, 'the last one measured too');
+assert.deepEqual(digest(e), digest(c), 'measured a step a slice, the same measures as in one go');
+// asked for while the idle measurer is part way through: the same measure, finished where it stood
+const h = describe(houseParts(), 'deferred-e');
+assert.equal(measureDeferredStructures(0), 1, 'a zero-budget slice: one step, the structure still pending');
+assert.deepEqual(digest(h), digest(c), 'asked for part way, finished, the same');
+assert.equal(measureDeferredStructures(0), 0, 'and the queue let it go');
 
-console.log('structureDeferredMeasure selftest: measures made when first asked for, the same read back through the placement after the build placed the parts, the idle measurer leaves none');
+// ---- (battle-spikes-253) a props build drains another map's queue in its own slices before it describes a building
+const f = [describe(houseParts(), 'deferred-f'), describe(houseParts(), 'deferred-f'), describe(houseParts(), 'deferred-f')];
+assert.equal(measureOtherMapStructures('deferred-f', Infinity), 0, "a build's own map's queue is not another map's");
+assert.equal(measureOtherMapStructures('deferred-g', 0), 3, 'a zero-budget slice takes one step of the first, all three left');
+assert.equal(measureOtherMapStructures('deferred-g', Infinity), 0, 'then none of the other map is left');
+assert.equal(measureDeferredStructures(0), 0, 'the queue is empty');
+assert.ok(f.every((anatomy) => anatomy.enclosure && anatomy.intact), 'each measured, there when asked');
+const g = describe(houseParts(), 'deferred-g');
+assert.deepEqual(digest(g), digest(c), 'the next map describes as before');
+assert.equal(measureDeferredStructures(Infinity), 0);
+
+console.log('structureDeferredMeasure selftest: measures made when first asked for, the same read back through the placement after the build placed the parts, the idle measurer leaves none, the other map queue drained in slices');

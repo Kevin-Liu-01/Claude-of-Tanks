@@ -3,13 +3,14 @@ import {
   type BufferGeometry, type Camera, type DirectionalLight, type Material,
   type Object3D, type Scene, type WebGLRenderer,
 } from 'three';
+import { SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 const SHADOW_PRIME_LAYER = 31;
 
 interface ShadowCasterWarmBatch {
   cascadeIndex: number;
   batchIndex: number;
-  /** Candidate counts before the production shadow renderer's frustum cull. */
+  /** Candidate counts; a batch's casters draw without the frustum cull. */
   casterCount: number;
   vertexCount: number;
 }
@@ -23,6 +24,24 @@ interface ShadowCasterWarmupOptions {
   maxCastersPerBatch?: number;
   yieldBeforeBatch?: (batch: ShadowCasterWarmBatch) => void | Promise<void>;
   onBatch?: (timing: ShadowCasterWarmTiming) => void;
+  /**
+   * (battle-spikes-253) Roots the scene holds hidden at the prime (a network view's unspotted actors), whose casters the
+   * warm batches draw as well: shown only inside each synchronous batch render (and the caster collection), never across
+   * a yield, and never for the final cascades, so no hidden actor's shadow reaches a map anyone sees. nav-perf's root-v
+   * room: a guest linked an unspotted M1A3's four depth programs in a live frame, the frame it was first spotted.
+   */
+  hiddenRoots?: () => Iterable<Object3D | null | undefined>;
+}
+
+/** Show the hidden roots for one synchronous call; every one is hidden again before it returns or throws. */
+function withRootsShown<T>(roots: readonly Object3D[], run: () => T): T {
+  const shown: Object3D[] = [];
+  try {
+    for (const root of roots) if (!root.visible) { root.visible = true; shown.push(root); }
+    return run();
+  } finally {
+    for (const root of shown) root.visible = false;
+  }
 }
 
 export interface ShadowPrimeOptions {
@@ -82,8 +101,14 @@ interface CasterState {
   object: Object3D;
   castShadow: boolean;
   receiveShadow: boolean;
+  frustumCulled: boolean;
+  /** A BatchedMesh's own per-item cull (null for any other caster). */
+  perObjectCulled: boolean | null;
   vertexCount: number;
 }
+
+/** Three's BatchedMesh keeps its last draw list while per-item culling is off and no visibility changed. */
+type BatchedCaster = Object3D & { isBatchedMesh?: boolean; perObjectFrustumCulled?: boolean; _visibilityChanged?: boolean };
 
 type ShadowDrawable = Object3D & { geometry: BufferGeometry; material: Material | Material[] };
 
@@ -96,9 +121,12 @@ function isShadowDrawable(object: Object3D): object is ShadowDrawable {
 function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
   const casters: CasterState[] = [];
   const vsm = state.shadowMap.type === VSMShadowMap;
+  // (battle-spikes-253) The shadow router exposes the shadow-only proxies while the shadow map traverses: batch them with
+  // the rest, or they sit in every batch and their own depth programs wait for a live frame (nav-perf's RockDepth).
+  const casterMask = state.cameraMask | (1 << SHADOW_ONLY_LAYER);
   scene.traverseVisible(object => {
     if (!isShadowDrawable(object)) return;
-    if (!(object.layers.mask & state.cameraMask)) return;
+    if (!(object.layers.mask & casterMask)) return;
     if (!object.castShadow && !(vsm && object.receiveShadow)) return;
     const { geometry, material } = object;
     const vertexCount = geometry.getAttribute('position')?.count ?? 0;
@@ -110,8 +138,10 @@ function collectWarmCasters(state: PrimeState, scene: Scene): CasterState[] {
       ? geometry.groups.some(group => material[group.materialIndex ?? 0]?.visible
         && Math.min(end, group.start + group.count) > Math.max(start, group.start))
       : material.visible;
+    const batched = object as BatchedCaster;
     if (draws) casters.push({ object, castShadow: object.castShadow,
-      receiveShadow: object.receiveShadow, vertexCount });
+      receiveShadow: object.receiveShadow, frustumCulled: object.frustumCulled,
+      perObjectCulled: batched.isBatchedMesh ? batched.perObjectFrustumCulled === true : null, vertexCount });
   });
   return casters;
 }
@@ -145,6 +175,10 @@ function restoreWarmCasters(casters: readonly CasterState[]): void {
   for (const prior of casters) {
     cleanup.run(() => { prior.object.castShadow = prior.castShadow; });
     cleanup.run(() => { prior.object.receiveShadow = prior.receiveShadow; });
+    cleanup.run(() => { prior.object.frustumCulled = prior.frustumCulled; });
+    if (prior.perObjectCulled !== null) {
+      cleanup.run(() => { (prior.object as BatchedCaster).perObjectFrustumCulled = prior.perObjectCulled!; });
+    }
   }
   cleanup.finish();
 }
@@ -205,8 +239,21 @@ function renderWarmBatch(
   try {
     const vsm = state.shadowMap.type === VSMShadowMap;
     for (let index = 0; index < casters.length; index++) {
-      if (index >= start && index < end) continue;
       const object = casters[index]!.object;
+      // (battle-spikes-253) The batch's own casters draw wherever they stand: a caster outside the first cascade's box
+      // (the horizon ring, far vegetation, the baked prop buckets) otherwise links its depth program in the first live
+      // frame that frames it, at the battle's light counts (nav-perf's program log, root-p: five such programs at 1.2 s).
+      if (index >= start && index < end) {
+        object.frustumCulled = false;
+        // a batched caster (the field boundary works) culls its items again inside its own shadow hook: all of them
+        // outside the box submit nothing, so its depth program waited too. Rebuild its list with every item in it.
+        if (casters[index]!.perObjectCulled) {
+          const batched = object as BatchedCaster;
+          batched.perObjectFrustumCulled = false;
+          batched._visibilityChanged = true;
+        }
+        continue;
+      }
       // Never hide a parent: eligible child casters must still be traversed.
       // VSM also submits receive-only objects, so mute both eligibility flags.
       object.castShadow = false;
@@ -226,7 +273,9 @@ async function warmFirstCascade(
   state: PrimeState, request: ShadowPrimeRequest, target: WebGLRenderTarget,
   options: ShadowCasterWarmupOptions,
 ): Promise<void> {
-  const casters = collectWarmCasters(state, request.scene);
+  const hidden: Object3D[] = [];
+  for (const root of options.hiddenRoots?.() ?? []) if (root && !root.visible) hidden.push(root);
+  const casters = withRootsShown(hidden, () => collectWarmCasters(state, request.scene));
   const batches = warmBatches(casters, options);
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex]!;
@@ -236,7 +285,7 @@ async function warmFirstCascade(
     if (options.yieldBeforeBatch) await options.yieldBeforeBatch(detail);
     assertPrimeCurrent(state, request);
     const startedAt = performance.now();
-    renderWarmBatch(state, request.scene, target, casters, batch.start, batch.end);
+    withRootsShown(hidden, () => renderWarmBatch(state, request.scene, target, casters, batch.start, batch.end));
     assertPrimeCurrent(state, request);
     options.onBatch?.({ ...detail, elapsedMs: performance.now() - startedAt });
     assertPrimeCurrent(state, request);
@@ -267,8 +316,9 @@ function releasePrimeState(
 }
 
 /** Quality and cascade selection remain with lighting. Optional first-use
- * cohorts visit only the first production cascade, with its normal culling;
- * later cascades may still have first-use cost. The same complete cascades
+ * cohorts visit only the first production cascade, without frustum culling, so
+ * every visible caster's depth program compiles there; later cascades'
+ * per-cascade state may still have first-use cost. The same complete cascades
  * always render afterwards, and only those final render timings are returned.
  */
 export async function primeShadowCascades(request: ShadowPrimeRequest): Promise<number[]> {

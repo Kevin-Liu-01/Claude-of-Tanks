@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -28,7 +29,8 @@ const server = spawn(process.execPath, [join(root, 'tools/vercel-static-preview.
   ...(vercelJson ? [`--vercel-json=${resolve(vercelJson)}`] : [])], { stdio: 'ignore' });
 const origin = `http://127.0.0.1:${port}`;
 for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
-const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--use-gl=angle', '--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--no-sandbox', '--use-gl=angle', '--js-flags=--max-old-space-size=3072'] },
+  { label: 'boot-hero-trace' });
 let result = null;
 try {
   const page = await browser.newPage();

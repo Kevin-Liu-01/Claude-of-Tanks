@@ -245,12 +245,13 @@ export default defineConfig({
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
     // downloads again a module the page already holds). The match host stays separate: its spec-only graph would
     // split four boot chunks (+5 game / +4 gallery requests) or drag the builder core into the host. The small
-    // workers are single self-contained files. The riding-parts worker (UI-LOCKDOWN E) runs the profile kit the page
-    // has already loaded by the time it starts.
+    // workers are single self-contained files. The riding-parts and decor workers (UI-LOCKDOWN E) run the profile kit
+    // and the decoration the page has already loaded by the time they start.
     ...sharedWorkerChunks({ workers: {
       'src/world/wreckBakeWorker.ts': {},
       'src/game/garageWorkshopGeometryWorker.ts': { privateCopies: ['src/vehicles/profileBuilderAdapter.ts'] },
       'src/vehicles/ridingPartsWorker.ts': {},
+      'src/vehicles/decorPlanWorker.ts': {},
     } }),
     // 2026-10-02 (tools/viteGlslMinify.ts): comments and line-edge whitespace out of the game's own complete shader
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
@@ -437,11 +438,27 @@ export default defineConfig({
             // load at boot on the same three pages; on their own they were one and two more boot requests on each (Main's
             // 253 ruling: no extra request). Both are leaves (uiCanvas imports nothing, vehicleEras only types).
             { name: 'turretSeatPlane', priority: 1, test: /[\\/]src[\\/](?:vehicles[\\/](?:turretSeatPlane|vehicleMesh|coplanarDepth|turretRingLoader|combatAnatomyCalibrationRegistry)|techTree[\\/]tiers|sim[\\/](?:detMath|vehicleEras)|ui[\\/]uiCanvas)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio, INTERACTION-REDESIGN C): the kit picker, its words and the picker menu
+            // (components/picker.ts, pickerText.ts, components/pickerMenu.ts) load at boot on the game (the Garage's camo,
+            // equipment and rival pickers) and the Gallery (its sort and rival menus). They ride with the pinch guard, the one
+            // leaf those two pages (and only they) boot that no worker loads (the worker-shared chunks may not reach the i18n
+            // boot chunk, which pickerText does); on their own they were one more game boot request and two on the Gallery.
+            // 2026-10-26 (premiere-gallery-studio, 258): the hero cards' tier chip (ui/heroCardChips.ts, 0.4 KB, the Garage's roster
+            // at boot and the lazy shared hero tiles) rides here too: it reads the locale runtime as pickerText does, and on its
+            // own it was one more game and cn boot request.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
+            // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
+            // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
+            // (564 B). It rides with the program warm owner again, as on 256.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn
             // load them at boot (the Garage, matchRuleset), and on their own they were one more boot request
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-gallery-studio): the battlefield preview's minimap URL (minimapAssetUrl.ts, the game's boot and
+            // the lazy battlefield picker) rides here too: on its own it was one more game and cn boot request.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/]vehicleActions|sim[\\/](?:spottingStats|equipmentRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a
@@ -492,6 +509,11 @@ export default defineConfig({
             // apart from hashes. The public pages reach the player with import() beside their first bytes (with the fleet
             // takes' small helpers, about 7 KB brotli, only on pages that show a video).
             { name: 'fleetTakes', test: /[\\/]src[\\/](?:ui[\\/]fleetTakes|presentation[\\/]mediaPlayer)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-26 (premiere-site, the interaction redesign's battlefield picker): the picker's facts (ui/battlefieldFacts.ts,
+            // loaded with Deploy's picker) read the landscape tags. As their third importer, with main and the Rooms host's
+            // playMenu, the tags split off the chunk they shared with the random-map mosaic and the play-mode normaliser: one more
+            // game and cn boot request for 1 KB. The three ride together again, exactly these modules.
+            { name: 'playMode', test: /[\\/]src[\\/](?:mp[\\/]session[\\/]playMode|ui[\\/](?:randomPreviews|regionTags))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
             // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
             // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes

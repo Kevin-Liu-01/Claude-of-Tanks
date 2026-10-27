@@ -47,7 +47,14 @@ type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result'
   | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed' | 'mp_reconnect' | 'mp_drop' | 'mp_exit'
   /** Peer-to-peer (2026-09-28): `mp_host` (this seat hosted; `reason` `start` | `migrate`) and `mp_migrate` (an election reached this
    *  seat; `code` its new role, `reason` the room's) only count; the counts ride the `mp_exit` note as `:h<hosted>:m<migrations>` when nonzero. */
-  | 'mp_host' | 'mp_migrate';
+  | 'mp_host' | 'mp_migrate'
+  /** The world kernels did not load and the simulation fell back to the TypeScript (world/simKernelsReport.ts, once a
+   *  session): `code` the source ('solo' | 'host'), `reason` the failure's code; it folds into one session note. */
+  | 'sim_kernels'
+  /** A solo battle's authority, once an entry (main.ts soloAuthorityFor): `code` 'host' (a local host) or 'page', `reason`
+   *  why ('default', 'forced', 'opt_out', 'campaign', 'watch', 'mode', 'mobile', 'no_worker', 'fallback'); the note
+   *  `solo:<code>:<reason>` rides the entry's record. */
+  | 'solo_authority';
 type TelemetryOutcome = 'ok' | 'failed' | 'cancelled' | 'timeout' | 'halted' | 'notice';
 type TelemetryMode = 'solo' | 'private' | 'lan' | 'studio' | 'network' | 'unknown';
 type SessionOutcome = 'ready' | 'halted' | 'error' | 'left';
@@ -515,6 +522,12 @@ export function createEntryTelemetry({
       case 'room_failure':
       case 'ice_degraded':
         note(`${event.kind}:${event.code || event.reason || event.stage || 'unknown'}`);
+        return true;
+      case 'sim_kernels':
+        note(`kernels:${telemetryCode(event.code || 'unknown', 8)}:${telemetryCode(event.reason || 'unknown', 24)}`);
+        return true;
+      case 'solo_authority':
+        note(`solo:${telemetryCode(event.code || 'unknown', 8)}:${telemetryCode(event.reason || 'unknown', 16)}`);
         return true;
       case 'hud_mask_failed':
         // The spec id first so a long pipeline code is what the 48-char bound trims, never the tank.

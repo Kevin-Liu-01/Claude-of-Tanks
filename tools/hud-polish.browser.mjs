@@ -16,6 +16,7 @@
 //   it keeps 3 px from the reticle's ink, the controls and the panels, and the struck round or rack is painted with no
 //   DOM chip, notice or panel over it. At 360x640 the chip stays seated by the sight.
 // No screenshot. node tools/hud-polish.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-polish]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { recordReticle } from './hud-ammo-capture.mjs';
@@ -65,7 +66,7 @@ function lineEnds(selector, boxes = false) {
 }
 
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
+const browser = await launchGuardedBrowser(chromium, { headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const reports = [];
 const failures = [];
 try {

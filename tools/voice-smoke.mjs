@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // voice-smoke.mjs — play-path smoke for the national crew radio
 // (src/audio/crewRadio.ts, packs in public/audio/voice/<lang>/).
@@ -95,7 +96,7 @@ const LAUNCH_ARGS = [
   '--autoplay-policy=no-user-gesture-required',
 ];
 
-let browser = await puppeteer.launch({ headless: 'new', args: LAUNCH_ARGS });
+let browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: LAUNCH_ARGS });
 let page;
 const consoleErrors = [];
 async function openPage() {
@@ -160,7 +161,7 @@ try {
   if (!clockOk) {
     console.warn('[voice-smoke] headless AudioContext clock stalled — relaunching headful');
     await browser.close();
-    browser = await puppeteer.launch({ headless: false, args: LAUNCH_ARGS });
+    browser = await launchGuardedBrowser(puppeteer, { headless: false, args: LAUNCH_ARGS });
     consoleErrors.length = 0;
     await openPage();
     await bootIntoBattle();
@@ -239,15 +240,17 @@ try {
     const tab = S.root.querySelector('.cot-set-tab[data-tab="sound"]');
     tab?.click();
     await wait(250);
+    // the crew voice is the kit's picker menu: its trigger in the field, its options in a popover in the body
     const picker = S.root.querySelector('[data-setting="crewVoice"]');
-    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
-    const english = picker?.parentElement.querySelector('[role="option"][data-value="en-US"]');
+    const option = (id) => document.querySelector(`.cot-c-menu__pop:popover-open [role="option"][data-id="${id}"]`);
+    picker?.querySelector('.cot-c-menu__trigger')?.click();
+    const english = option('en-US');
     english?.click();
     await wait(250);
     const stored = JSON.parse(localStorage.getItem('cot.settings.v1') || '{}');
     const lang = window.__COT_AUDIO.crewLanguage;
-    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
-    picker?.parentElement.querySelector('[role="option"][data-value="national"]')?.click();
+    picker?.querySelector('.cot-c-menu__trigger')?.click();
+    option('national')?.click();
     await wait(250);
     const back = window.__COT_AUDIO.crewLanguage;
     const toggles = S.root.querySelectorAll('.cot-set-row').length;

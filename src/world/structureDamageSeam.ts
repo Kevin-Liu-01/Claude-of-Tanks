@@ -13,7 +13,7 @@
  * positions, the anatomy's placement and the presentation's pivots are all world points.
  */
 import { frameByName, keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
-import { faceSetback, measureEnclosure } from './structureEnclosure.ts';
+import { faceSetback, measureEnclosureSteps } from './structureEnclosure.ts';
 import { BufferAttribute, type BufferGeometry, type Material, type Object3D } from 'three';
 import {
   damageSeed, kitPlanFor, structureDamageKitChain,
@@ -138,7 +138,9 @@ export function describeStructure(args: DescribeStructureArgs): StructureDamageA
  */
 interface DeferredMeasure { anatomy: StructureDamageAnatomy; parts: DescribeStructureArgs['parts'] | null; builder: string; mapId: string;
   probe: [number, number, number] | null; box: [number, number, number, number, number] | null;
-  intact: StructureDamageAnatomy['intact'] | null; enclosure: StructureDamageAnatomy['enclosure'] | null }
+  intact: StructureDamageAnatomy['intact'] | null; enclosure: StructureDamageAnatomy['enclosure'] | null;
+  /** (battle-spikes-253) the measure the idle measurer has begun, resumed where it stopped (null: none begun) */
+  steps?: Generator<void, void, void> | null }
 const pendingMeasures: DeferredMeasure[] = [];
 let warnedReadBack = false;
 function defer(anatomy: StructureDamageAnatomy, args: DescribeStructureArgs): void {
@@ -172,16 +174,24 @@ function defer(anatomy: StructureDamageAnatomy, args: DescribeStructureArgs): vo
 }
 /** A deferred structure's two measures, now (once): its parts read back into the body frame if they were placed since. */
 function measureNow(job: DeferredMeasure): void {
+  const steps = job.steps ?? measureSteps(job);
+  job.steps = null;
+  while (!steps.next().done) { /* drained */ }
+}
+/** A structure's measures in steps: its parts read back, its intact form, its enclosure a part and a band a step. */
+function* measureSteps(job: DeferredMeasure): Generator<void, void, void> {
   const parts = job.parts;
   if (!parts) return;
   job.parts = null;
   const body = bodyFrameParts(parts, job);
+  yield;
   try {
     const intact = measureIntactParts(body);
     if (intact && frameByName(job.builder)) intact.frame = true;
     job.intact = intact;
   } catch { job.intact = null; }
-  try { job.enclosure = measureEnclosure(body, job.anatomy); } catch {
+  yield;
+  try { job.enclosure = yield* measureEnclosureSteps(body, job.anatomy); } catch {
     // a structure whose parts cannot be read keeps the faces' reading (never a build failure)
     job.enclosure = null;
   }
@@ -226,15 +236,43 @@ function bodyFrameParts(parts: DescribeStructureArgs['parts'], job: DeferredMeas
   return out;
 }
 /**
+ * (battle-spikes-253) Another battlefield's deferred structures (the queue holds one map's), measured for up to `budgetMs`
+ * in the order the idle measurer takes them; how many are left. A props build drains them in its own slices before it
+ * describes its first building: `defer` measured them all in one go (1.4 s of one task on a 4x phone's Garage background
+ * build: a prefetched battlefield's measures, never run by a world that was not played).
+ */
+export function measureOtherMapStructures(mapId: string, budgetMs: number): number {
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  const other = (): boolean => pendingMeasures.length > 0 && pendingMeasures[pendingMeasures.length - 1]!.mapId !== mapId;
+  const spent = (): boolean => typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs;
+  while (other()) {
+    // (a structure's measure in steps, as the idle measurer takes it: one structure was 133 ms of one task)
+    const job = pendingMeasures[pendingMeasures.length - 1]!;
+    const steps = job.steps ?? measureSteps(job);
+    job.steps = steps;
+    let done = false;
+    while (!(done = !!steps.next().done) && !spent()) { /* the next step */ }
+    if (done) { job.steps = null; pendingMeasures.pop(); }
+    if (spent()) break;
+  }
+  return other() ? pendingMeasures.length : 0;
+}
+/**
  * The idle measurer (the world's update, a slice a frame): deferred structures measured for up to `budgetMs`; how many are
  * left. `budgetMs` Infinity measures them all (a receipt, a warm).
  */
 export function measureDeferredStructures(budgetMs: number): number {
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  const spent = (): boolean => Number.isFinite(budgetMs) && typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs;
   while (pendingMeasures.length) {
-    const job = pendingMeasures.pop()!;
-    measureNow(job);
-    if (Number.isFinite(budgetMs) && typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs) break;
+    // (battle-spikes-253) a structure's measure in steps, resumed next slice where the budget stopped it
+    const job = pendingMeasures[pendingMeasures.length - 1]!;
+    const steps = job.steps ?? measureSteps(job);
+    job.steps = steps;
+    let done = false;
+    while (!(done = !!steps.next().done) && !spent()) { /* the next step */ }
+    if (done) { job.steps = null; pendingMeasures.pop(); }
+    if (spent()) break;
   }
   return pendingMeasures.length;
 }

@@ -303,8 +303,9 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // raw / +66 brotli on the game page), the readouts' plain zero (+29 raw) and the accents face (three unicode-range rules
 // and its stack name, +494 raw / +47 brotli). Measured with the two preload links: the game head is 4,361 raw / 868
 // brotli. The cascade-layer wrapper (brand-ui BUI-F3: the order statement and @layer surfaces{}) adds 82 raw / 27
-// brotli: the game head measures 4,443 raw / 895 brotli.
-const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 905 } });
+// brotli: the game head measures 4,443 raw / 895 brotli. A public page that shows readouts declares the mono face too
+// (bar line 4: the landing's counts and clocks, 2026-10-26, without a preload): /home measures 3,538 raw / 921 brotli.
+const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 925 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])
@@ -515,7 +516,7 @@ assert.equal((tokens.match(/tabular-nums/g) ?? []).length, 1, 'the .num rule is 
 // The readouts that tick in place carry .num (clock, scores, tallies, counters, HP, ammo, flight instruments, sliders).
 const hud = read('src/ui/hud.ts');
 for (const [path, pattern, what] of [
-  ['index.html', /class="cot-boot-pct num"/, 'the boot percentage'],
+  ['index.html', /class="cot-boot-foot num"/, 'the boot version'],
   ['src/ui/hud.ts', /<span class="tm num"(?:[ >]|\$\{datumAttr\('clock'\)\}>)/, 'the battle clock'],
   ['src/ui/hud.ts', /class="al num"/, 'the alive tallies'],
   ['src/ui/hud.ts', /<span class="kills num" hidden>/, 'the roster kill tallies'],
@@ -534,7 +535,7 @@ assert.match(hud, /<span class="mv"(\$\{datumAttr\('objective'\)\})?><\/span>/, 
 // in fixed columns. They change on a kill, never per frame, so proportional figures move nothing beside them.
 assert.match(hud, /<b class="fg">0<\/b>/, 'the allied score is a display numeral');
 assert.match(hud, /<b class="fe">0<\/b>/, 'the enemy score is a display numeral');
-assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
+assert.match(hud, /\.cot-top \.fg,\.cot-top \.fe,\.cot-top \.fh b\{font-family:\$\{FONT_COND\};font-size:24px;font-weight:700;/, 'the scores (and the Frontline hostiles on the smallest touch windows) set in the bold display voice (24 px points: owner 2026-10-25, the top plate \"less so big and wide\")');
 // The end screen's headline tallies and team scores are display numerals too: they count up once (1.05 s ease-out) and
 // settle, and the settled frame is what reads (Plex Mono's full-cell comma printed "8 , 420"). Live gauges keep .num.
 const endScreen = read('src/ui/endScreen.ts');
@@ -562,7 +563,7 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<h1 class="hero__title home-sr" id="hero-title">Claude of Tanks<\/h1>/, 'the landing\'s h1 names the game; the lockup is the nav bar\'s alone (owner 2026-10-25)');
+assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><span class="home-sr">Claude of Tanks\. <\/span><span data-i18n="home\.hero\.title">/, 'the landing\'s h1 is the hero\'s headline and names the game; the lockup is the nav bar\'s alone (owner 2026-10-25)');
 assert.match(read('site/home.html'), /<h2 class="home-h2 press__title" id="press-title">[^]*?<span class="t-hollow" data-i18n-html="home\.social\.kicker"/, 'the landing\'s section headline uses the shared hollow treatment (2026-10-25: the press band)');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.
@@ -622,8 +623,8 @@ for (const path of SHIPPED_HTML) {
 assert.match(read('src/ui/brandMark.ts'), /WORDMARK_WORDS[\s\S]*WORDMARK_OF/, 'the wordmark is the outlined master (SPEC 3.1: never live text)');
 assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
 assert.match(read('src/presentation/publicShell.ts'), /WORDMARK = `<span class="cot-wordmark">\$\{BRAND_WORDMARK_HTML\}<\/span>`/, 'the public bar and footer set the one wordmark (no live text to track)');
-assert.match(read('index.html'), /<svg class="cot-boot-mark" [^>]*role="img" aria-label="Claude of Tanks"/,
-  'the boot title card is the outlined master (SPEC 3.3), named for assistive reading');
+assert.match(read('index.html'), /<div class="cot-boot-mark" role="img" aria-label="Claude of Tanks"[^>]*><!-- cot:boot-lockup -->[\s\S]*?<svg class="wm-stack"/,
+  'the boot lockup is the outlined wordmark stacked beside the tank (SPEC 3.3; owner, 2026-10-26), named for assistive reading');
 
 // The zh-CN label floor (the type rules: Chinese labels one step up, 13 px floor) ships only inside Chinese documents, right
 // after their type head; English documents and the game entry carry none of it. Every selector names classes the shipped

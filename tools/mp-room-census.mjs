@@ -19,6 +19,7 @@
 //     [--gate]   (exit 4 when the leave stage logs a console warning: its budget is 0)
 //     [--max-task-ms=<ms>]   (exit 4 when either page runs a task over <ms> in the entry or the leave)
 import os from 'node:os';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -318,7 +319,7 @@ try {
   const origin = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100 && !await fetch(origin).then(() => true, () => false); i++) await new Promise((r) => setTimeout(r, 100));
 
-  browser = await puppeteer.launch({ headless: true, protocolTimeout: 360_000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
       '--use-gl=angle', '--enable-webgl', '--js-flags=--max-old-space-size=3072', '--window-size=1100,720'] });
   // two first-time machines: separate contexts share no storage, cache or player identity

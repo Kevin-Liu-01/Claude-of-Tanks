@@ -95,6 +95,12 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   f.telemetry.send({ kind: 'ice_degraded', mode: 'network', code: 'no_relay' });
   f.telemetry.send({ kind: 'ice_degraded', mode: 'network', code: 'no_relay' });
   assert.equal(f.bodies.length, 1, 'ice_degraded is a note');
+  // the world kernels fell back to the TypeScript (world/simKernelsReport.ts): one note naming the source and the reason
+  f.telemetry.send({ kind: 'sim_kernels', code: 'host', reason: 'csp' });
+  assert.equal(f.bodies.length, 1, 'sim_kernels is a note');
+  // the solo battle's authority (main.ts soloAuthorityFor; the page by default since 256): one note on its entry record
+  f.telemetry.send({ kind: 'solo_authority', code: 'page', reason: 'default' });
+  assert.equal(f.bodies.length, 1, 'solo_authority is a note');
   f.telemetry.send({ kind: 'entry_result', mode: 'solo', outcome: 'ok', ms: 3000.6, code: 'slow extended!' });
   assert.equal(f.bodies.length, 2, 'a battle entry after the beacon is one small follow-up');
   assert.equal(f.bodies[1].endpoint, endpoints.session);
@@ -104,7 +110,7 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   assert.equal(entry.mode, 'solo');
   assert.equal(entry.ms, 3001);
   assert.equal(entry.code, 'slow_extended', 'codes are bounded to the beacon alphabet before they leave');
-  assert.deepEqual(entry.notes, ['slow_reveal:extended', 'hud_mask:m1a3:top_mask_source_disposed', 'ice_degraded:no_relay'],
+  assert.deepEqual(entry.notes, ['slow_reveal:extended', 'hud_mask:m1a3:top_mask_source_disposed', 'ice_degraded:no_relay', 'kernels:host:csp', 'solo:page:default'],
     'pending notes ride on the next record, deduplicated; the HUD mask note keeps the spec id and the pipeline code');
   assert.ok(f.bodies[1].text.length < 300, `the entry follow-up is small (${f.bodies[1].text.length})`);
   f.telemetry.flush();

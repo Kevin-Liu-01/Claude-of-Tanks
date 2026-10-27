@@ -142,11 +142,11 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
 // another frame.
 const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
 const HERO_ROTATE_MS = 9000;
-/** The progress fill: inside a stage it creeps toward CRAWL_CAP of the stage's span with this time constant, and the
- *  drawn fill eases toward the load with EASE_MS (both in milliseconds of real time). */
-const CRAWL_MS = 2400;
-const CRAWL_CAP = 0.9;
-const EASE_MS = 110;
+/** The progress fill moves only when the load does: each step runs STEP_MS (the --dur-base motion step) and the finished
+ *  load fills it in DONE_MS (--dur-screen). It never creeps on a timer (Main, 2026-10-26: a bar that moves without real
+ *  progress is lossy motion; the living mark says the page is alive). */
+const STEP_MS = 220;
+const DONE_MS = 360;
 
 function afterPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -267,15 +267,22 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const stages = mode === 'studio' ? STUDIO_STAGES : GARAGE_STAGES;
   const root = $('cot-boot');
   const elStage = $('cot-boot-stage');
-  const elPct = $('cot-boot-pct');
   const elFill = $('cot-boot-fill');
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
   const elRetry = $('cot-boot-retry');
   // 2026-09-14 (outside QA): phone players read keyboard-only copy on their first screen; a
-  // coarse pointer gets the touch prompt.
+  // coarse pointer gets the touch prompt. A keyboard's prompt names its key as a key cap, as every control label does
+  // (INTERACTION-REDESIGN line 6): the boot sheet draws the kit's cap without loading the kit.
   const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
-  if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
+  if (elGate && coarsePointer) elGate.textContent = t('boot.gate.promptTouch');
+  else if (elGate) {
+    const [before, after = ''] = t('boot.gate.prompt', { key: '\u0001' }).split('\u0001');
+    const cap = document.createElement('kbd');
+    cap.className = 'cot-boot-key';
+    cap.textContent = t('boot.gate.anyKey');
+    elGate.replaceChildren(before, cap, after);
+  }
   const tips = coarsePointer ? TIP_KEYS.filter(([, fine]) => !fine) : TIP_KEYS;
   if (elRetry) elRetry.textContent = t('boot.retry');
   mountGitHubStars(document);
@@ -286,24 +293,24 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   heartbeat('boot-screen');
 
   const total = stages.reduce((a, s) => a + s[2], 0);
-  // cumulative [start, end] fraction per stage key
+  // cumulative [start, end] fraction per stage key, after the bar's first share, which the page's inline script fills
+  // with the files as they download (index.html: the bar's data-download-share)
+  const head = Number(elFill?.parentElement?.dataset.downloadShare) || 0;
   const span = new Map<string, readonly [start: number, end: number]>();
   {
     let acc = 0;
     for (const [key, , w] of stages) {
-      span.set(key, [acc / total, (acc + w) / total]);
+      span.set(key, [head + (1 - head) * acc / total, head + (1 - head) * (acc + w) / total]);
       acc += w;
     }
   }
 
   let target = 0;      // where the real load says we are
-  let shown = 0;       // eased value actually rendered
   let curKey: string | null = null;
   let dismissed = false;
   let finished = false;
   let readyPromise: Promise<void> | null = null;
   let stopEntryGate = (): void => {};
-  let raf = 0;
   let heroStartRaf = 0;
   let entranceTimer: ReturnType<typeof setTimeout> | null = null;
   let finishEntrance: () => void = () => {};
@@ -311,44 +318,28 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * tips.length);
 
-  // UI-LOCKDOWN D (2026-10-25): the fill moves on the compositor. It spans the bar and a paused animation of its scaleX,
-  // on a unit timeline, is scrubbed to the eased value; a width written every frame laid the boot card out every frame.
-  // Under reduced motion (the player's choice on :root, else the OS: accessibilityPreferences.ts, inlined as modal.ts
-  // does on the boot path) the fill steps to each value instead of easing. Element.animate is in every browser the game
-  // runs in (WebGL2's); without it the bar stays empty and the percentage still counts.
+  // The fill moves on the compositor (owner, 2026-10-26: the boot "looks so laggy" while it loads): each change of the load
+  // (a stage begun or ended, a step inside one) starts one short animation of its scaleX from where it stands to where the
+  // load is, so a busy main thread cannot stall a step already started; no frame loop drives it, and it never moves without
+  // the load. Under reduced motion (the player's choice on :root, else the OS: accessibilityPreferences.ts, inlined as
+  // modal.ts does on the boot path) it steps to each value.
   const motionChoice = document.documentElement?.dataset.motion;
   const reducedMotion = motionChoice === 'reduce' || (motionChoice !== 'full' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
-  const fillScrub = elFill && typeof elFill.animate === 'function'
-    ? elFill.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1, fill: 'both' }) : null;
-  if (fillScrub && elFill) {
-    fillScrub.pause();
-    fillScrub.currentTime = 0;
-    elFill.style.transformOrigin = '0 50%';
-    elFill.style.width = '100%';
+  let fillMotion: Animation | null = null;
+  /** Where the fill stands now (its animation's current scaleX). */
+  function fillNow(): number {
+    const transform = elFill ? getComputedStyle(elFill).transform : 'none';
+    return transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).a : 0;
   }
-  let lastPaint = 0;
-  function paint(now: number) {
-    const dt = lastPaint ? Math.min(100, now - lastPaint) : 16;
-    lastPaint = now;
-    // Inside a stage the fill keeps creeping toward (never onto) the stage's end, so a long stage
-    // still reads as one continuous load; end() and the next begin() carry it on from there. Not under reduced motion.
-    const sp = !finished && curKey && !reducedMotion ? span.get(curKey) : undefined;
-    if (sp) {
-      const cap = sp[0] + (sp[1] - sp[0]) * CRAWL_CAP;
-      if (target < cap) target += (cap - target) * (1 - Math.exp(-dt / CRAWL_MS));
-    }
-    // Ease toward the target so a stage that lands 20 points of progress in one blocking call
-    // still reads as motion rather than a jump (by time, so a slow frame does not slow the fill).
-    shown = reducedMotion ? target : shown + (target - shown) * (1 - Math.exp(-dt / EASE_MS));
-    if (target - shown < 0.0015) shown = target;
-    if (fillScrub) fillScrub.currentTime = shown;
-    if (elPct) elPct.textContent = `${Math.round(shown * 100)}%`;
-    raf = 0;
-    if (shown !== target || sp) schedule();
-  }
-  function schedule() {
-    if (raf || !root) return;
-    raf = requestAnimationFrame(paint);
+  /** Send the fill on from where it stands to where the load is. */
+  function retarget(): void {
+    if (!elFill || typeof elFill.animate !== 'function') return;
+    const to = Math.min(1, target);
+    const from = fillNow();
+    if (to <= from + 0.0005) return;
+    fillMotion?.cancel();
+    fillMotion = elFill.animate([{ transform: `scaleX(${from})` }, { transform: `scaleX(${to})` }],
+      { duration: reducedMotion ? 0 : finished ? DONE_MS : STEP_MS, easing: 'ease-out', fill: 'forwards' });
   }
 
   function showTip(i: number): void {
@@ -413,7 +404,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       const sp = span.get(key);
       if (sp && sp[0] > target) target = sp[0];
       if (elStage) elStage.textContent = stageLabel(key);
-      schedule();
+      retarget();
     },
     /** Leave a stage: the fill advances to its end. */
     end(key: string) {
@@ -421,7 +412,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       const effectiveKey = key || curKey;
       const sp = effectiveKey ? span.get(effectiveKey) : undefined;
       if (sp && sp[1] > target) target = sp[1];
-      schedule();
+      retarget();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
     sub(f: number) {
@@ -430,7 +421,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (!sp) return;
       const v = sp[0] + (sp[1] - sp[0]) * Math.max(0, Math.min(1, f));
       if (v > target) target = v;
-      schedule();
+      retarget();
     },
     /** Override the visible stage label without touching the bar. */
     note(text: string) {
@@ -448,8 +439,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (dismissed) return Promise.resolve();
       finished = true;
       target = 1;
-      shown = Math.max(shown, 0.985);
-      schedule();
+      retarget();
       if (elStage) elStage.textContent = mode === 'studio' ? t('boot.stage.studioReady') : t('boot.stage.readyBattle');
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');
@@ -486,7 +476,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       dismissed = true;
       stopEntryGate();
       if (tipTimer) clearInterval(tipTimer);
-      if (raf) cancelAnimationFrame(raf);
       if (heroStartRaf) cancelAnimationFrame(heroStartRaf);
       finishEntrance();
       stopHero();

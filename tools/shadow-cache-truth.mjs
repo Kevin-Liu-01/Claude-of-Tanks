@@ -22,6 +22,7 @@
 // --gate exits 1 when any scenario differs by more than the A/A floor (+ --tolerance px). Writes <out>/result.json
 // and, for every scenario with a difference, a diff PNG (red: darker with the cache, green: darker without).
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
@@ -385,7 +386,7 @@ async function run(options) {
   const locks = await acquireProbeLocks({ sessionMutex: options.sessionMutex, log });
   const refresh = setInterval(() => locks.refresh(), 30000); refresh.unref();
   const server = await openPreview(options.root, options.port);
-  const browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900000,
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
     args: [...MAP_PROBE_BROWSER_ARGS, `--window-size=${options.viewport[0]},${options.viewport[1]}`] });
   const report = { root: options.root, query: options.query, maps: {}, failures: [] };
   try {

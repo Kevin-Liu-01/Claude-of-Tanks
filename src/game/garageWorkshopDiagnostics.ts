@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { GarageDressingAccess } from './garageDressingAccess.ts';
 import type {
   GarageEnvironmentPresentationRuntime,
@@ -107,11 +107,19 @@ interface GarageWorkshopStats {
   readonly renderer: { readonly calls: number; readonly triangles: number };
 }
 
+/** Where the camera stands the hero (CSS px): its box's projected bounds and the free stage it is framed in. */
+interface GarageHeroRect {
+  readonly hero: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+  readonly stage: { readonly x: number; readonly y: number; readonly w: number; readonly h: number } | null;
+}
+
 interface GarageWorkshopDiagnostics {
   readonly variants: readonly GarageWorkshopVariant[];
   ensureBuilt(): Promise<void>;
   set(variantId: string): boolean;
   stats(): GarageWorkshopStats;
+  /** The hero's projected box and the free stage, for the framing receipts; null without a hero or a camera. */
+  heroRect(): GarageHeroRect | null;
 }
 
 interface GarageWorkshopDiagnosticsOptions {
@@ -119,7 +127,10 @@ interface GarageWorkshopDiagnosticsOptions {
   readonly garage: Pick<
     GarageRuntime,
     'getSelectedGarageVariant' | 'setSelectedGarageVariant'
-  >;
+  > & Partial<Pick<GarageRuntime, 'getStageRect'>>;
+  /** The Garage's camera and the canvas it draws to (heroRect). */
+  readonly camera?: THREE.Camera;
+  readonly canvas?: HTMLCanvasElement;
   readonly dressing: Pick<
     GarageDressingAccess,
     'group' | 'ensureBuilt' | 'isBuilt'
@@ -197,6 +208,8 @@ export function createGarageWorkshopDiagnostics({
   podiumTopYM,
   getRetainedWorldMapId,
   invalidatePresentation,
+  camera,
+  canvas,
 }: GarageWorkshopDiagnosticsOptions): GarageWorkshopDiagnostics {
   const variantViews = Object.freeze(variants.map(({ id, mapId, name, architecture }) => (
     Object.freeze({ id, mapId, name, architecture })
@@ -204,6 +217,23 @@ export function createGarageWorkshopDiagnostics({
 
   return {
     variants: variantViews,
+    heroRect() {
+      const root = pedestal.current?.root;
+      if (!root || !camera || !canvas) return null;
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) return null;
+      const view = canvas.getBoundingClientRect();
+      const corner = new THREE.Vector3();
+      let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(camera);
+        const x = view.left + (corner.x + 1) / 2 * view.width, y = view.top + (1 - corner.y) / 2 * view.height;
+        left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
+      }
+      const round = (value: number): number => Math.round(value * 10) / 10;
+      return { hero: { left: round(left), top: round(top), right: round(right), bottom: round(bottom) },
+        stage: garage.getStageRect ? garage.getStageRect(false) : null };
+    },
     async ensureBuilt() {
       await dressing.ensureBuilt();
       invalidatePresentation();

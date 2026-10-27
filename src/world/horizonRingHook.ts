@@ -41,21 +41,28 @@ interface HorizonRingSupply {
   remember(pipeline: HorizonRingPipeline): void;
 }
 
-let supplied: HorizonRingSupply | null = null;
+/**
+ * One supply a map and trench variant (battle-spikes-253): a world build that starts while another runs (the Garage's
+ * background build and a deploy's battle map) supplies its own beside the other's. A single slot handed the later build's
+ * ring to both, and the earlier terrain build, finding no ring of its own, built it on the page (nav-perf's phone Garage
+ * sweep: 100-376 ms steps on deploy).
+ */
+const supplied = new Map<string, HorizonRingSupply>();
+const supplyKey = (mapId: string | undefined, trenches: boolean): string => `${mapId}|${trenches}`;
 
-/** The world build's supply for the terrain build it runs (null withdraws it). */
+/** The world build's supply for the terrain build it runs (null withdraws every supply). */
 export function supplyHorizonRing(supply: HorizonRingSupply | null): void {
-  supplied = supply;
+  if (!supply) { supplied.clear(); return; }
+  supplied.set(supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches'), supply);
 }
 
 /** Withdraw a supply when its world build ends — only if it is still the one supplied (a later build's stays). */
 export function withdrawHorizonRing(supply: HorizonRingSupply): void {
-  if (supplied === supply) supplied = null;
+  const key = supplyKey(supply.request.mapId, supply.request.terrainVariant === 'assault-trenches');
+  if (supplied.get(key) === supply) supplied.delete(key);
 }
 
 /** The supply for a terrain build of this config (its map and its trench variant), else null. */
 export function horizonRingSupplyFor(cfg: { readonly id?: string; readonly assaultTrenches?: boolean } | null): HorizonRingSupply | null {
-  if (!supplied || !cfg) return null;
-  const { mapId, terrainVariant } = supplied.request;
-  return mapId === cfg.id && (terrainVariant === 'assault-trenches') === !!cfg.assaultTrenches ? supplied : null;
+  return cfg ? supplied.get(supplyKey(cfg.id, !!cfg.assaultTrenches)) ?? null : null;
 }

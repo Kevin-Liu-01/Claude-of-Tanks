@@ -59,6 +59,8 @@ interface OffscreenWarmBatchOptions {
    * a camera thrown into the far side of the map (a Watch hop, the killcam, spectating) met those draws all at once.
    */
   uncull?: boolean;
+  /** The owned warmer's target samples (OffscreenSceneWarmerOptions.samples): the live scene pass's MSAA count. */
+  samples?: (() => number) | null;
 }
 
 /** Options of a scene warmer's private target. */
@@ -201,9 +203,10 @@ export async function warmSceneOffscreenBatched(
   prepareObjects = null,
   renderBatch = null,
   uncull = false,
+  samples = null,
   }: OffscreenWarmBatchOptions = {},
 ): Promise<number[]> {
-  const ownedWarmer = renderBatch ? null : createOffscreenSceneWarmer(renderer, scene, camera, scale);
+  const ownedWarmer = renderBatch ? null : createOffscreenSceneWarmer(renderer, scene, camera, scale, { samples });
   const warmer = renderBatch ?? ownedWarmer!;
   const { renderables, lods } = collectWarmBatchSelection(scene, camera);
   const batches = splitWarmBatches(renderables, maxObjects, maxWeight);

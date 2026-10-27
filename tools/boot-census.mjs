@@ -26,6 +26,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const argv = process.argv.slice(2);
@@ -436,8 +437,9 @@ try {
   for (const name of profiles) {
     const profile = PROFILES[name];
     // a fresh browser: an empty HTTP cache, no service worker, no storage
-    const browser = await puppeteer.launch({ headless: true, protocolTimeout: 360_000,
-      args: ['--no-sandbox', '--use-gl=angle', '--enable-webgl', '--js-flags=--max-old-space-size=3072', '--window-size=1500,960'] });
+    const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 360_000,
+      args: ['--no-sandbox', '--use-gl=angle', '--enable-webgl', '--js-flags=--max-old-space-size=3072', '--window-size=1500,960'] },
+    { label: `boot-census-${label}-${name}` });
     try {
       const page = await browser.newPage();
       await page.setViewport(profile.viewport);

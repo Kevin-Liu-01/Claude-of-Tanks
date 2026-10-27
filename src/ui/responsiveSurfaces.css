@@ -169,8 +169,10 @@ body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);wh
    for a narrow phone scrolls instead of letting a label run past its plate; the first label starts on the panel's edge. */
 body[data-cot-width='phone'] .cot-set-tabs{gap:0;justify-content:space-between}
 body[data-cot-width='phone'] .cot-set-tab{flex:0 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
-/* a two-character tab's box meets the touch floor; its label (and its underline) keeps the label's width */
-body[data-cot-width='phone'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+/* a phone tab's box reaches the touch floor by its own inset (a two-character label plus 9 px a side is 44 px), so every
+   label keeps its own width and the row's gaps come out even; the row's inset puts the first and last labels on the edge */
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
+:lang(zh-CN) body[data-cot-width='phone'] .cot-set-tabs{padding-inline:calc(var(--cot-edge) - var(--s2) - 1px)}
 /* the scrolling tab row clips below its box, so a phone's indicator stands on the row's rule inside it */
 body[data-cot-width='phone'] .cot-set-tab.sel>span::after{bottom:0}
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
@@ -193,23 +195,20 @@ body[data-cot-width='phone'] .cot-set-btn.reset{margin-right:0}
 body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:column;gap:8px;padding-block:10px}
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
-body[data-cot-width='phone'] .cot-set-seg{width:100%;flex-wrap:wrap}
-body[data-cot-width='phone'] .cot-set-seg button{flex:1 1 0}
+body[data-cot-width='phone'] .cot-settings .cot-c-seg,
+body[data-cot-width='phone'] .cot-set-menu{width:100%}
+body[data-cot-width='phone'] .cot-settings .cot-c-seg__opt{flex:1 1 0;min-width:0}
 body[data-cot-width='phone'] .cot-settings .cot-battle-times{width:100%}
 body[data-cot-width='phone'] .cot-settings .cot-time-choice{flex:1 1 0}
 body[data-cot-width='phone'] .cot-settings .cot-time-content{width:100%}
 body[data-cot-width='phone'] .cot-set-hud-editor{width:100%;margin-left:0}
-/* a picker of five or more words is a three-column grid on a phone, not a row that drops its last option */
-body[data-cot-width='phone'] .cot-set-seg:has(> :nth-child(5)){display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
 body[data-cot-width='phone'] .cot-set-slider input[type=range]{flex:1;width:auto;min-width:0}
 /* touch: every Settings control meets the control floor (44 px) */
-body[data-cot-input='coarse'] :is(.cot-set-seg button,.cot-settings .cot-time-content){height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-time-content{height:var(--cot-control-floor)}
 /* on touch a segmented control is 44 px like every other control: its options sit inside its 3 px inset (the slate plate
    inside the track, as on desktop) and their hit areas reach the track's edge */
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg button{position:relative;height:calc(var(--cot-control-floor) - 6px)}
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg button::before{content:'';position:absolute;inset:-3px 0}
-/* a picker set as a grid (the team colours) draws each cell at the full floor */
-body[data-cot-input='coarse'] .cot-settings .cot-set-seg:has(> :nth-child(5)) button{height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-seg__opt{position:relative;height:calc(var(--cot-control-floor) - 6px)}
+body[data-cot-input='coarse'] .cot-settings .cot-c-seg__opt::before{content:'';position:absolute;inset:-3px 0}
 body[data-cot-input='coarse'] .cot-set-slider input:is([type=range],[type=number]){height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-settings .cot-c-swatch{width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-input='coarse'] .cot-set-close{--h:var(--cot-control-floor)}
@@ -223,9 +222,9 @@ body[data-cot-height='short'] .cot-set-hdr h2{position:absolute;width:1px;height
 /* (.cot-settings: a tablet-wide short screen, 844x390, kept the tablet rule's 14 px and ran its tabs under the close) */
 body[data-cot-height='short'] .cot-settings .cot-set-tabs{padding-inline-end:calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 /* a phone on its side lays the tab row out as the upright phone does: labels share the spare width */
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - 4px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tabs{gap:0;justify-content:space-between;padding-inline:calc(var(--cot-edge) - var(--s2) - 1px) calc(var(--cot-control-floor) + var(--cot-edge) * 2)}
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:4px}
-body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{min-width:var(--cot-control-floor,44px)}
+body[data-cot-input='coarse'][data-cot-height='short'] .cot-set-tab{padding-inline:calc(var(--s2) + 1px)}
 /* a phone on its side keeps the upright phone's 16 px edge, so the first tab sits on the plates' edge */
 body[data-cot-input='coarse'][data-cot-height='short'] .cot-settings{--cot-edge:var(--s4)}
 /* touch: a plate's top inset holds its heading (i)'s 44 px hit area inside the plate */
@@ -246,10 +245,7 @@ body[data-cot-width='tablet'] .cot-set-ftr{padding:var(--s3) var(--s4)}
 /* PLAY / PRIVATE ROOM ---------------------------------------------------- */
 body[data-cot-panels='overlay'] .cot-play{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 body[data-cot-panels='overlay'] .cot-play .panel{width:min(960px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain}
-body[data-cot-width='tablet'] .cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='tablet'] .cot-play .room-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-body[data-cot-width='compact'] .cot-play .modes,
-body[data-cot-width='phone'] .cot-play .modes{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .rules,
 body[data-cot-width='phone'] .cot-play .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
 body[data-cot-width='compact'] .cot-play .room-actions,
@@ -284,9 +280,6 @@ body[data-cot-width='phone'] .cot-play .control-actions{flex-wrap:wrap;gap:var(-
 body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='rejoin']{flex:1 1 100%}
 body[data-cot-width='phone'] .cot-play .version-refusal .cot-c-notice__acts{display:grid;grid-template-columns:1fr}
 body[data-cot-width='phone'] .cot-play .code{font-size:var(--fs-20)}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams{align-items:stretch}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams .cot-c-seg{display:flex;width:100%}
-body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-play .cot-teams .cot-c-seg__opt{flex:1 1 0}
 body[data-cot-width='compact'] .cot-play .identity,
 body[data-cot-width='phone'] .cot-play .identity{display:grid;grid-template-columns:1fr;gap:var(--s2)}
 body[data-cot-width='compact'] .cot-play .room-action,
@@ -319,8 +312,8 @@ body[data-cot-width='compact'] .cot-play .battlefield-copy,
 body[data-cot-width='phone'] .cot-play .battlefield-copy{grid-column:auto;grid-template-columns:1fr;padding:var(--s4);gap:var(--s3)}
 body[data-cot-width='compact'] .cot-play .control-actions .action{flex:1 1 128px}
 body[data-cot-width='phone'] .cot-play .control-actions .action{flex:1 1 0;min-width:0;padding-inline:var(--s2)}
-body[data-cot-width='compact'] .cot-play .menu-select--map .menu-select-list,
-body[data-cot-width='phone'] .cot-play .menu-select--map .menu-select-list{grid-template-columns:1fr}
+/* Start carries the ready count (START 10/14): it takes the larger share of the row so its label keeps its padding */
+body[data-cot-width='phone'] .cot-play .control-actions .action[data-action='start']{flex-grow:1.5}
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .room-actions{grid-template-columns:1fr}
 /* a short or compact screen: the lobby's controls end the roster, so the roster keeps the screen; the head is lower and stays */
 body:is([data-cot-height='short'],[data-cot-height='compact']) .cot-play .lobby.show .controls{position:static}
@@ -360,7 +353,7 @@ body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:var(--s1);font-size:
 body[data-cot-panels='overlay'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-fs-11)}
 /* (the side's name centred on its plate: a bottom padding alone set it 6 px high, gauntlet r4) */
 body[data-cot-panels='overlay'] .cot-bl .thead{font-size:var(--battle-fs-11);padding:var(--s1) var(--s2)}
-body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
+body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px}
 body[data-cot-panels='overlay'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
 body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:var(--battle-fs-11)}
 body[data-cot-panels='overlay'] .cot-bl .row .sil{flex-basis:44px;max-height:22px}
@@ -388,7 +381,7 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-heading:18px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:14px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
 body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
@@ -449,7 +442,8 @@ body[data-cot-height='short'] .cot-es .es-actions{
   /* (no rule of its own: the report's plate edge over it made two lines at 844x390, gauntlet r6, as r4 at 390) */
   background:linear-gradient(180deg,oklch(from var(--surface-scene) l c h / .1),var(--hud-plate-strong) 28%);border-top:0;
 }
-body[data-cot-width='phone'] .cot-es .es-action{min-width:0;flex:1;padding:0 var(--s2);font-size:var(--battle-fs-11)}
+/* (the kit's 48 px button's own 12 px label, the pause veil's: at 11 the same action read a step smaller here, gauntlet r13) */
+body[data-cot-width='phone'] .cot-es .es-action{min-width:0;flex:1;padding:0 var(--s2)}
 body[data-cot-height='short'] .cot-es{justify-content:flex-start;overflow-y:auto;padding-bottom:78px}
 body[data-cot-height='short'] .cot-es .es-ban{font-size:clamp(24px,9vh,38px)}
 body[data-cot-height='short'] .cot-es .es-tal .v,
@@ -487,7 +481,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action
 }
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es .es-action,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-action,
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action{min-width:0;padding:0 var(--s4);font-size:var(--battle-fs-11)}
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-action{min-width:0;padding:0 var(--s4)}
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-es .es-ph,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-es .es-ph,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:var(--s2);overflow:hidden}
@@ -643,6 +637,10 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   /* (as tall as the toolbar's corner plate beside it, the top row's plates on one foot: 36 against 48, gauntlet r7) */
   min-height:48px;box-sizing:border-box;
 }
+/* (the Horde's plate there drops its two hidden gauges for a wider gap: their held places ran WAVE and LEFT into the
+   plate's slants at 568x256, gauntlet r8) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top:has(.fg.wave){column-gap:14px}
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top:has(.fg.wave) .sc .bar{display:none}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
   top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:auto;right:max(10px,env(safe-area-inset-right));
 }
@@ -658,6 +656,9 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con{width:48px;height:48px}
+/* (its glyph 3 px up and left of the centre, so the corner's count keeps 2 px off it: the ∞ sat on the medkit's corner at
+   568x256, and over zh's larger glyph, gauntlet r10) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-con svg{width:18px;height:18px;transform:translate(-3px,-3px)}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-special{
   right:108px;bottom:calc(max(28px,env(safe-area-inset-bottom)) + 102px);width:56px;min-width:56px;height:56px;
 }
@@ -812,7 +813,9 @@ body[data-cot-width='compact'] .cot-resume .rz-title,
 body[data-cot-width='phone'] .cot-resume .rz-title{font-size:var(--fs-24)}
 body[data-cot-width='phone'] .cot-resume .rz-actions{display:grid;grid-template-columns:1fr;justify-self:stretch;width:100%}
 body[data-cot-width='phone'] .cot-resume .rz-actions>.cot-c-btn{width:100%}
-body[data-cot-height='short'] .cot-resume .rz-plate{padding:var(--s4) var(--s5);gap:var(--s3)}
+/* (a short landscape's plate fits its two buttons side by side, its padding the plate's own: at the window's width it left
+   84 px of empty plate either side of them at 568x256, gauntlet r13) */
+body[data-cot-height='short'] .cot-resume .rz-plate{width:auto;padding:var(--s4) var(--s5);gap:var(--s3)}
 
 body[data-cot-width] .cot-hints{
   box-sizing:border-box;max-width:min(var(--hud-hints-width,100vw),calc(100vw - (var(--cot-edge) * 2)));justify-content:center;
@@ -880,6 +883,13 @@ body[data-cot-input='coarse'] .cot-play button,
 body[data-cot-input='coarse'] .cot-play input,
 body[data-cot-input='coarse'] .cot-play .menu-select-trigger,
 body[data-cot-input='coarse'] .cot-play .menu-select-option{min-height:44px}
+/* the room's segmented settings are 44 px like its triggers, as Settings' are: the options sit inside the track's 3 px
+   inset and their hit areas reach its edge (a 50 px track put the foot's labels 6 px apart, Rooms r28) */
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt{
+  position:relative;min-height:0;height:calc(var(--cot-control-floor) - 6px)}
+body[data-cot-input='coarse'] .cot-play .brain-allies .cot-c-toggle{min-height:var(--cot-control-floor)}
+body[data-cot-input='coarse'] .cot-play :is(.modes,.create-size,.room-size,.room-team,.sides-seg,.brain-seg) .cot-c-seg__opt::before{
+  content:'';position:absolute;inset:-3px 0}
 
 @media (prefers-reduced-motion:reduce){
   body[data-cot-width] .cot-play *,body[data-cot-width] .cot-es *,body[data-cot-width] .cot-studio *{

@@ -25,6 +25,14 @@ export function keepDesignations(html: string): string {
   return textParts(html, (text) => text.replace(DESIGNATION, '<span class="dm-nobr">$&</span>'));
 }
 
+/** A name shown in a control (a picker card) as plain text: a hyphenated word holds whole (a word joiner after its
+ *  hyphen: T-90A), a trailing numeral stays with its word (Engine review 1, Challenger 1), and a Latin name inside
+ *  Chinese text holds whole (T-90A Burlak). The kit picker's search folds both marks away. */
+export function holdNameText(text: string): string {
+  const held = text.replace(/(?<=[A-Za-z\d])-(?=[A-Za-z\d])/g, '-\u2060').replace(/ (?=\d+(?![\w-]))/g, NBSP);
+  return /[\u3400-\u9fff]/.test(held) ? held.replace(/(?<=[A-Za-z\d.-]) (?=[A-Za-z\d])/g, NBSP) : held;
+}
+
 /** Plain text as markup, its designations held on one line. */
 export function designationHtml(text: string): string {
   return keepDesignations(escapeHtml(text));

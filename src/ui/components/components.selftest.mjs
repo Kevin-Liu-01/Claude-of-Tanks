@@ -151,9 +151,10 @@ assert.deepEqual(Object.keys(own.listeners), [], 'the listener comes off');
 // A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
 // stays out of the boot script.
 // The kit's sheets: components.css (every page that uses the kit), figures.css (the stat chips, stat tiles, empty states
-// and swatches the data surfaces draw) and notices.css (the notifications), each tokens-only in the components layer.
+// and swatches the data surfaces draw), notices.css (the notifications) and pickers.css (the picker and its consumers:
+// the game's alone, so the landing, the docs and the 404 never load it), each tokens-only in the components layer.
 const tokensCss = readFileSync(new URL('../tokens/tokens.css', import.meta.url), 'utf8');
-for (const file of ['./components.css', './figures.css', './notices.css']) {
+for (const file of ['./components.css', './figures.css', './notices.css', './pickers.css']) {
   const sheet = readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
     `${file} declares into the components layer, below every surface`);
@@ -164,13 +165,17 @@ for (const file of ['./components.css', './figures.css', './notices.css']) {
   assert.doesNotMatch(css, /font(?:-size)?:[^;]*\b\d+(?:\.\d+)?px/, `${file}: type sizes read the type scale`);
   assert.doesNotMatch(css, /\b\d+(?:\.\d+)?m?s\b/, `${file}: durations read the motion tokens`);
   for (const [, name] of css.matchAll(/var\(--([a-z0-9-]+)/g)) {
-    if (name === 'h' || name === 'sil') continue;
+    // --mode-ink is the sheet's own mode-tone mapping (data-mode-tone=<mode id>), set from the --mode-<id> tokens
+    if (name === 'h' || name === 'sil' || name === 'mode-ink') continue;
     assert.match(tokensCss, new RegExp(`--${name}:`), `${file}: --${name} is a design token`);
   }
 }
 const mainSource = readFileSync(new URL('../../main.ts', import.meta.url), 'utf8');
-assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';/,
-  'the game imports the three sheets');
+assert.match(mainSource, /import '\.\/ui\/components\/components\.css';\nimport '\.\/ui\/components\/figures\.css';\nimport '\.\/ui\/components\/notices\.css';\nimport '\.\/ui\/components\/pickers\.css';/,
+  'the game imports the four sheets');
+for (const page of ['../../presentation/home.css', '../../presentation/notFound.css', '../../docs/docs.css']) {
+  assert.doesNotMatch(readFileSync(new URL(page, import.meta.url), 'utf8'), /pickers\.css/, `${page} carries no picker`);
+}
 for (const page of ['../../gallery/gallery.css', '../../docs/docs.css']) {
   assert.match(readFileSync(new URL(page, import.meta.url), 'utf8'), /@import url\('\.\.\/ui\/components\/notices\.css'\);/, `${page} imports the notifications`);
 }
@@ -232,4 +237,28 @@ assert.match(keycap('↑'), /data-icon="moveForward"/, 'the up arrow key draws t
 assert.doesNotMatch(keycap('→'), /→/, 'no typed arrow in a key cap');
 assert.match(keycap('Esc'), />Esc</, 'a named key stays its text');
 
-console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); three tokens-only sheets in the components layer');
+// One selected state (Main, 2026-10-26, after the gallery-studio critics flagged an amber toggle beside a grey choice):
+// a segmented option, a chip, a picked option and a toggle all wear the accent's wash and edge, and no surface re-draws a
+// selection on the grey hover plate.
+{
+  const kit = ['./components.css', './pickers.css'].map((file) => readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
+  const rule = (selector) => kit.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{([^}]*)\\}`))?.[1] ?? '';
+  for (const [selector, fill] of [['.cot-c-seg__opt:is([aria-checked=true],[aria-selected=true])', /background:var\(--accent-wash\)/],
+    ['.cot-c-chip[aria-pressed=true]', /background:var\(--chip-fill-on\)/], ['.cot-c-picker__opt[aria-selected=true]', /background:var\(--chip-fill-on\)/],
+    ['.cot-c-toggle[aria-checked=true] .cot-c-toggle__track', /background:var\(--accent-wash\)/]]) {
+    const body = rule(selector);
+    assert.match(body, fill, `${selector} fills with the accent's wash`);
+    assert.match(body, /box-shadow:var\(--ring-accent\)/, `${selector} wears the accent's edge`);
+  }
+  assert.match(tokensCss, /--chip-fill-on:var\(--accent-wash\)/, 'the chip fill is the accent wash');
+  const { readdirSync } = await import('node:fs');
+  const sheets = (dir) => readdirSync(new URL(dir, import.meta.url), { withFileTypes: true }).flatMap((entry) => entry.isDirectory()
+    ? sheets(`${dir}${entry.name}/`) : /\.(css|ts)$/.test(entry.name) && !/\.selftest\./.test(entry.name) ? [new URL(`${dir}${entry.name}`, import.meta.url)] : []);
+  for (const file of [...sheets('../'), ...sheets('../../presentation/')]) {
+    for (const [, selector, body] of readFileSync(file, 'utf8').matchAll(/([^{}]*\[aria-(?:pressed|checked|selected)=['"]?true['"]?\][^{}]*)\{([^}]*)\}/g)) {
+      assert.doesNotMatch(body, /background:var\(--surface-hover\)/, `${file.pathname.split('/src/')[1]}: ${selector.trim().slice(0, 80)} draws a selection on the grey hover plate`);
+    }
+  }
+}
+
+console.log('components: markup, ARIA and escaping for every factory; roving focus; notifications (queue, dedupe, priority, holds); four tokens-only sheets in the components layer');

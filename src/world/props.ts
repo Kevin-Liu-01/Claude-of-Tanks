@@ -61,7 +61,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import {
-  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantForms, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
+  applyRockShaderHook, boulderSectionRadius, boulderSections, boulderVariantFormSteps, createRockDepthMaterial, legacyRockVariant, makeRockDetail,
   paintBoulder, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
@@ -129,7 +129,7 @@ import { fenceTypes, ironRailingType } from './maps/fenceKit.ts';
 import { coursedWallType, dryStoneWallType } from './maps/coursedWallKit.ts';
 import { adobeCrownFor, adobeWallType } from './maps/adobeWallKit.ts';
 import { traceTerraceRisers, type TerraceRiserZone } from './maps/terraceRisers.ts';
-import { settleLightWreck } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
+import { settleLightWreckSteps } from './maps/lightWreck.ts'; // E1: a fracture-ready light kind's settled wreck
 import { CLUTTER_LOD_KEY, clutterLodDefaults, clutterLodHook, clutterTypes } from './maps/clutterKit.ts'; // props lane A, #2
 import { kerbUnits, litterChunk, toppledLamp } from './maps/streetForms.ts'; // props lane A, #14
 import { streetLampFormOf } from './maps/streetKit.ts';
@@ -163,7 +163,7 @@ import { buildHardstandDressing } from './hardstandDressing.ts';
 import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
 import { roadLifeFor } from './civic/roadLife.ts'; // (229) every map's road life
 import { civicStyle } from './civic/styles.ts';
-import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
+import { composeCivicAreaSteps, type CivicPiece } from './civic/civicAreaKit.ts';
 import { buildPathwayNetworkSteps } from './civic/pathwayKit.ts';
 import { CIVIC_RECORDS, CIVIC_STALL_FORMS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
 import type { CivicRect } from './civic/types.ts';
@@ -264,7 +264,8 @@ import { breachRubble } from './maps/wallBreachRubble.ts'; // (the looks lane, r
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import {
-  bindStructureSpans, describeStructure, tagStructureVertices, type StructureMaterialEntry, type StructureSpan,
+  bindStructureSpans, describeStructure, measureOtherMapStructures, tagStructureVertices, type StructureMaterialEntry,
+  type StructureSpan,
 } from './structureDamageSeam.ts';
 import { setDefaultKitStyleReader } from './destructionDefaultKit.ts';
 import type { StructureDamageAnatomy } from './destructionKit.ts';
@@ -1587,6 +1588,19 @@ export function plannedSurfacePaints(cfg: PropsMapConfig | null, propsSeed = 200
   // (battle-spikes-253) and a mud-walled map's mud render (makeFieldMud), after the field stone as the build reaches it
   if (wallStyle === 'adobe') requests.push({ kind: 'fieldMud', size, seed: FIELD_MUD_PRINT_SEED });
   return requests;
+}
+
+/**
+ * (battle-spikes-253) A regional kit's render prints (makePlaster: the primary on its seed, plaster2 and plaster3 on the
+ * next), at the plaster canvas's 256 on every tier. Planned once the map's kits have loaded (map.ts: its architecture
+ * style resolves only then; planned with the fixed prints, a lazily loaded style failed the whole world build).
+ */
+export function plannedKitRenderPaints(cfg: PropsMapConfig | null): SurfacePaintRequest[] {
+  let kitRender: { kind: 'limeRender' | 'limewash'; seed: number } | undefined;
+  try {
+    kitRender = resolveRegionalArchitecture((cfg?.props as { architecture?: string } | undefined)?.architecture)?.surfaces.render;
+  } catch { return []; } // (a style not loaded: the props build paints them where it stands)
+  return kitRender ? [kitRender.seed, kitRender.seed + 1].map((seed) => ({ kind: kitRender!.kind, size: 256, seed })) : [];
 }
 
 /**
@@ -3945,6 +3959,9 @@ function* propsBuildSteps(
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
+  // (battle-spikes-253) another battlefield's deferred structure measures (structureDamageSeam.ts), in slices, before this
+  // build describes its first building and the queue would take them all in one go
+  while (measureOtherMapStructures(mapId, 6) > 0) yield { fine: true, progress: false, stage: 'other-map-measures' };
   // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
   const civicPlan = civicPlanFor(mapId);
   if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
@@ -4018,6 +4035,19 @@ function* propsBuildSteps(
   // where neither sets one
   if (P.plasterRelief === undefined && regionalArchitecture?.surfaces.plasterRelief !== undefined) P.plasterRelief = regionalArchitecture.surfaces.plasterRelief;
   const T = P.tones || {};
+  // (battle-spikes-253) the kit's render prints, painted ahead by the surface paint worker when the prefetch holds them
+  // (plannedSurfacePaints), else here as makePlaster would paint them: the same painter, the same texels
+  if (kitRender) {
+    let byPaint = paintedRenders.get(noi);
+    if (!byPaint) paintedRenders.set(noi, byPaint = new Map());
+    const { kind } = kitRender;
+    for (const seed of [kitRender.seed, kitRender.seed + 1]) {
+      if (byPaint.has(`${kind}:${seed}`)) continue;
+      byPaint.set(`${kind}:${seed}`, yield* paintedAhead(surfacePaintKey({ kind, size: 256, seed }),
+        // oxlint-disable-next-line require-yield -- the in-line paint returns the painter's buffers at once
+        function* () { return kind === 'limeRender' ? paintLimeRender(256, seed) : paintLimewash(256, seed); }));
+    }
+  }
   const plaster = makePlaster(noi, aniso, T.plaster || null, null, P.plasterRelief ?? 1.2);
   yield { fine: true };
   // content_breadth r3: TWO extra render families — the street walls
@@ -5275,7 +5305,8 @@ ${snowCap ? `
    * the geometry the pool kept. The anatomy's mass class is then read from the structure's records, as
    * describeStructureAt reads it. After the join every structure derives inline.
    */
-  function joinStructureShells(): void {
+  // (battle-spikes-253) a structure a step: the join's bands and damage states were one 175 ms task on a 4x phone
+  function* joinStructureShells(): Generator<PropsBuildSlice, void, void> {
     if (!shellPool || shellsJoined) return;
     shellsJoined = true;
     const replacements = new Map<CollisionRecord, CollisionRecord[]>();
@@ -5298,6 +5329,7 @@ ${snowCap ? `
       const described = structureDamage.get(pending.structureIdx);
       const state = described ? createStructureDamage([pending.contact], shells).structures[0] : null;
       if (described && state) described.anatomy.massClass = state.massClass;
+      yield { fine: true, progress: false, stage: 'structure-shells-join' };
     }
     const joined: CollisionRecord[] = [];
     for (const record of colliders) {
@@ -5506,9 +5538,14 @@ ${snowCap ? `
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
+  /**
+   * (battle-spikes-253) A planned building in three steps — its base build and pose, its region's rebuild, its collision
+   * and merge (nav-perf's phone Garage sweep: one 100-150 ms task a building; Verdant in Node: the collision 45% of it,
+   * the rebuild 32%). No module scratch is held across a step (another world build may run between them).
+   */
+  function* placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
     fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
-    kitPose?: { x: number; z: number; rot: number }): boolean {
+    kitPose?: { x: number; z: number; rot: number }): Generator<PropsBuildSlice, boolean, void> {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -5630,6 +5667,7 @@ ${snowCap ? `
         uv.needsUpdate = true;
       }
     }
+    yield { fine: true };
     let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
@@ -5655,6 +5693,7 @@ ${snowCap ? `
         }
         if (Number.isFinite(b.minX)) body = b;
       }
+      yield { fine: true };
     }
     if (vacated) {
       // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
@@ -5698,7 +5737,7 @@ ${snowCap ? `
     if (!explicitStructure) bi++;
     return true;
   }
-  function placeRoadBuilding(cand: BuildingCandidate, side: number): void {
+  function* placeRoadBuilding(cand: BuildingCandidate, side: number): Generator<PropsBuildSlice, void, void> {
     if (rng() < P.sideSkip) return;
     const lat = P.buildingLat[0] + rng() * P.buildingLat[1];
     const px = cand.x - cand.tz * side * lat;
@@ -5711,7 +5750,7 @@ ${snowCap ? `
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
     const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
-    placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
+    yield* placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -5721,7 +5760,7 @@ ${snowCap ? `
       if (bi >= builders.length) return;
       for (const side of [-1, 1]) {
         if (bi >= builders.length) return;
-        placeRoadBuilding(cand, side);
+        yield* placeRoadBuilding(cand, side);
         yield { fine: true };
       }
     }
@@ -5824,7 +5863,7 @@ ${snowCap ? `
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     const build = plannedBuild(index, site);
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+    yield* placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
       site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
@@ -5835,7 +5874,7 @@ ${snowCap ? `
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     const build = plannedBuild(index, site);
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
+    yield* placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
       site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
@@ -6131,7 +6170,7 @@ ${snowCap ? `
     if (!P.blockFill || bi >= builders.length) return;
     const brng = mulberry32(seed + 404);
     const step = 27;
-    const tryPlaceTownBuilding = (gx: number, gz: number): void => {
+    function* tryPlaceTownBuilding(gx: number, gz: number): Generator<PropsBuildSlice, void, void> {
       if (bi >= builders.length) return;
       const px = gx + (brng() - 0.5) * 10, pz = gz + (brng() - 0.5) * 10;
       const roadDistance = heightField._roadDist(px, pz);
@@ -6140,11 +6179,11 @@ ${snowCap ? `
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-      placePlannedBuilding(px, pz, rot, undefined, undefined, true);
-    };
+      yield* placePlannedBuilding(px, pz, rot, undefined, undefined, true);
+    }
     for (let gz = town.z0 + 14; gz < town.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = town.x0 + 14; gx < town.x1 - 14 && bi < builders.length; gx += step) {
-        tryPlaceTownBuilding(gx, gz);
+        yield* tryPlaceTownBuilding(gx, gz);
         yield { fine: true };
       }
     }
@@ -6462,7 +6501,7 @@ ${snowCap ? `
   // (the frontage walks read their plots) and before every scatter pass, which keeps out of each area's room by the
   // veto; their furniture, vehicles, lamps and railings join the destructibles after every seeded pass
   const civicPieces: CivicPiece[] = [];
-  function composeCivicAreas(): void {
+  function* composeCivicAreas(): Generator<PropsBuildSlice, void, void> {
     // (229) a plan's street parking, authored past its areas (a map without an area too), and every map's road life
     // (civic/roadLife.ts: the owner's "cars and stuff on roads")
     for (const f of [...(civicPlan?.streetParking ?? []), ...(civicPlan?.streetFurniture ?? []), ...roadLifeFor(mapId)]) {
@@ -6473,10 +6512,13 @@ ${snowCap ? `
     const areas: Array<{ id: string; census: Record<string, number> }> = [];
     const debugPolys: Array<{ pts: number[]; col: [number, number, number]; fill?: [number, number, number] }> = [];
     for (const area of civicPlan.areas) {
-      const built = composeCivicArea(area, style, {
+      const steps = composeCivicAreaSteps(area, style, {
         ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: civicPlots(),
         pathways: civicPlan.pathways,
       });
+      let step = steps.next();
+      while (!step.done) { yield { fine: true, progress: false, stage: 'civic-area' }; step = steps.next(); }
+      const built = step.value;
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);
       // (229) a map without the walked monument pass (props.monument unset) seats the area's monument as an authored
@@ -6492,7 +6534,7 @@ ${snowCap ? `
     }
     group.userData.civic = { areas, debugPolys, vetoed: civicVetoed };
   }
-  composeCivicAreas();
+  yield* composeCivicAreas();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -7650,7 +7692,7 @@ ${snowCap ? `
   const rockForms: RockForm[] = [];
   const rockSeats: RockSeat[] = [];
   const rockChipSum = [0, 0, 0, 0];
-  function buildRockVariants(): void {
+  function* buildRockVariants(): Generator<PropsBuildSlice, void, void> {
   // (the hitbox lane and the map-revival lane, 2026-10-11) the legacy form and the boulder forms from rockDressing.ts's
   // constructors: the drawn, collision and far forms differ only in subdivision, so every host derives the same colliders
   const lithology = rockLithologyFor(mapId);
@@ -7662,7 +7704,11 @@ ${snowCap ? `
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
     const legacy = legacyRockVariant(vi, noi);
     rockHulls.push(legacy.hull); // the collision proxy of the placement laws (the road core, the talus, the no-overlap law); the colliders are the stone's own (rockCollision.ts)
-    const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    // (battle-spikes-253) a form a step
+    const steps = boulderVariantFormSteps(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);
+    let step = steps.next();
+    while (!step.done) { yield { fine: true, progress: false, stage: 'rock-forms' }; step = steps.next(); }
+    const forms = step.value;
     paintBoulder(forms.drawn, P.rockTone, lithology, rockBaseToneFor(mapId));
     // (rock round 2) the stone's mean tone above the ground, for the chips its foot sheds (groundLitter.ts rockChipTint)
     {
@@ -7680,9 +7726,10 @@ ${snowCap ? `
       paintBoulder(forms.far, P.rockTone, lithology, rockBaseToneFor(mapId));
       rockGeosFar.push(forms.far.geometry);
     }
+    yield { fine: true, progress: false, stage: 'rock-forms' };
   }
   }
-  buildRockVariants();
+  yield* buildRockVariants();
 
   yield { fine: true, stage: 'rock-variants' };
   const rockPlacements: THREE.Matrix4[][] = [[], [], []];
@@ -7941,8 +7988,10 @@ ${snowCap ? `
     const groundAt = rockGroundAt(heightField);
     let settled = 0;
     for (const seat of rockSeats) {
-      // (a tenth of a millisecond a stone or less: a loading frame carries 48 of them at most, 5-13 ms on a desktop core)
-      if (++settled % 48 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
+      // (a tenth of a millisecond a stone or less on a desktop core, but a stone's profile is up to ~2 ms on a 4x phone,
+      // where nav-perf's census found 48 a slice past 50 ms in the Garage's background build; battle-spikes-253: 8 a slice,
+      // the build's yielder decides whether a slice ends a task)
+      if (++settled % 8 === 0) yield { fine: true, progress: false, stage: 'rock-colliders' };
       seat.profile = rockCollisionProfile(rockForms[seat.vv], seat.placement.elements, groundAt);
       // (round 3) a low stone under the drive-over line, past ROCK_LOW_STONE_M: a crushable small rock, its records its own
       const low = !seat.profile && !!(seat.profile = lowStoneProfile(rockForms[seat.vv], seat.placement.elements, groundAt));
@@ -8213,7 +8262,8 @@ ${snowCap ? `
           shade.computeVertexNormals();
           rockBedShades.push(shade);
         }
-        if (++built % 48 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
+        // (battle-spikes-253: 8 a slice, as the rock colliders, for a 4x phone's Garage background build)
+        if (++built % 8 === 0) yield { fine: true, progress: false, stage: 'rock-beds' };
       }
     }
     const out: THREE.BufferGeometry[] = [];
@@ -9087,7 +9137,7 @@ ${snowCap ? `
         if (!baked) return false;
         const seat = seatWreck(baked, x, z, yaw, false);
         if (!seat) return false;
-        commitWreck(specId, baked, seat);
+        yield* commitWreck(specId, baked, seat);
         // A rejected slope/bake is not a placed wreck. Retry this donor on the
         // next supported site instead of skipping it and later repeating one.
         wreckPickSerial++;
@@ -9135,20 +9185,33 @@ ${snowCap ? `
         if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return null;
         return { x, z, yaw, support };
       }
-      /** A seated hulk into the world: its mesh, debris, shadow proxy, solids and records. */
-      function commitWreck(specId: string, baked: WreckBake,
-        { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): void {
+      /**
+       * A seated hulk into the world: its mesh, debris, shadow proxy, solids and records. (battle-spikes-253) A step
+       * between its geometry's three transforms (nav-perf's phone Garage sweep: one 150 ms task a road wreck; a hulk is
+       * ~50k vertices, a transform ~6.5 ms on a desktop) and its debris; the bounds computed once, after the last (three's
+       * applyMatrix4 recomputes them from the moved positions, so the same bytes). Its own quaternion: a step lets another
+       * world build (the Garage's background build beside a deploy's) use the module's.
+       */
+      function* commitWreck(specId: string, baked: WreckBake,
+        { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): Generator<PropsBuildSlice, void, void> {
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         const y = support.y;
-        _quat.setFromUnitVectors(_upAxis,
+        const quat = new THREE.Quaternion().setFromUnitVectors(_upAxis,
           _posv.set(support.normalX, support.normalY, support.normalZ));
         const g = baked.geo.clone();
+        wreckGeos.push(g); // (a cancelled build's dispose reaches it between the steps)
+        const box = g.boundingBox !== null, sphere = g.boundingSphere !== null;
+        g.boundingBox = null; g.boundingSphere = null;
         g.rotateY(yaw);
-        g.applyQuaternion(_quat);
+        yield { fine: true };
+        g.applyQuaternion(quat);
+        yield { fine: true };
+        if (box) g.boundingBox = new THREE.Box3();
+        if (sphere) g.boundingSphere = new THREE.Sphere();
         g.translate(x, y, z); // settled on dead suspension across its whole footprint
-        wreckGeos.push(g);
         // (sealed lane) its drawn footprint over the ground: a parked truck stood with a hulk's barrel 0.6 m in its body
         pushWreckDrawnFootprint(g, y, 0.3);
+        yield { fine: true };
         // Secondary destruction stays inside the same static merged wreck
         // mesh: torn track runs, wheels and armor plates improve the scene
         // read without adding draw calls, animation, or live vehicle state.
@@ -9168,17 +9231,18 @@ ${snowCap ? `
           }
           debrisTris = debris.tris;
           bakedTris += debrisTris;
+          yield { fine: true };
         }
         if (baked.shadowGeo) {
           const sg = baked.shadowGeo.clone();
           sg.rotateY(yaw);
-          sg.applyQuaternion(_quat);
+          sg.applyQuaternion(quat);
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
         // Separate hull/turret solids follow the exact visible yaw and slope pose.
         // A sideways gun must never turn the empty space beside a wreck into a wall.
-        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(quat)
           .multiply(new THREE.Matrix4().makeRotationY(yaw));
         placement.setPosition(x, y, z);
         const rec = placeWreckCollision(baked.solids, placement);
@@ -9217,8 +9281,8 @@ ${snowCap ? `
           if (!seat) continue;
           const twin = seatWreck(baked, 2 * cx - seat.x, 2 * cz - seat.z, seat.yaw + Math.PI, true);
           if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < 2 * Math.hypot(baked.hx, baked.hz) + 2) continue;
-          commitWreck(specId, baked, seat);
-          commitWreck(specId, baked, twin);
+          yield* commitWreck(specId, baked, seat);
+          yield* commitWreck(specId, baked, twin);
           wreckPickSerial += tries + 1;
           return 2;
         }
@@ -10661,7 +10725,7 @@ ${snowCap ? `
   if (shellPool && pendingShells.length) {
     yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };
   }
-  joinStructureShells();
+  yield* joinStructureShells();
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -12081,7 +12145,16 @@ ${snowCap ? `
       const fracture = own ? undefined : PROP_FRACTURE[kind];
       // (a job's body is the kit's builder's own, which a settled or fractured kind would discard: not built at all then)
       const pendingJob = brokenJob && !settled && !fracture ? vehiclePool!.post(brokenJob) : null;
-      const geoB = settled ? settleLightWreck(geoI, anatomy!, fractureSeed(seed, kind))
+      // (battle-spikes-253) a settled heap a body a slice (settleLightWreckSteps)
+      let settledHeap: THREE.BufferGeometry | null = null;
+      if (settled) {
+        const settling = settleLightWreckSteps(geoI, anatomy!, fractureSeed(seed, kind));
+        for (let step = settling.next(); ; step = settling.next()) {
+          if (step.done) { settledHeap = step.value; break; }
+          yield { fine: true, progress: false, stage: 'pool-settle-' + kind };
+        }
+      }
+      const geoB = settled ? settledHeap!
         : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind))
           : pendingJob !== null ? new THREE.BufferGeometry() : legacyB!; // (the job's body replaces this at the join)
       if (legacyB && geoB !== legacyB) legacyB.dispose();
@@ -13024,7 +13097,7 @@ ${snowCap ? `
   }
   joinBrokenVehicles();
   nearMeshVertexHeights = null; // (a query after the build asks the field)
-  joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
+  yield* joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
   group.userData.streamDraws = { placement: placementDraws, main: mainDraws };
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials, mapCraterSites,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,

@@ -16,7 +16,7 @@ import { setModeWeapon } from '../../sim/modeLoadout.ts';
 import { Vector3 } from 'three';
 import type { Object3D } from 'three';
 import { createOpaqueLoadingYielder } from '../../engine/frameScheduler.ts';
-import type { FrameSchedulerOptions } from '../../engine/frameScheduler.ts';
+import type { FrameSchedulerOptions, WorkYielder } from '../../engine/frameScheduler.ts';
 import { createCombatState, mainWeaponModuleState } from '../../sim/damage.ts';
 import type { CombatState } from '../../sim/damage.ts';
 import { isUnguidedRocket, usesLauncherMuzzles } from '../../sim/launcherPolicy.ts';
@@ -28,10 +28,11 @@ import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/mat
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import {
-  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder,
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner,
 } from '../../vehicles/fleetFactory.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
+import type { DecorPlanner } from '../../vehicles/tankFactoryCore.ts';
 import { prebakeBurntSteps, prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
 import { getSpec } from '../../vehicles/specs.ts';
@@ -193,8 +194,10 @@ type CreateTankVisual = (specId: string, engineCtx: EngineContext, options: Tank
 /** A second visual of a pristine one's vehicle (fleetFactory cloneTankVisual); throws where it needs a build. */
 type CloneTankVisual = (source: TankVisual, engineCtx: EngineContext, options: TankVisualOptions) => TankVisual;
 
-/** A tank's build in steps (fleetFactory createTankSteps): the builder must be loaded. */
-type CreateTankVisualSteps = (specId: string, engineCtx: EngineContext, options: TankVisualOptions) => Generator<void, TankVisual, void>;
+/** A tank's build in steps (fleetFactory createTankSteps): the builder must be loaded. A step may yield work it waits on
+ *  off the main thread (the decoration's plan, stage 2b), which the prebuild awaits. */
+type CreateTankVisualSteps = (specId: string, engineCtx: EngineContext, options: TankVisualOptions & { decorPlanner?: DecorPlanner })
+  => Generator<void | PromiseLike<unknown>, TankVisual, void>;
 
 type PrepareVisualTextures = (
   spec: FleetTankSpec, anisotropy: number, quality: string, tick: () => Promise<void>, camo: string,
@@ -212,6 +215,12 @@ export interface BattlePresentationOptions {
   /** The seats' vehicles built beside the world load (prebuildRosterVisuals): the roster takes them before it builds. */
   prebuilt?: RosterPrebuild | null;
   rosterScheduling?: FrameSchedulerOptions;
+  /**
+   * A solo battle's room in the page (soloHostEntry.ts): the roster builds the viewer's vehicle alone, so the covered warms
+   * see one vehicle, and leaves every other seat to streamRoster, which takes them from `prebuilt` (started once the
+   * world stood) after those warms.
+   */
+  deferRoster?: boolean;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
   onVisualReady?: (actor: MatchActor) => void;
   /** The paint an actor wears (the wire carries none; the room service will). */
@@ -229,6 +238,11 @@ export interface BattlePresentation extends PresentationAdapter {
   predictionWorld(): PredictionWorld | null;
   /** Resolves once every roster actor announced so far has its builder, textures and visual (the session owner waits here after WELCOME). */
   rosterReady(): Promise<void>;
+  /**
+   * The seats a deferred roster (deferRoster) left aside, taken now from the prebuild (or built), the viewer's side first.
+   * Resolves with the actors it made (none without a deferred roster).
+   */
+  streamRoster(): Promise<MatchActor[]>;
   mount(): void;
   unmount(): void;
   /** A terminal network failure: the match resolves as a disconnect once. */
@@ -352,6 +366,11 @@ export interface RosterPrebuild {
   /** The seat's vehicle if it was built as these options name it (once); null otherwise, and a mismatch is disposed. */
   take(playerId: string, specId: string, options: TankVisualOptions): TankVisual | null;
   has(playerId: string): boolean;
+  /**
+   * Resolves once this seat's vehicle is built (or its build failed or stopped), at once for a seat the prebuild does not
+   * hold: a deferred roster's viewer (deferRoster) waits on its own seat alone, which the solo room's prebuild builds first.
+   */
+  whenBuilt?(playerId: string): Promise<void>;
   /** Settles when every build has finished or stopped. */
   readonly settled: Promise<void>;
   dispose(): void;
@@ -400,6 +419,17 @@ export function prebuildRosterVisuals(
     if (!group) groups.set(key, group = []);
     if (!group.some((other) => other.playerId === seat.playerId)) group.push(seat);
   }
+  // the seats whose builds are done (built, failed or stopped) and the waits on them (whenBuilt)
+  const members = new Set(seats.map((seat) => seat.playerId));
+  const finished = new Set<string>();
+  const waiting = new Map<string, (() => void)[]>();
+  const finish = (group: readonly RosterPrebuildSeat[]): void => {
+    for (const seat of group) {
+      finished.add(seat.playerId);
+      for (const resume of waiting.get(seat.playerId) ?? []) resume();
+      waiting.delete(seat.playerId);
+    }
+  };
   const keep = (seat: RosterPrebuildSeat, options: TankVisualOptions, visual: TankVisual): void => {
     if (stopped()) { visual.dispose(); return; }
     built.set(seat.playerId, { specId: getSpec(seat.specId).id, options, visual });
@@ -411,11 +441,13 @@ export function prebuildRosterVisuals(
     if (stopped()) return;
     await prepareVisualTextures(getSpec(source.specId), anisotropy, options.quality, () => schedule(), source.camo);
     if (stopped()) return;
-    const steps = createTankVisualSteps(source.specId, engineCtx, options);
+    // the decoration plans in the decor worker (stage 2b); the seat's own options stay as they were (kept for reuse)
+    const steps = createTankVisualSteps(source.specId, engineCtx, { ...options, decorPlanner: offThreadDecorPlanner() ?? undefined });
     let step = steps.next();
     try {
       while (!step.done) {
-        await schedule();
+        if (step.value) await step.value;
+        else await schedule();
         if (stopped()) return;
         step = steps.next();
       }
@@ -431,6 +463,7 @@ export function prebuildRosterVisuals(
       try { keep(seat, seatOptions, cloneVisual(visual, engineCtx, seatOptions)); } catch { /* this seat builds its own */ }
     }
     keep(source, options, visual);
+    finish(group);
     // the wreck warm's burnt bake for this vehicle and paint (battleWarmRuntime warmBurntVariant finds it baked)
     const burnt = `${source.specId}:${source.camo}`;
     if (burntBaked.has(burnt)) return;
@@ -443,9 +476,9 @@ export function prebuildRosterVisuals(
   const settled = (async () => {
     for (const group of groups.values()) {
       if (stopped()) return;
-      try { await buildGroup(group); } catch { /* the roster builds this group's seats */ }
+      try { await buildGroup(group); } catch { /* the roster builds this group's seats */ } finally { finish(group); }
     }
-  })();
+  })().finally(() => finish(seats));
   const dispose = (): void => {
     disposed = true;
     for (const entry of built.values()) entry.visual.dispose();
@@ -466,6 +499,8 @@ export function prebuildRosterVisuals(
       return null;
     },
     has: (playerId) => built.has(playerId),
+    whenBuilt: (playerId) => (finished.has(playerId) || !members.has(playerId) ? Promise.resolve()
+      : new Promise<void>((resolve) => { waiting.set(playerId, [...(waiting.get(playerId) ?? []), resolve]); })),
     settled,
     dispose,
   };
@@ -482,6 +517,7 @@ export function createBattlePresentation({
   prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
   prebuilt = null,
   rosterScheduling,
+  deferRoster = false,
   clearVehicleDecals = null,
   onVisualReady,
   camoFor = () => 'factory',
@@ -615,16 +651,52 @@ export function createBattlePresentation({
     return actor;
   }
 
+  /** The seats a deferred roster left for after the reveal (deferRoster; streamRoster builds them). */
+  let deferredSeats: { entries: RosterEntry[]; context: RosterContext } | null = null;
+
   async function prepareRoster(entries: readonly RosterEntry[], rosterContext: RosterContext): Promise<void> {
+    if (disposed) throw new Error('battle presentation disposed');
+    let active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
+    let deferring = false;
+    if (deferRoster && !spectator) {
+      const opening = active.filter((entry) => entry.entityId === rosterContext.ownEntityId);
+      if (opening.length) {
+        deferredSeats = { entries: active.filter((entry) => !opening.includes(entry) && !actors.has(entry.playerId)), context: rosterContext };
+        active = opening;
+        deferring = true;
+      }
+    }
+    // (a deferred roster's prebuild holds the other seats: the viewer's vehicle never waits on it; streamRoster takes them)
+    await paintSeats(active, rosterContext, createOpaqueLoadingYielder(8, 50, rosterScheduling), true, !deferring);
+    // the seats the room named and the WELCOME did not (a bot the plan guessed otherwise): their vehicles go
+    if (!deferring) prebuilt?.dispose();
+  }
+
+  async function streamRoster(): Promise<MatchActor[]> {
+    const pending = deferredSeats;
+    deferredSeats = null;
+    if (!pending || disposed) return [];
+    const ownTeam = actorsByEntity.get(pending.context.ownEntityId)?.networkTeam;
+    // the viewer's side first (the prebuild's order too)
+    const seats = [...pending.entries].sort((a, b) => Number(b.team === ownTeam) - Number(a.team === ownTeam));
+    const before = new Set(actors.keys());
+    await paintSeats(seats, pending.context, createOpaqueLoadingYielder(8, 50, rosterScheduling), false, true);
+    prebuilt?.dispose();
+    return [...actors.values()].filter((actor) => !before.has(actor.id));
+  }
+
+  async function paintSeats(
+    active: readonly RosterEntry[], rosterContext: RosterContext, schedule: WorkYielder, progress: boolean, awaitPrebuilt: boolean,
+  ): Promise<void> {
     const assertActive = () => { if (disposed) throw new Error('battle presentation disposed'); };
     assertActive();
-    const active = entries.filter((entry) => entry.team !== TEAM.SPECTATOR && entry.entityId !== NO_ENTITY);
-    const schedule = createOpaqueLoadingYielder(8, 50, rosterScheduling);
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
     // the vehicles built beside the world (prebuildRosterVisuals) first: a seat it holds is neither grouped nor built here
-    if (prebuilt) { await prebuilt.settled; assertActive(); }
+    if (prebuilt && awaitPrebuilt) { await prebuilt.settled; assertActive(); }
+    // (a deferred roster's opening) its own seats' builds alone, which the prebuild starts with
+    else if (prebuilt?.whenBuilt) { for (const entry of active) await prebuilt.whenBuilt(entry.playerId); assertActive(); }
     // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
     const shared = new Map<string, RosterEntry[]>();
     for (const entry of active) {
@@ -661,11 +733,9 @@ export function createBattlePresentation({
       // (perf-255) its far LOD under the roster's budget, rather than in the first battle frame it stands that far
       const visual = actor.visual as { prepareFarLod?(): boolean };
       if (visual.prepareFarLod) { await yieldWork(); visual.prepareFarLod(); }
-      onRosterProgress?.((index + 1) / Math.max(1, active.length), entry.specId);
+      if (progress) onRosterProgress?.((index + 1) / Math.max(1, active.length), entry.specId);
       await yieldWork();
     }
-    // the seats the room named and the WELCOME did not (a bot the plan guessed otherwise): their vehicles go
-    prebuilt?.dispose();
   }
 
   function applyRoster(entries: readonly RosterEntry[], rosterContext: RosterContext): Promise<void> {
@@ -1433,6 +1503,7 @@ export function createBattlePresentation({
     setVisibility,
     predictionWorld,
     rosterReady: () => rosterReady,
+    streamRoster,
     mount,
     unmount,
     endDisconnected,

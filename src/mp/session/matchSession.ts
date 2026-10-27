@@ -17,6 +17,7 @@
  * `ws(s)://` URL keeps the WebSocket path. Node-runnable: the transport, the host thread and the presentation are
  * injected.
  */
+import { PausableClock } from '../match/clock.ts';
 import { MatchClient } from '../match/matchClient.ts';
 import type { MatchClientOptions, MatchFrame, PredictionProvider } from '../match/matchClient.ts';
 import type { ControlSample } from '../match/inputStream.ts';
@@ -86,6 +87,11 @@ export interface MatchSessionP2pOptions {
   maxPeers?: number;
   /** The countdown a fresh match starts with (5 s; the proofs shorten it). */
   countdownS?: number;
+  /**
+   * A solo battle on a local host (soloHostEntry.ts): the countdown stands until this page has revealed the battle
+   * (releaseCountdown), as a solo battle's begins when its player first sees the field.
+   */
+  holdCountdown?: boolean;
   /** The snapshot rate the host publishes at for the near tier (SNAPSHOT_HZ by default; a divisor of the tick rate — the soak compares 20 and 30). */
   snapshotHz?: number;
   /**
@@ -194,6 +200,8 @@ export class MatchSession {
   private readonly createPresentation: MatchSessionOptions['createPresentation'];
   private readonly createTransport: (options: WebSocketTransportOptions) => Transport;
   private readonly clock: () => number;
+  /** The session's clock: it stands still while this page's own solo match is paused (setPaused). */
+  private readonly pausable: PausableClock;
   private readonly clientBuild: string;
   private readonly matchOptions: NonNullable<MatchSessionOptions['matchClient']>;
   private readonly transportOptions: NonNullable<MatchSessionOptions['transport']>;
@@ -271,7 +279,8 @@ export class MatchSession {
     this.room = room;
     this.createPresentation = createPresentation;
     this.createTransport = createTransport;
-    this.clock = clock;
+    this.pausable = new PausableClock(clock);
+    this.clock = this.pausable.now;
     this.clientBuild = clientBuild;
     this.matchOptions = matchClient;
     this.transportOptions = transport;
@@ -289,6 +298,28 @@ export class MatchSession {
   get presentationAdapter(): PresentationAdapter | null { return this.presentation?.adapter ?? null; }
   /** This seat's part in a peer-to-peer match (null on the WebSocket path or outside a match). */
   get role(): SessionRole { return this.host ? 'host' : this.peerTransport ? 'peer' : null; }
+
+  get paused(): boolean { return this.pausable.paused; }
+
+  /**
+   * Pause or resume this page's own solo match (RUST-ENGINE-DECISION §7 step 5: a solo battle on a local host): the host's
+   * actor stops at a tick boundary (MatchActor.pause) and the session's clock stands still with it, so the client's
+   * prediction, interpolation and stall clock rest. Only the host of a room whose only player is this seat pauses: false
+   * anywhere else, and nothing reaches the wire.
+   */
+  setPaused(paused: boolean): boolean {
+    const host = this.host;
+    if (!host || this.currentPhase !== 'match' || this.room.room?.players.length !== 1) return false;
+    if (paused === this.pausable.paused) return true;
+    if (paused) this.pausable.pause();
+    else this.pausable.resume();
+    host.setPaused(paused);
+    return true;
+  }
+  /** The page has revealed its solo battle: the countdown it held (p2p holdCountdown) starts now. */
+  releaseCountdown(): void {
+    this.host?.holdCountdown(false);
+  }
   get matchHost(): MatchHost | null { return this.host; }
   /** The peer-to-peer facts, written in place on every read (the status model samples it). */
   get p2p(): Readonly<SessionP2pStatus> | null {
@@ -772,7 +803,7 @@ export class MatchSession {
       const plan = planHostBoot(round.room, payload, me);
       const config: HostBootConfig = {
         roomId: round.room.roomCode, matchId: payload.matchId, generation: this.room.generation, mapId: payload.mapId, mode: payload.mode, seed: payload.seed,
-        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, resume: null,
+        seats: plan.seats, bots: plan.bots, countdownS: p2p.countdownS ?? 5, ...(p2p.holdCountdown ? { holdCountdown: true } : {}), battleLimitS: null, hostSecret: this.hostSecret, manifestBase: p2p.manifestBase ?? null, simKernelsUrl: p2p.simKernelsUrl ?? null, resume: null,
         arrangement: round.room.settings.arrangement ?? null, campaignOperationId: round.room.settings.campaignOperationId ?? null,
         ...(p2p.snapshotHz !== undefined ? { snapshotHz: p2p.snapshotHz } : {}),
       };
@@ -985,9 +1016,12 @@ export class MatchSession {
   }
 
   /** One display frame: pump the host (when this seat hosts) and the match client; the bound presentation receives the frame. */
-  update(nowMs: number, elapsedS: number): MatchFrame | null {
+  update(frameMs: number, elapsedS: number): MatchFrame | null {
+    // the caller's frame time on the session's clock (a solo pause stands it still)
+    const nowMs = this.pausable.at(frameMs);
+    const paused = this.pausable.paused;
     this.host?.pump(nowMs);
-    const frame = this.matchClient ? this.matchClient.update(nowMs, elapsedS) : null;
+    const frame = this.matchClient ? this.matchClient.update(nowMs, paused ? 0 : elapsedS) : null;
     this.watchHostSilence(nowMs);
     return frame;
   }

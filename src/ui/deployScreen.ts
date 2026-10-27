@@ -1,7 +1,7 @@
 // The Deploy screen's second half (brand-ui 243; the Premiere direction's 04-deploy page). Copyright © 2026 Kevin B. Liu.
 // It loads with the screen's sheet (deploy.css), off the game entry (owner: shell first), and mounts before the screen
 // first shows, so nothing arrives late: the last battle again, the next battle's bot tier, the toggle for the mode's own
-// settings, the core cards' badges, the load estimate, the objective map and the key hints. garage.ts owns the screen,
+// settings, the load estimate, the objective map and the key hints. garage.ts owns the screen,
 // its state and every choice; this module reads them through the host and adds its controls to the markup. It imports
 // only modules that already stand in chunks of their own: a module the entry also imports (the profile, the kit, the load
 // estimate) comes through the host, or the bundler splits it off the entry into one more request at boot.
@@ -25,6 +25,15 @@ const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
   frontier_basin: '/media/deploy-r1/op-05-1280.webp',
   delta_crossing: '/media/deploy-r1/op-06-1280.webp',
 });
+
+/**
+ * The modes with a plate background of their own (public/media/deploy-r1/<id>-1600.webp, the manifest's `-panel` rows):
+ * the core modes' a 1600x900 cut of the still their card shows, the others the media lane's HUD-free battle frames. A
+ * mode without one shows its tile picture, and so does every mode under reduced data (the mode picker has loaded the
+ * tiles already).
+ */
+const PLATE_ART: ReadonlySet<string> = new Set(['standard', 'zone_control', 'capture_the_flag', 'frontline_assault', 'drone', 'turbo_ball',
+  'mars', 'endless_horde', 'gun_game', 'juggernaut', 'infected', 'realistic', 'ac130']);
 
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }
@@ -55,6 +64,8 @@ interface DeployScreenHost {
   modeOf(stored: string): { readonly mode: string; readonly label: string } | null;
   selectedMap(): string;
   selectedMode(): string;
+  /** A mode's tile picture (its card's on the mode picker). */
+  modeArt(mode: string): string;
   /** Choose `mode` on `mapId`, then deploy. */
   again(mode: string, mapId: string): void;
   difficulty(): DeployDifficulty | null;
@@ -62,8 +73,11 @@ interface DeployScreenHost {
   lastBattle(): { readonly gameMode?: string; readonly mapId: string } | undefined;
   /** This device's load estimate in whole seconds, or null before the first load. */
   loadEstimateS(): number | null;
-  /** The kit's keycap. */
+  /** The kit's keycap, and its segmented control (the markup, its roving keys and its chosen value). */
   keycap(label: string): string;
+  segmented(options: { label: string; className: string; value: string; options: readonly { value: string; label: string }[] }): string;
+  wireRoving(group: HTMLElement, onSelect: (value: string) => void): void;
+  setRoving(group: HTMLElement, value: string): void;
   click(): void;
   /** The campaign tab's operations list (a row under the pointer or the keyboard briefs its operation), their ids in
    *  ladder order, and the operation in focus (the next to play for an empty or unknown id). */
@@ -81,10 +95,10 @@ export interface DeployScreen {
   render(): void;
   /** Draw the chosen battlefield's opening objectives for the chosen mode (the screen must be showing). */
   drawObjectives(): void;
-  /** Arrow keys: move the chosen mode across the cards and rows, by where each sits on screen. */
-  move(code: string, from: Element | null): void;
   /** Brief the campaign tab's operation in focus on the plate (the tab must be showing). */
   brief(id?: string): void;
+  /** Set `mode`'s picture behind the plate: the chosen mode, or the one a card previews (on an open screen). */
+  showMode(mode: string): void;
 }
 
 const TIERS: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
@@ -101,17 +115,17 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   again.addEventListener('click', () => { if (againOf) host.again(againOf.mode, againOf.mapId); });
 
   // the bot tier and the toggle for the mode's own settings (nations, the goal, the respawn, Mars's world), after the time
+  // (the kit's segmented control, behind the bots' glyph: three exclusive tiers, roving keys; census row deploy-difficulty)
   const tiers = document.createElement('div');
   tiers.className = 'cot-deploy-diff';
-  tiers.setAttribute('role', 'group');
-  tiers.setAttribute('aria-label', t('settings.gameplay.difficultyNext'));
   tiers.hidden = true;
-  tiers.innerHTML = uiIconSVG('battleBots', 16) + TIERS.map((tier) =>
-    `<button type="button" data-diff="${tier}" aria-pressed="false">${t(`settings.difficulty.${tier}`)}</button>`).join('');
-  tiers.addEventListener('click', (event) => {
-    const tier = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-diff]')?.dataset.diff as AiDifficulty | undefined;
+  tiers.innerHTML = uiIconSVG('battleBots', 16) + host.segmented({ label: t('settings.gameplay.difficultyNext'), className: 'cot-deploy-tier',
+    value: 'normal', options: TIERS.map((tier) => ({ value: tier, label: t(`settings.difficulty.${tier}`) })) });
+  const tierGroup = tiers.querySelector<HTMLElement>('.cot-deploy-tier')!;
+  host.wireRoving(tierGroup, (value) => {
     const control = host.difficulty();
-    if (!control || !tier || !TIERS.includes(tier)) return;
+    const tier = value as AiDifficulty;
+    if (!control || !TIERS.includes(tier)) return;
     host.click();
     control.set(tier);
     renderTiers();
@@ -127,27 +141,16 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const open = more.getAttribute('aria-expanded') !== 'true';
     more.setAttribute('aria-expanded', String(open));
     options.toggleAttribute('data-more', open);
-    // the mode's own settings open under the pickers and nothing above them moves (deploy.css holds the battlefield at
-    // its resting height); a phone's page scrolls them into view
+    // the mode's own settings open in the battlefield card's room above the pickers (deploy.css), so nothing scrolls
     options.closest('.cot-battle-details')?.classList.toggle('is-more', open);
-    // the further options and the battlefield picker take one place: opening one closes the other
-    if (open && menu.querySelector<HTMLElement>('[data-deploy-field-pop]')?.hidden === false) {
+    // in a phone's column the further options and the battlefield picker take one place: opening one closes the other (a
+    // docked Deploy opens the picker in the mode list's place, beside them)
+    if (open && menu.querySelector<HTMLElement>('.cot-battle-details [data-deploy-field-pop]')?.hidden === false) {
       menu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.click();
     }
-    if (open && document.body.dataset.cotPanels === 'overlay') {
-      requestAnimationFrame(() => (options.querySelector<HTMLElement>('.cot-mode-settings:not([hidden])') ?? options).scrollIntoView({ block: 'nearest' }));
-    }
+
   });
   options.querySelector('[data-time-options]')?.after(tiers, more);
-
-  // the core cards' badge (the direction's .badge): the mode the campaign plays (the ring says which mode is chosen)
-  const badges = [...menu.querySelectorAll<HTMLButtonElement>('.cot-deploy-cards .cot-battle-choice')].map((card) => {
-    const badge = document.createElement('span');
-    badge.className = 'cot-c-tag cot-deploy-badge';
-    badge.hidden = true;
-    card.append(badge);
-    return { card, badge };
-  });
 
   // the Deploy bar's estimate beside its key, and the objective map over the tactical map
   const estimate = document.createElement('span');
@@ -164,14 +167,26 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   keys.innerHTML = `<span>${keycap('↑')}${keycap('↓')}${keycap('←')}${keycap('→')}${t('garage.deploy.keys.move')}</span>`;
   menu.append(keys);
 
-  // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right
-  // under its card or row, one block; a wide layout keeps them on the plate
+  // a folded layout sets the plate's rules, battlefield and pickers right under the mode picker, one column; a wide
+  // layout keeps them on the plate beside it
   const details = menu.querySelector<HTMLElement>('.cot-battle-details');
   const plate = menu.querySelector<HTMLElement>('.cot-deploy-plate');
+  // the plate's background (owner 2026-10-26: "make its background be the picture of each mode"): the mode on the plate,
+  // in its picture, under the plate's grade (deploy.css .cot-deploy-art). It stands behind the rules wherever they are:
+  // the plate, or a folded layout's block under the mode picker.
+  const art = document.createElement('div');
+  art.className = 'cot-deploy-art';
+  art.setAttribute('aria-hidden', 'true');
+  const layers = [0, 1].map(() => {
+    const layer = document.createElement('img');
+    layer.alt = '';
+    layer.decoding = 'async';
+    art.append(layer);
+    return layer;
+  });
   function placeDetails(): void {
     if (!details || !plate) return;
-    const chosen = document.body.dataset.cotPanels === 'overlay'
-      ? menu.querySelector<HTMLElement>('#cot-deploy-quick .cot-battle-choice[aria-pressed="true"]') : null;
+    const chosen = document.body.dataset.cotPanels === 'overlay' ? menu.querySelector<HTMLElement>('[data-deploy-modes]') : null;
     if (chosen) {
       if (chosen.nextElementSibling !== details) chosen.after(details);
       details.classList.add('is-inline');
@@ -179,8 +194,60 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       plate.prepend(details);
       details.classList.remove('is-inline');
     }
+    const backdrop = chosen ? details : plate;
+    if (art.parentElement !== backdrop) backdrop.prepend(art);
   }
   new MutationObserver(placeDetails).observe(document.body, { attributes: true, attributeFilter: ['data-cot-panels'] });
+
+  // Two layers: the incoming fades in over the outgoing on the motion tokens (opacity alone) once its picture is decoded,
+  // then the outgoing drops out under it. A mode shown mid-fade waits for the fade, and the latest wins. A picture loads
+  // the first time its mode shows on an open screen and stays cached; under reduced data the plate takes the tile.
+  const pictures = new Map<string, Promise<void>>();
+  const picture = (url: string): Promise<void> => {
+    let ready = pictures.get(url);
+    if (!ready) {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = url;
+      // a failed load is forgotten, so the mode's next showing tries again
+      ready = image.decode().catch((error: unknown) => { pictures.delete(url); throw error; });
+      pictures.set(url, ready);
+    }
+    return ready;
+  };
+  const saveData = (): boolean => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true
+    || matchMedia('(prefers-reduced-data: reduce)').matches;
+  let front: HTMLImageElement | null = null;
+  let wanted = '';
+  let fading = false;
+  function settle(): void {
+    if (fading || !wanted || !menu.classList.contains('open')) return;
+    const mode = wanted;
+    const url = PLATE_ART.has(mode) && !saveData() ? `/media/deploy-r1/${mode}-1600.webp` : host.modeArt(mode);
+    if (front?.getAttribute('src') === url) return;
+    fading = true;
+    const outgoing = front;
+    const incoming = layers.find((layer) => layer !== outgoing)!;
+    picture(url).then(async () => {
+      if (wanted !== mode) return;
+      incoming.src = url;
+      incoming.dataset.mode = mode;
+      await incoming.decode();
+      if (wanted !== mode) return;
+      outgoing?.classList.remove('is-front');
+      incoming.classList.add('is-front', 'is-on');
+      front = incoming;
+      const fade = parseFloat(getComputedStyle(incoming).transitionDuration) * 1000 || 0;
+      await new Promise((done) => setTimeout(done, fade));
+      if (!outgoing) return;
+      // covered now: it drops to nothing at once (a fade it kept would show through the next mode it carries)
+      outgoing.classList.add('is-snap');
+      outgoing.classList.remove('is-on');
+      void getComputedStyle(outgoing).opacity;
+      outgoing.classList.remove('is-snap');
+    }).catch(() => { if (wanted === mode) wanted = ''; })
+      .finally(() => { fading = false; settle(); });
+  }
 
   // a column that scrolls says so (deploy.css .is-scrollable fades both its ends and keeps room under each fade), so a
   // column that fits shows every edge whole
@@ -204,7 +271,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const control = host.difficulty();
     tiers.hidden = !control;
     const tier = control?.get();
-    for (const button of tiers.querySelectorAll<HTMLButtonElement>('[data-diff]')) button.setAttribute('aria-pressed', String(button.dataset.diff === tier));
+    if (tier) host.setRoving(tierGroup, tier);
   }
   // the drawer and its data load with the first map to draw (they share the HUD's glyph modules: their own chunk)
   let drawer: Promise<typeof import('./deployObjectives.ts')> | null = null;
@@ -242,7 +309,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       `<div class="cot-deploy-brief-facts">${host.rules([['clock', op.clock]])}` +
       `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span>` +
       `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
-      `${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div>` +
+      `<div class="cot-deploy-brief-where">${host.rules([['map', t(`map.${op.mapId}`)]])}${host.flag(op.enemy)}</div></div>` +
       `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async"></div>` +
       `<div class="cot-deploy-brief-go">${action}</div>`;
     const mm = plateBrief.querySelector('.cot-deploy-brief-mm');
@@ -262,12 +329,8 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   });
   return {
     brief,
+    showMode(mode) { wanted = mode; settle(); },
     render() {
-      for (const { card, badge } of badges) {
-        const label = card.dataset.gameMode === 'frontline_assault' ? t('campaign.heading') : '';
-        badge.textContent = label;
-        badge.hidden = !label;
-      }
       const last = host.lastBattle();
       const offered = last?.gameMode ? host.modeOf(last.gameMode) : null;
       againOf = offered && last?.mapId && host.mapIds.has(last.mapId) ? { mode: offered.mode, mapId: last.mapId } : null;
@@ -285,30 +348,5 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       drawObjectives();
     },
     drawObjectives,
-    move(code, from) {
-      const panel = menu.querySelector<HTMLElement>('#cot-deploy-quick');
-      if (!panel || panel.hidden) return;
-      const choices = [...panel.querySelectorAll<HTMLButtonElement>('.cot-battle-choice:not([data-proving])')];
-      const current = from?.closest<HTMLButtonElement>('.cot-battle-choice:not([data-proving])')
-        ?? choices.find((choice) => choice.getAttribute('aria-pressed') === 'true') ?? choices[0];
-      if (!current) return;
-      const a = current.getBoundingClientRect();
-      const dx = code === 'ArrowLeft' ? -1 : code === 'ArrowRight' ? 1 : 0;
-      const dy = code === 'ArrowUp' ? -1 : code === 'ArrowDown' ? 1 : 0;
-      let best: HTMLButtonElement | null = null;
-      let bestScore = Infinity;
-      for (const choice of choices) {
-        if (choice === current) continue;
-        const b = choice.getBoundingClientRect();
-        const ox = b.left + b.width / 2 - (a.left + a.width / 2), oy = b.top + b.height / 2 - (a.top + a.height / 2);
-        const along = dx ? ox * dx : oy * dy;
-        if (along <= 1) continue;
-        const score = along + 2 * (dx ? Math.abs(oy) : Math.abs(ox));
-        if (score < bestScore) { bestScore = score; best = choice; }
-      }
-      if (!best) return;
-      best.click();
-      best.focus();
-    },
   };
 }

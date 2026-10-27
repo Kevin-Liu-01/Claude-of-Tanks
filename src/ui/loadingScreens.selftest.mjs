@@ -101,6 +101,11 @@ assert.match(bootSource, /if \(root && !bootGateSkipped\(\)\)/,
   'auto-skipped cold-load probes must not fetch decorative splash imagery');
 assert.doesNotMatch(bootHtml, /#cot-boot::after/,
   'the first-paint boot surface must not restore the requested-removed grid');
+// a stop notice's glyph by the kit's severity: the alert for offline and failure, the clock for slow. Its CSS shows the
+// first or the second, so a third glyph would show beside one of them (253's integration note)
+const bootAlert = bootHtml.match(/<span class="cot-boot-alert" aria-hidden="true">([\s\S]*?)<\/span>/)?.[1] ?? '';
+assert.equal((bootAlert.match(/<svg /g) || []).length, 2, 'the boot stop notice holds exactly its alert and clock glyphs');
+assert.match(bootHtml, /#cot-boot\[data-stop='slow'\] \.cot-boot-alert svg \+ svg \{ display: inline-block; \}/, 'the slow stop shows the clock');
 assert.match(bootHtml,
   /id="cot-boot" class="cot-boot-enter" data-entrance-state="playing"/,
   'boot chrome must start its one-shot entrance in the inline first paint');
@@ -116,8 +121,11 @@ const { expandTypeMarkers } = await import('./typeFaces.ts');
 const bootFaces = [...expandTypeMarkers(bootHtml).matchAll(/@font-face\{[^}]*url\([^}]*\}/g)].map(([rule]) => rule);
 assert.ok(bootFaces.length >= 3 && bootFaces.every((rule) => /font-display:swap/.test(rule)),
   'late inline game fonts must replace the fallback instead of abandoning the brand face');
-assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
-  'boot percentage updates must keep a stable reserved width');
+assert.doesNotMatch(bootHtml, /cot-boot-pct/, 'the bar alone shows the load: no percentage ticking beside it (owner, 2026-10-26)');
+assert.match(bootHtml, /\.cot-boot-fill \{[^}]*transform: scaleX\(0\);[^}]*will-change: transform;/,
+  'the boot fill moves by its compositor scaleX, so a busy main thread never freezes it');
+assert.match(bootHtml, /<!-- cot:boot-lockup -->\s*<div class="mkl" aria-hidden="true">/,
+  'the boot lockup\'s mark is the compositor-layered living mark (tools/sync-brand-marks.mjs)');
 assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   'the boot fill\'s track reserves its height in the first paint');
 assert.doesNotMatch(bootHtml, /cot-boot-ticks/, 'one continuous fill: no stage ticks');

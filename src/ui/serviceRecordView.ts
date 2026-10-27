@@ -140,7 +140,7 @@ function overview(view: ServiceRecordView): string {
   const figure = (value: number, text = num(value)) => (value ? text : '–');
   const career = `<div class="cot-record-overview"><div class="cot-record-outcomes"${datumAttr('record')}>` +
     `<div class="cot-record-outcome win-rate">${statLabel(t('garage.record.winrate'), 'statWinRate')}${record.matches ? `<strong>${pct}%</strong>` : '<strong class="is-null">–</strong>'}` +
-    `${record.matches ? splitBar(record.wins, record.draws, record.losses) : ''}</div>` +
+    `${splitBar(record.wins, record.draws, record.losses)}</div>` +
     `<div class="cot-record-outcome${record.wins ? ' win' : ''}">${statLabel(t('garage.record.victories'), 'statVictory')}<strong>${num(record.wins)}</strong></div>` +
     `<div class="cot-record-outcome${record.losses ? ' loss' : ''}">${statLabel(t('garage.record.defeats'), 'statDefeat')}<strong>${num(record.losses)}</strong></div>` +
     `<div class="cot-record-outcome">${statLabel(t('garage.record.draws'), 'statDraw')}<strong>${num(record.draws)}</strong></div></div>` +
@@ -164,9 +164,9 @@ function overview(view: ServiceRecordView): string {
     `<header class="cot-record-card-head">${uiIconSVG('lightbulb', 15)}<strong>${t('service.group.reasoning')}</strong></header>` +
     `<div class="cot-record-reason-row">${reasoningTiles}</div>` +
     `<div class="cot-record-reason-stats">` +
-    `<div>${statLabel(t('garage.record.longestChain'), 'statChain')}<b>${figure(view.stats.bestChain, t('garage.record.chainKills', { count: num(view.stats.bestChain) }))}</b></div>` +
-    `<div>${statLabel(t('garage.record.bestStreak'), 'statVictory')}<b>${figure(view.stats.bestStreak, t('garage.record.streakRounds', { count: num(view.stats.bestStreak) }))}</b></div>` +
-    `<div>${statLabel(t('garage.record.bestKills'), 'skull')}<b>${figure(view.stats.bestKills, t('garage.record.chainKills', { count: num(view.stats.bestKills) }))}</b></div></div></section>`;
+    `<div>${statLabel(t('garage.record.longestChain'), 'statChain')}<b>${figure(view.stats.bestChain)}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestStreak'), 'statVictory')}<b>${figure(view.stats.bestStreak)}</b></div>` +
+    `<div>${statLabel(t('garage.record.bestKills'), 'skull')}<b>${figure(view.stats.bestKills)}</b></div></div></section>`;
 
   const latest = MEDALS
     .filter((medal) => medal.group !== 'reasoning' && view.medals[medal.id])
@@ -243,7 +243,10 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
   const steps = battle.trace.map((step, index) => {
     const gap = index > 0 ? step.t - battle.trace[index - 1].t : Infinity;
     const linked = gap <= LINK_S;
-    return `<li class="${linked ? 'linked' : ''}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
+    // a step the next one links to carries the rail down to it (a phone's rows differ in height)
+    const next = battle.trace[index + 1];
+    const joins = !!next && next.t - step.t <= LINK_S;
+    return `<li class="${[linked ? 'linked' : '', joins ? 'joins' : ''].filter(Boolean).join(' ')}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
       `<span class="cot-record-step-time">${clock(step.t)}</span>` +
       `<b class="cot-record-trace-vehicle">${vehicleArt(step.specId, 'cot-record-trace-icon')}${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
       `<small>${uiIconSVG(killSourceIdentity(step.source)?.icon ?? killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[

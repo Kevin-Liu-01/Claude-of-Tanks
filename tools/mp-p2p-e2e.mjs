@@ -41,6 +41,7 @@
  * 2026-10-10 the entry keeps preparing while programs link and never refuses on that clock —
  * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -855,7 +856,7 @@ try {
     step('vite', { origin, cacheDir });
   }
 
-  const launchBrowser = () => puppeteer.launch({
+  const launchBrowser = () => launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=1100,720'],
@@ -885,8 +886,8 @@ try {
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
   await activate(pages.a,'.cot-multiplayer-entry');
   await waitFor(pages.a, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
-  await activate(pages.a,`.cot-play .modes [data-mode="${roomKind}"]`);
-  await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-mode="${kind}"]`)?.classList.contains('on'), `A ${roomKind} mode`, 10_000, { args: [roomKind] });
+  await activate(pages.a,`.cot-play .modes [data-value="${roomKind}"]`);
+  await waitFor(pages.a, (kind) => document.querySelector(`.cot-play .modes [data-value="${kind}"]`)?.getAttribute('aria-checked') === 'true', `A ${roomKind} mode`, 10_000, { args: [roomKind] });
   await pages.a.evaluate(() => {
     const name = document.querySelector('.cot-play [data-field="name"]');
     if (name) name.value = 'Alpha Lead';

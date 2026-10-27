@@ -5,7 +5,7 @@
 // through the sync mark; the long tasks split as the spikes do; the summary counts by cause.
 import assert from 'node:assert/strict';
 import { FRAME_STAGE_NAMES } from '../src/game/frameStages.ts';
-import { analyzeBattle, causeOfBucket, framesOf, gcOf, heapOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
+import { analyzeBattle, causeOfBucket, drawsOf, framesOf, gcOf, heapOf, mainThreadEvents, rendererMainThread } from './battle-spike-analysis.mjs';
 
 const COLUMNS = ['tMs', 'rafMs', 'workMs', 'simSteps', 'programs', 'textures', 'geometries', 'heapMB', 'simS', 'flags', 'tanks', 'shells',
   'events', 'eventMs', 'topEvent0', 'topEventMs0', 'topEvent1', 'topEventMs1', 'topEvent2', 'topEventMs2',
@@ -164,5 +164,16 @@ assert.equal(framesOf(readout)[2].stages.bots, 40);
 assert.equal(causeOfBucket('script:audioEngine'), 'audio');
 assert.equal(causeOfBucket('stage:world'), 'streaming');
 assert.equal(causeOfBucket('gl:tex'), 'upload');
+// (battle-spikes-253) the draw-count summary: rendered frames only, the post stage as the submission, per draw
+{
+  const frame = (draws, switches, used, postMs, rendered = true) => ({ rendered, draws, programSwitches: switches, programsUsed: used, stages: { post: postMs } });
+  const d = drawsOf([frame(1000, 300, 120, 20), frame(1200, 320, 125, 24), frame(800, 280, 118, 16), frame(0, 0, 0, 0, false)]);
+  assert.equal(d.frames, 3, 'unrendered frames are out');
+  assert.deepEqual(d.draws, { median: 1000, p90: 1200 });
+  assert.deepEqual(d.programsUsed, { median: 120, p90: 125 });
+  assert.deepEqual(d.submitMs, { median: 20, p90: 24 });
+  assert.equal(d.usPerDraw, 20, '20 ms over 1000 draws is 20 us a draw');
+  assert.equal(drawsOf([{ rendered: true, stages: { post: 5 } }]), null, 'a readout without the draw columns has none');
+}
 console.log(`battle-spike-analysis.selftest: 6 spikes named (bots, wreck build, GC, program link, GPU hold, destruction listeners); `
   + 'long tasks split in and out of frames; the trace clock synced; untraced readouts still name in-frame causes PASS');

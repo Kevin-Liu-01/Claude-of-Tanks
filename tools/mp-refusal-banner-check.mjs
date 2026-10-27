@@ -10,6 +10,7 @@
 //   4. Refresh calls the page reload (injected here);
 //   5. a non-version refusal (match_ended) uses the status line and leaves Rejoin to the room's rule.
 // Screenshots land in --out. Run under memcap and a timeout, on a capture-lock ticket (a headless browser).
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import { mkdir } from 'node:fs/promises';
 import net from 'node:net';
@@ -28,7 +29,7 @@ const port = await freePort();
 const server = await createServer({ root: tree, configFile: join(tree, 'vite.config.ts'), cacheDir: join(outDir, 'vite-cache'), logLevel: 'error',
   server: { host: '127.0.0.1', port, strictPort: true, hmr: false } });
 await server.listen();
-const browser = await puppeteer.launch({ headless: true, protocolTimeout: 300_000,
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 300_000,
   args: ['--no-sandbox', '--use-gl=angle', '--enable-webgl', `--window-size=${width},${height}`] });
 const failures = [];
 const check = (ok, label) => { if (!ok) failures.push(label); console.log(`${ok ? '  ok ' : 'FAIL '} ${label}`); };

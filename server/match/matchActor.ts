@@ -121,6 +121,12 @@ export interface MatchActorOptions {
   schedule?: (callback: () => void, delayMs: number) => () => void;
   /** Start the loop and the countdown immediately (default true). */
   autoStart?: boolean;
+  /**
+   * A solo battle's countdown stands until the page that hosts it has revealed the battle (holdCountdown(false)): the
+   * ticks run and the snapshots flow, and nothing moves, as solo's countdown begins when its player first sees the field.
+   * Ignored for a match with more than one human seat.
+   */
+  holdCountdown?: boolean;
   /** Ticks the actor keeps publishing after the verdict before it stops (default: the ruleset's ending hold + 2 s, at least 5 s). */
   endedLingerTicks?: number;
   /** Snapshots per second for the near tier (SNAPSHOT_HZ by default; must divide TICK_HZ). The WELCOME names it; the tiers halve and third it. */
@@ -272,6 +278,16 @@ export interface MatchActor {
   broadcastEvent(event: WireEvent): void;
   advance(nowMs?: number): number;
   start(): void;
+  /**
+   * A solo match's pause (RUST-ENGINE-DECISION §7 step 5: a solo battle on a local host): the loop stops at a tick
+   * boundary and resumes from it on a rebased clock, so every tick runs on the inputs it would have run on. Only a match
+   * with one human seat pauses (false otherwise, or when stopped or already paused); nothing of it reaches the wire.
+   */
+  pause(): boolean;
+  resume(): boolean;
+  readonly paused: boolean;
+  /** Hold or release a solo match's countdown (MatchActorOptions.holdCountdown); false for a match with more humans. */
+  holdCountdown(held: boolean): boolean;
   stop(reason?: CloseReasonId, detail?: string): void;
   stats(): MatchActorStats;
   clientStats(): ActorClientStats[];
@@ -334,10 +350,20 @@ const BACKPRESSURE_SUSTAINED_MS = 2000;
  * (matchClient sampleInputs), so no wire signal marks the end of its cover: for ENTRY_BACKPRESSURE_GRACE_MS after the
  * WELCOME, soft pressure closes the link only after ENTRY_BACKPRESSURE_SUSTAINED_MS of continuous pressure (a dead link,
  * not a busy one: a loading client drains between its synchronous steps, which resets the clock). Stale snapshots are
- * still dropped, never queued, and the hard bound still closes at once.
+ * still dropped, never queued; the hard bound in the grace is ENTRY_BACKPRESSURE_HARD_BYTES (below).
  */
 export const ENTRY_BACKPRESSURE_GRACE_MS = 120_000;
 export const ENTRY_BACKPRESSURE_SUSTAINED_MS = 60_000;
+/**
+ * (battle-spikes-253; nav-perf's rooms census on a loaded Mac, Suzhou Creek: both seats closed "server 9" after a 13-16 s
+ * covered entry) The hard bound in the entry grace. A link's pressure reaches the actor only when its page pumps
+ * (matchHost link_pressure); a page whose own entry blocks it for seconds pumps nothing, so the actor goes on publishing
+ * against a stale low reading, and when the page frees up it forwards that backlog into the link at once: the next
+ * reading is a burst past BACKPRESSURE_HARD_BYTES that the host's own blocking made, not a dead peer. In the grace such a
+ * burst takes the soft path (the snapshot dropped, the long sustained limit's clock) and only this much closes at once,
+ * still a bound on the host's memory; after the grace the hard bound is BACKPRESSURE_HARD_BYTES again.
+ */
+export const ENTRY_BACKPRESSURE_HARD_BYTES = 8 * 1024 * 1024;
 const MAX_MESSAGES_PER_SECOND = 150;
 /**
  * The message-rate limit is a token bucket (P3b, 2026-09-29): a client sends ≈ 65 messages a second (inputs at 60 Hz
@@ -366,7 +392,7 @@ function clampI16(value: number): number {
 export function createMatchActor(options: MatchActorOptions): MatchActor {
   const {
     roomId, mapId, seed, seats, bots = [], battleLimitS, world = 'dedicated', worldKernels = null,
-    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true,
+    log = silentLogger, onVerdict, now = () => performance.now(), schedule, autoStart = true, holdCountdown = false,
     endedLingerTicks, resume = null, build = MATCH_BUILD, profile, uplinkTargetBps = HOST_UPLINK_TARGET_BPS, frameView = 'observe',
   } = options;
   if (!/^[a-zA-Z0-9_-]{1,48}$/.test(roomId)) throw new TypeError('roomId must be a safe id');
@@ -388,6 +414,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   /** The continuous soft pressure that closes this client now: longer while it is still in its entry grace. */
   const sustainedPressureLimitMs = (client: ActorClient, nowMs: number): number => (
     nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? entryBackpressureSustainedMs : BACKPRESSURE_SUSTAINED_MS
+  );
+  /** The buffered bytes that close this client at once: ENTRY_BACKPRESSURE_HARD_BYTES while it is in its entry grace. */
+  const hardPressureBytes = (client: ActorClient, nowMs: number): number => (
+    nowMs - client.welcomedAtMs < entryBackpressureGraceMs ? ENTRY_BACKPRESSURE_HARD_BYTES : BACKPRESSURE_HARD_BYTES
   );
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
@@ -904,7 +934,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     rowBudgetBytes = uplinkTargetBps > 0 ? snapshotRowBudgetBytes(clients.size, snapshotHz, uplinkTargetBps) : Infinity;
     for (const client of [...clients.keys()]) {
       const buffered = client.link.bufferedAmount;
-      if (buffered > BACKPRESSURE_HARD_BYTES) {
+      if (buffered > hardPressureBytes(client, nowMs)) {
         totals.backpressureCloses++;
         detach(client, CLOSE_REASON.BACKPRESSURE, `${buffered} bytes buffered`);
         continue;
@@ -992,13 +1022,15 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     // battle endings (2026-09-25): the authority keeps stepping through the ruleset's post-verdict hold
     // (guns silenced, shells in flight landing, the mode controller settling — authoritativeMatch endingHoldS)
     // and stands still by itself once the hold expires, so the ending replay or camera beat plays over a live field.
+    // (a held countdown: the tick runs, its clock does not; the countdown alone reads countdownElapsedS)
+    const countdownElapsedS = countdownHeld ? 0 : dt;
     if (profile) {
       const stepped = profile.clock();
-      authority.step({ dt, inputs: collectInputs(tick) });
+      authority.step({ dt, countdownElapsedS, inputs: collectInputs(tick) });
       profile.stepMs += profile.clock() - stepped;
       profile.ticks++;
     } else {
-      authority.step({ dt, inputs: collectInputs(tick) });
+      authority.step({ dt, countdownElapsedS, inputs: collectInputs(tick) });
     }
     if (!ended) lagComp.record(tick);
     if (profile) {
@@ -1023,9 +1055,32 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   });
 
   function start(): void {
-    if (stopped) return;
+    if (stopped || paused) return;
     if (authority.phase === 'loading') authority.onMatchReady();
     loop.start();
+  }
+
+  let countdownHeld = holdCountdown && seats.length === 1;
+  function holdMatchCountdown(held: boolean): boolean {
+    if (seats.length !== 1) return false;
+    countdownHeld = held;
+    return true;
+  }
+
+  let paused = false;
+  function pauseMatch(): boolean {
+    if (stopped || paused || seats.length !== 1 || !loop.running) return false;
+    paused = true;
+    loop.stop();
+    actorLog.info('actor paused', { tick: loop.tick });
+    return true;
+  }
+  function resumeMatch(): boolean {
+    if (stopped || !paused) return false;
+    paused = false;
+    loop.start();
+    actorLog.info('actor resumed', { tick: loop.tick });
+    return true;
   }
 
   function stop(reason: CloseReasonId = CLOSE_REASON.ROOM_CLOSED, detail = ''): void {
@@ -1180,6 +1235,10 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),
     start,
+    pause: pauseMatch,
+    resume: resumeMatch,
+    holdCountdown: holdMatchCountdown,
+    get paused() { return paused; },
     stop,
     stats,
     clientStats,

@@ -3,7 +3,7 @@
 // registered tank fail the release gate until that output is generated.
 
 import { flagIconCode } from '../ui/flagCodes.ts';
-import { matchTierNumeral, tankTier } from './tier.ts';
+import { displayTier, tierNumeral } from '../techTree/tiers.ts';
 import { tankLabelRecord } from './tankLabels.ts';
 import { vehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { ExternalWeaponStock } from '../sim/armor.ts';
@@ -108,9 +108,10 @@ export const TANK_ASSET_VIEWS = Object.freeze({
   side: Object.freeze({ suffix: 'side', ext: 'webp', width: 512, height: 256, role: 'side view' }),
   topSilhouette: Object.freeze({ suffix: 'top_silhouette', ext: 'png', width: 128, height: 128, role: 'top silhouette' }),
   sideSilhouette: Object.freeze({ suffix: 'side_silhouette', ext: 'png', width: 256, height: 128, role: 'side silhouette' }),
-  armorSide: Object.freeze({ suffix: 'armor_side', ext: 'png', width: 512, height: 256, role: 'penetration/armor diagram' }),
-  modulesSide: Object.freeze({ suffix: 'modules_side', ext: 'png', width: 512, height: 256, role: 'module diagram' }),
-  crewSide: Object.freeze({ suffix: 'crew_side', ext: 'png', width: 512, height: 256, role: 'crew diagram' }),
+  // 253: the technical diagrams render at 2x with no text (their labels are DOM text from technicalLabelsFile)
+  armorSide: Object.freeze({ suffix: 'armor_side', ext: 'webp', width: 1024, height: 512, role: 'penetration/armor diagram' }),
+  modulesSide: Object.freeze({ suffix: 'modules_side', ext: 'webp', width: 1024, height: 512, role: 'module diagram' }),
+  crewSide: Object.freeze({ suffix: 'crew_side', ext: 'webp', width: 1024, height: 512, role: 'crew diagram' }),
   markings: Object.freeze({ suffix: 'markings', ext: 'png', width: 256, height: 128, role: 'national insignia and tactical designation' }),
 });
 
@@ -120,6 +121,12 @@ export function tankAssetFile(id: string, view: TankAssetView): string {
   const def = TANK_ASSET_VIEWS[view];
   if (!def) throw new Error(`Unknown tank asset view: ${view}`);
   return `${id}_${def.suffix}.${def.ext}`;
+}
+
+/** The technical diagrams' label sidecar (schema 1, src/ui/technicalDiagramLabels.ts): written with any of the three
+ * diagram views and recorded beside them as the tank's `technicalLabels` asset. */
+export function technicalLabelsFile(id: string): string {
+  return `${id}_technical.json`;
 }
 
 export function requiredTankAssetFiles(id: string): Record<TankAssetView, string> {
@@ -190,9 +197,9 @@ export function tankAssetMetadata(spec: TankAssetSpec) {
     nation: spec.nation,
     countryCode: flagIconCode(spec.nation),
     era: spec.era,
-    // the matchmaking tier until the technical diagrams this metadata heads are re-rendered with the shown tier
-    tier: tankTier(spec.id),
-    tierNumeral: matchTierNumeral(spec.id),
+    // the shown tier (253: the technical diagrams' rasters carry no text; their header reads this record)
+    tier: displayTier(spec.id),
+    tierNumeral: tierNumeral(spec.id),
     dimensionsM: {
       hullLength: rounded(Number(spec.dims && spec.dims.hullLengthM)),
       overallLength: rounded(Number(spec.dims && spec.dims.overallLengthM)),

@@ -1,4 +1,5 @@
 // Production HUD regression. Execute via capture-command.mjs shared lease.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -13,7 +14,7 @@ const server=await createServer({server:{host:'127.0.0.1',port:5378,hmr:false},l
 const out=resolve('.qa-dev/weapon-readout');await mkdir(out,{recursive:true});
 let browser;
 try {
- await server.listen();browser=await chromium.launch({channel:'chrome',headless:true,args:['--disable-gpu']});
+ await server.listen();browser=await launchGuardedBrowser(chromium, {channel:'chrome',headless:true,args:['--disable-gpu']});
  for(const [name,width,height,touch=false] of [['desktop',1440,900],['short',844,390],['phone',390,844],['touch',667,375,true]]) {
   const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,reducedMotion:'reduce'});
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));

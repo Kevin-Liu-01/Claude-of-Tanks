@@ -3,6 +3,7 @@
 // renders normalized binary masks from nine standard views and reports
 // overlap for the whole vehicle, hull, upper assembly, gun overhang and track
 // profile. This is a QA oracle only; no source vertices enter game code.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -61,7 +62,7 @@ try {
     server: toolServerOptions(6700, { span: 220 }),
   });
   await server.listen();
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless:'new',
     args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage'],
   });

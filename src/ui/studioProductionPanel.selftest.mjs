@@ -6,8 +6,12 @@ import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import { PRODUCTION_PRESETS, productionAspect } from '../game/studioProduction.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
+import { notice } from './components/notice.ts';
+import { wireRovingKeys } from './components/components.ts';
+import { pickerText } from './pickerText.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
+import { uiIconSVG } from './uiIcons.ts';
 
 // Exercise the actual DOM adapter with a small browser port. The renderer remains
 // outside this test: only user intent, asynchronous locking and exact export
@@ -65,8 +69,20 @@ const fetch = (url) => {
 };
 const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
-const context = { document, window, Event, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
-  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink };
+// the picker menu (pickerMenu.ts) needs the top layer: a stand-in records its options and chooses through them
+const menus = {};
+const createPickerMenu = (host, options) => {
+  const trigger = document.createElement('button');
+  trigger.dataset.pickerMenu = options.id;
+  host.append(trigger);
+  const menu = { options, trigger, value: options.value, setItems() {}, setValue(id) { menu.value = id; },
+    setDisabled(disabled) { trigger.disabled = disabled; }, open() {}, close() {}, dispose() {},
+    choose(id) { menu.value = id; options.onChoose(options.items.find((item) => item.id === id) ?? { id, name: id }); } };
+  menus[options.id] = menu;
+  return menu;
+};
+const context = { document, window, Event, createPickerMenu, pickerText, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
+  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;
@@ -99,7 +115,9 @@ const integratedGroups = [...panelSource.matchAll(/const (\w+Group) = panelGroup
 });
 assert.equal(integratedGroups.length, 5);
 for (const id of integratedGroups) { const group = new Element('section'); group.dataset.group = id; dock.append(group); }
-const panel = context.mount(S, root, dock, () => calls.push(['refresh']));
+// what an action did reaches the Studio's toast (the kit's notices), never a status line of the panel's own
+const notices = [];
+const panel = context.mount(S, root, dock, () => calls.push(['refresh']), { notice: (...args) => notices.push(args) });
 const all = () => root.querySelectorAll('*');
 const byData = (key, value = '') => all().find(element => element.dataset[key] === value);
 const byText = text => all().find(element => element.tagName === 'button' && element.textContent === text);
@@ -140,7 +158,7 @@ streetTake.fire('click'); await tick(); await tick();
 assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s01-street.scene.json', 'a card fetches its own scene');
 assert.deepEqual(calls.filter(call => call[0] === 'load').map(call => call[1]), [takeScene], 'the take is staged through the Studio\'s load');
 assert.equal(streetTake.attributes['aria-pressed'], 'true', 'the staged take is marked');
-assert.ok(all().some(element => element.textContent === 'Take staged as filmed. Play it, change it, or film it again.'));
+assert.deepEqual(notices.at(-1), ['Take staged as filmed. Play it, change it, or film it again.', 'info']);
 byData('siteTake', 's02-foreign').fire('click'); await tick(); await tick();
 assert.ok(!fetches.includes('https://example.com/take.scene.json'), 'a scene on another origin is refused');
 assert.equal(calls.filter(call => call[0] === 'load').length, 1);
@@ -152,7 +170,7 @@ const fleetSection = all().find(element => element.className === 'production-tak
 assert.equal(fleetSection.hidden, false, 'an index with fleet takes shows the finder');
 assert.equal(byData('fleetSearch').attributes['aria-description'], t('studio.director.fleet.intro', { count: 9 }), 'its search counts the tanks');
 const fleetCards = () => all().filter(element => element.dataset.siteTake?.includes('-fleet-'));
-const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-status').textContent;
+const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-hint').textContent;
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013'], 'the Garage tank\'s take, alone');
 assert.equal(fleetStatus(), t('studio.director.fleet.yourTank'));
 const search = byData('fleetSearch');
@@ -170,10 +188,11 @@ assert.equal(fleetCards().length, 0);
 assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
 search.value = ''; search.fire('input');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013']);
-const featuredTank = byData('productionTank');
-featuredTank.value = 'leo2a4'; featuredTank.fire('change');
+const featuredTank = menus['studio-featured-tank'];
+assert.equal(featuredTank.options.items[0].id, 'default', "the Director's default leads");
+featuredTank.choose('leo2a4');
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a4'], 'the Director\'s featured tank comes first');
-featuredTank.value = ''; featuredTank.fire('change');
+featuredTank.choose('default');
 stored.clear(); search.fire('input');
 assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
 assert.equal(fleetStatus(), '', 'and no helper line: the placeholder says what to type');
@@ -201,10 +220,13 @@ assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1
   assert.equal(current[0].vehicle, 't90sm', 'a current index is read as written');
 }
 byData('productionPreset', 'two').fire('click');
-const frame = byData('productionFormat'); frame.value = 'portrait'; frame.fire('change');
+// the frame and the lens are the kit's segmented controls (a radio per option), every choice in view
+const frame = byData('productionFormat', 'portrait'); frame.fire('click');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');
-assert.deepEqual(frame.children.map((option) => option.value), ['landscape', 'portrait', 'square', 'card'], 'the frames include the 1.91:1 card');
-byData('productionTank').value = 'm1a1_abrams_hc';
+assert.equal(frame.attributes['aria-checked'], 'true', 'the chosen frame is the checked radio');
+assert.deepEqual(all().filter((element) => element.dataset.productionFormat).map((element) => element.dataset.productionFormat),
+  ['landscape', 'portrait', 'square', 'card'], 'the frames include the 1.91:1 card');
+featuredTank.choose('m1a1_abrams_hc');
 const stage = byData('productionStage'); stage.fire('click'); stage.fire('click');
 assert.equal(calls.filter(call => call[0] === 'stage').length, 1, 'one scene transaction despite repeated clicks');
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'stage')[1]), JSON.stringify({ presetId: 'two', format: 'portrait', vehicleId: 'm1a1_abrams_hc' }));
@@ -213,7 +235,8 @@ resolveStage(); await tick();
 assert.equal(stage.disabled, false, 'staging releases its controls on success');
 stage.fire('click'); rejectStage(new Error('GPU unavailable')); await tick();
 assert.equal(stage.disabled, false, 'staging releases its controls on rejection');
-assert.ok(all().some(element => element.textContent === 'GPU unavailable' && element.dataset.error === 'true'));
+assert.deepEqual(notices.at(-1), ['GPU unavailable', 'error'], 'a failure is the toast\'s error');
+assert.ok(!all().some(element => /production-status/.test(element.className ?? '')), 'the panel keeps no status line of its own');
 byText('Capture PNG').fire('click'); await tick();
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'capture')[1]), JSON.stringify({ width: 2160, height: 3840, download: true }));
 byText('Record film').fire('click'); await tick();
@@ -221,7 +244,7 @@ assert.equal(JSON.stringify(calls.find(call => call[0] === 'video')[1]), JSON.st
 byData('productionShot', 'b').fire('click'); assert.ok(calls.some(call => call[0] === 'seek' && call[1] === 4000));
 byData('productionRig', 'rear').fire('click');
 assert.deepEqual(calls.slice(-4).map(call => call[0]), ['pause', 'rig', 'saveCamera', 'refresh'], 'rig pose is saved before refresh can resample the timeline');
-const lens = byData('productionLens'); lens.value = '28'; lens.fire('change');
+const lens = byData('productionLens', '28'); lens.fire('click');
 assert.deepEqual(calls.slice(-4).map(call => call[0]), ['pause', 'camera', 'saveCamera', 'refresh'], 'lens edit is saved at the playhead before timeline refresh');
 const shots = all().find(element => element.className === 'production-shots'); const count = shots.replacements;
 panel.refresh(); panel.refresh(); assert.equal(shots.replacements, count, 'unchanged timeline does not rebuild shot buttons');
@@ -231,7 +254,7 @@ assert.equal(byText('Hide controls').disabled, true, 'recording keeps a stable n
 assert.equal(byData('siteTake', 's01-street').disabled, true, 'a take cannot be loaded over a recording');
 assert.ok(fleetCards().length && fleetCards().every(card => card.disabled), 'nor a tank\'s own take');
 S.productionFormat = 'square'; panel.refresh();
-assert.equal(frame.value, 'square', 'loading or scripting a different format synchronizes the export selector');
+assert.equal(byData('productionFormat', 'square').attributes['aria-checked'], 'true', 'loading or scripting a different format synchronizes the export selector');
 const zhCatalog = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
 assert.equal(context.label('director'), 'Director');
 assert.equal(zhCatalog['studio.director.ui.director'], '导演台', 'the Director\'s words are in both catalogs');

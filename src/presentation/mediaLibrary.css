@@ -12,12 +12,24 @@
   min-width:0;color:var(--library-ink)
 }
 .media-library-head{display:grid;gap:14px;margin:0 0 22px}
-.media-library-tabs{display:flex;flex-wrap:wrap;gap:6px}
-.media-library-tabs button{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid var(--library-line);background:var(--surface-plate);color:var(--library-muted);font-family:inherit;font-size:var(--fs-11);font-weight:700;line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;cursor:pointer;transition:color var(--dur-fast) ease,border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
-.media-library-tabs button[aria-selected='true']{color:var(--ink-on-accent);border-color:var(--library-amber);background:var(--library-amber)}
 .media-library-set{margin:0 0 26px;content-visibility:auto;contain-intrinsic-size:auto 420px}
 .media-library-set h4{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 9px;font-size:var(--fs-11);letter-spacing:var(--track-label);text-transform:uppercase}
-.media-library-grid{display:flex;flex-wrap:wrap;gap:3px}
+.media-library-grid{display:flex;flex-wrap:wrap;gap:var(--s2)}
+/* the collections are one strip at every width, its rule on the column's edges; a strip longer than the column scrolls
+   sideways and fades its cut end */
+.media-library-head{position:relative}
+.media-library-tabs{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+/* a strip longer than the column fades its end under a more button (the kit picker's chips do the same), which steps the
+   strip on and turns back at its end */
+.media-library-tabs.is-over{padding-right:calc(var(--cot-control-floor,44px) + var(--s2));
+  mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--cot-control-floor,44px) - var(--s6)),transparent calc(100% - var(--cot-control-floor,44px)))}
+/* the more button stands on the strip's rule at every size, as the tabs do */
+.media-library-more{position:absolute;right:0;bottom:1px}
+@media (pointer:coarse){.media-library-more{--h:var(--cot-control-floor,44px)}}
+.media-library-more[hidden]{display:none}
+.media-library-more.is-back svg{transform:scaleX(-1)}
+.media-library-tabs .cot-c-tabs__tab{flex:none}
+.media-library-tabs::-webkit-scrollbar{display:none}
 .media-library-thumb{flex:none;padding:0;border:0;background-color:var(--surface-scene);background-repeat:no-repeat;cursor:zoom-in;outline-offset:2px}
 .media-library-thumb:focus-visible{outline:2px solid var(--library-amber)}
 .media-library-wait{margin:0;padding:28px 0;color:var(--library-muted);font:500 var(--fs-11)/1.4 var(--font-mono);letter-spacing:var(--track-label-s);text-transform:uppercase}
@@ -25,7 +37,7 @@
 .media-library-viewer::backdrop{background:var(--scrim);backdrop-filter:blur(10px)}
 .media-library-viewer figure{margin:0;display:grid;grid-template-rows:minmax(0,1fr) auto;max-height:94vh}
 .media-library-stage{position:relative;display:grid;place-items:center;min-height:min(40vh,320px);background:var(--surface-scene)}
-.media-library-stage img{display:block;width:auto;max-width:100%;height:auto;max-height:82vh;object-fit:contain}
+.media-library-stage img{display:block;width:100%;height:auto;min-height:min(40vh,320px);max-height:82vh;object-fit:cover;object-position:center}
 .media-library-stage .media-library-wait{position:absolute;inset:auto 0 0;padding:14px 18px;text-align:center}
 .media-library-viewer figcaption{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border-top:1px solid var(--library-line);background:var(--library-panel)}
 .media-library-viewer figcaption div:first-child{min-width:0}
@@ -36,18 +48,17 @@
 .media-library-controls output{min-width:76px;color:var(--library-muted);font:500 var(--fs-11)/1 var(--font-mono);text-align:center}
 .media-library-controls button{display:inline-grid;place-items:center;min-width:42px;min-height:42px;border:1px solid var(--library-line);background:transparent;color:var(--library-gold);cursor:pointer;transition:border-color var(--dur-fast) ease,background-color var(--dur-fast) ease}
 @media (width < 768px){
-:root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
+:root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
 :root body .media-library-tabs::-webkit-scrollbar{display:none}
-:root body .media-library-tabs button{flex:none}
+:root body .media-library-tabs .cot-c-tabs__tab{flex:none}
 }
 @media (width < 520px){
 :root body .media-library-viewer figcaption{flex-wrap:wrap;padding:12px}
 }
-@media ((pointer: coarse) or (hover: none)){:root body .media-library-tabs button,:root body .media-library-controls button{min-height:44px}}
+@media ((pointer: coarse) or (hover: none)){:root body .media-library-controls button{min-height:44px}}
 @media(hover:hover) and (pointer:fine){
-  .media-library-tabs button:hover{color:var(--library-ink);border-color:var(--library-line-strong)}
   .media-library-thumb:hover{filter:brightness(1.18)}
   .media-library-controls button:hover{border-color:var(--library-amber);background:var(--accent-wash)}
 }
-@media(prefers-reduced-motion:reduce){.media-library-tabs button,.media-library-thumb,.media-library-controls button{transition:none}}
+@media(prefers-reduced-motion:reduce){.media-library-thumb,.media-library-controls button{transition:none}}
 }

@@ -93,12 +93,12 @@ Decided on 10-23, carrying the direction forward. The name stays Claude of Tanks
 
 | Tier | Asset | Uses |
 |---|---|---|
-| Wordmark | CLAUDE —of— TANKS, Chakra Petch outlined to paths: `public/brand/wordmark.svg`, `-paper`, `-mono`, `-stacked`; inline as `BRAND_WORDMARK_HTML` (`src/ui/brandMark.ts` over `src/ui/brandWordmark.ts`) | Every lockup; never live text |
-| Lockup | `public/brand/lockup.svg` (`-paper`): the mark, a gap and the wordmark, as the direction's nav sets them | Nav, cards, OG |
-| Ceremonial | `public/brand/title-card.svg`: the chevron over the stacked wordmark (the crest's old place) | Boot, end cards, film bumpers, press |
-| Badge | `public/brand/mark.svg`, `brandMarkSVG()`: the Bracket Chevron | Game bar, rails, the transition stamp, loaders |
-| Monogram | `public/brand/favicon.svg`: brackets at 2.5 units on graphite | Tabs, `favicon.ico`, PNG 32/192 |
-| App icon | `public/brand/app-icon.svg`: the chevron at 60 % on graphite | `apple-touch-icon.png`, maskable 192/512 |
+| Wordmark | CLAUDE —of— TANKS, Chakra Petch outlined to paths: `public/brand/wordmark.svg`, `-paper`, `-mono`, always on one line (owner, 2026-10-26: never the words stacked); inline as `BRAND_WORDMARK_HTML` (`src/ui/brandMark.ts` over `src/ui/brandWordmark.ts`) | Every lockup; never live text |
+| Lockup | `public/brand/lockup.svg` (`-paper`): the mark, a gap and the wordmark, as the direction's nav sets them; `lockup-tall.svg` (`-paper`): the mark over the one-line wordmark for a square or tall space; a narrow space scales either down | Nav, cards, OG, signage |
+| Ceremonial | `public/brand/title-card.svg`: the living mark over the one-line wordmark; the boot card draws the same lockup with the mark on compositor layers (`brandMarkLiveHTML`) | Boot, end cards, film bumpers, press |
+| Badge | `public/brand/mark.svg`, `brandMarkSVG()`: the commander, the Claude Code mascot in the hatch of a tank advancing right | Game bar, rails, the transition stamp, loaders |
+| Tab icon | `public/brand/favicon.svg` and `favicon-16.svg`: the mark hand-hinted on a 32 and a 16 cell grid on graphite; `favicon-mark.svg` above 32 px | Tabs, bookmarks, `favicon.ico` 16/32/48, PNG 16/32/48/192 |
+| App icon | `public/brand/app-icon.svg`: the mark at 78 % on graphite (`maskable.svg` at 66 %) | `apple-touch-icon.png`, icon 192/512, maskable 192/512, iOS and macOS sets |
 
 - **Colour:** paper words with the tungsten "of" on graphite; graphite words with tungsten-600 on paper; one ink for
   watermarks.

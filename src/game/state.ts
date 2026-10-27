@@ -46,7 +46,7 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty,
   rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
   rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
@@ -55,7 +55,7 @@ import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
 } from './teamArrangement.ts';
 // The roster plan is pure and shared with the garage boot (main.ts), which must not import this module.
-import { battleEnemyNations, battleRosterPlan } from './soloRosterPlan.ts';
+import { battleRosterPlan } from './soloRosterPlan.ts';
 import { createJevCommander, createJevFetchTransport, type JevBattleView, type JevCommander } from './jevCommander.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
@@ -66,7 +66,6 @@ import type { ModuleId } from '../sim/moduleCatalog.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { validatedContactGeometry } from '../sim/trackContact.ts';
-import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, requestTankJump, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
   applyShellKnock, shellKnockMps, IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, type RecoilLaunch,
@@ -164,6 +163,7 @@ import {
   pickBattleParticipants,
   pickNationalBattle,
   rememberBattleBots,
+  splitBattleAllies,
   type BattleTeamNations,
 } from './rosterState.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
@@ -816,62 +816,11 @@ function chooseBattleAllies(
   playerSpecId: string,
   randomBattle: boolean,
 ): SoloEntity[] {
-  const candidates = game.tanks.filter((entity) => entity !== game.tanks[0]);
-  if (!randomBattle) {
-    // The staged screenshot battle takes the first three roster entities as
-    // allies; the archived WWII preference list retired with those hulls
-    // (2026-09-23) and never matched a production roster.
-    return candidates.slice(0, 3);
-  }
-  // RULESETS (2026-09-14): the mode sets the split — Horde fields two allies, Frontline Assault
-  // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.
-  // MONO-NATION: the planner named the allied seats (pickNationalBattle); they are taken verbatim
-  if (game._nationalAllyIds) return candidates.filter((entity) => game._nationalAllyIds!.has(entity.id));
-  const exactCap = soloDebugFlags()?.rosterExact && candidates.length < 13 ? 3 : 6;
-  const allyCap = Math.min(rulesetAllyCap(game.ruleset, exactCap), Math.max(0, candidates.length - 1));
-  const enemyCap = candidates.length - allyCap;
-  const byTier = candidates.slice()
-    .sort((a, b) => tankTier(b.specId) - tankTier(a.specId));
-  const allies: SoloEntity[] = [];
-  let allyTierSum = tankTier(playerSpecId);
-  let enemyTierSum = 0;
-  // wave modes (same-nation waves, owner 2026-09-17/18): the roster picker already leads the field with
-  // the enemy pool — `formationLead` seats of ONE nation (the operation's, the arranged one, or the
-  // battle's default wave nation) — so those seats ARE the enemy side and the allied bots come from the
-  // seats behind them. The tier-balanced pass below used to split the whole field and leaked formation
-  // vehicles to the allies while the fillers fought as hostiles (production: 13 UK + 1 Russian defender).
-  // campaign / arranged standard battles: the formation fills the enemy side first by spec nation.
-  const enemyNations = battleEnemyNations(game.ruleset, game.campaignOperationId);
-  const formationLead = battleRosterPlan(game.ruleset, game.campaignOperationId, randomBattle).formationLead;
-  const formation = new Set<SoloEntity>();
-  if (formationLead != null) {
-    for (const entity of candidates.slice(0, Math.min(enemyCap, Math.max(0, Math.floor(formationLead))))) {
-      formation.add(entity);
-      enemyTierSum += tankTier(entity.specId);
-    }
-  } else if (enemyNations.length) {
-    for (const entity of byTier) {
-      if (formation.size >= enemyCap) break;
-      if (!enemyNations.includes(String(entity.spec.nation || ''))) continue;
-      formation.add(entity);
-      enemyTierSum += tankTier(entity.specId);
-    }
-  }
-  let enemyCount = formation.size;
-  for (const entity of byTier) {
-    if (formation.has(entity)) continue;
-    const tier = tankTier(entity.specId);
-    const allyRoom = allies.length < allyCap;
-    const enemyRoom = enemyCount < enemyCap;
-    if (allyRoom && (!enemyRoom || allyTierSum < enemyTierSum)) {
-      allies.push(entity);
-      allyTierSum += tier;
-    } else {
-      enemyCount++;
-      enemyTierSum += tier;
-    }
-  }
-  return allies;
+  // (rosterState.splitBattleAllies: the same split draws the load card's teams before the world, planBattleSeats)
+  return splitBattleAllies(game.tanks.filter((entity) => entity !== game.tanks[0]), {
+    playerSpecId, randomBattle, ruleset: game.ruleset, campaignOperationId: game.campaignOperationId,
+    nationalAllyIds: game._nationalAllyIds ?? null,
+  });
 }
 
 type SoloAiDependencies = Parameters<typeof createAI>[1]['deps'];
@@ -3344,6 +3293,16 @@ const _aerialWorld: AerialWorldQuery = {
 };
 
 /**
+ * (battle-spikes-253) The drones' id and launch callbacks, made outside simStep: closures made inside it shared the
+ * call's context with every variable any of its closures reads — the step's collider among them — so the callbacks the
+ * first battle made kept that battle's collision bundle, and through it its world, alive in every Garage after (the
+ * memory probe's retainer path: __DEBUG.game.aerialCallbacks.nextId → context → collider.collide → the world).
+ */
+function createAerialCallbacks(game: SoloGameState): NonNullable<SoloGameState['aerialCallbacks']> {
+  return { nextId: () => game.nextShellId++, launch: (shell) => { game.shells.push(shell); } };
+}
+
+/**
  * One fixed simulation step. Ordering is authoritative: sensing and AI write
  * input before movement; contacts resolve before weapons; projectiles resolve
  * before damage timers; objective state settles before the match verdict.
@@ -3370,7 +3329,7 @@ export function simStep(
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
   stages?.stage(FRAME_STAGE.aerial);
-  const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
+  const aerialCallbacks = game.aerialCallbacks ??= createAerialCallbacks(game);
   // Drones fly the match-owned world collision (the shells' own raycast): look-ahead avoidance, never through it.
   _aerialWorldGame = game; _aerialWorldSource = world;
   for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch, _aerialWorld);

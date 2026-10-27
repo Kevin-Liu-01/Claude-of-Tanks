@@ -126,7 +126,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   clearButton.append(clearLabel);
   const closeButton = document.createElement('button');
   closeButton.type = 'button';
-  closeButton.className = 'cot-facet-close';
+  closeButton.className = 'cot-c-btn cot-c-btn--icon cot-c-btn--36 cot-c-btn--ghost cot-facet-close';
   closeButton.setAttribute('aria-label', t('fleet.filter.close'));
   closeButton.innerHTML = uiIconSVG('close', 18);
 
@@ -162,6 +162,11 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     wrap.dataset.more = max <= 1 ? '' : `${row.scrollLeft > 1 ? 'l' : ''}${row.scrollLeft < max - 1 ? 'r' : ''}`;
   };
   const updateCues = (): void => { for (const row of rowElements) updateCue(row); };
+  // a row measured while the panel was still unplaced read no overflow, and its cut chip showed no fade (the r17 critic
+  // at 844x390): each row reads its cue again once it has its size
+  const cueObserver = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
+    for (const entry of entries) updateCue(entry.target as HTMLElement);
+  }) : null;
   const rows = (Object.keys(GARAGE_FACET_GROUPS) as GarageFacetGroup[]).map((group) => {
     const counts = garageFacetOptionCounts(index, EMPTY_GARAGE_FACET_STATE, group);
     const row = document.createElement('div');
@@ -198,6 +203,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     }
     optionButtons.set(group, buttons);
     row.addEventListener('scroll', () => updateCue(row), { passive: true });
+    cueObserver?.observe(row);
     rowElements.push(row);
     const wrap = document.createElement('div');
     wrap.className = 'cot-facet-rowwrap';
@@ -261,8 +267,14 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     // and on a phone held upright it stops under the header too (wrapped facet rows made it tall enough to cover the
     // mark and the settings); only a short landscape phone takes the header's height (below)
     const short = document.body.dataset.cotHeight === 'short';
-    const ceiling = !short
-      ? (document.querySelector('.cot-gbar')?.getBoundingClientRect().bottom ?? 8) + 8 : 16;
+    // the header's lowest visible edge, whichever of its parts a layout shows (a phone hides the nav bar and keeps the
+    // mark and the tools), and a clear gap under it (the gauntlet 10-25: flush against the active tab's underline)
+    let headerBottom = 0;
+    for (const el of document.querySelectorAll<HTMLElement>('.cot-gbar, .cot-brand-rail, .cot-nav')) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) headerBottom = Math.max(headerBottom, r.bottom);
+    }
+    const ceiling = !short ? headerBottom + 12 : 16;
     const fitHeight = Math.round(Math.max(160, Math.min(520, top - ceiling)));
     panel.style.maxHeight = `${fitHeight}px`;
     // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a

@@ -21,7 +21,8 @@ import {
 // layer and turret+gun layer separately), replacing the baked one-piece
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
-import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner } from '../vehicles/fleetFactory.ts';
+import { nextFrame } from '../engine/frameScheduler.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
 import { applyTopMaskCoverage } from './topMaskCoverage.ts';
@@ -695,6 +696,34 @@ function watchMaskSourceLifetime(root: THREE.Object3D): MaskSourceLifetime {
   };
 }
 
+/**
+ * (battle-spikes-253) Start linking the mask passes' coverage programs for this tank now, against the mask's own target and
+ * a light-less scene, as a mask pass compiles them (compileMaskPass) — nothing is drawn or waited for. A covered entry
+ * calls it when its warm starts, so the player panel's stage finds the programs linked: on a loaded multiplayer guest the
+ * links outlasted the mask wait's 2 s stall when they began at that stage (top_mask_program_timeout, "still linking at
+ * reveal"; nav-perf's rooms census). Its stand-ins are the ones the clone's passes take (shared by three's program key).
+ */
+export function warmTopMaskPrograms(root: THREE.Object3D | null | undefined): boolean {
+  const renderer = maskEngineCtx?.renderer;
+  if (!renderer || !root) return false;
+  const { target } = ensureMaskRenderResources('hull');
+  const previousTarget = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  const visible = root.visible;
+  const restoreMaterials = applyTopMaskCoverage(root);
+  try {
+    root.visible = true;
+    renderer.setRenderTarget(target);
+    renderer.compile(root, new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100), new THREE.Scene());
+    return true;
+  } catch {
+    return false; // the panel's own stage compiles them
+  } finally {
+    renderer.setRenderTarget(previousTarget, face, mip);
+    root.visible = visible;
+    restoreMaterials();
+  }
+}
+
 function ensureMaskRenderResources(layer: 'hull' | 'turret'): MaskRenderResources {
   if (!maskRT) {
     maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {
@@ -1138,6 +1167,37 @@ function cacheMaskResult(id: string, entry: TopDownMaskEntry | null): void {
   }
 }
 
+const MASK_TANK_OPTIONS = { camoSeed: 4000, quality: 'high' } as const;
+
+/**
+ * (2026-10-26, UI-LOCKDOWN E) The mask's own tank, a frame-sized slice at a time, its decoration planned in the decor
+ * worker (stage 2b): the damage panel's last attempt and the callers with no live visual built it in one task (m1a3,
+ * 1.0 s in a room entry's last seconds, 0.24 s of it the decoration). A sliced build that fails builds at once.
+ */
+async function buildMaskTank(id: string): Promise<TankMaskVisual> {
+  let sliceStartedAt = performance.now();
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, maskEngineCtx,
+    { ...MASK_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
+  try {
+    for (;;) {
+      const result = steps.next();
+      if (result.done) {
+        steps = null;
+        return result.value as TankMaskVisual;
+      }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 8) { await nextFrame(); sliceStartedAt = performance.now(); }
+    }
+  } catch (error) {
+    steps = null;
+    console.warn(`[tankThumbs] the sliced mask build failed for ${id}; building at once:`, errorMessage(error));
+    return createTank(id, maskEngineCtx, MASK_TANK_OPTIONS) as TankMaskVisual;
+  } finally {
+    // an abandoned build closes its iterator, which disposes what it had made
+    steps?.return(undefined as never);
+  }
+}
+
 async function buildTopDownMasks(
   spec: TankMaskSpec,
   clonedRoot: THREE.Object3D | null,
@@ -1159,7 +1219,7 @@ async function buildTopDownMasks(
       sourceLifetime?.assertAlive();
       visual = clonedRoot
         ? { root: clonedRoot, dispose() {} }
-        : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' }) as TankMaskVisual;
+        : await buildMaskTank(id);
     } finally { build.endTime = performance.now(); }
     const prepared = await renderMaskEntry(visual, spec, trace, sourceLifetime);
     sourceLifetime?.assertAlive();

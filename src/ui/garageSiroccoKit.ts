@@ -29,7 +29,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
 export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
   items: [
     // -- the perimeter on the left and the monitor trailer's power
-    { kind: 'wall', wall: 'hesco', points: [[-29.2, 18.8], [-19.4, 17.8]], params: { mural: 'brand.banner.h', muralEvery: 7 } },
+    { kind: 'wall', wall: 'hesco', points: [[-29.2, 18.8], [-19.4, 17.8]], params: { mural: 'brand.crest.color', muralEvery: 7 } },
     { kind: 'display', display: 'pvc', rect: 'brand.wordmark.light', at: [-25.0, 17.8], yaw: toward([-25.0, 17.8]), y: 1.42, size: [3.4, 0.64], options: { gap: 0.2 } },
     { kind: 'prop', name: 'guardTower', at: [-16.4, 17.9], yaw: toward([-16.4, 17.9]) },
     { kind: 'wall', wall: 'twall', points: [[-31.4, 15.0], [-27.0, 14.6]], params: { mural: 'stencil.crest', muralEvery: 2 } },

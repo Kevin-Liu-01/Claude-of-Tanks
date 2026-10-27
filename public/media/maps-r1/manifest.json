@@ -1,0 +1,1131 @@
+{
+  "libraryId": "claude-of-tanks-maps-r1",
+  "schemaVersion": 1,
+  "author": "Kevin B. Liu",
+  "copyright": "Copyright © 2026 Kevin B. Liu",
+  "description": "The battlefield picker's card stills: each battlefield's signature at its default hour, filmed by the deterministic Scene Studio on release 251 (media lane, 2026-10-26).",
+  "maps": [
+    {
+      "id": "verdant",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/verdant-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42836
+          },
+          {
+            "path": "/media/maps-r1/verdant-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143754
+          },
+          {
+            "path": "/media/maps-r1/verdant-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 300620
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/verdant-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1066590
+      }
+    },
+    {
+      "id": "desert",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/desert-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 34630
+          },
+          {
+            "path": "/media/maps-r1/desert-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 110210
+          },
+          {
+            "path": "/media/maps-r1/desert-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 262796
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/desert-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1077566
+      }
+    },
+    {
+      "id": "winter",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/winter-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 38252
+          },
+          {
+            "path": "/media/maps-r1/winter-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 120646
+          },
+          {
+            "path": "/media/maps-r1/winter-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 270826
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/winter-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1093011
+      }
+    },
+    {
+      "id": "urban",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/urban-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40696
+          },
+          {
+            "path": "/media/maps-r1/urban-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143252
+          },
+          {
+            "path": "/media/maps-r1/urban-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 306846
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/urban-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1067357
+      }
+    },
+    {
+      "id": "coastal",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/coastal-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42438
+          },
+          {
+            "path": "/media/maps-r1/coastal-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146652
+          },
+          {
+            "path": "/media/maps-r1/coastal-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 302730
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/coastal-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1075797
+      }
+    },
+    {
+      "id": "autumn",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/autumn-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43658
+          },
+          {
+            "path": "/media/maps-r1/autumn-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 141784
+          },
+          {
+            "path": "/media/maps-r1/autumn-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 293142
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/autumn-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1089053
+      }
+    },
+    {
+      "id": "steppe",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/steppe-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43132
+          },
+          {
+            "path": "/media/maps-r1/steppe-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 147026
+          },
+          {
+            "path": "/media/maps-r1/steppe-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 313524
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/steppe-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1076143
+      }
+    },
+    {
+      "id": "railyard",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/railyard-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 43594
+          },
+          {
+            "path": "/media/maps-r1/railyard-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 143906
+          },
+          {
+            "path": "/media/maps-r1/railyard-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 292840
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/railyard-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1072189
+      }
+    },
+    {
+      "id": "frontier",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/frontier-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40948
+          },
+          {
+            "path": "/media/maps-r1/frontier-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 137426
+          },
+          {
+            "path": "/media/maps-r1/frontier-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 292674
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/frontier-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1073665
+      }
+    },
+    {
+      "id": "fjord",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/fjord-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 16468
+          },
+          {
+            "path": "/media/maps-r1/fjord-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 52598
+          },
+          {
+            "path": "/media/maps-r1/fjord-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 131918
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/fjord-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1068532
+      }
+    },
+    {
+      "id": "delta",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/delta-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 33684
+          },
+          {
+            "path": "/media/maps-r1/delta-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 111816
+          },
+          {
+            "path": "/media/maps-r1/delta-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 280960
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/delta-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1074306
+      }
+    },
+    {
+      "id": "badlands",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/badlands-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 25054
+          },
+          {
+            "path": "/media/maps-r1/badlands-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 88630
+          },
+          {
+            "path": "/media/maps-r1/badlands-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 224448
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/badlands-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1065444
+      }
+    },
+    {
+      "id": "monsoon",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/monsoon-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 45276
+          },
+          {
+            "path": "/media/maps-r1/monsoon-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 151630
+          },
+          {
+            "path": "/media/maps-r1/monsoon-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 314948
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/monsoon-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081911
+      }
+    },
+    {
+      "id": "alpine",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/alpine-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 29182
+          },
+          {
+            "path": "/media/maps-r1/alpine-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 103014
+          },
+          {
+            "path": "/media/maps-r1/alpine-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 261604
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/alpine-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1065812
+      }
+    },
+    {
+      "id": "caldera",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/caldera-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 23316
+          },
+          {
+            "path": "/media/maps-r1/caldera-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 80378
+          },
+          {
+            "path": "/media/maps-r1/caldera-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 189382
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/caldera-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1071090
+      }
+    },
+    {
+      "id": "foundry",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/foundry-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 21720
+          },
+          {
+            "path": "/media/maps-r1/foundry-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 67286
+          },
+          {
+            "path": "/media/maps-r1/foundry-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 162260
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/foundry-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1070793
+      }
+    },
+    {
+      "id": "ruinspires",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/ruinspires-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 25178
+          },
+          {
+            "path": "/media/maps-r1/ruinspires-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 73702
+          },
+          {
+            "path": "/media/maps-r1/ruinspires-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 175564
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/ruinspires-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1066756
+      }
+    },
+    {
+      "id": "blackglass",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/blackglass-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41762
+          },
+          {
+            "path": "/media/maps-r1/blackglass-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 137614
+          },
+          {
+            "path": "/media/maps-r1/blackglass-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 320416
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/blackglass-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1076009
+      }
+    },
+    {
+      "id": "titan_gorge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/titan_gorge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 30486
+          },
+          {
+            "path": "/media/maps-r1/titan_gorge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 93338
+          },
+          {
+            "path": "/media/maps-r1/titan_gorge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 212994
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/titan_gorge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1082251
+      }
+    },
+    {
+      "id": "skybridge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/skybridge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 34764
+          },
+          {
+            "path": "/media/maps-r1/skybridge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 109714
+          },
+          {
+            "path": "/media/maps-r1/skybridge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 278932
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/skybridge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1077619
+      }
+    },
+    {
+      "id": "polders",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/polders-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 41902
+          },
+          {
+            "path": "/media/maps-r1/polders-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 145772
+          },
+          {
+            "path": "/media/maps-r1/polders-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 319168
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/polders-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1085559
+      }
+    },
+    {
+      "id": "copper_mesa",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/copper_mesa-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 45452
+          },
+          {
+            "path": "/media/maps-r1/copper_mesa-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 148866
+          },
+          {
+            "path": "/media/maps-r1/copper_mesa-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 325810
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/copper_mesa-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1087406
+      }
+    },
+    {
+      "id": "airfield",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/airfield-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 38942
+          },
+          {
+            "path": "/media/maps-r1/airfield-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 132348
+          },
+          {
+            "path": "/media/maps-r1/airfield-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 321330
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/airfield-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1075550
+      }
+    },
+    {
+      "id": "oasis",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/oasis-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42374
+          },
+          {
+            "path": "/media/maps-r1/oasis-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146288
+          },
+          {
+            "path": "/media/maps-r1/oasis-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 309524
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/oasis-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1102921
+      }
+    },
+    {
+      "id": "whiteout",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/whiteout-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 23376
+          },
+          {
+            "path": "/media/maps-r1/whiteout-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 75750
+          },
+          {
+            "path": "/media/maps-r1/whiteout-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 178050
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/whiteout-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1089028
+      }
+    },
+    {
+      "id": "orchard",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/orchard-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 40772
+          },
+          {
+            "path": "/media/maps-r1/orchard-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 135050
+          },
+          {
+            "path": "/media/maps-r1/orchard-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 325166
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/orchard-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1080622
+      }
+    },
+    {
+      "id": "longleaf",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/longleaf-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 42188
+          },
+          {
+            "path": "/media/maps-r1/longleaf-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 146116
+          },
+          {
+            "path": "/media/maps-r1/longleaf-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 301612
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/longleaf-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1069250
+      }
+    },
+    {
+      "id": "mangrove",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/mangrove-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 19852
+          },
+          {
+            "path": "/media/maps-r1/mangrove-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 71080
+          },
+          {
+            "path": "/media/maps-r1/mangrove-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 180938
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/mangrove-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1076344
+      }
+    },
+    {
+      "id": "saltwind",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/saltwind-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 24602
+          },
+          {
+            "path": "/media/maps-r1/saltwind-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 80020
+          },
+          {
+            "path": "/media/maps-r1/saltwind-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 207706
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/saltwind-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1071539
+      }
+    },
+    {
+      "id": "reservoir",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/reservoir-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 31406
+          },
+          {
+            "path": "/media/maps-r1/reservoir-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 109236
+          },
+          {
+            "path": "/media/maps-r1/reservoir-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 285550
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/reservoir-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1088601
+      }
+    },
+    {
+      "id": "mars",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/mars-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 44264
+          },
+          {
+            "path": "/media/maps-r1/mars-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 140202
+          },
+          {
+            "path": "/media/maps-r1/mars-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 317368
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/mars-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081846
+      }
+    },
+    {
+      "id": "moon",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/moon-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 16142
+          },
+          {
+            "path": "/media/maps-r1/moon-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 49482
+          },
+          {
+            "path": "/media/maps-r1/moon-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 116110
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/moon-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1081018
+      }
+    },
+    {
+      "id": "cliffbridge",
+      "hour": "day",
+      "poster": {
+        "rungs": [
+          {
+            "path": "/media/maps-r1/cliffbridge-640.webp",
+            "width": 640,
+            "height": 360,
+            "bytes": 44518
+          },
+          {
+            "path": "/media/maps-r1/cliffbridge-1280.webp",
+            "width": 1280,
+            "height": 720,
+            "bytes": 149204
+          },
+          {
+            "path": "/media/maps-r1/cliffbridge-1920.webp",
+            "width": 1920,
+            "height": 1080,
+            "bytes": 309308
+          }
+        ]
+      },
+      "loop": {
+        "path": "/media/maps-r1/cliffbridge-loop-960.mp4",
+        "type": "video/mp4",
+        "width": 960,
+        "height": 540,
+        "seconds": 6.0,
+        "bytes": 1080882
+      }
+    }
+  ]
+}

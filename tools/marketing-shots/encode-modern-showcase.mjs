@@ -4,6 +4,7 @@
 // publishes their presentation manifest. Uses Chromium canvas so the repo does
 // not need an additional native image dependency.
 
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import puppeteer from 'puppeteer';
 import {
   existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync,
@@ -30,7 +31,7 @@ for (const file of readdirSync(OUT)) {
   if (file.endsWith('.webp') || file === 'manifest.json') unlinkSync(join(OUT, file));
 }
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setContent('<canvas id="stage"></canvas>');
 

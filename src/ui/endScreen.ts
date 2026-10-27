@@ -33,6 +33,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { containModalTab } from './modal.ts';
+import { wireRovingKeys } from './components/components.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
@@ -261,7 +262,7 @@ const ES_CSS = `
 .cot-es .es-hero{position:relative;width:1160px;max-width:96vw;flex:0 0 auto;overflow:hidden;}
 /* staggered entrance: hero first, tallies cascade, buttons last (--i steps) */
 @keyframes cotEsIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
-@keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);letter-spacing:.5em;}
+@keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);}
   to{opacity:1;transform:none;}}
 .cot-es .es-in{opacity:0;animation:cotEsIn var(--cot-motion-slow) var(--cot-ease-out) forwards;
   animation-delay:calc(var(--i,0)*45ms);}
@@ -325,7 +326,7 @@ const ES_CSS = `
 .cot-es .es-stat-grid.has-vehicle{grid-template-columns:minmax(112px,.72fr) repeat(2,minmax(0,1fr));}
 .cot-es .es-vehicle-card{position:relative;display:grid;place-items:center;min-width:0;min-height:80px;
   overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,var(--accent-wash),var(--hud-plate-strong) 72%);}
-.cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
+.cot-es .es-vehicle-card>img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
   object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px oklch(from var(--surface-scene) l c h / .72));}
 .cot-es .es-tal{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
   min-height:80px;text-align:left;padding:var(--s3) var(--s4);background:var(--hud-plate-strong);}
@@ -394,6 +395,9 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-score-side.ally .sl{color:var(--text-own)}.cot-es .es-score-side.foe .sl{color:var(--text-enemy)}
 .cot-es .es-score-side .ss{margin-top:5px;font-size:var(--battle-fs-11);color:var(--ink-3);}
 .cot-es .es-score-side .sn{font:700 38px ${FONT_COND};color:var(--ink-1);line-height:1;}
+/* (each side's figure in its team's ink, as the headline's score: bone white in the card beside a blue and red headline
+   at the other sizes, gauntlet r8) */
+.cot-es .es-score-side.ally .sn{color:var(--team-own)}.cot-es .es-score-side.foe .sn{color:var(--team-enemy)}
 .cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:var(--ink-4);}
 .cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);flex:1;min-height:0;padding:var(--s3);}
 .cot-es .es-roster{display:flex;min-width:0;min-height:0;flex-direction:column;}
@@ -416,10 +420,13 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr.me{background:linear-gradient(90deg,oklch(from var(--accent) l c h / .18),oklch(from var(--accent) l c h / .03));
   border-left-color:${COL.amber};}
 .cot-es .es-tr .tier{display:none}.cot-es .es-tr .si{flex:0 0 44px;height:19px;}
-.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:block;min-width:0;font-size:var(--battle-fs-12);font-weight:700;color:var(--ink-1);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* (the player's tag after the callsign, never cut by its ellipsis, so every callsign starts on the name column: led by
+   the tag, the player's stood 17 to 24 px right of the others, gauntlet r13) */
+.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:flex;align-items:baseline;min-width:0;font-size:var(--battle-fs-12);font-weight:700;color:var(--ink-1);
+  white-space:nowrap;}
+.cot-es .es-tr .nm .nmt{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
-  font-size:var(--battle-fs-11);letter-spacing:.01em;margin-right:5px;vertical-align:1px;}
+  font-size:var(--battle-fs-11);letter-spacing:.01em;flex:none;margin-left:5px;vertical-align:1px;}
 /* (the vehicle's name gives way before its kills: zh's 390 row read "M1A1 Abrams HC · 2 次…", gauntlet r3) */
 .cot-es .es-tr .veh{display:flex;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;white-space:nowrap;}
 .cot-es .es-tr .veh .vt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}.cot-es .es-tr .veh .dt{flex:none;white-space:pre}
@@ -474,14 +481,18 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-ready-meter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);margin-bottom:2px;color:var(--ink-3)}
 .cot-es .es-ready-meter .meter-label{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase}.cot-es .es-ready-meter b{
   font:700 var(--battle-fs-13) ${FONT_COND};color:var(--ink-1);}.cot-es .es-ready-track{grid-column:1/-1;height:3px;
-  background:oklch(from var(--ink-3) l c h / .16);overflow:hidden}.cot-es .es-ready-fill{display:block;height:100%;background:${COL.green};
-  box-shadow:0 0 10px oklch(from var(--ok) l c h / .45);transition:width var(--dur-base) ease}.cot-es .es-room-actions .es-action{width:100%;min-width:0}
+  background:oklch(from var(--ink-3) l c h / .16);overflow:hidden}.cot-es .es-ready-fill{display:block;width:100%;height:100%;transform-origin:0 50%;background:${COL.green};
+  box-shadow:0 0 10px oklch(from var(--ok) l c h / .45);transition:transform var(--dur-base) ease}.cot-es .es-room-actions .es-action{width:100%;min-width:0}
 .cot-es .es-action.ready-now{color:var(--text-ok);box-shadow:var(--ring-ok)}
-@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .16),0 0 26px oklch(from var(--accent) l c h / .42)}}
-.cot-es .es-action.can-start,.cot-es .es-action.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
+/* (the ready pulse: its glow a ring of its own whose opacity breathes, the button's own shadow untouched) */
+@keyframes cotEsReadyPulse{50%{opacity:1}}
+.cot-es .es-action.can-start,.cot-es .es-action.needs-ready:not(:disabled){position:relative}
+.cot-es .es-action.can-start::after,.cot-es .es-action.needs-ready:not(:disabled)::after{content:'';position:absolute;inset:0;border-radius:inherit;
+  pointer-events:none;opacity:0;box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .16),0 0 26px oklch(from var(--accent) l c h / .42);
+  animation:cotEsReadyPulse calc(var(--dur-stage) * 2) ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){
-  .cot-es .es-in,.cot-es .es-ban,.cot-es .es-action.can-start,
-  .cot-es .es-action.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
+  .cot-es .es-in,.cot-es .es-ban,.cot-es .es-action.can-start::after,
+  .cot-es .es-action.needs-ready:not(:disabled)::after{animation:none!important;opacity:1;transform:none;}
 }
 /* --- actions -------------------------------------------------------------- */
 .cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:var(--s1) 10px;
@@ -627,12 +638,18 @@ function vehicleName(specId: string | null | undefined): string {
  */
 /** A " · " line as its parts: a wrapped line starts with its dot, never ends on one (gauntlet r1: "5 / 21 survived ·" over
  *  "111,300 damage"). */
-/** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them. */
-const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid,.es-awards,.es-best,.es-combat-details,.es-blow,'
-  + '.es-stat-secondary,.es-kill-block,.es-rematch';
-const FIT_CUE_H = 18;
+/** The whole parts a scrolling report column may end on (fitPanel), and its cue's height under them: the stat grid's
+ *  tiles and the medals one by one, so a column too short for the whole grid or strip ends on its last whole row (gauntlet
+ *  r8 and r9: as whole parts they left 568x256's and 320x568's report an empty plate under the cue, and 844x390 a 70 px
+ *  band over the medals). */
+const FIT_PARTS = '.es-tr,.es-roster-cols,.es-scoreboard,.es-dh,.es-stat-grid>*,.es-awards>.ak,.es-awards .aw,.es-best,'
+  + '.es-combat-details,.es-blow,.es-stat-secondary,.es-kill-block,.es-rematch';
+// (the cue's least band: its rule, a 12 px chevron and 2 px under it)
+const FIT_CUE_H = 16;
 /** A callsign in Latin type alone (endScreenPresentation.css .nm.lat keeps it at the Latin size in Chinese). */
 const LATIN_NAME = /^[\x20-\x7e]+$/;
+/** A run of Chinese in a mixed-script title (the watched headline's "ALPHA 队获胜"): endScreenPresentation.css .cjk. */
+const CJK_RUN = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]+/g;
 
 function dotLine(text: string): string {
   return text.split(' · ').map((part, index) => `<span class="seg">${index ? '<span class="sep">·\u00a0</span>' : ''}${escapeHtml(part)}</span>`).join(' ');
@@ -676,7 +693,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const bottom = part.getBoundingClientRect().bottom - top;
       if (bottom <= room - FIT_CUE_H && bottom > fit) fit = bottom;
     }
-    panel.style.setProperty('--es-cue-h', `${Math.floor(Math.max(FIT_CUE_H, room - fit))}px`);
+    // (the band's rule 2 px under the part's foot: on it, it covered the best shot's bottom border at 1280x720, gauntlet r9)
+    panel.style.setProperty('--es-cue-h', `${Math.floor(Math.max(FIT_CUE_H, room - fit - 2))}px`);
     markMore(panel);
   };
   /** Each scrolling column's cue (a chevron at its foot while more lies below), measured now and on every resize. */
@@ -684,7 +702,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     moreObserver?.disconnect();
     for (const panel of [...report.querySelectorAll<HTMLElement>('.es-debrief'), report]) {
       const cue = el('div', 'es-more', panel);
-      cue.innerHTML = uiIconSVG('chevronDown', 14);
+      cue.innerHTML = uiIconSVG('chevronDown', 12);
       cue.setAttribute('aria-hidden', 'true');
       panel.addEventListener('scroll', () => markMore(panel), { passive: true });
       moreObserver?.observe(panel);
@@ -863,7 +881,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const meter = el('div', 'es-ready-meter', controls);
     const readyPct = activeCount ? Math.round((readyCount / activeCount) * 100) : 0;
     meter.innerHTML = `${uiIconSVG('check', 15)}<span class="meter-label">${t('endScreen.readyForRound', { n: nextRound })}</span>` +
-      `<b class="num">${readyCount} / ${activeCount}</b><span class="es-ready-track"><span class="es-ready-fill" style="width:${readyPct}%"></span></span>`;
+      `<b class="num">${readyCount} / ${activeCount}</b><span class="es-ready-track"><span class="es-ready-fill" style="transform:scaleX(${(readyPct / 100).toFixed(3)})"></span></span>`;
   }
 
   function renderReadyButton(
@@ -875,6 +893,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', me.ready ? 'close' : 'check',
       me.ready ? t('endScreen.notReady') : t('endScreen.readyNext'), me.ready ? 'ready-now' : 'needs-ready');
     ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
+    // (a held Ready says why, as its tip and its description: it dimmed with no reason, INTERACTION-REDESIGN C)
+    const heldBy = state.phase !== 'waiting' ? 'endScreen.ready.held.starting' : me.connected === false ? 'endScreen.ready.held.reconnecting'
+      : !me.specId ? 'endScreen.ready.held.noTank' : '';
+    if (heldBy) { ready.dataset.tip = t(heldBy); ready.setAttribute('aria-description', t(heldBy)); }
     ready.setAttribute('aria-pressed', String(!!me.ready));
     ready.setAttribute('aria-label', me.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
     ready.addEventListener('click', () => {
@@ -945,12 +967,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details = rosterRowDetails(result, revives);
     // (a Latin callsign keeps the Latin size in zh: .lat)
     const nameClass = LATIN_NAME.test(result.name || result.id) ? 'nm lat' : 'nm';
+    // (and so does a Latin vehicle name: zh's lift cut "M1A1 Abrams HC" at 320x568, gauntlet r10)
+    const vehicleClass = LATIN_NAME.test(vehicle) ? 'vt lat' : 'vt';
     // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
     // kills (and a reviving battle's deaths) in their own columns; the narrow sheets show them as those glyphs and figures
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="${nameClass}">${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}${escapeHtml(result.name || result.id)}</span>` +
-      `<span class="veh"><span class="vt">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
+      `<span class="identity"><span class="${nameClass}"><span class="nmt">${escapeHtml(result.name || result.id)}</span>${result.isPlayer && !watchedView ? `<b class="you">${t('hud.feed.you')}</b>` : ''}${result.isPlayer && watchedView ? `<span class="rode" role="img" aria-label="${t('endScreen.watching')}">${uiIconSVG('scope', 12)}</span>` : ''}</span>` +
+      `<span class="veh"><span class="${vehicleClass}">${escapeHtml(vehicle)}</span>${details.length ? `<span class="dt">${detailGlyphs(result, revives)}<span class="sr"> · ${details.map(escapeHtml).join(' · ')}</span></span>` : ''}</span></span>` +
       `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
       (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
@@ -1091,7 +1115,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const banner = el('div', `es-ban w ${winner ?? 'n'}`, headline);
     const word = winner ? t('endScreen.watch.wins', { side: sideName(winner) })
       : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
-    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word)}</span>`;
+    // (its Chinese runs marked, set a step under the Latin capitals beside them: at one size 队获胜 ran a third taller than
+    // ALPHA, 15 px over its cap line and 12 under its baseline, gauntlet r12)
+    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word).replace(CJK_RUN, (run) => `<span class="cjk">${run}</span>`)}</span>`;
     host.dataset.banner = word;
     host.dataset.winner = winner ?? 'none';
     const score = el('div', 'es-score', headline);
@@ -1480,7 +1506,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       });
     }
     if (!roomContext?.state) {
-      const again = action(actions, 'primary', 'again', 'rematch', t('endScreen.battleAgain'));
+      // (one primary: with the campaign's next operation leading, Again is the secondary, INTERACTION-REDESIGN C)
+      const again = action(actions, actions.querySelector('[data-campaign-next]') ? 'secondary' : 'primary', 'again', 'rematch',
+        t('endScreen.battleAgain'));
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});
@@ -1500,6 +1528,37 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     mark.loading = 'lazy';
     mark.setAttribute('aria-hidden', 'true');
   }
+
+  /** The report takes the keyboard as it opens (INTERACTION-REDESIGN C, the census's end-screen row): focus on its one
+   *  primary, so Enter confirms it, and Esc backs out to the Garage, never the Settings panel behind the report. */
+  const focusPrimary = (): void => {
+    // (only while the keyboard is nobody's: never from a dialog or a field the player is in; again after the frame the
+    // report becomes visible on, and after a slow sheet's hold, as a hidden button takes no focus)
+    if (!visible || (document.activeElement && document.activeElement !== document.body)) return;
+    (host.querySelector<HTMLButtonElement>('.es-actions .cot-c-btn--primary:not(:disabled)') ?? garageBtn)?.focus({ preventScroll: true });
+  };
+  // (the focus taken on open rings nothing until a key moves the keyboard: a resting ring on Again read as a third state
+  // beside the pause veil's RESUME, gauntlet r11; Enter still confirms it)
+  const ringOnKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Enter' || event.key === 'Escape') return;
+    host.classList.remove('es-quiet-focus');
+    window.removeEventListener('keydown', ringOnKey, true);
+  };
+  const takeFocus = (): void => {
+    host.classList.add('es-quiet-focus');
+    window.addEventListener('keydown', ringOnKey, true);
+    focusPrimary();
+    setTimeout(focusPrimary, 0);
+    if (host.classList.contains('es-sheet-wait')) setTimeout(focusPrimary, 1600);
+  };
+  const onReportKey = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || !visible || !garageBtn?.isConnected) return;
+    // (a dialog over the report, Settings among them, takes its own Esc)
+    if (event.target instanceof Element && event.target.closest('[role="dialog"],[aria-modal="true"]:not(.cot-es)')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    garageBtn.click();
+  };
 
   api = {
     root: host,
@@ -1547,6 +1606,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         host.classList.add('show');
         host.setAttribute('aria-hidden', 'false');
         document.body.classList.add('cot-si-report');
+        window.addEventListener('keydown', onReportKey, true);
+        takeFocus();
         return;
       }
 
@@ -1556,8 +1617,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         const button=el('button','',tabs);button.type='button';button.dataset.reportView=id;button.id=`es-tab-${id}`;button.setAttribute('role','tab');button.setAttribute('aria-controls',`es-panel-${id}`);
         button.innerHTML=`${uiIconSVG(icon,18)}<span>${t(key)}</span>`;
         button.onclick=()=>selectView(id);
-        button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'personal':event.key==='End'?'teams':id==='personal'?'teams':'personal';selectView(next);tabs.querySelector<HTMLButtonElement>(`[data-report-view="${next}"]`)?.focus();}};
       }
+      // (the kit's roving keys, arrows and Home / End pressing the next tab: hand-rolled keys here, INTERACTION-REDESIGN C)
+      wireRovingKeys(tabs);
       function selectView(id:string) {
         awardTooltip.hide();
         for(const panel of host.querySelectorAll<HTMLElement>('.es-debrief')){const name=panel.classList.contains('personal')?'personal':'teams';panel.hidden=name!==id;panel.id=`es-panel-${name}`;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',`es-tab-${name}`);}
@@ -1582,6 +1644,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       // battle-HUD chrome must not bleed through the results backdrop — the
       // class shotInfo's CSS already keys every chrome hide off
       document.body.classList.add('cot-si-report');
+      window.addEventListener('keydown', onReportKey, true);
+      takeFocus();
     },
 
     /** Hide + finalize counters (garage entry, battle restart). */
@@ -1595,6 +1659,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       host.classList.remove('show');
       host.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('cot-si-report');
+      window.removeEventListener('keydown', onReportKey, true);
     },
   };
   return api;

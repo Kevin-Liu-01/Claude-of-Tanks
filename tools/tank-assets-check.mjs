@@ -2,6 +2,7 @@
 // hashes/dimensions, live geometry and metadata freshness, plus a visible
 // muzzle-bore marker for every selected vehicle.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -18,6 +19,30 @@ import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
+
+/** 253: the armour, module and crew diagrams carry no text; their labels are the <id>_technical.json sidecar's
+ * (src/ui/technicalDiagramLabels.ts). It must exist with its recorded hash and size and be a schema-1 record for the
+ * tank: three callout lists, every anchor inside the raster. */
+const TECHNICAL_VIEWS = new Set(['armorSide', 'modulesSide', 'crewSide']);
+function technicalLabelsFailures(id, record) {
+  if (!record?.file) return [`${id}: missing technicalLabels asset record`];
+  const filePath = resolve(outDir, record.file);
+  if (!existsSync(filePath)) return [`${id}: missing ${record.file}`];
+  const buffer = readFileSync(filePath), out = [];
+  if (sha256(buffer) !== record.sha256) out.push(`${id}: ${record.file} hash drift`);
+  if (buffer.length !== record.bytes) out.push(`${id}: ${record.file} byte-size drift`);
+  let data = null;
+  try { data = JSON.parse(buffer.toString('utf8')); } catch { return [...out, `${id}: ${record.file} is not JSON`]; }
+  if (data?.schema !== 1 || data.id !== id) out.push(`${id}: ${record.file} is not a schema-1 record for ${id}`);
+  for (const kind of ['armor', 'modules', 'crew']) {
+    const list = data?.[kind];
+    if (!Array.isArray(list)) { out.push(`${id}: ${record.file} has no ${kind} callouts`); continue; }
+    const outside = list.filter((c) => !Array.isArray(c?.anchor) || c.anchor.some((v) => !(v >= 0 && v <= 1)) || typeof c.key !== 'string');
+    if (outside.length) out.push(`${id}: ${record.file} ${kind}: ${outside.length} callout(s) without a key or with an anchor off the raster`);
+  }
+  return out;
+}
+
 function opt(name, fallback = '') {
   const prefix = `--${name}=`;
   const inline = args.find((arg) => arg.startsWith(prefix));
@@ -118,7 +143,7 @@ await server.listen();
 // navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
 // COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
 const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'tank-assets-check', ready: 'window.__ICONS_READY === true' });
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -228,6 +253,7 @@ try {
     }
 
     if (liveOnly) continue;
+    if (selectedViews.some((view) => TECHNICAL_VIEWS.has(view))) failures.push(...technicalLabelsFailures(id, saved.assets?.technicalLabels));
     for (const view of selectedViews) {
       const def = TANK_ASSET_VIEWS[view];
       const asset = saved.assets && saved.assets[view];

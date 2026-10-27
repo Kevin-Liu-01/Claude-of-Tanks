@@ -42,7 +42,8 @@ export interface RoomPolicyGuards {
   isMapAllowed(mapId: string, room: RoomSnapshot): boolean;
   /**
    * (mp-scale-251) A team size past the mode's own (its room rules, matchRuleset.ts), up to ROOM_DEV_MAX_TEAM_SIZE: the
-   * LAN service's dev override for bot-filled test rooms (COT_ROOM_DEV_MAX_TEAM_SIZE). The rooms Worker never sets it.
+   * LAN service's dev override for bot-filled test rooms (COT_ROOM_DEV_MAX_TEAM_SIZE), and a solo room in the page
+   * (ROOM_SOLO_MAX_TEAM_SIZE, 21). Versus modes only. The rooms Worker never sets it.
    */
   maxTeamSize?: number;
 }
@@ -69,6 +70,8 @@ export interface CreateRoomOptions {
   settings?: RoomCreateSettings | null;
   /** Where this room's matches run (the host's `MatchHost.transport`); peer-to-peer by default. */
   hostTransport?: RoomHostInfo['transport'];
+  /** The guards' `maxTeamSize` (a solo room in the page seats more than ROOM_MAX_TEAM_SIZE). */
+  maxTeamSize?: number;
   now: number;
 }
 
@@ -251,16 +254,18 @@ function createPlayer(room: RoomSnapshot, {
   };
 }
 
-export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined): RoomSettings {
+export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined, maxTeamSize?: number): RoomSettings {
   const gameMode = roomGameMode(settings?.gameMode);
   const rules = roomSizeRulesFor(gameMode);
-  const teamSize = settings?.teamSize == null ? rules.defaultTeamSize : cleanTeamSize(settings.teamSize);
+  // the mode's largest, or the host's guard (a versus room: the LAN dev override, a solo room in the page)
+  const limit = maxTeamSizeFor(gameMode, maxTeamSize === undefined ? {} : { maxTeamSize });
+  const teamSize = settings?.teamSize == null ? rules.defaultTeamSize : cleanTeamSize(settings.teamSize, Math.max(ROOM_MAX_TEAM_SIZE, limit));
   const maxSpectators = settings?.maxSpectators == null ? ROOM_MAX_SPECTATORS : Number(settings.maxSpectators);
   if (!Number.isInteger(maxSpectators) || maxSpectators < 0 || maxSpectators > ROOM_MAX_SPECTATORS) throw new RoomError('invalid_payload', 'maxSpectators');
   return {
     gameMode,
     mapId: cleanMap(settings?.mapId),
-    teamSize: Math.min(teamSize, rules.maxTeamSize),
+    teamSize: Math.min(teamSize, limit),
     maxSpectators,
     botsFill: settings?.botsFill == null ? true : !!settings.botsFill,
     allowTeamSwitch: settings?.allowTeamSwitch == null ? true : !!settings.allowTeamSwitch,
@@ -272,7 +277,7 @@ export function defaultRoomSettings(settings: RoomCreateSettings | null | undefi
 }
 
 /** A new room: the creator is the admin and the first (Alpha) seat; no host is elected before the first start. */
-export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', now }: CreateRoomOptions): RoomSnapshot {
+export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', maxTeamSize, now }: CreateRoomOptions): RoomSnapshot {
   if (!ROOM_CODE_RE.test(roomCode)) throw new RoomError('invalid_room_code');
   if (mode !== 'private' && mode !== 'lan') throw new RoomError('invalid_payload', 'mode');
   const id = cleanSeatId(creator.id);
@@ -284,7 +289,7 @@ export function createRoom({ roomCode, mode, creator, selection, settings, hostT
     adminId: id,
     revision: 0,
     round: 0,
-    settings: defaultRoomSettings(settings),
+    settings: defaultRoomSettings(settings, maxTeamSize),
     players: [],
     match: null,
     lastResult: null,
@@ -481,7 +486,7 @@ export function applyRoomCommand(
     }
     case 'set_team_size': {
       assertAdmin(room, id);
-      // a co-op room takes any legal size and seats up to its mode's; a versus room up to its mode's (or the dev override's)
+      // a co-op room takes any legal size and seats up to its mode's; a versus room up to its mode's (or the host guard's)
       const rules = roomSizeRulesFor(room.settings.gameMode);
       const size = cleanTeamSize(command.teamSize, rules.sides === 'coop' ? ROOM_MAX_TEAM_SIZE : maxTeamSizeFor(room.settings.gameMode, guards));
       if (countTeam(room, 'alpha') > size || countTeam(room, 'bravo') > size) throw new RoomError('team_size_too_small');

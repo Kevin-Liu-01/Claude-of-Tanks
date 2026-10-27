@@ -3,6 +3,7 @@
 // DEV recorder plus per-team combat/fire-discipline telemetry.
 // Usage: node tools/bot-combat-probe.mjs [--seconds 90] [--tank m1a1_abrams_hc]
 //   [--map verdant] [--out .qa-bots/bot-combat.json]
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -23,7 +24,7 @@ const server = await createServer({
   server: { port, strictPort: false },
 });
 await server.listen();
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   protocolTimeout: 600000,

@@ -14,6 +14,7 @@ import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { markDatum } from './dom.ts';
 import { vehicleName } from './killSourceIdentity.ts';
+import { tierNumeral } from '../techTree/tiers.ts';
 
 type WatchHudView = 'off' | 'drone' | 'ride' | 'drive';
 
@@ -29,6 +30,8 @@ export interface WatchHudState {
   readonly view: WatchHudView;
   readonly tank: WatchHudTank | null;
   readonly canTake: boolean;
+  /** Why the seat is held (watchSeat.ts watchSeatRefusal), its tip and description; null when it can be taken. */
+  readonly takeRefusal?: string | null;
   readonly speedIndex: number;
   readonly speedSteps: number;
   /** The drone's orbit is locked on `tank`. */
@@ -54,7 +57,7 @@ const KIT = `
 .cot-watch .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
  padding:0 6px;border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);
  letter-spacing:normal;text-transform:none;color:var(--ink-2)}
-.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;object-position:left center;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
 .cot-watch .cot-c-sil{display:inline-block;flex:none;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;
  mask:var(--sil) center/contain no-repeat}
 .cot-watch .cot-c-sil--right{transform:scaleX(-1)}
@@ -104,17 +107,24 @@ html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,
 html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 @media(max-width:600px){
- .cot-watch{left:var(--inset-left);right:var(--inset-right);transform:none;justify-content:center;flex-wrap:wrap}
+ /* (on the map's and the feeds' 12 px line, not the shell's 24 px inset: the bar stood off every phone edge, gauntlet r11) */
+ .cot-watch{left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));transform:none;justify-content:center;flex-wrap:wrap}
  .cot-watch .who{width:auto;flex:1 1 100%;grid-template-columns:auto 44px minmax(0,1fr)}
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
+ /* (the buttons share the plate's width, one edge with it: a narrower centred row stood off its edges, gauntlet r10) */
+ .cot-watch .wb{flex:1 1 0}
 }
 /* (the seat's word stays on one line: zh's 驾驶 broke a character a line at 1440, gauntlet r3) */
 /* (the seat's action in the bar's capitals, as GARAGE and the rest: "Drive" in title case, gauntlet r7) */
 .cot-watch .wb.seat .label{white-space:nowrap;text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (riding, the ridden tank's controls row shows its state without its key caps: the watcher's own Q and E sat in the bar
-   above it beside the row's Q, gauntlet r4) */
-html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
+   above it beside the row's Q, gauntlet r4; its ammunition and consumables too, the ridden tank's slots and never the
+   watcher's keys: their 1 to 6 kept caps under a row without them, gauntlet r14) */
+html[data-watch=ride] .cot-hud :is(.cot-vehicle-controls .sk,.cot-shell .key,.cot-con .key){visibility:hidden}
+/* (... and a narrow tile's glyph back on its centre at the row's size: set at its foot a size down to clear a cap no longer
+   shown, it sank 8 px under the tile's centre at 900x700, gauntlet r13) */
+html[data-watch=ride] body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-hud .cot-vehicle-controls>button .si{align-self:center;--hud-tile-icon:inherit}
 /* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear; flying, the
    climb rail stands in the bottom-right corner, under the right kill lane (battleHudLayout.ts ends the lane above it) */
 @media(max-height:500px){
@@ -124,8 +134,39 @@ html[data-watch=ride] .cot-hud .cot-vehicle-controls .sk{visibility:hidden}
  .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}
  .cot-watch .who b{font-size:var(--fs-14)}.cot-watch .wb.seat{min-width:96px}
 }
+/* (the shortest landscape phones, under 300 px tall: one row of its own width, the plate the flag or glyph and the name,
+   so it clears the map and the climb rail; riding, it takes the floor over the hull panel, in the place of the ridden
+   tank's controls row and dial (battleHudLayout.ts keeps the head band and the lanes off it): at 568x256 the full-width
+   bar wrapped onto the sight, the slots, the dial and the drone's rail, gauntlet r8) */
+@media(max-height:299px) and (orientation:landscape){
+ .cot-watch{left:50%;right:auto;transform:translateX(-50%);flex-wrap:nowrap}
+ .cot-watch .who{flex:none;width:160px;height:34px;grid-template-columns:auto auto minmax(0,1fr)}
+ .cot-watch .who .cot-c-sil{display:none}
+ .cot-watch .wb{height:34px;min-width:34px;padding:0 var(--s1)}.cot-watch .wb.seat{min-width:44px}
+ html[data-watch=ride] body.cot-touch-layout .cot-watch{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 46px)}
+ html[data-watch=ride] body.cot-touch-layout .cot-vehicle-controls{display:none}
+ /* (the dial by its visibility: the touch sheet holds its display with an !important, and it stayed under the bar, r9) */
+ html[data-watch=ride] body.cot-touch-layout .cot-drive{visibility:hidden}
+}
+/* (a portrait phone's climb rail starts under the touch toolbar that hangs under the bar: centred, its top ran under the
+   toolbar at 320x568, gauntlet r8) */
+body.cot-touch-layout[data-cot-orientation=portrait] .cot-watch-rail{top:max(50%,calc(var(--hud-objective-bottom,64px) + 124px))}
+/* (and up to 340 px wide the ammunition column starts under that toolbar too, and riding keeps the ridden tank's ammunition
+   alone: its consumables, controls row and special stand down, the rows that met the toolbar and the sight at 320x568) */
+@media(max-width:340px) and (orientation:portrait){
+ html[data-watch] body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:max(225px,calc(var(--hud-objective-bottom,64px) + 62px))}
+ html[data-watch=ride] body.cot-touch-layout :is(.cot-vehicle-controls,.cot-cons,.cot-special){display:none}
+}
 @media(prefers-reduced-motion:reduce){.cot-watch .wb{transition:none}}
 `;
+
+/** A held seat's one reason, watchSeatRefusal's word put as the bar says it. */
+const SEAT_HELD: Readonly<Record<string, string>> = {
+  'no-brain': 'watch.seat.held.player', destroyed: 'watch.seat.held.destroyed', aircraft: 'watch.seat.held.aircraft',
+  'already-driving': 'watch.seat.held.taken', 'no-take-control': 'watch.seat.held.mode', 'not-open': 'watch.seat.held.mode',
+  'no-watch': 'watch.seat.held.mode', 'no-hull': 'watch.seat.held.none', inactive: 'watch.seat.held.none',
+};
+const seatHeld = (refusal: string | null): string => (refusal && SEAT_HELD[refusal] ? t(SEAT_HELD[refusal]) : '');
 
 /** `host` is read when the bar first shows (the battle HUD's root, which loads beside the watch chunk). */
 const keycap = (key: string): string => `<kbd class="cot-c-kbd" aria-hidden="true">${key}</kbd>`;
@@ -236,7 +277,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
         who.dataset.side = tank.team === 'enemy' ? 'enemy' : 'own';
         lead.innerHTML = tank.spec?.nation ? flag(tank.spec.nation) : '';
         mark.innerHTML = /^[a-z0-9_]+$/.test(specId) && tank.aerial?.kind !== 'gunship' ? silhouette(specId) : '';
-        name.textContent = vehicleName(tank);
+        // (its tier before its name, as the spectator's plate reads "VI · Leopard 2A5": the tier after it read as a
+        // variant suffix, gauntlet r12)
+        const numeral = tank.aerial?.kind === 'gunship' ? '' : tierNumeral(specId);
+        name.textContent = numeral ? `${numeral} · ${vehicleName(tank)}` : vehicleName(tank);
       } else {
         delete who.dataset.side;
         lead.innerHTML = `<span class="glyph">${icon('modeDrone', { size: 20 })}</span>`;
@@ -251,6 +295,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       lock.setAttribute('aria-pressed', locked ? 'true' : 'false');
       lock.setAttribute('aria-label', t(locked ? 'watch.unlock' : 'watch.lock'));
       seat.disabled = !driving && !state.canTake;
+      // (a held seat says why, as its tip and its description: it dimmed with no reason, INTERACTION-REDESIGN C)
+      const held = seat.disabled ? seatHeld(state.takeRefusal ?? null) : '';
+      if (held) { seat.dataset.tip = held; seat.setAttribute('aria-description', held); }
+      else { delete seat.dataset.tip; seat.removeAttribute('aria-description'); }
       seatLabel.textContent = driving ? t('watch.leave') : t('watch.take');
       seat.setAttribute('aria-label', seatLabel.textContent);
     },

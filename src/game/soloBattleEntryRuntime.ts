@@ -6,9 +6,10 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 import type { PendingBattlefield } from '../ui/battleLoad.ts';
+import { soloRosterSeats } from './soloRosterPlan.ts';
 
 interface EntryLoadScreen {
-  showPending(map?: string | PendingBattlefield | null): void;
+  showPending(map?: string | PendingBattlefield | null, seats?: { allies: number; enemies: number } | null): void;
   hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -36,7 +37,8 @@ interface SoloBattleEntryRuntimeOptions {
   getSelectedMapId(): string;
   /** The battlefield this entry will load (a Random pick resolved the way the loading owner will consume it), so the
    * pending cover names it from its first frame; null when it cannot be known before the loading owner runs. */
-  describePendingMap?(specId: string, mapId: string | null): PendingBattlefield | null;
+  /** The pending cover's battlefield and, planned before the loading owner arrives, its teams. */
+  describePendingMap?(specId: string, mapId: string | null, options?: SoloBattleLoadingStartOptions): PendingBattlefield | null;
   reportError?(message: string, error: RuntimeValue): void;
   /**
    * Entry resilience (2026-09-25): show the player why the battle did not
@@ -95,8 +97,9 @@ export function createSoloBattleEntryRuntime({
       // The loading transaction itself is demand-loaded. Own its canonical
       // surface inside the accepted entry latch before awaiting that import.
       let pending: PendingBattlefield | string | null = mapId;
-      try { pending = describePendingMap(specId, mapId) ?? mapId; } catch { /* the cover never waits on a name */ }
-      battleLoad.showPending(pending);
+      try { pending = describePendingMap(specId, mapId, options) ?? mapId; } catch { /* the cover never waits on a name */ }
+      // (the cover's sheets hold the sortie's seats from the press, the loading owner's first frame the same)
+      battleLoad.showPending(pending, soloRosterSeats(options?.gameMode, options?.campaignOperationId));
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {

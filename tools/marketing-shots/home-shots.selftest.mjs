@@ -68,7 +68,8 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 
 // --- the modes: every mode, in the battle setup's order, with its own name and icon and no copy ----------------------
 const playSection = home.match(/<!--home:play-->([\s\S]*?)<!--\/home:play-->/)?.[1] ?? '';
-const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" data-play-panel="${name}" tabindex="0" role="group" aria-labelledby="play-title"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
+// the switch is tabs over its rails: each rail a tab panel named by its tab
+const panel = (name) => playSection.match(new RegExp(`<div class="play-rail" id="play-panel-${name}" data-play-panel="${name}" tabindex="0" role="tabpanel" aria-labelledby="play-tab-${name}"(?: hidden)?>([\\s\\S]*?)</div>(?=<div class="play-rail"|</div></section>)`))?.[1] ?? '';
 const cards = [...panel('modes').matchAll(/<figure class="play-tile[^"]*" data-mode="([a-z0-9_]+)"[^>]*>([\s\S]*?)<\/figure>/g)];
 assert.deepEqual(cards.map((c) => c[1]), [...MODE_PRESENTATION_ORDER], 'one tile per battle mode, in the one presentation order Deploy and the rooms show (the practice modes are not battles)');
 assert.deepEqual([...MODE_PRESENTATION_ORDER].sort(), [...BATTLE_MODE_IDS].sort(), 'the presentation order holds every battle mode once');
@@ -80,7 +81,7 @@ for (const [, id, body] of cards) {
   assert.doesNotMatch(body, /<p\b/, `${id} carries its name only`);
 }
 assert.equal((panel('modes').match(/play-tile--lead/g) || []).length, 0, 'every mode card is a large card: no lead');
-assert.match(playSection, /data-play-tab="modes" aria-checked="true">/, 'the modes open first');
+assert.match(playSection, /data-play-tab="modes" aria-selected="true" tabindex="0">/, 'the modes open first, the tab list\'s stop');
 // (2026-10-25 gauntlet) the hero's counts carry the numbers; the switch names its sets only
 assert.doesNotMatch(playSection, /cot-c-tabs__count/, 'the switch repeats no count');
 

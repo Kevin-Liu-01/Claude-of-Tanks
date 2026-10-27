@@ -12,6 +12,7 @@ import type {
   CustomCamoBrush,
 } from '../vehicles/camoPolicy.ts';
 import { paintCustomCamoStrokes } from '../vehicles/customCamoCanvas.ts';
+import { notify } from './components/notice.ts';
 import { t } from './i18n.ts';
 import type { CustomCamoStudioController } from './customCamoStudioAccess.ts';
 import { createUiCanvas } from './uiCanvas.ts';
@@ -24,7 +25,9 @@ interface CustomCamoOptions {
 }
 
 interface CustomCamoStudioOptions {
-  button: HTMLButtonElement;
+  /** Its trigger as it stands (the camo picker's "Make your own" swatch, redrawn with the picker): told when the studio
+   *  opens and closes, and given the focus back. */
+  button: () => HTMLElement | null;
   camo: CustomCamoOptions;
   selectedId: () => string | null;
   selectedSpec: () => RuntimeValue;
@@ -53,8 +56,9 @@ export function createCustomCamoStudio({
   const modal = createModal({
     title: t('customCamo.title'),
     size: 'wide',
-    onOpen: () => button.setAttribute('aria-expanded', 'true'),
-    onClose: () => button.setAttribute('aria-expanded', 'false'),
+    onOpen: () => button()?.setAttribute('aria-expanded', 'true'),
+    onClose: () => button()?.setAttribute('aria-expanded', 'false'),
+    unsaved: () => JSON.stringify(draft) !== JSON.stringify(savedDraft()),
   });
   const root = document.createElement('div');
   root.className = 'cot-camo-lab';
@@ -290,12 +294,9 @@ export function createCustomCamoStudio({
   transferHeading.innerHTML = `<span>${t('customCamo.transfer.heading')}</span><small>${t('customCamo.transfer.subheading')}</small>`;
   const transfer = document.createElement('div');
   transfer.className = 'cot-custom-transfer';
-  const status = document.createElement('div');
-  status.className = 'cot-custom-status';
-  status.setAttribute('role', 'status');
-  const setStatus = (message: string, kind = '') => {
-    status.textContent = message;
-    status.className = `cot-custom-status${kind ? ` ${kind}` : ''}`;
+  // what a copy, a paste or a save did: the kit's toast, above the editor
+  const setStatus = (message: string, kind: 'ok' | 'error') => {
+    notify({ id: 'cot-custom-camo', severity: kind === 'ok' ? 'success' : 'error', text: message });
   };
   const copyPattern = document.createElement('button');
   copyPattern.type = 'button';
@@ -336,7 +337,7 @@ export function createCustomCamoStudio({
     } catch { setStatus(t('customCamo.status.pasteFailed'), 'error'); }
   });
   transfer.append(copyPattern, pastePattern);
-  transferPanel.append(transferHeading, transfer, status);
+  transferPanel.append(transferHeading, transfer);
   const help = document.createElement('div');
   help.className = 'cot-custom-help';
   help.innerHTML = t('customCamo.localOnlyHelp');
@@ -346,13 +347,13 @@ export function createCustomCamoStudio({
 
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.className = 'cot-modal__button';
+  cancel.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--secondary';
   cancel.dataset.uiSound = 'back';
   cancel.textContent = t('customCamo.close');
   cancel.addEventListener('click', () => modal.close());
   const apply = document.createElement('button');
   apply.type = 'button';
-  apply.className = 'cot-modal__button cot-modal__button--primary';
+  apply.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--primary';
   apply.innerHTML = `${uiIconSVG('check', 17)}<span>${t('customCamo.apply')}</span>`;
   apply.addEventListener('click', () => {
     const id = selectedId();
@@ -410,18 +411,22 @@ export function createCustomCamoStudio({
     }
   });
 
-  const syncSelected = () => {
+  /** The selected slot's pattern as the editor opens it (a stored pattern is drawn on from no strokes). */
+  function savedDraft(): CustomCamoDraft {
     const id = selectedId();
-    if (!id) return;
-    draft = normalized(camo.getCustom(id));
-    if (draft.style !== 'drawn') draft = normalized({ ...draft, style: 'drawn', strokes: [] });
+    const saved = normalized(id ? camo.getCustom(id) : undefined);
+    return saved.style === 'drawn' ? saved : normalized({ ...saved, style: 'drawn', strokes: [] });
+  }
+  const syncSelected = () => {
+    if (!selectedId()) return;
+    draft = savedDraft();
     syncControls();
   };
 
   return {
     open() {
       syncSelected();
-      modal.open({ trigger: button });
+      modal.open({ trigger: button() ?? undefined });
     },
     syncSelected,
     close: (options) => modal.close(options),

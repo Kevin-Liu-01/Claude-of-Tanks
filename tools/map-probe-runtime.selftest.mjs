@@ -227,7 +227,7 @@ for (const tool of TOOLS) {
   assert.match(source, /^\/\/ .*\brounds?\b[^\n]*\b(?:3[5-9]|4\d)\b/im, `${tool}: header names the round(s) it verified`);
   assert.match(source, /node tools\/[a-z-]+\.mjs --/, `${tool}: header shows a usage line`);
   assert.match(source, /from '\.\/map-probe-runtime\.mjs'/, `${tool}: built on the shared runtime`);
-  assert.ok(!/puppeteer\.launch|createServer\(/.test(source), `${tool}: no private server or browser launch`);
+  assert.ok(!/puppeteer\.launch|launchGuardedBrowser\(|createServer\(/.test(source), `${tool}: no private server or browser launch`);
   assert.match(source, /if \(isMainModule\(import\.meta\.url\)\) await runProbeCli\(/, `${tool}: main guard, importable without running`);
   const helpRun = spawnSync(process.execPath, [`tools/${tool}.mjs`, '--help'], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
   assert.equal(helpRun.status, 0, `${tool} --help exits 0: ${helpRun.stderr}`);
@@ -245,7 +245,7 @@ for (const tool of TOOLS) {
   assert.throws(() => parseProbeArgs(['--dist=/tmp/cot-dist'], base), /Unknown argument --dist/, 'a tool that does not accept --dist refuses it');
   const source = readFileSync(path.join(ROOT, 'tools', 'suspension-strip-probe.mjs'), 'utf8');
   assert.match(source, /withDistProbeSession/, 'the strip probe serves a built dist through the runtime');
-  assert.ok(!/puppeteer\.launch|createServer\(|preview\(/.test(source), 'the strip probe launches no server or browser of its own');
+  assert.ok(!/puppeteer\.launch|launchGuardedBrowser\(|createServer\(|preview\(/.test(source), 'the strip probe launches no server or browser of its own');
   assert.match(source, /if \(isMainModule\(import\.meta\.url\)\) await runProbeCli\(/, 'the strip probe: main guard');
   const helpRun = spawnSync(process.execPath, ['tools/suspension-strip-probe.mjs', '--help'], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
   assert.equal(helpRun.status, 0, `suspension-strip-probe --help exits 0: ${helpRun.stderr}`);

@@ -23,6 +23,7 @@
  * Ports are OS-assigned (never 5197–5199); `--port=<n>` pins the Vite port.
  * Screenshots and report.json land in `--out`.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
@@ -190,7 +191,7 @@ try {
   const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
   step('vite', { origin, cacheDir });
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: !headful,
     protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
@@ -211,9 +212,9 @@ try {
   step('a-garage-ready');
   // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
   await pageA.click('.cot-multiplayer-entry');
-  await pageA.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-  await pageA.click('.cot-play .modes [data-mode="lan"]');
-  await pageA.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10_000 });
+  await pageA.waitForSelector('.cot-play.show .modes [data-value="lan"]', { timeout: 30_000 });
+  await pageA.click('.cot-play .modes [data-value="lan"]');
+  await pageA.waitForFunction(() => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', { timeout: 10_000 });
   await waitFor(pageA, () => document.querySelector('.cot-play')?.classList.contains('show'), 'A play menu', 30_000);
   // 2026-09-30: the room host is the deployment's (VITE_ROOMS_URL names this in-process service); the v1 connection-settings field is gone.
   await pageA.evaluate(() => {

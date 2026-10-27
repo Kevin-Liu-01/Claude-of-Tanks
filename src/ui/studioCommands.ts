@@ -99,10 +99,13 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
       label.textContent = command.label;
       row.appendChild(label);
       if (command.hint) {
-        const kbd = document.createElement('kbd');
-        kbd.className = 'cot-c-kbd';
-        kbd.textContent = command.hint;
-        row.appendChild(kbd);
+        // the kit's key cap (components.ts keycap: cot-c-kbd, hidden from assistive technology), built as nodes: a Studio
+        // sink writes no markup from data (studioSceneShare.selftest §10); no command hint is an arrow
+        const cap = document.createElement('kbd');
+        cap.className = 'cot-c-kbd';
+        cap.setAttribute('aria-hidden', 'true');
+        cap.textContent = command.hint;
+        row.appendChild(cap);
       }
       // a press runs the row without stealing focus from the field first
       row.addEventListener('pointerdown', (event) => event.preventDefault());

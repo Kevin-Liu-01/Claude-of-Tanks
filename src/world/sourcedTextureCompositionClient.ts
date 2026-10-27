@@ -340,6 +340,19 @@ function browserWorker(): SourcedCompositionWorkerPort {
   return port;
 }
 
+/**
+ * A source image's bitmap from its file. createImageBitmap decodes an <img> in its native front half on the main thread
+ * (31–75 ms a 1K JPEG on a 4x phone; nav-perf's Garage census: 233 ms over three tasks) and a Blob off it (≤ 4 ms), with
+ * the same pixels. The file comes from the HTTP cache the element filled; any failure takes the element as before.
+ */
+async function sourceFileBitmap(image: HTMLImageElement): Promise<ImageBitmap> {
+  try {
+    const response = await fetch(image.currentSrc || image.src, { cache: 'force-cache' });
+    if (response.ok) return await createImageBitmap(await response.blob());
+  } catch { /* the element below */ }
+  return createImageBitmap(image);
+}
+
 export function canComposeSourcedTextureInWorker(): boolean {
   return typeof Worker === 'function' && typeof OffscreenCanvas === 'function'
     && typeof createImageBitmap === 'function' && typeof ImageData === 'function'
@@ -352,7 +365,7 @@ export function tryComposeSourcedTexture(
   if (!canComposeSourcedTextureInWorker()) return Promise.resolve(null);
   sharedClient ??= createSourcedCompositionClient({
     createWorker: browserWorker,
-    createBitmap: image => createImageBitmap(image),
+    createBitmap: sourceFileBitmap,
     yieldPreparation: nextPaintFrame,
     schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
   });

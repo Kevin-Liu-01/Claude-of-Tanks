@@ -47,12 +47,83 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // - home +714 / docs +1,361 / 404 +545 brotli over the lane's pins: the Premiere lead's /home and 404 rounds 17 and 18
   //   and the mode hues (brand-ui-home-252 024b0c5ff6, c6ebdd8eec), primitives' Field Manual r13/r14 with its mode glyphs
   //   (brand-ui-primitives-250 2c6c740125), the registry's data-datum markers (surface-registry-253 6837baa487).
-  game: { brotliBytes: 1072654, requests: 129, entryBrotliBytes: 236546 },
-  cn: { brotliBytes: 1115783, requests: 130, entryBrotliBytes: 236546 },
-  gallery: { brotliBytes: 665390, requests: 75 },
-  home: { brotliBytes: 24863, requests: 8 },
-  docs: { brotliBytes: 32949, requests: 12 },
-  notFound: { brotliBytes: 16362, requests: 7 },
+  // 2026-10-25 (integrator 254, re-pinned at the release build of 254 after its npm ci; each share is the local build of
+  // its merge commit against the one before, and main 253 built that way reads its release pin within 4 B):
+  // - battle-spikes-253 100114d1e4 (the entry and Garage world-build slices, the footprint point index, the shadow
+  //   cache's scoped re-renders, the minimap chrome cache): +1,410 B game, +94 B entry, +367 B Gallery;
+  // - Main: "stage 2b pass 1, the decor worker's plan/attach split and planner" with 253's riding-parts trigger relabelled
+  //   in fleetFactory (decor-worker-254 22213d3b33, which carries frontend-budgets-252 b7f7e781b8): +546 B game,
+  //   +166 B entry, +442 B Gallery (the lane's known-list rows, folded in here);
+  // - rust-support-solve-253 65f8688d36 (the kernels' fallback report; the solo-host entry stays lazy): +105 B game, +40 B entry;
+  // - brand-ui-battle-242 4074630480 (gauntlet round 8, the Frontline hostiles datum, the touch contract): +801 B game
+  //   (+747 B cn), +104 B entry; home +6 B and 404 +4 B; docs -4 B. tech-tree-view-252 -2 B; media-home-r2-252 none.
+  // Requests unchanged.
+  // 2026-10-26 (integrator 254, the forwards, re-pinned at the release build of d0186c3164):
+  // - Main: "owner /home sections and hero text (2026-10-25)" (brand-ui-home-252 235ce8ba78 then 4d0b30d296: the hero's
+  //   headline, line and per-clip caption on a measured scrim; Head to head, In battle and The fleet as lazy sections):
+  //   home +1,093 B (the lead measured 25,923 at 235ce8ba78), docs +17 B, game +33 B;
+  // - canvas-ui-253 b4aa00359b (the phone livery swatches' retained surface): +173 B game, +163 B Gallery;
+  // - Main: the owner's Garage asks, accepted and re-pinned at the release build (brand-ui-garage-redesign-245
+  //   64ca0557d5: the hero on the measured free stage, the roster as one kit row; with integ's equipment-tip fix):
+  //   +1,376 B game, +1,077 B entry, +473 B Gallery, home -25 B. Requests unchanged.
+  // 2026-10-26 (integrator 255, re-pinned at the release build of f015b17209; shares as 254's, main 254 local within 107 B):
+  // - battle-spikes-253 c8f5bdb152 (the memory fixes, the MP entry's structure mask before the compile): +606 B game, +566 B
+  //   entry; its forward dc4c2df7b3 (the MP opening warm batches, gated link polls, the impostor bake under the cover):
+  //   +848 B game, +529 B entry;
+  // - decor-worker-254 c496fd9a45 (the Studio's first-frame links): -37 B game, -187 B entry;
+  // - Main's step 5 flip, rust-support-solve-253 b0bf08e3df (a free sortie on a local host Worker): +626 B game, +613 B entry;
+  // - vehicles-diagrams-camo-253 365ade19dc (the diagrams' DOM labels; their tones a lazy token module): +180 B game,
+  //   +331 B cn, +344 B Gallery, home +9 B, docs +7 B, 404 +3 B; media-maps-r1-254 -3 B; integ's fleet wall +99 B game;
+  // - Main: "owner map/camo picker (interaction redesign A)" (interaction-picker-254 2c11b57f98): game -69 B, entry -311 B,
+  //   Gallery +261 B, home +173 B, docs +272 B, 404 +311 B; no extra request (its sheet in the game's CSS, its facts' tags
+  //   in the playMode chunk). Requests unchanged.
+  // 2026-10-26 (integrator 256, Main's ruling 'hotfix: solo default back to page', the release build of 60b664f11f):
+  //   soloAuthorityFor's default back to the page: -170 B game and cn, -170 B entry. Other pages and requests unchanged.
+  // 2026-10-26 (integrator 257, re-pinned at the release build of 97371edb3a after its npm ci; each share is the local build of
+  // its merge commit against the one before, main 256 local within +223 B of its release measure):
+  // - Main: "owner Garage asks + camo picker (interaction redesign B)" (brand-ui-garage-redesign-245 dbd9941cdd: the camera
+  //   lowered, class glyphs on the hero cards, the staging plate, stat-panel titles, the camo picker and try-on, the kit
+  //   picker menus): +5,011 B game, +790 B entry, +6,930 B Gallery; its kitPicker group folds one game and cn boot request;
+  // - Main: "load card team lists + no letterbox" (brand-ui-battle-242 ce619fabd2, then 317d96c2c9's flyby grade): +1,047 B
+  //   and +338 B game (+253 B and +338 B entry), Gallery +67 B, home +10 B, docs +15 B, 404 +11 B;
+  // - interaction-picker-254 c10c8f3834 (favicon set, hover loops, modal kit, toasts in the Tab ring, rooms-kind, Jev switch):
+  //   +352 B game (+202 B entry), Gallery +221 B, home +30 B, docs +31 B, 404 +18 B;
+  // - decor-worker-254 b51f51974b (the kit's own camo entry): +261 B game (+75 B entry); 4e0eaf6f40 (the Studio's second
+  //   entry) with integ's programWarm group: +134 B;
+  // - battle-spikes-253 2e0dd5066c: +122 B game (-16 B entry); its lazy post passes split engine/gpuCatchUp.ts into one more
+  //   game and cn boot request, which integ groups back into programWarm's chunk (97371edb3a);
+  // - retier-257 +56 B, t90-lineage-257 -78 B, image-fit-254 -266 B (entry -269 B), brand-ui-primitives-250 4bab44f1c4 with
+  //   integ's image-fit reconcile -343 B (entry -330 B; Gallery +108 B, home +23 B, docs -246 B, 404 +4 B; docsPickers.css
+  //   adds no docs request).
+  // Requests: game 129 -> 128, cn 130 -> 129; the others unchanged. The pins are the final release build's (432767fd9e, after the
+  // integ fixes: the Field Manual's Watch keys, the T-90 pair's matchmaking tier, the four hover loops, the try-on's seed
+  // form): game -318 B and Gallery -291 B against 97371edb3a's build, 404 +16 B.
+  // 2026-10-26 (integrator 258, re-pinned at the release build of 7d7d15e292 after its npm ci; each share is the local build of
+  // its merge commit against the one before, main 257 local within -118 B of its release pin; Main approved the totals):
+  // - Main: "owner Garage framing + Overview compare" (brand-ui-garage-redesign-245 5197bfc9c0: the tracks on the name line,
+  //   the 14 degree look-down, the Overview readout's compare legend, Studio s17, the tier chip in the kitPicker chunk):
+  //   +796 B game (+830 B cn), +402 B entry, +500 B Gallery, home +127 B, docs +39 B (approved: +858 / +899 / +435 / +499);
+  // - Main: "no flags on the markers" (brand-ui-battle-242 37e25f7081, with gauntlet r14): +555 B game (+759 raw), +156 B entry;
+  // - Main: "solo roster plan, phase 1" (solo-roster-plan-258 5eeb374220, planBattleSeats): +671 B game (+2,414 raw), entry
+  //   -9 B (approved +866 / +2,413 raw);
+  // - interaction-picker-254 3880af6939 (the boot lockup, the /home press cards, hover loops): +241 B game, +11 B entry,
+  //   home +226 B (inline CSS +170 B), Gallery +289 B; its forward e9369a4258 (one selected state): -150 B game, +96 B entry,
+  //   Gallery -156 B, home -15 B;
+  // - mm-tiers-258 da835cd14b (matchmaking tier.ts follows the shown tiers): -717 B game, Gallery +419 B;
+  //   vehicles-m48a5-mantlet-258 +47 B game (+74 B Gallery); vehicles-rear-drums-258 +386 B game (+433 B cn, +159 B entry,
+  //   Gallery +172 B); brand-ui-primitives-250 07efeea37c (the 13 Deploy plates): -64 B game, docs +71 B, Gallery -61 B, home
+  //   +5 B (approved -157 / +73 / +56 / +16); battle-spikes-253, media-deploy-panels-257 and motion-lint-253 none.
+  // - Main: "boot-258 last" (nav-perf's boot fix, item/boot-258 2aef1bc70b: isBootCovering for every boot, the link waits
+  //   before the first live frame, the Garage warm uncull'd at the scene's samples, the aux-armor rescans): +282 B game and cn
+  //   (+630 raw; entry +45 B), Gallery +308 B (+502 raw, fleetFactory).
+  // Requests unchanged. Over 257's pins: game +1,803 B (with the 128 B margin), entry +592 B, Gallery +1,545 B, home +334 B,
+  // docs +94 B, 404 -18 B.
+  game: { brotliBytes: 1087118, requests: 128, entryBrotliBytes: 240549 },
+  cn: { brotliBytes: 1129376, requests: 129, entryBrotliBytes: 240549 },
+  gallery: { brotliBytes: 676045, requests: 75 },
+  home: { brotliBytes: 26542, requests: 8 },
+  docs: { brotliBytes: 33107, requests: 12 },
+  notFound: { brotliBytes: 16686, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

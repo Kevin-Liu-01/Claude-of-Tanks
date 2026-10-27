@@ -180,26 +180,6 @@
   "public/docs/phone/inpMs": {
    "value": 176,
    "owner": "premiere-site"
-  },
-  "bundle/game/any/brotliBytes": {
-   "value": 1078846,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
-  },
-  "bundle/game/any/entryBrotliBytes": {
-   "value": 244017,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
-  },
-  "bundle/cn/any/brotliBytes": {
-   "value": 1121898,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
-  },
-  "bundle/cn/any/entryBrotliBytes": {
-   "value": 244017,
-   "owner": "integrator",
-   "ruling": "Main 2026-10-25, release 253, relabelled for 254: the audio revert (+233 B entry br, a correctness restore: sound on every first press) and the riding-parts trigger in fleetFactory (+188 B game br); pinned at e254a (a48b6e6a74)"
   }
  }
 }

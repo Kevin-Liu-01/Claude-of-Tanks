@@ -145,16 +145,16 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
-// the repository's configuration: exactly the three fleet workers, each constructed with the literal pattern
+// the repository's configuration: exactly the four fleet workers, each constructed with the literal pattern
 {
   const plugin = config.plugins.flat().find((entry) => entry?.name === 'cot-shared-worker-chunks');
   assert.ok(plugin, 'vite.config.ts registers the shared worker plugin');
   assert.equal(plugin.apply, 'build', 'dev keeps serving workers from source');
   assert.equal(plugin.enforce, 'pre');
   const source = readFileSync(join(ROOT, 'vite.config.ts'), 'utf8');
-  assert.match(source, /sharedWorkerChunks\(\{ workers: \{\n\s+'src\/world\/wreckBakeWorker\.ts': \{\},\n\s+'src\/game\/garageWorkshopGeometryWorker\.ts': \{ privateCopies: \['src\/vehicles\/profileBuilderAdapter\.ts'\] \},\n\s+'src\/vehicles\/ridingPartsWorker\.ts': \{\},\n\s+\} \}\)/);
+  assert.match(source, /sharedWorkerChunks\(\{ workers: \{\n\s+'src\/world\/wreckBakeWorker\.ts': \{\},\n\s+'src\/game\/garageWorkshopGeometryWorker\.ts': \{ privateCopies: \['src\/vehicles\/profileBuilderAdapter\.ts'\] \},\n\s+'src\/vehicles\/ridingPartsWorker\.ts': \{\},\n\s+'src\/vehicles\/decorPlanWorker\.ts': \{\},\n\s+\} \}\)/);
   for (const [client, worker] of [['src/world/wreckBakeClient.ts', './wreckBakeWorker.ts'], ['src/game/garageWorkshopTransfer.ts', './garageWorkshopGeometryWorker.ts'],
-    ['src/vehicles/ridingPartsPrebuild.ts', './ridingPartsWorker.ts']]) {
+    ['src/vehicles/ridingPartsPrebuild.ts', './ridingPartsWorker.ts'], ['src/vehicles/decorPlanClient.ts', './decorPlanWorker.ts']]) {
     const text = readFileSync(join(ROOT, client), 'utf8');
     assert.ok(text.includes(`new Worker(new URL('${worker}', import.meta.url)`), `${client} constructs ${worker} with the literal pattern`);
   }

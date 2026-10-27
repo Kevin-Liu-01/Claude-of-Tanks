@@ -13,13 +13,14 @@
 // Angle generation atomically writes both the 512px source portrait and the
 // 256px Garage thumbnail through the same framing policy.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS } from '../src/vehicles/tankAssets.ts';
+import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, technicalLabelsFile } from '../src/vehicles/tankAssets.ts';
 import { uniqueIds } from './id-list.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
@@ -116,6 +117,12 @@ function assetRecord(file, view) {
   return record;
 }
 
+/** The technical diagrams' label sidecar (253): recorded with its hash beside the diagram views it labels. */
+function technicalLabelsRecord(file) {
+  const buffer = readFileSync(resolve(outDir, file));
+  return { file, mime: 'application/json', bytes: buffer.length, sha256: sha256(buffer) };
+}
+
 const viteCacheDir = resolve('/tmp', `cot-icons-vite-${process.pid}`);
 // R4c (2026-10-16): strictPort false, and the URL from the address really bound (tools/tool-page-load.mjs)
 const server = await createServer({
@@ -128,7 +135,7 @@ await server.listen();
 const url = `${boundOrigin(server)}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   // A full three-diagram fleet refresh renders hundreds of data-driven views
   // in one deterministic page evaluation and can exceed Puppeteer's 180 s
@@ -180,7 +187,8 @@ try {
     const raw = Buffer.from(dataUrl.split(',')[1], 'base64');
     const outputPath = resolve(outDir, name);
     mkdirSync(dirname(outputPath), { recursive: true });
-    const buffer = await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
+    // the label sidecar is data, not a published image
+    const buffer = name.endsWith('.json') ? raw : await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
       { type: name.endsWith('.png') ? 'image/png' : 'image/webp', quality: 90 });
     writeFileSync(outputPath, buffer);
     console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
@@ -199,6 +207,7 @@ try {
       for (const [view, file] of Object.entries(meta.requiredFiles)) {
         if (selectedViews.includes(view)) assets[view] = assetRecord(file, view);
       }
+      if (Object.hasOwn(generated.files, technicalLabelsFile(id))) assets.technicalLabels = technicalLabelsRecord(technicalLabelsFile(id));
       // A portrait-only refresh must not rewrite armor, modules, geometry, or
       // presentation receipts. Those belong to the anatomy pipeline and may
       // intentionally lag work in a separate branch.
@@ -230,6 +239,18 @@ try {
           if (asset.file.endsWith('_angle.webp')) {
             rmSync(resolve(outDir, 'thumbs', asset.file), { force: true });
           }
+          console.log(`[tank-assets] pruned obsolete ${asset.file}`);
+        }
+      }
+    }
+    // A selective generation prunes, for its own ids only, the files their previous rows named and their new rows no
+    // longer do (253: the diagrams moved from PNG to WebP, so a family hold must retire its tanks' old PNGs).
+    if (onlyTanks.length && priorManifest?.tanks) {
+      for (const id of Object.keys(generated.tanks)) {
+        const active = new Set(Object.values(sortedTanks[id]?.assets || {}).map((asset) => asset?.file).filter(Boolean));
+        for (const asset of Object.values(priorManifest.tanks[id]?.assets || {})) {
+          if (!asset?.file || active.has(asset.file)) continue;
+          rmSync(resolve(outDir, asset.file), { force: true });
           console.log(`[tank-assets] pruned obsolete ${asset.file}`);
         }
       }

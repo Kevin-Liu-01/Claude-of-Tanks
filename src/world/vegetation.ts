@@ -526,7 +526,8 @@ export interface VegetationRuntime {
   dispose(): void;
   /** Checkpoint-only accounting; never force-drains unfinished visible grass. */
   getGrassWorkState(): VegetationGrassWorkState;
-  setGroundCoverClearance(blocked: GroundCoverBlocked): void;
+  /** Seal the ground cover's admission (once, before streaming): yields after each grass mesh it compacts. */
+  groundCoverSealSteps(blocked: GroundCoverBlocked): Generator<void, void, void>;
   /** Trees perf (2026-10-07): `viewCamera` — the camera this frame's main pass renders with; its view culls the near
    * pools (any other camera still draws them whole); none (the warm, the Studio, the receipts): every near tree draws. */
   update(
@@ -575,6 +576,8 @@ export interface VegetationRuntime {
   /** Round 77c: bake the far tier's impostor atlas now (the covered activation warm), so no presented frame pays
    * for it; true when an atlas is baked after the call, false without a library (mobile, the receipts). */
   warmImpostors(): boolean;
+  /** (battle-spikes-253) The same bake with its programs linked first, between tasks (TreeImpostorLibrary.ensureBakedAsync). */
+  warmImpostorsAsync(waitLinks: () => Promise<void>): Promise<boolean>;
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
@@ -5010,7 +5013,8 @@ function* vegetationBuildSteps(
 
   // Props are placed after vegetation. Seal actual accepted solid footprints
   // before the world renders, then reuse the same admission rule for streaming.
-  function setGroundCoverClearance(blocked: GroundCoverBlocked): void {
+  // A step per grass mesh: the world's assembly paces a sliced build between them.
+  function* groundCoverSealSteps(blocked: GroundCoverBlocked): Generator<void, void, void> {
     if (groundCoverBlocked) throw new Error('Ground-cover clearance is already sealed');
     if (carpetCache.size || grassBuildJob || carpetWork.getState().requestedGeneration > 0) {
       throw new Error('Seal ground-cover clearance before streaming starts');
@@ -5030,6 +5034,7 @@ function* vegetationBuildSteps(
       // Previous bounds remain conservative. No new GPU buffer/mesh/material.
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      yield;
     }
     carpetCache.clear();
     _carpetCellX = _carpetCellZ = 0x7fffffff;
@@ -9850,11 +9855,12 @@ function* vegetationBuildSteps(
     group.userData.outlandTrees = (group.userData.outlandTrees ?? 0) + batch.trees.length;
     return batch.trees.length;
   }
-  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+  return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, groundCoverSealSteps, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _nearCull: nearCullState,
     _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
+    warmImpostorsAsync: (waitLinks) => (treeImpostors ? treeImpostors.ensureBakedAsync(waitLinks) : Promise.resolve(false)),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

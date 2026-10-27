@@ -279,8 +279,9 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.filming.s8.t'), t('docs.topic.filming.s8.p1'), t('docs.topic.filming.s8.p2')],
       [t('docs.topic.filming.s9.t'), t('docs.topic.filming.s9.p1'), t('docs.topic.filming.s9.p2')],
       [t('docs.topic.filming.s10.t'), t('docs.topic.filming.s10.p1'), t('docs.topic.filming.s10.p2')],
-      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts
-      [t('docs.topic.filming.s11.t'), t('docs.topic.filming.s11.p1')],
+      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts (its tabs name its collections, so the
+      // section carries no paragraph of its own)
+      [t('docs.topic.filming.s11.t')],
     ],
     media: [
       ['/media/filming-r1/previz-sheet.webp', t('docs.topic.filming.media1')],
@@ -314,8 +315,9 @@ export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, numbe
   '/media/ui-246/studio-workspace.webp': [1920, 1080],
 };
 const DEFAULT_FIGURE_SIZE = [1920, 1080] as const;
-/** A figure fills the article column (about 760 px; the full width on narrow screens). */
-const FIGURE_SIZES_ATTRIBUTE = '(max-width: 900px) 100vw, 760px';
+/** A figure fills the article column to its block edge, the tables' (about half the screen beside the shelf; the full
+ *  width on narrow screens), as the data-built chapters' figures do. */
+const FIGURE_SIZES_ATTRIBUTE = '(width < 1100px) 100vw, 60vw';
 
 function mediaFigure([src, caption]: TopicMedia): string {
   const [width, height] = TOPIC_FIGURE_SIZES[src] ?? DEFAULT_FIGURE_SIZE;
@@ -469,7 +471,8 @@ function cjkTitleMarkup(title: string, phrases: readonly string[]): string {
   }
   const phrase = marked ? ' class="dm-phrases"' : '';
   const span = (voice: readonly string[], hollow: boolean): string => `<span${hollow ? ` class="t-hollow${marked ? ' dm-phrases' : ''}"` : phrase}>${voice.join('<wbr>')}</span>`;
-  return voices.map((voice, index) => span(voice, index > 0)).join(' ');
+  // no space between the voices: the first ends on its full-width mark, and a phone sets them on one line
+  return voices.map((voice, index) => span(voice, index > 0)).join('');
 }
 
 function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
@@ -553,20 +556,24 @@ function mountShelfRow(shelf: HTMLElement): void {
   if (typeof ResizeObserver === 'function') new ResizeObserver(edges).observe(shelf);
 }
 
-/** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
+/** "On this page" follows the reader: the last section to have reached the top third of the screen is the current one.
+ *  The observed band runs from far above the screen down to that line, so a jump past several sections (a link, a
+ *  search hit) still counts each of them; a thin band at the line missed a section that jumped across it. */
 function mountTocSpy(root: HTMLElement): void {
   const links = [...root.querySelectorAll<HTMLAnchorElement>('.dm-toc a[href^="#"]')];
   const targets = links.map((link) => document.getElementById(link.hash.slice(1))).filter((el): el is HTMLElement => el !== null);
   if (!targets.length) return;
+  const reached = new Set<Element>();
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      for (const link of links) {
-        if (link.hash === `#${entry.target.id}`) link.setAttribute('aria-current', 'location');
-        else link.removeAttribute('aria-current');
-      }
+      if (entry.isIntersecting) reached.add(entry.target); else reached.delete(entry.target);
     }
-  }, { rootMargin: '-20% 0px -70%' });
+    const current = targets.filter((target) => reached.has(target)).pop() ?? targets[0];
+    for (const link of links) {
+      if (link.hash === `#${current.id}`) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }, { rootMargin: '100000px 0px -70%' });
   for (const target of targets) observer.observe(target);
 }
 
@@ -589,7 +596,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   const at = order.indexOf(slug);
   const ladder = topicHeroLadder(topic.hero);
   const caption = ladder ? t(ladder.captionKey) : '';
-  const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
+  const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}" data-doc-size="16"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
@@ -603,11 +610,11 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="${docsHref(topicId)}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
     : '');
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
-  const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
+  const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search" data-doc-size="16"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
     + `<span class="dm-search__keys" aria-hidden="true">${t('docs.search.shortcutMac').split(' ').map((key) => `<kbd class="cot-c-kbd">${key}</kbd>`).join('')}</span></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
-    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
+    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual" data-doc-size="16"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
     + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`

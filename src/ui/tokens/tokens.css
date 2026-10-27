@@ -7,7 +7,7 @@
 :root{
   --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;--graphite-750:#161b21;
   --graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
-  --modehue-standard:#efb258;--modehue-drone:#34eee5;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
+  --modehue-standard:#efb258;--modehue-drone:#9d8cff;--modehue-zone-control:#64c6fb;--modehue-capture-the-flag:#5dd0db;
   --modehue-frontline-assault:#e6a875;--modehue-turbo-ball:#a8e46a;--modehue-mars:#c8a2ff;--modehue-endless-horde:#f5827b;
   --modehue-gun-game:#f68dc1;--modehue-juggernaut:#de79d7;--modehue-infected:#89eb9f;--modehue-realistic:#c3e151;
   --modehue-ac130:#ebd229;--modehue-proving-ground:#51bb9a;
@@ -80,12 +80,12 @@
   --ring-1:inset 0 0 0 1px var(--line-1);--ring-2:inset 0 0 0 1px var(--line-2);--ring-3:inset 0 0 0 1px var(--line-3);
   --ring-accent:inset 0 0 0 1px var(--accent);--btn-secondary-ring:inset 0 0 0 1px var(--line-control);
   --btn-secondary-ring-hover:inset 0 0 0 1px var(--ink-2);--ring-ok:inset 0 0 0 1px var(--ok);--ring-warn:inset 0 0 0 1px var(--warn);
-  --ring-danger:inset 0 0 0 1px var(--danger);--z-lift:1;--fill-faint:rgba(246,243,236,.03);--fill-quiet:rgba(246,243,236,.04);
-  --fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);--btn-primary-shadow:0 12px 32px rgba(0,0,0,.35);
-  --btn-media-fill:rgba(5,6,8,.55);--kbd-on-accent-ink:rgba(20,13,3,.78);--kbd-on-accent-ring:inset 0 0 0 1px oklch(from var(--ink-on-accent) l c h / .35);
-  --seg-on-shadow:0 1px 0 rgba(255,255,255,.06) inset,inset 0 0 0 1px var(--line-2);--flag-ring:0 0 0 1px rgba(0,0,0,.35);
-  --sil-shadow:drop-shadow(0 1px 0 rgba(0,0,0,.5));--glyph-plate:rgba(5,6,8,.86);--row-plate:rgba(17,21,26,.88);
-  --side-plate:rgba(11,14,17,.92);--media-fade:linear-gradient(0deg,rgba(5,6,8,.95) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 62%);
+  --ring-danger:inset 0 0 0 1px var(--danger);--z-lift:1;--z-under:-1;--fill-faint:rgba(246,243,236,.03);
+  --fill-quiet:rgba(246,243,236,.04);--fill-soft:rgba(246,243,236,.05);--fill-scale:rgba(246,243,236,.1);
+  --btn-primary-shadow:0 12px 32px rgba(0,0,0,.35);--btn-media-fill:rgba(5,6,8,.55);--kbd-on-accent-ink:rgba(20,13,3,.78);
+  --kbd-on-accent-ring:inset 0 0 0 1px oklch(from var(--ink-on-accent) l c h / .35);--seg-on-shadow:var(--ring-accent);
+  --flag-ring:0 0 0 1px rgba(0,0,0,.35);--sil-shadow:drop-shadow(0 1px 0 rgba(0,0,0,.5));--glyph-plate:rgba(5,6,8,.86);
+  --row-plate:rgba(17,21,26,.88);--side-plate:rgba(11,14,17,.92);--media-fade:linear-gradient(0deg,rgba(5,6,8,.95) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 62%);
   --media-fade-soft:linear-gradient(0deg,rgba(5,6,8,.92),rgba(5,6,8,0) 55%);--media-fade-full:linear-gradient(0deg,rgba(5,6,8,.95),rgba(5,6,8,.2) 70%);
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
   --hollow-shadow:0 8px 28px rgba(0,0,0,.32);--stage-halo:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55);
@@ -104,12 +104,12 @@
   --battle-text-halo:0 1px 2px oklch(from var(--surface-scene) l c h / .9),0 0 3px oklch(from var(--surface-scene) l c h / .65);
   --battle-mark-ring:0 0 0 2px oklch(from var(--surface-scene) l c h / .55);--battle-control-on:inset 0 -2px #efb84e;
   --battle-control-slash-ring:0 0 0 1px #05080bd9;--battle-control-label-halo:0 1px 3px #000,0 0 5px #000;
-  --battle-track-control:.015em;--battle-track-status:.06em;--battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
+  --battle-track-control:.015em;--battle-track-status:.06em;--battle-track-callsign:.025em;--battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
   --battle-chip-warn:inset 3px 0 0 var(--warn),inset 0 0 0 1px oklch(from var(--warn) l c h / .3),var(--battle-plate-shadow);
   --battle-chip-ok:inset 3px 0 0 var(--ok),inset 0 0 0 1px oklch(from var(--ok) l c h / .3),var(--battle-plate-shadow);
   --battle-fs-11:11px;--battle-fs-12:12px;--battle-fs-fig-11:11px;--battle-fs-fig-12:12px;--fs-floor-11:var(--battle-fs-11);
   --fs-floor-12:var(--battle-fs-12);--battle-fs-13:13px;--battle-fs-14:14px;--battle-fs-15:15px;--battle-fs-18:18px;
-  --battle-fs-20:20px;--battle-fs-28:28px;--battle-load-grade:linear-gradient(90deg,oklch(from var(--surface-scene) l c h / .9) 0,oklch(from var(--surface-scene) l c h / .55) 30%,oklch(from var(--surface-scene) l c h / 0) 52%),linear-gradient(0deg,oklch(from var(--surface-scene) l c h / .96) 0,oklch(from var(--surface-scene) l c h / .7) 22%,oklch(from var(--surface-scene) l c h / 0) 44%);
+  --battle-fs-20:20px;--battle-fs-28:28px;--battle-load-grade:linear-gradient(90deg,oklch(from var(--surface-scene) l c h / .9) 0,oklch(from var(--surface-scene) l c h / .55) 30%,oklch(from var(--surface-scene) l c h / 0) 52%),linear-gradient(0deg,oklch(from var(--surface-scene) l c h / .85) 0,oklch(from var(--surface-scene) l c h / .62) 22%,oklch(from var(--surface-scene) l c h / 0) 44%);
   --battle-load-grade-centred:linear-gradient(0deg,oklch(from var(--surface-scene) l c h / .96) 0,oklch(from var(--surface-scene) l c h / .72) 30%,oklch(from var(--surface-scene) l c h / .5) 58%,oklch(from var(--surface-scene) l c h / .78) 100%);
   --battle-end-grade:linear-gradient(90deg,oklch(from var(--surface-scene) l c h / .94) 0,oklch(from var(--surface-scene) l c h / .78) 38%,oklch(from var(--surface-scene) l c h / .35) 64%,oklch(from var(--surface-scene) l c h / .55) 100%),linear-gradient(0deg,oklch(from var(--surface-scene) l c h / .97) 0,oklch(from var(--surface-scene) l c h / .6) 30%,oklch(from var(--surface-scene) l c h / 0) 52%);
   --battle-chip-plate:rgba(5,6,8,.7);--battle-tip-plate:rgba(5,6,8,.82);--battle-row-me:inset 2px 0 0 var(--accent),var(--ring-accent);

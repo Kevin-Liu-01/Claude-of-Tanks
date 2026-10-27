@@ -95,6 +95,18 @@ assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
 assert.match(navCss, /@media \(width < 1100px\)\{\s*\.public-nav__links\{display:none\}\s*\.public-nav__menu-trigger\{display:inline-grid\}/,
   'below the laptop band the page links collapse into the menu sheet');
 assert.match(navCss, /^@import url\('\.\.\/ui\/tokens\/tokens\.css'\);/, 'the shell reads the design tokens on every public page');
+// the bar and its primary keep one size relation at every width: the bar is the primary's height and one inset above and
+// below, the primary is the kit's 48 px button from 768 px up and the 44 px touch target on a phone, and the bar's rule
+// hangs under its box, so the space under the primary equals the space over it
+assert.match(navCss, /--shell-nav-h:calc\(var\(--shell-nav-cta-h\) \+ 2 \* var\(--shell-nav-pad\)\)/, 'the bar is its primary plus one inset each side');
+assert.match(navCss, /:root\{--shell-nav-cta-h:var\(--btn-h-m\);/, 'the primary is the kit\'s 48 px button');
+assert.match(navCss, /@media \(width < 768px\)\{:root\{--shell-nav-cta-h:var\(--target-min\);--shell-nav-pad:calc\(var\(--s3\) \/ 2\)\}\}/, 'a phone keeps the 44 px touch target in the 56 px bar (6 px each side)');
+assert.match(navCss, /\.public-nav__cta\{--h:var\(--shell-nav-cta-h\);/, 'the bar\'s Play takes the primary height');
+assert.equal((navCss.match(/--shell-nav-h:/g) ?? []).length, 1, 'no band sets the bar\'s height apart from its primary');
+assert.equal((navCss.match(/\.public-nav__cta\{--h:/g) ?? []).length, 1, 'no band or pointer resizes the primary apart from the bar');
+assert.doesNotMatch(navCss.match(/\.public-nav\{[^}]*\}/)?.[0] ?? '', /border/, 'the bar\'s rule takes none of its height');
+assert.match(navCss, /\.public-nav::after\{content:'';position:absolute;inset:100% 0 auto;height:1px;background:var\(--line-1\)/,
+  'the bar\'s rule hangs under it');
 assert.match(shellSource, /class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu"/,
   'the phone menu trigger is static markup');
 assert.match(navSource, /event\.code !== 'Escape'/, 'the menu sheet closes with Escape');
@@ -155,11 +167,10 @@ assert.match(notFoundHtml, /<script type="module" src="\/src\/presentation\/notF
   'the 404 keeps its own runtime (it imports the shell\'s)');
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
+assert.match(gameHtml, /\.cot-boot-links\s*\{[^}]*display: flex; gap: 4px;/,
+  'boot utility controls are one row of quiet buttons in the foot (the 2026-10-26 boot redesign)');
 assert.match(gameHtml,
-  /\.cot-boot-links\s*\{[^}]*display: grid; grid-template-columns: repeat\(2, 1fr\); width: max-content;/,
-  'boot utility controls must share the widest control\'s intrinsic width');
-assert.match(gameHtml,
-  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 18px;/,
+  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 12px;/,
   'boot utility controls must keep balanced content-driven horizontal padding');
 assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
   'boot utility controls must not return to the fixed width that cramped GitHub');

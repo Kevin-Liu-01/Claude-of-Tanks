@@ -15,7 +15,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = mkdtempSync(join(tmpdir(), 'cot-tool-only-'));
 try {
   for (const file of ['icons/tank-assets.json', 'icons/m1a1_markings.png', 'icons/m1a1_angle.webp',
-    'icons/m1a1_armor_side.png', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json']) {
+    'icons/m1a1_armor_side.webp', 'icons/m1a1_technical.json', 'icons/m1a1_side_silhouette.png', 'icons/thumbs/m1a1.webp', 'media/tank-assets.json']) {
     mkdirSync(dirname(join(dist, file)), { recursive: true });
     writeFileSync(join(dist, file), 'x'.repeat(file.length));
   }

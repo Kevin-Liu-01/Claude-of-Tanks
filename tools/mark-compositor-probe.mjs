@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createCaptureLock } from './capture-lock.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -29,7 +30,8 @@ const page = (version) => `<!doctype html><meta charset="utf-8"><style>html,body
 mkdirSync(join(out, 'frames'), { recursive: true });
 const lock = process.argv.includes('--lock') ? createCaptureLock() : null;
 if (lock) { await lock.acquire(60 * 60 * 1000, { place: 'mark-compositor-probe' }); setInterval(() => lock.refresh(), 30_000).unref(); }
-const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--use-gl=angle', '--js-flags=--max-old-space-size=3072', '--window-size=700,500'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--no-sandbox', '--use-gl=angle', '--js-flags=--max-old-space-size=3072', '--window-size=700,500'] },
+  { label: 'mark-compositor-probe' });
 const report = {};
 try {
   for (const [name, version] of Object.entries(versions)) {

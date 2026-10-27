@@ -35,6 +35,7 @@
  * a budget fails; otherwise the exit code reflects only whether the run completed. Chrome runs under whatever the caller
  * wraps it in (the probe mutex, nice 19): the runner takes no lock itself.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import net from 'node:net';
@@ -271,7 +272,7 @@ try {
   origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
   step('vite', { origin, cacheDir });
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: !headful, protocolTimeout: 600_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
       '--disable-backgrounding-occluded-windows', '--use-gl=angle', '--enable-webgl', '--window-size=640,400'],
@@ -294,9 +295,9 @@ try {
     const page = peers[0].page;
     // 2026-09-29: multiplayer has its own entry since the play-menu split (8ccc472c2) — the battle button launches solo.
     await page.click('.cot-multiplayer-entry');
-    await page.waitForSelector('.cot-play.show .modes [data-mode="lan"]', { timeout: 30_000 });
-    await page.click('.cot-play .modes [data-mode="lan"]');
-    await page.waitForFunction(() => document.querySelector('.cot-play .modes [data-mode="lan"]')?.classList.contains('on'), { timeout: 10_000 });
+    await page.waitForSelector('.cot-play.show .modes [data-value="lan"]', { timeout: 30_000 });
+    await page.click('.cot-play .modes [data-value="lan"]');
+    await page.waitForFunction(() => document.querySelector('.cot-play .modes [data-value="lan"]')?.getAttribute('aria-checked') === 'true', { timeout: 10_000 });
     await waitFor(page, () => document.querySelector('.cot-play')?.classList.contains('show'), 'game host play menu', 30_000);
     await page.evaluate(() => { const name = document.querySelector('.cot-play [data-field="name"]'); if (name) name.value = 'Game Host'; });
     await page.click('.cot-play [data-action="create"]');

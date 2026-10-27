@@ -217,6 +217,16 @@ export function wireRoving(host: HTMLElement, onSelect: (value: string, item: HT
   return () => { host.removeEventListener('click', onClick); host.removeEventListener('keydown', onKey); };
 }
 
+/** Show `value` as the chosen item of a tab list or radio group built above, without calling its `onSelect` (a surface
+ *  re-rendering from its own state). */
+export function setRoving(host: HTMLElement, value: string): void {
+  for (const item of host.querySelectorAll<HTMLElement>(ROVING_ITEM)) {
+    const on = (item.dataset.tab ?? item.dataset.value) === value;
+    item.setAttribute(ROVING_STATE[item.getAttribute('role') ?? 'tab'], String(on));
+    item.tabIndex = on ? 0 : -1;
+  }
+}
+
 /** The item an arrow, Home or End moves to from the focused one (null for any other key). */
 function rovingTarget(host: HTMLElement, list: readonly HTMLElement[], event: KeyboardEvent): HTMLElement | null {
   const at = list.indexOf(document.activeElement as HTMLElement);
@@ -261,6 +271,13 @@ export function toggle(options: ToggleOptions): string {
     + ` data-ui-sound="toggle"${attrs(options.attrs)}><span class="cot-c-toggle__track" aria-hidden="true"><i></i></span>`
     + `<span class="cot-c-toggle__word" data-on="${esc(options.onWord)}" data-off="${esc(options.offWord)}" aria-hidden="true">`
     + `${esc(options.checked ? options.onWord : options.offWord)}</span></button>`;
+}
+
+/** Set a toggle()'s state: its switch and the state word written beside it. */
+export function setToggle(control: HTMLElement, checked: boolean): void {
+  control.setAttribute('aria-checked', String(checked));
+  const word = control.querySelector<HTMLElement>('.cot-c-toggle__word');
+  if (word) word.textContent = (checked ? word.dataset.on : word.dataset.off) ?? '';
 }
 
 /* ---------------------------------------------------------------------------------------------- data and stats */

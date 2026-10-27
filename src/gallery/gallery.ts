@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
-import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, offThreadDecorPlanner, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -19,6 +19,7 @@ import { tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { buildGalleryRecords, filterGalleryRecords, serializeGallerySpec } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import type { HeroManifest } from '../ui/heroCard.ts';
+import type { TechnicalLabelData } from '../ui/technicalDiagramLabels.ts';
 import { compareVehicleEras, isPostwarVehicleEra, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import {
   CONCEPT_PROTOTYPE_FILTER_META,
@@ -38,6 +39,8 @@ import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
+import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
@@ -209,7 +212,7 @@ let activeMode: GalleryMode = 'appearance';
 let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
-let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let announceTimer: ReturnType<typeof setTimeout> | undefined;
 let dossierShownId = '';
 
 const damageHost = document.createElement('div');
@@ -337,7 +340,7 @@ function anatomyVehicle(): AnatomyVehicle | null {
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   // the loading notice covers a slow build only, and leaves the moment the layer shows (it outlived the render before)
-  let loading: ReturnType<typeof showToast> = null;
+  let loading: GalleryNotice | null = null;
   const slow = setTimeout(() => { loading = showToast(t('gallery.anatomy.loading'), { severity: 'progress' }); }, 250);
   const settle = (): void => { clearTimeout(slow); loading?.dismiss(); loading = null; };
   anatomyReady = loadAnatomy().then(async (module) => {
@@ -357,7 +360,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
-    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }), { visual: false });
+    if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
     settle();
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
@@ -474,15 +477,14 @@ const keepDesignation = (name: string): string => name.replace(/-(?=\S)/g, '-\u2
 
 /** A notice's handle from the moment it is asked for: a dismissal before the kit has loaded cancels it. */
 interface GalleryNotice { dismiss(): void }
-function showToast(message: string, { visual = true, severity = 'info' as NoticeSeverity } = {}): GalleryNotice | null {
-  if (!visual) {
-    // a layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet)
-    const toast = $('#toast');
-    toast.textContent = message;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { toast.textContent = ''; }, 1800);
-    return null;
-  }
+/** A layer's count is read out, never shown: it was a helper sentence left over the stage (the UI gauntlet). */
+function announceLine(message: string): void {
+  const line = $('#announce');
+  line.textContent = message;
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { line.textContent = ''; }, 1800);
+}
+function showToast(message: string, { severity = 'info' as NoticeSeverity } = {}): GalleryNotice {
   // the kit's notice in its own region at the top of the window (the gauntlet 10-25: the old box sat over the compare
   // plate, the chips and the cards at every stacked size), with its status glyph, its time and its dismiss
   let dismissed = false;
@@ -803,12 +805,16 @@ function groupRecords(list: GalleryRecord[]): RosterGroup[] {
   return [...groups.values()];
 }
 
-let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest; classes: typeof import('../vehicles/vehicleFacets.ts');
+  glyphs: typeof import('../ui/vehicleFacetIcons.ts'); chips: typeof import('../ui/heroCardChips.ts') } | null = null;
 Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
   .then(async ([module]) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
-    heroCards = { module, manifest };
+    // the class glyph and the tier chip ride with the cards (the chunk the card module already pulls)
+    const [classes, glyphs, chips] = await Promise.all([import('../vehicles/vehicleFacets.ts'), import('../ui/vehicleFacetIcons.ts'),
+      import('../ui/heroCardChips.ts')]);
+    heroCards = { module, manifest, classes, glyphs, chips };
     const mask = module.heroCardFlagMask(manifest);
     vehicleList.style.setProperty('--hc-flag-mask', mask);
     takeMedia.style.setProperty('--hc-flag-mask', mask);
@@ -824,8 +830,14 @@ const rowTip = (record: GalleryRecord): string => rowName(record) === record.dis
 function rowMarkup(record: GalleryRecord): string {
   const selected = record.id === selectedId;
   const dev = record.developmentOnly ? `<b class="it__dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
+  // a hero card names its vehicle's class by its glyph in the top right (owner 10-26), its name the glyph's tip and label
+  const classId = heroCards && record.vehicleClass ? record.vehicleClass.id : '';
+  const classMeta = classId && heroCards ? (heroCards.classes.VEHICLE_CLASS_META as Readonly<Record<string, Parameters<typeof heroCards.classes.vehicleFacetLabel>[0]>>)[classId] : null;
+  const classPlate = classMeta && heroCards
+    ? `<span class="it__class" role="img" aria-label="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}" data-tip="${esc(heroCards.classes.vehicleFacetLabel(classMeta, t))}">`
+      + `${heroCards.glyphs.vehicleClassGlyphSVG(classId, 12)}</span>` : '';
   return `<button type="button" class="it" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
-    + `<span class="it__art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
+    + `<span class="it__art">${heroCards ? heroCards.chips.heroTierChipHTML(record.id) : ''}</span>${flag(record.nation, 'sm')}${silhouette(record.id)}${classPlate}`
     + `<span class="it__name"${rowTip(record)}>${esc(keepDesignation(rowName(record)))}${dev}</span><span class="e">${esc(rowValue(record))}</span></button>`;
 }
 function renderRoster(): void {
@@ -838,7 +850,9 @@ function renderRoster(): void {
       + `<span>${esc(group.label)}</span><span class="n">${formatNumber(group.rows.length)}</span></div>`
     : '<div class="fam__group">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
   if (!filteredRecords.length) {
-    vehicleList.innerHTML = emptyState({ text: t('gallery.empty.noMatch'), className: 'fam__empty',
+    // a typed query that matches nothing is named, so the line never blames filters the reader did not set
+    const query = $<HTMLInputElement>('#gallerySearch').value.trim();
+    vehicleList.innerHTML = emptyState({ text: query ? t('gallery.empty.noQueryMatch', { query }) : t('gallery.empty.noMatch'), className: 'fam__empty',
       action: { label: t('gallery.empty.clear'), attrs: { 'data-clear-filters': true } } });
   }
   if (layout === 'grid' && heroCards) {
@@ -903,11 +917,25 @@ function applyFilters(): void {
   filteredRecords = sortRecords(list);
   renderRoster();
 }
+// the sort is the kit's picker menu (pickerMenu.ts): a raw select in the census, its twenty keys now named with their glyphs
+let sortMenu: PickerMenu | null = null;
+function sortGlyph(key: SortKey): IconId | undefined {
+  const rating = RATINGS.find(([ratingKey]) => ratingKey === key);
+  return (rating?.[2] ?? statByKey.get(key)?.icon) as IconId | undefined;
+}
 function populateSort(): void {
-  const select = $<HTMLSelectElement>('#gallerySort');
-  select.replaceChildren(...SORTS.map((key) => new Option(sortLabel(key), key, false, key === browse.sort)));
-  select.setAttribute('aria-label', t('gallery.sort.aria'));
+  const items = SORTS.map((key) => { const glyph = sortGlyph(key); return { id: key, name: sortLabel(key), ...(glyph ? { glyph } : {}) }; });
+  if (sortMenu) sortMenu.setItems(items, browse.sort);
+  else sortMenu = createPickerMenu($<HTMLElement>('#gallerySort'), { id: 'gallery-sort', label: t('gallery.sort.aria'), items,
+    value: browse.sort, layout: 'list', text: pickerText(), onChoose: (item) => chooseSort(item.id as SortKey) });
   syncSortDirection();
+}
+function chooseSort(key: SortKey): void {
+  browse.sort = key;
+  browse.descending = !(browse.sort === 'name' || browse.sort === 'nation' || statByKey.get(browse.sort)?.better === -1);
+  syncSortDirection();
+  writePrefs();
+  applyFilters();
 }
 function syncSortDirection(): void {
   const button = $('#sortDirection');
@@ -978,12 +1006,15 @@ wireRoving($<HTMLElement>('#diagramSwitch'), (value) => { diagram = value as typ
 const diagramImage = $<HTMLImageElement>('#diagramImage');
 diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.hidden = true; });
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
-// the drawing's labels are drawn into it (about 5 px at the dossier's width): a press shows it at the window's size,
-// where they read; a press or Escape puts it back
+// a press shows the drawing at the window's size, named by its overlay's header; a press or Escape puts it back
 const diagramFigure = diagramImage.closest('figure')!;
 const setDiagramZoom = (on: boolean): void => {
   diagramFigure.classList.toggle('is-zoomed', on);
+  // the dossier's scroll fade is a mask, which masks a fixed descendant to the column too: it lifts while a drawing is
+  // zoomed (the g13 critic: the zoom showed only through the dossier, its drawing under the stage)
+  diagramFigure.closest('.dossier-scroll')?.classList.toggle('has-zoom', on);
   diagramImage.setAttribute('aria-expanded', String(on));
+  mountDiagramLabels();
 };
 diagramImage.tabIndex = 0;
 diagramImage.setAttribute('role', 'button');
@@ -1001,6 +1032,37 @@ function renderDiagram(): void {
   diagramImage.src = iconUrl(selectedId, diagram);
   const labelKey = DIAGRAMS.find(([view]) => view === diagram)?.[1];
   diagramImage.alt = `${record?.displayName || ''} ${labelKey ? t(labelKey) : ''}`.trim();
+  mountDiagramLabels();
+}
+// 253: the drawings carry no text; their labels are DOM text from the tank's sidecar (src/ui/technicalDiagramLabels.ts),
+// laid out at the drawing's shown size. Inline the dossier's head names the tank; zoomed, the overlay's header does.
+let diagramLabels: { dispose(): void } | null = null;
+let diagramLabelsFor = '';
+const diagramLabelData = new Map<string, Promise<TechnicalLabelData | null>>();
+function mountDiagramLabels(): void {
+  const id = selectedId, view = diagram, zoomed = diagramFigure.classList.contains('is-zoomed');
+  const key = id ? `${id}|${view}|${zoomed}` : '';
+  if (key === diagramLabelsFor) return;
+  diagramLabelsFor = key;
+  diagramLabels?.dispose();
+  diagramLabels = null;
+  if (!id) return;
+  // (the labels' module loads with the first drawing, not with the page)
+  void import('../ui/technicalDiagramLabels.ts').then(async (labels) => {
+    const kind = labels.technicalKindOfView(view);
+    if (!kind) return;
+    let pending = diagramLabelData.get(id);
+    if (!pending) {
+      pending = fetch(labels.technicalLabelsUrl(id)).then((response) => (response.ok ? response.json() : null))
+        .then((json) => (json ? labels.parseTechnicalLabels(json, id) : null)).catch(() => null);
+      diagramLabelData.set(id, pending);
+    }
+    const data = await pending;
+    if (!data || diagramLabelsFor !== key) return;
+    const record = recordById.get(id);
+    diagramLabels = labels.mountTechnicalDiagramLabels(diagramFigure, data, kind,
+      record ? { name: record.displayName, tier: record.tierNumeral } : null, { header: zoomed, image: diagramImage });
+  });
 }
 
 wireRoving($<HTMLElement>('.peer-switch'), (value) => {
@@ -1066,6 +1128,10 @@ function renderOverview(record: GalleryRecord): void {
 function renderStats(record: GalleryRecord): void {
   const ranges = peerRanges(record);
   const rival = rivalId ? recordById.get(rivalId) : null;
+  // the deltas and the outlined cell are the overview's rival, named here (the switch above sets only the bars' scale)
+  const ref = $('#statRef');
+  ref.hidden = !rival;
+  if (rival) ref.innerHTML = `<i aria-hidden="true"></i>${esc(t('gallery.stats.versus', { name: rival.shortName || rival.displayName }))}`;
   $('#statGroups').innerHTML = STAT_GROUPS.map(([group, label, glyph]) => {
     const rows = STATS.filter((stat) => stat.group === group).map((stat) => {
       const value = stat.value(record);
@@ -1095,7 +1161,10 @@ function renderAmmo(record: GalleryRecord): void {
   $('#ammunitionList').innerHTML = record.shells.map((shell) => {
     const type = String(shell.type || '').toUpperCase();
     const glyph = shellIconId(type);
-    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(keepDesignation(shell.name || shell.type))}</b><small>${esc(shellTypeName(type))}</small></span>`
+    const name = keepDesignation(shell.name || shell.type), typeName = shellTypeName(type);
+    // the round's type once: a designation that already names it ("3BK31 HEAT", "3OF82 HE-Frag") takes no subtitle
+    const named = name.split(/[^A-Za-z]+/).includes(typeName);
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(name)}</b>${named ? '' : `<small>${esc(typeName)}</small>`}</span>`
       + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
       + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
       + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
@@ -1114,38 +1183,51 @@ function defaultRival(record: GalleryRecord): string | null {
   const candidates = records.filter((other) => other.id !== record.id && flagIconCode(other.nation) !== own);
   return candidates.sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))[0]?.id ?? null;
 }
-const rivalSelect = $<HTMLSelectElement>('#rivalSelect');
+// the rival is the kit's picker menu (pickerMenu.ts): the fleet by nation, each with its tier and nation, a chip per
+// nation, search, favourites and recents (a raw select of about 220 in the census)
+let rivalMenu: PickerMenu | null = null;
 function populateRivals(): void {
-  const byNation = new Map<string, GalleryRecord[]>();
-  for (const record of [...records].sort((a, b) => a.displayName.localeCompare(b.displayName, getLocale()))) {
-    const code = flagIconCode(record.nation);
-    byNation.set(code, [...(byNation.get(code) ?? []), record]);
-  }
-  rivalSelect.replaceChildren(...flagCodes.map((code) => {
-    const group = document.createElement('optgroup');
-    group.label = flagLabel(code);
-    group.append(...(byNation.get(code) ?? []).map((record) => new Option(record.displayName, record.id)));
-    return group;
+  const order = new Map(flagCodes.map((code, index) => [code, index]));
+  const items = [...records].sort((a, b) => (order.get(flagIconCode(a.nation)) ?? 99) - (order.get(flagIconCode(b.nation)) ?? 99)
+    || a.displayName.localeCompare(b.displayName, getLocale())).map((record) => ({
+    id: record.id, name: record.displayName, facts: [t('gallery.tier', { tier: record.tierNumeral }), nationName(record.nation)],
+    tags: [flagIconCode(record.nation)], media: { poster: iconUrl(record.id, 'side') },
   }));
+  if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
+  rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
+    value: rivalId, layout: 'list', text: pickerText(), memory: 'rival', bounds: rivalMenuBounds,
+    filters: flagCodes.map((code) => ({ id: code, label: flagLabel(code) })), onChoose: (item) => setRival(item.id, true) });
 }
-/** One side of the versus card (07-gallery .vsc .s): flag, silhouette, short name (the full name on its tip); the rival's
- * silhouette faces the selection. */
-function versusSide(record: GalleryRecord, mirrored: boolean): string {
-  const name = record.shortName || record.displayName;
-  return `${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}`
-    + `<b${name === record.displayName ? '' : ` data-tip="${esc(record.displayName)}"`}>${esc(keepDesignation(name))}</b>`;
+/** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
+ * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
+function rivalMenuBounds(): { top: number; bottom: number } {
+  const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
+  const top = Math.max(0, bar ? bar.bottom : 0);
+  const panel = document.querySelector<HTMLElement>('.dossier-scroll');
+  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
+    const box = panel.getBoundingClientRect();
+    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
+  }
+  return { top, bottom: innerHeight };
+}
+/** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
+ * picker above names it (the g10 critic read the name under the picker as the same name twice). */
+function versusSide(record: GalleryRecord): string {
+  return `${flag(record.nation, 'sm')}${silhouette(record.id, 'right')}`;
 }
 function renderVersus(record: GalleryRecord): void {
   const rival = rivalId ? recordById.get(rivalId) : null;
-  $('#versusOwn').innerHTML = versusSide(record, false);
+  // the selection's side is its silhouette alone: its name and flag are the dossier's head (UI-LOCKDOWN G7, G8)
+  $('#versusOwn').innerHTML = silhouette(record.id, 'left');
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
-  rivalSelect.value = rival.id;
-  $('#versusRival').innerHTML = versusSide(rival, true);
-  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, hit points
+  rivalMenu?.setValue(rival.id);
+  $('#versusRival').innerHTML = versusSide(rival);
+  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, top speed in km/h (hit points are
+  // the dossier's facts, UI-LOCKDOWN G9)
   const rows: Array<[IconId, string, string, number, number, number]> = [
     ['penetration', 'gallery.stat.penetration', 'gallery.unit.mm', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
     ['reload', 'gallery.stat.reload', 'gallery.unit.s', record.metrics.reloadS, rival.metrics.reloadS, -1],
-    ['shield', 'gallery.dossier.spec.hp', 'gallery.unit.hitPoints', record.metrics.hp, rival.metrics.hp, 1],
+    ['speed', 'gallery.stat.speed', 'gallery.unit.kmh', record.metrics.topSpeedKmh, rival.metrics.topSpeedKmh, 1],
   ];
   $('#versusMid').innerHTML = rows.map(([glyph, label, unitKey, own, other, better]) => {
     const ownBetter = (own - other) * better > 0;
@@ -1207,7 +1289,17 @@ function renderDossier(record: GalleryRecord): void {
   favourite.setAttribute('aria-pressed', String(favourites.has(record.id)));
 }
 
+/** A pose slider's fill runs from its zero to its value (from its left edge it read as half the range at 0°). */
+function paintPoseFill(input: HTMLInputElement): void {
+  const min = Number(input.min), max = Number(input.max);
+  const at = (value: number): string => `${(((value - min) / Math.max(1e-6, max - min)) * 100).toFixed(2)}%`;
+  const zero = Math.min(max, Math.max(min, 0)), value = Number(input.value);
+  input.style.setProperty('--lo', at(Math.min(zero, value)));
+  input.style.setProperty('--hi', at(Math.max(zero, value)));
+}
+
 function updateArticulation(): void {
+  for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) paintPoseFill($<HTMLInputElement>(`#${id}`));
   if (!visual) return;
   const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
@@ -1219,6 +1311,7 @@ function updateArticulation(): void {
     gunInput.value = String(Math.max(Number(gunInput.min), Number(gunInput.value)));
   }
   const gunPitch = Number(gunInput.value);
+  paintPoseFill(gunInput);
   visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
@@ -1274,7 +1367,7 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   }
   renderLegend();
   updateUrl();
-  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }), { visual: false });
+  if (announce && activeMode === 'markup') announceLine(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
 }
 
 function disposeTank(): void {
@@ -1307,7 +1400,9 @@ const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high
  *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
 async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
   let sliceStartedAt = performance.now();
-  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
+  // the decoration plans in the decor worker (stage 2b): a step that yields its wait is awaited, never polled
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx,
+    { ...GALLERY_TANK_OPTIONS, decorPlanner: offThreadDecorPlanner() ?? undefined });
   try {
     for (;;) {
       const result = steps.next();
@@ -1317,7 +1412,8 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
         result.value.dispose();
         return null;
       }
-      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
+      if (result.value) { await result.value; sliceStartedAt = performance.now(); }
+      else if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
       if (!current()) return null;
     }
   } catch (error) {
@@ -1407,14 +1503,16 @@ function renderFrame(): void {
 function savePhoto(): void {
   if (!selectedId) return;
   renderFrame();
+  // the press answers (the interaction census: Photo gave none): the file's download, or why it failed
   renderer.domElement.toBlob((blob) => {
-    if (!blob) return;
+    if (!blob) { showToast(t('gallery.photo.failed'), { severity: 'error' }); return; }
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `claude-of-tanks-${selectedId}-${activeView}.png`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast(t('gallery.photo.saved'), { severity: 'success' });
   }, 'image/png');
 }
 
@@ -1444,13 +1542,6 @@ function stepVehicle(step: number): void {
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#archiveFilters').addEventListener('submit', (event) => event.preventDefault());
 for (const id of ['#nationFacets', '#classFacets', '#eraFacets', '#roleFacets', '#extraFacets']) $(id).addEventListener('click', onFacet);
-$<HTMLSelectElement>('#gallerySort').addEventListener('change', (event) => {
-  browse.sort = (event.target as HTMLSelectElement).value;
-  browse.descending = !(browse.sort === 'name' || browse.sort === 'nation' || statByKey.get(browse.sort)?.better === -1);
-  syncSortDirection();
-  writePrefs();
-  applyFilters();
-});
 $('#sortDirection').addEventListener('click', () => {
   browse.descending = !browse.descending;
   syncSortDirection();
@@ -1496,7 +1587,6 @@ vehicleList.addEventListener('keydown', (event) => {
   rows[to].focus({ preventScroll: true });
   revealRow(rows[to]);
 });
-rivalSelect.addEventListener('change', () => setRival(rivalSelect.value, true));
 // A row under the pointer fetches its vehicle's builder chunks, so the click only builds (nav-perf-240).
 const warmedBuilders = new Set<string>();
 vehicleList.addEventListener('pointerover', (event) => {

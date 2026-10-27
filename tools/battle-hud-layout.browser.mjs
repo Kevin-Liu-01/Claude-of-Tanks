@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Committed rendered regression; accepts an existing dev server and Playwright.
 // node tools/battle-hud-layout.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/hud-check
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+// the markers over tanks in every state: no flag, whole, the side in shape and colour (?state=markers stages them)
+import { markerProblems } from './marker-census.mjs';
 const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','outputs/battle-hud-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser = await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
@@ -34,7 +37,7 @@ const cases = [
   ['pseudo-desktop',1920,1080,false,'en-US',{pseudo:true}],['pseudo-laptop',1366,768,false,'en-US',{pseudo:true}],
   ['pseudo-phone',390,844,true,'en-US',{pseudo:true}],['pseudo-landscape',844,390,true,'en-US',{pseudo:true}],
 ];
-const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
+const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','markers','ended'];
 const reports=[];const errors=[];
 // Clipped copy (pseudo and Chinese cases): a text element whose own content overflows a box that hides overflow, or
 // whose text ends outside the nearest ancestor that clips. Only catalog copy counts — pseudo text (accented Latin-1 or
@@ -101,6 +104,12 @@ const recordMain = arg('record-main','');
 // notice stages whose key matches (a focused re-run, or recording main's numbers for new stages)
 const noticesOnly = process.argv.includes('--notices-only');
 const stageFilter = arg('stages','') ? new RegExp(arg('stages','')) : null;
+/** Tab holds the rosters while the battle has the cursor (hud.ts; INTERACTION-REDESIGN C): a headless page holds no pointer
+ *  lock, so the Tab stages stand one in for the press. */
+const cursorCaptured=(page,on)=>page.evaluate(on=>{
+  if(on)Object.defineProperty(document,'pointerLockElement',{configurable:true,get:()=>document.body});
+  else delete document.pointerLockElement;
+},on);
 const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
 const mainRecord = {};
 const noticeTable = [];
@@ -545,6 +554,7 @@ try {
     async function check(state){
       const result=await page.evaluate(measure,state);
       if(pseudo||locale!=='en-US')result.failures.push(...await page.evaluate(clippedText));
+      result.failures.push(...await page.evaluate(markerProblems,state==='markers'));
       const score=result.rects.find(r=>r.name==='cot-top');
       // (the objective shows 'stacked' in two rows where its progress wraps)
       const objective=result.rects.find(r=>r.name.startsWith('cot-mode-status show'));
@@ -766,7 +776,7 @@ try {
         await page.evaluate(count=>{const f=window.__HUD_LAYOUT;f.state('reports');f.roster(count,count);},count);
         await page.waitForTimeout(120);
         for(const expanded of [false,true]){
-          if(expanded){await page.keyboard.down('Tab');await page.waitForTimeout(120);}
+          if(expanded){await cursorCaptured(page,true);await page.keyboard.down('Tab');await page.waitForTimeout(120);}
           const rowIssues=await page.evaluate(({count,expanded})=>{
             const failures=[];
             for(const ear of document.querySelectorAll('.cot-ear')){
@@ -782,7 +792,7 @@ try {
           },{count,expanded});
           errors.push(...rowIssues.map(issue=>`${name}: ${issue}`));
           await check(`row-size-${count}-${expanded?'tab':'normal'}`);
-          if(expanded){await page.keyboard.up('Tab');await page.waitForTimeout(120);}
+          if(expanded){await page.keyboard.up('Tab');await cursorCaptured(page,false);await page.waitForTimeout(120);}
         }
       }
       // Full participant identity survives visibility changes without rebuilding rows.
@@ -808,12 +818,14 @@ try {
       await check(`rosters-${allies}v${enemies}`);
       if(allies===14&&enemies===14&&!touch&&width>=820&&height>=600){
         const normalWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
+        await cursorCaptured(page,true);
         await page.keyboard.down('Tab');
         await page.waitForTimeout(120);
         const expandedWidth=await page.locator('.cot-ear.l').evaluate(el=>el.getBoundingClientRect().width);
         if(expandedWidth<=normalWidth)errors.push(`${name}: Tab did not widen the roster`);
         await check('rosters-tab-expanded');
         await page.keyboard.up('Tab');
+        await cursorCaptured(page,false);
         await page.waitForTimeout(120);
         if(await page.locator('.rosters-expanded').count())errors.push(`${name}: releasing Tab did not collapse rosters`);
       }

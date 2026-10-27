@@ -101,6 +101,8 @@ const starting = host.start(config);
 await settle(12);
 await starting;
 assert.equal(host.state, 'live');
+// what the host's authority steps on reaches the page (simKernelsReport.ts): this boot named no kernels
+assert.deepEqual({ ...globalThis.__SIM_KERNELS }, { mode: 'ts', source: 'host', reason: 'off' }, 'the host reports its kernels');
 assert.deepEqual(states, ['booting:boot', 'live:started']);
 assert.equal(reports.length, 2, "the boot reports reached the room: 'loading' as soon as the actor exists, then its phase");
 assert.equal(reports[0].matchId, matchId);
@@ -184,10 +186,16 @@ const bobLatest = bobClient.retainedMigration().latestFrame;
 assert.ok(bobLatest && !bobLatest.entities.some((row) => row.entityId === 1), 'the host\'s hull is hidden from bob');
 const hostLastOwnRow = hostClient.retainedMigration().latestFrame.entities.find((row) => row.entityId === 1);
 assert.ok(hostLastOwnRow && hostLastOwnRow.speed > 100, `the host's hull is driving (${hostLastOwnRow?.speed} cm/s)`);
+const reportsBeforeStop = reports.length;
 host.stop(CLOSE_REASON.ROOM_CLOSED, 'host left');
 await settle(4);
 assert.equal(host.state, 'stopped');
 assert.ok(cores[0].stopped, 'the core stopped');
+// (battle-spikes-253) the core's drain posts the stopped actor's last heartbeat; after a stop the room's departure
+// handling owns the match, so only an `ended` report goes on (the room refused this one, host_only or invalid_command:
+// a warning on every room leave in nav-perf's census)
+assert.equal(reports.length, reportsBeforeStop, 'the drained heartbeat after the stop is not sent to the room');
+assert.ok(!logs.some((entry) => entry.level === 'warn' && entry.message === 'match report refused'), 'and nothing is refused');
 assert.equal(bobRtc.state, 'reconnecting', 'the peer lost its channel and would re-offer');
 relay.elect('bob');
 // the room's grace puts the resume tick ≥ 480 ticks past the keyframe in production; 120 here keeps it past every row the old actor published after this keyframe

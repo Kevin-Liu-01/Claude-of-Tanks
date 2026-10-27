@@ -240,6 +240,8 @@ function mixMaterial(h: number, m: THREE.Material | undefined): number {
 /** What changed in a caster, by its part signatures (casterSignatureParts' order). */
 const PART_KINDS = ['flags', 'geometry', 'material', 'matrix', 'instances', 'epoch'] as const;
 const PARTS = PART_KINDS.length;
+const FLAGS_PART = 1 << PART_KINDS.indexOf('flags');
+const INSTANCES_PART = 1 << PART_KINDS.indexOf('instances');
 const scratchParts = new Uint32Array(PARTS);
 
 /**
@@ -295,6 +297,11 @@ export function casterSignatureParts(object: CasterLike, out: Uint32Array): Uint
   // its aDamage tags): the owner bumps this epoch on every frame it changes (world structureDamage(id).touchShadows())
   const epoch = object.userData.cotShadowEpoch;
   if (typeof epoch === 'number') h = mix(h, epoch);
+  // (battle-spikes-253) and the epoch of the caster it is drawn with: a settled fracture face under its structure's mask
+  // (structureFracture.ts maskTag) changes on the frames its structure's spans do
+  const owner = object.userData.cotShadowEpochOf as { userData?: { cotShadowEpoch?: unknown } } | undefined;
+  const ownerEpoch = owner?.userData?.cotShadowEpoch;
+  if (typeof ownerEpoch === 'number') h = mix(h, ownerEpoch ^ 0x5bd1e995);
   out[5] = h;
   return out;
 }
@@ -319,9 +326,10 @@ function changedPart(before: Uint32Array, after: Uint32Array): string {
 const isCaster = (o: CasterLike): boolean => !!(o.isMesh || o.isLine || o.isPoints);
 const isProxy = (o: THREE.Object3D): boolean => o.userData?.cotCasterProxy === true;
 
-/** Scene children whose subtrees are the static world (map.ts freezes the world root after its build). */
+/** Scene children whose subtrees are the static world (map.ts freezes the world root after its build), and the static
+ *  subtrees a dynamic root holds (`staticShadowRoot` under a `staticShadowNest`: the fx group's settled rubble). */
 export function isStaticShadowRoot(object: THREE.Object3D): boolean {
-  return object.userData?.matrixTraversalFrozen === true;
+  return object.userData?.matrixTraversalFrozen === true || object.userData?.staticShadowRoot === true;
 }
 
 // ------------------------------------------------------------------------------------------------- runtime
@@ -351,6 +359,8 @@ interface ShadowStaticCacheTelemetry {
   forcedFrames: number;
   fullRenders: number;
   contentChanges: number;
+  /** (battle-spikes-253) Valid cascades a bounded content change left standing (its bounds met no part of their box). */
+  scopedKept: number;
   promoted: number;
   promotions: number;
   demotions: number;
@@ -401,6 +411,8 @@ interface ShadowStaticCacheFrame {
    */
   content: string;
   changed: string;
+  /** (battle-spikes-253) The valid cascades this change's bounds missed: their copies stand (scoped re-renders). */
+  keptMask: number;
 }
 
 export interface ShadowStaticCache {
@@ -458,15 +470,106 @@ export function createShadowStaticCache(): ShadowStaticCache {
   const poseHold = createCascadePoseHold();
   const stats: ShadowStaticCacheTelemetry = {
     enabled: false, frames: 0, rebuilds: [], reuses: [], copies: 0, unsettled: 0, forcedFrames: 0, fullRenders: 0, contentChanges: 0,
-    promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', reasons: {}, contentKinds: {},
+    promoted: 0, promotions: 0, demotions: 0, staticCasters: 0, hashMs: 0, lastRebuildReason: '', reasons: {}, contentKinds: {}, scopedKept: 0,
     failed: null, targetBytes: 0, poseHold: { enabled: false, recentres: [] },
   };
   let rebuildReason = 'cold';
   const frameRecord: ShadowStaticCacheFrame = {
     frame: 0, forced: false, rebuildMask: 0, reuseMask: 0, fullMask: 0, unsettledMask: 0, moveMask: 0, moveField: -1, moveDelta: 0,
-    reason: '', poseField: -1, poseDelta: 0, content: '', changed: '',
+    reason: '', poseField: -1, poseDelta: 0, content: '', changed: '', keptMask: 0,
   };
   let hashedOnce = false;
+  // (battle-spikes-253) scoped content re-renders: a change the cache can bound — an instanced caster's changed
+  // instances (each one's old and new sphere, against a snapshot of its matrices taken at its first change), a caster's
+  // cast or layer flags (its own sphere; its matrix held) — dirties only the cascades whose box its bounds meet. Anything
+  // else (a structural change, a geometry, material, matrix or epoch change, an insert, a promotion or demotion, a first
+  // change with no snapshot yet) re-renders every cascade as before. The draw census (Steinburg 14v14): a battle's
+  // broken wire, fences and truck beds re-rendered all four static layers in 13 of 30 sampled frames.
+  const instanceSnapshots = new WeakMap<THREE.Object3D, { matrices: Float32Array; count: number }>();
+  const dirtySpheres: number[] = [];
+  let dirtyAll = false;
+  let structureHash = 0;
+  const _dm = new THREE.Matrix4(), _di = new THREE.Matrix4(), _dc = new THREE.Vector3(), _ds = new THREE.Sphere();
+  const _lx = new THREE.Vector3(), _ly = new THREE.Vector3(), _lz = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+  const geometrySphere = (g: THREE.BufferGeometry | undefined): THREE.Sphere | null => {
+    if (!g) return null;
+    if (!g.boundingSphere) g.computeBoundingSphere();
+    return g.boundingSphere && Number.isFinite(g.boundingSphere.radius) ? g.boundingSphere : null;
+  };
+  /** One instance's sphere in world space, from a matrix array. */
+  function pushInstance(o: CasterLike, sphere: THREE.Sphere, matrices: ArrayLike<number>, i: number): void {
+    _di.fromArray(matrices as number[], i * 16);
+    _dm.multiplyMatrices(o.matrixWorld, _di);
+    _dc.copy(sphere.center).applyMatrix4(_dm);
+    dirtySpheres.push(_dc.x, _dc.y, _dc.z, sphere.radius * _dm.getMaxScaleOnAxis());
+  }
+  /** An instanced caster's changed, shown or hidden instances against its snapshot; false: no snapshot yet (taken now). */
+  function boundInstances(o: THREE.InstancedMesh): boolean {
+    const matrices = o.instanceMatrix.array as Float32Array, count = o.count;
+    const snapshot = instanceSnapshots.get(o);
+    if (!snapshot || snapshot.matrices.length !== matrices.length) {
+      instanceSnapshots.set(o, { matrices: Float32Array.from(matrices), count });
+      return false;
+    }
+    const sphere = geometrySphere(o.geometry);
+    if (!sphere) return false;
+    const before = snapshot.matrices, n = Math.max(count, snapshot.count);
+    for (let i = 0; i < n; i++) {
+      const was = i < snapshot.count, is = i < count;
+      let differs = was !== is;
+      if (!differs && is) for (let k = i * 16, end = k + 16; k < end; k++) if (before[k] !== matrices[k]) { differs = true; break; }
+      if (!differs) continue;
+      if (was) pushInstance(o, sphere, before, i);
+      if (is) pushInstance(o, sphere, matrices, i);
+    }
+    before.set(matrices);
+    snapshot.count = count;
+    return true;
+  }
+  /** Bound one caster's change (`before` its last parts, scratchParts its current ones); false: it cannot be bounded. */
+  function boundChange(o: CasterLike, before: Uint32Array): boolean {
+    let changed = 0;
+    for (let i = 0; i < PARTS; i++) if (before[i] !== scratchParts[i]) changed |= 1 << i;
+    if (changed === INSTANCES_PART && o.isInstancedMesh) return boundInstances(o as THREE.InstancedMesh);
+    if (changed !== FLAGS_PART) return false;
+    // its flags alone (its matrix held): its own sphere, before and after
+    if (o.isInstancedMesh) {
+      const instanced = o as THREE.InstancedMesh;
+      instanced.computeBoundingSphere();
+      if (!instanced.boundingSphere) return false;
+      _ds.copy(instanced.boundingSphere);
+    } else {
+      const sphere = geometrySphere(o.geometry);
+      if (!sphere) return false;
+      _ds.copy(sphere);
+    }
+    _ds.applyMatrix4(o.matrixWorld);
+    if (!Number.isFinite(_ds.radius)) return false;
+    dirtySpheres.push(_ds.center.x, _ds.center.y, _ds.center.z, _ds.radius);
+    return true;
+  }
+  /**
+   * Whether a dirty sphere meets a cascade's box at the pose its copy holds: three's lookAt from the light to its target
+   * (+Y up), the box's left/right/top/bottom across it, near/far along it, a metre's margin.
+   */
+  function dirtyMeetsPose(pose: Float64Array): boolean {
+    _lz.set(pose[0] - pose[3], pose[1] - pose[4], pose[2] - pose[5]);
+    if (!(_lz.lengthSq() > 0)) return true;
+    _lz.normalize();
+    _lx.crossVectors(_up, _lz);
+    if (!(_lx.lengthSq() > 1e-12)) return true; // a sun straight overhead (three perturbs its basis): every cascade
+    _lx.normalize();
+    _ly.crossVectors(_lz, _lx);
+    for (let i = 0; i < dirtySpheres.length; i += 4) {
+      const vx = dirtySpheres[i] - pose[0], vy = dirtySpheres[i + 1] - pose[1], vz = dirtySpheres[i + 2] - pose[2];
+      const r = dirtySpheres[i + 3] + 1;
+      const x = vx * _lx.x + vy * _lx.y + vz * _lx.z, y = vx * _ly.x + vy * _ly.y + vz * _ly.z;
+      const depth = -(vx * _lz.x + vy * _lz.y + vz * _lz.z);
+      if (!Number.isFinite(x + y + depth + r)) return true;
+      if (x + r >= pose[6] && x - r <= pose[7] && y + r >= pose[9] && y - r <= pose[8] && depth + r >= pose[10] && depth - r <= pose[11]) return true;
+    }
+    return false;
+  }
   /** The first content change of this update: what changed and in which caster. */
   const noteContent = (kind: string, object: THREE.Object3D | null): void => {
     if (frameRecord.content) return;
@@ -573,6 +676,8 @@ export function createShadowStaticCache(): ShadowStaticCache {
 
   /** Hash the static world (every caster's signature, in traversal order) and run the promotion bookkeeping. */
   function hashStaticContent(): number {
+    dirtySpheres.length = 0;
+    dirtyAll = !hashedOnce || (typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.noScopedRebuild);
     // the promoted casters first: back to the static layer once still (hashed below this same frame), out of the
     // set once gone from the world
     for (const object of promoted) {
@@ -584,17 +689,25 @@ export function createShadowStaticCache(): ShadowStaticCache {
       if (step === 'demote') {
         promoted.delete(object); coverDirty = true; stats.demotions++;
         noteContent('demote', object);
+        dirtyAll = true;
       }
     }
-    let h = 2166136261;
+    let h = 2166136261, sh = 2166136261;
     let casters = 0;
+    for (const root of staticRoots) {
+      let shown = 1;
+      for (let n = root.parent; n; n = n.parent) if (!n.visible) shown = 0;
+      h = mix(h, shown); sh = mix(sh, shown);
+    }
     stack.length = 0;
     for (let i = staticRoots.length - 1; i >= 0; i--) stack.push(staticRoots[i]);
     while (stack.length) {
       const o = stack.pop()! as CasterLike;
       if (promoted.has(o)) continue;
-      if (!o.visible) { h = mix(mix(h, o.id), 0x7fff); continue; }
+      if (!o.visible) { h = mix(mix(h, o.id), 0x7fff); sh = mix(mix(sh, o.id), 0x7fff); continue; }
       if (isProxy(o)) continue; // derived from its owner and the cascade's frustum
+      // (a caster's cast flag is structure: one turned off leaves the signatures unread, so no caster step names it)
+      sh = mix(sh, isCaster(o) && !o.castShadow ? ~o.id : o.id);
       if (isCaster(o) && o.castShadow) {
         const sig = casterSignature(o);
         let motionRecord = motion.get(o);
@@ -602,10 +715,11 @@ export function createShadowStaticCache(): ShadowStaticCache {
           // (the parts once per caster, as its record: nothing allocated on later frames)
           motionRecord = { sig, changedRun: 0, stillRun: 0, dynamic: false, parts: Uint32Array.from(scratchParts) };
           motion.set(o, motionRecord);
-          if (hashedOnce) noteContent('insert', o);
+          if (hashedOnce) { noteContent('insert', o); dirtyAll = true; }
         } else {
           const step = stepCasterMotion(motionRecord, sig);
           if (step === 'changed' || step === 'promote') {
+            if (step === 'promote' || !motionRecord.parts || !boundChange(o, motionRecord.parts)) dirtyAll = true;
             // the frame record: what changed (the first differing part) and in which caster
             if (motionRecord.parts) { noteContent(changedPart(motionRecord.parts, scratchParts), o); motionRecord.parts.set(scratchParts); }
             else { noteContent('flags', o); motionRecord.parts = Uint32Array.from(scratchParts); }
@@ -625,6 +739,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
       for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
     }
     stats.staticCasters = casters;
+    if (sh !== structureHash) { structureHash = sh; dirtyAll = true; } // a visibility flip, a removal, a node moved
     hashedOnce = true;
     return h;
   }
@@ -635,7 +750,7 @@ export function createShadowStaticCache(): ShadowStaticCache {
     r.frame = frame; r.forced = false;
     r.rebuildMask = 0; r.reuseMask = 0; r.fullMask = 0; r.unsettledMask = 0;
     r.moveMask = 0; r.moveField = -1; r.moveDelta = 0;
-    r.reason = ''; r.poseField = -1; r.poseDelta = 0; r.content = ''; r.changed = '';
+    r.reason = ''; r.poseField = -1; r.poseDelta = 0; r.content = ''; r.changed = ''; r.keptMask = 0;
     const on = enabled && !failed;
     stats.enabled = on;
     for (let i = 0; i < lights.length; i++) {
@@ -679,9 +794,15 @@ export function createShadowStaticCache(): ShadowStaticCache {
     }
     staticRoots.length = 0;
     dynamicTop.length = 0;
+    const nested = typeof window === 'undefined' || !window.__SHADOW_DEBUG?.noNestedRoots;
     for (const child of scene.children) {
       if (isStaticShadowRoot(child)) staticRoots.push(child);
-      else if (!(child as THREE.Light).isLight) dynamicTop.push(child);
+      else if ((child as THREE.Light).isLight) continue;
+      else if (nested && child.userData?.staticShadowNest === true) {
+        // (battle-spikes-253) a dynamic root holding static subtrees (the fx group's settled rubble: 158 shadow draws a
+        // frame at Urban 14v14): those join the static layer, its other children stay dynamic
+        for (const sub of child.children) (isStaticShadowRoot(sub) ? staticRoots : dynamicTop).push(sub);
+      } else dynamicTop.push(child);
     }
     if (!staticRoots.length) return;
     const started = performance.now();
@@ -699,6 +820,16 @@ export function createShadowStaticCache(): ShadowStaticCache {
       // a change no caster step named: the first hash ('initial'), else a visibility flip, a removal, a node moved
       if (!r.content) r.content = firstHash ? 'initial' : 'structure';
       stats.contentKinds[r.content] = (stats.contentKinds[r.content] || 0) + 1;
+      // a bounded change: the valid cascades current until now whose box its bounds miss keep their copies
+      if (!dirtyAll) {
+        for (let i = 0; i < slots.length; i++) {
+          const slot = slots[i];
+          if (!slot || !slot.valid || slot.contentStamp !== contentStamp - 1 || dirtyMeetsPose(slot.pose)) continue;
+          slot.contentStamp = contentStamp;
+          r.keptMask |= 1 << i;
+          stats.scopedKept++;
+        }
+      }
     } else {
       // the static content held: nothing to name
       r.content = '';

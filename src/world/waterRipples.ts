@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
+import { compileFullscreenPrograms } from '../engine/fullscreenProgramWarm.ts';
 import { getDeviceTier, presetLightWorld } from '../engine/quality.ts';
 import type { WaterDisturbance } from './shallowWater.ts';
 
@@ -195,6 +196,9 @@ export interface WaterRippleField {
   step(dt: number, anchorX: number, anchorZ: number): void;
   /** Return the field to rest (map switch, teleport). */
   clear(): void;
+  /** (battle-spikes-253) Submit this field's pass programs against their targets with no draw (a covered entry's warm):
+   *  its passes run only on a frame that advances time. Returns the passes submitted (0 without a compile). */
+  compilePrograms(): number;
   dispose(): void;
 }
 
@@ -386,6 +390,10 @@ export function createWaterRippleField(
       asleep = false;
       params.w = 0;
       stateUniform.value = null;
+    },
+    compilePrograms() {
+      if (disposed) return 0;
+      return compileFullscreenPrograms(gl, [{ material: resetMaterial, target: read }, { material: stepMaterial, target: write }]);
     },
     dispose() {
       if (disposed) return;

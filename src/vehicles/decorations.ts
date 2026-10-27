@@ -92,6 +92,8 @@ interface DecorOptions {
   decor?: boolean;
   /** The factory's geometry tier: 'low' (the mobile tier) builds only the coarse accessory forms. */
   geometryQuality?: string;
+  /** The tank's camo selection (createTank's camoPattern): the kit paint and roughness come from its own entry. */
+  camoPattern?: string | null;
 }
 
 interface ShadowEngineContext {
@@ -1499,6 +1501,7 @@ function equipmentPaletteForNation(nation = ''): FleetEquipmentPalette {
 function buildDecorMaterials(
   spec: FleetTankSpec,
   engineCtx: ShadowEngineContext | null | undefined,
+  camoPattern: string | null = null,
 ): DecorMaterials {
   const equipmentPalette = equipmentPaletteForNation(spec.nation || '');
   // through the vehicle registration (materials.ts registerVehicleMaterial): the cascade setup with the bare readability
@@ -1525,7 +1528,7 @@ function buildDecorMaterials(
     // repaints with garage pattern switches (same texture the ARAT/stowage
     // add-on path uses — crews spray hard kit, never soft kit).
     kit: () => (canPaint ? {
-      map: getKitPaintTexture(spec), roughnessMap: getSharedRoughnessTexture(spec),
+      map: getKitPaintTexture(spec, camoPattern), roughnessMap: getSharedRoughnessTexture(spec, camoPattern),
       roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35,
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
@@ -1535,7 +1538,7 @@ function buildDecorMaterials(
     // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
       color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
-      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec, camoPattern) : undefined,
       vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
@@ -1561,7 +1564,7 @@ function buildDecorMaterials(
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
-      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec, camoPattern) : undefined,
       vertexColors: true, envMapIntensity: 0.2,
     }),
     // round 5 (2026-10-08): the rolled and draped nets wear the suits' garnished net in the vehicle's theatre
@@ -4610,6 +4613,41 @@ export function* attachTankDecorationsSteps(
   a: DecorationAttachmentArgs,
   work: DecorationWorkOptions = {},
 ): Generator<DecorationWorkSlice, DecorSummary | null, void> {
+  return (yield* decorationSteps(a, work, 'attach')) as DecorSummary | null;
+}
+
+/**
+ * Stage 2b, pass 1 (UI-LOCKDOWN E, 2026-10-25): the decoration's plan alone (every probe, slot, row and family merge,
+ * nothing attached and no material made), for the decor worker (decorPlanWorker.ts) to run over a replica of the tank.
+ */
+export function* planTankDecorationsSteps(
+  a: DecorationAttachmentArgs,
+  work: DecorationWorkOptions = {},
+): Generator<DecorationWorkSlice, DecorPlan | null, void> {
+  return (yield* decorationSteps(a, work, 'plan')) as DecorPlan | null;
+}
+
+/** A plan made elsewhere (the decor worker), attached exactly as the in-line pass attaches its own. */
+export function* attachDecorationPlanSteps(
+  a: DecorationAttachmentArgs,
+  plan: DecorPlan,
+): Generator<DecorationWorkSlice, DecorSummary | null, void> {
+  return (yield* decorationSteps(a, {}, { plan })) as DecorSummary | null;
+}
+
+/** Whether the decoration attaches to this tank now (the pass's own first check): a planner elsewhere is asked only for
+ *  a tank the in-line pass would dress. */
+export function decorationWanted(a: DecorationAttachmentArgs): boolean {
+  if (!a.root || a.root.userData.__decorApplied) return false;
+  if (!resolveDecorMode(a.opts, a.engineCtx)) return false;
+  return !(a.isDestroyed && a.isDestroyed());
+}
+
+function* decorationSteps(
+  a: DecorationAttachmentArgs,
+  work: DecorationWorkOptions,
+  mode: 'attach' | 'plan' | { readonly plan: DecorPlan },
+): Generator<DecorationWorkSlice, DecorSummary | DecorPlan | null, void> {
   const { root, hullG, turretG, spec, engineCtx, disposables = [], opts = {} } = a;
   const resources = createDecorationResourceOwner(root, disposables, engineCtx);
   let mats: DecorMaterials | null = null;
@@ -4619,14 +4657,13 @@ export function* attachTankDecorationsSteps(
     if (parts.coarse) disposePartList(parts.coarse);
   }
   try {
-    function shouldSkipAttachment(): boolean {
-      if (!root || root.userData.__decorApplied) return true;
-      if (!resolveDecorMode(opts, engineCtx)) return true;
-      return !!(a.isDestroyed && a.isDestroyed());
-    }
-    if (shouldSkipAttachment()) return null;
+    if (!decorationWanted(a)) return null;
     root.userData.__decorApplied = true;
     claimed = true;
+    // the plan alone makes no material (a worker has no renderer); a given plan goes straight to its attachment
+    const materials = mode === 'plan' ? null : buildDecorMaterials(spec, engineCtx, opts.camoPattern ?? null);
+    mats = materials;
+    if (typeof mode === 'object') return yield* attachDecorPlanSteps(a, mode.plan, materials!, resources);
 
     const decorId = decorIdentityFor(spec.id);
     const rng = mulberry32(fnv1a(`decor:${decorId}`));
@@ -4635,8 +4672,6 @@ export function* attachTankDecorationsSteps(
     // whatever the seating retries, so no geometry change upstream can flip which optional rows dress a tank
     // (griffinViper's tow cable flipped twice in this round).
     let slotRng: Rng = mulberry32(0x51a7e);
-    const materials = buildDecorMaterials(spec, engineCtx);
-    mats = materials;
     const dims = spec.dims;
     const armor = spec.armor;
     const W = dims.widthM, H = dims.heightM;
@@ -6772,7 +6807,7 @@ export function* attachTankDecorationsSteps(
     }
     yield* attachManifestRows();
 
-    // ---- merge per family per frame + attach --------------------------------
+    // ---- merge per family per frame (the plan's end) ---------------------------
     /** Merge one material family's committed geometry into a single draw (or null when empty). */
     function mergeFamily(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
       if (!geos.length) return null;
@@ -6788,96 +6823,148 @@ export function* attachTankDecorationsSteps(
       return merged;
     }
 
-    function decorMesh(merged: THREE.BufferGeometry, frame: DecorFrame, matKey: DecorMaterialKey,
-      level: 'near' | 'coarse', functional: boolean): THREE.Mesh {
-      resources.completeGeometry(merged);
-      const mesh = new THREE.Mesh(merged, materials.get(matKey));
-      mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
-      // PERF: the fleet's shadow story is proxy-based (procedural proxies /
-      // GLB buildShadowProxy) with per-mesh casters swept off — decor
-      // follows the same contract. receiveShadow keeps the kit grounded.
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      mesh.userData.__decor = true;
-      mesh.userData.decorLevel = level;
-      // Cosmetic stowage is non-armor dressing that distance detail may drop
-      // (combatVisibility.ts); the smoke banks are working equipment.
-      mesh.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
-      return mesh;
-    }
-
-    // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
-    const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
-    function* mergeDecorationBucket(
+    const planBuckets: DecorBucketPlan[] = [];
+    function* planDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
       coarseMap: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
       functional: boolean,
-    ): Generator<DecorationWorkSlice, number, void> {
+    ): Generator<DecorationWorkSlice, void, void> {
       const keys = [...new Set([...map.keys(), ...coarseMap.keys()])];
-      if (!keys.length) return 0;
-      const parent = frame === 'hull' ? hullG : turretG;
-      const g = new THREE.Group();
-      g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
-      let drawCalls = 0, done = 0;
+      if (!keys.length) return;
+      const families: DecorFamilyPlan[] = [];
+      let done = 0;
       for (const matKey of keys) {
         const geos = map.get(matKey) || [];
         const coarseGeos = coarseMap.get(matKey) || [];
-        const merged = mergeFamily(geos);
+        const near = mergeFamily(geos);
         const socketOwner = new THREE.Object3D();
         registerSmokeSockets(socketOwner, geos);
         for (const geometry of geos) resources.releaseGeometry(geometry);
-        const coarseMerged = mergeFamily(coarseGeos);
+        const coarse = mergeFamily(coarseGeos);
         for (const geometry of coarseGeos) resources.releaseGeometry(geometry);
-        if (!merged && !coarseMerged) continue;
-        const lod = new THREE.LOD();
-        if (merged) {
-          const mesh = decorMesh(merged, frame, matKey, 'near', functional);
-          if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
-          lod.addLevel(mesh, 0);
-          drawCalls++;
-        } else {
-          lod.addLevel(new THREE.Object3D(), 0);
-        }
-        // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
-        if (coarseMerged) lod.addLevel(decorMesh(coarseMerged, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
-        lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
-        g.add(lod);
+        if (!near && !coarse) continue;
+        families.push({ matKey, near, coarse, smokeSockets: (socketOwner.userData.smokeSockets as DecorSmokeSocket[] | undefined) ?? null });
         done++;
         yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
-      resources.addGroup(parent, g);
-      decorGroups[frame].push(g);
-      g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
-      g.userData.decorFunctional = functional;
-      return drawCalls;
+      planBuckets.push({ frame, functional, families });
     }
-
-    let drawCalls = 0;
     for (const frame of ['hull', 'turret'] as const) {
-      drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
-      drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
+      yield* planDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
+      yield* planDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
-    // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
-    // them, never laid through them (ghillieDrape.ts)
-    // (UI-LOCKDOWN E) each of the four suit passes in a slice of its own
-    drapeGhillieOverLoads(hullG, seatedLoads.hull);
-    yield { stage: 'suit-pass', completed: 1, total: 4 };
-    drapeGhillieOverLoads(turretG, seatedLoads.turret);
-    yield { stage: 'suit-pass', completed: 2, total: 4 };
-    // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
-    // after the suit): its cloth and garnish in their lines of fire are cut away
-    clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
-    yield { stage: 'suit-pass', completed: 3, total: 4 };
-    clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
-    yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
-    summary.drawCalls = drawCalls;
-    resources.publish(summary, materials);
-    return summary;
+    const plan: DecorPlan = { buckets: planBuckets, seatedLoads, summary };
+    // a plan alone hands its merged geometry to the caller (the decor worker posts it); the cancel below disposes only
+    // the plan's bookkeeping, never the arrays
+    if (mode === 'plan') return plan;
+    return yield* attachDecorPlanSteps(a, plan, materials!, resources);
   } finally {
     if (claimed) resources.cancel(mats);
   }
+}
+
+type DecorationResources = ReturnType<typeof createDecorationResourceOwner>;
+
+/** A smoke bank's launch line in its family's frame (vehicleAuxiliaryGeometry.ts registerSmokeSockets). */
+interface DecorSmokeSocket { position: number[]; direction: number[] }
+/** One material family of a bucket: its merged near and coarse geometry (one may be null) and its smoke sockets. */
+interface DecorFamilyPlan {
+  readonly matKey: DecorMaterialKey;
+  readonly near: THREE.BufferGeometry | null;
+  readonly coarse: THREE.BufferGeometry | null;
+  readonly smokeSockets: DecorSmokeSocket[] | null;
+}
+/** One frame's cosmetic or functional bucket: a group of one LOD per family (a bucket of rows that all merged empty
+ *  still makes its group, as the in-line pass always has). */
+interface DecorBucketPlan { readonly frame: DecorFrame; readonly functional: boolean; readonly families: DecorFamilyPlan[] }
+/** The decoration's plan: what the attachment builds from, in the in-line pass's order. */
+export interface DecorPlan {
+  readonly buckets: DecorBucketPlan[];
+  /** The loads seated on each frame (placed boxes): the field suit is drawn up over them. */
+  readonly seatedLoads: Record<DecorFrame, THREE.Box3[]>;
+  /** Pieces, skips and near triangles; the attachment adds the draw calls. */
+  readonly summary: DecorSummary;
+}
+
+/**
+ * The decoration's attachment: a group per bucket, one LOD per family (near from 0, coarse from DECOR_COARSE_DIST,
+ * nothing past DECOR_LOD_DIST), the field suit drawn over the seated loads and cut round the smoke banks, then the
+ * publication. It runs on the page in either path: after the in-line plan, or over the decor worker's.
+ */
+function* attachDecorPlanSteps(
+  a: DecorationAttachmentArgs,
+  plan: DecorPlan,
+  materials: DecorMaterials,
+  resources: DecorationResources,
+): Generator<DecorationWorkSlice, DecorSummary, void> {
+  const { hullG, turretG } = a;
+  const { summary, seatedLoads } = plan;
+  function decorMesh(merged: THREE.BufferGeometry, frame: DecorFrame, matKey: DecorMaterialKey,
+    level: 'near' | 'coarse', functional: boolean): THREE.Mesh {
+    resources.completeGeometry(merged);
+    const mesh = new THREE.Mesh(merged, materials.get(matKey));
+    mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
+    // PERF: the fleet's shadow story is proxy-based (procedural proxies /
+    // GLB buildShadowProxy) with per-mesh casters swept off — decor
+    // follows the same contract. receiveShadow keeps the kit grounded.
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.userData.__decor = true;
+    mesh.userData.decorLevel = level;
+    // Cosmetic stowage is non-armor dressing that distance detail may drop
+    // (combatVisibility.ts); the smoke banks are working equipment.
+    mesh.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+    return mesh;
+  }
+
+  // the netting lane: the decor's groups per frame (published last), for the field suit's smoke lines
+  const decorGroups: Record<DecorFrame, THREE.Group[]> = { hull: [], turret: [] };
+  let drawCalls = 0;
+  for (const { frame, functional, families } of plan.buckets) {
+    const parent = frame === 'hull' ? hullG : turretG;
+    const g = new THREE.Group();
+    g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
+    let done = 0;
+    for (const { matKey, near, coarse, smokeSockets } of families) {
+      const lod = new THREE.LOD();
+      if (near) {
+        const mesh = decorMesh(near, frame, matKey, 'near', functional);
+        if (smokeSockets) mesh.userData.smokeSockets = smokeSockets;
+        lod.addLevel(mesh, 0);
+        drawCalls++;
+      } else {
+        lod.addLevel(new THREE.Object3D(), 0);
+      }
+      // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
+      if (coarse) lod.addLevel(decorMesh(coarse, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
+      lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
+      g.add(lod);
+      done++;
+      yield { stage: 'material-bucket', completed: done, total: families.length };
+    }
+    resources.addGroup(parent, g);
+    decorGroups[frame].push(g);
+    g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+    g.userData.decorFunctional = functional;
+  }
+  // round 5 (2026-10-08, the nets lane): a camouflage suit's roof and deck nets are drawn up over the loads stowed on
+  // them, never laid through them (ghillieDrape.ts)
+  // (UI-LOCKDOWN E) each of the four suit passes in a slice of its own
+  drapeGhillieOverLoads(hullG, seatedLoads.hull);
+  yield { stage: 'suit-pass', completed: 1, total: 4 };
+  drapeGhillieOverLoads(turretG, seatedLoads.turret);
+  yield { stage: 'suit-pass', completed: 2, total: 4 };
+  // the netting lane (2026-10-10): a field suit gives way to the smoke banks seated here (gameplay fittings, laid
+  // after the suit): its cloth and garnish in their lines of fire are cut away
+  clearGhillieForSmoke(hullG, decorSmokeLines(decorGroups.hull));
+  yield { stage: 'suit-pass', completed: 3, total: 4 };
+  clearGhillieForSmoke(turretG, decorSmokeLines(decorGroups.turret));
+  yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
+  summary.drawCalls = drawCalls;
+  resources.publish(summary, materials);
+  return summary;
 }
 
 export { buildDecorMaterials, DECOR_LOD_DIST };
