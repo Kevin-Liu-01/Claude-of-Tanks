@@ -885,7 +885,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const sunNote = el('div', 'note', '');
   sunSide.append(sunRead, sunPresets);
   sunBlock.append(dial, sunSide);
-  const lampBtn = chipButton(t('studioPanel.light.headlights'), 'lampOk', false);
+  const lampBtn = chipButton(t('studioPanel.light.headlights'), 'lightbulb', false);
   lampBtn.dataset.tip = t('studioPanel.light.headlightsHint');
   lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
   const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {

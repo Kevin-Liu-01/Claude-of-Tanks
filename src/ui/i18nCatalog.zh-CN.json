@@ -5232,7 +5232,7 @@
   "studio.ws.queue.preset.film-2160": "影片 · 2160p · 30 帧/秒",
   "studio.ws.queue.preset.stills-shots": "每个镜头一张静帧",
   "studio.ws.queue.preset.still-now": "播放头处一张静帧",
-  "studio.ws.queue.estimate": "约 {time} · 约 {size}",
+  "studio.ws.queue.estimate": "约 {time} · {size}",
   "studio.ws.queue.seconds": "{n} 秒",
   "studio.ws.queue.minutes": "{n} 分钟",
   "studio.ws.queue.megabytes": "{n} MB",
