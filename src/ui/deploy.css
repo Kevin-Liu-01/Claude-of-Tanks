@@ -424,11 +424,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-ga
 .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:40px;}
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu.open .cot-arrange-field .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
 /* a segmented setting is as wide as its values beside the screen, as the sides and the team size are (filling its cell
-   stretched the range's Still and Moving to half the plate, r41), and fills its row on a phone as theirs do; a narrow plate
-   tightens its values' sides, since the kit's 13 px on five values overflowed the cell (Respawn delay's 15 at 1024 x 600) */
+   stretched the range's Still and Moving to half the plate, r41), and fills its row on a phone as theirs do */
 .cot-garage .cot-battle-menu.open .cot-arrange-seg{justify-self:start;max-width:100%;}
 .cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 auto;min-width:0;}
-@container deploy-plate (max-width:420px){.cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{padding-inline:var(--s1);}}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-seg{display:flex;justify-self:stretch;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-arrange-seg .cot-c-seg__opt{flex:1 1 0;}
 .cot-garage .cot-battle-menu.open .cot-arrange-field[data-mode-field='juggernautRole']{grid-column:1/-1;}
@@ -604,10 +602,13 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open :is(.cot-ba
   mask-image:linear-gradient(180deg,var(--ink-1) calc(100% - var(--s5)),transparent);}
 /* a phone's column fades under the tab row as it scrolls */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{mask-image:linear-gradient(180deg,transparent,var(--ink-1) var(--s3));}
-/* time of day takes its own row, its chips named; the sides and the options share the next (a narrow plate tightens
-   the sides' padding so they stay one row) */
+/* time of day takes its own row, its chips named; the sides and the options share the next */
 .cot-garage .cot-battle-menu.open .cot-battle-times{flex:1 1 100%;}
-@container deploy-plate (max-width:420px){.cot-garage .cot-battle-menu.open .cot-battle-sides .cot-c-seg__opt{padding:0 var(--s2);}}
+/* a narrow plate tightens every segmented control on it alike, the sides, the nations and the mode's settings (the kit's
+   13 px kept the sides from sharing their row and Respawn delay's five from their cell; tightened one by one, they stood
+   at 13, 9 and 4 px on one plate, r42) */
+@container deploy-plate (max-width:420px){
+  .cot-garage .cot-battle-menu.open :is(.cot-battle-sides,.cot-teams,.cot-arrange-seg) .cot-c-seg__opt{padding-inline:var(--s2);}}
 /* a phone's pickers fill their rows: the three times, then the sides beside the options */
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-times{flex:1 1 100%;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-time-choice{flex:1 1 0;}
