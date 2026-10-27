@@ -27,13 +27,17 @@ Configuration: the Sho't Kal Alef of the 1973 war, before Blazer armour. Impleme
 | Engine deck | enlarged, raised M48/M60-style louvred "humpback" (HE, EN, CM) | hump to 1.90 m from behind the turret's sweep, two longitudinal grille doors, the rear louvre grille raked to the rear plate |
 | Rear guards | the British exhausts and silencers removed; M48-style box air cleaners (HE, CM) | a clamped box air cleaner and its duct on each rear guard |
 | Rear plate | US-pattern tail lights in round guards (CM, forum); links on the rear | guarded lights, two three-link runs |
-| Roof guns | the commander's .30 M1919A4 on the cupola; the loader's .30 came with the Bet (EN) | one commander's gun (fleet `mag` class; no Browning class) |
+| Roof guns | the commander's .30 M1919A4 or a .50 on the cupola (EN, KM); the Yad La-Shiryon Alef carries a .50 at the cupola and a 7.62 mm gun at the loader's hatch | owner 2026-10-27 ("machine guns ... depending on the variants"): the Latrun configuration, a .50 M2 on the cupola and a loader's pintle gun (fleet `mag` class) |
 | Smoke dischargers | the British units removed on the Alef, empty mounts remained (EN) | the empty brackets only |
 | Stowage | the IDF bustle basket, jerrycans, bedrolls (EN, CM) | the open bustle basket with its load, a jerrycan cage at the right rear, curated soft stowage (decorations.ts) |
 | Antennas | two whips | two 2.6-2.9 m whips at the bustle corners |
 | Glacis | spare links on the upper glacis in 1973 (forum); Mk 5 front bins reused (CM) | the Mk 5 bin and link run |
 | Paint | IDF sand / Sinai grey, conflicting (CM: 1973 kits all IDF sand; modellers: grey-tan) | its own plain grey-sand `#8c8670` (`paint_shot_kal`, appended after the 233 paints) |
 | Markings | white company chevron on the side plates and turret (KM) | a "V" chevron on both middle side plates |
-| Not modelled | a searchlight over the mantlet (common on Alefs), the .50 over the gun (mostly post-war), the 60 mm mortar (Bet), IS-10 launchers (Gimel), Blazer ERA (Dalet), the 44 mm glacis plate on ex-Mk 3 hulls | |
+| Searchlight | Alefs commonly carried a searchlight over the mantlet: a Luna L-2 or a canvas-covered xenon (EN) | a canvas-covered searchlight on a bracket over the mantlet, moving with the gun |
+| Lights | US-pattern lights (CM) | US-pattern headlight pairs in bent guards; tail lights in round guards; the convoy light box |
+| Rear | AVDS conversion grilles (the 1978 rear photograph) | two louvred grille boxes on the upper rear plate |
+| Running gear | the Centurion's own Horstmann bogies | the UK Centurion wheel (`nationWheelSets.ts` exception) instead of the Israeli (Merkava) standard |
+| Not modelled | the .50 over the gun (mostly post-war), the 60 mm mortar (Bet), IS-10 launchers (Gimel), Blazer ERA (Dalet), the 44 mm glacis plate on ex-Mk 3 hulls | |
 | Dimensions | 7.6 m hull, 3.38 m wide, 2.94 m high, 51.8 t (HE, WT) | hull 7.56 (spec), overall 9.62 with the L7, width 3.39, height 3.01 over the cupola |
 | Tier | | III in the Israel tree's special lane beside the Sabra (both foreign hulls in IDF service): the Mk 5/2's tier |

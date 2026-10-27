@@ -16,7 +16,9 @@ glacis in place of the Mk 5's bin (SV, F81), two Swedish whips, no searchlight o
 |---|---|---|---|
 | Turret height | the Mk 3 casting squashed to 0.82 | Strv 81B photos: the full Centurion casting | unsquashed casting, roof 2.67 |
 | Gun | 20-pdr with a 5.15 m tube and the inherited extractor | Type B: concentric extractor (Q20), mid-barrel in the photos | 4.97 m from the trunnion, short can at 47 % |
-| Glacis | inherited Mk 3 links | link brackets (F81) | two three-link runs on the glacis |
+| Glacis | inherited Mk 3 links | link brackets (F81) | two three-link runs on carriers on the glacis |
+| Lights | inherited | Swedish lights; no searchlight or Lyran (SV) | twin-pod headlights, blackout light boxes on the front guard bins, the convoy light box |
+| Rear deck | none | a long box across the end of the rear deck (the overhead photograph) | a 2.06 m box on two feet over the transverse grille |
 
 ### Sources (release 262)
 
@@ -55,6 +57,8 @@ glacis in place of the Mk 5's bin (SV, F81), two Swedish whips, no searchlight o
 | Mantlet | slab chin and cloth blocks | large cast mantlet under a canvas cover (photos) | cast mantlet inside a drawn canvas drape, 1.32 m wide, proud of the casting face, moving with the gun |
 | Smoke dischargers | Mk 3 three tubes, Mk 5 six | Discharger No. 1 Mk 1: two rows of three on each cheek (TE) | one 2x3 block high on each front corner, turned out 24 deg, with its guard bar |
 | Commander's cupola | drum stack with sight vane | all-round vision cupola on the right (W) | 0.80 m cupola base, vision drum with eight periscopes |
+| Mantlet cover | slab chin and cloth blocks | canvas cover laced round the opening, a sleeve on the barrel (Bovington, Delft photographs) | a curved cast mantlet under a pleated cover with lacing eyelets, a strapped sleeve, the coaxial gun's boot and the sight's armoured hood |
+| Hull kit | | pioneer tools, the auxiliary charging engine's silencer on the left rear guard (forum), the travel lock | tools in clamps on the left bin lids, the silencer box, the folded travel lock, the convoy light box |
 
 
 ## Identity

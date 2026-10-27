@@ -48,6 +48,8 @@ two track-link positions on the glacis (W), no roof machine gun (roofWeaponPolic
 | Mantlet | slab chin and cloth blocks | large cast mantlet under a canvas cover (photos) | cast mantlet inside a drawn canvas drape, 1.32 m wide, proud of the casting face, moving with the gun |
 | Smoke dischargers | Mk 3 three tubes, Mk 5 six | Discharger No. 1 Mk 1: two rows of three on each cheek (TE) | one 2x3 block high on each front corner, turned out 24 deg, with its guard bar |
 | Commander's cupola | drum stack with sight vane | all-round vision cupola on the right (W) | 0.80 m cupola base, vision drum with eight periscopes |
+| Mantlet cover | slab chin and cloth blocks | canvas cover laced round the opening, a sleeve on the barrel (Bovington, Delft photographs) | a curved cast mantlet under a pleated cover with lacing eyelets, a strapped sleeve, the coaxial gun's boot and the sight's armoured hood |
+| Hull kit | | pioneer tools, the auxiliary charging engine's silencer on the left rear guard (forum), the travel lock | tools in clamps on the left bin lids, the silencer box, the folded travel lock, the convoy light box |
 
 
 Exact variant: Centurion Mk.3, QF 20-pounder (84 mm).

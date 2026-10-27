@@ -11,14 +11,15 @@ Mark identity (W): the Mk 5 up-gunned with the 105 mm L7 (no thermal sleeve), th
 reshaped roof without the 2-inch bomb thrower, the cupola machine-gun mount (drawn as the fleet MAG 58 station
 `centurion5_cupola_machine_gun`: no Browning M1919 class exists; the station replaces the old loader's MAG), the Mk 5's
 extra glacis bin beside the link run. Spec overall length 9.83 -> 9.62 m: the L7 stands 2.06 m past the front guards
-(the 9.83 m was the 20-pdr's; AC10 gives 2.03 m on the Mk 10's L7). Not modelled: the Dutch Mk 5/2's IR searchlight and
-ranging gun (Dutch fittings, W), the Mk 5/1's glacis appliqué.
+(the 9.83 m was the 20-pdr's; AC10 gives 2.03 m on the Mk 10's L7). Not modelled: the Dutch ranging gun (W), the Mk 5/1's glacis appliqué. The
+searchlight box (a Dutch fitting) is drawn at the owner's request for variant floodlights.
 
 | Item | Old build | Source | Rebuild |
 |---|---|---|---|
 | Gun | L7 5.15 m with a long sleeve and a mid collar | L7 L/52, concentric evacuator (L7) | 4.74 m from the trunnion, evacuator 45 % along |
 | Skirt hem | raised to 0.84 on five panels | ORACLE 0.65 | as the family (0.66, rising at the rear) |
 | Roof gun | loader's MAG 58 on a riser | the Mk 5's .30 Browning on the cupola (W) | MAG 58 station on the cupola ring |
+| Lights | glacis lamps | armoured headlight boxes; the Delft Mk 5/2 carries a searchlight box at the turret's right front (photograph; a Dutch fitting, W) | armoured headlight boxes with windows and visors; owner 2026-10-27 ("flood lights depending on the variants"): the searchlight box with its louvred front at the right front corner |
 
 ### Sources (release 262)
 
@@ -57,3 +58,5 @@ ranging gun (Dutch fittings, W), the Mk 5/1's glacis appliqué.
 | Mantlet | slab chin and cloth blocks | large cast mantlet under a canvas cover (photos) | cast mantlet inside a drawn canvas drape, 1.32 m wide, proud of the casting face, moving with the gun |
 | Smoke dischargers | Mk 3 three tubes, Mk 5 six | Discharger No. 1 Mk 1: two rows of three on each cheek (TE) | one 2x3 block high on each front corner, turned out 24 deg, with its guard bar |
 | Commander's cupola | drum stack with sight vane | all-round vision cupola on the right (W) | 0.80 m cupola base, vision drum with eight periscopes |
+| Mantlet cover | slab chin and cloth blocks | canvas cover laced round the opening, a sleeve on the barrel (Bovington, Delft photographs) | a curved cast mantlet under a pleated cover with lacing eyelets, a strapped sleeve, the coaxial gun's boot and the sight's armoured hood |
+| Hull kit | | pioneer tools, the auxiliary charging engine's silencer on the left rear guard (forum), the travel lock | tools in clamps on the left bin lids, the silencer box, the folded travel lock, the convoy light box |
