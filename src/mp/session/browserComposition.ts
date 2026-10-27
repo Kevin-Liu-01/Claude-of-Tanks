@@ -130,10 +130,14 @@ export interface BrowserLoadTrace {
    * (2026-10-27, the room-stalls lane) the programs the reveal made: those the renderer gained after the black watchdog,
    * through the reveal, the loader's fade and the first REVEAL_PROGRAM_FRAMES frames after it (`frames`: the frames
    * counted so far), with the first few named. The covered warm owns every program: 0 is the receipt (the rooms census
-   * found the first live frame linking the viewer's depth programs, 580-590 ms).
+   * found the first live frame linking the viewer's depth programs, 580-590 ms). `diffs`, beside each name: where its
+   * cache key departs from the nearest program of its type that the warm made (`index:made/warmed`), or 'new'.
    */
-  revealPrograms?: { made: number; frames: number; names: string[] };
+  revealPrograms?: { made: number; frames: number; names: string[]; diffs: string[] };
 }
+
+/** A live program as the reveal receipt reads it (three's WebGLProgram: its material's type and name, its cache key). */
+export interface RevealProgram { type?: string; name?: string; cacheKey?: string }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
 export interface BrowserPendingProgram { name: string; cacheKey: string; linked: boolean | null }
@@ -304,7 +308,7 @@ export interface BrowserPresentationPorts {
   setGarageLighting(active: boolean): void;
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   /** The renderer's live programs (renderer.info.programs: the material's type and name), for the revealPrograms receipt. */
-  programs?(): readonly { type?: string; name?: string }[] | null;
+  programs?(): readonly RevealProgram[] | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -1130,18 +1134,37 @@ export function createBrowserComposition({
     active.trace.totalMs = Math.round(at - active.trace.startedAt);
   };
 
-  const programLabel = (program: { type?: string; name?: string }): string =>
+  const programLabel = (program: RevealProgram): string =>
     [program.type, program.name].filter(Boolean).join(':') || '?';
 
-  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<object>, frames: number): void => {
+  /** Where a program's cache key departs from the nearest warmed program of its type (at most four fields), or 'new'. */
+  const programKeyDiff = (program: RevealProgram, warmed: readonly RevealProgram[]): string => {
+    const fields = program.cacheKey?.split(',') ?? [];
+    let best: string[] | null = null;
+    for (const other of warmed) {
+      if (other.type !== program.type || !other.cacheKey) continue;
+      const theirs = other.cacheKey.split(',');
+      if (theirs.length !== fields.length) continue;
+      const diff: string[] = [];
+      for (let i = 0; i < fields.length && diff.length < 5; i++) {
+        if (fields[i] !== theirs[i]) diff.push(`${i}:${fields[i]!.slice(0, 32)}/${theirs[i]!.slice(0, 32)}`);
+      }
+      if (!best || diff.length < best.length) best = diff;
+    }
+    return best ? best.slice(0, 4).join(' ') : 'new';
+  };
+
+  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<RevealProgram>, frames: number): void => {
     const live = activation.programs?.();
     if (!live) return;
     const made = live.filter((program) => !baseline.has(program));
-    active.trace.revealPrograms = { made: made.length, frames, names: made.slice(0, 8).map(programLabel) };
+    const named = made.slice(0, 8), warmed = [...baseline];
+    active.trace.revealPrograms = { made: made.length, frames, names: named.map(programLabel),
+      diffs: named.map((program) => programKeyDiff(program, warmed)) };
   };
 
   /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
-  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<object>): Promise<void> => {
+  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<RevealProgram>): Promise<void> => {
     if (!activation.programs) return;
     for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {
       try { await load.nextFrame(); } catch { return; }
