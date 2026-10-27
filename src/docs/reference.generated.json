@@ -527,7 +527,7 @@
     },
     {
       "id": "t90m_proryv",
-      "name": "T-90M Proryv",
+      "name": "T-90AM II",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,
@@ -3509,7 +3509,7 @@
     },
     {
       "id": "t90m",
-      "name": "T-90M",
+      "name": "T-90M Proryv",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,
