@@ -54,7 +54,7 @@ function vectorArea(points: readonly SkinPoint[]): number {
     y += a[2] * b[0] - a[0] * b[2];
     z += a[0] * b[1] - a[1] * b[0];
   }
-  return Math.hypot(x, y, z) / 2;
+  return Math.sqrt(x * x + y * y + z * z) / 2;
 }
 
 function polygonArea(points: readonly SkinPoint[], normal: readonly number[]): number {
@@ -124,7 +124,7 @@ function cellShape(cell: SkinCell): CellShape {
   const seen = new Set<string>();
   for (const face of cell.faces) {
     const n = face.normal;
-    if (!n || !Number.isFinite(face.constant) || Math.hypot(n[0], n[1], n[2]) < 1e-9) continue;
+    if (!n || !Number.isFinite(face.constant) || Math.sqrt(dot(n, n)) < 1e-9) continue;
     const key = planeKey(n, face.constant);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -139,20 +139,26 @@ function cellShape(cell: SkinCell): CellShape {
     }
     polygons = next;
     const unique: SkinPoint[] = [];
-    for (const point of cap) if (!unique.some((other) => Math.hypot(point[0] - other[0], point[1] - other[1], point[2] - other[2]) < 1e-9)) unique.push(point);
+    for (const point of cap) {
+      if (!unique.some((other) => Math.abs(point[0] - other[0]) + Math.abs(point[1] - other[1]) + Math.abs(point[2] - other[2]) < 1e-9)) unique.push(point);
+    }
     if (unique.length < 3) continue;
     const center = [0, 0, 0];
     for (const point of unique) for (let axis = 0; axis < 3; axis++) center[axis] += point[axis] / unique.length;
     const u = (() => {
       const seed = Math.abs(plane.n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
       const v = [seed[1] * plane.n[2] - seed[2] * plane.n[1], seed[2] * plane.n[0] - seed[0] * plane.n[2], seed[0] * plane.n[1] - seed[1] * plane.n[0]];
-      const size = Math.hypot(v[0], v[1], v[2]);
+      const size = Math.sqrt(dot(v, v));
       return [v[0] / size, v[1] / size, v[2] / size];
     })();
     const w = [plane.n[1] * u[2] - plane.n[2] * u[1], plane.n[2] * u[0] - plane.n[0] * u[2], plane.n[0] * u[1] - plane.n[1] * u[0]];
-    const angle = (point: SkinPoint) => Math.atan2(
-      (point[0] - center[0]) * w[0] + (point[1] - center[1]) * w[1] + (point[2] - center[2]) * w[2],
-      (point[0] - center[0]) * u[0] + (point[1] - center[1]) * u[1] + (point[2] - center[2]) * u[2]);
+    // the angle about the centre as a monotone key (no atan2: the order is the same on every engine)
+    const angle = (point: SkinPoint) => {
+      const y = (point[0] - center[0]) * w[0] + (point[1] - center[1]) * w[1] + (point[2] - center[2]) * w[2];
+      const x = (point[0] - center[0]) * u[0] + (point[1] - center[1]) * u[1] + (point[2] - center[2]) * u[2];
+      const r = Math.abs(x) + Math.abs(y) || 1;
+      return x >= 0 ? (y >= 0 ? y / r : 4 + y / r) : 2 - y / r;
+    };
     unique.sort((a, b) => angle(a) - angle(b));
     if (vectorArea(unique) > 1e-12) polygons.push({ plane, plate: face.plate, points: unique });
   }
@@ -314,7 +320,7 @@ export function skinBorderTest(
     const m: SkinPoint = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
     let out = cross(sub(b, a), own.normal);
     if (dot(out, sub(m, inward)) < 0) out = [-out[0], -out[1], -out[2]];
-    const size = Math.hypot(out[0], out[1], out[2]) || 1;
+    const size = Math.sqrt(dot(out, out)) || 1;
     const probe: SkinPoint = [m[0] + out[0] / size * PROBE_M, m[1] + out[1] / size * PROBE_M, m[2] + out[2] / size * PROBE_M];
     if (own.pieces.some((piece) => insidePiece(probe, piece, own.normal))) return false;
     for (let other = 0; other < index.length; other++) {

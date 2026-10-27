@@ -6,7 +6,7 @@
 // visibility; direct reticle contact only supplies the ordinary HUD marker.
 
 import * as THREE from 'three';
-import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
+import { queryAimArmor, tankPoseFromState, tracedCollisionCells } from '../sim/armor.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
@@ -161,7 +161,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const frameKinds = [['hull', false], ['turret', true]] as const;
     for (const [key, turretLocal] of frameKinds) {
       const armor = target.spec?.armor;
-      const cells = armor?.collisionShells?.[key] || [];
+      // the cells the authority traces (with panel plates on, the sealed slices: sim/armorPanelPlates.ts)
+      const cells = tracedCollisionCells(armor?.collisionShells?.[key]) || [];
       const built = buildFlashlightGeometry(cells, turretLocal ? armor?.turretPlates : armor?.hullPlates, NEUTRAL);
       const owner = ownerForFrame(target.visual, turretLocal);
       if (!built || !owner) continue;

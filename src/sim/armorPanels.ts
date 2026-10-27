@@ -18,7 +18,9 @@
 //   - each panel aims a few samples (one per ~SAMPLE_AREA_M2, at most MAX_SAMPLES) at points spread over it; the
 //     flashlight blends their penetration estimates, weighted by the area each stands for, into one colour.
 //
-// Pure numbers (no three.js), cached per cell list: every vehicle of one spec shares the panels.
+// Pure numbers (no three.js), deterministic (fixed orders; Math.sqrt only, the angle thresholds as their cosines), cached
+// per cell list: every vehicle of one spec shares the panels. The flashlight draws them; panel plates
+// (sim/armorPanelPlates.ts, behind a flag) trace them.
 import { armorSkinPanels, type ArmorSkinPanel, type SkinPoint } from './armorSkin.ts';
 import { splitByZones, zonePlates } from './armorZones.ts';
 
@@ -28,11 +30,11 @@ const PANEL_SLAB_M = 0.1;
 /** Facets of one zone whose normal is within this of the panel's mean (60°) may join it; thin wedges tilt a lot. */
 const PANEL_SPREAD_COS = 0.5;
 /** A facet moves into a neighbouring panel (border smoothing) only within this of that panel's normal (40°). */
-const NEIGHBOUR_CREASE_COS = Math.cos((40 * Math.PI) / 180);
+const NEIGHBOUR_CREASE_COS = 0.766044443118978;
 /** Two panels of one zone merge (steps between the cells' slices) only within this of each other's normal (45°). */
-const MERGE_COS = Math.cos((45 * Math.PI) / 180);
+const MERGE_COS = 0.7071067811865476;
 /** Neighbouring pieces this close in direction (35°) are one surface: their zones' border may be straightened. */
-const SAME_SURFACE_COS = Math.cos((35 * Math.PI) / 180);
+const SAME_SURFACE_COS = 0.8191520442889918;
 /** Opposite faces this close (m) and this nearly opposite (|cos|) are a crack between slices, not armour skin. */
 const CRACK_M = 0.04;
 const CRACK_FACING = 0.995;
@@ -41,7 +43,7 @@ const CRACK_CAP_Z = 0.985;
 const MIN_KEPT_M2 = 1e-5;
 /** Facets meeting at more than this (70°) are a corner and outlined even within one zone; the cells' slicing wedges
  * fold less. */
-const CORNER_COS = Math.cos((70 * Math.PI) / 180);
+const CORNER_COS = 0.3420201433256688;
 /**
  * A facet narrower than about this (m: its area over its longest edge) is a sliver: it draws no outline, and its
  * neighbours draw none along it. A crack's cut leaves rims of the tilted caps a few centimetres wide: RIM_WIDTH_M.
@@ -109,7 +111,10 @@ const sub = (a: readonly number[], b: readonly number[]): SkinPoint => [a[0] - b
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a: readonly number[], b: readonly number[]): SkinPoint =>
   [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const distance = (a: readonly number[], b: readonly number[]): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const distance = (a: readonly number[], b: readonly number[]): number => {
+  const x = a[0] - b[0], y = a[1] - b[1], z = a[2] - b[2];
+  return Math.sqrt(x * x + y * y + z * z);
+};
 
 function facetOf(points: readonly SkinPoint[], normal: SkinPoint, skin: number, plate: unknown): ArmorPanelFacet | null {
   let area = 0;
@@ -144,7 +149,7 @@ function edgeAdjacency(facets: readonly ArmorPanelFacet[]): {
     for (let i = 0; i < facet.points.length; i++) {
       const a = facet.points[i], b = facet.points[(i + 1) % facet.points.length];
       const span = sub(b, a);
-      const length = Math.hypot(span[0], span[1], span[2]);
+      const length = Math.sqrt(dot(span, span));
       edges.push({ facet: index, a, dir: length > 1e-12 ? [span[0] / length, span[1] / length, span[2] / length] : [0, 0, 0], length });
     }
   });
@@ -287,7 +292,7 @@ interface Group {
 }
 
 const meanNormal = (group: Group): SkinPoint => {
-  const size = Math.hypot(group.sum[0], group.sum[1], group.sum[2]) || 1;
+  const size = Math.sqrt(dot(group.sum, group.sum)) || 1;
   return [group.sum[0] / size, group.sum[1] / size, group.sum[2] / size];
 };
 

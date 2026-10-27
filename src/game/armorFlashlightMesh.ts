@@ -1,5 +1,5 @@
-// The scoped armour flashlight's mesh: the armour skin (armorSkin.ts) as one closed, evenly lifted shell per frame,
-// cut into a few smooth armour panels (armorPanels.ts), one flat colour per panel, the panel borders outlined in the
+// The scoped armour flashlight's mesh: the armour skin (sim/armorSkin.ts) as one closed, evenly lifted shell per frame,
+// cut into a few smooth armour panels (sim/armorPanels.ts), one flat colour per panel, the panel borders outlined in the
 // one overlay draw.
 //
 // Before 243 every collision-cell triangle was drawn on its own, each cell blown up about its own centroid: the
@@ -11,13 +11,13 @@
 //   - only the union's outer surface is drawn;
 //   - the shell is lifted SKIN_LIFT_M along a normal field that depends on position alone, so panels that meet keep
 //     meeting (no seam opens, no band doubles), just proud of skirts, ERA and fittings;
-//   - the skin is cut into armour zones with straight borders and grown into flat panels (armorPanels.ts); each panel
+//   - the skin is cut into armour zones with straight borders and grown into flat panels (sim/armorPanels.ts); each panel
 //     aims a few samples and takes one colour, blended from them by the area each stands for;
 //   - panel borders draw as anti-aliased lines in the fill's own shader (no second draw); a panel's inner facets and
 //     clipping cuts are never outlined.
 import * as THREE from 'three';
-import { indexSkinPanels, onSkinPanel, type SkinPanelIndex, type SkinPoint } from './armorSkin.ts';
-import { armorPanelSet } from './armorPanels.ts';
+import { indexSkinPanels, onSkinPanel, type SkinPanelIndex, type SkinPoint } from '../sim/armorSkin.ts';
+import { armorPanelSet } from '../sim/armorPanels.ts';
 
 /** How far the shell stands proud of the armour cells (m): over skirts, ERA and fittings, as the old inflation did. */
 const SKIN_LIFT_M = 0.06;

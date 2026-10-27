@@ -61,7 +61,7 @@ and the paint-before-fade Garage recovery transaction for failed cold entry;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
 `armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay
-(its panels: `armorPanels.ts`, zoned with straight borders by `armorZones.ts`);
+(its panels: `sim/armorPanels.ts`, zoned with straight borders by `sim/armorZones.ts`);
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, the countdown's presentation edges (one rollout a
 battle, solo or network, late for a network battle joined after its count;

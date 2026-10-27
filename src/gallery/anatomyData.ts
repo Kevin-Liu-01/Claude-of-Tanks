@@ -9,7 +9,7 @@
 // The fleet receipt (anatomyData.selftest.mjs) ray-checks the drawn armor against traceTank for every vehicle.
 import type { AnatomySystem, CrewRole } from './anatomyPalette.ts';
 import { crewRole, moduleSystem } from './anatomyPalette.ts';
-import { armorSkinPanels, skinOutlineSegments } from '../game/armorSkin.ts';
+import { armorSkinPanels, skinOutlineSegments } from '../sim/armorSkin.ts';
 
 type Vec3 = readonly [number, number, number];
 

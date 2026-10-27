@@ -903,9 +903,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
-    'src/game/armorSkin.selftest.mjs',
+    'src/sim/armorSkin.selftest.mjs',
     // 262: the flashlight's armour panels — straight zone borders, one panel per zone face, weighted samples
-    'src/game/armorPanels.selftest.mjs',
+    'src/sim/armorPanels.selftest.mjs',
+    // 262 phase 2 (off by default): panel plates — the panel's zone and normal at a shell's entry, the seams sealed
+    'src/sim/armorPanelPlates.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
