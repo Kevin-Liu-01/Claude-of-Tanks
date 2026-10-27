@@ -415,12 +415,12 @@
       transition: transform var(--dur-fast) var(--ease-camera);
     }
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
+    /* the star and its count take their button's ink, in the foot and in the credits (boot r19, r30) */
     .cot-github-stars {
       display: inline-flex; align-items: center; gap: 3px; padding-left: 7px;
-      border-left: 1px solid var(--line-3); color: var(--ink-2);
+      border-left: 1px solid var(--line-3); color: inherit;
       letter-spacing: .04em;
     }
-    .cot-boot-links .cot-github-stars { color: inherit; }
     .cot-github-stars svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
     .cot-github-stars [data-github-stars] {
       display: inline-grid; min-width: 4ch; min-height: 1em; place-items: center; line-height: 1;
