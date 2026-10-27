@@ -103,7 +103,9 @@ behind the front plate: overall 6.85 m (S1's table: 6.95; the drawing: the muzzl
 ### Fairness line (tools: `.qa-dev/kv2/fairness-line.mjs`, the 259 round robin's measure)
 
 The KV-2 against its 18 shown-tier-I peers on the balance range (six seeds, both range ends): before (main 260)
-strength 0.042, 1/18 pairs inside 0.2-0.8; after strength 0.032, 1/18. Only the BMP-2 pair is inside (0.417); the
+strength 0.042, 1/18 pairs inside 0.2-0.8; after the first rebuild 0.032, after the critic round 0.023, 1/18 (the
+AMX-30, AMX-30B and M46 pairs fall from 0.08-0.17 to 0: the KV-2 dies a reload sooner on the new anatomy, so its
+20.5 s cycle lands one shot fewer). Only the BMP-2 pair is inside (0.417); the
 KV-2 loses every MBT pair at tier I (AMX-30/30B/30B2, Leopard 1A5, M46/M47/M48A5/M60A1/M60A3, Merkava 1B, STB-1,
 T-62, Type 59/74, ZTZ-85-III, UDES 03, Jagdpanzer E 100). Outside its bounds before and after; stats not tuned
 (owner/Main decision).
