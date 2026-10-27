@@ -125,11 +125,12 @@ interface ConsumableSlotItem {
 }
 const CONSUMABLE_SLOT_ACTIONS = ['consumable1', 'consumable2', 'consumable3'] as const satisfies readonly ActionId[];
 type ConsumableSlotAction = typeof CONSUMABLE_SLOT_ACTIONS[number];
-/** Today's three, each slot's item until a loadout says otherwise. */
+/** The default trio (260's catalog: DEFAULT_CONSUMABLE_LOADOUT, by its own name keys), each slot's item until the Garage's
+ *  loadout says otherwise. */
 const DEFAULT_CONSUMABLE_SLOTS: Readonly<Record<ConsumableSlotAction, ConsumableSlotItem>> = Object.freeze({
-  consumable1: { itemId: 'repair', nameKey: 'action.consumable1', iconId: 'repair' },
-  consumable2: { itemId: 'medkit', nameKey: 'action.consumable2', iconId: 'medkit' },
-  consumable3: { itemId: 'extinguisher', nameKey: 'action.consumable3', iconId: 'extinguisher' },
+  consumable1: { itemId: 'repair', nameKey: 'consumable.repair.name', iconId: 'repair' },
+  consumable2: { itemId: 'first_aid', nameKey: 'consumable.firstAid.name', iconId: 'medkit' },
+  consumable3: { itemId: 'extinguisher', nameKey: 'consumable.extinguisher.name', iconId: 'extinguisher' },
 });
 const isConsumableSlotAction = (id: string): id is ConsumableSlotAction => (CONSUMABLE_SLOT_ACTIONS as readonly string[]).includes(id);
 type BindingSlotKey = BindingSlot | 'pad';
@@ -913,7 +914,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    *  persisted as settings.rmbMode (main.ts routes the RMB-bound action per frame). Item 259 (the lead, bar line 13: one
    *  datum, one place): its one control, under the RMB action's binding on Controls; Accessibility links here. */
   function rmbModeRow(parent: HTMLElement): void {
-    const row = el('div', 'cot-set-row', parent);
+    const row = markDatum(el('div', 'cot-set-row', parent), 'rmb-mode');
     row.id = 'cot-set-rmb-mode';
     settingLabel(row, t('settings.rmb.label'), SETTINGS_OPTION_ICONS.rmbMode);
     const modes: ReadonlyArray<readonly [RmbMode, string]> = [

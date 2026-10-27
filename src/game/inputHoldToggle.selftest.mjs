@@ -144,6 +144,11 @@ try {
   assert.equal((settingsSource.match(/className: 'cot-set-rmb'/g) || []).length, 1, 'and nowhere else (one datum, one place)');
   assert.match(settingsSource, /settingLabel\(rmbLink, t\('action\.freeCamera'\), SETTINGS_ACTION_ICONS\.freeCamera\);[\s\S]{0,200}cot-set-link/,
     'Accessibility links to it');
+  // the datum is registered once, on the Controls row (src/ui/surfaceRegistry.ts: the duplicate census stays at zero)
+  const { SURFACE_REGISTRY } = await import('../ui/surfaceRegistry.ts');
+  assert.deepEqual(SURFACE_REGISTRY['rmb-mode']?.places.map((place) => [place.screen, place.surface]), [['settings', '#cot-set-rmb-mode']],
+    'the Right click mode has one place: the Controls row');
+  assert.match(settingsSource, /markDatum\(el\('div', 'cot-set-row', parent\), 'rmb-mode'\);\s*row\.id = 'cot-set-rmb-mode';/, 'which marks it');
 
   /* 2. every hold is accounted for ------------------------------------------------------------------------------- */
   // A release handler (keyup, pointerup / mouseup / touchend) is how a hold is built. Each one in the game shell is a

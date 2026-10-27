@@ -35,8 +35,10 @@ const ICON_CSS = [['src/gallery/gallery.css', /\.camera-view-glyph[^{]*\{[^}]*\}
  *  drew the eleven glyphs of the 25-item equipment catalog: 10169 to 10696 B, re-pinned at 11 KB. 252 (tech-tree view)
  *  adds the tree's two glyphs (the game bar's tree and the board's fit, about 32 B gzip each) inside that cap. Item 259
  *  (the lead, 2026-10-26: bar line 3, a glyph drawn at 18 px or less gets its 16-unit master first) drew the 37 small
- *  masters of the Settings rows' glyphs: 11054 to 12262 B, re-pinned at 13 KB. The boot slice holds. */
-const SPRITE_GZIP_MAX = 13 * 1024;
+ *  masters of the Settings rows' glyphs: 11054 to 12262 B, re-pinned at 13 KB. Merged with 260's consumables catalog (its
+ *  ten cs* glyphs and, for the Settings slot rows that draw them at 16 px, their small masters): 13200 B, re-pinned at
+ *  14 KB. The boot slice holds. */
+const SPRITE_GZIP_MAX = 14 * 1024;
 const BOOT_BROTLI_MAX = 3 * 1024;
 
 const STROKE_LITERAL = /stroke-width(?:="|:|',\s*['"]?|\s*=\s*\{?)\s*([0-9.]+)/g;
