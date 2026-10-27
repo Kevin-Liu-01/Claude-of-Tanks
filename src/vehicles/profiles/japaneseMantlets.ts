@@ -200,10 +200,11 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
   portBoss(P, 0.235, 0.058, 0.345, 0.056, 'sight', P.q ? 20 : 12);
   portBoss(P, -0.285, 0.046, 0.345, 0.046, 'coax', P.q ? 20 : 12);
   // the collar the barrel leaves through, the flared half-round hood over its top and the seal round the barrel
-  P.add('gunMount', cylZ(0.135, 0.17, seg), 0, 0, 0.43);
-  P.add('gunMountDark', cylZ(0.139, 0.016, seg), 0, 0, 0.36);
-  P.add('gunMount', halfHood([{ z: 0.43, inner: 0.134, outer: 0.147 }, { z: 0.50, inner: 0.143, outer: 0.156 },
-    { z: 0.56, inner: 0.160, outer: 0.172 }], !!P.q));
+  // (115 mm: at the gun's -6 degrees over the deck a 135 mm collar stood 1.6 cm off the glacis crest)
+  P.add('gunMount', cylZ(0.115, 0.17, seg), 0, 0, 0.43);
+  P.add('gunMountDark', cylZ(0.119, 0.016, seg), 0, 0, 0.36);
+  P.add('gunMount', halfHood([{ z: 0.43, inner: 0.114, outer: 0.127 }, { z: 0.50, inner: 0.126, outer: 0.139 },
+    { z: 0.56, inner: 0.145, outer: 0.157 }], !!P.q));
   barrelSeal(P, 0.0775, 0.515, seg);
   // the searchlight on its cradle beside the gun base (left): a deck plate run in from the mask's left side, a web under
   // it, the lamp house with chamfered rear corners, its framed six-pane glass, and the two bars to the collar

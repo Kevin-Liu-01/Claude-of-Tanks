@@ -336,7 +336,7 @@ function addSTB1HullBody(P: JapaneseBuilderPort): void {
   }
   // 262: the prototype's exhaust is one silencer in a mesh guard on the left rear fender (1969 photograph; the production
   // tank carries muffler covers on both), aft of the bustle's sweep as the canisters before it were
-  guardedSilencer(P, -1.30, 1.385, -1.76, -2.68, 0.105, -1);
+  guardedSilencer(P, -1.30, 1.385, -1.76, -2.68, 0.085, -1);
   P.add('hull', box(0.34, 0.11, 0.62), 1.29, 1.36, -2.22);                     // the right rear fender's locker
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.34, 0.16, 0.035), side * 0.91, 1.04, -3.075);
@@ -389,9 +389,10 @@ function addSTB1HullHardwareAndRunningGear(P: JapaneseBuilderPort): void {
   P.add('hullDark', box(0.37, 0.014, 0.045), -0.48, 1.36, 1.64);
   for (const x of [-0.68, -0.48, -0.28]) periscope(P, 'hullDetail', x, 1.37, 1.88);
   for (const side of [-1, 1]) {
-    // 262: a caged lamp box at each front corner, on the fender (1969 photograph): the prototype's box is taller and
-    // narrower than the production one, its cage three bars, its lamps a marker and two headlights
-    cagedLampBox(P, { x: side * 1.26, y: 1.413, z: 2.58, w: 0.36, h: 0.20, d: 0.20, side, lamps: ['marker', 'head', 'head'], bars: 3 });
+    // 262: a caged lamp box at each front corner (1969 photograph), set into the glacis shoulder under the fender line,
+    // inboard of the big idler's wrap (x 1.17) and low enough for the gun to sweep over it: the prototype's box is taller
+    // and narrower than the production one, its cage three bars, its lamps a marker and two headlights
+    cagedLampBox(P, { x: side * 0.96, y: 1.12, z: 2.50, w: 0.32, h: 0.24, d: 0.22, side, lamps: ['marker', 'head', 'head'], bars: 3 });
     towShackle(P, side * 0.42, 0.72, 3.02, 1);
     liftEye(P, 'hullDetail', side * 1.18, 1.33, 1.85, side * 0.24);
   }
@@ -520,35 +521,11 @@ function addSTB1CastTurret(P: JapaneseBuilderPort): THREE.BufferGeometry {
     liftEye(P, 'turretDetail', side * 0.72, 0.76, 0.42, side * 0.30);
   }
 
-  // The oracle's four-cell cheek grilles are a primary frontal identifier.
-  // Each cell has a shallow armor backing and is canted with the casting.
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.070, 0.38, 0.70), side * 1.170, 0.54, 0.59,
-      0, side * 0.10, 0);
-    for (let i = 0; i < 4; i++) {
-      const z = 0.84 - i * 0.17;
-      P.add('turretDark', box(0.034, 0.29, 0.142), side * 1.218, 0.55, z,
-        0, side * 0.10, 0);
-      P.add('turretDetail', box(0.040, 0.020, 0.128), side * 1.239, 0.65,
-        z, 0, side * 0.10, 0);
-      P.add('turretDetail', box(0.040, 0.020, 0.128), side * 1.239, 0.45,
-        z, 0, side * 0.10, 0);
-    }
-  }
-
   // 261: no searchlight. The STB-1 carried a passive night sight; the infrared searchlight came with STB-2
   // (docs/references/tanks/stb1.md).
 
-  // Offset rangefinder blisters and their backed optic faces give the side
-  // elevation the same asymmetric equipment cadence as the source print.
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.16, 0.25, 0.32), side * 1.20, 0.56, -0.30,
-      0, side * 0.08, 0);
-    P.add('turretDark', box(0.028, 0.17, 0.22), side * 1.293, 0.57, -0.29,
-      0, side * 0.08, 0);
-    P.add('turretGlass', box(0.020, 0.10, 0.13), side * 1.311, 0.58, -0.27,
-      0, side * 0.08, 0);
-  }
+  // 262: the oracle's four-cell cheek grilles and its side "rangefinder blisters" are gone: the 1969 photograph shows a
+  // smooth front cheek and no side bulges (docs/references/tanks/stb1.md).
 
   // Closed cast-in service plates and roof bosses break the remaining blank
   // dome while staying shallow enough to read as part of the casting.  Their

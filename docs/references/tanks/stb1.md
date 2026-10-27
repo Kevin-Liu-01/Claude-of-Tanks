@@ -36,9 +36,9 @@ hull marked STB-1, reproduced in the [War Thunder forum's Type 74 post](https://
 
 Program frame (BUILD-STANDARD §A): +x is the vehicle's right.
 
-**Left for the owner (not changed here):** the four-cell cheek grilles and the side "rangefinder blisters" come from the
-third-party STB-1 oracle; neither shows in the 1969 photograph (no side bulges, a smooth left cheek). The raised
-commander's station and the remote AA machine gun are sourced and stay.
+**Removed in 262:** the four-cell cheek grilles and the side "rangefinder blisters" came from the third-party STB-1
+oracle; neither shows in the 1969 photograph (no side bulges, a smooth front cheek). The raised commander's station and
+the remote AA machine gun are sourced and stay.
 
 Receipt: `src/vehicles/japaneseMantlet.selftest.mjs` (the gun stays inside its shield over the whole travel; the
 STB-1's and the Type 74's shields are different castings).

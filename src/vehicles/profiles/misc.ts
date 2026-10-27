@@ -3105,7 +3105,9 @@ function buildType74(P: MiscBuilderPort): void {
     towShackle(P, s * 0.55, 0.56, rearZ(0.56), -1);
     uTowEye(P, s * 0.86, 1.372, -3.04);
   }
-  fenders(P, 1.05, 1.57, 1.375, -3.42, 3.05, 0.028);                         // full length: the rear flaps hang from the fender end over the sprocket
+  // (262) the fender ends at the sponson's front (2.36): ahead of it the hull's front corner holds the lamp box, and the
+  // front mudguard hangs from that box
+  fenders(P, 1.05, 1.57, 1.375, -3.42, 2.36, 0.028);                         // the rear flaps hang from the fender end over the sprocket
   // owner 2026-10-25 (the modernisation): the fender's support gussets along its outer edge and a weld seam along the
   // sponson band (the long plain side read as a slab). Gussets hang 0.075 under the 1.375 fender line, 0.2 m clear of
   // the dead track's top run.
@@ -3160,11 +3162,8 @@ function buildType74(P: MiscBuilderPort): void {
     // z 3.12; sprocket shoe top 1.071 at z -3.40)
     // owner 2026-10-19 (flaps sweep): the bow flap started 45 mm past the fender's end and 20 mm under it; it now hangs
     // from that end (front face 2.5 mm past it, top 1.37 inside the 1.361-1.389 plate)
-    ribbedMudguard(P, s * 1.31, 1.385, 3.04, 0.50, 0.30, 0.6);               // (262) the front mudguard, an angled ribbed plate
+    ribbedMudguard(P, s * 1.27, 1.215, 2.60, 0.46, 0.32, 0.35);              // (262) the front mudguard, an angled ribbed plate under the lamp box
     mudflap(P, s * 1.2835, 1.26, -3.40, 0.52, 0.20);
-    // rear-view mirror arms folded low over the front fenders
-    P.add('hullDetail', box(0.035, 0.22, 0.035), s * 1.45, 1.50, 2.82, 0, 0, s * 0.30);
-    P.add('hullDark', box(0.15, 0.19, 0.03), s * 1.505, 1.545, 2.82);
   }
   // fender stowage bins + pioneer tools + headlight pods with guards
   // (release 240, the owner: "make sure all tank turrets are clear of hulls": the four are low lockers, their lids 3 cm
@@ -3176,7 +3175,8 @@ function buildType74(P: MiscBuilderPort): void {
   shovelTool(P, -1.27, 1.40, 1.85);
   // (262) the lamp boxes at the hull's front corners behind their tubular cages: amber marker and blackout lamp
   // outboard, the IR lamp, the sealed-beam headlight inboard (NDA 2024 photographs)
-  for (const s of [-1, 1]) cagedLampBox(P, { x: s * 1.27, y: 1.403, z: 2.62, w: 0.44, h: 0.17, d: 0.19, side: s,
+  // (recessed: the box's top runs flush with the deck at 1.395, so the gun sweeps over it as over the deck)
+  for (const s of [-1, 1]) cagedLampBox(P, { x: s * 1.27, y: 1.215, z: 2.62, w: 0.44, h: 0.18, d: 0.26, side: s,
     lamps: ['marker', 'ir', 'head'], bars: 4 });
   {                                                                            // §I fittings: tow cable draped across the glacis crest
     const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.32, 2.60], [0, 1.42, 2.28], [0.90, 1.32, 2.60]], seed: 11 });
