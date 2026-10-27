@@ -283,8 +283,11 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop.sheet .mapPopHead{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
   padding:0 0 var(--s2) var(--s1);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
 @media (pointer:coarse){.cot-studio .mapPopX{--h:44px}}
-/* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them */
-@media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 200px}}
+/* the wide sheet (MAP_SHEET_WIDE) holds four maps to a row at the inspector's card size */
+@media (width >= 1440px){.cot-studio .mapPop.sheet .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+/* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them; the search
+   stays narrow enough for three chips beside it (the s19 critic: two at 844 x 390) */
+@media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 160px}}
 /* the scene's current map wears the kit's one selected state (wash and edge); the focus is the kit's neutral ring, so the
    two never read alike (the s18 critic: a wash with no edge beside an edge with no wash) */
 .cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
@@ -579,7 +582,14 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
    on an empty scrim, its last card cut by the fade). As specific as the archive's own rail rule plus one: mediaArchive.css
    loads after this sheet. */
 .cot-studio-archive .archiveBody .media-archive-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);
-  max-height:min(70vh,calc(100dvh - 160px));overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;overscroll-behavior:contain}
+  max-height:min(70vh,calc(100dvh - 160px));overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;overscroll-behavior:contain;
+  padding-bottom:var(--s7);-webkit-mask-image:linear-gradient(to bottom,var(--surface-page) calc(100% - var(--s7)),transparent);
+  mask-image:linear-gradient(to bottom,var(--surface-page) calc(100% - var(--s7)),transparent)}
+/* every frame is one cell of that grid: the archive's own page layout (cards spanning 4, 6 or 8 of its 12 columns and two
+   rows, a full-width card every seventh below 1100 px, block cards below 768) spilled into implicit tracks and folded the
+   frames into strips of sky (the s19 critic at 1280) */
+.cot-studio-archive .archiveBody .media-archive-card:nth-child(n){display:block;grid-column:auto;grid-row:auto;flex:none;width:auto;
+  min-height:0;margin:0;aspect-ratio:16/10}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
@@ -650,11 +660,12 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{left:var(
 .st-queue::-webkit-scrollbar{width:6px}
 .st-queue::-webkit-scrollbar-track{background:var(--fill-quiet);border-radius:3px}
 .st-queue::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:3px}
-/* the Field frames read as one column on a phone: the cards fill the dialog, with no sideways fade */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .archiveBody{padding:var(--s3)}
-/* a phone's Field frames take the whole screen (an inset dialog cut the header's buttons along its top edge) */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;inset:0;border-radius:0}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .media-archive-grid{padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
+/* the Field frames read as one column on a phone: the cards fill the dialog; the grid's foot fades where it continues */
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive .archiveBody{padding:var(--s3)}
+/* a phone's or a short window's Field frames take the whole screen (an inset dialog cut the header's buttons along its top
+   edge; at 844x390 it ran past the screen's foot: s19) */
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;inset:0;border-radius:0}
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive .media-archive-grid{padding-inline-end:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}
