@@ -284,7 +284,8 @@ for(const quality of ['high','low']){
     // 96482 / 81232 model (nothing else grew; the old ceilings kept their 160 cold-run margin).
     // 2026-10-26 (main-reds-259): the fleet's turret-seat race (640) and ring collar (512, 252) and the marking films cut to
     // the armour (+299, 243) add 1451 at HIGH: the HIGH ceilings re-pin to the measured 97641 warm / 97479 cold, each plus
-    // the 160 margin (LOW, 78391 / 78229, stays under its ceilings)
+    // the 160 margin (LOW, 78391 / 78229, stays under its ceilings). A named raise, approved by Main for 259: the growth is
+    // structural seat parts, not decor; decor growth still trims to its ceiling (the Husarz's skirt carrier, the same round)
     assert(triangles<=(quality==='high'?(process.argv.includes('--cold')?97639:97801):(process.argv.includes('--cold')?81072:81232)), // 2026-09-25 FSP-03: +184 HIGH for the four fitted return rollers per side
     `new complete model ${triangles}tri (turret ${turretTriangles}) does not exceed its prior filled cost`);
     const bounds=new T.Box3().setFromObject(tank.root);
