@@ -785,6 +785,8 @@
   "garage.record.nonDraw": "非平局",
   "garage.country.all": "全部",
   "garage.country.allAria": "显示所有国家的战车",
+  "garage.country.after": "后面还有 {count} 个国家",
+  "garage.country.before": "前面还有 {count} 个国家",
   "garage.country.filterAria": "按国家筛选战车",
   "garage.carousel.prev": "上一辆战车",
   "garage.carousel.next": "下一辆战车",

@@ -51,7 +51,9 @@
 .cot-facet-clear[hidden]{display:none;}
 .cot-facet-clear svg,.cot-facet-close svg{display:block;flex:0 0 auto;}
 .cot-facet-clear:hover,.cot-facet-clear:focus-visible{color:var(--accent-hi);border-color:var(--accent);}
-.cot-facet-clear:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+/* the focus wears the kit's focus ring, never the accent's edge, which is the selected state's (the r25 critic read a
+   focused MBT chip as an edge-only selection) */
+.cot-facet-clear:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 .cot-facet-search>svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none;}
 .cot-facet-search input{width:100%;height:36px;box-sizing:border-box;padding:0 10px 0 35px;border-radius:0;outline:none;
   color:var(--ink-1);background:linear-gradient(var(--surface-raised),var(--surface-page));border:1px solid var(--line-3);
@@ -73,7 +75,7 @@
 .cot-facet-option .ct{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;color:var(--ink-3);}
 .cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:var(--ink-1);border-color:var(--line-control);}
 .cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:var(--ink-1);}
-.cot-facet-option:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.cot-facet-option:focus-visible{outline:none;box-shadow:var(--focus-ring);}
 /* the chosen value reads as chosen: an amber fill, edge and glyph */
 .cot-facet-option[aria-pressed='true']{color:var(--ink-1);border-color:var(--accent);border-bottom-color:var(--accent);
   background:var(--accent-wash);box-shadow:var(--ring-accent);}
@@ -103,7 +105,8 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-pane
   pointer-events:none;}
 .cot-facet-panel:focus{outline:none;}
 /* the side with more chips fades out (the gauntlet 10-25: an orange arrow over a solid wash read as a chip cut mid-word);
-   the row's end pad lets its last chip scroll clear of the fade */
+   the row's end pad lets its last chip scroll clear of the fade, and the row shows whole chips (wholeChips): a sliver the
+   edge would cut hides (the r25 critic at 844 x 390 read the slivers under the fade as clipped words) */
 body[data-cot-panels='overlay'] .cot-facet-row{padding-inline-end:var(--s6);}
 body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='r'] .cot-facet-row{
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);

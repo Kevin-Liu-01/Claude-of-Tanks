@@ -454,7 +454,18 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-rail.has-more-left.has-more-right .cot-country-chips{
   -webkit-mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);
   mask-image:linear-gradient(90deg,transparent,var(--surface-page) 40px,var(--surface-page) calc(100% - 40px),transparent);}
-/* (a flag not wholly in the track hides, so the rail ends on whole flags; its edge arrow says it continues) */
+/* a nation the track's edge or its end's count would cut hides (garage.ts), so the rail ends on whole flags under its
+   fade; over the fade, a bare count ("+4", no box and no arrow: the owner's 10-25 ruling) says how many lie beyond and
+   steps the track (the r25 critic: a faded "1" and no sign of more) */
+.cot-country-chips>.is-cut{opacity:0;pointer-events:none;}
+.cot-country-step{grid-column:3;grid-row:1;align-self:center;z-index:1;height:var(--btn-h-s);min-width:var(--btn-h-s);padding:0 var(--s1);
+  border:0;background:transparent;box-shadow:none;cursor:pointer;
+  font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+.cot-country-step.is-back{justify-self:start;}
+.cot-country-step.is-on{justify-self:end;}
+.cot-country-step[hidden]{display:none;}
+@media (hover:hover){.cot-country-step:hover{color:var(--ink-1);}}
+.cot-country-step:focus-visible{outline:none;color:var(--ink-1);box-shadow:var(--focus-ring);}
 /* the roster row (owner 10-25 via Main: "completely fix and redesign this row"): every nation a quiet chip of the row's
    one height and frame, a small rounded flag and its count in the data face; the chosen one on the kit's slate plate (the
    segmented control's), never a gold edge */
@@ -468,6 +479,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-chip:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 .cot-country-chip:focus-visible{color:var(--ink-1);box-shadow:var(--focus-ring);}
 .cot-country-chip.sel{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);}
+body[data-cot-panels='overlay'] .cot-country-step{grid-column:2;}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -777,6 +789,9 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 /* a short landscape sheet sets the values beside the words in two rows: its readout's height gives the cards the rest (the
    r22q critic: at 844 x 390 one row of cards was cut through its words over 85 px of empty readout) */
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview{block-size:7rem}
+/* a portrait sheet has the height: its readout holds two rows of cards with a wrapped label (the r25 critic at 390 x 844:
+   View range's 415 m and Concealment's values sat under the panel's foot) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-eqpreview{block-size:12rem}
 .cot-eqpreview .metrics{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 /* the readout names the item, says what it does and projects its values; a press's own effect needs no sentence (the
    summary, the heading and the action line said it again: the r19q critic), but a shut item says why */
@@ -786,9 +801,10 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-eqpreview
 .cot-eqpreview :is(.eyebrow,.detail):empty{display:none}
 /* a Chinese stat label breaks between its terms only (静止 lost its 止 to a second line at 844 x 390) */
 html[lang^='zh'] .cot-eqpreview .metric-label{word-break:keep-all}
-/* a narrow card sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by word and
-   the zh value ran over it) */
-.cot-eqpreview .metric{container-type:inline-size}
+/* a narrow card in a sheet sets its value on a line under its label (the r22q critic: on a phone the label wrapped word by
+   word and the zh value ran over it); only in the sheet's grid, whose tracks set the cards' widths: the docked readout's
+   cards size to their words, and containment there shrank "Aim time" to 50 px with no value (the r25 critic) */
+body[data-cot-panels='overlay'] .cot-eqpreview .metric{container-type:inline-size}
 @container (width < 220px){
   .cot-eqpreview .metric-label,.cot-eqpreview .metric-values{grid-column:2/-1}
   .cot-eqpreview .metric-values{justify-content:flex-start}

@@ -127,9 +127,9 @@ body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-cr
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.cot-mag){display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-ammo-tiles){display:none;}
 .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
-.cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
-/* the densest overview keeps its figures, deltas and actions and drops the headline bars (1024x600 overflowed by 26 px) */
-.cot-garage .stats[data-density~='4'] .cot-hrow .cot-c-scale{display:none;}
+/* the scale bars go before any plate does: a station keeps its figures, deltas and later plates (1024x600 overflowed by
+   26 px; the r25 critic: Firepower at 1280 dropped Ammunition and Armament with room to spare) */
+.cot-garage .stats[data-density~='bars'] :is(.srow,.cot-hrow) .cot-c-scale{display:none;}
 /* one line a round: the glyph carries the type, the figures take their units inline in columns wide enough for them */
 .cot-garage .stats[data-density~='1'] :is(.shellhead,.shellrow){grid-template-columns:16px minmax(0,1fr) 84px 52px;}
 /* Chinese figures stand at the 13 px floor: the figure columns widen so "806 / 733 mm" never runs into its damage */
@@ -275,9 +275,7 @@ body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker{gap:var(--s2)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{flex:0 1 240px;height:var(--btn-h-s)}
-body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__chips{flex:1 1 auto;
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent);
-  mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 40px),transparent)}
+body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__chips{flex:1 1 auto}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:var(--s1)}
 body[data-cot-panels='persistent'] .cot-camos .cot-c-picker__opt{gap:var(--s1);padding:var(--s1)}
 /* a swatch not yet drawn holds a compact swatch's place (the kit's 168 px card placeholder made the rows jump) */
@@ -339,7 +337,9 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-garage .cot-lt-loadout .eqslot.empty .sl{color:var(--ink-3);}
 @media (hover:hover){.cot-garage .cot-lt-loadout .eqslot:hover{background:var(--surface-hover);}
   .cot-garage .cot-lt-loadout .eqslot.empty:hover .plus{color:var(--ink-1);}}
-.cot-garage .cot-lt-loadout .eqslot.open{box-shadow:var(--ring-accent);outline:1px solid var(--accent);outline-offset:-2px;}
+/* the slot being fitted wears the kit's one selected state, the accent's wash and edge (the lead's 10-26 ruling; the r25
+   critic read the edge alone as a second selected look) */
+.cot-garage .cot-lt-loadout .eqslot.open{background:var(--accent-wash);box-shadow:var(--ring-accent);}
 .cot-garage .cot-lt-loadout .eqslot:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
 /* the paint: what the tank wears, named; three more to try; every paint */
 .cot-lt-swatch{position:relative;width:40px;height:100%;flex:none;padding:0;border:0;border-radius:var(--control-radius);overflow:hidden;
@@ -434,7 +434,8 @@ body[data-cot-panels='persistent'] .cot-roster-search{grid-column:1;}
 body[data-cot-panels='persistent'] .cot-facet-toggle{grid-column:2;align-self:center;height:var(--btn-h-s);min-width:var(--btn-h-s);margin:0 0 0 calc(-1 * var(--s2));
   padding:0 var(--s3);border:1px solid var(--line-2);border-left:0;border-radius:0 var(--control-radius) var(--control-radius) 0;background:var(--plate-fill);}
 body[data-cot-panels='persistent'] .cot-facet-toggle:is(:hover,:focus-visible){color:var(--ink-1);border-color:var(--line-3);}
-body[data-cot-panels='persistent'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);border-color:var(--accent);}
+body[data-cot-panels='persistent'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);border-color:var(--accent);
+  background:var(--accent-wash);}
 body[data-cot-panels='persistent'] .cot-country-chips{grid-column:3;justify-content:flex-start;align-items:center;gap:var(--s1);height:var(--rtools-h);
   padding:0 calc(var(--rail-end,0px)) 0 0;}
 body[data-cot-panels='persistent'][data-cot-width] .cot-carousel{left:var(--edge);right:var(--fleet-right);bottom:var(--edge);

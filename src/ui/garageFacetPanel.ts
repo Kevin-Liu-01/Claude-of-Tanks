@@ -11,6 +11,7 @@
 
 import { t } from './i18n.ts';
 import { emptyState } from './components/components.ts';
+import { wholeChips } from './components/picker.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from './vehicleFacetIcons.ts';
 import {
@@ -204,6 +205,8 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     optionButtons.set(group, buttons);
     row.addEventListener('scroll', () => updateCue(row), { passive: true });
     cueObserver?.observe(row);
+    // a swipeable line (a landscape phone) shows whole chips: one its edge would cut hides (the r25 critic at 844 x 390)
+    wholeChips(row);
     rowElements.push(row);
     const wrap = document.createElement('div');
     wrap.className = 'cot-facet-rowwrap';

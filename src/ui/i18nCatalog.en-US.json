@@ -771,6 +771,8 @@
   "garage.record.localSession": "Local session",
   "garage.record.decisiveResults": "Decisive results",
   "garage.record.nonDraw": "Non-draw battles",
+  "garage.country.after": "{count} more nations",
+  "garage.country.before": "{count} more nations before these",
   "garage.country.filterAria": "Filter vehicles by country",
   "garage.carousel.prev": "Previous vehicle",
   "garage.carousel.next": "Next vehicle",
