@@ -168,7 +168,9 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow{display:block;text-wrap:ba
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow>.cot-i{display:inline-block;width:14px;height:14px;margin-right:var(--s1);
   vertical-align:-2px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .k{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.2;color:var(--ink-3);}
-body[data-cot-panels='overlay'] .cot-garage .cot-hrow .v{display:flex;margin-top:var(--s1);}
+/* (a figure stands under its own name, left as the name is: the docked row's justify-self:end set it right, and "600 hp"
+   read as the next column's, the r27 critic at 390 x 844) */
+body[data-cot-panels='overlay'] .cot-garage .cot-hrow .v{display:flex;justify-self:start;margin-top:var(--s1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .v b{font-size:max(var(--fs-floor-11),var(--fs-14));}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:var(--s1);height:5px;gap:1px;}
 
@@ -248,10 +250,12 @@ body[data-cot-panels='persistent'] .cot-leftcol{display:none;}
    so the tank stays in view above it as it is painted; an opaque plate, so nothing ghosts through */
 body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{display:flex;z-index:var(--z-drawer);
   left:var(--edge);right:var(--fleet-right);top:auto;bottom:var(--edge);width:auto;
-  max-height:min(calc(100% - var(--column-top) - var(--edge)),46vh,
+  height:min(calc(100% - var(--column-top) - var(--edge)),46vh,
     calc(var(--band-bottom) + var(--slot) + max(var(--fs-floor-11),var(--fs-11)) + var(--s1) + var(--s2) - var(--edge)));
   border-radius:var(--plate-radius);background:var(--plate-highlight),var(--surface-menu);box-shadow:var(--plate-shadow);}
-body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
+/* (the sheet stands its full height and the paint fills the row under its head: the paint's own 280 px ran 73 px past a
+   259 px sheet at 1024 x 600 and 900 x 700, which cut its second row of swatches where the grid had fitted it whole) */
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;height:auto;min-height:0;}
 /* the docked paint sheet names itself and closes from its head, as the phone's sheet does (no second Camouflage name) */
 body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-drawer-heading{display:flex;flex:0 0 auto;align-items:center;
   justify-content:space-between;gap:var(--s2);margin-bottom:var(--s2);padding-inline-start:var(--s3);color:var(--ink-1);
@@ -348,6 +352,8 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 /* the slot being fitted wears the kit's one selected state, the accent's wash and edge (the lead's 10-26 ruling; the r25
    critic read the edge alone as a second selected look) */
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.open{background:var(--accent-wash);box-shadow:var(--ring-accent);}
+/* (on the wash an empty slot's plus and name read in the ink, not the quiet grey: the r27 critic read them below contrast) */
+.cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot.open :is(.sl,.plus){color:var(--ink-1);}
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot:focus-visible{outline:2px solid var(--focus-ink);outline-offset:-2px;}
 /* the paint: what the tank wears, named; three more to try; every paint */
 .cot-lt-swatch{position:relative;width:40px;height:100%;flex:none;padding:0;border:0;border-radius:var(--control-radius);overflow:hidden;
@@ -689,6 +695,9 @@ body[data-cot-panels='overlay'] :is(.cot-garage :is(.cot-lt-loadout,.cot-lt-cons
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}
 body[data-cot-panels='overlay'] .cot-lt-acts .cot-c-btn{--h:44px;height:var(--h);}
+/* (the kit picker's sheet covers the stage: its acts step aside rather than stand half over its edge, the r27 critic at
+   390 x 844 read 结构 cut by the sheet's top) */
+body[data-cot-panels='overlay'] .cot-garage.picker-open .cot-lt-acts{visibility:hidden;}
 /* a labelled act grows past the touch minimum instead of setting its name on the frame */
 body[data-cot-panels='overlay'] .cot-lt-acts .cot-lt-act{height:auto;min-height:var(--h);width:auto;min-width:60px;padding:var(--s1) var(--s2);gap:2px;}
 body[data-cot-panels='overlay'] .cot-lt-acts :is([data-lt-photo],[data-lt-callouts]){display:none;}

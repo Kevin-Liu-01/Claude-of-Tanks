@@ -326,6 +326,9 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   const revealChosen = (): void => { scrollToChosen(); markRowsBelow(); };
   const render = (): void => {
     shown = filterItems(items, query, memory, options.randomId);
+    // a preview the new set hides leaves with it, and the detail returns to the choice (the r27 critic read a filtered-out
+    // kit's effect under the Protection list)
+    if (previewed != null && previewed !== value && !shown.some((item) => item.id === previewed)) preview(null);
     grid.innerHTML = shown.map((item) => optionMarkup(item, item.id === value, options.memory ? memory.favourites.includes(item.id) : null, options.layout, options.text)).join('');
     options$().forEach((element, i) => { element.id = `${uid}-${i}`; });
     empty.hidden = shown.length > 0;

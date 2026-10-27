@@ -214,7 +214,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     pop.style.maxHeight = `${spot.maxHeight}px`;
     // a filling menu stands its room's whole height; its grid scrolls under the kit's foot fade
     pop.style.height = room.fill && !spot.sheet ? `${spot.maxHeight}px` : '';
-    if (!spot.sheet && !room.fill && !trimToWholeRows(spot) && !squat && options.layout === 'cards') place(true);
+    // (a filling menu ends on its last whole row too: the r27 critic read the rival list's cut "T-90 obr. 1992")
+    if (!spot.sheet && !trimToWholeRows(spot) && !room.fill && !squat && options.layout === 'cards') place(true);
   };
   /** A popover ends on its grid's last whole row (a card, a row): the rows cut at its foot read as cut (the r21q critic:
    *  the staging cards' names and a rival row sliced). An upward menu keeps its foot on its trigger. */
@@ -234,7 +235,8 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     const cut = Math.floor(bottom - foot);
     if (cut < 2) return true;
     const height = pop.getBoundingClientRect().height - cut;
-    pop.style.maxHeight = `${height}px`;
+    if (pop.style.height) pop.style.height = `${height}px`;
+    else pop.style.maxHeight = `${height}px`;
     if (spot.above) pop.style.top = `${spot.top + cut}px`;
     return true;
   };

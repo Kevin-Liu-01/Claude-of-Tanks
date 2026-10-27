@@ -1504,9 +1504,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<figure class="cot-technical-viewer-figure" id="cot-technical-viewer-panel" role="tabpanel" ` +
     `aria-labelledby="cot-technical-viewer-tab-armor">` +
     `<img data-technical-modal-image alt="" draggable="false" decoding="async">` +
-    `<figcaption data-technical-modal-caption></figcaption></figure>`;
+    `</figure>`;
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
-  const technicalModalCaption = requiredElement<HTMLElement>(technicalModal.body, '[data-technical-modal-caption]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
   const technicalModalTabs = [...technicalModal.body.querySelectorAll<HTMLButtonElement>('[data-technical-modal-view]')];
 
@@ -1516,12 +1515,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!view || !spec) return;
     const translated = translateTechnicalView(view);
     const name = spec.label?.displayName || spec.name;
-    // the title names the tank and the drawing; the caption under it says what the drawing shows (once: a subtitle and
-    // a tagline said it again, the r18 critic)
-    technicalModal.setTitle(`${name} · ${translated.label}`);
+    // the title names the tank and the selected tab under it the drawing (the r27 critic: "· Armor" said the tab again and
+    // wrapped alone on a phone); what the drawing shows is the image's text, not a caption under it
+    technicalModal.setTitle(name);
     technicalModalImage.src = iconUrl(spec.id, view.assetView);
     technicalModalImage.alt = `${name} ${translated.caption.toLowerCase()}`;
-    technicalModalCaption.textContent = translated.caption;
     technicalModalPanel.setAttribute('aria-labelledby', `cot-technical-viewer-tab-${view.id}`);
     for (const tab of technicalModalTabs) {
       const active = tab.dataset.technicalModalView === view.id;
@@ -1762,25 +1760,33 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     back.hidden = !hasLeft;
     on.hidden = !hasRight;
     const box = chipsEl.getBoundingClientRect();
-    const lo = box.left + (hasLeft ? back.offsetWidth + 4 : 0);
-    const hi = box.right - (hasRight ? on.offsetWidth + 4 : 0);
-    let before = 0, after = 0;
-    for (const chip of chipsEl.children) {
-      const r = chip.getBoundingClientRect();
-      const cut = r.width > 0 && (r.left < lo - 0.5 || r.right > hi + 0.5);
-      chip.classList.toggle('is-cut', cut);
-      if (cut && r.right <= lo + 0.5) before += 1;
-      else if (cut) after += 1;
-    }
-    for (const [step, n, key] of [[back, before, 'garage.country.before'], [on, after, 'garage.country.after']] as const) {
-      const label = t(key, { count: n });
-      if (step.getAttribute('aria-label') === label) continue;
-      step.setAttribute('aria-label', label);
-      step.title = label;
-      step.textContent = `+${n}`;
+    // a count's own text sets its width: a second pass when a new count changed it, so a nation it would cover hides
+    // under it (the r27 critic: "+5" over Poland's count once a search had narrowed every flag to "0")
+    for (let pass = 0; pass < 2; pass++) {
+      const widths = [back.offsetWidth, on.offsetWidth];
+      const lo = box.left + (hasLeft ? widths[0] + 4 : 0);
+      const hi = box.right - (hasRight ? widths[1] + 4 : 0);
+      let before = 0, after = 0;
+      for (const chip of chipsEl.children) {
+        const r = chip.getBoundingClientRect();
+        const cut = r.width > 0 && (r.left < lo - 0.5 || r.right > hi + 0.5);
+        chip.classList.toggle('is-cut', cut);
+        if (cut && r.right <= lo + 0.5) before += 1;
+        else if (cut) after += 1;
+      }
+      for (const [step, n, key] of [[back, before, 'garage.country.before'], [on, after, 'garage.country.after']] as const) {
+        const label = t(key, { count: n });
+        if (step.getAttribute('aria-label') === label) continue;
+        step.setAttribute('aria-label', label);
+        step.title = label;
+        step.textContent = `+${n}`;
+      }
+      if (back.offsetWidth === widths[0] && on.offsetWidth === widths[1]) break;
     }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
+  // a nation's count changes its width (a search's "0", a filter's tally): the rail measures again where the flags moved
+  const countryChipResize = typeof ResizeObserver === 'function' ? new ResizeObserver(queueCountryRailAffordances) : null;
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
     // ctrl+wheel is a trackpad pinch: the app-wide pinch guard owns it, so the rail never scrolls on one
@@ -2555,6 +2561,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     chipsEl.appendChild(all);
     chipById.set(ALL_COUNTRIES, all);
+    countryChipResize?.observe(all);
     for (const group of countryGroups) {
       const count = group.count;
       const chip = document.createElement('button');
@@ -2579,6 +2586,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
+      countryChipResize?.observe(chip);
     }
   }
   initializeCountryChips();

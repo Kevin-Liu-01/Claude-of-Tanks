@@ -412,8 +412,6 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
    (the r18 critic: a lighter inset rectangle with seams down both sides) */
 .cot-technical-viewer-figure img{display:block;width:auto;max-width:100%;height:auto;max-height:calc(88vh - 250px);aspect-ratio:2/1;
   object-fit:contain;border-radius:var(--r1);box-shadow:var(--ring-1);}
-.cot-technical-viewer-figure figcaption{align-self:stretch;color:var(--ink-2);
-  font:500 max(var(--fs-floor-11),var(--fs-12))/1.3 var(--font-body);}
 .cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
 .cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
@@ -461,7 +459,7 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-crew-chip{flex-direct
 .cot-country-chips>.is-cut{opacity:0;pointer-events:none;}
 .cot-country-step{grid-column:3;grid-row:1;align-self:center;z-index:1;height:var(--btn-h-s);min-width:var(--btn-h-s);padding:0 var(--s1);
   border:0;background:transparent;box-shadow:none;cursor:pointer;
-  font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);}
+  font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);text-shadow:var(--stage-halo);}
 .cot-country-step.is-back{justify-self:start;}
 .cot-country-step.is-on{justify-self:end;}
 .cot-country-step[hidden]{display:none;}
@@ -776,6 +774,8 @@ html[lang^='zh'] .cot-eqpick .cot-c-picker__facts{word-break:keep-all;text-wrap:
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true]{opacity:1}
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true] :is(.cot-c-picker__name,.cot-c-picker__facts){color:var(--ink-3)}
 .cot-eqpick .cot-c-picker__opt[aria-disabled=true] .cot-eq-glyph svg{opacity:.5;filter:grayscale(1) var(--sil-shadow)}
+/* the chosen item reads in the ink on its wash, a shut one included (Empty, chosen, is shut: the r27 critic read it grey) */
+.cot-eqpick .cot-c-picker__opt[aria-selected=true] :is(.cot-c-picker__name,.cot-c-picker__facts){color:var(--ink-1)}
 .cot-eqpick .cot-c-picker__opt[data-id='empty'] .cot-eq-glyph svg{opacity:.55}
 /* a scrolling grid keeps a foot pad as deep as the next row's peek (--peek, set with its fit in garage.ts): the fade dims
    the peek and never the last whole row, and at the grid's end the last row scrolls clear of it */
