@@ -99,7 +99,9 @@ import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
+  type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
+import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -808,6 +810,29 @@ function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): v
   setTimeout(stop, ORIGIN_WATCH_MS);
   return { origins, stop };
 }
+/**
+ * (2026-10-27, the room-stalls lane) The Garage return's lateLinks receipt (programReceipt.ts): the programs linked after
+ * the restore's program warm, through its covered shadow, upload and settle draws and GARAGE_LATE_LINK_FRAMES frames
+ * after it (the cover lifts and the loader fades inside them). The rooms census's leave linked one there, 0.4-1.1 s. A
+ * program linked there warns once, so the census's leave gate (no console warnings) holds the receipt at 0.
+ */
+const GARAGE_LATE_LINK_FRAMES = 90;
+async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
+  { baseline, watch }: { baseline: ReadonlySet<ReceiptProgram>; watch: ProgramOriginWatch }): Promise<void> {
+  const entryInfo = renderer.info;
+  try {
+    receipt.lateLinks = programReceipt(renderer.info.programs ?? [], baseline, 0, watch);
+    for (let frames = 1; frames <= GARAGE_LATE_LINK_FRAMES; frames++) {
+      await nextPaintFrame();
+      if (renderer.info !== entryInfo || game.phase !== 'garage') break;
+      receipt.lateLinks = programReceipt(renderer.info.programs ?? [], baseline, frames, watch);
+    }
+  } finally { watch.stop(); }
+  const { lateLinks } = receipt;
+  if (lateLinks?.made) {
+    console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm: ${JSON.stringify(lateLinks)}`);
+  }
+}
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
   initialize: async ({ createFxChunked }) => {
@@ -1000,18 +1025,30 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
     // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
     const programsNeedWarm = true;
-    const receipt = await restoreGarageGpuPipeline({
-      renderer,
-      scene,
-      camera,
-      lighting,
-      forwardPrograms: forwardProgramWarm,
-      post,
-      simDt: SIM_DT,
-      resourcesReleased,
-      programsNeedWarm,
-      isCurrent,
-    });
+    let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch } | null = null;
+    let receipt: GarageGpuRestoreReceipt;
+    try {
+      receipt = await restoreGarageGpuPipeline({
+        renderer,
+        scene,
+        camera,
+        lighting,
+        forwardPrograms: forwardProgramWarm,
+        post,
+        simDt: SIM_DT,
+        resourcesReleased,
+        programsNeedWarm,
+        isCurrent,
+        onProgramsWarmed: () => {
+          late?.watch.stop();
+          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins() };
+        },
+      });
+    } catch (error) {
+      (late as { watch: ProgramOriginWatch } | null)?.watch.stop();
+      throw error;
+    }
+    if (late) void recordGarageLateLinks(receipt, late);
     return receipt;
   },
 });

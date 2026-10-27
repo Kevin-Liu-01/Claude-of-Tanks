@@ -7,6 +7,7 @@ import {
 } from './frameScheduler.ts';
 import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
 import { ProgramUniformPreparationError } from './programWarm.ts';
+import type { ProgramReceipt } from './programReceipt.ts';
 import type {
   ForwardProgramCompileTiming,
   ForwardProgramWarmOwner,
@@ -124,6 +125,12 @@ export interface GarageGpuRestoreReceipt {
   lodsSelected?: number;
   /** the link poll's completion queries: how many, the longest and their total (ms); absent when it asked none */
   linkerQueries?: { count: number; maxMs: number; totalMs: number };
+  /**
+   * (2026-10-27, the room-stalls lane) the programs linked after the program warm: through the restore's own shadow,
+   * upload and settle draws and the Garage's first frames (main.ts fills it from onProgramsWarmed; programReceipt.ts).
+   * 0 is the receipt: the rooms census's leave linked one program in the upload warm, 0.4-1.1 s.
+   */
+  lateLinks?: ProgramReceipt;
 }
 
 /**
@@ -165,6 +172,8 @@ interface GarageGpuRestoreOptions {
   yieldProgramReadiness?: () => Promise<void>;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
+  /** The program warm is done: every program the Garage draws should exist from here (the lateLinks receipt opens). */
+  onProgramsWarmed?: () => void;
 }
 
 /** The restore's caller abandoned it (perf-246); never a reason to fall back to an unbounded compile. */
@@ -233,6 +242,7 @@ export async function restoreGarageGpuPipeline({
   yieldProgramReadiness = nextPaintFrame,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
+  onProgramsWarmed,
 }: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {
   const startedAt = now();
   const assertCurrent = (): void => {
@@ -290,6 +300,7 @@ export async function restoreGarageGpuPipeline({
       }
       programWarmMs = Math.round(now() - programWarmAt);
     }
+    onProgramsWarmed?.();
     shadowPasses = await lighting.primeShadowMaps(
       renderer,
       scene,

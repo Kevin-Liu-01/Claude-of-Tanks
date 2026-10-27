@@ -1342,6 +1342,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
+    'src/engine/programReceipt.selftest.mjs', // 2026-10-27 (the room-stalls lane): programs linked past a warm, as a receipt
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
