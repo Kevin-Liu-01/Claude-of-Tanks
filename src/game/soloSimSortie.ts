@@ -6,7 +6,6 @@
  */
 import { rulesetBotDifficulty } from '../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../sim/matchRuleset.ts';
-import { rosterCallsigns } from '../ui/botCallsigns.ts';
 import type { PlannedBattleSeat } from './rosterState.ts';
 import type { SoloSimSeat } from './soloSimProtocol.ts';
 
@@ -21,6 +20,7 @@ export interface SoloSimSortieSeats {
 
 export function soloSimSortieSeats(planned: readonly PlannedBattleSeat[], {
   ruleset, difficulty, playerName, playerCamo, playerEquipment = [], autoCamoSpecIds = [], selectionFor = () => 'factory',
+  callsigns = new Map(),
 }: {
   ruleset: Pick<MatchRuleset, 'horde' | 'assault'>;
   /** The stored bot difficulty (Settings): stepped down for a wave mode's hostiles, as setupBattle steps it. */
@@ -32,10 +32,12 @@ export function soloSimSortieSeats(planned: readonly PlannedBattleSeat[], {
   autoCamoSpecIds?: readonly string[];
   /** The paint a vehicle's selection names (a bot not rolled for the biome wears it, as the page's battle paints it). */
   selectionFor?(specId: string): string;
+  /**
+   * The bots' callsigns by seat id, as the card names them (rosterPresentation.seatCallsigns: the page holds the names, so
+   * this lazy module shares no chunk with the boot's).
+   */
+  callsigns?: ReadonlyMap<string, string>;
 }): SoloSimSortieSeats {
-  const callsigns = rosterCallsigns(planned.map((seat) => ({
-    id: seat.id, specId: seat.spec ? seat.spec.id ?? seat.specId : null, displayName: seat.displayName, isPlayer: seat.isPlayer,
-  })));
   const auto = new Set(autoCamoSpecIds);
   const camo = new Map<string, string>();
   const seats = planned.map((seat, index): SoloSimSeat => {

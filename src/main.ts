@@ -3300,6 +3300,7 @@ async function beginSoloSimSortie(specId: string, mapId: string | null, options:
     playerEquipment: loadSelectedEquipment(specId, getSpec(specId)),
     autoCamoSpecIds: planBattleCamoOverrides(game, specId, resolved, randomRoster, camoPlan.nations, camoPlan.slots, camoPlan.formationLead, camoPlan.national),
     selectionFor: () => STORED_CAMO_SELECTION,
+    callsigns: rosterPresentation.seatCallsigns(plan.seats),
   });
   // the battle's ordinal is spent as setupBattle spends it: the next sortie plans the next roster
   game.battleCount++;

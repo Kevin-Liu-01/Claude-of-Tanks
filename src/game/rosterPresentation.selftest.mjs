@@ -32,8 +32,16 @@ assert.deepEqual(presentation.battleRows(battle, 'player'), [
   { id: 't90am', name: 'T-90M', tier: 'IX', isPlayer: false, callsign: 'Kestrel', nation: 'Russia' },
 ], 'local roster puts the human first without changing teammate order; bots carry the HUD\'s callsigns, named tanks their names');
 assert.ok(callsigns.get('bot-1') && callsigns.get('bot-2') && callsigns.get('bot-1') !== callsigns.get('bot-2'), 'two bots, two callsigns');
+// the same callsigns by seat id for a sortie on the solo sim Worker (soloSimSortie takes them from the page: its lazy
+// module shares no chunk with the boot's)
+assert.deepEqual(presentation.seatCallsigns(battle), callsigns, 'the seats\' callsigns are the card\'s');
+{
+  const { readFileSync } = await import('node:fs');
+  const sortie = readFileSync(new URL('./soloSimSortie.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(sortie, /botCallsigns/, 'the sortie\'s lazy module never imports the callsigns (a boot chunk would split)');
+}
 
-console.log('rosterPresentation.selftest: lobby/local naming and player order passed');
+console.log('rosterPresentation.selftest: lobby/local naming, player order and the seats\' callsigns passed');
 
 // (ac130-fx-228) an aircraft row is named by its renderer (ui/killSourceIdentity.ts, through battleLoad.ts)
 const aircraftRow = {id:'ac130',name:'',tier:'',kind:'aircraft',isPlayer:true};
