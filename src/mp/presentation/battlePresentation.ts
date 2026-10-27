@@ -37,7 +37,7 @@ import { prebakeBurntSteps, prebakeSharedTextures } from '../../vehicles/materia
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import {
-  ENTITY_FLAGS, MODULE_STATE_NAMES, NO_ENTITY, PHASE, TEAM, VERDICT, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES,
+  ENTITY_FLAGS, MODULE_STATE_NAMES, NO_ENTITY, PHASE, TEAM, TICK_MS, VERDICT, VIEWER_CREW, VIEWER_EQUIPMENT, VIEWER_MODULES,
   dequantizeMultiplier, eraPlateNames,
 } from '../wire/index.ts';
 import type { RosterEntry, TeamId, VerdictId, WireEvent } from '../wire/index.ts';
@@ -545,6 +545,8 @@ export function createBattlePresentation({
   let viewerTeam: TeamId | null = null;
   let perspectiveTeam: TeamId | null = null;
   let mounted = false;
+  /** (solo) the presented time of the killcam's last step capture */
+  let killcamStepAtMs = -Infinity;
   let disposed = false;
   let legacy: Pick<PresentationGameState, 'tanks' | 'rosterTanks' | 'tankById' | 'player' | 'shells' | 'spotting'> | null = null;
   let snapshotPhase: number | null = null;
@@ -1059,6 +1061,19 @@ export function createBattlePresentation({
     if (killcam && typeof killcam.onShellHit === 'function') killcam.onShellHit(hit, target);
   }
 
+  /**
+   * (a sortie on the solo sim Worker) the killcam's step capture, as state.ts takes it each fixed step before the shells
+   * fly: the live shells' traces and every hull's last pose before this frame's hits (a frame applies, then its events),
+   * which a replay restages; at most once a step of presented time. Its steps also retire the program warm-up rig, which
+   * a battle that never captures leaves drawn throughout.
+   */
+  function recordKillcamStep(renderTimeMs: number): void {
+    if (renderTimeMs - killcamStepAtMs < TICK_MS - 0.5 && renderTimeMs >= killcamStepAtMs) return;
+    killcamStepAtMs = renderTimeMs;
+    const killcam = game.killcam as { recordSimStep?: (state: RuntimeValue) => void } | null | undefined;
+    if (killcam && typeof killcam.recordSimStep === 'function') killcam.recordSimStep(game);
+  }
+
   /** battle endings (2026-09-25): the Horde wave the last stand fell on, for the report milestone */
   function hordeWave(): number | null {
     const mode = game.matchModeState as { horde?: { wave?: number } | null } | null | undefined;
@@ -1089,6 +1104,7 @@ export function createBattlePresentation({
 
   function applyFrame(frame: MatchFrame): void {
     if (disposed) return;
+    if (solo && mounted) recordKillcamStep(frame.renderTimeMs);
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
     if (frame.modeStateJson !== lastModeStateJson) {
