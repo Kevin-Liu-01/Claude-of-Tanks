@@ -100,8 +100,9 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
+import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -2860,6 +2861,40 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
+            // (2026-10-26, the 257 rooms census: the room entry's longest task, 1.5 s, was the opening composer warm below
+            // uploading the battlefield's textures and buffers in its one render) the battlefield draws offscreen a cohort
+            // at a time, a frame between cohorts, as the solo deployment's forward warm does: the composer warm then meets
+            // resident textures, buffers and programs
+            // (2026-10-26, the room-stalls lane: after the cohorts, one cohort's draw still held 1033 ms of texSubImage2D)
+            // the battlefield's textures uploaded first, one at a time under a frame budget, so the cohorts' draws meet
+            // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
+            // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
+            // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
+            const forwardYield = createFrameBudgetYielder(8);
+            const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
+            const forwardBatches: number[] = [];
+            let catchUpFrames = 0;
+            // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
+            // just ahead of it) each cohort first uploads its buffers with every draw count at 0 (preUpload), and every
+            // batch, upload or draw, lets the GPU catch up before the next: a cohort's uploads meet an idle GPU process
+            const uploadBatches: number[] = [];
+            for (const batch of createDeploymentForwardWarmBatches({
+              scene,
+              csmLights: lighting.csm?.lights,
+              worldGroup: currentWorld()?.group,
+              playerRoot: game.player?.visual?.root,
+              warmRender,
+              preUpload: true,
+            })) {
+              (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
+              signal?.throwIfAborted();
+              if (batch.phase !== 'upload') await forwardYield(true);
+              catchUpFrames += await waitForGpuCatchUp(catchUp);
+            }
+            const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
+              uploads: { batches: uploadBatches.length, maxMs: Math.max(0, ...uploadBatches) } };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;
@@ -2893,7 +2928,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing };
+            return { ...timing, textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
