@@ -136,7 +136,11 @@ function skirts(P: TankBuilderPort, model: number, options: {frontBay?: boolean}
         {z: z + half - .07, ring: mirrored(bevel(inner, outer, low, high), side)},
         {z: z + half, ring: mirrored(bevel(inner + .018, outer - .021, low + .023, high - .016), side)},
       ]));
-      P.addEquipment('hullDetail', box(.060, .15, pitch + .024), side * (inner + .035), high - .060, z);
+      // the recessed carrier, seen only through the 34 mm gaps between the bays: on the Husarz a plain bar (its rounded
+      // edges sat behind the cassettes; 14 x 96 triangles brought its HIGH back under the frozen 141.6k ceiling after the
+      // turret seat's race and collar, the marking films and the gun floodlight, main-reds-259)
+      P.addEquipment('hullDetail', model === 0 ? new THREE.BoxGeometry(.060, .15, pitch + .024) : box(.060, .15, pitch + .024),
+        side * (inner + .035), high - .060, z);
       const rows = model === 2 ? 2 : 3, columns = 3;
       const tileHeight = (h - .105) / rows, tileDepth = (pitch - .15) / columns;
       if (options.frontBay !== false || i < count - 1) for (let row = 0; row < rows; row++) for (let j = 0; j < columns; j++)

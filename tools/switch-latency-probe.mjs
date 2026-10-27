@@ -17,6 +17,7 @@
 // Usage: node tools/switch-latency-probe.mjs [--root <dir>] [--dwell 500]
 //        [--cpu 4] [--cores 4] [--memory 4] [--tier desktop|mobile]
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -55,7 +56,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[switch-probe] vite up at ${url} (root ${root})`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

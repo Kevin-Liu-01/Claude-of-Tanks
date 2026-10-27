@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Real settings and battle renderer, with desktop + short-phone rotation coverage.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -12,7 +13,7 @@ let server,browser,lease;const errors=[],views=[];
 await acquireCaptureLock(60000);lease=setInterval(refreshCaptureLock,60000);
 try {
  server=await createServer({logLevel:'error',server:{host:'127.0.0.1',port:5207,strictPort:true,hmr:false,watch:{ignored:['**/*']}}});await server.listen();
- browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
+ browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:true,args:['--use-gl=angle','--enable-webgl','--no-sandbox'],protocolTimeout:240000}));
  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.setViewport({width:1280,height:800,hasTouch:false,isMobile:false});
  await page.goto('http://127.0.0.1:5207/?nosplash=1&tier=desktop',{waitUntil:'domcontentloaded',timeout:180000});

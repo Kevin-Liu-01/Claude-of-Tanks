@@ -2,6 +2,7 @@
 // Usage: node tools/garage-variants-probe.mjs --url=http://127.0.0.1:4178 --cpu-rate=4
 // Optional --profile-workshop=/absolute/new.cpuprofile records ONLY initial
 // workshop streaming. Profiled timings are attribution, not acceptance results.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
@@ -24,7 +25,7 @@ if (workshopProfilePath && !path.isAbsolute(workshopProfilePath)) {
 }
 const measurementMode = workshopProfilePath ? 'cpu-profile-attribution-only' : 'unprofiled-functional';
 let workshopProfile = null;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

@@ -374,15 +374,18 @@ function spire(sink: PartSink, cx: number, cz: number, y: number, r: number, hei
 }
 
 /** The piers of a deco tier carried up past its parapet (`y`) as stepped finials, a bay apart, round the tier. */
-function pierFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: RegionalBucket): void {
+function pierFinials(sink: PartSink, r: Rect, top: number, parapet: number, bay: number, bucket: RegionalBucket): void {
   for (const face of rectFaces(r)) {
     const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
     for (let k = 0; k <= n; k++) {
-      const u = -face.width / 2 + k * bw, corner = k === 0 || k === n;
-      const h = corner ? 1.6 : 1.0;
-      // (props census #9) standing over the parapet's top, nothing behind them: their backs drawn, their feet on it left
-      // out (seated, their backs were open; their feet lay on the parapet's top, one face over another)
-      faceBox(sink, bucket, face, u, y + h / 2, 0.26, corner ? 0.8 : 0.5, h, 0.5, { ...DECOR, fineSides: true }, { bottom: true });
+      const at = -face.width / 2 + k * bw, corner = k === 0 || k === n;
+      // (props census #9) nothing behind them over the parapet: their backs drawn
+      // (259, the owner on the Bund towers' copy, skylineDeco.ts deckFinials: from the parapet's top they stood 0.9 m
+      // over their piers' heads with no underside, the corner ones half past the corner) from the pier's head at the
+      // tier's top, the corner ones drawn in onto their face as the corner piers are
+      const w = corner ? 0.8 : 0.5, u = corner ? at - Math.sign(at) * w / 2 : at, h = parapet + (corner ? 1.6 : 1.0);
+      // (an underside where it overhangs its pier's head: the corner pier's front order is narrower than the finial)
+      faceBox(sink, bucket, face, u, top + h / 2, 0.26, w, h, 0.5, { ...DECOR, fineSides: true }, corner ? undefined : { bottom: true });
     }
   }
 }
@@ -506,7 +509,7 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       // the setback: the piers carried up past the parapet as finials, the terrace parapet between them
       // (from the tier's top: run 0.3 m down it stood behind the top floor's glass, the pane on stone instead of the dark)
       sink.span(stone, r.x0, top, r.z0, r.x1, top + 0.9, r.z1);
-      pierFinials(sink, r, top + 0.9, facade.bay, stone);
+      pierFinials(sink, r, top, 0.9, facade.bay, stone);
       left -= n; y = top;
       if (left <= 0) break;
       const k = Math.min((r.x1 - r.x0) * 0.16, (r.z1 - r.z0) * 0.16, 3.2);

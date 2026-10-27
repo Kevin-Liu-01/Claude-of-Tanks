@@ -4,6 +4,7 @@
 // Run from a repo worktree root (the vite root):
 //   node $LAB/lab.mjs --scout=verdant,desert --out=$OUT [--width=960]
 //   node $LAB/lab.mjs --scenes=dir-or-file[,more] --out=$OUT [--width=1280]
+import { launchGuardedBrowser } from '../browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -222,7 +223,7 @@ try {
   for (const listener of process.listeners('SIGTERM')) process.off('SIGTERM', listener);
   const stop = () => { if (stopping) return; stopping = true; console.error('[lab] stopped by a signal; closing'); browser?.process()?.kill('SIGKILL'); };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
-  browser = await puppeteer.launch({ headless: true, protocolTimeout: 600000,
+  browser = await launchGuardedBrowser(puppeteer, { headless: true, protocolTimeout: 600000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   let page = null;
   const errors = [];

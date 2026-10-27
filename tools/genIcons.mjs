@@ -13,6 +13,7 @@
 // Angle generation atomically writes both the 512px source portrait and the
 // 256px Garage thumbnail through the same framing policy.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
@@ -134,7 +135,7 @@ await server.listen();
 const url = `${boundOrigin(server)}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   // A full three-diagram fleet refresh renders hundreds of data-driven views
   // in one deterministic page evaluation and can exceed Puppeteer's 180 s

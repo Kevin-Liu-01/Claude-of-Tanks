@@ -34,6 +34,7 @@
 // Takes the shared capture lock (tools/capture-lock.mjs) for the whole run (--lock-held: the caller holds it, a chain's
 // lease) and stops before --cap-min minutes of hold; serves --root (default: the current directory) through its own
 // vite dev server. Writes <out>/report.json and PNGs.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -95,7 +96,7 @@ try {
   await server.listen();
   const baseUrl = `http://127.0.0.1:${server.config.server.port}`;
   log('vite', baseUrl);
-  browser = await puppeteer.launch({ headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
+  browser = await launchGuardedBrowser(puppeteer, { headless: 'new', args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
   await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => report.errors.push(String(e)));

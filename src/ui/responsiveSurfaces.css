@@ -381,9 +381,10 @@ body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{font-size:var(--battle-
 body[data-cot-height='short'] .cot-bl .teams{gap:var(--s4)}
 /* (a short side's rows take the room the teams have, to 24 px: at 18 a side of seven left 65 px empty over the progress,
    gauntlet r4; a long side's still give way to 14) */
-body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:14px}
+body[data-cot-height='short'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:1px;--bl-row-min:15px}
 body[data-cot-height='short'] .cot-bl .row .fl[data-nation]{width:14px;height:10px}
-body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(14px,var(--bl-row-height)))}
+/* (15 px at the least: at 14 the 11 px names' descenders met the row's rule, gauntlet r15 at 568x256) */
+body[data-cot-height='short'] .cot-bl .rows{grid-template-rows:repeat(var(--bl-count),minmax(15px,var(--bl-row-height)))}
 body[data-cot-height='short'] .cot-bl .row :is(.nm,.cs){line-height:1}
 body[data-cot-height='short'] .cot-bl .rules .cot-c-chip{height:26px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:var(--s1)}
@@ -833,16 +834,6 @@ body[data-cot-height='short'] .cot-hints{display:none!important}
 body[data-cot-panels='overlay']>.cot-gear{
   top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));
   width:44px;height:44px;min-height:44px;
-}
-
-body[data-cot-width] .cot-lock-toast{
-  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));text-align:center;
-  white-space:normal;overflow-wrap:anywhere;
-}
-body[data-cot-width='compact'] .cot-lock-toast,
-body[data-cot-width='phone'] .cot-lock-toast{
-  top:max(68px,calc(env(safe-area-inset-top) + 60px))!important;width:calc(100vw - (var(--cot-edge) * 2));
-  padding:8px 10px!important;font-size:11px!important;line-height:1.35;letter-spacing:.03em!important;
 }
 
 /* Opt-in engineering panels remain operable on the device being diagnosed. */

@@ -100,8 +100,9 @@ import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
-import { createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
+import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
+import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
 import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
@@ -154,7 +155,7 @@ import { installCampaignProgress } from './game/campaignProgress.ts';
 import { installServiceRecord } from './game/serviceRecord.ts';
 import { installMedalToasts } from './ui/medalToast.ts';
 import {
-  createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
+  createGarageStage, createGarageStageSteps, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
 import { createGarageDressingAccess } from './game/garageDressingAccess.ts';
 import { createGarageDressingScheduler } from './game/garageDressingScheduler.ts';
@@ -867,12 +868,21 @@ bus.on('module:state', (payload) => {
 GARAGE_POS.y = 0;
 let selectedGarageVariantId = loadGarageVariantId();
 const { stage: garageStage, dressing: garageDressing } = await bootStage('garage', async () => {
-  const gs = createGarageStage(
+  // (2026-10-26, the boot census) the stage a section at a time under the boot screen (one task of 120 ms on a cold
+  // desktop, 604 ms on the 4x phone), at the vehicle stage's cadence
+  const stageSteps = createGarageStageSteps(
     engineCtx,
     GARAGE_POS,
     selectedGarageVariantId,
     () => invalidateGaragePresentation(),
   );
+  const stageYield = createOpaqueLoadingYielder(12, 80);
+  let gs: ReturnType<typeof createGarageStage>;
+  for (;;) {
+    const step = stageSteps.next();
+    if (step.done) { gs = step.value; break; }
+    await stageYield();
+  }
   scene.add(gs.group);
   const gd = createGarageDressingAccess(engineCtx, GARAGE_POS, selectedGarageVariantId);
   scene.add(gd.group);
@@ -933,7 +943,6 @@ let garageEnvironmentPresentation: GarageEnvironmentPresentationRuntime;
 // boot fallback. Afterwards every placement/variant/return transaction resets
 // the same UI-aware showroom solver; no second camera path can win a frame.
 let resetGarageShowroom: (() => boolean) | null = null;
-let lastGarageProgramRoot: THREE.Object3D | null = null;
 const garagePhasePresentation = createGaragePhasePresentationRuntime({
   scene,
   stageRoot: garageStage.group,
@@ -959,8 +968,10 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
   restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
-    const programRoot = pedestal.current?.root ?? scene;
-    const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
+    // (2026-10-26, the rooms A/B) every covered return links the Garage's programs before its frames: a hero a battle
+    // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
+    // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
+    const programsNeedWarm = true;
     const receipt = await restoreGarageGpuPipeline({
       renderer,
       scene,
@@ -973,7 +984,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       programsNeedWarm,
       isCurrent,
     });
-    lastGarageProgramRoot = programRoot;
     return receipt;
   },
 });
@@ -2209,7 +2219,6 @@ createPointerLockFeedbackRuntime({
     spectating: !!killcam.spectate?.active,
   }),
   ensureTouchControls,
-  nextFrame,
 });
 
 // Shell inventory, consumable cooldowns, special actions, and the exact
@@ -2861,6 +2870,40 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
+            // (2026-10-26, the 257 rooms census: the room entry's longest task, 1.5 s, was the opening composer warm below
+            // uploading the battlefield's textures and buffers in its one render) the battlefield draws offscreen a cohort
+            // at a time, a frame between cohorts, as the solo deployment's forward warm does: the composer warm then meets
+            // resident textures, buffers and programs
+            // (2026-10-26, the room-stalls lane: after the cohorts, one cohort's draw still held 1033 ms of texSubImage2D)
+            // the battlefield's textures uploaded first, one at a time under a frame budget, so the cohorts' draws meet
+            // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
+            // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
+            // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
+            const forwardYield = createFrameBudgetYielder(8);
+            const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
+            const forwardBatches: number[] = [];
+            let catchUpFrames = 0;
+            // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
+            // just ahead of it) each cohort first uploads its buffers with every draw count at 0 (preUpload), and every
+            // batch, upload or draw, lets the GPU catch up before the next: a cohort's uploads meet an idle GPU process
+            const uploadBatches: number[] = [];
+            for (const batch of createDeploymentForwardWarmBatches({
+              scene,
+              csmLights: lighting.csm?.lights,
+              worldGroup: currentWorld()?.group,
+              playerRoot: game.player?.visual?.root,
+              warmRender,
+              preUpload: true,
+            })) {
+              (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
+              signal?.throwIfAborted();
+              if (batch.phase !== 'upload') await forwardYield(true);
+              catchUpFrames += await waitForGpuCatchUp(catchUp);
+            }
+            const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
+              totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
+              uploads: { batches: uploadBatches.length, maxMs: Math.max(0, ...uploadBatches) } };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;
@@ -2894,7 +2937,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing };
+            return { ...timing, textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
@@ -3936,6 +3979,10 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
+  // (2026-10-26) the cloud decks are real before the warm uploads them: a worker past its deadline leaves them baking in
+  // slices, and the Garage's sky preset no longer bakes them in one task meanwhile (sky.ts applyPresentationPreset).
+  // The decks only: the volumetric layer's noise was never awaited here, and still shows when it arrives.
+  await sky.ensureCloudDecksChunked(() => nextFrame());
   BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,

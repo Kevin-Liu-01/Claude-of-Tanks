@@ -9,6 +9,7 @@
 // --round settles each vehicle on a deterministic convex cylindrical course
 // and captures both sides for mandatory visual review of the complete shoe run.
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
@@ -49,7 +50,7 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.config.server.port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

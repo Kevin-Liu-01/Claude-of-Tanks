@@ -3,6 +3,7 @@
 // only the reviewed pole geometry changes between captures.
 //
 // Usage: node tools/world-pole-visual-audit.mjs --out=/tmp/pole-audit
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -33,7 +34,7 @@ const server = await createServer({
 });
 await server.listen();
 const port = server.httpServer.address().port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

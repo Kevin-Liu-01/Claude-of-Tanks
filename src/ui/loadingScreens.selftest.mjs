@@ -128,12 +128,61 @@ assert.match(bootHtml, /<!-- cot:boot-lockup -->\s*<div class="mkl" aria-hidden=
   'the boot lockup\'s mark is the compositor-layered living mark (tools/sync-brand-marks.mjs)');
 assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
   'the boot fill\'s track reserves its height in the first paint');
-assert.doesNotMatch(bootHtml, /cot-boot-ticks/, 'one continuous fill: no stage ticks');
+// (owner, 2026-10-26: "a segmented loading along with the main loading line, like it was before") the main line keeps the
+// whole load; under it one segment per stage, the download's first, then bootScreen's Garage stages in order, written in the
+// page so the first paint holds the row; each segment's fill moves by its compositor scaleX
+{
+  const garage = bootSource.match(/const GARAGE_STAGES[^=]*= \[([\s\S]*?)\] as const;/)?.[1] ?? '';
+  const stageKeys = [...garage.matchAll(/\['(\w+)'/g)].map(([, key]) => key);
+  const row = bootHtml.match(/<div class="cot-boot-segs" id="cot-boot-segs" data-datum="load-stage-progress" aria-hidden="true">([\s\S]*?)<\/div>/)?.[1] ?? '';
+  assert.deepEqual([...row.matchAll(/data-seg="(\w+)"/g)].map(([, key]) => key), ['download', ...stageKeys],
+    'the stage row is the download and then every Garage stage, in order');
+  assert.ok(stageKeys.length >= 8, 'the Garage stage list was read');
+  assert.match(bootHtml, /\.cot-boot-segs b \{[^}]*transform: scaleX\(0\);[^}]*will-change: transform;/, 'a segment fills by its compositor scaleX');
+  assert.match(bootHtml, /data-datum="load-progress"><div class="cot-boot-fill"/, 'the main line is the load-progress datum');
+  assert.match(bootSource, /stepSeg\(segs\.get\(curKey\)/, 'the current segment fills by the stage\'s real steps');
+  assert.doesNotMatch(bootSource, /setInterval\([^)]*[Ss]eg|setTimeout\([^)]*[Ss]eg/, 'no timer moves a segment');
+  // boot r23: every lit segment is tungsten (a done class that changed colour waited on the busy main thread), both bars
+  // run on one track; r24: a stop hides the row in place so the lockup stays still, and a full fill at rest drops its
+  // compositor layer, which snapped a pixel short of the track's painted end
+  assert.match(bootHtml, /\.cot-boot-segs i\.done b \{ transform: scaleX\(1\); will-change: auto; \}/,
+    'a done segment keeps the tungsten fill, painted on its track\'s own pixels');
+  assert.match(bootHtml, /\.cot-boot-fill\.full \{ will-change: auto; \}/, 'the finished main line drops its layer');
+  assert.match(bootSource, /if \(to >= 1\) motion\.onfinish = \(\) => \{ elFill\.style\.transform = 'scaleX\(1\)'; elFill\.classList\.add\('full'\); motion\.cancel\(\); \};/,
+    'the finished main line rests as a style, its motion dropped');
+  assert.match(bootHtml, /\.cot-boot-bar \{[^}]*background: var\(--boot-track\);/, 'the main line runs on the one track');
+  assert.match(bootHtml, /\.cot-boot-segs i \{[^}]*background: var\(--boot-track\);/, 'the stage row runs on the one track');
+  assert.match(bootHtml, /#cot-boot:has\(\.cot-boot-retry\.on\) \.cot-boot-segs \{ visibility: hidden; \}/,
+    'a stop hides the stage row in place: the card does not re-centre');
+  assert.doesNotMatch(bootHtml, /\.cot-boot-retry\.on\) \.cot-boot-(?:segs|bar) \{ display: none; \}/, 'no stop collapses a bar');
+  // the load column is the lockup's ink on a desktop screen, the hull's rear to the stack's right edge
+  // (tools/sync-brand-marks.mjs generates both factors), and the mark box's margin before the hull hangs outside it
+  assert.match(bootHtml, /\.cot-boot-inner\{--boot-lockup-k:\d\.\d{5};--boot-ink-in:0\.\d{5}\}/, 'the lockup-ink factors are generated');
+  assert.match(bootHtml, /\.cot-boot-mark \{[^}]*margin: 0 0 0 calc\(var\(--boot-mark\) \* var\(--boot-ink-in\) \* -1\);/,
+    'the mark box hangs its margin before the hull outside the column');
+  assert.match(bootHtml, /\.cot-boot-inner \{[^}]*width: min\(calc\(var\(--boot-mark\) \* var\(--boot-lockup-k\)\), calc\(100vw - 32px\)\);/,
+    'the load column takes the lockup\'s width');
+  // boot r25: the card's copy wraps greedily (pretty pulled a word short of the edge to spare a one-word last line), set
+  // on each so the game's :where(p) pretty cannot reach it; the credits' quiet action takes the foot's quiet type
+  assert.match(bootHtml, /\.cot-boot-stage \{[^}]*text-wrap: wrap;/, 'the stage line and its stop notice wrap greedily');
+  assert.match(bootHtml, /\.cot-boot-tip span \{ display: inline-block; text-wrap: wrap; \}/, 'the tip wraps greedily');
+  assert.match(bootHtml, /\.cot-credits p\{[^}]*text-wrap:wrap\}/, 'the credits copy wraps greedily');
+  assert.match(bootHtml, /\.cot-boot-links > \.cot-boot-link, \.cot-credits-actions \.cot-boot-link:last-child \{[^}]*text-transform: none;/,
+    'one quiet type for the foot buttons and the credits\' quiet action');
+  // boot r26: the invitation's balanced wrap split "Commander Alexandrovich" on a phone; the callsign is one word
+  assert.match(bootHtml, /invitationTitle\.replace\(hostName, hostName\.replace\(\/ \/g, '\\u00a0'\)\)/,
+    'the invitation never splits the host\'s callsign');
+  assert.match(bootHtml, /\.cot-boot-invite \{[^}]*text-wrap: balance; overflow-wrap: break-word;/,
+    'an over-long callsign still breaks rather than overflow');
+  // boot r27: under the 2560 card's 1.3 zoom a 4 px gap is 5.2 and snaps to 5 and 6; the zoomed gap is a whole 5 px
+  assert.match(bootHtml, /zoom: 1\.3;[\s\S]{0,400}\.cot-boot-segs \{ gap: calc\(5px \/ 1\.3\); \}/,
+    'the zoomed stage row keeps one gap');
+}
 assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');
 assert.match(bootHtml,
-  /@media \(width < 768px\) \{\s*\.cot-boot-mark \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
+  /@media \(width < 768px\) \{\s*\.cot-boot-inner \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
   'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
 assert.ok(FEATURED_IMAGES.every((img) => img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)),

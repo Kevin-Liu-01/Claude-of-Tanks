@@ -6,6 +6,55 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "namer_ifv": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.700484,
+          1.603373,
+          0.085
+        ],
+        "quaternion": [
+          -0.3557872,
+          -0.6110773,
+          -0.3557872,
+          0.6110773
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "namer_ifv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0018764
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.7005447,
+          1.6033726,
+          0.89625
+        ],
+        "quaternion": [
+          -0.3557431,
+          -0.611103,
+          -0.3557431,
+          0.611103
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "namer_ifv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0018768
+      }
+    ]
+  },
   "merkava3d": {
     "schemaVersion": 1,
     "seats": [
@@ -101,55 +150,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
-      }
-    ]
-  },
-  "namer_ifv": {
-    "schemaVersion": 1,
-    "seats": [
-      {
-        "kind": "insignia",
-        "parent": "hull",
-        "size": 0.24,
-        "pos": [
-          -1.700484,
-          1.603373,
-          0.085
-        ],
-        "quaternion": [
-          -0.3557872,
-          -0.6110773,
-          -0.3557872,
-          0.6110773
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "namer_ifv",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0018764
-      },
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.24,
-        "pos": [
-          -1.7005447,
-          1.6033726,
-          0.89625
-        ],
-        "quaternion": [
-          -0.3557431,
-          -0.611103,
-          -0.3557431,
-          0.611103
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "namer_ifv",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0018768
       }
     ]
   },

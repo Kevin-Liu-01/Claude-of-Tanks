@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { writeFileSync } from 'node:fs';
 import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
@@ -16,7 +17,7 @@ const server = await createServer({
   server: { host: '127.0.0.1', port: 0 },
   logLevel: 'error',
 });
-const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: true, args: ['--no-sandbox'] });
 const failures = [];
 const pageErrors = [];
 let report = null;

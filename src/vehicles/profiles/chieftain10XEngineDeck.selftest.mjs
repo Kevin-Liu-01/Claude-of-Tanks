@@ -12,8 +12,15 @@ const ray = (meshes, origin, direction, far = 8) => new THREE.Raycaster(
 function sourceWitnesses(meshes, hull) {
   // Source ex_armor_body_01/03 planar cover and 02/l_08/r_08 rim rays.
   // These include held-out coordinates, not the authored frame corners.
-  for (const [x, z, top] of [[.5, -.8, 1.724197657], [.9, -.6, 1.726378413],
-    [-.5, -.8, 1.725901555], [.915, -.8, 1.729602603],
+  // Release 240 (c4b69d8d1a, the owner: "some turrets faced regressions as a result of lifts: cheiftain mk 5 and mk 10")
+  // cut the forward cover back to the turret's 1.62 m sweep about the ring (chieftain10XEngineDeck.ts TURRET_SWEEP_R), so
+  // the held-out points [±.5, -.8] and [.9, -.6] are air now (sweptCornerIsAir). The covers are z-only planes, so the
+  // source's -.8 values hold at ±.87, outside the sweep; [.9, -.76] sits on the starboard plane between the source's -.8
+  // and -.6 points (main-reds-259).
+  for (const [x, z, top] of [[.87, -.8, 1.724197657], [.9, -.76, 1.724633808],
+    // (the frame crown's -.8 point is under the first hinge's ear since 240 moved that hinge from -.7118 to -.80: -.88
+    // sits on the crown between the source's -.8 and -1.4 points)
+    [-.87, -.8, 1.725901555], [.915, -.88, 1.728731525],
     [.915, -1.4, 1.723069516], [-.915, -1.2, 1.722566094],
     [-.915, -1.6, 1.720732439]]) {
     close(ray(meshes, [x, 1.775, z], [0, -1, 0])?.point.y, top, .00001,
@@ -47,10 +54,18 @@ function capturedParts() {
   return { parts, dispose() { for (const p of parts) p.geometry.dispose(); material.dispose(); } };
 }
 
+// The deck under the turret's sweep circle is genuine air: nothing of the engine deck stands where the casting turns.
+function sweptCornerIsAir(parts) {
+  for (const [x, z] of [[.5, -.8], [.9, -.6], [-.5, -.8]]) {
+    assert.equal(ray(parts, [x, 1.775, z], [0, -1, 0], .3), undefined, `forward cover clear of the turret's sweep at ${x}, ${z}`);
+  }
+}
+
 const isolated = capturedParts();
 try {
   const hull = isolated.parts.filter(p => p.name === 'hull');
   sourceWitnesses(isolated.parts, hull);
+  sweptCornerIsAir(isolated.parts);
   // Hinge pins and their true localized ears are present at source stations;
   // unsupported decorative tubes at guessed intermediate positions are not.
   for (const side of [-1, 1]) for (const z of [-.969884, -1.121702, -1.377482, -1.44184, -1.70664]) {

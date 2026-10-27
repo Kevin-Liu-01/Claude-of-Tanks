@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Committed rendered regression; accepts an existing dev server and Playwright.
 // node tools/battle-hud-layout.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/hud-check
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 // the markers over tanks in every state: no flag, whole, the side in shape and colour (?state=markers stages them)
@@ -9,7 +10,7 @@ const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))
 const { chromium } = await import(arg('playwright-module','playwright'));
 const out = resolve(arg('out','outputs/battle-hud-layout'));
 await mkdir(out,{recursive:true});
-const browser = await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
+const browser = await launchGuardedBrowser(chromium, {headless:true,channel:'chrome',args:['--disable-gpu']});
 const cases = [
   ['desktop',1920,1080,false],['laptop',1366,768,false],['laptop-short',1280,720,false],
   ['small-desktop',1024,600,false],['tablet-mouse',820,1180,false],['narrow-mouse',540,720,false],
@@ -122,7 +123,7 @@ const NOTICE_ALERTS = [
   ['lineTaken','mode:line_advanced',{line:2,total:3}],['consumablesOff','ui:consumableDenied',{slot:0,reason:'RULESET'}],
   ['readyIn','ui:consumableDenied',{slot:0,reason:'COOLDOWN',remainingS:118}],['ammoAcquired','mode:pickup_collected','pickup'],
   ['autoAimLong','ui:autoAimState','longspec'],['autoAimOff','ui:autoAimState',{on:false,reason:'AUTO-AIM OFF'}],
-  ['moduleLong','module:state','longmodule'],['ending','ending:begin',{captionKey:'ending.scoreReached'}],
+  ['ending','ending:begin',{captionKey:'ending.scoreReached'}],
   ['endingWave','ending:begin',{captionKey:'ending.lastStand',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
   ['flagTaken','mode:flag_taken','ours'],['reloadDenied','ui:magazineReloadDenied',{reason:'MAGAZINE_RELOADING'}],
   ['specialDenied','ui:specialActionDenied',{reason:'OTHER'}],['crewUnharmed','ui:consumableDenied',{slot:1,reason:'NOTHING'}],

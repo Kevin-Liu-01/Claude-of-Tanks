@@ -218,14 +218,18 @@ function vijecnica(ctx: RegionalBuildContext): RegionalParts {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         const x = sx > 0 ? b.x1 - tr * 0.54 : b.x0 + tr * 0.54, z = sz > 0 ? b.z1 - tr * 0.54 : b.z0 + tr * 0.54;
         sink.cylinder('plaster2', [x, -0.3, z], 'y', ph + 2.4, tr, 8, {}, tr, true, Math.PI / 8);
-        sink.band('structureMetal', x - tr - 0.06, ph - 0.3, z - tr - 0.06, x + tr + 0.06, ph, z + tr + 0.06, { decor: true, colour: RED_BAND });
+        // (259, the phone census: a square band round the octagon stood off its faces, on them only by its fine top and
+        // underside) an octagonal collar on the turret
+        sink.cylinder('structureMetal', [x, ph - 0.3, z], 'y', 0.3, tr + 0.06, 8, { decor: true, colour: RED_BAND }, tr + 0.06, true, Math.PI / 8);
         const t = dome(sink, x, ph + 2.1, z, tr, LEAD, 8, true);
         finial(sink, x, t, z, 'alem', 0.5);
       }
       // the central hall: its octagonal drum over the roof, the burnt dome's bare ribs, a few panes left
       const hr = clampTo(Math.min(b.x1 - b.x0, b.z1 - b.z0) * 0.26, 2.5, 5.2), hy = eave + 0.35;
       sink.cylinder('plaster2', [0, hy - 0.2, 0], 'y', 3.6, hr, 8, {}, hr, true, Math.PI / 8);
-      sink.band('structureMetal', -hr - 0.06, hy + 2.2, -hr - 0.06, hr + 0.06, hy + 2.5, hr + 0.06, { decor: true, colour: RED_BAND });
+      // (259, the phone census: a square band 0.5-2.2 m off the octagon's faces, at range a square ring in the air) an
+      // octagonal collar on the drum
+      sink.cylinder('structureMetal', [0, hy + 2.2, 0], 'y', 0.3, hr + 0.06, 8, { decor: true, colour: RED_BAND }, hr + 0.06, true, Math.PI / 8);
       const ribTop: Vec3 = [0, hy + 3.4 + hr * 0.8, 0];
       for (let k = 0; k < 8; k++) {
         const t = (k / 8) * Math.PI * 2 + Math.PI / 8;

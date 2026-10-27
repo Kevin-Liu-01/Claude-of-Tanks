@@ -443,6 +443,8 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   cannonReload(registry, 't80bv', 7.4);
   spec(registry, 't80bv').hp = 2100;
   cannonReload(registry, 'leo2a3', 6.4);
+  // 260 (a balance trim, not fidelity): IV fairness; no sourced period round defeats the basic package's turret front
+  turretFront(registry, 'leo2a3', 0.9);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;

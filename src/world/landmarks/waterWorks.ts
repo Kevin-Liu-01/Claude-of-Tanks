@@ -263,8 +263,10 @@ export const valveTower: LandmarkBuilder = (ctx) => {
       const a0 = k * Math.PI / 3, a1 = (k + 1) * Math.PI / 3;
       bar(sink, 'structureWood', [x + Math.cos(a0) * wr, wy, z + Math.sin(a0) * wr], [x + Math.cos(a1) * wr, wy, z + Math.sin(a1) * wr], 0.035, { colour: IRON, decor: true });
     }
-    for (const a of [0, Math.PI / 2]) bar(sink, 'structureWood', [x - Math.cos(a) * wr, wy, z - Math.sin(a) * wr], [x + Math.cos(a) * wr, wy, z + Math.sin(a) * wr], 0.025, { colour: IRON, decor: true, fine: true });
-    sink.span('structureWood', x - 0.025, wy, z - 0.025, x + 0.025, wy + 0.35, z + 0.025, { colour: STEEL_GREY, decor: true });
+    // (259, the far-view census: the spokes fine joinery and the spindle from 5 cm over the headstock, the wheel and its
+    // spindle stood in the air at range) the spokes at any range, the spindle out of the headstock through the wheel
+    for (const a of [0, Math.PI / 2]) bar(sink, 'structureWood', [x - Math.cos(a) * wr, wy, z - Math.sin(a) * wr], [x + Math.cos(a) * wr, wy, z + Math.sin(a) * wr], 0.025, { colour: IRON, decor: true });
+    sink.span('structureWood', x - 0.025, deckY + 0.97, z - 0.025, x + 0.025, wy + 0.35, z + 0.025, { colour: STEEL_GREY, decor: true });
   }
   return { parts: finishLandmark(sink) };
 };

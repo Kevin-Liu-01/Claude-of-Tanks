@@ -51,15 +51,27 @@ function wrapPi(a: number): number {
   return a;
 }
 
-export function captureReplayPose(state: ReplayPoseState): ReplayPose {
-  return {
-    pos: [state.pos.x, state.pos.y, state.pos.z],
-    yaw: state.yaw || 0,
-    pitch: state.visualPitch || 0,
-    roll: state.visualRoll || 0,
-    turretYaw: state.turretYaw || 0,
-    gunPitch: state.gunPitch || 0,
-  };
+/** @param into a held pose refreshed in place (the killcam's step capture allocates nothing); absent, a new pose */
+export function captureReplayPose(state: ReplayPoseState, into?: ReplayPose): ReplayPose {
+  if (!into) {
+    return {
+      pos: [state.pos.x, state.pos.y, state.pos.z],
+      yaw: state.yaw || 0,
+      pitch: state.visualPitch || 0,
+      roll: state.visualRoll || 0,
+      turretYaw: state.turretYaw || 0,
+      gunPitch: state.gunPitch || 0,
+    };
+  }
+  into.pos[0] = state.pos.x;
+  into.pos[1] = state.pos.y;
+  into.pos[2] = state.pos.z;
+  into.yaw = state.yaw || 0;
+  into.pitch = state.visualPitch || 0;
+  into.roll = state.visualRoll || 0;
+  into.turretYaw = state.turretYaw || 0;
+  into.gunPitch = state.gunPitch || 0;
+  return into;
 }
 
 /** Guarantee the replayed barrel follows the shell's captured launch vector. */

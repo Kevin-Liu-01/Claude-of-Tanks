@@ -80,6 +80,7 @@
  *   the disc; with --times=day the disc saturates the half-float target and the row, a natural one, must open nothing)
  *   and guardtiming (the guard's own main-thread and probe GPU ms over the window that follows, measured in the page)
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, mkdtempSync, writeFileSync, appendFileSync, existsSync, renameSync } from 'node:fs';
 import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
@@ -307,7 +308,7 @@ async function launchBrowser(fresh) {
       // (round 3) a lean profile: no HTTP or GPU-program disk cache kept (a fresh profile starts empty either way)
       ...(fatProfile ? [] : ['--disk-cache-size=1048576', '--media-cache-size=1048576', '--disable-gpu-shader-disk-cache'])],
   });
-  browser = await puppeteer.launch(launchOptions);
+  browser = await launchGuardedBrowser(puppeteer, launchOptions);
   return browser;
 }
 
@@ -332,7 +333,7 @@ for (let i = 0; i < ${Math.min(6, level * 2)}; i++) new Worker(URL.createObjectU
 const stressGame = opt('stress-game', '');
 async function startStressGame(base) {
   if (!stressGame || stressBrowser) return;
-  stressBrowser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: null, protocolTimeout: 600_000,
+  stressBrowser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: null, protocolTimeout: 600_000,
     userDataDir: (() => { const d = mkdtempSync(path.join(tmpdir(), 'cot-bwr-stressgame-')); ownTemp.push(d); return d; })(), ignoreDefaultArgs: ['--enable-automation'],
     args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', `--window-size=${vw},${vh + 120}`] }));
   const p = await stressBrowser.newPage();
@@ -351,7 +352,7 @@ async function startStressGame(base) {
 async function startStress() {
   if (stressGame) return startStressGame(await baseUrl.cached);
   if (!stress || stressBrowser) return;
-  stressBrowser = await puppeteer.launch(nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: { width: 1920, height: 1080 },
+  stressBrowser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new', defaultViewport: { width: 1920, height: 1080 },
     userDataDir: (() => { const d = mkdtempSync(path.join(tmpdir(), 'cot-bwr-stress-')); ownTemp.push(d); return d; })(),
     args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox'] }));
   const p = await stressBrowser.newPage();

@@ -35,10 +35,10 @@ function instrument(parent:HTMLElement,name:UiIconId,label:string){
   const host=node('span','flight-instrument',parent);host.dataset.tip=label;host.setAttribute('aria-label',label);
   icon(host,name);const value=node('b','num',host);return {host,value};
 }
-/** The gunship's line beside its name: an escort's progress where it flies one, else nothing (owner UI rules: no eyebrow,
- *  "FIRE SUPPORT" said what the name does). */
-function gunshipDesignation(escort:HudMatchModeState['escort']):string {
-  return escort?t('flight.gunship.escort',{alive:escort.alive,rescued:escort.rescued,required:escort.required}):'';
+/** The gunship's line beside its name: nothing (owner UI rules: no eyebrow, "FIRE SUPPORT" said what the name does; an
+ *  escort's progress is the objective plate's, UI-LOCKDOWN B9). */
+function gunshipDesignation(_escort:HudMatchModeState['escort']):string {
+  return '';
 }
 /** The ground under the drone for its altitude readout (the HUD's terrain height field), or null before a map loads. */
 type AerialGround=()=>{getHeightAt(x:number,z:number):number}|null;
@@ -122,7 +122,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
     icon(button,item.glyph);const status=node('small','',button),key=node('kbd','flight-key',button);key.textContent=item.key;
     button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship'&&!button.disabled)bus.emit('ui:'+item.action,{});});return{...item,button,status,key};
   });
-  const battery=node('meter','flight-battery',panel);battery.min=0;battery.max=AERIAL_RULES.drone.batteryS;battery.setAttribute('aria-label',t('flight.battery'));
+  // (the charge's bar under its own figure, one readout: across the console it read as a second battery, UI-LOCKDOWN B11)
+  const battery=node('meter','flight-battery',timer.host);battery.min=0;battery.max=AERIAL_RULES.drone.batteryS;battery.setAttribute('aria-label',t('flight.battery'));
   const weapons=markDatum(node('div','flight-weapons',panel),'ammo');
   const weaponIcons:UiIconId[]=['roofGun','shell','missileRack'];
   const cards=weaponIcons.map((name,slot)=>{
@@ -158,7 +159,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       setStyle(card.button,'--weapon-ready',(1-Math.min(1,wait/Math.max(.01,total))).toFixed(2));
       if(selected){
         setData(root,'weapon',String(slot));root.classList.toggle('weapon-reloading',wait>0);
-        setText(solutionLabel,`${t(`flight.weapon.${slot}`)}${wait>0?` · ${wait.toFixed(1)}s`:''}`);
+        // (its reload is the selected weapon card's, never the lens's as well: UI-LOCKDOWN B10)
+        setText(solutionLabel,t(`flight.weapon.${slot}`));
       }
     }
   }

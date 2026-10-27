@@ -96,6 +96,9 @@ interface KillRibbonRuntime {
   damage(targetId: string, amount: number): void;
   /** The player destroyed `victim`. */
   kill(victim: RibbonVictim, cause: RibbonCause): void;
+  /** Whether the ribbon shows a kill here now (a mouse layout from 768 px wide and not short, not spectating, not in the
+   *  scope): the feed then leaves the player's own kill to it (one datum, one place: UI-LOCKDOWN B1). */
+  shows(): boolean;
   /** The player lit an enemy (the stream counts the spots of the streak's window). */
   spot(): void;
   /** The player's side took a zone. */
@@ -193,6 +196,11 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       root.classList.add('on');
       if (hideTimer) clearTimeout(hideTimer);
       hideTimer = setTimeout(() => { hideTimer = null; root.classList.remove('on'); }, RIBBON_HOLD_MS);
+    },
+    shows() {
+      // (its layouts set it flex: anything else, a phone's none or a stub document's nothing, shows no ribbon)
+      if (typeof getComputedStyle !== 'function' || getComputedStyle(root).display !== 'flex') return false;
+      return !document.body.classList.contains('cot-spectating') && !document.documentElement.hasAttribute('data-cot-scoped');
     },
     spot() {
       spotTimes[spotNext] = performance.now();

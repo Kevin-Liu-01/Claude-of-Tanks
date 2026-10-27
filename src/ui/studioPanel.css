@@ -15,7 +15,8 @@
   font:400 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-ui);-webkit-user-select:none;user-select:none}
 .cot-studio *{box-sizing:border-box}
 .cot-studio :is(h2,h3,p){margin:0}
-.cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px}
+/* focus is the kit ring's paper hue, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+.cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--ink-1);outline-offset:1px}
 .cot-studio .cot-c-chip{font-size:max(var(--fs-floor-11),var(--fs-13))}
 .cot-studio .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */

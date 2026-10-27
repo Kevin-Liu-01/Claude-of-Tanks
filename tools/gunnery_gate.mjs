@@ -1,3 +1,4 @@
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { acquireCaptureLock as acquireLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 // Automated player hull-hit-rate gate (controls_gunnery r6).
 // FAILS (exit 1) unless >=80% of fully-settled aim-assisted shots at <=350 m
@@ -43,7 +44,7 @@ await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 console.log(`[gunnery-gate] vite up at ${url}`);
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   // gunnery r1: the whole 8-battle run is ONE page.evaluate; battle staging

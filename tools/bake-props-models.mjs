@@ -7,6 +7,7 @@
 // Usage: node tools/bake-props-models.mjs model1.glb model2.glb ...
 //        (no args = bake every .glb in public/models/props)
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { readdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
@@ -25,7 +26,7 @@ const server = await createServer({ root: process.cwd(), logLevel: 'error', serv
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/tools/bake-page.html`;
 
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

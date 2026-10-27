@@ -538,7 +538,9 @@ const fireStation: RegionalBuilder = (ctx) => {
     for (const [fx, fz, ux, uz] of [[0, 1, 1, 0], [1, 0, 0, -1], [0, -1, -1, 0], [-1, 0, 0, 1]] as const) {
       const gf: Face = { origin: [cx + fx * (half + 0.4), 0, cz + fz * (half + 0.4)], u: [ux, 0, uz], out: [fx, 0, fz], width: tw + 0.9 };
       faceBox(sink, 'structureMetal', gf, 0, tTop + 1.05, 0, tw + 0.9, 0.05, 0.05, { colour: IRON, decor: true });
-      for (let b = 0; b <= 8; b++) faceBox(sink, 'structureMetal', gf, -(tw + 0.9) / 2 + b * (tw + 0.9) / 8, tTop + 0.63, 0, 0.03, 0.82, 0.03, { colour: IRON, decor: true, fine: true });
+      // (259, the phone census: the rail stood 0.7 m over the deck on balusters a phone never builds) the corner
+      // balusters coarse, the rail on them at any range; the rest fine joinery
+      for (let b = 0; b <= 8; b++) faceBox(sink, 'structureMetal', gf, -(tw + 0.9) / 2 + b * (tw + 0.9) / 8, tTop + 0.63, 0, 0.03, 0.82, 0.03, { colour: IRON, decor: true, fine: b > 0 && b < 8 });
       const cf: Face = { origin: [cx + fx * half, 0, cz + fz * half], u: [ux, 0, uz], out: [fx, 0, fz], width: tw };
       faceBox(sink, 'structureMetal', cf, 0, tTop - 1.6, 0.02, tw * 0.55, tw * 0.55, 0.04, { colour: WHITE_TRIM, decor: true });
       faceBox(sink, 'structureMetal', cf, 0, tTop - 1.45, 0.05, 0.05, tw * 0.22, 0.02, { colour: IRON, decor: true, fine: true });

@@ -9,6 +9,7 @@
 // space puts the mark over the one-line wordmark, a narrow one scales the lockup down.
 // Rasters draw each master onto a canvas in one headless browser (3 GB heap), so only pure-path SVGs are size-faithful;
 // the marks are pure paths by design. Run node tools/sync-brand-marks.mjs after this for the boot card.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -224,7 +225,7 @@ const rasters = [
   ['lockup-2400.png', 'lockup.svg', 2400], ['lockup-paper-2400.png', 'lockup-paper.svg', 2400],
 ];
 const { default: puppeteer } = await import('puppeteer');
-const browser = await puppeteer.launch({ headless: 'shell', args: ['--js-flags=--max-old-space-size=3072'] });
+const browser = await launchGuardedBrowser(puppeteer, { headless: 'shell', args: ['--js-flags=--max-old-space-size=3072'] });
 const png = new Map();
 try {
   const page = await browser.newPage();

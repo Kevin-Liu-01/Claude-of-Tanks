@@ -23,6 +23,7 @@
  * Ports are OS-assigned (never 5197–5199); `--port=<n>` pins the Vite port.
  * Screenshots and report.json land in `--out`.
  */
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
@@ -190,7 +191,7 @@ try {
   const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
   step('vite', { origin, cacheDir });
 
-  browser = await puppeteer.launch({
+  browser = await launchGuardedBrowser(puppeteer, {
     headless: !headful,
     protocolTimeout: 360_000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
@@ -287,14 +288,15 @@ try {
   const stripOf = (page) => page.evaluate(() => {
     const strip = document.querySelector('.cot-mp-strip');
     const panel = document.querySelector('.cot-mp-panel');
-    const banner = document.querySelector('.cot-mp-banner');
+    // (the battle's banner: the kit's notice in the battle's region, src/ui/battleNotices.ts)
+    const banner = document.querySelector('.cot-battle-notices .cot-mp-notice:not([data-state="exit"])');
     const network = window.__MULTIPLAYER_V2?.stats?.().network ?? null;
     const visible = (node) => !!node && !node.hidden && getComputedStyle(node).display !== 'none' && node.getClientRects().length > 0;
     return {
       present: !!strip, visible: visible(strip), text: strip?.textContent?.replace(/\s+/g, ' ').trim() ?? null, className: strip?.className ?? null,
       aria: strip?.getAttribute('aria-label') ?? null, expanded: strip?.getAttribute('aria-expanded') ?? null,
       panelVisible: visible(panel), panelRows: panel ? [...panel.querySelectorAll('.row')].filter((row) => !row.hidden).map((row) => row.textContent.replace(/\s+/g, ' ').trim()) : [],
-      bannerVisible: visible(banner), bannerText: banner?.textContent?.trim() ?? null, network,
+      bannerVisible: visible(banner), bannerText: banner?.querySelector('.cot-c-notice__text')?.textContent?.trim() ?? null, network,
     };
   });
   await waitFor(pageA, () => !!document.querySelector('.cot-mp-strip') && /\d/.test(document.querySelector('.cot-mp-strip .ping b')?.textContent ?? ''), 'A network strip shows a ping', 15_000);

@@ -3,6 +3,7 @@
 //   node tools/world-vehicle-visual-audit.mjs --map=urban --out=/tmp/urban-car.png
 //   node tools/world-vehicle-visual-audit.mjs --map=desert --kind=pickup --out=/tmp/pickup.png
 
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -36,7 +37,7 @@ const server = await createServer({
 await server.listen();
 const address = server.httpServer.address();
 const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });

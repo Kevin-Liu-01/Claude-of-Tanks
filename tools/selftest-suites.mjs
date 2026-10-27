@@ -174,6 +174,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-20 (the CN lane's measured depression, carried to the national concepts and the fleet's curves): every
     // published gunPitchByYawDeg keeps the whole gun 25 mm off its hull at every yaw; the bare depression meets the hull
     'src/vehicles/nationalGunClearance.selftest.mjs',
+    // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
+    // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
+    'src/vehicles/strv103GunPort.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -790,6 +793,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
     'tools/capture-hold.selftest.mjs',
+    // 2026-10-26 (item 244): the browser guard trips on a hog page (tree killed, lock released, exit 86), and every browser
+    // launch in the checkout goes through it
+    'tools/browser-launch.selftest.mjs',
+    'tools/browser-launch-census.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
@@ -984,6 +991,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageDossier.selftest.mjs',
     // 253: the technical diagrams' labels as DOM text (en/zh text, rail packing, sidecar parsing)
     'src/ui/technicalDiagramLabels.selftest.mjs',
+    // 258: the technical drawings (the ID-buffer trace; the published plates' resolution, fill, overlays and labels)
+    'tools/technicalDrawingTrace.selftest.mjs',
+    'src/ui/technicalDrawing.selftest.mjs',
     'src/ui/damagePanel.selftest.mjs',
     'src/ui/damagePanelMarkers.selftest.mjs',
     'src/ui/damagePanelMaskRetry.selftest.mjs',
@@ -1715,6 +1725,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/mobileAutoAim.selftest.mjs',
     'src/game/matchmaking.selftest.mjs',
     'src/game/replayPose.selftest.mjs',
+    'src/game/killcamCapture.selftest.mjs',
     'src/game/killcamGhostPolicy.selftest.mjs',
     'src/game/killcamPresentation.selftest.mjs',
     'src/game/killcamObserverInput.selftest.mjs',
@@ -1966,6 +1977,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/worldMaterialsBeforeCompile.selftest.mjs', // battle-spikes-253: both entries patch the world before compiling it
     'src/game/simStepRetention.selftest.mjs', // battle-spikes-253: simStep stores no closure that keeps a battle's world
     'src/engine/gpuCatchUp.selftest.mjs', // battle-spikes-253: link polls ask only once the GPU caught up to their last poll
+    'src/engine/textureUploadStaging.selftest.mjs', // room-stalls-258: a scene's texture uploads one at a time under a frame budget before its draws
     'src/world/simulationProgramWarm.selftest.mjs', // battle-spikes-253: the GPU simulations' programs linked under the cover
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
@@ -2222,6 +2234,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    'src/world/maps/regional/fineSides.selftest.mjs', // 2026-10-26 (259): a part's sides fine joinery only within its wall's contact
     'src/world/groundMarkings.selftest.mjs', // 2026-10-15 (maps lane, Kestrel): paint on the paved ground — Kestrel's apron markings
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)

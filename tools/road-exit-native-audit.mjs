@@ -1,5 +1,6 @@
 // Native rendered evidence for the exact Alpine/Reservoir authored additions.
 // This is a visual receipt; quantitative continuity lives in the road tests.
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import puppeteer from 'puppeteer';
@@ -16,7 +17,7 @@ const dir=resolve(out);await mkdir(dir,{recursive:false});
 const lock=createCaptureLock(),report={rows:[],errors:[]};let browser,refresh;
 try{
  await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
- browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:'new',protocolTimeout:240000,
+ browser=await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({headless:'new',protocolTimeout:240000,
   args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage']}));
  report.nativeLaunch=verifyNativeBrowserLaunch(browser);
  const page=await browser.newPage();await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
