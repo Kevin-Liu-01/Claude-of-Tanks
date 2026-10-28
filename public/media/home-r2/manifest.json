@@ -78,12 +78,12 @@
     "type": "video/mp4",
     "width": 960,
     "height": 540,
-    "seconds": 5.967,
-    "bytes": 878455,
-    "sha256": "d6c9afc74a64e5470ee97e520fb470e25d435bea4d4865b8eeef2ba6cd830b79",
+    "seconds": 5.0,
+    "bytes": 882291,
+    "sha256": "b0915d73bb97a33dd529b1746874d3ffd395fc2fdd651408096e7cbb683f7ea5",
     "rung": "phone",
     "encode": {
-     "vmaf": 68.22,
+     "vmaf": 75.19,
      "floor": 80
     }
    },
