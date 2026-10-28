@@ -46,6 +46,7 @@ import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { programReceipt, type ProgramOriginWatch, type ProgramReceipt, type ReceiptProgram } from '../../engine/programReceipt.ts';
 import { planFromRoom } from '../host/hostPlan.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
@@ -133,11 +134,8 @@ export interface BrowserLoadTrace {
    * found the first live frame linking the viewer's depth programs, 580-590 ms). `diffs`, beside each name: where its
    * cache key departs from the nearest program of its type that the warm made (`index:made/warmed`), or 'new'.
    */
-  revealPrograms?: { made: number; frames: number; names: string[]; diffs: string[]; origins?: string[] };
+  revealPrograms?: ProgramReceipt;
 }
-
-/** A live program as the reveal receipt reads it (three's WebGLProgram: its material's type and name, its cache key). */
-export interface RevealProgram { type?: string; name?: string; cacheKey?: string }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
 export interface BrowserPendingProgram { name: string; cacheKey: string; linked: boolean | null }
@@ -308,12 +306,12 @@ export interface BrowserPresentationPorts {
   setGarageLighting(active: boolean): void;
   runBlackWatchdog?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   /** The renderer's live programs (renderer.info.programs: the material's type and name), for the revealPrograms receipt. */
-  programs?(): readonly RevealProgram[] | null;
+  programs?(): readonly ReceiptProgram[] | null;
   /**
    * The draws that link a program while armed (`material<object<parent<grandparent`), for the receipt's `origins`; the
    * watch ends at stop() or on its own after a few seconds.
    */
-  watchProgramOrigins?(): { readonly origins: readonly string[]; stop(): void } | null;
+  watchProgramOrigins?(): ProgramOriginWatch | null;
 }
 
 export interface BrowserActiveRoomAdapter {
@@ -1139,39 +1137,15 @@ export function createBrowserComposition({
     active.trace.totalMs = Math.round(at - active.trace.startedAt);
   };
 
-  const programLabel = (program: RevealProgram): string =>
-    [program.type, program.name].filter(Boolean).join(':') || '?';
-
-  /** Where a program's cache key departs from the nearest warmed program of its type (at most four fields), or 'new'. */
-  const programKeyDiff = (program: RevealProgram, warmed: readonly RevealProgram[]): string => {
-    const fields = program.cacheKey?.split(',') ?? [];
-    let best: string[] | null = null;
-    for (const other of warmed) {
-      if (other.type !== program.type || !other.cacheKey) continue;
-      const theirs = other.cacheKey.split(',');
-      if (theirs.length !== fields.length) continue;
-      const diff: string[] = [];
-      for (let i = 0; i < fields.length && diff.length < 5; i++) {
-        if (fields[i] !== theirs[i]) diff.push(`${i}:${fields[i]!.slice(0, 32)}/${theirs[i]!.slice(0, 32)}`);
-      }
-      if (!best || diff.length < best.length) best = diff;
-    }
-    return best ? best.slice(0, 4).join(' ') : 'new';
-  };
-
-  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<RevealProgram>, frames: number,
-    watch: { readonly origins: readonly string[] } | null): void => {
+  const noteRevealPrograms = (active: ActiveRound, baseline: ReadonlySet<ReceiptProgram>, frames: number,
+    watch: ProgramOriginWatch | null): void => {
     const live = activation.programs?.();
-    if (!live) return;
-    const made = live.filter((program) => !baseline.has(program));
-    const named = made.slice(0, 8), warmed = [...baseline];
-    active.trace.revealPrograms = { made: made.length, frames, names: named.map(programLabel),
-      diffs: named.map((program) => programKeyDiff(program, warmed)), ...(watch ? { origins: [...watch.origins] } : {}) };
+    if (live) active.trace.revealPrograms = programReceipt(live, baseline, frames, watch);
   };
 
   /** The revealPrograms receipt through the first frames after the fade, while this round is still the live one. */
-  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<RevealProgram>,
-    watch: { readonly origins: readonly string[]; stop(): void } | null): Promise<void> => {
+  const countRevealPrograms = async (active: ActiveRound, baseline: ReadonlySet<ReceiptProgram>,
+    watch: ProgramOriginWatch | null): Promise<void> => {
     try {
       if (!activation.programs) return;
       for (let frames = 1; frames <= REVEAL_PROGRAM_FRAMES; frames++) {

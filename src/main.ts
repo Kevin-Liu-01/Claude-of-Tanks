@@ -99,7 +99,9 @@ import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
+  type GarageGpuRestoreReceipt,
 } from './engine/garageGpuWarmRuntime.ts';
+import { programReceipt, type ProgramOriginWatch, type ReceiptProgram } from './engine/programReceipt.ts';
 import { createDeploymentForwardWarmBatches, createIsolatedForwardWarmBatches, renderWithoutShadowUpdates } from './engine/deploymentWarm.ts';
 import { createGpuCatchUpGate } from './engine/gpuCatchUp.ts';
 import { stageTextureUploads, waitForGpuCatchUp } from './engine/textureUploadStaging.ts';
@@ -792,7 +794,8 @@ function recordLightCensus(label: string): void {
  * or for ORIGIN_WATCH_MS at most, so no live frame carries the check after the reveal's window.
  */
 const ORIGIN_WATCH_MS = 10_000;
-function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): void } {
+function watchProgramOrigins(annotate?: (object: THREE.Object3D) => string):
+  { readonly origins: readonly string[]; stop(): void } {
   const origins: string[] = [];
   const previous = renderer.renderBufferDirect;
   const watched: typeof previous = function (this: THREE.WebGLRenderer, camera, drawScene, geometry, material, object, group) {
@@ -801,7 +804,7 @@ function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): v
     if ((renderer.info.programs?.length ?? 0) > before && origins.length < 8) {
       const path: string[] = [material.type];
       for (let node: THREE.Object3D | null = object; node && path.length < 5; node = node.parent) path.push(node.name || node.type);
-      origins.push(path.join('<'));
+      origins.push(`${path.join('<')}${annotate?.(object) ?? ''}`);
     }
   };
   renderer.renderBufferDirect = watched;
@@ -813,6 +816,63 @@ function watchProgramOrigins(): { readonly origins: readonly string[]; stop(): v
   };
   setTimeout(stop, ORIGIN_WATCH_MS);
   return { origins, stop };
+}
+/**
+ * (2026-10-27, the room-stalls lane) The Garage return's lateLinks receipt (programReceipt.ts): the programs linked after
+ * the restore's program warm, through its covered shadow, upload and settle draws and GARAGE_LATE_LINK_FRAMES frames
+ * after it (the cover lifts and the loader fades inside them). The rooms census's leave linked one there, 0.4-1.1 s. A
+ * program linked there warns once, so the census's leave gate (no console warnings) holds the receipt at 0.
+ */
+const GARAGE_LATE_LINK_FRAMES = 90;
+/**
+ * (2026-10-27, the room-stalls lane) The workshop dressing's remaining chunks, finished under a covered Garage restore
+ * before its program warm, one a paint frame (each is a quiet-lease step of 100 ms or less): a dressing left unbuilt at
+ * the battle (a room joined within seconds of boot) otherwise streamed into the first Garage frames after the leave,
+ * and each chunk's first draw linked its programs there (the rooms census rs39-40, the guest: the slideshow screen and
+ * two clutter depth programs, every one added after the warm). Returns how many it finished.
+ */
+async function finishGarageDressingUnderCover(isCurrent?: () => boolean): Promise<number> {
+  const stillValid = (): boolean => (isCurrent?.() ?? true) && game.phase === 'garage';
+  let finished = 0;
+  while (!garageDressing.isBuilt() && stillValid()) {
+    let more: boolean;
+    // (a chunk that fails is the quiet scheduler's to retry, as before; the return goes on with the dressing it has)
+    try { more = await garageDressing.pump(stillValid); } catch { break; }
+    finished++;
+    if (!more) break;
+    await nextPaintFrame();
+  }
+  return finished;
+}
+/** The workshop dressing's finished chunks, in order (garageDressing.ts group.userData.buildTimings). */
+const dressingBuildTimings = (): ReadonlyArray<{ chunk?: string }> =>
+  (garageDressing.group.userData.buildTimings as Array<{ chunk?: string }> | undefined) ?? [];
+async function recordGarageLateLinks(receipt: GarageGpuRestoreReceipt,
+  { baseline, watch, dressingChunks, dressingBuilt }: { baseline: ReadonlySet<ReceiptProgram>; watch: ProgramOriginWatch;
+    dressingChunks: number; dressingBuilt: boolean }): Promise<void> {
+  const entryInfo = renderer.info;
+  try {
+    receipt.lateLinks = programReceipt(renderer.info.programs ?? [], baseline, 0, watch);
+    for (let frames = 1; frames <= GARAGE_LATE_LINK_FRAMES; frames++) {
+      await nextPaintFrame();
+      if (renderer.info !== entryInfo || game.phase !== 'garage') break;
+      receipt.lateLinks = programReceipt(renderer.info.programs ?? [], baseline, frames, watch);
+    }
+  } finally { watch.stop(); }
+  const { lateLinks } = receipt;
+  if (!lateLinks?.made) return;
+  // (short lines: the rooms census keeps a warning's first 240 characters; one for the restore, one for each program)
+  const failures = receipt.programCompileFailures;
+  const since = dressingBuildTimings().slice(dressingChunks).map((timing) => timing.chunk ?? '?');
+  console.warn(`Garage late links: dressing built at the warm ${dressingBuilt} (${receipt.dressingChunksFinished ?? 0} finished `
+    + `under the cover), ${receipt.shadowCasterBatches ?? 0} caster batches, ${receipt.uploadCatchUpFrames ?? 0} upload waits, `
+    + `chunks since ${since.length}: ${since.join(' ')}`);
+  console.warn(`Garage return linked ${lateLinks.made} program(s) after its program warm; released ${lateLinks.released}; `
+    + `warm ${receipt.programsPrepared ?? 0} prepared in ${receipt.programCohorts ?? 0} cohorts, ${receipt.programWarmSlices} slices, `
+    + `deferred ${receipt.programWarmDeferred ?? 0}, compile failures ${failures?.count ?? 0}${failures?.first ? ` (${failures.first})` : ''}`);
+  lateLinks.names.forEach((name, index) => {
+    console.warn(`Garage late link ${index + 1}/${lateLinks.made}: ${lateLinks.origins?.[index] ?? name} [${lateLinks.diffs[index]}]`);
+  });
 }
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
@@ -1007,18 +1067,38 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     // borrowed comes back under the same root with other materials (its skin parked and put back, the battle build's
     // program-variant twins), and the frames that skipped this warm compiled them (Return to Garage: 349 + 249 ms)
     const programsNeedWarm = true;
-    const receipt = await restoreGarageGpuPipeline({
-      renderer,
-      scene,
-      camera,
-      lighting,
-      forwardPrograms: forwardProgramWarm,
-      post,
-      simDt: SIM_DT,
-      resourcesReleased,
-      programsNeedWarm,
-      isCurrent,
-    });
+    const dressingChunksFinished = await finishGarageDressingUnderCover(isCurrent);
+    let late: { baseline: Set<ReceiptProgram>; watch: ProgramOriginWatch; dressingChunks: number; dressingBuilt: boolean } | null = null;
+    let receipt: GarageGpuRestoreReceipt;
+    try {
+      receipt = await restoreGarageGpuPipeline({
+        renderer,
+        scene,
+        camera,
+        lighting,
+        forwardPrograms: forwardProgramWarm,
+        post,
+        simDt: SIM_DT,
+        resourcesReleased,
+        programsNeedWarm,
+        isCurrent,
+        onProgramsWarmed: () => {
+          late?.watch.stop();
+          // (a late draw's object tagged +added: not in the scene when the warms ended; +hidden: in it, off its visible walk)
+          const inScene = new Set<THREE.Object3D>(), shown = new Set<THREE.Object3D>();
+          scene.traverse((object) => { inScene.add(object); });
+          scene.traverseVisible((object) => { shown.add(object); });
+          const annotate = (object: THREE.Object3D): string => (!inScene.has(object) ? ' +added' : !shown.has(object) ? ' +hidden' : '');
+          late = { baseline: new Set(renderer.info.programs ?? []), watch: watchProgramOrigins(annotate),
+            dressingChunks: dressingBuildTimings().length, dressingBuilt: garageDressing.isBuilt() };
+        },
+      });
+    } catch (error) {
+      (late as { watch: ProgramOriginWatch } | null)?.watch.stop();
+      throw error;
+    }
+    if (dressingChunksFinished) receipt.dressingChunksFinished = dressingChunksFinished;
+    if (late) void recordGarageLateLinks(receipt, late);
     return receipt;
   },
 });

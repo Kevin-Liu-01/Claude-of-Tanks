@@ -741,7 +741,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   watch.origins.push('ShaderMaterial<live-frame<fx<Scene');
   for (let i = 0; i < 4; i++) await tick();
   assert.deepEqual(reveal.ports.trace.revealPrograms, { made: 2, frames: 30, names: ['MeshDepthMaterial', 'ShaderMaterial:LiveFrame'],
-    diffs: ['2:8/7', 'new'], origins: ['ShaderMaterial<live-frame<fx<Scene'] },
+    diffs: ['2:8/7', 'new'], origins: ['ShaderMaterial<live-frame<fx<Scene'], released: 1 },
     'the reveal and the first live frames are counted, named, keyed against the warm and traced to their draws; the watchdog\'s and a released program are not');
   assert.equal(watch.stopped, 1, 'the draw watch ends with the receipt\'s frames');
   live.push({ name: 'Later' });
