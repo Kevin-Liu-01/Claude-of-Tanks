@@ -3755,9 +3755,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const column = pop.closest<HTMLElement>('.cot-battle-menu-scroll');
       if (!column) return;
       deployFieldColumnScroll ??= column.scrollTop;
-      // the picker's top stands clear of the column's top fade (its band is --s3)
+      // the picker's top stands clear of the column's top fade (its band is --s3); where its plate fits whole down to the
+      // picker's foot, the plate's own top does, so its frame reads closed rather than running up under the fade (r51)
       const fade = Number.parseFloat(getComputedStyle(column).getPropertyValue('--s3')) || 12;
-      column.scrollTop += pop.getBoundingClientRect().top - column.getBoundingClientRect().top - fade;
+      const top = column.getBoundingClientRect().top;
+      const plate = pop.closest<HTMLElement>('.cot-battle-details');
+      // the room between the top fade and the dock's own fade over its top edge (--s5), or the column's foot without a dock
+      const dock = battleMenu.querySelector<HTMLElement>('.cot-battle-menu-foot')?.getBoundingClientRect().top ?? column.getBoundingClientRect().bottom;
+      const room = dock - (Number.parseFloat(getComputedStyle(column).getPropertyValue('--s5')) || 24) - top - fade;
+      const whole = plate && pop.getBoundingClientRect().bottom - plate.getBoundingClientRect().top <= room;
+      column.scrollTop += (whole ? plate : pop).getBoundingClientRect().top - top - fade;
     });
     // in a phone's column the picker opens where the battlefield and the rules stood, the further options' place too
     if (!docked) battleMenu.querySelector<HTMLButtonElement>('.cot-deploy-more[aria-expanded="true"]')?.click();
@@ -4181,7 +4188,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const target = ruleset.scoreTarget ?? RULESET_SCORE_TARGETS[mode] ?? null;
     return {
       teams: t('garage.deploy.sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) }),
-      clock: clockText(ruleset.timeLimitS),
+      // no clock is the word, set as the other rules' words are (the range's "None" in the clock's mono read as a figure, r48)
+      clock: ruleset.timeLimitS == null ? null : clockText(ruleset.timeLimitS),
       respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
       victory: target == null ? null : String(target),
       gravity: ruleset.gravityScale === 1 ? null : `${Math.round(ruleset.gravityScale * 100) / 100} g`,
@@ -4211,7 +4219,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployRules.dataset.count = String(keys.length);
     deployRules.innerHTML = keys.map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
-      `<dd${key === 'clock' ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+      `<dd${key === 'clock' && facts.clock != null ? ' class="num"' : ''}>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
   /** A roster card's copy for another surface: its hero render over its flag, decorative and inert. */
   function heroCopy(id: string): HTMLElement | null {

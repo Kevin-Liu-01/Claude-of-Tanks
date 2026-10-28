@@ -726,7 +726,6 @@ function renderFacets(): void {
   const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
   // (laid over the list beside the stage, it stays shut: its count says how many are on)
   if (disclosure && more && !moreFacetsShown && !matchMedia(MORE_FACETS_OVER).matches) disclosure.open = true;
-  if (disclosure && !disclosure.dataset.fits) { disclosure.dataset.fits = '1'; disclosure.addEventListener('toggle', fitMoreFacets); }
   moreFacetsShown = true;
 }
 /** The plate over the list stands within the window under its summary and scrolls past that (the g18 critic at 1024 x 600:
@@ -1252,7 +1251,8 @@ function populateRivals(): void {
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
 function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  const top = Math.max(0, bar ? bar.bottom : 0);
+  // (under the bar's rule, which hangs 1 px below it: publicNav's .public-nav::after; the 261 critic's 1 px step)
+  const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (!panel) return { top, bottom: innerHeight };
   // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows

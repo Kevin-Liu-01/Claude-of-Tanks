@@ -282,7 +282,17 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   };
   // a resize changes the chips' widths under a kept offset: a scrolled row pages again from its first chip still in view,
   // so none stands cut and hidden at its start (premiere-gallery-studio's 261 finding: a 52 px gap before "Sequences")
+  // each chip's width is rounded up to a whole pixel, so every page's offset is whole and its first chip stands on the row's
+  // edge exactly as the first page's does (the 261 critics: a page 1 px in, then a chip a fraction out and hidden)
+  const wholeChipWidths = (): void => {
+    const list = chips$();
+    for (const chip of list) chip.style.width = '';
+    for (const chip of list) chip.style.width = `${Math.ceil(chip.getBoundingClientRect().width)}px`;
+  };
   const chipsResize = new ResizeObserver(() => {
+    // (a hidden row has no widths to round: it is measured once it shows)
+    if (!chipRow.clientWidth) return;
+    wholeChipWidths();
     if (chipRow.scrollLeft <= 0) { syncMore(); return; }
     const row = chipRow.getBoundingClientRect();
     pageTo(chips$().find((chip) => chip.getBoundingClientRect().right > row.left + 0.5));
@@ -290,8 +300,8 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
   chipsResize.observe(chipRow);
   /** The page that starts at `chip` (the row's own start for the first). */
   const pageTo = (chip: HTMLElement | undefined): void => {
-    // (rounded up: a fractional offset the scroll truncates left the page 1 px in, the 261 critic at en 1440)
-    chipRow.scrollLeft = chip ? Math.ceil(chipRow.scrollLeft + chip.getBoundingClientRect().left - chipRow.getBoundingClientRect().left) : 0;
+    // (the chips' whole widths make this offset whole: the scroll keeps it exactly)
+    chipRow.scrollLeft = chip ? chip.offsetLeft - chips$()[0]!.offsetLeft : 0;
     syncMore();
   };
   /** The next page: from the first chip the row's end cuts or hides, or back to the start after the last. */

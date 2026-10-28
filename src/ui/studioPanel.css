@@ -293,6 +293,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop .cot-bf__map{box-shadow:var(--ring-2)}
 /* a phone's or a touch screen's search and chips are a finger's height (the s20 critic: 37 px at 844 x 390) */
 body:is([data-cot-width='phone'],[data-cot-input='coarse']) .cot-studio .mapPop :is(.cot-c-picker__search,.cot-c-picker__chips>.cot-c-chip){height:44px}
+/* the wide sheet (MAP_SHEET_WIDE) holds four maps to a row at the inspector's card size */
+@media (width >= 1440px){.cot-studio .mapPop.sheet .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
 /* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them; the search
    stays narrow enough for three chips beside it (the s19 critic: two at 844 x 390) */
 @media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 160px}}

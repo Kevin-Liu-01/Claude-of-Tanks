@@ -258,6 +258,7 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     lighting: {
       updateFov: frame('lighting-fov'),
       setStaticPresentationDormant: frame('lighting-dormant'),
+      setVehicleShadowMerge: () => {},
       update: frame('lighting'),
     },
     post: { render: () => {

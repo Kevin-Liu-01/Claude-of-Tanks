@@ -23,8 +23,10 @@ function contourCache(side:number):Contours {
     let entry=cache.get(face);
     if(!entry){
       const depth=outerDepth(face,side);
-      entry={face,bounds:[Math.min(...face.map(p=>p[1])),Math.max(...face.map(p=>p[1])),
-        Math.min(...face.map(p=>p[2])),Math.max(...face.map(p=>p[2]))],
+      // (boot-261) the extents without four mapped copies a contour: Math.min/max a point at a time is the same value
+      let y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
+      for(const p of face){y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);z0=Math.min(z0,p[2]);z1=Math.max(z1,p[2]);}
+      entry={face,bounds:[y0,y1,z0,z1],
       area:area(face),depth,unitDepth:outerDepth(face,1),planes:[...projectedPlanes(face),depth]};
       cache.set(face,entry);
     }
@@ -36,7 +38,7 @@ function area(face:Face):number {
   return Math.abs(face.reduce((n,a,i)=>{const b=face[(i+1)%face.length];return n+a[1]*b[2]-a[2]*b[1];},0))/2;
 }
 function clean(face:Face):Face {
-  const result=face.filter((a,i)=>Math.hypot(...a.map((v,k)=>v-face[(i+1)%face.length][k]))>1e-10);
+  const result=face.filter((a,i)=>{const b=face[(i+1)%face.length];return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])>1e-10;});
   return result.filter((b,i)=>{
     const a=result[(i+result.length-1)%result.length],c=result[(i+1)%result.length];
     return Math.abs((b[1]-a[1])*(c[2]-b[2])-(b[2]-a[2])*(c[1]-b[1]))>1e-13;
@@ -48,7 +50,7 @@ function clip(face:Face,plane:Plane,inside:boolean):Face {
     const a=face[i],b=face[(i+1)%face.length],da=plane(a),db=plane(b);
     const ia=inside?da>=0:da<=0,ib=inside?db>=0:db<=0;
     if(ia)out.push(a);
-    if(ia!==ib)out.push(a.map((v,k)=>v+(b[k]-v)*da/(da-db)) as AuxPoint);
+    if(ia!==ib)out.push([a[0]+(b[0]-a[0])*da/(da-db),a[1]+(b[1]-a[1])*da/(da-db),a[2]+(b[2]-a[2])*da/(da-db)]);
   }
   return clean(out);
 }
@@ -64,13 +66,16 @@ function subtract(face:Face,planes:Plane[]):Face[] {
 }
 function projectedPlanes(face:Face):Plane[] {
   const signed=face.reduce((n,a,i)=>{const b=face[(i+1)%face.length];return n+a[1]*b[2]-a[2]*b[1];},0);
-  return face.map((a,i)=>{const b=face[(i+1)%face.length];
-    return(p:Readonly<AuxPoint>)=>Math.sign(signed)*((b[1]-a[1])*(p[2]-a[2])-(b[2]-a[2])*(p[1]-a[1]));});
+  // (boot-261) each edge's terms taken once: the same values the expression read from the points every call
+  const sign=Math.sign(signed);
+  return face.map((a,i)=>{const b=face[(i+1)%face.length],ey=b[1]-a[1],ez=b[2]-a[2],ay=a[1],az=a[2];
+    return(p:Readonly<AuxPoint>)=>sign*(ey*(p[2]-az)-ez*(p[1]-ay));});
 }
 function outerDepth(face:Face,side:number):Plane {
   const[a,b,c]=face,u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
   const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
-  return p=>side*(a[0]-(n[1]*(p[1]-a[1])+n[2]*(p[2]-a[2]))/n[0]-p[0]);
+  const ax=a[0],ay=a[1],az=a[2],nx=n[0],ny=n[1],nz=n[2];
+  return p=>side*(ax-(ny*(p[1]-ay)+nz*(p[2]-az))/nx-p[0]);
 }
 function overlaps(a:Bounds,b:Bounds,margin=1e-10):boolean {
   return a[0]<b[1]-margin&&a[1]>b[0]+margin&&a[2]<b[3]-margin&&a[3]>b[2]+margin;
@@ -145,7 +150,7 @@ function coveredInterval(a:Readonly<AuxPoint>,b:Readonly<AuxPoint>,cover:Contour
     if(db<0)high=Math.min(high,da/(da-db));
   }
   if(high-low<1e-10)return[];
-  const mid=a.map((v,k)=>v+(b[k]-v)*(low+high)/2) as AuxPoint;
+  const mid:AuxPoint=[a[0]+(b[0]-a[0])*(low+high)/2,a[1]+(b[1]-a[1])*(low+high)/2,a[2]+(b[2]-a[2])*(low+high)/2];
   return depth(mid)>1e-10?[low,high]:[];
 }
 function cutEdgeSegments(face:Face,covers:Contour[]):Face {
@@ -162,7 +167,7 @@ function cutEdgeSegments(face:Face,covers:Contour[]):Face {
     for(const interval of united)values.push(...interval);
     values.sort((x,y)=>x-y);
     return values.filter((n,j)=>n<1-1e-10&&(j===0||n-values[j-1]>1e-10))
-      .map(t=>a.map((v,k)=>v+(b[k]-v)*t) as AuxPoint);
+      .map((t):AuxPoint=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);
   });
 }
 function exposedPlate(template:ArmorPlate,face:Face,covers:Contour[],side:number,group:string,index:number):ArmorPlate {
@@ -175,20 +180,47 @@ function exposedPlate(template:ArmorPlate,face:Face,covers:Contour[],side:number
   });
   return openEdges.length?{...plate,openEdges}:plate;
 }
+/**
+ * (2026-10-27, boot-261) The contours that can be a contour's covers, by strips of the course's length: each contour is
+ * listed in every strip its z extent comes within a micron of, so any pair the cover test (bounds within 1e-10) passes
+ * shares a strip. The test still decides, in index order; a non-finite or vast extent lists every contour. The Type 10's
+ * course tested all 796 x 796 pairs, a third of the fleet chunk's armour evaluation.
+ */
+function coverCandidates(contours:Contour[]):(i:number)=>number[] {
+  const strip=.25,pad=1e-6,strips=new Map<number,number[]>();
+  const span=(b:Bounds):[number,number]=>[Math.floor((b[2]-pad)/strip),Math.floor((b[3]+pad)/strip)];
+  const every=contours.map((_,j)=>j);
+  for(const c of contours){
+    const[lo,hi]=span(c.bounds);
+    if(!Number.isFinite(lo)||!Number.isFinite(hi)||hi-lo>4096)return()=>every;
+  }
+  contours.forEach((c,j)=>{
+    const[lo,hi]=span(c.bounds);
+    for(let k=lo;k<=hi;k++){let list=strips.get(k);if(!list)strips.set(k,list=[]);list.push(j);}
+  });
+  const seen=new Int32Array(contours.length).fill(-1);
+  return i=>{
+    const[lo,hi]=span(contours[i].bounds),found:number[]=[];
+    for(let k=lo;k<=hi;k++)for(const j of strips.get(k)??[])if(seen[j]!==i){seen[j]=i;found.push(j);}
+    return found.sort((a,b)=>a-b);
+  };
+}
 /** Only the transverse exposure is partitioned. No edge is inset, no source
  * opening is filled, and the renderer is neither imported nor changed. */
 export function exposedAuxiliaryCourse(input:ArmorPlate[],side:number,group:string):ArmorPlate[] {
   const facts=contourCache(side),plates=coalesce(input,side,facts);
-  const contours=plates.map(p=>facts(p.verts as Face)),out:ArmorPlate[]=[];
+  const contours=plates.map(p=>facts(p.verts as Face)),candidates=coverCandidates(contours),out:ArmorPlate[]=[];
   for(let i=0;i<plates.length;i++){
     const current=contours[i];let faces=[current.face];
     // Numeric projected interval culling retains original candidate order.
     // Cached planes use the exact previous arithmetic; no contour rounding.
-    const covers=contours.filter((c,j)=>j!==i&&plates[i].surfaceGroup!==plates[j].surfaceGroup
-      &&overlaps(current.bounds,c.bounds,-1e-10));
+    const covers=candidates(i).filter(j=>j!==i&&plates[i].surfaceGroup!==plates[j].surfaceGroup
+      &&overlaps(current.bounds,contours[j].bounds,-1e-10)).map(j=>contours[j]);
     for(const cover of covers){
       if(!faces.length)break;
-      if(!overlaps(current.bounds,cover.bounds)||Math.max(...current.face.map(cover.depth))<=1e-10)continue;
+      if(!overlaps(current.bounds,cover.bounds))continue;
+      let deepest=-Infinity;for(const p of current.face)deepest=Math.max(deepest,cover.depth(p));
+      if(deepest<=1e-10)continue;
       faces=faces.flatMap(face=>overlaps(facts(face).bounds,cover.bounds)?subtract(face,cover.planes):[face]);
     }
     for(const face of mergeFragments(faces,facts))out.push(exposedPlate(plates[i],face,covers,side,group,out.length));

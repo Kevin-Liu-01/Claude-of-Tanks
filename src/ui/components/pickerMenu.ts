@@ -115,15 +115,17 @@ export function placeMenu(
   // its edge and a dossier's picture runs to its sides, so a gap there showed them beside the menu (the 261 critics: zh
   // 900's 自动机枪, the Gallery hero's 7 px strips)
   const inset = span ? 0 : MENU_EDGE;
-  const lo = Math.max(span ? 0 : MENU_EDGE, (bounds.left ?? 0) + inset);
-  const hi = Math.min(view.width, bounds.right ?? view.width) - inset;
+  // (a panel's edges fall between pixels: the menu's box rounds inward, never a pixel past the panel or the window)
+  const lo = Math.ceil(Math.max(span ? 0 : MENU_EDGE, (bounds.left ?? 0) + inset));
+  const hi = Math.floor(Math.min(view.width, bounds.right ?? view.width) - inset);
+  const roomTop = Math.ceil(bounds.top), roomBottom = Math.floor(bounds.bottom);
   const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   const far = inset;
   // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
   const width = span ? hi - lo : Math.min(wide ? MENU_MAX_W : Math.max(MENU_MIN_W, Math.min(MENU_MAX_W, anchor.width), anchor.width), hi - lo);
   const left = span ? lo : Math.max(lo, Math.min(anchor.left, hi - width));
-  const below = bounds.bottom - anchor.bottom - MENU_GAP - far;
-  const aboveRoom = anchor.top - bounds.top - MENU_GAP - far;
+  const below = roomBottom - anchor.bottom - MENU_GAP - far;
+  const aboveRoom = anchor.top - roomTop - MENU_GAP - far;
   const want = Math.min(height, cap);
   const above = below < want && aboveRoom > below;
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));

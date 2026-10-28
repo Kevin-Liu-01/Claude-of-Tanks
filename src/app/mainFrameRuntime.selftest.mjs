@@ -12,7 +12,7 @@ function createFixture({
 } = {}) {
   const calls = [];
   const frameRequests = [];
-  const postFrames = [], simulationFrames = [], fxFrames = [], studioFrames = [];
+  const postFrames = [], simulationFrames = [], fxFrames = [], studioFrames = [], shadowMerges = [];
   const replay = { active: false };
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 1000);
@@ -30,6 +30,7 @@ function createFixture({
   const lighting = lightingPort ?? {
     updateFov: () => calls.push('lighting:fov'),
     setStaticPresentationDormant: (value) => calls.push(`lighting:dormant:${value}`),
+    setVehicleShadowMerge: (on) => shadowMerges.push(on),
     update: (force) => calls.push(`lighting:update:${force}`),
   };
   const runtime = createMainFrameRuntime({
@@ -128,6 +129,7 @@ function createFixture({
     simulationFrames,
     fxFrames,
     studioFrames,
+    shadowMerges,
     replay,
     camera,
     game,
@@ -163,6 +165,9 @@ for (const shotMode of [false, true]) {
     'sustained low FPS keeps raw overload evidence instead of flattening it to 100ms');
   frame.runtime.tick(1640);
   assert.deepEqual(frame.postFrames.at(-1), { dt: .02, wallDt: .02 }, 'ordinary cadence is unchanged');
+  // (battle-spikes-253) a live battle frame turns the near hulls' merged shadow casters on; a shot frame leaves them
+  if (!shotMode) assert.ok(frame.shadowMerges.length > 0 && frame.shadowMerges.every((on) => on === true), 'a live battle frame merges');
+  else assert.equal(frame.shadowMerges.length, 0, 'a shot frame leaves the merge as it was');
 }
 
 const shot = createFixture({ shotMode: true });
@@ -186,6 +191,7 @@ assert.deepEqual(shot.calls, [
     const sampled = {
       updateFov: () => lighting.updateFov(),
       setStaticPresentationDormant: (on) => lighting.setStaticPresentationDormant(on),
+      setVehicleShadowMerge: (on) => lighting.setVehicleShadowMerge(on),
       update: () => lighting.update(false, 1 / 60),
     };
     sampled.update();
