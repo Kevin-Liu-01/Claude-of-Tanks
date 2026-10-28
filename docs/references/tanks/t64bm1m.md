@@ -1,7 +1,8 @@
 # T-64BM1M and the true T-64 base — run packet
 
 Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "New tank from this GLB; name it X" for
-`t64bm1m`, then two more new tanks on its base (`t64bv`, `t64b1v_2022`); `t64bv1` and `t64bv_donbas` stay as on main.
+`t64bm1m`, then three more new tanks on its base (`t64bv`, `t64b1v_2022`, and the Polish concept `pt64_tur`);
+`t64bv1` and `t64bv_donbas` stay as on main.
 
 ## Current status
 
@@ -11,7 +12,7 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
   not based onn t64s rn"; to this lane, on the release-233 `profiles/t64bvX.ts` (a0711ff866): "that true t64 build is bad
   and i dont wnat u tgo use it" (not used: no code, stations or wheel donor); on a first flat raster of the rebuilt
   T-64BV1: "what is this? this looks really bad"; then "i also liked our old t64s that are on main and deployed rn so
-  make these new tanks were making fully nnew tnaks".
+  make these new tanks were making fully nnew tnaks"; then "nice yeah lets create a polish t64 variannnt and add it too".
 - Consequence: `t64bv1` (T-64BV1) and `t64bv_donbas` (T-64BV mod. 2017) stay exactly as on main (every file of theirs is
   byte-identical to 7d045a7588). The true T-64s are three NEW tanks on one first-party base, named for real variants
   (MilitaryLand, T-64 variants): `t64bm1m` T-64BM1M (Ukraine), `t64bv` T-64BV (USSR), `t64b1v_2022` T-64B1V mod. 2022
@@ -33,6 +34,15 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
 | `t64bv` | T-64BV (Soviet, T-64B line, Kontakt-1) | dense K-1 (five glacis courses, a 3 x 12 skirt grid a side, an upright collar and tilted tier round the turret, a roof row), blade, 902B on the left, L-2G, rear box with OPVT, sensor, rack and pack, two drums on the rear plate | Alan Wilson, "T-64BV - Patriot Museum, Kubinka" (CC BY-SA 2.0); 42manako T-64BV1 print |
 | `t64b1v_2022` | T-64B1V mod. 2022 (Ukraine): "updated radio, navigation and communication systems, identifiable by a gunner shield and slat armor" (MilitaryLand) | the same dense K-1, no IR light, the night-sight box, digital radio whips and satnav puck, a shielded NSVT, slat screens round the turret rear and the engine compartment | MilitaryLand; VoidWanderer, "T-64BV mod 2017, Kyiv 2021, 16" (CC BY-SA 4.0); the T-64BV Donbas print |
 
+- `pt64_tur` PT-64 Tur (Poland, concept): Poland never fielded the T-64 (the USSR kept it for its own units), so the Tur
+  is a first-party what-if, a T-64B1 through Bumar-Łabędy's PT-91 Twardy programme, in the fleet's Polish "Krata"
+  language (`polandFrontEra.ts`, the Zubr family): framed ERAWA-2 grids (cassettes 3 cm down in 9 cm welded frames) on
+  the glacis (two 4 x 4 fields), two welded cheek boxes a side (3 x 2 each, 17-80 deg, the pair a faceted prow) and the
+  leading third of each skirt (2 x 5); the Tellur 81 mm launchers (the PT-91's 2 x 12, one 2 x 6 bank a side), four
+  Obra-3 heads, a Drawa-T thermal head, the remote 12.7 mm (WKM-B, Poland's NSV development), a rear stowage box, drums
+  and the log; the 5TDFM (850 hp, the T-64BM Bulat's), 45.5 t, Mesko's Pronit APFSDS-T; the Polish three-tone the Zubr
+  wears. Owner-authored design record `docs/references/concepts/pt64-tur-20261027.json` (no source print; the release
+  gate reads it through `tools/first-party-concept-policy.mjs`).
 - Preserved: `t64bv1`, `t64bv_donbas` (main's T-72B3-study builds, their rows, icons, hero cards and receipts).
 
 ## Source and comparison contract
@@ -152,7 +162,13 @@ Tech tree (`techTree.selftest` pin e04449d58efb4a62, 13 trees, 224 vehicles): th
 placement each. Russia: `t64bv` tier 3, `t80` line, lane 8, parent `t62_1975` (a sibling of the T-64BV1: any lane under
 `t64bv1` sits on its connector to the T-80). Ukraine: `t64bv_donbas` -> `t64b1v_2022` (lane 1) -> `t64bm1m` (lane 0),
 the deepest modernisation last (lanes 3+ sit on the Donbas -> M2A3 run). FAMILY_UPGRADES: `t64bv1` -> `t64bv`,
-`t64bv1` -> `t64bm1m`, `t64bv_donbas` -> `t64b1v_2022`.
+`t64bv1` -> `t64bm1m`, `t64bv_donbas` -> `t64b1v_2022`. The PT-64 Tur scores 0.570 (IV; PT-91M 0.577, mod. 2017
+0.572), Poland tree `pt91_side` lane 1 under the T-72M1 Jaguar (lanes 1 and 4+ draw cleanly), the mod. 2017's tier-IV
+footing; Main told before READY.
+
+Fairness (`.qa-dev/t64bm1m/fairness.mjs`, the balance-range round robin against every shown-tier gun tank, six seeds,
+120 m): T-64BM1M 0.639 (10/12 inside 0.2-0.8; Leopard 2A3 1.0, Chieftain Mk 10 0.917), T-64BV 0.596 at III (9/13;
+MBT-70 0, Centurion 5/2 0.833, T-72B 1987 1.0, AMX-40 0.833), T-64B1V mod. 2022 0.667 (10/12).
 
 ## Round log
 
@@ -174,3 +190,15 @@ the deepest modernisation last (lanes 3+ sit on the Donbas -> M2A3 run). FAMILY_
   to edge, 0.36-0.46 m deep), the crown slab contiguous, the glacis slab full width (headlights to the bow mudguards),
   the basket a low flat-bar box 0.40 m out, the 902B rows on the last block; the Kontakt-1 glacis in four stepped
   shingle courses edge to edge with the last over the nose; the NSVT's housing encloses its column.
+- PT-64 Tur T1/T2: blind critic 3 (6/10: reads as a T-64, the framed glacis "the right Polish idea"): the turret front
+  too wide (2.9 m), the frame bars read as engraved lines, the smoke "a loose heap", three warning heads, the skirt grid
+  short of the fender. T3: the flank box ends at 80 deg and 0.12 m deep, bars 9 cm proud over cassettes 6 cm, one
+  bracketed 2 x 6 Tellur bank a side splayed out of the bore and raised 18 deg, four Obra-3 heads, the skirt grid from
+  the skirt's front edge. Its "bright strip between fender and skirt" is the flat rasterizer's back-face cull (the
+  shaded studio renders of the same base show the shelf closed).
+- Depression sweeps (first pass, 18:11-19:35, all three agree, so the base): -3.84 deg straight ahead (the driver's
+  TNPO block stood 10.5 cm proud right under the bore), -0.7 to -1.8 at 22-32 deg (the mudguard headlights on the roll's
+  crown), +2.7 over the rear quarter (the right shelf's fuel tanks and the left's SPTA boxes, 0.19-0.21 m: kept, the
+  T-64's own rear-quarter stop). Fixed in the base: the TNPO head 5 cm over the plate, the splash board 9 cm, the
+  headlights 35 deg down the mudguard roll. Probe after the fix (`.qa-dev/t64bm1m/gunprobe.mjs`, -6 deg): 26.3 mm at
+  yaw 0, 35.9 mm at 5-15; at 20-35 the bow mudguard's crown meets the jacket (a front-corner stop, kept). Re-swept.

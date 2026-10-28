@@ -104,13 +104,14 @@ export function t64RubberSkirt(P: TankBuilderPort, side: number, fromZ = -3.05, 
 }
 
 function glacisFittings(P: TankBuilderPort, headlights: 'glacis' | 'mudguard'): void {
-  // The V splash board ahead of the driver's hatch, let into the plate along its foot.
-  for (const side of [-1, 1]) P.addEquipment('hullDetail', box(.56, .12, .022), side * .25, t64GlacisY(1.92) + .055, 1.92, 0, side * .44, 0);
-  // headlight pairs behind guard bars: on the glacis corners, or (under a full-width Kontakt-1 package) on the bow
-  // mudguards' crown
+  // The V splash board ahead of the driver's hatch, let into the plate along its foot, its top 4.5 cm under the gun's
+  // jacket at full depression.
+  for (const side of [-1, 1]) P.addEquipment('hullDetail', box(.56, .09, .022), side * .25, t64GlacisY(1.92) + .04, 1.92, 0, side * .44, 0);
+  // headlight pairs behind guard bars: on the glacis corners, or (under a full-width package) on the bow mudguards'
+  // forward roll, 35 degrees down its turn (on the crown they stood in the gun's path at 22-32 degrees of yaw)
   if (headlights === 'mudguard') {
     for (const side of [-1, 1]) {
-      const x = side * 1.36, z = 2.52, y = H.deckY - .01;
+      const x = side * 1.36, z = 2.48 + .69 * Math.cos(35 * Math.PI / 180), y = .72 + .69 * Math.sin(35 * Math.PI / 180);
       P.snapGroup('t64-headlight', () => {
         P.addEquipment('hullDetail', box(.24, .05, .14), x, y + .025, z);
         for (const dx of [-.06, .06]) P.addEquipment('hullDetail', markVehicleNightLens(cylZ(.045, .08, 18), 'headlight'), x + dx, y + .085, z + .03);
@@ -136,10 +137,11 @@ function glacisFittings(P: TankBuilderPort, headlights: 'glacis' | 'mudguard'): 
 }
 
 function driverStation(P: TankBuilderPort): void {
-  // the driver's hatch on the centreline ahead of the turret and his TNPO block
+  // the driver's hatch on the centreline ahead of the turret and his TNPO block, its head 5 cm over the plate: it sits
+  // under the bore, which keeps its 6 degrees of depression over it
   P.addHatch('hullDetail', cyl(.27, .035, P.q ? 28 : 14), 0, H.deckY + .03, 1.48);
-  P.addEquipment('hullDetail', box(.20, .10, .12), 0, H.deckY + .055, 1.70);
-  P.addModuleVisual('optics', 'hullGlass', box(.15, .04, .012), 0, H.deckY + .07, 1.766);
+  P.addEquipment('hullDetail', box(.20, .05, .12), 0, H.deckY + .025, 1.70);
+  P.addModuleVisual('optics', 'hullGlass', box(.15, .026, .012), 0, H.deckY + .03, 1.766);
 }
 
 function engineDeck(P: TankBuilderPort): void {
