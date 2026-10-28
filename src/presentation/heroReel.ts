@@ -99,11 +99,24 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   const bringOn = (index: number): void => {
     const video = clips[index];
     const previous = current >= 0 ? clips[current] : null;
-    // its first frame is up: a paused clip says so as it plays, one already buffering by playing as its rewind lands
+    // its first frame is up: a paused clip says so as it plays, one already buffering by playing as its rewind lands, and
+    // either one only once it can play through again from there (a rewind drops what it can play: the /home r2 harness
+    // caught a clip coming on at HAVE_METADATA)
     const onFrame = (): void => {
       video.removeEventListener('playing', onFrame);
       video.removeEventListener('seeked', onFrame);
       if (stopped) return;
+      if (video.seeking || !ready(video)) {
+        // whichever comes next: the seek landing (with what it can play already in) or the clip able to play through
+        const retry = (): void => {
+          video.removeEventListener('seeked', retry);
+          video.removeEventListener('canplaythrough', retry);
+          onFrame();
+        };
+        video.addEventListener('seeked', retry);
+        video.addEventListener('canplaythrough', retry);
+        return;
+      }
       video.style.zIndex = String(++layer);
       video.classList.add('is-on');
       video.setAttribute('data-ready', '');

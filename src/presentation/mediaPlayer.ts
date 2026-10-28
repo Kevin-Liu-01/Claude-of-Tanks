@@ -710,18 +710,27 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
     // poster is (owner 2026-10-27: "make em load fast and transition in"): a slow link keeps the still instead of a film
     // that stalls, and the fade from the still never jumps. A viewer's own play shows its first frame. The film carries
     // data-ready once on screen (the loading census's mark).
+    // (a loop already past its first frame rewinds first, once: the seek drops what it can play, so it comes on when it can
+    // play through again from there, never mid-seek: the /home r2 harness caught a clip on at HAVE_METADATA)
     let revealed = false;
+    let rewound = false;
     const reveal = (): void => {
-      if (revealed || video.paused || (mode === 'loop' && video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA)) return;
+      if (revealed || video.paused || video.seeking || (mode === 'loop' && video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA)) return;
+      if (mode === 'loop' && !rewound && video.currentTime > 0.05) {
+        rewound = true;
+        video.currentTime = 0;
+        return;
+      }
       revealed = true;
-      if (mode === 'loop' && video.currentTime > 0.05) video.currentTime = 0;
       video.classList.add('has-frame');
       video.setAttribute('data-ready', '');
     };
     video.addEventListener('playing', reveal);
     video.addEventListener('canplaythrough', reveal);
+    video.addEventListener('seeked', reveal);
     video.addEventListener('emptied', () => {
       revealed = false;
+      rewound = false;
       video.classList.remove('has-frame');
       video.removeAttribute('data-ready');
     });
