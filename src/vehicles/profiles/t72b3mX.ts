@@ -6,8 +6,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
-import {sourceMachineGun} from './sourceMachineGun.ts';
-import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import {T72B3M_X_SOURCE_DATUMS} from '../t72b3mXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addT72B3MSideMounts,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
@@ -277,35 +276,10 @@ function smoke(P:TankBuilderPort):void {
 
 function machineGun(P:TankBuilderPort):void {
   topPart(P,'turretDetail',cylY(.395,.20,32),-.632,2.43,-.24);
-  const yaw=-.25575;
-  topPart(P,'turretDetail',box(.403,.296,.154).rotateY(yaw),-1.17,2.685,.013);
-  topPart(P,'turretDetail',box(.413,.041,.164).rotateY(yaw),-1.17,2.837,.013);
-  const mg=sourceMachineGun(P,YAW),axis=new THREE.Vector3(-.21215,.54465,.81139).normalize();
-  const pivot=new THREE.Vector3(-.75156,2.85947,.10957),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis);
-  mg.add('turretDark',box(.080,.134,.64).applyQuaternion(q),...pivot.toArray());
-  const tip=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),base=new THREE.Vector3(-.8321749,3.0664378,.4178961);
-  // 2026-10-19 (owner float sweep): the Kord stood 0.40 m over the cupola ring on two posts that began beyond its edge,
-  // and the ammunition box beside them touched nothing. A trunnion pin crosses the receiver at the trunnion the station
-  // levels about (30 % of the gun's length from its back, stationFromDrawnGun); the posts rise from inside the ring into
-  // the pin's ends and a stay carries the box.
-  const back=-.32,front=tip.clone().sub(pivot).dot(axis),trunnion=pivot.clone().addScaledVector(axis,back+.3*(front-back));
-  const heading=Math.atan2(axis.x,axis.z),across=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading));
-  const feet=[new THREE.Vector3(-.70,2.50,.10),new THREE.Vector3(-.90,2.50,0)];
-  const ends=[trunnion.clone().addScaledVector(across,.13),trunnion.clone().addScaledVector(across,-.13)];
-  for(let i=0;i<2;i++)topPart(P,'turretDetail',beamBetween(feet[i].toArray(),ends[i].toArray(),.021),0,0,0);
-  const stay=feet[1].clone().lerp(ends[1],(2.70-feet[1].y)/(ends[1].y-feet[1].y));
-  topPart(P,'turretDetail',beamBetween([stay.x-.11,2.70,stay.z],[stay.x+.01,2.70,stay.z],.016),0,0,0);
-  mg.add('turretDark',cylX(.022,.30,14).applyQuaternion(q),...trunnion.toArray());
-  mg.add('turretDark',beamBetween(base.toArray(),tip.clone().addScaledVector(axis,-.030).toArray(),.0198,20),0,0,0);
-  mg.add('turretDetail',beamBetween(base.toArray(),base.clone().addScaledVector(axis,.39).toArray(),.030,20),0,0,0);
-  mg.add('turretDark',beamBetween(tip.clone().addScaledVector(axis,-.030).toArray(),tip.toArray(),.027,20),0,0,0);
-  const group=mg.finish();
-  // The fitting's +Z truthfully follows its elevated firing axis while its
-  // original world-space receiver and barrel remain fixed at the source pose.
-  for(const child of group.children)if(child instanceof THREE.Mesh)child.geometry.applyQuaternion(q.clone().invert());
-  group.quaternion.copy(q);
-  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts); it rests level on its bearing
-  stationFromDrawnGun(group,{name:'t72b3mXRoofKord',caliberMm:12.7});
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's Kord is the fleet's true-scale Kord in a working station (libraryRoofMg.ts), its pintle on the mount
+  // drum's front (top 2.53), in place of the traced posts, stayed box and rods.
+  libraryRoofMg(P,{station:'t72b3mCommanderKordStation',cls:'kord',seat:[-.70-YAW[0],2.53-YAW[1],.05-YAW[2]]});
 }
 
 function mainGun(P:TankBuilderPort,chinLift=0):void {

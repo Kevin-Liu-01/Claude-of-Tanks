@@ -37,6 +37,7 @@ import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addShtoraEyes } from './shtora.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY=(radius:number,height:number,segments=24): THREE.BufferGeometry => KIT.cylY(radius,radius,height,segments);
@@ -777,12 +778,10 @@ function classicVCradle(P: TankBuilderPort): void {
   const d=V;
   const weapon=sourceMachineGun(P,d.yaw,{name:'vladimirRemoteNSVT',caliberMm:12.7,
     yaw:[-.6353,2.5078,.2909],pivot:[-.6125,2.66,.294],muzzle:[-.6125,2.7254,1.83385]});
-  weapon.add('turretDark',box(.0704,.1118,.5967),-.6125,2.7015,.5357);
-  weapon.add('turretDark',cylZ(.0225,1.052,20),-.6125,2.7254,1.30785);
-  weapon.add('turretDark',cylZ(.0177,.6694,16),-.6125,2.672,.7892+ .6694/2);
-  weapon.add('turretDetail',box(.0454,.1046,.0162),-.6125,2.755,1.4727);
-  weapon.add('turretDetail',box(.1012,.0343,.1937),-.6244,2.7481,.3273);
-  weapon.add('turretDetail',box(.1184,.0373,.2197),-.6248,2.776,.5527);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // remote NSVT is the fleet's NSVT construction (libraryRoofMg.ts libraryStationGun) on the station's bore and muzzle,
+  // in place of the traced receiver block, rods and covers; its ammunition boxes stand on its right.
+  libraryStationGun(weapon,{cls:'nsvt',x:-.6125,boreY:2.7254,pivotZ:.294,muzzleZ:1.83385,feed:'right'});
   // 2026-10-19 (owner float sweep): the gun stood clear of its yoke; a trunnion pin through the pivot carries it in the
   // yoke cheeks, the cradle legs run forward to the face plate and back to the ammunition box, and the face plate sits
   // on the base.
@@ -806,10 +805,10 @@ function classicACradle(P: TankBuilderPort): void {
   const d=A;
   const weapon=sourceMachineGun(P,d.yaw,{name:'t90aRemoteNSVT',caliberMm:12.7,
     yaw:[.631,2.304,-.021],pivot:[.632,2.595,.275],muzzle:[.632,2.656,1.527]});
-  weapon.add('turretDark',box(.109,.134,.482),.632,2.657,.275);
-  weapon.add('turretDark',cylZ(.014,1.011,16),.632,2.656,1.0215);
-  weapon.add('turretDark',cylZ(.011,.65,12),.632,2.607,.806);
-  weapon.add('turretDetail',box(.035,.045,.052),.632,2.701,1.415);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // remote NSVT is the fleet's NSVT construction (libraryRoofMg.ts libraryStationGun) on the station's bore and muzzle,
+  // in place of the traced receiver block and rods; its two ammunition cases stand on its left.
+  libraryStationGun(weapon,{cls:'nsvt',x:.632,boreY:2.656,pivotZ:.275,muzzleZ:1.527,feed:'left'});
   // Two physical ammunition cases flank the open receiver cradle. Their
   // dimensions come from independent source equipment islands, not a mask.
   weapon.add('turretDetail',box(.414,.244,.171),.917,2.547,.303);
@@ -1305,12 +1304,12 @@ function modernMRws(P: TankBuilderPort): void {
   onTurret(P,d,'turretDetail',cylY(.309,.291,28).scale(1,1,1.342),x,2.059,z);
   addT90MRwsHousing(P);
   station.mark('yaw');
-  weapon.add('turretDark',box(.112,.106,.48),-.154,2.759,-1.17);
-  weapon.add('turretDark',cylZ(.023,.798,16),-.154,2.763,-.531);
-  weapon.add('turretDark',cylZ(.012,.72,12),-.154,2.728,-.57);
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // remote Kord is the fleet's Kord construction (libraryRoofMg.ts libraryStationGun) on the station's bore and muzzle,
+  // in place of the traced receiver block, rods and the cover box that hid them; its shield and brow plate stay.
+  libraryStationGun(weapon,{cls:'kord',x:-.154,boreY:2.763,pivotZ:-1.17,muzzleZ:-.132});
   weapon.add('turretDetail',box(.246,.477,.035),-.145,2.59,-1.135);
   weapon.add('turretDetail',box(.246,.030,.29),-.145,2.814,-1.007,.15);
-  weapon.add('turretDetail',box(.118,.122,.714),-.145,2.752,-1.111);
   station.attachPitch(weapon.finish());
 }
 

@@ -10,6 +10,7 @@ import {boxSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import { libraryRoofMg } from './libraryRoofMg.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import {addT72B3Stowage,addT72B3MgMount,addT72B3MgBracket,addT72B3Optics} from './t72b3XEquipment.ts';
 import {addT72B3RearDrums} from './t72b3XRearDrums.ts';
@@ -349,6 +350,14 @@ function smoke(P:TankBuilderPort):void {
 }
 
 function machineGun(P:TankBuilderPort):void {
+  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
+  // commander's NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts) on the cupola's rear rim,
+  // pointing aft as the source's gun lies, in place of the traced fork, body and bracket. The T-64BV mod. 2017 and
+  // T-64BV1 (t64bvK1.ts, the T-64 lane's: owner 2026-10-27) keep their build as it was.
+  if(!P.spec.id.startsWith('t64')){
+    libraryRoofMg(P,{station:'t72b3CommanderNsvtStation',cls:'nsvt',seat:[-.62-YAW[0],2.45-YAW[1],-.70-YAW[2]],yaw:Math.PI});
+    return;
+  }
   const mg=sourceMachineGun(P,YAW);
   addT72B3MgMount(mg);
   addT72B3MachineGunBody(mg);

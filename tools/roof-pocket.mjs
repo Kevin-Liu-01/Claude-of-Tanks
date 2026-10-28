@@ -30,6 +30,21 @@ const RUNNING_GEAR = /track|wheel|sprocket|idler|roller|bogie|suspension|gear|tr
 /** Per owner: the turret's false roofs need no floor (a slot can run to its base), and the air within 12 cm over its ring
  * plane is its seat on the hull; the hull's need a floor. */
 export const OWNER_RULES = Object.freeze({ turret: { floored: false, minY: 0.12 }, hull: { floored: true } });
+/** A raised turret roof stands this far over the turret's frame (its ring plane); the Leclerc's lowest false roof was 0.44. */
+export const RAISED_ROOF_Y = 0.25;
+/** The shrink-only ledger's classes (tools/roof-pocket-census.mjs --ledger): turret raised roofs (the Leclerc class), turret
+ * base overhangs (bustle and ring undersides, measured without the hull) and the hull. */
+export const POCKET_CLASSES = Object.freeze(['turretRaisedCm2', 'turretBaseCm2', 'hullCm2']);
+
+/** One tank's pocket plan area per class (cm2) from its census pockets ({ owner, areaM2, roof }). */
+export function pocketClasses(found) {
+  const sum = (keep) => Math.round(found.filter(keep).reduce((t, p) => t + p.areaM2 * 1e4, 0));
+  return {
+    turretRaisedCm2: sum((p) => p.owner === 'turret' && p.roof[0] >= RAISED_ROOF_Y),
+    turretBaseCm2: sum((p) => p.owner === 'turret' && p.roof[0] < RAISED_ROOF_Y),
+    hullCm2: sum((p) => p.owner === 'hull'),
+  };
+}
 
 /** The two rigid owners' triangle soups in their own frames, { tri, body }: the turret (gun at rest) and the hull without
  * its running gear, the armour body's own mesh (named for its owner: the armour-paint bucket) first, `body` triangles. */
@@ -54,7 +69,7 @@ export function ownerSoups(tank) {
 }
 
 /** The exposed pockets in one soup (Float64Array, 9 per triangle), largest plan area first. */
-export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity } = {}) {
+export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity, cells: withCells = false } = {}) {
   const n = tri.length / 9;
   if (!n) return [];
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -173,20 +188,19 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     sights.push([Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)]);
   }
   const seen = new Uint8Array(NX * NY * NZ), stepM = voxel * 0.5;
-  for (let p = 0; p < pocket.length; p++) {
-    if (!pocket[p] || !outside[p]) continue;
+  const clearAlong = (p, [dx, dy, dz]) => {
     const i0 = Math.floor(p / (NY * NZ)), j0 = Math.floor(p / NZ) % NY, k0 = p % NZ;
     const x0 = cx(i0), y0 = lo[1] + (j0 + 0.5) * voxel, z0 = cz(k0);
-    for (const [dx, dy, dz] of sights) {
-      let clear = true;
-      for (let t = stepM; ; t += stepM) {
-        const i = Math.floor((x0 + dx * t - lo[0]) / voxel), j = Math.floor((y0 + dy * t - lo[1]) / voxel), k = Math.floor((z0 + dz * t - lo[2]) / voxel);
-        if (j < baseCells) { clear = false; break; }                             // down through the seat: the hull hides it
-        if (i < 0 || j < 0 || k < 0 || i >= NX || j >= NY || k >= NZ) break;
-        if (solid[idx(i, j, k)]) { clear = false; break; }
-      }
-      if (clear) { seen[p] = 1; break; }
+    for (let t = stepM; ; t += stepM) {
+      const i = Math.floor((x0 + dx * t - lo[0]) / voxel), j = Math.floor((y0 + dy * t - lo[1]) / voxel), k = Math.floor((z0 + dz * t - lo[2]) / voxel);
+      if (j < baseCells) return false;                                          // down through the seat: the hull hides it
+      if (i < 0 || j < 0 || k < 0 || i >= NX || j >= NY || k >= NZ) return true;
+      if (solid[idx(i, j, k)]) return false;
     }
+  };
+  for (let p = 0; p < pocket.length; p++) {
+    if (!pocket[p] || !outside[p]) continue;
+    for (const dir of sights) if (clearAlong(p, dir)) { seen[p] = 1; break; }
   }
   // connected seen pockets: plan area, volume, mouth (faces onto outside non-pocket air) and depth from the mouth
   const comp = new Int32Array(NX * NY * NZ).fill(-1), pockets = [];
@@ -229,9 +243,22 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
       depth = Math.max(depth, dist.get(p) ?? 0);
       roofLo = Math.min(roofLo, roofY[p]); roofHi = Math.max(roofHi, roofY[p]);
     }
+    // its census camera: the typical direction that sees the most of it (a sample of up to 400 cells), toward the camera
+    const sample = cells.filter((_, h) => h % Math.ceil(cells.length / 400) === 0);
+    let sight = sights[0], seenFrac = -1;
+    for (const dir of sights) {
+      const f = sample.reduce((t, p) => t + (clearAlong(p, dir) ? 1 : 0), 0) / sample.length;
+      if (f > seenFrac + 1e-9) { sight = dir; seenFrac = f; }
+    }
     pockets.push({
       areaM2: columns.size * voxel * voxel, volumeL: cells.length * voxel ** 3 * 1000, mouthCells: frontier.length ? [...dist.values()].filter((d) => d === 0).length : 0,
       depthM: depth * voxel, box: box.map((v) => +v.toFixed(3)), roof: [+roofLo.toFixed(3), +roofHi.toFixed(3)],
+      sight: sight.map((v) => +v.toFixed(4)), seenFrac: +seenFrac.toFixed(3),
+      // with `cells`, the pocket's air cell centres (x, y, z flat, at most 30000 cells, evenly thinned), for probes
+      ...(withCells ? { cells: cells.filter((_, h) => h % Math.ceil(cells.length / 30000) === 0).flatMap((p) => {
+        const i = Math.floor(p / (NY * NZ)), j = Math.floor(p / NZ) % NY, k = p % NZ;
+        return [+cx(i).toFixed(3), +(lo[1] + (j + 0.5) * voxel).toFixed(3), +cz(k).toFixed(3)];
+      }) } : {}),
     });
   }
   return pockets.filter((p) => all || (p.areaM2 >= POCKET_MIN_AREA_M2 && p.depthM >= POCKET_MIN_DEPTH_M))
