@@ -95,6 +95,11 @@ const CSS = `
   transition:transform var(--cot-motion-slow) var(--cot-ease-out),
     opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-trans.lit .core{transform:translateY(0);opacity:1;}
+/* the scrim is lightest at the centre, where the words stand: a soft pool of the scene colour under them keeps the
+   small amber kicker legible over snow, fire or light camouflage (its children stack above it in order) */
+.cot-trans .core::before{content:'';position:absolute;inset:-40px -120px;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in oklab,var(--surface-scene) 62%,transparent) 55%,transparent);}
+.cot-trans .core>*{position:relative;}
 .cot-trans .mark{width:46px;height:46px;object-fit:contain;
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.7));}
 .cot-trans .kick{margin-top:16px;font-family:${FONT_COND};font-size:11px;font-weight:700;

@@ -1,6 +1,10 @@
 @import './battleHudLayout.css';
 
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
+/* zh-CN sets no tracking on Chinese (src/ui/typeFaces.ts), so no indent either. Every game indent balances a centred
+   label's trailing tracking; with the tracking gone it pushed the label half an indent right of its axis (the
+   transition overlay's kicker and title, 264). An important declaration in the base layer outranks every surface's. */
+@layer base{:lang(zh-CN){text-indent:0!important}}
 @layer surfaces{
 :root{
   --cot-edge:clamp(10px,1.7vw,28px);
