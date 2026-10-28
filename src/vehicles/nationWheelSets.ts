@@ -126,8 +126,8 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet cast five-spoke disc (patton.ts); owner 2026-09-22: the Sabra takes it, and it fits the Patton-era USA hulls better than the Abrams disc.' }),
   // 262: the T-54/T-55 family's open five-spoke "starfish" wheel; consumed through WHEEL_STANDARD_EXCEPTIONS while
   // T54_STARFISH_WHEELS holds (no self ids, so both hulls draw it through the one standard path)
-  type59: Object.freeze({ donor: 'type59', self: [], pattern: 'cast-five-spoke', construction: 't54-starfish-spoke',
-    note: 'The T-54/T-55 family five-spoke cast wheel on its thick tyre (t54Family.ts), the period exception the Type 59 and the T-55A draw.' }),
+  type59: Object.freeze({ donor: 'type59', self: [], pattern: 'christie-six', construction: 't54-starfish-spoke',
+    note: 'The T-54/T-55 family cast dished wheel with its windows between the arms, on its thick tyre (t54Family.ts), the period exception the Type 59 and the T-55A draw.' }),
 });
 
 export const WHEEL_DONOR_IDS = Object.freeze(Object.keys(WHEEL_DONORS) as WheelDonorId[]);

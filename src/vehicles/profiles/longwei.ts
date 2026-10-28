@@ -42,19 +42,19 @@ const GUN_LENGTH = 6.454;
 const ROOF_Y = 0.78;
 /** The arrowhead cheeks: their throat walls stand at |x| 0.30 and run 0.85 m back; the front line sweeps 37 degrees off
  * square from the tip at z 1.55 (0.41 m ahead of the mantlet's face) to the outer corner, flush with the side modules'
- * faces (|x| 1.57). The 99A's beak (262 critic rounds): the face stands from just over the deck to 0.40 m, raked back
- * 0.22 m, and the top climbs from that edge to the roof line over 0.60 m. The bottom clears the roof's front fittings
- * by 2.4 cm as the outer corners traverse over them. */
+ * faces (|x| 1.57). The 99A's arrowhead blocks (262 critic rounds): a tall, near-vertical face from just over the deck
+ * to 0.54 m (6 cm of lean) under a short sloped top edge that reaches the roof line 0.26 m back. The bottom clears the
+ * roof's front fittings by 2.4 cm as the outer corners traverse over them. */
 const THROAT_X = 0.30;
 const CHEEK_OUTER_X = 1.57;
 const CHEEK_TIP_Z = 1.55;
 const CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
 const CHEEK_DEPTH = 0.85;
-/** The top face reaches the roof line 0.60 m behind the front edge. */
-const CHEEK_TOP_RUN = 0.60;
-const CHEEK_LEAN = 0.22;
+/** The top face reaches the roof line 0.26 m behind the front edge. */
+const CHEEK_TOP_RUN = 0.26;
+const CHEEK_LEAN = 0.06;
 const CHEEK_BOTTOM_Y = 0.045;
-const CHEEK_FRONT_TOP_Y = 0.40;
+const CHEEK_FRONT_TOP_Y = 0.54;
 /** The brow over the gun throat: its underside clears the mantlet's top corner at full elevation. */
 const BROW_UNDER_Y = 0.70;
 const MANTLET_HALF_W = 0.25;
@@ -324,7 +324,8 @@ function addSkirts(P: TankBuilderPort): void {
       const z0 = rear + gap / 2, z1 = front - gap / 2;
       // the lower edge reaches near the hubs (the 99A's), scalloped up over each wheel's middle; the bow panel's nose
       // rakes up from that edge to 0.98 m over its last 0.45 m
-      const scallop = (z: number): number => SKIRT_LOW_Y + 0.12 * Math.sin(Math.PI * (z - z0) / (z1 - z0));
+      // angular notches (the 99A's), not round arches
+      const scallop = (z: number): number => SKIRT_LOW_Y + 0.12 * (1 - Math.abs(2 * (z - z0) / (z1 - z0) - 1));
       const bottom = (z: number): number => {
         if (i === 0 && z > 2.85) return scallop(2.85) + (z - 2.85) / (z1 - 2.85) * (0.98 - scallop(2.85));
         return scallop(z);
@@ -417,6 +418,9 @@ function addTurretCore(P: TankBuilderPort): void {
   P.add('turret', KIT.cylY(1.08, 1.12, 0.13, P.q ? 32 : 20), 0, -0.025, 0);
   // the brow over the gun throat, from the core's front to the cheeks' rear roots
   P.add('turret', KIT.box(THROAT_X * 2 + 0.04, ROOF_Y - BROW_UNDER_Y, 0.50), 0, (ROOF_Y + BROW_UNDER_Y) / 2, CORE_FRONT_Z + 0.20);
+  // the throat's floor between the wedges under the mantlet (critic round 3: the gap read as a hole into the turret);
+  // its top 1.3 cm under the mantlet's lowest corner at full depression
+  P.add('turret', KIT.box(THROAT_X * 2 + 0.02, 0.05, CHEEK_TIP_Z - CORE_FRONT_Z), 0, 0.005, (CHEEK_TIP_Z + CORE_FRONT_Z) / 2);
 }
 
 /** One cheek wedge's section at |x| = a: its front line runs from the throat tip (z 1.55 at |x| 0.30) back to 0.72 at
@@ -454,8 +458,8 @@ function addCheekWedges(P: TankBuilderPort): void {
     const n = cheekFaceNormal(sign), rotation = faceEuler(n), thick = 0.065;
     // two large wedge-shaped dual-reactive modules a face (the 99A's), not a tile grid
     for (const a of [0.64, 1.24]) {
-      const c = cheekFacePoint(sign, a, 0.225).addScaledVector(n, thick / 2 - 0.006);
-      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.54, thick, 0.32], rotation);
+      const c = cheekFacePoint(sign, a, 0.29).addScaledVector(n, thick / 2 - 0.006);
+      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.54, thick, 0.40], rotation);
     }
     // the wedge's joint with its side module: a dark seam down the outer corner's rear edge
     P.add('turretDark', KIT.box(0.006, ROOF_Y - 0.02 - CHEEK_BOTTOM_Y, 0.014), sign * (CHEEK_OUTER_X + 0.003),
@@ -648,14 +652,14 @@ function addTurretRoof(P: TankBuilderPort): void {
   serviceCase(P, parts, 0.34, -1.30, 0.38, 0.18, 0.26);
   serviceCable(P, parts, [[0.34, -1.43], [0.86, -1.50], [0.86, -2.22], [0.92, -2.28]], false);
   serviceCable(P, parts, [[0.20, -1.43], [-0.86, -1.50], [-0.86, -2.22], [-0.92, -2.28]], false);
-  // five-tube smoke dischargers on each cheek wedge's outer face (the 99A's, beside the star), their row running
-  // fore and aft along the face, fanned forward, up and out
-  for (const side of [-1, 1]) {
+  // the smoke dischargers on each cheek wedge's outer face (the 99A's stacked cluster beside the star): two three-tube
+  // banks, one over the other, fanned forward, up and out
+  for (const side of [-1, 1]) for (const [y, k] of [[0.26, 0], [0.44, 1]] as const) {
     const bank = FITTINGS.smokeBank({
-      mats: P.mats, count: 5, r: 0.040, len: 0.25, spacing: 0.085,
-      splay: side * 0.38, pitch: -0.40, arc: 0.40, seed: 23320 + (side > 0 ? 1 : 0),
+      mats: P.mats, count: 3, r: 0.040, len: 0.25, spacing: 0.085,
+      splay: side * 0.30, pitch: -0.40, arc: 0.30, seed: 23320 + (side > 0 ? 1 : 0) + k * 2,
     });
-    bank.position.set(side * (CHEEK_OUTER_X + 0.06), 0.42, 0.16);
+    bank.position.set(side * (CHEEK_OUTER_X + 0.06), y, 0.14);
     bank.rotation.set(0, side * 1.05, 0);
     P.turretG.add(bank);
   }
@@ -696,7 +700,7 @@ function buildLongweiTurret(P: TankBuilderPort): void {
     roofLocalY: ROOF_Y, cheekTipZ: CHEEK_TIP_Z, cheekSweepDeg: Math.atan(CHEEK_SWEEP) / D2R,
     widthOverModulesM: 1.57 * 2, lengthM: CHEEK_TIP_Z - (CORE_REAR_Z - 0.41),
     throatHalfWidthM: THROAT_X, mantletHalfWidthM: MANTLET_HALF_W,
-    cheekCassettesPerSide: 2, radarFaces: 4, launchers: 2, smokePerSide: 5,
+    cheekCassettesPerSide: 2, radarFaces: 4, launchers: 2, smokePerSide: 6,
     commanderSide: 'right', gunnerSide: 'left', dazzlerSide: 'left',
     bustleUndersideM: 0.34, legacyVtDerivativeRetired: true, terracedFrontRetired: true,
   });

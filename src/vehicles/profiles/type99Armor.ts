@@ -360,9 +360,9 @@ function type96BFrameArmor(): ArmorEnvelope {
 // the roof line (0.76) 0.40 m behind the front edge.
 const LONGWEI_THROAT_X = 0.30, LONGWEI_CHEEK_OUTER_X = 1.57;
 const LONGWEI_CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
-const LONGWEI_CHEEK_LOW_Y = 0.045, LONGWEI_CHEEK_HIGH_Y = 0.40, LONGWEI_CHEEK_LEAN = 0.22, LONGWEI_CHEEK_TOP_RUN = 0.60;
+const LONGWEI_CHEEK_LOW_Y = 0.045, LONGWEI_CHEEK_HIGH_Y = 0.54, LONGWEI_CHEEK_LEAN = 0.06, LONGWEI_CHEEK_TOP_RUN = 0.26;
 const longweiCheekZ = (ax: number): number => 1.55 - (ax - LONGWEI_THROAT_X) * LONGWEI_CHEEK_SWEEP;
-/** A point on the cheek face at |x| ax, height y in 0.045..0.40. */
+/** A point on the cheek face at |x| ax, height y in 0.045..0.54. */
 const longweiCheekFace = (side: number, ax: number, y: number): MutableVec3 =>
   [side * ax, y, longweiCheekZ(ax)
     - LONGWEI_CHEEK_LEAN * (y - LONGWEI_CHEEK_LOW_Y) / (LONGWEI_CHEEK_HIGH_Y - LONGWEI_CHEEK_LOW_Y)];
@@ -393,8 +393,8 @@ function longweiTurretPlates(): ArmorPlate[] {
       side > 0 ? [a, b, c, d] : [b, a, d, c]);
     plates.push(
       armorPlate(`turret_era_${tag}`, 15, quad(
-        out(side, longweiCheekFace(side, 0.37, 0.07), 0.059), out(side, longweiCheekFace(side, 1.51, 0.07), 0.059),
-        out(side, longweiCheekFace(side, 1.51, 0.37), 0.059), out(side, longweiCheekFace(side, 0.37, 0.37), 0.059)),
+        out(side, longweiCheekFace(side, 0.37, 0.09), 0.059), out(side, longweiCheekFace(side, 1.51, 0.09), 0.059),
+        out(side, longweiCheekFace(side, 1.51, 0.49), 0.059), out(side, longweiCheekFace(side, 0.37, 0.49), 0.059)),
       { kind: 'era', era: FY4 }),
       armorPlate(`turret_cheek_${tag}`, 700, quad(
         longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_LOW_Y), longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_LOW_Y),

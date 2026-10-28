@@ -441,8 +441,8 @@ function addCommanderCupola(P: TankBuilderPort): void {
   const lidY = base + 0.18;
   P.addHatch('turret', cylY(0.25, 0.26, 0.04, seg), x, lidY + 0.02, z);
   P.add('turretDark', box(0.06, 0.03, 0.10), x - 0.24, lidY + 0.02, z - 0.08);
-  P.addModuleVisual('optics', 'turretDetail', box(0.15, 0.10, 0.17), x, lidY + 0.09, z + 0.12);
-  P.addModuleVisual('optics', 'turretGlass', box(0.11, 0.04, 0.012), x, lidY + 0.10, z + 0.207);
+  P.addModuleVisual('optics', 'turretDetail', box(0.18, 0.13, 0.22), x, lidY + 0.10, z + 0.14);
+  P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.05, 0.012), x, lidY + 0.11, z + 0.252);
   // OU-3 IR spot on the ring's front-left
   P.add('turretDetail', box(0.05, 0.08, 0.05), x + 0.20, base + 0.20, z + 0.20);
   P.add('turretDetail', cylZ(0.07, 0.11, 14), x + 0.20, base + 0.27, z + 0.22);
@@ -520,7 +520,7 @@ function addMantletCover(P: TankBuilderPort): void {
   // 262 critic round: short and tapering onto the tube like the reference's collar, not a long blunt snout
   const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.62, 0.46, 0.50], [0.74, 0.38, 0.40],
     [0.84, 0.28, 0.28], [0.92, 0.215, 0.215]];
-  const n = P.q ? 20 : 12, e = 2 / 3.2;   // superellipse exponent 3.2: a soft-cornered bag
+  const n = P.q ? 20 : 12, e = 2 / 5;   // superellipse exponent 5: the square canvas boot over the slot
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
     return [Math.sign(c) * Math.abs(c) ** e * w / 2, Math.sign(s) * Math.abs(s) ** e * h / 2] as const;
@@ -542,8 +542,8 @@ function addMainGun(P: TankBuilderPort): void {
   const evStart = MUZZLE_Z - EVACUATOR_LEN;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    // the oracle's tube: 0.074 m radius forward, 0.086-0.098 at the cover; the evacuator 0.094
-    [0.30, 1.25, 0.086, 0.098], [1.25, 2.30, 0.076, 0.086], [2.30, evStart - 0.06, 0.074, 0.076],
+    // the oracle's tube: 0.074 m radius forward, swelling to 0.118 at its root in the cover; the evacuator 0.094
+    [0.30, 1.25, 0.090, 0.118], [1.25, 2.30, 0.077, 0.090], [2.30, evStart - 0.06, 0.074, 0.077],
     [evStart - 0.06, evStart + 0.02, 0.094, 0.074], [evStart + 0.02, MUZZLE_Z - 0.06, 0.094, 0.094],
     [MUZZLE_Z - 0.06, MUZZLE_Z, 0.080, 0.094],
   ], { rings: [[evStart + 0.03, 0.097], [MUZZLE_Z - 0.08, 0.097]], muzzle: MUZZLE_Z });

@@ -65,7 +65,7 @@ export function createWheelQualityAudit() {
       assert.equal(wheelPatternFor(getSpec('type10')).id, 'flanged-twelve', 'Japanese Type 10 retains its own wheel family');
       assert.equal(wheelPatternFor(getSpec('sabra_mk2')).id, 'cast-five-spoke', 'owner 2026-09-22: "sabra uses the m60a3 wheels"');
       assert.equal(wheelPatternFor(getSpec('mbt70')).id, 'plain-dish-twelve', 'German-registered MBT-70 draws the Leopard 2A6 wheel');
-      assert.equal(wheelPatternFor(getSpec('type59')).id, T54_STARFISH_WHEELS ? 'cast-five-spoke' : 'armored-hub-six',
+      assert.equal(wheelPatternFor(getSpec('type59')).id, T54_STARFISH_WHEELS ? 'christie-six' : 'armored-hub-six',
         'Chinese MBT hulls draw the ZTZ-100 wheel; 262: the Type 59 its T-54 starfish while the switch holds');
       assert.equal(wheelPatternFor(getSpec('ztz85_iii')).id, 'armored-hub-six', 'the Type 59-derived ZTZ-85-III keeps the Chinese standard');
       assert.equal(wheelPatternFor(getSpec('ajax')).id, 'armored-hub-six', 'UK IFV hulls draw the Warrior Milan X wheel');
