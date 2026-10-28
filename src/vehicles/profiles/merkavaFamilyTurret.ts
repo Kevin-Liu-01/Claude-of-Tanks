@@ -34,22 +34,30 @@ export function loftMeasuredSolid(sections: readonly SolidSection[]): THREE.Buff
   }
 }
 
-/** The shell's solids lofted in the turret frame (pivot subtracted), each face flat; and its ring collar over the race. */
+/** The gun's channel through the turret's front (hull frame z, from its back wall to its front, and its half-width). */
+export interface GunChannel {
+  readonly z0: number;
+  readonly z1: number;
+  readonly halfWidth: number;
+}
+
+/** The shell's solids lofted in the turret frame (pivot subtracted), each face flat; the gun channel's floor; and its ring
+ *  collar over the race. */
 export function buildMerkavaTurretShell(P: TankBuilderPort, shell: readonly ShellSolid[], pivot: readonly [number, number],
-  slot: TurretSlot | null): void {
+  channel: GunChannel | null): void {
   const [py, pz] = pivot;
   for (const solid of shell) {
     const sections = solid.z.map((z, s) => ({ z: z - pz, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) }));
     P.add('turret', loftMeasuredSolid(sections));
   }
-  if (slot) {
-    // the slot's floor between the cheeks at their base (at least 7 cm over the ring's plane, which the fleet's turret
-    // seat keeps clear), from its back wall to the nose, under the gun's mask
-    const ahead = shell.filter((solid) => solid.z[solid.z.length - 1]! > slot.z0 + 0.05);
-    const nose = Math.max(...ahead.map((solid) => solid.z[solid.z.length - 1]!));
-    const base = Math.max(Math.min(...ahead.flatMap((solid) => solid.rings[0]!.map(([, y]) => y))) + 0.01, py + 0.07);
-    const len = nose - slot.z0 - 0.02;
-    P.add('turret', KIT.box(slot.halfWidth * 2 + 0.04, 0.02, len), 0, base - py, slot.z0 + 0.01 + len / 2 - pz);
+  if (channel) {
+    // the gun channel's floor (the Mk 1 to Mk 3's slot between the cheeks, the Mk 4's channel between its front modules)
+    // at its base, at least 7 cm over the ring's plane (which the fleet's turret seat keeps clear), under the gun's mask
+    const { z0, z1, halfWidth } = channel;
+    const ahead = shell.filter((solid) => solid.z[solid.z.length - 1]! > z0 + 0.05);
+    const base = Math.max(ahead.length ? Math.min(...ahead.flatMap((solid) => solid.rings[0]!.map(([, y]) => y))) + 0.01 : -Infinity, py + 0.07);
+    const len = z1 - z0 - 0.02;
+    P.add('turret', KIT.box(halfWidth * 2 + 0.04, 0.02, len), 0, base - py, z0 + 0.01 + len / 2 - pz);
   }
   // the ring collar: from the deck up into the shell's base course, round the race (inside the base course's corners
   // over the stations within 0.4 m of the ring centre)

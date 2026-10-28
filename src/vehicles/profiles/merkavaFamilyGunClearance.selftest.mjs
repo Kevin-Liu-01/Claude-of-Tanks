@@ -3,8 +3,8 @@
 // the recoiling parts in battery and at 0.135 m, against every hull mesh, the field suit included). Over each mark's
 // measured front arc the gun reaches its full depression keeping 25 mm from the hull (the engine deck and the nose plate
 // fall away under it; the old pile's curves stopped the 1B at -0.7 deg over its glacis): the Mk 1B and 2B all round, the
-// 2D to +-22 deg (its front-left width rod beyond), the Mk 3 to +-4 deg (a deck fitting at 24-28 deg holds it at -5.3 to
-// -6), the Mk 4B nowhere at its full 8 deg (its curve holds -7.7 ahead and -6.7 by its front-left width rod). At full
+// 2D to +-22 deg (its front-left width rod beyond), the Mk 3 to +-5 deg (the deck fittings at 6-28 deg hold it at -6.8 to
+// -7.6), the Mk 4B nowhere at its full 8 deg (its curve holds -7.7 ahead and -6.7 by its front-left width rod). At full
 // elevation every yaw is clear, and at its published stop (gunPitchByYawDeg, turretScaleGunPitch.ts, measured with
 // tools/gun-depression-sweep.mjs) every yaw is clear, so the barrel never passes through the hull, its stowage or its
 // baskets; except the Mk 2D's 139-145 deg, where the source's raked rear marker poles stand in the barrel's path at every
@@ -16,7 +16,7 @@ import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance
 const DEG = Math.PI / 180;
 /** The half-arc (deg) about straight ahead where each mark's gun reaches its full depression (the sweep's curve). */
 const FULL_DEPRESSION_ARC = Object.freeze({
-  merkava1b: 180, merkava2b: 180, merkava2d: 22, merkava3c: 4, merkava3_baz: 4, merkava4b: -1,
+  merkava1b: 180, merkava2b: 180, merkava2d: 22, merkava3c: 5, merkava3_baz: 5, merkava4b: -1,
 });
 /** Yaw windows (absolute degrees) where a source fitting stands in the barrel's path at every pitch: not held. */
 const SKIP = Object.freeze({ merkava2d: [[139, 145]] });

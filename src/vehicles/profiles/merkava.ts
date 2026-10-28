@@ -47,7 +47,12 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
 
   const [py, pz] = mark.pivot;
   P.turretG.position.set(0, py, pz);
-  buildMerkavaTurretShell(P, mark.shell, mark.pivot, mark.slot);
+  // the gun's channel: the slot from its back wall to the nose, else (the Mk 4) from the shell's front to its modules' tips
+  const shellFront = Math.max(...mark.shell.map((solid) => solid.z[solid.z.length - 1]!));
+  const moduleFront = Math.max(shellFront, ...mark.modules.filter((m) => m.axis === 2).flatMap((m) => m.solids.map((solid) => solid.z[solid.z.length - 1]!)));
+  const channel = mark.slot ? { z0: mark.slot.z0, z1: shellFront, halfWidth: mark.slot.halfWidth }
+    : moduleFront > shellFront + 0.2 ? { z0: shellFront - 0.05, z1: moduleFront, halfWidth: 0.25 } : null;
+  buildMerkavaTurretShell(P, mark.shell, mark.pivot, channel);
   buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules);
