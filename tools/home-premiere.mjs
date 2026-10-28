@@ -86,14 +86,17 @@ function syncAltCatalogs() {
     for (const clip of missing) catalog[altKeyOf(clip)] = clip.title[lang];
   }
 }
-/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung, each
- *  rung's AV1 file first where the media lane encoded one (its type names its codec: the player asks MediaCapabilities
- *  whether it decodes smoothly, and falls back to the H.264 file after it). */
+/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung. A
+ *  rung leads with its AV1 file only beside its VP9 twin (av1 then vp9, mobileAv1 then mobileVp9: brand-ui SPEC 8.3, held
+ *  by tools/media-fallback.selftest.mjs), its type naming its codec so the player can ask MediaCapabilities; the H.264
+ *  file every browser plays closes each rung. */
 function ladder(clip) {
-  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.av1, clip.film, clip.mobileAv1 && { ...clip.mobileAv1, rung: 'phone' },
+  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.vp9 && clip.av1, clip.vp9, clip.film,
+    clip.mobileVp9 && clip.mobileAv1 && { ...clip.mobileAv1, rung: 'phone' }, clip.mobileVp9 && { ...clip.mobileVp9, rung: 'phone' },
     clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
   for (const file of files) if (!existsSync(join(ROOT, 'public', file.path))) throw new Error(`home-premiere: ${file.path} is not in public/`);
-  return files.map((file) => `<source data-src="${file.path}" type="${file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm')}"`
+  // an AV1 file's type names its codec in quotes (video/webm; codecs="av01..."): escaped, so the attribute holds whole
+  return files.map((file) => `<source data-src="${file.path}" type="${esc(file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm'))}"`
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
