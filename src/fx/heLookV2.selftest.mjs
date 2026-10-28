@@ -106,7 +106,9 @@ assert.match(parts, /pos\.setXYZ\(i, x \* m \* 1\.15, y \* m \* 0\.30, z \* m \*
 // the bent sheet is crumpled (no view of it is one flat face)
 {
   const src = await readFile(new URL('./debrisChunks.ts', import.meta.url), 'utf8');
-  assert.match(src, /float sootK = smoothstep\( 1\.5, 7\.0, dCore \) \* clamp\( aCH\.w \* 2\.0, 0\.0, 1\.0 \);/, 'wreckage soot by distance');
+  // (re-pinned 264, the cause: fx-backlog-233 3c0608fff4 tuned the soot down to 0.7 of its weight; the law by distance is
+  // unchanged)
+  assert.match(src, /float sootK = smoothstep\( 1\.5, 7\.0, dCore \) \* clamp\( aCH\.w \* 2\.0, 0\.0, 1\.0 \) \* 0\.7;/, 'wreckage soot by distance');
   // (re-pinned 2026-10-16, the cause: the fracture port 4916558b0 made a negative heat a landed piece's dust coat, so the
   // glow reads only a positive heat; the glow law near the fire is unchanged)
   assert.match(src, /vHeat = max\( aCH\.w, 0\.0 \) \* exp\( -age \* 1\.6 \) \* \( 1\.0 - grounded \* 0\.6 \) \* \( 1\.0 - 0\.9 \* smoothstep\( 2\.0, 6\.5, dCore \) \);/, 'glow near the fire');
