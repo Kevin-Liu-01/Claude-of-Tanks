@@ -247,9 +247,10 @@ export interface BrowserWarmPorts {
   /**
    * The battlefield's offscreen first draws, a cohort at a time, and the opening effects. A room's entry paces them on the
    * GPU: textures staged one at a time and every batch waiting for the GPU to catch up. (262) The solo sim Worker's sortie
-   * passes `pacing: 'frame'`, a frame between batches as the page's solo deployment warm does, and no wait on the GPU.
+   * passes `pacing: 'covered'`, the page's solo deployment warm's covered yield between batches (a task, and a painted
+   * frame at most every 32 ms), and no wait on the GPU.
    */
-  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'frame' }): MaybePromise<RuntimeValue>;
+  openingEffects?(fx: BrowserFxPort, view: BrowserWarmView, signal?: AbortSignal, options?: { pacing?: 'gpu' | 'covered' }): MaybePromise<RuntimeValue>;
   shotCards?(specIds: string[]): void;
   /** The opening ground cover around the final camera (after activation). */
   presentation?(signal?: AbortSignal): MaybePromise<RuntimeValue>;

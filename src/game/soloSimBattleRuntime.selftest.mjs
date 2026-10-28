@@ -180,9 +180,9 @@ const sortie = { specId: 'm1a1_abrams_hc', mapId: 'verdant', mode: 'standard', s
     assert.equal(record.find((entry) => entry.startsWith('activate:')), 'activate:player:m1a1_abrams_hc');
     assert.equal(record.at(-1), 'trace:complete');
     // (262) the opening warm paced by frames, as the page's solo deployment warm, and its time and report in the trace
-    assert.equal(record.find((entry) => entry.startsWith('openingEffects:')), 'openingEffects:frame');
+    assert.equal(record.find((entry) => entry.startsWith('openingEffects:')), 'openingEffects:covered');
     assert.equal(typeof record.trace.openingEffects?.ms, 'number');
-    assert.deepEqual(record.trace.openingEffects.detail, { pacing: 'frame' });
+    assert.deepEqual(record.trace.openingEffects.detail, { pacing: 'covered' });
     const presentation = presentations[0];
     assert.equal(presentation.options.solo, true, 'its end is a solo battle\'s');
     assert.equal(presentation.options.deferRoster, true);

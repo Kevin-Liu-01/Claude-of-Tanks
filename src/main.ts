@@ -2923,7 +2923,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           },
           openingEffects: async (
             fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal,
-            options?: { pacing?: 'gpu' | 'frame' },
+            options?: { pacing?: 'gpu' | 'covered' },
           ) => {
             const timing: ForwardProgramCompileTiming & {
               openingRenderMs?: number; openingPasses?: CoveredComposerWarmTiming['passes'];
@@ -2940,9 +2940,12 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
             // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
             // (262, the merged solo sim Worker's 7v7 entry: this pacing took its combat warm from 0.2-1.1 s to 8.3-9.2 s on a
-            // loaded machine) the Worker's sortie paces by frames, as the page's solo deployment warm does: no staging, no wait
-            const gpuPaced = options?.pacing !== 'frame';
+            // loaded machine) the Worker's sortie paces as the page's solo deployment warm does: no staging, no wait, and the
+            // page's covered yield between batches, a task and a painted frame at most every 32 ms (a frame after each of the
+            // 110 batches still held it at 7.8 s, 57 ms frames at load 800)
+            const gpuPaced = options?.pacing !== 'covered';
             const forwardYield = createFrameBudgetYielder(8);
+            const batchYield = gpuPaced ? forwardYield : createOpaqueLoadingYielder(12, 32);
             const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
             const textureStaging = gpuPaced
               ? await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp })
@@ -2963,7 +2966,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             })) {
               (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
               signal?.throwIfAborted();
-              if (batch.phase !== 'upload') await forwardYield(true);
+              if (batch.phase !== 'upload') await batchYield(true);
               if (gpuPaced) catchUpFrames += await waitForGpuCatchUp(catchUp);
             }
             const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
@@ -3002,7 +3005,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing, pacing: gpuPaced ? 'gpu' : 'frame', textureStaging, deploymentForward };
+            return { ...timing, pacing: gpuPaced ? 'gpu' : 'covered', textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {

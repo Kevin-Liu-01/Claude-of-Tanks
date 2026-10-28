@@ -269,9 +269,9 @@ export function createSoloSimBattleRuntime(ports: SoloSimBattlePorts): SoloSimBa
       check('panel');
       load.battleLoad.progress(0.88, 'Priming combat effects');
       const fx = scene.getFx();
-      // (262) paced by frames, as the page's solo deployment warm: a room's GPU pacing cost the merged 7v7 entry 8 s loaded
+      // (262) paced as the page's solo deployment warm, its covered yield: a room's GPU pacing cost the merged 7v7 entry 8 s
       const openingStartedAt = now();
-      const opening = await warm.openingEffects?.(fx, view, signal, { pacing: 'frame' });
+      const opening = await warm.openingEffects?.(fx, view, signal, { pacing: 'covered' });
       check('openingEffects');
       active.trace.openingEffects = { ms: Math.round(now() - openingStartedAt), ...(opening == null ? {} : { detail: opening }) };
       warm.shotCards?.([...battlePresentation.actors.values()].map((actor) => actor.specId));

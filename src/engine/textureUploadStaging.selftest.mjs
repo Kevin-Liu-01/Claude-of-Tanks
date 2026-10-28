@@ -71,7 +71,7 @@ const opening = main.slice(main.indexOf('openingEffects: async'), main.indexOf('
 const staged = opening.indexOf('await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp })');
 const cohorts = opening.indexOf('createDeploymentForwardWarmBatches({');
 assert.ok(staged > 0 && cohorts > staged, 'the opening warm stages the textures before the cohorts draw');
-assert.ok(opening.includes("return { ...timing, pacing: gpuPaced ? 'gpu' : 'frame', textureStaging, deploymentForward };"),
+assert.ok(opening.includes("return { ...timing, pacing: gpuPaced ? 'gpu' : 'covered', textureStaging, deploymentForward };"),
   'the opening warm reports the stage and its pacing');
 // (262) the solo sim Worker's sortie paces by frames: no staging (the page's solo deployment warm stages none either)
 assert.ok(/const textureStaging = gpuPaced\n\s+\? await stageTextureUploads\(/.test(opening), 'only a GPU-paced warm stages the textures');
