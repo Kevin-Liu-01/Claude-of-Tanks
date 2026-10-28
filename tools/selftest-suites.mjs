@@ -2388,6 +2388,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
     // real weights only, the 11 px floor, tabular figures only through .num, metric-matched fallbacks, zh-CN resets
     'src/ui/typeSystem.selftest.mjs',
+    // 264: each Chakra Petch fallback (a capitals rule and a rule for the rest) sets a caps title within 1 % of the face
+    'src/ui/typeFallbackMetrics.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
     'src/ui/mapLqip.selftest.mjs',

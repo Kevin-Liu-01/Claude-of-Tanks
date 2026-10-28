@@ -134,21 +134,44 @@ export const TYPE_FACE_RANGES: Readonly<Record<TypeFamilyKey, ReadonlyArray<read
 /**
  * Metric-matched local fallbacks, one family per face family, so a late face swaps in without moving text (CLS
  * from fonts <= 0.005). Measured with fontTools (2026-10-17) from the shipped WOFF2 files against
- * Arial, Arial Bold and Courier New: size-adjust matches the face's advance mix (English letter frequencies plus a
- * capitals share: 5 % for reading text, 30 % for titles, 60 % for the shell's caps labels and buttons), and
+ * Arial, Arial Bold and Courier New: size-adjust matches the face's advance mix (for Plex, English letter frequencies
+ * with a 5 % capitals share; for Chakra Petch, see below), and
  * ascent/descent-override restore the face's vertical metrics under that scale. The same overrides hold on Linux,
  * ChromeOS and Android, whose Liberation Sans / Arimo / Liberation Mono / Cousine are Arial's and Courier New's metric
  * twins, and whose Roboto and Droid Sans Mono sit within about 1 % of their advances.
- *   ui      100-549 Arial      -> Plex Sans Medium (5 % caps)            550-1000 Arial Bold -> Chakra SemiBold/Bold (60 %)
+ *   ui      100-549 Arial      -> Plex Sans Medium (5 % caps)            550-1000 Arial Bold -> Chakra SemiBold, Bold
  *   body    100-549 Arial      -> Plex Sans Medium (5 % caps)            550-1000 Arial Bold -> Plex Sans SemiBold (5 %)
- *   display 100-549 Arial      -> Chakra Petch Medium (30 % caps)        550-1000 Arial Bold -> Chakra SemiBold/Bold (30 %)
+ *   display 100-549 Arial      -> Chakra Petch Medium                    550-1000 Arial Bold -> Chakra SemiBold, Bold
  *   mono    Courier New        -> Plex Mono (both 600 units per em wide)
+ * Chakra Petch's capitals run narrower against Arial's than its lowercase does (93 % against 101 % at Bold), so one
+ * size-adjust cannot hold both: a family's single size left the /docs/fleet banner's capitals 1.7 % wide, and the title
+ * rewrapped from two lines to one at 390 px when the face arrived (264). Every Chakra Petch face therefore has its own
+ * fallback pair: one rule for the capitals (TYPE_CAPS_RANGE), declared after the rule for everything else so it is the
+ * one the browser tries for A-Z, each solved so English capitals text and English mixed-case text (letter frequencies,
+ * a space per 4.7 letters) set as wide as the face. The Bold pair has a third rule, the space alone (TYPE_SPACE_RANGE): the
+ * browser reads a line's cap height and strut from the face that covers U+0020, and the titles that trim to the cap
+ * (text-box: trim-both cap) are Bold, so the space's rule is Arial Bold at the scale that gives Chakra Petch's cap height
+ * (0.700 em), which is also the scale of Chakra Petch Bold's space. src/ui/typeFallbackMetrics.selftest.mjs holds a caps
+ * title within 1 % of the face's advance width for every weight, and the Bold cap height within 1 %.
  */
 const LOCAL_REGULAR = "local('Arial'),local('ArialMT'),local('Liberation Sans'),local('Arimo'),local('Roboto')";
 const LOCAL_BOLD = "local('Arial Bold'),local('Arial-BoldMT'),local('Liberation Sans Bold'),local('Arimo Bold'),local('Roboto Bold')";
 const LOCAL_MONO = "local('Courier New'),local('CourierNewPSMT'),local('Liberation Mono'),local('Cousine'),local('Droid Sans Mono')";
 
-interface FallbackFace { readonly weight: string; readonly src: string; readonly size: number; readonly ascent: number; readonly descent: number }
+/** The capitals, A-Z: the unicode-range of a Chakra Petch fallback's caps rule. */
+export const TYPE_CAPS_RANGE = 'U+41-5A';
+/** The space: the range of the Bold fallback's rule that the browser takes for the line's metrics (its first available font). */
+export const TYPE_SPACE_RANGE = 'U+20';
+
+interface FallbackFace {
+  readonly weight: string;
+  readonly src: string;
+  readonly size: number;
+  readonly ascent: number;
+  readonly descent: number;
+  /** A unicode-range: this rule stands in for those characters only, ahead of the same weights' rule for the rest. */
+  readonly range?: string;
+}
 
 export const TYPE_FALLBACK_FAMILY: Readonly<Record<TypeFamilyKey, string>> = Object.freeze({
   display: 'Cot Display Fallback',
@@ -160,15 +183,24 @@ export const TYPE_FALLBACK_FAMILY: Readonly<Record<TypeFamilyKey, string>> = Obj
 export const TYPE_FALLBACKS: Readonly<Record<TypeFamilyKey, readonly FallbackFace[]>> = Object.freeze({
   ui: [
     { weight: '100 549', src: LOCAL_REGULAR, size: 103.2, ascent: 99.3, descent: 26.6 },
-    { weight: '550 1000', src: LOCAL_BOLD, size: 95.6, ascent: 103.8, descent: 32.2 },
+    { weight: '550 649', src: LOCAL_BOLD, size: 99.1, ascent: 100.1, descent: 31.1 },
+    { weight: '550 649', src: LOCAL_BOLD, size: 91.9, ascent: 107.9, descent: 33.5, range: TYPE_CAPS_RANGE },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 101.2, ascent: 98, descent: 30.4 },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 93.5, ascent: 106.1, descent: 32.9, range: TYPE_CAPS_RANGE },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 97.8, ascent: 101.4, descent: 31.5, range: TYPE_SPACE_RANGE },
   ],
   body: [
     { weight: '100 549', src: LOCAL_REGULAR, size: 103.2, ascent: 99.3, descent: 26.6 },
     { weight: '550 1000', src: LOCAL_BOLD, size: 97, ascent: 105.7, descent: 28.4 },
   ],
   display: [
-    { weight: '100 549', src: LOCAL_REGULAR, size: 100.7, ascent: 98.5, descent: 30.6 },
-    { weight: '550 1000', src: LOCAL_BOLD, size: 97.6, ascent: 101.6, descent: 31.6 },
+    { weight: '100 549', src: LOCAL_REGULAR, size: 105.3, ascent: 94.2, descent: 29.2 },
+    { weight: '100 549', src: LOCAL_REGULAR, size: 90.9, ascent: 109.1, descent: 33.9, range: TYPE_CAPS_RANGE },
+    { weight: '550 649', src: LOCAL_BOLD, size: 99.1, ascent: 100.1, descent: 31.1 },
+    { weight: '550 649', src: LOCAL_BOLD, size: 91.9, ascent: 107.9, descent: 33.5, range: TYPE_CAPS_RANGE },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 101.2, ascent: 98, descent: 30.4 },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 93.5, ascent: 106.1, descent: 32.9, range: TYPE_CAPS_RANGE },
+    { weight: '650 1000', src: LOCAL_BOLD, size: 97.8, ascent: 101.4, descent: 31.5, range: TYPE_SPACE_RANGE },
   ],
   mono: [
     { weight: '100 1000', src: LOCAL_MONO, size: 100, ascent: 102.5, descent: 27.5 },
@@ -230,7 +262,7 @@ export function fontFaceCss(families: readonly TypeFamilyKey[] = ['ui', 'display
   for (const family of families) {
     for (const f of TYPE_FALLBACKS[family]) {
       rules.push(`@font-face{font-family:'${TYPE_FALLBACK_FAMILY[family]}';src:${f.src};font-weight:${f.weight};size-adjust:${f.size}%;`
-        + `ascent-override:${f.ascent}%;descent-override:${f.descent}%;line-gap-override:0%}`);
+        + `ascent-override:${f.ascent}%;descent-override:${f.descent}%;line-gap-override:0%${f.range ? `;unicode-range:${f.range}` : ''}}`);
     }
   }
   return rules.join('\n');
