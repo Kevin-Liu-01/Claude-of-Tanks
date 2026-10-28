@@ -13,6 +13,10 @@
 //    model); the paint: the tank's own signature scheme, else its nation's stock coat, the foes their own;
 //  - the titles in English and Chinese, from the action and the map's own names (map.<id> in the catalogs).
 //   node tools/media-r5/fleet-plan.mjs --fresh [--features=<dir>] [--only=<hero,...>]   (deterministic; afresh after a survey)
+//   node tools/media-r5/fleet-plan.mjs --append [--only=<hero,...>]   a take for each production vehicle the roster and the
+//     site takes lack (2026-10-27: the Type 10 Dozer, added after the roster): its set 150 m from the map's takes, each map's
+//     count kept, numbered on after every take number in use (225-252 are the combat round's and the duels'); the
+//     roster's takes and their motion plans stay as they are
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +26,9 @@ import { signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicle
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { anchorsFinder } from './fleet-anchors.mjs';
 import { CAST_NAMES } from './cast.mjs';
-import { OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
+import { COMBAT, DUELS, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
+import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
+import { TANK_ID_RENAMES, resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url)), ROOT = join(HERE, '../..');
@@ -31,18 +37,29 @@ const FEATURES = arg('features') ?? process.env.MEDIA_R5_FEATURES ?? join(SHOTS_
 const OUT = join(HERE, 'fleet-roster.json');
 // the roster's motion plans (site50-motion.json) are keyed by take and fit its anchors: planning afresh moves anchors and
 // voids them, so an existing roster is kept unless --fresh (single takes move with fleet-replan.mjs)
-if (existsSync(OUT) && !process.argv.includes('--fresh') && !arg('only')) {
-  console.log(`[fleet-plan] ${OUT} exists; --fresh plans every take again (and voids their motion plans); fleet-replan.mjs moves single takes`);
+const APPEND = process.argv.includes('--append');
+if (existsSync(OUT) && !process.argv.includes('--fresh') && !arg('only') && !APPEND) {
+  console.log(`[fleet-plan] ${OUT} exists; --fresh plans every take again (and voids their motion plans); fleet-replan.mjs moves single takes; --append adds the vehicles it lacks`);
   process.exit(0);
 }
-const FIRST_N = 60;
+const prior = APPEND && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : [];
+const FIRST_N = APPEND ? Math.max(...[...SHOTS, ...OWNER_NINE, ...COMBAT, ...DUELS].map((s) => s[0]), ...prior.map((r) => r.n)) + 1 : 60;
 
 // --- who ------------------------------------------------------------------------------------------------------------
 const siteHeroes = [...SHOTS, ...OWNER_NINE].map((shot) => [siteScene(shot).actors[0].id, siteScene(shot).meta.id, shot[0] > 50]);
-const led = new Set(siteHeroes.map(([hero]) => hero));
+// a vehicle is led as fleet.selftest counts it: by the hero of a take's scene read in today's ids (the roster and the
+// site takes keep the ids they were written in); --append counts the roster's takes too
+const led = new Set([...SHOTS, ...OWNER_NINE, ...(APPEND ? FLEET : [])].map((shot) => sceneInCurrentTankIds(siteScene(shot)).actors[0].id));
 const only = arg('only')?.split(',');
 const heroes = PRODUCTION_TANK_IDS.filter((id) => !led.has(id) && (!only || only.includes(id)));
-const spec = (id) => TANK_SPECS[id];
+// The roster writes ids as the take scenes are read (schema 1, sceneInCurrentTankIds), and FOES and CAST_NAMES are in
+// that spelling: today's specs and paints are read through the alias layer (asToday), and today's ids are written back in
+// that spelling (asWritten; null for a vehicle schema 1 cannot name). Today's type10 is schema 1's type10_x, its type10
+// the TK-X.
+const asToday = (id) => resolveTankId(id, 1);
+const WRITTEN = new Map(TANK_ID_RENAMES.flatMap((m) => Object.keys(m)).filter((k) => asToday(k) !== k).map((k) => [asToday(k), k]));
+const asWritten = (id) => (asToday(id) === id ? id : WRITTEN.get(id) ?? null);
+const spec = (id) => TANK_SPECS[asToday(id)];
 // a spec name a title cannot carry as it is: the Type 10's "(TK-X)" reads as the retired X tier (site50.selftest)
 const TITLE_NAMES = { type10: { en: 'Type 10 prototype', zh: 'Type 10 原型车' } };
 const nameOf = (id) => TITLE_NAMES[id]?.en ?? CAST_NAMES[id]?.[0] ?? spec(id).name;
@@ -131,6 +148,11 @@ function titles(action, name, foe, map, time, zhName = name, zhFoe = foe) {
 // --- plan -----------------------------------------------------------------------------------------------------------
 const perMap = new Map(MAP_IDS.map((m) => [m, 0]));
 const anchorCache = new Map(), taken = new Map();
+// --append: the roster's takes hold their maps' counts and sets
+for (const r of prior) {
+  perMap.set(r.map, (perMap.get(r.map) ?? 0) + 1);
+  taken.set(r.map, [...(taken.get(r.map) ?? []), r.anchor]);
+}
 // its own grounds first, the least used of them first (the fifty's maps count double, the hash breaking ties), then
 // every other battlefield with room, so a ground without a clear set passes the tank to the next
 const rankedMaps = (id) => {
@@ -148,9 +170,9 @@ const anchorFor = (map) => {
   if (spot) taken.set(map, [...used, spot]);
   return spot ?? null;
 };
-const allyPool = (id) => PRODUCTION_TANK_IDS.filter((o) => o !== id && spec(o).nation === spec(id).nation && old(o) === old(id));
-const roster = [], unplaced = [];
-const order = [...heroes].sort((p, q) => (spec(p).nation ?? '').localeCompare(spec(q).nation ?? '') || p.localeCompare(q));
+const allyPool = (id) => PRODUCTION_TANK_IDS.map(asWritten).filter((o) => o && o !== id && spec(o).nation === spec(id).nation && old(o) === old(id));
+const roster = [], unplaced = heroes.filter((id) => !asWritten(id));
+const order = heroes.map(asWritten).filter(Boolean).sort((p, q) => (spec(p).nation ?? '').localeCompare(spec(q).nation ?? '') || p.localeCompare(q));
 for (const [k, id] of order.entries()) {
   let map = null, spot = null;
   for (const m of rankedMaps(id)) { spot = anchorFor(m); if (spot) { map = m; break; } }
@@ -164,22 +186,35 @@ for (const [k, id] of order.entries()) {
   const lineup = [id, ...mates.slice(0, allies)];
   const pool = foePool(id).filter((f) => !lineup.includes(f)), start = hash(id) % pool.length;
   const foes = [...pool.slice(start), ...pool.slice(0, start)].slice(0, Math.max(2, tplScene.actors.filter((x) => x.name.startsWith('foe')).length));
-  const unit = signatureCamoPatternId(id) ?? stockCamoPatternIdFor(id, spec(id).nation, spec(id).era);
-  let enemy = signatureCamoPatternId(foes[0]) ?? stockCamoPatternIdFor(foes[0], spec(foes[0]).nation, spec(foes[0]).era);
-  if (enemy === unit) enemy = stockCamoPatternIdFor(foes[0], spec(foes[0]).nation, spec(foes[0]).era);
+  const paintOf = (who, signature = true) => (signature ? signatureCamoPatternId(asToday(who)) : null)
+    ?? stockCamoPatternIdFor(asToday(who), spec(who).nation, spec(who).era);
+  const unit = paintOf(id);
+  let enemy = paintOf(foes[0]);
+  if (enemy === unit) enemy = paintOf(foes[0], false);
   const name = nameOf(id), n = FIRST_N + roster.length;
   roster.push({ n, id: `${id.replace(/_/g, '-')}-${map.replace(/_/g, '-')}`, hero: id, nation: spec(id).nation, era: spec(id).era, map, time,
     anchor: [spot[0], spot[1]], heading: spot[2], template, action, lineup, foes, paint: [unit, enemy],
     ...titles(action, name, nameOf(foes[0]), map, time, zhNameOf(id), zhNameOf(foes[0])) });
 }
-writeFileSync(OUT, `${JSON.stringify(roster, null, 1)}\n`);
+writeFileSync(OUT, `${JSON.stringify([...prior, ...roster], null, 1)}\n`);
 // every production vehicle's own take, for wherever the site shows that tank (site-media.mjs builds fleet/index.json from
 // it): its fleet take, else its take among the owner's nine, else the first of the fifty it leads
-const takes = {};
-for (const [hero, id, special] of siteHeroes) if (!special) takes[hero] ??= id;
-for (const [hero, id, special] of siteHeroes) if (special) takes[hero] = id;
-for (const r of roster) takes[r.hero] = `s${r.n}-${r.id}`;
-writeFileSync(join(HERE, 'vehicle-takes.json'), `${JSON.stringify(Object.fromEntries(PRODUCTION_TANK_IDS.filter((v) => takes[v]).map((v) => [v, takes[v]])), null, 1)}\n`);
+const TAKES_FILE = join(HERE, 'vehicle-takes.json');
+if (APPEND) {
+  // the map is keyed in the media record's tank-id schema (tools/media-r5/tank-id-schema.json, fleet-rekey.mjs)
+  const record = join(HERE, 'tank-id-schema.json');
+  const schema = existsSync(record) ? JSON.parse(readFileSync(record, 'utf8')).tankIdSchema : 1;
+  const inRecord = (id) => TANK_ID_RENAMES.slice(0, schema - 1).reduce((f, m) => m[f] ?? f, id);
+  const kept = JSON.parse(readFileSync(TAKES_FILE, 'utf8'));
+  for (const r of roster) kept[inRecord(r.hero)] = `s${r.n}-${r.id}`;
+  writeFileSync(TAKES_FILE, `${JSON.stringify(kept, null, 1)}\n`);
+} else {
+  const takes = {};
+  for (const [hero, id, special] of siteHeroes) if (!special) takes[hero] ??= id;
+  for (const [hero, id, special] of siteHeroes) if (special) takes[hero] = id;
+  for (const r of roster) takes[r.hero] = `s${r.n}-${r.id}`;
+  writeFileSync(TAKES_FILE, `${JSON.stringify(Object.fromEntries(PRODUCTION_TANK_IDS.filter((v) => takes[v]).map((v) => [v, takes[v]])), null, 1)}\n`);
+}
 const maps = [...new Set(roster.map((r) => r.map))];
 console.log(`[fleet-plan] ${roster.length} takes for ${heroes.length} tanks on ${maps.length} maps -> ${OUT}`);
 console.log(`  per map: ${maps.map((m) => `${m} ${roster.filter((r) => r.map === m).length}`).join(', ')}`);

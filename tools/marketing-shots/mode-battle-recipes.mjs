@@ -668,6 +668,69 @@ export const RECIPES = {
     },
   },
 
+  // (2026-10-27, the Deploy plate: "the Kestrel Airfield range with its lanes and target plates in frame") the player on
+  // the firing line of the airfield range, shooting in turn at the armour plate rack and at the lane hulls. Every lens is
+  // set from the range as the game laid it out (game._provingRange: sim/provingGround.ts planProvingRange), so the
+  // firing line, the lane marks, the rack and the hulls downrange stay in frame whatever the planner settled on.
+  'deploy/proving_ground': {
+    hour: 'day',
+    windowS: 60,
+    hud: 'hidden',
+    async run(ctx) {
+      // the plate the gun lays on (its face centre: H.point's 2.4 m height puts the aim 1.2 m above y) and the hull on a lane
+      await define(ctx, 'rackPlate', `const r = g && g._provingRange; if (!r || !r.plates.length) return null;
+        const pl = r.plates[(window.__MB.plateIndex || 0) % r.plates.length]; return H.point(pl.x, pl.y - 1.2, pl.z);`);
+      await define(ctx, 'laneHull', `const r = g && g._provingRange; if (!r) return null;
+        const lane = r.lanes.find((m) => m.index === (window.__MB.laneIndex || 0)) || r.lanes[0];
+        let best = null, bd = Infinity; for (const e of H.enemies()) { const d = H.dist(e.state.pos, lane); if (d < bd) { bd = d; best = e; } }
+        return H.info(best);`);
+      const lenses = await ctx.eval(() => {
+        const H = window.__MB.H, r = H.g()?._provingRange;
+        if (!r) return null;
+        const o = r.origin, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), lx = Math.cos(o.yaw), lz = -Math.sin(o.yaw);
+        // a point `range` m down the range and `lateral` m across it (+ the plate rack's side), `h` m above the ground
+        const at = (range, lateral, h) => { const x = o.x + fx * range + lx * lateral, z = o.z + fz * range + lz * lateral; return [x, H.groundY(x, z) + h, z]; };
+        const fixed = (pos, look, fov) => ({ kind: 'fixed', pos, look, fov, hud: 'hidden' });
+        // The rack stands about 100 m down the range, 40 m to the side, and the hull on the firing line; the airfield parks a
+        // box truck and an SUV about 9 m behind the line, 7 m either side of it, so from behind the line they sit just
+        // under the hull. Each lens (searched with landing-r6/site-all/range-lens.py --search) stands 14 m up and 20-30 m
+        // back on the rack's side: the hull large in the lower right third with its gun on the rack, the whole rack and the
+        // lane boards to the 650 m board higher in the frame, and both parked vehicles under its lower edge. (Lower lenses
+        // either take the vehicles in or lose the rack: its plates face the line and stand edge-on from its open side.)
+        return {
+          origin: { x: Math.round(o.x), z: Math.round(o.z) }, lanes: r.lanes.length, plates: r.plates.length,
+          steep: fixed(at(-20, 4, 14), at(20, 8, 0), 42),
+          steepWide: fixed(at(-20, 4, 14), at(20, 12, 0), 46),
+          back: fixed(at(-25, 4, 14), at(30, 4, 0), 38),
+          backLeft: fixed(at(-25, 8, 14), at(30, 8, 0), 38),
+          long: fixed(at(-30, 8, 14), at(40, 4, 0), 34),
+        };
+      });
+      ctx.log('range', JSON.stringify(lenses && { origin: lenses.origin, lanes: lenses.lanes, plates: lenses.plates }));
+      if (!lenses) { ctx.note('no proving range was laid out (game._provingRange)'); return; }
+      ctx.note('lenses set from game._provingRange; the gun lays in turn on a plate of the rack and on a lane hull');
+      // (plates: 0-4 square to the line, 50 to 500 mm; 5-7 laid back. lanes: 0 100 m, 1 200 m, 2 300 m side-on, 3 450 m)
+      const rounds = [
+        { aim: 'rackPlate', plate: 3, camera: lenses.steep },
+        { aim: 'laneHull', lane: 2, camera: lenses.steep },
+        { aim: 'rackPlate', plate: 1, camera: lenses.steepWide },
+        { aim: 'rackPlate', plate: 4, camera: lenses.back },
+        { aim: 'rackPlate', plate: 2, camera: lenses.long },
+        { aim: 'rackPlate', plate: 0, camera: lenses.backLeft },
+      ];
+      await ctx.mb('setFire', { mode: 'auto', maxErrMrad: 3 });
+      for (const [i, round] of rounds.entries()) {
+        await ctx.eval((r) => { window.__MB.plateIndex = r.plate ?? 0; window.__MB.laneIndex = r.lane ?? 0; return true; }, round);
+        await ctx.mb('setAim', { target: round.aim, fallback: false });
+        await settle(ctx, 1.5);
+        await ctx.capture({
+          label: `range ${i + 1}`, windowS: 12, cameras: [round.camera], everyS: 1.5, minGapMs: 300,
+          triggers: [T.playerFire([35, 90, 160, 260]), { type: 'shell:hit', who: 'player', onscreen: false, delays: [30, 90], maxDistM: 900 }],
+        });
+      }
+    },
+  },
+
   // ============================================================== mechanics (battle captures)
   'mechanics/missiles': {
     hour: 'sunset',
@@ -1305,23 +1368,23 @@ async function openCrewRadio(ctx) {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.cot-set.open', { timeout: 8000 }).catch(() => null);
   // src/ui/settings.ts: tabs .cot-set-tab[data-tab], the Sound tab's crew row .cot-set-crew-row whose flag dropdown
-  // (customSelect.ts, created lazily with its flag art) opens .cot-custom-select-list in the page
+  // (the kit's picker menu, nationSelect.ts, each voice by its flag) opens its popover in the page
   const result = await page.evaluate(() => {
     const out = { open: !!document.querySelector('.cot-set.open') };
     const sound = document.querySelector('.cot-set-tab[data-tab="sound"]');
     if (sound) { sound.click(); out.tab = (sound.textContent || '').trim(); }
     return out;
   });
-  await page.waitForSelector('.cot-set-crew-row .cot-custom-select-trigger', { timeout: 8000 }).catch(() => null);
+  await page.waitForSelector('.cot-set-crew-row .cot-c-menu__trigger', { timeout: 8000 }).catch(() => null);
   const select = await page.evaluate(() => {
     const row = document.querySelector('.cot-set-crew-row');
     if (!row) return { found: false };
     row.scrollIntoView({ block: 'center' });
-    const trigger = row.querySelector('.cot-custom-select-trigger');
+    const trigger = row.querySelector('.cot-c-menu__trigger');
     if (trigger) trigger.click();
     return { found: true, trigger: !!trigger, text: (row.textContent || '').trim().slice(0, 80) };
   });
-  await page.waitForSelector('.cot-custom-select-list', { visible: true, timeout: 5000 }).catch(() => null);
+  await page.waitForSelector('.cot-c-menu__pop:popover-open', { visible: true, timeout: 5000 }).catch(() => null);
   return { ...result, select };
 }
 

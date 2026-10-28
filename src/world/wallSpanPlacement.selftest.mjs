@@ -466,6 +466,21 @@ for (const seed of [1337, 2049, 7719]) {
       assert.equal(pool.imI, undefined);
       continue;
     }
+    // (260) the placement after the refit its own slice: no fit begun, nothing published
+    if (checkpoint.stage === 'pool-place-wallstone') {
+      assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-place-wallstone' });
+      assert.equal(group.children.length, 0, 'no mesh is published at the placement checkpoint');
+      assert.equal(pool.imI, undefined);
+      assert.ok(records.every(record => record.groundSupport === null), 'the placement checkpoint begins no wall fit');
+      continue;
+    }
+    // (260) the pool's shadow stand-in in its own slice: its mesh made, nothing published yet
+    if (checkpoint.stage === 'pool-caster-wallstone') {
+      assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-caster-wallstone' });
+      assert.equal(group.children.length, 0, 'no mesh is published at the caster checkpoint');
+      assert.equal(pool.imI, undefined);
+      continue;
+    }
     // (battle-spikes-253) and the broken form in its own slice: the intact pool published, the broken not yet
     if (checkpoint.stage === 'pool-broken-wallstone') {
       assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'pool-broken-wallstone' });
@@ -487,6 +502,7 @@ for (const seed of [1337, 2049, 7719]) {
   }
   assert.equal(completedFits / 8, Math.floor((records.length - 1) / 8), 'one checkpoint per eight completed fits');
   assert.equal(stages[0], 'pool-refit-wallstone', 'the refit slice comes first');
+  assert.equal(stages[1], 'pool-place-wallstone', 'the placement slice follows the refit');
   assert.equal(stages.at(-1), 'pool-broken-wallstone', 'the broken form\'s slice comes last');
   assert.equal(records.length, authoredSlots);
   assert.equal(pool.imI.count, authoredSlots);
@@ -574,7 +590,7 @@ for (const method of ['prepare', 'finalize']) {
   assert.deepEqual(unopened.next(), { done: true, value: undefined });
   assert.equal(unstarted.geometries.length, 0, 'closing before first next never enters either builder');
   assertUnpublished(unstarted); disposeFixture(unstarted.fixture);
-  for (const boundary of [1, 2]) {
+  for (const boundary of [0, 1, 2]) {
     const test = trackedFinalization();
     const iterator = test.owner[method]('wallstone', test.pool);
     // (battle-spikes-253) the build and the refit a slice each: suspended between them, nothing refit or fitted yet
@@ -582,6 +598,11 @@ for (const method of ['prepare', 'finalize']) {
     assertUnpublished(test);
     assert.equal(test.geometries[0].disposals, 0, 'geometry remains owned while suspended before its refit');
     assert.equal(test.fixture.records.filter(record => record.groundSupport !== null).length, 0, 'no fit begins before the refit');
+    // (260) and the placement after the refit its own slice: refit, no fit begun
+    assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'pool-place-wallstone' } });
+    assertUnpublished(test);
+    assert.equal(test.geometries[0].disposals, 0, 'geometry remains owned while suspended after its refit');
+    assert.equal(test.fixture.records.filter(record => record.groundSupport !== null).length, 0, 'no fit begins at the placement slice');
     for (let index = 0; index < boundary; index++) {
       assert.deepEqual(iterator.next(), { done: false,
         value: { fine: true, progress: false, stage: 'wall-fit-wallstone' } });
@@ -610,6 +631,8 @@ for (const method of ['prepare', 'finalize']) for (const phase of ['refit', 'fit
   assert.equal(iterator.next().value?.stage, 'pool-refit-wallstone', 'the build is suspended before its refit');
   assertUnpublished(test);
   if (phase === 'fit') {
+    assert.equal(iterator.next().value?.stage, 'pool-place-wallstone', 'the refit is suspended before its placement');
+    assertUnpublished(test);
     assert.equal(iterator.next().done, false, 'fit failure occurs after a real suspended batch');
     assertUnpublished(test);
   }

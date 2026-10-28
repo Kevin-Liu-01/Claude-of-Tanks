@@ -25,22 +25,29 @@ for (const part of ['<form class="search"', '<div class="flags"', '<div class="t
 
 // The stage's plates hold the page's places.
 assert.match(css, /\.layers\{left:16px;top:14px;display:flex;gap:2px;padding:3px\}/);
-assert.match(css, /\.views\{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px\}/);
+assert.match(css, /\.views\{right:16px;top:14px;display:flex;padding:3px\}/);
 assert.match(css, /\.tools\{left:50%;bottom:16px;transform:translateX\(-50%\)/);
 assert.match(css, /\.inset\{left:16px;bottom:16px;width:150px/);
 // (247) the legend stands above the bottom row, clear of the centred turntable and photo bar
 assert.match(css, /#viewport \.legend:not\(:empty\)\{right:16px;bottom:64px/);
-// Five layers, each with its key; the label leaves the picture under 1440 px and stays in the button's name.
-assert.equal([...html.matchAll(/<button type="button"[^>]*data-mode="(appearance|armor|modules|crew|markup)" data-key="([1-5])"/g)].length, 5,
-  'five layers, keys 1 to 5');
+// Five layers, each with its key: the kit's segmented control (261), built by gallery.ts in the page's place for it; the
+// label leaves the picture under 1440 px and stays in the button's name.
+const galleryTs = readFileSync(new URL('./gallery.ts', import.meta.url), 'utf8');
+assert.match(html, /<div id="layerDock" hidden><\/div>/, 'the page holds the layers\' place');
+assert.match(galleryTs, /const GALLERY_MODES: readonly GalleryMode\[\] = \['appearance', 'armor', 'modules', 'crew', 'markup'\];/, 'five layers');
+assert.match(galleryTs, /segmented\(\{ label: t\('gallery\.view\.modeDockAria'\), className: 'layers'[\s\S]*?key: String\(index \+ 1\)/,
+  'the layers are the kit\'s segmented control, keys 1 to 5');
 assert.match(css, /@media \(width < 1440px\)\{\s*\.layers button>span\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)\}/,
   'narrow stages keep the layer names as accessible names only');
-assert.equal([...html.matchAll(/data-view="(?:hero|front|left|right|rear|top|elevated-left|elevated-right)"/g)].length, 8, 'eight camera views');
+assert.match(galleryTs, /createPickerMenu\(\$<HTMLElement>\('\.views'\), \{\s*id: 'gallery-camera-view'/, 'the eight camera views are the kit\'s picker menu');
+assert.equal((galleryTs.match(/^\s+'?[a-z-]+'?: 'gallery\.view\.view\.[A-Za-z]+',$/gm) ?? []).length, 8, 'eight camera views');
 
-// Below 1100 px the page scrolls: the stage spans the top and the panes share a row; below 768 px they stack, the views
-// become a bottom row and the fleet a strip of cards.
-assert.match(css, /@media \(width < 1100px\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
-assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.views\{position:absolute;z-index:var\(--z-hud-controls\);left:8px;right:8px;top:auto;bottom:8px;flex-direction:row/);
+// From 768 to 1100 px the three panes keep their row with a narrower list (the lead, 10-26); a short window under 1100 px
+// scrolls, the stage spanning the top and the panes sharing a row; below 768 px they stack, the views become a bottom
+// row and the fleet a strip of cards.
+assert.match(css, /@media \(width < 1100px\)\{\s*:root\{--g-browse:clamp\(216px,22vw,248px\);--g-dossier:clamp\(296px,32vw,360px\)\}/);
+assert.match(css, /@media \(width < 768px\), \(\(height < 520px\) and \(width < 1100px\)\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
+assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.views\{position:absolute;z-index:var\(--z-hud-controls\);left:8px;right:auto;top:auto;bottom:8px\}/);
 assert.match(css, /@media \(width < 768px\)\{[\s\S]*?\.fam,\.fam\[data-layout=grid\]\{display:grid;grid-auto-flow:column/);
 
 // Selection states fill or outline whole controls: no clipped decorative fragments.

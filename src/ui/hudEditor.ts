@@ -35,7 +35,7 @@ export function openHudEditor(trigger:HTMLElement):void {
   const dimensions=new Map<HudPartId,[number,number]>();
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
-  const modal=createModal({title:label('title'),size:'wide',unsaved:()=>JSON.stringify(draft)!==stored,onClose:()=>{
+  const modal=createModal({surface:'hud-editor',title:label('title'),size:'wide',unsaved:()=>JSON.stringify(draft)!==stored,onClose:()=>{
     closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');

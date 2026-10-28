@@ -6,6 +6,8 @@
 @import url('../ui/heroCard.css');
 /* the armour and module drawings the combat chapter prerenders (src/docs/chapters/combat.ts: technicalDrawingMarkup) */
 @import url('../ui/technicalDrawing.css');
+/* the item badges' paper hues (tokens.json surface-badge-paper), for the print rules under the equipment and kits lists */
+@import url('../ui/tokens/surface-badge-paper.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 /* data-built chapters (src/docs/chapters): a table to pick from, cards with the game's stills, objective maps and rules */
@@ -13,7 +15,7 @@
 /* a phone's table fades at its end where it scrolls on, and keeps room to scroll clear of the fade */
 /* a table wider than its column fades at its end (topics.ts marks it); one that fits keeps its whole frame */
 .dm-table.is-scrollable{mask-image:linear-gradient(90deg,var(--ink-1) calc(100% - var(--s5)),transparent)}
-.dm-table:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.dm-table:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .dm-table table{width:100%;border-collapse:collapse;font:400 max(var(--fs-floor-12),var(--fs-14))/1.35 var(--font-body);color:var(--ink-2)}
 .dm-table th,.dm-table td{padding:9px 12px;text-align:left;vertical-align:baseline;border-bottom:1px solid var(--line-1);white-space:nowrap}
 .dm-table thead th{font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);background:var(--surface-plate)}
@@ -78,7 +80,7 @@
 .dm-next .cot-i{color:var(--ink-3)}
 .dm-next b{font:600 var(--fs-16)/1.2 var(--font-display);color:var(--ink-1)}
 .dm-next span{grid-column:2;font:400 max(var(--fs-floor-12),var(--fs-14))/1.4 var(--font-body)}
-.dm-next:hover{box-shadow:var(--ring-2);color:var(--ink-1)}.dm-next:focus-visible{outline:2px solid var(--amber);outline-offset:2px;color:var(--ink-1)}
+.dm-next:hover{box-shadow:var(--ring-2);color:var(--ink-1)}.dm-next:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px;color:var(--ink-1)}
 .dm-keys{margin-top:var(--s5)}
 .dm-keys h3,.dm-view h3{display:flex;align-items:center;gap:10px;margin:0 0 var(--s2);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
 .dm-keys h3 .cot-i,.dm-view h3 .cot-i{flex:none;color:var(--ink-3)}
@@ -148,6 +150,22 @@
 .dm-equip b{font:600 var(--fs-15)/1.25 var(--font-body);color:var(--ink-1)}
 .dm-equip span{font:400 max(var(--fs-floor-12),var(--fs-14))/1.45 var(--font-body);color:var(--ink-2)}
 .dm-equip small{justify-self:start;margin-top:2px;padding:2px 7px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
+/* printed, the page is paper: each badge's frame takes its category's paper hue and its glyph the paper ink, so the frames
+   hold 3:1 on white (the dark-surface hues fall to 1.5-2.5:1 there; badgeColours.selftest) */
+@media print{
+  :is([data-equipment-icon],[data-consumable-icon])[data-icon-category]>g{color:var(--badge-paper-ink)}
+  [data-equipment-icon][data-icon-category='firepower']>path{stroke:var(--badge-equip-firepower-paper);fill:var(--badge-equip-firepower-paper)}
+  [data-equipment-icon][data-icon-category='recon']>path{stroke:var(--badge-equip-recon-paper);fill:var(--badge-equip-recon-paper)}
+  [data-equipment-icon][data-icon-category='mobility']>path{stroke:var(--badge-equip-mobility-paper);fill:var(--badge-equip-mobility-paper)}
+  [data-equipment-icon][data-icon-category='protection']>path{stroke:var(--badge-equip-protection-paper);fill:var(--badge-equip-protection-paper)}
+  [data-equipment-icon][data-icon-category='survival']>path{stroke:var(--badge-equip-survival-paper);fill:var(--badge-equip-survival-paper)}
+  [data-consumable-icon][data-icon-category='repair']>path{stroke:var(--badge-cons-repair-paper);fill:var(--badge-cons-repair-paper)}
+  [data-consumable-icon][data-icon-category='crew']>path{stroke:var(--badge-cons-crew-paper);fill:var(--badge-cons-crew-paper)}
+  [data-consumable-icon][data-icon-category='fire']>path{stroke:var(--badge-cons-fire-paper);fill:var(--badge-cons-fire-paper)}
+  [data-consumable-icon][data-icon-category='mobility']>path{stroke:var(--badge-cons-mobility-paper);fill:var(--badge-cons-mobility-paper)}
+  [data-consumable-icon][data-icon-category='ammunition']>path{stroke:var(--badge-cons-ammunition-paper);fill:var(--badge-cons-ammunition-paper)}
+  [data-consumable-icon][data-icon-category='protection']>path{stroke:var(--badge-cons-protection-paper);fill:var(--badge-cons-protection-paper)}
+}
 .dm-chart{margin:var(--s4) 0}
 /* the chart scales as a picture, so where it is drawn under its size its furniture is drawn at the inverse of the drawn
    scale: --dm-chart-k is the chart's units per drawn pixel, never under 1 (topics.ts counterScaleCharts measures it), and
@@ -205,7 +223,8 @@
 .dm-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
 .dm-map{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-map img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
-.dm-map__name{display:flex;align-items:center;gap:8px;padding:9px 11px;font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-1)}
+/* a map card's label row pads as a class card's body does: 12 px on a desktop, 9 on a phone (r38) */
+.dm-map__name{display:flex;align-items:center;gap:8px;padding:9px 12px;font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-1)}
 .dm-map__tags{display:inline-flex;gap:5px;margin-left:auto;color:var(--ink-3)}
 .dm-map:target{box-shadow:var(--ring-2)}
 @media (width < 768px){
@@ -214,7 +233,7 @@
   .dm-classes>.dm-class:last-child:nth-child(odd){grid-column:1/-1}
   .dm-class__body{padding:8px 9px 10px}
   .dm-maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
-  .dm-map__name{padding:7px 8px;font-size:max(var(--fs-floor-12),var(--fs-13))}
+  .dm-map__name{padding:7px 9px;font-size:max(var(--fs-floor-12),var(--fs-13))}
   .dm-bars b{min-width:3.5em}
 }
 /* the multiplayer, sound and studio chapters: ways in, seats drawn to scale, steps, linked chips, glyph rows */
@@ -244,7 +263,7 @@
 .dm-chips--links li{padding:0;background:none}
 .dm-chips--links a{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);color:var(--ink-2);text-decoration:none}
 .dm-chips--links a .cot-i{color:var(--ink-3)}
-.dm-chips--links a:hover{color:var(--ink-1);box-shadow:var(--ring-2)}.dm-chips--links a:focus-visible{color:var(--ink-1);outline:2px solid var(--amber);outline-offset:2px}
+.dm-chips--links a:hover{color:var(--ink-1);box-shadow:var(--ring-2)}.dm-chips--links a:focus-visible{color:var(--ink-1);outline:2px solid var(--focus-ink);outline-offset:2px}
 .dm-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
 .dm-steps li{display:grid;gap:var(--s2);padding:var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
 .dm-steps__n{font:700 var(--fs-36)/1 var(--font-display);color:var(--ink-3)}

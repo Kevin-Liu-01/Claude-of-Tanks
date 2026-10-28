@@ -135,7 +135,8 @@ const pins = [
   [/draw\.warningW = Math\.ceil\(ctx\.measureText\(warning\.text\)\.width \+ warning\.text\.length \* AIM_WARNING_TRACK_PX\) \+ 62;/,
     R.chipHalfWidthPx === 122],
   [/let y = Math\.max\(draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\),/, R.chipMinPx === 62 && R.chipRingPx === 24],
-  [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
+  // (a mouse layout's switch is the 48 px plate; a touch one's views stand two by two, SCOPE_VISION_TOUCH_HALF_H)
+  [/const half = document\.body\.classList\.contains\('cot-touch-layout'\) && h > 300 && w > 340\s+\? SCOPE_VISION_TOUCH_HALF_H : SCOPE_VISION_HALF_H;\s+const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - half, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
   [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],
   // the scope's readout row and its places
   [/const rest = h <= 300 \? draw\.cy \+ 32\s+: h <= 430 \? draw\.cy \+ 48\s+: Math\.min\(draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24,\s+scopeArmEnd\(draw\.radius\) \+ SCOPE_ARM_REACH \+ SIGHT_MARK_RING_GAP \+ row\.lineTop \+ 1\), sniperReadoutFloor\(\)\);/, true],

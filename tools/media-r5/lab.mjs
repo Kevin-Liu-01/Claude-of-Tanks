@@ -232,6 +232,9 @@ try {
   // the boot, three tries on a fresh page 20 s apart (2026-10-08: under a load average of 500 a cold boot's prop archive
   // fetch failed and its frame detached, ending a 13-map survey the moment its lease was taken; another timed out)
   let pageMap = null, pageUsed = false;
+  // the boot's page and readiness waits (2026-10-27: three 240 s boots ran out at a load average of 800);
+  // COT_LAB_BOOT_MS raises them, as COT_CINEMA_READY_MS does cinema.mjs's
+  const BOOT_MS = Number(process.env.COT_LAB_BOOT_MS) || 240000;
   // `reuse` (a film's fresh page, below) reloads the page in place, as cinema.mjs --fresh-page does: closing the page and
   // booting a new one beside it (2026-10-14, combat review 4) lost the new page's context during its readiness wait
   const openPage = async (map, reuse = false) => {
@@ -243,11 +246,13 @@ try {
         await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
       }
       try {
-        await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-        await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
+        await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${map}&diag`, { waitUntil: 'domcontentloaded', timeout: BOOT_MS });
+        await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: BOOT_MS });
         pageMap = map; pageUsed = false;
         return;
       } catch (error) {
+        // the page's own errors say whether it was slow or broken
+        for (const e of errors.slice(0, 4)) console.error(`[lab]   boot ${attempt} page error: ${e.split('\n')[0].slice(0, 300)}`);
         if (attempt >= 3 || stopping) throw error;
         console.error(`[lab] boot ${attempt} failed (${String(error?.message ?? error).split('\n')[0]}); a fresh page in 20 s`);
         await page.close().catch(() => {});

@@ -2,14 +2,25 @@ import { t } from '../ui/i18n.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
+import { revealStills } from '../presentation/revealStills.ts';
 
 mountDocsIcons();
+// the banner and the chapter cards' pictures fade in once decoded over their boxes' tone (a failed one keeps the tone). The
+// cards wait from the served markup (data-reveal); the banner, the page's LCP picture, is marked only here, so one that
+// decodes before this runs paints at once (as the landing's hero still does).
+revealStills(document.querySelectorAll<HTMLImageElement>('.docs-hero > img, .docs-chapter-media > img'));
 
 // The index's search: the field loads the manual's index with its first use (docsSearch.ts); Cmd K or Ctrl K focuses it.
 const searchHost = document.querySelector<HTMLElement>('[data-docs-search]');
 const searchInput = searchHost?.querySelector<HTMLInputElement>('input');
 if (searchHost && searchInput) {
-  searchInput.addEventListener('focus', () => { void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(searchHost, searchInput)); }, { once: true });
+  // a matching that did not arrive (the link dropped) loads again with the field's next focus
+  const mountSearch = (): void => {
+    void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(searchHost, searchInput))
+      .catch(() => searchInput.addEventListener('focus', mountSearch, { once: true }));
+  };
+  searchInput.addEventListener('focus', mountSearch, { once: true });
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
     event.preventDefault();
@@ -96,6 +107,8 @@ archiveOpen?.addEventListener('click', () => {
   void loadArchive().catch(() => loadFailed(loadArchive));
 });
 archiveClose?.addEventListener('click', () => archiveDialog?.close());
+// on the page's surface stack while open (Escape is the stack's)
+if (archiveDialog) dialogSurface(archiveDialog, 'docs-archive');
 archiveDialog?.addEventListener('close', stopArchiveMotion);
 archiveDialog?.addEventListener('click', (event) => {
   if (event.target === archiveDialog) archiveDialog.close();

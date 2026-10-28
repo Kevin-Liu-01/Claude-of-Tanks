@@ -46,6 +46,8 @@ interface RosterPresentationOptions {
 export interface RosterPresentation {
   lobbyRows(state: LobbyState, team: string, viewerId: string): RosterPresentationRow[];
   battleRows(entities: BattleRosterEntity[], team: string): RosterPresentationRow[];
+  /** The bots' callsigns by seat id over every side in the battle's order, as the card and the HUD name them. */
+  seatCallsigns(entities: readonly BattleRosterEntity[]): Map<string, string>;
 }
 
 /** (ac130-fx-228) a gunship pilot's row: the AC-130, no tier; it carries no name, its renderer names it through the one
@@ -74,12 +76,14 @@ export function createRosterPresentation({
       };
     });
 
+  // the bots' callsigns over every side in the battle's order, as the HUD assigns them
+  const seatCallsigns = (entities: readonly BattleRosterEntity[]) => rosterCallsigns(entities.map((entity) => ({
+    id: entity.id ?? entity.specId, specId: entity.spec ? entity.spec.id ?? entity.specId : null,
+    displayName: entity.displayName, isPlayer: entity.isPlayer,
+  })));
+
   const battleRows = (entities: BattleRosterEntity[], team: string) => {
-    // the bots' callsigns over every side in the battle's order, as the HUD assigns them
-    const callsigns = rosterCallsigns(entities.map((entity) => ({
-      id: entity.id ?? entity.specId, specId: entity.spec ? entity.spec.id ?? entity.specId : null,
-      displayName: entity.displayName, isPlayer: entity.isPlayer,
-    })));
+    const callsigns = seatCallsigns(entities);
     return entities
       .filter((entity) => entity.team === team)
       .map((entity): RosterPresentationRow => {
@@ -98,5 +102,5 @@ export function createRosterPresentation({
       .sort((left, right) => Number(right.isPlayer) - Number(left.isPlayer));
   };
 
-  return { lobbyRows, battleRows };
+  return { lobbyRows, battleRows, seatCallsigns };
 }

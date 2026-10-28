@@ -170,7 +170,9 @@ export function* shoreDistanceTextureSteps(mask: THREE.Texture, size: number, we
   for (let k = 0; k < N * N; k++) {
     out[k * 2] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
     out[k * 2 + 1] = Math.min(255, Math.round(shelf(seed[k])));
-    if ((k & 255) === 255 && performance.now() - sliceAt >= 8) { yield; sliceAt = performance.now(); }
+    // (260, the Saltwind census: a check every 256 cells let up to 6,400 memo-missing height samples run between two
+    // checkpoints, a 123 ms step) every 32 cells
+    if ((k & 31) === 31 && performance.now() - sliceAt >= 8) { yield; sliceAt = performance.now(); }
   }
   const tex = new THREE.DataTexture(out, N, N, THREE.RGFormat, THREE.UnsignedByteType);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;

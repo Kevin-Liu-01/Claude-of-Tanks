@@ -7,10 +7,5 @@ body.cot-photo-on .cot-garage{visibility:hidden;}
   display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--s3);max-width:calc(100vw - 32px);padding:var(--s2);
   border-radius:var(--control-radius);background:var(--glyph-plate);box-shadow:var(--ring-2);}
 .cot-photo-bar[hidden]{display:none;}
-.cot-photo-views{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
-.cot-photo-views button{height:34px;padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
-  cursor:pointer;font:500 var(--fs-13)/1 var(--font-body);}
-.cot-photo-views button[aria-pressed='true']{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent);}
-@media (hover:hover){.cot-photo-views button:hover{color:var(--ink-1);}}
-.cot-photo-views button:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+/* the framings are the kit's segmented control (components.css .cot-c-seg): its look, its checked state, its focus */
 }
