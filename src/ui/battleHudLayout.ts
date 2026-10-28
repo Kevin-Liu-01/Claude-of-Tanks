@@ -39,7 +39,7 @@ let copyMeasure: CanvasRenderingContext2D | null | undefined;
 export function objectiveCopyOver(node: Element | null | undefined, copy: string, width: number): boolean {
   const cell = width - OBJECTIVE_CHROME_W;
   if (copyMeasure === undefined) {
-    // (an offscreen measure, uiCanvas's scratch canvas: UI-LOCKDOWN A's census holds every canvas to uiCanvas.ts)
+    // (an offscreen measure: uiCanvas.ts's scratchCanvas, the one maker of offscreen canvases; uiCanvasCensus.selftest)
     const canvas = typeof document !== 'undefined' && typeof document.createElement === 'function' ? scratchCanvas(1, 1) : null;
     const context = typeof canvas?.getContext === 'function' ? canvas.getContext('2d') : null;
     copyMeasure = typeof context?.measureText === 'function' ? context : null;

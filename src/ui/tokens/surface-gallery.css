@@ -6,7 +6,7 @@
 @layer tokens{
 :root{
   --gallery-stage:radial-gradient(70% 60% at 50% 56%,var(--surface-menu) 0,var(--surface-page) 70%);--gallery-row-on:inset 0 0 0 1px var(--accent);
-  --gallery-layer-on:inset 0 -2px 0 var(--accent);--gallery-take-fade:linear-gradient(0deg,var(--surface-page) 0,oklch(from var(--surface-page) l c h / .5) 30%,oklch(from var(--surface-page) l c h / 0) 55%);
+  --gallery-take-fade:linear-gradient(0deg,var(--surface-page) 0,oklch(from var(--surface-page) l c h / .5) 30%,oklch(from var(--surface-page) l c h / 0) 55%);
   --gallery-callout-on:rgba(30,20,6,.95);--gallery-dot-ring:0 0 0 3px var(--surface-page);--gallery-reveal-after:20s;
 }
 }

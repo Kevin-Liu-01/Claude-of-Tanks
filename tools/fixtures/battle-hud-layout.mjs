@@ -44,6 +44,9 @@ import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
 // document ships (src/presentation/localizedHtml.ts), as the end-screen fixture does
 await setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
 if (document.documentElement.lang === 'zh-CN') document.head.insertAdjacentHTML('beforeend', zhTypeFloorStyle('game'));
+// ?coarse=1 lays the HUD out for a touch screen (an iPad's pointer: coarse, no hover) in a desktop browser
+if(new URLSearchParams(location.search).has('coarse')){const native=window.matchMedia.bind(window);
+ window.matchMedia=query=>query==='(pointer: coarse)'||query==='(hover: hover)'?{matches:query==='(pointer: coarse)',media:query,addEventListener(){},removeEventListener(){}}:native(query);}
 installResponsiveLayout();
 const bus = createBus();
 const input = createInput();

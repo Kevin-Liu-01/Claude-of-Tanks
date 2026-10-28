@@ -86,7 +86,7 @@ assert.equal(pooledAnatomy, inlineAnatomy, 'every structure anatomy (its mass cl
 
 // ---- 3. the wiring
 const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const joinAt = props.indexOf("yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };\n  }\n  yield* joinStructureShells();\n  dressMapExtras({");
+const joinAt = props.indexOf("yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };\n  }\n  yield* joinStructureShells();\n  // (260) the kits with a checkpoint after each kit and bridge (mapKits.ts dressMapExtrasSteps)\n  yield* dressMapExtrasSteps({");
 assert.ok(joinAt > 0, 'the join stands right before the map kits (the first passes that scan every record)');
 for (const reader of ['composeLoggingYard(', 'composeReservoirWaterworks(', 'composeMangroveFisheryWharf(', 'composeFoundryServiceCourt(', 'separateParkedVehicles(']) {
   assert.ok(props.indexOf(reader) > joinAt, `${reader} runs after the join`);

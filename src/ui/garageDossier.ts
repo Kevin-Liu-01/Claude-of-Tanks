@@ -159,6 +159,20 @@ export function garageStatGroup(spec: GarageDossierSpec | null | undefined): str
   return `${displayTier(spec?.id || '')}/${spec?.era || 'unclassified'}`;
 }
 
+/**
+ * A stat's share of its Garage bar: its place between the least and the most of its stat group (garageStatGroup: the shown
+ * tier and the era), from a 0.14 stub to full, inverted where less is better (a reload: the fastest fills). A group with no
+ * spread parks at 0.72, so a column never reads all stubs; an unknown range or value reads 0.6.
+ */
+export function garageStatShare(range: readonly [number, number] | undefined, value: number | null | undefined, invert = false): number {
+  if (!range || value == null || !isFinite(value)) return 0.6;
+  const [lo, hi] = range;
+  const span = hi - lo;
+  if (!(span > Math.max(1e-6, Math.abs(hi) * 0.02))) return 0.72;
+  const f = (value - lo) / span;
+  return 0.14 + Math.max(0, Math.min(1, invert ? 1 - f : f)) * 0.86;
+}
+
 /** Canonically ordered, duplicate-free damageable modules for one vehicle. */
 export function garageModuleRows(spec: GarageDossierSpec | null | undefined): GarageDossierRow[] {
   const seen = new Set<string>();

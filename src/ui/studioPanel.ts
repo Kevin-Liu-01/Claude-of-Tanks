@@ -435,7 +435,14 @@ const MAP_POP_GAP = 12;
  * 600 and 1280 x 720 the popover cut its cards and the card above scrolled under the tab bar). */
 const MAP_POP_SHEET_BELOW = Number.POSITIVE_INFINITY; // the sheet at every size: one form (the s17 critic: a nested box at 1440 and up)
 const MAP_SHEET = 520;
+/** From 1440 px the sheet stands wider: four maps to a row and more of the biome chips beside the search (the s19 critic: a
+ *  three-column strip at 1920 and 2560 with the filters past Winter behind the arrow). */
+const MAP_SHEET_WIDE = 760;
+const MAP_SHEET_WIDE_FROM = 1440;
 const MAP_SHEET_TOP = 56;
+/** A sheet taller than its inspector runs over the timeline to the screen's foot, less this (the s19 critic: at 1024 x 600
+ *  the sheet ended at the timeline and held a row and a half of maps). */
+const MAP_SHEET_FOOT = 8;
 /** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
 const CONTROLS_MODE_KEY = 'cot.studio.controls';
 function readControlsMode(): 'quick' | 'pro' {
@@ -881,7 +888,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const sunNote = el('div', 'note', '');
   sunSide.append(sunRead, sunPresets);
   sunBlock.append(dial, sunSide);
-  const lampBtn = chipButton(t('studioPanel.light.headlights'), 'lampOk', false);
+  const lampBtn = chipButton(t('studioPanel.light.headlights'), 'lightbulb', false);
   lampBtn.dataset.tip = t('studioPanel.light.headlightsHint');
   lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
   const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {
@@ -1023,9 +1030,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     // and left to MAP_SHEET where the screen has the room
     const host = mapPick.closest<HTMLElement>('.cot-studio');
     if (host && mapPop.parentElement !== host) host.append(mapPop);
-    const width = Math.min(innerWidth, Math.max(box.width, MAP_SHEET));
+    const width = Math.min(innerWidth, Math.max(box.width, innerWidth >= MAP_SHEET_WIDE_FROM ? MAP_SHEET_WIDE : MAP_SHEET));
     const height = Math.min(innerHeight - MAP_SHEET_TOP, Math.max(box.height, MAP_SHEET));
-    const right = Math.min(innerWidth, box.right), bottom = Math.min(innerHeight, box.bottom);
+    const right = Math.min(innerWidth, box.right);
+    const bottom = box.height < height ? innerHeight - MAP_SHEET_FOOT : Math.min(innerHeight, box.bottom);
     mapPop.style.cssText = `left:${Math.round(Math.max(0, right - width))}px;width:${Math.round(width)}px;`
       + `top:${Math.round(Math.max(MAP_SHEET_TOP, bottom - height))}px;height:${Math.round(Math.min(height, bottom - MAP_SHEET_TOP))}px`;
   }
@@ -1566,7 +1574,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const filmSizeRow = el('div', 'film-rows');
   const filmSize = labelledSegments(t('studio.film.size'),
     FILM_RESOLUTIONS.map((resolution) => [String(resolution), `${resolution}p`] as const), String(FILM_RESOLUTIONS[0]));
-  const filmFps = labelledSegments(t('studio.film.rate'), [24, 30, 60].map((fps) => [String(fps), t('studio.film.fpsOption', { fps })] as const), '30');
+  // the choices are bare rates under their heading: "24 FPS" as a choice read to the datum census as a live frame-rate
+  // figure outside its registered place (UI-LOCKDOWN C, s19)
+  const filmFps = labelledSegments(t('studio.film.frameRate'), [24, 30, 60].map((fps) => [String(fps), String(fps)] as const), '30');
   filmSizeRow.append(filmSize.row, filmFps.row);
   secCap.appendChild(filmSizeRow);
   const filmBlurRow = el('div', 'film-rows');

@@ -20,7 +20,7 @@ const GUN_RECOIL_STROKES_M = [0, .135];
 const DEG = Math.PI / 180;
 
 /** Ericson's closest point on triangle T[o..o+8] to p, written into out. */
-function closestOnTriangle(T, o, px, py, pz, out) {
+export function closestOnTriangle(T, o, px, py, pz, out) {
   const ax = T[o], ay = T[o + 1], az = T[o + 2], bx = T[o + 3], by = T[o + 4], bz = T[o + 5], cx = T[o + 6], cy = T[o + 7], cz = T[o + 8];
   const abx = bx - ax, aby = by - ay, abz = bz - az, acx = cx - ax, acy = cy - ay, acz = cz - az, apx = px - ax, apy = py - ay, apz = pz - az;
   const d1 = abx * apx + aby * apy + abz * apz, d2 = acx * apx + acy * apy + acz * apz;
@@ -43,7 +43,7 @@ function closestOnTriangle(T, o, px, py, pz, out) {
 
 /** Nearest-surface lookups against a fixed triangle soup within `rq`: a dense index of `cell`-metre cells over the soup's
  * box, each listing the triangles whose box (grown by rq) reaches it; `nearest` names the last query's triangle. */
-class SurfaceGrid {
+export class SurfaceGrid {
   constructor(tris, { cell = .05, rq = .065 } = {}) {
     this.tris = tris; this.cell = cell; this.rq = rq; this.nearest = -1; this.q = [0, 0, 0];
     const n = tris.length / 9, box = new Float64Array(n * 6), lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -84,7 +84,7 @@ class SurfaceGrid {
 
 /** Dense surface samples of a triangle soup: every point of every triangle lies within h of a sample (rows parallel to
  * each triangle's longest edge, so a long sliver costs its area). */
-function densePoints(tri, h) {
+export function densePoints(tri, h) {
   const out = [];
   for (let t = 0; t < tri.length; t += 9) {
     let best = -1, k = 0;
@@ -108,7 +108,7 @@ function densePoints(tri, h) {
 }
 
 /** The visible, non-shadow meshes under obj, none of them under an excluded node. */
-function meshesUnder(obj, exclude = []) {
+export function meshesUnder(obj, exclude = []) {
   const out = [];
   obj.traverse((o) => {
     if (!o.isMesh || /Shadow/.test(o.name) || o.userData.shadowOnly || o.userData.authoredShadowProxy) return;
@@ -118,7 +118,7 @@ function meshesUnder(obj, exclude = []) {
   return out;
 }
 /** Triangles of meshes in the frame `frameInv` (frame inverse world), and each mesh's first triangle index. */
-function meshTriangles(meshes, frameInv) {
+export function meshTriangles(meshes, frameInv) {
   const out = [], starts = [], a = new THREE.Vector3(), m = new THREE.Matrix4();
   for (const mesh of meshes) {
     starts.push([out.length / 9, mesh]);

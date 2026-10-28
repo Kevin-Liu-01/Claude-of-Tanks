@@ -119,6 +119,9 @@ export function settleLightWreck(intact: THREE.BufferGeometry, anatomy: KitFract
 export function* settleLightWreckSteps(intact: THREE.BufferGeometry, anatomy: KitFractureAnatomy, seed: number,
   opts: LightWreckOptions = {}): Generator<void, THREE.BufferGeometry, void> {
   const S = new FractureSettle(intact, anatomy, { cell: 0.08, margin: 3, dust: opts.dust ?? 0.84, ground: opts.ground, restMembers: true });
+  // (260, the room-stalls lane's Saltwind census: the settle's grid and the snaps' budget shared a step of the pools' 205-327
+  // ms tasks) the grid its own step
+  yield;
   const P = anatomy.pieces, idx = P.map((_p, i) => i);
   const rng = stream(seed ^ 0x51ed7);
   const r = (lo: number, hi: number): number => lo + (hi - lo) * rng();

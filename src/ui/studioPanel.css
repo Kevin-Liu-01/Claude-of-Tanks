@@ -15,8 +15,8 @@
   font:400 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-ui);-webkit-user-select:none;user-select:none}
 .cot-studio *{box-sizing:border-box}
 .cot-studio :is(h2,h3,p){margin:0}
-/* focus is the kit ring's paper hue, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
-.cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--ink-1);outline-offset:1px}
+/* focus is the kit ring's own ink (--focus-ink), never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+.cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--focus-ink);outline-offset:1px}
 .cot-studio .cot-c-chip{font-size:max(var(--fs-floor-11),var(--fs-13))}
 .cot-studio .cot-c-kbd{font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */
@@ -98,7 +98,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-out .gh{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0 2px}
 .st-out .gh>button:first-child{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;min-height:28px;padding:var(--s1) var(--s2);border:0;
   border-radius:var(--r1);background:none;color:var(--ink-2);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display);text-align:left}
-.st-out .gh>button:first-child[aria-current=true]{color:var(--accent)}
+/* the open workspace wears the kit's one selected state, the accent's wash and edge (the s18 critic: orange words alone on
+   the rail, the outliner and the phone's strip) */
+.st-out .gh>button:first-child[aria-current=true]{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
 .st-out .gh .cot-i,.st-out .add .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-out .add{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none}
 .st-out .it{display:flex;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);border:0;border-radius:var(--r1);background:transparent;
@@ -280,11 +282,13 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop.sheet .mapPopHead{display:flex;flex:none;align-items:center;justify-content:space-between;gap:var(--s2);
   padding:0 0 var(--s2) var(--s1);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display)}
 @media (pointer:coarse){.cot-studio .mapPopX{--h:44px}}
-/* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them */
-@media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 200px}}
-/* the focus is the pointer's or the keys' place and wears the kit's amber ring; the scene's current map keeps its fill
-   under a neutral edge (the s16 critic: two cards in the same amber) */
-.cot-studio .mapPop .cot-c-picker__opt[aria-selected=true]:not(:focus-visible){box-shadow:var(--ring-3)}
+/* the wide sheet (MAP_SHEET_WIDE) holds four maps to a row at the inspector's card size */
+@media (width >= 1440px){.cot-studio .mapPop.sheet .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+/* a short window's sheet keeps the search and the chips on one row, so a whole row of cards stands under them; the search
+   stays narrow enough for three chips beside it (the s19 critic: two at 844 x 390) */
+@media (height < 520px){.cot-studio .mapPop.sheet .cot-c-picker__search{flex:0 1 160px}}
+/* the scene's current map wears the kit's one selected state (wash and edge); the focus is the kit's neutral ring, so the
+   two never read alike (the s18 critic: a wash with no edge beside an edge with no wash) */
 /* the sun: a north-up compass (09-studio's light row, drawn) */
 .cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:var(--s3)}
 .cot-studio .sunDial{display:block;width:78px;height:78px;border-radius:50%;background:var(--fill-quiet);box-shadow:var(--ring-2);cursor:grab;touch-action:none}
@@ -360,9 +364,12 @@ html[lang^='zh'] .cot-studio :is(.st-queue .qc,.st-fc,.recStatus){font-family:va
   min-width:0;padding:0;border:0;background:none;color:var(--ink-1);text-align:left}
 .cot-studio .production-card img{grid-column:1/-1;grid-row:1;display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/10;object-fit:cover;
   border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1)}
-.cot-studio .production-card .production-duration{grid-column:2;grid-row:2;padding-top:1px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-data)}
+/* the duration stands on the still's corner, so the caption under it has the card's whole width (the s18 critic: zh
+   "M1A2 Abrams TUSK…" cut beside "6.6 秒", the library's durations out of line with two-line titles) */
+.cot-studio .production-card .production-duration{grid-column:1/-1;grid-row:1;align-self:end;justify-self:end;margin:var(--s1);padding:2px var(--s1);
+  border-radius:var(--r1);background:var(--glyph-plate);color:var(--ink-1);font:500 max(var(--fs-floor-11),var(--fs-11))/1.15 var(--font-data)}
 /* a take's name wraps (247 round 2: no ellipsis): two lines at most widths, the still above gives up the height */
-.cot-studio .production-card strong{grid-column:1;grid-row:2;min-width:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1.15 var(--font-display);
+.cot-studio .production-card strong{grid-column:1/-1;grid-row:2;min-width:0;color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-12))/1.15 var(--font-display);
   overflow-wrap:anywhere;text-wrap:balance}
 .cot-studio .production-card small{display:none}
 .cot-studio .production-card[aria-pressed=true] img{box-shadow:var(--ring-accent)}
@@ -411,10 +418,11 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-shelf .production-card{grid-row:1/span 2;grid-template-rows:subgrid;min-height:0}
 /* a shelf caption keeps its names whole and takes at most two lines, so the stills above keep their height (the s15
    critic: a three-line caption at 1280 crushed every still to a strip) */
-/* a name too long for its card's line gives way to an ellipsis (its title holds it whole), never runs under the
-   duration (the s17 critic: zh "M1A2 Abrams TU" under "6.6 秒") */
-.cot-studio .production-card .nobr{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
-.st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+/* a name stands together: it starts a line rather than split there, and breaks inside itself only when it is wider than
+   the whole card; no ellipsis (the s18 critic: zh "M1A2 Abrams TUSK…" was cut and still wrapped) */
+.cot-studio .production-card .nobr{display:inline-block;max-width:100%;white-space:normal;vertical-align:bottom}
+/* every shelf caption holds two lines' room, so the takes' first lines and their stills stand on one line */
+.st-shelf .production-card strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:calc(2 * 1.15em)}
 .st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
 
@@ -472,7 +480,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
-.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
+/* (it stands on the window's right edge under the header, so it covers the inspector whole: from the header's tool group it
+   ended mid-inspector at 1024 and 900 and left its words cut beside it: the s19 critic) */
+.st-queue{position:fixed;top:calc(50px + 4px);right:var(--s2);display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
   max-height:calc(100dvh - 72px);padding:var(--s4) var(--s3) var(--s3);overflow-y:auto;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 /* the queue takes the window's height, so it scrolls only on a short screen, where its drawn scrollbar is the cue (its
@@ -502,7 +512,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 /* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
 .st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:var(--s8) var(--s4) var(--s4);
   pointer-events:auto;background:var(--scrim)}
-.st-cmd-box{--st-cmd-row:34px;display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
+.st-cmd-box{--st-cmd-row:34px;--st-cmd-max:min(60vh,520px);display:flex;flex-direction:column;width:min(560px,100%);max-height:var(--st-cmd-max);overflow:hidden;border-radius:var(--r2);
   background:var(--surface-menu);box-shadow:var(--e2)}
 .cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 var(--s4);border-bottom:1px solid var(--line-1);border-radius:0;
   background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
@@ -510,7 +520,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 /* the list stops halfway down a row, so a list that goes on always shows the next row's top (on a phone it ended on a
    row's edge, and the commands under it read as missing); the foot dims that row rather than hiding it, and the last
    row scrolls clear of the fade */
-.st-cmd-list{min-height:0;max-height:calc(round(down,min(60vh,520px) - 48px - var(--s2) - var(--st-cmd-row) / 2,var(--st-cmd-row)) + var(--s2) + var(--st-cmd-row) / 2);
+.st-cmd-list{min-height:0;max-height:calc(round(down,var(--st-cmd-max) - 48px - var(--s2) - var(--st-cmd-row) / 2,var(--st-cmd-row)) + var(--s2) + var(--st-cmd-row) / 2);
   padding:var(--s2) var(--s2) var(--s6);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
   -webkit-mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent));
   mask-image:linear-gradient(180deg,var(--surface-page) calc(100% - var(--s6)),color-mix(in srgb,var(--surface-page) 30%,transparent))}
@@ -519,6 +529,9 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
 .st-cmd-empty{padding:var(--s4) var(--s4);color:var(--ink-3);font:400 max(var(--fs-floor-11),var(--fs-13))/1.4 var(--font-body)}
+/* a phone or a short window gives the palette the screen's height under its head (the s19 critic: four rows at 844 x 390
+   over an empty dim, and on a phone its foot sliced the workspace strip) */
+body:is([data-cot-width='phone'],[data-cot-height='short']) .st-cmd-box{--st-cmd-max:calc(var(--cot-viewport-height,100dvh) - var(--s8) - var(--s4))}
 
 /* ------------------------------------------------------------------------------------------- the film veil */
 .cot-studio .filmVeil{position:absolute;inset:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;align-items:center;justify-content:center;
@@ -555,10 +568,18 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio-archive :is(.media-archive-card-copy>span>span,.media-archive-card-copy small,.media-archive-card-index){display:none}
 /* each frame's name stands on a plate, legible over sand and sky */
 .cot-studio-archive .media-archive-card-copy strong{padding:2px var(--s1);border-radius:var(--r1);background:var(--hud-plate)}
-/* (as specific as the archive's own rail rule plus one: mediaArchive.css loads after this sheet, and its 1 px gap ran the
-   frames together into one strip: the s16 critic) */
-.cot-studio-archive .archiveBody .media-archive-grid{gap:var(--s3);padding-inline-end:var(--s6);
-  -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 48px),transparent)}
+/* the frames stand in a grid that uses the dialog's room and scrolls inside it (the s18 critic: a thin strip of 61 frames
+   on an empty scrim, its last card cut by the fade). As specific as the archive's own rail rule plus one: mediaArchive.css
+   loads after this sheet. */
+.cot-studio-archive .archiveBody .media-archive-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--s3);
+  max-height:min(70vh,calc(100dvh - 160px));overflow-x:hidden;overflow-y:auto;scroll-snap-type:none;overscroll-behavior:contain;
+  padding-bottom:var(--s7);-webkit-mask-image:linear-gradient(to bottom,var(--surface-page) calc(100% - var(--s7)),transparent);
+  mask-image:linear-gradient(to bottom,var(--surface-page) calc(100% - var(--s7)),transparent)}
+/* every frame is one cell of that grid: the archive's own page layout (cards spanning 4, 6 or 8 of its 12 columns and two
+   rows, a full-width card every seventh below 1100 px, block cards below 768) spilled into implicit tracks and folded the
+   frames into strips of sky (the s19 critic at 1280) */
+.cot-studio-archive .archiveBody .media-archive-card:nth-child(n){display:block;grid-column:auto;grid-row:auto;flex:none;width:auto;
+  min-height:0;margin:0;aspect-ratio:16/10}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
@@ -629,11 +650,12 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-queue{left:var(
 .st-queue::-webkit-scrollbar{width:6px}
 .st-queue::-webkit-scrollbar-track{background:var(--fill-quiet);border-radius:3px}
 .st-queue::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:3px}
-/* the Field frames read as one column on a phone: the cards fill the dialog, with no sideways fade */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .archiveBody{padding:var(--s3)}
-/* a phone's Field frames take the whole screen (an inset dialog cut the header's buttons along its top edge) */
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;inset:0;border-radius:0}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-studio-archive .media-archive-grid{padding-inline-end:0;-webkit-mask-image:none;mask-image:none}
+/* the Field frames read as one column on a phone: the cards fill the dialog; the grid's foot fades where it continues */
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive .archiveBody{padding:var(--s3)}
+/* a phone's or a short window's Field frames take the whole screen (an inset dialog cut the header's buttons along its top
+   edge; at 844x390 it ran past the screen's foot: s19) */
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive{width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;inset:0;border-radius:0}
+body:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height='short']) .cot-studio-archive .media-archive-grid{padding-inline-end:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}
