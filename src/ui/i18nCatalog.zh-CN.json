@@ -1678,6 +1678,7 @@
   "transition.sub.stagingRig": "布景台 · 自由视角",
   "transition.stage.loading": "正在加载",
   "transition.stage.ready": "准备就绪",
+  "transition.sentence": "{text}。",
   "studioPanel.fieldFrames": "镜头参考",
   "studioPanel.fieldFramesSub": "当前渲染器在构图、光照、特效与战车摆位上的参考画面。",
   "studioPanel.fieldFramesEyebrow": "场景工作室 // 共享组件",

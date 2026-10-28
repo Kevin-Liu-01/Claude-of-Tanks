@@ -1654,6 +1654,7 @@
   "transition.sub.stagingRig": "Staging rig · Free camera",
   "transition.stage.loading": "Loading",
   "transition.stage.ready": "Ready",
+  "transition.sentence": "{text}.",
   "studioPanel.fieldFrames": "Field frames",
   "studioPanel.fieldFramesSub": "Current renderer references for composition, lighting, effects, and vehicle staging.",
   "studioPanel.fieldFramesEyebrow": "Scene Studio // shared component",
