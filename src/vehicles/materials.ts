@@ -22,7 +22,7 @@ import { stockCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { MANTLET_FORWARD_NZ, ZONE_FACING_MIN, ZONE_FACING_WEIGHT, ZONE_OUTSIDE_WEIGHT } from '../sim/armorZones.ts';
+import { MANTLET_FORWARD_NZ, ZONE_FACING_MIN, ZONE_FACING_WEIGHT, ZONE_OUTSIDE_WEIGHT } from '../sim/armorZoneWeights.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
