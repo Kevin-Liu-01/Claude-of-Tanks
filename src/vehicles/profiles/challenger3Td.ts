@@ -163,8 +163,17 @@ function buildHull(P: TankBuilderPort): void {
     const lamp = box(0.12, 0.06, 0.012);
     markVehicleNightLens(lamp, 'marker');
     hull('hullGlass', lamp, side * 1.30, 1.44, -4.365);
-    // the skirt-top hooks ahead of and behind the turret
-    for (const z of [2.60, -1.60]) hull('hullDetail', box(0.12, 0.10, 0.30), side * 1.80, 1.50, z);
+    // the skirt-top hooks ahead of and behind the turret, the skirt's panel joints, the fender lockers and the tow cable
+    for (const z of [2.60, -1.60]) hull('hullDetail', box(0.06, 0.08, 0.22), side * 1.775, 1.50, z);
+    for (const z of [-2.62, -1.20, 0.10, 1.40, 2.70]) hull('hullDark', box(0.012, 0.50, 0.025), side * 1.749, 1.20, z);
+    for (const z of [2.20, 0.95, -0.35, -1.45, -2.55]) hull('hullDetail', cylY(0.12, 0.12, 0.05, P.q ? 20 : 12), side * 1.46, 1.735, z);
+    KIT.towCable(P, [[1.66, 1.73, 2.95], [1.68, 1.735, 1.0], [1.68, 1.74, -1.0], [1.67, 1.75, -3.30]]
+      .map(([x, y, z]) => [side * x * S, y * S, (z + DZ) * S] as [number, number, number]));
+    // the front mudguard boxes over the idlers and their indicator lamps
+    hull('hullPaintedDetail', box(0.45, 0.12, 0.30), side * 1.30, 1.43, 3.60);
+    const indicator = box(0.08, 0.05, 0.012);
+    markVehicleNightLens(indicator, 'marker');
+    hull('hullGlass', indicator, side * 1.42, 1.44, 3.756);
     // Hydrogas units on the hull side above each station, inboard of the track
     for (const z of ROAD_WHEEL_Z) hull('hullRunningGearDark', box(0.15, 0.35, 0.34), side * 1.005, 1.025, z);
     // headlight clusters and guards on the glacis corners
@@ -174,11 +183,11 @@ function buildHull(P: TankBuilderPort): void {
     // towing eyes on the lower glacis
     hull('hullDark', torus(0.07, 0.022, 12), side * 0.52, 0.86, 3.23, 0.4, Math.PI / 2, 0);
     hull('hullDetail', box(0.10, 0.12, 0.08), side * 0.52, 0.86, 3.20, -0.48);
-    // engine-deck louvres on the flat crown either side of the centre access plate
-    for (const z of [-2.35, -3.20]) {
+    // the engine deck's long grille field on the flat crown, either side of the centre access plate
+    for (const z of [-2.15, -2.75, -3.35]) {
       const y = deckAt(z);
-      hull('hullDark', box(0.34, 0.012, 0.62), side * 0.39, y + 0.004, z);
-      for (let k = 0; k < 6; k++) hull('hullDetail', box(0.34, 0.016, 0.03), side * 0.39, y + 0.012, z - 0.25 + k * 0.10);
+      hull('hullDark', box(0.34, 0.012, 0.56), side * 0.39, y + 0.004, z);
+      for (let k = 0; k < 6; k++) hull('hullDetail', box(0.34, 0.016, 0.03), side * 0.39, y + 0.012, z - 0.23 + k * 0.092);
     }
     // the external fuel drums lying across the stern
     hull('hullPaintedDetail', cylX(0.29, 0.91, P.q ? 20 : 12), side * 0.855, 1.55, -4.62);
@@ -245,24 +254,39 @@ function buildTurret(P: TankBuilderPort): void {
   for (const side of [-1, 1]) turret('turret', planeSolid([...common, [-side, 0, 0, -SLOT_HALF], [0, 0, -1, -1.2]]));
   // the slot's receipt (gunHullClearance.test-support.mjs gunSlotProbe): its face and half-width in the turret frame
   P.turretG.userData.gunSlot = Object.freeze({ faceZ: (SLOT_FACE - PIVOT[2]) * S, halfWidth: SLOT_HALF * S });
+  // the slot's hinged cover on the brow: a plate from the slot face up to the roof, its hinge lugs and rod at the top
+  turret('turretDetail', planeSolid([[0, 1, 0.2, 2.73 + 0.035], [0, -1, -0.2, -2.73], [0, 0, 1, 1.64], [0, 0, -1, -1.02],
+    [1, 0, 0, 0.42], [-1, 0, 0, 0.42]]));
+  for (const x of [-0.36, 0.36]) turret('turretDetail', box(0.07, 0.10, 0.12), x, 2.565, 1.00);
+  turret('turretDark', cylX(0.022, 0.80, 10), 0, 2.575, 1.00);
+  turret('turretDark', box(0.80, 0.012, 0.02), 0, 2.73 - 0.2 * 1.36 + 0.04, 1.36);
   // the bearing race and its collar under the floor (covers the hull-to-turret gap at every bearing)
   turret('turret', cylY(1.15, 1.15, 0.10, P.q ? 64 : 32), 0, 1.835, 0.451);
   turret('turretDark', cylY(1.17, 1.17, 0.02, P.q ? 64 : 32), 0, 1.79, 0.451);
 
-  // gunner's primary sight: the armoured box on the right front of the roof on its raised plinth, its window forward
-  turret('turretDetail', box(0.53, 0.06, 0.54), -0.685, 2.72, 0.15);
-  turret('turretDetail', box(0.45, 0.20, 0.28), -0.675, 2.73, 0.58);
-  const gunnerPane = box(0.30, 0.11, 0.02);
-  turret('turretGlass', gunnerPane, -0.675, 2.74, 0.725);
+  // gunner's primary sight: one armoured assembly on the right front of the roof, a low base over the roof's step and
+  // the head on its front with a raked window face (2.79 at its rear, 2.83 forward)
+  turret('turretDetail', planeSolid([[0, 1, 0, 2.75], [0, -1, 0, -2.55], [0, 0, 1, 0.47], [0, 0, -1, 0.10],
+    [1, 0, 0, -0.42], [-1, 0, 0, 0.95]]));
+  turret('turretDetail', planeSolid([[0, 1, -0.4, 2.83 - 0.4 * 0.68], [0, -1, 0, -2.56], [0, 0, 1, 0.74], [0, 0, -1, -0.40],
+    [1, 0, 0, -0.45], [-1, 0, 0, 0.90], [0, 0.5, 1, 0.5 * 2.83 + 0.70]]));
+  const gunnerPane = box(0.30, 0.10, 0.02);
+  turret('turretGlass', gunnerPane, -0.675, 2.735, 0.715, -0.46, 0, 0);
   // commander's cupola: the race, the hatch and eight vision blocks, on the right behind the sight
-  turret('turretCupola', cylY(0.50, 0.52, 0.20, P.q ? 32 : 16), -0.53, 2.765, -0.66);
-  P.addHatch('turretHatch', cylY(0.40, 0.40, 0.05, P.q ? 28 : 14).scale(S, S, S), -0.53 * S, (2.89 - PIVOT[1]) * S,
+  // the cupola: a D-shaped base plate (its straight edge inboard), the periscope ring on it and the domed lid
+  turret('turretCupola', planeSolid([[0, 1, 0, 2.73], [0, -1, 0, -2.64], [1, 0, 0, -0.04], [-1, 0, 0, 1.06],
+    [0, 0, 1, -0.12], [0, 0, -1, 1.20], [0.71, 0, 0.71, 0.71 * (-0.04 - 0.30) + 0.71 * -0.12],
+    [0.71, 0, -0.71, 0.71 * (-0.04 - 0.30) - 0.71 * -1.20]]));
+  turret('turretCupola', cylY(0.40, 0.42, 0.13, P.q ? 32 : 16), -0.55, 2.795, -0.66);
+  P.addHatch('turretHatch', cylY(0.33, 0.35, 0.04, P.q ? 28 : 14).scale(S, S, S), -0.55 * S, (2.88 - PIVOT[1]) * S,
     (-0.66 - PIVOT[2]) * S);
-  turret('turretDetail', box(0.14, 0.05, 0.10), -0.53, 2.925, -1.03);
+  // the lid's dome: a 0.94 m sphere's cap, 0.33 m across its foot and 6 cm high, on the hatch
+  turret('turretDetail', KIT.sph(0.94, P.q ? 24 : 12, 0.359), -0.55, 2.96 - 0.94, -0.66);
+  turret('turretDetail', box(0.14, 0.05, 0.10), -0.55, 2.915, -0.98);
   for (let k = 0; k < 8; k++) {
     const a = (k + 0.5) / 8 * Math.PI * 2;
-    KIT.periscope(P, 'turretDetail', (-0.53 + Math.sin(a) * 0.49) * S, (2.83 - PIVOT[1]) * S,
-      (-0.66 + Math.cos(a) * 0.49 - PIVOT[2]) * S, a);
+    KIT.periscope(P, 'turretDetail', (-0.55 + Math.sin(a) * 0.41) * S, (2.83 - PIVOT[1]) * S,
+      (-0.66 + Math.cos(a) * 0.41 - PIVOT[2]) * S, a);
   }
   // commander's primary sight: the octagonal pedestal at the roof's rear centre and its stabilised head
   turret('turretDetail', cylY(0.36, 0.37, 0.40, 8), -0.175, 2.83, -1.825, 0, Math.PI / 8, 0);
@@ -283,15 +307,16 @@ function buildTurret(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     const yaw = side * 0.58;
     const faceZ = (x: number, y: number): number => (8.073 - x - 2.07 * y) / 1.53;
-    turret('turretDetail', box(0.34, 0.20, 0.08), side * 0.95, 2.03, faceZ(0.95, 2.03) + 0.02, 0, yaw, 0);
+    turret('turretDetail', box(0.36, 0.16, 0.06), side * 0.95, 2.03, faceZ(0.95, 2.03) + 0.02, 0, yaw, 0);
+    // the tubes fan out across the bank (0.12 rad apart) and stand 0.30 m off the bracket, as the oracle's L8 banks do
     for (const [col, row] of [[-1, 0], [0, 0], [1, 0], [-0.5, 1], [0.5, 1]]) {
-      const x = 0.95 + col * 0.085 * Math.cos(0.58), y = 1.99 + row * 0.085;
-      turret('turretDetail', markSmokeTube(cylZ(0.036, 0.22, 8)), side * x, y, faceZ(x, y) + 0.06, -0.45, yaw, 0);
+      const x = 0.95 + col * 0.10 * Math.cos(0.58), y = 1.99 + row * 0.095;
+      turret('turretDetail', markSmokeTube(cylZ(0.042, 0.30, 10)), side * x, y, faceZ(x, y) + 0.13, -0.50, yaw + side * col * 0.12, 0);
     }
   }
   // the turret's side rails, bolt heads and lifting eyes; the two whips at the bustle's rear corners
   for (const side of [-1, 1]) {
-    turret('turretDetail', box(0.03, 0.035, 3.10), side * 1.389, 2.36, -1.05);
+    turret('turretDetail', box(0.03, 0.035, 3.10), side * 1.398, 2.22, -1.05);
     for (const z of [-2.40, -1.60, -0.70, 0.20]) turret('turretDetail', cylX(0.04, 0.02, 10), side * 1.392, 2.18, z);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.53 - PIVOT[1]) * S, (0.70 - PIVOT[2]) * S);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.59 - PIVOT[1]) * S, (-2.70 - PIVOT[2]) * S);
@@ -299,17 +324,20 @@ function buildTurret(P: TankBuilderPort): void {
     turret('turretDetail', cylY(0.055, 0.065, 0.08, 10), x, 2.62, -2.25);
     turret('turretDark', cylY(0.008, 0.012, 2.74, 6), x, 4.03, -2.25);
   }
-  turret('turretPaintedDetail', box(1.10, 0.04, 0.40), 0, 2.585, -2.75);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Gun: the deep mantlet that fills the slot and pitches with the gun, the coax above-left of it, and the 120 mm L55A1.
 function buildMainGun(P: TankBuilderPort): void {
   const { gun } = owners(P);
-  const mantlet = sectionSolid(([[1.40, 1.80, 2.42], [1.70, 1.80, 2.42], [2.15, 1.85, 2.38], [2.40, 1.875, 2.26]] as const)
+  const mantlet = sectionSolid(([[1.40, 1.81, 2.42], [1.72, 1.80, 2.42], [2.12, 1.85, 2.385], [2.30, 1.875, 2.22],
+    [2.40, 1.875, 2.17]] as const)
     .map(([z, bottom, top]) => ({ z, ring: [[-0.42, bottom], [0.42, bottom], [0.42, top], [-0.42, top]] as SectionPoint[] })));
   gun('gunMount', mantlet);
   gun('gunMountDark', box(0.86, 0.04, 0.05), 0, 1.86, 2.39);
+  // the boresight port on the raked face and the shroud strip over the root jacket ahead of the mantlet
+  gun('gunMountDark', box(0.10, 0.02, 0.16), 0.12, 2.31, 2.22, 0.73, 0, 0);
+  gun('gunMount', box(0.40, 0.05, 0.22), 0, 2.145, 2.50);
   // coax: its port in the mantlet's face, left of and above the bore, and the barrel's mouth in it
   gun('gunMountDark', cylZ(0.034, 0.03, 10), 0.285, 2.185, 2.395);
   gun('gunMountDark', cylZ(0.022, 0.10, 8), 0.285, 2.185, 2.38);
@@ -412,8 +440,6 @@ function* buildChallenger3TdSteps(P: TankBuilderPort): TankProfileBuild {
   buildMainGun(P);
   if (P.spec.id === RWS_ID) { buildRemoteStation(P); buildFieldKit(P); }
   yield 'challenger3_td turret';
-  P.decal('turret', 'number', P.spec.visual.number || 'TD', 0.34 * S, [1.395 * S, 0.40 * S, -1.95 * S], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', P.spec.visual.number || 'TD', 0.34 * S, [-1.395 * S, 0.40 * S, -1.95 * S], -Math.PI / 2, 0, -0.05);
   P.topY = 1.80 * S;
   addVehicleGhillieSuit(P);
 }

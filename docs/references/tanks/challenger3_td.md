@@ -135,6 +135,24 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
 
 ## Round log
 
+- Owner, 2026-10-27, mid-lane, verbatim: "so yeah make a new version of this challeenger without the ghillie and with
+  new remote machien gun tower systems and equipment and so on!!!! awesome this will be 2 nerrw tanks". The field fit
+  is `challenger3_td_rws` (its own packet, `challenger3_td_rws.md`), an explicit derivative on this builder.
+- r1 (build): `profiles/challenger3Td.ts` (hull loft, profile skirts, gear, three plane-bounded turret volumes, mantlet,
+  L55A1, roof furniture, stern), spec `armorChallenger3Td`, registry rows. Node silhouette diff against the registered
+  oracle (lane tool `silhouette.mjs`, 1 cm masks, suit excluded): side IoU 0.876 / top 0.952 / front 0.911.
+- r2: the rear face plane's sign (the bustle ran 1 m aft), the diff tool's edge-on triangles (it painted a false slab),
+  the commander's sight 7 cm right, the roof mast, the cupola's extent, the convex glacis rows, the rear lip, bins,
+  drum cradle and stern pole, the mudguards' inner diagonal, skirt hooks, Hydrogas units: 0.927 / 0.973 / 0.935.
+- r3/r4: the roof's front step at z 0.45 (two convex body pieces), the mantlet's sloped top and floor, an eccentric
+  evacuator (the oracle's 2.063 centre), no muzzle box (the oracle has none), the gunner's sight plinth, final-drive
+  covers and tow hooks; the glacis centre trough and the driver's well (|x| < 0.45, 0.14-0.19 deep; the oracle's 1.60
+  floor at z 1.55-1.95, 1.59 at 2.3): 0.931 / 0.974 / 0.936. Residuals are centimetre-scale (track guide horns
+  between the wheels are the fleet track standard; the oracle's rear lower plate and final-drive faces differ by
+  5-30 cm in z at heights 0.6-1.1).
+- Receipt `challenger3TdGun.selftest.mjs` (gunSlotProbe): PASS on the TD; the 15.0 mm minimum it first read was its own
+  face cutoff, moved to 3 cm (the mantlet passes through the face).
+
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),
   `vstats.mjs`, `wheels.mjs`, `ring.mjs`, `raster.mjs` (the Centurion lane's Node renderer), `silhouette.mjs`

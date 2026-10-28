@@ -1,0 +1,28 @@
+# Challenger 3 TD (RWS) (`challenger3_td_rws`) — run packet
+
+## Current status
+
+- Updated: 2026-10-27 (release 262 lane `item/cr3td-262`).
+- Owner request, 2026-10-27, verbatim: "so yeah make a new version of this challeenger without the ghillie and with new
+  remote machien gun tower systems and equipment and so on!!!! awesome this will be 2 nerrw tanks".
+- IDs and display names: `challenger3_td_rws`, "Challenger 3 TD (RWS)"; design status concept (a project-authored
+  field fit, not a photographed vehicle).
+- Implementation / qualification / publication: see `challenger3_td.md` (one evidence matrix for both ids).
+
+## Scope and derivation
+
+- Route: explicit first-party derivative ("Make Mk10 based on Mk5 X"): the TD's measured builder
+  (`profiles/challenger3Td.ts`) with `P.spec.id === 'challenger3_td_rws'` adding `buildRemoteStation` and
+  `buildFieldKit`; no camouflage suit (no `ghillieFleetSuits.ts` row). The hull, turret, gun and running gear are the
+  TD's, measured against the same oracle (see `challenger3_td.md`); no other comparison target.
+- Remote station: Protector-class, front-left on the roof proper (yaw centre oracle (0.80, 2.70, 0.10)), clear of the
+  loader's hatch and periscope and of the brow step; its M2 (12.7 mm) is the fleet's Browning construction in remote
+  form (`machineGunGeometry.ts`) at true calibre on a working `beginAuxiliaryStation` rig (yaw body: turntable,
+  housing, cradle cheeks; pitching: gun, sight head with window, ready box). Its barrel's full sweep clears the
+  commander's sight head (3.42, 2.3 m away), the cupola, the mast and both whips.
+- Equipment: an open bustle basket on the raked rear face, stowage bins on both turret walls behind the cheeks, and the
+  decor manifest's field kit (packs in the basket, rolled net, tarpaulin, jerrycans, a bin, spare links, tow cable,
+  shackles, tools, rations).
+- Combat data: the TD's (L55A1, DM63A1 / DM12A2 / DM11; CV12-9A 1,200 hp) at 67 t and 58 km/h; the station is an
+  auxiliary 12.7 mm weapon (auxiliary inventory, remoteGunFleet.selftest). Own coat `paint_challenger3_td_rws`.
+- Tree: drawn on the TD's node (UK special lane, VIII) as its twin build.
