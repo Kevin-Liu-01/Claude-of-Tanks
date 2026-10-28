@@ -24,8 +24,10 @@ body[data-cot-input='coarse'] .cot-garage-variant-control .cot-c-menu__trigger{m
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-country-rail:has(>.cot-roster-fav[hidden]):has(>.cot-roster-count[hidden]) .cot-country-chips{
   grid-column:3 / -1;}
 body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--tabs-h:calc(var(--cot-control-floor) + 2 * var(--s1));}
-/* the Deploy screen's tank card change button too, and every Deploy segment */
-body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg){--h:var(--cot-control-floor);}
+/* the Deploy screen's tank card change button too, the campaign card's launch (the kit's 36 px size), and every Deploy
+   segment */
+body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg,.cot-deploy-camp .cot-c-btn){
+  --h:var(--cot-control-floor);}
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-c-seg__opt,.cot-deploy-tank .chg){min-width:var(--cot-control-floor);}
 /* the nations: each chip at its content and a touch target, growing to fill the row when every nation fits; when they
    cannot, the track keeps its fade and swipe (garage.ts's honest overflow contract). Docked, the search folds to its glyph
@@ -52,6 +54,10 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-camos .cot-c-pi
 /* Settings' tabs past a phone: a two-character label (zh) is 31 px across, so the box takes the floor and centres its
    label (the underline stays the label's); a phone's tabs reach it by their own inset */
 body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-set-tab{min-width:var(--cot-control-floor);justify-content:center;}
+/* Settings' slider knobs on touch: a 14 px knob is a mouse's; a finger takes iOS's own 28 px (the input's box is already the
+   floor tall, responsiveSurfaces.css; the track stays 4 px, the knob centred on it) */
+body[data-cot-input='coarse'] .cot-set-slider input[type=range]::-webkit-slider-thumb{width:28px;height:28px;margin-top:-12px;}
+body[data-cot-input='coarse'] .cot-set-slider input[type=range]::-moz-range-thumb{width:28px;height:28px;}
 
 /* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
    The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
