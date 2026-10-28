@@ -260,6 +260,7 @@ const CHALLENGER_SPEC_IDS = [
   'challenger3_proto',
   'challenger3',
   'challenger3_td',
+  'challenger3_td_rws',
 ] as const;
 type ChallengerSpecId = typeof CHALLENGER_SPEC_IDS[number];
 
@@ -452,6 +453,35 @@ const CHALLENGER_SPECS = {
       scheme: 'digital', base: '#4f5a3e', weather: '#626a4d',
       patches: ['#1c201b', '#8a7f5c', '#3a4632'],
       marking: 'number', number: 'TD', trackWidthM: 0.64, camoScale: 0.44,
+    },
+  },
+  challenger3_td_rws: {
+    // the owner, 2026-10-27: the demonstrator's field fit without the ghillie, with a remote weapon station and kit
+    // (profiles/challenger3Td.ts buildRemoteStation, buildFieldKit): a project-authored fit, not a shown vehicle
+    id: 'challenger3_td_rws', name: 'Challenger 3 TD (RWS)', nation: 'UK', era: 'modern', role: 'mbt',
+    hp: 2450,
+    enginePowerHp: 1200, weightTons: 67, topSpeedKmh: 58, reverseSpeedKmh: 20,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 6.6, baseAccuracy: 0.25, aimTimeS: 1.7,
+      bloom: { move: 0.04, hullRot: 0.06, turret: 0.06, afterShot: 2.2 },
+      shells: [
+        shell('DM63A1 APFSDS', 'APFSDS', 120, apfsdsPens(650)[0], apfsdsPens(650)[1], 525, 1720, { pen2000Mm: apfsdsPens(650)[2] }),
+        shell('DM12A2 HEAT-MP', 'HEAT', 120, 600, 600, 480, 1400),
+        shell('DM11 HE-ABM', 'HE', 120, 40, 40, 590, 1000),
+      ],
+    },
+    // the TD's envelope; the station's sight head stands 3.18 m (installed) over the roof, under the commander's sight
+    dims: { hullLengthM: 8.90, overallLengthM: 12.26, widthM: 3.84, heightM: 3.03 },
+    armor: armorChallenger3Td(),
+    visual: {
+      // British field green under black bands, sand edges: the field fit's own coat
+      scheme: 'nato', base: '#475538', weather: '#596249',
+      patches: ['#181b16', '#7d7053'],
+      marking: 'number', number: 'T2', trackWidthM: 0.64, camoScale: 0.46,
     },
   },
 } satisfies Readonly<Record<ChallengerSpecId, FleetTankSpec>>;

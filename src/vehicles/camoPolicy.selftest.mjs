@@ -302,9 +302,10 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('sig_amx10p_25') + 1], 'n
 // after GT, so every production index holds (camoCatalogProductionIndices.selftest.mjs)
 const gtIndex = CAMO_PATTERN_IDS.indexOf('gt');
 assert.ok(CAMO_PATTERN_IDS[gtIndex - 1].startsWith('paint_'), 'existing authored paints retain their catalog positions');
-// 233 appended three Signatures (715151d24c) and the Type 10 (Dozer) its stock coat (2facf33e95) after them
+// 233 appended three Signatures (715151d24c) and the Type 10 (Dozer) its stock coat (2facf33e95) after them; 262 the
+// Challenger 3 TD's
 assert.deepEqual(CAMO_PATTERN_IDS.slice(gtIndex), ['gt', 'paint_m6_linebacker', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep',
-  'sig_m60a3', 'paint_type10_dozer'], 'GT, then later paints, append without shifting saved catalog indices');
+  'sig_m60a3', 'paint_type10_dozer', 'paint_challenger3_td', 'paint_challenger3_td_rws'], 'GT, then later paints, append without shifting saved catalog indices');
 assert.deepEqual(addedPaints.slice(0, 3).map(id => CAMO_PATTERN_LABEL[id]), ['Mono', 'Carbon', 'Prism']);
 assert.deepEqual(['openai', 'xai', 'gemini'].map(id => CAMO_PATTERN_LABEL[id]), ['OpenAI', 'X', 'Gemini']);
 assert.equal(defaultCamoPatternId('sabra_mk2'), 'factory');

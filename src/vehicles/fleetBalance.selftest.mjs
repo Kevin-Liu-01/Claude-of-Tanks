@@ -126,7 +126,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // (applyShownTierFloors; the Centurion 5/2's entry already existed).
 // 62 -> 70 (259): eight vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
 // their entries).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 70,
+// 70 -> 72 (262): the new Challenger 3 TD one step under its prototype, and its field fit (fleetBalancePass).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 72,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

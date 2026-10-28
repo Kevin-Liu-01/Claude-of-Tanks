@@ -5405,4 +5405,5 @@ export const CHALLENGER_BUILDERS = {
   challenger3: buildChallenger3,
   // release 262: the 2021 Advanced Technology Demonstrator, its own measured build on the full port
   challenger3_td: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
+  challenger3_td_rws: buildChallenger3Td as unknown as (builder: ChallengerBuilderPort) => void,
 } satisfies Record<string, (builder: ChallengerBuilderPort) => void>;

@@ -177,8 +177,8 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   mbt: Object.freeze([
     'abramsx', 'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'challenger1_mk2', 'challenger1_mk3',
-    'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'challenger3_td', 'chieftain3', 'chieftain5',
-    'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'kf51_evo',
+    'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'challenger3_td', 'challenger3_td_rws', 'chieftain3',
+    'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'kf51_evo',
     'kf51_panther', 'kf51_u', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a5',
     'leo2_improved', 'leo2_revolution', 'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco',
     'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7v',
@@ -265,7 +265,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
   sniper: Object.freeze([
     'aft10', 'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger2e', 'challenger3',
-    'challenger3_proto', 'challenger3_td', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
+    'challenger3_proto', 'challenger3_td', 'challenger3_td_rws', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
     'strv103b', 'strv121', 'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
@@ -317,9 +317,9 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'ztz100_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
-  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies.
+  // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies; 262: the Challenger 3 TD's field fit.
   concept: Object.freeze([
-    'carro45t', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105',
+    'carro45t', 'challenger3_td_rws', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105',
     'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
     't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',

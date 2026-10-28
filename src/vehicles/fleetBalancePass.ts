@@ -86,11 +86,14 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'challenger3_proto', { pen100: 880, pen1000: 810, pen2000: 730 });
   }
   {
-    // release 262: the 2021 demonstrator a step under the prototype: DM63A1 for DM73, the Challenger 2's 1,200 hp
-    const tank = spec(registry, 'challenger3_td');
-    Object.assign(tank, { hp: 2550, topSpeedKmh: 59, reverseSpeedKmh: 22 });
-    Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.245, aimTimeS: 1.65 });
-    primary(registry, 'challenger3_td', { pen100: 850, pen1000: 780, pen2000: 700 });
+    // release 262: the 2021 demonstrator a step under the prototype: DM63A1 for DM73, the Challenger 2's 1,200 hp; its
+    // field fit shares the package (its remote M2 is its own auxiliary weapon, a tonne heavier and a shade slower)
+    for (const id of ['challenger3_td', 'challenger3_td_rws']) {
+      const tank = spec(registry, id);
+      Object.assign(tank, { hp: 2550, topSpeedKmh: id === 'challenger3_td' ? 59 : 58, reverseSpeedKmh: 22 });
+      Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.245, aimTimeS: 1.65 });
+      primary(registry, id, { pen100: 850, pen1000: 780, pen2000: 700 });
+    }
   }
   {
     const tank = spec(registry, 'challenger3');

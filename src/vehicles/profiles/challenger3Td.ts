@@ -10,7 +10,9 @@
 // scale: the buckets, the running gear and the pivots are all drawn at the installed size.
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
-import { KIT, muzzleBore } from './kit.ts';
+import { FITTINGS, KIT, muzzleBore } from './kit.ts';
+import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { addPintleAmmo, addPintleBarrel, addPintleReceiver, createPintleLayout } from '../machineGunGeometry.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { profileSkirtGeometry, type ProfileSkirt } from './profileSkirt.ts';
 import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
@@ -84,32 +86,44 @@ function owners(P: TankBuilderPort) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Hull: the Challenger 2 tub, sponsons and decks as one joined loft (oracle stations, rear to front).
-// row: z, belly, sponson floor, deck crown, deck edge (at |x| 1.64)
-type HullRow = readonly [z: number, belly: number, floor: number, deck: number, edge: number];
+// row: z, belly, sponson floor, deck crown, deck edge (at |x| 1.64), the centre trough's depth under the crown
+type HullRow = readonly [z: number, belly: number, floor: number, deck: number, edge: number, trough: number];
+const NO_TROUGH = 0.002;
 const HULL_ROWS: readonly HullRow[] = [
-  [-4.19, 1.78, 1.79, 1.87, 1.87],   // top of the overhung upper rear plate
-  [-4.02, 1.20, 1.33, 1.875, 1.75],  // rear plate foot, the raked lower rear plate's top
-  [-3.86, 0.85, 1.33, 1.89, 1.75],
-  [-3.55, 0.57, 1.33, 1.92, 1.75],   // engine deck crown
-  [-2.65, 0.575, 1.33, 1.895, 1.75], // held under the bustle's 1.94 floor
-  [-1.95, 0.575, 1.33, 1.85, 1.74],
-  [-1.60, 0.575, 1.33, 1.775, 1.735],
-  [1.95, 0.575, 1.33, 1.785, 1.745], // upper glacis knee
-  [2.30, 0.575, 1.33, 1.73, 1.715],  // the glacis crowns slightly between its two courses
-  [2.70, 0.575, 1.33, 1.665, 1.655],
-  [2.95, 0.575, 1.33, 1.55, 1.55],   // the glacis' lower 22 degree course begins
-  [3.08, 0.60, 1.33, 1.497, 1.497],  // lower glacis foot
-  [3.42, 1.28, 1.30, 1.375, 1.375],  // nose
+  [-4.19, 1.78, 1.79, 1.87, 1.87, NO_TROUGH],   // top of the overhung upper rear plate
+  [-4.02, 1.20, 1.33, 1.875, 1.75, NO_TROUGH],  // rear plate foot, the raked lower rear plate's top
+  [-3.86, 0.85, 1.33, 1.89, 1.75, NO_TROUGH],
+  [-3.55, 0.57, 1.33, 1.92, 1.75, NO_TROUGH],   // engine deck crown
+  [-2.65, 0.575, 1.33, 1.895, 1.75, NO_TROUGH], // held under the bustle's 1.94 floor
+  [-1.95, 0.575, 1.33, 1.85, 1.74, NO_TROUGH],
+  [-1.60, 0.575, 1.33, 1.775, 1.735, NO_TROUGH],
+  [1.53, 0.575, 1.33, 1.785, 1.745, NO_TROUGH],
+  // the driver's well and the trough down the glacis' centreline (|x| < 0.45): the gun depresses into it
+  [1.55, 0.575, 1.33, 1.785, 1.745, 0.185],
+  [1.95, 0.575, 1.33, 1.785, 1.745, 0.165],     // upper glacis knee
+  [2.30, 0.575, 1.33, 1.73, 1.715, 0.136],      // the glacis crowns slightly between its two courses
+  [2.70, 0.575, 1.33, 1.665, 1.655, 0.15],
+  [2.95, 0.575, 1.33, 1.55, 1.55, 0.075],       // the glacis' lower 22 degree course begins
+  [3.08, 0.60, 1.33, 1.497, 1.497, 0.05],       // lower glacis foot
+  [3.42, 1.28, 1.30, 1.375, 1.375, NO_TROUGH],  // nose
 ];
-const TUB = 0.92, SPONSON = 1.707;
+const TUB = 0.92, SPONSON = 1.707, TROUGH = 0.45;
 /** Road-wheel stations, rear to front (the tire bottoms' clusters on both sides). */
 const ROAD_WHEEL_Z = [-2.571, -1.448, -0.537, 0.540, 1.434, 2.363];
-function hullRing([, belly, floor, deck, edge]: HullRow): SectionPoint[] {
+function hullRing([, belly, floor, deck, edge, trough]: HullRow): SectionPoint[] {
   const chamfer = Math.min(0.12, floor - belly - 0.01);
   const shoulder = edge - 0.07;
   return [[-0.80, belly], [0.80, belly], [TUB, belly + chamfer], [TUB, floor], [SPONSON, floor], [SPONSON, shoulder],
-    [1.64, edge], [0.60, deck], [-0.60, deck], [-1.64, edge], [-SPONSON, shoulder], [-SPONSON, floor], [-TUB, floor],
-    [-TUB, belly + chamfer]];
+    [1.64, edge], [0.60, deck], [TROUGH, deck], [TROUGH, deck - trough], [-TROUGH, deck - trough], [-TROUGH, deck],
+    [-0.60, deck], [-1.64, edge], [-SPONSON, shoulder], [-SPONSON, floor], [-TUB, floor], [-TUB, belly + chamfer]];
+}
+/** The trough's floor at z (the deck crown less the trough, linear between the rows). */
+function troughAt(z: number): number {
+  for (let k = 1; k < HULL_ROWS.length; k++) {
+    const r1 = HULL_ROWS[k], r0 = HULL_ROWS[k - 1];
+    if (z <= r1[0]) { const t = (z - r0[0]) / (r1[0] - r0[0]); return r0[3] - r0[5] + (r1[3] - r1[5] - r0[3] + r0[5]) * t; }
+  }
+  return HULL_ROWS[HULL_ROWS.length - 1][3];
 }
 /** The deck crown at z (linear between the hull rows). */
 function deckAt(z: number): number {
@@ -167,19 +181,23 @@ function buildHull(P: TankBuilderPort): void {
       for (let k = 0; k < 6; k++) hull('hullDetail', box(0.34, 0.016, 0.03), side * 0.39, y + 0.012, z - 0.25 + k * 0.10);
     }
     // the external fuel drums lying across the stern
-    hull('hullPaintedDetail', cylX(0.29, 0.86, P.q ? 20 : 12), side * 0.84, 1.55, -4.62);
-    for (const dx of [-0.30, 0.30]) hull('hullDark', cylX(0.296, 0.035, P.q ? 20 : 12), side * 0.84 + dx, 1.55, -4.62);
+    hull('hullPaintedDetail', cylX(0.29, 0.91, P.q ? 20 : 12), side * 0.855, 1.55, -4.62);
+    for (const dx of [-0.30, 0.30]) hull('hullDark', cylX(0.296, 0.035, P.q ? 20 : 12), side * 0.855 + dx, 1.55, -4.62);
     hull('hullDetail', box(0.05, 0.62, 0.05), side * 0.36, 1.53, -4.33);
+    // final-drive covers behind the sprockets (the rear plate stands vertical to 0.75 outboard) and the tow hooks
+    hull('hull', box(0.30, 0.50, 0.42), side * 0.77, 1.00, -3.81);
+    hull('hullDetail', box(0.10, 0.14, 0.16), side * 0.75, 1.10, -4.10);
   }
   // the drums' cradle between them, its rear plate brackets, the stern pole above it and the overhung rear deck lip
-  hull('hullDetail', box(0.60, 0.60, 0.40), -0.05, 1.60, -4.55);
+  hull('hullDetail', box(0.67, 0.60, 0.40), -0.015, 1.60, -4.55);
   hull('hullDetail', box(0.20, 0.10, 0.30), -0.25, 1.94, -4.55);
+  hull('hullDetail', box(0.42, 0.25, 0.30), 0.11, 1.455, -4.90);
   hull('hullDetail', box(2.0, 0.06, 0.08), 0, 1.24, -4.34);
-  hull('hullDark', cylY(0.022, 0.022, 0.88, 8), 0, 2.185, -4.77, -0.50, 0, 0);
+  hull('hullDark', cylY(0.022, 0.022, 0.79, 8), 0, 2.15, -4.745, -0.49, 0, 0);
   hull('hull', box(3.24, 0.08, 0.19), 0, 1.84, -4.265);
   // driver's hatch, periscope and the glacis' lifting eyes
-  P.addHatch('hullHatch', box(0.62, 0.045, 0.52).scale(S, S, S), 0, 1.81 * S, (1.78 + DZ) * S);
-  KIT.periscope(P, 'hullDetail', 0, (deckAt(2.10) + 0.035) * S, (2.10 + DZ) * S);
+  P.addHatch('hullHatch', box(0.62, 0.045, 0.40).scale(S, S, S), 0, (troughAt(1.75) + 0.0225) * S, (1.75 + DZ) * S);
+  KIT.periscope(P, 'hullDetail', 0, (troughAt(2.10) + 0.035) * S, (2.10 + DZ) * S);
   for (const side of [-1, 1]) KIT.liftEye(P, 'hullDetail', side * 1.25 * S, 1.62 * S, (2.70 + DZ) * S);
   // rear plate: tow cable and its cleats
   KIT.towCable(P, [[-0.70, 1.46, -4.13], [-0.30, 1.40, -4.12], [0, 1.39, -4.12], [0.30, 1.40, -4.12], [0.70, 1.46, -4.13]]
@@ -210,39 +228,44 @@ const ROOF: Plane = [0, 1, -0.0414, 2.6959];            // 2.70 at z 0.1, fallin
 const FLOOR: Plane = [0, -1, -0.0177, -1.8854];         // 1.85 under the cheeks to 1.935 under the bustle
 const NOSE_UNDER: Plane = [0, -1, 1.2, 0.79];           // the cheek noses' underside chamfer (1.85 at 2.2, 2.09 at 2.4)
 const REAR: Plane = [0, -0.258, -1, 2.3595];            // raked rear face, -2.86 at the floor to -3.02 at the roof
-const SLOT_BROW: Plane = [0, 1, 0.25, 2.81];            // the brow over the slot, 2.41 at the 1.6 face
+const SLOT_BROW: Plane = [0, 1, 0.2, 2.73];             // the brow over the slot, 2.41 at the 1.6 face, 2.57 at 0.8
 const sidePlanes = (s: number): Plane[] => [
   [s * 0.62, 0.053, 0, 0.9769],                          // side wall, 1.415 at the floor leaning to 1.362 at 2.50
   [s * 0.145, 0.19, 0, 0.676],                           // roof-edge chamfer to 1.17 at 2.665
   [s, 2.07, 1.53, 8.073],                                // cheek face, 56 degrees off the axis, 36 degrees up
   [s, 5.93, 1.53, 17.145],                               // cheek brow above 2.35, 14 degrees up to the roof
 ];
-const SLOT_HALF = 0.44, SLOT_FACE = 1.66;
+const SLOT_HALF = 0.44, SLOT_FACE = 1.66, ROOF_STEP = 0.45;
 function buildTurret(P: TankBuilderPort): void {
   const { turret } = owners(P);
   const common = [ROOF, FLOOR, NOSE_UNDER, REAR, SLOT_BROW, ...sidePlanes(1), ...sidePlanes(-1)];
-  turret('turret', planeSolid([...common, [0, 0, 1, SLOT_FACE]]));
+  // the roof proper ends in a low step at z 0.45; ahead of it the brow plate stands at 2.571 to the slot face
+  turret('turret', planeSolid([...common, [0, 0, 1, ROOF_STEP]]));
+  turret('turret', planeSolid([...common, [0, 0, -1, -ROOF_STEP], [0, 0, 1, SLOT_FACE], [0, 1, 0, 2.571]]));
   for (const side of [-1, 1]) turret('turret', planeSolid([...common, [-side, 0, 0, -SLOT_HALF], [0, 0, -1, -1.2]]));
+  // the slot's receipt (gunHullClearance.test-support.mjs gunSlotProbe): its face and half-width in the turret frame
+  P.turretG.userData.gunSlot = Object.freeze({ faceZ: (SLOT_FACE - PIVOT[2]) * S, halfWidth: SLOT_HALF * S });
   // the bearing race and its collar under the floor (covers the hull-to-turret gap at every bearing)
   turret('turret', cylY(1.15, 1.15, 0.10, P.q ? 64 : 32), 0, 1.835, 0.451);
   turret('turretDark', cylY(1.17, 1.17, 0.02, P.q ? 64 : 32), 0, 1.79, 0.451);
 
-  // gunner's primary sight: the armoured box on the right front of the roof, its window to the front
-  turret('turretDetail', box(0.45, 0.20, 0.32), -0.675, 2.73, 0.56);
+  // gunner's primary sight: the armoured box on the right front of the roof on its raised plinth, its window forward
+  turret('turretDetail', box(0.53, 0.06, 0.54), -0.685, 2.72, 0.15);
+  turret('turretDetail', box(0.45, 0.20, 0.28), -0.675, 2.73, 0.58);
   const gunnerPane = box(0.30, 0.11, 0.02);
   turret('turretGlass', gunnerPane, -0.675, 2.74, 0.725);
   // commander's cupola: the race, the hatch and eight vision blocks, on the right behind the sight
-  turret('turretCupola', cylY(0.48, 0.50, 0.20, P.q ? 32 : 16), -0.53, 2.765, -0.68);
-  P.addHatch('turretHatch', cylY(0.38, 0.38, 0.05, P.q ? 28 : 14).scale(S, S, S), -0.53 * S, (2.89 - PIVOT[1]) * S,
-    (-0.68 - PIVOT[2]) * S);
+  turret('turretCupola', cylY(0.50, 0.52, 0.20, P.q ? 32 : 16), -0.53, 2.765, -0.66);
+  P.addHatch('turretHatch', cylY(0.40, 0.40, 0.05, P.q ? 28 : 14).scale(S, S, S), -0.53 * S, (2.89 - PIVOT[1]) * S,
+    (-0.66 - PIVOT[2]) * S);
   turret('turretDetail', box(0.14, 0.05, 0.10), -0.53, 2.925, -1.03);
   for (let k = 0; k < 8; k++) {
     const a = (k + 0.5) / 8 * Math.PI * 2;
-    KIT.periscope(P, 'turretDetail', (-0.53 + Math.sin(a) * 0.47) * S, (2.83 - PIVOT[1]) * S,
-      (-0.68 + Math.cos(a) * 0.47 - PIVOT[2]) * S, a);
+    KIT.periscope(P, 'turretDetail', (-0.53 + Math.sin(a) * 0.49) * S, (2.83 - PIVOT[1]) * S,
+      (-0.66 + Math.cos(a) * 0.49 - PIVOT[2]) * S, a);
   }
   // commander's primary sight: the octagonal pedestal at the roof's rear centre and its stabilised head
-  turret('turretDetail', cylY(0.33, 0.35, 0.40, 8), -0.175, 2.83, -1.825, 0, Math.PI / 8, 0);
+  turret('turretDetail', cylY(0.36, 0.37, 0.40, 8), -0.175, 2.83, -1.825, 0, Math.PI / 8, 0);
   // head: front and rear top edges chamfered (3.36 at the window, 3.30 at the back)
   turret('turretDetail', planeSolid([[0, 1, 0, 3.42], [0, -1, 0, -3.03], [0, 0, 1, -1.64], [0, 0, -1, 2.04],
     [1, 0, 0, 0.07], [-1, 0, 0, 0.42], [0, 1, -1, 5.34], [0, 1, 1, 1.72]]));
@@ -250,7 +273,7 @@ function buildTurret(P: TankBuilderPort): void {
   turret('turretGlass', commanderPane, -0.175, 3.22, -1.635);
   turret('turretDark', box(0.40, 0.02, 0.36), -0.175, 3.04, -1.84);
   // the mast on the roof's left rear, beside the commander's sight
-  turret('turretDetail', cylY(0.035, 0.04, 0.45, 10), 0.475, 2.82, -2.275);
+  turret('turretDetail', cylY(0.035, 0.04, 0.45, 10), 0.475, 2.82, -2.25);
   // loader's hatch on the left and its hinges
   turret('turretDetail', box(0.56, 0.05, 0.64), 0.70, 2.69, -0.58);
   P.addHatch('turretHatch', box(0.50, 0.04, 0.58).scale(S, S, S), 0.70 * S, (2.73 - PIVOT[1]) * S, (-0.58 - PIVOT[2]) * S);
@@ -283,7 +306,7 @@ function buildTurret(P: TankBuilderPort): void {
 // Gun: the deep mantlet that fills the slot and pitches with the gun, the coax above-left of it, and the 120 mm L55A1.
 function buildMainGun(P: TankBuilderPort): void {
   const { gun } = owners(P);
-  const mantlet = sectionSolid(([[1.40, 1.80, 2.42], [2.05, 1.80, 2.42], [2.40, 1.875, 2.26]] as const)
+  const mantlet = sectionSolid(([[1.40, 1.80, 2.42], [1.70, 1.80, 2.42], [2.15, 1.85, 2.38], [2.40, 1.875, 2.26]] as const)
     .map(([z, bottom, top]) => ({ z, ring: [[-0.42, bottom], [0.42, bottom], [0.42, top], [-0.42, top]] as SectionPoint[] })));
   gun('gunMount', mantlet);
   gun('gunMountDark', box(0.86, 0.04, 0.05), 0, 1.86, 2.39);
@@ -292,12 +315,91 @@ function buildMainGun(P: TankBuilderPort): void {
   gun('gunMountDark', cylZ(0.022, 0.10, 8), 0.285, 2.185, 2.38);
   // the root thermal jacket, bore evacuator and the clamp band on the tube (they recoil with it)
   const len = (MUZZLE_Z - TRUNNION[2]) * S;
-  KIT.buildGun(P, { len, r: 0.095 * S, sleeve: false, evac: (3.55 - TRUNNION[2]) / (MUZZLE_Z - TRUNNION[2]),
-    evacR: 1.75, collar: false, baseR: 0.15 * S });
-  gun('gun', cylZ(0.14, 0.73, P.q ? 24 : 12), 0, 2.031, 2.765);
-  gun('gun', cylZ(0.112, 0.08, P.q ? 24 : 12), 0, 2.031, 5.40);
-  gun('gunDark', box(0.10, 0.06, 0.12), 0, 2.15, 6.70);
+  KIT.buildGun(P, { len, r: 0.095 * S, sleeve: false, evac: null, collar: false, baseR: 0.15 * S });
+  const seg = P.q ? 24 : 12;
+  gun('gun', cylZ(0.14, 0.73, seg), 0, 2.031, 2.765);
+  // the bore evacuator rides 3 cm high of the bore line (the oracle's 2.063 centre), with its tapered ends
+  gun('gun', cylZ(0.166, 0.60, seg), 0, 2.061, 3.54);
+  gun('gun', cylZ(0.166, 0.11, seg, 0.10), 0, 2.045, 3.185);
+  gun('gun', cylZ(0.10, 0.11, seg, 0.166), 0, 2.045, 3.895);
+  gun('gun', cylZ(0.112, 0.08, seg), 0, 2.031, 5.40);
   muzzleBore(P, { len, r: 0.095 * S });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The field fit (challenger3_td_rws; the owner, 2026-10-27: "make a new version of this challeenger without the ghillie
+// and with new remote machien gun tower systems and equipment"): a Protector-class remote station on the roof proper
+// ahead of the loader's hatch, its M2 at true calibre on the fleet's machine-gun construction, and the crew's kit. Its
+// sweep clears the commander's sight head (3.42 at 2 m), the cupola, the mast and both whips; its base stands clear of
+// the loader's hatch and periscope and of the brow step.
+const RWS_ID = 'challenger3_td_rws';
+/** Yaw centre on the roof (oracle frame) and the station's true-metre heights above it. */
+const RWS_SEAT = [0.80, 2.70, 0.10] as const;
+function buildRemoteStation(P: TankBuilderPort): void {
+  const { box, cylY: cy, cylZ: cz } = KIT;
+  const base = [RWS_SEAT[0] * S, (RWS_SEAT[1] - PIVOT[1]) * S, (RWS_SEAT[2] - PIVOT[2]) * S] as const;
+  const at = (dx: number, dy: number, dz: number): [number, number, number] => [base[0] + dx, base[1] + dy, base[2] + dz];
+  const pivot = at(0.05, 0.40, 0.02);
+  // the gun: the fleet's Browning M2 construction, remote form (solenoid back plate, right-hand feed)
+  const gun = new THREE.Group();
+  gun.name = 'challenger3TdRemoteM2';
+  const layout = createPintleLayout({ cls: 'm2', remote: true, ammo: true, feed: 'right', detail: P.q ? 1 : 0 }, {
+    add(slot, geometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
+      const material = slot === 'detail' ? P.mats.detail : P.mats.weaponSteel ?? P.mats.dark;
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz); mesh.castShadow = mesh.receiveShadow = true;
+      mesh.name = `challenger3TdRemoteM2_${slot}`;
+      gun.add(mesh);
+    },
+  });
+  addPintleReceiver(layout); addPintleBarrel(layout); addPintleAmmo(layout);
+  // the trunnion on the station's pivot; the muzzle is the barrel's datum length ahead of it
+  gun.position.set(pivot[0], pivot[1] - layout.trunY, pivot[2] - layout.trunZ);
+  const muzzleZ = 0.10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s;
+  const station = beginAuxiliaryStation(P, {
+    name: 'challenger3TdRemoteStation', caliberMm: 12.7,
+    yaw: at(0, 0, 0), pivot, muzzle: [pivot[0], pivot[1], pivot[2] + muzzleZ],
+  });
+  // traversing body: the turntable ring on the roof, the low housing and the two cradle cheeks
+  P.add('turretDark', cy(0.31, 0.33, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
+  P.add('turretDetail', box(0.50, 0.20, 0.48), ...at(0, 0.15, 0));
+  P.add('turretDetail', box(0.46, 0.03, 0.44), ...at(0, 0.265, -0.01));
+  for (const side of [-1, 1]) P.add('turretDetail', box(0.04, 0.22, 0.30), ...at(0.05 + side * 0.16, 0.36, 0.02));
+  station.mark('yaw');
+  // elevating mass: the day/thermal sight head right of the gun and its window, the ready box outboard of the feed
+  const sight = new THREE.Group();
+  const part = (g: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number): void => {
+    const mesh = new THREE.Mesh(g, material); mesh.position.set(x, y, z); mesh.castShadow = mesh.receiveShadow = true;
+    mesh.name = 'challenger3TdRemoteSight'; sight.add(mesh);
+  };
+  part(box(0.15, 0.15, 0.30), P.mats.detail, pivot[0] - 0.15, pivot[1] + 0.01, pivot[2] + 0.04);
+  part(box(0.11, 0.08, 0.012), P.mats.glass, pivot[0] - 0.15, pivot[1] + 0.02, pivot[2] + 0.196);
+  part(box(0.12, 0.19, 0.30), P.mats.detail, pivot[0] + 0.15, pivot[1] - 0.03, pivot[2] - 0.02);
+  part(cz(0.03, 0.08, 10), P.mats.dark, pivot[0], pivot[1], pivot[2] - 0.02);
+  const pitching = new THREE.Group();
+  pitching.add(gun, sight);
+  FITTINGS.markExact(gun, 'pintleMG');
+  station.attachPitch(pitching);
+  P.turretG.userData.challenger3TdRemoteStation = Object.freeze({ seat: base, pivot, muzzleZ });
+}
+
+/** The field fit's own carriers: a bustle basket on the rear face and the side bins on both turret walls. */
+function buildFieldKit(P: TankBuilderPort): void {
+  const { turret } = owners(P);
+  // basket: tubular rails round an open floor hung off the raked rear face (-2.86 at the floor, -3.02 at the roof)
+  turret('turretPaintedDetail', box(2.30, 0.03, 0.42), 0, 2.08, -3.18);
+  for (const y of [2.30, 2.48]) turret('turretOpenLattice', box(2.34, 0.035, 0.035), 0, y, -3.40);
+  for (const side of [-1, 1]) {
+    turret('turretOpenLattice', box(0.035, 0.035, 0.44), side * 1.17, 2.48, -3.19);
+    for (const z of [-3.40, -3.00]) turret('turretOpenLattice', box(0.035, 0.42, 0.035), side * 1.17, 2.29, z);
+  }
+  for (const x of [-0.6, 0, 0.6]) turret('turretOpenLattice', box(0.035, 0.42, 0.035), x, 2.29, -3.40);
+  for (const side of [-1, 1]) {
+    // stowage bins on the walls behind the cheeks, under the side rail
+    turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.475, 2.16, -1.30);
+    turret('turretPaintedDetail', box(0.18, 0.26, 0.80), side * 1.475, 2.14, -2.45);
+    for (const z of [-1.80, -0.80, -2.75, -2.15]) turret('turretDark', box(0.012, 0.04, 0.06), side * 1.568, 2.24, z);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -308,6 +410,7 @@ function* buildChallenger3TdSteps(P: TankBuilderPort): TankProfileBuild {
   yield 'challenger3_td hull';
   buildTurret(P);
   buildMainGun(P);
+  if (P.spec.id === RWS_ID) { buildRemoteStation(P); buildFieldKit(P); }
   yield 'challenger3_td turret';
   P.decal('turret', 'number', P.spec.visual.number || 'TD', 0.34 * S, [1.395 * S, 0.40 * S, -1.95 * S], Math.PI / 2, 0, 0.05);
   P.decal('turret', 'number', P.spec.visual.number || 'TD', 0.34 * S, [-1.395 * S, 0.40 * S, -1.95 * S], -Math.PI / 2, 0, -0.05);

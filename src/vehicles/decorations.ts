@@ -2837,6 +2837,28 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
+  // Release 262: the Challenger 3 TD carries its own dischargers, whips and mast and no roof weapon (profiles/
+  // challenger3Td.ts), and its heavy field suit covers the decks; its decor is the trials crew's small kit only.
+  challenger3_td: () => [
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+  ],
+  // its field fit (the owner, 2026-10-27: "and equipment and so on"): the crew's packs in the authored bustle basket, a
+  // rolled net and a tarpaulin, jerrycans and a bin on the rear deck, spare links on a turret wall, the tow cable,
+  // shackles and pioneer tools; the station and the whips are authored
+  challenger3_td_rws: () => [
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.42 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
   // Round 4 (2026-10-07, wave 217: "the Leclerc's stowage is sparse for a turret that size"): bdbe29f69 seated the
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
