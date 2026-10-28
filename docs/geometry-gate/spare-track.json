@@ -2526,7 +2526,19 @@
    "hostSweep": []
   },
   "pt84_orzel": {
-   "inputHash": "41d066af08fd0dd8",
+   "inputHash": "970573bd0a2e6a33",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "pt84_sokol": {
+   "inputHash": "de9c707b35eae1c4",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "pt84_zbik": {
+   "inputHash": "ed30efca67fd36a2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

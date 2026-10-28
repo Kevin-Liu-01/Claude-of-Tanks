@@ -21,9 +21,10 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
 
 ## What makes it its own tank
 
-- Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of rails and
-  mullions 9 cm proud: two 3 x 3 glacis fields either side of the gun's slot; welded cheek boxes on the Duplet stacks'
-  plan (set back 10 cm), each column's face a framed field of two; a 4 x 2 field on each turret flank; and every one of
+- Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of dark steel rails
+  and mullions (5 cm wide, so the grid reads through the camouflage: the 262 blind critic) standing 9 cm proud: two
+  3 x 3 glacis fields either side of the gun's slot; welded cheek boxes on the Duplet stacks' plan (set back 10 cm), each
+  column's face a framed field of two; a 4 x 2 field on each turret flank; and every one of
   the nine skirt panels its own framed field of two (one where the box falls to the bow): the owner's extra side armour.
 - Tellur 81 mm smoke: the PT-91's two by twelve, a six by two bank low on each smoke housing, its number above it.
 - PCO's round panoramic commander's head on a mast in place of the PNK-6 tower.
@@ -33,8 +34,8 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
   box on the left, working auxiliary weapons (auxiliaryWeapons.ts `wkmb`).
 - The Polish rear stowage box across the bustle with a strapped tarpaulin roll; the basket's field stores (two jerrycans,
   a canvas roll lengthwise, a wrapped bundle); twin guarded work lamps on each cheek box; olive drums on the stern.
-- Finish: the Polish three-tone woodland the Zubr family wears (`paint_pl_t80u_modern`), number 184, the Polish checker on
-  the right bin's face.
+- Finish: the Polish three-tone woodland, the Zubr family's authored paint (`paint_pl_t80u_modern`), as its own stock
+  coat (camoPolicy.ts), number 184, the Polish checker (0.34 m) on the right bin's face.
 
 ## Combat data (ukraine.ts)
 
@@ -45,3 +46,10 @@ rounds (the fleet's K2 rows, modern3Specs.ts).
   Falarick 120 (750 mm, guided, 6 rounds); -5 / +14 with its own measured depression curve (held up from 137 degrees,
   where the barrel crosses the framed skirts' rear fields).
 - 52.0 t (the grids), 1,200 hp, 70 km/h, hp 2,750, traverse 44 deg/s, flanker.
+
+## The family
+
+The Orzeł is the line tank of three Polish concepts on this base (owner 2026-10-28, "i would like mroe based on that"):
+the light hunter [PT-84 Sokół](pt84_sokol.md) (IX) leads to it, and the assault [PT-84 Żbik](pt84_zbik.md) (X) branches
+from the Sokół. Tech tree: PT-91A Twardy (V) -> Sokół (IX) -> Orzeł (X), Żbik (X). The three share `POLISH_FIT` in
+profiles/oplotBM.ts and one combat table in ukraine.ts.
