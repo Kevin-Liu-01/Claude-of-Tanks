@@ -148,55 +148,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a2": {
-    "schemaVersion": 1,
-    "seats": [
-      {
-        "kind": "designation",
-        "parent": "hull",
-        "size": 0.26,
-        "pos": [
-          0.62,
-          1.22,
-          -3.786
-        ],
-        "quaternion": [
-          0,
-          1,
-          0,
-          0
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "authored-surface-seat",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      },
-      {
-        "kind": "insignia",
-        "parent": "turret",
-        "size": 0.25,
-        "pos": [
-          1.1271144,
-          0.0545034,
-          -1.8460627
-        ],
-        "quaternion": [
-          -0.0067154,
-          0.7671494,
-          0.0056147,
-          0.6414088
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "leo2a2",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.4572604
-      }
-    ]
-  },
   "leo2a4m_can": {
     "schemaVersion": 1,
     "seats": [

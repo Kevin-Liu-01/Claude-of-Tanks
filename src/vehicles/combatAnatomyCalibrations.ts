@@ -24,7 +24,6 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_CV90MKIVSOURCEX } from './c
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_DARDO } from './combatAnatomyGroups/dardo.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FRANCECORE } from './combatAnatomyGroups/franceCore.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_FV510MILANX } from './combatAnatomyGroups/fv510MilanX.generated.ts';
-import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GERMANY } from './combatAnatomyGroups/germany.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFIN50X } from './combatAnatomyGroups/griffin50X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_GRIFFINVIPER } from './combatAnatomyGroups/griffinViper.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ITALY } from './combatAnatomyGroups/italy.generated.ts';
@@ -110,7 +109,6 @@ export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyC
   CALIBRATIONS_DARDO,
   CALIBRATIONS_FRANCECORE,
   CALIBRATIONS_FV510MILANX,
-  CALIBRATIONS_GERMANY,
   CALIBRATIONS_GRIFFIN50X,
   CALIBRATIONS_GRIFFINVIPER,
   CALIBRATIONS_ITALY,

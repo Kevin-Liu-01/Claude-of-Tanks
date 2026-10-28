@@ -1231,109 +1231,19 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "b9d02c10f283edb2",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildLeo2A4RunningGearStage1@profiles/leopard.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.982,
-      "gap": 0.018,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1615>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "strip:strip@buildLeo2A4MarkingsStage2@profiles/leopard.ts",
-     "source": "strip",
-     "frame": "turret",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.94,
-      "gap": 0.06,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.003,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.897,
-      "host": "orphan:turret"
-     }
-    }
-   ],
+   "inputHash": "7b06b5e1ec1facad",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a3": {
-   "inputHash": "e983f12f1200ed3c",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildLeo2A4RunningGearStage1@profiles/leopard.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.982,
-      "gap": 0.018,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1615>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "strip:strip@buildLeo2A4MarkingsStage2@profiles/leopard.ts",
-     "source": "strip",
-     "frame": "turret",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.914,
-      "gap": 0.086,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.003,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.9,
-      "host": "orphan:turret"
-     }
-    }
-   ],
+   "inputHash": "8e053b8c4b36d3cf",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a3_b4": {
-   "inputHash": "f888bbdd6e3fd5c4",
+   "inputHash": "e187ebdfa8c7d57e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

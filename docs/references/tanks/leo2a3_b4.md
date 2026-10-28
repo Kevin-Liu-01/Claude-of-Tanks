@@ -46,20 +46,25 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   the front rising to 0.83; the mantlet recessed 3 cm in the slot with a round boss on a bolted flange narrowing to the
   sleeve, the coaxial MG3's port on the gun's left; the EMES 15 housing (right front) over its tall window in the cheek's
   face, the PERI R17 and the commander's low ring with eight periscopes (right), the loader's hatch and MG3 (left), the
-  ammunition hatch on the left wall, two grab rails a side, the eight dischargers a side in one block on a bracket at the
-  bustle's rear corners, the radios' antenna bases, the rear basket; the L/44 with thermal sleeves and evacuator
+  ammunition hatch on the left wall, two grab rails a side (none under the OTCO's shrouds), the eight dischargers a side
+  in one block on a bracket at the bustle's rear corners, the radios' antenna bases, the rear basket; the L/44 with thermal sleeves and evacuator
   (trunnion (0, 0.36, 1.04), tube 4.29 m).
 - The batches (Jerchel and Schnellbacher; en.wikipedia "Leopard 2"):
   - 2A2: the crosswind sensor's hole closed by a round plate, the ammunition hatch hinged and handled, the SEM 25/35's tall
     antenna bases, pressed exhaust louvres.
   - 2A3: no crosswind sensor (only the modernised first batch shows the plate), the ammunition hatch welded shut, the SEM
     80/90's short bases, round-rod exhaust grilles.
-  - 2A3 OTCO: a fourth-batch 2A3 with the field modification: four bolted spaced shrouds a side standing 9 cm off the
-    walls from the cheek's corner to the step, capped back to the wall; a deeper, wider rear rack; a second radio pair.
+  - 2A3 OTCO: a fourth-batch 2A3 with the field modification: a bolted rim (0.16-0.27 m over the ring) round the
+    turret's foot from 18 cm ahead of the cheeks round the corners and along the walls and bustle to the rear corners;
+    four spaced shrouds a side standing on it from the cheek's corner to the step, leaning out 2 degrees, capped back to
+    the wall; a tall barred cage off the bustle (four rails, barred sides); a second radio pair in four-post guard cages.
 - Combat data: `leo2a3_b4` cloned from `leo2a3` (stats, gun, rounds, paint) with the 260 trims (cycle 6.4 s, turret front
   x0.9) applied beside it in fleetBalancePass; `leo2a2` and `leo2a3` keep theirs. All three carry the 2A2's basic armour
   package on the construction's drawn hull and turret (the first four batches share it).
-- Stowage: curated decor manifests (packs in the basket; a tarp on the 2A2's and the OTCO's engine decks), no random load.
+- Stowage (the owner: "add a lot on our tanks"): the fleet's seven-piece field cargo plus curated loads: packs and rolls
+  in the basket, tow cables down the hull's sides, tools and bins on the fenders, cans, rations and tarps on the engine
+  deck, shackles on the bow; the OTCO the heaviest (five packs in its cage, a drape, drums and a can rack on the stern,
+  track links on a shroud).
 
 ## Round log
 
@@ -73,6 +78,21 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   with 20-degree sides and its window in front, two raised rows of dischargers, sloped bins, the PERI on the commander's
   ring; in the shared hull crossed tow cables, rack stays, the sponsons closed to the rear plate, a hinge boss and larger
   periscopes on the driver's hatch.
+- R4 (2026-10-28, a blind critic against cited Bundeswehr photos, PLAUSIBLE 6/10; the photos on the owner's sheets): the
+  dischargers moved from fanned banks mid-turret to one block of two rows of four at each bustle corner; the mantlet
+  recessed 3 cm behind the cheeks with a round bolted boss narrowing to the sleeve (the photographed gun root); the EMES 15
+  window made tall (0.26 x 0.30 m) in the cheek's face under its housing; the side bins dropped for two grab rails a side;
+  the commander's ring lowered; the heavy fore skirt blocks hang 16 cm deeper than the aft run; the 2A3's crosswind mast
+  removed (only the modernised first batch shows its plate). Turret length and barrel taper were low-confidence calls,
+  left as built.
+- R5 (2026-10-28, the owner's family order): `leo2a2` and `leo2a3` rebuilt in place on the construction, the batches told
+  apart (see Construction). The OTCO keeps what made it special, redesigned for the new turret (the owner: "keep the rim
+  thing around it that made it special (can redesign it tho) and the cages"): a bolted rim round the turret's foot from
+  ahead of the cheeks to the bustle's rear corners, four shrouds a side standing on it, a tall barred cage off the bustle,
+  the second radio pair in guard cages; no ghillie ("no need for otco to have ghillie"). All three go out loaded ("a lot
+  of the equipment and decorations and stuff! add a lot on our tanks"): the fleet's field cargo plus curated loads. The
+  old 2A2's ghillie suit, its receipts (leopard2A4Ghillie, leopard2A4GunSeat, leopard2A4SideSkirt) and the OTCO wrapper
+  (profiles/germany.ts) retire; the anatomy's sim-floor moves for leo2a2 and leo2a3 recorded as intended.
 - Checks on the final build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.

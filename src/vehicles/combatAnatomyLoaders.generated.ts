@@ -29,7 +29,6 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "dardo": () => import('./combatAnatomyGroups/dardo.generated.ts'),
   "franceCore": () => import('./combatAnatomyGroups/franceCore.generated.ts'),
   "fv510MilanX": () => import('./combatAnatomyGroups/fv510MilanX.generated.ts'),
-  "germany": () => import('./combatAnatomyGroups/germany.generated.ts'),
   "griffin50X": () => import('./combatAnatomyGroups/griffin50X.generated.ts'),
   "griffinViper": () => import('./combatAnatomyGroups/griffinViper.generated.ts'),
   "italy": () => import('./combatAnatomyGroups/italy.generated.ts'),

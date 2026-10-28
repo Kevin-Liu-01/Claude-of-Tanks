@@ -29,7 +29,6 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "dardo": () => import('./vehicleMarkingSeatGroups/dardo.generated.ts'),
   "franceCore": () => import('./vehicleMarkingSeatGroups/franceCore.generated.ts'),
   "fv510MilanX": () => import('./vehicleMarkingSeatGroups/fv510MilanX.generated.ts'),
-  "germany": () => import('./vehicleMarkingSeatGroups/germany.generated.ts'),
   "griffin50X": () => import('./vehicleMarkingSeatGroups/griffin50X.generated.ts'),
   "griffinViper": () => import('./vehicleMarkingSeatGroups/griffinViper.generated.ts'),
   "italy": () => import('./vehicleMarkingSeatGroups/italy.generated.ts'),
