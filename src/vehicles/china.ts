@@ -4,6 +4,7 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
+import { createZTZ85IIIArmor } from './profiles/ztz85iiiArmor.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
@@ -80,24 +81,24 @@ function variant(
 }
 
 const CHINA_SPECS = {
+  // Release 263 (owner 2026-10-28, "yeah going to need a totally new ztz 85 III"): the ground-up rebuild of
+  // profiles/ztz85iii.ts on the published Type 85 record (docs/references/tanks/ztz85_iii.md §263). Dims are the published
+  // 6.325 m hull, 10.37 m gun forward, 3.372 m over the skirts and 2.29 m over the cupola; the combat envelope follows the
+  // new hull and welded turret at the tier's former strengths (profiles/ztz85iiiArmor.ts).
   ztz85_iii: variant('ztz85_iii', 'type59', {
     name: 'ZTZ-85-III', number: '85-III', base: '#35483a', weather: '#4a5947',
     patches: ['#263229', '#59634c', '#736a4d'], camoScale: 0.50,
-    // its own 0.55 m track: release 262 put the Type 59 donor on the T-54's measured 0.60 m course
+    // the Type 85-IIM's 0.55 m track
     trackWidthM: 0.55,
-    // Ground-up silhouette receipts include bow/stern fittings and the roof
-    // weapon cluster; gameplay dimensions remain the published base values.
     dims: {
-      hullLengthM: 6.40, overallLengthM: 10.28, widthM: 3.45, heightM: 2.30,
-      silhouetteHullLengthM: 6.47,
-      silhouetteOverallLengthM: 8.43, silhouetteHeightM: 2.53,
+      hullLengthM: 6.325, overallLengthM: 10.37, widthM: 3.372, heightM: 2.29,
     },
     stats: {
       hp: 1950, enginePowerHp: 1000, weightTons: 43.7, topSpeedKmh: 57,
       reverseSpeedKmh: 15, turretTraverseDegS: 34,
       gunPitchDegS: 27, gunElevationDeg: 14, gunDepressionDeg: 6,
     },
-    armorFactor: 1.14,
+    armor: createZTZ85IIIArmor(),
   }),
   ztz99a: variant('ztz99a', 'ztz99_longwei', {
     name: 'ZTZ-99A', number: '99A', base: '#35453a', weather: '#4a5847',
@@ -137,8 +138,7 @@ const CHINA_SPECS = {
   }),
 } satisfies Record<string, FleetTankSpec>;
 
-// Tier-VIII fire-control package: keep Type 59 ancestry for geometry while
-// replacing the inherited 100 mm ammunition with the ZTZ-85-III's 125 mm set.
+// Tier-VIII fire-control package: the inherited 100 mm ammunition replaced with the ZTZ-85-III's 125 mm set.
 {
   const spec = CHINA_SPECS.ztz85_iii;
   spec.hp = 2100;

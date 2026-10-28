@@ -1156,7 +1156,7 @@
     "src/vehicles/profiles/xk2.selftest.mjs": 13000,
     "src/vehicles/profiles/ztz100Prototype.selftest.mjs": 77000,
     "src/vehicles/profiles/ztz100X.selftest.mjs": 13000,
-    "src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs": 11000,
+    "src/vehicles/profiles/ztz85iii.selftest.mjs": 11000,
     "src/vehicles/profiles/ztz99a2RearService.selftest.mjs": 16000,
     "src/vehicles/recoilRig.selftest.mjs": 12000,
     "src/vehicles/registeredGuardPaint.selftest.mjs": 188000,
