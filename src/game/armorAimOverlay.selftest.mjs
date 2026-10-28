@@ -99,7 +99,7 @@ overlay.update({ enabled: true, scoped: true, targets: [target, secondTarget], t
 assert.equal(target.uniforms.uApOn.value, 1, 'scope turns the paint on without a direct reticle target');
 assert.equal(secondTarget.uniforms.uApOn.value, 1, 'scope paints every visible enemy');
 assert.equal(target.uniforms.uApZones.value, entry.texture, 'the paint reads this vehicle\'s table');
-assert.deepEqual(target.uniforms.uApCounts.value.toArray(), [2, 0], 'two hull zones, no turret');
+assert.deepEqual(target.uniforms.uApCounts.value.toArray(), [2, 0, 0], 'two hull zones, no turret, no mantlet');
 // the frames: world → hull frame is the inverse of the hull's world matrix
 {
   const probe = new THREE.Vector3(4.5, 1, 0.5).applyMatrix4(secondTarget.uniforms.uApHullInv.value);
@@ -131,4 +131,24 @@ overlay.clear();
 assert.equal(target.uniforms.uApZones.value, null, 'battle cleanup lets go of the table');
 overlay.dispose();
 
-console.log('armorAimOverlay.selftest: zone tables, scope-owned paint on every enemy, frames, bounded sampling and cleanup passed');
+// the mantlet's footprint (Main's ruling, 262): after the zones, a mantlet or gun-notch plate's box — its x range, its
+// height +-0.1 m, its z range +-0.35 m — and its zone, so a forward surface over it paints the mantlet
+{
+  const cheek = { name: 'test_turret_cheek', kind: 'main', physicalMm: 300, keMm: 300, ceMm: 300,
+    verts: [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]] };
+  const mantlet = { name: 'test_gun_mantlet', kind: 'main', physicalMm: 200, keMm: 200, ceMm: 200,
+    verts: [[-0.3, 0.8, 1], [0.3, 0.8, 1], [0.3, 1.2, 1], [-0.3, 1.2, 1]] };
+  const turretTarget = makeTarget('overlay-turret', 8);
+  const hullCells = target.spec.armor.collisionShells.hull;
+  turretTarget.spec = { armor: { ...target.spec.armor, turretPlates: [cheek, mantlet], collisionShells: { hull: hullCells, turret: hullCells } } };
+  const turretOverlay = createArmorAimOverlay();
+  const turretEntry = turretOverlay.prime(turretTarget);
+  assert.equal(turretEntry.template.footprints, 1, 'one mantlet, one footprint');
+  const foot = [...turretEntry.table.slice(4 * 4 * ARMOR_PAINT_ZONE_TEXELS)].map((v) => +v.toFixed(6));
+  assert.deepEqual(foot, [-0.3, 0.7, 0.65, 3, 0.3, 1.3, 1.35, 0], 'the footprint box after the four zones, its zone the mantlet\'s');
+  turretOverlay.update({ enabled: true, scoped: true, targets: [turretTarget], shellSpec, muzzle: new THREE.Vector3(8, 1, 6), nowMs: 0 });
+  assert.deepEqual(turretTarget.uniforms.uApCounts.value.toArray(), [2, 2, 1], 'the paint reads the footprint');
+  turretOverlay.dispose();
+}
+
+console.log('armorAimOverlay.selftest: zone tables, mantlet footprints, scope-owned paint on every enemy, frames, bounded sampling and cleanup passed');

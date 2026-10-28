@@ -13,7 +13,12 @@
 // scores meet. A plate turned more than ~83° away (n·m < ZONE_FACING_MIN) never takes a point. The nearest plane, not the
 // outermost: a hull is not convex, and a lower side plate between the tracks lies inboard of a glacis that spans them.
 //
-// Pure numbers (no three.js), deterministic (Math.sqrt only).
+// The mantlet's footprint comes first (Main's ruling, 262; combatAnatomy's face-to-plate assignment keeps the same
+// rule): a forward surface (outward normal z > MANTLET_FORWARD_NZ) over a mantlet or gun-notch plate's footprint —
+// inside its x range, within 0.1 m of its height and 0.35 m of its z range — is that plate's, whatever the score. The
+// score alone hands the face in front of the gun to a wrap-around cheek or a low turret's roof.
+//
+// Pure numbers (no three.js), deterministic (Math.sqrt, Math.min and Math.max only).
 
 /** Metres of score a metre outside a plate's outline costs (nearestPlate's 0.75). */
 export const ZONE_OUTSIDE_WEIGHT = 0.75;
@@ -21,11 +26,20 @@ export const ZONE_OUTSIDE_WEIGHT = 0.75;
 export const ZONE_FACING_WEIGHT = 1.25;
 /** A plate facing a point's surface less than this (n·m) never takes it (nearestPlate's 0.12). */
 export const ZONE_FACING_MIN = 0.12;
+/** A surface whose outward normal's z (frame-local) is above this is forward: over a mantlet's footprint, the mantlet's. */
+export const MANTLET_FORWARD_NZ = 0.2;
 
 interface ZonePlateSource {
   readonly verts: readonly (readonly number[])[];
   readonly kind?: string;
+  readonly name?: string;
 }
+
+/** A main plate so named is a mantlet or gun notch: it carries a footprint. */
+const MANTLET_NAME = /mantlet|gun_notch/i;
+/** Metres the footprint reaches past the plate's height, and past its z range. */
+const FOOTPRINT_Y_M = 0.1;
+const FOOTPRINT_Z_M = 0.35;
 
 type Point = [number, number, number];
 
@@ -36,6 +50,8 @@ export interface ZonePlate {
   readonly offset: number;
   /** Outward edge planes of the outline: e(x) = normal·x + offset, positive outside that edge. */
   readonly edges: ReadonlyArray<{ readonly normal: Point; readonly offset: number }>;
+  /** A mantlet's or gun notch's footprint box (frame-local): a forward surface inside it is this plate's. */
+  readonly footprint: { readonly min: Point; readonly max: Point } | null;
 }
 
 const sub = (a: readonly number[], b: readonly number[]): Point => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -69,16 +85,37 @@ export function zonePlates(plates: readonly ZonePlateSource[] | undefined): Zone
       const side = unit(cross(sub(b, a), normal));
       if (side) edges.push({ normal: side, offset: -dot(side, a) });
     }
-    out.push({ plate, normal, offset: -dot(normal, center), edges });
+    let footprint: ZonePlate['footprint'] = null;
+    if (MANTLET_NAME.test(plate.name || '')) {
+      const min: Point = [Infinity, Infinity, Infinity], max: Point = [-Infinity, -Infinity, -Infinity];
+      for (const point of verts) for (let axis = 0; axis < 3; axis++) {
+        min[axis] = Math.min(min[axis], point[axis]);
+        max[axis] = Math.max(max[axis], point[axis]);
+      }
+      min[1] -= FOOTPRINT_Y_M; max[1] += FOOTPRINT_Y_M;
+      min[2] -= FOOTPRINT_Z_M; max[2] += FOOTPRINT_Z_M;
+      footprint = { min, max };
+    }
+    out.push({ plate, normal, offset: -dot(normal, center), edges, footprint });
   }
   return out;
 }
 
 /**
- * The zone at a frame-local point of the armour whose outward normal is (nx, ny, nz): the index of the plate with the
- * best score, or -1 when no plate faces that way. Allocates nothing.
+ * The zone at a frame-local point of the armour whose outward normal is (nx, ny, nz): on a forward surface over a
+ * mantlet's footprint, that plate (the footprint it lies deepest in, as the paint judges it); otherwise the index of the
+ * plate with the best score, or -1 when no plate faces that way. Allocates nothing.
  */
 export function zoneAt(zones: readonly ZonePlate[], x: number, y: number, z: number, nx: number, ny: number, nz: number): number {
+  let foot = -1, footIn = 0;
+  for (let index = 0; index < zones.length; index++) {
+    const box = zones[index].footprint;
+    if (!box) continue;
+    const inside = Math.min(x - box.min[0], box.max[0] - x, y - box.min[1], box.max[1] - y, z - box.min[2], box.max[2] - z,
+      nz - MANTLET_FORWARD_NZ);
+    if (inside > footIn) { footIn = inside; foot = index; }
+  }
+  if (foot >= 0) return foot;
   let best = -1, bestScore = -Infinity;
   for (let index = 0; index < zones.length; index++) {
     const zone = zones[index], n = zone.normal;

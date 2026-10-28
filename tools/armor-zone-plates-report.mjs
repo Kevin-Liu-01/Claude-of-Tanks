@@ -18,6 +18,10 @@
 //   gaps         see-through cracks between the cells' slices, off vs on (sealed seams): at every boundary two slices
 //                share, rays across the hull (along x, then down y) every 10 cm, at 1 cm steps through boundary ± 4 cm;
 //                a ray that meets no plate while those 6 cm either side both do went through a crack
+//   mantlet      Main's ruling (262): every forward turret cell face (outward normal z > 0.2) whose centre lies over a
+//                mantlet or gun-notch plate's footprint (its x range, its height ± 0.1 m, its z range ± 0.35 m) reads
+//                that plate on: zoneAt at its centre (a face that reads another is a failure); off, the faces the cells'
+//                own plate gives another
 import { writeFileSync } from 'node:fs';
 import * as THREE from 'three';
 
@@ -27,6 +31,7 @@ const { tankTier } = await import('../src/vehicles/tier.ts');
 const { queryAimArmor } = await import('../src/sim/armor.ts');
 const { estimatePenRatio } = await import('../src/sim/damage.ts');
 const { setArmorZonePlates, zonePlateCounters } = await import('../src/sim/armorZonePlates.ts');
+const { zoneAt, zonePlates } = await import('../src/sim/armorZones.ts');
 
 const arg = (name, fallback = null) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const ids = arg('ids') ? arg('ids').split(',') : [...fleet.ALL_TANK_IDS];
@@ -235,6 +240,32 @@ for (const id of ids) {
   if (off) gaps.framesOff++;
   if (on) { gaps.framesOn++; gaps.worst.push(`${id}: ${off} -> ${on}`); }
 }
+const mantlet = { faces: 0, off: 0, offTanks: 0, on: 0, tanks: 0 };
+for (const id of ids) {
+  const armor = fleet.getSpec(id)?.armor;
+  const cells = armor?.collisionShells?.turret || [];
+  const mantlets = (armor?.turretPlates || []).filter((p) => p.kind === 'main' && /mantlet|gun_notch/i.test(p.name));
+  if (!cells.length || !mantlets.length) continue;
+  mantlet.tanks++;
+  const zones = zonePlates(armor.turretPlates);
+  let offHere = 0;
+  for (const m of mantlets) {
+    const lo = [0, 1, 2].map((k) => Math.min(...m.verts.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...m.verts.map((v) => v[k])));
+    for (const cell of cells) for (const face of cell.faces) {
+      const [x, y, z] = face.center;
+      if (face.internal || face.normal[2] <= 0.2 || x < lo[0] || x > hi[0] || y < lo[1] - 0.1 || y > hi[1] + 0.1
+        || z < lo[2] - 0.35 || z > hi[2] + 0.35) continue;
+      mantlet.faces++;
+      if (!mantlets.includes(face.plate)) { mantlet.off++; offHere++; }
+      const index = zoneAt(zones, x, y, z, face.normal[0], face.normal[1], face.normal[2]);
+      if (index < 0 || !mantlets.includes(zones[index].plate)) {
+        mantlet.on++;
+        census.failed.push(`${id}: a forward turret face over ${m.name}'s footprint reads ${index < 0 ? 'no zone' : zones[index].plate.name}`);
+      }
+    }
+  }
+  if (offHere) mantlet.offTanks++;
+}
 const ms = performance.now() - t0;
 
 const fmt = (x, digits = 1) => (x * 100).toFixed(digits);
@@ -256,8 +287,9 @@ for (const [tier, line] of [...tiers].sort((a, b) => a[0] - b[0])) {
   lines.push(`  ${String(tier).padStart(4)}  ${fmt(f[0] / f[2]).padStart(5)} -> ${fmt(f[1] / f[2]).padStart(5)}   ${fmt(s[0] / s[2]).padStart(5)} -> ${fmt(s[1] / s[2]).padStart(5)}   (${f[2]} / ${s[2]} shots)`);
 }
 lines.push(`gaps: lines through a crack between slices ${gaps.off} off (${gaps.framesOff} tanks) -> ${gaps.on} on, seams sealed (${gaps.framesOn} tanks${gaps.worst.length ? `: ${gaps.worst.slice(0, 8).join(', ')}` : ''})`);
+lines.push(`mantlet: ${mantlet.faces} forward turret faces over a mantlet footprint (${mantlet.tanks} tanks); reading another plate off ${mantlet.off} (${mantlet.offTanks} tanks) -> on ${mantlet.on}`);
 const determinismOk = determinism.every((row) => row.fresh && row.seeds.every(Boolean));
 lines.push(`determinism: ${determinism.length} tanks, fresh cell copies ${determinism.filter((r) => r.fresh).length}/${determinism.length} equal, ${seeds} jitter seeds twice each ${determinism.filter((r) => r.seeds.every(Boolean)).length}/${determinism.length} equal: ${determinismOk ? 'PASS' : 'FAIL'}`);
 console.log(lines.join('\n'));
-if (arg('json')) writeFileSync(arg('json'), `${JSON.stringify({ census, counters: corpusCounters, zones: Object.fromEntries(zones), tiers: Object.fromEntries(tiers), flips, determinism, gaps, lines }, null, 1)}\n`);
+if (arg('json')) writeFileSync(arg('json'), `${JSON.stringify({ census, counters: corpusCounters, mantlet, zones: Object.fromEntries(zones), tiers: Object.fromEntries(tiers), flips, determinism, gaps, lines }, null, 1)}\n`);
 process.exitCode = census.failed.length || !determinismOk ? 1 : 0;

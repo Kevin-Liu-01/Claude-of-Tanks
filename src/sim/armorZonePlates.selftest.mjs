@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { traceTank, tracedCollisionCells } from './armor.ts';
 import { sealSliceSeams, setArmorZonePlates } from './armorZonePlates.ts';
+import { zoneAt, zonePlates } from './armorZones.ts';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -119,4 +120,29 @@ assert.ok(Math.abs(again.impactAngleDeg - b.impactAngleDeg) < 1e-12 && Math.abs(
 setArmorZonePlates(false);
 assert.equal(firstPlate(shot([0.8, 1.05, 5], [0.8, 1.05, -5])).plate, glacisLower, 'off again: the cell faces\' plates');
 
-console.log('armorZonePlates.selftest: off untouched; on, the paint\'s zones, face or plate angles, sealed seams, the same shots at the same points, deterministic');
+
+// the mantlet's footprint first (Main's ruling, 262): a forward surface (n.z > 0.2) over a mantlet or gun-notch plate's
+// footprint (its x range, its height +-0.1 m, its z range +-0.35 m) reads that plate, where the score gives another
+{
+  const mantlet = plate('turret_gun_mantlet', [[-0.3, 1.6, 0.9], [0.3, 1.6, 0.9], [0.3, 2, 0.9], [-0.3, 2, 0.9]], 450);
+  // a wrap-around cheek (CR1 Mk 2's): its plane 10 cm proud of the recessed mantlet, its outline across the gun
+  const cheek = plate('turret_cheek', [[-1, 1.4, 1], [1, 1.4, 1], [1, 2.2, 1], [-1, 2.2, 1]], 600);
+  const wrap = zonePlates([cheek, mantlet]);
+  assert.ok(wrap[1].footprint && !wrap[0].footprint, 'the mantlet carries a footprint, the cheek none');
+  assert.deepEqual(wrap[1].footprint.min.map((v) => +v.toFixed(6)), [-0.3, 1.5, 0.55], 'the footprint\'s min: x range, height - 0.1, z - 0.35');
+  assert.deepEqual(wrap[1].footprint.max.map((v) => +v.toFixed(6)), [0.3, 2.1, 1.25], 'its max');
+  assert.equal(zoneAt(wrap, 0, 1.8, 1, 0, 0, 1), 1, 'the face in front of the gun on the cheek\'s plane reads the mantlet');
+  assert.equal(zoneAt(wrap, 0.5, 1.8, 1, 0, 0, 1), 0, 'beside the footprint, the cheek');
+  assert.equal(zoneAt(wrap, 0, 2.15, 1, 0, 0, 1), 0, 'above its height + 0.1 m, the cheek');
+  assert.equal(zoneAt(wrap, 0, 1.8, 1, 0.98868599, 0, 0.15), 0, 'a surface turned sideways (n.z <= 0.2) keeps its score');
+  // a low Soviet-pattern turret (T-90AM's): the sloped roof faces the gun's face better than the upright mantlet does
+  const roofForward = plate('turret_roof_forward', [[-1, 1.5, 1.1], [1, 1.5, 1.1], [1, 2.3, 0.5], [-1, 2.3, 0.5]], 40);
+  const low = zonePlates([roofForward, mantlet]);
+  const up = [0, 0.7, 0.714142842854285];
+  assert.equal(zoneAt([low[0]], 0, 1.8, 0.95, ...up), 0, 'the score alone gives the gun face the roof');
+  assert.equal(zoneAt(low, 0, 1.8, 0.95, ...up), 1, 'over the footprint it reads the mantlet');
+  // deterministic and order-free: the deepest footprint wins, the same every time
+  assert.equal(zoneAt(zonePlates([mantlet, cheek]), 0, 1.8, 1, 0, 0, 1), 0, 'the plate order does not change the answer');
+}
+console.log('armorZonePlates.selftest: off untouched; on, straight zone borders, sealed seams, face or plate angles, the mantlet footprint, the same answers every build');
+

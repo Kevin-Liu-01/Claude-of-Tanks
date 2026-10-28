@@ -9,7 +9,8 @@
 // zigzagged along hull triangles, cracks between slices drew as stripes, and skirts and ERA hid it. Now it is paint, as
 // camo is: the vehicle's own armour and fitting paint takes, per fragment, the colour of the armour zone it lies in
 // (vehicles/materials.ts ARMOR_PAINT: the authored plate — glacis, lower plate, cheek, mantlet, side, roof, rear — it
-// lies nearest, inside whose outline and facing its way), with straight zone borders. Only what is seen is painted.
+// lies nearest, inside whose outline and facing its way; a forward surface over the mantlet's footprint, the mantlet),
+// with straight zone borders. Only what is seen is painted.
 // Each zone's colour is blended from a few samples on the cells' faces the authority gives that plate.
 //
 // The paint rides the burn hook every battle vehicle's materials carry from the warm (prewarmBurn): no program of its
@@ -59,7 +60,7 @@ interface ArmorPaintHandles {
     uApTurMax: { value: THREE.Vector3 };
     uApHullC: { value: THREE.Vector3 };
     uApTurC: { value: THREE.Vector3 };
-    uApCounts: { value: THREE.Vector2 };
+    uApCounts: { value: THREE.Vector3 };
     uApZones: { value: THREE.DataTexture | null };
   };
   hull: THREE.Object3D;
@@ -94,6 +95,8 @@ interface PaintTemplate {
   readonly table: Float32Array;
   readonly hullZones: number;
   readonly turretZones: number;
+  /** Mantlet footprints after the zones (a forward surface over one is its plate's). */
+  readonly footprints: number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
   /** Each frame's centre (its cells' bounds'): fittings are painted by the way from it. */
@@ -232,13 +235,20 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   const turret = turretCells.length ? zonePlates(armor.turretPlates) : [];
   if (!hull.length && !turret.length) return null;
   const zones = [...hull, ...turret];
-  const table = new Float32Array(zones.length * ARMOR_PAINT_ZONE_TEXELS * 4);
+  const footprints = zones.filter((zone) => zone.footprint).length;
+  const table = new Float32Array((zones.length * ARMOR_PAINT_ZONE_TEXELS + footprints * 2) * 4);
+  let footAt = zones.length * ARMOR_PAINT_ZONE_TEXELS * 4;
   zones.forEach((zone, index) => {
     const base = index * ARMOR_PAINT_ZONE_TEXELS * 4;
     table.set([zone.normal[0], zone.normal[1], zone.normal[2], zone.offset], base);
     for (let e = 0; e < ARMOR_PAINT_ZONE_EDGES; e++) {
       const edge = zone.edges[e];
       table.set(edge ? [edge.normal[0], edge.normal[1], edge.normal[2], edge.offset] : [0, 0, 0, -1], base + (1 + e) * 4);
+    }
+    if (zone.footprint) {
+      const { min, max } = zone.footprint;
+      table.set([min[0], min[1], min[2], index, max[0], max[1], max[2], 0], footAt);
+      footAt += 8;
     }
   });
   const turretMin = new THREE.Vector3(Infinity, Infinity, Infinity), turretMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
@@ -266,7 +276,7 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
-  return { table, hullZones: hull.length, turretZones: turret.length, turretMin, turretMax, hullCentre, turretCentre, samples };
+  return { table, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre, turretCentre, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -331,7 +341,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const u = entry.paint.uniforms;
     if (visible) {
       u.uApZones.value = entry.texture;
-      u.uApCounts.value.set(entry.template.hullZones, entry.template.turretZones);
+      u.uApCounts.value.set(entry.template.hullZones, entry.template.turretZones, entry.template.footprints);
       u.uApTurMin.value.copy(entry.template.turretMin);
       u.uApTurMax.value.copy(entry.template.turretMax);
       u.uApHullC.value.copy(entry.template.hullCentre);
