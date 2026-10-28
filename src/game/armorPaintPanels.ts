@@ -225,6 +225,9 @@ export interface PanelSample {
   readonly part: string;
   readonly panel: string;
   readonly point: string | null;
+  /** Whether the panel's plate, and the per-point paint's, is the turret's (else the hull's). */
+  readonly panelTurret: boolean;
+  readonly pointTurret: boolean;
 }
 /** (lane tools) Also measure where a panel's zone and the per-point paint's disagree (bakedArea, disagreeArea), and hand
  * each baked triangle to `sink`; null stops it. */
@@ -610,6 +613,7 @@ export function* bakePaintPanelSteps(
             nx: normals[t * 3], ny: normals[t * 3 + 1], nz: normals[t * 3 + 2],
             area: areas[t], part: `${mesh.name || mesh.parent?.name || 'mesh'}#${roots[t]}`,
             panel: plateName(template.zones[value - 1]), point: zone >= 0 ? plateName(template.zones[zone]) : null,
+            panelTurret: value - 1 >= template.hullZones, pointTurret: zone >= template.hullZones,
           });
           if (zone !== value - 1) {
             stats.disagreeArea += areas[t];
