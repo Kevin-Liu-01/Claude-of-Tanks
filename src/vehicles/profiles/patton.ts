@@ -50,7 +50,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, conve
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
-import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps } from './pattonCast.ts';
+import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps, buildM48VariantCastSteps } from './pattonCast.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -3266,6 +3266,11 @@ export const PATTON_PROFILES = {
   m46_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM46CastSteps(P, M46_M47_TRACK_FINISH)) },
   m47_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM47CastSteps(P, M46_M47_TRACK_FINISH)) },
   m48a5_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48A5CastSteps(P)) },
+  // release 266: the M48s of the USA, Israel and Germany on the A5's castings (pattonCast.ts M48_VARIANTS)
+  m48a3_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a3')) },
+  magach3: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'magach3')) },
+  m48a2ga2: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a2ga2')) },
+  m48_super: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48super')) },
   m60a2: {
     // FIRST BUILD (r2): the triage 'easiest single win' — A1-family hull
     // re-authored in this print's own extract frame + the Starship tower

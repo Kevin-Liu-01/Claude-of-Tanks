@@ -19,6 +19,7 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     { id: 'export', name: 'Export Leopard 2' },
     { id: 'rheinmetall', name: 'Revolution and Panther' },
     { id: 'marder', name: 'Marder, Puma and Lynx' },
+    { id: 'm48', name: 'M48' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -60,6 +61,9 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({
       id: 'puma_s1', tier: 6, line: 'marder', lane: 7, parents: ['kf41_lynx'], slot: 'line', builds: ['spz_wotan'],
     }),
+    // M48 (release 266: the Bundeswehr's Wegmann rebuild and Rheinmetall's demonstrator on the M48A5's castings)
+    node({ id: 'm48a2ga2', tier: 1, line: 'm48', lane: 0, parents: ['jpz_e100'], slot: 'line' }),
+    node({ id: 'm48_super', tier: 2, line: 'm48', lane: 0, parents: ['m48a2ga2'], slot: 'line' }),
     // Special
     node({ id: 'leo2a4_otco', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

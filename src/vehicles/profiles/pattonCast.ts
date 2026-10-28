@@ -51,6 +51,8 @@ interface CastPort {
   addGunExtra(geometry: Geo, ...transform: number[]): void;
   addGunExtraDark(geometry: Geo, ...transform: number[]): void;
   addModuleVisual(module: string, slot: string, geometry: Geo, ...transform: number[]): void;
+  addExternalArmor(owner: 'hull' | 'turret', geometry: Geo, ...transform: number[]): void;
+  destructibleCluster(plateName: string, fill: () => void): void;
   snapGroup(label: string, build: () => void, options?: { reachM?: number }): void;
   decal(owner: 'hull' | 'turret', kind: string, value: string | null, scale: number, position: readonly number[],
     ...rotation: number[]): void;
@@ -842,7 +844,7 @@ function bustleNumbers(P: CastPort, T: TurretFrame, z: number, frac: number, sca
 
 /** What pattonCastProportions.selftest.mjs reads back from a build: the authored datums and the running gear's counts. */
 interface PattonCastReceipt {
-  readonly mark: 'm46' | 'm47' | 'm48a5';
+  readonly mark: 'm46' | 'm47' | M48Mark;
   readonly ring: readonly [number, number];
   readonly trunnion: readonly [number, number];
   readonly muzzleZ: number;
@@ -859,7 +861,7 @@ interface PattonCastReceipt {
 
 function publishReceipt(P: CastPort, receipt: PattonCastReceipt): void {
   P.turretG.userData.pattonCastReceipt = Object.freeze({ revision: 'patton-cast-262', ...receipt });
-  if (receipt.mark !== 'm48a5') {
+  if (receipt.mark === 'm46' || receipt.mark === 'm47') {
     // the post-war American fit the M46/M47 carry (americanModernization.selftest.mjs): the Sheridan-derived M2HB, the
     // paired guarded headlight groups, two radio whips and the seated bustle stowage
     P.turretG.userData.americanModernizationReceipt = Object.freeze({
@@ -1342,6 +1344,33 @@ const M48_DOME: readonly LandmarkStation[] = [
   [1.86, 1.770, 1.86, [0.10, 1.79, 0.18, 1.80, 0.15, 1.83, 0.08, 1.85, 0.03, 1.86], [0.002, 0.002, 0.011, -0.003, -0.005, 0]],
 ];
 
+/** The M48 marks drawn on these castings (release 266; the owner, 2026-10-28: "add the israeli m48 variant to israel and
+ * add a new m48 variant for the usa since its a really great modeel", then "also add the m48 super to germany as well as
+ * the kpfz m48 a2 g a2"). The hull and the dome are the A5's measured castings; a mark changes only what it carried
+ * (docs/references/tanks/<id>.md). The A5's own spec reproduces its release-262 build exactly. */
+export type M48Mark = 'm48a5' | 'm48a3' | 'magach3' | 'm48a2ga2' | 'm48super';
+interface M48Variant {
+  readonly mark: M48Mark;
+  /** The A5's 105 mm M68 (eccentric evacuator), the L7A3 in its thermal sleeve (concentric fume extractor), the 90 mm M41
+   * with its cylindrical blast deflector. */
+  readonly gun: 'm68' | 'l7a3' | 'm41';
+  /** The commander's cupola: the A5's low cupola with its M60D (the Magach's Urdan is its twin), the M1 on its
+   * vision-block riser, the GA2's low cast collar with the Leopard hatch and the MG3 on its ring. */
+  readonly cupola: 'a5' | 'm1' | 'ga2';
+  /** Running gear: the A5 model's (five return rollers), the early hull's (five and the track-tension wheel), the A2
+   * hull's three. */
+  readonly gear: 'a5' | 'a1' | 'a2';
+  /** The AVDS-1790's air cleaners on the rear fenders (the diesel marks). */
+  readonly airCleaners: boolean;
+}
+const M48_VARIANTS: Readonly<Record<M48Mark, M48Variant>> = Object.freeze({
+  m48a5: { mark: 'm48a5', gun: 'm68', cupola: 'a5', gear: 'a5', airCleaners: true },
+  m48a3: { mark: 'm48a3', gun: 'm41', cupola: 'm1', gear: 'a1', airCleaners: true },
+  magach3: { mark: 'magach3', gun: 'm68', cupola: 'a5', gear: 'a1', airCleaners: true },
+  m48a2ga2: { mark: 'm48a2ga2', gun: 'l7a3', cupola: 'ga2', gear: 'a2', airCleaners: false },
+  m48super: { mark: 'm48super', gun: 'l7a3', cupola: 'ga2', gear: 'a2', airCleaners: false },
+});
+
 const M48_GEAR: GearSpec = {
   wheelR: 0.33, wheelY: 0.41, span: [2.049, -1.959], rollerN: 5, rollerY: 1.123, rollerR: 0.18,
   // the torsion bars stagger the sides: the -x side's stations run 10 cm behind the +x side's; the return rollers (one
@@ -1352,11 +1381,19 @@ const M48_GEAR: GearSpec = {
   idler: { z: 2.826, y: 0.883, r: 0.328 }, sprocket: { z: -2.884, y: 1.014, r: 0.348 },
   contactZF: 2.20, contactZR: -2.12, botY: 0.045,
 };
+/** The other hulls' running gear on the same stations: the M48A1 hull the A3 and the Magach 3 were rebuilt from keeps the
+ * small track-tension wheel behind the last road wheel (the Latrun and Sultan Yacoub tanks); the A2 hull carries three
+ * return rollers (the GA2's photographs). */
+function m48Gear(V: M48Variant): GearSpec {
+  if (V.gear === 'a1') return { ...M48_GEAR, tension: { z: -2.60, y: 0.50, r: 0.18 } };
+  if (V.gear === 'a2') return { ...M48_GEAR, rollerN: 3, rollerZs: [-1.723, -0.065, 1.492] };
+  return M48_GEAR;
+}
 // the model's track centres (1.6 cm a side over the published 115 in) and the 28 in track: the gate measures this hull
 // against the certified model's own envelope
 const M48_XC = 1.4765, M48_TRACK_W = 0.711;
 
-function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
+function* m48HullSteps(P: CastPort, V: M48Variant): Generator<string, HullFrame> {
   const { box, cylX, cylY, cylZ, sph } = KIT;
   const seat = landmarkSeat(M48_HULL, M48_HULL_RULE);
   const deckAt = (z: number): number => seat.topAt(0, z);
@@ -1387,9 +1424,14 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     for (const x of [1.24, 1.46]) P.add('hullDark', box(0.06, 0.13, 0.10), side * x, 1.62, -0.42);
     P.add('hullDetail', box(0.10, 0.17, 0.18), side * 1.04, 1.59, -2.57);
     // the AVDS-1790's air cleaners: the tall boxes ahead of the rear bins, their tops chamfered down at the front
-    const [c0, c1] = side > 0 ? [1.16, 1.595] : [-1.595, -1.16];
-    P.add('hullDetail', skirtRun(c0, c1, [[-1.54, 1.495, 1.795], [-0.98, 1.495, 1.80], [-0.63, 1.495, 1.77], [-0.56, 1.495, 1.67]]));
-    P.add('hullDark', box(0.36, 0.02, 0.30), side * 1.395, 1.805, -1.25);
+    if (V.airCleaners) {
+      const [c0, c1] = side > 0 ? [1.16, 1.595] : [-1.595, -1.16];
+      P.add('hullDetail', skirtRun(c0, c1, [[-1.54, 1.495, 1.795], [-0.98, 1.495, 1.80], [-0.63, 1.495, 1.77], [-0.56, 1.495, 1.67]]));
+      P.add('hullDark', box(0.36, 0.02, 0.30), side * 1.395, 1.805, -1.25);
+    } else {
+      // the petrol AV-1790's deck: a low bin where the diesel's cleaners stand
+      P.add('hullDetail', moldedBox(0.42, 0.16, 0.95, 0.02, P.q ? 2 : 1, 0.01), side * 1.38, 1.575, -1.05);
+    }
   }
   P.add('hullDetail', box(0.59, 0.035, 0.56), 1.33, 1.53, 2.01);
   P.add('hullDetail', cylY(0.30, 0.31, 0.15, P.q ? 28 : 14), 1.33, 1.62, 2.01);
@@ -1452,7 +1494,8 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
   yield 'm48HullRear';
   // running gear at the model's stations: six road wheels (the rearmost pitched long), five large return rollers, the
   // idler on its arm, no tension wheel; shock absorbers at the first two and last stations, bump stops at every arm
-  pattonGear(P, M48_XC, M48_TRACK_W, M48_GEAR);
+  const gear = m48Gear(V);
+  pattonGear(P, M48_XC, M48_TRACK_W, gear);
   for (const side of [-1, 1]) {
     for (const z of M48_GEAR.wheelZsBySide?.[side < 0 ? 0 : 1] ?? []) {
       P.add('hullRunningGearDark', box(0.16, 0.21, 0.16), side * 1.14, 0.73, z);
@@ -1476,6 +1519,8 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     }
   }
   yield 'm48HullGear';
+  if (V.mark === 'm48super') { m48SuperSkirts(P); yield 'm48HullSkirts'; }
+  if (V.mark === 'magach3') { magachGlacisEra(P, deckY); yield 'm48HullEra'; }
   void sph;
   return { xc: M48_XC, trackW: M48_TRACK_W, deckAt };
 }
@@ -1510,7 +1555,7 @@ function bustleRing(P: CastPort, T: TurretFrame, seat: CastSeat, a0: number, a1:
   });
 }
 
-function* m48TurretSteps(P: CastPort): TankProfileBuild {
+function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
   const { box, cylX, cylY, cylZ, sph, xform } = KIT;
   const seat = landmarkSeat(M48_DOME, M48_DOME_RULE);
   const T: TurretFrame = { ringY: M48_RING.y, ringZ: M48_RING.z, stations: [], seat };
@@ -1519,9 +1564,64 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   P.add('turret', landmarkLoft(M48_DOME, M48_DOME_RULE, P.q, T.ringZ, T.ringY));
   P.add('turretDark', cylY(1.05, 1.05, 0.70, P.q ? 24 : 12), 0, L.y(1.27), 0);
   yield 'm48TurretCasting';
-  // roof: the low-profile cupola on the right (its domed hatch and the commander's M60D on the rim's pintle), the
-  // loader's hatch on the left with his M60D, the gunner's sight hood ahead of the cupola, the M17 rangefinder's
-  // armoured ends, the front lifting eye on the centre line
+  // roof: the commander's cupola on the right (the A5's low cupola and its M60D on the rim's pintle), the loader's hatch
+  // on the left (on the A5 with his M60D), the gunner's sight hood ahead of the cupola, the M17 rangefinder's armoured
+  // ends, the front lifting eye on the centre line
+  if (V.cupola === 'a5') m48A5Cupola(P, T);
+  else if (V.cupola === 'm1') m48M1Cupola(P, T);
+  else m48Ga2Cupola(P, T);
+  m48LoaderHatch(P, T);
+  if (V.cupola !== 'ga2') m48LoaderM60(P, T, seat);
+  m48SightHood(P, T, seat);
+  // (the M48 Super ranges by laser: its armour covers the rangefinder's ends)
+  if (V.mark !== 'm48super') m48RangefinderEnds(P, T, seat);
+  m48LiftEyes(P, T, seat);
+  yield 'm48TurretRoof';
+  if (V.mark === 'm48a5') m48A5Bustle(P, T, seat);
+  else m48MarkBustle(P, T, seat, V);
+  yield 'm48TurretBustle';
+  if (V.mark === 'm48a5') m48A5Fittings(P, T, seat);
+  else yield* m48MarkFittings(P, T, seat, V);
+  yield 'm48TurretFittings';
+  // gun: the trunnion on the model's bore axis; the sloped cast mantlet (its face leans back 25 deg), the gun's root
+  // boss and bolted plate, the coax and telescope ports, the AN/VSS-1 searchlight on its posts and side rails
+  P.gunG.position.set(0, M48_TRUNNION.y - T.ringY, M48_TRUNNION.z - T.ringZ);
+  P.addGunExtra(m48Mantlet(P.q), 0, 0, GUN_Z0);
+  // the boss ring on the shield's face round the bore, the gun's root sleeve through it, the coax and sight ports
+  P.addGunExtra(cylZ(0.20, 0.08, P.q ? 24 : 12), 0, 0, GUN_Z0 + 0.33);
+  P.addGunExtra(cylZ(0.13, 0.27, P.q ? 20 : 12), 0, 0, GUN_Z0 + 0.42);
+  // (the AN/VSS-1 rides the A5 and the A3; the Magach 3's armour, the GA2's own light and the Super's thermal sight replace
+  // it)
+  const vss1 = V.mark === 'm48a5' || V.mark === 'm48a3';
+  for (const side of [-1, 1]) {
+    P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.065, 0.06, P.q ? 12 : 8), side * 0.31, 0.11, GUN_Z0 + 0.26);
+    if (vss1) P.addGunExtra(box(0.045, 0.37, 0.09), side * 0.247, 0.39, GUN_Z0 + 0.425);
+    P.addGunExtra(box(0.05, 0.10, 0.26), side * 0.307, 0.32, GUN_Z0 + 0.25);
+    if (vss1) P.addGunExtra(box(0.06, 0.05, 0.36), side * 0.305, 0.42, GUN_Z0 + 0.687);
+  }
+  if (vss1) {
+    P.addGunExtra(moldedBox(0.58, 0.44, 0.63, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, GUN_Z0 + 0.621);
+    P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
+    P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
+    P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
+  } else if (V.mark === 'm48a2ga2') {
+    // the GA2's square IR/white-light searchlight high on the mantlet's left on its arm, the lens forward (the Munster
+    // and Dresden tanks)
+    P.addGunExtra(box(0.16, 0.22, 0.30), 0.40, 0.40, GUN_Z0 + 0.48);
+    P.addGunExtra(moldedBox(0.46, 0.42, 0.40, 0.04, P.q ? 2 : 1, 0.02), 0.42, 0.68, GUN_Z0 + 0.52);
+    P.addGunExtraDark(box(0.38, 0.34, 0.02), 0.42, 0.68, GUN_Z0 + 0.725);
+  }
+  if (V.gun === 'm68') m48Gun(P);
+  else if (V.gun === 'l7a3') m48SleevedL7(P);
+  else m48M41(P);
+  P.topY = L.y(3.06) + 0.12;
+  yield 'm48Gun';
+}
+
+/** The A5's commander's station: the low cupola, its domed hatch and hinge, the M60D on the rim's pintle (world). */
+function m48A5Cupola(P: CastPort, T: TurretFrame): void {
+  const { box, cylY, sph, xform } = KIT;
+  const L = tl(T);
   const cupTop = visionCupola(P, T, -0.557, 0.05, 0.45, 0.20, 8);
   P.add('turret', xform(sph(0.24, P.q ? 18 : 10, P.q ? 10 : 5), 0, 0, 0, 0, 0, 0, [1, 0.42, 1]), -0.557, L.y(cupTop - 0.01), L.z(0.05));
   P.add('turretDark', box(0.43, 0.025, 0.13), -0.56, L.y(cupTop + 0.03), L.z(-0.16));
@@ -1534,8 +1634,20 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   m60dGrips(P, L, -1.00, -0.095, 3.055);
   m60dSight(P, L, -1.00, -0.095, 3.056);
   P.add('turretDetail', box(0.09, 0.17, 0.27), -0.817, L.y(2.983), L.z(0.239), 0, Math.PI / 2, 0);
+}
+
+/** The loader's hatch on the left and its two bars. */
+function m48LoaderHatch(P: CastPort, T: TurretFrame): void {
+  const { box } = KIT;
+  const L = tl(T);
   const hatchTop = loaderHatch(P, T, 0.33, -0.28, 0.27);
   for (const x of [0.245, 0.417]) P.add('turretDark', box(0.05, 0.05, 0.31), x, L.y(hatchTop - 0.01), L.z(-0.28));
+}
+
+/** The loader's M60D on its post. */
+function m48LoaderM60(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { box, cylY } = KIT;
+  const L = tl(T);
   {
     // the loader's post on its base plate up to the gun's yoke
     const roof = seat.topAt(0.60, 0.23);
@@ -1546,17 +1658,35 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
     m60dSight(P, L, 0.60, -0.109, 2.92);
     P.add('turretDetail', box(0.09, 0.17, 0.27), 0.785, L.y(2.848), L.z(0.225), 0, Math.PI / 2, 0);
   }
+}
+
+/** The gunner's sight hood ahead of the cupola. */
+function m48SightHood(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { box } = KIT;
+  const L = tl(T);
   {
     const y = seat.topAt(-0.563, 0.88);
     P.add('turret', box(0.41, 0.11, 0.22), -0.563, L.y(y + 0.04), L.z(0.88));
     P.add('turretGlass', box(0.34, 0.05, 0.012), -0.563, L.y(y + 0.06), L.z(0.995));
   }
+}
+
+/** The M17 rangefinder's armoured ends on the dome's flanks. */
+function m48RangefinderEnds(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { cylX, sph } = KIT;
+  const L = tl(T);
   for (const side of [-1, 1]) {
     // the left end stands proud of the casting as the model draws it; the right one is half sunk under the cupola
     const x = side * (seat.sideAt(2.425, 0.37) + (side > 0 ? 0.0925 : -0.03));
     P.add('turret', sph(0.10, P.q ? 16 : 10, P.q ? 10 : 6), x, L.y(2.425), L.z(0.37));
     P.add('turretGlass', cylX(0.05, 0.012, P.q ? 12 : 8), x + side * 0.098, L.y(2.425), L.z(0.37));
   }
+}
+
+/** The roof's lifting eyes. */
+function m48LiftEyes(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { box } = KIT;
+  const L = tl(T);
   { // the lifting eyes on their pads: the front one on the centre line, the rear one just left of it (the model's 2.64,
     // 2.69), behind the mission dock's seat on the roof
     for (const [x, z, pad] of [[0, 1.19, 0.08], [0.10, -1.08, 0.06]] as const) {
@@ -1565,7 +1695,12 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
       KIT.liftEye(P, 'turretDetail', x, L.y(roof + pad), L.z(z), Math.PI / 2);
     }
   }
-  yield 'm48TurretRoof';
+}
+
+/** The A5 model's bustle rack and load, its spare wheel, the ventilator, the flank fitting. */
+function m48A5Bustle(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { box, cylY, sph, xform } = KIT;
+  const L = tl(T);
   // the bustle rack round the tail and its load: the drum on the right, bedroll and bags across the back, the
   // ventilator housing on the left rear roof, the jerrycan
   bustleRing(P, T, seat, Math.PI * 0.62, Math.PI * 1.42, -0.20, 1.99, [2.15, 2.29, 2.43], 0.02);
@@ -1601,7 +1736,12 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   P.add('turret', cylY(0.265, 0.27, 0.24, P.q ? 22 : 12), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.10), L.z(-1.0));
   P.add('turret', xform(sph(0.265, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.44, 1]), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.22), L.z(-1.0));
   P.add('turretDetail', xform(box(0.165, 0.40, 0.26), 0, 0, 0, 0, 0.4, 0.47), 1.13, L.y(2.17), L.z(-0.68));
-  yield 'm48TurretBustle';
+}
+
+/** The A5 model's flank racks, rucksacks, handrails, helmets, whips and numbers. */
+function m48A5Fittings(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const { box, sph, xform } = KIT;
+  const L = tl(T);
   // the flank racks: two tiers of slim ammunition boxes hung against each side of the casting (the model's stations
   // differ a side), a rucksack hung over each rack, the handrails, two helmets on the left; whips, numbers
   for (const [side, zs] of [[1, [-0.34, -0.02, 0.40, 0.72]], [-1, [-0.20, 0.12, 0.50, 0.81]]] as const) {
@@ -1632,27 +1772,280 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   // the model's whips stand at (0.71, -0.48) and (-0.31, -1.03) to 3.727 m; each whip's own set bows its tip 2 cm out
   antennaWhips(P, T, [[0.698, -0.48], [-0.292, -1.03]], 1.21, 490, { top: 3.727, rake: 0 });
   bustleNumbers(P, T, -0.95, 0.40, 0.24);
-  yield 'm48TurretFittings';
-  // gun: the trunnion on the model's bore axis; the sloped cast mantlet (its face leans back 25 deg), the gun's root
-  // boss and bolted plate, the coax and telescope ports, the AN/VSS-1 searchlight on its posts and side rails
-  P.gunG.position.set(0, M48_TRUNNION.y - T.ringY, M48_TRUNNION.z - T.ringZ);
-  P.addGunExtra(m48Mantlet(P.q), 0, 0, GUN_Z0);
-  // the boss ring on the shield's face round the bore, the gun's root sleeve through it, the coax and sight ports
-  P.addGunExtra(cylZ(0.20, 0.08, P.q ? 24 : 12), 0, 0, GUN_Z0 + 0.33);
-  P.addGunExtra(cylZ(0.13, 0.27, P.q ? 20 : 12), 0, 0, GUN_Z0 + 0.42);
-  for (const side of [-1, 1]) {
-    P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.065, 0.06, P.q ? 12 : 8), side * 0.31, 0.11, GUN_Z0 + 0.26);
-    P.addGunExtra(box(0.045, 0.37, 0.09), side * 0.247, 0.39, GUN_Z0 + 0.425);
-    P.addGunExtra(box(0.05, 0.10, 0.26), side * 0.307, 0.32, GUN_Z0 + 0.25);
-    P.addGunExtra(box(0.06, 0.05, 0.36), side * 0.305, 0.42, GUN_Z0 + 0.687);
+}
+
+/** The M1 cupola (the A3): the riser ring of vision blocks under it (the Vietnam fit, Wikipedia's G305), the squat cast
+ * body with the sloped housing of its caliber .50 at the front and the gun port, the domed hatch, the M28 sight's head;
+ * in Vietnam an M2 rode the hatch ring (the Vietnam and Latrun photographs). */
+function m48M1Cupola(P: CastPort, T: TurretFrame): void {
+  const { box, cylY, sph, xform } = KIT;
+  const L = tl(T);
+  const x = -0.557, z = 0.05, seg = P.q ? 26 : 14;
+  const base = frameTop(T, x, z) - 0.03;
+  P.add('turret', cylY(0.50, 0.53, 0.15, seg), x, L.y(base + 0.075), L.z(z));
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2 + 0.35;
+    P.add('turretGlass', box(0.09, 0.05, 0.012), x + Math.sin(a) * 0.507, L.y(base + 0.085), L.z(z + Math.cos(a) * 0.507), 0, a, 0);
   }
-  P.addGunExtra(moldedBox(0.58, 0.44, 0.63, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, GUN_Z0 + 0.621);
-  P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
-  P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
-  P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
-  m48Gun(P);
-  P.topY = L.y(3.06) + 0.12;
-  yield 'm48Gun';
+  const b0 = base + 0.15;
+  P.add('turret', cylY(0.43, 0.48, 0.28, seg), x, L.y(b0 + 0.14), L.z(z));
+  // the .50's housing: a sloped box ahead of the body, its port a dark slot
+  P.add('turret', xform(moldedBox(0.40, 0.25, 0.36, 0.04, P.q ? 2 : 1, 0.02), 0, 0, 0, -0.32, 0, 0), x + 0.06, L.y(b0 + 0.15), L.z(z + 0.36));
+  P.add('turretDark', box(0.06, 0.05, 0.03), x + 0.14, L.y(b0 + 0.18), L.z(z + 0.555), -0.32, 0, 0);
+  for (let k = 0; k < 5; k++) {
+    const a = Math.PI * (0.55 + k * 0.225);
+    P.add('turretGlass', box(0.09, 0.045, 0.012), x + Math.sin(a) * 0.485, L.y(b0 + 0.13), L.z(z + Math.cos(a) * 0.485), 0, a, 0);
+  }
+  P.add('turret', xform(sph(0.36, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.22, 1]), x, L.y(b0 + 0.28), L.z(z - 0.04));
+  P.add('turretDark', box(0.30, 0.03, 0.08), x, L.y(b0 + 0.30), L.z(z - 0.40));
+  P.add('turret', box(0.13, 0.11, 0.16), x - 0.20, L.y(b0 + 0.33), L.z(z + 0.20));
+  P.add('turretGlass', box(0.10, 0.04, 0.012), x - 0.20, L.y(b0 + 0.35), L.z(z + 0.285));
+  roofM2(P, T, x + 0.04, z + 0.10, b0 + 0.36, { barrel: 0.82, seed: 492, ring: false, elev: 0.02 });
+}
+
+/** The GA2's commander's station (Tank Encyclopedia; the Munster tank): a low cast collar with eight periscopes under its
+ * rim, the Leopard 1's round hatch on its rear hinge, the MG3 on a rail ring round the collar. */
+function m48Ga2Cupola(P: CastPort, T: TurretFrame): void {
+  const { box, cylY, sph, torus, xform } = KIT;
+  const L = tl(T);
+  const x = -0.557, z = 0.05, seg = P.q ? 26 : 14;
+  const base = frameTop(T, x, z) - 0.03;
+  const h = 0.22;
+  P.add('turret', cylY(0.40, 0.45, h, seg), x, L.y(base + h / 2), L.z(z));
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    P.add('turretDetail', box(0.12, 0.08, 0.07), x + Math.sin(a) * 0.40, L.y(base + h - 0.03), L.z(z + Math.cos(a) * 0.40), 0, a, 0);
+    P.add('turretGlass', box(0.09, 0.04, 0.012), x + Math.sin(a) * 0.438, L.y(base + h - 0.03), L.z(z + Math.cos(a) * 0.438), 0, a, 0);
+  }
+  P.add('turret', xform(sph(0.34, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.16, 1]), x, L.y(base + h + 0.005), L.z(z));
+  P.add('turretDark', box(0.28, 0.035, 0.07), x, L.y(base + h + 0.02), L.z(z - 0.36));
+  // the ring rail on three posts, the MG3 on its cradle at the ring's front
+  P.add('turretDark', torus(0.50, 0.016, P.q ? 32 : 18), x, L.y(base + h + 0.06), L.z(z));
+  for (const a of [0.9, 3.14, 5.4]) {
+    P.add('turretDark', box(0.03, 0.08, 0.03), x + Math.sin(a) * 0.49, L.y(base + h + 0.02), L.z(z + Math.cos(a) * 0.49));
+  }
+  roofM2(P, T, x + 0.10, z + 0.46, base + h + 0.08, { cls: 'mag', barrel: 0.58, scale: 1.0, seed: 491, ring: false, elev: 0, ammo: false });
+}
+
+/** A reactive box seated on a surface point (world): its back on the surface along the outward normal n, its long side
+ * along `up` laid into the surface, `roll` turning it about that side (the shingled glacis courses); the cassette and its
+ * inset lid, external armour of the open cluster. */
+function eraBox(P: CastPort, owner: 'hull' | 'turret', c: THREE.Vector3, n: THREE.Vector3, up: THREE.Vector3, w: number,
+  h: number, d: number, roll = 0, embed = 0.02): void {
+  const nz = n.clone().normalize();
+  const v = up.clone().addScaledVector(nz, -up.dot(nz)).normalize();
+  if (roll) nz.applyAxisAngle(v, roll);
+  const u = new THREE.Vector3().crossVectors(v, nz);
+  const e = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, nz));
+  const p = c.clone().addScaledVector(nz, d / 2 - embed);
+  if (owner === 'turret') p.sub(new THREE.Vector3(0, M48_RING.y, M48_RING.z));
+  P.addExternalArmor(owner, KIT.box(w, h, d), p.x, p.y, p.z, e.x, e.y, e.z);
+  const lid = KIT.box(w * 0.82, h * 0.82, 0.014);
+  lid.translate(0, 0, d / 2 + 0.004);
+  P.addExternalArmor(owner, lid, p.x, p.y, p.z, e.x, e.y, e.z);
+}
+
+/** A point on the dome's flank (world) at height y and station z on one side, and its outward normal. */
+function domeFlank(seat: CastSeat, side: number, y: number, z: number): [THREE.Vector3, THREE.Vector3] {
+  const e = 0.01;
+  const f = (yy: number, zz: number): number => side * seat.sideAt(yy, zz);
+  const n = new THREE.Vector3(1, -(f(y + e, z) - f(y - e, z)) / (2 * e), -(f(y, z + e) - f(y, z - e)) / (2 * e));
+  if (n.x * side < 0) n.negate();
+  return [new THREE.Vector3(f(y, z), y, z), n.normalize()];
+}
+
+/** The station on the dome's front where its flank stands at |x| (height y): bisection over the nose. */
+function domeFrontZ(seat: CastSeat, ax: number, y: number): number {
+  let lo = 0.6, hi = 1.86;
+  for (let k = 0; k < 30; k++) {
+    const m = (lo + hi) / 2;
+    if (seat.sideAt(y, m) > ax) lo = m; else hi = m;
+  }
+  return (lo + hi) / 2;
+}
+
+/** The Magach 3's Blazer on the turret (the Sultan Yacoub tank, 1982: Latrun and Kubinka photographs): either side of
+ * the mantlet two large wedge boxes stacked and two small ones outboard, along each flank a course of six tall boxes
+ * following the cast curve and a course of small ones under it; each side one consumable cluster. */
+function magachTurretEra(P: CastPort, seat: CastSeat): void {
+  const up = new THREE.Vector3(0, 1, 0), fwd = new THREE.Vector3(0, 0, 1);
+  for (const side of [1, -1]) {
+    P.destructibleCluster(`magach3_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
+      for (const [ax, y, w, h, d] of [[0.71, 1.88, 0.30, 0.26, 0.16], [0.71, 2.16, 0.30, 0.26, 0.16],
+        [0.99, 1.88, 0.20, 0.20, 0.11], [0.99, 2.12, 0.20, 0.20, 0.11]] as const) {
+        const z = domeFrontZ(seat, ax, y);
+        const [c, n] = domeFlank(seat, side, y, z);
+        eraBox(P, 'turret', c, n, up, w, h, d);
+      }
+      for (const z of [0.95, 0.66, 0.37, 0.08, -0.21, -0.50]) {
+        const [c, n] = domeFlank(seat, side, 2.07, z);
+        eraBox(P, 'turret', c, n, up, 0.27, 0.46, 0.10);
+        const [c2, n2] = domeFlank(seat, side, 1.75, z);
+        eraBox(P, 'turret', c2, n2, fwd.clone().multiplyScalar(-1).add(up), 0.27, 0.15, 0.08);
+      }
+    });
+  }
+}
+
+/** The Magach 3's Blazer on the hull (the same photographs): a course of tall boxes up the glacis between the light
+ * guards, each rolled over its neighbour like a shingle, a row of small boxes across the nose, one either side of the
+ * driver's hatch. */
+function magachGlacisEra(P: CastPort, deckY: (x: number, z: number) => number): void {
+  const at = (x: number, z: number): [THREE.Vector3, THREE.Vector3] => {
+    const e = 0.01;
+    const n = new THREE.Vector3(-(deckY(x + e, z) - deckY(x - e, z)) / (2 * e), 1, -(deckY(x, z + e) - deckY(x, z - e)) / (2 * e));
+    return [new THREE.Vector3(x, deckY(x, z), z), n.normalize()];
+  };
+  const fwd = new THREE.Vector3(0, 0, 1);
+  P.destructibleCluster('magach3_glacis_era', () => {
+    for (let i = 0; i < 6; i++) {
+      const x = -0.375 + i * 0.15;
+      const [c, n] = at(x, 2.86);
+      eraBox(P, 'hull', c, n, fwd, 0.14, 0.58, 0.08, -0.12);
+    }
+    for (let i = 0; i < 7; i++) {
+      const x = -0.54 + i * 0.18;
+      const [c, n] = at(x, 3.22);
+      eraBox(P, 'hull', c, n, new THREE.Vector3(0, 1, 0), 0.16, 0.14, 0.07);
+    }
+    for (const x of [-0.42, 0.42]) {
+      const [c, n] = at(x, 2.20);
+      eraBox(P, 'hull', c, n, fwd, 0.26, 0.34, 0.09);
+    }
+  });
+}
+
+/** The M48 Super's spaced armour (turret, world; War Thunder's model and the owner's photographs of the 1994
+ * demonstrator): flat plates wrapping the cast turret into a faceted box, a vertical slab either side of the mantlet, the
+ * cheek raked back to the flank, two flank facets to the bustle, its top a flat shelf under the cast roof; bolted. Each
+ * side is one prism from its outer faces into the casting. */
+function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
+  const yb = 1.70, yt = 2.38;
+  const outer: readonly (readonly [number, number])[] = [[0.58, 2.02], [0.98, 2.02], [1.30, 1.45], [1.37, 0.55], [1.31, -0.55],
+    [1.12, -0.72]];
+  // the inner run inside the casting at every height the armour spans (the dome is narrowest at its top here)
+  const inner: [number, number][] = [];
+  for (let z = -0.70; z <= 1.36 + 1e-9; z += 0.12) inner.push([Math.min(seat.sideAt(yt, z), seat.sideAt(yb, z)) - 0.04, z]);
+  inner.push([0.58, 1.38]);
+  for (const side of [-1, 1]) {
+    const shape = new THREE.Shape();
+    const pts = [...outer, ...[...inner].reverse()];
+    pts.forEach(([x, z], i) => (i ? shape.lineTo(side * x, -z) : shape.moveTo(side * x, -z)));
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: yt - yb, bevelEnabled: false, curveSegments: 1 });
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, yb - T.ringY, -T.ringZ);
+    g.computeVertexNormals();
+    P.add('turret', g);
+    // bolt heads on each outer face, three rows
+    for (let i = 0; i + 1 < outer.length; i++) {
+      const [x0, z0] = outer[i], [x1, z1] = outer[i + 1];
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      // the face's outward normal (away from the turret's axis)
+      const n = new THREE.Vector3(side * (z0 - z1), 0, x1 - x0).normalize();
+      if (n.x * side * (x0 + x1) + n.z * (z0 + z1 - 2 * T.ringZ) < 0) n.negate();
+      const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n));
+      const count = Math.max(2, Math.round(len / 0.26));
+      for (let k = 0; k < count; k++) {
+        const t = (k + 0.5) / count;
+        for (const y of [yb + 0.08, (yb + yt) / 2, yt - 0.08]) {
+          const bx = side * (x0 + (x1 - x0) * t) + n.x * 0.008, bz = z0 + (z1 - z0) * t + n.z * 0.008;
+          P.add('turretDark', KIT.cylY(0.022, 0.022, 0.018, 8), bx, y - T.ringY, bz - T.ringZ, e.x, e.y, e.z);
+        }
+      }
+    }
+  }
+}
+
+/** The M48 Super's skirts (hull, world): steel plates hung from the fender edges over the upper run and the return
+ * rollers, their lower edges scalloped between tabs, the front end raked up to the fender's nose. */
+function m48SuperSkirts(P: CastPort): void {
+  const shape = new THREE.Shape();
+  const top = 1.50, bot = 0.98, z0 = 2.55, z1 = -2.80;
+  shape.moveTo(z1, top);
+  shape.lineTo(z0, top);
+  shape.lineTo(z0 - 0.22, bot + 0.06);
+  // the scalloped edge, front to back: tabs with half-round cut-outs between them
+  const pitch = 0.36, r = 0.09;
+  let z = z0 - 0.26;
+  shape.lineTo(z, bot);
+  while (z - pitch > z1 + 0.10) {
+    const c = z - pitch / 2;
+    shape.lineTo(c + r, bot);
+    shape.absarc(c, bot, r, 0, Math.PI, false);
+    z -= pitch;
+    shape.lineTo(z, bot);
+  }
+  shape.lineTo(z1, bot);
+  shape.closePath();
+  for (const side of [-1, 1]) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 0.025, bevelEnabled: false, curveSegments: P.q ? 6 : 3 });
+    g.rotateY(-Math.PI / 2);
+    g.translate(side * 1.87 + (side > 0 ? 0.025 : 0), 0, 0);
+    g.computeVertexNormals();
+    P.add('hullDetail', g);
+    // its hangers under the fender lip
+    for (let zz = z0 - 0.35; zz > z1 + 0.2; zz -= 0.85) P.add('hullDark', KIT.box(0.05, 0.06, 0.08), side * 1.835, 1.47, zz);
+  }
+}
+
+/** The bustle and its load on the A5's other marks (world): the rack round the tail (the Magach's IDF basket stands
+ * taller and wider), the bedroll and bags, the ventilator. */
+function m48MarkBustle(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Variant): void {
+  const { cylY, sph, xform } = KIT;
+  const L = tl(T);
+  if (V.mark === 'magach3') bustleRing(P, T, seat, Math.PI * 0.60, Math.PI * 1.40, -0.20, 1.99, [2.17, 2.36, 2.55], 0.06);
+  else bustleRing(P, T, seat, Math.PI * 0.62, Math.PI * 1.42, -0.20, 1.99, [2.15, 2.29, 2.43], 0.02);
+  KIT.tarpRoll(P, 'turretCloth', -0.064, L.y(2.34), L.z(-1.286), 0.99, 0.19, true, P.q ? 12 : 8);
+  KIT.stowage(P, 'turretCloth', mulberry(V.mark === 'magach3' ? 501 : V.mark === 'm48a3' ? 502 : 503), [
+    [0.30, L.y(2.23), L.z(-1.60), 0.52, 0.40, 0.32], [-0.20, L.y(2.24), L.z(-1.62), 0.46, 0.42, 0.30],
+    ...(V.mark === 'magach3' ? [[0.62, L.y(2.30), L.z(-1.40), 0.36, 0.50, 0.34] as [number, number, number, number, number, number],
+      [-0.66, L.y(2.30), L.z(-1.38), 0.34, 0.48, 0.32] as [number, number, number, number, number, number]] : []),
+  ]);
+  P.add('turret', cylY(0.265, 0.27, 0.24, P.q ? 22 : 12), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.10), L.z(-1.0));
+  P.add('turret', xform(sph(0.265, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.44, 1]), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.22), L.z(-1.0));
+}
+
+/** The flank fittings of the A5's other marks: the handrails (not under the Magach's boxes or the Super's armour), the
+ * GA2's Wegmann dischargers (four in a row on each cheek), the Super's armour, its dischargers on the armour's shoulders
+ * and its roof sight, the Magach's Blazer; the whips and the numbers. */
+function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Variant): TankProfileBuild {
+  const L = tl(T);
+  if (V.mark === 'm48a3' || V.mark === 'm48a2ga2') {
+    for (const side of [-1, 1]) {
+      const rail: number[][] = [];
+      for (let z = -0.5; z <= 1.36; z += 0.31) rail.push([side * (seat.sideAt(2.15, z) + 0.07), L.y(2.15), L.z(z)]);
+      for (let i = 0; i + 1 < rail.length; i++) bar(P, 'turretDetail', rail[i], rail[i + 1], 0.016);
+    }
+  }
+  if (V.mark === 'm48a2ga2') {
+    for (const side of [-1, 1]) {
+      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.04, len: 0.26, pitch: -0.42, splay: side * 1.05,
+        arc: 0.5, spacing: 0.10, seed: side > 0 ? 495 : 496 });
+      bank.position.set(side * (seat.sideAt(2.20, 1.02) + 0.05), L.y(2.20), L.z(1.02));
+      P.turretG.add(bank);
+    }
+  }
+  if (V.mark === 'm48super') {
+    m48SuperArmour(P, T, seat);
+    yield 'm48SuperArmour';
+    for (const side of [-1, 1]) {
+      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.04, len: 0.26, pitch: -0.42, splay: side * 0.75,
+        arc: 0.5, spacing: 0.10, seed: side > 0 ? 497 : 498 });
+      bank.position.set(side * 1.08, L.y(2.43), L.z(1.42));
+      P.turretG.add(bank);
+    }
+    // the commander's stabilised sight head on the roof ahead of the cupola
+    const y = seat.topAt(-0.24, 0.92);
+    P.add('turret', moldedBox(0.30, 0.30, 0.36, 0.03, P.q ? 2 : 1, 0.015), -0.24, L.y(y + 0.13), L.z(0.92));
+    P.add('turretGlass', KIT.box(0.22, 0.16, 0.012), -0.24, L.y(y + 0.16), L.z(1.105));
+  }
+  if (V.mark === 'magach3') {
+    magachTurretEra(P, seat);
+    yield 'magachTurretEra';
+  }
+  antennaWhips(P, T, [[0.698, -0.48], [-0.292, -1.03]], 1.21, 490, { top: 3.727, rake: 0 });
+  bustleNumbers(P, T, -0.95, 0.40, 0.24);
 }
 
 /** The A5's gun shield (gun frame): a cast plate 6.5 cm thick lofted up its height, its face leaning back from 0.415 m
@@ -1712,13 +2105,75 @@ function m48Gun(P: CastPort): void {
   P.muzzleZ = GUN_Z0 + len;
 }
 
+/** The L7A3 in its thermal sleeve (gun frame), on the M68's stations (the two are the same 105 mm tube): the root out of
+ * the boss, the sleeve's rear run in three clamped sections, the concentric fume extractor where the M68 carries its
+ * evacuator, the front run in three sections, the bare muzzle band. */
+function m48SleevedL7(P: CastPort): void {
+  const { cylZ } = KIT;
+  const seg = P.q ? 22 : 12;
+  const len = 4.313;
+  const tube = (r0: number, r1: number, s0: number, s1: number): void => {
+    P.add('gun', cylZ(r1, s1 - s0, seg, r0), 0, 0, GUN_Z0 + (s0 + s1) / 2);
+  };
+  tube(0.094, 0.092, 0.51, 0.62);
+  tube(0.112, 0.112, 0.62, 2.00);
+  tube(0.122, 0.135, 2.00, 2.06);
+  tube(0.135, 0.135, 2.06, 2.56);
+  tube(0.135, 0.120, 2.56, 2.62);
+  tube(0.106, 0.104, 2.62, 4.13);
+  tube(0.086, 0.086, 4.13, len);
+  // the sleeve's clamp bands
+  for (const [s0, r] of [[0.62, 0.118], [1.08, 0.118], [1.54, 0.118], [1.96, 0.118], [2.62, 0.111], [3.12, 0.111],
+    [3.62, 0.111], [4.09, 0.111]] as const) tube(r, r, s0, s0 + 0.04);
+  muzzleBore(P, { z: GUN_Z0 + len + 0.004, r: 0.086 * 0.78 });
+  P.muzzleZ = GUN_Z0 + len;
+}
+
+/** The A3's 90 mm M41 (gun frame) from the bore station 1.514 (the Kubinka and Latrun tanks): the root out of the boss,
+ * the tube tapering to the long bore evacuator over its front third, the collar and the T-shaped blast deflector across
+ * the muzzle (its two dark side ports), 3.80 m out (8.68 m overall, AFV Database). */
+function m48M41(P: CastPort): void {
+  const { cylX, cylZ } = KIT;
+  const seg = P.q ? 22 : 12;
+  const len = 3.80;
+  const tube = (r0: number, r1: number, s0: number, s1: number): void => {
+    P.add('gun', cylZ(r1, s1 - s0, seg, r0), 0, 0, GUN_Z0 + (s0 + s1) / 2);
+  };
+  tube(0.095, 0.088, 0.51, 1.00);
+  tube(0.084, 0.077, 1.00, 2.30);
+  tube(0.077, 0.104, 2.30, 2.36);
+  tube(0.104, 0.104, 2.36, 3.16);
+  tube(0.104, 0.077, 3.16, 3.22);
+  tube(0.076, 0.076, 3.22, 3.52);
+  tube(0.092, 0.092, 3.52, 3.62);
+  // the deflector: a cross tube on the bore, its ends open
+  P.add('gun', cylX(0.10, 0.46, seg), 0, 0, GUN_Z0 + 3.70);
+  for (const side of [-1, 1]) P.add('gunDark', cylX(0.078, 0.012, seg), side * 0.226, 0, GUN_Z0 + 3.70);
+  muzzleBore(P, { z: GUN_Z0 + len + 0.004, r: 0.058 });
+  P.muzzleZ = GUN_Z0 + len;
+}
+
 export function* buildM48A5CastSteps(P: CastPort): TankProfileBuild {
-  yield* m48HullSteps(P);
-  yield* m48TurretSteps(P);
+  yield* m48HullSteps(P, M48_VARIANTS.m48a5);
+  yield* m48TurretSteps(P, M48_VARIANTS.m48a5);
   publishReceipt(P, {
     mark: 'm48a5', ring: [M48_RING.y, M48_RING.z], trunnion: [M48_TRUNNION.y, M48_TRUNNION.z],
     muzzleZ: 1.514 + 4.313, device: 'none', evacuator: [1.514 + 2.026, 1.514 + 2.596],
     roadWheels: 6, wheelR: M48_GEAR.wheelR, returnRollers: M48_GEAR.rollerN, tensionWheel: Boolean(M48_GEAR.tension),
+    trackW: M48_TRACK_W, trackCentres: M48_XC * 2, glacisFromVerticalDeg: glacisDeg([3.22, 1.13], [2.50, 1.49]),
+  });
+}
+
+/** A release-266 M48 mark on the A5's castings (M48_VARIANTS). */
+export function* buildM48VariantCastSteps(P: CastPort, mark: Exclude<M48Mark, 'm48a5'>): TankProfileBuild {
+  const V = M48_VARIANTS[mark];
+  yield* m48HullSteps(P, V);
+  yield* m48TurretSteps(P, V);
+  publishReceipt(P, {
+    mark, ring: [M48_RING.y, M48_RING.z], trunnion: [M48_TRUNNION.y, M48_TRUNNION.z],
+    muzzleZ: M48_TRUNNION.z + P.muzzleZ, device: V.gun === 'm41' ? 'm36' : 'none',
+    evacuator: V.gun === 'm41' ? [1.514 + 2.36, 1.514 + 3.16] : V.gun === 'l7a3' ? [1.514 + 2.06, 1.514 + 2.56] : [1.514 + 2.026, 1.514 + 2.596],
+    roadWheels: 6, wheelR: M48_GEAR.wheelR, returnRollers: m48Gear(V).rollerN, tensionWheel: Boolean(m48Gear(V).tension),
     trackW: M48_TRACK_W, trackCentres: M48_XC * 2, glacisFromVerticalDeg: glacisDeg([3.22, 1.13], [2.50, 1.49]),
   });
 }

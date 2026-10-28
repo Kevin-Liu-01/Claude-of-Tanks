@@ -211,6 +211,10 @@ type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
   pt91m: { donor: 't90_1992', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
   sabra_mk2: { donor: 'm60a3', reason: 'owner 2026-09-22: "sabra uses the m60a3 wheels" (Magach/M60 hull under Israeli armour)' },
+  // release 266: the M48s of Israel and Germany ride the M48A5's cast running gear (pattonCast.ts), as the Sabra does
+  magach3: { donor: 'm60a3', reason: 'release 266: the Magach 3 is an M48 hull: the Patton cast five-spoke wheel' },
+  m48a2ga2: { donor: 'm60a3', reason: 'release 266: the Bundeswehr M48A2GA2 is an M48 hull: the Patton cast five-spoke wheel' },
+  m48_super: { donor: 'm60a3', reason: 'release 266: the M48 Super is an M48A2G hull: the Patton cast five-spoke wheel' },
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
