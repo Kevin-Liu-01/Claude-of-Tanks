@@ -789,7 +789,7 @@ const recOf = (e) => {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
-      flags: { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
+      flags: { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
       slowT: 0, guardSamples: 0, stuckSamples: 0, movingSamples: 0, bunchedSamples: 0,
@@ -1055,7 +1055,15 @@ function sample(t) {
         r.flags.samples++;
         if (info.fallingBack) r.flags.fallingBack++;
         if (info.kiting) r.flags.kiting++;
-        if (info.scooting) r.flags.scooting++;
+        // the scoot window by its driver (ai debugInfo scootKind, 263): only the doctrine's shoot-and-scoot is scooting; a leg
+        // the gun needs (its arc limit, a friendly in the line of fire, a blocked gun lane) is relocating and the pocket escape
+        // is escaping (an AI without scootKind counts the whole window, as before)
+        if (info.scooting) {
+          const kind = info.scootKind;
+          if (kind === 'arc' || kind === 'lane' || kind === 'gun') r.flags.relocating++;
+          else if (kind === 'escape') r.flags.escaping++;
+          else r.flags.scooting++;
+        }
         if (info.settling) r.flags.settling++;
         if (info.reaction) r.flags.reacting++;
         if (info.searching) r.flags.searching++;
@@ -1173,7 +1181,12 @@ function settleArrivals() {
   }
 }
 
-/** Frontline line slots: a defender placed within 300 m of a living attacker, or in one's terrain sight within 450 m. */
+/**
+ * Frontline line slots: a defender placed within the line guard's minAttackM of a living attacker (the ruleset's own
+ * figure, read, never a second literal: 263, the receipt's 300 m against the game's 200 m failed placements the guard
+ * allows), or in one's terrain sight within 450 m.
+ */
+const lineGuardM = rules.assault?.lineGuard?.minAttackM ?? 0;
 function settlePlacements() {
   const ids = front.pendingPlacements.splice(0);
   for (const id of ids) {
@@ -1188,7 +1201,7 @@ function settlePlacements() {
     }
     front.placements++;
     if (nearest < front.placedMinM) front.placedMinM = nearest;
-    if (nearest < 300) front.placedNear++;
+    if (nearest < lineGuardM) front.placedNear++;
     if (seen) front.placedSeen++;
   }
 }
@@ -1231,7 +1244,7 @@ const sideSummary = (list) => {
   const aiStates = {};
   for (const r of list) for (const [k, v] of Object.entries(r.ai)) aiStates[k] = (aiStates[k] ?? 0) + v;
   const aiN = Object.values(aiStates).reduce((a, b) => a + b, 0) || 1;
-  const flags = list.reduce((acc, r) => { for (const k in r.flags) acc[k] += r.flags[k]; return acc; }, { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 });
+  const flags = list.reduce((acc, r) => { for (const k in r.flags) acc[k] += r.flags[k]; return acc; }, { fallingBack: 0, kiting: 0, scooting: 0, relocating: 0, escaping: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 });
   const engageDist = list.reduce((s, r) => s + r.engageDistSum, 0), engageDistN = list.reduce((s, r) => s + r.engageDistN, 0);
   const engageSamples = list.reduce((s, r) => s + r.engage.samples, 0), engageStill = list.reduce((s, r) => s + r.engage.still, 0);
   const settledSamples = list.reduce((s, r) => s + r.engage.settled, 0), settledStill = list.reduce((s, r) => s + r.engage.settledStill, 0);

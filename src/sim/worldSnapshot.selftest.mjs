@@ -3,6 +3,7 @@
 // bounded, and the capture never retains the simulation's objects.
 import assert from 'node:assert/strict';
 import { SNAPSHOT_FLAGS, captureEntitySnapshot, captureWorldSnapshot } from './worldSnapshot.ts';
+import { MAX_ENTITIES } from '../mp/wire/constants.ts';
 
 const tank = (id, over = {}) => ({
   id, specId: 'm1a1_abrams_hc', team: 'alpha', spotted: false,
@@ -55,8 +56,9 @@ own.x = 0;
 assert.equal(viewer.state.pos.x, 12.345, 'the row is detached from the simulation');
 const stranger = captureWorldSnapshot({ tick: 1, serverTimeMs: 0, viewerId: 'stranger', entities: [viewer, hidden], canObserve });
 assert.deepEqual(stranger.entities.map((entry) => entry.id), ['viewer'], 'a viewer outside the roster sees only what the policy grants');
-const many = Array.from({ length: 40 }, (_, index) => tank(`t${index}`));
-assert.equal(captureWorldSnapshot({ tick: 1, serverTimeMs: 0, viewerId: 't0', entities: many }).entities.length, 32, 'the roster is bounded');
+// bounded at the wire's entity count (mp-scale-251: 64, for 32v32 rooms)
+const many = Array.from({ length: MAX_ENTITIES + 8 }, (_, index) => tank(`t${index}`));
+assert.equal(captureWorldSnapshot({ tick: 1, serverTimeMs: 0, viewerId: 't0', entities: many }).entities.length, MAX_ENTITIES, 'the roster is bounded');
 assert.throws(() => captureWorldSnapshot({ tick: -1, serverTimeMs: 0 }), /unsigned/);
 assert.throws(() => captureWorldSnapshot({ tick: 1, serverTimeMs: -5 }), /non-negative/);
 console.log('worldSnapshot.selftest: quantized rows, the spotting boundary before serialization, bounds and detachment');
