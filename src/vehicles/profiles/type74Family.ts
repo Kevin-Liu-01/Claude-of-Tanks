@@ -3,7 +3,7 @@
 // an authoring oracle only (public/models/community-candidates/stb_1_owner_20261027.glb, gitignored; docs/ATTRIBUTION.md):
 // no vertex, index or texture of it is used, only the stations measured by rays and recorded in
 // docs/references/tanks/stb1.md "Owner model". Its frame maps to ours by x and y 0.972 (the tracks' 3.27 to the
-// published 3.18; Main's 262 ruling keeps the model's own proportions, so its 2.36 m crown stands at 2.30 m, where the
+// published 3.18; Main's 262 ruling keeps the model's own proportions, so its 2.36 m crown stands at 2.31 m, where the
 // sources' 2.25 m with the cupola would squash it by 0.86) and z 0.989 (its hull to the published 6.70), read in the one
 // node frame its hull, tracks and turret share.
 //   - Shared (the model): a tub between the tracks under sponsons whose sides slope 46 degrees from the tracks' outer

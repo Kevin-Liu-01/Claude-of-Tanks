@@ -64,14 +64,14 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "size": 0.22,
         "pos": [
           -0.55,
-          0.9905439,
-          3.0534259
+          1.1141816,
+          3.0546964
         ],
         "quaternion": [
-          -0.5781371,
+          -0.5611112,
           0,
           0,
-          0.8159397
+          0.8277404
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
@@ -85,21 +85,21 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.2,
         "pos": [
-          -1.3204816,
-          0.1279122,
-          -0.5508512
+          -1.3213982,
+          0.1480953,
+          -0.5508585
         ],
         "quaternion": [
-          0.1075951,
-          -0.7478998,
-          0.0932748,
-          0.6483587
+          0.0957828,
+          -0.7499123,
+          0.082931,
+          0.6492916
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
         "maximumSurfaceErrorM": null
       },
       {
@@ -107,15 +107,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.2,
         "pos": [
-          1.3221038,
-          0.1279172,
-          -0.5506931
+          1.3230144,
+          0.1480999,
+          -0.550699
         ],
         "quaternion": [
-          0.1056537,
-          0.7393199,
-          -0.0940791,
-          0.6583256
+          0.0940379,
+          0.7412211,
+          -0.0836518,
+          0.6593561
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
@@ -129,22 +129,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.2097433,
-          0.3350027,
-          -0.472354
+          1.2430321,
+          0.3388135,
+          -0.4726697
         ],
         "quaternion": [
-          -0.2905672,
-          0.662042,
-          0.2776456,
-          0.632601
+          -0.2451233,
+          0.6828067,
+          0.2325469,
+          0.6477742
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type74",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0092216
+        "maximumSurfaceErrorM": 0.0086764
       }
     ]
   },

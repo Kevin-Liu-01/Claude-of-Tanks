@@ -518,4 +518,14 @@ it (`src/vehicles/profiles/type74Family.ts`), the production tank `buildType74Fa
 | Mufflers | On the flat rear fenders | (mesh cylinders on the rear corners) | Muffler covers on the rear side slopes |
 | Turret stowage | Baskets hugging the bustle's flanks | A rail at the bustle's rear | A bustle basket across the rear face |
 | Driver's hatch | Flush on the deck at +2.00 | A raised octagon on the glacis (the STB-1's) | Flush, laid on the glacis at +2.15, the three periscopes ahead |
-| Gun curve (gunPitchByYawDeg) | Measured on the 262 hull pass | — | Re-measured on the family hull (tools/gun-depression-sweep.mjs, 26 mm, whole gun): −6 over the front and sides (−5.8 to −5.9 at yaws 9–46 over the lamp boxes), rising over the rear quarters to −1.6 at yaws 162–164 (the stern's tow eyes and lifting eyes) and −4.2 dead astern. The STB-1's: −6 to yaw 144, −1.5 at 163–165, −3 astern |
+| Gun curve (gunPitchByYawDeg) | Measured on the 262 hull pass | — | Re-measured on the family hull at the model's proportions (tools/gun-depression-sweep.mjs, 26 mm, whole gun): −6 from the front through yaw 146 (the taller hull lifts the gun clear of the lamp boxes, which stopped it at yaws 9–46 on the squashed hull), rising over the rear quarters to −4.1 at 157–159, −2.4 at 162–164 (the stern's rail, clamps and tow eyes) and −5 dead astern. The STB-1's: −6 to yaw 145, −3.5 at 158–160, −2.2 at 163–165, −3.9 astern |
+
+### Height (262, Main's ruling)
+
+Main ruled for the model's own proportions: the family's y stations are the model's at 0.972, like its x, where the
+first 262 build took 0.86 to fit the sources' 2.25 m (with the cupola; the turret roof about 2.0 m) and stood the hull
+and turret 11% lower than the model. **The sources' 2.25 m is the figure the owner's model overrides**: the crown now
+stands at 2.31 m (ring datum 1.60, the 0.714 m shell) and the deck at 1.58.
+
+`dims.heightM` now follows one rule on both tanks: the P95 combat height the geometry gate measures on the build
+(BUILD-STANDARD §A dims, this packet's 2.70 m rule above). The Type 74's is 2.83 m, the STB-1's 2.73 m (`stb1.md`).

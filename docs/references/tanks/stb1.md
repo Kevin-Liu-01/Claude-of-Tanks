@@ -109,6 +109,11 @@ the searchlight box and the coaxial gun's port at +x; the stern door, its exting
 the commander's seeds cross in `japan.ts`). The production Type 74's kit comes from its photographs and keeps the
 program frame (BUILD-STANDARD §A).
 
+Height (Main's 262 ruling: the model's own proportions): **the sources' 2.25 m with the cupola is the figure the owner's
+model overrides.** At the model's proportions the crown stands at 2.31 m (ring datum 1.60, the 0.714 m shell) and the
+deck at 1.58. `dims.heightM` follows the Type 74's rule, the P95 combat height the geometry gate measures on the build:
+2.73 m, to the commander's station and its remote gun (the Type 74's is 2.83 m, to its cupola and M2).
+
 Conflicts between the model and the sources, settled for the model (the owner's instruction):
 
 - **Searchlight.** The model carries a six-lens searchlight box; ja.wikipedia records a passive night sight on STB-1 and
