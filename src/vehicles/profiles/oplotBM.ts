@@ -469,10 +469,13 @@ function cradleStation(P: TankBuilderPort, S: Station): THREE.Group {
 }
 
 /** An enclosed armoured mini-turret: faceted housing with its sight hood and the gun in a mantlet block. */
-function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false): THREE.Group {
+function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false, ownRing = false): THREE.Group {
   const race = RACE_Y + (S.rise ?? 0), heavy = S.caliber > 10, pivotY = race + 0.21, pivotZ = S.z + 0.30;
   const muzzleZ = pivotZ + (heavy ? 1.12 : 0.80);
+  // an owner-kit station carries its ring in its own group (it turns with the mount: the ring is round)
+  const ownRingDone = ownRing ? captureAuxiliaryStock(P, S.name, 'yaw') : null;
   ringPedestal(P, S.x, S.z, 0.28, race);
+  ownRingDone?.();
   const w = sourceMachineGun(P, [0, 0, 0], { name: S.name, caliberMm: S.caliber,
     yaw: [S.x, race, S.z], pivot: [S.x, pivotY, pivotZ], muzzle: [S.x, pivotY, muzzleZ] });
   w.stage('yaw');
@@ -563,6 +566,25 @@ const T_STATIONS = Object.freeze({
 } as const);
 
 /** The Ukrainian Oplot-M's wartime kit: two stations, a lower Duplet course on the skirts, LED bars, olive drums. */
+/** The owner's kit pieces of the Oplot-M that the print does not carry (Main's 262 ruling: exempt from the source
+ * comparison, tools/owner-kit-targets.mjs): everything `build` adds to the owner's buckets is drawn in its own named
+ * group under that rig (the factory's station routing, stage 'yaw' on a fixed group), so the fidelity page can
+ * authenticate and set it aside by name. */
+const KIT_BUCKETS = Object.freeze({
+  hull: ['hull', 'hullDark', 'hullBark', 'hullDetail', 'hullEquipment', 'hullGlass'],
+  turret: ['turret', 'turretEquipment', 'turretDetail', 'turretDark', 'turretGlass'],
+});
+function ownerKitGroup(P: TankBuilderPort, owner: 'hull' | 'turret', name: string, build: () => void): void {
+  const group = new THREE.Group();
+  group.name = name;
+  Object.assign(group.userData, { ownerKit: true, fitting: 'ownerKit' });
+  (owner === 'hull' ? P.hullG : P.turretG).add(group);
+  const buckets = [...KIT_BUCKETS[owner]], seen = new Set<THREE.BufferGeometry>();
+  P.forEachBucketPart(buckets, (part) => seen.add(part));
+  build();
+  P.forEachBucketPart(buckets, (part) => { if (!seen.has(part)) part.userData.auxiliaryStation = { name, stage: 'yaw' }; });
+}
+
 /** Each station's traverse and, where the roof stock rises under its barrel, its depression (mount-local radians;
  * tools/roof-station-arcs.mjs on this build, 2 degrees and 0.01 rad of margin, the full 0.18 rad between bands). */
 function stationLimits(root: THREE.Group, yawArc: [number, number], depressionByYaw?: [number, number][]): void {
@@ -575,7 +597,8 @@ function buildOplotMKit(P: TankBuilderPort): void {
   // (blocked toward the KT-12.7's box)
   stationLimits(cradleStation(P, M_STATIONS.kt127), [-4.2935, 0.0349],
     [[-4.2935, 0.015], [-4.1539, 0.015], [-4.0666, 0.18], [-0.0524, 0.18], [0.0349, 0.125]]);
-  stationLimits(enclosedStation(P, M_STATIONS.kt762), [-1.4137, 3.9619], [[-1.4137, 0.029], [-1.3614, 0.035], [-1.2741, 0.18]]);
+  stationLimits(enclosedStation(P, M_STATIONS.kt762, false, true), [-1.4137, 3.9619],
+    [[-1.4137, 0.029], [-1.3614, 0.035], [-1.2741, 0.18]]);
   // a lower Duplet course bolted along each rubber skirt (the owner's extra side armour), seven blocks a side
   for (const s of [-1, 1]) {
     const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
@@ -586,9 +609,11 @@ function buildOplotMKit(P: TankBuilderPort): void {
     }
   }
   // lights: LED bars on the stacks' tops at the front corners, a work lamp astern on the bustle
-  for (const s of [-1, 1]) lightBar(P, side(s, 0.80), ERA_Y1 + 0.05, eraFront(0.80) - 0.10);
-  workLamp(P, -0.20, 0.68, -1.86, true);
-  sternDrums(P, DRUM_ISSUE_PAINTS[1], 26230);
+  ownerKitGroup(P, 'turret', 'oplotMKitLights', () => {
+    for (const s of [-1, 1]) lightBar(P, side(s, 0.80), ERA_Y1 + 0.05, eraFront(0.80) - 0.10);
+    workLamp(P, -0.20, 0.68, -1.86, true);
+  });
+  ownerKitGroup(P, 'hull', 'oplotMKitSternDrums', () => sternDrums(P, DRUM_ISSUE_PAINTS[1], 26230));
 }
 
 /** The Thai Oplot-T's export kit: two stations of its own pattern, bolted appliqué on the skirt boxes, a bustle cage,

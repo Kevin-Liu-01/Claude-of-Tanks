@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "tankId": "bm_oplot_m",
+  "quality": "high",
+  "decision": "Main 262 (2026-10-27): exempt the owner's kit from the source comparison; tools/owner-kit-targets.mjs",
+  "parts": {}
+}

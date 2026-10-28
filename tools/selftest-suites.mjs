@@ -280,6 +280,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
     'src/vehicles/fittingSnap.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
+    // 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig
+    'tools/owner-kit-targets.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',

@@ -13,6 +13,7 @@ import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
+import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -100,7 +101,7 @@ try {
     const errorStart = browserErrors.length;
     let rawSourceComparison=null;
     try {
-      if(id==='k1a1'){
+      if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
