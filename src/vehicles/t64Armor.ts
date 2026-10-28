@@ -30,7 +30,7 @@ export type T64Variant = 'bm1m' | 'bv' | 'b1v2022' | 'tur';
  * 6 degrees ahead and abeam; the bow mudguards' crowns under the jacket at 19-41 degrees; over the rear quarter the gun
  * rides the right shelf's fuel tanks and the left's SPTA boxes (the T-64's own rear-quarter stop); the engine deck (and
  * the mod. 2022's rear slat screens) astern. */
-const T64_GUN_PITCH_BY_YAW_DEG: Readonly<Record<T64Variant, readonly (readonly number[])[]>> = Object.freeze({
+const T64_GUN_PITCH_BY_YAW_DEG: Readonly<Record<T64Variant, readonly (readonly [number, number])[]>> = Object.freeze({
   bm1m: Object.freeze([[0,-6],[17,-6],[19,-5.1],[21,-4.7],[28,-4.4],[35,-4.4],[37,-4.6],[39,-4.9],[42,-6],[127,-6],
     [128,-2.4],[129,-0.1],[130,1],[131,1.6],[134,2.4],[139,2.7],[143,2.7],[155,1.5],[158,1.6],[159,1.6],[160,1.5],
     [161,0.8],[163,-2.8],[180,-2.8]] as const),
@@ -45,7 +45,17 @@ const T64_GUN_PITCH_BY_YAW_DEG: Readonly<Record<T64Variant, readonly (readonly n
     [161,0.8],[163,-2.8],[180,-2.8]] as const),
 });
 
-const NIZH = { keReduction: .30, ceFlatMm: 600 } as const;
+/** Each variant's measured silhouette (262; the geometry gate's dims rule on the build: p95 body height over the cupola
+ * gun, body-column length, full lit length with the rear stowage): what the gate's dims rows and the roof guns' aim rows
+ * read in place of the published roof height and lengths. */
+const T64_SILHOUETTE_DIMS: Readonly<Record<T64Variant, Readonly<Record<string, number>>>> = Object.freeze({
+  bm1m: Object.freeze({ silhouetteHeightM: 2.788, silhouetteHullLengthM: 6.557, silhouetteOverallLengthM: 9.405 }),
+  bv: Object.freeze({ silhouetteHeightM: 2.790, silhouetteHullLengthM: 6.868, silhouetteOverallLengthM: 9.689 }),
+  b1v2022: Object.freeze({ silhouetteHeightM: 2.819, silhouetteHullLengthM: 6.774, silhouetteOverallLengthM: 9.410 }),
+  tur: Object.freeze({ silhouetteHeightM: 2.790, silhouetteHullLengthM: 6.868, silhouetteOverallLengthM: 9.689 }),
+});
+
+const NIZH ={ keReduction: .30, ceFlatMm: 600 } as const;
 const NIZH_SCREEN = { keReduction: .12, ceFlatMm: 420 } as const;
 const KONTAKT1 = { keReduction: .05, ceFlatMm: 400 } as const;
 const KONTAKT1_SKIRT = { keReduction: .03, ceFlatMm: 300 } as const;
@@ -83,6 +93,7 @@ export function applyT64PhysicalFrame(spec: FleetTankSpec, donor: FleetTankSpec,
   fitArmorToDims(spec.armor, donor.dims, dims);
   spec.dims = { ...dims };
   stripSilhouetteDimensions(spec.dims);
+  Object.assign(spec.dims, T64_SILHOUETTE_DIMS[variant]);
   spec.visual.trackWidthM = T64_DATUMS.trackWidthM;
   const [tx, ty, tz] = T64_DATUMS.turretPivot, [gx, gy, gz] = T64_DATUMS.trunnion;
   spec.armor.turretPivot = [tx, ty, tz];

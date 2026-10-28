@@ -6,7 +6,7 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
 
 ## Current status
 
-- Updated: 2026-10-27 (lane item/t64bm1m-262, release 262).
+- Updated: 2026-10-28 (lane item/t64bm1m-262, release 262).
 - Owner requests (2026-10-27): via Main, verbatim, "add these new tanks using our rigoorous tank generation workflow" and
   "the t64 bm1m should be designed from scratchh as well and serve as inspiratin to properly update our t64s which are
   not based onn t64s rn"; to this lane, on the release-233 `profiles/t64bvX.ts` (a0711ff866): "that true t64 build is bad
@@ -21,6 +21,12 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
 - Implementation: `profiles/t64Foundation.ts` (hull, cast turret, gun, cupola, sights), `t64RunningGear.ts`,
   `t64bm1m.ts`, `t64KontaktFamily.ts`; frame `t64Armor.ts`. See the evidence matrix for receipts.
 - Publication: lane branch only; Main integrates release 262.
+- Main's rulings (2026-10-28, relaying the owner): every tier approved (T-64BM1M IV 0.577, T-64BV III 0.476, T-64B1V
+  mod. 2022 IV 0.571, PT-64 Tur IV 0.570). The source comparison is accepted for each source-backed tank as a
+  published-dimension build (the photo/published route; the 42manako print is 6.4 % wide): the T-64BM1M against its
+  print, the T-64BV and the T-64B1V mod. 2022 against the T-64 prints, the latter misregistered on main too. The PT-64 Tur
+  is a concept (no print). The silhouette dimensions are declared on all four (evidence matrix); re-registering the
+  misregistered T-64 prints is a later cleanup, logged in TESTS-OWED and left out of this head.
 - Worktree / branch / base: `.claude/worktrees/xenodochial-rubin-4eb6bf`, `item/t64bm1m-262`, origin/main 7d045a7588.
 
 ## Scope and preservation
@@ -78,7 +84,8 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
 hull length matches. One uniform scale cannot reconcile it. The build follows the published figures (lateral 0.933 of
 the print, heights 0.96, the turret 0.96 about its ring, the hull length kept), so after the fidelity page's width
 normalisation the print reads ~6 % short in the side and plan views against the build. That residual is the print's,
-not a build defect, and is reported with the gate results.
+not a build defect, and is reported with the gate results. **Ruling (Main, 2026-10-28):** accepted as published-dimension
+builds; the prints' re-registration is a later cleanup.
 
 ### Photographs read (citations; none embedded in the repo)
 
@@ -133,8 +140,8 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason). Filled as the lan
 | Gate | Status | Revision | Command / artifact | Result |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | ca57b0c7ad | source-x-oracle --inspect; md5 above | 139 meshes, frame above |
-| Every registered silhouette / raw aggregate | FAIL (as main's T-64s) | 08c74305bb | procedural-fidelity --check --board (release try 4) | BM1M 86.0 (whole 87.5, hull 84.2, turret 78.9, gun 92.9, tracks 92.5; views 84-94), mod. 2022 85.2 (turret 73.0), T-64BV 84.3 (fused print: whole 83.7, tracks 87.0); floor 90. Geometry gate: BM1M side/plan 57-74, front 0-4; T-64BV 78.2; mod. 2022 near 0 on its misregistered print (main's mod. 2017: 24.9; T-64BV1: 89.5). The builds follow published dimensions, not the 6.4 %-wide prints (the BM1M turret is the print's x0.96 about its ring). Main decides: accept as published-dimension builds or re-register the T-64 prints |
-| Geometry components / dimension score / 3% check | FAIL (dims), fix owed | 1959795255 | geometry-gate dims rows | width, hull length and overall length within 1-3 %; height 2.69-2.81 m measured against the 2.17 m published roof height: the new specs carry no `silhouette*` envelope (the frame strips the donor's), so the gate compares the roof-gun envelope with the roof. Owed: declare `silhouetteHeightM` (and length/width) as measured. The Tur is a concept: comparison N/A |
+| Every registered silhouette / raw aggregate | ACCEPTED (Main 2026-10-28: published-dimension builds) | 08c74305bb | procedural-fidelity --check --board (release try 4) | BM1M 86.0 (whole 87.5, hull 84.2, turret 78.9, gun 92.9, tracks 92.5; views 84-94), mod. 2022 85.2 (turret 73.0), T-64BV 84.3 (fused print: whole 83.7, tracks 87.0); floor 90. Geometry gate: BM1M side/plan 57-74, front 0-4; T-64BV 78.2; mod. 2022 near 0 on its misregistered print (main's mod. 2017: 24.9; T-64BV1: 89.5). The builds follow published dimensions and photographs, not the 6.4 %-wide prints (the BM1M turret is the print's x0.96 about its ring). Ruling: accepted on the photo/published route for all three source-backed ids; re-registering the T-64 prints is a later cleanup (TESTS-OWED). The Tur is a concept: N/A |
+| Geometry components / dimension score / 3% check | BM1M PASS; T-64BV, mod. 2022 width-scaled (owed) | this commit | geometry-gate dims rows; `.qa-dev/t64bm1m/silhouette.mjs` | Silhouettes declared (`T64_SILHOUETTE_DIMS`, the gate's rule on each build): height / body length / lit length BM1M 2.788 / 6.557 / 9.405, T-64BV 2.790 / 6.868 / 9.689, mod. 2022 2.819 / 6.774 / 9.410, Tur 2.790 / 6.868 / 9.689 m. Against try 4 the BM1M rows read 0.03-0.07 % (dims 100). The gate scales each build so its box width equals `widthM` before measuring: the T-64BV (3.415 published, over bare skirts) and the mod. 2022 (3.72, carried unsourced from the old mod. 2017 frame) both measure 3.536 m over their Kontakt-1, so the gate scales them 0.966 and 1.052 and every row reads 3.4 % and 4-6 % off. Owed: restate their `widthM` to the build (a combat-frame change: armour fit, contacts, anatomy, dossiers, icon metadata) |
 | Independent critic / actual Gallery | PASS (3 rounds) | 65f5be85c4, f3cf753a33 | blind critics (Agent) on rasters | critic 2: BM1M 4-5/10, mod. 2022 5-6/10 -> fixed (R4/R5); critic 3: Tur 6/10 -> fixed (T3); shaded studio renders r2/r3 |
 | Winding, closure and intentional negative space | PASS | 08c74305bb | tank-sealed-check --gate; standard-check B2 | sealed 4/4; contiguity 4/4 after the stern shroud and the mod. 2022's cage moves |
 | Gun clearance over its own turret (tube ahead of the mask, -6/0/+14 deg, rod negative control) | PASS | 1298ed5bb2 | `node src/vehicles/profiles/t64GunClearance.selftest.mjs` | all four ids |
@@ -208,3 +215,8 @@ MBT-70 0, Centurion 5/2 0.833, T-72B 1987 1.0, AMX-40 0.833), T-64B1V mod. 2022 
   T-64's own rear-quarter stop). Fixed in the base: the TNPO head 5 cm over the plate, the splash board 9 cm, the
   headlights 35 deg down the mudguard roll. Probe after the fix (`.qa-dev/t64bm1m/gunprobe.mjs`, -6 deg): 26.3 mm at
   yaw 0, 35.9 mm at 5-15; at 20-35 the bow mudguard's crown meets the jacket (a front-corner stop, kept). Re-swept.
+- Dims (Main, 2026-10-28): the silhouettes are declared in `t64Armor.ts` (`T64_SILHOUETTE_DIMS`, applied after the frame
+  strips the donor's), measured in Node with the gate's own rule (`.qa-dev/t64bm1m/silhouette.mjs`; on the BM1M, which
+  the gate measures unscaled, the Node and gate numbers agree within 2 mm on height and length, 6 mm on the lit length).
+  The anatomy, marking-seat, controls, mission-seat, spare-track, fleet-geometry-ledger and fills checks all PASS on the
+  four ids (no generated row moves); `npm run typecheck` clean (the gun-curve record now carries the spec's pair type).
