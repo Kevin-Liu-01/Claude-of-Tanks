@@ -56807,7 +56807,7 @@
           }
         ]
       },
-      "geometryHash": "63a5d1c1",
+      "geometryHash": "dd927dbe",
       "metadataHash": "b446497c",
       "presentationAnchor": {
         "xM": -0.0001,
@@ -56836,7 +56836,7 @@
           "wood": 1,
           "armorPaint": 24,
           "opticGlass": 5,
-          "unclassified": 22,
+          "unclassified": 21,
           "gearShadow": 2,
           "fittingPaint": 1,
           "canvas": 1
@@ -56868,15 +56868,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24128,
-          "sha256": "8fc618a9432159afd29b56bdd3ae7c3531d7757e2249415d22a04e1703abf55f",
+          "bytes": 24142,
+          "sha256": "60ae5a8c0281e44b2e4e320cf88efb93e70513b7642c80ffda110cef801d5e8a",
           "thumbnail": {
             "file": "thumbs/bm_oplot_m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10248,
-            "sha256": "5ce0ed154896504f4b61455b4ae7478639e35f13573cac02257968e243cd8e27"
+            "bytes": 10274,
+            "sha256": "f6ec43d7f47042b8f49db4597b1d7f706db0487323ba19e9b584c1ec45acd401"
           }
         },
         "top": {
@@ -56884,16 +56884,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9892,
-          "sha256": "1fddefe80d3ab4e5c5e216c67caec4eb1d65e2b041896bbdc948d445052b8140"
+          "bytes": 9714,
+          "sha256": "8c59d1f79937b5caed73099bdb2b677a2894948b6fe78ec680fd83a3c4846d7a"
         },
         "side": {
           "file": "bm_oplot_m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8916,
-          "sha256": "476a79228998f8cbf43cfdc86df5b7ca6bf86110110bb3f94057fb2c8507ec7a"
+          "bytes": 8904,
+          "sha256": "a91b393355dcea7fbd5676c4ad1554acee00de6ad4970f0b4c5aa7c72241b8f0"
         },
         "topSilhouette": {
           "file": "bm_oplot_m_top_silhouette.png",
@@ -56916,24 +56916,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25766,
-          "sha256": "9914bd6e00c91162a55d57480ccca98ad2f0eca343d44edde4fd8153079031d6"
+          "bytes": 25828,
+          "sha256": "7d77533e24e620ab1c177b42e54bbb9b00b496cceb7db672ae648315c575ec32"
         },
         "modulesSide": {
           "file": "bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20730,
-          "sha256": "8080fe30316380f5be2f7fcc3bc96f3d271dcd62e97615b5693b1ee723c6f535"
+          "bytes": 20722,
+          "sha256": "8667b1fe32b20dc69ad87b48a57562ebf18dd99e3c72451afa5d48bfd8daf59b"
         },
         "crewSide": {
           "file": "bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17202,
-          "sha256": "e5dfbdb50d687ae8c3b8f19dc4b47c384cb5acc0d9b0c74cfb46a524e13114d6"
+          "bytes": 17194,
+          "sha256": "0e036788d23e55e1acbc36f37717cded9760aee2965e532d54af642dcb31750d"
         },
         "markings": {
           "file": "bm_oplot_m_markings.png",
@@ -74816,7 +74816,7 @@
           }
         ]
       },
-      "geometryHash": "b1596a22",
+      "geometryHash": "452ade3a",
       "metadataHash": "0636940c",
       "presentationAnchor": {
         "xM": 0.0002,
@@ -74877,15 +74877,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32216,
-          "sha256": "39dfa95afd77efb7c3c8a1b4b2d24fde17ef27a27563a3281f86763bdc92521e",
+          "bytes": 32234,
+          "sha256": "8d24b2827156e5f7d54f4de9482a1a8cf65ade3a9844b687bb5c08a7f7fe0ca5",
           "thumbnail": {
             "file": "thumbs/bm_oplot_t_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12800,
-            "sha256": "e96de641adf5e1b0da90f7a09a71ab22e731b4f71508eaab3f3a19e53ddedcfa"
+            "bytes": 12774,
+            "sha256": "9adada89165b3515637b711761bc996253e4fb8219431adadd72017aaebb2905"
           }
         },
         "top": {
@@ -74901,8 +74901,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12178,
-          "sha256": "504b7018f8816ac867dd0358fe93a8455d957143715c3ba8ab3a5ead3fd1e5c4"
+          "bytes": 12192,
+          "sha256": "7da967e71fbe2ea796e2502daacd229d1fe1bb2bee5ba7e6457bef506ba8915f"
         },
         "topSilhouette": {
           "file": "bm_oplot_t_top_silhouette.png",
@@ -74925,24 +74925,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28978,
-          "sha256": "75dba50025d379ef2adda13db4810fd3ac30102e77128fc168eebe9ca0973062"
+          "bytes": 28958,
+          "sha256": "80b66c94da00dac883f76e4c78e744e67ee5f0819df3bfce9be09d84fcc785a6"
         },
         "modulesSide": {
           "file": "bm_oplot_t_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26706,
-          "sha256": "3a780a0269f8f630b40114b0558f7025b32cff7d0b323d6a9d224b7fa19342aa"
+          "bytes": 26756,
+          "sha256": "2fb8616d970a9706f12d1a70f9d730e462a728b3b00a579877a3c77c78332d59"
         },
         "crewSide": {
           "file": "bm_oplot_t_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24240,
-          "sha256": "41088fb8a39739345e817527343717f74ebdb47bd56cd0d1cfc648f8ad9d0d78"
+          "bytes": 24258,
+          "sha256": "ed52a582a41f7c10b2c9d9bf07e6f36bde19fad629b6c4b424374d63dc817eeb"
         },
         "markings": {
           "file": "bm_oplot_t_markings.png",
@@ -1852359,7 +1852359,7 @@
           }
         ]
       },
-      "geometryHash": "9132ea42",
+      "geometryHash": "05691090",
       "metadataHash": "6ed14fec",
       "presentationAnchor": {
         "xM": 0,
@@ -1852387,7 +1852387,7 @@
           "armorPaint": 19,
           "gunmetal": 12,
           "opticGlass": 3,
-          "unclassified": 21,
+          "unclassified": 20,
           "gearShadow": 2,
           "fittingPaint": 2
         }
@@ -1852418,15 +1852418,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26280,
-          "sha256": "28998fa0717585e60708883679171712471067dccf3f0cf9d10506e99468bfa5",
+          "bytes": 26232,
+          "sha256": "d37842866f152437f2ed8397ff3e51bff9ef14e596ab650056ac89a9881c65d9",
           "thumbnail": {
             "file": "thumbs/t84bm_oplot_m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10760,
-            "sha256": "74a99bbdc6a85d7a008e623383f11cf664887cfcce3fbf103686b5dcee5ee493"
+            "bytes": 10742,
+            "sha256": "4434340a5a95e4441925aac7d94ba59fadb5ba574eef21ebe0c5757acfd5ecfe"
           }
         },
         "top": {
@@ -1852434,16 +1852434,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12908,
-          "sha256": "1e6c3ae3ef0af6dfc32545f508383c1783918ae5a2ab21b0cbc8863afdd01c02"
+          "bytes": 12886,
+          "sha256": "ea2c3709f6a81d13896cd49dd0b4f2685f3a3a743c0965f58e83058cf5d14549"
         },
         "side": {
           "file": "t84bm_oplot_m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10004,
-          "sha256": "84dcb024e97d4437eae095413021e211e65203edae5643f993d3f5300f4e84c1"
+          "bytes": 10006,
+          "sha256": "55e1194ff7b5f3964c1813e0e3d37720636b80d8668df9d4c720d0be55cb6825"
         },
         "topSilhouette": {
           "file": "t84bm_oplot_m_top_silhouette.png",
@@ -1852466,24 +1852466,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25024,
-          "sha256": "b5d5065891d4fbb3b5423e754a4286fdc5903a77a75ffee2258809bc3ae72bd5"
+          "bytes": 25032,
+          "sha256": "3759405d11d2a25b9b06abd4101dd68d9ec93cf38d73e607de25f38b906bc12d"
         },
         "modulesSide": {
           "file": "t84bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23660,
-          "sha256": "d2c290fe70f76ae48fd97eb882bd0ea786d343a5218902c95393206036fba618"
+          "bytes": 23670,
+          "sha256": "bb8f85ce0e9a19f2189fb92da5644a92fbb7b68d7d1131e06da2ceade3ae9829"
         },
         "crewSide": {
           "file": "t84bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20450,
-          "sha256": "873192cd147ddb60d159271e53384d1e53458d317e86de41bf69f4685aee3e36"
+          "bytes": 20420,
+          "sha256": "fcdf84400d5c141c06a2f29677fc7d7a9e563ab548dff8f11cd31853d7897325"
         },
         "markings": {
           "file": "t84bm_oplot_m_markings.png",
