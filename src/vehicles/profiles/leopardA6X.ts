@@ -9,7 +9,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addLeopardA6XFittings } from './leopardA6XFittings.ts';
-import { leopardA6WheelSolids } from './leopardA6XWheels.ts';
+import { LEOPARD_2_RUNNING_GEAR as G, leopardA6WheelSolids } from './leopardA6XWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -107,8 +107,8 @@ function rearHullFolds(P: TankBuilderPort): void {
 function runningGear(P: TankBuilderPort): void {
   const wheels = leopardA6WheelSolids();
   P.gear = KIT.buildRunningGear(P, {
-    style: 'rubber', wheelR: .34531, wheelW: .3484, wheelY: .4182,
-    wheelZs: [-2.239845, -1.357925, -.483615, .398305, 1.127355, 1.899555, 2.715785],
+    style: 'rubber', wheelR: G.wheelR, wheelW: .3484, wheelY: G.wheelY,
+    wheelZs: [...G.wheelZs],
     wheelTireBands: [-.10442, .10442].map(centerM => ({ centerM,
       widthM: .13956, innerRadiusM: .31624 })),
     wheelCoreGeometry: { disc: wheels.core },
@@ -120,13 +120,13 @@ function runningGear(P: TankBuilderPort): void {
     // puts the native pad/web skin within 3 mm of that source span. The
     // 2.4 mm tangent-corner allowance keeps every rigid shoe above ground
     // without moving an axle or overlapping the wheel rest height .07289.
-    xc: 1.32814, trackW: .63558, trackTh: .024, topY: 1.199, botY: .0564,
+    xc: 1.32814, trackW: .63558, trackTh: .024, topY: G.topY, botY: G.botY,
     trackShoeDimensions: { padHeight: .032, grouserHeight: .014, webHeight: .030, hornHeight: .10 },
-    sprocket: { z: -3.058845, y: .82369, r: .3175, trackR: .306,
+    sprocket: { ...G.sprocket,
       axleOutsetM: .0025545, axialScaleLeft: .90119701, axialScaleRight: .90119701 },
-    idler: { z: 3.365775, y: .8399, r: .26407, trackR: .285,
+    idler: { ...G.idler,
       axleOutsetM: -.063095, axialScaleLeft: .83454832, axialScaleRight: .83454832 },
-    rollers: [-1.819725, -.162095, 1.578445, 2.368575].map(z => ({ z, y: 1.07755, r: .084665 })),
+    rollers: G.rollerZs.map(z => ({ z, y: G.rollerY, r: G.rollerR })),
     returnRollerWidthM: .12906, returnRollerInsetM: .1737,
     suspensionDimensions: {
       // Each source end is only 69.62 mm thick. The apparent 165.59 mm

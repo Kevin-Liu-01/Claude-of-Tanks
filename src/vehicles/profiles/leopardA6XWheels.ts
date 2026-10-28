@@ -48,6 +48,21 @@ function face(side: -1 | 1, segments: number): THREE.BufferGeometry {
   return mesh;
 }
 
+/** The source-measured Leopard 2A6 X running gear in its hull frame (ground y 0, forward +z): seven paired road
+ * wheels, the rear drive sprocket, the raised front idler and four return rollers under the skirt line. The KF51
+ * family rides a Leopard 2A4 hull and draws these stations at its own track width (owner 2026-10-27: "from the side
+ * its silhouette should look more like the leopard 2a6s"). */
+export const LEOPARD_2_RUNNING_GEAR = Object.freeze({
+  wheelR: .34531, wheelY: .4182,
+  wheelZs: Object.freeze([-2.239845, -1.357925, -.483615, .398305, 1.127355, 1.899555, 2.715785]),
+  sprocket: Object.freeze({ z: -3.058845, y: .82369, r: .3175, trackR: .306 }),
+  idler: Object.freeze({ z: 3.365775, y: .8399, r: .26407, trackR: .285 }),
+  rollerZs: Object.freeze([-1.819725, -.162095, 1.578445, 2.368575]), rollerY: 1.07755, rollerR: .084665,
+  topY: 1.199, botY: .0564,
+  // the skirt hem: the thin skirt rows and the front blocks stop at .88, just over the wheel tops
+  skirtHemY: .88171,
+});
+
 export function leopardA6WheelSolids(segments = 32): {
   core: THREE.BufferGeometry; left: THREE.BufferGeometry; right: THREE.BufferGeometry;
 } {
