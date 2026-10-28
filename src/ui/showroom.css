@@ -475,6 +475,10 @@ body[data-cot-panels='persistent'] .cot-eqpreview .metrics{flex:1 1 100%;display
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);
   mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent)}
 body[data-cot-panels='persistent'] .cot-eqpreview .metric{flex:none}
+/* a shut item's reason takes the values' row: its values would not move, and as a third line it fell under the dock's
+   foot ("Unavailable · autoloaders cannot mount a gun rammer" cut at every desktop size, v261 e) */
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip[data-shut] .metrics{display:none}
+body[data-cot-panels='persistent'] .cot-eqpreview .cot-eqtip[data-shut] .action{flex:1 1 100%;margin:0}
 /* the docked picker's search and chips share one row, as the paint sheet's do: the panel stands lower over the tank */
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__bar{flex-wrap:nowrap}
 body[data-cot-panels='persistent'] .cot-eqpick .cot-c-picker__search{flex:0 1 220px;height:var(--btn-h-s)}
