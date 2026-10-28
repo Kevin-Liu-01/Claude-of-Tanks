@@ -6,7 +6,7 @@ Owner, 2026-10-27: "add ... centurion mk 5 avre (extra era special turret, dozer
 blade, the short fat demolition gun, reactive cassettes on the turret, bolted side plates). Built as the `avre` mark of
 `src/vehicles/profiles/centurionFamily.ts` on the rebuilt Mk 5 hull and turret (the shared gap table is in
 `centurion3.md`); spec `src/vehicles/centurionAvreSpecs.ts` (a clone of the Mk 5/2 with its own gun, ledger entry
-`centurion5_avre`, measured in its own `demolition-gun` balance cohort). UK tree: the special lane at III.
+`centurion5_avre`, measured in its own `demolition-gun` balance cohort). UK tree: the special lane at II (its same-tier duels: 0.28 at II, 0.07 at III).
 Configuration: the Gulf War AVRE of 1991 (32 Armoured Engineer Regiment), without its fascine cradle. Implementation: DONE.
 
 ### Sources

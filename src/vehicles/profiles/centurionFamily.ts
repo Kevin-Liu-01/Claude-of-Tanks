@@ -24,8 +24,9 @@ const slab = orientedSlab;
 /** The builds: the British Mk 3 (20-pdr), the British Mk 5/2 (105 mm L7), the Swedish Strv 81B (20-pdr) and the
  * Israeli Sho't Kal of 1973 (L7, the Continental AVDS-1790-2A conversion, IDF stowage; no Blazer armour) and the British
  * Mk 13 (the Mk 10's L7A2 and glacis appliqué with the L2 infra-red searchlight and the .50 ranging gun); the owner's
- * second batch (2026-10-27): the Swedish Strv 105 prototype, the South African Olifant Mk 2 and the British Mk 5 AVRE. */
-export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal' | 'mk13' | 'strv105' | 'olifant_mk2' | 'avre';
+ * second batch (2026-10-27): the Swedish Strv 105 prototype, the South African Olifant Mk 2 and the British Mk 5 AVRE; and
+ * (2026-10-28) the Australian Mk 5/1 of the Vietnam war. */
+export type CenturionMark = 'mk3' | 'mk5_2' | 'strv81' | 'shot_kal' | 'mk13' | 'strv105' | 'olifant_mk2' | 'avre' | 'mk5_1_aus';
 
 interface MarkDesign {
   /** Gun length ahead of the trunnion (muzzle face). */
@@ -42,8 +43,9 @@ interface MarkDesign {
   readonly late: boolean;
   /** A later conversion's own kit: the Strv 105 prototype (the Strv 104's reactive armour and its thermal sight), the
    * Olifant Mk 2 (a box turret of modular armour, torsion bars, armoured skirts) or the Mk 5 AVRE (the demolition gun,
-   * the dozer blade, the Gulf War's reactive armour). */
-  readonly kit: 'none' | 'strv105' | 'olifant' | 'avre';
+   * the dozer blade, the Gulf War's reactive armour) or the Australian Mk 5/1 (the Vietnam fit: skirts off, the rear
+   * fuel tank, spare road wheels on the glacis, the infra-red searchlight on the mantlet, the .50 ranging gun, baskets). */
+  readonly kit: 'none' | 'strv105' | 'olifant' | 'avre' | 'aus';
 }
 
 const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
@@ -55,6 +57,7 @@ const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
   strv105: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: true, idf: false, late: false, kit: 'strv105' },
   olifant_mk2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'olifant' },
   avre: { gunLen: 2.15, gun: '165', mk5: true, swedish: false, idf: false, late: false, kit: 'avre' },
+  mk5_1_aus: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'aus' },
 });
 
 // ---- hull datums (metres, hull frame) ----
@@ -235,7 +238,12 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   // Headlights on the glacis beside the front bins, each behind its guard hoop.
   for (const s of [-1, 1]) {
     const [hz, hy] = onGlacis(0.30);
-    if (m.kit === 'strv105') {
+    if (m.kit === 'aus') {
+      // the Mk 5's armoured headlight box moved onto the front bin's lid, the spare road wheels taking the glacis
+      P.add('hullDetail', box(0.26, 0.20, 0.22), s * 1.22, 1.765, 2.80);
+      P.add('hullGlass', markVehicleNightLens(cylZ(0.07, 0.02, 14), 'headlight'), s * 1.22, 1.775, 2.915);
+      P.add('hullDark', box(0.27, 0.025, 0.08), s * 1.22, 1.875, 2.89);
+    } else if (m.kit === 'strv105') {
       // the Strv 104's lamp pairs on the front bins' lids, clear of the glacis tiles (the Bovington Strv 104)
       mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.13, r: 0.048,
         shield: true, seed: 1055 + (s > 0 ? 1 : 0) }), s * 1.22, 1.725, 2.84);
@@ -344,6 +352,21 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
         for (const t of [t0 + 0.08, (t0 + t1) / 2, t1 - 0.12]) faceBox(P, 'hull', 'dark', onPlane(x, t, th), across, up, out, 0.035, 0.035, 0.02);
       }
     });
+  } else if (m.kit === 'aus') {
+    // the Mk 5/1's extra glacis plate, and two spare road wheels on studs side by side on it (the owner's reference;
+    // carried in Vietnam)
+    const [az, ay] = onGlacis(0.55);
+    P.addExternalArmor('hull', xform(box(1.30, 0.05, 0.86), 0, 0, 0, pitch, 0, 0), 0, ay + nY * 0.027, az + nZ * 0.027);
+    const seg = P.q ? 28 : 16;
+    for (const s of [-1, 1]) {
+      const c = onPlane(s * 0.41, 0.50, 0.11);
+      P.add('hullRubber', cylY(0.38, 0.38, 0.10, seg), c[0], c[1], c[2], pitch, 0, 0);
+      P.add('hullDetail', cylY(0.30, 0.30, 0.11, seg), c[0], c[1], c[2], pitch, 0, 0);
+      const hub = onPlane(s * 0.41, 0.50, 0.17);
+      P.add('hullDark', cylY(0.10, 0.12, 0.05, 12), hub[0], hub[1], hub[2], pitch, 0, 0);
+      const stud = onPlane(s * 0.41, 0.50, 0.06);
+      P.add('hullDark', cylY(0.04, 0.04, 0.10, 8), stud[0], stud[1], stud[2], pitch, 0, 0);
+    }
   } else if (m.kit === 'olifant') {
     // the Mk 1B's bolted composite pack over the upper glacis, inboard of the armoured headlight boxes (the Armed Forces
     // Day photograph)
@@ -480,6 +503,25 @@ function buildOlifantSkirts(P: TankBuilderPort): void {
     P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[S.outer - S.t, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [S.outer - S.t, topAt(z)]]) }))));
     P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[1.00, topAt(z) - 0.03], [S.outer - S.t, topAt(z) - 0.03], [S.outer - S.t, topAt(z)], [1.00, topAt(z)]]) }))));
     for (const fz of [3.15, 3.55]) P.add('hullDark', cylX(0.026, 0.02, 8), s * (S.outer + 0.010), (topAt(fz) + botAt(fz)) / 2, fz);
+  }
+}
+
+/** The Horstmann bogies the skirts hid (the Australian tanks ran without them in Vietnam): on each pair of road wheels a
+ * hanger bracket off the hull's side, the horizontal spring housing over the wheels under the return run, and the two
+ * arms down to the hubs outboard of the wheels. */
+function buildHorstmannBogies(P: TankBuilderPort): void {
+  const pairs: readonly (readonly [number, number])[] = [[WHEEL_ZS[0], WHEEL_ZS[1]], [WHEEL_ZS[2], WHEEL_ZS[3]], [WHEEL_ZS[4], WHEEL_ZS[5]]];
+  for (const s of [-1, 1]) {
+    for (const [za, zb] of pairs) {
+      const zm = (za + zb) / 2;
+      P.add('hullDark', box(0.30, 0.30, 0.52), s * 1.02, 0.95, zm);
+      P.add('hullDetail', cylZ(0.072, 0.66, 14), s * TRACK.xc, 0.99, zm);
+      for (const k of [-1, 1]) P.add('hullDark', cylZ(0.085, 0.04, 14), s * TRACK.xc, 0.99, zm + k * 0.33);
+      for (const zw of [za, zb]) {
+        const dz = zw - zm, len = Math.hypot(dz * 0.55, 0.50), ang = Math.atan2(dz * 0.55, 0.50);
+        P.add('hullDark', xform(box(0.06, len, 0.09), 0, 0, 0, ang, 0, 0), s * 1.445, 0.475 + 0.25, zw - dz * 0.275);
+      }
+    }
   }
 }
 
@@ -632,12 +674,22 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
       for (let i = 0; i < 6; i++) P.add('hullDetail', xform(box(0.54, 0.012, 0.04), 0, 0, 0, -0.6, 0, 0), s * 0.58, 1.27 + i * 0.075, REAR_Z - 0.09);
     }
   }
+  if (m.kit === 'aus') {
+    // the RAAC's 100-gallon armoured fuel tank across the rear plate on two brackets, its filler and feed (Vietnam,
+    // 1968; the infantry telephone on its right end)
+    P.add('hull', box(1.78, 0.46, 0.40), 0, 1.29, REAR_Z - 0.22);
+    P.add('hullDark', box(1.80, 0.02, 0.42), 0, 1.525, REAR_Z - 0.22);
+    for (const s of [-1, 1]) P.add('hullDark', box(0.10, 0.36, 0.06), s * 0.70, 1.29, REAR_Z - 0.01);
+    P.add('hullDetail', cylY(0.07, 0.07, 0.05, 12), 0.55, 1.545, REAR_Z - 0.22);
+    P.add('hullDark', cylZ(0.022, 0.30, 8), -0.20, 1.12, REAR_Z - 0.06);
+    P.add('hullDetail', box(0.22, 0.26, 0.10), -0.60, 1.29, REAR_Z - 0.47);
+  }
   // infantry telephone box on the right rear
-  if (!m.idf && !m.swedish) {
+  if (!m.idf && !m.swedish && m.kit !== 'aus') {
     P.add('hullDetail', box(0.22, 0.26, 0.10), -0.30, 1.38, REAR_Z - 0.05);
     P.add('hullDark', box(0.16, 0.02, 0.012), -0.30, 1.46, REAR_Z - 0.10);
   }
-  if (!m.swedish && !m.idf) {
+  if (!m.swedish && !m.idf && m.kit !== 'aus') {
     KIT.towCable(P, [[-1.20, 1.60, REAR_Z - 0.03], [-0.62, 1.30, REAR_Z - 0.06], [0, 1.52, REAR_Z - 0.04],
       [0.62, 1.30, REAR_Z - 0.06], [1.20, 1.60, REAR_Z - 0.03]]);
   }
@@ -765,11 +817,13 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
     P.addEquipment('turretDark', torus(0.30, 0.016, 28, 6), cx, roofY + 0.235, cz);
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.08, scale: 1.02, seed: 5,
       ammo: true, shield: 'low', barrelBridge: true, working: true, ridingCradle: true });
-    mg.name = m.late ? 'centurion13_cupola_machine_gun' : m.kit === 'avre' ? 'centurion5_avre_cupola_machine_gun' : 'centurion5_cupola_machine_gun';
+    mg.name = m.late ? 'centurion13_cupola_machine_gun' : m.kit === 'avre' ? 'centurion5_avre_cupola_machine_gun'
+      : m.kit === 'aus' ? 'centurion5_1_aus_cupola_machine_gun' : 'centurion5_cupola_machine_gun';
     mg.position.set(cx + 0.06, roofY + 0.24, cz + 0.12);
     mg.rotation.y = 0.08;
     mg.userData.stationVariant = m.late ? 'centurion-mk13-cupola-mag58-r262'
-      : m.kit === 'avre' ? 'centurion-avre-cupola-mag58-r262' : 'centurion-mk5-cupola-mag58-r262';
+      : m.kit === 'avre' ? 'centurion-avre-cupola-mag58-r262' : m.kit === 'aus' ? 'centurion-aus-cupola-mag58-r262'
+        : 'centurion-mk5-cupola-mag58-r262';
     mg.userData.forwardFacing = true;
     P.turretG.add(mg);
     P.turretG.userData.centurionRoofMachineGunReceipt = Object.freeze({
@@ -1010,6 +1064,20 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
   }
 }
 
+/** The Australian Vietnam fit's mesh baskets (the 1st Armoured Regiment photographs): a deep basket round the bustle bin
+ * on arms and one along the left rear bins; the tank's number rides on the rear basket. Ring frame. */
+function buildAusTurretBaskets(P: TankBuilderPort): void {
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.90, d: 0.50, h: 0.40, fill: 0.6, rails: 3, seed: 5112 }), 0, 0.30, -2.58);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.31, -2.42);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.52, -2.44);
+  }
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.70, d: 0.26, h: 0.34, fill: 0.5, rails: 3, seed: 5113 }), 1.62, 0.36, -1.02,
+    [0, Math.PI / 2, 0]);
+  for (const bz of [-1.26, -0.78]) P.add('turretDark', box(0.16, 0.04, 0.04), 1.52, 0.40, bz);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.52, -2.84], Math.PI);
+}
+
 /** The Olifant Mk 2's turret (LIW, from 2007; the Commons profile and the Armed Forces Day photographs): the Centurion
  * turret inside a slab-sided box of modular composite armour - flat vertical sides, a flat roof, the top edges
  * chamfered, the two front faces raked back from the gun's slot to the sides, the bustle long and overhanging the engine
@@ -1209,7 +1277,13 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
   P.add('gunMountDark', xform(torus(0.18, 0.012, 24, 4), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, 0.745);
   // the coaxial gun's port (the Mk 3's Besa, the Mk 5's Browning) and the sight's hooded aperture
   P.add('gunMount', cylZ(0.055, 0.08, 12, 0.07), 0.40, 0.04, 0.64);
-  P.add('gunMountDark', cylZ(0.018, m.mk5 ? 0.28 : 0.22, 8), 0.40, 0.04, 0.76);
+  if (m.kit === 'aus') {
+    // the coaxial .50 ranging gun (three tracers to lay the 20-pdr), its heavier barrel and flash hider
+    P.add('gunMountDark', cylZ(0.024, 0.46, 10), 0.40, 0.04, 0.87);
+    P.add('gunMountDark', cylZ(0.032, 0.07, 10), 0.40, 0.04, 1.08);
+  } else {
+    P.add('gunMountDark', cylZ(0.018, m.mk5 ? 0.28 : 0.22, 8), 0.40, 0.04, 0.76);
+  }
   P.add('gunMount', box(0.20, 0.06, 0.12), -0.40, 0.19, 0.62);
   P.add('gunMountDark', box(0.14, 0.05, 0.012), -0.40, 0.15, 0.636);
   if (m.late) {
@@ -1229,7 +1303,7 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
     const t = -1 + (2 * k) / 8;
     P.add('gunMountDark', cylZ(0.010, 0.11, 6), t * 0.72, 0.335, 0.17);
   }
-  if (m.idf || m.kit === 'strv105') {
+  if (m.idf || m.kit === 'strv105' || m.kit === 'aus') {
     // the green canvas cover over the block, sagging between its lacing points, its sleeve strapped to the barrel (the
     // Sho't Kal's; the Strv 104 and 105 photographs show the same laced cover)
     const drape = (z: number, hw: number, top: number, bot: number, sag: number): SolidSection => {
@@ -1250,6 +1324,16 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
     }
     P.add('gunMountCloth', cylZ(0.100, 0.30, 14, 0.13), 0, 0, 0.86);
     for (const sz of [0.76, 0.98]) P.add('gunMountDark', cylZ(0.112 + (0.98 - sz) * 0.08, 0.025, 14), 0, 0, sz);
+  }
+  if (m.kit === 'aus') {
+    // the infra-red/white searchlight on its pedestal on the mantlet's top right, linked to the gun (the owner's
+    // reference; the 1967 Mk 5/1 refit's night equipment)
+    const lx = -0.30, ly = 0.48, lz = 0.52, r = 0.15, seg = P.q ? 24 : 14;
+    P.add('gunMount', cylZ(r, 0.26, seg), lx, ly, lz);
+    P.add('gunMountDark', cylZ(r + 0.008, 0.024, seg), lx, ly, lz + 0.12);
+    P.add('gunMountGlass', markVehicleNightLens(cylZ(r * 0.84, 0.006, seg), 'headlight', { searchlight: true }), lx, ly, lz + 0.131);
+    P.add('gunMountDark', cylZ(r * 0.62, 0.035, seg), lx, ly, lz - 0.14);
+    P.add('gunMount', box(0.10, 0.12, 0.16), lx, 0.36, lz - 0.02);
   }
   if (m.idf) {
     // the canvas-covered searchlight on its bracket over the cover (Kahalani's Alef, EN)
@@ -1306,6 +1390,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   yield 'centurionHullBody';
   buildGuardBins(P);
   if (m.kit === 'olifant') buildOlifantSkirts(P);
+  else if (m.kit === 'aus') buildHorstmannBogies(P);
   else buildSkirts(P);
   if (m.kit === 'avre') buildAvreSkirtBolts(P);
   yield 'centurionHullSides';
@@ -1330,6 +1415,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   if (m.idf) buildIdfTurretRacks(P);
   if (m.kit === 'strv105') buildStrv105TurretKit(P);
   if (m.kit === 'avre') buildAvreTurretKit(P);
+  if (m.kit === 'aus') buildAusTurretBaskets(P);
   yield 'centurionTurretCasting';
   if (m.kit === 'olifant') {
     buildOlifantRoof(P);
@@ -1359,8 +1445,11 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-1.52, 0.48, -0.30], -Math.PI / 2);
   }
   // the hull numbers on the front side plates (the Olifant's between its armoured modules' bolts)
-  const [nx, ny, nz] = m.kit === 'olifant' ? [OLIFANT_SKIRT.outer + 0.004, 1.12, 1.05] : [1.68, 1.08, 1.40];
-  P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [nx, ny, nz], Math.PI / 2);
-  P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-nx, ny, nz], -Math.PI / 2);
+  // (the Australian tank's skirts are off: its number rides on the turret basket)
+  if (m.kit !== 'aus') {
+    const [nx, ny, nz] = m.kit === 'olifant' ? [OLIFANT_SKIRT.outer + 0.004, 1.12, 1.05] : [1.68, 1.08, 1.40];
+    P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [nx, ny, nz], Math.PI / 2);
+    P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-nx, ny, nz], -Math.PI / 2);
+  }
   P.topY = 1.0;
 }

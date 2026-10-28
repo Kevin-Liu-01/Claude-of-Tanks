@@ -127,8 +127,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // 62 -> 70 (259): eight vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
 // their entries).
 // 70 -> 72 (262): the new Sho't Kal and Mk 13 share the Mk 5/2's package (fleetBalancePass); 72 -> 75: the Strv 105 shares
-// it too, the Olifant Mk 2 and the Mk 5 AVRE carry their own.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 75,
+// it too, the Olifant Mk 2 and the Mk 5 AVRE carry their own; 76: the Australian Mk 5/1 the Strv 81's.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 76,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

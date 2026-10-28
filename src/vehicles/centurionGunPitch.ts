@@ -3,8 +3,10 @@
 // with tools/gun-depression-sweep.mjs --no-suit on the rebuilt hulls (stations rounded shallower to 0.1 deg, never more
 // than 0.35 deg shallower than the need, linear between them): the handbook's -10 deg ahead and abeam, shallower over
 // the driver's hatch and periscopes and the front guard bins, and over the engine deck astern - the Sho't Kal's
-// AVDS-1790 hump holds its gun about level there and the Strv 81B's rear stowage box 2.3 deg up. No mount conflicts and
-// no blocks at +20 deg on any of the five.
+// AVDS-1790 hump holds its gun about level there and the Strv 81B's rear stowage box 2.3 deg up; the Strv 105's lamps
+// on its front bins hold it at -3.5 deg over the bow quarters, the Olifant's armoured skirts and wedge fenders at -4
+// to -8 deg round the front and sides, the AVRE's dozer ram and blade lip at -6 deg ahead. No mount conflicts and no
+// blocks at +20 deg on any of the eight.
 // profiles/centurionGunClearance.selftest.mjs holds the barrel (25 mm) and the mount (20 mm) to these stops.
 import type { GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import type { TankSpecRegistry } from './specContracts.ts';
@@ -40,6 +42,24 @@ const CENTURION_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> =
     [37, -6.9], [39, -7.4], [41, -8.4], [43, -8.2], [45, -8.2], [50, -9.6], [52, -9.3], [55, -9.4], [59, -10],
     [122, -10], [130, -8.6], [133, -8.6], [135, -7.4], [141, -5.5], [142, -5.2], [148, -4.3], [158, -3], [168, -2.9],
     [172, -2.9], [175, -3], [176, -2.5], [179, -2.5], [180, -2.9]],
+  // depression 10, elevation 20; mountConflicts []
+  strv105: [
+    [0, -9.7], [6, -8.4], [8, -8], [13, -7.7], [19, -7.7], [21, -6.3], [22, -4.4], [23, -3.7], [25, -3.5],
+    [30, -3.5], [31, -3.8], [32, -4.8], [33, -6.4], [34, -6.4], [37, -6.9], [39, -7.4], [41, -8.4], [43, -8.2],
+    [45, -8.2], [50, -9.6], [52, -9.3], [55, -9.4], [59, -10], [122, -10], [130, -8.6], [133, -8.6], [135, -7.4],
+    [141, -5.5], [142, -5.2], [148, -4.3], [158, -3], [168, -2.9], [172, -2.9], [180, -3]],
+  // depression 10, elevation 20; mountConflicts []
+  olifant_mk2: [
+    [0, -9.7], [6, -8.4], [8, -8], [13, -7.7], [17, -7.8], [18, -6.9], [19, -5.2], [20, -4.5], [21, -4.3],
+    [31, -3.8], [36, -3.8], [41, -4.3], [46, -5], [52, -6.5], [66, -8.1], [67, -7.6], [69, -7.1], [93, -6.9],
+    [111, -7.1], [113, -7.6], [114, -8.1], [132, -5.7], [134, -5], [142, -4], [144, -3.8], [152, -3.2], [156, -2.6],
+    [158, -2.6], [159, -2.7], [161, -3.2], [162, -3], [165, -2.9], [172, -2.9], [175, -3], [176, -2.5], [179, -2.5],
+    [180, -2.9]],
+  // depression 10, elevation 20; mountConflicts []
+  centurion5_avre: [
+    [0, -5.9], [1, -5.3], [3, -4.8], [9, -4.2], [17, -4.1], [23, -4.4], [24, -4.5], [25, -4.8], [27, -5.7],
+    [50, -5.5], [51, -5.3], [55, -5.3], [84, -7], [87, -7], [97, -7.2], [130, -4.9], [133, -4.6], [134, -4],
+    [135, -3.6], [145, -2.5], [158, -2.4], [167, -2.4], [173, -2.5], [180, -2.9]],
 });
 
 /** Publish the measured curves on the registry's specs (after every spec pack has registered). */

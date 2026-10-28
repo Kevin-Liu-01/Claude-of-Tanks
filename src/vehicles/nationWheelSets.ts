@@ -205,6 +205,8 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   ukraine: 'russia',
   // release 262: South Africa's one hull is the Olifant Mk 2, a Centurion: the UK set its family draws
   'south africa': 'uk',
+  // and Australia's, the Mk 5/1
+  australia: 'uk',
 });
 
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;

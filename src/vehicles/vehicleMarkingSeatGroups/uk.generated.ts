@@ -808,5 +808,54 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "maximumSurfaceErrorM": 0
       }
     ]
+  },
+  "centurion5_1_aus": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -0.8480463,
+          0.5427985,
+          -1.5369813
+        ],
+        "quaternion": [
+          -0.0540112,
+          -0.8137524,
+          -0.0383255,
+          0.5774262
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "centurion5_1_aus",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0065165
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.25,
+        "pos": [
+          -1.0044049,
+          0.8800995,
+          -0.3574162
+        ],
+        "quaternion": [
+          -0.2354569,
+          -0.692272,
+          -0.2196544,
+          0.6458107
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "centurion5_1_aus",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0031613
+      }
+    ]
   }
 });

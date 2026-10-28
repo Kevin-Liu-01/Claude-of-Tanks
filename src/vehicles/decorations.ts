@@ -2723,6 +2723,12 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
   ],
+  // the Australian Mk 5/1's baskets are authored (profiles/centurionFamily.ts): the Vietnam deck load only
+  centurion5_1_aus: () => [
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
   shot_kal: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },

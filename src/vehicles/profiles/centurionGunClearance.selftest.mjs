@@ -1,9 +1,10 @@
 // Release 262 (the rebuilt Centurion family, profiles/centurionFamily.ts; the lane brief: "the gun stays inside its
 // mantlet over the source elevation range ... the barrel never passes through the hull or stowage"): the Centurion Mk 3,
 // Mk 5/2, Mk 13, Strv 81B and Sho't Kal guns, and the owner's second batch (the Strv 105, the Olifant Mk 2 and the Mk 5
-// AVRE's 165 mm), over their own hulls, from -10 to +20 degrees (the handbook's limits, W).
-//   - in its mantlet: the cast mantlet and its canvas cover pitch with the gun round its root, and ahead of the cover's
-//     face the tube keeps 25 mm from every drawn turret part that does not pitch with it (the casting, bins, cupola,
+// AVRE's 165 mm) and the Australian Mk 5/1, over their own hulls, from -10 to +20 degrees (the handbook's limits, W).
+//   - in its mantlet: the cast mantlet, its boss and its canvas pitch with the gun round its root, and ahead of the
+//     mantlet's face (the foremost of its cast block, boss and canvas cover or bellows) the tube keeps 25 mm from every
+//     drawn turret part that does not pitch with it (the casting, bins, cupola,
 //     sight, roof gun, dischargers, the Mk 13's searchlight, the reactive packages, the Olifant's box) at every 5 degrees from -10 to +20; negative control: a rod across its path fails;
 //   - over its hull (gunHullClearance.test-support.mjs, the national lanes' measure): the barrel keeps 25 mm from every
 //     hull mesh at every degree of turret yaw at its published stop (CENTURION_GUN_PITCH_BY_YAW, measured with
@@ -18,7 +19,7 @@ import { getSpec } from '../specs.ts';
 import { gunHullProbe, gunHullSweep } from '../gunHullClearance.test-support.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = 0.020, BARREL_KEEP = 0.025, DEG = Math.PI / 180;
-const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre'];
+const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus'];
 
 /** Closest distance from p to triangle (a, b, c) (Ericson). */
 function triDistance(p, a, b, c, ab, ac, ap, q) {
@@ -53,16 +54,17 @@ function barrelOverTurret(id, extra = null) {
     const fixed = [], tube = [];
     turret.traverse((o) => { if (drawn(o)) (under(o, gun) ? (under(o, recoil) ? tube : null) : fixed)?.push(o); });
     tank.root.updateMatrixWorld(true);
-    // the cover's face on the bore axis
+    // the mantlet's face: the foremost point of its cast block, boss and canvas (the gunMount and gunMountCloth buckets;
+    // the coaxial gun's barrel and fittings in gunMountDark stand ahead of it and are not its face)
     let faceZ = 0;
     const v = new THREE.Vector3();
     gun.traverse((o) => {
-      if (o.isMesh && o.name === 'gunMountCloth') {
+      if (o.isMesh && (o.name === 'gunMount' || o.name === 'gunMountCloth')) {
         const p = o.geometry.getAttribute('position');
         for (let i = 0; i < p.count; i++) faceZ = Math.max(faceZ, v.fromBufferAttribute(p, i).z);
       }
     });
-    assert.ok(faceZ > 0.5, `${id}: the canvas cover stands ahead of the trunnion (${faceZ.toFixed(3)} m)`);
+    assert.ok(faceZ > 0.5, `${id}: the mantlet's face stands ahead of the trunnion (${faceZ.toFixed(3)} m)`);
     // tube samples in the gun frame, every 3 cm along each triangle's edges ahead of the face (a cylinder's vertices lie
     // only at its ends; its facets are 2 cm wide)
     const inv = new THREE.Matrix4().copy(gun.matrixWorld).invert(), local = [];

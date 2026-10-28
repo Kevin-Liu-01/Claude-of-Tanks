@@ -3726,6 +3726,8 @@ export const UK_PROFILES = {
   // release 262: the South African Olifant Mk 2 and the Royal Engineers' Mk 5 AVRE on the rebuilt family
   olifant_mk2: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'olifant_mk2')) },
   centurion5_avre: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'avre')) },
+  // the Australian Mk 5/1 of Vietnam (2026-10-28)
+  centurion5_1_aus: { build: steppedBuilder((P: TankBuilderPort) => centurionUkSteps(P, 'mk5_1_aus')) },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in
   // fv510Build; the recovered oracle is certified -10.9% short (curve rows

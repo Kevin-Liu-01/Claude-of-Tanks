@@ -35,7 +35,7 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
       id: 'cv90_mk4', tier: 7, line: 'cv90', lane: 3, parents: ['cv9040c'], slot: 'line',
       builds: ['cv90_mk4_concept'],
     }),
-    // Special (release 262: the Strv 105 prototype)
-    node({ id: 'strv105', tier: 4, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // Special (release 262: the Strv 105 prototype; III by its same-tier duels: 0.28 there, 0.03 at IV)
+    node({ id: 'strv105', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

@@ -6,8 +6,8 @@ Owner, 2026-10-27: "add the strv 105 (special turret, era, machine gun, gun)" (w
 cassettes on the glacis and the turret's front corners, a round sight window beside the gun, the cupola gun, the L7 with
 its thermal sleeve). Built as the `strv105` mark of `src/vehicles/profiles/centurionFamily.ts` on the rebuilt family's
 hull and turret (the shared gap table is in `centurion3.md`); spec `src/vehicles/strv105Specs.ts`, a clone of the Mk 5/2
-sharing its balanced package (fleetBalancePass, ledger entry `strv105`). Sweden tree: the special lane at IV (a single
-prototype). Implementation: DONE.
+sharing its balanced package (fleetBalancePass, ledger entry `strv105`). Sweden tree: the special lane at III (a single
+prototype; its same-tier duels: 0.28 at III, 0.03 at IV). Implementation: DONE.
 
 ### Sources
 

@@ -120,8 +120,8 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21), the Sho't Kal's 1973 Sinai grey with that tank and the Olifant Mk 2's SANDF
- * coat with that tank (release 262). */
-const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_shot_kal', 'paint_olifant_mk2'] as const);
+ * coat and the Australian Mk 5/1's olive drab with those tanks (release 262). */
+const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_shot_kal', 'paint_olifant_mk2', 'paint_centurion5_1_aus'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
@@ -800,6 +800,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   shot_kal: 'paint_shot_kal',
   // the Olifant Mk 2 wears the South African Army's sand, green and brown (olifantMk2Specs.ts)
   olifant_mk2: 'paint_olifant_mk2',
+  // the Australian Mk 5/1 wears the RAAC's plain olive drab of Vietnam (centurionAusSpecs.ts)
+  centurion5_1_aus: 'paint_centurion5_1_aus',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

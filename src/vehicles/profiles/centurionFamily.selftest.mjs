@@ -12,7 +12,8 @@
 //     .50 and the loader's .30; the Mk 13 (262's other new mark): the L7A2's thermal sleeve and one cupola gun;
 //   - the owner's second batch: the Strv 105 and the Olifant Mk 2 the sleeved L7 (the Olifant 3.40-3.45 m over its
 //     armoured skirts, its box turret's roof in the family's band), the Mk 5 AVRE 8.00 m over its dozer blade and its
-//     165 mm demolition gun's fat evacuator drum and ringed muzzle collar, short of the L7.
+//     165 mm demolition gun's fat evacuator drum and ringed muzzle collar, short of the L7; the Australian Mk 5/1 the
+//     Strv 81's 20-pdr Type B, its skirts off (3.28 m over the guards) and its rear fuel tank and telephone (8.02 m).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -48,10 +49,10 @@ function gunRadii(gun, len) {
 }
 
 const report = {};
-const LENGTH = { centurion5_avre: 8.00, olifant_mk2: 7.68 };
+const LENGTH = { centurion5_avre: 8.00, olifant_mk2: 7.68, centurion5_1_aus: 8.02 };
 const WIDTH = { olifant_mk2: [3.40, 3.45] };
 const SLEEVED = new Set(['centurion13', 'strv105', 'olifant_mk2']);
-for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre']) {
+for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
     const root = tank.root, turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');
@@ -91,7 +92,7 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion
     if (id === 'centurion3') {
       assert.ok(bulge(0.3, 0.85) < tube * 1.3, `${id}: the 20-pdr Type A carries no fume extractor`);
       assert.ok(bulge(0.9, 1.0) > tube * 1.25, `${id}: the Type A's muzzle counterweight`);
-    } else if (id === 'strv81') {
+    } else if (id === 'strv81' || id === 'centurion5_1_aus') {
       assert.ok(bulge(0.42, 0.52) > tube * 1.5 && bulge(0.6, 0.85) < tube * 1.3, `${id}: the Type B's fume extractor 42-52 % along`);
     } else if (id === 'centurion5_avre') {
       // the 165 mm: a chase between the evacuator drum and the collar, the drum 47-73 % along, the ringed collar
@@ -128,4 +129,5 @@ assert.equal(report.centurion13.gun, report.centurion5_2.gun, 'the Mk 13 keeps t
 assert.equal(report.strv105.gun, report.centurion5_2.gun, 'the Strv 105 keeps the L7');
 assert.equal(report.olifant_mk2.gun, report.centurion5_2.gun, 'the Olifant keeps the L7-pattern GT-3B');
 assert.ok(report.centurion5_avre.gun < report.centurion5_2.gun - 2, 'the demolition gun stands far shorter');
-console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, eight distinct marks PASS`);
+assert.equal(report.centurion5_1_aus.gun, report.strv81.gun, 'the Australian Mk 5/1 keeps the 20-pdr Type B');
+console.log(`centurionFamily.selftest: ${JSON.stringify(report)}; published proportions, nine distinct marks PASS`);

@@ -58,6 +58,7 @@ import './centurion13Specs.ts';
 import './strv105Specs.ts';
 import './olifantMk2Specs.ts';
 import './centurionAvreSpecs.ts';
+import './centurionAusSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';

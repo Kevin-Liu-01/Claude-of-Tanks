@@ -8,8 +8,8 @@ import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { auditFleetBalance } from './balanceAudit.ts';
 
 assert.deepEqual(Object.keys(VEHICLE_ROLE_PROFILES).sort(), [...ALL_TANK_IDS].sort(), 'every vehicle has an explicit role profile');
-// release 262: 221 + the Sho't Kal, the Centurion Mk 13, the Strv 105, the Olifant Mk 2 and the Mk 5 AVRE
-assert.equal(ALL_TANK_IDS.length, 226);
+// release 262: 221 + the Sho't Kal, the Centurion Mk 13, the Strv 105, the Olifant Mk 2, the Mk 5 AVRE and the Australian Mk 5/1
+assert.equal(ALL_TANK_IDS.length, 227);
 const ranges = ALL_TANK_IDS.map(id => viewRangeOf(TANK_SPECS[id]));
 assert.equal(viewRangeOf(TANK_SPECS.m551a1_tts), Math.max(...ranges));
 assert.equal(viewRangeOf(TANK_SPECS.m551_sheridan), 480);

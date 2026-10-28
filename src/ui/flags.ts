@@ -2,6 +2,7 @@
 // assets keeps Vite's output limited to the nations the roster actually uses
 // instead of shipping the package's complete flag catalog and global CSS.
 
+import au from 'flag-icons/flags/4x3/au.svg?url';
 import ca from 'flag-icons/flags/4x3/ca.svg?url';
 import cn from 'flag-icons/flags/4x3/cn.svg?url';
 import de from 'flag-icons/flags/4x3/de.svg?url';
@@ -21,7 +22,7 @@ import za from 'flag-icons/flags/4x3/za.svg?url';
 import { flagIconCode } from './flagCodes.ts';
 
 const FLAG_URL: Readonly<Record<string, string>> = Object.freeze({
-  ca, cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx, za,
+  au, ca, cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx, za,
 });
 
 /** Bundled official flag URL for CSS backgrounds and image elements. */

@@ -23,6 +23,7 @@ export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object
   Ukraine: 'ua',
   Canada: 'ca',
   'South Africa': 'za',
+  Australia: 'au',
   Community: 'xx',
 });
 

@@ -10,8 +10,8 @@ const node = (row: TreeNode): TreeNode => Object.freeze({
 
 export const UK_TREE: NationTree = Object.freeze({
   id: 'uk',
-  // release 262: the South African Olifant Mk 2 is drawn with the Centurions it came from
-  nations: Object.freeze(['UK', 'South Africa']),
+  // release 262: the South African Olifant Mk 2 and the Australian Mk 5/1 are drawn with the Centurions they came from
+  nations: Object.freeze(['UK', 'South Africa', 'Australia']),
   flagNation: 'UK',
   name: 'United Kingdom',
   lines: Object.freeze([
@@ -55,8 +55,11 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    // release 262: the Royal Engineers' Mk 5 AVRE and the South African Olifant Mk 2 on the rebuilt Centurion family
-    node({ id: 'centurion5_avre', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
-    node({ id: 'olifant_mk2', tier: 5, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 262: the Royal Engineers' Mk 5 AVRE and the South African Olifant Mk 2 on the rebuilt Centurion family, at the
+    // tiers their same-tier duels hold (the AVRE 0.28 at II, 0.07 at III; the Olifant 0.60 at III, 0.08 at IV)
+    node({ id: 'centurion5_avre', tier: 2, line: 'special', lane: 1, parents: [], slot: 'special' }),
+    node({ id: 'olifant_mk2', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // the Australian Mk 5/1 (2026-10-28)
+    node({ id: 'centurion5_1_aus', tier: 2, line: 'special', lane: 2, parents: [], slot: 'special' }),
   ]),
 });

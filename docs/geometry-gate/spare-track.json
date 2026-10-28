@@ -627,6 +627,12 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "centurion5_1_aus": {
+   "inputHash": "e11614c563911569",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "centurion5_2": {
    "inputHash": "b1e322d565d567e2",
    "runs": [
@@ -2456,7 +2462,7 @@
    "hostSweep": []
   },
   "olifant_mk2": {
-   "inputHash": "2c3421a26f107362",
+   "inputHash": "2ec5fe2e102c4995",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

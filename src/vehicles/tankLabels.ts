@@ -293,6 +293,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   shot_kal: { displayName: "Sho't Kal", searchAliases: ['Shot Kal', "Sho't", 'Shot', "Centurion Sho't", 'IDF Centurion'] },
   strv105: { displayName: 'Strv 105', searchAliases: ['Stridsvagn 105', 'Strv 104', 'Swedish Centurion'] },
   olifant_mk2: { displayName: 'Olifant Mk 2', searchAliases: ['Olifant', 'Olifant Mk2', 'Olifant Mk.2', 'South African Centurion', 'SANDF'] },
+  centurion5_1_aus: { displayName: 'Centurion Mk 5/1 (Aust)', searchAliases: ['Centurion Mk 5/1', 'Centurion Mk 5/1 RAAC', 'Australian Centurion', 'RAAC Centurion', 'Centurion Vietnam'] },
   centurion5_avre: { displayName: 'Centurion Mk 5 AVRE', searchAliases: ['Centurion AVRE', 'AVRE 165', 'FV4003', 'Centurion dozer'] },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
   c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },

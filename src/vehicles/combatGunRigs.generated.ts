@@ -30,6 +30,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "c2_ariete": {"turretPivot":[0,1.609272679,0.404131586],"gunPivot":[0,0.4254,1.2487],"lengthM":5.541,"radiusM":0.1237},
   "centurion13": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.74},
   "centurion3": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.95,"radiusM":0.0743},
+  "centurion5_1_aus": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.97},
   "centurion5_2": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":4.74,"radiusM":0.0804},
   "centurion5_avre": {"turretPivot":[0,1.7,0.47],"gunPivot":[0,0.375,0.63],"lengthM":2.15,"radiusM":0.148},
   "challenger1_mk2": {"turretPivot":[0,1.62,0.362],"gunPivot":[-0.0078,0.1828,1.958],"lengthM":5.09},

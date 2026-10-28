@@ -6,8 +6,8 @@ Owner, 2026-10-27: "add ... olifant mk2 (special turret with remote control mach
 render: the slab-sided turret, the box sight on its post, the bolted skirts). Built as the `olifant_mk2` mark of
 `src/vehicles/profiles/centurionFamily.ts`: the family hull with the Olifant's own skirts, fenders, torsion-bar running
 gear, turret, roof and mantlet; spec `src/vehicles/olifantMk2Specs.ts` (a clone of the Mk 5/2 with its own package,
-ledger entry `olifant_mk2`). The spec keeps the Centurion's British design nation in the UK tree's special lane at V (as
-the Leopard 2A4M CAN keeps its German one); a South African country is an owner decision. Implementation: DONE.
+ledger entry `olifant_mk2`). It flies South Africa's flag (owner 2026-10-28) and is drawn in the UK tree's special lane
+at III beside the Centurions it came from (its same-tier duels: 0.60 at III, 0.08 at IV). Implementation: DONE.
 
 ### Sources
 
