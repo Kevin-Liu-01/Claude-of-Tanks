@@ -153,7 +153,10 @@ function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barre
     if (owner === 'gun' && g.z > template.barrelFrom && r2 < template.barrelRadius * template.barrelRadius) return VOTE_BARE;
     if (owner === 'turret' && g.z > template.barrelFrom - 0.1 && r2 < (template.barrelRadius + 0.1) ** 2) return VOTE_LIVE;
   }
-  // a turret or gun part outside the envelope is judged in the hull's frame, which the yaw moves: live
+  // what rides the gun is the turret's armour wherever the gun stands (a mantlet ahead of the turret's envelope: the
+  // per-point paint judges it in the hull's frame, above the hull's cells, and leaves it bare: the critics' first defect)
+  if (owner === 'gun' && zones.length > hullN) turret = true;
+  // a turret part outside the envelope is judged in the hull's frame, which the yaw moves: live
   if (turret !== (owner !== 'hull')) return VOTE_LIVE;
   const p = turret ? t : _p.copy(world).applyMatrix4(pose.hullInv);
   const n = _n.copy(normalWorld).transformDirection(turret ? pose.turretInv : pose.hullInv);

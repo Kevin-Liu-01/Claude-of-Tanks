@@ -133,6 +133,9 @@ function hullScene() {
   // a mantlet's front on the gun, centred on the bore just past the barrel's start: the barrel covers a third of it
   const mantlet = new THREE.Mesh(box(0.6, 0.4, 0.02, 0, 0, 0.86), paint);
   gun.add(mantlet);
+  // and a gun shield standing ahead of the turret's envelope: the turret's armour all the same
+  const shield = new THREE.Mesh(box(0.5, 0.3, 0.02, 0, 0, 1.2), paint);
+  gun.add(shield);
   root.updateMatrixWorld(true);
   bakePaintPanels(root, template(turretZones, [[-0.85, -0.05, -0.85], [0.85, 0.85, 1.6]]), { hull, turret, gun }, {});
   assert.ok([...under.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a hull part under the turret\'s sweep is live');
@@ -140,6 +143,7 @@ function hullScene() {
   assert.ok([...cheek.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a turret part by the barrel is live');
   assert.deepEqual(faceValues(face.geometry, [0, 0, 1]), [hullZones.length + 1], 'a turret face clear of the barrel takes the turret\'s front');
   assert.deepEqual(faceValues(mantlet.geometry, [0, 0, 1]), [hullZones.length + 1], 'a mantlet\'s front on the bore takes its zone, not bare');
+  assert.deepEqual(faceValues(shield.geometry, [0, 0, 1]), [hullZones.length + 1], 'a gun shield ahead of the envelope takes the turret\'s zone');
 }
 
 // ---- the hook: a draw without panels reads 0; the vertex reads the attribute, the fragment the panel
