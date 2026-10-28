@@ -2999,7 +2999,7 @@
   "docs.fleet.searchLabel": "Search the fleet",
   "docs.fleet.total": "{total} tanks",
   "docs.fleet.count": "{shown} of {total} tanks",
-  "docs.fleet.empty": "No tank matches these filters.",
+  "docs.fleet.empty": "No tank matches.",
   "docs.tanks.gallery": "Open any of them in the Tank Gallery",
   "docs.tanks.roles": "Battle roles",
   "docs.tanks.rolesLede": "A role is how the tank plays: the bots drive it that way, and the Garage filters by it.",

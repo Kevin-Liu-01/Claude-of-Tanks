@@ -272,7 +272,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
      each end fades, at least 24 px, only while the strip scrolls on past it, the start's fade ending where the leading
      item's label begins, so no cut label shows at the edge */
   .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--docs-gutter) 10px calc(var(--docs-gutter) - var(--s3));scroll-padding-inline:var(--docs-gutter) var(--dm-fade);box-shadow:var(--docs-side-edge);
-    --dm-fade:max(var(--s5),var(--docs-gutter));--dm-fade-clear:0px;--dm-fade-start:0px;--dm-fade-end:var(--dm-fade);
+    --dm-fade:max(var(--s5),var(--docs-gutter));--dm-fade-clear:0px;--dm-fade-start:0px;--dm-fade-end:max(var(--s7),var(--dm-fade));
     mask-image:linear-gradient(90deg,transparent var(--dm-fade-clear),var(--ink-1) calc(var(--dm-fade-clear) + var(--dm-fade-start)),var(--ink-1) calc(100% - var(--dm-fade-end)),transparent)}
   .dm-side[data-scrolled]{--dm-fade-start:var(--dm-fade);--dm-fade-clear:max(0px,calc(var(--docs-gutter) + var(--s3) - var(--dm-fade)))}
   .dm-side[data-at-end]{--dm-fade-end:0px}

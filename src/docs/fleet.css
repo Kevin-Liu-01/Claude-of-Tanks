@@ -46,14 +46,19 @@
 @container fleet (width >= 900px){
   /* the count reads as the search's result, beside its field */
   .dm-fleet__bar{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"search search count views views" "nation tier era class role"}
-  .dm-fleet__count{padding-inline-start:var(--s1)}
   .dm-fleet__views{justify-self:end}
   .dm-fleet__views .cot-c-seg__opt{flex:none}
 }
-/* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate */
+/* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate, its
+   foot a hairline as the site bar's is, so a row passing under it meets an edge */
 @media (width >= 768px) and (height >= 700px){
-  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);background:var(--surface-page)}
+  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);background:var(--surface-page);
+    box-shadow:0 1px 0 var(--line-2)}
 }
+/* the segmented track stands as tall as the search and the triggers (36 px; 44 on touch, below) */
+.dm-fleet__views .cot-c-seg__opt{height:30px}
+/* a glyph and a flag share one 24 px slot, so a menu's rows and a trigger's label keep one edge whichever leads them */
+:is(.dm-fleet__menu .cot-c-menu__glyph,.cot-c-menu__pop:has(>.cot-c-menu__picker[data-picker='docs-fleet-filter']) .cot-c-picker__glyph){width:24px;justify-content:center}
 @media (pointer:coarse){
   .dm-fleet__search{height:var(--cot-control-floor,44px)}
   .dm-fleet__views .cot-c-seg__opt{height:38px}

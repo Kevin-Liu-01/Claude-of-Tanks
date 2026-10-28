@@ -2986,7 +2986,7 @@
   "docs.fleet.searchLabel": "搜索车队",
   "docs.fleet.total": "{total} 辆战车",
   "docs.fleet.count": "{shown} / {total} 辆战车",
-  "docs.fleet.empty": "没有符合筛选条件的战车。",
+  "docs.fleet.empty": "没有符合的战车。",
   "docs.tanks.gallery": "在坦克画廊中查看任意一辆",
   "docs.tanks.roles": "战斗角色",
   "docs.tanks.rolesLede": "角色决定坦克的打法：机器人按此方式驾驶，车库也可按角色筛选。",
