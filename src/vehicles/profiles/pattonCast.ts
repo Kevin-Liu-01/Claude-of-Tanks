@@ -476,7 +476,8 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
     P.add('hull', cylY(0.30, 0.31, 0.03, P.q ? 20 : 12), hx, H.deckY + 0.012, hz);
     P.add('hullDetail', cylY(0.26, 0.27, 0.02, P.q ? 20 : 12), hx, H.deckY + 0.035, hz);
     P.add('hullDark', box(0.06, 0.025, 0.12), hx + side * 0.24, H.deckY + 0.035, hz - 0.12);
-    KIT.periscope(P, 'hullDetail', hx, H.deckY + 0.055, hz + 0.20);
+    // the periscope in the lid's rear half, clear of the gun shield's sweep at full depression
+    KIT.periscope(P, 'hullDetail', hx, H.deckY + 0.055, hz - 0.06);
   }
   for (const side of [-1, 1]) {
     const lights = FITTINGS.lightCluster({ mats: P.mats, pods: H.mark === 'm47' ? 2 : 1, spacing: 0.14, r: 0.062,
@@ -885,8 +886,9 @@ function* m46TurretSteps(P: CastPort): TankProfileBuild {
   // gun: the rotor shield on the trunnion (coax and sight ports), the cast front plate's cheeks around it
   const G = M46_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
-  // (its foot at 1.835 keeps the corners clear of the hatch lids at -10 and of the raised engine deck as it traverses)
-  P.addGunExtra(rotorShield(0.54, 0.10, 1.32, -0.45, 0.42, P.q), 0, 0, 0);
+  // (its bevelled foot at 1.83 keeps the corners clear of the hatch lids at -10 and of the engine deck's grilles as it
+  // traverses)
+  P.addGunExtra(rotorShield(0.54, 0.10, 1.32, -0.36, 0.42, P.q), 0, 0, 0);
   // the trunnion bar's bosses standing out of the shield's sides
   P.addGunExtra(cylX(0.11, 1.48, P.q ? 18 : 10), 0, -0.02, 0.48);
   P.addGunExtraDark(box(0.07, 0.07, 0.04), 0.30, 0.04, 0.555);
@@ -1003,8 +1005,9 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
   const G = M47_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
   // the narrow curved gun shield in the nose, its coax and sight ports
-  // the rounded gun shield standing proud of the casting's nose (the casting ends at z 0.84, the shield's face at 1.10)
-  P.addGunExtra(rotorShield(0.55, 0.10, 0.70, -0.55, 0.60, P.q), 0, 0, 0);
+  // the rounded gun shield standing proud of the casting's nose (the casting ends at z 0.84, the shield's face at 1.10),
+  // its bevelled foot at 1.81 clear of the hatch fittings at -10 and of the engine deck's grilles as it traverses
+  P.addGunExtra(rotorShield(0.55, 0.10, 0.70, -0.40, 0.60, P.q), 0, 0, 0);
   P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.26, 0.02, 0.48);
   P.addGunExtraDark(box(0.07, 0.07, 0.04), -0.27, 0.08, 0.47);
   P.addGunExtra(cylZ(0.15, 0.14, P.q ? 18 : 10), 0, 0, 0.58);
@@ -1303,7 +1306,7 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
   P.add('hullDetail', cylY(0.30, 0.31, 0.15, P.q ? 28 : 14), 1.33, 1.62, 2.01);
   P.add('hullDark', cylY(0.20, 0.20, 0.02, P.q ? 24 : 12), 1.33, 1.70, 2.01);
   P.add('hullDetail', box(0.61, 0.065, 0.06), -1.58, 1.58, 1.725);
-  // the tow cable laid along the right fender boxes
+  // the tow cable laid along the left fender boxes
   bar(P, 'hullDark', [1.66, 1.685, -2.94], [1.66, 1.685, 2.01], 0.045);
   P.add('hullDetail', box(0.78, 0.17, 0.02), -1.41, 1.57, 1.655);
   yield 'm48HullBins';
@@ -1509,7 +1512,7 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
       for (const y of [1.78, 2.0]) P.add('turretDetail', box(0.20, 0.16, 0.05), side * (seat.sideAt(y, z) + 0.09), L.y(y), L.z(z));
     }
   }
-  // two rucksacks a side over the racks, standing out to the model's 1.50 m (right) and 1.60 m (left)
+  // two rucksacks a side over the racks, standing out to the model's 1.50 m (left) and 1.60 m (right)
   KIT.stowage(P, 'turretCloth', mulberry(489), [
     [seat.sideAt(1.96, 0.30) + 0.183, L.y(1.96), L.z(0.30), 0.32, 0.28, 0.46],
     [seat.sideAt(1.95, -0.10) + 0.19, L.y(1.95), L.z(-0.10), 0.28, 0.28, 0.34],

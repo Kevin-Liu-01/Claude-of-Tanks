@@ -74,10 +74,10 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
   bows its tip 2 cm, so the bases sit 1-1.5 cm inboard); the M60Ds at the true 1.10 m (scale 1.15), centred on the
   model's z -0.22..1.11 span, level, tops 3.22 and 3.08, with spade grips; the ammunition boxes are their own (the
   fitting's can is off); suspension-arm housings under the hull's edge 0.40 m ahead of each road wheel (x 0.88-1.10, y
-  0.36-0.55); the tow cable along the right fender boxes; the short bar on the left front fender (x -1.89..-1.28); lift
-  eyes on pads at the roof's front (top 2.64) and right rear (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);
-  rucksacks out to 1.50 (right) and 1.60 (left); the bustle rack floor at 1.99, load 2.03-2.43; the jerrycan leant
-  against the dome's right rear; the rear-plate box (x -0.42..0.20, to z -3.25); the driver's hatch at z 2.25 and three
+  0.36-0.55); the tow cable along the left fender boxes; the short bar on the right front fender (x -1.89..-1.28); lift
+  eyes on pads at the roof's front (top 2.64) and rear, just left of the centre line (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);
+  rucksacks out to 1.50 (left) and 1.60 (right); the bustle rack floor at 1.99, load 2.03-2.43; the jerrycan leant
+  against the dome's left rear; the rear-plate box (x -0.42..0.20, to z -3.25); the driver's hatch at z 2.25 and three
   periscopes at 2.455; no lamp hoops (the guard bar is the model's top at 1.51).
 
 ## Construction work order (landmark sheet)
