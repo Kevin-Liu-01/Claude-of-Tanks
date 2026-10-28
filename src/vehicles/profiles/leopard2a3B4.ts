@@ -39,7 +39,7 @@ function turretShell(P: TankBuilderPort): void {
     s(-1.29, T.halfWidthM, 0.12, 0.78, T.roofY + 0.005),
     s(-0.87, T.halfWidthM, T.floorY, 0.78, T.roofY),
     s(-0.40, T.halfWidthM, T.floorY, 0.77, T.roofY),
-    s(T.cornerZ, T.halfWidthM, T.floorY, 0.66, 0.70),
+    s(T.cornerZ, T.halfWidthM, T.floorY, 0.74, 0.78),
   ], { sideQuadDiagonal: 'convex' }));
 }
 
@@ -48,53 +48,58 @@ function cheeks(P: TankBuilderPort): void {
   const { box } = KIT;
   const inner = T.slotHalfWidthM, z0 = T.cornerZ, z1 = T.frontZ, hw = T.halfWidthM;
   const right: SolidSection[] = [
-    { z: z0 - 0.02, ring: [[-hw, T.floorY], [-inner, T.floorY], [-inner, 0.70], [-hw, 0.70]] },
+    { z: z0 - 0.02, ring: [[-hw, T.floorY], [-inner, T.floorY], [-inner, 0.78], [-hw, 0.78]] },
     { z: z1, ring: [[-T.frontHalfWidthM, T.floorY + 0.02], [-inner, T.floorY + 0.02], [-inner, T.roofFrontY], [-T.frontHalfWidthM, T.roofFrontY]] },
   ];
   P.add('turret', sectionSolid(right));
   P.add('turret', sectionSolid(right.map((st) => ({ z: st.z, ring: mirrorRing(st.ring) }))));
   for (const sx of [-1, 1]) {
-    // the welded joint between the front plate and the cheek's side, and the lifting lugs on the brow
-    P.add('turretDark', box(0.012, 0.60, 0.012), sx * (inner + 0.012), 0.33, z1 + 0.002);
-    P.add('turretDetail', box(0.08, 0.05, 0.06), sx * 0.80, T.roofFrontY + 0.02, z1 - 0.10);
+    // the welded joint between the front plate and the cheek's side, and the lifting lug on the left brow
+    P.add('turretDark', box(0.012, 0.70, 0.012), sx * (inner + 0.012), 0.38, z1 + 0.002);
+    if (sx > 0) P.add('turretDetail', box(0.08, 0.05, 0.06), sx * 0.80, T.roofFrontY + 0.02, z1 - 0.10);  // (the EMES hood right)
   }
 }
 
-/** The mantlet in the slot, the coaxial MG3's port on its left, the 120 mm L/44 with its thermal sleeves. */
+/**
+ * The broad mantlet filling the slot and standing 0.2 m proud of the cheeks, the coaxial MG3's port on the gun's left and
+ * the FERO Z18 auxiliary sight's on its right, the 120 mm L/44 with its thermal sleeves.
+ */
 function gunAssembly(P: TankBuilderPort): void {
-  const { cylZ } = KIT;
+  const { box, cylZ } = KIT;
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
   P.addGunExtra(sectionSolid([
-    { z: -0.10, ring: [[-0.33, -0.25], [0.33, -0.25], [0.33, 0.22], [-0.33, 0.22]] },
-    { z: 0.33, ring: [[-0.33, -0.25], [0.33, -0.25], [0.33, 0.22], [-0.33, 0.22]] },
-    { z: 0.41, ring: [[-0.30, -0.22], [0.30, -0.22], [0.30, 0.18], [-0.30, 0.18]] },
+    { z: -0.10, ring: [[-0.44, -0.27], [0.44, -0.27], [0.44, 0.30], [-0.44, 0.30]] },
+    { z: 0.40, ring: [[-0.44, -0.27], [0.44, -0.27], [0.44, 0.30], [-0.44, 0.30]] },
+    { z: 0.48, ring: [[-0.40, -0.24], [0.40, -0.24], [0.40, 0.26], [-0.40, 0.26]] },
   ]), 0, 0, 0);
-  P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, 0.46);
-  P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.22, 0.06, 0.43);                    // coaxial MG3 port
+  P.addGunExtra(cylZ(0.15, 0.10, P.q ? 20 : 12), 0, 0, 0.53);
+  P.addGunExtraDark(cylZ(0.026, 0.06, 8), 0.28, 0.06, 0.50);                    // coaxial MG3 port
+  P.addGunExtraDark(box(0.12, 0.10, 0.014), -0.27, 0.08, 0.487);                // FERO Z18 auxiliary sight port
   KIT.buildGun(P, { len: T.barrelLengthM, r: T.barrelRadiusM, sleeve: true, evac: 0.56, evacR: 1.78, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: T.barrelLengthM, r: T.barrelRadiusM });
 }
 
-/** The EMES 15 sight bay in the right cheek's roof: an armoured housing, its window and the door frames. */
+/**
+ * The EMES 15 sight set into the right cheek: its window in the cheek's front face 8 cm under the roof edge, the armoured
+ * hood over the bay standing 10 cm on the roof, the doors' hinge bar over the window.
+ */
 function emes15(P: TankBuilderPort): void {
   const { box } = KIT;
-  const x = -0.72, z = 0.86;
-  P.add('turret', box(0.44, 0.26, 0.60), x, 0.79, z);
-  P.add('turretDetail', box(0.48, 0.03, 0.64), x, 0.935, z);
-  P.add('turretGlass', box(0.30, 0.11, 0.016), x, 0.80, z + 0.302);
-  for (const dx of [-0.17, 0.17]) P.add('turretDark', box(0.012, 0.20, 0.014), x + dx, 0.79, z + 0.303);
-  P.add('turretDark', box(0.40, 0.012, 0.014), x, 0.885, z + 0.303);
+  const x = -0.74, wy = T.roofFrontY - 0.08 - 0.125;
+  P.add('turretDark', box(0.39, 0.29, 0.012), x, wy, T.frontZ + 0.002);
+  P.add('turretGlass', box(0.35, 0.25, 0.016), x, wy, T.frontZ + 0.006);
+  P.add('turret', box(0.46, 0.10, 0.66), x, T.roofFrontY + 0.05, T.frontZ - 0.33);
+  P.add('turretDetail', box(0.42, 0.03, 0.03), x, T.roofFrontY - 0.035, T.frontZ + 0.02);
 }
 
 /** The commander's PERI R17 and hatch with its periscope ring (right), the loader's hatch and MG3 (left). */
 function roofFittings(P: TankBuilderPort): void {
   const { box, cylY } = KIT;
-  // PERI R17: a drum on a raised base, its head's window forward
-  P.add('turret', cylY(0.15, 0.17, 0.12, P.q ? 20 : 12), -0.98, T.roofY + 0.06, 0.18);
-  P.add('turretDetail', cylY(0.11, 0.12, 0.12, P.q ? 18 : 12), -0.98, T.roofY + 0.18, 0.18);
-  P.add('turretDetail', box(0.24, 0.18, 0.22), -0.98, T.roofY + 0.33, 0.18);
-  P.add('turretGlass', box(0.16, 0.08, 0.016), -0.98, T.roofY + 0.34, 0.298);
-  P.add('turretDetail', box(0.28, 0.03, 0.26), -0.98, T.roofY + 0.435, 0.18);
+  // PERI R17: a straight drum 0.3 m across, its head and window forward, 0.28 m over the roof
+  P.add('turret', cylY(0.15, 0.15, 0.10, P.q ? 20 : 12), -0.80, T.roofY + 0.05, 0.18);
+  P.add('turretDetail', box(0.24, 0.16, 0.20), -0.80, T.roofY + 0.18, 0.18);
+  P.add('turretGlass', box(0.16, 0.07, 0.016), -0.80, T.roofY + 0.19, 0.288);
+  P.add('turretDetail', box(0.26, 0.02, 0.22), -0.80, T.roofY + 0.27, 0.18);
   // the commander's ring stands its eight periscopes 15 cm over the roof
   const cx = -0.78, cz = -0.48;
   P.add('turret', cylY(0.38, 0.40, 0.15, P.q ? 28 : 16), cx, T.roofY + 0.07, cz);
@@ -127,8 +132,8 @@ function roofFittings(P: TankBuilderPort): void {
 function flankEquipment(P: TankBuilderPort): void {
   const { box, cylY } = KIT;
   for (const sx of [-1, 1]) {
-    P.add('turretDetail', box(0.27, 0.44, 0.50), sx * (T.halfWidthM + 0.135), 0.52, -1.32);
-    P.add('turretDark', box(0.275, 0.012, 0.46), sx * (T.halfWidthM + 0.136), 0.70, -1.32);
+    P.add('turretDetail', box(0.27, 0.38, 0.60), sx * (T.halfWidthM + 0.135), 0.50, -1.30);
+    P.add('turretDark', box(0.275, 0.012, 0.56), sx * (T.halfWidthM + 0.136), 0.66, -1.30);
     for (const z of [-0.98, -0.72]) {
       const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.04, len: 0.26, splay: sx * 0.80, pitch: -0.48,
         arc: 0.5, slot: 'detail', seed: 26230 + (sx > 0 ? 1 : 0) + (z > -0.8 ? 2 : 0) });
