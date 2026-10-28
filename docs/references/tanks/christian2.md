@@ -124,4 +124,5 @@ See the round log; filled as each gate runs.
 - Depression curve published (`gunPitchByYawDeg`, sweep at 26 mm, --no-suit): -9 degrees over the sides, -6.6 to -7.5 over
   the headlight pods (yaw 17-29), rising to about level over the engine deck (yaw 144-180).
 - Fairness at VIII (the tier-fairness-259 round robin, 120 m, six seeds, 29 peers): mantlet 900/1050 and a 2.0/15.5 s cycle
-  0.642 (7/29 in band); 800/1000 and 2.1/17 s 0.47 (10/29), adopted.
+  0.642 (7/29 in band); 800/1000 and 2.1/17 s 0.47 (10/29) on the R4 build, 0.42 (9/29) on the final one; 850/1000 and
+  2.1/17 s 0.499 (9/29), adopted.

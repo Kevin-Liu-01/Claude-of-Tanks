@@ -27,8 +27,8 @@ Object.assign(spec, {
 });
 spec.gun = {
   ...spec.gun,
-  // the tier-fairness round robin at VIII (the 800 mm mantlet insert and this cycle: strength 0.47, 10 of 29 pairs in
-  // band; lane evidence fairlever.txt)
+  // the tier-fairness round robin at VIII (the 850 mm mantlet insert and this cycle: strength 0.499, 9 of 29 pairs in
+  // band; lane evidence fairlever2.txt)
   reloadS: 17, baseAccuracy: 0.27, aimTimeS: 1.6,
   autoloader: { magazineSize: 3, intraClipS: 2.1, fullReloadS: 17 },
   // DM53-class APFSDS from the L/44, a newer multi-purpose round and HE
