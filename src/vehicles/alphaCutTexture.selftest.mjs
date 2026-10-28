@@ -62,12 +62,12 @@ function cordNet() {
   }
 }
 
-// the occlusion: a gap under a thick bunch fills with the shade, bare net far from it stays open, and cloth low in the
-// height map comes out darker than cloth high in it
+// the occlusion: a gap under a thick bunch closes with the shade (whole: no gap is left half open), bare net far from it
+// stays open, and cloth low in the height map comes out darker than cloth high in it
 {
   const img = cordNet(), height = new Uint8ClampedArray(SIZE * SIZE * 4);
   for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-    const cord = x % 8 < 2 || y % 8 < 2;
+    const cord = img.data[at(x, y) + 3] === 255;
     const bunch = Math.hypot(x - 16, y - 16) < 12;
     // a bunch of strips: cloth over the cords and between them, high in the height map
     if (bunch && (x + y) % 3) img.data.set([90, 100, 60, 255], at(x, y));
@@ -76,7 +76,7 @@ function cordNet() {
   }
   const tone = [30, 34, 22];
   const filled = shadeFromHeight(img.data, height, SIZE, { cutoff: 0.5, lowShade: 0.6, occlusion: 2.4, radii: [2, 5],
-    gaps: { tone, fill: [0.3, 0.44] } });
+    gaps: { tone, fill: [0.3, 0.44], cell: 16 } });
   assert.ok(filled > 0, 'gaps under the bunch fill');
   // a clear texel inside the bunch (between its strips and off the cords)
   let under = null;
@@ -94,6 +94,15 @@ function cordNet() {
   const cord = img.data[cordAt + 1], strip = img.data[at(18, 16) + 1];
   assert.ok(cord < 70 * 0.95, `cloth low in the height map darkens (cord green ${cord})`);
   assert.ok(strip > cord, 'a strip lying on top stays lighter than the cord under it');
+  // every gap closed or open whole: no clear texel touches a texel the shade closed (the shade draws no contour of its own)
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    if (img.data[at(x, y) + 3] !== 0) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = at((x + dx + SIZE) % SIZE, (y + dy + SIZE) % SIZE);
+      const shaded = img.data[q + 3] === 255 && height[q] === 0;
+      assert.ok(!shaded, `an open gap at ${x},${y} borders a closed one`);
+    }
+  }
 }
 
 console.log('alphaCutTexture selftest passed');

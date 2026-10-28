@@ -176,12 +176,13 @@ const COVER_SPRIG_SCALE = 2.2;
 function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
   const [br, bg, bb] = GARNISH_STRIP_BASE_SRGB;
   const knotX = S * (0.46 + rng() * 0.08), knotY = S * 0.965;
-  const count = 7 + Math.floor(rng() * 5);
+  // (263; the critic: "fan-shaped green and tan needle tufts read as pine, not burlap") fewer, broader strips of cloth
+  const count = 5 + Math.floor(rng() * 4);
   const strips: Array<() => void> = [];
   for (let k = 0; k < count; k++) {
     const share = k / (count - 1) - 0.5;
     const ang = -Math.PI / 2 + share * (1.0 + rng() * 0.5) + (rng() - 0.5) * 0.3;
-    const len = S * (0.45 + rng() * 0.48), wid = S * (0.035 + rng() * 0.06);
+    const len = S * (0.45 + rng() * 0.48), wid = S * (0.065 + rng() * 0.07);
     const bend = (rng() - 0.5) * len * 0.6, twist = rng() * Math.PI, twists = 0.4 + rng() * 1.4;
     const value = 0.74 + rng() * 0.34, warm = (rng() - 0.5) * 0.14;
     const fray = rng();
@@ -246,8 +247,8 @@ function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => num
   for (const draw of strips) draw();
   // loose jute fibres frayed out of the bunch
   ctx.lineCap = 'round';
-  for (let k = 0; k < 5; k++) {
-    const ang = -Math.PI / 2 + (rng() - 0.5) * 1.6, len = S * (0.3 + rng() * 0.4);
+  for (let k = 0; k < 2; k++) {
+    const ang = -Math.PI / 2 + (rng() - 0.5) * 1.6, len = S * (0.18 + rng() * 0.22);
     ctx.strokeStyle = `rgba(${(br * 0.82) | 0},${(bg * 0.8) | 0},${(bb * 0.74) | 0},0.85)`;
     ctx.lineWidth = 1.4 + rng() * 1.2;
     ctx.beginPath(); ctx.moveTo(knotX, knotY);

@@ -3362,8 +3362,9 @@ function makeNet(
       m.map = shared.map;
       m.bumpMap = shared.bump;
       // three's bump slope is the height change per screen pixel times bumpScale: kept near the cloth's own 0.5 so the
-      // cords and strips stand in relief up close without sparkling at range
-      m.bumpScale = leafy ? 0.7 : 0.6;
+      // cords and strips stand in relief up close without sparkling at range (263: 0.7 -> 0.55 on a garnished net, whose
+      // strips now rise along their length; the critic read glitter on the drape's strips)
+      m.bumpScale = leafy ? 0.55 : 0.6;
       m.alphaTest = NET_ALPHA_CUT;
       m.transparent = false;
     }

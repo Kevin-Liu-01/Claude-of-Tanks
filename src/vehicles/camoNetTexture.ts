@@ -97,13 +97,15 @@ export const FIELD_NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Obj
 export const NET_TEXTURE_PX = 512;
 /** Metres of net per texture repeat (a leafy net): about 6 cm meshes, 3-6 cm strips. */
 export const NET_TILE_M = 1.25;
+/** Meshes of the knotted cord net a texture side (about 6 cm each at NET_TILE_M). */
+const NET_MESHES = 20;
 /** The cut every net material tests (the suits' and the decor's). */
 export const NET_ALPHA_CUT = 0.5;
 /**
  * (263) The broad height over a gap (alphaCutTexture.ts shadeFromHeight) where it begins to take the shade under the
  * garnish, and where it is fully shaded: thick bunches close over their own shadow, the bare net between stays open.
  */
-const NET_GAP_FILL: readonly [number, number] = [0.2, 0.33];
+const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
 /** The shade the net's covered gaps show: the hull under the garnish, a dark step of the cord and the deep strip. */
 const gapToneOf = (pal: NetPalette): [number, number, number] =>
   [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
@@ -136,7 +138,7 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   };
   const densityField = field(4, 3), toneField = field(3, 3);
   const density = (x: number, y: number): number => THREE.MathUtils.clamp(0.36 + 0.9 * densityField(x, y), 0, 1);
-  const N = 20, cell = S / N;
+  const N = NET_MESHES, cell = S / N;
   const px: number[] = [], py: number[] = [];
   for (let i = 0; i < N; i++) { px.push(0.75 + rng() * 0.5); py.push(0.75 + rng() * 0.5); }
   const sx = px.reduce((a, b) => a + b, 0), sy = py.reduce((a, b) => a + b, 0);
@@ -161,7 +163,9 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
     const a = knot(i, j);
     for (const [di, dj] of [[1, 0], [0, 1]] as const) {
       if (rng() < 0.04) continue;
-      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = 1.2 + rng() * 0.6, shade = 0.85 + rng() * 0.3;
+      // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) in a mid olive
+      // a step over the palette's: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips)
+      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.3;
       wrap9((ox, oy) => {
         const path = (g: CanvasRenderingContext2D): void => {
           g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
@@ -284,8 +288,9 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
         // shade there, and the map keeps straight alpha with its own coverage mips: no black rim at any cut or range
         const image = ctx.getImageData(0, 0, S, S);
         shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, {
-          cutoff: NET_ALPHA_CUT, lowShade: 0.6, occlusion: 2.4, radii: [4, 12],
-          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL },
+          cutoff: NET_ALPHA_CUT, lowShade: 0.78, occlusion: 2.4, radii: [4, 12],
+          // a gap of up to a mesh of the net (NET_MESHES a side) closes whole under thick garnish
+          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2 },
         });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true);

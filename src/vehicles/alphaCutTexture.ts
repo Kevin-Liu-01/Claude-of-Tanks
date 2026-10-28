@@ -152,42 +152,59 @@ export interface CutTextureShade {
   /** The blur radii (texels) the occlusion reads its surroundings at, near and broad. */
   readonly radii: readonly [number, number];
   /**
-   * The net's gaps under thick garnish: a clear texel whose broad surroundings stand over `fill[0]` of full height
-   * begins to take `tone` (sRGB, the hull in the garnish's shadow), fully over `fill[1]`. Absent: every gap stays open.
+   * The net's gaps under thick garnish. Each clear gap (its connected clear texels, the net repeating) closes whole or
+   * not at all: one of up to `cell` texels (a mesh of the net) closes where the broad height over it reaches `fill[0]`
+   * of full, a whole mesh by `fill[1]`, and a speck of a fifth of that anywhere. A closed gap takes `tone` (sRGB, the
+   * hull in the garnish's shadow). A gap closed whole draws no edge of its own: a contour drawn through an open mesh
+   * stepped and fringed under the cut (the 263 critic's "dark stair-step fringes"). Absent: every gap stays open.
    */
-  readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number] };
+  readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number]; readonly cell: number };
 }
 
 /**
  * Bake the occlusion of a painted cut texture from its height map (straight-alpha `d`, `height` read from the bump
  * canvas, one grey channel): cloth darkens with depth and where its surroundings stand over it, and gaps under thick
- * garnish fill with the shade beneath it. Returns the share of texels it filled.
+ * garnish close with the shade beneath it. Returns the share of texels it closed.
  */
 export function shadeFromHeight(d: Uint8ClampedArray, height: Uint8ClampedArray, size: number, shade: CutTextureShade): number {
   const n = size * size, cut = Math.round(shade.cutoff * 255);
   const h = new Float32Array(n);
   for (let p = 0; p < n; p++) h[p] = height[p * 4] / 255;
   const near = blurWrap(h, size, shade.radii[0]), broad = blurWrap(h, size, shade.radii[1]);
-  let filled = 0;
   for (let p = 0; p < n; p++) {
     const o = p * 4;
+    if (d[o + 3] < cut) continue;
     const under = Math.max(0, 0.6 * near[p] + 0.4 * broad[p] - h[p]);
-    if (d[o + 3] >= cut) {
-      const k = (shade.lowShade + (1 - shade.lowShade) * h[p]) * Math.max(0.3, 1 - shade.occlusion * under);
-      d[o] *= k; d[o + 1] *= k; d[o + 2] *= k;
-      continue;
-    }
-    if (!shade.gaps) continue;
-    const t = THREE.MathUtils.smoothstep(broad[p], shade.gaps.fill[0], shade.gaps.fill[1]);
-    if (t <= 0) continue;
-    // a little lighter toward the gap's open edge, darkest under the garnish's middle
-    const k = 1.25 - 0.45 * t;
-    d[o] = shade.gaps.tone[0] * k; d[o + 1] = shade.gaps.tone[1] * k; d[o + 2] = shade.gaps.tone[2] * k;
-    // a gap fills only where the shade is deep enough to read: its edge is the smooth field's contour at the cut
-    d[o + 3] = Math.round(255 * THREE.MathUtils.clamp(0.5 + (t - 0.5) * 2.4, 0, 1));
-    if (d[o + 3] >= cut) filled++;
+    const k = (shade.lowShade + (1 - shade.lowShade) * h[p]) * Math.max(0.3, 1 - shade.occlusion * under);
+    d[o] *= k; d[o + 1] *= k; d[o + 2] *= k;
   }
-  return filled / n;
+  const gaps = shade.gaps;
+  if (!gaps) return 0;
+  // the clear gaps, each flooded out from its first texel (4-connected, across the repeat)
+  const label = new Int32Array(n).fill(-1), queue = new Int32Array(n);
+  let closed = 0;
+  for (let start = 0; start < n; start++) {
+    if (label[start] >= 0 || d[start * 4 + 3] >= cut) continue;
+    let head = 0, tail = 0, sum = 0;
+    queue[tail++] = start;
+    label[start] = start;
+    while (head < tail) {
+      const p = queue[head++], x = p % size, y = (p - x) / size;
+      sum += broad[p];
+      const next = [y * size + (x + 1) % size, y * size + (x + size - 1) % size, ((y + 1) % size) * size + x, ((y + size - 1) % size) * size + x];
+      for (const q of next) if (label[q] < 0 && d[q * 4 + 3] < cut) { label[q] = start; queue[tail++] = q; }
+    }
+    const area = tail, mean = sum / area;
+    if (area > gaps.cell * (0.2 + 1.2 * THREE.MathUtils.smoothstep(mean, gaps.fill[0], gaps.fill[1]))) continue;
+    for (let k = 0; k < tail; k++) {
+      const p = queue[k], o = p * 4;
+      // darkest under the garnish's middle
+      const t = 1.15 - 0.35 * THREE.MathUtils.smoothstep(broad[p], gaps.fill[0], gaps.fill[1]);
+      d[o] = gaps.tone[0] * t; d[o + 1] = gaps.tone[1] * t; d[o + 2] = gaps.tone[2] * t; d[o + 3] = 255;
+    }
+    closed += tail;
+  }
+  return closed / n;
 }
 
 /** A straight-alpha texture over a finished ImageData with its coverage-preserving mips (sRGB colour). */

@@ -119,7 +119,7 @@ interface LeafHabit {
 
 const LEAF_HABITS: Readonly<Partial<Record<SprayKind, LeafHabit>>> = Object.freeze({
   beech: { shape: 'beech', len: [0.095, 0.13], aspect: 0.32, spacing: 0.048, twigs: [6, 8], angle: 0.95, veins: 7,
-    upper: [90, 48, 36], under: [84, 28, 50], underShare: 0.16, gloss: 0.5, bark: [28, 14, 34] },
+    upper: [92, 42, 34], under: [84, 26, 50], underShare: 0.16, gloss: 0.5, bark: [28, 14, 34] },
   oak: { shape: 'oak', len: [0.1, 0.14], aspect: 0.3, spacing: 0.035, twigs: [3, 5], angle: 0.7, crowdTips: true, veins: 0,
     upper: [80, 40, 25], under: [72, 24, 40], underShare: 0.12, gloss: 0.15, bark: [26, 18, 28] },
   birch: { shape: 'birch', len: [0.06, 0.085], aspect: 0.36, spacing: 0.045, twigs: [5, 7], angle: 1.0, veins: 5,
