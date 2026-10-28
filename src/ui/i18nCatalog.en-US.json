@@ -2206,6 +2206,7 @@
   "camoPattern.openai": "OpenAI",
   "camoPattern.xai": "X",
   "camoPattern.gemini": "Gemini",
+  "camoPattern.gt": "General Translation",
   "camoPattern.mono": "Mono",
   "camoPattern.carbon": "Carbon",
   "camoPattern.prism": "Prism",
