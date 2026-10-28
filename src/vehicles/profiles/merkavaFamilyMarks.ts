@@ -5,8 +5,9 @@
 // from the same fit (its deck, engine deck, nose, belly and stern courses, the sponsons' tops and undersides), since the
 // sources' hull plates are open and carry the turret ring's and hatches' openings. Sources and gap tables:
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
-import { lineAt, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
+import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { MerkavaBasket, ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
+import type { TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -23,6 +24,10 @@ export interface MerkavaMark {
   readonly pivot: readonly [y: number, z: number];
   /** The turret shell's measured solids (hull frame). */
   readonly shell: readonly ShellSolid[];
+  /** The add-on turret armour modules as measured solids, each in its side's removable package. */
+  readonly modules: readonly TurretModule[];
+  /** The belly's add-on armour plate (the 2D and Baz) as measured; null where the source carries none. */
+  readonly belly: readonly BellyStation[] | null;
   /** The gun's slot through the turret's nose (the Mk 1 to Mk 3; the Mk 4's gun rides in its pointed housing). */
   readonly slot: TurretSlot | null;
   readonly parts: readonly SourcePart[];
@@ -201,10 +206,10 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   };
 }
 
-/** The shell's solids in metres (merkavaFamilySource.ts packs each solid's stations and its sections' x, y pairs in
+/** Measured solids in metres (merkavaFamilySource.ts packs each solid's stations and its sections' x, y pairs in
  *  millimetres, every section after the first as its change from the one before). */
-function shellOf(r: SourceRecord): ShellSolid[] {
-  return r.turretShell.map((g) => {
+function solidsOf(packed: readonly { readonly z: readonly number[]; readonly r: readonly (readonly number[])[] }[]): ShellSolid[] {
+  return packed.map((g) => {
     let acc: number[] = [];
     const rings = g.r.map((flat, s) => {
       acc = s === 0 ? [...flat] : acc.map((v, i) => v + flat[i]!);
@@ -230,7 +235,9 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, ba
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
-    id, hull, gear: gearOf(r), fender: fenderOf(r), pivot, shell: shellOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
+    id, hull, gear: gearOf(r), fender: fenderOf(r), belly: r.belly?.map((st) => st.map((v) => v / 1000) as unknown as BellyStation) ?? null,
+    pivot, shell: solidsOf(r.turretShell),
+    modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
     basket, roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };

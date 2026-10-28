@@ -13,6 +13,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import type { SourcePart } from './merkavaFamilySource.ts';
+import { loftMeasuredSolid, type ShellSolid } from './merkavaFamilyTurret.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** Detail roles as the source fit names them (merkavaFamilySource.ts SourcePart role). */
@@ -69,8 +70,28 @@ function frontFace(p: SourcePart, offset: readonly [number, number, number], ins
   return KIT.xform(g, cx - offset[0], cy - offset[1], cz - offset[2], e.x, e.y, e.z);
 }
 
-/** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted). */
-export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number]): void {
+/** An add-on turret armour module as measured: its side's package, the axis its solids were cut along (0: x, fitted in
+ *  the frame (-z, y, x), a quarter turn about y from the hull's; 2: z) and its solids. */
+export interface TurretModule {
+  readonly side: 'R' | 'L';
+  readonly axis: 0 | 2;
+  readonly solids: readonly ShellSolid[];
+}
+
+/** A module's solids in the turret frame. */
+function moduleGeometry(m: TurretModule, pivot: readonly [number, number, number]): THREE.BufferGeometry[] {
+  const [, py, pz] = pivot;
+  return m.solids.map((solid) => {
+    const along = m.axis === 2 ? pz : 0;
+    const g = loftMeasuredSolid(solid.z.map((z, s) => ({ z: z - along, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) })));
+    return m.axis === 2 ? g : g.rotateY(Math.PI / 2).translate(0, 0, -pz);
+  });
+}
+
+/** Draws a mark's measured details: hull parts in the hull frame, turret parts in the turret frame (pivot subtracted),
+ *  and the turret armour modules' solids in their side's removable package. */
+export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly SourcePart[], pivot: readonly [number, number, number],
+  modules: readonly TurretModule[]): void {
   const seg = P.q ? 20 : 12, none: readonly [number, number, number] = [0, 0, 0];
   const turretArmor: Record<'R' | 'L', SourcePart[]> = { R: [], L: [] };
   for (const p of parts) {
@@ -132,10 +153,12 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
   }
   // the add-on turret armour: the spec's two removable packages (schema-1 names, tankIdAliases.ts; `_R` on +X)
   for (const side of ['R', 'L'] as const) {
-    if (!turretArmor[side].length) continue;
+    const mods = modules.filter((m) => m.side === side);
+    if (!turretArmor[side].length && !mods.length) continue;
     const sector = `merkava_${tankSeedId(P.spec.id)}_turret_era_${side}`;
     P.destructibleCluster(sector, () => {
       for (const p of turretArmor[side]) P.addExternalArmor('turret', partGeometry(p, pivot, seg));
+      for (const m of mods) for (const g of moduleGeometry(m, pivot)) P.addExternalArmor('turret', g);
     });
   }
 }

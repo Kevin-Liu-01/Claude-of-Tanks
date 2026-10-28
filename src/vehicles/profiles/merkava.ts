@@ -10,7 +10,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
-import { buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
+import { buildMerkavaBelly, buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
 import { buildMerkavaBasket, buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
 import { buildMerkavaSourceDetails } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
@@ -42,6 +42,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   yield 'merkavaRunningGear';
   buildMerkavaStern(P, mark.hull);
   buildMerkavaNose(P, mark.hull);
+  if (mark.belly) buildMerkavaBelly(P, mark.belly);
   yield 'merkavaHullFittings';
 
   const [py, pz] = mark.pivot;
@@ -49,7 +50,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   buildMerkavaTurretShell(P, mark.shell, mark.pivot, mark.slot);
   buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
-  buildMerkavaSourceDetails(P, mark.parts, [0, py, pz]);
+  buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules);
   buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
   yield 'merkavaDetails';
 

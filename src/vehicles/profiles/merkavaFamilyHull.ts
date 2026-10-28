@@ -196,6 +196,16 @@ export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, 
   }
 }
 
+/** A station of the belly's add-on armour plate: z, its underside and top, its half-width. */
+export type BellyStation = readonly [z: number, y0: number, y1: number, halfWidth: number];
+
+/** The belly's add-on armour plate (the 2D and Baz): lofted through its measured stations under the belly and up the
+ *  lower plate, removable hull armour. */
+export function buildMerkavaBelly(P: TankBuilderPort, stations: readonly BellyStation[]): void {
+  const sections: SolidSection[] = stations.map(([z, y0, y1, hw]) => ({ z, ring: [[-hw, y0], [hw, y0], [hw, Math.max(y1, y0 + 0.01)], [-hw, Math.max(y1, y0 + 0.01)]] }));
+  P.addExternalArmor('hull', sectionSolid(sections));
+}
+
 /** The nose's fittings (MerkavaNoseFittings): the tow hooks on their brackets, the brackets standing on the lower plate
  *  with their pins, the guard rails down the glacis and the towing shackle. */
 export function buildMerkavaNose(P: TankBuilderPort, spec: MerkavaHullSpec): void {
