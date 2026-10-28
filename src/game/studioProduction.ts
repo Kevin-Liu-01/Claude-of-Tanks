@@ -155,10 +155,12 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Dune follow', 'Palm-line portrait', 'Oasis reveal'], headingDeg: -120,
     cast: [cast('lead', 'merkava4_barak', [224, 320], -120, 22), cast('wing', 'merkava3_baz', [236, 331.5], -120, 22)],
     rigs: ['rear', 'hero', 'track', 'overhead'], subjects: ['lead', 'lead', 'lead'], mirror: true, camo: 'desert', dust: 0.6 },
+  // along the lower east olive groves' rows (maps/orchard.ts east-lower-orchard-1/2): the valley road showed no tree
+  // (stills261 f)
   { id: 'orchard-column', title: 'Orchard column', description: 'Three Italian vehicles thread the orchard rows: from above, at track level, then the valley.',
     map: 'orchard', timeOfDay: 'day', durationMs: 8000, category: 'environment',
-    shots: ['Over the rows', 'Between the trees', 'Valley reveal'], headingDeg: 121.1,
-    cast: [cast('lead', 'c2_ariete', [-76.6, 19.9], 121.1, 20), cast('wing', 'c1_ariete_preserie', [-88, 32], 121.1, 20), cast('third', 'dardo', [-104, 40], 121.1, 20)],
+    shots: ['Over the rows', 'Between the trees', 'Valley reveal'], headingDeg: -40,
+    cast: [cast('lead', 'c2_ariete', [208, -212], -40, 20), cast('wing', 'c1_ariete_preserie', [214.9, -227.1], -40, 20), cast('third', 'dardo', [227.4, -239.9], -40, 20)],
     rigs: ['overhead', 'track', 'hero', 'overhead'], subjects: ['wing', 'lead', 'lead'], camo: 'autumn', dust: 0.4 },
   { id: 'river-village', title: 'River village', description: 'Chinese armor follows the delta road through a waking river village.',
     map: 'delta', timeOfDay: 'morning', durationMs: 8000, category: 'environment',
