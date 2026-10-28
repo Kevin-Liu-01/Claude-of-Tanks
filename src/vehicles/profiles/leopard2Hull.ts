@@ -124,7 +124,7 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     P.add('hullDark', torus(0.06, 0.018, 10), side * 0.70, 0.98, 3.47);
     // the headlight pod: an armoured box on the glacis's lower slope, two lamps in its face, a guard round it
     const pz = 3.08, py = lineAt(H.deck, pz), px = side * 1.16;
-    P.add('hullDetail', box(0.30, 0.15, 0.20), px, py + 0.07, pz);
+    P.add('hull', box(0.30, 0.15, 0.20), px, py + 0.07, pz);                                     // painted housing
     for (const dx of [-0.07, 0.07]) KIT.headlight(P, px + dx, py + 0.085, pz + 0.09, 0, 0.045);
     for (const gx of [-0.165, 0.165]) P.add('hullDetail', box(0.016, 0.20, 0.30), px + gx, py + 0.09, pz + 0.03);
     P.add('hullDetail', box(0.346, 0.016, 0.016), px, py + 0.19, pz + 0.17);
