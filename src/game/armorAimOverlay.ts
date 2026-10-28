@@ -33,8 +33,13 @@ const MAX_QUERY_M = 820;
  * other main armour first (a turret over the hull roof) counts only when none of the zone's is clear.
  */
 const ZONE_SAMPLES = 3;
-/** The turret's envelope (its cells' bounds) grown by this (m): a fragment inside it is painted in the turret frame. */
-const TURRET_ENVELOPE_GROW_M = 0.05;
+/**
+ * The turret's envelope (its cells' bounds) grown by this (m) — up, out and fore-and-aft, where its ERA, cupola and
+ * bustle stand proud of the cells — and by TURRET_ENVELOPE_FLOOR_M down, short of the hull roof round the ring: a
+ * fragment inside it is painted in the turret frame.
+ */
+const TURRET_ENVELOPE_GROW_M = 0.25;
+const TURRET_ENVELOPE_FLOOR_M = 0.05;
 
 const LOW = new THREE.Color(0xe53d35);
 const MID = new THREE.Color(0xf0aa35);
@@ -60,6 +65,8 @@ interface ArmorPaintHandles {
     uApTurMax: { value: THREE.Vector3 };
     uApHullC: { value: THREE.Vector3 };
     uApTurC: { value: THREE.Vector3 };
+    uApHullH: { value: THREE.Vector3 };
+    uApTurH: { value: THREE.Vector3 };
     uApCounts: { value: THREE.Vector3 };
     uApZones: { value: THREE.DataTexture | null };
   };
@@ -99,9 +106,11 @@ interface PaintTemplate {
   readonly footprints: number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
-  /** Each frame's centre (its cells' bounds'): fittings are painted by the way from it. */
+  /** Each frame's cells' bounds, centre and half extents: their rounded box stands in for the cells' surface. */
   readonly hullCentre: THREE.Vector3;
   readonly turretCentre: THREE.Vector3;
+  readonly hullHalf: THREE.Vector3;
+  readonly turretHalf: THREE.Vector3;
   readonly samples: ZoneSamples[];
 }
 
@@ -257,14 +266,17 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     turretMax.max(_world.fromArray(cell.max));
   }
   const turretCentre = turretCells.length ? turretMin.clone().add(turretMax).multiplyScalar(0.5) : new THREE.Vector3();
+  const turretHalf = turretCells.length ? turretMax.clone().sub(turretMin).multiplyScalar(0.5) : new THREE.Vector3();
   const hullMin = new THREE.Vector3(Infinity, Infinity, Infinity), hullMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
   for (const cell of armor.collisionShells?.hull || []) {
     hullMin.min(_world.fromArray(cell.min));
     hullMax.max(_world.fromArray(cell.max));
   }
+  const hullHalf = Number.isFinite(hullMin.x) ? hullMax.clone().sub(hullMin).multiplyScalar(0.5) : new THREE.Vector3();
   const hullCentre = Number.isFinite(hullMin.x) ? hullMin.add(hullMax).multiplyScalar(0.5) : new THREE.Vector3();
   if (turretCells.length) {
     turretMin.subScalar(TURRET_ENVELOPE_GROW_M);
+    turretMin.y += TURRET_ENVELOPE_GROW_M - TURRET_ENVELOPE_FLOOR_M;
     turretMax.addScalar(TURRET_ENVELOPE_GROW_M);
   } else {
     turretMin.set(1, 1, 1); turretMax.set(-1, -1, -1);
@@ -276,7 +288,8 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
-  return { table, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre, turretCentre, samples };
+  return { table, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre, turretCentre,
+    hullHalf, turretHalf, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -346,6 +359,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       u.uApTurMax.value.copy(entry.template.turretMax);
       u.uApHullC.value.copy(entry.template.hullCentre);
       u.uApTurC.value.copy(entry.template.turretCentre);
+      u.uApHullH.value.copy(entry.template.hullHalf);
+      u.uApTurH.value.copy(entry.template.turretHalf);
     }
     u.uApOn.value = visible ? 1 : 0;
   }

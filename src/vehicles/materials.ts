@@ -3888,9 +3888,11 @@ export function makeBurnUniforms(seed: number) {
     uApTurInv: { value: new THREE.Matrix4() },
     uApTurMin: { value: new THREE.Vector3(1, 1, 1) },
     uApTurMax: { value: new THREE.Vector3(-1, -1, -1) },
-    // each frame's centre (its cells' bounds' centre): a fitting takes the zone of where it sits, seen from there
+    // each frame's cells' bounds (centre, half extents): their rounded box stands in for the cells' smooth surface
     uApHullC: { value: new THREE.Vector3() },
     uApTurC: { value: new THREE.Vector3() },
+    uApHullH: { value: new THREE.Vector3() },
+    uApTurH: { value: new THREE.Vector3() },
     uApCounts: { value: new THREE.Vector3(0, 0, 0) },
     uApZones: { value: null as THREE.DataTexture | null },
   };
@@ -3905,15 +3907,16 @@ export const ARMOR_PAINT_ZONE_TEXELS = 8;
 export const ARMOR_PAINT_ZONE_EDGES = 6;
 
 /**
- * How the armour paint colours a material: 0 not at all (the gun, running gear, glass, rubber, canvas, wood), 1 the
- * armour paint by its surface's own way (plates), 2 fittings and the hull's dark parts (grilles, recesses, lights) by
- * where they sit — the way from their frame's centre — so a box or a rim takes its place's zone, never one a face.
+ * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, rubber, canvas,
+ * wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings and the dark steel (grilles,
+ * recesses, lights, a mantlet's dark casting) by where they sit — the cells' rounded box there — so a box or a rim
+ * takes its place's zone, never one a face. The gun's barrel and the roof guns stand outside the cells: no zone.
  */
 function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
   if (role === 'fittingPaint') return 2;
-  if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 0 : 2;
+  if (role === 'gunmetal') return 2;
   return 0;
 }
 
@@ -3936,6 +3939,8 @@ uniform vec3 uApTurMin;
 uniform vec3 uApTurMax;
 uniform vec3 uApHullC;
 uniform vec3 uApTurC;
+uniform vec3 uApHullH;
+uniform vec3 uApTurH;
 uniform vec3 uApCounts;
 uniform sampler2D uApZones;
 varying vec3 vApW;
@@ -3969,17 +3974,25 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   mat4 apInv = apTurret ? uApTurInv : uApHullInv;
   vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
   vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
-  // a plate's own (smooth) normal in the frame, or the face's where a part carries none; a face seen from behind (an
-  // open part's inside) faces the eye; a fitting's, the way from its frame's centre to it
+  // the part's own normal in the frame (the face's where it carries none; a face seen from behind, an open part's
+  // inside, faces the eye), leaned on the cells' smooth surface: the frame's cell bounds as a rounded box, whose normal
+  // is the gradient of the sum of q^4 (q the point's place in the bounds), so an ERA brick's facets, a skirt panel's
+  // thin edges or a curved casting take the zone the cells there face, never one a facet; a fitting's, the box's alone
   vec3 apNs = mat3( apInv ) * vApN;
   vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
   if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
-  if ( uApPaint > 1.5 ) {
-    vec3 apOut = apP - ( apTurret ? uApTurC : uApHullC );
-    if ( dot( apOut, apOut ) > 1e-6 ) apN = normalize( apOut );
-  }
+  vec3 apH = max( apTurret ? uApTurH : uApHullH, vec3( 0.05 ) );
+  vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
+  vec3 apBox = apQ * apQ * apQ / apH;
+  apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
+  vec3 apLean = apN + 2.0 * apBox;
+  apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
+  // gear the armour does not cover — the gun's barrel and muzzle, roof machine guns, antennas: outside the turret,
+  // above the hull's cells or past their ends — takes no zone
+  bool apGear = !apTurret && uApHullH.y > 0.0
+    && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? int( uApCounts.x + 0.5 ) : 0;
-  int apTo = apTurret ? int( uApCounts.x + uApCounts.y + 0.5 ) : int( uApCounts.x + 0.5 );
+  int apTo = apGear ? apFrom : apTurret ? int( uApCounts.x + uApCounts.y + 0.5 ) : int( uApCounts.x + 0.5 );
   float apBest = -1e9;
   float apSecond = -1e9;
   int apBestK = -1;
@@ -4023,7 +4036,10 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   // the border lines' margins, their derivatives taken outside the branches
   float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
   float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
-  float apMarginPx = apMargin / max( fwidth( apMargin ), 1e-5 );
+  // a border is where the margin falls to 0 across pixels; two plates tied over a whole area (one plane, one outline)
+  // draw none
+  float apMarginW = fwidth( apMargin );
+  float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
   float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
   if ( apZone >= 0 ) {
     apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS - 1}, 0 ), 0 );
@@ -4034,13 +4050,13 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
     apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
-    diffuseColor.rgb = mix( diffuseColor.rgb, min( apColor * 1.35 + 0.12, vec3( 1.0 ) ), apLine * 0.85 );
+    diffuseColor.rgb = mix( diffuseColor.rgb, apColor * 0.42, apLine * 0.8 );
   }
 }
 `;
 
 const ARMOR_PAINT_EMISSIVE_GLSL = `
-totalEmissiveRadiance += apColor * ( apMix * 0.08 + apLine * 0.3 );
+totalEmissiveRadiance += apColor * apMix * 0.08 * ( 1.0 - apLine );
 `;
 
 /** The dents a live wreck's hull and turret carry in the burn hook (wreckDents.ts plans them). */
