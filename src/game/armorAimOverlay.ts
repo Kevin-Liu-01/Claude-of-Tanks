@@ -57,6 +57,8 @@ interface ArmorPaintHandles {
     uApTurInv: { value: THREE.Matrix4 };
     uApTurMin: { value: THREE.Vector3 };
     uApTurMax: { value: THREE.Vector3 };
+    uApHullC: { value: THREE.Vector3 };
+    uApTurC: { value: THREE.Vector3 };
     uApCounts: { value: THREE.Vector2 };
     uApZones: { value: THREE.DataTexture | null };
   };
@@ -94,6 +96,9 @@ interface PaintTemplate {
   readonly turretZones: number;
   readonly turretMin: THREE.Vector3;
   readonly turretMax: THREE.Vector3;
+  /** Each frame's centre (its cells' bounds'): fittings are painted by the way from it. */
+  readonly hullCentre: THREE.Vector3;
+  readonly turretCentre: THREE.Vector3;
   readonly samples: ZoneSamples[];
 }
 
@@ -241,6 +246,13 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     turretMin.min(_world.fromArray(cell.min));
     turretMax.max(_world.fromArray(cell.max));
   }
+  const turretCentre = turretCells.length ? turretMin.clone().add(turretMax).multiplyScalar(0.5) : new THREE.Vector3();
+  const hullMin = new THREE.Vector3(Infinity, Infinity, Infinity), hullMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const cell of armor.collisionShells?.hull || []) {
+    hullMin.min(_world.fromArray(cell.min));
+    hullMax.max(_world.fromArray(cell.max));
+  }
+  const hullCentre = Number.isFinite(hullMin.x) ? hullMin.add(hullMax).multiplyScalar(0.5) : new THREE.Vector3();
   if (turretCells.length) {
     turretMin.subScalar(TURRET_ENVELOPE_GROW_M);
     turretMax.addScalar(TURRET_ENVELOPE_GROW_M);
@@ -254,7 +266,7 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
-  return { table, hullZones: hull.length, turretZones: turret.length, turretMin, turretMax, samples };
+  return { table, hullZones: hull.length, turretZones: turret.length, turretMin, turretMax, hullCentre, turretCentre, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -322,6 +334,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       u.uApCounts.value.set(entry.template.hullZones, entry.template.turretZones);
       u.uApTurMin.value.copy(entry.template.turretMin);
       u.uApTurMax.value.copy(entry.template.turretMax);
+      u.uApHullC.value.copy(entry.template.hullCentre);
+      u.uApTurC.value.copy(entry.template.turretCentre);
     }
     u.uApOn.value = visible ? 1 : 0;
   }

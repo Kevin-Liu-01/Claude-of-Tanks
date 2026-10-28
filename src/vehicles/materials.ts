@@ -3887,6 +3887,9 @@ export function makeBurnUniforms(seed: number) {
     uApTurInv: { value: new THREE.Matrix4() },
     uApTurMin: { value: new THREE.Vector3(1, 1, 1) },
     uApTurMax: { value: new THREE.Vector3(-1, -1, -1) },
+    // each frame's centre (its cells' bounds' centre): a fitting takes the zone of where it sits, seen from there
+    uApHullC: { value: new THREE.Vector3() },
+    uApTurC: { value: new THREE.Vector3() },
     uApCounts: { value: new THREE.Vector2(0, 0) },
     uApZones: { value: null as THREE.DataTexture | null },
   };
@@ -3899,10 +3902,17 @@ export function makeBurnUniforms(seed: number) {
 export const ARMOR_PAINT_ZONE_TEXELS = 8;
 export const ARMOR_PAINT_ZONE_EDGES = 6;
 
-/** The paints the armour paint colours: the vehicle's armour and fitting paint (never the gun, gear, glass or kit). */
-function armorPaintRole(mat: THREE.Material): boolean {
+/**
+ * How the armour paint colours a material: 0 not at all (the gun, running gear, glass, rubber, canvas, wood), 1 the
+ * armour paint by its surface's own way (plates), 2 fittings and the hull's dark parts (grilles, recesses, lights) by
+ * where they sit — the way from their frame's centre — so a box or a rim takes its place's zone, never one a face.
+ */
+function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
-  return (role === 'armorPaint' && mat.name !== 'cot:barrel-paint') || role === 'fittingPaint';
+  if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
+  if (role === 'fittingPaint') return 2;
+  if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 0 : 2;
+  return 0;
 }
 
 /**
@@ -3922,6 +3932,8 @@ uniform mat4 uApHullInv;
 uniform mat4 uApTurInv;
 uniform vec3 uApTurMin;
 uniform vec3 uApTurMax;
+uniform vec3 uApHullC;
+uniform vec3 uApTurC;
 uniform vec2 uApCounts;
 uniform sampler2D uApZones;
 varying vec3 vApW;
@@ -3955,11 +3967,15 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   mat4 apInv = apTurret ? uApTurInv : uApHullInv;
   vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
   vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
-  // the surface's own (smooth) normal in the frame, or the face's where a fitting carries none; a face seen from behind
-  // (an open part's inside) faces the eye
+  // a plate's own (smooth) normal in the frame, or the face's where a part carries none; a face seen from behind (an
+  // open part's inside) faces the eye; a fitting's, the way from its frame's centre to it
   vec3 apNs = mat3( apInv ) * vApN;
   vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
   if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
+  if ( uApPaint > 1.5 ) {
+    vec3 apOut = apP - ( apTurret ? uApTurC : uApHullC );
+    if ( dot( apOut, apOut ) > 1e-6 ) apN = normalize( apOut );
+  }
   int apFrom = apTurret ? int( uApCounts.x + 0.5 ) : 0;
   int apTo = apTurret ? int( uApCounts.x + uApCounts.y + 0.5 ) : int( uApCounts.x + 0.5 );
   float apBest = -1e9;
@@ -3985,7 +4001,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   }
   if ( apBest > -1e8 ) {
     apColor = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
-    apMix = 0.5;
+    apMix = 0.42;
     if ( apSecond > -1e8 ) {
       float apMargin = apBest - apSecond;
       apLine = 1.0 - smoothstep( 0.6, 1.8, apMargin / max( fwidth( apMargin ), 1e-5 ) );
@@ -3997,7 +4013,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
 `;
 
 const ARMOR_PAINT_EMISSIVE_GLSL = `
-totalEmissiveRadiance += apColor * ( apMix * 0.12 + apLine * 0.3 );
+totalEmissiveRadiance += apColor * ( apMix * 0.08 + apLine * 0.3 );
 `;
 
 /** The dents a live wreck's hull and turret carry in the burn hook (wreckDents.ts plans them). */
@@ -4122,11 +4138,11 @@ export function applyBurnHook(
     ownKey: Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey'),
   };
   BURN_HOOK_PRIOR.set(mat, prior);
-  const paints = armorPaintRole(mat);
+  const paints = armorPaintMode(mat);
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
     Object.assign(shader.uniforms, burnU);
-    shader.uniforms.uApPaint = { value: paints ? 1 : 0 };
+    shader.uniforms.uApPaint = { value: paints };
     // (mode-sheen-perf-243) one mask a program: an energy skin compiles through its paint's live chain
     // (game/juggernautVisual.ts runVehicleHookChain) and outlives a kill, so the sweep can hook the skin and later its
     // paint (a detail mesh still wearing it): the inner mask stands, the outer adds only its (the same visual's) uniforms
