@@ -73,6 +73,7 @@ const CURVES = {
   challenger1_mk2: [],
   challenger1_mk1: [],
   challenger1_granby: [],
+  vickers_mk1: [],
   fv4034: [],
   challenger2: [],
   challenger2e: [[177,177]],

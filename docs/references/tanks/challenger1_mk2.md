@@ -43,20 +43,20 @@ mesh basket, the boot, the guards).
 | Height, turret roof | 2.42 (2.74 plateau squashed by 0.84) | 2.50 m (S6) | 2.48 m |
 | Height, commander's sight | ~2.75 | 2.95 m (S6) | 2.95 m (sight head) |
 | Turret width (armour) | **3.70 m** (1.12 squash) | ~2.55–2.75 m (S1 plan; 0.77 x hull width in S1 front) | **2.56 m** body, 2.90 over bins |
-| Turret length (armour) | 4.95 m | ~4.2 m body + bins (S1 plan) | 4.06 m body, 4.51 with the bustle bin and basket |
-| Turret wall height | 0.74 m (squashed) | ~0.85 m (S1 side) | 0.87 m (0.62–0.66 m walls over the ring housing) |
+| Turret length (armour) | 4.95 m | ~4.2 m body + bins (S1 plan) | 4.20 m body to the slot apex, 4.62 with the bustle bin |
+| Turret wall height | 0.74 m (squashed) | ~0.85 m (S1 side) | 0.74 m walls from 1.74 m, the ring housing hidden in their shadow |
 | Ground clearance | 0.52 | 0.50 m (S6) | 0.50 |
 | Road wheels | 6 x r 0.395 on 0.88 m | 6 aluminium, ~0.80–0.85 m, ~1.0 m pitch (S1, S6) | 6 x r 0.42 on 0.98 m (4.9 m on the ground) |
 | Return rollers | none (FSP-03 deferred) | 2 a side (S6) | 2 a side behind the skirts |
 | Sprocket / idler | rear (-2.64, 0.80) / front (3.62, 0.80) | rear sprocket high, front idler (S1) | rear (-3.30, 0.80) / front (3.66, 0.70) |
 | Skirts | 1.62 top, single plane | aluminium skirts to about hub height; front armoured section (S2, S4) | armoured front section raked over the idler to the bow, five rear panels, 1.42 top on the track-guard ledge |
 | Glacis | one plate, 1.19 → 1.575 | long shallow upper glacis, short steep nose (S2, S3) | 19° upper glacis 1.58 → 1.10, steep nose plate, lower nose plate to the belly |
-| Turret front | oracle wedge with a sight plinth | stepped wedge: cheeks turned in, nose plates to a gun slot, no external mantlet (S3, S7) | cheeks 35° from the 1.10 station, nose plates 18° to a 0.50 m slot |
-| Mantlet / gun port | static cradle + collar | slot behind a dust cover (S2, S3) | drum shield turning about the trunnion in the slot + recessed canvas boot (`gunMountCloth`) |
-| TOGS | sight block on the roof | armoured barbette, right front corner, door at the front (S3) | 0.55 x 1.0 m barbette on the right front corner, 0.14 m over the roof, door and glass, two struts |
+| Turret front | oracle wedge with a sight plinth | arrowhead in plan: cheeks run from the widest point to the gun slot at its apex, about 40 degrees off the centreline (S1 plan, S3) | full width to 1.30 m, cheeks at 37 degrees to the nose plates, which carry the wedge to the slot at 2.50 m; the roof falls 8 degrees over the front metre |
+| Mantlet / gun port | static cradle + collar | slot behind a dust cover, a nearly cylindrical canvas boot (S2, S3) | drum shield turning about the trunnion in the slot; a 0.38 m canvas boot, 0.30 m of it ahead of the nose, three low folds |
+| TOGS | sight block on the roof | armoured barbette on the right cheek's top, set back, the right smoke bank on its front corner (S3) | 0.50 x 0.95 m barbette on the right cheek's top behind the wedge, 0.24 m over the roof, door and glass |
 | Cupola | at +x (vehicle left) | commander right (S6: commander right, loader left) | commander's cupola right (-x), loader's hatch left |
-| Smoke dischargers | stacked clusters + decor pair | 5 a side on the front cheeks (S6) | two L8 banks of five on the cheek fronts; decor pair removed |
-| Turret stowage | slab bins, rear basket rails | mesh-faced bins, left-front mesh basket, bustle basket (S2, S5) | lidded flank bins (hinge, latches), mesh basket wrapping the left cheek, bustle bin + cam-net roll |
+| Smoke dischargers | stacked clusters + decor pair | 5 a side, proud on brackets, angled up (S3, S6) | L8 banks of five on brackets, tubes up 35 degrees: the right at the barbette's corner, the left square to the left cheek |
+| Turret stowage | slab bins, rear basket rails | long flush mesh basket on the left wall, bins behind it and behind TOGS, bustle bin with jerrycans (S2, S5) | 1.45 m fine-mesh basket on the left wall, lidded bins behind it and behind the barbette, bustle bin hung at roof height with a jerrycan in a holder at each end |
 | L11A5 | uniform tube | thermal sleeve, evacuator, MRS (S7) | sleeve tapering 0.24 → 0.19 m with straps, extractor at mid-length, MRS mirror |
 | Engine deck / exhausts | louvre slab | raised deck, two grille banks (S2) | two rows of four louvred grilles; rear-plate exhaust louvres (inferred from CR2, S6) |
 
@@ -111,7 +111,8 @@ Western gun face, this one included; progression re-measures the tiers after it.
 ## Decisions and open items
 
 - Exhausts: no CR1 source places them; the rear-plate louvres follow the Challenger 2 hull (S6). Open.
-- The decor kit no longer draws a smoke pair, a whip, bow hooks (their bow slot left them in the air) or turret-side
-  track links (the flanks are bins, basket and barbette). It keeps the rear-deck tarp and rations and the bucket; the IR
-  light is off the list too.
+- Decor: the rebuilt marks lay only a canvas roll on the rear deck (`decorManifestFor`). The fleet cargo's roof cans,
+  crates and bags read as clutter against the photos' clean grilles. There is one roof gun, the commander's L37.
+- Round 4 (2026-10-27, blind critics against S1-S5): arrowhead front, TOGS set back, long flush basket, the walls down
+  over the ring, the boot shortened, the loader's GPMG and its hoop removed, the floating glacis fittings seated.
 - Fairness: see the lane report (the tier VIII strength line before and after).
