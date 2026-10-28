@@ -150,6 +150,8 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason). Filled as the lan
 | Fleet-geometry ledger / gun lines | PASS | 53961fea79 | fleet-geometry-ledger --update; gun-junction-census --update | 4 rows each |
 | Generated tables touch only the new ids | PASS | 53961fea79 | decoded diff against main | every modified table differs from main only in the four new ids (row order moved in the Polish groups) |
 | Bundle | over by bytes | 1198a46a48 | npm run build; bundle-budget --check | requests within pins; game/cn +5.9 KB raw, +1.46 KB br, entry +50 B; gallery +5.9 KB, +1.39 KB br (the four tanks' boot data): the integrator's re-pin |
+| Owner sheets | PASS | 05df1c1339 | `.qa-dev/t64bm1m/compose-t64-sheets.mjs` over studio renders r2/r3/r4 | `~/cot-launch-state/streams/owner-shots/t64bm1m-262-{front34,side,top,turret,rear34,front,line}.png`: each new tank beside its print (BM1M), its kept sibling (T-64BV, mod. 2022) or the Zubr (Tur), and a cited photograph; the line sheet puts the kept pair above the four new tanks |
+| Module/visual alignment (volume) | red, as on main | 05df1c1339 | module-visual-align-probe --gate | volume-out +0.90 on all four; main's t72b3, t64bv1 (+0.89) and t80u (+0.87) read the same (turret-basket crew below the turret plates' envelope): the probe's rule |
 | Composed release (lane) | OWED | | tank:release:check --ids --gate --lane | starts when the icon hold ends (`.qa-dev/t64bm1m/release-after-icons.zsh`) |
 | Typecheck / attribution | PASS | f3cf753a33 | node tools/typecheck.mjs; npm run attribution:check | TypeScript 7 clean, oxlint clean; attribution: 225 playable models name Kevin B. Liu, 18,485 tracked files covered |
 ## Balance
