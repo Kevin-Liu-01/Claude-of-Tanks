@@ -215,7 +215,7 @@ function buildHull(P: TankBuilderPort): void {
   hull('hullDetail', box(0.20, 0.10, 0.30), -0.25, 1.94, -4.55);
   hull('hullDetail', box(0.42, 0.25, 0.30), 0.11, 1.455, -4.90);
   hull('hullDetail', box(2.0, 0.06, 0.08), 0, 1.24, -4.34);
-  hull('hullDark', cylY(0.022, 0.022, 0.79, 8), 0, 2.15, -4.745, -0.49, 0, 0);
+  hull('hullDark', cylY(0.0245, 0.0245, 0.83, 8), -0.0055, 2.19, -4.77, -0.51, 0, 0);   // the oracle's Object_2 bounds
   hull('hull', box(3.24, 0.08, 0.19), 0, 1.84, -4.265);
   // driver's hatch, periscope and the glacis' lifting eyes
   P.addHatch('hullHatch', box(0.62, 0.045, 0.40).scale(S, S, S), 0, (troughAt(1.75) + 0.0225) * S, (1.75 + DZ) * S);
@@ -236,7 +236,10 @@ function buildGear(P: TankBuilderPort): void {
     roadWheelGeometry: buildHollowPairedRoadWheel({ radiusM: 0.40 * S, high: Boolean(P.q), fasteners: 8,
       fastenersAsInsets: true, axialWidthM: 0.44 * S }),
     wheelZs: ROAD_WHEEL_Z.map(z).reverse(),
-    sprocket: { z: z(-3.414), y: 0.859 * S, r: 0.35 * S }, idler: { z: z(3.304), y: 0.946 * S, r: 0.31 * S },
+    // the end wheels' castings narrowed to the oracle's 1.795 outer face (the sprocket's hub sits inside its rim there;
+    // the stock casting's boss stood out to 1.85, past the track): the rolling radii and the track lane are unchanged
+    sprocket: { z: z(-3.414), y: 0.859 * S, r: 0.35 * S, axialScaleLeft: 0.83, axialScaleRight: 0.83 },
+    idler: { z: z(3.304), y: 0.946 * S, r: 0.31 * S, axialScaleLeft: 0.91, axialScaleRight: 0.91 },
     rollers: [1.945, 0.0, -2.0].map((r) => ({ z: z(r), y: 1.047 * S, r: 0.11 * S })),
     trackW: 0.585 * S, topY: 1.235 * S, contactZF: z(2.55), contactZR: z(-2.75),
     fitLoadedRun: true, shoeRadialScale: 0.55, paintedEnds: true, coveredTop: 1.20 * S,
@@ -303,9 +306,9 @@ function buildTurret(P: TankBuilderPort): void {
   turret('turretDetail', cylY(0.36, 0.37, 0.40, 8), -0.175, 2.83, -1.825, 0, Math.PI / 8, 0);
   // head: front and rear top edges chamfered (3.36 at the window, 3.30 at the back)
   turret('turretDetail', planeSolid([[0, 1, 0, 3.42], [0, -1, 0, -3.03], [0, 0, 1, -1.64], [0, 0, -1, 2.04],
-    [1, 0, 0, 0.07], [-1, 0, 0, 0.42], [0, 1, -1, 5.34], [0, 1, 1, 1.72]]));
+    [1, 0, 0, 0.04], [-1, 0, 0, 0.44], [0, 1, -1, 5.34], [0, 1, 1, 1.72]]));                 // the oracle's x -0.44..0.04
   const commanderPane = box(0.34, 0.13, 0.02);
-  turret('turretGlass', commanderPane, -0.175, 3.22, -1.635);
+  turret('turretGlass', commanderPane, -0.20, 3.22, -1.635);
   turret('turretDark', box(0.40, 0.02, 0.36), -0.175, 3.04, -1.84);
   // the mast on the roof's left rear, beside the commander's sight
   turret('turretDetail', cylY(0.035, 0.04, 0.45, 10), 0.475, 2.82, -2.25);
@@ -325,10 +328,9 @@ function buildTurret(P: TankBuilderPort): void {
       turret('turretDetail', markSmokeTube(cylZ(0.042, 0.30, 10)), side * x, y, faceZ(x, y) + 0.13, -0.50, yaw + side * col * 0.12, 0);
     }
   }
-  // the turret's side rails, bolt heads and lifting eyes; the two whips at the bustle's rear corners
+  // the turret's lifting eyes and the two whips at the bustle's rear corners (its side walls are plain: the oracle's
+  // sections at z -2.4..0.2 lean 1.41 to 1.36 with no rail or bolt heads standing off them)
   for (const side of [-1, 1]) {
-    turret('turretDetail', box(0.03, 0.035, 3.10), side * 1.398, 2.22, -1.05);
-    for (const z of [-2.40, -1.60, -0.70, 0.20]) turret('turretDetail', cylX(0.04, 0.02, 10), side * 1.392, 2.18, z);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.53 - PIVOT[1]) * S, (0.70 - PIVOT[2]) * S);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.59 - PIVOT[1]) * S, (-2.70 - PIVOT[2]) * S);
     const x = side > 0 ? 0.992 : -0.956;                    // the oracle's whip centres (its turret sits 1.8 cm left)
@@ -446,10 +448,10 @@ function buildRemoteStation(P: TankBuilderPort): void {
 function buildFieldKit(P: TankBuilderPort): void {
   const { turret } = owners(P);
   for (const side of [-1, 1]) {
-    // stowage bins hung on the side rail behind the cheeks (their inner faces on the rail's outer face, 1.413)
-    turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.505, 2.16, -1.30);
-    turret('turretPaintedDetail', box(0.18, 0.26, 0.80), side * 1.505, 2.14, -2.45);
-    for (const z of [-1.80, -0.80, -2.75, -2.15]) turret('turretDark', box(0.012, 0.04, 0.06), side * 1.598, 2.24, z);
+    // stowage bins on the side walls behind the cheeks (their inner faces on the wall, 1.395 at mid-height)
+    turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.485, 2.16, -1.30);
+    turret('turretPaintedDetail', box(0.18, 0.26, 0.80), side * 1.485, 2.14, -2.45);
+    for (const z of [-1.80, -0.80, -2.75, -2.15]) turret('turretDark', box(0.012, 0.04, 0.06), side * 1.578, 2.24, z);
   }
 }
 
