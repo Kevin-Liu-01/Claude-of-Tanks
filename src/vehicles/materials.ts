@@ -3892,6 +3892,9 @@ export function makeBurnUniforms(seed: number) {
     uApTurC: { value: new THREE.Vector3() },
     uApHullH: { value: new THREE.Vector3() },
     uApTurH: { value: new THREE.Vector3() },
+    // world → the gun's frame (its trunnion, +z along the barrel), and the barrel: from (x) gun-frame z, radius (y); 0 none
+    uApGunInv: { value: new THREE.Matrix4() },
+    uApGun: { value: new THREE.Vector2(0, 0) },
     uApCounts: { value: new THREE.Vector3(0, 0, 0) },
     uApZones: { value: null as THREE.DataTexture | null },
   };
@@ -3940,6 +3943,8 @@ uniform vec3 uApHullC;
 uniform vec3 uApTurC;
 uniform vec3 uApHullH;
 uniform vec3 uApTurH;
+uniform mat4 uApGunInv;
+uniform vec2 uApGun;
 uniform vec3 uApCounts;
 uniform sampler2D uApZones;
 varying vec3 vApW;
@@ -3969,7 +3974,17 @@ float apMix = 0.0;
 float apLine = 0.0;
 if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
+  int apHullN = int( uApCounts.x + 0.5 );
+  int apZoneN = int( uApCounts.x + uApCounts.y + 0.5 );
+  int apFootN = int( uApCounts.z + 0.5 );
+  int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
+  // the turret's: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells)
   bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
+  for ( int f = 0; f < apFootN; f++ ) {
+    vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
+    vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
+    if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apTurret = true;
+  }
   mat4 apInv = apTurret ? uApTurInv : uApHullInv;
   vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
   vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
@@ -3986,16 +4001,19 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
   vec3 apLean = apN + 2.0 * apBox;
   apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
-  // gear the armour does not cover — the gun's barrel and muzzle, roof machine guns, antennas: outside the turret,
-  // above the hull's cells or past their ends — takes no zone
-  bool apGear = !apTurret && uApHullH.y > 0.0
-    && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
-  int apFrom = apTurret ? int( uApCounts.x + 0.5 ) : 0;
-  int apTo = apGear ? apFrom : apTurret ? int( uApCounts.x + uApCounts.y + 0.5 ) : int( uApCounts.x + 0.5 );
+  // gear the armour does not cover takes no zone: the gun's barrel (a cylinder along the gun from just ahead of the
+  // turret and its mantlet, in the gun's own frame, so at any elevation) and, outside the turret, what stands above
+  // the hull's cells or past their ends (roof guns, antennas, tow gear)
+  vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
+  bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
+    || !apTurret && uApHullH.y > 0.0
+      && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
+  int apFrom = apTurret ? apHullN : 0;
+  int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
   float apBest = -1e9;
   float apSecond = -1e9;
   int apBestK = -1;
-  vec4 apPick = vec4( 0.0 );
+  int apSecondK = -1;
   for ( int k = apFrom; k < apTo; k++ ) {
     vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
     float apFacing = dot( apPl.xyz, apN );
@@ -4008,10 +4026,12 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - 0.75 * apGapOut - 1.25 * ( 1.0 - apFacing );
     if ( apScore > apBest ) {
       apSecond = apBest;
+      apSecondK = apBestK;
       apBest = apScore;
       apBestK = k;
     } else if ( apScore > apSecond ) {
       apSecond = apScore;
+      apSecondK = k;
     }
   }
   // the mantlet's footprint first (Main's ruling, 262; game/armorZones.ts): a forward surface (n.z > 0.2) over a
@@ -4019,8 +4039,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   // how deep the point lies inside the footprint it lies deepest in (negative: how far outside the nearest)
   int apFootK = -1;
   float apFootIn = -1e3;
-  int apFoot0 = int( uApCounts.x + uApCounts.y + 0.5 ) * ${ARMOR_PAINT_ZONE_TEXELS};
-  for ( int f = 0; f < int( uApCounts.z + 0.5 ); f++ ) {
+  for ( int f = 0; f < apFootN; f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     int apFk = int( apFa.w + 0.5 );
     if ( apFk < apFrom || apFk >= apTo ) continue;
@@ -4031,22 +4050,28 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   }
   bool apForced = apFootK >= 0 && apFootIn > 0.0;
   int apZone = apForced ? apFootK : apBestK;
-  // the border lines' margins, their derivatives taken outside the branches
+  // the border lines' margins, their derivatives taken outside the branches: a border is where the margin falls to 0
+  // across pixels; two plates tied over a whole area (one plane, one outline) draw none
   float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
   float apFootEdge = clamp( apFootIn, -1.0, 1.0 );
-  // a border is where the margin falls to 0 across pixels; two plates tied over a whole area (one plane, one outline)
-  // draw none
   float apMarginW = fwidth( apMargin );
   float apMarginPx = apMarginW > 1e-6 ? apMargin / apMarginW : 1e3;
   float apFootPx = abs( apFootEdge ) / max( fwidth( apFootEdge ), 1e-5 );
   if ( apZone >= 0 ) {
-    apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS - 1}, 0 ), 0 );
+    vec4 apPick = texelFetch( uApZones, ivec2( apZone * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
     apColor = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
-    apMix = 0.42;
+    // across a score border the colours meet half and half, so the edge is smooth, never a stair of pixels
+    if ( !apForced && apSecondK >= 0 && apMarginPx < 1.5 ) {
+      vec4 apNext = texelFetch( uApZones, ivec2( apSecondK * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
+      apColor = mix( apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 ), apColor, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
+    }
+    apMix = 0.45;
     // inside a footprint only its border is a border; outside, the scores' and a footprint's that takes another zone
     float apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
     apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
+    // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor * 0.42, apLine * 0.8 );
   }

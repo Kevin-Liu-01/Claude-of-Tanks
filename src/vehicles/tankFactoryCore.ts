@@ -1326,7 +1326,9 @@ export interface TankVisual {
    * paint rides the hook prewarmBurn installs) and the hull's and the turret's rig groups (their frames). Null when the
    * visual draws nothing.
    */
-  armorPaint(): { uniforms: ReturnType<typeof makeBurnUniforms>; hull: THREE.Object3D; turret: THREE.Object3D | null } | null;
+  armorPaint(): {
+    uniforms: ReturnType<typeof makeBurnUniforms>; hull: THREE.Object3D; turret: THREE.Object3D | null; gun: THREE.Object3D | null;
+  } | null;
   /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
   releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
@@ -11504,7 +11506,7 @@ export function* createTankRuntimeSteps(
      * disarmed hook is exact-identity output (mix factors are 0).
      */
     armorPaint() {
-      return geometryOnly ? null : { uniforms: burnU, hull: hullG, turret: turretG ?? null };
+      return geometryOnly ? null : { uniforms: burnU, hull: hullG, turret: turretG ?? null, gun: gunG ?? null };
     },
 
     prewarmBurn() {

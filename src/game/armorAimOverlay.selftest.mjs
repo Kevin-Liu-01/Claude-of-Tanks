@@ -148,8 +148,20 @@ overlay.dispose();
   assert.equal(turretEntry.template.footprints, 1, 'one mantlet, one footprint');
   const foot = [...turretEntry.table.slice(4 * 4 * ARMOR_PAINT_ZONE_TEXELS)].map((v) => +v.toFixed(6));
   assert.deepEqual(foot, [-0.3, 0.7, 0.65, 3, 0.3, 1.3, 1.35, 0], 'the footprint box after the four zones, its zone the mantlet\'s');
+  // the bare barrel: a cylinder along the gun from just ahead of the turret's front and its mantlet's (z = 1 + 0.05)
+  const turretGroup = turretTarget.visual.root.children[1], gun = new THREE.Group();
+  gun.position.set(0, 1, 0.5);
+  turretGroup.add(gun);
+  turretTarget.visual.root.updateMatrixWorld(true);
+  const paint = turretTarget.visual.armorPaint();
+  turretTarget.visual = { root: turretTarget.visual.root, armorPaint: () => ({ ...paint, gun }) };
+  turretOverlay.clear();
+  turretOverlay.prime(turretTarget);
   turretOverlay.update({ enabled: true, scoped: true, targets: [turretTarget], shellSpec, muzzle: new THREE.Vector3(8, 1, 6), nowMs: 0 });
   assert.deepEqual(turretTarget.uniforms.uApCounts.value.toArray(), [2, 2, 1], 'the paint reads the footprint');
+  assert.deepEqual(turretTarget.uniforms.uApGun.value.toArray().map((v) => +v.toFixed(6)), [1.05, 0.25], 'the barrel from 5 cm ahead of the turret');
+  const muzzlePoint = new THREE.Vector3(8, 1, 2.5).applyMatrix4(turretTarget.uniforms.uApGunInv.value);
+  assert.ok(muzzlePoint.distanceTo(new THREE.Vector3(0, 0, 2)) < 1e-9, 'a world point maps into the gun\'s frame');
   turretOverlay.dispose();
 }
 
