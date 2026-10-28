@@ -163,6 +163,10 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-tip.is-on{opacity:1}
 .cot-c-tip[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i,.cot-c-tip{transition:none}}
+/* the reveal without scripting: a box served with data-reveal (a prerendered page marks its pictures in the markup) is
+   never marked ready, so its pictures show as they load. A sheet that gives revealed media a transition of its own
+   replaces the fade's (transition is one property) and the picture snaps in: it lists opacity too */
+@media (scripting:none){[data-reveal]>:is(img,video,picture){opacity:1}}
 /* a mode's own hue (tokens.json semantic.mode; UI-GAUNTLET bar line 6): mark an element data-mode-tone=<mode id> and paint
    its mode glyph var(--mode-ink); the selection, the primary action and text stay the kit's */
 [data-mode-tone='standard']{--mode-ink:var(--mode-standard)}[data-mode-tone='drone']{--mode-ink:var(--mode-drone)}
