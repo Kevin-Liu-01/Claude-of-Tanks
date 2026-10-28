@@ -23,6 +23,29 @@ for (const image of stills) {
 }
 document.body.classList.add('home-live');
 
+// A still that failed (the link dropped after the page arrived) hides over its box's tone, never a broken frame, and loads
+// again, quietly, once the browser is back online: the hero's poster and the stills under it alike.
+const failed = new Set<HTMLImageElement>();
+const fail = (image: HTMLImageElement): void => {
+  image.setAttribute('data-failed', '');
+  failed.add(image);
+};
+for (const image of [document.querySelector<HTMLImageElement>('.hero__still'), ...stills]) {
+  if (!image) continue;
+  if (image.complete && !image.naturalWidth && image.getAttribute('src')) fail(image);
+  image.addEventListener('error', () => fail(image));
+}
+addEventListener('online', () => {
+  for (const image of failed) {
+    image.removeAttribute('data-failed');
+    // the same addresses again: a failed request is fetched anew
+    const srcset = image.getAttribute('srcset');
+    if (srcset) image.setAttribute('srcset', srcset);
+    image.src = image.getAttribute('src') ?? '';
+  }
+  failed.clear();
+});
+
 // The hero reel (heroReel.ts): its clips take their turns once the page has loaded and gone idle, so the poster, the
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');

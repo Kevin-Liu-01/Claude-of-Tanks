@@ -83,6 +83,7 @@
 .dm-fleet:not([data-view=hero]) [data-layer=hero],.dm-fleet:not([data-view=angle]) [data-layer=angle],.dm-fleet:not([data-view=side]) [data-layer=side]{display:none}
 .dm-fleet.is-live .dm-fleet__layer{opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
 .dm-fleet.is-live .dm-fleet__layer[data-ready]{opacity:1}
+.dm-fleet__media img[data-failed]{visibility:hidden}
 .dm-fleet__angle img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
 .dm-fleet__side img{display:block;width:100%;height:100%;object-fit:contain}
 /* the tier chip every hero card wears (heroCardChips.ts, heroCard.css .cot-hc .hc-tier) stays in the picture's corner on

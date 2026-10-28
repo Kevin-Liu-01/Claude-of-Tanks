@@ -677,8 +677,23 @@ function wireFleetGrid(root: HTMLElement): void {
   const onImage = (event: Event): void => {
     if (event.target instanceof HTMLImageElement) settle(event.target.closest('.dm-fleet__layer'));
   };
+  // a picture that failed (the link dropped) hides over its tile's tone, never a broken frame, and loads again online
+  const failed = new Set<HTMLImageElement>();
+  const onError = (event: Event): void => {
+    if (!(event.target instanceof HTMLImageElement)) return;
+    event.target.setAttribute('data-failed', '');
+    failed.add(event.target);
+    onImage(event);
+  };
+  addEventListener('online', () => {
+    for (const image of failed) {
+      image.removeAttribute('data-failed');
+      image.src = image.getAttribute('src') ?? '';
+    }
+    failed.clear();
+  });
   root.addEventListener('load', onImage, true);
-  root.addEventListener('error', onImage, true);
+  root.addEventListener('error', onError, true);
   for (const layer of root.querySelectorAll('.dm-fleet__layer')) settle(layer);
 
   const bar = root.querySelector<HTMLElement>('.dm-fleet__bar');

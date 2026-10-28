@@ -275,7 +275,9 @@ img{display:block;max-width:100%}
 .bento__where>span+span:not(.hero__mode)::before{content:'·';margin-right:var(--s2);color:var(--ink-3)}
 /* in battle: four loops two to a row, on the features' own player (its file only on screen, its disc top right) */
 .bento--clips .bento__grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-/* a still under the hero fades in once decoded (homePage.ts marks its box data-ready), over the media box's tone */
+/* a still under the hero fades in once decoded (homePage.ts marks its box data-ready), over the media box's tone; a still
+   that failed stays hidden over that tone (no broken frame) until homePage.ts loads it again online */
+.home img[data-failed]{visibility:hidden}
 .home-live .cot-c-media:not([data-ready])>img[loading=lazy]{opacity:0}
 .home-live .cot-c-media>img[loading=lazy]{transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
 .bento__tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-stage) var(--ease-camera)}
