@@ -78,8 +78,8 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 ## Construction work order
 
 - Gross-form sentence: a long low hull with a 6° glacis under tiles and three-band skirts, carrying a low unmanned
-  arrowhead turret: two raked cheek blocks closing on a narrow gun housing, flank pods, a 2.30 m rear plateau and an
-  open rear rack, a long 105 mm tube in an angular thermal sleeve.
+  arrowhead turret: two raked cheek blocks closing on a narrow gun housing, flank pods, a 2.30 m rear plateau and a
+  rear stowage block under three slat bays, a long 105 mm tube in an angular thermal sleeve.
 - Hull: one 16-point station loft (`hullSection`) from the stern plate to the nose (chamfered belly, tub wall, sponson
   floor over the track, fender lip, chamfered roof), rear fender boxes, a recessed stern louvre bay.
 - Turret: bustle and main-body lofts (undercut base, vertical side, chamfered roof), pods as lofts, cheeks and roots as
@@ -87,8 +87,11 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 - Running gear: the China MBT wheel (owner 2026-09-22 nation table), `KIT.buildRunningGear`, fleet track shoe, two
   return rollers a side (real), one animated course.
 - Material roles: painted bodywork camouflaged (`turret`/`hull`), dark stock for mechanisms, rubber skirt lip, glass on
-  every optic, `turretFittingPaint`/`hullFittingPaint` for bins, open-lattice buckets for the cage and racks.
-- Negative space kept: slat-cage air, open rear rack, recessed stern louvre bay, open muzzle bore.
+  every optic, the turret's camouflaged paint on the bins and rear stowage block (they read as one body with the
+  turret), `hullFittingPaint` for the stern bin and `turretFittingPaint` for the testbed's ballast, open-lattice
+  buckets for the cage and the slat bays.
+- Negative space kept: slat-cage air, recessed stern louvre bay, open muzzle bore. The rear stowage block is closed
+  (the oracle's rear is solid under its slat bays).
 - Gameplay: `modernArmor` envelopes; anatomy calibrates the plates to the built surfaces.
 
 ## Evidence matrix

@@ -1,16 +1,16 @@
-// Release 262 (the ZTZ-20 family, ztz20Family.ts): the 105 mm gun of the production ZTZ-20 and the pre-production ZTZ-100
-// keeps 25 mm from its own hull at every whole degree of turret yaw, at that yaw's published depression stop
-// (gunPitchByYawDeg, measured with tools/gun-depression-sweep.mjs at 26 mm), at level and at full elevation
-// (gunHullClearance.test-support.mjs: every gun mesh, the recoiling parts in battery and at 0.135 m, against every hull
-// mesh; samples inside the turret's own outline are not measured), the receipt strv103GunPort.selftest.mjs and
-// nationalGunClearance.selftest.mjs keep for their tanks. Negative controls: the same gun at its bare depression (no
-// curve) must come inside 25 mm wherever a curve publishes a stop, and the gun posed 6 degrees under its stop over the
-// glacis (-14 degrees at yaw 0, the sleeve into the tiles) must fail the same measure.
+// Release 262 (the ZTZ-20 family, ztz20Family.ts): the 105 mm gun of the production ZTZ-20, the ZTZ-20 Prototype and
+// the pre-production ZTZ-100 keeps 25 mm from its own hull at every whole degree of turret yaw, at that yaw's published
+// depression stop (gunPitchByYawDeg, measured with tools/gun-depression-sweep.mjs at 26 mm), at level and at full
+// elevation (gunHullClearance.test-support.mjs: every gun mesh, the recoiling parts in battery and at 0.135 m, against
+// every hull mesh; samples inside the turret's own outline are not measured), the receipt strv103GunPort.selftest.mjs
+// and nationalGunClearance.selftest.mjs keep for their tanks. Negative controls: the same gun at its bare depression
+// (no curve) must come inside 25 mm wherever a curve publishes a stop, and the ZTZ-20's gun posed 7 degrees under its
+// stop over the glacis (-14 degrees at yaw 0, the sleeve into the tiles) must fail the same measure.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
 
 const DEG = Math.PI / 180, T0 = Date.now();
-for (const id of ['ztz20', 'ztz100']) {
+for (const id of ['ztz20', 'ztz20_prototype', 'ztz100']) {
   const probe = gunHullProbe(id);
   try {
     const spec = probe.spec;
@@ -26,11 +26,13 @@ for (const id of ['ztz20', 'ztz100']) {
     probe.dispose();
   }
 }
-// negative control on the real build: over the glacis at yaw 0 the published stop is clear and 6 degrees under it is not
+// negative control on the real build: over the glacis at yaw 0 the published stop is clear, 7 degrees under it is not
 {
   const probe = gunHullProbe('ztz20');
   try {
-    const clear = probe.distance(0, -8 * DEG), under = probe.distance(0, -14 * DEG);
+    const stop = probe.spec.gunPitchByYawDeg[0][1];
+    assert.equal(stop, -7);
+    const clear = probe.distance(0, stop * DEG), under = probe.distance(0, -14 * DEG);
     assert.ok(clear >= GUN_HULL_KEEP_M, `the published front stop is clear (${(clear * 100).toFixed(1)} cm)`);
     assert.ok(under < GUN_HULL_KEEP_M, `14 degrees down over the glacis reaches the hull (${(under * 100).toFixed(1)} cm, ${probe.part})`);
   } finally { probe.dispose(); }

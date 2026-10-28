@@ -211,6 +211,11 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 50, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): over the bare glacis and bow lamps -7 to -5.6, the full 8
+    // degrees across the flanks, over the engine deck astern -4.8 to -3.8, and -1 over the stern trials basket.
+    gunPitchByYawDeg: [[0, -7], [6, -7], [8, -8], [15, -7.5], [16, -5.9], [19, -5.7], [30, -5.6], [32, -5.9], [38, -7.1],
+      [40, -7.1], [44, -8], [127, -8], [129, -7.3], [143, -4.8], [148, -4], [152, -3.8], [157, -3.8], [161, -4], [163, -1.4],
+      [164, -1], [167, -0.9], [169, -0.9], [172, -1.3], [173, -1], [178, -1], [180, -1.3]],
     gun: {
       caliberMm: 105, reloadS: 4.8, baseAccuracy: 0.24, aimTimeS: 1.5,
       bloom: { move: 0.045, hullRot: 0.065, turret: 0.045, afterShot: 1.8 },

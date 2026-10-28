@@ -187,11 +187,12 @@ for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
       const clear = turretSweepClearance(turret, map, design.ring);
       assert.ok(clear.samples > 100 && clear.d >= 0.005, `${id}/${quality}: turret stock ${(clear.d * 100).toFixed(1)} cm over the hull at yaw ${clear.deg} (${clear.at})`);
       if (quality === 'high' && id === 'ztz20') {
-        // negative control: a 6 cm block laid on the engine deck under the bustle's sweep fails the same check
+        // negative control: a 6 cm block laid on the engine deck where the cheeks' 1.48 floors sweep (1.6 m behind the
+        // ring, 1.5 cm over the deck) fails the same check
         const block = new T.Mesh(new T.BoxGeometry(0.4, 0.06, 0.4));
-        block.position.set(0.6, 1.495, -2.4); hull.add(block); block.updateMatrixWorld(true);
+        block.position.set(0, 1.495, -2.15); hull.add(block); block.updateMatrixWorld(true);
         const blocked = turretSweepClearance(turret, hullTopMap(hull, turret), design.ring);
-        assert.ok(blocked.d < 0.005, 'a block on the deck under the bustle fails the sweep');
+        assert.ok(blocked.d < 0.005, `a block on the deck under the cheeks' sweep fails the sweep (${(blocked.d * 100).toFixed(1)} cm)`);
         hull.remove(block); block.geometry.dispose();
       }
       if (id === 'ztz100_prototype') continue;
@@ -209,6 +210,10 @@ for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
       assert.equal(count('brake-port-ring'), stage.brake === 'round' ? 4 : 0, `${id}: round brake`);
       assert.equal(count('trials-mast'), stage.trialsMast ? 1 : 0); assert.equal(count('side-bin'), stage.bustleStowage ? 2 : 0);
       assert.equal(count('rack-slat'), stage.bustleStowage ? 21 : 0, `${id}: the three-bay rack's inclined slats`);
+      assert.equal(count('rear-stowage-block'), stage.bustleStowage ? 1 : 0, `${id}: the closed rear stowage block under the slats`);
+      assert.equal(count('cheek-plate'), 4, `${id}: an appliqué plate on each cheek facet`);
+      assert.equal(count('muzzle-reference-sensor'), stage.sleeve ? 1 : 0, `${id}: muzzle reference sensor with the sleeve`);
+      assert.equal(count('rws-yoke-bridge'), stage.rws === 'none' ? 0 : 1, `${id}: the weapon station's sight yoke`);
       assert.equal(count('smoke-tube'), stage.smoke ? 8 : 0);
       assert.equal(count('panoramic-head'), stage.commanderSight === 'panoramic' ? 1 : 0); assert.equal(count('periscope-block'), stage.commanderSight === 'periscope' ? 1 : 0);
       assert.equal(count('mantlet'), stage.mantlet === 'angular' ? 1 : 0); assert.equal(count('mantlet-early'), stage.mantlet === 'early' ? 1 : 0);
