@@ -89,6 +89,9 @@ function pageFieldPoints({ player, buildings, groups }) {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
       hf._landUseAt(x, z, s);
       if (!s.active || s.edgeM < 14) continue;
+      // (the land use's twin knows no roads or villages: the material keeps the fields off both — an urban land use's lots
+      // lie inside its village)
+      if (hf._roadDist(x, z) < 16 || (!s.urban && hf._villageMask(x, z) > 0.05)) continue;
       const g = groups.findIndex((list) => list.includes(s.crop));
       if (g < 0 || found[g]) continue;
       const y = h(x, z);
@@ -276,13 +279,15 @@ async function main(argv) {
         const mapId = todo[i];
         if (signal.aborted) { console.log(`[${TOOL}] ${stamp()} hold limit before ${mapId}`); break; }
         const started = Date.now();
-        if (entry.mapId !== mapId) { await stageMap(entry, mapId); console.log(`[${TOOL}] ${stamp()} ${mapId} staged`); }
+        // (a page frozen past the queue's health check is reloaded: its world is gone, so the live map decides)
+        const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+        if (live !== mapId) { await stageMap(entry, mapId); console.log(`[${TOOL}] ${stamp()} ${mapId} staged`); }
         const receipt = await shootMap({ ...entry, mapId }, options, frames, reference?.maps?.[mapId] ?? null);
         receipt.ms = Date.now() - started;
         manifest.maps[mapId] = receipt;
         writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
         console.log(`[${TOOL}] ${stamp()} ${mapId} done in ${(receipt.ms / 1000).toFixed(1)} s (${Object.keys(receipt.poses).join(',')})`);
-        if (i < todo.length - 1 && (await checkpoint())?.yielded) entry.mapId = null; // re-stage after a yield
+        if (i < todo.length - 1) await checkpoint();
       }
     },
   });

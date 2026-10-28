@@ -6329,8 +6329,13 @@ void splatCompute() {
         float rowVis = uLandTier > 0.5 ? stripeAA(pitchR, acrossDir) : 0.0;
         float rowAA = (abs(dot(gDwX, acrossDir)) + abs(dot(gDwY, acrossDir))) / pitchR;
         float soilW = mix(soilR, 1.0 - smoothstep(soilR - rowAA, soilR + rowAA, rowF), rowVis);
-        vec3 leaf = vec3(0.667, 1.400, 0.400) * baseL * bright * (0.88 + 0.24 * n1h);
-        float shadeR = 0.12 * mix(1.0 / 3.0, (1.0 - rowF) * (1.0 - rowF), rowVis) * (0.55 + 0.90 * n1h);
+        // (round 2, the phone's chase frame: a closed canopy of one tone read as a smooth green carpet) its plants are clumps
+        // of leaves (n1, ~0.3–1.5 m) with shaded gaps between them and their top leaves catching the light (n1h, a
+        // decimetre) — the material's own reads, a mean of one, so the field reads as foliage at every range
+        float clumpR = smoothstep(0.30, 0.70, n1), litR = smoothstep(0.25, 0.80, n1h);
+        vec3 leaf = vec3(0.667, 1.400, 0.400) * baseL * bright * (0.79 + 0.22 * clumpR + 0.20 * litR)
+          * mix(vec3(0.94, 0.97, 1.06), vec3(1.05, 1.02, 0.90), litR);
+        float shadeR = 0.08 * mix(1.0 / 3.0, (1.0 - rowF) * (1.0 - rowF), rowVis) * (1.4 - 0.8 * clumpR);
         cropCol = mix(leaf * (1.0 - shadeR), soilF * 0.62, soilW);
         rows = sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
       } else if (crop < 8.5) {
