@@ -374,7 +374,9 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       const stats = panelBakeStats();
       panelBakes.set(root, stats);
       root.userData.armorPaintPanels = stats;
-      bakes.push({ root, work: bakePaintPanelSteps(root, template, paint, armor, stats) });
+      // the authority's pose for the spaced parts' inward rays (the streamer has synced the visual to the same state)
+      const authority = target.state ? { pose: tankPoseFromState(target.state) } : null;
+      bakes.push({ root, work: bakePaintPanelSteps(root, template, paint, armor, stats, authority) });
     }
     return entry;
   }

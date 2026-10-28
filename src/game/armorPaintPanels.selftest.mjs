@@ -137,6 +137,45 @@ function hullScene() {
     `the dome's minority zones disagree with the per-point paint (${stats.disagreeArea.toFixed(3)} of ${stats.bakedArea.toFixed(3)} m²)`);
 }
 
+// ---- (264) a spaced part outside the cells takes the plate behind it: the authority's own ray inward along its normal
+{
+  const { tankPoseFromState } = await import('../sim/armor.ts');
+  const upper = plate('side_upper_R', [[1, 1, 1], [1, 1, -1], [1, 2, -1], [1, 2, 1]]);
+  const lower = plate('side_lower_R', [[1, 0, 1], [1, 0, -1], [1, 1, -1], [1, 1, 1]]);
+  const roofPlate = plate('roof', [[-1, 2, 1], [1, 2, 1], [1, 2, -1], [-1, 2, -1]]);
+  const front = plate('front', [[-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]]);
+  // one cell, its whole +x side given to the lower plate (the authority's face assignment), the rest to the roof/front
+  const vertices = [[-1, 0, -1], [1, 0, -1], [1, 2, -1], [-1, 2, -1], [-1, 0, 1], [1, 0, 1], [1, 2, 1], [-1, 2, 1]];
+  const quads = [[4, 5, 6], [4, 6, 7], [0, 3, 2], [0, 2, 1], [1, 2, 6], [1, 6, 5], [0, 4, 7], [0, 7, 3], [3, 7, 6], [3, 6, 2], [0, 1, 5], [0, 5, 4]];
+  const faces = quads.map((indices) => {
+    const [a, b, c] = indices.map((i) => new THREE.Vector3(...vertices[i]));
+    const n = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+    return { indices, normal: n.toArray(), constant: -n.dot(a), center: a.clone().add(b).add(c).multiplyScalar(1 / 3).toArray(), internal: false,
+      plate: n.x > 0.5 ? lower : n.z > 0.5 ? front : roofPlate };
+  });
+  const armor = { hullPlates: [upper, lower, roofPlate, front], turretPlates: [], modules: [], crew: [], turretPivot: [0, 0, 0], gunPivot: [0, 0, 0],
+    collisionShells: { hull: [{ min: [-1, 0, -1], max: [1, 2, 1], vertices, faces }], turret: [] } };
+  const zones = zonePlates(armor.hullPlates);
+  const tmpl = { ...template(), zones, hullZones: zones.length };
+  const skirtScene = () => {
+    const root = new THREE.Group(), hull = new THREE.Group();
+    root.add(hull);
+    // a skirt panel 0.3 m off the side, at the upper plate's height
+    const skirt = new THREE.Mesh(box(0.02, 0.4, 1, 1.3, 1.5, 0), paint);
+    hull.add(skirt);
+    root.updateMatrixWorld(true);
+    return { root, hull, skirt };
+  };
+  const plain = skirtScene();
+  bakePaintPanels(plain.root, tmpl, { hull: plain.hull, turret: null, gun: null }, armor);
+  assert.deepEqual(faceValues(plain.skirt.geometry, [1, 0, 0]), [1], 'without the authority, the skirt takes the zone where it sits: the upper side');
+  const asked = skirtScene();
+  const pose = tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
+  const stats = bakePaintPanels(asked.root, tmpl, { hull: asked.hull, turret: null, gun: null }, armor, { pose });
+  assert.deepEqual(faceValues(asked.skirt.geometry, [1, 0, 0]), [2], 'with it, the plate the shell meets through it: the lower side');
+  assert.ok(stats.standoff > 0 && stats.standoffRays > 0, `the skirt's ray (${stats.standoffRays})`);
+}
+
 // ---- the slices equal the whole, the same answer twice
 {
   const whole = hullScene(), sliced = hullScene();

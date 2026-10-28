@@ -7,7 +7,9 @@
 // so a border falls on a panel's edge. Each part is judged in its own rig's frame (a hull part is hull armour at any yaw;
 // what rides the turret or the gun is the turret's). A cluster with no majority goes by part (264, Main): a small one (a
 // dome, a hatch) whole on its plurality, a large welded casting split at its creases, each piece voting again; a piece
-// still split keeps the per-point score, as does a turret part by the barrel (the gun's elevation decides there).
+// still split keeps the per-point score, as does a turret part by the barrel (the gun's elevation decides there). A spaced
+// or external part outside the cells (a skirt, a box, the hull's rubber) takes the zone of the first main plate behind
+// it, from the authority's own ray inward along its normal (264, Main): the shell meets that plate through it.
 //
 // Baked in slices once the overlay primes a vehicle (the battle visual streamer's staging, else the overlay's own frames),
 // once per geometry: copies of a spec share it. Each geometry is judged at one pose, its frames taken as it starts. Every
@@ -15,6 +17,7 @@
 // layout; a draw without it reads 0 (the hook's defaultAttributeValues).
 
 import * as THREE from 'three';
+import { queryAimArmor, type ArmorModel, type TankArmorPose } from '../sim/armor.ts';
 import { zoneAt, type ZonePlate } from '../sim/armorZones.ts';
 import { ARMOR_PAINT_PANEL_BARE as PANEL_BARE, ARMOR_PAINT_ZONE_ATTRIBUTE as PANEL_ZONE_ATTRIBUTE, armorPaintMode } from '../vehicles/materials.ts';
 
@@ -33,6 +36,23 @@ export interface PanelTemplate {
   readonly turretHalf: THREE.Vector3;
   readonly barrelFrom: number;
   readonly barrelRadius: number;
+}
+
+/** (264) The authority the bake asks what lies behind a spaced or external part: the vehicle's pose as the sim reads it. */
+export interface PanelAuthority {
+  readonly pose: TankArmorPose;
+}
+
+/** Each template's zones by their plates' names (the authority's ray names the plate it meets). */
+const zoneByPlate = new WeakMap<PanelTemplate, Map<string, number>>();
+function zoneByPlateOf(template: PanelTemplate): Map<string, number> {
+  let byName = zoneByPlate.get(template);
+  if (!byName) {
+    byName = new Map();
+    template.zones.forEach((zone, index) => { const name = plateName(zone); if (name && !byName!.has(name)) byName!.set(name, index); });
+    zoneByPlate.set(template, byName);
+  }
+  return byName;
 }
 
 export interface PanelFrames {
@@ -55,6 +75,9 @@ export interface PanelBakeStats {
   perPointSplit: number;
   perPointLive: number;
   perPointNone: number;
+  /** (264) Triangles of spaced or external parts that took the plate behind them, and the authority rays cast. */
+  standoff: number;
+  standoffRays: number;
   /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
   wholeParts: number;
   creaseParts: number;
@@ -109,7 +132,7 @@ const SLICE_TRIANGLES = 1500;
 
 const _unscale = new THREE.Matrix4();
 const _normalWorld = new THREE.Matrix3();
-const _b = new THREE.Vector3(), _c = new THREE.Vector3(), _world = new THREE.Vector3();
+const _b = new THREE.Vector3(), _c = new THREE.Vector3(), _world = new THREE.Vector3(), _from = new THREE.Vector3(), _dir = new THREE.Vector3();
 const _centre = new THREE.Vector3(), _normal = new THREE.Vector3(), _p = new THREE.Vector3(), _t = new THREE.Vector3();
 const _g = new THREE.Vector3(), _n = new THREE.Vector3(), _box = new THREE.Vector3();
 
@@ -209,6 +232,11 @@ const FLAT_DOT = 0.9995;
 const MAX_VOTES = 32;
 /** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
 const FLAT_SAMPLED = 8;
+/** (264) A part's centre this far outside every cell of its frame (m) is a spaced or external part; its inward ray starts
+ * this far out along its normal. */
+const CELL_SLACK_M = 0.03;
+const STANDOFF_REACH_M = 1.5;
+
 /** A cluster with no majority under this area (m²: a dome, a hatch, a lamp's casing) takes its plurality as one part;
  * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
 const SMALL_PART_M2 = 0.5;
@@ -328,7 +356,11 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, vo
  */
 export function* bakePaintPanelSteps(
   root: THREE.Object3D, template: PanelTemplate, frames: PanelFrames, armor: object, stats: PanelBakeStats,
+  authority: PanelAuthority | null = null,
 ): Generator<void, PanelBakeStats, void> {
+  const model = armor as ArmorModel;
+  const cellsOf = { hull: model.collisionShells?.hull ?? [], turret: model.collisionShells?.turret ?? [] };
+  const byPlate = zoneByPlateOf(template);
   const split = frameZonesOf(template);
   const barrel = !!frames.gun && Number.isFinite(template.barrelFrom) && template.barrelRadius > 0;
   const users = new Map<THREE.BufferGeometry, THREE.Mesh[]>();
@@ -425,6 +457,26 @@ export function* bakePaintPanelSteps(
       const order = new Int32Array(triangles), fill = starts.slice(0, triangles);
       for (let t = 0; t < triangles; t++) order[fill[roots[t]]++] = t;
       if (spend(triangles >> 3)) { yield; sliceStarted = performance.now(); }
+      // the zone of the first main plate behind a part standing outside every cell of its frame, or -1
+      const behindZone = (x: number, y: number, z: number, nx: number, ny: number, nz: number): number => {
+        const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (!(length > 1e-9) || !authority) return -1;
+        nx /= length; ny /= length; nz /= length;
+        const local = _p.set(x, y, z).applyMatrix4(owner === 'hull' ? pose.hullInv : pose.turretInv);
+        for (const cell of owner === 'hull' ? cellsOf.hull : cellsOf.turret) {
+          if (local.x >= cell.min[0] - CELL_SLACK_M && local.y >= cell.min[1] - CELL_SLACK_M && local.z >= cell.min[2] - CELL_SLACK_M
+            && local.x <= cell.max[0] + CELL_SLACK_M && local.y <= cell.max[1] + CELL_SLACK_M && local.z <= cell.max[2] + CELL_SLACK_M) return -1;
+        }
+        _from.set(x + nx * STANDOFF_REACH_M, y + ny * STANDOFF_REACH_M, z + nz * STANDOFF_REACH_M);
+        _dir.set(-nx, -ny, -nz);
+        stats.standoffRays++;
+        const info = queryAimArmor(_from, _dir, 2 * STANDOFF_REACH_M, authority.pose, model);
+        const main = info?.layers.find((layer) => layer.plate.kind === 'main');
+        if (!main) return -1;
+        // behind the part, never in front of it
+        if ((main.point.x - x) * _dir.x + (main.point.y - y) * _dir.y + (main.point.z - z) * _dir.z < -CELL_SLACK_M) return -1;
+        return byPlate.get(String(main.plate.name ?? '')) ?? -1;
+      };
       const cast = (t: number, weight: number): void => {
         const slot = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
           _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2])) + 3;
@@ -575,10 +627,22 @@ export function* bakePaintPanelSteps(
           if (area > topArea || (area === topArea && key > top)) { top = key; topArea = area; }
           tally[slot] = 0;
         }
-        const value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
+        let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
           ? top === VOTE_BARE ? PANEL_BARE : top + 1 : 0;
         const kept = end - start;
         stats.clusters++;
+        // (264, Main) a spaced or external part outside the cells (a skirt, a box, the hull's rubber, external armour)
+        // takes the zone of the first main plate behind it, which the shell meets through it: one authority ray inward
+        // along its normal. Gear the paint leaves bare stays bare; what rides the gun is the turret's armour already
+        if (authority && value !== PANEL_BARE && top !== VOTE_LIVE && owner !== 'gun' && total > 0) {
+          let nx = 0, ny = 0, nz = 0;
+          for (let k = start; k < end; k++) {
+            const t = order[k], area = areas[t];
+            nx += normals[t * 3] * area; ny += normals[t * 3 + 1] * area; nz += normals[t * 3 + 2] * area;
+          }
+          const behind = behindZone(cx / total, cy / total, cz / total, nx, ny, nz);
+          if (behind >= 0) { value = behind + 1; stats.standoff += kept; }
+        }
         if (value === 0 && voted > 0 && top !== VOTE_LIVE) {
           yield* resolveParts(start, end, total);
           start = end;
@@ -641,12 +705,13 @@ export function* bakePaintPanelSteps(
 
 /** An empty tally for bakePaintPanelSteps. */
 export function panelBakeStats(): PanelBakeStats {
-  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
+  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, standoff: 0, standoffRays: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
     disagreeArea: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
 }
 
 /** The whole bake at once (tools and receipts). */
-export function bakePaintPanels(root: THREE.Object3D, template: PanelTemplate, frames: PanelFrames, armor: object): PanelBakeStats {
-  const work = bakePaintPanelSteps(root, template, frames, armor, panelBakeStats());
+export function bakePaintPanels(root: THREE.Object3D, template: PanelTemplate, frames: PanelFrames, armor: object,
+  authority: PanelAuthority | null = null): PanelBakeStats {
+  const work = bakePaintPanelSteps(root, template, frames, armor, panelBakeStats(), authority);
   for (;;) { const next = work.next(); if (next.done) return next.value; }
 }
