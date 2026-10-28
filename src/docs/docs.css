@@ -155,6 +155,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
   font:400 max(var(--fs-floor-12),var(--fs-14))/1.25 var(--font-body);text-decoration:none}
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
+/* a touch screen wide enough for the shelf (an iPad held wide) keeps its chapters and its search at the touch floor */
+@media (pointer:coarse){.dm-side a:not(.dm-home),.dm-home{min-height:var(--cot-control-floor,44px)}.dm-search__field{height:var(--cot-control-floor,44px)}}
 /* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
    take the shelf's place in the column */
 .dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
@@ -257,7 +259,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-toc a:hover{color:var(--ink-1)}
 .dm-toc a[aria-current=location]{color:var(--ink-1);font-weight:600;box-shadow:var(--docs-toc-on)}
 .dm-pager{display:flex;justify-content:space-between;gap:var(--s4);padding:0 var(--docs-gutter) var(--s8)}
-.dm-pager .doc-icon{width:18px;height:18px}
+.dm-pager .doc-icon{flex:none;width:18px;height:18px}
 .dm-pager__next{margin-left:auto}
 /* a long neighbour's name wraps inside its button on a phone instead of pushing the page sideways */
 .dm-pager .cot-c-btn{min-width:0;max-width:100%;height:auto;min-height:var(--btn-h-m);white-space:normal;text-align:start}

@@ -69,7 +69,7 @@ export interface FleetGridData {
   readonly total: number;
   readonly facets: readonly FleetFacet[];
   readonly words: Readonly<Record<string, string>>;
-  readonly text: { readonly count: string; readonly total: string; readonly placeholder: string };
+  readonly text: { readonly count: string; readonly total: string };
 }
 
 interface Tile {
@@ -88,6 +88,10 @@ const both = (key: string, vars?: Record<string, string>): string => {
 };
 const facetWords = (meta: VehicleFacetValueMeta): string => [meta.label, meta.shortLabel, ...meta.aliases,
   both(meta.labelKey), both(meta.shortKey)].join(' ');
+/** The count, a readout: its figures in the data face (.num, figures only), its words in the reading face (fleetGrid.ts
+ *  writes it the same way as the filters change). */
+const countMarkup = (template: string, values: Record<string, number>): string => template.split(/(\{\w+\})/)
+  .map((part) => (/^\{\w+\}$/.test(part) ? `<span class="num">${values[part.slice(1, -1)] ?? ''}</span>` : esc(part))).join('');
 const fold = (text: string): string => [...new Set(text.toLocaleLowerCase('en-US').split(/\s+/).filter(Boolean))].join(' ');
 
 let tiles: readonly Tile[] | null = null;
@@ -120,8 +124,14 @@ export function fleetGridData(): FleetGridData {
   const { codes, nations } = nationFlags(all.map((tile) => tile.tank));
   const tiers = [...new Set(all.map((tile) => tile.tank.tier))].sort((a, b) => b - a);
   const numeral = (tier: number): string => all.find((tile) => tile.tank.tier === tier)!.tank.tierNumeral;
+  // a flag several roster nations share reads by its short pair (Russia / USSR), so a filter's trigger holds it on one line
+  // in a column of the tiles' width; one nation reads by its name
+  const nationName = (code: string): string => {
+    const key = `docs.fleet.nation.${code}`;
+    return (nations.get(code)?.length ?? 0) > 1 && t(key) !== key ? t(key) : flagLabel(code, nations, t);
+  };
   const values: Record<FacetKey, FleetOption[]> = {
-    nation: codes.map((code) => ({ id: code, name: flagLabel(code, nations, t), count: count('nation', code), chip: nations.get(code)![0] })),
+    nation: codes.map((code) => ({ id: code, name: nationName(code), count: count('nation', code), chip: nations.get(code)![0] })),
     tier: tiers.map((tier) => ({ id: String(tier), name: t('garage.card.tier', { tier: numeral(tier) }), count: count('tier', String(tier)) })),
     era: ERAS.filter(([era]) => count('era', era)).map(([era, key, glyph]) => ({ id: era, name: t(key), count: count('era', era), glyph })),
     // a class by its short name (MBT, IFV, SPAA), as the tiles name it: a filter's trigger holds its choice on one line
@@ -149,7 +159,7 @@ export function fleetGridData(): FleetGridData {
   }
   return {
     total: all.length, facets, words,
-    text: { count: t('docs.fleet.count'), total: t('docs.fleet.total'), placeholder: t('docs.fleet.search', { count: String(all.length) }) },
+    text: { count: t('docs.fleet.count'), total: t('docs.fleet.total') },
   };
 }
 
@@ -193,9 +203,9 @@ export function fleetGridSections(): RichSection[] {
     options: FLEET_VIEWS.map((view) => ({ value: view, label: t(`docs.fleet.view.${view}`) })),
   });
   const search = `<label class="dm-search__field dm-fleet__search">${icon('search', { size: 16 })}`
-    + `<input type="search" data-fleet-search placeholder="${esc(data.text.placeholder)}" aria-label="${esc(t('docs.fleet.searchLabel'))}"`
+    + `<input type="search" data-fleet-search placeholder="${esc(t('docs.fleet.searchLabel'))}" aria-label="${esc(t('docs.fleet.searchLabel'))}"`
     + ` autocomplete="off" spellcheck="false" enterkeyhint="search"></label>`;
-  const count = `<span class="dm-fleet__count" role="status" data-fleet-count>${esc(data.text.total.replace('{total}', String(data.total)))}</span>`;
+  const count = `<span class="dm-fleet__count" role="status" data-fleet-count>${countMarkup(data.text.total, { total: data.total })}</span>`;
   const bar = `<div class="dm-fleet__bar">${search}<div class="dm-fleet__menus">${data.facets.map(triggerMarkup).join('')}</div>${views}${count}</div>`;
   const empty = emptyState({ text: t('docs.fleet.empty'), icon: 'search', className: 'dm-fleet__empty',
     action: { label: t('picker.clear'), attrs: { 'data-fleet-clear': '' } } }).replace('class="cot-c-empty', 'hidden class="cot-c-empty');

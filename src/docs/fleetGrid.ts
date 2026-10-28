@@ -30,7 +30,10 @@ interface Data {
 
 /** Lower case with the accents folded away, so "schutzenpanzer" finds the Schützenpanzer. */
 const fold = (text: string): string => text.normalize('NFD').replace(/[̀-ͯ⁠]/g, '').toLocaleLowerCase('en-US');
-const fill = (template: string, values: Record<string, number>): string => template.replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? ''));
+const escapeText = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** The count, a readout: its figures in the data face (.num holds figures only), its words in the reading face. */
+const fill = (template: string, values: Record<string, number>): string => template.split(/(\{\w+\})/)
+  .map((part) => (/^\{\w+\}$/.test(part) ? `<span class="num">${values[part.slice(1, -1)] ?? ''}</span>` : escapeText(part))).join('');
 /** The picture each presentation builds per tile (the sizes the hero card's are written for). */
 const SIZES = '(width < 520px) 46vw, (width < 1100px) 30vw, 240px';
 
@@ -87,7 +90,7 @@ export function mountFleetGrid(root: HTMLElement, pending: () => Element | null)
       if (tile.hidden === on) tile.hidden = !on;
       if (on) shown++;
     }
-    if (count) count.textContent = shown === data.total ? fill(data.text.total, { total: data.total }) : fill(data.text.count, { shown, total: data.total });
+    if (count) count.innerHTML = shown === data.total ? fill(data.text.total, { total: data.total }) : fill(data.text.count, { shown, total: data.total });
     if (empty) empty.hidden = shown > 0;
     writeAddress();
   };
