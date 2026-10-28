@@ -6069,7 +6069,15 @@ export function initHud(bus: EventBus): HudRuntime {
     bar.lastName = name;
     // (measured shown: a hidden bar's name measures nothing, the target plate's own trap, r14)
     bar.measure = true;
+    // (a hidden bar is placed at the height its lines will have: the two-line default kept a short window's one-line bars
+    // out of every gap, so none ever showed to be measured, battle-hud-layout's phones)
     if (bar.shown) measureHpBar(bar);
+    else bar.layoutH = hpBarRestH(bar);
+  }
+
+  /** A bar's height before it is measured: one line on a short window or with no callsign, else two. */
+  function hpBarRestH(bar: HpBar): number {
+    return bar.solo || hpBarsShort ? HP_BAR_SOLO_H : HP_BAR_H;
   }
 
   function measureHpBar(bar: HpBar): void {
@@ -6082,7 +6090,7 @@ export function initHud(bus: EventBus): HudRuntime {
     bar.layoutW = Math.max(128, Math.min(280, measured));
     bar.root.style.width = `${bar.layoutW}px`;
     // (its height as its lines compose it, the zh floor's taller, read with the widths)
-    bar.layoutH = Math.ceil(bar.root.offsetHeight) || (bar.solo || hpBarsShort ? HP_BAR_SOLO_H : HP_BAR_H);
+    bar.layoutH = Math.ceil(bar.root.offsetHeight) || hpBarRestH(bar);
   }
 
   function positionHpBar(bar: HpBar): void {
@@ -6115,7 +6123,10 @@ export function initHud(bus: EventBus): HudRuntime {
     if (short !== hpBarsShort) {
       hpBarsShort = short;
       hpLayer.classList.toggle('short', short);
-      for (const bar of hpPool.values()) bar.measure = true;
+      for (const bar of hpPool.values()) {
+        bar.measure = true;
+        if (!bar.shown) bar.layoutH = hpBarRestH(bar);
+      }
     }
     const tanks = frame.tanks || [];
     const order = hpBarOrder;
