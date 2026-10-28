@@ -36,6 +36,17 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:n
   width:var(--cot-control-floor);padding:0;justify-content:center;}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
   flex:0 0 0;width:0;}
+/* the readout's title keeps an 8 px margin under it: at the floor the Compare chip stands level with the title's info
+   button, not 4 px under it (iPad critic g1) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-garage .stats .cot-compare>.cot-compare-toggle{align-self:flex-start;}
+/* a short docked window (an iPad mini held wide, 612 px): the floor's taller tabs and chips leave the readout no room for
+   its fifth action under the figures (cut through its label, g1), so the actions stand three across, every label whole
+   at 95 px; two, four or five share their rows with no hole */
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions{
+  grid-template-columns:repeat(6,minmax(0,1fr));}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions>*{grid-column:span 2;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions:has(>:nth-child(5):last-child)>:nth-child(n+4),
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage .cot-overview-section .cot-actions:is(:has(>:nth-child(4):last-child),:has(>:nth-child(2):last-child),:has(>:only-child))>*{grid-column:span 3;}
 /* the paint drawer's search, level with the chips beside it (showroom.css docks it at the desktop's small height) */
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{height:var(--cot-control-floor);}
 /* Settings' tabs past a phone: a two-character label (zh) is 31 px across, so the box takes the floor and centres its
