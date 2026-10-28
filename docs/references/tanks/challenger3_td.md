@@ -7,14 +7,15 @@
   the second ruling the same day, verbatim: "challenger 3 td should get a tonn of ghillie as well".
 - IDs and display names: `challenger3_td`, "Challenger 3 TD" (aliases: Challenger 3 Technology Demonstrator,
   Challenger 3 ATD, CR3 TD, RBSL demonstrator).
-- Implementation status: BUILT (r0-r9); both ids registered, anatomy, assets and drawings generated.
+- Implementation status: BUILT (r0-r10); both ids registered, anatomy, assets and drawings generated.
 - Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9; every other lane receipt
   PASS (see the evidence matrix and `~/cot-launch-state/streams/TESTS-OWED.md`, the cr3td-262 section).
 - Publication status: lane branch only; integration through Main (release 262).
 - Worktree / branch / baseline commit: `.claude/worktrees/dazzling-engelbart-21c8ce`, `item/cr3td-262`, from
   `origin/main` `7d045a7588`.
 - Current next action: Main's ruling on the exemplar gate residuals (the suspension arms the oracle omits; the muzzle
-  reference box against the barrel-align census), then the integrator's bundle re-pin.
+  reference box against the barrel-align census; the track profile's centre guide rib, r10), then the integrator's
+  bundle re-pin.
 - Blocking choices / known failures: none blocking; the dimension conflicts below are recorded, not resolved.
 
 ## Scope and preservation
@@ -195,6 +196,17 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   The oracle's muzzle reference box (x -0.166..-0.100 beside the tube at z 6.51-6.81) was built and taken out again:
   one-sided beside the tube near the mouth, it moved the bore line `gun-barrel-align-census` fits by 24 mm and 0.64
   degrees (a release gate), for one plan-view column of the geometry gate.
+- r10 (lane release check, 2026-10-28): §B2 contiguity found one phase-only plan gap on both ids at (0.37, -5.01),
+  0.06 m: the left fuel drum's inner end (0.40) stood 8 cm off the drum cradle's face (0.32). The oracle's drums
+  (Object_16/18) end at +-0.365 with their end faces 0.598 across about z -4.585, and its cradle (Object_13) faces the
+  left drum at 0.351: the drums and that face moved onto them (a 1.4 cm seam, under the lattice). A Node replica of the
+  §B2 scan (`.qa-dev/cr3td/contig-node.mjs`: the gate's 2 cm anchored lattice and `contigScan` at all nine phases)
+  reproduced the gap on the old build and reads none on the new one (both ids, suit on and off). The rear floors,
+  re-measured every degree 150-180 (`rear-floor.mjs`), sit at or under the published curve everywhere (the 170-177
+  plateau 1.41-1.44 against 1.42-1.50). The run's fidelity score (96.1) failed its exemplar floor on the track profile
+  alone (89.2): the oracle's lower run is a 0.07-0.08 m band with a continuous centre guide rib to 0.18 m between the
+  wheels, where the fleet shoe draws a 0.05 m band with its guides under the band's top; it joins the r9 running-gear
+  residuals for Main's ruling.
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),

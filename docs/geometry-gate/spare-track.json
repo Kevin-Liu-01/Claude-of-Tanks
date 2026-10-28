@@ -747,13 +747,13 @@
    "hostSweep": []
   },
   "challenger3_td": {
-   "inputHash": "0882fec2fb3e9abc",
+   "inputHash": "71a5761a10e8cd32",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_td_rws": {
-   "inputHash": "f295265e70e33e19",
+   "inputHash": "286411eeab616d6e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

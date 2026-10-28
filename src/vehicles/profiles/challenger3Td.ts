@@ -202,16 +202,18 @@ function buildHull(P: TankBuilderPort): void {
       hull('hullDark', box(0.34, 0.012, 0.56), side * 0.39, y + 0.004, z);
       for (let k = 0; k < 6; k++) hull('hullDetail', box(0.34, 0.016, 0.03), side * 0.39, y + 0.012, z - 0.23 + k * 0.092);
     }
-    // the external fuel drums lying across the stern
-    hull('hullPaintedDetail', cylX(0.29, 0.91, P.q ? 20 : 12), side * 0.855, 1.55, -4.62);
-    for (const dx of [-0.30, 0.30]) hull('hullDark', cylX(0.296, 0.035, P.q ? 20 : 12), side * 0.855 + dx, 1.55, -4.62);
+    // the external fuel drums lying across the stern, on the oracle's Object_16/18 (inner ends at 0.365, the end
+    // faces 0.598 across about z -4.585, the hoops to 1.224-1.844)
+    hull('hullPaintedDetail', cylX(0.30, 0.928, P.q ? 20 : 12), side * 0.829, 1.534, -4.585);
+    for (const dx of [-0.30, 0.30]) hull('hullDark', cylX(0.306, 0.035, P.q ? 20 : 12), side * 0.829 + dx, 1.534, -4.585);
     hull('hullDetail', box(0.05, 0.62, 0.05), side * 0.36, 1.53, -4.33);
     // final-drive covers behind the sprockets (the rear plate stands vertical to 0.75 outboard) and the tow hooks
     hull('hull', box(0.30, 0.50, 0.42), side * 0.77, 1.00, -3.81);
     hull('hullDetail', box(0.10, 0.14, 0.16), side * 0.75, 1.10, -4.10);
   }
   // the drums' cradle between them, its rear plate brackets, the stern pole above it and the overhung rear deck lip
-  hull('hullDetail', box(0.67, 0.60, 0.40), -0.015, 1.60, -4.55);
+  // (the cradle's left face on the oracle's Object_13 at 0.351, 1.4 cm short of the drum: no plan slot for §B2)
+  hull('hullDetail', box(0.701, 0.60, 0.40), 0.0005, 1.60, -4.55);
   hull('hullDetail', box(0.20, 0.10, 0.30), -0.25, 1.94, -4.55);
   hull('hullDetail', box(0.42, 0.25, 0.30), 0.11, 1.455, -4.90);
   hull('hullDetail', box(2.0, 0.06, 0.08), 0, 1.24, -4.34);
