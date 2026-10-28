@@ -60,7 +60,9 @@ and the paint-before-fade Garage recovery transaction for failed cold entry;
 `sniperFillRuntime.ts` owns the retained shadow-free close-cover scope light;
 `combatFeedbackRuntime.ts` owns discrete ERA, hit-confirm, camera-recoil,
 prop-destruction, and Garage-residency reactions on the shared event bus;
-`armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay;
+`armorAimOverlay.ts` owns the typed, bounded scoped plate-penetration overlay
+(painted on the vehicle's own paint by `vehicles/materials.ts` ARMOR_PAINT, zone by
+zone from `armorZones.ts`'s plates);
 `battleFrameRuntime.ts` owns pause edges, retained input sampling, network
 cadence, pre-battle hold, the countdown's presentation edges (one rollout a
 battle, solo or network, late for a network battle joined after its count;
