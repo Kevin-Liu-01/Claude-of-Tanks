@@ -15,6 +15,8 @@ function element(name) {
   let text = '';
   const result = {
     name, id: '', className: '', innerHTML: '', children: [], dataset: {},
+    // (an image already decoded: the plan's reveal, components/reveal.ts, stands it at once)
+    complete: true, naturalWidth: 1,
     get textContent() { return text; },
     set textContent(value) { mutations.push([name, 'text', value]); text = value; this.children.length = 0; },
     get offsetWidth() { throw new Error('loading progress must not force layout'); },
@@ -43,7 +45,10 @@ function element(name) {
 }
 const priorDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
 const priorTimeout = Object.getOwnPropertyDescriptor(globalThis, 'setTimeout');
+const priorVideo = Object.getOwnPropertyDescriptor(globalThis, 'HTMLVideoElement');
 const timers = [];
+// (the plan's reveal asks whether its picture is a film)
+Object.defineProperty(globalThis, 'HTMLVideoElement', { configurable: true, value: class HTMLVideoElement {} });
 Object.defineProperty(globalThis, 'document', { configurable: true, value: {
   head: element('head'), body: element('body'),
   createElement: name => element(name),
@@ -214,6 +219,9 @@ try {
     assert.equal(selectors.get('.map').hidden, false, 'the plan keeps its frame while the room has no map');
     screen.show({ ...info, thumb: '', biome: 'verdant' });
     assert.match(plan.src, /\/minimaps\/verdant\.webp\?v=/, 'the plan loads once the map is known');
+    const planBox = selectors.get('.map .mp');
+    assert.equal(planBox.getAttribute('data-reveal'), '', 'the plan fades in over its plate (components/reveal.ts), never a pop or a broken frame');
+    assert.equal(planBox.getAttribute('data-ready'), '', 'a plan already decoded stands at once');
     screen.show({ ...info, thumb: '', biome: 'none' });
     assert.equal(plan.src, undefined, 'and a room back to no map drops the request');
   }
@@ -229,5 +237,7 @@ try {
   else delete globalThis.document;
   if (priorTimeout) Object.defineProperty(globalThis, 'setTimeout', priorTimeout);
   else delete globalThis.setTimeout;
+  if (priorVideo) Object.defineProperty(globalThis, 'HTMLVideoElement', priorVideo);
+  else delete globalThis.HTMLVideoElement;
 }
 console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging and the unchosen room map passed');

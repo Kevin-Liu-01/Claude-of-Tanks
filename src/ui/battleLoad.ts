@@ -26,6 +26,7 @@ import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
+import { revealWhenReady } from './components/reveal.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { GAME_MODE_DEFINITIONS, normalizeGameMode } from '../sim/gameModeCatalog.ts';
@@ -673,8 +674,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
+  const mapPlan = requiredElement<HTMLElement>(root, '.map .mp');
   // the objectives over the plan: a uiCanvas the Deploy screen's lazy drawer draws (deployObjectives.ts)
-  const objCanvas = createUiCanvas(requiredElement<HTMLElement>(root, '.map .mp'), 'obj').canvas;
+  const objCanvas = createUiCanvas(mapPlan, 'obj').canvas;
   objCanvas.setAttribute('aria-hidden', 'true');
   let objectivesPass = 0, objectivesDrawn = false;
   /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
@@ -992,6 +994,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       mapEl.hidden = !info.biome;
       if (planId) mapImg.src = minimapAssetUrl(planId);
       else mapImg.removeAttribute('src');
+      // the plan fades in once decoded over the plate (a warm entry's is decoded already); offline it leaves the plate,
+      // never a broken frame (the loading census)
+      if (planId) revealWhenReady(mapPlan, mapImg);
       drawObjectives(planId, info.modeId);
       showRules(info.modeId, !!info.campaign);
       // (a battle's side with no rows yet holds the default split's seats open, never an empty bar; an entry with no
