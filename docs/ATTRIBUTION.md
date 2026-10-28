@@ -1058,7 +1058,10 @@ of real-world fidelity. Its pinned SHA-256 is
   kept outside the repository (`~/cot-lanes/new-tank-refs-262/`); no mesh, texture or derived render of it ships. The
   playable `challenger3_td` and `challenger3_td_rws` are first-party procedural geometry attributed to Kevin B. Liu
   (`profiles/challenger3Td.ts`); the measured rows are in
-  [the run packet](references/tanks/challenger3_td.md).
+  [the run packet](references/tanks/challenger3_td.md). Its local comparison copy for the fidelity and geometry gates
+  is the `tools/source-x-oracle.mjs` canonical export (`public/models/community-candidates/challenger3_td_x_source.glb`,
+  ignored, SHA-256 `6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386`: the same geometry rescaled 1.10
+  and shifted 0.2145 m, untextured); it never ships either.
 
 ## Marder 2 photographic authoring reference (2026-09-29)
 

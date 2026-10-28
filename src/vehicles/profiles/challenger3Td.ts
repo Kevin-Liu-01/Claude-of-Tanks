@@ -369,10 +369,8 @@ function buildMainGun(P: TankBuilderPort): void {
   gun('gun', cylZ(0.166, 0.05, seg, 0.125), 0, 2.055, 3.32);
   gun('gun', cylZ(0.125, 0.05, seg, 0.166), 0, 2.055, 3.83);
   gun('gun', cylZ(0.112, 0.08, seg), 0, 2.031, 5.40);
-  // the muzzle reference box on the tube's right near the muzzle and its clamp (the oracle's x -0.166..-0.100,
-  // z 6.51-6.81); dark and off the 'gun' bucket so the barrel's circularity sections stay the tube's own
-  gun('gunDark', box(0.066, 0.073, 0.30), -0.133, 2.0335, 6.662);
-  gun('gunDark', box(0.05, 0.03, 0.06), -0.085, 2.0335, 6.56);
+  // (the oracle's muzzle reference box beside the tube, x -0.166..-0.100 at z 6.51-6.81, is left out: a one-sided box
+  // that near the mouth moves the drawn bore line gun-barrel-align-census fits by 24 mm and 0.64 deg)
   muzzleBore(P, { len, r: 0.095 * S });
 }
 

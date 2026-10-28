@@ -173,6 +173,26 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   easing over the engine deck to +1.5 at 165-177 and +8.1 over the stern pole at 178-180; no mount conflict, nothing
   blocked at elevation. Published on both ids (`CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG`); `nationalGunClearance`
   holds them (the TD 24.91 mm with its suit at yaw 33, the field fit 26.31 mm).
+- r9 (geometry gate, exemplar floor 92): the first run scored 0 (dims) with the raw GLB registered: its width
+  normalization keyed the reference to the spec's 3.84 m, and the oracle's widest points are two skirt hooks a side, so
+  the reference was drawn 5.5 % small. Registered properly: `tools/source-x-oracle.mjs --prepare` (recipe
+  `challenger3_td_x`: axes x y z, scale 1.10, translation (0, 0, 0.2145)) wrote the canonical comparison file, and its
+  source-world certificate (`tools/source-world-registration.mjs`: ring (0, 1.98, 0.7106), trunnion (0, 2.2341, 1.9195))
+  pins the frame with no normalization. The turret and gun material groups (24, 25, 20) carry the turret basket and
+  breech internals inside the ring down to 1.05 m, so the registry routes them by island (`componentSubsets` at 1.892,
+  internals out of every mask) on the all-turret roof furniture (26) and the muzzle device (6). Geometry matched to the
+  oracle in the same rounds: the hook blocks and skirt-top fittings, the mudguards' straight 0.95 inner edge and lip, the end wheels' 1.795 outer face, the stern pole on its
+  node's bounds, plain turret walls (the oracle has no side rail), the commander's head on its span, the whips on their
+  centres; spec dims set to the measured envelope (9.63 / 13.15 / 4.06 / 3.74). Result 91.2/92: dims 100, stations
+  95.5, turret 93.3, whole 92.2, hull 91.19 (front view). The hull deficit is two measured items: eight front columns
+  where the fleet's forged suspension arms (axle bosses at 0.43-0.53 m, x 0.97-1.17) stand under the oracle's lowest
+  point there (0.61 m; the oracle models no arms), about 2.7 points; and the centre column, where the reference's
+  front hull mask reads 2.20 m though its own stern pole (Object_2, present in the canonical file to 2.83 m) stands
+  there and the side view sees it. The rear depression stops were re-measured with the pole's true height: 8.4/8.7/8.7
+  at 178-180 (nationalGunClearance PASS).
+  The oracle's muzzle reference box (x -0.166..-0.100 beside the tube at z 6.51-6.81) was built and taken out again:
+  one-sided beside the tube near the mouth, it moved the bore line `gun-barrel-align-census` fits by 24 mm and 0.64
+  degrees (a release gate), for one plan-view column of the geometry gate.
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),

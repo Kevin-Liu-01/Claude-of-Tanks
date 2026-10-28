@@ -3,7 +3,7 @@
   "ownerDecision": {
     "date": "2026-10-27",
     "request": "so yeah make a new version of this challeenger without the ghillie and with new remote machien gun tower systems and equipment and so on!!!! awesome this will be 2 nerrw tanks",
-    "scope": "A second playable id beside the Challenger 3 TD (challenger3_td, release 262): the same measured demonstrator without the camouflage suit, fitted with a new remote machine-gun station and field equipment. The TD keeps its heavy beech ghillie (the owner's same-day ruling relayed by Main: 'challenger 3 td should get a tonn of ghillie as well'). Envelope measured on the release-262 build at both qualities with the suit left out; the whips set its top."
+    "scope": "A second playable id beside the Challenger 3 TD (challenger3_td, release 262): the same measured demonstrator without the camouflage suit, fitted with a new remote machine-gun station and field equipment. The TD keeps its heavy beech ghillie (the owner's same-day ruling relayed by Main: 'challenger 3 td should get a tonn of ghillie as well'). Envelope measured on the release-262 build at both qualities with the suit left out; the whips set its top and the skirt hooks its width."
   },
   "comparisonPurpose": "owner-authored-concept",
   "comparisonApplicable": false,
@@ -34,7 +34,7 @@
       "roofMachineGuns": 1,
       "hullLengthM": 9.63,
       "hullWidthM": 4.06,
-      "widthM": 3.971,
+      "widthM": 4.068,
       "overallLengthM": 13.165,
       "tallestM": 5.94,
       "specDimensions": {
