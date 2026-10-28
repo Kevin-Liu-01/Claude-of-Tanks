@@ -189,8 +189,10 @@ function mod2022Fittings(P: TankBuilderPort): void {
   slatScreen(P, 'turret', [-.95, .18, -1.88], [.95, .18, -1.88], .42, [[-.55, .30, -1.56], [.55, .30, -1.56]]);
   for (const side of [-1, 1]) slatScreen(P, 'turret', [side * .95, .18, -1.88], [side * 1.12, .18, -1.10], .42, [[side * .70, .30, -1.40]]);
   const zR = T64_HULL.rearZ;
-  slatScreen(P, 'hull', [-1.62, 1.00, zR - .42], [1.62, 1.00, zR - .42], .46, [[-1.0, 1.20, zR - .02], [0, 1.20, zR - .02], [1.0, 1.20, zR - .02]]);
-  for (const side of [-1, 1]) slatScreen(P, 'hull', [side * 1.86, 1.00, zR - .30], [side * 1.86, 1.00, -1.95], .46,
+  // the stern screen against the beam's back and the quarters' just outside the rubber skirt: from above they meet the
+  // hull with no enclosed gap
+  slatScreen(P, 'hull', [-1.62, 1.00, zR - .335], [1.62, 1.00, zR - .335], .46, [[-1.0, 1.20, zR - .02], [0, 1.20, zR - .02], [1.0, 1.20, zR - .02]]);
+  for (const side of [-1, 1]) slatScreen(P, 'hull', [side * 1.705, 1.00, zR - .30], [side * 1.705, 1.00, -1.95], .46,
     [[side * (T64_HULL.fenderOuterX - .02), T64_HULL.deckY - .03, -2.40], [side * (T64_HULL.fenderOuterX - .02), T64_HULL.deckY - .03, -3.00]]);
 }
 

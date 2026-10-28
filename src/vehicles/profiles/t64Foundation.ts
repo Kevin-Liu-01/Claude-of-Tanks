@@ -178,13 +178,17 @@ function rearPlate(P: TankBuilderPort, drums: boolean, log: boolean): void {
   P.addEquipment('hullDetail', box(1.92, .025, .060), 0, 1.165, z - .01);
   for (const x of [-.96, .96]) P.addEquipment('hullDetail', box(.025, .215, .060), x, 1.26, z - .01);
   for (let i = 0; i < 5; i++) P.addEquipment('hullDark', box(1.88, .010, .050), 0, 1.19 + i * .036, z - .02, -.45, 0, 0);
+  // the exhaust shroud over the louvre at the deck edge, 0.19 m aft and across to the mudflaps: from above the stern reads
+  // closed from the plate to the beam (no slit between the louvre and the cradles, nor at the hull's corners)
+  P.addEquipment('hullDetail', box(2.14, .020, .19), 0, H.deckY - .012, H.rearZ - .092);
   // towing hooks, tail lights and the unditching beam's cradles
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', box(.12, .11, .10), side * .70, .80, z - .04);
     P.addEquipment('hullDetail', torus(.052, .017, 14, 6), side * .70, .80, z - .10);
     P.addEquipment('hullDetail', box(.10, .06, .05), side * .88, 1.30, z - .035);
     P.addEquipment('hullGlass', box(.06, .03, .012), side * .88, 1.30, z - .066);
-    for (const y of [1.04]) P.addEquipment('hullDetail', box(.08, .13, .17), side * .42, y, z - .085);
+    // the unditching beam's cradles, where it is carried
+    if (log) P.addEquipment('hullDetail', box(.08, .13, .17), side * .42, 1.04, z - .085);
   }
   if (log) mount(P, 'hull', FITTINGS.unditchingLog({ mats: P.mats, len: 2.86, r: .115, straps: 2, seed: 64 }), 0, 1.04, z - .20);
   if (drums) for (const side of [-1, 1]) {
