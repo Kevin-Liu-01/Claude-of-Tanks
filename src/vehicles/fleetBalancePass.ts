@@ -86,6 +86,13 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'challenger3_proto', { pen100: 880, pen1000: 810, pen2000: 730 });
   }
   {
+    // release 262: the 2021 demonstrator a step under the prototype: DM63A1 for DM73, the Challenger 2's 1,200 hp
+    const tank = spec(registry, 'challenger3_td');
+    Object.assign(tank, { hp: 2550, topSpeedKmh: 59, reverseSpeedKmh: 22 });
+    Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.245, aimTimeS: 1.65 });
+    primary(registry, 'challenger3_td', { pen100: 850, pen1000: 780, pen2000: 700 });
+  }
+  {
     const tank = spec(registry, 'challenger3');
     Object.assign(tank, { hp: 2780, topSpeedKmh: 60, reverseSpeedKmh: 24 });
     // 2026-10-25: aim 1.5 -> 1.65 s, inside the modern Tier X fire-control ceiling, still a step over the prototype

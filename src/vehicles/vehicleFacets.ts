@@ -177,7 +177,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   mbt: Object.freeze([
     'abramsx', 'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'challenger1_mk2', 'challenger1_mk3',
-    'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'chieftain3', 'chieftain5',
+    'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'challenger3_td', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'kf51_evo',
     'kf51_panther', 'kf51_u', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a5',
     'leo2_improved', 'leo2_revolution', 'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco',
@@ -265,7 +265,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
   sniper: Object.freeze([
     'aft10', 'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger2e', 'challenger3',
-    'challenger3_proto', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
+    'challenger3_proto', 'challenger3_td', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
     'strv103b', 'strv121', 'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
@@ -310,7 +310,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   // and the Type 10B are the K2's and the Type 10's prototype versions.)
   prototype: Object.freeze([
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
-    'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'cv90105_tml', 'fv4034',
+    'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'challenger3_td', 'cv90105_tml', 'fv4034',
     'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
     'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't90a_burlak',
     't90a_burlak_proto', 'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther',

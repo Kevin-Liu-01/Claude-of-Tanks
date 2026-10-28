@@ -44,7 +44,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   challenger: Object.freeze([
     'chieftain3', 'chieftain_mk9', 'challenger1_mk2', 'fv4034', 'challenger2',
-    'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3',
+    'challenger2e', 'ua_challenger2', 'challenger3_td', 'challenger3_proto', 'challenger3',
   ]),
   // 258: in shown-tier order (matchmaking reads it): the Sabra at II and the Namer at IV come before the Merkava 2 and 3
   israel: Object.freeze([

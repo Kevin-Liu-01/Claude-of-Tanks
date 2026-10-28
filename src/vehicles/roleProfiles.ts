@@ -49,6 +49,9 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   ua_challenger2: { doctrine: 'precision', viewM: 410, still: 0.233, moving: 0.143 },
   challenger3_proto: { doctrine: 'precision', viewM: 420, still: 0.234, moving: 0.144 },
   challenger3: { doctrine: 'precision', viewM: 430, still: 0.225, moving: 0.135 },
+  // the demonstrator's new commander's and gunner's sights on the Challenger 2's slower hull: the prototype's view, its
+  // camouflage a shade better standing (no Trophy masts or roof station to break the outline)
+  challenger3_td: { doctrine: 'precision', viewM: 420, still: 0.238, moving: 0.142 },
   xk2_black_panther: { doctrine: 'flanker', viewM: 420, still: 0.225, moving: 0.165 },
   k1e1: { doctrine: 'flanker', viewM: 395, still: 0.227, moving: 0.167 },
   stb1: { doctrine: 'flanker', viewM: 390, still: 0.242, moving: 0.182 },

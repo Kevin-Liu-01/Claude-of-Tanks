@@ -251,6 +251,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   ua_challenger2: anchor('hull', 'left', 0.40, 0.60, 0.24, 1),
   challenger3_proto: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
   challenger3: anchor('turret', 'left', 0.32, 0.46, 0.24, 1),
+  challenger3_td: anchor('turret', 'left', 0.34, 0.47, 0.25, 1),
   xk2_black_panther: anchor('turret', 'left', .35, .45, .24, 1),
   k1e1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),
   // K2B (§5.299): the resurrected pre-§5.248 pl01 geometry — reuse that
