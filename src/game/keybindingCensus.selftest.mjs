@@ -22,8 +22,9 @@ import { DEFAULT_BINDINGS, DEFAULT_BINDINGS2 } from './input.ts';
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const PHASES = ['garage', 'studio', 'battle', 'killcam'];
 
-/** The input actions live outside a battle; the rest are a battle's (their handlers stand down elsewhere). */
-const ACTION_PHASES = { perfHud: PHASES, settingsMenu: ['garage', 'battle'] };
+/** The input actions live outside a battle; the rest are a battle's (their handlers stand down elsewhere). The
+ *  diagnostics stand aside while the Studio is open (main.ts: if (studio.active) return). */
+const ACTION_PHASES = { perfHud: ['garage', 'battle', 'killcam'], settingsMenu: ['garage', 'battle'] };
 const BATTLE = ['battle'];
 
 /** Keys owners read off the event themselves, by feature: the files, the codes and the phases they act in. */
@@ -111,6 +112,8 @@ assert.ok(scanned > 500, `the scan read ${scanned} source files`);
 assert.notEqual(DEFAULT_BINDINGS.perfHud, 'Escape', 'a battle Escape opens Settings, never the diagnostics');
 assert.notEqual(DEFAULT_BINDINGS2.perfHud, 'Escape');
 assert.equal(DEFAULT_BINDINGS.perfHud, 'F9', 'the diagnostics keep F9, a key no other owner takes');
+assert.match(source('src/main.ts'), /input\.onAction\('perfHud', \(\) => \{\s+(\/\/[^\n]*\n\s*)*if \(studio\.active\) return;/,
+  'the diagnostics stand aside while the Studio is open, as the census models them');
 const perfHud = source('src/ui/perfHud.ts');
 assert.match(perfHud, /event\.key !== 'Escape'[\s\S]{0,200}openSurfaceIds\(\)\.length\) return;[\s\S]{0,120}close\(\);/,
   'the panel\'s Escape closes it, under any open surface, and only closes');
