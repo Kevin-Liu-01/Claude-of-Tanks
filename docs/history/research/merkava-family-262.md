@@ -136,10 +136,10 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 | Gate | Status | Revision | Command / artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | 8da2eb3e18 | `source-x-oracle --inspect/--prepare`; `.qa-dev/merkava-262/intake/` | identity frame, hashes pinned, photo side check |
-| Registered silhouettes | NOT RUN | | `procedural-fidelity --ids=<six> --check --board --neutral-board` (queued) | |
-| Geometry components / dimensions | NOT RUN | | `geometry-gate --ids=<six> --check` (queued) | |
+| Registered silhouettes | PASS (rev 4) | 9d6206e4a2 | `procedural-fidelity --ids=<six> --check --board --neutral-board`; boards `shots/procedural-fidelity/boards/<id>-neutral.png` | 94.1 (2D) to 95.2 (3D Baz), every view at least 96 on the registered rubric; rev 6 re-run queued |
+| Geometry components / dimensions | FAIL (rev 4) | 9d6206e4a2 | `geometry-gate --ids=<six> --check` | whole curves 92.4-93.8 PASS; dims 0 (measured against the published figures: the six now use the source ruler, `source-dimension-frame.mjs`); floaters 0 on the 1B (one island at yaw 180); rev 6 re-run queued |
 | Lane overlays against the supplied OBJs | DIAGNOSTIC | rev 3 | `overlay.py` (lane tool), side / top / front IoU | side 0.885-0.898, top 0.965-0.977, front 0.817-0.909 |
-| Independent critic / Gallery | NOT RUN | | | |
+| Independent critic / Gallery | FAIL (rev 4) | 9d6206e4a2 | blind critic subagents: the Mk 1B renders and overlays (rev 3+), the six registered clay boards (rev 4) | clay 2/10 (2D) to 5/10 (3C); articulation 3-6/10; findings worked in rev 5 and 6; re-review owed on rev 6 |
 | Winding, closure, negative space | NOT RUN | | | |
 | Seats and yaw/pitch/recoil ownership | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` HIGH and LOW | |
 | Gun clearance and depression curves | NOT RUN | | `gun-depression-sweep --no-suit`, `merkavaFamilyGunClearance.selftest.mjs` | |
@@ -164,3 +164,17 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   IoU 0.875-0.890 → 0.885-0.898.
 - r3+ (uncommitted at writing): the right-side exhaust louvre's measured panel and eight vertical vanes (Mk 1-3),
   none on the Mk 4.
+- r4 (`59c8536d97`, `9d6206e4a2`): the Mk 1-3 gun slot through the turret nose and the gun mask lofted through the
+  source's `bone_gun` sections riding in it; the roof MAGs on pintle posts down to the shell. Fidelity PASS at the
+  exemplar bar (94.1-95.2); geometry: whole curves PASS, dims and the 1B's floater FAIL.
+- Critic, Mk 1B (rev 3+): hero 6/10, gun close-up 5/10 — floating over-gun M2 and box, MAGs 0.3-0.5 m forward of the
+  source's, a duplicate rear door, a thin chain curtain, guessed whips, "washer" collars.
+- r5 (`09b5207a02`): the mask's sections up to the M2's receiver (its cradle), the MAGs to the source guns' spans, the
+  sources' whips, no hand-built door on the Mk 1/2, chains down both basket sides, welded spikes split off.
+- Critic, six clay boards (rev 4): clay 2-5/10 — turrets of loose slabs and creased faces, the 2D's cone "whips", the
+  4B's mantlet fin and chips, boxes under the 2D/3D noses, missing hooks and lamp guards, ringed barrels.
+- r6 (`73bb73fd1f`): every source detail piece its own part (672-1089 a mark; the slabs, fins and cones were group-level
+  convex fits spanning separate pieces); barrels as the round tube (the Mk 1/2 "clamps" were side lugs); turret
+  stations smoothed; lenses only on forward lamp pieces; the source dimension ruler. HIGH triangles 126k-135k (rev 4:
+  101k-110k; the retired pile 110k-126k).
+
