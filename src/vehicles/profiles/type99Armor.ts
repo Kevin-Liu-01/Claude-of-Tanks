@@ -358,18 +358,21 @@ function type96BFrameArmor(): ArmorEnvelope {
 // 300, bustle 55, roof 45, mantlet 380); every quad is the drawn surface. The cheek geometry (longwei.ts): the front line
 // runs from (|x| 0.30, z 1.55) to (1.42, 0.72), the face from y 0.02 up to 0.44 leaning back 0.08 m, the top rising to
 // the roof line (0.76) 0.40 m behind the front edge.
-const LONGWEI_THROAT_X = 0.30, LONGWEI_CHEEK_OUTER_X = 1.42;
+const LONGWEI_THROAT_X = 0.30, LONGWEI_CHEEK_OUTER_X = 1.57;
 const LONGWEI_CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
+const LONGWEI_CHEEK_LOW_Y = 0.045, LONGWEI_CHEEK_HIGH_Y = 0.40, LONGWEI_CHEEK_LEAN = 0.22, LONGWEI_CHEEK_TOP_RUN = 0.60;
 const longweiCheekZ = (ax: number): number => 1.55 - (ax - LONGWEI_THROAT_X) * LONGWEI_CHEEK_SWEEP;
-/** A point on the cheek face at |x| ax, height y in 0.02..0.44. */
+/** A point on the cheek face at |x| ax, height y in 0.045..0.40. */
 const longweiCheekFace = (side: number, ax: number, y: number): MutableVec3 =>
-  [side * ax, y, longweiCheekZ(ax) - 0.08 * (y - 0.02) / (0.44 - 0.02)];
+  [side * ax, y, longweiCheekZ(ax)
+    - LONGWEI_CHEEK_LEAN * (y - LONGWEI_CHEEK_LOW_Y) / (LONGWEI_CHEEK_HIGH_Y - LONGWEI_CHEEK_LOW_Y)];
 
 function longweiTurretPlates(): ArmorPlate[] {
   // the cassette field's outer face: the cheek face moved out 59 mm along its normal
   const faceNormal = (side: number): MutableVec3 => {
-    const a = longweiCheekFace(side, LONGWEI_THROAT_X, 0.02), b = longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.02);
-    const c = longweiCheekFace(side, LONGWEI_THROAT_X, 0.44);
+    const a = longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_LOW_Y);
+    const b = longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_LOW_Y);
+    const c = longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_HIGH_Y);
     const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
     let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
     if (n[2] < 0) n = n.map((k) => -k);
@@ -381,8 +384,8 @@ function longweiTurretPlates(): ArmorPlate[] {
     return [p[0] + n[0] * d, p[1] + n[1] * d, p[2] + n[2] * d];
   };
   const top = (side: number, ax: number, rear: boolean): MutableVec3 => (rear
-    ? [side * ax, 0.76, longweiCheekZ(ax) - 0.40]
-    : [side * ax, 0.44, longweiCheekZ(ax) - 0.08]);
+    ? [side * ax, 0.76, longweiCheekZ(ax) - LONGWEI_CHEEK_TOP_RUN]
+    : [side * ax, LONGWEI_CHEEK_HIGH_Y, longweiCheekZ(ax) - LONGWEI_CHEEK_LEAN]);
   const plates: ArmorPlate[] = [];
   for (const side of [1, -1]) {
     const tag = side > 0 ? 'R' : 'L';
@@ -390,12 +393,12 @@ function longweiTurretPlates(): ArmorPlate[] {
       side > 0 ? [a, b, c, d] : [b, a, d, c]);
     plates.push(
       armorPlate(`turret_era_${tag}`, 15, quad(
-        out(side, longweiCheekFace(side, 0.375, 0.05), 0.059), out(side, longweiCheekFace(side, 1.345, 0.05), 0.059),
-        out(side, longweiCheekFace(side, 1.345, 0.38), 0.059), out(side, longweiCheekFace(side, 0.375, 0.38), 0.059)),
+        out(side, longweiCheekFace(side, 0.37, 0.07), 0.059), out(side, longweiCheekFace(side, 1.51, 0.07), 0.059),
+        out(side, longweiCheekFace(side, 1.51, 0.37), 0.059), out(side, longweiCheekFace(side, 0.37, 0.37), 0.059)),
       { kind: 'era', era: FY4 }),
       armorPlate(`turret_cheek_${tag}`, 700, quad(
-        longweiCheekFace(side, LONGWEI_THROAT_X, 0.02), longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.02),
-        longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, 0.44), longweiCheekFace(side, LONGWEI_THROAT_X, 0.44)),
+        longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_LOW_Y), longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_LOW_Y),
+        longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_HIGH_Y), longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_HIGH_Y)),
       { keMm: 600, ceMm: 850 }),
       armorPlate(`turret_cheek_upper_${tag}`, 700, quad(
         top(side, LONGWEI_THROAT_X, false), top(side, LONGWEI_CHEEK_OUTER_X, false),
@@ -410,19 +413,21 @@ function longweiTurretPlates(): ArmorPlate[] {
       { keMm: 380, ceMm: 450, gunFollow: true }),
     frontPlate('turret_brow', 300, -0.32, 0.32, [0.54, 1.11], [0.78, 1.11], { keMm: 300, ceMm: 420 }),
     // the side modules: the forward zone over the crew, the middle zone over the ring's rear quarter
+    // the forward zone from the cheek wedge's outer corner (its face continues the module's) back over the crew
     ...sidePlatePair('turret_side_forward', 300,
-      [0.50, 0.04, 0.71, 1.57], [-0.30, 0.04, 0.71, 1.57], { keMm: 300, ceMm: 420 }),
+      [0.60, 0.04, 0.74, 1.57], [-0.30, 0.04, 0.71, 1.57], { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_side_middle', 300,
       [-0.30, 0.04, 0.71, 1.57], [-1.05, 0.04, 0.71, 1.57], { keMm: 300, ceMm: 420 }),
     ...sidePlatePair('turret_side_rear', 300,
       [-1.05, 0.04, 0.70, 1.30], [-1.75, 0.36, 0.70, 1.24], { keMm: 300, ceMm: 420 }),
+    // the bustle runs to the rear wall at -2.60 (262 critic round: the basket now reaches toward the stern)
     ...sidePlatePair('turret_bustle_side', 55,
-      [-1.75, 0.36, 0.70, 1.24], [-2.30, 0.38, 0.70, 1.10], { keMm: 55, ceMm: 55 }),
+      [-1.75, 0.36, 0.70, 1.24], [-2.60, 0.38, 0.70, 1.10], { keMm: 55, ceMm: 55 }),
     ...sidePlatePair('turret_stowage_screen', 10,
-      [-1.07, 0.36, 0.73, 1.54], [-2.22, 0.36, 0.73, 1.54], { kind: 'spaced' }),
-    rearPlate('turret_rear', 55, 1.06, -2.30, 0.38, 0.75),
+      [-1.07, 0.36, 0.73, 1.54], [-2.52, 0.36, 0.73, 1.54], { kind: 'spaced' }),
+    rearPlate('turret_rear', 55, 1.06, -2.60, 0.38, 0.75),
     deckPlate('turret_roof_forward', 45, [0.66, 0.78, 1.12], [-1.75, 0.78, 1.08]),
-    deckPlate('turret_roof_bustle', 45, [-1.75, 0.78, 1.08], [-2.30, 0.75, 0.96]),
+    deckPlate('turret_roof_bustle', 45, [-1.75, 0.78, 1.08], [-2.60, 0.75, 0.96]),
   ];
 }
 

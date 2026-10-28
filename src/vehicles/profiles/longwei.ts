@@ -40,25 +40,27 @@ const GUN_LENGTH = 6.454;
 
 /** Turret roof (turret-local): 0.78 m over the ring plane, 2.35 m over the ground (the 99A's published 2.37 m). */
 const ROOF_Y = 0.78;
-/** The arrowhead cheeks: their throat walls stand at |x| 0.30 and run 0.85 m back; the front line sweeps from the tip
- * at z 1.55 (0.41 m ahead of the mantlet's face) back to 0.72 at the outer corner (|x| 1.42), and the face leans back
- * 0.08 m over its height. */
+/** The arrowhead cheeks: their throat walls stand at |x| 0.30 and run 0.85 m back; the front line sweeps 37 degrees off
+ * square from the tip at z 1.55 (0.41 m ahead of the mantlet's face) to the outer corner, flush with the side modules'
+ * faces (|x| 1.57). The 99A's beak (262 critic rounds): the face stands from just over the deck to 0.40 m, raked back
+ * 0.22 m, and the top climbs from that edge to the roof line over 0.60 m. The bottom clears the roof's front fittings
+ * by 2.4 cm as the outer corners traverse over them. */
 const THROAT_X = 0.30;
-const CHEEK_OUTER_X = 1.42;
+const CHEEK_OUTER_X = 1.57;
 const CHEEK_TIP_Z = 1.55;
 const CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
 const CHEEK_DEPTH = 0.85;
-/** The top face falls from the roof line 0.40 m behind the front edge. */
-const CHEEK_TOP_RUN = 0.40;
-const CHEEK_LEAN = 0.08;
-const CHEEK_BOTTOM_Y = 0.02;
-const CHEEK_FRONT_TOP_Y = 0.44;
+/** The top face reaches the roof line 0.60 m behind the front edge. */
+const CHEEK_TOP_RUN = 0.60;
+const CHEEK_LEAN = 0.22;
+const CHEEK_BOTTOM_Y = 0.045;
+const CHEEK_FRONT_TOP_Y = 0.40;
 /** The brow over the gun throat: its underside clears the mantlet's top corner at full elevation. */
 const BROW_UNDER_Y = 0.70;
 const MANTLET_HALF_W = 0.25;
 /** The welded core runs from behind the cheek roots to the bustle's rear wall; the side modules end at the bins. */
 const CORE_FRONT_Z = 0.66;
-const CORE_REAR_Z = -2.30;
+const CORE_REAR_Z = -2.60;
 const SIDE_MODULE_REAR_Z = -1.05;
 /** The skirt's one FY-5 course: five bricks from z 2.80, between these heights (the armor envelope reads them). */
 const SKIRT_ERA_FRONT_Z = 2.80;
@@ -193,6 +195,8 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
     P.add('hull', sectionSolid([[2.92, 1.30, 1.485], [3.30, 1.30, 1.485], [3.44, 1.285, 1.45], [3.54, 1.27, 1.36]]
       .map(([z, lo, hi]) => ({ z, ring: section(lo, hi) }))));
     P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.30, 0.028), s * 1.47, 1.11, 3.53);
+    // the hood's outer cheek from the skirt band's front end to the flap, closing the open slot over the idler
+    P.add('hull', box(0.022, 0.20, 0.27), s * 1.845, 1.205, 3.405);
   }
   // ---- stern: the rear access grille, tail lamps, tow hooks, flaps, the stern rack's shelf and its cable ----
   const rearN = new THREE.Vector3(0, HULL.rearTopZ - HULL.rearKneeZ, -(HULL.engineY - HULL.rearKneeY)).normalize();
@@ -444,16 +448,19 @@ function cheekFacePoint(sign: number, a: number, y: number): THREE.Vector3 {
 /** The arrowhead front: a welded composite wedge either side of the gun throat, the FY-5 dual-reactive cassettes on its
  * face, a row of bolt heads along its top edge. */
 function addCheekWedges(P: TankBuilderPort): void {
-  const steps = [THROAT_X, 0.55, 0.80, 1.05, 1.25, CHEEK_OUTER_X];
+  const steps = [THROAT_X, 0.55, 0.85, 1.10, 1.35, CHEEK_OUTER_X];
   for (const sign of [-1, 1]) {
     P.add('turret', loftX(steps.map((a) => ({ x: sign * a, ring: cheekSection(a) }))));
     const n = cheekFaceNormal(sign), rotation = faceEuler(n), thick = 0.065;
     // two large wedge-shaped dual-reactive modules a face (the 99A's), not a tile grid
-    for (const a of [0.61, 1.11]) {
-      const c = cheekFacePoint(sign, a, 0.215).addScaledVector(n, thick / 2 - 0.006);
-      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.47, thick, 0.33], rotation);
+    for (const a of [0.64, 1.24]) {
+      const c = cheekFacePoint(sign, a, 0.225).addScaledVector(n, thick / 2 - 0.006);
+      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.54, thick, 0.32], rotation);
     }
-    for (const a of [0.45, 0.75, 1.05, 1.32]) {
+    // the wedge's joint with its side module: a dark seam down the outer corner's rear edge
+    P.add('turretDark', KIT.box(0.006, ROOF_Y - 0.02 - CHEEK_BOTTOM_Y, 0.014), sign * (CHEEK_OUTER_X + 0.003),
+      (ROOF_Y - 0.02 + CHEEK_BOTTOM_Y) / 2, cheekFrontZ(CHEEK_OUTER_X) - CHEEK_DEPTH);
+    for (const a of [0.45, 0.85, 1.20, 1.50]) {
       const p = cheekFacePoint(sign, a, cheekFrontTopY(a) - 0.02).addScaledVector(n, 0.004);
       const bolt = KIT.cylY(0.013, 0.013, 0.014, 8);
       bolt.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n));
@@ -466,12 +473,15 @@ function addCheekWedges(P: TankBuilderPort): void {
  * the cheek's outer corner; bolt heads on the outer face. */
 function addSideModules(P: TankBuilderPort): void {
   const { cylX } = KIT;
-  const base: SectionPoint[] = [[1.27, 0.20], [1.52, 0.20], [1.57, 0.25], [1.57, ROOF_Y - 0.07], [1.53, ROOF_Y - 0.03], [1.27, ROOF_Y - 0.03]];
-  const chamfered: SectionPoint[] = base.map(([x, y]) => [1.27 + (x - 1.27) * 0.55, y] as const);
-  const front = 0.66, rear = SIDE_MODULE_REAR_Z;
+  // the lower lip stands 4 cm over the ring plane at the front and rises to 0.16 at the rear corner, which sweeps the
+  // powerpack deck's ramp at 1.89 m from the ring (its 1.66 m line at local 0.09) when the turret traverses
+  const section = (lip: number): SectionPoint[] => [[1.27, lip], [1.52, lip], [1.568, lip + 0.05], [1.568, ROOF_Y - 0.07],
+    [1.53, ROOF_Y - 0.03], [1.27, ROOF_Y - 0.03]];
+  // the module's front runs into the cheek wedge's rear (the wedge's outer face continues the module's)
+  const front = 0.0, rear = SIDE_MODULE_REAR_Z;
   for (const side of [-1, 1]) {
-    const ring = side > 0 ? base : mirrorRing(base), nose = side > 0 ? chamfered : mirrorRing(chamfered);
-    P.addExternalArmor('turret', sectionSolid([{ z: rear, ring }, { z: front - 0.16, ring }, { z: front, ring: nose }]));
+    const ring = (lip: number): SectionPoint[] => (side > 0 ? section(lip) : mirrorRing(section(lip)));
+    P.addExternalArmor('turret', sectionSolid([{ z: rear, ring: ring(0.16) }, { z: front, ring: ring(0.04) }]));
     for (const z of [front - 0.26, (front + rear) / 2, rear + 0.10]) for (const y of [0.30, ROOF_Y - 0.16]) {
       P.add('turretDark', cylX(0.013, 0.012, 8), side * 1.575, y, z);
     }
@@ -540,16 +550,16 @@ function addBustle(P: TankBuilderPort): void {
   }
   // blow-off panels: two framed plates over the ammunition compartment, each with a lifting handle
   for (const x of [-0.40, 0.40]) {
-    P.add('turretDark', box(0.74, 0.012, 0.66), x, ROOF_Y + 0.004, -1.86);
-    P.add('turretDetail', box(0.70, 0.022, 0.62), x, ROOF_Y + 0.011, -1.86);
-    P.addEquipment('turretDark', box(0.14, 0.022, 0.022), x, ROOF_Y + 0.03, -1.86);
+    P.add('turretDark', box(0.74, 0.012, 0.66), x, ROOF_Y + 0.004, -2.02);
+    P.add('turretDetail', box(0.70, 0.022, 0.62), x, ROOF_Y + 0.011, -2.02);
+    P.addEquipment('turretDark', box(0.14, 0.022, 0.022), x, ROOF_Y + 0.03, -2.02);
   }
   // rear basket against the rear wall, floor at 0.38
   const rack = FITTINGS.stowageRack({
-    mats: P.mats, w: 2.00, d: 0.42, h: 0.30, posts: 7, fill: 0.82, rails: 2, mesh: true,
+    mats: P.mats, w: 2.00, d: 0.62, h: 0.30, posts: 7, fill: 0.82, rails: 2, mesh: true,
     rotation: [0, Math.PI, 0], seed: 23310,
   });
-  rack.position.set(0, 0.38, CORE_REAR_Z - 0.20);
+  rack.position.set(0, 0.38, CORE_REAR_Z - 0.30);
   rack.rotation.set(0, Math.PI, 0);
   P.turretG.add(rack);
 }
@@ -608,7 +618,7 @@ function addTurretRoof(P: TankBuilderPort): void {
   {
     const x = -0.80, z = 0.10, footTop = equipmentFoot(P, parts, x, z, 0.30, 0.30);
     P.addEquipment('turretDetail', cylY(0.16, 0.17, 0.06, P.q ? 24 : 14), x, footTop + 0.03 - 0.003, z);
-    const mastTop = footTop + 0.30;
+    const mastTop = footTop + 0.12;
     P.addEquipment('turretDetail', cylY(0.065, 0.075, mastTop + 0.02 - footTop - 0.05, P.q ? 20 : 12), x, (footTop + 0.05 + mastTop + 0.02) / 2, z);
     const headY = mastTop + 0.14;
     P.addEquipment('turretDetail', box(0.34, 0.28, 0.32), x, headY, z);
@@ -630,41 +640,42 @@ function addTurretRoof(P: TankBuilderPort): void {
   }
   // the GL-5-style hard-kill suite: radar faces at the four corners, launchers on the roof sides
   for (const side of [-1, 1]) {
-    addRadarFace(P, side * 1.40, ROOF_Y - 0.03, 0.20, side * 0.75);
-    addRadarFace(P, side * 0.92, ROOF_Y, -2.06, side * (Math.PI - 0.80));
+    addRadarFace(P, side * 1.40, ROOF_Y - 0.03, 0.02, side * 0.75);
+    addRadarFace(P, side * 0.92, ROOF_Y, CORE_REAR_Z + 0.24, side * (Math.PI - 0.80));
     addLauncher(P, side * 1.00, ROOF_Y, -1.02, side * 0.32);
   }
   // the suite's processor case and its cables to the rear radar faces, routed round the blow-off panels
   serviceCase(P, parts, 0.34, -1.30, 0.38, 0.18, 0.26);
-  serviceCable(P, parts, [[0.34, -1.43], [0.86, -1.50], [0.86, -1.92], [0.92, -1.98]], false);
-  serviceCable(P, parts, [[0.20, -1.43], [-0.86, -1.50], [-0.86, -1.92], [-0.92, -1.98]], false);
-  // five-tube smoke dischargers on each front corner, on the side module's top, fanned forward and out
+  serviceCable(P, parts, [[0.34, -1.43], [0.86, -1.50], [0.86, -2.22], [0.92, -2.28]], false);
+  serviceCable(P, parts, [[0.20, -1.43], [-0.86, -1.50], [-0.86, -2.22], [-0.92, -2.28]], false);
+  // five-tube smoke dischargers on each cheek wedge's outer face (the 99A's, beside the star), their row running
+  // fore and aft along the face, fanned forward, up and out
   for (const side of [-1, 1]) {
     const bank = FITTINGS.smokeBank({
       mats: P.mats, count: 5, r: 0.040, len: 0.25, spacing: 0.085,
       splay: side * 0.38, pitch: -0.40, arc: 0.40, seed: 23320 + (side > 0 ? 1 : 0),
     });
-    bank.position.set(side * 1.42, ROOF_Y - 0.03 + 0.08, 0.42);
-    bank.rotation.set(0, side * 0.42, 0);
+    bank.position.set(side * (CHEEK_OUTER_X + 0.06), 0.42, 0.16);
+    bank.rotation.set(0, side * 1.05, 0);
     P.turretG.add(bank);
   }
   // antennas and the meteorological mast on the bustle
   for (const side of [-1, 1]) {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: side < 0 ? 1.20 : 1.05, r: 0.011, seed: 23330 + side });
-    whip.position.set(side * 0.62, ROOF_Y, -2.22);
+    whip.position.set(side * 0.62, ROOF_Y, CORE_REAR_Z + 0.08);
     P.turretG.add(whip);
   }
-  P.addEquipment('turretDetail', box(0.10, 0.02, 0.10), -0.20, ROOF_Y + 0.006, -2.24);
-  P.addEquipment('turretDetail', cylY(0.018, 0.024, 0.36, 10), -0.20, ROOF_Y + 0.18 - 0.004, -2.24);
-  P.addEquipment('turretDetail', box(0.16, 0.02, 0.02), -0.20, ROOF_Y + 0.36, -2.24);
+  P.addEquipment('turretDetail', box(0.10, 0.02, 0.10), -0.20, ROOF_Y + 0.006, CORE_REAR_Z + 0.06);
+  P.addEquipment('turretDetail', cylY(0.018, 0.024, 0.36, 10), -0.20, ROOF_Y + 0.18 - 0.004, CORE_REAR_Z + 0.06);
+  P.addEquipment('turretDetail', box(0.16, 0.02, 0.02), -0.20, ROOF_Y + 0.36, CORE_REAR_Z + 0.06);
   // lift eyes on the roof behind the cheek roots and on the bustle's rear edge
-  for (const [x, z] of [[-1.08, 0.28], [1.08, 0.28], [-0.62, -2.10], [0.62, -2.10]]) {
+  for (const [x, z] of [[-1.08, 0.28], [1.08, 0.28], [-0.62, CORE_REAR_Z + 0.20], [0.62, CORE_REAR_Z + 0.20]]) {
     KIT.liftEye(P, 'turretDetail', x, ROOF_Y, z);
   }
   // turret numbers on the side modules
   const num = P.spec.visual.number || '';
-  P.decal('turret', 'number', num, 0.20, [1.572, 0.46, 0.06], Math.PI / 2);
-  P.decal('turret', 'number', num, 0.20, [-1.572, 0.46, 0.06], -Math.PI / 2);
+  P.decal('turret', 'number', num, 0.20, [1.570, 0.46, -0.62], Math.PI / 2);
+  P.decal('turret', 'number', num, 0.20, [-1.570, 0.46, -0.62], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.40);
 }
 

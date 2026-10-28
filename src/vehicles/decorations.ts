@@ -2671,6 +2671,12 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretSide', { side: -1 }] },
   ],
   // --- Cold war ---
+  // 262 (Main's ruling on the T-54/T-55 family): the era default without its hanging bucket (it hung in the air under
+  // the rear drums, which ride outside the hull) and without the decor whip (the turret carries its own antenna, one
+  // mast as on the real tanks). The smoke banks stay: they carry the smoke consumable, and the fleet has no engine
+  // exhaust smoke system (the T-55's TDA) to take it over.
+  type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
+  t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
   // Round 5 (2026-10-08; wave 254: "the rear kit is a few tiny, clean, rigid lumps", the bucket "hangs in space"; wave 262
   // on the desert line: "olive kit bags, upright green cans, a brown box and a grey bin ... unstrapped"): the Challenger 1
   // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and

@@ -54,10 +54,13 @@ the photo scale governs. Turret width ≈2.15 m (top view, perspective-corrected
 | Fender stowage | right: 3 fuel + 1 oil tank; left: boxes, tools | 9-bin rails both sides | right (−X): 4 flat tanks + pipe; left (+X): 4 lidded boxes, spare links |
 | Rear | two 200 L drums on brackets, BDSh smoke canisters | drums (T-62 chassis) | 2 transverse drums on raked brackets, 2 BDSh canisters, tail lamps, tow hooks |
 
-Retained by owner ruling, not changed here: the national road-wheel face (2026-09-22 standard: Chinese hulls draw the
-ZTZ-100 construction; a period T-54 "starfish" wheel needs an owner exception), the fleet decor (smoke banks that
-carry the smoke consumable, cargo). Gameplay stats unchanged; spec dims move to the published 6.04 / 9.00 / 3.27 / 2.40.
-The spec's inherited T-62 gun range (−9/+20) is wider than the Type 59's −5/+18: an owner decision, reported.
+Main's rulings (2026-10-27): the road wheel is the T-54/T-55 cast five-spoke "starfish" (`t54-starfish-spoke`) through
+one switch, `T54_STARFISH_WHEELS` in nationWheelSets.ts (on, the owner's historical exception pending; false returns the
+Type 59 to the Chinese ZTZ-100 standard and the T-55A to the Russian T-90 face). The gun takes the D-10T's own −5/+18
+(the donor T-62's −9/+20 was never sourced). The decor is curated (decorations.ts): the era default without the hanging
+bucket and without a second whip; the smoke banks stay because they carry the smoke consumable and the fleet has no
+engine exhaust smoke system (the T-55's TDA). Gameplay stats otherwise unchanged; spec dims are the published
+6.04 / 9.00 / 3.27 / 2.40.
 
 Main gun by yaw (measured, `tools/gun-depression-sweep.mjs --ids=type59`, shared by the T-55A, whose sweep gives the same
 floors): −4.2° dead ahead over the glacis; near level from 6° to 28°, where the canvas cover passes over the driver's

@@ -141,6 +141,8 @@ const SPECS: FleetTankSpec[] = [
     // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
     // Type 69 print remains the registered measurement oracle.
     { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
+      // the D-10T's own -5/+18 (262, Main: the donor T-62's -9/+20 was never sourced for these)
+      gunElevationDeg: 18, gunDepressionDeg: 5,
       gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
       gun: {
         caliberMm: 100, reloadS: 7.6,
@@ -167,6 +169,8 @@ const SPECS: FleetTankSpec[] = [
   // dims are the published 6.04 m hull, 9.00 m gun forward (over the drums), 3.27 m width and 2.35 m to the roof.
   make('t62_1975', 't55a', 'T-55A', 'USSR/Russia',
     { hp: 1650, enginePowerHp: 580, weightTons: 36, topSpeedKmh: 50,
+      // the D-10T's own -5/+18 (262, Main: the donor T-62's -9/+20 was never sourced for these)
+      gunElevationDeg: 18, gunDepressionDeg: 5,
       gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
       gun: {
         caliberMm: 100, reloadS: 7.6,

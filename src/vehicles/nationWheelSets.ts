@@ -38,7 +38,8 @@ type WheelDonorId =
   | 'challenger3_proto' | 'challenger2e' | 'warrior_tes_h'
   | 't90_1992' | 't90am' | 'object148_proto' | 'bmp3m_dragun125'
   | 'kf51_evo' | 'leo2a4' | 'kf41_lynx'
-  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3';
+  | 'm1a1_abrams_hc' | 'm551a1_tts' | 'm60a3'
+  | 'type59';
 
 /** Road-wheel face constructions; nationWheelConstructions.ts builds the ones a non-donor hull consumes. */
 export type WheelConstructionId =
@@ -53,7 +54,8 @@ export type WheelConstructionId =
   | 'challenger-hollow-paired' | 'warrior-plain-web'
   | 't90-pressed-source-face' | 't14-armoured-hub' | 'dragun-rolled-lip'
   | 'kf51-forged-face' | 'leo2a6-paired-dish' | 'lynx-stamped-web'
-  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke';
+  | 'abrams-hollow-paired' | 'sheridan-pressed-rim' | 'm60a3-cast-spoke'
+  | 't54-starfish-spoke';
 
 interface NationWheelDonor {
   readonly donor: WheelDonorId;
@@ -122,6 +124,10 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet cast five-spoke disc under the Sheridan pressed rim, dish well, hub drum and cap (sheridan.ts).' }),
   m60a3: Object.freeze({ donor: 'm60a3', self: ['m60a3'], pattern: 'cast-five-spoke', construction: 'm60a3-cast-spoke',
     note: 'Fleet cast five-spoke disc (patton.ts); owner 2026-09-22: the Sabra takes it, and it fits the Patton-era USA hulls better than the Abrams disc.' }),
+  // 262: the T-54/T-55 family's open five-spoke "starfish" wheel; consumed through WHEEL_STANDARD_EXCEPTIONS while
+  // T54_STARFISH_WHEELS holds (no self ids, so both hulls draw it through the one standard path)
+  type59: Object.freeze({ donor: 'type59', self: [], pattern: 'cast-five-spoke', construction: 't54-starfish-spoke',
+    note: 'The T-54/T-55 family five-spoke cast wheel on its thick tyre (t54Family.ts), the period exception the Type 59 and the T-55A draw.' }),
 });
 
 export const WHEEL_DONOR_IDS = Object.freeze(Object.keys(WHEEL_DONORS) as WheelDonorId[]);
@@ -207,6 +213,13 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
 
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 
+/**
+ * Release 262 (Main, recommending the owner's historical exception): the Type 59 and the T-55A ride the T-54/T-55
+ * "starfish" five-spoke wheel instead of their national standards (China's ZTZ-100 web, Russia's T-90 face). One switch:
+ * false returns both to the standard.
+ */
+export const T54_STARFISH_WHEELS = true;
+
 /** Per-hull redirects that the nation rule alone would get wrong, each with its reason. */
 export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardException>> = Object.freeze({
   pt91m: { donor: 't90_1992', reason: 'owner 2026-10-06: Pendekar retains the actual T-72BU donor chassis and its pressed running gear' },
@@ -232,6 +245,10 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
+  ...(T54_STARFISH_WHEELS ? {
+    type59: { donor: 'type59', reason: '262 (Main, owner exception pending): the T-54A-pattern Type 59 keeps its period starfish wheel' },
+    t55a: { donor: 'type59', reason: '262 (Main, owner exception pending): the T-55A keeps its period starfish wheel' },
+  } : {}),
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

@@ -37,7 +37,8 @@ const ROOF_Y = 1.42;
 /** Hull sides: the upper hull ±1.07 over the track run, the lower tub ±0.98 inside the track's inner edge (1.016). */
 const HULL_HALF_W = 1.07, TUB_HALF_W = 0.98, TUB_TOP_Y = 0.98;
 /** Fender shelf over the tracks, to the 3.27 m width (the oracle's 1.15-1.24; the photo's 1.14-1.17). */
-const FENDER_Y = 1.17, FENDER_OUT = 1.635;
+// the track guards ride 4 cm over the track's wrap on the idler (262 critic round: they stood high over a bare top run)
+const FENDER_Y = 1.11, FENDER_OUT = 1.635;
 /** Nose: the upper glacis (34 degrees off level, the oracle's line from the 2.10 m deck edge) meets the 37-degree
  * lower plate 0.82 m off the ground. */
 const NOSE_Z = 3.00, NOSE_Y = 0.82;
@@ -62,7 +63,7 @@ const TURRET_PIVOT: Vec3 = [0, ROOF_Y, -0.08];
 /** The cast dome (the oracle): a near-round plan, 2.54 m wide, its crown 0.22 m behind the ring centre (1.58 m to the
  * front casting, 1.03 m to the rear), rising 0.78 m as a superellipse (exponent 2.6: a steep lower band and the
  * T-55's broad crown). */
-const DOME = Object.freeze({ H: 0.78, cz: -0.22, side: 1.27, front: 1.58, rear: 1.03, nFront: 2.1, nRear: 2.3, vExp: 2.6, sink: 0.03 });
+const DOME = Object.freeze({ H: 0.78, cz: -0.22, side: 1.27, front: 1.58, rear: 1.03, nFront: 1.85, nRear: 2.3, vExp: 2.6, sink: 0.03 });
 /** Bore axis 1.74 m over the ground (the oracle's muzzle; [GS-59spec] 1.738 m): the trunnion 0.32 m over the ring,
  * 0.62 m ahead of its centre. */
 const TRUNNION: Vec3 = [0, 1.74 - ROOF_Y, 0.62];
@@ -247,8 +248,8 @@ function addFenders(P: TankBuilderPort): void {
     // the rear flap behind the sprocket, turned down
     P.addMudguard('type59-rear-flap', 'hull', bentPlateX([[-3.03, FENDER_Y - 0.13], [-3.00, FENDER_Y - 0.02], [shelfZ0 + 0.02, FENDER_Y + 0.015]],
       x0 + side * 0.02, x1 - side * 0.0, 0.026));
-    // the shelf's welded outer edge strip
-    P.add('hullDark', box(0.012, 0.03, shelfZ1 - shelfZ0), side * (FENDER_OUT - 0.006), FENDER_Y - 0.02, (shelfZ0 + shelfZ1) / 2);
+    // the shelf's turned-down outer lip, 7 cm deep, closing most of the view onto the track's upper run
+    P.add('hull', box(0.012, 0.07, shelfZ1 - shelfZ0), side * (FENDER_OUT - 0.006), FENDER_Y - 0.04, (shelfZ0 + shelfZ1) / 2);
   }
 }
 
@@ -261,7 +262,7 @@ function addRunningGear(P: TankBuilderPort): void {
     sprocket: { z: -2.54, y: 0.66, r: 0.27 }, idler: { z: 2.64, y: 0.77, r: 0.25 },
     rollers: [], trackW: TRACK_W, topY: 0.90, botY: 0.02,
     contactZF: WHEEL_ZS[0] + 0.21, contactZR: WHEEL_ZS[4] - 0.21,
-    paintedEnds: true, coveredTop: false, arms: true,
+    paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: true,
   });
 }
 
@@ -516,8 +517,9 @@ function addTurretRoof(P: TankBuilderPort, v: T54Variant): void {
 function addMantletCover(P: TankBuilderPort): void {
   const { cylZ } = KIT;
   // [z, width, height]: a rounded canvas bag 0.46 m wide at the slot, gathered to a clamp on the tube
-  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.66, 0.46, 0.50], [0.80, 0.42, 0.45],
-    [0.94, 0.36, 0.38], [1.06, 0.29, 0.30], [1.15, 0.235, 0.235]];
+  // 262 critic round: short and tapering onto the tube like the reference's collar, not a long blunt snout
+  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.62, 0.46, 0.50], [0.74, 0.38, 0.40],
+    [0.84, 0.28, 0.28], [0.92, 0.215, 0.215]];
   const n = P.q ? 20 : 12, e = 2 / 3.2;   // superellipse exponent 3.2: a soft-cornered bag
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
@@ -529,21 +531,22 @@ function addMantletCover(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(2, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.122, 0.04, n), 0, 0, 1.14);
+  P.addGunExtraDark(cylZ(0.112, 0.035, n), 0, 0, 0.905);
   // the coaxial 7.62 mm's port in the cover, right of the gun
-  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.72);
+  P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.66);
 }
 
 /** 100 mm Type 59 rifled gun (licensed D-10T): the tube tapers from the cover to the bore evacuator, which runs flush
- * to the muzzle (0.87 m long, 0.184 m over a 0.156 m barrel). */
+ * to the muzzle (0.74 m long, 0.188 m over a 0.148 m barrel). */
 function addMainGun(P: TankBuilderPort): void {
   const evStart = MUZZLE_Z - EVACUATOR_LEN;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    [0.30, 1.25, 0.092, 0.104], [1.25, 2.30, 0.080, 0.092], [2.30, evStart - 0.06, 0.078, 0.080],
-    [evStart - 0.06, evStart + 0.02, 0.100, 0.078], [evStart + 0.02, MUZZLE_Z - 0.06, 0.100, 0.100],
-    [MUZZLE_Z - 0.06, MUZZLE_Z, 0.084, 0.100],
-  ], { rings: [[evStart + 0.03, 0.103], [MUZZLE_Z - 0.08, 0.103]], muzzle: MUZZLE_Z });
+    // the oracle's tube: 0.074 m radius forward, 0.086-0.098 at the cover; the evacuator 0.094
+    [0.30, 1.25, 0.086, 0.098], [1.25, 2.30, 0.076, 0.086], [2.30, evStart - 0.06, 0.074, 0.076],
+    [evStart - 0.06, evStart + 0.02, 0.094, 0.074], [evStart + 0.02, MUZZLE_Z - 0.06, 0.094, 0.094],
+    [MUZZLE_Z - 0.06, MUZZLE_Z, 0.080, 0.094],
+  ], { rings: [[evStart + 0.03, 0.097], [MUZZLE_Z - 0.08, 0.097]], muzzle: MUZZLE_Z });
   muzzleBore(P, { r: 0.05 });
 }
 

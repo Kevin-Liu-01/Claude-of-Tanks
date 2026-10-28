@@ -43,14 +43,14 @@ correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, l
 | Width | 3.5 m hull, 3.7 m over skirts | 3.73 m (double brick course to 1.866) | 3.73 m (single course inside 1.866) |
 | Road wheels / return rollers | 6 / 3-4 hidden by skirts | 6 / 3 | unchanged |
 | Turret width | 3.1-3.3 m over bins (oracle 3.45) | 3.41 m slab modules to ±1.70 | 3.14 m over the side modules (±1.57), 3.34 m to the smoke-tube tips |
-| Turret length | 4.0-4.4 m (oracle 4.08 + basket) | 4.57 m | 4.16 m (cheek tips 1.45 to basket −2.71) |
+| Turret length | 4.0-4.4 m (oracle 4.08 + basket); the basket reaches toward the stern | 4.57 m | 4.15 m to the rear wall (−2.60), the 0.62 m basket to −3.21 (world −2.57, 1.39 m short of the stern) |
 | Turret roof | 2.37 m over the ground | 2.27 m (local 0.70) | 2.35 m (local 0.78) |
-| Turret front | 99A arrowhead wedge cheeks with wedge-shaped dual ERA | terraced two-tier block, 16° blunt prow | two welded wedges swept 33° back from the throat, top falling 0.22 m to the front edge, six FY-5 cassettes a face |
+| Turret front | 99A arrowhead wedge cheeks with wedge-shaped dual ERA | terraced two-tier block, 16° blunt prow | two welded wedges swept 37° off square from the throat to the side modules' faces (±1.57), standing 0.20-0.62 m over a 0.10 m lean, a dark seam at each wedge's joint with its module, two large dual-reactive modules a face |
 | Mantlet | narrow slot, canvas boot, no external cast mantlet | 0.62 × 0.52 box mantlet | 0.50 × 0.45 slim cast mantlet in the 0.60 m throat, canvas boot to the tube |
 | Gun | ZPT-98 125 mm, thermal sleeve, evacuator past mid-barrel | evacuator at 0.40 of the tube | evacuator at 0.55, sleeves either side, MRS kept |
 | Crew layout | commander right of the gun, gunner left | commander +X (vehicle LEFT), gunner −X (mirrored) | commander −X (right) with panoramic sight and QJC-88; gunner +X (left) with his sight |
 | LSDW laser dazzler | pedestal at the turret's left rear | absent | pedestal box at the left rear (+X) |
-| Smoke | five tubes a side at the turret front | two four-tube banks a side on the side modules | one five-tube bank a front corner |
+| Smoke | five tubes a side at the turret front | two four-tube banks a side on the side modules | one five-tube bank on each wedge's outer face, fanned forward, up and out |
 | Side armour | flat panels, bins with ERA on the 99A | three bolt-on spaced modules a side to ±1.70 | one slab module a side to ±1.57, two lidded bins |
 | Skirts | segmented panels, scalloped lower edge to about hub height, access holes | carrier + 2 brick courses + slat cage | 8 segmented panels with the lower edge at 0.50 m scalloped up over each wheel, a closed nose, one FY-5 course on the front three, access holes |
 | Bow | lower nose ERA row on the 99A, headlights on the fender boxes | dozer blade, 0.14 m towing beam, glacis lamp cowls | four appliqué boxes on the lower glacis, a slim towing bar under the nose, lamps on the fender boxes |
