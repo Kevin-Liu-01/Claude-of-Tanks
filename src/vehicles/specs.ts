@@ -156,7 +156,7 @@ function armorM1A2(): ArmorEnvelope {
 }
 
 // ---------------------------------------------------------------------------
-// T-90M Proryv (Relikt ERA: consumable tiles, keReduction 0.25 / ceFlat 500)
+// T-90AM (Relikt ERA: consumable tiles, keReduction 0.25 / ceFlat 500)
 // ---------------------------------------------------------------------------
 function armorT90M(): ArmorEnvelope {
   // r7: hull roof dropped 1.45 -> 1.40 with the barge-hull visual rebuild
@@ -314,12 +314,14 @@ TANK_SPECS.m1a1_abrams_hc.armor.turretPlates.push(
   t90_1992.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
 }
 
-// The established Proryv reconstruction remains addressable as T-90M at
+// The established Proryv reconstruction remains addressable as the T-90AM at
 // tier IX.  Tier X is a distinct first-party configuration with the denser
 // two-row Relikt chevron front; both share the corrected long T-90 chassis.
+// Display names (owner, 2026-10-27): the source-X t90m is the T-90M Proryv and
+// this chevron configuration the T-90AM II; the ids are unchanged.
 TANK_SPECS.t90m_proryv = structuredClone(TANK_SPECS.t90am);
 TANK_SPECS.t90m_proryv.id = 't90m_proryv';
-TANK_SPECS.t90m_proryv.name = 'T-90M Proryv';
+TANK_SPECS.t90m_proryv.name = 'T-90AM II';
 TANK_SPECS.t90m_proryv.hp = 2850;
 TANK_SPECS.t90m_proryv.visual.number = '623';
 

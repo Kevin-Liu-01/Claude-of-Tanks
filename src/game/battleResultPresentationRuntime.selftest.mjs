@@ -132,20 +132,23 @@ assert.deepEqual(delayed.calls, [['deathCam']],
 delayed.runtime.update();
 assert.equal(delayed.calls.filter(([name]) => name === 'unlock').length, 0,
   'a live match never forces the spectator cursor free');
+// the verdict inside the death beat (a network battle's own death shows before the verdict's event) starts the
+// ending at once — the report gate holds only for a running replay or beat — and the replay opens on the live wreck
 delayed.game.result = 'defeat';
 delayed.game.resultReason = 'elimination';
 delayed.now = 500;
-delayed.runtime.update();
-assert.equal(delayed.plays.length, 0, 'the original death-beat deadline is preserved');
 delayed.playResult = false;
-delayed.now = 2700;
 delayed.runtime.update();
-assert.equal(delayed.plays.length, 1);
+assert.equal(delayed.plays.length, 1, 'the verdict inside the death beat asks the killcam at once');
 assert.equal(delayed.plays[0].result, 'defeat');
-assert.deepEqual(delayed.plays[0].options, { freshKill: false, finalKill: true, ownDeath: true },
-  'the redirected death beat asks for the own death or the final kill');
+assert.deepEqual(delayed.plays[0].options, { freshKill: true, finalKill: true, ownDeath: true },
+  'the death beat\'s verdict asks for the own death or the final kill, opening on the live wreck');
+assert.equal(delayed.runtime.snapshot().pendingDeadlineMs, null, 'the death beat is spent');
 assert.equal(delayed.calls.filter(([name]) => name === 'deathCam').length, 2,
   'defeat verdict returns to a wreck orbit after the replay fallback');
+delayed.now = 2700;
+delayed.runtime.update();
+assert.equal(delayed.plays.length, 1, 'the spent death beat never asks again at its old deadline');
 
 delayed.game.result = null;
 delayed.runtime.reset();

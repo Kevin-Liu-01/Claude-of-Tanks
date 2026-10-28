@@ -262,6 +262,7 @@ function createFxProbe() {
     clearVehicleDecals: () => calls.push('clear-scars'),
     propBreak: (kind) => calls.push(`prop:${kind}`),
     propCrush: () => calls.push('crush'),
+    warmStructures: () => { calls.push('structures'); return 1; },
     update: (_dt, shells) => calls.push(`update:${shells.length}`),
     resetAll: () => calls.push('reset'),
   };
@@ -393,6 +394,9 @@ await warmNetworkOpeningEffects({
   warmRender: () => noScarFx.calls.push('render'),
 });
 assert.deepEqual(noScarCompiles, [], 'entry without a scar needs no redundant FX subtree compile');
+// (fx-first-use-261) a room's guest linked a broken building's pieces, fracture face and room programs at its first break
+assert.ok(noScarFx.calls.includes('structures') && noScarFx.calls.indexOf('structures') < noScarFx.calls.indexOf('render'),
+  'the network warm stages a building\'s stage and fracture programs for its covered render');
 assert.equal(noScarFx.calls.filter((call) => call === 'render').length, 1,
   'the exact compositor warm draw is still required without a scar');
 assert.equal(noScarFx.calls.at(-1), 'reset');

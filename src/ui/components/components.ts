@@ -10,7 +10,7 @@
 // key caps, chips, stat chips and tags, segmented controls, tabs with roving focus, toggles, stat rows on the fixed
 // 20-cell scale, stat tiles and empty states. The vehicle identity (flag, silhouette, name) is identity.ts: its flags are
 // asset imports, and the core imports none. Plates are classes.
-// Modal, select, slider and tooltip keep their existing owners (modal.ts, customSelect.ts, settings.ts, richTooltip.ts).
+// Modal, select, slider and tooltip keep their existing owners (modal.ts, selectPickerMenu.ts, settings.ts, richTooltip.ts).
 
 import { icon, type IconId } from '../icons/icon.ts';
 import { attrs, esc, type Attrs } from './escape.ts';
@@ -128,6 +128,8 @@ interface ChoiceOption {
   /** Show the glyph only; the label is the accessible name, which the hover tip shows. */
   readonly iconOnly?: boolean;
   readonly disabled?: boolean;
+  /** The key that chooses it (the Gallery's 1-5 layers): a key cap inside the option, and its aria-keyshortcuts. */
+  readonly key?: string;
 }
 
 interface SegmentedOptions {
@@ -145,8 +147,10 @@ export function segmented(options: SegmentedOptions): string {
     const glyph = option.icon ? icon(option.icon, { size: 16 }) : '';
     const text = option.iconOnly ? '' : `<span>${esc(option.label)}</span>`;
     const name = option.iconOnly ? ` aria-label="${esc(option.label)}"` : '';
+    const key = option.key ? ` aria-keyshortcuts="${esc(option.key)}"` : '';
     return `<button type="button" role="radio" class="cot-c-seg__opt" data-value="${esc(option.value)}" aria-checked="${on}"`
-      + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}>${glyph}${text}</button>`;
+      + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}${key}>${glyph}${text}`
+      + `${option.key ? keycap(option.key) : ''}</button>`;
   }).join('');
   return `<div class="cot-c-seg${options.className ? ` ${options.className}` : ''}" role="radiogroup" `
     + `aria-label="${esc(options.label)}"${attrs(options.attrs)}>${items}</div>`;

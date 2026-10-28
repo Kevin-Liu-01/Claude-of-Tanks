@@ -11,6 +11,7 @@ function createHarness(ready, {
   storageBlocked = false,
   hidden = false,
   online = true,
+  fetchImpl,
 } = {}) {
   const listeners = new Map();
   const timers = [];
@@ -31,6 +32,7 @@ function createHarness(ready, {
     window,
     document,
     navigator: { onLine: online },
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
     location,
     history: { replaceState() {} },
     sessionStorage: {
@@ -62,24 +64,67 @@ function createHarness(ready, {
   };
 }
 
+// After the reveal a failed lazy chunk is its opener's to retry: a reload would throw away the Garage, a room or a battle
+// (nav-perf 2026-10-27: a flaky link's hiccup on the Tech Tree reloaded the game).
 const postBoot = createHarness(true);
 let prevented = false;
 postBoot.listeners.get('vite:preloadError')?.({
   preventDefault() { prevented = true; },
 });
-
-const recoveryTimer = postBoot.timers.find(({ ms }) => ms < 1000);
-assert.ok(recoveryTimer,
-  'a missing lazy chunk after boot must schedule one fresh-document recovery');
+assert.equal(postBoot.timers.some(({ ms }) => ms < 1000), false,
+  'a failed lazy chunk after the reveal never reloads the running game');
 assert.equal(prevented, false,
   'the original import must reject instead of resolving to an undefined module');
-assert.equal(postBoot.window.__CHUNK_RECOVERY_PENDING, true,
-  'runtime diagnostics must expose that navigation recovery is committed');
-recoveryTimer.fn();
-assert.match(postBoot.replacedUrl ?? '', /[?&]_bootretry=/,
+assert.notEqual(postBoot.window.__CHUNK_RECOVERY_PENDING, true, 'no navigation recovery is committed after the reveal');
+assert.equal(postBoot.replacedUrl, null, 'the running game keeps its document');
+
+// A chunk this deployment no longer serves (a newer deploy replaced the files) needs a fresh document: the reload
+// action appears, and the player takes it.
+const appended = [];
+const goneBoot = createHarness(true, { fetchImpl: async () => ({ status: 404 }) });
+goneBoot.document.body.appendChild = (element) => appended.push(element);
+goneBoot.listeners.get('vite:preloadError')?.({
+  payload: { message: 'Failed to fetch dynamically imported module: https://game.test/assets/techTree-0a1b2c.js' },
+  preventDefault() {},
+});
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(appended.length, 1, 'a gone chunk after the reveal raises the reload action');
+assert.equal(appended[0].id, 'cot-runtime-retry');
+assert.equal(goneBoot.timers.some(({ ms }) => ms < 1000), false, 'the reload is the player\'s to take');
+appended[0].onclick();
+assert.match(goneBoot.replacedUrl ?? '', /[?&]_bootretry=/,
   'runtime chunk recovery must replace the stale document with a cache-busted URL');
-assert.match(postBoot.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
+assert.match(goneBoot.replacedUrl ?? '', /[?&]_dplreset=1(?:&|$)/,
   'runtime chunk recovery must ask middleware to expire a stale deployment pin');
+
+// a transient failure after the reveal (the chunk is still served) raises nothing: its opener retries
+const transientAppended = [];
+const transientBoot = createHarness(true, { fetchImpl: async () => ({ status: 200 }) });
+transientBoot.document.body.appendChild = (element) => transientAppended.push(element);
+transientBoot.listeners.get('unhandledrejection')?.({
+  reason: new TypeError('Failed to fetch dynamically imported module: https://game.test/assets/settings-9f8e.js'),
+});
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(transientAppended.length, 0, 'a transient chunk failure after the reveal leaves the game alone');
+assert.equal(transientBoot.replacedUrl, null);
+
+// A link out of the splash (its site pages) leaves the document: the requests its navigation cancels (Safari fails them
+// before the next page commits) never reload over it or count against the next boot (owner 2026-10-27, the boot nav).
+const leavingBoot = createHarness(false);
+const linkPress = { target: { closest: () => ({ target: '', hasAttribute: () => false }) }, button: 0 };
+leavingBoot.listeners.get('click')?.(linkPress);
+leavingBoot.listeners.get('unhandledrejection')?.({ reason: new Error('Failed to fetch dynamically imported module') });
+assert.equal(leavingBoot.timers.some(({ ms }) => ms < 1000), false, 'a boot link\'s cancelled requests never reload over it');
+assert.equal(leavingBoot.replacedUrl, null);
+// a navigation that never commits hands recovery back
+leavingBoot.timers.find(({ ms }) => ms === 10000)?.fn();
+leavingBoot.listeners.get('unhandledrejection')?.({ reason: new Error('Failed to fetch dynamically imported module') });
+assert.ok(leavingBoot.timers.some(({ ms }) => ms < 1000), 'recovery returns when the navigation never commits');
+// a new-tab press (a modifier, a target) stays on the splash and keeps recovery
+const newTabBoot = createHarness(false);
+newTabBoot.listeners.get('click')?.({ ...linkPress, metaKey: true });
+newTabBoot.listeners.get('unhandledrejection')?.({ reason: new Error('Failed to fetch dynamically imported module') });
+assert.ok(newTabBoot.timers.some(({ ms }) => ms < 1000), 'a link opened elsewhere keeps the splash\'s recovery');
 
 const firstBoot = createHarness(false);
 firstBoot.listeners.get('error')?.({

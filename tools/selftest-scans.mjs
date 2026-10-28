@@ -78,11 +78,16 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // item 259: every source, for a Settings category hue written outside the token files
   'src/ui/tokens/settingsColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
+  // 261: every source, for another sheet loading the manual's print sheet
+  'src/docs/docsPrint.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.html', 'index.html'),
+  // 261: every source, for a badge hue written outside the token files
+  'src/ui/tokens/badgeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // one selected state (interaction-picker-254 a311036509): every sheet and module under src/ui and src/presentation
   'src/ui/components/components.selftest.mjs': lists('src/ui/**/*.{css,ts}', 'src/presentation/**/*.{css,ts}'),
   'src/ui/droneReturningCascade.selftest.mjs': lists('src/ui/*.css'),
   'src/ui/garageDisplayAtlas.selftest.mjs': lists('src/ui/garage*.ts', 'src/game/garage*.ts'),
   'src/ui/i18n.selftest.mjs': lists('*.html'),
+  'src/ui/loadingSurfaceRegistry.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts'),
   'src/ui/icons.selftest.mjs': lists('public/icons/*_angle.webp', 'public/icons/thumbs/*_angle.webp'),
   'src/ui/mapBackdrop.selftest.mjs': lists('public/maps/cards/*.webp'),
   'src/ui/mapLqip.selftest.mjs': lists('src/**/*.{ts,mts,js,mjs}'),
@@ -90,6 +95,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/runtimeStyles.selftest.mjs': lists('src/**/*.ts'),
   // 253 (UI-LOCKDOWN C): every module and static page, for a datum marked outside its owners
   'src/ui/surfaceRegistry.selftest.mjs': lists('src/**/*.{ts,html}', 'site/**/*.html'),
+  // (261) every surface the source opens and every dialog it shows: the TypeScript under src
+  'src/ui/transientSurfaceRegistry.selftest.mjs': lists('src/**/*.ts'),
   // 255 (triangle 253 item A): every shipped diagram label sidecar's colours name a tone
   'src/ui/technicalDiagramLabels.selftest.mjs': lists('public/icons/*_technical.json'),
   // drawings-overhaul-259: the fleet's technical drawings (COT_DRAWINGS_DIR for a review run lists that folder instead)

@@ -421,7 +421,7 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   takes the Chieftain's round.
  * - Tier VII: the C2 Ariete pair brought Tier X armour (the 251 table) down to VII and is trimmed to it. The C2 keeps
  *   its cadence over the C1 (arieteModernSpecs) and fires its prototype's rounds, so the Hetmans' Relikt cheeks no
- *   longer shut it out; the prototype cycles slower. The T-72B3 Sich's weaker donor hull takes hull and a quicker
+ *   longer shut it out; the prototype cycles slower and (261) carries 2,200 HP. The T-72B3 Sich's weaker donor hull takes hull and a quicker
  *   autoloader; the Husarz and the Wilk take hull.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
@@ -468,6 +468,10 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   cannonReload(registry, 'c2_ariete_proto', 6.3);
   spec(registry, 'c2_ariete_proto').gun.aimTimeS = 1.6;
   armor(registry, 'c2_ariete_proto', 0.7);
+  // 261 (Main's carried pairs: 12-0 over the T-90 with consumables, 0.83 over the Wilk): its 2,600 HP was the C2's
+  // and more; 2,200, under the production C2, lets the T-90's and the B3 line's rounds kill it in four hits, not five.
+  // Its row over 48 games (24 seeds) 10/14 -> 14/14 fair; no armour trim (259 ruling) and its rounds stay the C2's.
+  spec(registry, 'c2_ariete_proto').hp = 2200;
   spec(registry, 't72b3_sich').hp = 2850;
   // the gun's cadence only: its rounds stay the T-90SM's (ammunitionFlow) and carry none of their own
   spec(registry, 't72b3_sich').gun.reloadS = 6.0;
