@@ -68,10 +68,8 @@ for (const page of LOADING_PAGES) assert.ok(paths.has(page), `the census loads $
 // or a .then() rejection handler (an unhandled one reached the boot recovery's reload before the reveal, and is a silent
 // console error on a public page). The public pages' remaining sites are their owner's (premiere-site), listed here
 // until each is caught: the list only shrinks.
-const UNCAUGHT_BASELINE = Object.freeze({
-  'src/docs/docs.ts': 1, 'src/docs/topics.ts': 3, 'src/presentation/homePage.ts': 1, 'src/presentation/notFound.ts': 1,
-  'src/presentation/publicNav.ts': 2, 'src/presentation/publicPages.ts': 1,
-});
+// (integ 262: docs-home-262 caught the public pages' last nine sites, so the list is empty)
+const UNCAUGHT_BASELINE = Object.freeze({});
 /** The `void import(` chains in a source with no handler for the import's rejection, by line. */
 function uncaughtImports(source) {
   const lines = [];
