@@ -103,7 +103,7 @@ export const NET_ALPHA_CUT = 0.5;
  * (263) The broad height over a gap (alphaCutTexture.ts shadeFromHeight) where it begins to take the shade under the
  * garnish, and where it is fully shaded: thick bunches close over their own shadow, the bare net between stays open.
  */
-const NET_GAP_FILL: readonly [number, number] = [0.3, 0.44];
+const NET_GAP_FILL: readonly [number, number] = [0.2, 0.33];
 /** The shade the net's covered gaps show: the hull under the garnish, a dark step of the cord and the deep strip. */
 const gapToneOf = (pal: NetPalette): [number, number, number] =>
   [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
