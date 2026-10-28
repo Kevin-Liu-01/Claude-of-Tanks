@@ -69,6 +69,16 @@ for (const [id, src] of Object.entries(SOURCES)) {
     assert.equal(receipt.tensionWheel, src.tension, `${id}: track-tension wheel ${src.tension ? 'fitted' : 'absent'}`);
     assert.ok(receipt.glacisFromVerticalDeg >= src.glacis[0] && receipt.glacisFromVerticalDeg <= src.glacis[1],
       `${id}: glacis ${receipt.glacisFromVerticalDeg} deg from vertical`);
+    // the retired m48RoofSeating receipt's pin, kept for all three marks: the gun, mantlet and recoil rig ride the turret
+    // at the published trunnion (the M48A5's 1.921 m bore, which superseded the 258 mantlet's 2.10)
+    const gunRig = tank.root.getObjectByName('rig_gun'), turretRig = tank.root.getObjectByName('rig_turret');
+    let owner = gunRig?.parent;
+    while (owner && owner !== turretRig) owner = owner.parent;
+    assert.ok(owner === turretRig, `${id}: the gun rig rises with the turret`);
+    const trunnion = gunRig.getWorldPosition(new THREE.Vector3());
+    assert.ok(Math.abs(trunnion.y - receipt.trunnion[0]) < 1e-6 && Math.abs(trunnion.z - receipt.trunnion[1]) < 1e-6,
+      `${id}: the gun rig at its trunnion (${trunnion.y.toFixed(4)}, ${trunnion.z.toFixed(4)}) vs ${receipt.trunnion.join(', ')}`);
+    if (id === 'm48a5_patton') assert.deepEqual(receipt.trunnion, [1.921, 1.7616], 'the M48A5 bore at the source model\'s 1.921 m');
     const muzzle = new THREE.Vector3();
     tank.root.getObjectByName('rig_muzzle')?.getWorldPosition(muzzle);
     assert.ok(Math.abs(muzzle.z - hullBox.min.z - spec.dims.overallLengthM) < 0.12,

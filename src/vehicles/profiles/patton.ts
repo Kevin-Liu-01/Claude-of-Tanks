@@ -1463,7 +1463,9 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
 
   for (const side of [-1, 1]) {
     const frontCells: EraCell[] = [];
-    const frontZ = [1.56, 1.34, 1.12];
+    // (the columns stand 6 cm back from the needle nose: at 1.56 the right cheek's upper cassette spanned the nose's
+    // compound curve and its corner-supported seat sank it 6 cm into the casting)
+    const frontZ = [1.50, 1.28, 1.06];
     const frontHeights = [0.38, 0.62];
     for (let row = 0; row < frontHeights.length; row++) {
       for (let column = 0; column < frontZ.length; column++) {
