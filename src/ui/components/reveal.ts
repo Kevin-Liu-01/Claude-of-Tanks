@@ -4,6 +4,9 @@
 // image or video stays transparent until it can be drawn whole, then fades in (components.css [data-reveal]). The box
 // carries the state, so a stylesheet, a test or the loading census (tools/loading-census.mjs) reads one attribute:
 // `data-ready` once drawn, `data-failed` when the file never arrives (the tone stays; nothing broken is shown).
+// A sheet that gives the media a transition of its own replaces the fade's (`transition` is one property), so the
+// picture snaps in and the census reads a pop: list opacity in it too, `transition:transform …,opacity var(--dur-base)
+// var(--ease-enter)`.
 
 type RevealMedia = HTMLImageElement | HTMLVideoElement;
 

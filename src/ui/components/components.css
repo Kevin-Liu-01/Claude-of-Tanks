@@ -154,6 +154,9 @@ button.cot-c-chip{cursor:pointer}
    over the box's own tone or skeleton; a file that never arrives leaves the tone, never a broken frame */
 [data-reveal]>:is(img,video,picture){opacity:0;transition:opacity var(--dur-base) var(--ease-enter)}
 [data-reveal][data-ready]>:is(img,video,picture){opacity:1}
+/* a box served with data-reveal (a prerendered page marks its pictures in the markup) waits for a script to mark it
+   ready; without scripting its pictures show as they load */
+@media (scripting:none){[data-reveal]>:is(img,video,picture){opacity:1}}
 /* ---- the hover tip (hoverTip.ts): one per document, in the top layer, placed clear of every edge; it keeps its text's
    own line breaks (a consumable slot's second line, the Studio clip's effects) ---- */
 .cot-c-tip{position:fixed;inset:auto;z-index:var(--z-toast);max-width:min(280px,calc(100vw - 16px));margin:0;padding:var(--s1) var(--s2);
