@@ -39,12 +39,47 @@ assert.equal(formatted.textContent, 'World build failed. Back in the Garage — 
 solo('not an error');
 assert.equal(formatted.textContent, 'The battle could not start. Back in the Garage — try again.',
   'an unknown failure formats the title as its reason');
+// loading states (2026-10-27): a notice handed a retry carries the one action that runs it; one without carries none
+{
+  const made = [];
+  globalThis.document = { createElement: () => {
+    const listeners = {};
+    const label = { textContent: '' };
+    const button = { hidden: false, type: '', className: '', set innerHTML(html) { label.textContent = html.replace(/<[^>]+>/g, ''); },
+      querySelector: () => label, addEventListener: (kind, fn) => { listeners[kind] = fn; }, click: () => listeners.click?.(), label };
+    made.push(button);
+    return button;
+  } };
+  const footer = { children: [], append(child) { this.children.push(child); } };
+  const shut = [];
+  const presenter = createGarageReturnFailurePresenter(() => ({ body: { textContent: '' }, footer, setTitle() {}, open() {},
+    close: (options) => shut.push(options) }), () => 'The battle could not start');
+  let retried = 0;
+  presenter(new Error('cold chunk failed'), () => { retried += 1; });
+  assert.equal(footer.children.length, 1, 'a retry puts one action in the footer');
+  assert.equal(footer.children[0].hidden, false);
+  footer.children[0].click();
+  assert.equal(retried, 1, 'the action runs the retry');
+  assert.deepEqual(shut, [{ restoreFocus: false, immediate: true }], 'and closes the notice first');
+  presenter(new Error('again'), () => { retried += 1; });
+  assert.equal(footer.children.length, 1, 'a second failure reuses the one action');
+  presenter(new Error('no retry here'));
+  assert.equal(footer.children[0].hidden, true, 'a failure without a retry hides it');
+  delete globalThis.document;
+}
+{
+  const { isNetworkFailure } = await import('./garageReturnFailure.ts');
+  assert.equal(isNetworkFailure(new TypeError('Failed to fetch dynamically imported module: https://x/assets/a-1.js'), true), true);
+  assert.equal(isNetworkFailure(new TypeError('Failed to fetch'), true), true, 'a fetch the network refused');
+  assert.equal(isNetworkFailure(new Error('World build failed'), true), false, 'a build failure keeps its reason');
+  assert.equal(isNetworkFailure(new Error('World build failed'), false), true, 'any failure while offline is the network\'s');
+}
 const presenterSource = await readFile(new URL('./garageReturnFailure.ts', import.meta.url), 'utf8');
-assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,120}t\('battle\.entryFailed\.body', \{ reason \}\)/,
+assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,320}t\('battle\.entryFailed\.body', \{ reason \}\)/,
   'the solo notice is a second failure-only presenter over the same modal');
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
-assert.match(main, /presentFailure: \(error\) => import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error\)\)/,
+assert.match(main, /presentFailure: \(error, retry\) => import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error, retry\)\)/,
   'a failed solo entry demand-loads the notice from the failure-only owner');
 assert.match(main, /void battleAgainAction\.run\(\)/,
   'the bus must use the action-scoped failure owner');

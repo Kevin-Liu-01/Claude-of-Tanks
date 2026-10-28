@@ -577,7 +577,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   ensureStyle('cot-bl-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-bl';
-  root.setAttribute('role', 'status');
+  // (loading states, 2026-10-27) a labelled region, busy while it loads: only its stage line and countdown speak (the
+  // whole card as one status read every roster row and percent aloud), and the progressbar carries the figure
+  root.setAttribute('role', 'region');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   // (each side's cue at its foot while more of its list lies below, as the end report's columns: .team.more)
   const MORE_CUE = `<div class="bl-more" aria-hidden="true">${uiIconSVG('chevronDown', 14)}</div>`;
@@ -596,11 +598,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div>${MORE_CUE}</div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta"${datumAttr('load-progress')}>` +
-    `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st">${t('battleLoad.loading')}</span></div>` +
+    `<div class="foot"><div class="fmeta"${datumAttr('load-progress')}>` +
+    `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st" role="status">${t('battleLoad.loading')}</span></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
     `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
-    `<div class="count"></div></div></main>`;
+    `<div class="count" aria-live="polite"></div></div></main>`;
   document.body.appendChild(root);
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
@@ -1017,6 +1019,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       root.classList.remove('leaving');
       root.style.display = '';
       root.classList.add('on');
+      root.setAttribute('aria-busy', 'true');
     },
 
     /** Update the team sheets without resetting the progress bar or tip. */
@@ -1077,6 +1080,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
     countdown(n: number) {
       if (loadStartedAt) { recordBattleLoad((performance.now() - loadStartedAt) / 1000); loadStartedAt = 0; }
+      root.removeAttribute('aria-busy'); // loaded: the countdown is the battle's, not the load's
       countEl.innerHTML = n > 0
         ? t('battleLoad.countdown', { n }) + ''
         : `<b>${t('battleLoad.go')}</b>`;
@@ -1091,6 +1095,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // so removing it alone would cut the fade to a hard pop)
       root.classList.add('leaving');
       root.classList.remove('on');
+      root.removeAttribute('aria-busy');
       return new Promise<void>((resolve) => setTimeout(() => {
         if (!visible) {
           root.classList.remove('leaving');
