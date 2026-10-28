@@ -78,6 +78,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/ui/tokens/modeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // item 259: every source, for a Settings category hue written outside the token files
   'src/ui/tokens/settingsColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
+  // 261: every source, for another sheet loading the manual's print sheet
+  'src/docs/docsPrint.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.html', 'index.html'),
   // 261: every source, for a badge hue written outside the token files
   'src/ui/tokens/badgeColours.selftest.mjs': lists('src/**/*.css', 'src/**/*.ts', 'src/**/*.mjs', 'src/**/*.html'),
   // one selected state (interaction-picker-254 a311036509): every sheet and module under src/ui and src/presentation
