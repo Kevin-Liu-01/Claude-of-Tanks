@@ -111,9 +111,11 @@ try {
         fs.writeFileSync(path.join(REPORT_DIR,`${id}.raw-source-fidelity.json`),`${JSON.stringify(rawSourceComparison,null,2)}\n`);
       }
       await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
+      // (262) after a raw-source pass the second page's modules wait behind the first page's teardown: 5 s timed out
+      // twice on the Oplot-M (whose raw-source board is heavy), so the source path gets 60 s like the page loads
       await page.waitForFunction(
         'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
-        { timeout:5000, polling:30 },
+        { timeout:60000, polling:30 },
       );
       const sourcePath = await page.evaluate('window.__FIDELITY_SOURCE_PATH');
       if (sourcePath?.startsWith('/')) {
