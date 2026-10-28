@@ -336,15 +336,15 @@ const MBT70_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -10], [14, -10], [15, -9.7
 // oracle for the hull; release 233 rebuilt the vehicle as an original design on
 // that hull (profiles/longwei.ts, owner 2026-10-21).
 /**
- * Release 233: the Longwei's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz99_longwei, the
- * whole gun 26 mm off every hull mesh): the full 7 degrees except over the front quarters, where the raised glacis
- * shoulders hold it to about -4 degrees at 40-50 degrees of yaw, and over the raised engine deck from 135 degrees,
- * where it stays 0.5-3.5 degrees above level. Before the redesign the gun had no curve and passed through the deck.
+ * Release 262: the Longwei's main gun by turret yaw on its new 99A-pattern hull, measured (tools/gun-depression-sweep.mjs
+ * --ids=ztz99_longwei, the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): the full
+ * 7 degrees except over the front quarters, where the fender boxes and their lamps hold it to -3.1..-4.6 degrees at
+ * 21-33 degrees of yaw, and over the raised powerpack deck from 136 degrees, where it stays 0.4-2.9 degrees above level.
  */
-const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.6], [23, -5.9], [36, -4.4], [39, -4.1],
-  [44, -4.1], [46, -3.9], [48, -3.9], [49, -4], [50, -4.5], [52, -6.7], [53, -7], [132, -7], [133, -6.1], [135, -1.5],
-  [136, -0.1], [137, 0.5], [141, 0.8], [143, 0.8], [144, 2], [145, 2.8], [148, 3], [166, 3], [178, 3.5], [179, 3.4],
-  [180, 3.1]] as const);
+const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.1], [21, -4], [22, -3.4], [27, -3.1],
+  [30, -3.2], [31, -3.4], [32, -3.7], [33, -4.6], [34, -6.1], [35, -6.1], [42, -7], [132, -7], [133, -6.9], [136, -2.3],
+  [137, -0.9], [138, 0.4], [139, 0.8], [140, 0.9], [143, 1], [145, 2.6], [146, 2.8], [151, 2.9], [153, 2.9], [168, 2],
+  [175, 2.4], [180, 2.2]] as const);
 
 export const MODERN2_SPECS: TankSpecRegistry = {
   leo2a2: {

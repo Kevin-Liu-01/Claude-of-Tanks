@@ -59,3 +59,8 @@ correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, l
 Combat envelope: the turret plates follow the drawn surfaces (cheek face, cheek top, mantlet, throat brow, side zones,
 bins, bustle, roof); strengths carry release 233's values. The skirt ERA zone shrinks to the single course; the spaced
 skirt zone now runs the full length. Crew boxes follow the 99A layout.
+
+Fairness (balance range, shown-tier VI MBT peers): before (main 260) mean 0.681, 8/15 pairs inside 0.2-0.8; after mean
+0.700, 6/15 inside (c1_ariete 0.792, c1_ariete_proto_serie1 0.75, t72b3 1, t72b3_zubr 0.167, t72b3_zubr_ii 0.167,
+t72b3m_2016 0.833, t72b3m_2022 0.833, t80u 1, t80u_kursk 0.917, t80uk 1, t84 1, type96_72m_lei 0.5, type96_80_feng 0.542,
+type96b 0.333, xk2_black_panther 0.667). Stats unchanged; the move is the new combat envelope's.

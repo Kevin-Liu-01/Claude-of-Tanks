@@ -59,6 +59,11 @@ ZTZ-100 construction; a period T-54 "starfish" wheel needs an owner exception), 
 carry the smoke consumable, cargo). Gameplay stats unchanged; spec dims move to the published 6.04 / 9.00 / 3.27 / 2.40.
 The spec's inherited T-62 gun range (−9/+20) is wider than the Type 59's −5/+18: an owner decision, reported.
 
+Fairness (balance range, `runBalanceSeries`, six seeds × both range ends, against the shown-tier I MBT peers):
+before (main 260) mean 0.257, 5/12 pairs inside 0.2-0.8; after mean 0.236, 6/12 inside (amx30 0.583, amx30b 0.417,
+amx30b2 0.083, leo1a5 0.75, m48a5_patton 0.25, m60a1 0.083, m60a3 0, merkava1b 0.25, stb1 0.333, t62_1975 0, type74
+0.083, ztz85_iii 0). The new geometry moves the combat envelope only; stats and the 262 package are unchanged.
+
 ---
 
 ## Earlier history: the §5.45 new build (russia lane 2026-08-08), superseded by §262
