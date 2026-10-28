@@ -142,6 +142,7 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above). 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975.
-assert.equal(digest, '13f655da1a5359bb', `tree content changed: re-pin to ${digest} if deliberate`);
+// (FAMILY_UPGRADES above). 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975. 264: the
+// Longwei family joins China's special lane (Zhuque and Xuanwu at VII, Baihu at VIII, Qinglong at IX; tiers for Main's ruling).
+assert.equal(digest, 'defb37f1dccb9270', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

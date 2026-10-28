@@ -50,10 +50,13 @@ const now = camoBaselineRows({ specs, policy, materials });
 // joined after GT may follow them (camoPolicy.ts AUTHORED_PAINT_IDS_AFTER_GT).
 assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 pattern ids');
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
-assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer'],
-  'only the M6 Linebacker paint, the release-233 Signatures and the Type 10 Kaitaku paint append, after GT');
+const RELEASE_264_SIGNATURES = ['sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu'];
+assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer',
+  ...RELEASE_264_SIGNATURES],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint and the release-264 Signatures append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
-assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer']);
+assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer',
+  ...RELEASE_264_SIGNATURES]);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -69,8 +72,11 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock).
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975' };
+// Added since production in a Signature of its own, appended after the earlier ids (release 264: the Longwei family).
+const ADDED_WITH_SIGNATURE = ['ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu'];
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
-  + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
+  + Object.keys(ADDED_IN_DONOR_COAT).length + ADDED_WITH_SIGNATURE.length, 'the same fleet, plus the tanks added since');
+for (const id of ADDED_WITH_SIGNATURE) assert.equal(now.tanks[id]?.stock, `sig_${id}`, `${id} wears its own Signature`);
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
 for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];

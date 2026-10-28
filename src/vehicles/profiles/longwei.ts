@@ -26,6 +26,8 @@ import { equipmentFoot, lowOptic, permanentParts, serviceCable, serviceCase } fr
 import { place } from '../accessoryPrimitives.ts';
 import { machinedRing } from '../machineGunGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { nationalRoofWeapon } from './nationalRoofWeapon.ts';
+import type { NationalRoofLoadout } from '../nationalRoofConfig.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Vec3 = [number, number, number];
@@ -69,6 +71,35 @@ const SKIRT_ERA_LOW_Y = 0.86;
 const SKIRT_ERA_HIGH_Y = 1.17;
 /** The skirt panels' lower edge between the wheels (the armor envelope's skirt zones start here). */
 export const SKIRT_LOW_Y = 0.50;
+
+/** A modernized Longwei turret (release 264, owner 2026-10-28: "make 4 new chinnese tannks combining variations of vt4a1,
+ * qilin, kunlun, annd ztz 99a2 with modernized versions of the lonngwei turret which i like the shape of"): the arrowhead
+ * shell, its core, cheeks, side modules, mantlet and gun as drawn, carrying a different kit on another hull's ring. The
+ * default kit is the Longwei's own and builds it unchanged. */
+export interface LongweiTurretKit {
+  readonly revision: string;
+  /** The ring centre on the host hull (hull frame); the trunnion and the 6.454 m gun keep the turret's own datums. */
+  readonly pivot: Vec3;
+  /** The arrowhead faces' reactive armour: the Longwei's two large dual-reactive modules a face, a 3 x 2 grid of FY-5
+   * cassettes, or two V-ridged chevron cassettes a face (the VT-4 and Kunlun language). */
+  readonly faceEra: 'pair' | 'grid' | 'chevron';
+  /** Two rows of three cassettes on each side module's outer face. */
+  readonly sideEra: boolean;
+  /** The commander's QJC-88 on its pintle, a remote 12.7 mm station, or a remote 30 mm cannon on the same seat. */
+  readonly roofGun: 'pintle' | 'rws' | 'cannon30';
+  /** The GL-5-style hard-kill suite, the suite with a rear launcher pair, laser-warning receivers alone, or the warners
+   * with two infrared dazzler heads on the side modules' front shoulders. */
+  readonly protection: 'gl5' | 'gl5-plus' | 'lwr' | 'eyes';
+  /** The lidded bins and mesh rear basket, or closed armoured boxes along both flanks and across the rear. */
+  readonly bustle: 'bins' | 'boxes';
+  /** A slat screen round the bustle's flanks and rear. */
+  readonly bustleCage: boolean;
+}
+/** The Longwei's own kit. */
+export const LONGWEI_TURRET_KIT: LongweiTurretKit = Object.freeze({
+  revision: 'longwei-arrowhead-r262', pivot: PIVOT,
+  faceEra: 'pair', sideEra: false, roofGun: 'pintle', protection: 'gl5', bustle: 'bins', bustleCage: false,
+});
 
 function mirrorRing(ring: readonly SectionPoint[]): SectionPoint[] {
   return ring.map(([x, y]) => [-x, y] as const).reverse();
@@ -460,18 +491,54 @@ function cheekFacePoint(sign: number, a: number, y: number): THREE.Vector3 {
   return new THREE.Vector3(sign * a, y, cheekFrontZ(a) - CHEEK_LEAN * t);
 }
 
-/** The arrowhead front: a welded composite wedge either side of the gun throat, the FY-5 dual-reactive cassettes on its
- * face, a row of bolt heads along its top edge. */
-function addCheekWedges(P: TankBuilderPort): void {
+/** Euler angles for a box laid on a face (faceEuler's basis) and turned `turn` about the face's own up axis. */
+function faceEulerTurned(n: THREE.Vector3, turn: number): Vec3 {
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...faceEuler(n)))
+    .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), turn));
+  const e = new THREE.Euler().setFromQuaternion(q);
+  return [e.x, e.y, e.z];
+}
+
+/** The arrowhead front: a welded composite wedge either side of the gun throat, the kit's reactive armour on its face, a
+ * row of bolt heads along its top edge. */
+function addCheekWedges(P: TankBuilderPort, kit: LongweiTurretKit): void {
   const steps = [THROAT_X, 0.55, 0.85, 1.10, 1.35, CHEEK_OUTER_X];
   for (const sign of [-1, 1]) {
     P.add('turret', loftX(steps.map((a) => ({ x: sign * a, ring: cheekSection(a) }))));
     const n = cheekFaceNormal(sign), rotation = faceEuler(n), thick = 0.065;
-    // two large wedge-shaped dual-reactive modules a face (the 99A's), not a tile grid
-    for (const a of [0.64, 1.24]) {
-      const h = (cheekFrontTopY(a) - CHEEK_BOTTOM_Y) * 0.78;
-      const c = cheekFacePoint(sign, a, CHEEK_BOTTOM_Y + 0.025 + h / 2).addScaledVector(n, thick / 2 - 0.006);
-      eraCassette(P, 'turret', sign < 0 ? 'turret_era_L' : 'turret_era_R', c.toArray(), [0.54, thick, h], rotation);
+    const sector = sign < 0 ? 'turret_era_L' : 'turret_era_R';
+    if (kit.faceEra === 'pair') {
+      // two large wedge-shaped dual-reactive modules a face (the 99A's), not a tile grid
+      for (const a of [0.64, 1.24]) {
+        const h = (cheekFrontTopY(a) - CHEEK_BOTTOM_Y) * 0.78;
+        const c = cheekFacePoint(sign, a, CHEEK_BOTTOM_Y + 0.025 + h / 2).addScaledVector(n, thick / 2 - 0.006);
+        eraCassette(P, 'turret', sector, c.toArray(), [0.54, thick, h], rotation);
+      }
+    } else if (kit.faceEra === 'grid') {
+      // release 264: a 3 x 2 grid of FY-5 cassettes, each column as tall as the face allows under its falling top edge
+      for (const a of [0.512, 0.935, 1.358]) {
+        const face = cheekFrontTopY(a - 0.17) - CHEEK_BOTTOM_Y;
+        const lower = face * 0.44, upper = face * 0.36;
+        for (const [y0, h] of [[CHEEK_BOTTOM_Y + 0.02, lower], [CHEEK_BOTTOM_Y + 0.02 + lower + 0.022, upper]]) {
+          const c = cheekFacePoint(sign, a, y0 + h / 2).addScaledVector(n, thick / 2 - 0.006);
+          eraCassette(P, 'turret', sector, c.toArray(), [0.40, thick, h], rotation);
+        }
+      }
+    } else {
+      // release 264: two V-ridged chevron cassettes a face, each a pair of half-blocks meeting at a ridge 3.5 cm proud
+      // faceEuler's box X runs along the face; `flip` points it at this side's outer corner
+      const u = new THREE.Vector3(n.z, 0, -n.x).normalize(), flip = u.x * sign >= 0 ? 1 : -1;
+      const along = u.multiplyScalar(flip), turn = 9 * D2R, width = 0.56;
+      for (const a of [0.64, 1.24]) {
+        const h = (cheekFrontTopY(a) - CHEEK_BOTTOM_Y) * 0.76;
+        const c = cheekFacePoint(sign, a, CHEEK_BOTTOM_Y + 0.025 + h / 2).addScaledVector(n, thick / 2 - 0.006);
+        for (const half of [-1, 1]) {
+          // each half turns its end at the cassette's middle out from the face, so the two meet in a ridge (a turn about
+          // the face's up axis carries the box's +X end along +n)
+          const at = c.clone().addScaledVector(along, half * (width / 4) * Math.cos(turn)).addScaledVector(n, (width / 4) * Math.sin(turn));
+          eraCassette(P, 'turret', sector, at.toArray(), [width / 2, thick, h], faceEulerTurned(n, -half * flip * turn));
+        }
+      }
     }
     // the wedge's joint with its side module: a dark seam down the outer corner's rear edge
     P.add('turretDark', KIT.box(0.006, ROOF_Y - 0.02 - CHEEK_BOTTOM_Y, 0.014), sign * (CHEEK_OUTER_X + 0.003),
@@ -487,7 +554,7 @@ function addCheekWedges(P: TankBuilderPort): void {
 
 /** Slab side modules from the cheek root to the bustle bins, bevelled at the lower lip, their front edge chamfered into
  * the cheek's outer corner; bolt heads on the outer face. */
-function addSideModules(P: TankBuilderPort): void {
+function addSideModules(P: TankBuilderPort, kit: LongweiTurretKit): void {
   const { cylX } = KIT;
   // the lower lip stands 4 cm over the ring plane at the front and rises to 0.16 at the rear corner, which sweeps the
   // powerpack deck's ramp at 1.89 m from the ring (its 1.66 m line at local 0.09) when the turret traverses
@@ -503,6 +570,11 @@ function addSideModules(P: TankBuilderPort): void {
     }
     // the module's seam with its bin: a dark joint line
     P.add('turretDark', KIT.box(0.30, 0.012, 0.012), side * 1.42, ROOF_Y - 0.03, rear + 0.01);
+    // release 264: two rows of three cassettes on the outer face, over the module's rising lower lip
+    if (kit.sideEra) for (const z of [-0.18, -0.50, -0.82]) for (const [y, h] of [[0.33, 0.20], [0.56, 0.18]]) {
+      eraCassette(P, 'turret', side < 0 ? 'turret_side_era_L' : 'turret_side_era_R', [side * (1.568 + 0.031), y, z],
+        [0.062, h, 0.29]);
+    }
   }
 }
 
@@ -549,11 +621,35 @@ function addLongweiGun(P: TankBuilderPort): void {
   P.muzzleZ = len;
 }
 
-/** The bustle: two lidded bins a side behind the side modules, the blow-off panels over the ammunition compartment and
- * the rear basket. Bins bottom at 0.36 and the basket floor at 0.38: the engine deck's dress tops out at local 0.29. */
-function addBustle(P: TankBuilderPort): void {
+/** Release 264: a closed armoured box from z0 to z1 (z0 < z1) between x0 and x1 and y0 and y1, chamfered round its outer
+ * top edge on `side`, its lid line and two latches on the outer face. */
+function armouredBox(P: TankBuilderPort, side: number, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void {
   const { box } = KIT;
+  const base: SectionPoint[] = [[x0, y0], [x1 - 0.04, y0], [x1, y0 + 0.04], [x1, y1 - 0.04], [x1 - 0.04, y1], [x0, y1]];
+  const ring = side > 0 ? base : mirrorRing(base);
+  P.addEquipment('turretDetail', sectionSolid([{ z: z0, ring }, { z: z1, ring }]));
+  P.addEquipment('turretDark', box(0.012, 0.010, z1 - z0 - 0.06), side * (x1 + 0.001), y1 - 0.08, (z0 + z1) / 2);
+  for (const f of [0.25, 0.75]) {
+    P.addEquipment('turretDark', box(0.016, 0.06, 0.045), side * (x1 + 0.006), y1 - 0.13, z0 + (z1 - z0) * f);
+  }
+}
+
+/** The bustle: two lidded bins a side behind the side modules (or, release 264, one closed armoured box a side), the
+ * blow-off panels over the ammunition compartment and the rear basket (or a closed rear box). Bins bottom at 0.36 and the
+ * basket floor at 0.38: the engine deck's dress tops out at local 0.29. */
+function addBustle(P: TankBuilderPort, kit: LongweiTurretKit): void {
+  const { box } = KIT;
+  if (kit.bustle === 'boxes') {
+    for (const side of [-1, 1]) armouredBox(P, side, 1.06, 1.54, 0.36, ROOF_Y - 0.05, CORE_REAR_Z + 0.08, SIDE_MODULE_REAR_Z - 0.02);
+    // the rear box across the rear wall: its floor at the basket's 0.38, 0.62 m deep, lid line and three latches
+    const rearRing: SectionPoint[] = [[-1.00, 0.38], [1.00, 0.38], [1.00, 0.66], [0.96, 0.70], [-0.96, 0.70], [-1.00, 0.66]];
+    P.addEquipment('turretDetail', sectionSolid([{ z: CORE_REAR_Z - 0.62, ring: rearRing }, { z: CORE_REAR_Z + 0.004, ring: rearRing }]));
+    P.addEquipment('turretDark', box(1.94, 0.010, 0.012), 0, 0.62, CORE_REAR_Z - 0.621);
+    for (const x of [-0.62, 0, 0.62]) P.addEquipment('turretDark', box(0.06, 0.05, 0.016), x, 0.56, CORE_REAR_Z - 0.626);
+  }
+  if (kit.bustleCage) addBustleCage(P, kit);
   for (const side of [-1, 1]) {
+    if (kit.bustle === 'boxes') break;
     const base: SectionPoint[] = [[1.06, 0.36], [1.50, 0.36], [1.54, 0.40], [1.54, ROOF_Y - 0.08], [1.51, ROOF_Y - 0.05], [1.06, ROOF_Y - 0.05]];
     const ring = side > 0 ? base : mirrorRing(base);
     for (const [front, rear] of [[SIDE_MODULE_REAR_Z - 0.02, -1.70], [-1.76, CORE_REAR_Z + 0.08]]) {
@@ -570,6 +666,7 @@ function addBustle(P: TankBuilderPort): void {
     P.add('turretDetail', box(0.70, 0.022, 0.62), x, ROOF_Y + 0.011, -2.02);
     P.addEquipment('turretDark', box(0.14, 0.022, 0.022), x, ROOF_Y + 0.03, -2.02);
   }
+  if (kit.bustle === 'boxes') return;
   // rear basket against the rear wall, floor at 0.38
   const rack = FITTINGS.stowageRack({
     mats: P.mats, w: 2.00, d: 0.62, h: 0.30, posts: 7, fill: 0.82, rails: 2, mesh: true,
@@ -578,6 +675,27 @@ function addBustle(P: TankBuilderPort): void {
   rack.position.set(0, 0.38, CORE_REAR_Z - 0.30);
   rack.rotation.set(0, Math.PI, 0);
   P.turretG.add(rack);
+}
+
+/** Release 264: a slat screen 0.12 m off the bustle's flanks and rear: vertical slats every 0.12 m between a top and a
+ * bottom rail, on short arms from the bins (or boxes) and the rear basket's frame. */
+function addBustleCage(P: TankBuilderPort, kit: LongweiTurretKit): void {
+  const { box } = KIT;
+  const x = 1.66, zFront = SIDE_MODULE_REAR_Z - 0.08, zRear = CORE_REAR_Z - 0.62 - 0.12, y0 = 0.38, y1 = 0.74;
+  const rail = (len: number) => box(0.03, 0.03, len);
+  for (const side of [-1, 1]) {
+    for (const y of [y0 + 0.02, y1 - 0.02]) P.add('turretDark', rail(zFront - zRear), side * x, y, (zFront + zRear) / 2);
+    for (let z = zFront - 0.06; z > zRear + 0.04; z -= 0.12) P.add('turretDark', box(0.022, y1 - y0, 0.022), side * x, (y0 + y1) / 2, z);
+    // arms back to the bins (or boxes) at three stations
+    for (const z of [zFront - 0.10, (zFront + zRear) / 2, zRear + 0.10]) {
+      P.add('turretDark', box(x - 1.54 + 0.02, 0.03, 0.03), side * (1.54 + x) / 2, y1 - 0.08, z);
+    }
+  }
+  for (const y of [y0 + 0.02, y1 - 0.02]) P.add('turretDark', box(2 * x + 0.03, 0.03, 0.03), 0, y, zRear);
+  for (let xx = -x + 0.10; xx < x - 0.05; xx += 0.12) P.add('turretDark', box(0.022, y1 - y0, 0.022), xx, (y0 + y1) / 2, zRear);
+  for (const xx of [-0.70, 0.70]) {
+    P.add('turretDark', box(0.03, 0.03, (kit.bustle === 'boxes' ? 0.12 : 0.13)), xx, y1 - 0.08, zRear + 0.06);
+  }
 }
 
 /** One GL-5-style radar housing angled `yaw` from the turret's nose: a plinth bedded 30 mm into its seat, a deep
@@ -615,7 +733,35 @@ function addHatch(P: TankBuilderPort, x: number, z: number, hingeSide: number): 
   }
 }
 
-function addTurretRoof(P: TankBuilderPort): void {
+/** Release 264: the remote stations a modernized kit seats behind the commander's hatch (the fleet's national station
+ * construction, profiles/nationalRoofWeapon.ts): a faceted 12.7 mm, or a 30 mm cannon on the same wedge mount. */
+const LONGWEI_RWS: Readonly<Record<'rws' | 'cannon30', NationalRoofLoadout>> = Object.freeze({
+  rws: { name: 'Longwei remote 12.7 mm station', caliber: 12.7, mount: 'wedge', feedSide: -1, axisHeight: 0.63, muzzleZ: 1.07,
+    eyes: 'monocle-right', eyeRadius: 0.15, roof: 'spine', roofZ: -0.16, lamp: 'slit' },
+  cannon30: { name: 'Longwei remote 30 mm cannon', caliber: 30, mount: 'wedge', feedSide: -1, axisHeight: 0.77, muzzleZ: 1.17,
+    eyes: 'twin', eyeRadius: 0.155, roof: 'scanner', roofZ: -0.10, lamp: 'slit' },
+});
+
+/** Release 264: a laser-warning receiver on a short plinth: a squat head with a dark sensor band. */
+function addWarningReceiver(P: TankBuilderPort, x: number, y: number, z: number): void {
+  const { cylY } = KIT;
+  P.addEquipment('turretDetail', cylY(0.07, 0.08, 0.05, 14), x, y + 0.025 - 0.004, z);
+  P.addEquipment('turretDetail', cylY(0.055, 0.06, 0.08, 14), x, y + 0.09, z);
+  P.addModuleVisual('optics', 'turretDark', cylY(0.058, 0.058, 0.025, 14), x, y + 0.095, z);
+  P.addEquipment('turretDetail', cylY(0.03, 0.055, 0.03, 14), x, y + 0.145, z);
+}
+
+/** Release 264: an infrared dazzler head on the side module's front shoulder, facing forward: an armoured box, its round
+ * dark emitter and a rain hood. */
+function addDazzler(P: TankBuilderPort, x: number, y: number, z: number): void {
+  const { box, cylZ } = KIT;
+  P.addEquipment('turretDetail', box(0.22, 0.05, 0.22), x, y + 0.025 - 0.004, z);
+  P.addEquipment('turretDetail', box(0.28, 0.22, 0.24), x, y + 0.16, z);
+  P.addModuleVisual('optics', 'turretDark', cylZ(0.085, 0.02, 16), x, y + 0.16, z + 0.125);
+  P.addEquipment('turretDetail', box(0.30, 0.018, 0.30), x, y + 0.28, z + 0.03);
+}
+
+function addTurretRoof(P: TankBuilderPort, kit: LongweiTurretKit): void {
   const { box, cylY } = KIT;
   const parts = permanentParts(P, ['turret']);
   // the vehicle's left (+X): the gunner's hatch, his primary sight ahead of it, and the laser dazzler at the rear corner
@@ -644,7 +790,10 @@ function addTurretRoof(P: TankBuilderPort): void {
     P.add('turretDark', box(0.28, 0.012, 0.012), x, headY + 0.08, z + 0.162);
   }
   // QJC-88 12.7 mm on a socket post behind the commander's hatch, with its shield, on the working station's cradle
-  {
+  if (kit.roofGun !== 'pintle') {
+    // release 264: a remote station on the same seat, set back clear of the commander's hatch ring
+    nationalRoofWeapon(P, [-0.18, ROOF_Y, -1.34], null, LONGWEI_RWS[kit.roofGun]);
+  } else {
     const x = -0.22, z = -1.24, roof = ROOF_Y;
     P.add('turretDetail', cylY(0.075, 0.085, 0.10, P.q ? 20 : 12), x, roof + 0.05 - 0.004, z);
     const mg = FITTINGS.pintleMG({
@@ -654,16 +803,27 @@ function addTurretRoof(P: TankBuilderPort): void {
     mg.position.set(x, roof + 0.096, z);
     P.turretG.add(mg);
   }
-  // the GL-5-style hard-kill suite: radar faces at the four corners, launchers on the roof sides
-  for (const side of [-1, 1]) {
-    addRadarFace(P, side * 1.40, ROOF_Y - 0.03, 0.02, side * 0.75);
-    addRadarFace(P, side * 0.92, ROOF_Y, CORE_REAR_Z + 0.24, side * (Math.PI - 0.80));
-    addLauncher(P, side * 1.00, ROOF_Y, -1.02, side * 0.32);
+  if (kit.protection === 'gl5' || kit.protection === 'gl5-plus') {
+    // the GL-5-style hard-kill suite: radar faces at the four corners, launchers on the roof sides
+    for (const side of [-1, 1]) {
+      addRadarFace(P, side * 1.40, ROOF_Y - 0.03, 0.02, side * 0.75);
+      addRadarFace(P, side * 0.92, ROOF_Y, CORE_REAR_Z + 0.24, side * (Math.PI - 0.80));
+      addLauncher(P, side * 1.00, ROOF_Y, -1.02, side * 0.32);
+      // release 264: the rear launcher pair, facing back and out beside the blow-off panels
+      if (kit.protection === 'gl5-plus') addLauncher(P, side * 0.98, ROOF_Y, -1.60, side * (Math.PI - 0.60));
+    }
+    // the suite's processor case and its cables to the rear radar faces, routed round the blow-off panels
+    serviceCase(P, parts, 0.34, -1.30, 0.38, 0.18, 0.26);
+    serviceCable(P, parts, [[0.34, -1.43], [0.86, -1.50], [0.86, -2.22], [0.92, -2.28]], false);
+    serviceCable(P, parts, [[0.20, -1.43], [-0.86, -1.50], [-0.86, -2.22], [-0.92, -2.28]], false);
+  } else {
+    // release 264: laser-warning receivers at the rear corners, and at the front corners unless dazzlers stand there
+    for (const side of [-1, 1]) {
+      addWarningReceiver(P, side * 0.92, ROOF_Y, CORE_REAR_Z + 0.24);
+      if (kit.protection === 'eyes') addDazzler(P, side * 1.36, ROOF_Y - 0.03, 0.02);
+      else addWarningReceiver(P, side * 1.36, ROOF_Y - 0.03, 0.02);
+    }
   }
-  // the suite's processor case and its cables to the rear radar faces, routed round the blow-off panels
-  serviceCase(P, parts, 0.34, -1.30, 0.38, 0.18, 0.26);
-  serviceCable(P, parts, [[0.34, -1.43], [0.86, -1.50], [0.86, -2.22], [0.92, -2.28]], false);
-  serviceCable(P, parts, [[0.20, -1.43], [-0.86, -1.50], [-0.86, -2.22], [-0.92, -2.28]], false);
   // the smoke dischargers on each cheek wedge's outer face (the 99A's stacked cluster beside the star): two three-tube
   // banks, one over the other, fanned forward, up and out
   for (const side of [-1, 1]) for (const [y, k] of [[0.26, 0], [0.44, 1]] as const) {
@@ -688,31 +848,37 @@ function addTurretRoof(P: TankBuilderPort): void {
   for (const [x, z] of [[-1.08, 0.28], [1.08, 0.28], [-0.62, CORE_REAR_Z + 0.20], [0.62, CORE_REAR_Z + 0.20]]) {
     KIT.liftEye(P, 'turretDetail', x, ROOF_Y, z);
   }
-  // turret numbers on the side modules
+  // turret numbers on the side modules (release 264: on the bins or boxes when cassettes cover the modules)
   const num = P.spec.visual.number || '';
-  P.decal('turret', 'number', num, 0.20, [1.570, 0.46, -0.62], Math.PI / 2);
-  P.decal('turret', 'number', num, 0.20, [-1.570, 0.46, -0.62], -Math.PI / 2);
+  const numberAt: Vec3 = kit.sideEra ? [1.545, 0.50, -1.38] : [1.570, 0.46, -0.62];
+  P.decal('turret', 'number', num, 0.20, numberAt, Math.PI / 2);
+  P.decal('turret', 'number', num, 0.20, [-numberAt[0], numberAt[1], numberAt[2]], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.40);
 }
 
-function buildLongweiTurret(P: TankBuilderPort): void {
-  P.turretG.position.set(...PIVOT);
+/** The Longwei turret with `kit` (the Longwei's own by default) on the ring at `kit.pivot`. */
+export function buildLongweiTurret(P: TankBuilderPort, kit: LongweiTurretKit = LONGWEI_TURRET_KIT): void {
+  P.turretG.position.set(...kit.pivot);
   P.gunG.position.set(...TRUNNION);
   addTurretCore(P);
-  addCheekWedges(P);
-  addSideModules(P);
+  addCheekWedges(P, kit);
+  addSideModules(P, kit);
   addMantlet(P);
   addLongweiGun(P);
-  addBustle(P);
-  addTurretRoof(P);
+  addBustle(P, kit);
+  addTurretRoof(P, kit);
   P.turretG.userData.longweiTurretReceipt = Object.freeze({
-    architecture: 'longwei-arrowhead-r262',
-    pivotLocalM: Object.freeze([...PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
-    muzzleWorldZM: PIVOT[2] + TRUNNION[2] + GUN_LENGTH,
+    architecture: kit.revision,
+    pivotLocalM: Object.freeze([...kit.pivot]), trunnionLocalM: Object.freeze([...TRUNNION]),
+    muzzleWorldZM: kit.pivot[2] + TRUNNION[2] + GUN_LENGTH,
     roofLocalY: ROOF_Y, cheekTipZ: CHEEK_TIP_Z, cheekSweepDeg: Math.atan(CHEEK_SWEEP) / D2R,
     widthOverModulesM: 1.57 * 2, lengthM: CHEEK_TIP_Z - (CORE_REAR_Z - 0.41),
     throatHalfWidthM: THROAT_X, mantletHalfWidthM: MANTLET_HALF_W,
-    cheekCassettesPerSide: 2, radarFaces: 4, launchers: 2, smokePerSide: 6,
+    kit: Object.freeze({ faceEra: kit.faceEra, sideEra: kit.sideEra, roofGun: kit.roofGun, protection: kit.protection,
+      bustle: kit.bustle, bustleCage: kit.bustleCage }),
+    cheekCassettesPerSide: kit.faceEra === 'grid' ? 6 : kit.faceEra === 'chevron' ? 4 : 2,
+    radarFaces: kit.protection.startsWith('gl5') ? 4 : 0,
+    launchers: kit.protection === 'gl5-plus' ? 4 : kit.protection === 'gl5' ? 2 : 0, smokePerSide: 6,
     commanderSide: 'right', gunnerSide: 'left', dazzlerSide: 'left',
     bustleUndersideM: 0.34, legacyVtDerivativeRetired: true, terracedFrontRetired: true,
   });

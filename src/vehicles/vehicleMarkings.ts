@@ -300,6 +300,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leclerc_sxxi: anchor('turret', 'left', 0.34, 0.43, 0.24, 1),
   leclerc_s1: anchor('turret', 'right', 0.31, 0.45, 0.24, -1),
   ztz99_longwei: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  // release 264: the Longwei family carries the Longwei turret's anchor
+  ztz99a2_qinglong: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  vt4a1_baihu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3_zhuque: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t72b3m_xuanwu: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   type100: anchor('hull', 'left', 0.33, 0.77, 0.26, 1),
   // The missile banks leave the aft spine visible; the former mid-turret
