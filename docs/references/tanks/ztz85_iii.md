@@ -42,7 +42,12 @@ The photographs and plates are local study material only (`~/cot-lanes/cn-262-re
 
 Combat envelope: the plates follow the new surfaces at the tier's former strengths (glacis 80, cheeks and mantlet 137,
 the front slope 100, sides 40/51, rear 28/40, roofs 23; no skirts); first-generation reactive plates (KE -5%, CE
-+280 mm, the Kontakt-1 class) cover the glacis bricks, both turret faces and the front slope's bricks. Crew of three (driver front left, gunner left,
++280 mm, the Kontakt-1 class) cover the glacis bricks, both turret faces and the front slope's bricks.
+
+Fairness (balance range, shown-tier I MBT peers; ~/cot-lanes/cn-262-refs/tools/fairline.mjs): before (the 248-262
+build) mean 0.848, 3/11 pairs inside 0.2-0.8; after mean 0.894, 2/11. Stats unchanged; the pair moves are single-game
+steps at 12 games a pair. Both builds outclass tier I: the 1995 125 mm autoloaded tank sits beside the T-62 and the
+M48A5, so its placement (Main's and the owner's call) is the fairness lever, not its armour. Crew of three (driver front left, gunner left,
 commander right); the carousel under the turret.
 
 ## History: the §5.248 build (releases 248-262), retired by §263
