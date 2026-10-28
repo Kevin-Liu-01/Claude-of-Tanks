@@ -18,6 +18,7 @@ forward skirts 0.20/400); gunPitchByYawDeg measured on the build (the Oplot-M's 
 Oplot-M print that `bm_oplot_m` now certifies) are gone: the T-84U is a declared derivative of that certified base, as
 the Oplot-T is. Receipts retargeted: eraSeating (ERA clusters per plate, finish), fieldEquipment (no field weapon);
 oplotFenderBridge retired with the builder whose bridge it tested.
+Receipts on the rebuild (2026-10-28): ids-scoped anatomy chain PASS (fixpoint, rigs gate; its sim-floor move accepted with a reason); oplotBMGun (the full -5..+14 at every yaw), eraSeating, fieldEquipment PASS; strict track clip 0/0, sweep 0/0; contiguity 0 (its one closed hidden gap pruned); sealed (ledger holds); icons, drawings, hero card, centering PASS. Blind critic "does this read as the Oplot-M/T's predecessor?": PASS. Lineage sheet: `~/cot-launch-state/streams/owner-shots/oplot-262-lineage.png`. No registered comparison of its own (a declared derivative of the certified `bm_oplot_m` base), so the gated A stage reads N/A-as-FAIL.
 
 ## Release 262 rename (owner 2026-10-27, approved tier table)
 This build (id `t84bm_oplot_m`, unchanged) is now **"T-84U Oplot"**, the 2000 serial tank, Object 478DU9 (adopted

@@ -21,3 +21,11 @@ registration, construction and combat data are in [bm_oplot_m.md](bm_oplot_m.md)
   filter and designation stay Ukraine (the builder's nation).
 - No field branches (decorations.ts FIELD_FOLIAGE lists the Oplot-M only).
 - Stats: as the Oplot-M, 51.5 t for the conditioner and the APU.
+
+## Evidence (2026-10-28)
+- A declared derivative of the certified `bm_oplot_m` base: no registered comparison of its own (no Oplot-T 3D source on
+  this machine), so the gated A stage reads N/A-as-FAIL; the owner's desert reference is matched by blind critic
+  (rounds 1-2, distinctness PASS).
+- Physical stages PASS on the final hull: strict track clip 0/0, sweep 0/0, shoes 0 (after the bow fender ledges were
+  lifted clear of the band); contiguity 0; decor mg2; sealed (new vehicle). Gun clearance over -5..+14 at every yaw
+  (oplotBMGun.selftest; worst 2.7 cm over the APU). Ids-scoped anatomy chain, icons, drawings, hero card and centering PASS.
