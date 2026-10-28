@@ -12,7 +12,8 @@
 //   node tools/surface-pairs.mjs --url=http://127.0.0.1:4173 --out=/absolute/new-dir
 //     [--layouts=docked,folded,pane] [--langs=en,zh] [--pages=game,gallery] [--only=<id>,...] [--battle]
 // 'docked' is a desktop (1440x900), 'folded' a touch phone (390x844), 'pane' a short window under a mouse (800x600): the last
-// two fold the Garage's panels and take the registry's folded recipes. A recipe whose first control a size never shows is
+// two fold the Garage's panels and take the registry's folded recipes. 'tablet' is an iPad held wide (1180x820, touch, docked;
+// turned, upright 820x1180). A recipe whose first control a size never shows is
 // skipped there; every row the run's recipes name must open at one size at least.
 // Exit 1 on any failure; the report is <out>/surface-pairs.json, the log <out>/surface-pairs.log.
 import puppeteer from 'puppeteer';
@@ -37,10 +38,13 @@ const VIEWPORTS = {
   docked: { width: 1440, height: 900, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
   folded: { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
   pane: { width: 800, height: 600, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
+  // an iPad held wide (item 262): a touch screen with the docked panels, tapped through hasTouch
+  tablet: { width: 1180, height: 820, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
 };
-const TURNED = { docked: { width: 1024, height: 600 }, folded: { width: 844, height: 390 }, pane: { width: 1280, height: 800 } };
+const TURNED = { docked: { width: 1024, height: 600 }, folded: { width: 844, height: 390 }, pane: { width: 1280, height: 800 },
+  tablet: { width: 820, height: 1180 } };
 /** The registry's recipes a run's size takes. */
-const RECIPES = { docked: 'docked', folded: 'folded', pane: 'folded' };
+const RECIPES = { docked: 'docked', folded: 'folded', pane: 'folded', tablet: 'docked' };
 const opened = new Set();
 const absent = new Map();
 const PAGE_SCREENS = { game: ['garage', 'deploy', 'settings'], gallery: ['gallery'], home: ['site'] };
