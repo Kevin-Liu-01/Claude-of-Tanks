@@ -40,7 +40,9 @@ function closedPlanePrimitive() {
 
 function surfaces(root, all) {
   const hull = root.getObjectByName('hull'), turret = root.getObjectByName('turret');
-  for (const [x,z,y] of [[0,-2,1.497999],[.6,-1,1.379943],[.6,1,1.347441],
+  // (264: 245's turret clearance, d12ce452db, moved the engine-deck rise aft of z -1, as 257's arieteC2X reads it: the
+  // 0.6/-1 witness now meets the flat roof, 1.347441)
+  for (const [x,z,y] of [[0,-2,1.497999],[.6,-1,1.347441],[.6,1,1.347441],
     [.6,2.4,1.284796],[1.2,0,1.347441]]) {
     near(cast([hull],[x,4,z],[0,-1,0])?.point.y,y,.006,'source hull roof witness');
   }
