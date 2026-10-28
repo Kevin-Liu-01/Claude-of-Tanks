@@ -1292,8 +1292,24 @@ const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
  * read-only. Returns the welded vertex-coloured geometry, the standing masses' collision and the counts.
  */
 export function buildRockFormation(
-  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, collision }: RockBuildOptions = {},
+  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, options: RockBuildOptions = {},
 ): RockFormationBuild {
+  const steps = buildRockFormationSteps(spec, ground, noise, rng, options);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** A checkpoint between a formation's stages, where the props build paces (props.ts PropsBuildSlice). */
+interface RockFormationSlice { fine: true; progress: false; stage: string }
+// (260, the rooms census: a rock field's formations were one 245 ms step of the props build) a checkpoint once the stone
+// is laid, once the collision's copy is, and once the masses are; the same pieces, streams and order
+const FORMATION_SLICE: RockFormationSlice = { fine: true, progress: false, stage: 'scenery' };
+
+/** buildRockFormation with a checkpoint between its stages, for the props build's pacing. */
+export function* buildRockFormationSteps(
+  spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, collision }: RockBuildOptions = {},
+): Generator<RockFormationSlice, RockFormationBuild, void> {
   const { min } = lowestGround(ground, spec.x, spec.z, spec.radius);
   const form = FORMS[spec.form];
   if (!form) throw new Error(`sceneryRocks: unknown form ${spec.form}`);
@@ -1309,8 +1325,10 @@ export function buildRockFormation(
     return laid;
   };
   const own = lay(rng, mobile);
+  yield FORMATION_SLICE;
   // (the collision: the desktop's pieces, laid from a fresh copy of the stream when this tier lays others)
   const desk = collision && collision.mobile !== mobile ? lay(collision.stream(), collision.mobile) : own;
+  if (desk !== own) yield FORMATION_SLICE;
   // (physics stream, 2026-10-13, after the hitbox lane's held round 3: the tank-world census's rock-gap pass found eight
   // scenery masses whose records held under half the stone a hull meets — their fallen blocks and talus, which carried no
   // collider, so a hull drove into stone it saw) the desktop's loose pieces that rise past the drive-over line carry a
@@ -1327,8 +1345,11 @@ export function buildRockFormation(
   const masses: RockMass[] = [];
   const standing = massOf(desk.filter((piece) => piece.standing), ground, min);
   if (standing) masses.push(standing);
+  // (260, the Saltwind census: a formation's standing and fallen masses were one 115 ms step) the fallen mass its own
+  if (solid.size) yield FORMATION_SLICE;
   const fallen = solid.size ? massOf([...solid], ground, min) : null;
   if (fallen) { fallen.fallen = true; masses.push(fallen); }
+  yield FORMATION_SLICE;
   const laid = desk.length > 0;
   let drawn = own;
   if (desk !== own) {

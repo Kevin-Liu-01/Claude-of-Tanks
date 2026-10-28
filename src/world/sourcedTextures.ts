@@ -22,7 +22,9 @@ import * as THREE from 'three';
 import { texSize } from '../engine/quality.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { composeAlbedoPixels, composeSurfacePixels, type SourcedComposeOptions } from './sourcedTextureComposer.ts';
-import { canComposeSourcedTextureInWorker, tryComposeSourcedTexture } from './sourcedTextureCompositionClient.ts';
+import {
+  canComposeSourcedTextureInWorker, sourceFileBitmap, tryComposeSourcedTexture,
+} from './sourcedTextureCompositionClient.ts';
 import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
 import * as detMath from '../sim/detMath.ts';
 
@@ -541,9 +543,9 @@ function compositeKey(setKey: string, opts: ComposeOptions = {}): string {
  * alpha=255 (props). Returns a canvas sized to the color map (max 1024).
  */
 export function composeAlbedo(
-  color: HTMLImageElement,
-  ao: HTMLImageElement | null,
-  rough: HTMLImageElement | null,
+  color: SourcePhoto,
+  ao: SourcePhoto | null,
+  rough: SourcePhoto | null,
   opts: ComposeOptions = {},
 ): HTMLCanvasElement {
   const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
@@ -564,8 +566,8 @@ export function composeAlbedo(
 
 /** Pack AO (red) and roughness (green) into one linear building surface map. */
 export function composeSurface(
-  ao: HTMLImageElement | null,
-  rough: HTMLImageElement | null,
+  ao: SourcePhoto | null,
+  rough: SourcePhoto | null,
   size: number,
   roughMul = 1,
 ): HTMLCanvasElement {
@@ -596,15 +598,15 @@ function findCachedSurface(
 
 function cachedSurface(
   setKey: keyof typeof SETS,
-  ao: HTMLImageElement | null,
-  rough: HTMLImageElement | null,
+  ao: SourcePhoto | null,
+  rough: SourcePhoto | null,
   size: number,
   roughMul: number,
 ): HTMLCanvasElement {
   return findCachedSurface(setKey, size, roughMul) ?? composeSurface(ao, rough, size, roughMul);
 }
 
-function normalCanvas(img: HTMLImageElement): HTMLCanvasElement {
+function normalCanvas(img: SourcePhoto): HTMLCanvasElement {
   const s = Math.min(img.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -627,11 +629,17 @@ function swapTexture(tex: THREE.Texture, canvas: HTMLCanvasElement): void {
   tex.needsUpdate = true;
 }
 
-interface LoadedTextureSet {
-  color: HTMLImageElement | null;
-  normal: HTMLImageElement | null;
-  rough: HTMLImageElement | null;
-  ao: HTMLImageElement | null;
+/** A set's photo as the composer draws it: the loaded element, or its bitmap decoded off the main thread. */
+type SourcePhoto = HTMLImageElement | ImageBitmap;
+
+interface SetPhotos<Photo extends SourcePhoto = SourcePhoto> {
+  color: Photo | null;
+  normal: Photo | null;
+  rough: Photo | null;
+  ao: Photo | null;
+}
+
+interface LoadedTextureSet extends SetPhotos<HTMLImageElement> {
   failures: string[];
 }
 
@@ -652,7 +660,7 @@ async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSe
 
 function composeSet(
   setKey: keyof typeof SETS,
-  images: LoadedTextureSet,
+  images: SetPhotos,
   opts: ComposeOptions,
 ): { albedo: HTMLCanvasElement; normal: HTMLCanvasElement; surface: HTMLCanvasElement | null } | null {
   const { color, normal, rough, ao } = images;
@@ -695,6 +703,48 @@ export function adoptPixels(pixels: Uint8ClampedArray<ArrayBuffer>, size: number
   return canvas;
 }
 
+/**
+ * composeSet with its draws read from bitmaps decoded off the main thread (260, the rooms census: a composition's first
+ * drawImage of a loaded photo decoded it on the main thread, 337 ms of a 597 ms room-entry task; img.decode() leaves
+ * the canvas's draw to decode it again). Only the draws the caches still miss, and only those at the photo's own size,
+ * are decoded, each from its file like the worker's own bitmaps (sourceFileBitmap): the same pixels there
+ * (tools/sourced-decode-digest.mjs), whereas a scaled draw (a phone's 512) reads other pixels from a bitmap (the
+ * element decodes to the smaller size) and keeps the element. A photo whose bitmap fails is drawn from its element as
+ * before, and the bitmaps are closed once composed.
+ */
+async function composeDecoded(
+  setKey: keyof typeof SETS,
+  images: LoadedTextureSet,
+  opts: ComposeOptions,
+  signal?: AbortSignal,
+): Promise<ReturnType<typeof composeSet>> {
+  const { color, normal, ao, rough } = images;
+  if (!color || !normal || typeof createImageBitmap !== 'function') return composeSet(setKey, images, opts);
+  const size = Math.min(color.width, texSize(1024));
+  const separateSurface = !!opts.separateSurface;
+  const composite = _compositeCache.get(compositeKey(setKey, { ...opts, separateSurface }))?.size !== size;
+  const surface = composite && separateSurface && !findCachedSurface(setKey, size, opts.roughMul ?? 1);
+  const bitmaps: ImageBitmap[] = [];
+  const decoded = async (image: HTMLImageElement | null, drawn: boolean, at = size): Promise<SourcePhoto | null> => {
+    if (!image || !drawn || image.width !== at || image.height !== at) return image;
+    try {
+      const bitmap = await sourceFileBitmap(image);
+      bitmaps.push(bitmap);
+      return bitmap;
+    } catch { return image; }
+  };
+  const [colorPhoto, normalPhoto, aoPhoto, roughPhoto] = await Promise.all([
+    decoded(color, composite), decoded(normal, _normalCache.get(setKey)?.size !== size, Math.min(normal.width, texSize(1024))),
+    decoded(ao, separateSurface ? surface : composite), decoded(rough, (!!opts.roughInAlpha && composite) || surface),
+  ]);
+  try {
+    if (signal?.aborted) return null;
+    return composeSet(setKey, { color: colorPhoto, normal: normalPhoto, ao: aoPhoto, rough: roughPhoto }, opts);
+  } finally {
+    for (const bitmap of bitmaps) bitmap.close();
+  }
+}
+
 async function composeSetAsync(
   setKey: keyof typeof SETS,
   images: LoadedTextureSet,
@@ -708,7 +758,7 @@ async function composeSetAsync(
   const snapshot = { ...opts, tint };
   const key = compositeKey(setKey, snapshot);
   if (_compositeCache.get(key)?.size === size || !canComposeSourcedTextureInWorker()) {
-    return composeSet(setKey, images, snapshot);
+    return composeDecoded(setKey, images, snapshot, signal);
   }
   const roughMul = snapshot.roughMul ?? 1;
   const surface = snapshot.separateSurface ? findCachedSurface(setKey, size, roughMul) : null;
@@ -722,7 +772,7 @@ async function composeSetAsync(
     // cache during the await. Never allocate a second canvas for that result.
     // Tier changes also must not publish an obsolete-size composition.
     if (_compositeCache.get(key)?.size === size || size !== Math.min(color.width, texSize(1024))) {
-      return composeSet(setKey, images, snapshot);
+      return composeDecoded(setKey, images, snapshot, signal);
     }
     if (result) {
       const canvas = adoptPixels(result.albedo, size, true);
@@ -736,7 +786,7 @@ async function composeSetAsync(
     // adoption failures preserve the original composer, not a reduced asset.
   }
   if (signal?.aborted) return null;
-  return composeSet(setKey, images, snapshot);
+  return composeDecoded(setKey, images, snapshot, signal);
 }
 
 async function applySet(

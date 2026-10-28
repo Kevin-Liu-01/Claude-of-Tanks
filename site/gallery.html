@@ -270,7 +270,7 @@
             </div>
 
             <div class="markup-control-grid">
-              <label for="markupScope"><span data-i18n="gallery.markup.scope">Selection scope</span><span class="markup-select"><select id="markupScope"><option value="patch" data-i18n="gallery.markup.scope.patch">Coplanar patch</option><option value="face" data-i18n="gallery.markup.scope.face">Single triangle</option></select></span></label>
+              <div class="markup-field"><span data-i18n="gallery.markup.scope">Selection scope</span><div class="cot-c-seg markup-scope-seg" id="markupScope" role="radiogroup" data-i18n-aria-label="gallery.markup.scope"><button type="button" role="radio" class="cot-c-seg__opt" data-value="patch" aria-checked="true" data-ui-sound="select" data-i18n="gallery.markup.scope.patch">Coplanar patch</button><button type="button" role="radio" class="cot-c-seg__opt" data-value="face" aria-checked="false" tabindex="-1" data-ui-sound="select" data-i18n="gallery.markup.scope.face">Single triangle</button></div></div>
               <label for="markupPatchAngle"><span data-i18n="gallery.markup.patchAngle">Patch angle</span><input id="markupPatchAngle" type="number" value="14" min="1" max="45" step="1"></label>
             </div>
 

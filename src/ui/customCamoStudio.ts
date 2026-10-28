@@ -54,6 +54,7 @@ export function createCustomCamoStudio({
   let draft = normalized();
 
   const modal = createModal({
+    surface: 'camo-studio',
     title: t('customCamo.title'),
     size: 'wide',
     onOpen: () => button()?.setAttribute('aria-expanded', 'true'),

@@ -97,6 +97,9 @@ export function installHoverTips(doc: Document = document): void {
   function show(control: HTMLElement): void {
     win.clearTimeout(timer);
     if (anchor === control || !control.isConnected) return;
+    // a control whose surface is open says nothing more: its menu or panel is in view, and a tip would stand over it (the
+    // 261 report: the rival's tip over its open menu's search, shown again as the trigger redrew under a still pointer)
+    if (control.getAttribute('aria-expanded') === 'true') { hide(); return; }
     const text = tipText(control);
     if (!text) { hide(); return; }
     hide();
@@ -130,7 +133,7 @@ export function installHoverTips(doc: Document = document): void {
     const control = controlOf(event.target);
     if (!control) { if (anchor || timer) hide(); return; }
     if (control === anchor) return;
-    if (!tipText(control)) { hide(); return; }
+    if (!tipText(control) || control.getAttribute('aria-expanded') === 'true') { hide(); return; }
     schedule(control);
   });
   doc.addEventListener('pointerout', (event) => {

@@ -37,9 +37,11 @@ assert.match(css, /@media \(width < 1440px\)\{\s*\.layers button>span\{position:
   'narrow stages keep the layer names as accessible names only');
 assert.equal([...html.matchAll(/data-view="(?:hero|front|left|right|rear|top|elevated-left|elevated-right)"/g)].length, 8, 'eight camera views');
 
-// Below 1100 px the page scrolls: the stage spans the top and the panes share a row; below 768 px they stack, the views
-// become a bottom row and the fleet a strip of cards.
-assert.match(css, /@media \(width < 1100px\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
+// From 768 to 1100 px the three panes keep their row with a narrower list (the lead, 10-26); a short window under 1100 px
+// scrolls, the stage spanning the top and the panes sharing a row; below 768 px they stack, the views become a bottom
+// row and the fleet a strip of cards.
+assert.match(css, /@media \(width < 1100px\)\{\s*:root\{--g-browse:clamp\(216px,22vw,248px\);--g-dossier:clamp\(296px,32vw,360px\)\}/);
+assert.match(css, /@media \(width < 768px\), \(\(height < 520px\) and \(width < 1100px\)\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
 assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.views\{position:absolute;z-index:var\(--z-hud-controls\);left:8px;right:8px;top:auto;bottom:8px;flex-direction:row/);
 assert.match(css, /@media \(width < 768px\)\{[\s\S]*?\.fam,\.fam\[data-layout=grid\]\{display:grid;grid-auto-flow:column/);
 

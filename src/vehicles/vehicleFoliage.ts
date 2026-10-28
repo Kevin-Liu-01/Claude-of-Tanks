@@ -17,7 +17,7 @@
 // a card out with range), and a card may fold along its stem (FoliageCard.fold): the spray's two halves leave the
 // stem's plane in a shallow V, so it has depth and never shows one straight edge.
 import * as THREE from 'three';
-import { makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from '../world/treeSprayAtlas.ts';
+import { drainAtlasSteps, makeSprayAtlas, makeSprayAtlasSteps, SPRAY_ATLAS_TILES, type SprayKind } from '../world/treeSprayAtlas.ts';
 
 export type VehicleFoliageKind = SprayKind | 'garnish-woodland' | 'garnish-arid';
 
@@ -40,7 +40,7 @@ const mipImage = (size: number): MipImage => (typeof ImageData === 'function'
  * a 2 x 2 box of the one above, then its alpha is remapped so the share of texels passing the cut matches level 0 —
  * a distant card keeps its leafy silhouette instead of thinning below the cut or resolving as a flood rectangle.
  */
-function coverageMipChain(level0: MipImage, cutoff: number): MipImage[] {
+function* coverageMipChainSteps(level0: MipImage, cutoff: number): Generator<void, MipImage[], void> {
   const cut = Math.round(cutoff * 255);
   const coverage = (d: Uint8ClampedArray): number => {
     let pass = 0;
@@ -67,16 +67,23 @@ function coverageMipChain(level0: MipImage, cutoff: number): MipImage[] {
     }
     chain.push(next);
     prev = next;
+    // (boot-261) a step a level: the first, a quarter of the atlas with its sorted alphas, is most of the chain
+    if (size >= 64) yield;
   }
   return chain;
 }
 
 /** Give an ImageData-backed atlas its coverage-preserving mips (idempotent; lighting.ts then leaves it alone). */
 function attachCoverageMips(texture: THREE.Texture): THREE.Texture {
+  return drainAtlasSteps(attachCoverageMipsSteps(texture));
+}
+
+/** attachCoverageMips a mip level at a time. */
+function* attachCoverageMipsSteps(texture: THREE.Texture): Generator<void, THREE.Texture, void> {
   const image = texture.image as MipImage | null;
   if (!image?.data || !image.width || image.width !== image.height || (image.width & (image.width - 1)) !== 0) return texture;
   if (texture.mipmaps && texture.mipmaps.length > 0) return texture;
-  texture.mipmaps = coverageMipChain(image, FOLIAGE_ALPHA_TEST) as unknown as typeof texture.mipmaps;
+  texture.mipmaps = (yield* coverageMipChainSteps(image, FOLIAGE_ALPHA_TEST)) as unknown as typeof texture.mipmaps;
   texture.generateMipmaps = false;
   texture.needsUpdate = true;
   return texture;
@@ -301,17 +308,21 @@ function finishGarnishTiles(d: Uint8ClampedArray, size: number, S: number, tiles
 /**
  * The ghillie garnish atlas of a species: its boughs in tiles GARNISH_BOUGH_TILES, burlap strip bunches in
  * GARNISH_STRIP_TILES, with coverage-preserving mips. Cached per species; null without a DOM (the geometry is the same).
+ * (boot-261) Painted a tile, a texel pass and a mip level at a time, in its stepped build's slices (ghillieSuit.ts: the
+ * Garage hero's suit painted it inside one 0.9 s build slice on the boot-259 phone census); a synchronous build drains
+ * it. Two builds that start the same species together each paint it; the one that finishes second takes the first's
+ * from the cache and disposes its own.
  */
-export function ghillieGarnishAtlas(species: SprayKind, second?: SprayKind): THREE.Texture | null {
+export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind): Generator<void, THREE.Texture | null, void> {
   // the netting lane's fix round: a field net's garnish mixes two species, its second bough tile the second's first spray
   const key = second && second !== species ? `${species}+${second}` : species;
   if (garnishAtlasCache.has(key)) return garnishAtlasCache.get(key)!;
   let texture: THREE.Texture | null = null;
   if (typeof document !== 'undefined') {
     try {
-      const sprays = makeSprayAtlas(species, seeded(kindSeed(species)), ATLAS_SIZE, null, 0);
+      const sprays = yield* makeSprayAtlasSteps(species, seeded(kindSeed(species)), ATLAS_SIZE, null, 0);
       const source = sprays.image as unknown as MipImage;
-      const other = second && second !== species ? makeSprayAtlas(second, seeded(kindSeed(second)), ATLAS_SIZE, null, 0) : null;
+      const other = second && second !== species ? yield* makeSprayAtlasSteps(second, seeded(kindSeed(second)), ATLAS_SIZE, null, 0) : null;
       const otherSource = other ? other.image as unknown as MipImage : null;
       const size = ATLAS_SIZE, T = FOLIAGE_ATLAS_TILES, S = size / T;
       const canvas = document.createElement('canvas');
@@ -327,6 +338,7 @@ export function ghillieGarnishAtlas(species: SprayKind, second?: SprayKind): THR
         ctx.translate(tx * S, ty * S);
         paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
         ctx.restore();
+        yield;
       }
       // the spray tiles keep their straight-alpha bytes (a canvas round trip would premultiply their flood away); the
       // strip tiles come from the canvas
@@ -342,18 +354,24 @@ export function ghillieGarnishAtlas(species: SprayKind, second?: SprayKind): THR
           out.set(from.subarray(at2, at2 + S * 4), at);
         }
       }
+      yield;
       finishGarnishTiles(out, size, S, GARNISH_STRIP_TILES);
+      yield;
       texture = new THREE.Texture(image as unknown as HTMLImageElement);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 8;
       texture.needsUpdate = true;
       texture.name = `vehicleFoliage:ghillie-garnish:${key}`;
-      attachCoverageMips(texture);
+      yield* attachCoverageMipsSteps(texture);
       sprays.dispose();
       other?.dispose();
     } catch {
       texture = null;
     }
+  }
+  if (garnishAtlasCache.has(key)) {
+    texture?.dispose();
+    return garnishAtlasCache.get(key)!;
   }
   if (typeof document !== 'undefined') garnishAtlasCache.set(key, texture);
   return texture;
