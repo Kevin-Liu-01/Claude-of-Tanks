@@ -1122,8 +1122,10 @@ function sensorMast(P: TankBuilderPort): void {
 /** The PT-84 Sokół's kit: one low ZSMU-1276 with its WKM-B, the telescopic sensor mast, a work lamp on each cheek box,
  * green-grey drums. */
 function buildSokolKit(P: TankBuilderPort): void {
-  stationLimits(zsmuStation(P, SOKOL_STATION), [-4.2935, -0.0873],
-    [[-4.2935, 0.136], [-4.1539, 0.143], [-4.0666, 0.17], [-0.0873, 0.17]]);
+  // the low WKM-B clears -235..5 degrees (blocked toward the mast astern and the panoramic head ahead): -233..3, its
+  // depression held up a little at the far end (tools/roof-station-arcs.mjs, 2 degrees and 0.01 rad of margin)
+  stationLimits(zsmuStation(P, SOKOL_STATION), [-4.0666, 0.0524],
+    [[-4.0666, 0.161], [-4.0143, 0.161], [-3.927, 0.17], [0.0524, 0.17]]);
   sensorMast(P);
   for (const s of [-1, 1]) workLamp(P, side(s, 0.80), ERA_Y1, eraFront(0.80) - KRATA_FACE_BACK - 0.16);
   sternDrums(P, DRUM_ISSUE_PAINTS[2], 26253);
@@ -1131,10 +1133,10 @@ function buildSokolKit(P: TankBuilderPort): void {
 
 /** The PT-84 Żbik's kit: both ZSMU-1276s on towers, a searchlight on each cheek box, the bustle slat cage, dark drums. */
 function buildZbikKit(P: TankBuilderPort): void {
-  stationLimits(zsmuStation(P, ZBIK_STATIONS.wkmb), [-4.2935, -0.0873],
-    [[-4.2935, 0.136], [-4.1539, 0.143], [-4.0666, 0.17], [-0.0873, 0.17]]);
-  stationLimits(zsmuStation(P, ZBIK_STATIONS.ukm), [-1.6232, 3.9794],
-    [[-1.6232, 0.17], [3.7525, 0.17], [3.8397, 0.119], [3.9794, 0.085]]);
+  // the WKM-B's tower clears -248..104 degrees, its barrel all but level from 2 to 27 over the panoramic head: it keeps
+  // -246..-5; the UKM-2000's taller tower clears -100..248, over the cage astern (tools/roof-station-arcs.mjs)
+  stationLimits(zsmuStation(P, ZBIK_STATIONS.wkmb), [-4.2935, -0.0873], [[-4.2935, 0.17], [-0.0873, 0.17]]);
+  stationLimits(zsmuStation(P, ZBIK_STATIONS.ukm), [-1.7104, 4.2935], [[-1.7104, 0.17], [4.2935, 0.17]]);
   for (const s of [-1, 1]) searchlight(P, side(s, 0.62), ERA_Y1, 1.30);
   bustleSlatCage(P);
   sternDrums(P, DRUM_ISSUE_PAINTS[1], 26254);

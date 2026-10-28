@@ -302,12 +302,14 @@ const UKRAINE_SPECS = {
     pt84_orzel: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: -2.80, flank: true, missile: true, reloadS: 6.3,
       curve: [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
         [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
+    // the Oplot-M's curve: no framed fields aft of the three forward panels
     pt84_sokol: { front: ERAWA2, skirt: ERAWA2_SKIRT, skirtZ0: 1.19, flank: false, missile: false, reloadS: 6.1,
-      curve: [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
-        [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
+      curve: [[0, -5], [142, -5], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5], [163, -3.2],
+        [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
+    // held up from 137 degrees over the deeper Krata-2 frames of the rear skirt fields
     pt84_zbik: { front: KRATA2, skirt: KRATA2_SKIRT, skirtZ0: -2.80, flank: true, missile: true, reloadS: 6.5,
-      curve: [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
-        [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
+      curve: [[0, -5], [137, -5], [138, -4.7], [141, -4.2], [145, -3.7], [150, -3.6], [152, -3.6], [154, -3.9],
+        [159, -4.7], [162, -3.5], [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]] },
   };
   for (const [id, row] of Object.entries(ROWS) as [keyof typeof ROWS, PolishRow][]) {
     const spec = UKRAINE_SPECS[id];
