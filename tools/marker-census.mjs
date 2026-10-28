@@ -6,8 +6,8 @@
 // its box is cut: the target plate measured itself hidden and cut its callsign and vehicle at both ends); and each side
 // in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond, the ally's chevron.
 // Each carries a name line (owner 2026-10-27, "always have names their even if not (this is in proving ground) and make
-// the elemetns be adaptive"): the target plate is one block centred on its diamond, its bar the block's width and its
-// points directly under the bar.
+// the elemetns be adaptive"): the target plate is one block centred on its diamond, its bar the text block's width and
+// its points directly under the bar.
 // Runs in the page: page.evaluate(markerProblems, staged), staged true where the state puts tanks of both sides in view
 // and one under the gun (the layout fixture's ?state=markers). The bars are decluttered (hud.ts updateHpBars): two that
 // would cross never both show.
@@ -62,7 +62,10 @@ export function markerProblems(staged) {
     if (track && shown(track)) {
       off(track, 'bar');
       const t = track.getBoundingClientRect();
-      if (t.width < box.width - 1) problems.push(`the target plate's bar (${t.width.toFixed(0)} px) is narrower than its block (${box.width.toFixed(0)} px)`);
+      // (the block is its text: the widest of the name, the vehicle line and the points; the silhouette hangs before it)
+      const text = Math.max(...['.nick', '.mt', '.hp'].map((s) => plate.querySelector(s)).filter((el) => el && shown(el))
+        .map((el) => el.getBoundingClientRect().width));
+      if (t.width < text - 1) problems.push(`the target plate's bar (${t.width.toFixed(0)} px) is narrower than its text (${text.toFixed(0)} px)`);
       if (points && shown(points)) {
         const p = points.getBoundingClientRect();
         if (p.top < t.bottom - 0.5 || p.top - t.bottom > 6 || p.left < t.left - 0.5 || p.right > t.right + 0.5)
