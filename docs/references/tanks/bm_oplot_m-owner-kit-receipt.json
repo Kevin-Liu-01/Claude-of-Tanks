@@ -4,7 +4,7 @@
   "quality": "high",
   "decision": "Main 262 (2026-10-27): exempt the owner's kit from the source comparison; tools/owner-kit-targets.mjs",
   "reviewer": "blind critics, rounds 1-2 (z-buffered renders against the owner's references): distinctness PASS with the kit; Main's ruling on the exemption",
-  "reviewScope": "Owner-directed kit parts the print does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digests from procedural-fidelity.html (high, camoSeed 4242), the first fail-closed pass at 2026-10-27 23:49.",
+  "reviewScope": "Owner-directed kit parts the print does not carry, set aside from the numeric source comparison only; boards and the raw-source sidecar keep the whole vehicle. Digests from procedural-fidelity.html (high, camoSeed 4242), the fail-closed passes at 2026-10-27 23:49 and (the drums, their cradle re-seated on the stepped stern) 2026-10-28 03:22.",
   "parts": {
     "oplotMKt762": {
       "arrangementAccepted": true,
@@ -14,7 +14,7 @@
     "oplotMKitSternDrums": {
       "arrangementAccepted": true,
       "reference": "owner-kit:bm_oplot_m:oplotMKitSternDrums",
-      "geometryPoseSha256": "72bceb939a4de3749600f837aa66fe83ad1dcacb02e110b873564200f9b9cd9e"
+      "geometryPoseSha256": "b49b8ff8a5121e0c2a3514bf37694dc7e4c0d620c8e0c832c4c0aef6fd3564ac"
     },
     "oplotMKitLights": {
       "arrangementAccepted": true,
