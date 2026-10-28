@@ -60,9 +60,10 @@
 .dm-fleet__views .cot-c-seg__opt{height:30px}
 /* a glyph and a flag share one 24 px slot, so a menu's rows and a trigger's label keep one edge whichever leads them */
 :is(.dm-fleet__menu .cot-c-menu__glyph,.cot-c-menu__pop:has(>.cot-c-menu__picker[data-picker='docs-fleet-filter']) .cot-c-picker__glyph){width:24px;justify-content:center}
+/* on touch each option is a whole target across as well (the fleet r3 zh critic: 斜视 and 侧视 were 42 px wide on an iPad) */
 @media (pointer:coarse){
   .dm-fleet__search{height:var(--cot-control-floor,44px)}
-  .dm-fleet__views .cot-c-seg__opt{height:38px}
+  .dm-fleet__views .cot-c-seg__opt{min-width:var(--cot-control-floor,44px);height:38px}
 }
 
 /* ---- the tiles: two across on a phone, up to seven on a 2560 screen, each about 190 px or wider */
