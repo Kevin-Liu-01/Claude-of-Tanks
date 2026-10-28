@@ -774486,17 +774486,17 @@
           }
         ]
       },
-      "geometryHash": "078a662c",
+      "geometryHash": "30c2aec0",
       "metadataHash": "1f8823c8",
       "presentationAnchor": {
         "xM": 0.0082,
-        "zM": -0.1633
+        "zM": -0.1583
       },
-      "presentationHash": "03e52fdb",
+      "presentationHash": "bf05da71",
       "presentationProjection": {
         "centerYM": 1.456,
-        "topHalfM": 5.9795,
-        "sideHalfM": 2.9897
+        "topHalfM": 5.9741,
+        "sideHalfM": 2.9871
       },
       "appearance": {
         "version": 1,
@@ -774547,15 +774547,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24006,
-          "sha256": "1a94e0002fc9293a71394913833f2d4c9407e10173a7a68a69bd85c27ccebbcf",
+          "bytes": 23720,
+          "sha256": "efd5afa76a0482b17b1070768f4976c973d09b60d2f117d7f7a33eaca241a1ac",
           "thumbnail": {
             "file": "thumbs/t55a_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9754,
-            "sha256": "4223f7f064b49a238076b0990d6bedf306e6e3d67e31a494704c1f282e20fed9"
+            "bytes": 9742,
+            "sha256": "ac194ec88a76ec2949bd9a1471253b066fa35abf34ccf9d7b5e47295e14945e8"
           }
         },
         "top": {
@@ -774563,56 +774563,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9946,
-          "sha256": "d7f0ffaf58c758144cdc50284540f1167fa973a872b9544fe118e42bc93280a6"
+          "bytes": 9858,
+          "sha256": "63edec65aa853b5ef9bdc6c24eaa1e2e50fcf136639266eb2be20e48f3aaef0c"
         },
         "side": {
           "file": "t55a_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10148,
-          "sha256": "244b310ad8a33de4ddcd73d6655efa6a139ae496b4c90852bf05f8d9d3f19968"
+          "bytes": 9056,
+          "sha256": "bf1bcff29baf9048d9374e48c943dc5d1603ab3bf3e943d87a77909eac51952d"
         },
         "topSilhouette": {
           "file": "t55a_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1128,
-          "sha256": "7d44e32e76d6c99e6849f0cfe8e6450d83869ef4b3676e8d9d08b88dcba5887f"
+          "bytes": 1111,
+          "sha256": "b75783b18118c29ff0fbe3fe749947a352ad56af66fcb7feb6f2367965fdaac3"
         },
         "sideSilhouette": {
           "file": "t55a_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4193,
-          "sha256": "6398f7b1bf0b5f60fa14368f387b307f8f345f3363cc0a4b6b920f226e200ff9"
+          "bytes": 4066,
+          "sha256": "f57458841b023e4a3d92b7a179ae07324cab2513a70e6919d63508f175645951"
         },
         "armorSide": {
           "file": "t55a_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22218,
-          "sha256": "8f6456c3f16070b97fb3b74be1aa082b9307d923f624e718433560e1ea1e4f2e"
+          "bytes": 22370,
+          "sha256": "ce3202c279932135e57de0be03ced101d5c02f007de2e0f5a7ead614c014eb4c"
         },
         "modulesSide": {
           "file": "t55a_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24558,
-          "sha256": "2df535c9936c1a33f69cc7d50e4fbae878f2faaeb3660651b5824e0231f79df4"
+          "bytes": 24844,
+          "sha256": "8e9060ba0ee2f2d90375043010c78a0c235bee0f14d32605dd98d2d4449ac34f"
         },
         "crewSide": {
           "file": "t55a_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20354,
-          "sha256": "d7a3a07beffe5433a0c0af113300b531dba8540cb66bdf7b71098d019ce36d8d"
+          "bytes": 20576,
+          "sha256": "e0acf074263e0fe79f8c942324cf6ea6beb5706abb0023dc59b266246f07a037"
         },
         "markings": {
           "file": "t55a_markings.png",
@@ -774625,8 +774625,8 @@
         "technicalLabels": {
           "file": "t55a_technical.json",
           "mime": "application/json",
-          "bytes": 4652,
-          "sha256": "6e0cbe591dbdbd163b1de30e85bb2a3585684f412b7ee67674832b92d15b4b08"
+          "bytes": 4658,
+          "sha256": "cdf8f5f6034fb40b1cda6ce85e7963855a2158ad8533234cc2fd1452ad053386"
         }
       }
     },
@@ -2036778,17 +2036778,17 @@
           }
         ]
       },
-      "geometryHash": "6f5dccf2",
+      "geometryHash": "0c5fe4cf",
       "metadataHash": "ff88f06e",
       "presentationAnchor": {
-        "xM": -0.0004,
-        "zM": -0.1548
+        "xM": -0.0012,
+        "zM": -0.1459
       },
-      "presentationHash": "35b12a7d",
+      "presentationHash": "30871171",
       "presentationProjection": {
         "centerYM": 1.456,
-        "topHalfM": 5.9704,
-        "sideHalfM": 2.9852
+        "topHalfM": 5.9609,
+        "sideHalfM": 2.9804
       },
       "appearance": {
         "version": 1,
@@ -2036840,15 +2036840,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25952,
-          "sha256": "432430172e3e934190a7ec432f33f3cf882d3a89c9ae867e9918cd60faefc200",
+          "bytes": 26814,
+          "sha256": "2ed0567dfd0cf4fc76a61ac50aac5ad7accd3741486f78a44020ed5bba7aa32e",
           "thumbnail": {
             "file": "thumbs/type59_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10422,
-            "sha256": "38f11e5f5d044777988960f382da1119f47776d7a06a5a5c05227956a737ccf7"
+            "bytes": 10378,
+            "sha256": "a09d3cd982d486033ed2816591916a0702a876ccf1a8620c47de44f7b9972635"
           }
         },
         "top": {
@@ -2036856,56 +2036856,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11088,
-          "sha256": "c78a1cec65db4513f69698fd7d2ce14c91966b36401ad807a399c04b8ed197c5"
+          "bytes": 11150,
+          "sha256": "922adc6105f307a018905f3ac1c88d6004740b2a2adcee39de881557449e5678"
         },
         "side": {
           "file": "type59_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9844,
-          "sha256": "d4085409eb1401fb271cc228420b7776f3ced5485785c2fe43bbff7e4c14c992"
+          "bytes": 10922,
+          "sha256": "35b2289609a31d3f33e30b71cd21ad67ab598cbfcaa041d2f3894bc9806231af"
         },
         "topSilhouette": {
           "file": "type59_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1152,
-          "sha256": "a101bd76b4c5194d6dab27424a1f4733dc6e369fab3387561e0ab16cfd69340f"
+          "bytes": 1098,
+          "sha256": "d1d150739d6d71b08e27fa420b051d7402b3f265ade0cd09b4a67cf001f8d846"
         },
         "sideSilhouette": {
           "file": "type59_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4437,
-          "sha256": "fbe06f81975d83cfae473cef47fb164b5140b226f8846e8cc1870f31b8e2d7c4"
+          "bytes": 4495,
+          "sha256": "334867408cfcd9944052a85d5e818f12e64792f412ccf7d6b0e3fcf7c1ef67a5"
         },
         "armorSide": {
           "file": "type59_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24160,
-          "sha256": "4dd7fc28c710c45690fa832b71d0702e6de57f752889296d4218dbfcc1eaa9e9"
+          "bytes": 24288,
+          "sha256": "5fec26123a1e5e70f580a205c7051255e2f151b4dd164b2bedfdc7c8aa168851"
         },
         "modulesSide": {
           "file": "type59_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26008,
-          "sha256": "64515fa65c163a275357bf27885d1f8aac40b1e9b85426205946e9a4db7b78ea"
+          "bytes": 25760,
+          "sha256": "6dda73be6df178380e18b4b13bb26ce4a5715d09592d1d5c0222070979ddb110"
         },
         "crewSide": {
           "file": "type59_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22344,
-          "sha256": "a9739c80bb275cb2425aff1840a906bb188192bda228885ba0d4ce9770ecbf4c"
+          "bytes": 22462,
+          "sha256": "3383de5c10dda6bc59562cc32456e347787f5c4004495f19456280ec5ef0e099"
         },
         "markings": {
           "file": "type59_markings.png",
@@ -2036918,8 +2036918,8 @@
         "technicalLabels": {
           "file": "type59_technical.json",
           "mime": "application/json",
-          "bytes": 4998,
-          "sha256": "64cb9465ff9bab9115017ae8445a8ab2d75fdd9a2b02d24eecf706f16ff1078c"
+          "bytes": 5000,
+          "sha256": "b394e18f2ae3d973fb2994edce197f9d803e361f75ff65801aa0cde7abe3712d"
         }
       }
     },
@@ -2171232,22 +2171232,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.503,
+                -0.4939,
                 1.4549,
                 2.482
               ],
               [
-                -0.503,
+                -0.4939,
                 1.363,
                 2.7102
               ],
               [
-                -0.257,
+                -0.2561,
                 1.363,
                 2.7102
               ],
               [
-                -0.257,
+                -0.2561,
                 1.4549,
                 2.482
               ]
@@ -2171263,22 +2171263,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.823,
+                -0.7989,
                 1.4549,
                 2.482
               ],
               [
-                -0.823,
+                -0.7989,
                 1.363,
                 2.7102
               ],
               [
-                -0.577,
+                -0.5611,
                 1.363,
                 2.7102
               ],
               [
-                -0.577,
+                -0.5611,
                 1.4549,
                 2.482
               ]
@@ -2171294,22 +2171294,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -1.143,
+                -1.1039,
                 1.4549,
                 2.482
               ],
               [
-                -1.143,
+                -1.1039,
                 1.363,
                 2.7102
               ],
               [
-                -0.897,
+                -0.8661,
                 1.363,
                 2.7102
               ],
               [
-                -0.897,
+                -0.8661,
                 1.4549,
                 2.482
               ]
@@ -2171325,22 +2171325,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.503,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.257,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.257,
+                -0.4939,
                 1.3279,
                 2.7974
               ],
               [
-                -0.503,
+                -0.4939,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.2561,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.2561,
                 1.3279,
                 2.7974
               ]
@@ -2171356,22 +2171356,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.823,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.577,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.577,
+                -0.7989,
                 1.3279,
                 2.7974
               ],
               [
-                -0.823,
+                -0.7989,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.5611,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.5611,
                 1.3279,
                 2.7974
               ]
@@ -2171387,22 +2171387,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -1.143,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.897,
-                1.236,
-                3.0256
-              ],
-              [
-                -0.897,
+                -1.1039,
                 1.3279,
                 2.7974
               ],
               [
-                -1.143,
+                -1.1039,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.8661,
+                1.236,
+                3.0256
+              ],
+              [
+                -0.8661,
                 1.3279,
                 2.7974
               ]
@@ -2171418,22 +2171418,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.503,
+                -0.4939,
                 1.2008,
                 3.1128
               ],
               [
-                -0.503,
+                -0.4939,
                 1.1089,
                 3.341
               ],
               [
-                -0.257,
+                -0.2561,
                 1.1089,
                 3.341
               ],
               [
-                -0.257,
+                -0.2561,
                 1.2008,
                 3.1128
               ]
@@ -2171449,22 +2171449,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -0.823,
+                -0.7989,
                 1.2008,
                 3.1128
               ],
               [
-                -0.823,
+                -0.7989,
                 1.1089,
                 3.341
               ],
               [
-                -0.577,
+                -0.5611,
                 1.1089,
                 3.341
               ],
               [
-                -0.577,
+                -0.5611,
                 1.2008,
                 3.1128
               ]
@@ -2171480,22 +2171480,22 @@
             "turretLocal": false,
             "verts": [
               [
-                -1.143,
+                -1.1039,
                 1.2008,
                 3.1128
               ],
               [
-                -1.143,
+                -1.1039,
                 1.1089,
                 3.341
               ],
               [
-                -0.897,
+                -0.8661,
                 1.1089,
                 3.341
               ],
               [
-                -0.897,
+                -0.8661,
                 1.2008,
                 3.1128
               ]
@@ -2171511,22 +2171511,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.257,
+                0.2561,
                 1.4549,
                 2.482
               ],
               [
-                0.257,
+                0.2561,
                 1.363,
                 2.7102
               ],
               [
-                0.503,
+                0.4939,
                 1.363,
                 2.7102
               ],
               [
-                0.503,
+                0.4939,
                 1.4549,
                 2.482
               ]
@@ -2171542,22 +2171542,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.577,
+                0.5611,
                 1.4549,
                 2.482
               ],
               [
-                0.577,
+                0.5611,
                 1.363,
                 2.7102
               ],
               [
-                0.823,
+                0.7989,
                 1.363,
                 2.7102
               ],
               [
-                0.823,
+                0.7989,
                 1.4549,
                 2.482
               ]
@@ -2171573,22 +2171573,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.897,
+                0.8661,
                 1.4549,
                 2.482
               ],
               [
-                0.897,
+                0.8661,
                 1.363,
                 2.7102
               ],
               [
-                1.143,
+                1.1039,
                 1.363,
                 2.7102
               ],
               [
-                1.143,
+                1.1039,
                 1.4549,
                 2.482
               ]
@@ -2171604,22 +2171604,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.257,
-                1.236,
-                3.0256
-              ],
-              [
-                0.503,
-                1.236,
-                3.0256
-              ],
-              [
-                0.503,
+                0.2561,
                 1.3279,
                 2.7974
               ],
               [
-                0.257,
+                0.2561,
+                1.236,
+                3.0256
+              ],
+              [
+                0.4939,
+                1.236,
+                3.0256
+              ],
+              [
+                0.4939,
                 1.3279,
                 2.7974
               ]
@@ -2171635,22 +2171635,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.577,
-                1.236,
-                3.0256
-              ],
-              [
-                0.823,
-                1.236,
-                3.0256
-              ],
-              [
-                0.823,
+                0.5611,
                 1.3279,
                 2.7974
               ],
               [
-                0.577,
+                0.5611,
+                1.236,
+                3.0256
+              ],
+              [
+                0.7989,
+                1.236,
+                3.0256
+              ],
+              [
+                0.7989,
                 1.3279,
                 2.7974
               ]
@@ -2171666,22 +2171666,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.897,
-                1.236,
-                3.0256
-              ],
-              [
-                1.143,
-                1.236,
-                3.0256
-              ],
-              [
-                1.143,
+                0.8661,
                 1.3279,
                 2.7974
               ],
               [
-                0.897,
+                0.8661,
+                1.236,
+                3.0256
+              ],
+              [
+                1.1039,
+                1.236,
+                3.0256
+              ],
+              [
+                1.1039,
                 1.3279,
                 2.7974
               ]
@@ -2171697,22 +2171697,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.257,
+                0.2561,
                 1.2008,
                 3.1128
               ],
               [
-                0.257,
+                0.2561,
                 1.1089,
                 3.341
               ],
               [
-                0.503,
+                0.4939,
                 1.1089,
                 3.341
               ],
               [
-                0.503,
+                0.4939,
                 1.2008,
                 3.1128
               ]
@@ -2171728,22 +2171728,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.577,
+                0.5611,
                 1.2008,
                 3.1128
               ],
               [
-                0.577,
+                0.5611,
                 1.1089,
                 3.341
               ],
               [
-                0.823,
+                0.7989,
                 1.1089,
                 3.341
               ],
               [
-                0.823,
+                0.7989,
                 1.2008,
                 3.1128
               ]
@@ -2171759,22 +2171759,22 @@
             "turretLocal": false,
             "verts": [
               [
-                0.897,
+                0.8661,
                 1.2008,
                 3.1128
               ],
               [
-                0.897,
+                0.8661,
                 1.1089,
                 3.341
               ],
               [
-                1.143,
+                1.1039,
                 1.1089,
                 3.341
               ],
               [
-                1.143,
+                1.1039,
                 1.2008,
                 3.1128
               ]
@@ -2176981,8 +2176981,8 @@
           }
         ]
       },
-      "geometryHash": "ee93cd18",
-      "metadataHash": "5e517f3e",
+      "geometryHash": "47ced68e",
+      "metadataHash": "c5f51888",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.0648
@@ -2177043,15 +2177043,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26244,
-          "sha256": "c6332c0cc5b3b90b9ad59c1427c8f3d44ad1a06efd1ee92a86e841b868bfbb25",
+          "bytes": 26234,
+          "sha256": "517482dcd414fa3077297c47d9281b2afcfa3a6e30e56b4f24cfc5e48c70cfc9",
           "thumbnail": {
             "file": "thumbs/ztz99_longwei_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10942,
-            "sha256": "5f718303f275eaf978eb90c740f4718f94dbbb2dcfd383137c2c293c4a5a95a5"
+            "bytes": 10916,
+            "sha256": "914cbc668deee4d73de78c7dd96a37949db2b2c4771d01183af7cbe1d94ca146"
           }
         },
         "top": {
@@ -2177059,16 +2177059,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8446,
-          "sha256": "f8cdbf349cf0042a4e30fd067cb3bd1080f4fc28e626ec6d048609ab73fa1d71"
+          "bytes": 8428,
+          "sha256": "d74dbab4e448e77da2f3bd9cbd5d4ef877d92f509006c6af1c408618150fc8ec"
         },
         "side": {
           "file": "ztz99_longwei_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8544,
-          "sha256": "9475e1a97dbbe14c307e78822962cb88c95f4bbfd5bcf308a3ed7497b2b042b3"
+          "bytes": 8540,
+          "sha256": "12da5c545c18c6dadeeb1efb9b6315174a8cb3221e3288e4d851cfea9e028b3f"
         },
         "topSilhouette": {
           "file": "ztz99_longwei_top_silhouette.png",
@@ -2177092,15 +2177092,15 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 18946,
-          "sha256": "0c17629206a2aa66922bdb8d3843924e44a96c74af85f9a16b34e742984f79a9"
+          "sha256": "831794ad9cade6c27fdc0f1817adff2a848a348f60806689b3437fec53844c8e"
         },
         "modulesSide": {
           "file": "ztz99_longwei_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19722,
-          "sha256": "903067e8fe4cd479667898c61aff02cb2656685b0dad032389f22788f1004b28"
+          "bytes": 19728,
+          "sha256": "a5a43c235e9928879b23811f9f5f1521c7e47db2c63be9de819d860ed7cecb65"
         },
         "crewSide": {
           "file": "ztz99_longwei_crew_side.webp",
@@ -2177108,7 +2177108,7 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 16196,
-          "sha256": "44407a85f5adbfa2650e1e3351060c8dcc61b48b4a80ed092ac348f61c0ca06c"
+          "sha256": "704df22fdbccc175c8dddd2e4b4c8d2ce15a4e206f2771a8cbf8eefc22aa2956"
         },
         "markings": {
           "file": "ztz99_longwei_markings.png",

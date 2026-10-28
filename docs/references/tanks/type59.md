@@ -407,3 +407,8 @@ lip, the starfish wheel as a dished disc with windows, the tube's conical root, 
 and the oracle's pleated trumpet cover, the gunner's sight as a low round port. Open notes (follow-ups): sprocket teeth
 hidden under the track band (fleet sprocket code), loader's hatch / cupola spacing (the oracle's measured stations are
 kept), smaller fender boxes, the rear mudflap, Type 59 handrails.
+
+Track clip (262 release gate, strict exact audit): the upper hull's underside rose from 0.95 to the fender line (1.07),
+since the pads rode 2-3 cm into the 9 cm overhang over the wheels and both wraps. The tub meets the glacis where the upper
+hull ends (z 2.52), the front scoops run in to the glacis edge (±0.97) with a short corner plate, and the scoop's outer lip
+tapers 0.045 → 0.10 m so it clears the belt's outer edge over the idler. Band and pad cells: 108/0 + 15-17 → 0/0 + 0.

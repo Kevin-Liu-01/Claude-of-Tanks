@@ -78,3 +78,7 @@ core 0.30 m longer with a 0.62 m basket; two three-tube smoke banks stacked on e
 the hubs with angular notches and 3 cm V-gaps; the front fender hoods are closed over the idler. Blind critic: 4 → 4 →
 5 → 5 → 6/10 PASS. Open notes (follow-ups): a turret-rear stowage drum, the lower nose corner over the idler, the rear
 sprocket behind the skirt, taller front mudguard boxes with headlights (moves the measured depression curve).
+
+Track clip (262 release gate, strict exact audit): 54 band cells and 2 pad cells → 0/0. The skirt's bow end plate now
+starts at 1.81, outside the belt's outer face (1.788), and the glacis FY-5 columns sit at 0.375 / 0.68 / 0.985 with
+0.29 m bricks, so the outer column ends at 1.13, inside the belt's inner face (1.158), where the belt climbs the idler.
