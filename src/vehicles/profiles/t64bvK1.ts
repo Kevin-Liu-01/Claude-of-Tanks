@@ -150,8 +150,8 @@ function rearBox(P: TankBuilderPort): number {
 function bv1Fittings(P: TankBuilderPort): void {
   const top = rearBox(P);
   supportedSensor(P, [.40, .88, -.49], (t64DomeHeight(.40, -.49) ?? .76) - .006);
-  attachedCage(P, 'turret', [0, .22, -1.70], 1.64, .40, .30);
-  strappedPack(P, 'turret', [.38, .30, -1.70], [.55, .24, .26]);
+  attachedCage(P, 'turret', [0, .36, -1.76], 1.64, .40, .20);
+  strappedPack(P, 'turret', [.38, .31, -1.665], [.55, .24, .17]);   // in the rack behind the box
   // The OPVT snorkel tube strapped across the box's lid.
   const r = .12, z = -1.33;
   P.addEquipment('turretDetail', cylX(r, .95, P.q ? 20 : 12), .035, top + r - .004, z);
@@ -159,12 +159,12 @@ function bv1Fittings(P: TankBuilderPort): void {
 }
 
 function donbasFittings(P: TankBuilderPort): void {
-  rearBox(P);
+  const top = rearBox(P);
   // The 2017 kit: the new night sight's armoured box beside the gunner's hatch, a rear cage and pack, two service bins
   // and the digital radio's paired whips.
   supportedSensor(P, [.40, .88, -.49], (t64DomeHeight(.40, -.49) ?? .76) - .006);
-  attachedCage(P, 'turret', [0, .22, -1.70], 1.64, .40, .30);
-  strappedPack(P, 'turret', [-.38, .30, -1.70], [.55, .24, .26]);
+  attachedCage(P, 'turret', [0, .36, -1.76], 1.64, .40, .20);
+  strappedPack(P, 'turret', [-.38, .31, -1.665], [.55, .24, .17]);   // in the rack behind the box
   for (const side of [-1, 1]) {
     const x = side * .74, z = -1.15, y = t64DomeHeight(x, z) ?? .55;
     P.addEquipment('turretDetail', box(.26, .16, .26), x, y + .07, z);

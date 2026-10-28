@@ -115,7 +115,7 @@ function bustle(P: TankBuilderPort): void {
   P.add('turret', sectionSolid(rows));
   P.addEquipment('turretDark', box(1.62, .010, .012), 0, .621, -1.30);
   for (const x of [-.52, 0, .52]) P.addEquipment('turretDetail', box(.06, .05, .025), x, .54, -1.755);
-  attachedCage(P, 'turret', [0, .20, -1.90], 1.92, .42, .26);
+  attachedCage(P, 'turret', [0, .36, -1.98], 1.92, .42, .24);
   strappedPack(P, 'turret', [-.42, .76, -1.38], [.62, .24, .40]);
   // the OPVT snorkel tube strapped along the rack's rear rail
   P.addEquipment('turretDetail', cylX(.11, 1.10, P.q ? 20 : 12), .30, .52, -2.02);

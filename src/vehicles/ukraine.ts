@@ -143,5 +143,9 @@ const UKRAINE_SPECS = {
   Object.assign(spec.gun.shells[2], { dmg: 600 });
 }
 
+// The T-64BM1M fires Ukraine's stock 125 mm rounds; as a T-64B1 it has no gun-launched missile (Oryx 2021).
+Object.assign(UKRAINE_SPECS.t64bm1m.gun.shells[0], { name: '3BM42 Mango APFSDS' });
+Object.assign(UKRAINE_SPECS.t64bm1m.gun.shells[1], { name: '3BK29 HEAT' });
+Object.assign(UKRAINE_SPECS.t64bm1m.gun.shells[2], { name: '3OF26 HE-Frag' });
 UKRAINE_SPECS.ua_m1a1.armor.droneScreens = ukrainianAbramsCage();
 registerFleetSpecs(registries, UKRAINE_IDS, UKRAINE_SPECS);

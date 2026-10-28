@@ -176,14 +176,16 @@ function rearPlate(P: TankBuilderPort, drums: boolean, log: boolean): void {
   }
 }
 
+/** Fender stowage stands outside the turret's swept circle (the Nizh blocks reach r 1.75 at y 1.50, the rear racks
+ * r 2.2 at y 1.55): nothing on the shelves between z -1.50 and 1.30 rises above them. */
 function fenderStowage(P: TankBuilderPort): void {
-  // Right shelf: the three external fuel tanks; left shelf: the SPTA boxes.
-  for (const [z0, z1] of [[-2.95, -2.02], [-1.92, -.98], [.58, 1.60]] as const)
-    P.addEquipment('hullDetail', box(.50, .29, z1 - z0), -1.36, H.deckY + .150, (z0 + z1) / 2);
-  for (const [z0, z1] of [[-2.95, -1.95], [-1.65, -.55], [.62, 1.62]] as const)
-    P.addEquipment('hullDetail', box(.50, .25, z1 - z0), 1.36, H.deckY + .130, (z0 + z1) / 2);
-  for (const [z0, z1] of [[-2.95, -2.02], [-1.92, -.98], [.58, 1.60]] as const)
-    for (const z of [z0 + .10, z1 - .10]) P.addEquipment('hullDark', box(.52, .020, .030), -1.36, H.deckY + .299, z);
+  // Right shelf: the external fuel tanks; left shelf: the SPTA boxes; each pair of tanks on its two straps.
+  for (const [z0, z1] of [[-2.95, -2.30], [-2.22, -1.56], [1.34, 2.22]] as const) {
+    P.addEquipment('hullDetail', box(.50, .21, z1 - z0), -1.36, H.deckY + .110, (z0 + z1) / 2);
+    for (const z of [z0 + .10, z1 - .10]) P.addEquipment('hullDark', box(.52, .020, .030), -1.36, H.deckY + .219, z);
+  }
+  for (const [z0, z1] of [[-2.95, -2.05], [-1.97, -1.56], [1.36, 2.20]] as const)
+    P.addEquipment('hullDetail', box(.50, .19, z1 - z0), 1.36, H.deckY + .100, (z0 + z1) / 2);
 }
 
 /** The whole hull: tub, fenders, running gear, deck, rear plate and shelves. */

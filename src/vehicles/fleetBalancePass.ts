@@ -348,7 +348,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   // Shared Soviet-derived fire-control floor. These retain looser handling
   // than Western peers without falling outside the complete tier envelope.
   for (const id of [
-    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas',
+    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas', 't64bm1m',
   ]) {
     Object.assign(spec(registry, id).gun, { baseAccuracy: 0.33, aimTimeS: 2 });
   }
@@ -418,8 +418,9 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
-  for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
+  // 262: the T-64BM1M joins the Soviet-pattern line at IV (capability score 0.548) with its mod. 2017 sibling's footing
+  for (const id of ['t64bv_donbas', 't64bm1m', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;
   }
@@ -427,7 +428,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
   for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
   spec(registry, 't80b').gun.aimTimeS = 1.85;
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
   cannonReload(registry, 't80b', 6.2);
   cannonReload(registry, 'pt91m', 6.0);
   // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round

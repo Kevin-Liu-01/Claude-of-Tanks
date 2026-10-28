@@ -193,12 +193,13 @@ for (const id of ids) {
     // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches. 2026-10-22:
     // back on the t72b3 hull with the T-64BV mod. 2017's previous build (owner: "its previous model"), its flanks now
     // carrying Kontakt-1 containers on the leading skirt panels (t64bvK1.ts); the drapes now stop behind the first
-    // of them (z -2.22..0.92) so the K-1 row stays in sight.
+    // of them (z -2.22..0.92) so the K-1 row stays in sight. 262: re-seated on the true T-64 (t64Foundation.ts), whose
+    // skirt row runs from z 0.03 forward, so the drapes stop at z -0.04.
     const cover = turretRig.userData.fieldCover;
-    assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
+    assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 2 },
       `${id} field cover is carried on real rails with sights and hatches open`);
     assert.ok(hullBounds.min.x < -1.7 && hullBounds.max.x > 1.7, `${id} drapes hang on both flanks`);
-    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= .85,
+    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= -.10 && hullBounds.max.z < .03,
       `${id} flank drapes run from the rear of the flank up to the skirt's Kontakt-1 row instead of one selected panel`);
   } else {
     assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,

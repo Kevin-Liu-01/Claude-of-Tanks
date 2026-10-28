@@ -795,6 +795,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   ztz100_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
+  t64bm1m: 'sig_ua_t64bv',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

@@ -104,7 +104,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ['merkava3_baz', 'merkava3d'], ['merkava3d', 'merkava4'], ...after('merkava4', ['merkava4b', 'merkava4_trophy', 'merkava4_barak'])],
   other: [['chieftain3', 'chieftain5'], ['chieftain5', 'chieftain_mk9'], ['chieftain_mk9', 'chieftain_mk10'],
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
-    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['type90', 'type90a'],
+    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();

@@ -74,6 +74,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t64bv1: 'modernize the Tier VIII fire-control floor without erasing Soviet handling',
   t72b3m_2022: 'modernize the Tier IX fire-control floor without erasing Soviet handling',
   t64bv_donbas: 'modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling; 259: a thicker mantlet, pen, hull and cadence for same-tier fairness at IV',
+  t64bm1m: 'the Nizh T-64B1 at IV (capability 0.548): the Soviet fire-control floor and its mod. 2017 sibling\'s 259 tier-IV footing (mantlet, pen, 6.2 s cycle)',
 } as const);
 
 interface FleetBalanceOutlier {
