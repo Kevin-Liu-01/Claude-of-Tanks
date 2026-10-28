@@ -155,7 +155,9 @@ function buildHull(P: TankBuilderPort): void {
     // skirt plates and their top rail
     P.add('hull', profileSkirtGeometry(SKIRT, side), 0, 0, DZ * S, 0, 0, 0, S);
     hull('hullDetail', box(0.03, 0.03, 5.55), side * 1.752, 1.535, 0.95);
-    hull('hullDetail', box(0.03, 0.03, 2.05), side * 1.752, 1.415, -2.80);
+    // the rear skirt's rail stands flush with its plates (3 mm proud): under the bustle's sweep the suit's drapes are tied
+    // low and hang plumb from the rail's line, so a proud rail left them 2 cm off the skirt (ghillieSuit.selftest)
+    hull('hullDetail', box(0.03, 0.03, 2.05), side * 1.737, 1.415, -2.80);
     for (const z of [-3.30, -2.30, -1.30, -0.30, 0.70, 1.70, 2.70]) hull('hullDetail', box(0.02, 0.05, 0.05), side * 1.752, 1.03, z);
     // rear stowage bins on the fenders behind the skirt
     hull('hullPaintedDetail', box(0.50, 0.28, 0.37), side * 1.42, 1.44, -4.135);
