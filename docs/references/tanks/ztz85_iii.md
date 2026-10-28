@@ -28,21 +28,21 @@ The photographs and plates are local study material only (`~/cot-lanes/cn-262-re
 | Item | Type 85-III source | Before | After |
 |---|---|---|---|
 | Hull length / gun forward | 6.325 m / 10.369 m | 6.40 m body (bow toe at +2.50, 0.67 m short) / 8.43 m drawn | 6.33 m stern plate to beak / 10.37 m to the muzzle |
-| Width / height | 3.372 m / 2.29 m | 3.45 m / 2.30 m at a raked turret roof | 3.37 m over the fenders / roof 2.07 m, cupola crown 2.20 m, the 12.7 mm on its post to 2.59 m |
-| Nose and glacis | T-54-lineage beak, breakwater removed for ERA | 17-degree composite plate to a 0.90 m toe | 30-degree upper glacis meeting the lower plate 0.80 m off the ground; three rows of reactive bricks (20) |
+| Width / height | 3.372 m / 2.29 m | 3.45 m / 2.30 m at a raked turret roof | 3.37 m over the fenders / roof 2.13 m, cupola crown 2.28 m, the 12.7 mm on its post above it |
+| Nose and glacis | T-54-lineage beak, breakwater removed for ERA; two rows of large bricks on the upper glacis (Photo E) | 17-degree composite plate to a 0.90 m toe | 30-degree upper glacis meeting the lower plate 0.80 m off the ground; two rows of 0.40 x 0.38 m reactive bricks (10) over its upper part |
 | Hull and deck | Type 80 hull; blended stowage; raised engine deck (1000 hp) | deck 1.41-1.44 flat to the stern | sponsons to ±1.56 with four compartment doors a side, roof 1.45, engine deck raised to 1.53 behind the turret's sweep, two louvred grilles, fan intake, rear louvre, exhaust on the left wall |
 | Running gear | six dual rubber-tyred wheels, larger front gap, 3 return rollers, rear sprocket | 0.67 m wheels at +1.02..-2.88 | 0.70 m wheels at 1.99 / 1.10 / 0.18 / -0.55 / -1.28 / -2.06, idler 2.68, sprocket -2.87, three rollers, 0.55 m track on a 2.72 m gauge |
-| Skirts and mudguards | the 85-III prototype (Photo P, Plates): no skirts, the upper run and three return rollers in the open under a narrow fender; boxed front mudguards | 7-bay skirt at 3.45 m, bow flaps | fender shelves to ±1.685 with a 5 cm turned-down edge, the upper run and return rollers in the open; boxed front guards with outer cheeks; rear flaps |
-| Turret | compact welded hexagon, "pig snout" mantlet; the roof falls toward the mantlet over the front 40% | 4.55 m polyMultiLoft slab over the engine deck, twin bustle racks | 2.32 m wide, 2.49 m long welded hexagon: front faces 40 degrees off the axis leaning back to a 0.46 m brow, a long shallow front slope rising to the flat 0.62 m roof, ring over the third wheel |
+| Skirts and mudguards | the 85-III prototype (Photo P, Plates): no skirts, the upper run and three return rollers in the open under a narrow fender; front mudguards angled down toward the idler | 7-bay skirt at 3.45 m, bow flaps | fender shelves to ±1.685 with a 5 cm turned-down edge, the upper run and return rollers in the open; front guards sloping down and forward over the idlers; rear flaps |
+| Turret | compact welded hexagon, "pig snout" mantlet; the roof falls toward the mantlet over the front 40% | 4.55 m polyMultiLoft slab over the engine deck, twin bustle racks | 2.44 m wide, 2.62 m long welded hexagon: front faces 40 degrees off the axis leaning back to a 0.50 m brow, a long shallow front slope rising to the flat 0.68 m roof, its belt 5 cm over the deck (clear of the driver's hatch at every yaw), ring over the third wheel |
 | Turret ERA | two rows a face (1995 package) | none | a row of three bricks on each front face and a row of two on the front slope above it |
-| Stowage | railed side baskets (four horizontal rails on posts), rear basket, snorkel | twin bustle racks, slat baskets | railed baskets on the rear half of both walls and across the rear, rolls and the stowed snorkel; the fleet decor keeps off the roof and the turret sides and adds no second smoke kit, whip, lamp or drum |
-| Roof stations | commander right with the 12.7 mm on a tall cradle and the IR lamp; gunner's sight box left; one antenna and the wind sensor | cupola right, ISFCS box, radio mast | cupola right with its day/night sight, IR searchlight and the 12.7 mm on a 0.24 m post; gunner's armoured sight box on the front slope and his hatch left; vent; wind sensor; one antenna |
-| Gun | 125 mm smoothbore, thermal sleeve, evacuator a little forward of mid-tube; a short collar mostly sunk between the cheeks | 4.03 m tube | 6.235 m from the trunnion, evacuator at 3.66-4.30, five sleeve clamps, the cast mount 8 cm proud and a short canvas cover about 0.3 m proud of the snout |
+| Stowage | railed side baskets nearly the turret's height (horizontal rails on posts), rear basket, snorkel | twin bustle racks, slat baskets | five-rail baskets 0.48 m tall on the rear half of both walls and across the rear, rolls and the stowed snorkel; the fleet decor keeps off the roof and the turret sides and adds no second smoke kit, whip, lamp or drum |
+| Roof stations | a broad raised commander's cupola right with the 12.7 mm on a tall cradle and the IR lamp; a low hooded gunner's sight left; one antenna and the wind sensor; 2x2 smoke clusters at the cheek corners | cupola right, ISFCS box, radio mast | a 0.84 m cupola ring right with its day/night sight, IR searchlight and the 12.7 mm on a 0.24 m post; gunner's low hooded sight on the front slope and his hatch left; vent; wind sensor; one antenna; a 2x2 smoke cluster at each cheek corner, raised about 30 degrees |
+| Gun | 125 mm smoothbore, thermal sleeve, evacuator a little forward of mid-tube; a short canvas cover over the mount | 4.03 m tube | 6.195 m from the trunnion (bore axis 1.77 m), evacuator at 3.62-4.26, five sleeve clamps, the cast mount 7 cm proud and a 0.38 m canvas cover tapering 0.44 to 0.24 m |
 | Rear | drums on the rear plate | stern log experiments | two 200 L drums across the stern on brackets, lights, tow hooks |
 
 Combat envelope: the plates follow the new surfaces at the tier's former strengths (glacis 80, cheeks and mantlet 137,
-sides 40/51, rear 28/40, roofs 23, skirts 9 spaced); first-generation reactive plates (KE -5%, CE +280 mm, the
-Kontakt-1 class) cover the glacis bricks and both turret faces. Crew of three (driver front left, gunner left,
+the front slope 100, sides 40/51, rear 28/40, roofs 23; no skirts); first-generation reactive plates (KE -5%, CE
++280 mm, the Kontakt-1 class) cover the glacis bricks, both turret faces and the front slope's bricks. Crew of three (driver front left, gunner left,
 commander right); the carousel under the turret.
 
 ## History: the §5.248 build (releases 248-262), retired by §263
@@ -150,3 +150,11 @@ silhouetteHullLengthM 6.47 row (flap-inclusive trace; print's own 6.49).
 End-column 2 cm nudges were tried and REVERTED (-0.1 whole, no dims gain).
 GATE: 87.4 held (x2 bit-identical), dims 100, floaters 100; §B4 0/0 strict;
 npm test green; donors ea1ff837/7f613788 byte-held.  FINAL HASH: 13f0c8d7.
+
+Blind critics (Agent subagents against Photos P, M, E, A, Plan T and the plates, renders at matched angles): round 1
+6/10 and 6/10 FAIL (black skirts over the run, a long funnel mantlet, ERA bricks mirrored inside out so they read as
+dark recesses, a level roof, a second decor smoke kit and roof cargo, a low MG); round 2 7/10 and 7/10 PASS; round 2's
+notes taken (turret 5% wider, 6 cm taller and 0.13 m longer, 2x2 smoke clusters, taller baskets, a broader cupola,
+sloped front guards, larger glacis bricks); round 3 7/10 PASS (its notes pull against earlier rounds' on the brick size
+and the MG's height, so the geometry is frozen there). Kept by ruling: the national-standard road wheel (owner 2026-10-28: modern
+tanks keep the national standard) and the game's drone stand and fleet field stowage.

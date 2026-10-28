@@ -22,7 +22,7 @@ const CASES = [
   { id: 't55a', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
   { id: 'ztz99_longwei', front: 0.70, root: -0.25, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
   // release 263: the rebuilt ZTZ-85-III's cast mount in the welded snout under its short canvas cover (profiles/ztz85iii.ts)
-  { id: 'ztz85_iii', front: 0.54, root: -0.08, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
+  { id: 'ztz85_iii', front: 0.62, root: -0.08, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
 ];
 
 /** The triangles of `mesh` in `frame`'s coordinates. */

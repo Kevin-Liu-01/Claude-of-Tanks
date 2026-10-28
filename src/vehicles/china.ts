@@ -82,15 +82,14 @@ function variant(
 
 /**
  * Release 263: the rebuilt ZTZ-85-III's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz85_iii,
- * the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): -5.5 degrees dead ahead and abeam
- * (the canvas trumpet meets the deck edge 0.4 degrees short of the spec's 6); over the driver's hatch at 7-25 degrees it
- * stays 1-3 degrees down, over the headlight guards at 26-39 about 2.5; over the raised engine deck from 136 degrees it
- * rises to 0.5-1.3 degrees down.
+ * the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): the full 6 degrees dead ahead and
+ * abeam; over the driver's periscopes at 7-22 degrees about 5.5, over the headlight guards at 25-39 about 3-4.3; over the
+ * raised engine deck from 138 degrees it rises to 1.1-1.8 degrees down.
  */
 const ZTZ85III_GUN_PITCH_BY_YAW_DEG = Object.freeze([
-  [0, -5.5], [3, -5.3], [6, -4], [7, -3.1], [9, -2.4], [14, -1.1], [18, -1], [19, -1.1], [26, -2.9],
-  [29, -2.5], [37, -2.2], [38, -2.6], [39, -3.3], [41, -5.5], [136, -5.4], [137, -4.1], [138, -3.5], [141, -3],
-  [144, -2.6], [145, -2], [146, -1.8], [151, -1.3], [167, -1.1], [168, -0.8], [173, -0.5], [178, -0.8], [180, -1.1]] as const);
+  [0, -6], [6, -6], [17, -5.5], [21, -5.5], [23, -6], [24, -6], [25, -4.3], [26, -3.5], [27, -3.3],
+  [34, -3], [37, -3.2], [38, -3.6], [39, -4.3], [40, -5.8], [41, -6], [137, -6], [139, -4.5], [141, -3.8],
+  [146, -2.8], [151, -2], [159, -1.7], [167, -1.5], [168, -1.2], [174, -1.1], [178, -1.3], [180, -1.8]] as const);
 
 const CHINA_SPECS = {
   // Release 263 (owner 2026-10-28, "yeah going to need a totally new ztz 85 III"): the ground-up rebuild of
@@ -105,8 +104,8 @@ const CHINA_SPECS = {
     dims: {
       hullLengthM: 6.325, overallLengthM: 10.37, widthM: 3.372, heightM: 2.29,
       // the drawn envelope (the build's body extents): the stern drums to the front guards, the drums to the muzzle, the
-      // 12.7 mm over the cupola
-      silhouetteHullLengthM: 6.92, silhouetteOverallLengthM: 10.91, silhouetteHeightM: 2.59,
+      // 12.7 mm on its post over the cupola
+      silhouetteHullLengthM: 6.88, silhouetteOverallLengthM: 10.91, silhouetteHeightM: 2.89,
     },
     stats: {
       hp: 1950, enginePowerHp: 1000, weightTons: 43.7, topSpeedKmh: 57,

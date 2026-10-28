@@ -36,15 +36,15 @@ for (const quality of ['high', 'low']) {
     assert.equal(hullReceipt.returnRollers, 3, `${quality}: three return rollers`);
     near(hullReceipt.roadWheelDiameterM, 0.70, `${quality} road wheel`, 0.001);
 
-    // turret: the compact welded hexagon, 2.32 m wide and 2.5 m long, its roof at 2.07 m behind the long front slope
+    // turret: the compact welded hexagon, 2.44 m wide and 2.62 m long, its roof at 2.13 m behind the long front slope
     const turret = box(named('turret'));
-    near(turret.max.x - turret.min.x, 2.32, `${quality} turret width`, 0.02);
-    assert.ok(turret.max.z - turret.min.z < 2.7, `${quality}: turret ${(turret.max.z - turret.min.z).toFixed(2)} m long, not the old 4.55 m slab`);
+    near(turret.max.x - turret.min.x, 2.44, `${quality} turret width`, 0.02);
+    assert.ok(turret.max.z - turret.min.z < 2.75, `${quality}: turret ${(turret.max.z - turret.min.z).toFixed(2)} m long, not the old 4.55 m slab`);
     // the roof plate itself (the bucket also carries the cupola and sight boxes): straight down behind the hatches
     const roofHit = new THREE.Raycaster(new THREE.Vector3(0.20, 4, -0.85), new THREE.Vector3(0, -1, 0))
       .intersectObject(named('turret'), false)[0];
     assert.ok(roofHit, `${quality}: the turret roof is closed behind the hatches`);
-    near(roofHit.point.y, 2.07, `${quality} turret roof`, 0.02);
+    near(roofHit.point.y, 2.13, `${quality} turret roof`, 0.02);
     // the cupola's crown is the published 2.29 m height (the 12.7 mm gun and the whips stand above it)
     const hatches = box(named('turretHatch'));
     assert.ok(hatches.max.y <= 2.30 && hatches.max.y >= 2.10, `${quality}: cupola crown ${hatches.max.y.toFixed(3)} m`);

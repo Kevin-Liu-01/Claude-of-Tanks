@@ -23,7 +23,7 @@ const FY1_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 280 });
 export function createZTZ85IIIArmor(): ArmorEnvelope {
   const era = { kind: 'era' as const, era: FY1_ERA };
   const hullPlates = [
-    fr('glacis_era', 15, 1.10, 0.905, 3.12, 1.47, 2.144, era),
+    fr('glacis_era', 15, 1.10, 1.06, 2.866, 1.46, 2.17, era),
     fr('upper_glacis', 70, 1.30, 0.80, 3.165, 1.45, 2.04, { keMm: 80, ceMm: 80 }),
     fr('lower_front', 100, 1.04, 0.47, 2.72, 0.80, 3.165, { keMm: 80, ceMm: 80 }),
     sR('hull_side_upper_R', 35, 1.56, 1.07, 1.56, 1.45, -3.10, 2.58, { keMm: 40, ceMm: 40 }),
@@ -37,19 +37,19 @@ export function createZTZ85IIIArmor(): ArmorEnvelope {
     rf('engine_deck', 20, 1.50, 1.53, -3.00, -1.74, { keMm: 23, ceMm: 23 }),
   ];
   const turretPlates = [
-    chR('turret_era_R', 15, 0.43, 1.26, 1.18, 0.38, 0.20, 0.50, 0.14, 0.03, era),
-    chL('turret_era_L', 15, 0.43, 1.26, 1.18, 0.38, 0.20, 0.50, 0.14, 0.03, era),
-    fr('turret_slope_era', 15, 1.00, 0.51, 0.86, 0.58, 0.42, era),
-    chR('turret_cheek_R', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.46, 0.14, 0.04, { keMm: 137, ceMm: 137 }),
-    chL('turret_cheek_L', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.46, 0.14, 0.04, { keMm: 137, ceMm: 137 }),
-    // the long front slope from the brow (0.46 m) up to the roof (0.62 m)
-    fr('turret_upper_front', 70, 1.08, 0.46, 1.06, 0.62, 0.18, { keMm: 100, ceMm: 100 }),
-    par('mantlet', 120, [-0.24, 0.12, 1.42], [0.24, 0.12, 1.42], [-0.24, 0.48, 1.40],
+    chR('turret_era_R', 15, 0.45, 1.30, 1.24, 0.40, 0.22, 0.54, 0.15, 0.03, era),
+    chL('turret_era_L', 15, 0.45, 1.30, 1.24, 0.40, 0.22, 0.54, 0.15, 0.03, era),
+    fr('turret_slope_era', 15, 1.06, 0.55, 0.90, 0.64, 0.44, era),
+    chR('turret_cheek_R', 120, 0.42, 1.24, 1.19, 0.36, 0.05, 0.50, 0.15, 0.04, { keMm: 137, ceMm: 137 }),
+    chL('turret_cheek_L', 120, 0.42, 1.24, 1.19, 0.36, 0.05, 0.50, 0.15, 0.04, { keMm: 137, ceMm: 137 }),
+    // the long front slope from the brow (0.50 m) up to the roof (0.68 m)
+    fr('turret_upper_front', 70, 1.14, 0.50, 1.09, 0.68, 0.18, { keMm: 100, ceMm: 100 }),
+    par('mantlet', 120, [-0.25, 0.14, 1.52], [0.25, 0.14, 1.52], [-0.25, 0.50, 1.50],
       { keMm: 137, ceMm: 137, gunFollow: true }),
-    sR('turret_side_R', 45, 1.16, 0.02, 1.10, 0.62, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
-    sL('turret_side_L', 45, 1.16, 0.02, 1.10, 0.62, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
-    rr('turret_rear', 35, 0.95, 0.02, -1.29, 0.62, -1.25, { keMm: 40, ceMm: 40 }),
-    rf('turret_roof', 20, 1.08, 0.63, -1.25, 0.18, { keMm: 23, ceMm: 23 }),
+    sR('turret_side_R', 45, 1.22, 0.05, 1.16, 0.68, -1.36, 0.32, { keMm: 51, ceMm: 51 }),
+    sL('turret_side_L', 45, 1.22, 0.05, 1.16, 0.68, -1.36, 0.32, { keMm: 51, ceMm: 51 }),
+    rr('turret_rear', 35, 1.00, 0.05, -1.38, 0.68, -1.34, { keMm: 40, ceMm: 40 }),
+    rf('turret_roof', 20, 1.14, 0.69, -1.34, 0.18, { keMm: 23, ceMm: 23 }),
   ];
   const modules = [
     mbox('engine', [-1.04, 0.47, -3.10], [1.04, 1.45, -1.80]),
@@ -59,22 +59,22 @@ export function createZTZ85IIIArmor(): ArmorEnvelope {
     mbox('ammoRack', [-0.92, 0.47, -0.78], [0.92, 0.80, 0.88]),
     mbox('turretRing', [-0.95, 1.32, -0.95], [0.95, 1.56, 1.05]),
     mbox('radio', [-1.00, 0.70, -1.75], [-0.45, 1.20, -1.10]),
-    mbox('optics', [0.30, 0.45, 0.20], [0.75, 0.88, 0.70], true),
-    mbox('gun', [-0.22, 0.08, -0.90], [0.22, 0.52, 1.33], true),
+    mbox('optics', [0.26, 0.50, 0.14], [0.58, 0.90, 0.52], true),
+    mbox('gun', [-0.22, 0.10, -0.90], [0.22, 0.54, 1.40], true),
     mbox('trackL', [-1.635, 0.02, -3.20], [-1.085, 0.98, 3.00]),
     mbox('trackR', [1.085, 0.02, -3.20], [1.635, 0.98, 3.00]),
   ];
   // three crew: the autoloader replaced the loader
   const crew = [
     cbox('driver', [0.18, 0.62, 1.30], [0.80, 1.30, 2.40]),
-    cbox('gunner', [0.15, -0.55, -0.20], [0.80, 0.58, 0.60], true),
-    cbox('commander', [-0.85, -0.50, -0.75], [-0.15, 0.62, 0.15], true),
+    cbox('gunner', [0.15, -0.55, -0.20], [0.80, 0.62, 0.60], true),
+    cbox('commander', [-0.90, -0.50, -0.78], [-0.15, 0.66, 0.15], true),
   ];
   return {
     boundingRadiusM: 7.0,
     turretPivot: [0, 1.45, 0.05],
-    gunPivot: [0, 0.30, 0.92],
-    gunBarrel: { lengthM: 6.235, radiusM: 0.098 },
+    gunPivot: [0, 0.32, 0.96],
+    gunBarrel: { lengthM: 6.195, radiusM: 0.098 },
     hullPlates, turretPlates, modules, crew,
   };
 }
