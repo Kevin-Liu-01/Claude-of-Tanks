@@ -28,7 +28,7 @@ export const CR1_HISTORIC = Object.freeze({
   }),
 });
 
-/** Op Granby applique cassettes outside the skirts (the Granby variant; drawn, not yet charged as armour zones). */
+/** The Challenger X applique cassettes outside the skirts, after the Op Granby fit (drawn, not yet charged as armour zones). */
 export const CR1_GRANBY_APPLIQUE = Object.freeze({
   innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .24, low: .36, high: 1.44, rear: -2.58, front: 3.30,
 });

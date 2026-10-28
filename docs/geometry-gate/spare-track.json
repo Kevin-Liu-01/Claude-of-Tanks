@@ -687,20 +687,14 @@
    "uncovered": [],
    "hostSweep": []
   },
-  "challenger1_granby": {
-   "inputHash": "95410209887a96c9",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
   "challenger1_mk1": {
-   "inputHash": "741d92afad11c80f",
+   "inputHash": "9b92d4cde6cfa67e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "061cd6cd8a36a884",
+   "inputHash": "dffcfe4b5fe9c7d2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -755,6 +749,18 @@
      }
     }
    ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger_x": {
+   "inputHash": "515299640cebed84",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger_x_sleek": {
+   "inputHash": "672addaaeb44879a",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

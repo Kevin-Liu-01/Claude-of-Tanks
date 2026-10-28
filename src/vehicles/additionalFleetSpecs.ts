@@ -243,8 +243,9 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
   return spec;
 }
 
-/** The Challenger 1 combat row (release 262: the Mk 1, the Mk 2 and the Granby share it; a fresh object per call), on
- *  the Challenger 2's plate layout rated with the Challenger 1's public armour estimates (challenger1Armor.ts). */
+/** The Challenger 1 combat row (release 262: the Mk 1, the Mk 2 and the fictional Challenger X tanks share it; a fresh
+ *  object per call), on the Challenger 2's plate layout rated with the Challenger 1's public armour estimates
+ *  (challenger1Armor.ts). */
 const challenger1Row = (hull: Challenger1HullFront): VariantPatch => ({
       armor: rateChallenger1Armor(copy(requireFleetSpec('challenger2').armor), hull),
       // Tier IX late-Cold-War heavy MBT: strong protection and a dependable
