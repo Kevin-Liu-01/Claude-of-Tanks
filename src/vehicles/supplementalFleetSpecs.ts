@@ -256,13 +256,16 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.06 },
       // release 262: +19 / -9 deg (Hunnicutt via docs/references/tanks/m48a5_patton.md)
       gunElevationDeg: 19, gunDepressionDeg: 9,
-      // 2026-10-26 (the trunnion at 2.10 under the compact A5 shield, patton.ts): measured by tools/gun-depression-sweep.mjs
-      // (26 mm from the hull): the full -9 deg over the front 16 deg either side, the fender stowage's stops abeam and the
-      // engine deck's -3 deg over the rear
-      gunPitchByYawDeg: [[0, -9], [16, -9], [18, -7.1], [19, -6.7], [31, -5.8], [33, -5.8], [41, -7.4], [44, -6.9], [46, -6.9],
-        [54, -8.4], [56, -7.5], [58, -7.5], [61, -7.8], [62, -7.5], [65, -7.5], [76, -9], [104, -9], [107, -8], [109, -7], [110, -6.6],
-        [115, -5.9], [119, -5.8], [120, -6.1], [123, -7.5], [137, -5.6], [138, -5.4], [139, -4.4], [140, -4], [142, -3.7], [148, -3],
-        [180, -3]],
+      // release 262 (the owner's model: the bore at 1.921, the pivot at the source-world station z 1.7616, the model's deck,
+      // air cleaners and engine-deck hump; pattonCast.ts): measured by tools/gun-depression-sweep.mjs (26 mm from the hull).
+      // The full -9 deg over the front 14 deg either side, the headlight guards and the fender boxes' stops ahead of and
+      // abeam, the air cleaners' and the engine deck's stops over the rear quarters (it lays level and up there)
+      gunPitchByYawDeg: [[0, -9], [14, -9], [18, -8.6], [21, -8.6], [22, -9], [25, -9], [32, -8], [33, -7.2],
+        [34, -6.7], [36, -6.1], [38, -5.6], [41, -5.4], [45, -5.4], [47, -5.5], [49, -5.9], [51, -6.4], [53, -7.2],
+        [55, -9], [61, -9], [63, -8.5], [67, -8], [71, -7.9], [111, -7.9], [115, -8.2], [118, -8.7], [119, -9],
+        [123, -9], [124, -8.7], [125, -7.2], [129, -3], [131, -1.1], [132, -0.3], [136, 0.7], [146, 0.9], [149, 0.7],
+        [150, 0.5], [152, -0.3], [153, -0.5], [155, -2.4], [157, -2.5], [158, -1.6], [159, -1], [160, 0.6], [161, 1.6],
+        [162, 1.8], [165, 1.9], [166, 2.6], [167, 2.9], [180, 2.9]],
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 2250, enginePowerHp: 750, weightTons: 52, reverseSpeedKmh: 18,

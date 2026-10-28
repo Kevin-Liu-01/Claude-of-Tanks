@@ -93,10 +93,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
   centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // release 262 (the owner, 2026-10-27: "use this patton for the m48"): the owner-supplied ater.studio M48A5 (Sketchfab
-  // Standard licence, comparison only, never shipped; sha256 a7c37097...89c7fc, docs/references/tanks/m48a5_patton.md)
-  // replaces the ATModeler print, whose seven road wheels and pitched tube made it no M48A5 reference. It faces -z.
-  m48a5_patton: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_patton_ater.glb', turretNode:'^Turret_01_4$', gunNode:'^gun_01_Shape_6$', autoPivot:true, paintUntextured:true, yawOffset:Math.PI } },
+  // release 262: m48a5_patton is the owner's model, source-world certified (second-wave-x-reference-overrides.ts).
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
