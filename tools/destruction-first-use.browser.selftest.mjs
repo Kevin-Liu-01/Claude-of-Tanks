@@ -4,7 +4,7 @@
 // first time something broke). Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 //
 // A solo battle on a pinned map (the dev server, desktop tier). After the reveal every program the renderer makes is
-// logged with the draw that made it; then the nearest structures 25-220 m off, each framed by an external camera pose
+// logged with the draw that made it; then the nearest structures at least 25 m off, each framed by an external camera pose
 // (rig.setExternalPose), take the player's HE rounds through the battle's destruction match
 // (game._destruction.shellWorldHit, the call a shell's world hit makes) until one breaks into its fracture. The receipt holds that the
 // break drew its fracture (its faces, rooms, body or heap, read after every hit: the draws were real) and that no
@@ -86,8 +86,8 @@ try {
   });
   await sleep(4000); // the reveal's own settling (finalShadows' later batches) before the strike
   const quiet = await page.evaluate(() => window.__dfu.made.length);
-  // the nearest structures 25-220 m from the battle camera, each framed by an external camera pose (the spawn view need
-  // not hold one: urban's did not) and struck with the player's HE until one breaks into its fracture (a small structure
+  // the nearest structures at least 25 m from the battle camera, each framed by an external camera pose (the spawn view
+  // need not hold one: urban's did not; frontier's nearest stands past 220 m) and struck with the player's HE until one breaks into its fracture (a small structure
   // can shed only pieces, and a shaped charge need not hole masonry, as the first urban runs showed)
   report.target = await page.evaluate(async () => {
     const { game, world, camera, rig } = window.__DEBUG;
@@ -103,8 +103,8 @@ try {
     const candidates = [...byStructure.values()].map((s) => {
       const c = new V((s.min[0] + s.max[0]) / 2, (s.min[1] + s.max[1]) / 2, (s.min[2] + s.max[2]) / 2);
       return { ...s, c, d: Math.hypot(c.x - from.x, c.z - from.z) };
-    }).filter((s) => s.d >= 25 && s.d <= 220).sort((a, b) => a.d - b.d).slice(0, 5);
-    if (!candidates.length) return { error: `no structure 25-220 m from the camera (${byStructure.size} structures, ${records.length} records)` };
+    }).filter((s) => s.d >= 25).sort((a, b) => a.d - b.d).slice(0, 5);
+    if (!candidates.length) return { error: `no structure 25 m or more from the camera (${byStructure.size} structures, ${records.length} records)` };
     // a high-explosive round first (HE, HE-FRAG, HESH: the charge that holes a wall), a shaped charge only without one
     const shells = game.player?.spec?.gun?.shells ?? [];
     const type = (s) => String(s.type ?? '');
