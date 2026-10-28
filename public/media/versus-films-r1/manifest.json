@@ -13,8 +13,8 @@
    "map": "urban",
    "hour": "day",
    "title": {
-    "en": "Steinburg, day: Leopard 2A6 v T-90M",
-    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
+    "en": "Steinburg, day: Leopard 2A6 v T-90M Proryv",
+    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M Proryv"
    },
    "tanks": [
     {
@@ -26,7 +26,7 @@
     {
      "role": "foe",
      "id": "t90m",
-     "displayName": "T-90M",
+     "displayName": "T-90M Proryv",
      "paint": "digital"
     }
    ],
@@ -60,14 +60,14 @@
    "map": "frontier",
    "hour": "day",
    "title": {
-    "en": "Frontier Basin, day: T-90M v Leopard 2A6",
-    "zh": "边疆盆地，白天：T-90M 对 Leopard 2A6"
+    "en": "Frontier Basin, day: T-90M Proryv v Leopard 2A6",
+    "zh": "边疆盆地，白天：T-90M Proryv 对 Leopard 2A6"
    },
    "tanks": [
     {
      "role": "hero",
      "id": "t90m",
-     "displayName": "T-90M",
+     "displayName": "T-90M Proryv",
      "paint": "digital"
     },
     {
@@ -131,8 +131,8 @@
    "map": "desert",
    "hour": "day",
    "title": {
-    "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
-    "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M"
+    "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M Proryv",
+    "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M Proryv"
    },
    "tanks": [
     {
@@ -144,7 +144,7 @@
     {
      "role": "foe",
      "id": "t90m",
-     "displayName": "T-90M",
+     "displayName": "T-90M Proryv",
      "paint": "service_t90m"
     }
    ],

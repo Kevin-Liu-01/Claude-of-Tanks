@@ -73,9 +73,11 @@ for (const [id, expected] of Object.entries(cases)) {
 }
 
 // 2026-09-15 owner roster pass: the T-90M X study carries the T-90M name; the retained hull is the T-90AM.
+// 2026-10-27 owner names (display only, ids unchanged): the X study is the T-90M Proryv, the tier X chevron the T-90AM II.
 assert.equal(getSpec('t90am').name, 'T-90AM');
 assert.equal(tankTier('t90am'), 9, 'the retained T-90AM occupies tier IX');
-assert.equal(getSpec('t90m_proryv').name, 'T-90M Proryv');
-assert.equal(tankTier('t90m_proryv'), 10, 'the new chevron Proryv occupies tier X');
+assert.equal(getSpec('t90m').name, 'T-90M Proryv', 'the source-X T-90M study is the T-90M Proryv');
+assert.equal(getSpec('t90m_proryv').name, 'T-90AM II', 'the tier X chevron configuration is the T-90AM II');
+assert.equal(tankTier('t90m_proryv'), 10, 'the T-90AM II chevron occupies tier X');
 
 console.log('sovietChevronEraFleet.selftest: per-family two-row carriers, exact tile seating, and T-90M progression verified');

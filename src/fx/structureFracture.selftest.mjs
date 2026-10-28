@@ -15,6 +15,8 @@ import { streamFrom } from '../world/maps/regional/geometry.ts';
 import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { createDebrisPhysics } from './debrisPhysics.ts';
 import { createStructureFracture } from './structureFracture.ts';
+import { shadowCasterProfileOf } from '../engine/renderLayers.ts';
+import { evaluateShadowCasterMask } from '../engine/shadowCasterProfiles.ts';
 // every body's drawn corners inside its box parts (the fracture's own check, on here): a corner outside one would sink
 // into the ground or float over it
 globalThis.__fractureDebug = true;
@@ -160,6 +162,65 @@ const log = () => {
   return out;
 };
 assert.equal(log(), log(), 'deterministic');
+// (battle-spikes-253) a flying body casts only into the cascades its shadow can reach from where it is and that sample
+// where it can fall: with the view, each shadow-casting body carries a profile (heightM its diameter, reachM its planar
+// reach from the view, nearDepthM its nearest view depth, kept as it flies) and drops it at rest; without one, every
+// body casts into every cascade, as before
+{
+  const flying = (q) => q.group.children.filter((m) => m.isMesh && m.castShadow && /^fx-fracture-body-/.test(m.name));
+  bucket.attributes.position.array.set(before);
+  const plain = rig(seam);
+  plain.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+  plain.fracture.flush();
+  plain.step(0.2);
+  assert.ok(flying(plain).length >= 1 && flying(plain).every((m) => shadowCasterProfileOf(m) === null), 'no view: no profile');
+  plain.fracture.reset(); plain.restore();
+  // the view 31.6 m off, level, looking at the struck point
+  const view = { x: x + 30, y: y + 1, z: z - 10, fx: -30 / Math.hypot(30, 10), fy: 0, fz: 10 / Math.hypot(30, 10) };
+  const q = rig(seam, { viewAt: () => view });
+  q.fracture.strike(seam, x, y, z, into[0], into[1], 'he', 1.2, 125);
+  q.fracture.flush();
+  q.step(0.2);
+  const bodies = flying(q);
+  assert.ok(bodies.length >= 1, 'bodies fly');
+  const p = new THREE.Vector3();
+  for (const m of bodies) {
+    const profile = shadowCasterProfileOf(m);
+    assert.ok(profile && profile.heightM > 0 && Number.isFinite(profile.reachM), `${m.name}: a reach-kept profile`);
+    m.updateMatrixWorld();
+    m.getWorldPosition(p);
+    const planar = Math.hypot(p.x - view.x, p.z - view.z);
+    assert.ok(profile.reachM >= planar - profile.heightM && profile.reachM <= planar + profile.heightM + 0.01,
+      `${m.name}: reach ${profile.reachM.toFixed(2)} m about its planar distance ${planar.toFixed(2)} m`);
+    const depth = (p.x - view.x) * view.fx + (p.y - view.y) * view.fy + (p.z - view.z) * view.fz;
+    assert.ok(profile.nearDepthM <= depth + 0.01 && profile.nearDepthM >= depth - profile.heightM,
+      `${m.name}: nearest depth ${profile.nearDepthM.toFixed(2)} m about its view depth ${depth.toFixed(2)} m`);
+  }
+  // the mask the frame's evaluator gives them (a desktop layout: cascades sampled over 0-13, 12-42, 40-125 and 120 m on,
+  // their texels 2, 5, 15 and 50 cm, the sun at 34 degrees): ~32 m from the view, never the far cascade nor the near one,
+  // which drew them before; always the cascade that samples where they stand
+  const cascadesAt = [[0.02, 0, 13], [0.05, 12, 42], [0.15, 40, 125], [0.5, 120, Infinity]]
+    .map(([texelM, sampledFromM, sampledToM]) => ({ scheduled: true, frustum: null, texelM, sampledFromM, sampledToM }));
+  const evaluation = { cascades: cascadesAt, sunElevationRad: 0.6 };
+  for (const m of bodies) {
+    const mask = evaluateShadowCasterMask(m, shadowCasterProfileOf(m), evaluation, 0xf);
+    const { reachM, nearDepthM } = shadowCasterProfileOf(m);
+    assert.equal(mask & 8, 0, `${m.name}: out of the far cascade at ${reachM.toFixed(1)} m`);
+    assert.equal(mask & 1, 0, `${m.name}: out of the near cascade at ${nearDepthM.toFixed(1)} m deep`);
+    assert.ok(mask & 2, `${m.name}: in the cascade that samples where it stands`);
+  }
+  // the view among them: the two outer cascades drop them both, the near one keeps them
+  view.x = bodies[0].matrixWorld.elements[12]; view.y = bodies[0].matrixWorld.elements[13]; view.z = bodies[0].matrixWorld.elements[14];
+  q.step(1 / 30);
+  for (const m of flying(q).filter((mesh) => shadowCasterProfileOf(mesh))) {
+    const mask = evaluateShadowCasterMask(m, shadowCasterProfileOf(m), evaluation, 0xf);
+    assert.ok((mask & 12) === 0 && (mask & 1), `${m.name}: near the view, only the near cascades`);
+  }
+  q.step(12);
+  const rested = bodies.filter((m) => !flying(q).includes(m) || q.fracture.stats().bodies === 0);
+  assert.ok(rested.length >= 1 && rested.every((m) => shadowCasterProfileOf(m) === null), 'a body at rest drops its profile');
+  q.fracture.reset(); q.restore();
+}
 // (wave 397: "the whole front hangs in its own plane as a staggered mosaic of loose rectangular panels" for a second) a
 // front breached along its foot leans out off it: within a second and a half nothing of what fell stands in the wall's
 // plane, and the pieces lie out from the face, the higher ones further

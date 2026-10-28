@@ -16,6 +16,7 @@ import { layoutTree, type GridPoint, type TreeLayout } from '../techTree/layout.
 import { TECH_TREES, rootOf, vehiclesOf } from '../techTree/trees.ts';
 import { esc, scaleCells, statRow } from './components/components.ts';
 import { flag, silhouette } from './components/identity.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { decorateHeroTile } from './heroCard.ts';
 import { datumAttr } from './dom.ts';
 import { iconUrl } from './icons.ts';
@@ -894,7 +895,8 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     if (!open) return;
     // The Garage's own shortcuts stay off while the tree is open.
     event.stopPropagation();
-    if (event.key === 'Escape' || (event.code === 'KeyT' && !event.metaKey && !event.ctrlKey && !event.altKey)) {
+    // (Escape is the surface stack's, ahead of this; T toggles the tree as it opened it)
+    if (event.code === 'KeyT' && !event.metaKey && !event.ctrlKey && !event.altKey) {
       event.preventDefault();
       close();
       return;
@@ -942,9 +944,18 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
   };
   document.fonts.addEventListener('loadingdone', onFonts);
 
+  // a modal transient surface (components/surfaceStack.ts): opening it closes what the Garage has open, and Escape is the
+  // stack's, which closes the top surface
+  const surface: TransientSurface = {
+    id: 'tech-tree',
+    element: () => root,
+    close: (reason) => close({ restoreFocus: reason === 'escape' }),
+    modal: true,
+  };
   function close({ restoreFocus = true } = {}): void {
     if (!open) return;
     open = false;
+    closeSurface(surface);
     root.hidden = true;
     options.onClose();
     if (restoreFocus) trigger?.focus({ preventScroll: true });
@@ -957,6 +968,7 @@ export function createTechTreeScreen(options: TechTreeOptions): TechTreeScreen {
     open(from = null) {
       trigger = from;
       if (!root.isConnected) document.body.append(root);
+      openSurface(surface, from);
       root.hidden = false;
       open = true;
       paint();

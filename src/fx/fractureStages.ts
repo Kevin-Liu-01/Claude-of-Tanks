@@ -34,7 +34,7 @@ import { createCollapseBodies, type CollapseBodies, type CollapseBodiesEvent } f
 import type { CollapsePiece } from './collapsePieces.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
 import { createLandmarkBodies, type LandmarkBodies } from './landmarkBodies.ts';
-import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
+import { createStructureFracture, type FractureView, type StructureFracture } from './structureFracture.ts';
 import { createHangingSweep, type HangingResult } from './structureHanging.ts';
 import { breachBlowFor } from './structureFx.ts';
 import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
@@ -118,6 +118,8 @@ interface FractureStagesOptions {
   groundAt(x: number, z: number): number;
   /** A bucket's material anywhere in the world (the stages' materialFor). */
   materialFor(bucket: string): THREE.Material | null;
+  /** (battle-spikes-253) The view this frame (structureFracture's viewAt: a flying body's shadow reach and nearest depth). */
+  viewAt?(): FractureView | null;
   /** A hard landing (its dust): world point, speed, mass, the building. */
   onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
   /** A piece breaking apart where it struck (a shaft's drums, a roof's sheets): its grit and broken bits. */
@@ -251,6 +253,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
 
   const fracture: StructureFracture = createStructureFracture({
     pool, group: o.group, settled: o.settled, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt, environment,
+    ...(o.viewAt ? { viewAt: o.viewAt } : {}),
     statics: (structureIdx) => bodies.bakedOf(structureIdx),
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),

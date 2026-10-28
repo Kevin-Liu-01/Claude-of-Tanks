@@ -95,6 +95,22 @@ function harness(options = {}, yieldPreparation = null) {
   h.client.dispose(); assert.equal(h.timers.size, 0);
 }
 
+// (260) A job's deadline runs from its turn at the serial worker: a set queued behind a slow one is never failed for
+// its wait (on the loaded rooms census the last of a map's sets timed out in the queue, the client failed for the
+// session, and every later set composed on the main thread).
+{
+  const h = harness();
+  const a = h.client.compose(input()), b = h.client.compose(input({ key: 'waits' }));
+  h.workers[0].ready(); await flush();
+  h.advance(90); h.workers[0].complete(); assert.ok(await a);
+  await flush(); assert.equal(h.workers[0].posts.length, 2, 'the queued job took its turn');
+  h.advance(90);
+  assert.equal(h.client.available(), true, '180 ms after its request, 90 ms into its turn: not late');
+  h.workers[0].complete(); assert.ok(await b);
+  h.advance(100); assert.equal(h.client.available(), true, 'no deadline left behind once settled');
+  h.client.dispose();
+}
+
 // Every pixel/output/source owner participates in pending identity, including
 // unused option values. Cached separate surfaces need only the color bitmap.
 {

@@ -3,8 +3,10 @@
    its <style> rules (.browse .search .flags .toggles .fam .gh .it, .stage .layers .subs .views .tools .inset .legend .co,
    .dossier .take .nm .dz .facts .vsc .acts) on the live kit (src/ui/components/DIRECTION.md) and tokens. The rules the
    page does not draw (sort, the card grid, the stats, ammunition, anatomy, damage and markup tabs, loading and empty
-   states) are written in its grammar. Below 1100 px the page scrolls: the stage spans the top, browse and dossier share
-   a row; below 768 px everything stacks and the fleet becomes a strip of hero cards. Tokens only (src/ui/tokens): every
+   states) are written in its grammar. From 768 to 1100 px the three panes keep their row, the list a narrower column, so
+   the dossier stays in view while a tank is chosen (the lead's 10-26 ruling, from the g15 critic); a short window under
+   1100 px scrolls, the stage spanning the top and browse and dossier sharing a row; below 768 px everything stacks and
+   the fleet becomes a strip of hero cards. Tokens only (src/ui/tokens): every
    colour, size, track, duration, shadow and layer reads a custom property. */
 /* the tokens only the Gallery reads (tokens.json surface-gallery) */
 @import url('../ui/tokens/surface-gallery.css');
@@ -23,8 +25,8 @@
 html,body{width:100%;margin:0;background:var(--surface-page);color:var(--ink-1)}
 body{overflow:hidden;font:500 var(--fs-12)/1.45 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 button{cursor:pointer}
-/* focus is the kit ring's paper hue, never the accent, which is the one selected state's (the lead's 10-26 ruling) */
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
+/* focus is the kit ring's own ink (--focus-ink), never the accent, which is the one selected state's (the lead's 10-26 ruling) */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 [hidden]{display:none!important}
 /* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway */
 html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:hidden;
@@ -59,7 +61,9 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .toggles .cot-c-chip{height:26px;padding:0 var(--s2);font-size:max(var(--fs-floor-11),var(--fs-12))}
 /* each wrapped row of chips runs flush to the column's edge: the chips share its spare width (a ragged edge left
    "Fire support" and "Favourites" as stubs on rows of their own) */
-.toggles>.cot-c-chip{flex:1 0 auto;justify-content:center}
+/* a chip hugs its name, so no chip alone on a line stretches across it (the g15 and g16 critics: Fire support, Favorites,
+   Next Gen and Support stood full or half width beside chips that fit their words) */
+.toggles>.cot-c-chip{flex:0 1 auto;justify-content:center}
 .toggles .cot-c-chip--compact{flex:none;width:28px;padding:0}
 .toggles .cot-c-chip:disabled{color:var(--ink-4);cursor:default}
 .toggles--glyphs{gap:var(--s1) var(--s3)}
@@ -71,6 +75,16 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .more-facets summary::-webkit-details-marker{display:none}
 .more-facets summary .cot-i{margin-left:auto;transition:transform var(--dur-fast) var(--ease-enter)}
 .more-facets[open] summary .cot-i{transform:rotate(180deg)}
+/* opened, the further filters keep the list in view: they scroll in about a quarter of the window (the g16 critic: at
+   900 and 1024 they pushed every vehicle row out of the column) */
+.more-facets[open]>.toggles--glyphs{max-height:clamp(120px,26vh,320px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* beside the stage they are a plate laid over the list, whole, and the list keeps its rows under it (the g17 critic: a
+   nested scroll box hid Flanker to Support at 1280 and left the list one row at 1024); a stacked page lets them flow */
+@media (width >= 768px) and (height >= 520px){
+  .more-facets{position:relative}
+  .more-facets[open]>.toggles--glyphs{position:absolute;left:0;right:0;top:calc(100% + var(--s1));z-index:var(--z-menu);margin:0;
+    padding:var(--s3);border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2);max-height:min(64vh,560px)}
+}
 .more-facets__n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 var(--s2);border-radius:9px;background:var(--accent);
   color:var(--ink-on-accent);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .more-facets__n[hidden]{display:none}
@@ -110,7 +124,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .it__dev{margin-left:var(--s1);color:var(--text-warn);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
 .fam .it[aria-selected=true] .cot-c-sil{color:var(--ink-1)}
-.fam .it:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px}
+.fam .it:focus-visible{outline:2px solid var(--focus-ink);outline-offset:-2px}
 .it__art{display:none}
 .fam[data-layout=grid]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:var(--s1)}
 .fam[data-layout=grid] .fam__group{display:contents}
@@ -136,7 +150,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .it__art .hc-tier{display:none}
 .fam[data-layout=grid] .it__art.cot-hc .hc-tier{display:block}
 .fam[data-layout=grid] .it:has(.it__art.cot-hc .hc-tier)>.cot-c-flag{display:none}
-.fam[data-layout=grid] .it[aria-selected=true]{background:var(--surface-raised);box-shadow:var(--ring-accent)}
+.fam[data-layout=grid] .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 
 /* ------------------------------------------------------------------------------------------------ the stage (.stage) */
 .stage{grid-area:stage;position:relative;min-width:0;min-height:0;overflow:hidden;isolation:isolate;background:var(--gallery-stage)}
@@ -150,11 +164,13 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .layers button{height:34px;padding:0 var(--s3);color:var(--ink-3);font:500 var(--fs-13)/1 var(--font-body)}
 .layers button .cot-i,.tools button .cot-i{width:17px;height:17px}
 .layers .cot-c-kbd{min-width:0;height:auto;padding:0;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
-.layers button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--gallery-layer-on)}
+/* the kit's one selected state (the lead's 10-26 ruling): the open layer, the camera and a pressed tool wear the accent's
+   wash and edge, as a chip and a segment do */
+.layers button[aria-pressed=true]{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 .layers button:disabled{color:var(--ink-4);cursor:not-allowed}
 .views{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px}
 .views button{height:30px;padding:0 var(--s3);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-body)}
-.views button.active{background:var(--surface-hover);color:var(--ink-1)}
+.views button.active{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 .views .view-button-icon{display:grid;place-items:center;width:18px;height:18px}
 .views .view-button-icon svg{width:18px;height:18px}
 .camera-view-glyph__tank{fill:currentColor;opacity:.9}
@@ -165,7 +181,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .camera-view-glyph__height{color:var(--accent)}
 .tools{left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:2px;padding:3px}
 .tools button{height:34px;padding:0 var(--s3);color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body)}
-.tools button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1)}
+.tools button[aria-pressed=true]{background:var(--accent-wash);color:var(--ink-1);box-shadow:var(--ring-accent)}
 @media (hover:hover){
   .layers button:not(:disabled):hover,.views button:hover,.tools button:hover{color:var(--ink-1)}
   .flags button:hover{box-shadow:var(--ring-3)}
@@ -205,7 +221,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 
 /* --------------------------------------------------------------------------------------------- the dossier (.dossier) */
 .dossier{grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface-page);border-left:1px solid var(--line-1)}
-.dossier-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
+/* its gutter stands whether a tab overflows or not: a scrollbar that came with a long tab narrowed the 16:9 film by its own
+   width and lifted the name and the tabs 6 px (the g15 critic, Stats against the other tabs at 1920) */
+.dossier-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);padding-bottom:28px}
 .dossier-scroll.has-zoom{-webkit-mask-image:none;mask-image:none}
@@ -219,12 +237,8 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* stacked, the notice takes its own row at the top of the actions bar (it lay over the dossier's rows above the bar) */
 .acts{position:relative;flex-wrap:wrap}
 .cot-c-notices.gallery-notices--stack{position:static;order:-1;flex:1 0 100%;width:100%;transform:none}
-.cot-c-notices.gallery-notices--short{position:fixed;bottom:calc(var(--s3) + env(safe-area-inset-bottom,0px))}
 /* in the actions bar's row the notice is flat: its drop shadow fell on the button under it */
 .gallery-notices--stack .cot-c-notice{box-shadow:var(--ring-2)}
-/* a short two-column page: the window-foot notice stands over the dossier's column, never across the columns' seam (as
-   specific as the stage's width rule above, which held it at 420 px across the seam at 844x390) */
-@media (width >= 768px){.cot-c-notices.gallery-notices--short:not(.gallery-notices--stack){left:auto;right:var(--s3);width:min(380px,calc(50% - 2 * var(--s3)));transform:none}}
 .gallery-notices .cot-c-notice{background:var(--surface-menu)}
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
@@ -251,12 +265,32 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .dz-tabs{position:sticky;top:0;z-index:var(--z-hud-world);padding:0 var(--g-pad);border-bottom:1px solid var(--line-1);background:var(--surface-page)}
 .dz-tabs .cot-c-tabs{gap:var(--s3);overflow-x:auto;scrollbar-width:none}
 .dz-tabs .cot-c-tabs__tab{font-size:var(--fs-14)}
+/* a narrow dossier (the tablet row's 296-360 px) keeps every tab in view, spread edge to edge at 12 px (the g16 critic:
+   Markup open pushed "Overview" off its start, "verview"), and sets its facts two across, each figure and unit on one line */
+.dossier{container:dossier/inline-size}
+@container dossier (width < 360px){
+  .dz-tabs{padding:0 var(--s2)}
+  .dz-tabs .cot-c-tabs{gap:var(--s1);justify-content:space-between}
+  /* six tabs (Markup's too) fit the 296 px dossier at the floor size (the g17 critic: "verview" cut at its edge at 900) */
+  .dz-tabs .cot-c-tabs__tab{font-size:max(var(--fs-floor-11),var(--fs-11))}
+}
+/* (scoped to the dossier: the base .facts rule follows and won at equal weight, so a narrow dossier kept four plates and
+   zh units broke under their figures at 900 and 1024: the g17 critic) */
+@container dossier (width < 460px){.dossier .facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* a narrow dossier's damage kinds stand one a row, each name on one line ("Destructibles · 0" wrapped at 900), and its
+   versus card keeps the flags and figures inside it, without the side silhouettes (they spilled past its edge) */
+@container dossier (width < 360px){
+  .dossier .damage-kinds{grid-template-columns:minmax(0,1fr)}
+  .dossier .damage-kinds button{white-space:nowrap}
+  .dossier .vsc .s .cot-c-sil{display:none}
+}
 .dz{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3) var(--g-pad) var(--s4)}
 .facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2)}
 .facts>div{display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:var(--s2);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .facts .cot-i{width:16px;height:16px;color:var(--ink-3)}
-.facts b{font:700 var(--fs-16)/1 var(--font-display);white-space:nowrap}
-.facts b small{margin-left:2px;color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
+.facts b{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) 2px;font:700 var(--fs-16)/1 var(--font-display);white-space:nowrap}
+/* a unit wider than the tile's room (zh 血量 beside 2,400 at 1440 and 1280: the g15 critic) takes the line under its figure */
+.facts b small{color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data)}
 .dz-rules:empty{display:none}
 .dz-rules .is-dev{color:var(--text-warn)}
 .ratings{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
@@ -334,7 +368,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   background:linear-gradient(90deg,var(--fill-scale) var(--lo,0%),var(--accent) var(--lo,0%) var(--hi,0%),var(--fill-scale) var(--hi,0%))}
 .sl input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
 .sl input::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--ink-1);box-shadow:var(--ring-accent)}
-.sl input:focus-visible{outline:2px solid var(--ink-1);outline-offset:2px}
+.sl input:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 .sl input:disabled{opacity:.4}
 .acts{display:flex;gap:var(--s2);padding:var(--s3) var(--g-pad);border-top:1px solid var(--line-1);background:var(--surface-page)}
 .acts #testDrive{flex:1;min-width:0}
@@ -407,6 +441,14 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 /* the site bar spans the page's own columns (a boxed bar floated over the stage on wide windows) */
 .public-nav{--shell-max:100%;--shell-gutter:var(--g-pad)}
 /* ---------------------------------------------------------------------------------------------------- responsive */
+/* a tall, wide window gives its room to the dossier's own content, not to blank plate (the lead, 10-26, from the g15
+   critic: 450 px of empty dossier at 2560): a wider column, and the film growing from 16:9 toward 4:3 into the height its
+   tabs leave; one height for every tab, read from the column, so no tab moves the name */
+@media (width >= 1440px) and (height >= 900px){
+  :root{--g-dossier:clamp(360px,30vw,820px)}
+  .dossier{container:dossier/size}
+  .take{aspect-ratio:auto;height:clamp(calc(100cqw * 9 / 16),calc(100cqh - 640px),100cqw)}
+}
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
   .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
@@ -416,7 +458,24 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .stage{--inset-w:120px}
   .inset{width:120px}
 }
+/* the tablet row: the list and the dossier narrower, the stage between them; the scale inset gives the narrow stage's
+   foot to the turntable bar; the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it */
 @media (width < 1100px){
+  :root{--g-browse:clamp(216px,22vw,248px);--g-dossier:clamp(296px,32vw,360px)}
+  /* (no inset to clear: the stage's notice takes the stage's width; it was a 70 px column, one letter a line, the g16 critic) */
+  .inset{display:none}
+  .stage{--inset-w:0px}
+  .views button{width:30px;padding:0;justify-content:center}
+  .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  /* the legend is a band along the stage's foot, over the turntable bar: a column beside the rail stood on the model's gun
+     at 1024 x 600 (the g17 critic) */
+  #viewport .legend:not(:empty){left:16px;right:calc(16px + 36px + var(--s2));max-width:none;flex-direction:row;flex-wrap:wrap;
+    column-gap:var(--s3)}
+  /* the anatomy row reaches to the camera rail's glyphs (it kept the wide rail's 180 px and wrapped: the g17 critic) */
+  .stage .subs{max-width:calc(100% - 16px - 30px - var(--s5))}
+}
+/* a phone, or a short window under 1100 px: the page scrolls, the stage spanning the top */
+@media (width < 768px), ((height < 520px) and (width < 1100px)){
   body{overflow-x:hidden;overflow-y:auto}
   /* a part brought into view clears the sticky site bar (its own height: 64 px, 56 px under 768 px), and the browse
      column and the dossier's tabs stick under it */
@@ -425,13 +484,11 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   .gallery-shell{height:auto;overflow:visible;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"stage stage" "browse dossier"}
   .stage{height:clamp(360px,58svh,620px)}
   .browse{position:sticky;top:var(--shell-nav-h);align-self:start;max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h));border-top:1px solid var(--line-1)}
-  .dossier{border-top:1px solid var(--line-1)}
+  /* the dossier is as tall as its content, not the list's long column beside it (the g16 critic at 844 x 390: a blank
+     body under the pinned tabs, the actions a list's length below) */
+  .dossier{align-self:start;border-top:1px solid var(--line-1)}
   .dossier-scroll{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   .acts{position:sticky;bottom:0;z-index:var(--z-hud-world)}
-  /* the short stage: the camera rail keeps its glyphs (names stay accessible) and the legend stands beside it, never over it */
-  .views button{width:30px;padding:0;justify-content:center}
-  .views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  #viewport .legend:not(:empty){right:calc(16px + 36px + var(--s2))}
 }
 @media (width < 768px){
   :root{--g-pad:12px}
@@ -487,10 +544,16 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   background:var(--scrim);backdrop-filter:blur(6px);cursor:zoom-out}
 /* the drawing (2:1) takes the window's room: its height from the viewport, as a grid row's percentage did not bound it
    (the g14 critic: at 844 x 390 its key ran under the window's foot, at 2560 it stood at its natural 40 % width) */
+#dossier-anatomy figure .diagram-close{display:none}
+#dossier-anatomy figure.is-zoomed .diagram-close{display:inline-flex;position:fixed;top:var(--s4);right:var(--s4);background:var(--surface-menu)}
 #dossier-anatomy figure.is-zoomed img{width:min(100%,calc((100dvh - 2 * var(--s5)) * 2));max-width:none;height:auto;
   max-height:calc(100dvh - 2 * var(--s5));cursor:zoom-out}
 /* a short window: the dossier's actions ride at its end, not stuck over the tab it shows */
 @media (height < 520px){.acts{position:relative}.browse{position:static;max-height:none}.inset{display:none}
+  /* a search that matches nothing says so under the search, with its Clear: under the filters the line and its button stood
+     below the window's foot (the g15 critic at 844 x 390) */
+  .browse.is-empty>.search{order:-2}
+  .browse.is-empty>.fam{order:-1}
   /* the stage and its turntable fit under the site bar */
   .stage{max-height:calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h))}
 }
