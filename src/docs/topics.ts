@@ -664,7 +664,8 @@ const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
 
 /**
  * A chapter's hero cards outside the fleet grid (the tanks chapter's classes): the card's flag and tank fade in together
- * once both have decoded, under the kit's reveal sheet (components.css [data-reveal], [data-ready]). A card whose picture
+ * once both have decoded, under the kit's reveal sheet (components.css [data-reveal], [data-ready]; the card is served with
+ * its data-reveal, chapters/fleet.ts heroCardMarkup, so it waits over its tone before this runs). A card whose picture
  * failed keeps its tone ([data-failed]) and loads again once the browser is back online.
  */
 function revealHeroCards(cards: readonly HTMLElement[]): void {

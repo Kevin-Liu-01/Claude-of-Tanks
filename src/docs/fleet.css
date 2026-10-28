@@ -92,9 +92,8 @@
 .dm-fleet__media>.dm-hc{width:auto;aspect-ratio:auto}
 .dm-fleet:not([data-view=hero]) [data-layer=hero],.dm-fleet:not([data-view=angle]) [data-layer=angle],.dm-fleet:not([data-view=side]) [data-layer=side]{display:none}
 /* a tile's pictures stand transparent over its tone from the first paint (each layer is the kit's reveal box, data-reveal
-   in the served markup: components.css) and fade in once they decode (topics.ts wireFleetGrid marks it data-ready), so a
-   picture that arrives before the scripts never pops in; without scripting they show as they load */
-@media (scripting:none){.dm-fleet__layer[data-reveal]>:is(img,picture){opacity:1}}
+   in the served markup: chapters/fleet.ts heroCardMarkup, docs.css) and fade in once they decode (topics.ts wireFleetGrid
+   marks it data-ready), so a picture that arrives before the scripts never pops in */
 .dm-fleet__media img[data-failed]{visibility:hidden}
 .dm-fleet__angle img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
 /* the side render under the chip's band: the chip's inset, its height and a step */

@@ -46,7 +46,7 @@ export function heroCardMarkup(id: string, sizes: string, { chip = true, classNa
   const [cx, cw, ch, cb, fx0, fx1] = row.b;
   const mirrored = (row.face?.[1] ?? 'left') !== 'left';
   const place = `--hc-cx:${cx};--hc-cw:${cw};--hc-ch:${ch};--hc-cb:${cb};--hc-fx0:${fx0};--hc-fx1:${fx1};--hc-fw:${Number((fx1 - fx0).toFixed(4))}${mirrored ? ';--hc-gs:-1' : ''}`;
-  return `<div class="dm-hc cot-hc hc-loaded${className ? ` ${className}` : ''}" data-hero-facing="${cards.facing}"${attrs ? ` ${attrs}` : ''}>`
+  return `<div class="dm-hc cot-hc hc-loaded${className ? ` ${className}` : ''}" data-hero-facing="${cards.facing}" data-reveal${attrs ? ` ${attrs}` : ''}>`
     + `<picture><source type="image/avif" srcset="${rungs(`/icons/hero/flag-${row.flag}`, flag.sha, sizes)}>`
     + `<img class="hc-flag" src="/icons/hero/flag-${row.flag}-480.webp${v(flag.sha[2])}" width="480" height="300" alt="" loading="lazy" decoding="async"></picture>`
     + `<picture><source type="image/avif" srcset="${rungs(`/icons/hero/${id}`, row.sha, sizes)}>`

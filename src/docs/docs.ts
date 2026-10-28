@@ -6,7 +6,9 @@ import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { revealStills } from '../presentation/revealStills.ts';
 
 mountDocsIcons();
-// the banner and the chapter cards' pictures fade in once decoded over their boxes' tone (a failed one keeps the tone)
+// the banner and the chapter cards' pictures fade in once decoded over their boxes' tone (a failed one keeps the tone). The
+// cards wait from the served markup (data-reveal); the banner, the page's LCP picture, is marked only here, so one that
+// decodes before this runs paints at once (as the landing's hero still does).
 revealStills(document.querySelectorAll<HTMLImageElement>('.docs-hero > img, .docs-chapter-media > img'));
 
 // The index's search: the field loads the manual's index with its first use (docsSearch.ts); Cmd K or Ctrl K focuses it.
