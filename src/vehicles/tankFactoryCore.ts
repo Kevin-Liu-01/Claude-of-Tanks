@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
   FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
@@ -12006,6 +12007,9 @@ export function* createTankRuntimeSteps(
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
+    // (264) a suit's shade on the armour under it, on every build that wears one (suitOcclusion.ts): after the shadow
+    // batch took its sources and every merge, before byte-identical sharing compares the draws that carry it
+    if (!geometryOnly) root.userData.suitOcclusion = yield* bakeSuitOcclusionSteps(root, [turretG, gunG, recoilG]);
     const tailShadowBatchFinishedAt = performance.now() - tailWait.ms;
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
     // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
