@@ -58,6 +58,20 @@ export function turretRoofAt(rings: readonly TurretRing[], x: number, z: number)
   return best.crown + (top[1] - best.crown) * u;
 }
 
+/** The shell's outer surface under (x, z) in the hull frame: the roof inside its top course, else the side where it
+ *  crosses |x| (the highest crossing), else the base course. */
+function turretSurfaceAt(rings: readonly TurretRing[], x: number, z: number): number {
+  let best = rings[0]!;
+  for (const r of rings) if (Math.abs(r.z - z) < Math.abs(best.z - z)) best = r;
+  const side = best.side, ax = Math.abs(x);
+  if (ax <= side[side.length - 1]![0]) return turretRoofAt([best], x, z);
+  for (let k = side.length - 1; k > 0; k--) {
+    const [h0, y0] = side[k - 1]!, [h1, y1] = side[k]!;
+    if ((ax - h0) * (ax - h1) <= 0 && Math.abs(h1 - h0) > 1e-6) return y0 + (y1 - y0) * ((ax - h0) / (h1 - h0));
+  }
+  return side[0]![1];
+}
+
 export interface MerkavaBasket {
   readonly z0: number; readonly z1: number; readonly halfWidth: number; readonly floor: number; readonly rail: number;
 }
@@ -98,12 +112,18 @@ export function buildMerkavaRoofWeapons(P: TankBuilderPort, rings: readonly Turr
   pivot: readonly [number, number]): void {
   const [py, pz] = pivot;
   guns.forEach(([x, foot, z], i) => {
-    // working crew stations (the coordinator's VH.14 ruling: every drawn roof gun works), on the fleet's riding cradle
+    // working crew stations (the coordinator's VH.14 ruling: every drawn roof gun works), on the fleet's riding cradle at
+    // the measured mount height, on its pintle post down to the shell (the Mk 1's left gun stands 0.35 m over its sloped
+    // shoulder)
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 0.72, seed: 904, tone: 'two-tone', ammo: true,
       shield: false, ring: false, working: true, ridingCradle: true });
     mg.name = `merkavaRoofMag${i + 1}`;
-    mg.position.set(x, Math.min(foot, turretRoofAt(rings, x, z) + 0.12) - py, z - pz);
+    const surface = turretSurfaceAt(rings, x, z), seat = Math.max(foot, surface);
+    mg.position.set(x, seat - py, z - pz);
     P.turretG.add(mg);
+    if (seat - surface > 0.03) {
+      P.add('turretDetail', KIT.cylY(0.026, 0.034, seat - surface + 0.03, 10), x, (seat + surface) / 2 - 0.015 - py, z - pz);
+    }
   });
   antennas.forEach(([x, z, h], i) => {
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h, seed: 262 + i });
