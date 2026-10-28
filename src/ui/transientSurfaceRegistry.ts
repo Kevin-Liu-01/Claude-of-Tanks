@@ -100,6 +100,8 @@ export const TRANSIENT_SURFACES = Object.freeze({
   'home-trailer': { screen: 'site', owner: 'src/presentation/homePage.ts', box: 'dialog[open]', modal: true,
     open: { docked: ['[data-trailer-open]'], folded: ['[data-trailer-open]'] } },
   'docs-archive': { screen: 'site', owner: 'src/docs/docs.ts', box: 'dialog[open]', modal: true, open: {} },
+  // the manual's fleet filters (era, class, role, nation: one id, four triggers; the census's site screen is /home)
+  'docs-fleet-filter': { screen: 'site', owner: 'src/docs/fleetGrid.ts', box: menuBox('docs-fleet-filter'), open: {} },
   'media-library': { screen: 'site', owner: 'src/presentation/mediaLibrary.ts', box: 'dialog[open]', modal: true, open: {} },
   'media-archive': { screen: 'site', owner: 'src/presentation/mediaArchive.ts', box: 'dialog[open]', modal: true, open: {} },
 
