@@ -30434,10 +30434,10 @@
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
-        "hullLength": 7.32,
-        "overallLength": 10.49,
+        "hullLength": 7.17,
+        "overallLength": 10.28,
         "width": 4.4,
-        "height": 2.97
+        "height": 2.96
       },
       "gun": {
         "caliberMm": 125,
@@ -56807,17 +56807,17 @@
           }
         ]
       },
-      "geometryHash": "7a2ee5d0",
-      "metadataHash": "7c7955cc",
+      "geometryHash": "5f6ae997",
+      "metadataHash": "3412cd8d",
       "presentationAnchor": {
-        "xM": -0.0001,
-        "zM": 0.0297
+        "xM": -0.0104,
+        "zM": 0.0038
       },
-      "presentationHash": "0832c7a7",
+      "presentationHash": "fd773af0",
       "presentationProjection": {
         "centerYM": 1.9936,
-        "topHalfM": 6.9965,
-        "sideHalfM": 3.4982
+        "topHalfM": 7.0242,
+        "sideHalfM": 3.5121
       },
       "appearance": {
         "version": 1,
@@ -56868,15 +56868,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24108,
-          "sha256": "a835d57b08804eb119014c27ba4e53525f268da81c45d92893a4ba5e3249858a",
+          "bytes": 24184,
+          "sha256": "4b147a2adbcce535206be765e3d1ca64352c21c251ec4f37aceb8903fa0cab08",
           "thumbnail": {
             "file": "thumbs/bm_oplot_m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10192,
-            "sha256": "fa376ac51501b20c696914ec8a83b41172950507403ab2c736ce589279d07981"
+            "bytes": 10110,
+            "sha256": "845c7c0d343de1d0545010a265b159d4d997f08b93b60e6442bae6b71756aff4"
           }
         },
         "top": {
@@ -56884,56 +56884,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9786,
-          "sha256": "e740d744ad3cab4f50a93e65f7178ec3492549f67a9ab0024386f74d3e9654d2"
+          "bytes": 9340,
+          "sha256": "59b9c9e3fbf0bfe33dc39251fdc3985b67bb7dde3e841d5d5f5c84fb9559ba28"
         },
         "side": {
           "file": "bm_oplot_m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8806,
-          "sha256": "a61fcb7180b457973044bea6131b5fc5d2416d521dd63ec728e6f544941ebb5e"
+          "bytes": 7438,
+          "sha256": "4c1c9518300572979668f6160c71184a201b94a7c1a7615a4eb5919833eca24c"
         },
         "topSilhouette": {
           "file": "bm_oplot_m_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1326,
-          "sha256": "d46360cc5f0ce63ec56979c95d4fe69257940557e8807c4c7631a81c5c4c4153"
+          "bytes": 1333,
+          "sha256": "bccb0ffbf4b92fb48ebf669e57baf13575a48fdec408c772b31403db67b40dd6"
         },
         "sideSilhouette": {
           "file": "bm_oplot_m_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4045,
-          "sha256": "4fda6c68539c1a414eee1b798eb130dbfa73fd2184615b0bf22c46aac8776ab8"
+          "bytes": 4209,
+          "sha256": "40417c7a6472f4c74e2bcfb377e2848fbb422298a3800cdc38f4ca18dcabd403"
         },
         "armorSide": {
           "file": "bm_oplot_m_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26708,
-          "sha256": "5fa05f66db3185aa5790c4828b9f13fc76010f450f8146948c3eaa186f29fb26"
+          "bytes": 26472,
+          "sha256": "8ac28949d62ba1fcc9833a12fff0b30561263cc8b15f0e08f6262b32cd6594ce"
         },
         "modulesSide": {
           "file": "bm_oplot_m_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20642,
-          "sha256": "d5e46665f325d816523d78b5e2a61d7934922b4048cf93092253ad2ea2148e2f"
+          "bytes": 20610,
+          "sha256": "182d6579a947af421bae350dad4c3b0d1192f411c92e4ced740c5ee063d9e088"
         },
         "crewSide": {
           "file": "bm_oplot_m_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17222,
-          "sha256": "6d6dc598bcf0d816b3ad78ede025239995101f7dd537c27bce2fb64f3b963efd"
+          "bytes": 17060,
+          "sha256": "cc95fe4d31b766b718b888aef92c11306ae09de651dc2adfca9b48bb34c0b560"
         },
         "markings": {
           "file": "bm_oplot_m_markings.png",
@@ -56946,8 +56946,8 @@
         "technicalLabels": {
           "file": "bm_oplot_m_technical.json",
           "mime": "application/json",
-          "bytes": 5453,
-          "sha256": "1821c37b8c1b6e1c013557fd99c747f4aa5fc45a552d24ff90abed872c0a893f"
+          "bytes": 5455,
+          "sha256": "61d594dbf3a1b8748a4c300860e93247ade38efbe3b15df0cf511ea322387998"
         }
       }
     },
@@ -56987,8 +56987,8 @@
       "tier": 10,
       "tierNumeral": "X",
       "dimensionsM": {
-        "hullLength": 7.32,
-        "overallLength": 10.49,
+        "hullLength": 7.17,
+        "overallLength": 10.28,
         "width": 4.43,
         "height": 2.97
       },
@@ -74817,7 +74817,7 @@
         ]
       },
       "geometryHash": "b1dedd6b",
-      "metadataHash": "c0a78c41",
+      "metadataHash": "1a603c61",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0136
@@ -1831279,14 +1831279,19 @@
     },
     "t84": {
       "id": "t84",
-      "name": "T-84 Oplot",
+      "name": "Object 478DU2",
       "label": {
         "id": "t84",
-        "displayName": "T-84 Oplot",
-        "shortName": "T-84 Oplot",
+        "displayName": "Object 478DU2",
+        "shortName": "Object 478DU2",
         "searchAliases": [
+          "Object 478DU2",
+          "t84",
+          "T-84",
+          "T-84 prototype",
           "T-84 Oplot",
-          "t84"
+          "Obyekt 478DU2",
+          "Ob. 478DU2"
         ],
         "noteKey": null
       },
@@ -1842577,7 +1842582,7 @@
         ]
       },
       "geometryHash": "2222d54a",
-      "metadataHash": "4b6720a7",
+      "metadataHash": "d31b36c7",
       "presentationAnchor": {
         "xM": -0.0215,
         "zM": 0.0288
