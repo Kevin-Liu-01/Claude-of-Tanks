@@ -269,8 +269,9 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
     P.add('hullGlass', cylZ(0.036, 0.012, 12), x, y, rz - 0.042);
   }
   P.add('hullDark', KIT.torus(0.07, 0.014, 14, 8).rotateX(Math.PI / 2), -0.68, 1.06, rz - 0.015);
-  P.add('hullDetail', beamBetween([-0.80, 0.84, rz - 0.06], [0.80, 0.84, rz - 0.06], 0.018, 12));
-  for (const x of [-0.80, 0, 0.80]) P.add('hullDetail', box(0.04, 0.05, 0.06), x, 0.84, rz - 0.03);
+  // the rail stands 2.2 cm off the plate: at 4 cm it left a slot over open ground that the plan raster reads as a hole
+  P.add('hullDetail', beamBetween([-0.80, 0.84, rz - 0.04], [0.80, 0.84, rz - 0.04], 0.018, 12));
+  for (const x of [-0.80, 0, 0.80]) P.add('hullDetail', box(0.04, 0.05, 0.04), x, 0.84, rz - 0.02);
   for (const s of [-1, 1]) towShackle(P, s * 0.52, 0.66, rz + (0.76 - 0.66) * (0.41 / 0.38) + 0.01, -1, -Math.atan2(0.41, 0.38));
   for (const s of [-1, 1]) {
     liftEye(P, 'hullDetail', s * 1.05, DECK + 0.01, -3.20);
