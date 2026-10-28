@@ -4,7 +4,7 @@
 // measured front arc the gun reaches its full depression keeping 25 mm from the hull (the engine deck and the nose plate
 // fall away under it; the old pile's curves stopped the 1B at -0.7 deg over its glacis): the Mk 1B and 2B all round, the
 // 2D to +-22 deg (its front-left width rod beyond), the Mk 3 to +-5 deg (the deck fittings at 6-28 deg hold it at -6.8 to
-// -7.6), the Mk 4B nowhere at its full 8 deg (its curve holds -7.7 ahead and -6.7 by its front-left width rod). At full
+// -7.6), the Mk 4B nowhere at its full 8 deg (its curve holds -7.8 ahead and -6.7 by its front-left width rod). At full
 // elevation every yaw is clear, and at its published stop (gunPitchByYawDeg, turretScaleGunPitch.ts, measured with
 // tools/gun-depression-sweep.mjs) every yaw is clear, so the barrel never passes through the hull, its stowage or its
 // baskets; except the Mk 2D's 139-145 deg, where the source's raked rear marker poles stand in the barrel's path at every

@@ -9,12 +9,14 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 
 ## Current status
 
-- Updated: 2026-10-27.
+- Updated: 2026-10-28.
 - Owner request: "we'll also need to redesign and clean up the merkava mk 1b, 2b, 2d, baz, mk 3c, and mk 4b, completely
   new with all oldness removed and we will need their gun assemblies back and beautiful" (2026-10-27). Superseding
   instruction, the same day, with the supplied Mk 1B, 2B, 2D, 3B, 3C, 3D and 4B models: "these look bad and need much
   more detail and geometry annd need to match the geometry of these"; then "make sure to use oru proper tank generation
-  workfloow".
+  workfloow". Next round (2026-10-28): "rebuild the turret shells as flat hard-edged faces fitted to the source's armour
+  faces, fix the noses (vertical lower plate, hooks, lamps, fender over the sprocket), add smoke dischargers, sleeve
+  bands and perforated skirts" (round log r8).
 - IDs: `merkava1b` (Merkava Mk 1B), `merkava2b` (Mk 2B), `merkava2d` (Mk 2D), `merkava3c` (Mk 3C), `merkava3_baz`
   (Mk 3D Baz; seed id `merkava3d`), `merkava4b` (Mk 4B).
 - Implementation status: implemented (family builder over the supplied sources' measured records), iterating.
@@ -205,5 +207,22 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   with their housings, the Mk 4's in its turret modules, replacing their box stand-ins). Barrels from 3 mm exact cuts
   (`barrelfine.py`; the Mk 1B's sleeve clamps stand 3 mm proud, 4 cm wide), merged at 1.5 mm. Skirt panels: plates cut
   to their traced outlines (`skirtfit.py`: the Mk 1B's wavy lower edges), their latches and hinges kept. The skirts'
-  holes and the Mk 4B's slatted front panel are not cut (owed); the twin-lens lamps are still the measured pieces.
+  holes and the Mk 4B's slatted front panel are not cut (owed).
+- Critic, six clay pairs against the source models (r8, before the modules): turret 2-5, nose 2-5, smoke 4-7, gun 5-6,
+  skirts 3-6, overall 3-5/10 (1B and 2B 5, 3C 4, 2D, Baz and 4B 3). Its family-wide defect: the add-on turret modules
+  splaying as slabs and shards beside the shell; then the 2D's and Baz's belly armour hanging as a slab under the nose,
+  the mantlet's missing canvas cover and boot, the skirts' bolt fields and the Mk 4's skirt rails.
+- r8+ (`618b098516`, `ef91122e4f`, `de41269643`): twin headlamps across the lamp groups' measured boxes; the turret
+  modules fitted like the shell (`modulefit.py`, each group's cuts along its longer horizontal axis) in their side's
+  removable package; the belly armour as measured stations (`bellyfit.py`); the gun channel's floor under the mask (the
+  slot's, and the 4B's between its front modules, 7 cm over the ring's plane: the clearance probe treats the turret's
+  plan as cover, and the new shells' open slots left the mask's low rear outside it); behind the trunnion the mask's
+  underside clears the deck its swing passes; the turret group's other welded pieces reaching outside the shell drawn
+  as measured boxes (`turretfittings.py`: antenna mounts, lifting eyes, brackets and racks; the whips floated without
+  them). Depression re-swept on the final geometry. Source record 537 KB (r7 410 KB).
+- Next round: the 2D's spaced side modules (the cut fills the gap behind the plate into a wedge); the skirts' bolt
+  fields and the Mk 4's skirt rails and slatted front panel; the 4B's bolted lower front plates; the mantlet's canvas
+  cover and corrugated boot; the cupolas as their faceted shapes; loaded baskets; semantic roles from the MTL textures;
+  the shell's welded rear stowage bins and the 4B's gun-channel floor out of the primary 'turret' bucket (the armour
+  envelope census, 2026-10-28: the rebuilt 'turret' runs 4.6-4.8 m, the 4B's 5.1 m).
 
