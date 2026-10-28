@@ -1633,6 +1633,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-28 (bot-wedge-264): no route starts from a grid cell the hull cannot drive out of (the Badlands mesa flank)
+    'src/sim/botRouteStartCell.selftest.mjs',
     // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
     'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.

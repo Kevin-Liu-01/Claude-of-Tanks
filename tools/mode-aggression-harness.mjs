@@ -39,6 +39,8 @@
 //        player's side is the allied bots'. Frontline Assault ends when the player seat dies (~100 s with the fight
 //        seat), so its push and zone metrics read best with park or shield. In Frontline the fight seat routes to the
 //        attack's objective point (the live sector) and follows the line, like a human attacker (gameplay-modes-228).
+//   --trace=ID[,ID] [--traceFrom=S] [--traceTo=S] [--traceEvery=TICKS] (run): TRACE lines on stderr for those hulls
+//        (entity or spec id): pose, input, contact flags, route and watchdog state (bot-wedge-264)
 //
 // Maps: --map pins one; otherwise seed s plays MAP_ROTATION[(s - 1) % 8] (Redrock = badlands and Steinburg = urban are
 // in it), so an A/B pair on the same seeds plays the same maps. The clock cap is the ruleset's own clock (+5 s), or
@@ -834,6 +836,8 @@ const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnCh
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
 const ramStats = { botOnBotDeaths: 0, hunterRams: 0, hunterContacts: 0 };
+const destroyedAtS = new Map(); // entity id -> the time of its last 'destroyed' event
+const wreckBefore = (e, t) => !!e.combat?.destroyed && (destroyedAtS.get(e.id) ?? Infinity) < t;
 const sector1 = { kills: 0, done: false };
 const inf = { infections: 0, firstInfectionS: null, infectionTimes: [], survivors0: 0, infected0: 0, survivorsByMin: [],
   shots: { alpha: 0, bravo: 0 }, hits: { alpha: 0, bravo: 0 }, damage: { alpha: 0, bravo: 0 }, botSamples: { alpha: 0, bravo: 0 },
@@ -874,6 +878,7 @@ function onEvent(ev, t) {
   } else if (ev.kind === 'destroyed') {
     const e = byId.get(ev.id);
     if (!e) return;
+    destroyedAtS.set(e.id, t);
     recOf(e).deaths++;
     const victimTeam = recOf(e).lastTeam ?? normTeam(e.team);
     const causeKey = `${ev.cause ?? 'unknown'}${ev.killerId && ev.killerId !== ev.id ? '' : ':nokiller'}${adapter.isHuman(e) ? ':player' : ''}`;
@@ -898,14 +903,16 @@ function onEvent(ev, t) {
     if ((mode === 'endless_horde' || mode === 'infected') && ev.aId && ev.bId) {
       const a = byId.get(ev.aId), b = byId.get(ev.bId);
       // a hunter's ram: a hostile bot in contact with an alpha hull while it was itself driving into it (its own
-      // velocity toward the other hull over 1 m/s); an alpha hull driving into a hostile is not the hunter's ram
+      // velocity toward the other hull over 1 m/s); an alpha hull driving into a hostile is not the hunter's ram, nor is
+      // a hostile's wreck, destroyed at an earlier tick, coasting into one (bot-wedge-264: Infected seed 2's T-72B3M,
+      // killed at 47.7 s, rolled on 13 m into a Type 90 at 4.5 m/s; a hull the ram itself destroys still counts)
       const drivesInto = (h, o) => {
         const dx = o.state.pos.x - h.state.pos.x, dz = o.state.pos.z - h.state.pos.z, d = Math.hypot(dx, dz) || 1;
         return (Math.sin(h.state.yaw) * dx + Math.cos(h.state.yaw) * dz) / d * h.state.speed > 1;
       };
       if (a && b && normTeam(a.team) !== normTeam(b.team)) {
         const hunter = normTeam(a.team) === 'bravo' && !adapter.isHuman(a) ? a : normTeam(b.team) === 'bravo' && !adapter.isHuman(b) ? b : null;
-        if (hunter) { ramStats.hunterContacts++; if (drivesInto(hunter, hunter === a ? b : a)) ramStats.hunterRams++; }
+        if (hunter && !wreckBefore(hunter, t)) { ramStats.hunterContacts++; if (drivesInto(hunter, hunter === a ? b : a)) ramStats.hunterRams++; }
       }
     }
   } else if (ev.kind === 'mode') {
@@ -1206,6 +1213,30 @@ function settlePlacements() {
   }
 }
 
+// --trace=ID[,ID] [--traceFrom=S] [--traceTo=S] [--traceEvery=TICKS]: one TRACE line per traced living hull (entity or
+// spec id) on stderr every traceEvery ticks (default 15): pose, the controller's input, the movement's contact flags and
+// the controller's route and watchdog state (measurement only)
+const traceIds = new Set(String(arg('trace', '')).split(',').filter(Boolean));
+const traceFrom = Number(arg('traceFrom', 0)), traceTo = Number(arg('traceTo', Infinity)), traceEvery = Math.max(1, Number(arg('traceEvery', 15)));
+function traceStep(t) {
+  for (const e of ents) {
+    if (!traceIds.has(e.id) && !traceIds.has(e.specId)) continue;
+    if (!alive(e)) continue;
+    const st = e.state, inp = e.input ?? {};
+    let info = {};
+    try { info = e.aiCtl?.debugInfo?.() ?? {}; } catch { /* measurement only */ }
+    const r1 = (x) => (x == null || !Number.isFinite(x) ? x ?? null : +x.toFixed(2));
+    const pick = ['mode', 'targetId', 'routeOutcome', 'strikes', 'navT', 'wpIndex', 'wpCount', 'waypointX', 'waypointZ', 'driveGoalX', 'driveGoalZ',
+      'steerGoalX', 'steerGoalZ', 'routeCornerX', 'routeCornerZ', 'scootKind', 'terrainBlocked', 'terrainAvoiding', 'losBlockedT', 'wedgeReleased',
+      'wedgeReleases', 'deadLegs', 'pivotCreeps', 'solidBrakes', 'colliderStops', 'searching', 'escaping', 'objectiveShifting'];
+    const row = { t: r1(t), id: e.id, x: r1(st.pos.x), z: r1(st.pos.z), y: r1(st.pos.y), g: r1(world.heightField.getHeightAt(st.pos.x, st.pos.z)), yaw: r1(st.yaw),
+      sp: r1(st.speed), pitch: r1(st.visualPitch), roll: r1(st.visualRoll), gr: st.grounded, th: r1(inp.throttle), steer: r1(inp.steer), br: !!inp.brake,
+      slope: st.slopeBlocked, imp: st.impactSource, impMps: r1(st.impactMps), impN: [r1(st.impactNx), r1(st.impactNz)] };
+    for (const k of pick) if (k in info) row[k] = typeof info[k] === 'number' ? r1(info[k]) : info[k];
+    process.stderr.write(`TRACE ${JSON.stringify(row)}\n`);
+  }
+}
+
 // --- the loop --------------------------------------------------------------------------------------------------------
 const ticks = Math.round(capS / SIM_DT);
 let result = null;
@@ -1221,6 +1252,7 @@ for (; tick < ticks; tick++) {
   if (horde.pendingArrivals.length) settleArrivals();
   if (front.pendingPlacements.length) settlePlacements();
   if (tick % SAMPLE_TICKS === 0) sample(t);
+  if (traceIds.size && tick % traceEvery === 0 && t >= traceFrom && t <= traceTo) traceStep(t);
   const res = adapter.result();
   if (res) { result = res; break; }
   // a parked seat in Frontline Assault (no respawn; allies revive only when a sector falls): once every allied bot is
