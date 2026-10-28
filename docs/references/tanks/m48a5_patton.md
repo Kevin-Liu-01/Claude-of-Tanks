@@ -71,9 +71,12 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 - Rejected source parts: none; the model's fused stowage (bags, boxes) is rebuilt as first-party primitives at its
   measured seats.
 - Fittings measured off the model (2026-10-28): whips at (0.71, -0.48) and (-0.31, -1.03) to 3.727 m (our seeded whip
-  bows its tip 2 cm, so the bases sit 1-1.5 cm inboard); the M60Ds at the true 1.10 m (scale 1.15), centred on the
-  model's z -0.22..1.11 span, level, tops 3.22 and 3.08, with spade grips; the ammunition boxes are their own (the
-  fitting's can is off); suspension-arm housings under the hull's edge 0.40 m ahead of each road wheel (x 0.88-1.10, y
+  bows its tip 2 cm, so the bases sit 1-1.5 cm inboard); the M60Ds at the true 1.10 m (scale 1.15) over the model's
+  z -0.22..1.11 span, level, on its bores (3.056 commander's, 2.92 loader's), with its back-plate and spade-grip block
+  (z -0.215..-0.10), rear-sight leaf (top 3.216 and 3.081) and feed-cover latch, on pintle posts under the receivers'
+  fronts (z 0.44 and 0.425) with a cradle on the commander's; the ammunition boxes are their own (the fitting's can is
+  off); the left rangefinder end proud of the casting (x 0.84-1.05; the right one sits half under the cupola); the
+  ventilator's drum and dome to 2.57; suspension-arm housings under the hull's edge 0.40 m ahead of each road wheel (x 0.88-1.10, y
   0.36-0.55); the tow cable along the left fender boxes; the short bar on the right front fender (x -1.89..-1.28); lift
   eyes on pads at the roof's front (top 2.64) and rear, just left of the centre line (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);
   rucksacks out to 1.50 (left) and 1.60 (right); the bustle rack floor at 1.99, load 2.03-2.43; the jerrycan leant
@@ -82,8 +85,9 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 
 ## Construction work order (landmark sheet)
 
-- Shape sentence: a cast boat hull whose bilge bulges to 1.33 m half-width at 1.05-1.10 m high, waists in to 1.07 m under
-  a deck edge at 1.51 (front) and 1.62 (engine deck), with a raised engine-deck hump 1.85 m high and a boat bow rolling
+- Shape sentence: a cast boat hull whose bilge bulges to 1.33 m half-width at 1.05-1.10 m high, shelves in under the
+  track's top run to 1.08 m at 1.25 m (the model's bilge-to-waist slope ran through the belt's inner edge) and rises
+  inboard of the track to a deck edge at 1.51 (front) and 1.62 (engine deck), with a raised engine-deck hump 1.85 m high and a boat bow rolling
   down to a 1.07 m nose; an egg-shaped dome 2.48 m wide on its floor, roof 2.54, nose at z 1.86 and tail rolled under to
   -1.51; a thin cast gun shield leaning back 25 deg from 0.43 m ahead of the trunnion; the searchlight on posts ahead of it.
 - Hull: 24 landmark stations (keel, chine knee, widest bilge, waist, deck edge, engine-deck hump, crown) read off the
@@ -113,9 +117,9 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 | Road wheels | 6, r 0.34 | 6 dual, ~26 in | 6, r 0.33, 0.80 m pitch (owner model) |
 | Return rollers | 5 | 5 on M48A1-hull A5s (3 on A2 hulls) | 5 at y 1.15 |
 | Track-tension wheel | yes (z -2.487) | absent on M48A3/A5 (AFV48; photos) | none |
-| Gun | M68, trunnion 2.10 at z 1.514 (258 owner fix) | 105 mm M68 L/52; overall 9.307 m; axis 2.00 m | trunnion kept at 2.10 / z 1.514; muzzle 5.914 (overall 9.29); evacuator 3.56-4.12 |
+| Gun | M68, trunnion 2.10 at z 1.514 (258 owner fix) | 105 mm M68 L/52; overall 9.307 m; axis 2.00 m; eccentric evacuator | on the model's bore 1.921, pivot z 1.7616; muzzle 5.827; the model's stations: tube 0.185 to z 2.79, 0.17 to the collar, square-ended evacuator 3.540-4.110 (0.256 across, 1.5 cm above the bore), chase 0.165 then 0.16, muzzle band 0.172 |
 | Gun limits | +20 / -9 (M60A1 donor) | +19 / -9 | +19 / -9, measured depression curve |
-| Cupola and MGs | commander M2, loader M60D | low-profile cupola + commander's M60D, loader's M60D | low-profile cupola (r 0.42) + M60D; loader's hatch + M60D |
+| Cupola and MGs | commander M2, loader M60D | low-profile cupola + commander's M60D, loader's M60D | low-profile cupola (r 0.45) + M60D on a post beside it; loader's hatch + M60D on a post; both on the model's bores |
 | Searchlight | on the mantlet | over the gun shield | on brackets over the tube, ahead of the shield |
 | Smoke dischargers | none | not confirmed on US A5s | none |
 | Rear | louvred plate | grille doors on the upper rear plate | grille doors, tail lights, pintle, phone box |

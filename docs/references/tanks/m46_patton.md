@@ -56,7 +56,7 @@ stays a first-party closed casting or fitting (no slab stacks, no per-column pod
 | Bustle rack | to -2.42 | load to -2.14, side rails and corner posts to -2.36 |
 | Antennas, lift eyes | two whips, four eyes | none (the reference carries neither) |
 | Glacis | knee 1.55, toe 2.09 at 1.10 | knee 1.17 at 1.65, toe 1.72 at 0.92, nose 0.10 deep |
-| Fenders | 1.56 with 0.22 boxes | 1.40 (the reference's plate) with 0.25 boxes along its length and a square rear end plate |
+| Fenders | 1.56 with 0.22 boxes | 1.40 (the reference's plate) with 0.25 boxes along its length and a square rear end plate: outboard of the track it hangs to 1.03 as the reference draws it; over the track it stops at 1.20, clear of the sprocket's wrap; no front flap (it hung on the track over the idler) |
 | Mufflers | drums on the rear fenders | none above the fenders (the reference has none) |
 | Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres (the reference's 1.04-1.68 lane) |
 | Sprocket / idler | (-3.80, 0.88) / (1.70, 0.70) | (-3.86, 1.02) / (1.63, 0.88): the raised Pershing sprocket |
@@ -65,6 +65,12 @@ stays a first-party closed casting or fitting (no slab stacks, no per-column pod
 
 The gate's hull registration is the side silhouette's body span; the build's ends match the reference's (z -4.25 and
 2.01), so the turret is compared in place.
+
+Track containment (the release check's strict `track-clip-audit --exact --strict`): the first reference-fitted build read
+front 188, rear 204, sweep 392/16 (the front flap and the sponson box's bracket on the belt over the idler, the rear plate
+on the sprocket's wrap). The flap is gone, the plate stops over the track and the bracket stands under the box's inner
+edge (x 0.98): 0/0/0 and shoes 0/0/0 in the lane's offline copy of the audit
+(`~/cot-lanes/patton-262-evidence/tools/clipsim.mjs`, which reproduces the page's counts exactly).
 
 
 ## Historical record (release 260 and earlier)

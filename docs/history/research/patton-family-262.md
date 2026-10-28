@@ -63,3 +63,26 @@ at HIGH), the tank-generation rule of sparse measured landmarks rather than samp
   published 3.632 m width.
 - Sim floors accepted for the three ids (`docs/geometry-gate/sim-floors.json`): the M48A5's belly at its 16.5 in
   clearance and the removed tension idler move its pan and hull floor; the M46/M47 pans rest on their wheel hubs.
+
+## Release-check findings fixed in the lane (2026-10-28)
+
+- Track containment (`track-clip-audit --exact --strict`, B4): the reference-fitted builds read M46 188/204 + sweep
+  392/16, M47 0/228 + 228/0, M48A5 0/0 + 1014/6. Causes: the M46's front flap and sponson-box bracket on the belt over the
+  idler and its rear plate on the sprocket's wrap; the M47's rear fender ramp (the reference's straight line from -3.60)
+  through the sprocket's wrap; the M48A5's bilge-to-waist slope through the top run's inner 2-8 cm. Fixes: no M46 front
+  flap, its rear plate stops over the track (the outboard strip keeps the reference's depth, which the front view reads),
+  the bracket under the box's inner edge; the M47's rear fender level to -3.85, then down behind the wrap; the M48A5's
+  waist shelves under the run and rises inboard of it. `~/cot-lanes/patton-262-evidence/tools/clipsim.mjs` (lane
+  evidence, not shipped) reproduces the audit's band counts exactly and ports its shoe pass: 0 for all three, belts and
+  shoes. The gate estimates hold (M48A5 92.3, the M46 front view 90.0 to 90.1).
+- The M48A5's procedural-fidelity row (exemplar bar 92 on every component view) failed on the gun (90.7) and the left
+  and right turret views (89.7, 91.0). The page centres each silhouette on its centroid before scoring, so on a
+  source-world certified pair any mass difference shows as a whole-pixel shift: a thick chase, the roof M60Ds 3.5 and 7 cm
+  high, the left rangefinder end sunk in the casting and a low ventilator moved the centroids. The gun now follows the
+  model's stations, the M60Ds sit on its bores with its grip block, sight leaf and latch on posts where it stands them,
+  the rangefinder end stands proud and the ventilator rises to 2.57 m. `~/cot-lanes/patton-262-evidence/tools/fidsim.py`
+  (384 px masks, the page's tilted cameras and score) estimates gun 99.8 and turret views 93.5-96.5 (the page read the
+  left view 1.3 above the estimate before); the gate estimate rose to 92.9.
+- Not changed: the M48A5 casting's right-front shoulder is fuller in the model (roof about 2.5 m beside the cupola where
+  ours is 2.1-2.3 m). Reshaping the dome would move every armour, crew and seat receipt; the component views pass without
+  it.

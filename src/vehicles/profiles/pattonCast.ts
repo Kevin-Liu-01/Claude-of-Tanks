@@ -728,7 +728,8 @@ function roofM2(P: CastPort, T: TurretFrame, x: number, z: number, baseY: number
 /** The M60D's back plate and its spade grips either side of it, behind the receiver (z0 the receiver's back face, y the
  * grips' centre; turret-local frame). */
 function m60dGrips(P: CastPort, L: ReturnType<typeof tl>, x: number, z0: number, y: number): void {
-  P.add('turretDark', KIT.box(0.087, 0.12, 0.09), x, L.y(y), L.z(z0 - 0.049));
+  // the back plate runs forward into the fitting's receiver (its back face stands 6-7 cm ahead of the model's)
+  P.add('turretDark', KIT.box(0.087, 0.12, 0.164), x, L.y(y), L.z(z0 - 0.012));
   for (const dx of [-0.05, 0.05]) P.add('turretDark', KIT.box(0.056, 0.137, 0.086), x + dx, L.y(y), L.z(z0 - 0.077));
 }
 
@@ -1453,14 +1454,8 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   // the M60Ds ride pintle posts (no ring): the commander's on the cupola rim, the loader's on a post from the roof
   // (the model's guns span z -0.22 to 1.11 with their bores at 3.056 and 2.92), each with its ammunition box outboard;
   // drawn at the M60D's 1.10 m on the model's bores
-  // the commander's pintle post under the receiver's front, on its base plate on the roof beside the cupola, and the
-  // cradle on it (the model's post at z 0.44 up to the cradle at 2.84)
-  {
-    const roof = seat.topAt(-1.003, 0.44);
-    P.add('turretDark', box(0.12, 0.04, 0.13), -1.003, L.y(roof + 0.01), L.z(0.44));
-    P.add('turretDark', cylY(0.04, 0.05, 2.85 - roof, 10), -1.003, L.y((2.85 + roof) / 2), L.z(0.44));
-    P.add('turretDark', box(0.10, 0.13, 0.10), -1.005, L.y(2.91), L.z(0.435));
-  }
+  // the commander's pintle post up the cupola's flank to the gun's yoke
+  P.add('turretDark', cylY(0.03, 0.035, 2.815 - (cupTop - 0.20), 10), -1.00, L.y((2.815 + cupTop - 0.20) / 2), L.z(0.24));
   roofM2(P, T, -1.00, 0.24, 2.805, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 485, ring: false, elev: 0, ammo: false });
   m60dGrips(P, L, -1.00, -0.095, 3.055);
   m60dSight(P, L, -1.00, -0.095, 3.056);
@@ -1468,10 +1463,10 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   const hatchTop = loaderHatch(P, T, 0.33, -0.28, 0.27);
   for (const x of [0.245, 0.417]) P.add('turretDark', box(0.05, 0.05, 0.31), x, L.y(hatchTop - 0.01), L.z(-0.28));
   {
-    // the loader's post on its base plate under the receiver's front (the model's at z 0.425 to 2.84)
-    const roof = seat.topAt(0.60, 0.425);
-    P.add('turretDark', box(0.106, 0.04, 0.115), 0.60, L.y(roof + 0.01), L.z(0.425));
-    P.add('turretDark', cylY(0.045, 0.05, 2.84 - roof, 10), 0.60, L.y((2.84 + roof) / 2), L.z(0.425));
+    // the loader's post on its base plate up to the gun's yoke
+    const roof = seat.topAt(0.60, 0.23);
+    P.add('turretDark', box(0.106, 0.04, 0.115), 0.60, L.y(roof + 0.01), L.z(0.23));
+    P.add('turretDark', cylY(0.035, 0.045, 2.68 - roof, 10), 0.60, L.y((2.68 + roof) / 2), L.z(0.23));
     roofM2(P, T, 0.60, 0.23, 2.67, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 486, ring: false, elev: 0, ammo: false });
     m60dGrips(P, L, 0.60, -0.109, 2.92);
     m60dSight(P, L, 0.60, -0.109, 2.92);
@@ -1512,7 +1507,10 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
     const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, -1.254, L.y(2.395), L.z(-1.18), e.x, e.y, e.z); };
     // its stub axle into the bustle's side
     const ax = new THREE.Vector3(-0.768, 0.464, -0.441).normalize();
-    bar(P, 'turretDark', [-1.254, L.y(2.395), L.z(-1.18)], [-1.254 - ax.x * 0.40, L.y(2.395 - ax.y * 0.40), L.z(-1.18 - ax.z * 0.40)], 0.045);
+    const axle = (d: number): number[] => [-1.254 - ax.x * d, L.y(2.395 - ax.y * d), L.z(-1.18 - ax.z * d)];
+    bar(P, 'turretDark', axle(0), axle(0.40), 0.06);
+    // its flange bolted to the casting
+    bar(P, 'turretDark', axle(0.36), axle(0.40), 0.12, 12);
     at('turretDark', spare.tire);
     at('turretDetail', spare.disc);
     at('turretDark', spare.dark);
