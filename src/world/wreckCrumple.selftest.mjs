@@ -160,7 +160,7 @@ const factory = readFileSync(new URL('../vehicles/tankFactoryCore.ts', import.me
 assert.match(materials, /\.replace\('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\\n\$\{CRUMPLE_NORMAL_GLSL\}`\)/,
   'the dents and their normals before the normal transform');
 assert.match(materials, /`#include <begin_vertex>\ntransformed \+= crD;/, 'the displacement before the burn front reads the position');
-assert.match(materials, /'\|burn-r7'/, 'a new program key for the new vertex stage');
+assert.match(materials, /'\|burn-r8'/, 'a new program key for the new vertex stage');
 assert.match(materials, /bool crHull = crSameFrame\( modelMatrix, uCrHullW \);/, 'only meshes drawn in the hull\'s or the turret\'s frame');
 assert.match(factory, /applyWreckMaterials\(\);\s*planLiveCrumple\(!!\(opts && opts\.pop\)\);/, 'planned at the kill');
 assert.match(factory, /resetDestroyed\(\) \{\s*equipmentDamage\.reset\(\);\s*weaponDamage\.reset\(\);\s*resetLiveCrumple\(\);/, 'undone at a rematch');

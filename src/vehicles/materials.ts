@@ -3879,8 +3879,126 @@ export function makeBurnUniforms(seed: number) {
     uCrHullDir: { value: Array.from({ length: LIVE_HULL_DENTS }, () => new THREE.Vector4()) },
     uCrTur: { value: Array.from({ length: LIVE_TURRET_DENTS }, () => new THREE.Vector4()) },
     uCrTurDir: { value: Array.from({ length: LIVE_TURRET_DENTS }, () => new THREE.Vector4()) },
+    // the scoped armour paint (262; game/armorAimOverlay.ts drives it): off (0) until the player scopes this vehicle
+    // with the flashlight on; world → hull and world → turret combat frames; the turret frame's envelope (a point inside
+    // it is the turret's); the zone counts (hull, turret) and their table (ARMOR_PAINT_ZONE_TEXELS texels a zone)
+    uApOn: { value: 0 },
+    uApHullInv: { value: new THREE.Matrix4() },
+    uApTurInv: { value: new THREE.Matrix4() },
+    uApTurMin: { value: new THREE.Vector3(1, 1, 1) },
+    uApTurMax: { value: new THREE.Vector3(-1, -1, -1) },
+    uApCounts: { value: new THREE.Vector2(0, 0) },
+    uApZones: { value: null as THREE.DataTexture | null },
   };
 }
+
+/**
+ * The scoped armour paint's zone table (262): a zone a run of this many RGBA float texels — its plate's plane (normal,
+ * offset), six outline edge planes (unused: 0, 0, 0, -1) and its colour (rgb; a = 1 when sampled).
+ */
+export const ARMOR_PAINT_ZONE_TEXELS = 8;
+export const ARMOR_PAINT_ZONE_EDGES = 6;
+
+/** The paints the armour paint colours: the vehicle's armour and fitting paint (never the gun, gear, glass or kit). */
+function armorPaintRole(mat: THREE.Material): boolean {
+  const role = mat.userData?.appearanceRole;
+  return (role === 'armorPaint' && mat.name !== 'cot:barrel-paint') || role === 'fittingPaint';
+}
+
+/**
+ * The scoped armour flashlight as paint (262; owner, 2026-10-27: "check how camos apply ... that camo changes colour
+ * depending on where the tank part is"): every fragment of the vehicle's own armour paint takes the colour of the armour
+ * zone it lies in — the authored plate (glacis, lower plate, cheek, mantlet, side, roof, rear) as combatAnatomy's
+ * nearestPlate judges a cell face, per point: the plane it lies nearest, plus 0.75 m a metre outside the plate's outline
+ * and 1.25 m for facing away (more than ~83° away: never), in the hull's or the turret's combat frame (the turret's where
+ * the point is inside the turret's envelope). The score is linear between planes, so borders are straight. Only what is
+ * seen is painted: no shell over the cells, nothing hidden behind skirts or ERA. Zone borders draw as anti-aliased
+ * lines where the two best scores meet.
+ */
+const ARMOR_PAINT_COMMON_GLSL = `
+uniform float uApOn;
+uniform float uApPaint;
+uniform mat4 uApHullInv;
+uniform mat4 uApTurInv;
+uniform vec3 uApTurMin;
+uniform vec3 uApTurMax;
+uniform vec2 uApCounts;
+uniform sampler2D uApZones;
+varying vec3 vApW;
+varying vec3 vApN;
+`;
+
+const ARMOR_PAINT_VERTEX_GLSL = `
+{
+  vec4 apV = vec4( transformed, 1.0 );
+  vec3 apNo = objectNormal;
+  #ifdef USE_BATCHING
+    apV = batchingMatrix * apV;
+    apNo = mat3( batchingMatrix ) * apNo;
+  #endif
+  #ifdef USE_INSTANCING
+    apV = instanceMatrix * apV;
+    apNo = mat3( instanceMatrix ) * apNo;
+  #endif
+  vApW = ( modelMatrix * apV ).xyz;
+  vApN = mat3( modelMatrix ) * apNo;
+}
+`;
+
+const ARMOR_PAINT_DIFFUSE_GLSL = `
+vec3 apColor = vec3( 0.0 );
+float apMix = 0.0;
+float apLine = 0.0;
+if ( uApOn > 0.5 && uApPaint > 0.5 ) {
+  vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
+  bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
+  mat4 apInv = apTurret ? uApTurInv : uApHullInv;
+  vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
+  vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
+  // the surface's own (smooth) normal in the frame, or the face's where a fitting carries none; a face seen from behind
+  // (an open part's inside) faces the eye
+  vec3 apNs = mat3( apInv ) * vApN;
+  vec3 apN = dot( apNs, apNs ) > 1e-8 ? normalize( apNs ) : normalize( cross( dFdx( apP ), dFdy( apP ) ) );
+  if ( dot( apN, apEye - apP ) < 0.0 ) apN = -apN;
+  int apFrom = apTurret ? int( uApCounts.x + 0.5 ) : 0;
+  int apTo = apTurret ? int( uApCounts.x + uApCounts.y + 0.5 ) : int( uApCounts.x + 0.5 );
+  float apBest = -1e9;
+  float apSecond = -1e9;
+  vec4 apPick = vec4( 0.0 );
+  for ( int k = apFrom; k < apTo; k++ ) {
+    vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
+    float apFacing = dot( apPl.xyz, apN );
+    if ( apFacing < 0.12 ) continue;
+    float apGapOut = 0.0;
+    for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
+      vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
+      apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
+    }
+    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - 0.75 * apGapOut - 1.25 * ( 1.0 - apFacing );
+    if ( apScore > apBest ) {
+      apSecond = apBest;
+      apBest = apScore;
+      apPick = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS - 1}, 0 ), 0 );
+    } else if ( apScore > apSecond ) {
+      apSecond = apScore;
+    }
+  }
+  if ( apBest > -1e8 ) {
+    apColor = apPick.a > 0.5 ? apPick.rgb : vec3( 0.40, 0.45, 0.50 );
+    apMix = 0.5;
+    if ( apSecond > -1e8 ) {
+      float apMargin = apBest - apSecond;
+      apLine = 1.0 - smoothstep( 0.6, 1.8, apMargin / max( fwidth( apMargin ), 1e-5 ) );
+    }
+    diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
+    diffuseColor.rgb = mix( diffuseColor.rgb, min( apColor * 1.35 + 0.12, vec3( 1.0 ) ), apLine * 0.85 );
+  }
+}
+`;
+
+const ARMOR_PAINT_EMISSIVE_GLSL = `
+totalEmissiveRadiance += apColor * ( apMix * 0.12 + apLine * 0.3 );
+`;
 
 /** The dents a live wreck's hull and turret carry in the burn hook (wreckDents.ts plans them). */
 export const LIVE_HULL_DENTS = 6;
@@ -4004,15 +4122,17 @@ export function applyBurnHook(
     ownKey: Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey'),
   };
   BURN_HOOK_PRIOR.set(mat, prior);
+  const paints = armorPaintRole(mat);
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
     Object.assign(shader.uniforms, burnU);
+    shader.uniforms.uApPaint = { value: paints ? 1 : 0 };
     // (mode-sheen-perf-243) one mask a program: an energy skin compiles through its paint's live chain
     // (game/juggernautVisual.ts runVehicleHookChain) and outlives a kill, so the sweep can hook the skin and later its
     // paint (a detail mesh still wearing it): the inner mask stands, the outer adds only its (the same visual's) uniforms
     if (shader.vertexShader.includes('varying vec3 vBrnW;')) return;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n${CRUMPLE_NORMAL_GLSL}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 transformed += crD;
@@ -4022,20 +4142,21 @@ transformed += crD;
     brnP = instanceMatrix * brnP;
   #endif
   vBrnW = ( modelMatrix * brnP ).xyz;
-}`);
+}
+${ARMOR_PAINT_VERTEX_GLSL}`);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}`)
+      .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <roughnessmap_fragment>',
-        `${BURN_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );`)
+        `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );`)
       .replace('#include <metalnessmap_fragment>',
         '#include <metalnessmap_fragment>\nmetalnessFactor = mix( metalnessFactor, 0.06, brnM );')
       .replace('#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>\n${BURN_EMISSIVE_GLSL}`);
+        `#include <emissivemap_fragment>\n${BURN_EMISSIVE_GLSL}\n${ARMOR_PAINT_EMISSIVE_GLSL}`);
   };
   // the wrapped shader string differs from unwrapped materials sharing the
   // old cache key — suffix it so the program cache never aliases them
   mat.customProgramCacheKey = function () {
-    return (typeof prevKey === 'function' ? prevKey.call(this) : '') + '|burn-r7';
+    return (typeof prevKey === 'function' ? prevKey.call(this) : '') + '|burn-r8';
   };
   prior.wrapper = mat.onBeforeCompile;
   mat.needsUpdate = true;

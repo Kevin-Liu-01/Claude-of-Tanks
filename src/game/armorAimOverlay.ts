@@ -1,48 +1,73 @@
-// WoT/Blitz-style scoped armor flashlight. The overlay is rendered from the
-// same closed collision cells used by authoritative shell traces, and every
-// color sample calls queryAimArmor + estimatePenRatio. It therefore includes
-// impact angle, normalization, ricochet, ERA, spaced armor, tracks and shell
-// falloff instead of painting a static thickness texture. Scope state owns
-// visibility; direct reticle contact only supplies the ordinary HUD marker.
+// WoT/Blitz-style scoped armor flashlight, painted on the vehicle itself (262). Every colour sample calls queryAimArmor
+// + estimatePenRatio against the closed collision cells authoritative shell traces use, so it includes impact angle,
+// normalization, ricochet, ERA, spaced armor, tracks and shell falloff. Scope state owns visibility; direct reticle
+// contact only supplies the ordinary HUD marker.
+//
+// Owner, 2026-10-27: "make highlighting simpler and generalized ... check how camos apply ... that camo changes colour
+// depending on where the tank part is". Until 262 the flashlight was a translucent shell drawn over the cells' outer
+// skin: the cells are convex slices hulled from the mesh, so a glacis came out as triangle fans and tents, plates
+// zigzagged along hull triangles, cracks between slices drew as stripes, and skirts and ERA hid it. Now it is paint, as
+// camo is: the vehicle's own armour and fitting paint takes, per fragment, the colour of the armour zone it lies in
+// (vehicles/materials.ts ARMOR_PAINT: the authored plate — glacis, lower plate, cheek, mantlet, side, roof, rear — it
+// lies nearest, inside whose outline and facing its way), with straight zone borders. Only what is seen is painted.
+// Each zone's colour is blended from a few samples on the cells' faces the authority gives that plate.
+//
+// The paint rides the burn hook every battle vehicle's materials carry from the warm (prewarmBurn): no program of its
+// own, nothing to compile on the first scope. This runtime fills each scoped vehicle's zone table (one small float
+// texture) and its frames.
 
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
-import { buildFlashlightGeometry, createFlashlightMaterial, type FlashlightSample } from './armorFlashlightMesh.ts';
+import { armorSkinPanels } from './armorSkin.ts';
+import { zonePlates } from './armorZones.ts';
+import { ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 const SAMPLE_BATCH_SIZE = 48;
-// 2026-09-13 owner review ("the highlights are sometimes behind tank
-// surfaces — make them a little bigger than the tank"): the shell stands just
-// proud of skirts, stowage and ERA. 243 (owner: "so many terrible weird
-// geometries"): it is the cells' outer skin, evenly lifted, with outlined
-// panels (armorFlashlightMesh.ts), not every cell triangle blown up about its
-// own cell. 262 (owner: "make highlighting simpler and generalized"): a few
-// armour panels per zone with straight borders (armorPanels.ts), each one
-// colour blended from a few samples spread over it.
 const MAX_QUERY_M = 820;
-// A sample whose ray meets main armour this far (m) short of the panel point
-// sees another panel in front of it (a turret over the hull roof, a sponson
-// over the side): it counts only when no sample of the panel is clear.
-const OCCLUDED_M = 0.12;
+/**
+ * A zone aims at most this many samples, spread over the faces the authority gives its plate. A sample whose ray meets
+ * other main armour first (a turret over the hull roof) counts only when none of the zone's is clear.
+ */
+const ZONE_SAMPLES = 3;
+/** The turret's envelope (its cells' bounds) grown by this (m): a fragment inside it is painted in the turret frame. */
+const TURRET_ENVELOPE_GROW_M = 0.05;
 
 const LOW = new THREE.Color(0xe53d35);
 const MID = new THREE.Color(0xf0aa35);
 const HIGH = new THREE.Color(0x48d985);
-const NEUTRAL = new THREE.Color(0x66737f);
 const _color = new THREE.Color();
 const _world = new THREE.Vector3();
 const _dir = new THREE.Vector3();
+const _frame = new THREE.Matrix4();
+const _unscale = new THREE.Matrix4();
 const _pose = {
   pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
 };
 
 export type ArmorOverlayModel = ArmorModel;
 
+/** The visual's paint handles (vehicles/tankFactoryCore.ts armorPaint): the burn hook's uniforms and the rig groups. */
+interface ArmorPaintHandles {
+  uniforms: {
+    uApOn: { value: number };
+    uApHullInv: { value: THREE.Matrix4 };
+    uApTurInv: { value: THREE.Matrix4 };
+    uApTurMin: { value: THREE.Vector3 };
+    uApTurMax: { value: THREE.Vector3 };
+    uApCounts: { value: THREE.Vector2 };
+    uApZones: { value: THREE.DataTexture | null };
+  };
+  hull: THREE.Object3D;
+  turret: THREE.Object3D | null;
+}
+
 interface ArmorOverlayVisual {
   root: THREE.Object3D;
+  armorPaint?(): ArmorPaintHandles | null;
 }
 
 export interface ArmorOverlayTarget {
@@ -56,16 +81,23 @@ export interface ArmorOverlayTarget {
   spec?: { armor?: ArmorOverlayModel } | null;
 }
 
-interface ArmorOverlayFrame {
-  owner: THREE.Object3D;
-  mesh: THREE.Mesh;
-  geometry: THREE.BufferGeometry;
-  color: THREE.Float32BufferAttribute;
-  samples: FlashlightSample[];
-  targets: Uint32Array;
+/** One zone's samples: frame-local points on the armour, the share each stands for, and which frame (0 hull, 1 turret). */
+interface ZoneSamples {
+  readonly points: readonly (readonly number[])[];
+  readonly weights: readonly number[];
+  readonly turret: boolean;
 }
 
-/** The panel being sampled across batches: its clear and its occluded samples' weighted ratio sums. */
+/** A spec's paint: its zones' table (planes and outlines; colours left blank), the turret envelope, the samples. */
+interface PaintTemplate {
+  readonly table: Float32Array;
+  readonly hullZones: number;
+  readonly turretZones: number;
+  readonly turretMin: THREE.Vector3;
+  readonly turretMax: THREE.Vector3;
+  readonly samples: ZoneSamples[];
+}
+
 interface PanelBlend {
   clear: number;
   clearWeight: number;
@@ -75,14 +107,15 @@ interface PanelBlend {
 
 interface ArmorOverlayEntry {
   target: ArmorOverlayTarget;
-  group: THREE.Group;
-  frames: ArmorOverlayFrame[];
+  paint: ArmorPaintHandles;
+  template: PaintTemplate;
+  table: Float32Array;
+  texture: THREE.DataTexture;
   visible: boolean;
   inScope: boolean;
   sampling: boolean;
-  sampleFrameIndex: number;
-  samplePanelIndex: number;
-  samplePointIndex: number;
+  sampleZone: number;
+  samplePoint: number;
   blend: PanelBlend;
   nextSampleMs: number;
   lastShellSpec: DamageShellSpec | null;
@@ -107,20 +140,124 @@ export interface ArmorAimOverlayRuntime {
   dispose(): void;
 }
 
-function penetrationColor(ratio: number, out: THREE.Color): THREE.Color {
-  if (!Number.isFinite(ratio)) return out.copy(NEUTRAL);
+function penetrationColor(ratio: number, out: THREE.Color): THREE.Color | null {
+  if (!Number.isFinite(ratio)) return null;
   if (ratio <= 0.72) return out.copy(LOW);
   if (ratio < 1) return out.copy(LOW).lerp(MID, (ratio - 0.72) / 0.28);
   if (ratio < 1.35) return out.copy(MID).lerp(HIGH, (ratio - 1) / 0.35);
   return out.copy(HIGH);
 }
 
-function ownerForFrame(
-  visual: ArmorOverlayVisual | undefined,
-  turretLocal: boolean,
-): THREE.Object3D | null {
-  if (!visual?.root) return null;
-  return visual.root.getObjectByName(turretLocal ? 'rig_turret' : 'rig_hull') || visual.root;
+const sub = (a: readonly number[], b: readonly number[]): number[] => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const distance = (a: readonly number[], b: readonly number[]): number => {
+  const d = sub(a, b);
+  return Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+};
+
+/**
+ * A zone's samples: the centroids of the largest pieces of the cells' skin (sim's armorSkin: the surface a shell meets
+ * first) the authority gives its plate, spread (each the farthest from those taken), weighted by the area nearest
+ * each; a plate no face takes is sampled at its outline's centre.
+ */
+function zoneSamples(
+  skin: ReturnType<typeof armorSkinPanels>,
+  plate: unknown,
+  outline: readonly (readonly number[])[],
+  turret: boolean,
+): ZoneSamples {
+  const pieces: Array<{ centroid: number[]; area: number }> = [];
+  for (const panel of skin) {
+    if (panel.plate !== plate) continue;
+    for (const piece of panel.pieces) {
+      let area = 0;
+      const centroid = [0, 0, 0];
+      for (let i = 1; i + 1 < piece.length; i++) {
+        const u = sub(piece[i], piece[0]), v = sub(piece[i + 1], piece[0]);
+        const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
+        const triangle = Math.sqrt(cx * cx + cy * cy + cz * cz) / 2;
+        area += triangle;
+        for (let axis = 0; axis < 3; axis++) centroid[axis] += triangle * (piece[0][axis] + piece[i][axis] + piece[i + 1][axis]) / 3;
+      }
+      if (!(area > 1e-6)) continue;
+      for (let axis = 0; axis < 3; axis++) centroid[axis] /= area;
+      pieces.push({ centroid, area });
+    }
+  }
+  if (!pieces.length) {
+    const centre = [0, 0, 0];
+    for (const point of outline) for (let axis = 0; axis < 3; axis++) centre[axis] += point[axis] / outline.length;
+    return { points: [centre], weights: [1], turret };
+  }
+  pieces.sort((a, b) => b.area - a.area);
+  const chosen = [pieces[0]];
+  while (chosen.length < ZONE_SAMPLES) {
+    let best = null as (typeof pieces)[number] | null, bestScore = 0;
+    for (const piece of pieces) {
+      if (chosen.includes(piece) || piece.area < pieces[0].area * 0.1) continue;
+      let near = Infinity;
+      for (const taken of chosen) near = Math.min(near, distance(piece.centroid, taken.centroid));
+      const score = near * Math.sqrt(piece.area);
+      if (score > bestScore) { bestScore = score; best = piece; }
+    }
+    if (!best) break;
+    chosen.push(best);
+  }
+  let total = 0;
+  const weights = chosen.map(() => 0);
+  for (const piece of pieces) {
+    let nearest = 0;
+    for (let k = 1; k < chosen.length; k++) {
+      if (distance(piece.centroid, chosen[k].centroid) < distance(piece.centroid, chosen[nearest].centroid)) nearest = k;
+    }
+    weights[nearest] += piece.area;
+    total += piece.area;
+  }
+  return { points: chosen.map((piece) => piece.centroid), weights: weights.map((weight) => weight / total), turret };
+}
+
+/** One template per armour model (one per spec): every vehicle of a spec shares the zones, only its colours are its own. */
+const templates = new WeakMap<object, PaintTemplate | null>();
+
+function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
+  const hull = zonePlates(armor.hullPlates);
+  const turretCells = armor.collisionShells?.turret || [];
+  const turret = turretCells.length ? zonePlates(armor.turretPlates) : [];
+  if (!hull.length && !turret.length) return null;
+  const zones = [...hull, ...turret];
+  const table = new Float32Array(zones.length * ARMOR_PAINT_ZONE_TEXELS * 4);
+  zones.forEach((zone, index) => {
+    const base = index * ARMOR_PAINT_ZONE_TEXELS * 4;
+    table.set([zone.normal[0], zone.normal[1], zone.normal[2], zone.offset], base);
+    for (let e = 0; e < ARMOR_PAINT_ZONE_EDGES; e++) {
+      const edge = zone.edges[e];
+      table.set(edge ? [edge.normal[0], edge.normal[1], edge.normal[2], edge.offset] : [0, 0, 0, -1], base + (1 + e) * 4);
+    }
+  });
+  const turretMin = new THREE.Vector3(Infinity, Infinity, Infinity), turretMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const cell of turretCells) {
+    turretMin.min(_world.fromArray(cell.min));
+    turretMax.max(_world.fromArray(cell.max));
+  }
+  if (turretCells.length) {
+    turretMin.subScalar(TURRET_ENVELOPE_GROW_M);
+    turretMax.addScalar(TURRET_ENVELOPE_GROW_M);
+  } else {
+    turretMin.set(1, 1, 1); turretMax.set(-1, -1, -1);
+  }
+  const hullSkin = armorSkinPanels(armor.collisionShells?.hull);
+  const turretSkin = armorSkinPanels(turretCells);
+  const samples = zones.map((zone, index) => {
+    const onTurret = index >= hull.length;
+    const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
+    return zoneSamples(onTurret ? turretSkin : hullSkin, zone.plate, outline, onTurret);
+  });
+  return { table, hullZones: hull.length, turretZones: turret.length, turretMin, turretMax, samples };
+}
+
+/** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
+function frameInverse(group: THREE.Object3D, out: THREE.Matrix4): THREE.Matrix4 {
+  _unscale.makeScale(1 / (group.scale.x || 1), 1 / (group.scale.y || 1), 1 / (group.scale.z || 1));
+  return out.multiplyMatrices(group.matrixWorld, _unscale).invert();
 }
 
 function blendedRatio(blend: PanelBlend): number {
@@ -129,23 +266,11 @@ function blendedRatio(blend: PanelBlend): number {
   return NaN;
 }
 
-function paintSample(
-  attribute: THREE.Float32BufferAttribute,
-  targets: Uint32Array,
-  sample: FlashlightSample,
-  color: THREE.Color,
-): void {
-  for (let index = sample.start; index < sample.end; index++) {
-    attribute.setXYZ(targets[index], color.r, color.g, color.b);
-  }
-}
-
 /**
  * @returns {{prime:Function,warm:Function,update:Function,hide:Function,clear:Function,dispose:Function}}
  */
 export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   const entries = new Map<string, ArmorOverlayEntry>();
-  const material = createFlashlightMaterial();
   const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
 
@@ -153,68 +278,60 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (!target?.id || !target.visual?.root) return null;
     const existing = entries.get(target.id);
     if (existing) return existing;
-    const group = new THREE.Group();
-    group.name = `armor_flashlight_${target.id}`;
-    group.visible = false;
-    group.renderOrder = 92;
-    const frames: ArmorOverlayFrame[] = [];
-    const frameKinds = [['hull', false], ['turret', true]] as const;
-    for (const [key, turretLocal] of frameKinds) {
-      const armor = target.spec?.armor;
-      const cells = armor?.collisionShells?.[key] || [];
-      const built = buildFlashlightGeometry(cells, turretLocal ? armor?.turretPlates : armor?.hullPlates, NEUTRAL);
-      const owner = ownerForFrame(target.visual, turretLocal);
-      if (!built || !owner) continue;
-      const mesh = new THREE.Mesh(built.geometry, material);
-      mesh.name = `armor_flashlight_${key}`;
-      // combat coordinates carry no rig scale (tools/rigid-hull-frame.mjs: the CR2/CR3 families' 1.1, the Improved's
-      // narrowing): the cells drawn under a scaled rig undo it
-      mesh.scale.set(1 / owner.scale.x, 1 / owner.scale.y, 1 / owner.scale.z);
-      mesh.renderOrder = 92;
-      mesh.visible = false;
-      mesh.frustumCulled = true;
-      mesh.raycast = () => {};
-      owner.add(mesh);
-      frames.push({ owner, mesh, ...built });
-    }
-    const entry = {
-      target,
-      group,
-      frames,
+    const armor = target.spec?.armor;
+    const paint = target.visual.armorPaint?.() ?? null;
+    if (!armor || !paint) return null;
+    let template = templates.get(armor);
+    if (template === undefined) { template = buildTemplate(armor); templates.set(armor, template); }
+    if (!template) return null;
+    const table = template.table.slice();
+    const texture = new THREE.DataTexture(table, table.length / 4, 1, THREE.RGBAFormat, THREE.FloatType);
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    texture.needsUpdate = true;
+    const entry: ArmorOverlayEntry = {
+      target, paint, template, table, texture,
       visible: false,
       inScope: false,
       sampling: false,
-      sampleFrameIndex: 0,
-      samplePanelIndex: 0,
-      samplePointIndex: 0,
+      sampleZone: 0,
+      samplePoint: 0,
       blend: { clear: 0, clearWeight: 0, hidden: 0, hiddenWeight: 0 },
       nextSampleMs: -Infinity,
       lastShellSpec: null,
     };
-    // The meshes live directly in their articulation owners; `group` is only
-    // a lightweight visibility/state handle and never enters the scene.
     entries.set(target.id, entry);
     return entry;
   }
 
+  // the paint rides the burn hook's programs (compiled with every battle vehicle's warm): nothing to expose here
   function warm(): () => void {
-    const warmed: THREE.Mesh[] = [];
-    for (const entry of entries.values()) {
-      for (const frame of entry.frames) {
-        if (frame.mesh.visible) continue;
-        frame.mesh.visible = true;
-        warmed.push(frame.mesh);
-      }
-    }
-    return () => {
-      for (const mesh of warmed) mesh.visible = false;
-    };
+    return () => {};
   }
 
   function setVisible(entry: ArmorOverlayEntry | null, visible: boolean): void {
     if (!entry || entry.visible === visible) return;
     entry.visible = visible;
-    for (const frame of entry.frames) frame.mesh.visible = visible;
+    const u = entry.paint.uniforms;
+    if (visible) {
+      u.uApZones.value = entry.texture;
+      u.uApCounts.value.set(entry.template.hullZones, entry.template.turretZones);
+      u.uApTurMin.value.copy(entry.template.turretMin);
+      u.uApTurMax.value.copy(entry.template.turretMax);
+    }
+    u.uApOn.value = visible ? 1 : 0;
+  }
+
+  /** The vehicle's frames this frame (its hull and turret move under the paint). */
+  function syncFrames(entry: ArmorOverlayEntry): void {
+    const { hull, turret, uniforms } = entry.paint;
+    hull.updateWorldMatrix(true, false);
+    frameInverse(hull, uniforms.uApHullInv.value);
+    if (turret) {
+      turret.updateWorldMatrix(true, false);
+      frameInverse(turret, uniforms.uApTurInv.value);
+    }
   }
 
   function hide(): void {
@@ -227,6 +344,13 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     visibleEntries.length = 0;
   }
 
+  function paintZone(entry: ArmorOverlayEntry, zone: number, ratio: number): void {
+    const color = penetrationColor(ratio, _color);
+    const at = (zone * ARMOR_PAINT_ZONE_TEXELS + ARMOR_PAINT_ZONE_TEXELS - 1) * 4;
+    if (color) { entry.table[at] = color.r; entry.table[at + 1] = color.g; entry.table[at + 2] = color.b; entry.table[at + 3] = 1; }
+    else entry.table[at + 3] = 0;
+  }
+
   function sampleBatch(
     entry: ArmorOverlayEntry,
     shellSpec: DamageShellSpec | null | undefined,
@@ -236,61 +360,63 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const armor = target.spec?.armor;
     if (!target?.state || !target?.combat || !armor || !shellSpec || !muzzle) return true;
     const pose = tankPoseFromState(target.state, _pose);
-    let remaining = SAMPLE_BATCH_SIZE;
+    const zones = entry.template.samples;
     const blend = entry.blend;
-    while (entry.sampleFrameIndex < entry.frames.length && remaining > 0) {
-      const frame = entry.frames[entry.sampleFrameIndex];
-      frame.owner.updateWorldMatrix(true, false);
-      while (entry.samplePanelIndex < frame.samples.length && remaining > 0) {
-        const panel = frame.samples[entry.samplePanelIndex];
-        if (entry.samplePointIndex === 0) {
-          blend.clear = 0; blend.clearWeight = 0; blend.hidden = 0; blend.hiddenWeight = 0;
-        }
-        while (entry.samplePointIndex < panel.points.length && remaining > 0) {
-          const k = entry.samplePointIndex++;
-          remaining--;
-          _world.fromArray(panel.points[k]).applyMatrix4(frame.owner.matrixWorld);
-          _dir.copy(_world).sub(muzzle);
-          const distance = _dir.length();
-          if (!(distance > 0.05) || distance > MAX_QUERY_M) continue;
-          _dir.multiplyScalar(1 / distance);
-          const maxDist = Math.min(MAX_QUERY_M, distance + 0.3);
-          const info = queryAimArmor(muzzle, _dir, maxDist, pose, armor, target.combat.eraSpent) as AimArmorInfo | null;
-          if (!info) continue;
-          const ratio = estimatePenRatio(shellSpec, info.distM, info);
-          if (!Number.isFinite(ratio)) continue;
-          const last = info.layers[info.layers.length - 1];
-          const weight = panel.weights[k];
-          if (last && last.plate.kind === 'main' && last.t * maxDist < distance - OCCLUDED_M) {
-            blend.hidden += ratio * weight; blend.hiddenWeight += weight;
-          } else {
-            blend.clear += ratio * weight; blend.clearWeight += weight;
-          }
-        }
-        if (entry.samplePointIndex < panel.points.length) break;
-        paintSample(frame.color, frame.targets, panel, penetrationColor(blendedRatio(blend), _color));
-        entry.samplePanelIndex++;
-        entry.samplePointIndex = 0;
+    let remaining = SAMPLE_BATCH_SIZE;
+    let painted = false;
+    while (entry.sampleZone < zones.length && remaining > 0) {
+      const zone = zones[entry.sampleZone];
+      if (entry.samplePoint === 0) {
+        blend.clear = 0; blend.clearWeight = 0; blend.hidden = 0; blend.hiddenWeight = 0;
       }
-      frame.color.needsUpdate = true;
-      if (entry.samplePanelIndex >= frame.samples.length) {
-        entry.sampleFrameIndex++;
-        entry.samplePanelIndex = 0;
+      const owner = zone.turret ? entry.paint.turret : entry.paint.hull;
+      if (owner) {
+        _frame.multiplyMatrices(owner.matrixWorld, _unscale.makeScale(1 / (owner.scale.x || 1), 1 / (owner.scale.y || 1), 1 / (owner.scale.z || 1)));
       }
+      while (entry.samplePoint < zone.points.length && remaining > 0) {
+        const k = entry.samplePoint++;
+        remaining--;
+        if (!owner) continue;
+        _world.fromArray(zone.points[k]).applyMatrix4(_frame);
+        _dir.copy(_world).sub(muzzle);
+        const reach = _dir.length();
+        if (!(reach > 0.05) || reach > MAX_QUERY_M) continue;
+        _dir.multiplyScalar(1 / reach);
+        const maxDist = Math.min(MAX_QUERY_M, reach + 0.3);
+        const info = queryAimArmor(muzzle, _dir, maxDist, pose, armor, target.combat.eraSpent) as AimArmorInfo | null;
+        if (!info) continue;
+        const ratio = estimatePenRatio(shellSpec, info.distM, info);
+        if (!Number.isFinite(ratio)) continue;
+        // clear: the ray's first main armour is the sample's own face (within 12 cm of it); else it saw another first
+        const last = info.layers[info.layers.length - 1];
+        const weight = zone.weights[k];
+        if (last && last.plate.kind === 'main' && last.t * maxDist < reach - 0.12) {
+          blend.hidden += ratio * weight; blend.hiddenWeight += weight;
+        } else {
+          blend.clear += ratio * weight; blend.clearWeight += weight;
+        }
+      }
+      if (entry.samplePoint < zone.points.length) break;
+      paintZone(entry, entry.sampleZone, blendedRatio(blend));
+      painted = true;
+      entry.sampleZone++;
+      entry.samplePoint = 0;
     }
-    return entry.sampleFrameIndex >= entry.frames.length;
+    if (painted) entry.texture.needsUpdate = true;
+    return entry.sampleZone >= zones.length;
   }
 
   function addScopedTarget(candidate: ArmorOverlayTarget | null | undefined): void {
     if (!candidate || candidate.combat?.destroyed || !candidate.visual?.root?.visible) return;
     const entry = prime(candidate);
-    if (!entry?.frames.length) return;
+    if (!entry) return;
     entry.inScope = true;
     if (!entry.visible) {
       entry.sampling = false;
       entry.nextSampleMs = -Infinity;
     }
     setVisible(entry, true);
+    syncFrames(entry);
     visibleEntries.push(entry);
   }
 
@@ -324,9 +450,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       }
       if (entry.sampling || sampleNowMs < entry.nextSampleMs) continue;
       entry.sampling = true;
-      entry.sampleFrameIndex = 0;
-      entry.samplePanelIndex = 0;
-      entry.samplePointIndex = 0;
+      entry.sampleZone = 0;
+      entry.samplePoint = 0;
     }
   }
 
@@ -375,10 +500,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   function clear(): void {
     hide();
     for (const entry of entries.values()) {
-      for (const frame of entry.frames) {
-        frame.mesh.removeFromParent();
-        frame.geometry.dispose();
-      }
+      if (entry.paint.uniforms.uApZones.value === entry.texture) entry.paint.uniforms.uApZones.value = null;
+      entry.texture.dispose();
     }
     entries.clear();
     visibleEntries.length = 0;
@@ -387,7 +510,6 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
 
   function dispose(): void {
     clear();
-    material.dispose();
   }
 
   return { prime, warm, update, hide, clear, dispose };

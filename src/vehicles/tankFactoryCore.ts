@@ -1321,6 +1321,12 @@ export interface TankVisual {
   awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
+  /**
+   * The scoped armour paint's handles (262, game/armorAimOverlay.ts): the burn hook's uniforms (materials.ts uAp*: the
+   * paint rides the hook prewarmBurn installs) and the hull's and the turret's rig groups (their frames). Null when the
+   * visual draws nothing.
+   */
+  armorPaint(): { uniforms: ReturnType<typeof makeBurnUniforms>; hull: THREE.Object3D; turret: THREE.Object3D | null } | null;
   /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
   releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
@@ -11497,6 +11503,10 @@ export function* createTankRuntimeSteps(
      * materials pre-compile. Idempotent (applyBurnHook self-guards); a
      * disarmed hook is exact-identity output (mix factors are 0).
      */
+    armorPaint() {
+      return geometryOnly ? null : { uniforms: burnU, hull: hullG, turret: turretG ?? null };
+    },
+
     prewarmBurn() {
       if (destroyed) return [];
       root.traverse((o) => {
@@ -11520,7 +11530,7 @@ export function* createTankRuntimeSteps(
       return [...wreckFallbackWarmSources];
     },
 
-    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r7': the Garage's own programs were
+    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r8': the Garage's own programs were
     // linked without it, so the hero it adopts back from a battle drops the disarmed hooks (the next battle's prewarmBurn
     // puts them back) and its Garage paint compiles as its build did
     releaseBurnHooks() {
