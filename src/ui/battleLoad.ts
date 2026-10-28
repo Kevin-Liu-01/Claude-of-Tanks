@@ -325,6 +325,9 @@ ${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:
 /* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
    would take the name's room) */
 ${PORTRAIT_ROWS} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;--bl-row-min:32px;}
+/* (a long side's rows a pixel nearer, so one more whole row fits over its cue: at 4 px fourteen a side left 34 px under
+   their seventh row at 320x568, the cue floating under it, gauntlet r19) */
+${PORTRAIT_ROWS} .cot-bl .team.long{--bl-row-gap:3px;}
 /* (its two lines hold 32 px at the least: a long side scrolls before they squeeze, 16 px rows cut them at 320x568) */
 ${PORTRAIT_ROWS} .cot-bl .team:not(.cards) .rows{grid-template-rows:repeat(var(--bl-count),minmax(var(--bl-row-min),var(--bl-row-height)));}
 /* (the mode's chip on a row of its own, the rules' chips under it: the clock wrapped alone, gauntlet r6) */

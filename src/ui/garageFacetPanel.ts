@@ -11,6 +11,7 @@
 
 import { t } from './i18n.ts';
 import { emptyState } from './components/components.ts';
+import { wholeChips } from './components/picker.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from './vehicleFacetIcons.ts';
@@ -208,7 +209,21 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     rowElements.push(row);
     const wrap = document.createElement('div');
     wrap.className = 'cot-facet-rowwrap';
-    wrap.append(row);
+    // a bare count at the row's end says how many chips lie past it ("+7", as the nation rail's): a cut chip hides, so the
+    // fade alone faded nothing (the r26 critic at 844 x 390: Light, IFV and the rest gone with no cue)
+    const more = document.createElement('span');
+    more.className = 'cot-facet-more num';
+    more.setAttribute('aria-hidden', 'true');
+    more.hidden = true;
+    wrap.append(row, more);
+    // a swipeable line (a landscape phone) shows whole chips: one its edge would cut hides (the r25 critic at 844 x 390)
+    wholeChips(row, () => {
+      const edge = row.getBoundingClientRect().left;
+      let after = 0;
+      for (const chip of row.children) if (chip.classList.contains('is-cut') && chip.getBoundingClientRect().left >= edge) after += 1;
+      more.textContent = after ? `+${after}` : '';
+      more.hidden = !after;
+    });
     return wrap;
   });
 

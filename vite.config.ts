@@ -453,7 +453,10 @@ export default defineConfig({
             // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
             // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
             // (564 B). It rides with the program warm owner again, as on 256.
-            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (integrator 261): the program receipt (engine/programReceipt.ts, 0.8 KB, the room-stalls lane's
+            // revealPrograms and lateLinks receipts) is a leaf main imports at boot and the lazy network composition imports
+            // too; on its own it was one more game and cn boot request. It rides with the program warm owner it measures.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn

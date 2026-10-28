@@ -226,6 +226,9 @@ export interface InputLayer {
   releaseToggles(): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
   setEnabled(enabled: boolean): void;
+  /** Start listening for gamepads (idempotent). The first gamepad listener starts the browser's gamepad service: the
+   *  boot calls this once the Garage has settled (main.ts), not while it builds. */
+  watchGamepads(): void;
   isLocked(): boolean;
   requestLock(request?: LockRequest): void;
   isCursorAim(): boolean;
@@ -930,7 +933,15 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // plugged in, so nothing is missed.
   let padEverConnected = false;
   const onPadConnected = () => { padEverConnected = true; };
-  window.addEventListener('gamepadconnected', onPadConnected);
+  // (boot-261) Adding the first gamepad listener starts Chrome's gamepad service through a synchronous round trip to
+  // the browser process (GamepadStartPolling): 1-2 ms on a quiet page, 0.27-0.61 s inside the Garage build on the
+  // boot-259 phone census, where the browser process is busy with the boot. watchGamepads adds it afterwards.
+  let padWatching = false;
+  function watchGamepads(): void {
+    if (padWatching || typeof window === 'undefined') return;
+    padWatching = true;
+    window.addEventListener('gamepadconnected', onPadConnected);
+  }
 
   function resetPadState(): void {
     padHeld.clear();
@@ -1468,6 +1479,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       }
       return out;
     },
+
+    watchGamepads,
 
     /** Gate the whole layer (settings menu open). Disabling clears held state;
      *  any pending fire edge dies on either flank of the toggle. */

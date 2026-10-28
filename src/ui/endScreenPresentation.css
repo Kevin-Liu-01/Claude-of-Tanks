@@ -50,7 +50,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card>img{object-fit:cont
    phone's card (66 px) has no room for it, and the line under the headline names the vehicle there */
 body[data-cot-width] .cot-es.cot-es--record .es-vn{display:none}
 /* a phone's tile lifts its tank off the floor (the policy's 4 px tile band left its tracks cut there) */
-@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card .hc-host{--hc-band:14px}}
+/* (a phone's 112 px card keeps the tank's antenna and roof gear under its top edge: its core at 84 % of the art's height
+   cut them off at 390x844 and 320x568, gauntlet r19) */
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card .hc-host{--hc-band:14px;--hc-hshare:.7}}
 @media(min-width:701px){
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn){grid-template-rows:1fr auto;align-content:end}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn) .hc-host{--hc-band:30px}
@@ -187,7 +189,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .si{flex:0 0 28px;heigh
 @container (max-width:1300px){body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .si{display:none}}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12px;left:0;transform:translateX(-50%);
   font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-3)}
-body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
+/* (the last event's chip and time end on the end marker's right point, the track's end, the marker under their corner:
+   a full -100% left the marker 14 px off the chip's corner, gauntlet r19) */
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(calc(-100% + 6px))}
 /* (the result's chip in the headline's capitals: "Alpha" under "ALPHA WINS", gauntlet r6) */
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb{text-transform:uppercase;letter-spacing:var(--track-label-s)}
 /* (a Chinese headline keeps the Latin one's air over its chips: its taller glyphs left half the gap, gauntlet r6; lifted by
@@ -367,6 +371,9 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr .st{grid-area:st}
 @media(min-width:701px) and (max-width:1279px) and (min-height:661px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
   body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card{display:grid;grid-row:span 2}
+  /* (its tier and class plates stand down on the card's 180 px: there they sat on the tank's roof and gun, gauntlet r19;
+     the name under it keeps the tank) */
+  body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle .es-vehicle-card :is(.hc-tier,.hc-class){display:none}
 }
 @media(min-width:701px) and (max-width:1279px) and (max-height:760px){
   body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}

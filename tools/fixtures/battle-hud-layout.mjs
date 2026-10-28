@@ -288,14 +288,16 @@ function state(name) {
     hud.stageSpectateBar({id:seat.id,specId:seat.spec.id,name:seat.displayName,vehicle:seat.spec.name,count:allies.length,index:2,allies});
     if(name==='spectator-pick')requestAnimationFrame(()=>document.querySelector('.cot-spec .subject')?.click());
   }
-  // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying
+  // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying;
+  // watch-markers: the markers' frame under the bar, riding
   if(name.startsWith('watch-')){
-    const view=name.slice(6), seat=tanks[3];
+    const view=name==='watch-markers'?'ride':name.slice(6), seat=tanks[3];
     void import('../../src/ui/watchHud.ts').then(({createWatchHud})=>{
       const watch=createWatchHud(()=>hud.root,{cycle(){},drone(){},toggleSeat(){},setClimb(){}});
       watch.update({view,tank:view==='drone'?null:{id:seat.id,team:'player',spec:{id:seat.spec.id,name:seat.spec.name,nation:seat.spec.nation}},
         canTake:true,speedIndex:2,speedSteps:5});
       window.__HUD_LAYOUT.watch=watch;
+      if(name==='watch-markers')settle();
     });
   }
   // ?state=gunship | drone: the player flying (the AC-130's gunship sight, a drone's feed), as the battle's aerial view
@@ -314,7 +316,11 @@ function state(name) {
     frame.camera=flightCamera;
     for(let i=0;i<5;i++)hud.update(frame);
   }
-  if(name==='markers')markers();
+  if(name==='markers'||name==='watch-markers')markers();
+  // ?state=proving | proving-moving: the proving ground's range (sim/matchModes.ts ProvingRangePresentation), its lanes'
+  // hulls the markers' enemies, the gun laid on the first: the target plate names its lane (owner 2026-10-27, "always
+  // have names their even if not (this is in proving ground)")
+  if(name==='proving'||name==='proving-moving')proving(name==='proving-moving');
   if(name==='hints')settings.showHints();
   if(name==='settings')settings.open();
   // (the frame carries the sight too: a mode set alone was undone by the next frame's 'battle', gauntlet r3 read idle)
@@ -347,6 +353,28 @@ function markers() {
   frame.aim={...frame.aim,point:at,distM:at.distanceTo(markerCamera.position),dispersionRadM:1.2,gunTargetId:tanks[8].id};
   tanks[8].combat.hp=Math.round(tanks[8].combat.maxHp*.62);tanks[9].combat.hp=Math.round(tanks[9].combat.maxHp*.35);
   for(let i=0;i<4;i++)hud.update(frame);
+  settle();
+}
+// (and frames for a moment more, as a battle runs them: the bars and the plate keep clear of what the layout measures each
+// pass, and a still whose last frame ran before a pass, or before Watch's bar mounted, kept a bar under the touch
+// ammunition card and the plate under Watch's bar)
+let settleUntil=0, settling=false;
+function settle() {
+  settleUntil=performance.now()+1500;
+  if(settling)return;
+  settling=true;
+  const again=()=>{hud.update(frame);if(performance.now()<settleUntil)requestAnimationFrame(again);else settling=false;};
+  requestAnimationFrame(again);
+}
+function proving(moving) {
+  // (each lane's range from the player's seat, as the plate reads it)
+  const seat=player.state.pos;
+  const lanes=MARKER_SEATS.filter(([i])=>tanks[i].team==='enemy').map(([i,x,z],index)=>({index,rangeM:Math.round(Math.hypot(x-seat.x,z-seat.z)),
+    presentDeg:0,x,z,targetId:tanks[i].id,targetSpecId:tanks[i].spec.id,targetName:tanks[i].spec.name,
+    shells:[{penMm:560,ratio:1.4,outcome:'pen'},{penMm:470,ratio:1.1,outcome:'marginal'},{penMm:300,ratio:.7,outcome:'nopen'}]}));
+  frame.matchModeState={id:'proving_ground',score:{alpha:0,bravo:0},target:0,
+    range:{mapId:'proving',moving,plateAnglesDeg:[0,30,60],origin:{x:0,z:0},lanes,plates:[],lastShot:null}};
+  markers();
 }
 function roster(allies, enemies) {
   const entries=Array.from({length:allies+enemies},(_,i)=>{
@@ -360,7 +388,16 @@ function roster(allies, enemies) {
   hud.update(frame);
 }
 // (the layout's published sight furniture, the HUD's own module instance: tools/hud-sight-furniture.browser.mjs reads it)
-window.__HUD_LAYOUT = {multiplayer,state, markers, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
+// ?bg=snow | night: a backdrop as bright as snow or as dark as a night battle under the HUD, for the markers' legibility
+// (the fixture runs without the 3D scene)
+const BACKDROPS={snow:'radial-gradient(120% 80% at 40% 30%,#f4f7fa,#d9e2ea 55%,#c4d0da)',
+  night:'radial-gradient(120% 80% at 40% 30%,#1b2433,#0c111b 60%,#05080d)'};
+const backdrop=BACKDROPS[new URLSearchParams(location.search).get('bg')];
+if(backdrop)document.body.style.background=backdrop;
+// ?names=bots: the other hulls without display names, so the plates carry the bots' callsigns (ui/botCallsigns.ts) where
+// the long commanders' names stand in for a room's players
+if(new URLSearchParams(location.search).get('names')==='bots')for(const tank of tanks)if(!tank.isPlayer)delete tank.displayName;
+window.__HUD_LAYOUT = {multiplayer,state, markers, proving, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 // (two more frames once layout settles: the HUD's size observers (the minimap's label size, 140 px and under none) land

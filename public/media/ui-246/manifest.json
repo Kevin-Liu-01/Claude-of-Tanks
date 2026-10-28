@@ -483,14 +483,14 @@
    "src": "/media/ui-246/gallery-hero.webp",
    "width": 1920,
    "height": 1080,
-   "bytes": 105862,
-   "sha256": "a6920559d6ae47b83fcf8115b6507fb7af029c11416d99153da4127c43bc1bae",
-   "shows": "The Tank Gallery inspecting a T-90M Proryv",
+   "bytes": 95748,
+   "sha256": "5a9049e4814b4fb869f9b68f24fa7c901b59d9115d1b88917475bc79bce46db6",
+   "shows": "The Tank Gallery inspecting a T-90AM II",
    "replaces": "/media/showcase-r2/11_gallery_hero.webp",
    "captured": {
-    "slot": null,
-    "at": null,
-    "staged": null
+    "slot": "gallery/hero",
+    "at": "2026-10-28T00:45:53.000Z",
+    "staged": "Tank Gallery, T-90AM II, Exterior hero view (re-shot after the T-90 renames, on 7d045a7588 + ddbe00b5aa)"
    }
   },
   {
@@ -499,14 +499,14 @@
    "src": "/media/ui-246/gallery-hero-640.webp",
    "width": 640,
    "height": 360,
-   "bytes": 23880,
-   "sha256": "bb417e11c505dbf0598175f88f2c586ef8f487f9fbf9a4df2914401e76f2b6e7",
-   "shows": "The Tank Gallery inspecting a T-90M Proryv",
+   "bytes": 20868,
+   "sha256": "ca827585de2bd7e7013d643ede4090d871b74582513bbf91eadd130cab7421b2",
+   "shows": "The Tank Gallery inspecting a T-90AM II",
    "replaces": "/media/showcase-r2/11_gallery_hero.webp",
    "captured": {
-    "slot": null,
-    "at": null,
-    "staged": null
+    "slot": "gallery/hero",
+    "at": "2026-10-28T00:45:53.000Z",
+    "staged": "Tank Gallery, T-90AM II, Exterior hero view (re-shot after the T-90 renames, on 7d045a7588 + ddbe00b5aa)"
    }
   },
   {

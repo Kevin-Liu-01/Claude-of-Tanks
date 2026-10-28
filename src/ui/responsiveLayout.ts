@@ -207,8 +207,15 @@ export function pinchFactor(visualWidth: number | undefined, layoutWidth: number
   return layout / visual;
 }
 
-/** pinchFactor() of a window: its visual viewport against its root's clientWidth. */
+/**
+ * pinchFactor() of a window: its visual viewport against its root's clientWidth. (boot-261) At a page scale of exactly
+ * 1 the visual viewport is the layout viewport (the pages lay out at device-width), so the factor is 1 without reading
+ * clientWidth: with classic scrollbars that read lays the page out first, 0.2 s inside the boot on the boot-259 phone
+ * census (installResponsiveLayout's first measure, over the freshly built Garage). Any other scale (a pinch, iOS page
+ * zoom, a fitted wide page) measures as before.
+ */
 export function pinchZoomFactor(win: LayoutViewportWindow | undefined = globalThis.window): number {
+  if (win?.visualViewport?.scale === 1) return 1;
   return pinchFactor(win?.visualViewport?.width, win?.document?.documentElement?.clientWidth);
 }
 

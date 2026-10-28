@@ -486,21 +486,30 @@ interface TeamTally {
 }
 interface HpBar {
   root: HTMLDivElement;
+  /** On the player's side (its bar gives way to an enemy's where the two would cross). */
+  ally: boolean;
+  /** The name line (whoever holds the hull, or its vehicle where none does) and the vehicle line under it. */
+  cs: HTMLElement;
   nm: HTMLElement;
   fill: HTMLElement;
   lastFrac: number;
+  lastCallsign: string;
   lastName: string;
-  lastOp: number;
   layoutW: number;
+  /** Its box's height: the vehicle line leaves it with no callsign over it (.solo) and on a short window. */
+  layoutH: number;
+  solo: boolean;
   /** The transform last written and whether the plate shows. */
   lastTransform: string;
   shown: boolean;
   /** The name changed while the bar was hidden: measured once it shows (updateHpBarLabel). */
   measure: boolean;
-  /** This frame's projected anchor and range (updateHpBars places the nearest first). */
+  /** This frame's projected anchor, range, lift off the tank's top and scale (updateHpBars places the nearest first). */
   sx: number;
   sy: number;
   dist: number;
+  lift: number;
+  k: number;
 }
 interface SpotMemory {
   vis: boolean;
@@ -1269,7 +1278,8 @@ import { createShotInfo } from './shotInfo.ts';
 // .ribbon)
 import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
-import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap } from './sightFurniture.ts';
+import { plateObstacles, sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap, worldPlateGap,
+  worldPlateSink } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -1770,6 +1780,8 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
   box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;}
 .cot-kf.out{opacity:0;}
+/* (a row the target plate crosses stands aside while it shows, hud.ts yieldFeedRows) */
+.cot-kf.yield{visibility:hidden;}
 /* (the names take their own width, so a row's marks follow its callsigns: a flex-filling victim pushed the crew mark
    90 px off its row, gauntlet r3; the right lane packs to its edge) */
 .cot-kf .k,.cot-kf .v{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2092,32 +2104,55 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 .cot-aerial-readout[hidden]{display:none}
 /* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
 .range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
-/* a target hull has no commander: the laid hull's plate names its vehicle, not a callsign */
-.range-mode .cot-tgt .nick{visibility:hidden}
-.realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
+.realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .tr{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:var(--battle-fs-11)}
 .cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
-.cot-hpb{position:absolute;width:128px;height:40px;text-align:center;will-change:transform;
-  contain:layout paint style;transform:translate3d(0,0,0);}
-.cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
-  font-family:${FONT_COND};
-  text-shadow:0 1px 2px oklch(from var(--surface-scene) l c h / .92),0 0 3px oklch(from var(--surface-scene) l c h / .68);white-space:nowrap;
+.cot-hpb{position:absolute;width:128px;text-align:center;will-change:transform;transform-origin:50% 100%;
+  contain:layout paint style;transform:translate3d(0,0,0);display:flex;flex-direction:column;
+  text-shadow:var(--battle-control-label-halo);}
+/* one block on the tank (owner 2026-10-27): the name line, the silhouette and whoever holds the hull, the vehicle under
+   it in the quieter ink, the bar the block's width and the side's pointer; a hull with no callsign keeps the vehicle on
+   the name line alone (.solo); a short window's bar keeps only the name (.short: the phone's narrow band between its
+   panels, where the zh floor's 13 px callsign and its silhouette met the ammunition card; the tank under the gun keeps
+   its vehicle line on the target plate). Its lines are as tall as their type (the zh floor's names had met the vehicle
+   line), and its height is measured with its copy (measureHpBar). */
+.cot-hpb .nm{height:1.3em;padding:1px 7px 0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
+  font-family:${FONT_COND};white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:5px;
   background:none;}
 .cot-hpb.ally .nm{color:var(--hud-own);}
-.cot-hpb .nm .si{width:26px;height:11px;flex:0 0 auto;display:block;}
-.cot-hpb .nm span{min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
-.cot-hpb .tr{height:6px;margin:0 7px;background:var(--hud-plate-strong);border:1px solid oklch(from var(--surface-scene) l c h / .9);
+/* (the name itself on the plate's axis, the silhouette hung before it, its box its drawn image, 2:1: the plates critic
+   found the name 12 px right of the bar, points and pointer while the silhouette and name centred as one) */
+.cot-hpb .nm .nw{position:relative;flex:0 0 auto;display:block;}
+.cot-hpb .nm .si{position:absolute;right:100%;top:50%;width:22px;height:11px;margin:-5.5px 4px 0 0;display:block;}
+/* (the silhouettes edged dark as the letters beside them are haloed: the ally's sat at 1.9:1 on snow, critic r3) */
+.cot-hpb .nm .si,.cot-tgt .cg{filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 0 1px var(--surface-scene))
+  drop-shadow(0 1px 1px var(--surface-scene));}
+.cot-hpb .nm span{display:block;min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
+.cot-hpb .vh{height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
+  white-space:nowrap;}
+/* (the quiet lines' halo doubled, so they hold over snow where their ink is the snow's own value) */
+.cot-hpb .vh,.cot-tgt .mt,.cot-tgt .hp{text-shadow:var(--battle-control-label-halo),var(--battle-control-label-halo);}
+.cot-hpb.solo .vh,.cot-hpbars.short .cot-hpb .vh{display:none;}
+.cot-hpbars.short .cot-hpb .nm{padding-inline:5px;letter-spacing:.03em;}
+.cot-hpbars.short .cot-hpb .nm .si{display:none;}
+.cot-hpbars.short .cot-hpb .tr{margin-inline:5px;}
+/* one bar for both plates: the strong plate's track inside a light hairline (it holds against a night sky) and its shadow */
+.cot-hpb .tr,.cot-tgt .tr{background:var(--hud-plate-strong);border:1px solid var(--line-3);
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
+.cot-hpb .tr{flex:none;height:6px;margin:2px 7px 0;}
 .cot-hpb .fl{height:100%;width:100%;transform-origin:0 50%;background:var(--hud-enemy);transition:transform var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
 /* the side under the bar in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond,
    the target plate's, and the ally's chevron, each whole inside the bar's box (the 31 px box cut the old pointer) */
-.cot-hpb::after{content:"";display:block;width:6px;height:6px;margin:3px auto 0;transform:rotate(45deg);
-  background:var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
-.cot-hpb.ally::after{width:0;height:0;margin-top:1px;transform:none;background:none;
-  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--hud-own);}
+/* (the enemy's diamond ringed as the target plate's, so it holds its shape over snow, its ring inside the painted box) */
+.cot-hpb::after{content:"";display:block;flex:none;width:6px;height:6px;margin:4px auto;transform:rotate(45deg);
+  background:var(--hud-enemy);box-shadow:var(--battle-mark-ring);}
+/* (the ally's chevron the diamond's weight, edged dark as the diamond is ringed: it read as half the mark, critic r3) */
+.cot-hpb.ally::after{width:0;height:0;margin-top:2px;transform:none;background:none;box-shadow:none;
+  filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 1px 1px var(--surface-scene));
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--hud-own);}
 /* Over-target marker (brand-ui 242, the direction's 06-battle-hud .tgt): one compact plate row on the target — its
    silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
    points, the enemy's diamond pointing into the tank. A stable-height instrument follows the exact projected turret
@@ -2125,32 +2160,55 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
    the row alone: the instrument around it paints nothing over the battlefield. No nation flag on any marker over a tank
    (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"): the side reads in the silhouette's
    and the bar's colour and the diamond's shape; the rosters, the load card, the scoreboard and the report keep them. */
-.cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
-  will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
-.cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:var(--s1);}
-.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;text-shadow:var(--battle-text-halo);}
-.cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
-.cot-tgt .nick{flex:none;font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);
+.cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:128px;text-align:center;display:none;
+  will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);text-shadow:var(--battle-control-label-halo);}
+.cot-tgt .bk{padding:0;background:none;display:flex;flex-direction:column;align-items:center;}
+/* the name line: the silhouette and whoever holds the hull (the callsign, the player's name, a proving lane's name); each
+   line as tall as its type's glyphs, so the zh floor's lines keep en's spacing and no glyph stands past the plate's
+   painted edge (at 15 px the name rose 1 px over it, battle-hud-overlap) */
+.cot-tgt .pl{position:relative;height:1.4em;font-size:var(--battle-fs-13);display:flex;align-items:center;}
+/* (the name itself on the plate's axis, the silhouette hung before it, its box its drawn image, 2:1, its empty rear
+   beside the name) */
+.cot-tgt .cg{position:absolute;right:100%;top:50%;width:28px;height:14px;margin:-7px 2px 0 0;color:var(--hud-enemy);
+  transform:scaleX(-1);}
+/* (the zh floor sets the hull bars' names at 13 px: the name under the gun a size over them, and on a large window as far
+   over them as en's 15 px over its 11) */
+:lang(zh-CN) .cot-tgt .pl{font-size:var(--battle-fs-14);}
+:lang(zh-CN) .cot-tgt.lg .pl{font-size:var(--battle-fs-18);}
+.cot-tgt .nick{flex:none;font:600 1em/1 var(--hud-font);color:var(--ink-1);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
-.cot-tgt .tier{flex:none;font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-3);}
 /* (the tier and the vehicle in the UI face, "IX · T-90AM", as every vehicle line: the data face set it apart, r15) */
-.cot-tgt .veh{flex:none;font:500 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-3);
+.cot-tgt .mt{height:1.35em;margin-top:.1em;font-size:var(--battle-fs-12);display:flex;align-items:center;gap:var(--s1);}
+.cot-tgt .tier{flex:none;font:600 1em/1 var(--font-ui);color:var(--ink-2);}
+.cot-tgt .veh{flex:none;font:500 1em/1 var(--font-ui);color:var(--ink-2);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
-.cot-tgt .veh::before{content:'·';margin-right:var(--s2);}
-/* hung under the sight (positionTargetPlate): the diamond over the row, pointing up at the tank */
-.cot-tgt.below .bk{flex-direction:column-reverse;justify-content:flex-start;}
-.cot-tgt.below .anch{margin-top:0;margin-bottom:2px;}
-.cot-tgt .rng{flex:none;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3);}
+.cot-tgt .veh::before,.cot-tgt .rng::before{content:'·';margin-right:var(--s1);font-family:var(--font-ui);}
+.cot-tgt .rng{flex:none;font:500 1em/1 var(--font-data);color:var(--ink-2);}
 .cot-tgt .rng:empty{display:none;}
 /* (in the scope the range is the sight's own tag: the plate leaves it, UI-LOCKDOWN B8) */
 html[data-cot-scoped] .cot-tgt .rng{display:none;}
-/* the hull bar and its points (the direction's 118 x 4 gauge), quiet on the battlefield under the row */
-.cot-tgt .hrow{height:12px;display:flex;align-items:center;gap:6px;}
-.cot-tgt .tr{width:118px;height:4px;background:var(--battle-veil);box-shadow:var(--flag-ring);}
+/* the hull bar the block's width, its points directly under it, quiet on the battlefield */
+/* (the bar spans the text block, measured with the copy: the silhouette hangs before it, outside its span) */
+.cot-tgt .tr{align-self:center;width:100%;height:6px;margin-top:5px;}
 .cot-tgt .fl{height:100%;background:var(--hud-enemy);}
-.cot-tgt .hp{font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-1);text-shadow:var(--battle-text-halo);}
-.cot-tgt .anch{width:10px;height:10px;margin-top:2px;transform:rotate(45deg);background:var(--hud-enemy);
+.cot-tgt .hp{height:1.35em;margin-top:2px;font:500 var(--battle-fs-11)/1.35 var(--font-data);color:var(--ink-1);
+  white-space:nowrap;}
+/* (its rotated tip and ring inside the plate's painted box, the plate paints contained; clear of the points' slash) */
+.cot-tgt .anch{flex:none;width:10px;height:10px;margin:6px 0 4px;transform:rotate(45deg);background:var(--hud-enemy);
   box-shadow:var(--battle-mark-ring);}
+/* hung under the sight (positionTargetPlate): the diamond over the name, pointing up at the tank */
+.cot-tgt.below .anch{order:-1;margin:4px 0 6px;}
+/* under a panel it sank beneath on a phone (positionTargetPlate) the vehicle line stands down, then the points; the name
+   and the bar stay */
+.cot-tgt.tight .mt,.cot-tgt.tighter .hp{display:none;}
+/* a large window steps the plate up (.lg, resize: it keeps the phone's floor everywhere else) */
+.cot-tgt.lg .pl{font-size:var(--battle-fs-15);}
+.cot-tgt.lg .cg{width:32px;height:16px;margin:-8px 2px 0 0;}
+.cot-tgt.lg .mt{font-size:var(--battle-fs-14);margin-top:.2em;}
+.cot-tgt.lg .tr{height:7px;margin-top:7px;}
+.cot-tgt.lg .hp{font-size:var(--battle-fs-13);margin-top:4px;}
+.cot-tgt.lg .anch{width:12px;height:12px;margin:7px 0 5px;}
+.cot-tgt.lg.below .anch{margin:5px 0 7px;}
 /* The tactical map on its plate (brand-ui H3, the direction's .mm). On the wide mouse layouts the plate's padding holds a
    header over the map, the battlefield's name beside the map key's cap, so the map itself keeps its square. */
 /* (the plate's size steps with the map key, --mm-k (the zoom below); its insets are --mm-p*, and a map shown large
@@ -2337,21 +2395,32 @@ export function initHud(bus: EventBus): HudRuntime {
   const dmgLayer = markDatum(el('div', 'cot-dmglayer', root), 'damage-dealt');
 
   // --- over-target marker plate (WoT aiming loop feedback) ---
-  /** The width the plate keeps for its range ("1,240 m" at the data face's 12 px). */
-  const TARGET_RANGE_W = 52;
+  /** The room the plate keeps past the range it shows, for its figures to grow by two, in its line's type size. */
+  const TARGET_RANGE_EM = 1.2;
+  /** How far a plate sunk under a panel stands below it (positionTargetPlate). */
+  const PLATE_SINK_GAP = 6;
+  /** The narrowest block (its bar never shorter), and its height as composed in full (measured on each new copy). */
+  const TARGET_PLATE_MIN_W = 128, TARGET_PLATE_H = 68;
+  /** From this large a window (the desktop width band and the tall height band) the plate steps up a size (.lg). */
+  const TARGET_PLATE_LARGE_W = 1440, TARGET_PLATE_LARGE_H = 900;
   const tgtEl = el('div', 'cot-tgt', root);
-  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="cg"></span>` +
-    `<b class="nick"></b><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
-    `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
-    `<div class="hp num"></div></div><div class="anch"></div></div>`;
+  // (one block on the marker, owner 2026-10-27: the name line, the tier, vehicle and range under it, the bar the
+  // block's width, its points under the bar and the diamond; no part keeps a slot it does not fill)
+  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="cg"></span><b class="nick"></b></div>` +
+    `<div class="mt"><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
+    `<div class="tr"><div class="fl"></div></div><div class="hp num"></div><div class="anch"></div></div>`;
   const tgtRefs = {
     rng: requireElement<HTMLElement>(tgtEl, '.rng'),
     nick: requireElement<HTMLElement>(tgtEl, '.nick'),
     tier: requireElement<HTMLElement>(tgtEl, '.tier'),
     veh: requireElement<HTMLElement>(tgtEl, '.veh'),
     fl: requireElement<HTMLElement>(tgtEl, '.fl'),
+    tr: requireElement<HTMLElement>(tgtEl, '.tr'),
     hp: requireElement<HTMLElement>(tgtEl, '.hp'),
     cg: requireElement<HTMLElement>(tgtEl, '.cg'),
+    bk: requireElement<HTMLElement>(tgtEl, '.bk'),
+    pl: requireElement<HTMLElement>(tgtEl, '.pl'),
+    mt: requireElement<HTMLElement>(tgtEl, '.mt'),
   };
   let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
   let tgtLastRangeM = -2; // the range shown, whole metres (-1: no player to range from)
@@ -2364,7 +2433,14 @@ export function initHud(bus: EventBus): HudRuntime {
   let tgtPendingTransform: string | null = null;
   let tgtBelow = false, tgtPendingBelow = false; // the plate hung under the sight (positionTargetPlate), as written
   let tgtLastHp = -1, tgtLastMaxHp = -1; // the hull points shown
-  let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
+  let tgtPlateWidth = TARGET_PLATE_MIN_W; // measured from its copy whenever the copy changes (updateTargetPlateCopy)
+  let tgtPlateHeight = TARGET_PLATE_H; // the block as composed: the bar and its points leave it in the realistic mode
+  let tgtMeasure = false; // its size step changed (resize): measured again with the next frame's copy
+  let tgtRangeChars = 0; // the range copy's length when measured (updateTargetPlateRange)
+  // the vehicle line's and the points' shares of the height, which a plate sunk under a panel leaves (.tight, .tighter)
+  let tgtMetaHeight = 0, tgtPointsHeight = 0;
+  let tgtTight = 0, tgtPendingTight = 0; // 0 whole, 1 tight, 2 tighter: as written, and as positionTargetPlate placed it
+  let laneNameNumber = -1, laneName = ''; // the proving ground's lane name, written when the laid lane changes
   let aimTargetId: string | null = null;
   /** Whether the player has given or taken a hit this battle (re-armed when the HUD hides between battles). */
   let playerEngaged = false;
@@ -2776,6 +2852,8 @@ export function initHud(bus: EventBus): HudRuntime {
   let sixthOn = false;
   /** On the proving ground the hulls are targets, not observers: no sixth sense (updateRangeCard keeps it). */
   let rangeActive = false;
+  /** The proving ground's lanes this frame (updateRangeCard): the plate over a lane's hull names the lane. */
+  let rangeLanes: RangeCardState['lanes'] | null = null;
   on('player:spotted', ({ timeS = 0 }) => {
     if (rangeActive) return;
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
@@ -3404,6 +3482,14 @@ export function initHud(bus: EventBus): HudRuntime {
   function resize(): void {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
+    // (the target plate a size up on a large window, measured again at the next target frame)
+    const large = w >= TARGET_PLATE_LARGE_W && h >= TARGET_PLATE_LARGE_H;
+    if (large !== tgtEl.classList.contains('lg')) {
+      tgtEl.classList.toggle('lg', large);
+      // (a shown plate measured again now: a still view sends no frame after a resize, gauntlet watch-drone at 1440x900)
+      if (tgtShown) measureTargetPlate();
+      else tgtMeasure = true;
+    }
     scopeGrad = null;
     scopeGradZoom = -1;
   }
@@ -5110,8 +5196,15 @@ export function initHud(bus: EventBus): HudRuntime {
         const sideY = draw.magazineBottomY - 2;
         // (over a range tag hung at the 1:30 too, where it would sit on the countdown's row within a group gap)
         const tagNear = tag && tag.y1 < draw.cy && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP;
-        const overTop = Math.min(aboveSightTop(draw), tagNear ? tag.y0 - SIGHT_MARK_RING_GAP : Infinity)
-          - SIGHT_MARK_RING_GAP - height;
+        // (and through a scope over 430 px tall over its upper cross arm's end, as the readout row, where that keeps clear:
+        // over the ring alone the countdown took the arm's place at 320x568, gauntlet r19)
+        const ringTop = Math.min(aboveSightTop(draw), tagNear ? tag.y0 - SIGHT_MARK_RING_GAP : Infinity) - SIGHT_MARK_RING_GAP - height;
+        const armTop = draw.sniper && h > 430
+          ? Math.min(ringTop, draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH - SIGHT_MARK_RING_GAP - height) : ringTop;
+        // (never raised under a gun-limit chip, which stacks over it wider than its figures: it came 2 px from the map at
+        // 360x640, the paint receipt)
+        const overTop = armTop < ringTop && !aimWarningState(view, aimWarningScratch).visible
+          && sightFurnitureGap(x, armTop, x + textW + unitW, armTop + height) >= SIGHT_MARK_RING_GAP ? armTop : ringTop;
         if (draw.magazine && ringGap(draw, sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW, sideY + COUNTDOWN_DESCENT)
           >= SIGHT_MARK_RING_GAP && sightFurnitureGap(sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW,
           sideY + COUNTDOWN_DESCENT) >= SIGHT_MARK_RING_GAP) {
@@ -5292,6 +5385,39 @@ export function initHud(bus: EventBus): HudRuntime {
     return foot ? foot + 3 + top : 0;
   }
 
+  /** The scope row's baseline over the sight ('rowAbove'): its foot 3 px over the ring's stroke, the marker's clear centre
+   *  and `armTop`, then risen past what sits level with the marker under it (the vision switch); a chip goes over the row
+   *  (over a chip placeAimWarning already set over the sight, where the row leaves it be). */
+  function sniperRowOver(draw: ReticleDrawState, tag: typeof sniperTagScratch | null, mode: SniperRowMode, top: number,
+    armTop: number): number {
+    const row = sniperRowScratch;
+    const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
+    let y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
+      - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
+    // (over the range tag too, where it hangs over the sight beside the row's columns)
+    if (tag && tag.y1 < draw.cy) {
+      let right = -Infinity;
+      for (let part = 0; part < 3; part++) if (sniperRowPart(draw, part, mode)) right = Math.max(right, sniperPartScratch.x1);
+      if (tag.x0 < right + 3) y = Math.min(y, tag.y0 - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode));
+    }
+    y = sniperRowRise(draw, y, mode);
+    row.chipOverY = Math.min(y - top, draw.tagTopY) - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
+    return y;
+  }
+
+  /** Whether the scope row over the sight at baseline `y`, and the chip over it, keep the marks' gap from the HUD's
+   *  furniture (settleSniperRow's seat over the upper arm, kept only where it does). */
+  function sniperRowAboveClear(draw: ReticleDrawState, y: number, mode: SniperRowMode): boolean {
+    for (let part = 0; part < 3; part++) {
+      if (!sniperRowPart(draw, part, mode)) continue;
+      const p = sniperPartScratch;
+      if (sightFurnitureGap(p.x0, y - p.top, p.x1, y + p.foot) < SIGHT_MARK_RING_GAP) return false;
+    }
+    const half = draw.warningW / 2;
+    return !(draw.warningY > 0 && half > 0) || sightFurnitureGap(draw.cx - half, sniperRowScratch.chipOverY - AIM_WARNING_CHIP_ABOVE,
+      draw.cx + half, sniperRowScratch.chipOverY + AIM_WARNING_CHIP_BELOW) >= SIGHT_MARK_RING_GAP;
+  }
+
   /** The scope row's baseline in `mode` from its rest `y` (sniperReadoutStack): risen past the furniture under it, then
    *  the lowest at or under that keeping every gap to the marks under the marker and the ring; above the ring, the
    *  nearest over it ('rowAbove'). */
@@ -5300,24 +5426,14 @@ export function initHud(bus: EventBus): HudRuntime {
     sniperRowPlace(draw, mode);
     const top = sniperRowTop(draw, mode);
     if (mode === 'rowAbove') {
-      // its foot 3 px over the ring's stroke and the marker's clear centre, then risen past what sits level with the
-      // marker under it (the vision switch); a chip goes over the row
-      // (over a chip placeAimWarning already set over the sight, where the row leaves it be)
-      const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
-      // (and, on a scope over 430 px tall, over the upper cross arm's end, as the marks under the sight keep off the lower
-      // one: over the ring alone the line took the upper arm's place at 320x568, gauntlet r18)
-      const armTop = h > 430 ? draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH : Infinity;
-      y = Math.min(aboveSightTop(draw), armTop, chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
-        - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
-      // (over the range tag too, where it hangs over the sight beside the row's columns)
-      if (tag && tag.y1 < draw.cy) {
-        let right = -Infinity;
-        for (let part = 0; part < 3; part++) if (sniperRowPart(draw, part, mode)) right = Math.max(right, sniperPartScratch.x1);
-        if (tag.x0 < right + 3) y = Math.min(y, tag.y0 - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode));
+      // (on a scope over 430 px tall over the upper cross arm's end, as the marks under the sight keep off the lower one:
+      // over the ring alone the line took the upper arm's place at 320x568, gauntlet r18; over the ring where that
+      // seat, or the chip over it, would meet the HUD's furniture: the chip came 2 px from the map at 360x640)
+      if (h > 430) {
+        const raised = sniperRowOver(draw, tag, mode, top, draw.cy - scopeArmEnd(draw.radius) - SCOPE_ARM_REACH);
+        if (sniperRowAboveClear(draw, raised, mode)) return raised;
       }
-      y = sniperRowRise(draw, y, mode);
-      row.chipOverY = Math.min(y - top, draw.tagTopY) - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
-      return y;
+      return sniperRowOver(draw, tag, mode, top, Infinity);
     }
     y = sniperRowRise(draw, y, mode);
     let right = -Infinity;
@@ -5843,8 +5959,15 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The frame's bars in view, nearest first, and the boxes of those placed (updateHpBars: reused, never reallocated). */
   const hpBarOrder: HpBar[] = [];
   const hpBarPlaced = Array.from({ length: 96 }, () => ({ x0: 0, y0: 0, x1: 0, y1: 0 }));
-  /** A hull bar's box (.cot-hpb: 40 px, the name, the bar and the side's pointer). */
-  const HP_BAR_H = 40;
+  /** A hull bar's box until measured (.cot-hpb: the name and vehicle lines, the bar and the side's pointer; solo). */
+  const HP_BAR_H = 52, HP_BAR_SOLO_H = 39;
+  /** Under this tall (the short height band) every bar keeps its name alone (.short). */
+  const HP_BAR_VEHICLE_MIN_H = 520;
+  let hpBarsShort = false;
+  /** Inside this range a plate stands further off its tank's top (plateLift) and a hull bar a size up (plateNear). */
+  const PLATE_LIFT_RANGE_M = 320;
+  /** A hull bar at point-blank range draws this much larger than one at the range's end (never on a short window). */
+  const HP_BAR_NEAR_SCALE = 0.08;
   function shouldShowHpBar(tank: HudTank | null | undefined): tank is HudTank & {
     combat: CombatState;
   } {
@@ -5874,7 +5997,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
     // (hidden until placed: a bar the declutter holds back showed unplaced at the window's corner, gauntlet r15)
     rootEl.style.display = 'none';
-    rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>`
+    rootEl.innerHTML = `<div class="nm"><b class="nw"><i class="si"></i><span></span></b></div><div class="vh"></div>`
       + `<div class="tr"><div class="fl"></div></div>`;
     if (tank.spec) {
       maskIcon(
@@ -5886,11 +6009,13 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     const bar: HpBar = {
       root: rootEl,
-      nm: requireElement<HTMLElement>(rootEl, '.nm span'),
+      ally,
+      cs: requireElement<HTMLElement>(rootEl, '.nm span'),
+      nm: requireElement<HTMLElement>(rootEl, '.vh'),
       fill: requireElement<HTMLElement>(rootEl, '.fl'),
       lastFrac: -1,
+      lastCallsign: '',
       lastName: '',
-      lastOp: -1,
       layoutW: 128,
       lastTransform: '',
       shown: false,
@@ -5898,6 +6023,10 @@ export function initHud(bus: EventBus): HudRuntime {
       sx: 0,
       sy: 0,
       dist: 0,
+      lift: 0,
+      k: 1,
+      layoutH: HP_BAR_H,
+      solo: false,
     };
     hpPool.set(tank.id, bar);
     return bar;
@@ -5905,8 +6034,15 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function updateHpBarLabel(bar: HpBar, tank: HudTank): void {
     const name = tank.spec?.name ?? tank.id;
-    if (bar.lastName === name) return;
-    bar.nm.textContent = name;
+    // (the callsign, the player's name or the lane's; a hull with none keeps its vehicle alone on the line)
+    const callsign = plateNameFor(tank);
+    const solo = callsign === name;
+    if (bar.lastName === name && bar.lastCallsign === callsign) return;
+    bar.cs.textContent = callsign;
+    bar.nm.textContent = solo ? '' : name;
+    bar.root.classList.toggle('solo', solo);
+    bar.solo = solo;
+    bar.lastCallsign = callsign;
     bar.lastName = name;
     // (measured shown: a hidden bar's name measures nothing, the target plate's own trap, r14)
     bar.measure = true;
@@ -5915,26 +6051,29 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function measureHpBar(bar: HpBar): void {
     bar.measure = false;
-    const measured = Math.ceil(bar.nm.scrollWidth) + 26 + 5 + 14;
+    // the wider of its lines (the name with the silhouette's room on both sides, the name on the axis; the vehicle) and
+    // their padding
+    const vehicle = bar.solo || hpBarsShort ? 0 : Math.ceil(bar.nm.scrollWidth);
+    const measured = hpBarsShort ? Math.ceil(bar.cs.scrollWidth) + 10
+      : Math.max(Math.ceil(bar.cs.scrollWidth) + 2 * (22 + 4), vehicle) + 14;
     bar.layoutW = Math.max(128, Math.min(280, measured));
     bar.root.style.width = `${bar.layoutW}px`;
+    // (its height as its lines compose it, the zh floor's taller, read with the widths)
+    bar.layoutH = Math.ceil(bar.root.offsetHeight) || (bar.solo || hpBarsShort ? HP_BAR_SOLO_H : HP_BAR_H);
   }
 
   function positionHpBar(bar: HpBar): void {
     const plateX = bar.sx - bar.layoutW * 0.5;
-    const plateY = bar.sy - 42;
-    // (written only when it moves, to the tenth of a pixel; shown once)
-    const transform = `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0)`;
+    const plateY = bar.sy - bar.layoutH - bar.lift;
+    // (written only when it moves, to the tenth of a pixel; shown once; scaled about its foot, a near hull's a size up.
+    // No fade with range: the side's colour stays its token, the plates critic found far names at 2.9:1)
+    const transform = `translate3d(${plateX.toFixed(1)}px,${plateY.toFixed(1)}px,0) scale(${bar.k.toFixed(2)})`;
     if (transform !== bar.lastTransform) {
       bar.root.style.transform = transform;
       bar.lastTransform = transform;
     }
-    if (!bar.shown) { bar.root.style.display = 'block'; bar.shown = true; }
+    if (!bar.shown) { bar.root.style.display = 'flex'; bar.shown = true; }
     if (bar.measure) measureHpBar(bar);
-    const opacity = Math.max(0.72, Math.min(1, 1.25 - bar.dist / SPOT_RANGE_M));
-    if (Math.abs(opacity - bar.lastOp) <= 0.03) return;
-    bar.root.style.opacity = opacity.toFixed(2);
-    bar.lastOp = opacity;
   }
 
   function updateHpBarFill(bar: HpBar, combat: CombatState): void {
@@ -5949,6 +6088,12 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!camera) return;
     const seen = hpBarsSeen;
     seen.clear();
+    const short = h < HP_BAR_VEHICLE_MIN_H;
+    if (short !== hpBarsShort) {
+      hpBarsShort = short;
+      hpLayer.classList.toggle('short', short);
+      for (const bar of hpPool.values()) bar.measure = true;
+    }
     const tanks = frame.tanks || [];
     const order = hpBarOrder;
     order.length = 0;
@@ -5956,24 +6101,33 @@ export function initHud(bus: EventBus): HudRuntime {
       const t = tanks[i];
       if (!shouldShowHpBar(t) || !projectHpBarAnchor(t, camera)) continue;
       const bar = hpPool.get(t.id) ?? createHpBar(t);
-      bar.sx = _sx; bar.sy = _sy; bar.dist = _sDist;
+      bar.sx = _sx; bar.sy = _sy; bar.dist = _sDist; bar.lift = plateLift(_sDist, 10, 2);
+      bar.k = hpBarsShort ? 1 : 1 + HP_BAR_NEAR_SCALE * plateNear(_sDist);
       updateHpBarLabel(bar, t);
       updateHpBarFill(bar, t.combat);
-      // (nearest first: an insertion into the frame's short list, no sort allocation)
+      // (the enemy's first, then the nearest: where two would cross, the enemy's keeps its place; an insertion into the
+      // frame's short list, no sort allocation)
       let at = order.length;
       order.push(bar);
-      while (at > 0 && order[at - 1].dist > bar.dist) { order[at] = order[at - 1]; at--; }
+      while (at > 0) {
+        const ahead = order[at - 1];
+        if (ahead.ally === bar.ally ? ahead.dist <= bar.dist : !ahead.ally) break;
+        order[at] = ahead; at--;
+      }
       order[at] = bar;
     }
     // Decluttered (gauntlet r15: the bars of tanks close in view struck through each other's labels, and a panel or the
-    // target plate covered a bar under it): the nearest first, a bar that would cross one shown, the target plate or the
-    // HUD's furniture (sightFurniture, measured each relayout) waits hidden until it clears.
+    // target plate covered a bar under it): the enemies' first and the nearest first, a bar that would cross one shown,
+    // the target plate, the HUD's furniture or the plates' obstacles (sightFurniture, measured each relayout) waits
+    // hidden until it clears.
     const placed = hpBarPlaced;
     let count = 0;
     for (let i = 0; i < order.length; i++) {
       const bar = order[i];
-      const x0 = bar.sx - bar.layoutW * 0.5, y0 = bar.sy - 42, x1 = x0 + bar.layoutW, y1 = y0 + HP_BAR_H;
-      let clear = sightFurnitureGap(x0, y0, x1, y1) >= 0
+      const half = bar.layoutW * bar.k * 0.5, y1 = bar.sy - bar.lift;
+      const x0 = bar.sx - half, x1 = bar.sx + half, y0 = y1 - bar.layoutH * bar.k;
+      // (whole on the screen or not at all: a zh bar's end showed at the window's edge, the plates critic)
+      let clear = x0 >= 0 && x1 <= w && y0 >= 0 && worldPlateGap(x0, y0, x1, y1) >= 0
         && !(tgtShown && tgtRect && x0 < tgtRect.cx + tgtRect.hw && x1 > tgtRect.cx - tgtRect.hw && y0 < tgtRect.bottom && y1 > tgtRect.top);
       for (let k = 0; clear && k < count; k++) {
         const other = placed[k];
@@ -6076,8 +6230,26 @@ export function initHud(bus: EventBus): HudRuntime {
     return _sVisible;
   }
 
+  /** The proving ground's name for a lane's hull ("Lane 2 · Target"), or null off the range or off its lanes. */
+  function provingLaneLabel(targetId: string): string | null {
+    const lanes = rangeActive ? rangeLanes : null;
+    if (!lanes) return null;
+    for (let i = 0; i < lanes.length; i++) {
+      if (lanes[i].targetId !== targetId) continue;
+      const lane = lanes[i].index + 1;
+      if (lane !== laneNameNumber) { laneNameNumber = lane; laneName = t('hud.target.lane', { n: String(lane) }); }
+      return laneName;
+    }
+    return null;
+  }
+
+  /** The name line every plate carries: a lane's name on the proving ground, else the callsign, else the vehicle. */
+  function plateNameFor(tank: HudTank): string {
+    return provingLaneLabel(tank.id) ?? (nickFor(tank) || tank.spec?.name || String(tank.id));
+  }
+
   function updateTargetPlateCopy(target: HudTargetTank): void {
-    const nickname = nickFor(target);
+    const nickname = plateNameFor(target);
     const tier = target.spec ? tierNumeral(target.spec.id) : '–';
     const name = target.spec?.name ?? String(target.id);
     let copyChanged = false;
@@ -6090,41 +6262,107 @@ export function initHud(bus: EventBus): HudRuntime {
       tgtRefs.veh.textContent = name;
       copyChanged = true;
     }
-    if (!copyChanged) return;
+    if (!copyChanged && !tgtMeasure) return;
     // (measured shown: a hidden plate's spans measure nothing, so it kept its floor and cut the callsign and the vehicle
     // at both ends on each new target; the gauntlet's markers frames)
     showTargetPlate();
-    // the hull points at their widest (they only fall from full), beside the bar
+    // the hull points at their widest (they only fall from full), under the bar
     const full = formatNumber(Math.round(target.combat.maxHp));
     tgtRefs.hp.textContent = `${full} / ${full}`;
     tgtLastHp = -1;
-    // the row: its padding, the silhouette, the callsign, the tier, the vehicle and the range's reserve; the bar's row
-    const rowWidth = 20 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + Math.ceil(tgtRefs.tier.scrollWidth) + 8
-      + Math.ceil(tgtRefs.veh.scrollWidth) + 8 + TARGET_RANGE_W;
-    const barWidth = 118 + 6 + Math.ceil(tgtRefs.hp.scrollWidth);
-    tgtPlateWidth = Math.max(176, Math.min(440, Math.max(rowWidth, barWidth)));
+    measureTargetPlate();
+  }
+
+  /** The plate's size from the copy it shows: on a new copy, and when a resize steps its size (resize). */
+  function measureTargetPlate(): void {
+    tgtMeasure = false;
+    // (measured whole: a plate sunk under a panel had left its vehicle line)
+    if (tgtTight) { tgtEl.classList.remove('tight', 'tighter'); tgtTight = 0; }
+    // the block is its widest line: the name line (the silhouette, its gap and the name, as laid out), the tier, vehicle
+    // and range's reserve, or the points; the bar spans it, so it is never narrower than its floor
+    // (the vehicle line's type size and its margin, read once here; a stub window has no computed style)
+    const computed = typeof getComputedStyle === 'function';
+    const meta = computed ? getComputedStyle(tgtRefs.mt) : null, points = computed ? getComputedStyle(tgtRefs.hp) : null;
+    const metaFont = parseFloat(meta?.fontSize ?? '') || 12, metaMargin = parseFloat(meta?.marginTop ?? '') || 0;
+    // (the name with the silhouette's room on both sides, the name on the axis)
+    const nameWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 2 * (Math.ceil(tgtRefs.cg.offsetWidth || 0) + 2);
+    const metaWidth = Math.ceil(tgtRefs.mt.scrollWidth) + Math.ceil(metaFont * TARGET_RANGE_EM);
+    tgtRangeChars = tgtRefs.rng.textContent?.length ?? 0;
+    const textWidth = Math.max(Math.ceil(tgtRefs.nick.scrollWidth), metaWidth, Math.ceil(tgtRefs.hp.scrollWidth));
+    tgtPlateWidth = Math.max(TARGET_PLATE_MIN_W, Math.min(440, Math.max(nameWidth, textWidth) + 8));
     tgtEl.style.width = `${tgtPlateWidth}px`;
+    // (the bar the text block's width, never under the plate's floor less its silhouette's room)
+    tgtRefs.tr.style.width = `${Math.min(tgtPlateWidth, Math.max(TARGET_PLATE_MIN_W - 40, textWidth + 8))}px`;
+    // (its height as composed and the vehicle line's share, read with the widths on a new copy only, never per frame)
+    tgtPlateHeight = Math.max(32, Math.ceil(tgtRefs.bk.offsetHeight) || TARGET_PLATE_H);
+    tgtMetaHeight = Math.ceil((tgtRefs.mt.offsetHeight || 0) + metaMargin);
+    tgtPointsHeight = Math.ceil((tgtRefs.hp.offsetHeight || 0) + (parseFloat(points?.marginTop ?? '') || 0));
+  }
+
+  /** How near a hull stands, 1 at point-blank range to 0 from PLATE_LIFT_RANGE_M out. */
+  function plateNear(distM: number): number {
+    return Math.max(0, Math.min(1, 1 - distM / PLATE_LIFT_RANGE_M));
+  }
+
+  /** How far a plate stands off the tank's top: further for a near hull, which fills more of the view. */
+  function plateLift(distM: number, near: number, far: number): number {
+    return Math.round(far + (near - far) * plateNear(distM));
   }
 
   function positionTargetPlate(): void {
     const halfWidth = tgtPlateWidth * 0.5;
+    let plateH = tgtPlateHeight;
     const targetX = Math.max(halfWidth + 4, Math.min(w - halfWidth - 4, _sx));
-    let bottom = Math.max(72, Math.min(h - 12, _sy - 14));
-    // (over the tank where the HUD's furniture leaves it clear, else hung under the sight's ring, its diamond pointing up
-    // at the tank: a portrait phone's controls row and a landscape's ammunition card covered its name, gauntlet r15)
-    let below = false;
-    if (sightFurnitureGap(targetX - halfWidth, bottom - 64, targetX + halfWidth, bottom) < 0) {
-      const under = aimView.cy + clampRetR(smoothRadPx) + 12 + 64;
-      if (under <= h - 12 && sightFurnitureGap(targetX - halfWidth, under - 64, targetX + halfWidth, under) >= 0) {
+    const x0 = targetX - halfWidth, x1 = targetX + halfWidth;
+    let bottom = Math.max(plateH + 8, Math.min(h - 12, _sy - plateLift(_sDist, 20, 10)));
+    // Over the tank where the HUD leaves it clear. Else sunk under what it met (a feed row, Watch's bar: the plates
+    // critic, r20), whole or without its vehicle line, its diamond no lower than the tank's top; else hung under the sight's
+    // ring, its diamond pointing up at the tank (a portrait phone's controls row and a landscape's ammunition card covered
+    // its name, gauntlet r15).
+    let below = false, tight = 0;
+    if (worldPlateGap(x0, bottom - plateH, x1, bottom, true) < 0) {
+      const top = worldPlateSink(x0, bottom - plateH, x1, bottom) + PLATE_SINK_GAP;
+      // (its foot no lower than the tank's top, nor on the sight's ring where it stands over the sight)
+      const ringR = clampRetR(smoothRadPx);
+      const overSight = x0 < aimView.cx + ringR && x1 > aimView.cx - ringR && _sy <= aimView.cy;
+      const floor = Math.min(h - 12, _sy + 4, overSight ? aimView.cy - ringR - PLATE_SINK_GAP : Infinity);
+      const under = aimView.cy + ringR + 12 + plateH;
+      // whole, without its vehicle line, then without its points too (the bar still tells the hull's share)
+      let placed = false;
+      for (let level = 0; level <= 2; level++) {
+        if (level > 0 && tgtMetaHeight <= 0) break;
+        const height = plateH - (level > 0 ? tgtMetaHeight : 0) - (level > 1 ? tgtPointsHeight : 0);
+        if (top + height > floor || worldPlateGap(x0, top, x1, top + height, true) < 0) continue;
+        plateH = height;
+        bottom = top + height;
+        tight = level;
+        placed = true;
+        break;
+      }
+      if (!placed && under <= h - 12 && worldPlateGap(x0, under - plateH, x1, under, true) >= 0) {
         bottom = under;
         below = true;
       }
     }
     tgtPendingBelow = below;
-    const transform = `translate3d(${(targetX - halfWidth).toFixed(1)}px,${(bottom - 64).toFixed(1)}px,0)`;
+    tgtPendingTight = tight;
+    const transform = `translate3d(${x0.toFixed(1)}px,${(bottom - plateH).toFixed(1)}px,0)`;
     tgtPendingTransform = transform === tgtTransform ? null : transform;
-    tgtRectScratch.cx = targetX; tgtRectScratch.hw = halfWidth; tgtRectScratch.top = bottom - 64; tgtRectScratch.bottom = bottom;
+    tgtRectScratch.cx = targetX; tgtRectScratch.hw = halfWidth; tgtRectScratch.top = bottom - plateH; tgtRectScratch.bottom = bottom;
     tgtRect = tgtRectScratch;
+  }
+
+  /** The range from the player's tank, in whole metres, written before the copy is measured (updateTargetPlate): a range
+   *  grown past the room the plate keeps for it has the plate measured again. */
+  function updateTargetPlateRange(target: HudTargetTank): void {
+    const from = playerRef?.state?.pos;
+    const to = target.state.pos;
+    const rangeM = from ? Math.round(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)) : -1;
+    if (rangeM === tgtLastRangeM) return;
+    const copy = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
+    tgtRefs.rng.textContent = copy;
+    tgtLastRangeM = rangeM;
+    if (copy.length > tgtRangeChars + 2) tgtMeasure = true;
   }
 
   function updateTargetPlateContent(target: HudTargetTank): void {
@@ -6132,14 +6370,6 @@ export function initHud(bus: EventBus): HudRuntime {
     if (vehicleId && vehicleId !== tgtLastVehicleId) {
       maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', 'currentColor');
       tgtLastVehicleId = vehicleId;
-    }
-    // the range from the player's tank, in whole metres
-    const from = playerRef?.state?.pos;
-    const to = target.state.pos;
-    const rangeM = from ? Math.round(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)) : -1;
-    if (rangeM !== tgtLastRangeM) {
-      tgtRefs.rng.textContent = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
-      tgtLastRangeM = rangeM;
     }
     const fraction = Math.max(0, Math.min(1, target.combat.hp / target.combat.maxHp));
     const hpWidth = `${(fraction * 100).toFixed(1)}%`;
@@ -6157,9 +6387,30 @@ export function initHud(bus: EventBus): HudRuntime {
     if (bar?.shown) { bar.root.style.display = 'none'; bar.shown = false; }
   }
 
+  /** The kill feed's rows the shown target plate crosses stand aside while it shows (sightFurniture.ts plateObstacles:
+   *  the plates critic, r20, found the feed's rows on its name at 844x390); a class write only where one changes. */
+  function yieldFeedRows(): void {
+    const plate = tgtShown ? tgtRect : null;
+    for (let i = 0; i < plateObstacles.count; i++) {
+      const node = plateObstacles.soft[i] ? plateObstacles.nodes[i] as HTMLElement | null : null;
+      if (!node?.classList) continue;
+      const box = plateObstacles.boxes[i];
+      const meets = !!plate && box.x0 < plate.cx + plate.hw + PLATE_SINK_GAP && box.x1 > plate.cx - plate.hw - PLATE_SINK_GAP
+        && box.y0 < plate.bottom + PLATE_SINK_GAP && box.y1 > plate.top - PLATE_SINK_GAP;
+      plateObstacles.yielded[i] = meets;
+      if (node.classList.contains('yield') !== meets) node.classList.toggle('yield', meets);
+    }
+  }
+
   /** The target plate's move held by positionTargetPlate, written once the reticle canvas has drawn. */
   function flushTargetPlateMove(): void {
+    yieldFeedRows();
     if (tgtPendingBelow !== tgtBelow) { tgtEl.classList.toggle('below', tgtPendingBelow); tgtBelow = tgtPendingBelow; }
+    if (tgtPendingTight !== tgtTight) {
+      tgtEl.classList.toggle('tight', tgtPendingTight > 0);
+      tgtEl.classList.toggle('tighter', tgtPendingTight > 1);
+      tgtTight = tgtPendingTight;
+    }
     if (tgtPendingTransform === null) return;
     tgtEl.style.transform = tgtPendingTransform;
     tgtTransform = tgtPendingTransform;
@@ -6182,6 +6433,7 @@ export function initHud(bus: EventBus): HudRuntime {
       hideTargetPlate();
       return;
     }
+    updateTargetPlateRange(target);
     updateTargetPlateCopy(target);
     positionTargetPlate();
     updateTargetPlateContent(target);
@@ -8363,6 +8615,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const range = frame.matchModeState?.range;
     if (rangeActive !== !!range) root.classList.toggle('range-mode', !!range);
     rangeActive = !!range;
+    rangeLanes = range ? range.lanes : null;
     if (!range) { rangeCard?.hide(); return; }
     if (!rangeCard) {
       rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
