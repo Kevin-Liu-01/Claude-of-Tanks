@@ -59,6 +59,16 @@ ZTZ-100 construction; a period T-54 "starfish" wheel needs an owner exception), 
 carry the smoke consumable, cargo). Gameplay stats unchanged; spec dims move to the published 6.04 / 9.00 / 3.27 / 2.40.
 The spec's inherited T-62 gun range (−9/+20) is wider than the Type 59's −5/+18: an owner decision, reported.
 
+Main gun by yaw (measured, `tools/gun-depression-sweep.mjs --ids=type59`, shared by the T-55A, whose sweep gives the same
+floors): −4.2° dead ahead over the glacis; near level from 6° to 28°, where the canvas cover passes over the driver's
+hatch (on the real tank the gun over that hatch keeps it shut); −2.8° to −4° over the flanks; 2-5° above level over
+the rear drums from 158°. No mount conflict; clear at full elevation. The loader's DShK turns from 175° right to 25° left
+of ahead: past 25° left its sweep crosses the drone dock on the dome's left rear, past 85° the commander's cupola.
+
+Release 262 fix (owner: "why is the type 59 turret see through"): the cast dome's index buffer was wound inward, so the
+FrontSide turret showed the inside of its far wall; it is wound outward now, one tessellation at both qualities (the
+dock's support must read the same at each). The combat calibration did not change (only the turret source hash).
+
 Fairness (balance range, `runBalanceSeries`, six seeds × both range ends, against the shown-tier I MBT peers):
 before (main 260) mean 0.257, 5/12 pairs inside 0.2-0.8; after mean 0.236, 6/12 inside (amx30 0.583, amx30b 0.417,
 amx30b2 0.083, leo1a5 0.75, m48a5_patton 0.25, m60a1 0.083, m60a3 0, merkava1b 0.25, stb1 0.333, t62_1975 0, type74

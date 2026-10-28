@@ -450,8 +450,8 @@ function longweiHullPlates(): ArmorPlate[] {
     ...sidePlatePair('hull_side_upper_engine', 100, [-1.42, 1.30, 1.78, 1.70], [-3.48, 1.30, 1.78, 1.70], { keMm: 100, ceMm: 100 }),
     // one FY-5 course on the front three skirt panels, the segmented skirt the full length
     ...sidePlatePair('skirt_era', 15, [2.80, 0.86, 1.17, 1.858], [-0.16, 0.86, 1.17, 1.858], { kind: 'era', era: FY4 }),
-    ...sidePlatePair('skirt_front', 8, [3.30, 0.62, 1.47, 1.836], [-0.16, 0.62, 1.47, 1.836], { kind: 'spaced' }),
-    ...sidePlatePair('skirt_rear', 8, [-0.16, 0.62, 1.47, 1.836], [-3.42, 0.62, 1.47, 1.836], { kind: 'spaced' }),
+    ...sidePlatePair('skirt_front', 8, [3.30, 0.50, 1.47, 1.836], [-0.16, 0.50, 1.47, 1.836], { kind: 'spaced' }),
+    ...sidePlatePair('skirt_rear', 8, [-0.16, 0.50, 1.47, 1.836], [-3.42, 0.50, 1.47, 1.836], { kind: 'spaced' }),
     // Legacy fallback only. createTank replaces these with prisms derived from the six-wheel running gear.
     ...sidePlatePair('track', 20, [3.45, 0.03, 1.28, 1.77], [-3.47, 0.03, 1.28, 1.77],
       { kind: 'external', moduleLink: 'trackR' }).map((plate, index): ArmorPlate => ({

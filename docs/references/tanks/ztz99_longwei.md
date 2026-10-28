@@ -52,7 +52,7 @@ correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, l
 | LSDW laser dazzler | pedestal at the turret's left rear | absent | pedestal box at the left rear (+X) |
 | Smoke | five tubes a side at the turret front | two four-tube banks a side on the side modules | one five-tube bank a front corner |
 | Side armour | flat panels, bins with ERA on the 99A | three bolt-on spaced modules a side to ±1.70 | one slab module a side to ±1.57, two lidded bins |
-| Skirts | segmented panels, scalloped lower edge, access holes | carrier + 2 brick courses + slat cage | 8 segmented scalloped panels, one FY-5 course on the front three, access holes |
+| Skirts | segmented panels, scalloped lower edge to about hub height, access holes | carrier + 2 brick courses + slat cage | 8 segmented panels with the lower edge at 0.50 m scalloped up over each wheel, a closed nose, one FY-5 course on the front three, access holes |
 | Bow | lower nose ERA row on the 99A, headlights on the fender boxes | dozer blade, 0.14 m towing beam, glacis lamp cowls | four appliqué boxes on the lower glacis, a slim towing bar under the nose, lamps on the fender boxes |
 | Identity kept | — | GL-5-style suite, straight FY-5 glacis grid, lamp cowls, towing beam, stern bin | kept (radar faces 10% smaller) |
 
@@ -64,3 +64,7 @@ Fairness (balance range, shown-tier VI MBT peers): before (main 260) mean 0.681,
 0.700, 6/15 inside (c1_ariete 0.792, c1_ariete_proto_serie1 0.75, t72b3 1, t72b3_zubr 0.167, t72b3_zubr_ii 0.167,
 t72b3m_2016 0.833, t72b3m_2022 0.833, t80u 1, t80u_kursk 0.917, t80uk 1, t84 1, type96_72m_lei 0.5, type96_80_feng 0.542,
 type96b 0.333, xk2_black_panther 0.667). Stats unchanged; the move is the new combat envelope's.
+
+Main gun by yaw (measured on the new hull, `tools/gun-depression-sweep.mjs --ids=ztz99_longwei`, no mount conflict): the
+full 7° except over the front quarters (the fender boxes and lamps hold it to −3.1° to −4.6° at 21-33°) and over the
+powerpack deck from 136°, where it stays 0.4-2.9° above level.

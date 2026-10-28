@@ -64,6 +64,8 @@ const SIDE_MODULE_REAR_Z = -1.05;
 const SKIRT_ERA_FRONT_Z = 2.80;
 const SKIRT_ERA_LOW_Y = 0.86;
 const SKIRT_ERA_HIGH_Y = 1.17;
+/** The skirt panels' lower edge between the wheels (the armor envelope's skirt zones start here). */
+export const SKIRT_LOW_Y = 0.50;
 
 function mirrorRing(ring: readonly SectionPoint[]): SectionPoint[] {
   return ring.map(([x, y]) => [-x, y] as const).reverse();
@@ -316,23 +318,27 @@ function addSkirts(P: TankBuilderPort): void {
     for (let i = 0; i < joints.length - 1; i++) {
       const front = joints[i], rear = joints[i + 1], gap = 0.012;
       const z0 = rear + gap / 2, z1 = front - gap / 2;
-      // the bow panel's nose rakes up 0.36 m over its last 0.45 m
+      // the lower edge reaches near the hubs (the 99A's), scalloped up over each wheel's middle; the bow panel's nose
+      // rakes up from that edge to 0.98 m over its last 0.45 m
+      const scallop = (z: number): number => SKIRT_LOW_Y + 0.12 * Math.sin(Math.PI * (z - z0) / (z1 - z0));
       const bottom = (z: number): number => {
-        if (i === 0 && z > 2.85) return 0.62 + (z - 2.85) / (z1 - 2.85) * 0.36;
-        const t = (z - z0) / (z1 - z0);
-        return 0.60 + 0.15 * Math.sin(Math.PI * t);
+        if (i === 0 && z > 2.85) return scallop(2.85) + (z - 2.85) / (z1 - 2.85) * (0.98 - scallop(2.85));
+        return scallop(z);
       };
       const zs = Array.from({ length: 7 }, (_, k) => z0 + (z1 - z0) * k / 6);
       if (i === 0) zs.splice(zs.findIndex((z) => z > 2.85), 0, 2.85);
       P.add('hull', sectionSolid(zs.map((z) => ({ z, ring: ring(panelIn, panelOut, bottom(z), 1.235) }))));
       // the joint behind each panel: a dark seam strip on the band
-      if (i > 0) P.add('hullDark', KIT.box(0.006, 1.235 - 0.60, 0.014), side * (panelOut + 0.001), (1.235 + 0.60) / 2, front);
+      if (i > 0) P.add('hullDark', KIT.box(0.006, 1.235 - SKIRT_LOW_Y, 0.014), side * (panelOut + 0.001), (1.235 + SKIRT_LOW_Y) / 2, front);
       // two small access holes per panel
       for (const f of [0.30, 0.70]) {
         const z = z0 + (z1 - z0) * f;
         P.add('hullDark', KIT.box(0.006, 0.06, 0.06), side * (panelOut + 0.001), 0.82, z);
       }
     }
+    // the bow panel's front edge closed back to the track's outer face (outside it, clear of the idler), so the skirt
+    // reads as a plate with a closed nose rather than an open slot onto the track
+    P.add('hull', KIT.box(panelOut - 1.765, 1.235 - 0.98, 0.012), side * (1.765 + panelOut) / 2, (1.235 + 0.98) / 2, joints[0] - 0.012);
     // one course of FY-5 bricks on the front three panels
     const sector = side < 0 ? 'skirt_era_L' : 'skirt_era_R';
     const brickL = 0.56, pitch = 0.60, t = 0.022;
