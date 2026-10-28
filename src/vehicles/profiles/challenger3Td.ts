@@ -150,7 +150,7 @@ function buildHull(P: TankBuilderPort): void {
     hull('hull', planeSolid([
       [0, 1, 0.19, 1.37 + 0.19 * 3.42], [0, -1, -0.19, -(1.33 + 0.19 * 3.42)],
       [0, 0, 1, 3.846], [0, 0, -1, -3.40], [side, 0, 0, 1.745],
-      [-side, 0, -0.4634, -2.694],                                  // inner edge, 0.91 at the bow to 1.10 at 3.44
+      [-side, 0, 0, -0.95],                                         // inner edge straight at 0.95 (the oracle's, z 3.46-3.82)
     ]));
     // skirt plates and their top rail
     P.add('hull', profileSkirtGeometry(SKIRT, side), 0, 0, DZ * S, 0, 0, 0, S);
@@ -158,7 +158,13 @@ function buildHull(P: TankBuilderPort): void {
     // the rear skirt's rail stands flush with its plates (3 mm proud): under the bustle's sweep the suit's drapes are tied
     // low and hang plumb from the rail's line, so a proud rail left them 2 cm off the skirt (ghillieSuit.selftest)
     hull('hullDetail', box(0.03, 0.03, 2.05), side * 1.737, 1.415, -2.80);
-    for (const z of [-3.30, -2.30, -1.30, -0.30, 0.70, 1.70, 2.70]) hull('hullDetail', box(0.02, 0.05, 0.05), side * 1.752, 1.03, z);
+    // the skirt's top fittings, the oracle's: bolt heads under the top edge and three brackets standing over it
+    for (const [z, y] of [[-3.532, 1.346], [-2.503, 1.348], [-0.506, 1.365], [1.51, 1.365], [3.318, 1.32]]) {
+      hull('hullDetail', box(0.02, 0.013, 0.055), side * 1.753, y, z);
+    }
+    for (const [z, y0, y1] of [[-0.908, 1.477, 1.612], [0.508, 1.358, 1.612], [1.898, 1.45, 1.585]]) {
+      hull('hullDetail', box(0.03, y1 - y0, 0.10), side * 1.760, (y0 + y1) / 2, z);
+    }
     // rear stowage bins on the fenders behind the skirt
     hull('hullPaintedDetail', box(0.50, 0.28, 0.37), side * 1.42, 1.44, -4.135);
     hull('hullDetail', box(0.16, 0.10, 0.04), side * 1.30, 1.44, -4.34);
@@ -166,7 +172,9 @@ function buildHull(P: TankBuilderPort): void {
     markVehicleNightLens(lamp, 'marker');
     hull('hullGlass', lamp, side * 1.30, 1.44, -4.365);
     // the skirt-top hooks ahead of and behind the turret, the skirt's panel joints, the fender lockers and the tow cable
-    for (const z of [2.60, -1.60]) hull('hullDetail', box(0.06, 0.08, 0.22), side * 1.775, 1.50, z);
+    // the oracle's hook blocks: 1.745-1.849 out, 1.41-1.57 high, z -1.72..-1.39 and 2.39..2.76
+    hull('hullDetail', box(0.104, 0.156, 0.33), side * 1.797, 1.489, -1.552);
+    hull('hullDetail', box(0.104, 0.145, 0.37), side * 1.797, 1.4955, 2.578);
     for (const z of [-2.62, -1.20, 0.10, 1.40, 2.70]) hull('hullDark', box(0.012, 0.45, 0.025), side * 1.749, 1.175, z);
     for (const z of [2.20, 0.95, -0.35, -1.45, -2.55]) hull('hullDetail', cylY(0.12, 0.12, 0.05, P.q ? 20 : 12), side * 1.46, 1.735, z);
     // the cable lies on the hull top's edge and follows it down the glacis to the front (the oracle's 1.52 at z 3.0)
@@ -174,7 +182,7 @@ function buildHull(P: TankBuilderPort): void {
       .map(([x, y, z]) => [side * x * S, y * S, (z + DZ) * S] as [number, number, number]));
     // the mudguards' front lip, folded down to 1.10 (the oracle's), and the lamp guard blocks across the glacis edge
     // (the oracle's 1.54 band at z 3.14-3.26 over x 0.92-1.40) with their indicator lamps
-    hull('hull', box(0.825, 0.19, 0.025), side * 1.3325, 1.195, 3.834);
+    hull('hull', box(0.86, 0.19, 0.025), side * 1.35, 1.195, 3.834);
     hull('hullPaintedDetail', box(0.48, 0.16, 0.12), side * 1.16, 1.47, 3.20);
     const indicator = box(0.08, 0.05, 0.012);
     markVehicleNightLens(indicator, 'marker');
@@ -359,6 +367,10 @@ function buildMainGun(P: TankBuilderPort): void {
   gun('gun', cylZ(0.166, 0.05, seg, 0.125), 0, 2.055, 3.32);
   gun('gun', cylZ(0.125, 0.05, seg, 0.166), 0, 2.055, 3.83);
   gun('gun', cylZ(0.112, 0.08, seg), 0, 2.031, 5.40);
+  // the muzzle reference box on the tube's right near the muzzle and its clamp (the oracle's x -0.166..-0.100,
+  // z 6.51-6.81); dark and off the 'gun' bucket so the barrel's circularity sections stay the tube's own
+  gun('gunDark', box(0.066, 0.073, 0.30), -0.133, 2.0335, 6.662);
+  gun('gunDark', box(0.05, 0.03, 0.06), -0.085, 2.0335, 6.56);
   muzzleBore(P, { len, r: 0.095 * S });
 }
 

@@ -231,12 +231,12 @@ const CRITIC_REFERENCE_OVERRIDES = {
   challenger3_proto: { source:'glb', glb:{ path:'/models/tanks/community/challenger_3.glb',
     turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true, yawOffset:-Math.PI/2 } },
   // release 262: the Challenger 3 TD oracle (Jeyhun1985, CC-BY-4.0, measurement only); mirrors the fidelity row
-  challenger3_td: { source:'glb', glb:{ path:'/models/community-candidates/challenger3_td_source.glb',
+  challenger3_td: { source:'glb', glb:{ path:'/models/community-candidates/challenger3_td_x_source.glb',
     turretNode:'^Object_26$', turretFollowers:'^Object_(?:19|22|23)$', gunNode:'^Object_6$', gunFollowers:'^Object_3$',
-    autoPivot:true, pivot:[0, 1.80, 0.451], gunPivot:[0, 2.031, 1.55],
+    autoPivot:true, pivot:[0, 1.98, 0.7106], gunPivot:[0, 2.2341, 1.9195],
     componentSubsets:[
-      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.72, excludeRemainderFromHull:true },
-      { node:'^Object_20$', owner:'gun', worldMinY:1.72, excludeRemainderFromHull:true },
+      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
+      { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
     ] } },
   leo2a4: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
     turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },

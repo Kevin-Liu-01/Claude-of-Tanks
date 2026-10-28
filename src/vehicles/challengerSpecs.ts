@@ -455,10 +455,10 @@ const CHALLENGER_SPECS = {
         shell('DM11 HE-ABM', 'HE', 120, 40, 40, 590, 1000),
       ],
     },
-    // the built envelope at the family's installed 1.10 as the geometry gate measures it (hull 9.23 over the stern
-    // fittings, 12.71 gun forward, 3.84 over the skirts, 3.60 to the sights; MoD for the Challenger 3: 11.55 m gun
-    // forward, 4.2 m wide with the add-on armour)
-    dims: { hullLengthM: 9.23, overallLengthM: 12.71, widthM: 3.84, heightM: 3.60 },
+    // the built envelope at the family's installed 1.10 as the geometry gate measures it in the source-world frame
+    // (hull 9.63 to the stern pole, 13.15 gun forward, 4.06 over the skirt hooks, 3.74 to the sights; MoD for the
+    // Challenger 3: 11.55 m gun forward, 4.2 m wide with the add-on armour)
+    dims: { hullLengthM: 9.63, overallLengthM: 13.15, widthM: 4.06, heightM: 3.74 },
     armor: armorChallenger3Td(),
     visual: {
       // the demonstrator's three-tone disruptive scheme (green, black, sand) and its RBSL trials number
@@ -488,7 +488,7 @@ const CHALLENGER_SPECS = {
       ],
     },
     // the TD's envelope; the station's sight head stands 3.18 m (installed) over the roof, under the commander's sight
-    dims: { hullLengthM: 9.23, overallLengthM: 12.71, widthM: 3.84, heightM: 3.60 },
+    dims: { hullLengthM: 9.63, overallLengthM: 13.15, widthM: 4.06, heightM: 3.74 },
     armor: armorChallenger3Td(),
     visual: {
       // British field green under black bands, sand edges: the field fit's own coat

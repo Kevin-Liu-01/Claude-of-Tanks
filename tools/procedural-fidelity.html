@@ -231,16 +231,17 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // (docs/references/tanks/challenger3_td.md). An OBJ conversion: unnamed material-merged nodes. The turret is
   // Object_24 and 25 (the turret's material groups) and the gun's Object_20 also carry the turret basket and breech
   // internals down to 1.05 m inside the ring (every island under 1.72 lies within the ring's 1.15 m radius), so they are
-  // split by island: those standing at 1.72 or above articulate, the basket is left out of every mask. The articulation
-  // nodes are the all-turret roof furniture (26) and the muzzle device (6) on the measured ring (0, 1.80, 0.451) and
-  // trunnion (0, 2.031, 1.55); 19, 22, 23 (whips, sights) follow the turret, 3 (coax) the gun. +Z forward after the
-  // Sketchfab root. Its field fit (challenger3_td_rws) is a derivative: not registered here.
-  challenger3_td: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/challenger3_td_source.glb',
+  // split by island: those standing at 1.892 (the source's 1.72) or above articulate, the basket is left out of every
+  // mask. The articulation nodes are the all-turret roof furniture (26) and the muzzle device (6) on the measured ring
+  // and trunnion; 19, 22, 23 (whips, sights) follow the turret, 3 (coax) the gun. The file is the source-x-oracle
+  // canonical export (the family's installed 1.10, +0.2145 z; certificate in source-world-registration.mjs), so no
+  // width normalization applies. Its field fit (challenger3_td_rws) is a derivative: not registered here.
+  challenger3_td: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/challenger3_td_x_source.glb',
     turretNode:'^Object_26$', turretFollowers:'^Object_(?:19|22|23)$', gunNode:'^Object_6$', gunFollowers:'^Object_3$',
-    autoPivot:true, pivot:[0, 1.80, 0.451], gunPivot:[0, 2.031, 1.55],
+    autoPivot:true, pivot:[0, 1.98, 0.7106], gunPivot:[0, 2.2341, 1.9195],
     componentSubsets:[
-      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.72, excludeRemainderFromHull:true },
-      { node:'^Object_20$', owner:'gun', worldMinY:1.72, excludeRemainderFromHull:true },
+      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
+      { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
     ] } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
