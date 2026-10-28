@@ -94,9 +94,11 @@ function armorM1A3(): ArmorEnvelope {
 
   return {
     boundingRadiusM: 7.65,
-    turretPivot: [0, 1.67 + M1A3_TURRET_VERTICAL_OFFSET_M, -0.15],
-    gunPivot: [0, 0.28, 0.78],
-    gunBarrel: { lengthM: 5.65, radiusM: 0.115 },
+    // 2026-10-28 (m1e3-264): the M1E3 rebuild's rig (profiles/abrams.ts M1E3_RING, M1E3_GUN): the turret over the
+    // second road wheel and an M256-length tube. Geometry datums only; the combat barrel follows the drawn gun.
+    turretPivot: [0, 1.632, 0.55],
+    gunPivot: [0, 0.36, 0.85],
+    gunBarrel: { lengthM: 4.40, radiusM: 0.115 },
     hullPlates,
     turretPlates,
     modules: [
@@ -122,7 +124,7 @@ function armorM1A3(): ArmorEnvelope {
 }
 
 const m1a3: AbramsConceptSpec = {
-  id: 'm1a3', name: 'M1A3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
+  id: 'm1a3', name: 'M1E3 Abrams', nation: 'USA', era: 'next-generation', role: 'mbt',
   variantOf: 'm1a1_abrams_hc',
   hp: 2950,
   enginePowerHp: 1800, weightTons: 61.5, topSpeedKmh: 75, reverseSpeedKmh: 40,

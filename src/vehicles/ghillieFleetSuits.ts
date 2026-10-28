@@ -682,8 +682,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // M1A3: the wide turret roof and bustle netted round the sights, the hatches and the roof station (the builder),
   // drapes down the flanks behind the front smoke banks, a rear drape; the long engine deck short of the exhaust, the
   // front deck round the three crew hatches and their periscopes, four drapes a side.
+  // Disabled 2026-10-28 (m1e3-264): the rebuilt M1E3 follows the owner's demonstrator photographs, which carry no net.
+  // These layers describe the retired M1A3 body; re-lay them on the M1E3's turret and decks before re-enabling.
   m1a3: {
     id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
+    disabled: true,
     fieldClearanceM: 0.03, maxHalfWidth: 2.36, hemFloorM: 0.8,
     turret: {
       top: [laid({ x0: -1.96, x1: 1.96, z0: -3.30, z1: 2.45, nx: 49, nz: 72, y: 0.76, garnishRiseM: 0.16, seed: 11 })],
