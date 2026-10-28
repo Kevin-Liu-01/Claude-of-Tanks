@@ -280,11 +280,18 @@ export function createPicker(host: HTMLElement, options: PickerOptions): PickerC
     more.hidden = !off;
     more.classList.toggle('is-back', off && !cut);
   };
-  const chipsResize = new ResizeObserver(syncMore);
+  // a resize changes the chips' widths under a kept offset: a scrolled row pages again from its first chip still in view,
+  // so none stands cut and hidden at its start (premiere-gallery-studio's 261 finding: a 52 px gap before "Sequences")
+  const chipsResize = new ResizeObserver(() => {
+    if (chipRow.scrollLeft <= 0) { syncMore(); return; }
+    const row = chipRow.getBoundingClientRect();
+    pageTo(chips$().find((chip) => chip.getBoundingClientRect().right > row.left + 0.5));
+  });
   chipsResize.observe(chipRow);
   /** The page that starts at `chip` (the row's own start for the first). */
   const pageTo = (chip: HTMLElement | undefined): void => {
-    chipRow.scrollLeft = chip ? chipRow.scrollLeft + chip.getBoundingClientRect().left - chipRow.getBoundingClientRect().left : 0;
+    // (rounded up: a fractional offset the scroll truncates left the page 1 px in, the 261 critic at en 1440)
+    chipRow.scrollLeft = chip ? Math.ceil(chipRow.scrollLeft + chip.getBoundingClientRect().left - chipRow.getBoundingClientRect().left) : 0;
     syncMore();
   };
   /** The next page: from the first chip the row's end cuts or hides, or back to the start after the last. */
