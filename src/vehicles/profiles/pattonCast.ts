@@ -251,7 +251,9 @@ interface GearSpec {
   readonly rollerZs?: readonly number[];
   readonly rollerR?: number;
   readonly idler: { readonly z: number; readonly y: number; readonly r: number };
-  readonly sprocket: { readonly z: number; readonly y: number; readonly r: number };
+  /** The sprocket; its axial scales narrow the casting's hub inside the fender's line (the track lane stays). */
+  readonly sprocket: { readonly z: number; readonly y: number; readonly r: number; readonly axialScaleLeft?: number;
+    readonly axialScaleRight?: number };
   readonly tension?: { readonly z: number; readonly y: number; readonly r: number };
   readonly contactZF?: number;
   readonly contactZR?: number;
@@ -359,6 +361,9 @@ interface PershingHullSpec {
   readonly glacisShoulder?: readonly [number, number];
   /** The fender's support brackets under its outer edge (z stations), where the reference shows them. */
   readonly fenderBrackets?: readonly number[];
+  /** The engine-exhaust grille box over the rear plate's top (half-width, bottom, top, depth aft of the plate) with the
+   *  big towing eyes on its sides; the tail lights then stand outboard of it. */
+  readonly rearGrille?: readonly [number, number, number, number];
 }
 
 function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string, HullFrame> {
@@ -525,8 +530,20 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
   }
   yield 'pershingHullBow';
   // 7. Rear plate: tail lights, the towing pintle, the transmission doors.
+  const grille = H.rearGrille;
+  if (grille) {
+    // the grille box over the plate's top, its louvres facing aft, and the big towing eyes on lugs on its sides
+    const [gw, gy0, gy1, gd] = grille, gz = H.tailZ - gd;
+    P.add('hull', moldedBox(gw * 2, gy1 - gy0, gd + 0.03, 0.015, P.q ? 2 : 1, 0.008), 0, (gy0 + gy1) / 2, gz + (gd + 0.03) / 2);
+    for (let i = 0; i < 4; i++) P.add('hullDark', box(gw * 2 - 0.16, 0.014, 0.02), 0, gy0 + 0.06 + i * (gy1 - gy0 - 0.12) / 3, gz - 0.004);
+    for (const side of [-1, 1]) {
+      P.add('hullDetail', box(0.06, 0.11, 0.12), side * (gw + 0.03), (gy0 + gy1) / 2, gz + 0.03);
+      P.add('hullDark', KIT.xform(KIT.torus(0.062, 0.018, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), side * (gw + 0.03),
+        (gy0 + gy1) / 2 + 0.01, gz + 0.055);
+    }
+  }
   for (const side of [-1, 1]) {
-    KIT.headlight(P, side * 0.72, H.tailTopY - 0.14, H.tailZ - 0.03, Math.PI, 0.045, false);
+    KIT.headlight(P, side * (grille ? 0.82 : 0.72), H.tailTopY - 0.14, H.tailZ - 0.03, Math.PI, 0.045, false);
     KIT.liftEye(P, 'hullDetail', side * 0.85, 1.10, H.tailZ - 0.02, Math.PI);
   }
   P.add('hullDetail', box(1.10, 0.38, 0.03), 0, (H.tailBotY + H.tailTopY) / 2, H.tailZ - 0.012);
@@ -864,9 +881,9 @@ function* m46TurretSteps(P: CastPort): TankProfileBuild {
   P.turretG.position.set(0, T.ringY, T.ringZ);
   P.add('turret', castSolid(M46_TURRET, P.q, T.ringZ, T.ringY));
   // the basket under the ring (the crew's floor, in the hull's well; inside the ring's rim, so the seat leaves it)
-  P.add('turretDark', cylY(0.69, 0.69, 0.64, P.q ? 24 : 12), 0, L.y(1.16), L.z(-0.30));
+  P.add('turretDark', cylY(0.70, 0.70, 0.64, P.q ? 24 : 12), 0, L.y(1.16), L.z(-0.31));
   // the stowage boxes stacked on the left cheek
-  for (const [y0, y1, z0, z1, xo] of [[1.88, 2.11, -0.57, 0.09, 1.21], [2.13, 2.36, -0.57, 0.09, 1.17], [2.38, 2.50, -0.57, 0.05, 1.13]] as const) {
+  for (const [y0, y1, z0, z1, xo] of [[1.88, 2.08, -0.55, -0.11, 1.21], [2.10, 2.28, -0.57, -0.09, 1.17], [2.30, 2.46, -0.57, 0.05, 1.13]] as const) {
     const x = castSideAt(M46_TURRET, (y0 + y1) / 2, (z0 + z1) / 2);
     P.add('turretDetail', moldedBox(xo - x + 0.03, y1 - y0, z1 - z0, 0.012, P.q ? 2 : 1, 0.006), (x - 0.03 + xo) / 2,
       L.y((y0 + y1) / 2), L.z((z0 + z1) / 2));
@@ -874,27 +891,45 @@ function* m46TurretSteps(P: CastPort): TankProfileBuild {
   yield 'm46TurretCasting';
   // roof: commander's vision cupola on the right rear, loader's hatch on the left, the gunner's periscope ahead of the
   // cupola, the ventilator over the gun, the M2 on its post at the cupola
-  visionCupola(P, T, -0.49, -0.79, 0.36, 0.21, 8);
+  // the cupola's low vision-block ring under its domed hatch (the reference's: 0.77 across at 2.70, the dome to 2.84)
+  {
+    const top = visionCupola(P, T, -0.46, -0.775, 0.355, 0.14, 8);
+    P.add('turret', KIT.xform(KIT.sph(0.29, P.q ? 20 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.42, 1]), -0.46,
+      L.y(top - 0.035), L.z(-0.775));
+  }
   loaderHatch(P, T, 0.50, -0.52, 0.30);
   roofScope(P, T, -0.42, 0.12, 0, 0.09);
+  // the commander's vane sight on the roof's right front corner, ahead of the cupola
+  {
+    const vy = castTopAt(M46_TURRET, -0.90, 0.10);
+    P.add('turretDark', box(0.04, 0.04, 0.06), -0.90, L.y(vy + 0.01), L.z(0.10));
+    P.add('turretDark', box(0.012, 0.14, 0.07), -0.90, L.y(vy + 0.09), L.z(0.10));
+  }
   roofScope(P, T, 0.30, -0.02, 0, 0.05);
   roofScope(P, T, 0.53, -1.20, 0, 0.12);
   ventilator(P, T, 0.12, 0.20, 0.13);
   P.add('turretDetail', box(0.15, 0.10, 0.16), -0.195, L.y(castTopAt(M46_TURRET, -0.195, -1.80) + 0.04), L.z(-1.80));
   // the M2 on its pedestal right of the gun, ahead of the cupola (the reference's: z -0.47 to 1.23, its top 3.17)
-  // (the M2HB's true 1.65 m, scale 1.06), its ammunition chest on its left on the pedestal's arm
+  // (1.71 m from its grips to the flash hider, scale 1.06), its ammunition chest on its left on the pedestal's arm
   const postY = castTopAt(M46_TURRET, -0.07, 0.14);
   P.add('turretDark', cylY(0.03, 0.04, 3.12 - postY, 10), -0.07, L.y((3.12 + postY) / 2), L.z(0.14));
   P.add('turretDark', box(0.42, 0.05, 0.08), -0.26, L.y(2.70), L.z(0.0));
-  roofM2(P, T, -0.455, -0.11, 2.726, { barrel: 0.68, seed: 461, ring: false, elev: 0, scale: 1.06, ammo: false });
+  roofM2(P, T, -0.48, -0.165, 2.726, { barrel: 0.735, seed: 461, ring: false, elev: 0, scale: 1.06, ammo: false });
   P.add('turretDetail', moldedBox(0.24, 0.30, 0.46, 0.012, P.q ? 2 : 1, 0.006), -0.25, L.y(3.00), L.z(0.11));
   yield 'm46TurretRoof';
   // the bustle's stowage rack on its rear face, lifting eyes, whips, numbers
-  // the rack's load ends at -2.14; its side rails run on to the corner posts at -2.36
-  bustleBasket(P, T, -2.00, -2.14, 0.55, 2.08, 2.36, 466);
+  // the rack's load ends at -2.14, its floor at 2.00 and rail at 2.29; its side rails run on to the corner posts at -2.36
+  bustleBasket(P, T, -2.00, -2.14, 0.55, 2.00, 2.29, 466);
   for (const side of [-1, 1]) {
     for (const y of [2.10, 2.34]) P.add('turretDetail', box(0.03, 0.03, 0.22), side * 0.45, L.y(y), L.z(-2.25));
     P.add('turretDetail', box(0.03, 0.27, 0.03), side * 0.45, L.y(2.22), L.z(-2.35));
+  }
+  // the cast lifting lugs on the bustle's flanks, their rings standing out of them
+  for (const side of [-1, 1]) {
+    const [ez, ey] = [-1.56, 2.15];
+    const x = castSideAt(M46_TURRET, ey, ez);
+    P.add('turret', box(0.12, 0.07, 0.10), side * (x + 0.04), L.y(ey), L.z(ez));
+    P.add('turretDark', KIT.xform(KIT.torus(0.05, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), side * (x + 0.10), L.y(ey + 0.02), L.z(ez));
   }
   bustleNumbers(P, T, -1.70, 0.55, 0.22);
   yield 'm46TurretFittings';
@@ -924,9 +959,10 @@ const M46_HULL_SPEC: PershingHullSpec = {
   fenderLine: [[-4.24, 1.40], [1.45, 1.40], [1.62, 1.32]], rearFlapH: 0.20, rearFlapOuterH: 0.37, rearFlapX: [1.06, 1.75], frontFlap: false, noseDepth: 0.10,
   sponsonFrontBox: [0.94, 1.17, 1.45, 1.68, 1.50, 1.68], fenderBrackets: [-3.55, -1.80, 0, 0.45, 0.90], fenderBoxH: 0.25, fenderBoxX: [1.45, 1.61],
   fenderBoxes: [[1.20, 0.25], [0.20, -0.75], [-0.80, -1.85], [-1.90, -3.05]], mufflers: false, bowLights: [0.70, 1.15, 1.90],
+  rearGrille: [0.64, 1.25, 1.52, 0.17],
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [1.02, -2.68], rollerN: 5, rollerY: 1.04, rollerSpan: [0.55, -2.40],
-    idler: { z: 1.63, y: 0.88, r: 0.30 }, sprocket: { z: -3.86, y: 1.02, r: 0.33 },
+    idler: { z: 1.63, y: 0.88, r: 0.30 }, sprocket: { z: -3.86, y: 1.02, r: 0.33, axialScaleLeft: 0.94, axialScaleRight: 0.94 },
     tension: { z: -3.22, y: 0.50, r: 0.20 }, contactZF: 1.15, contactZR: -2.80,
   },
 };
@@ -1010,7 +1046,7 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
   const postY = castTopAt(T.stations, 0, -0.73);
   P.add('turretDark', cylY(0.035, 0.045, 2.95 - postY, 10), 0, L.y((2.95 + postY) / 2), L.z(-0.73));
   roofM2(P, T, 0, -0.533, 2.946, { barrel: 0.68, seed: 471, ring: false, elev: 0, scale: 1.06, ammo: false });
-  P.add('turretDetail', moldedBox(0.21, 0.29, 0.18, 0.01, P.q ? 2 : 1, 0.005), 0.185, L.y(3.225), L.z(-0.22));
+  P.add('turretDetail', moldedBox(0.245, 0.29, 0.18, 0.01, P.q ? 2 : 1, 0.005), 0.2025, L.y(3.225), L.z(-0.22));
   // the cradle off the cupola's ring that carries it
   P.add('turretDark', moldedBox(0.08, 0.50, 0.24, 0.012, P.q ? 2 : 1, 0.006), -0.18, L.y(3.13), L.z(-0.75));
   yield 'm47TurretRoof';
@@ -1046,7 +1082,7 @@ const M47_HULL_SPEC: PershingHullSpec = {
   sponsonFrontBox: [0.94, 1.30, 1.45, 1.63, 0.92, 1.18], fenderBrackets: [-0.45, 0, 0.43, 1.30],
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [0.92, -2.65], rollerN: 3, rollerY: 1.04, rollerSpan: [0.25, -2.15],
-    idler: { z: 1.64, y: 0.88, r: 0.30 }, sprocket: { z: -3.65, y: 1.04, r: 0.30 },
+    idler: { z: 1.64, y: 0.88, r: 0.30 }, sprocket: { z: -3.65, y: 1.04, r: 0.30, axialScaleLeft: 0.94, axialScaleRight: 0.94 },
     tension: { z: -3.25, y: 0.52, r: 0.20 }, contactZF: 1.15, contactZR: -2.85,
   },
 };
