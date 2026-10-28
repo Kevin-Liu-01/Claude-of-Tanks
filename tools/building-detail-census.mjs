@@ -57,6 +57,9 @@ export const BESPOKE = {
   longleaf: { E13: 'porch on brick piers' },
   wadirum: { E19: 'regional light kinds as structureVariants (wadiRumPosts.ts)' },
   ksar: { E19: 'regional light kinds as structureVariants (ksarGate.ts)' },
+  // (2026-10-28, the world-reds lane) since 241 (maps-stalled-240 8263d7ea78) a door up the mountain house's base course is
+  // reached by a solid stone flight along the façade, drawn with faceBox in place of the door unit's steps
+  chouf: { E12: 'stone door flights along the façade up the base course (chouf.ts door)' },
 };
 /** The three reading distances (K2): which elements each one reads. */
 export const TIERS = {
