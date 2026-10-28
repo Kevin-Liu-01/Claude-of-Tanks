@@ -117,9 +117,11 @@ export function placeMenu(
   const inset = span ? 0 : MENU_EDGE;
   // (a panel's edges fall between pixels: each rounds to the nearest, so no column of the panel shows and none of the
   // window is passed)
-  const lo = Math.round(Math.max(span ? 0 : MENU_EDGE, (bounds.left ?? 0) + inset));
-  const hi = Math.round(Math.min(view.width, bounds.right ?? view.width) - inset);
-  const roomTop = Math.round(bounds.top), roomBottom = Math.round(bounds.bottom);
+  // (a spanning menu's 1 px ring, outside its box, stays on the window: the 261 critic, a ring past the window's edge)
+  const ring = span ? 1 : 0;
+  const lo = Math.round(Math.max(span ? ring : MENU_EDGE, (bounds.left ?? 0) + inset));
+  const hi = Math.round(Math.min(view.width - ring, bounds.right ?? view.width) - inset);
+  const roomTop = Math.round(Math.max(ring, bounds.top)), roomBottom = Math.round(Math.min(view.height - ring, bounds.bottom));
   const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   const far = inset;
   // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
@@ -273,6 +275,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       options.bounds?.() ?? boundsOf(anchorEl));
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
+    pop.classList.toggle('is-span', spot.span);
     pop.style.left = `${spot.left}px`;
     // a sheet stands on the window's foot whatever its head adds to the measured height
     pop.style.top = spot.sheet ? 'auto' : `${spot.top}px`;
