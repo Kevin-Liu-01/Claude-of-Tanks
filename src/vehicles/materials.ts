@@ -3918,17 +3918,18 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
 
 /**
  * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, the tyres' rubber,
- * canvas, wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings, the dark steel
- * (grilles, recesses, lights) and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
- * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
- * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
+ * wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings, the dark steel (grilles,
+ * recesses, lights), canvas and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
+ * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
  * so a roof gun stays as bare as the main gun's barrel; 4 the hull's rubber as 2, its grain flattened under the colour
  * (its detail maps read as speckle through a tint: the blind critic, 262).
  */
 export function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
-  if (role === 'fittingPaint') return 2;
+  // (263) canvas (a mantlet's boot, a tarp on the deck) by where it sits, as fittings: a boot over the mantlet left the
+  // aim point untinted (the blind critics)
+  if (role === 'fittingPaint' || role === 'canvas' || role === 'canvasPale') return 2;
   if (role === 'hullRubber') return 4;
   if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
@@ -4105,8 +4106,9 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
     // the hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
     // through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds)
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
-    // (263) and the camo half its light and shade: its blotches read as zone borders through the colour (a blind critic)
-    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.1 ), 0.5 * ( 1.0 - apFlat ) );
+    // (263) and the camo three quarters of its light and shade: its blotches read as zone borders through the colour,
+    // and every blind round preferred less of it
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.1 ), 0.75 * ( 1.0 - apFlat ) );
     // the camo's hue gives way, so a zone reads its own colour, never olive or salmon
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
