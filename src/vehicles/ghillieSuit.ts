@@ -2371,14 +2371,21 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
   // the sticks and boughs the crew pushed under a deck net stand out of their humps
   if (top && pal.boughs > 0) for (const t of (surface as TopCloth).tents ?? []) clumps.push({ u: t.x, v: t.z, size: 3 + Math.floor(t.h * 20), tent: true });
   const fitted = cfg.style !== 'leafy';
+  // (264; Main on the Strv 121's Barracuda-style cover, the owner's "a ton of netting and ghillie" on it) a fitted cover
+  // whose row asks for boughs (boughShare) carries its crew's cut boughs among its flaps, laid as low as the flaps lie
+  // (wave 253's reason stands: nothing stands off a cover as a shard); a cover whose row does not keeps its flaps alone,
+  // drawing nothing more from the stream
+  const coverBoughs = fitted && (cfg.boughShare ?? 0) > 0;
   for (const clump of clumps) {
     // a fitted cover's tufts are its own cut flaps lying on it (wave 253: "dark leaf shards stick straight out")
-    const bough = fitted ? false : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
+    const bough = fitted ? coverBoughs && !clump.tent && rng() < (cfg.boughShare ?? 0)
+      : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
     if (!surface.sample(clump.u, clump.v)) continue;
     // the tuft's own colour: a strip bunch shares one cut cloth, a bough one cutting
     const tone = pickStripTone(pal, rng);
     const boughBase = clumpTint(cfg, rng);
-    const size = bough ? clump.size : Math.max(2, Math.min(5, clump.size));
+    // a cover's boughs come a few at a tuck, its flaps two to five
+    const size = bough ? (fitted ? Math.max(2, Math.min(4, clump.size)) : clump.size) : Math.max(2, Math.min(5, clump.size));
     const spin0 = rng() * Math.PI * 2;
     const fan = size <= 2 ? 0.5 + rng() * 0.4 : 1.0 + rng() * 0.9;
     const edgeInfo = top && surface.edge ? surface.edge(clump.u, clump.v) : null;
@@ -2388,11 +2395,12 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       // every draw of this card happens here, before any fit
       const jr = rng() * 0.05, ja = rng() * Math.PI * 2;
       const sway = share * fan + (rng() - 0.5) * 0.4;
-      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
+      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough && !fitted ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
       const lenK = bough ? 0.7 + rng() * 0.75 : 0.75 + rng() * 0.6;
       const value = 0.82 + rng() * 0.3;
       const bend = bough ? 0.03 + rng() * 0.06 : 0.12 + rng() * 0.16;
-      const fold = bough ? 0.18 + rng() * 0.18 : 0.05 + rng() * 0.08;
+      // a cover's bough a shallow V (its edges a few centimetres up at most: it lies on the cover)
+      const fold = bough ? (fitted ? 0.08 : 0.18) + rng() * (fitted ? 0.1 : 0.18) : 0.05 + rng() * 0.08;
       const tileK = rng();
       const roll = (rng() - 0.5) * 0.6;
       const tile = bough ? GARNISH_BOUGH_TILES[tileK < 0.5 ? 0 : 1] : GARNISH_STRIP_TILES[tileK < 0.5 ? 0 : 1];
@@ -2402,9 +2410,9 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       let length = base * lenK;
       const width = length * (bough ? 0.6 : 0.62);
       // a fitted cover's flaps take its mid-tones (their atlas is painted dark: "dark clover decals", wave 253)
-      const tint: [number, number, number] = fitted ? [value * 1.32, value * 1.3, value * 1.22]
-        : bough ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
-          : stripTint(tone, value);
+      const tint: [number, number, number] = bough
+        ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
+        : fitted ? [value * 1.32, value * 1.3, value * 1.22] : stripTint(tone, value);
       const su = clump.u + Math.cos(ja) * jr, sv = clump.v + (top ? Math.sin(ja) * jr : Math.sin(ja) * jr * 0.4);
       if (!seatOk(su, sv)) continue;
       const seat = surface.sample(su, sv);
@@ -2422,7 +2430,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
         dir = norm3([nn[0] * nn[1], -1 + nn[1] * nn[1], nn[2] * nn[1]]);
         // a bough tucked under the top cord stands up past the roof line (it breaks the outline); others hang
         const hangs = (panel as unknown as SidePanel).boughsHangAt?.some(([z0, z1]) => clump.u >= z0 && clump.u <= z1);
-        if (bough && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
+        // (a cover's boughs all hang: none stands up past its top)
+        if (bough && !fitted && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
       }
       const side = norm3([nn[1] * dir[2] - nn[2] * dir[1], nn[2] * dir[0] - nn[0] * dir[2], nn[0] * dir[1] - nn[1] * dir[0]]);
       let placed: FoliageCard | null = null;
