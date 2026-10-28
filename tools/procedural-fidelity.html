@@ -719,16 +719,17 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
 }
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
 // Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
-// receipt exactly before the numeric masks set it aside; a missing receipt fails closed and names each part's digest.
+// receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
 const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
 const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
 let ownerKit=null;const ownerKitGroups=[];
 if(ownerKitTarget){
   const receipts=OWNER_KIT_RECEIPTS[id]?.parts??{},missing=[];
-  for(const part of ownerKitTarget.parts)if(!receipts[part.group]){
-    missing.push(`${part.group} ${await supplementDigest(supplementSnapshot(procedural.root,part))}`);
+  for(const part of ownerKitTarget.parts){
+    const digest=await supplementDigest(supplementSnapshot(procedural.root,part));
+    if(receipts[part.group]?.geometryPoseSha256!==digest)missing.push(`${part.group} ${digest}`);
   }
-  if(missing.length)failFidelity(`owner kit parts without an accepted receipt (geometryPoseSha256): ${missing.join('; ')}`);
+  if(missing.length)failFidelity(`owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): ${missing.join('; ')}`);
   ownerKit=[];
   try{for(const part of ownerKitTarget.parts){
     ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group]),part:part.part,ownerWords:part.ownerWords});

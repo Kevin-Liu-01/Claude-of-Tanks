@@ -133,7 +133,7 @@ fuel barrels in back, lights, 2 gun towers instead of 1")
 
 | | Oplot-M (`buildOplotMKit`) | Oplot-T (`buildOplotTKit`) |
 | --- | --- | --- |
-| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear with its outboard sight-and-ammunition box (the print's; clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-83..229) | M2 enclosed mini-turret on a raised armoured tower with a large searchlight (-248..4); 7.62 open cradle (-101..233) |
+| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear with its outboard sight-and-ammunition box (the print's; clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-83..229) | M2 enclosed mini-turret on a raised armoured tower with a large searchlight (-248..4); 7.62 open cradle (-70..245) |
 | Extra side armour | a lower Duplet course on each rubber skirt, seven gapped blocks a side (skirt sector) | two courses of 9 cm bolted blocks on the six rear skirt panels (addExternalArmor); a stand-off horizontal-slat cage round the turret's rear half |
 | Lights | LED bars on the cheek stacks, a work lamp astern | a searchlight on the left cheek, work lamps fore and aft |
 | Stern | twin 200 L drums (issue paint 1) strapped to the lower rear plate under the grille and the log | the same cradle, desert-issue drums (paint 3) |

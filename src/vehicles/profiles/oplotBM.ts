@@ -71,7 +71,10 @@ const GLACIS_TOP_Z = Z(2.14);
 function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
   loftHull(P, {
     deck: [[-HULL_HALF_L, 1.36], [Z(-3.44), 1.43], [Z(-3.20), DECK_Y], [GLACIS_TOP_Z, DECK_Y], [Z(3.48), 0.86], [HULL_HALF_L, 0.83]],
-    belly: [[-HULL_HALF_L, 1.06], [Z(-3.42), 0.74], [Z(-3.18), 0.48], [Z(-2.95), 0.42], [Z(2.86), 0.42], [Z(3.22), 0.58], [HULL_HALF_L, 0.72]],
+    // the stern: a ledge at 1.04-1.12 back from print z -3.30, a step down to 0.77, the raked plate to the belly (the
+    // print's lower rear, measured r12; the fidelity board's right view read the old straight rake as surplus)
+    belly: [[-HULL_HALF_L, 1.12], [Z(-3.30), 1.04], [Z(-3.25), 0.77], [Z(-3.10), 0.71], [Z(-3.00), 0.50], [Z(-2.90), 0.43],
+      [Z(2.86), 0.42], [Z(3.22), 0.58], [HULL_HALF_L, 0.72]],
     wUp: [[-HULL_HALF_L, 1.10], [HULL_HALF_L, 1.10]],
     wLo: [[-HULL_HALF_L, 1.07], [HULL_HALF_L, 1.07]],
     sponsonY: [[-HULL_HALF_L, 1.20], [HULL_HALF_L, 1.20]],
@@ -141,13 +144,13 @@ function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
     for (const dx of [-0.11, 0.11]) P.addEquipment('hullDark', box(0.018, 0.17, 0.018), side(s, 0.94) + dx, 1.02, lz + 0.08, -0.45, 0, 0);
   }
 
-  // Stern: the transom grille, recovery eyes and the unditching log on its brackets.
+  // Stern: the transom grille on the stern face over the ledge, recovery eyes and the unditching log on its brackets.
   const stern = -HULL_HALF_L;
-  P.add('hullDark', box(1.70, 0.24, 0.024), 0, 1.00, stern - 0.013);
-  for (let i = 0; i < 7; i++) P.add('hullDetail', box(0.20, 0.10, 0.018), -0.78 + i * 0.26, 1.00, stern - 0.026);
+  P.add('hullDark', box(1.70, 0.20, 0.024), 0, 1.24, stern - 0.013);
+  for (let i = 0; i < 7; i++) P.add('hullDetail', box(0.20, 0.08, 0.018), -0.78 + i * 0.26, 1.24, stern - 0.026);
   for (const s of [-1, 1]) {
     // recovery eyes welded to the raked lower rear plate, outboard of the stern drums
-    P.add('hullDark', KIT.torus(0.075, 0.02, 12), side(s, 1.00), 0.62, Z(-3.31), Math.PI / 2, 0, 0);
+    P.add('hullDark', KIT.torus(0.075, 0.02, 12), side(s, 1.00), 0.62, Z(-3.075), Math.PI / 2, 0, 0);
     P.add('hull', box(0.10, 0.20, 0.16), side(s, 0.95), 1.29, stern - 0.06);
   }
   P.addEquipment('hullDetail', cylX(0.10, 2.10, 20), 0, 1.36, stern - 0.15);
@@ -368,15 +371,16 @@ function buildMantlet(P: TankBuilderPort): void {
 
 /** The PNK-6 panoramic sight: pedestal, tapered tower and the twin-window head facing forward, ahead of the cupola. */
 function buildPnk6(P: TankBuilderPort): void {
-  P.add('turret', box(0.47, 0.14, 0.45), -0.645, ROOF_Y + 0.05, 0.33);
+  // (the print's head stands at turret z 0.02..0.37, r12's overlay: 0.15 m behind the first build and shallower)
+  P.add('turret', box(0.47, 0.14, 0.378), -0.645, ROOF_Y + 0.05, 0.180);
   P.addModuleVisual('optics', 'turretDetail', orientedSlab(
-    [-0.86, ROOF_Y + 0.12, 0.13], [-0.43, ROOF_Y + 0.12, 0.13], [-0.43, ROOF_Y + 0.12, 0.55], [-0.86, ROOF_Y + 0.12, 0.55],
-    [-0.84, ROOF_Y + 0.66, 0.16], [-0.45, ROOF_Y + 0.66, 0.16], [-0.45, ROOF_Y + 0.66, 0.53], [-0.84, ROOF_Y + 0.66, 0.53]), 0, 0, 0);
+    [-0.86, ROOF_Y + 0.12, 0.012], [-0.43, ROOF_Y + 0.12, 0.012], [-0.43, ROOF_Y + 0.12, 0.365], [-0.86, ROOF_Y + 0.12, 0.365],
+    [-0.84, ROOF_Y + 0.66, 0.038], [-0.45, ROOF_Y + 0.66, 0.038], [-0.45, ROOF_Y + 0.66, 0.348], [-0.84, ROOF_Y + 0.66, 0.348]), 0, 0, 0);
   P.add('turretDetail', orientedSlab(
-    [-0.85, ROOF_Y + 0.64, 0.15], [-0.44, ROOF_Y + 0.64, 0.15], [-0.44, ROOF_Y + 0.64, 0.56], [-0.85, ROOF_Y + 0.64, 0.56],
-    [-0.83, ROOF_Y + 0.75, 0.17], [-0.46, ROOF_Y + 0.75, 0.17], [-0.46, ROOF_Y + 0.75, 0.53], [-0.83, ROOF_Y + 0.75, 0.53]));
-  for (const dx of [-0.09, 0.09]) P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.17, 0.012), -0.645 + dx, ROOF_Y + 0.52, 0.548);
-  P.add('turretDark', box(0.38, 0.03, 0.06), -0.645, ROOF_Y + 0.63, 0.57);
+    [-0.85, ROOF_Y + 0.64, 0.029], [-0.44, ROOF_Y + 0.64, 0.029], [-0.44, ROOF_Y + 0.64, 0.374], [-0.85, ROOF_Y + 0.64, 0.374],
+    [-0.83, ROOF_Y + 0.75, 0.046], [-0.46, ROOF_Y + 0.75, 0.046], [-0.46, ROOF_Y + 0.75, 0.348], [-0.83, ROOF_Y + 0.75, 0.348]));
+  for (const dx of [-0.09, 0.09]) P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.17, 0.012), -0.645 + dx, ROOF_Y + 0.52, 0.366);
+  P.add('turretDark', box(0.38, 0.03, 0.06), -0.645, ROOF_Y + 0.63, 0.382);
 }
 
 function buildRoof(P: TankBuilderPort, variant: OplotBMVariant): void {
@@ -605,7 +609,7 @@ function stationLens(P: TankBuilderPort, S: Station): void {
   done();
 }
 
-/** Twin 200 L drums strapped across the lower rear plate under the transom grille and the unditching log (the
+/** Twin 200 L drums strapped across the stern under its ledge and the unditching log, on arms to the raked plate (the
  * T-72/T-80 stowage): well below the deck line, so the gun keeps its depression over the stern. */
 function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number], seed: number): void {
   const stern = -HULL_HALF_L, z = stern - 0.24, y = 0.86;
@@ -618,14 +622,14 @@ function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number]
   }
   // cradle: four arms from the raked plate under the drums, saddles under each, a cross tube, and hold-down straps from
   // the transom's lower edge over each drum
-  const armY = y - 0.225, plateZ = Z(-3.42) + (0.74 - armY) / (0.74 - 0.48) * (Z(-3.18) - Z(-3.42));
+  const armY = y - 0.225, plateZ = Z(-3.10) + (0.71 - armY) / (0.71 - 0.50) * (Z(-3.00) - Z(-3.10));
   for (const x of [-0.92, -0.08, 0.08, 0.92]) {
     P.add('hullDark', box(0.05, 0.05, plateZ - z), x, armY, (z + plateZ) / 2);
     P.add('hullDark', box(0.05, 0.05, 0.05), x, y - 0.18, z);
   }
   P.add('hullDark', cylX(0.025, 1.90, 12), 0, armY, z - 0.06);
   for (const x of [-0.50, 0.50]) {
-    P.add('hullDark', beamBetween([x, 0.885, stern - 0.03], [x, y + 0.19, z + 0.06], 0.012, 8));
+    P.add('hullDark', beamBetween([x, 1.10, stern - 0.03], [x, y + 0.19, z + 0.06], 0.012, 8));
   }
 }
 
@@ -712,11 +716,13 @@ function buildOplotMKit(P: TankBuilderPort): void {
 function buildOplotTKit(P: TankBuilderPort): void {
   // the M2's mini-turret on its tower carries a boresighted searchlight on its mantlet's left; it clears -248..4 degrees
   // (blocked toward the PNK-6 tower and the 7.62), its depression held up at the far end of that arc; the 7.62 clears
-  // -101..233 (blocked toward the tower)
+  // -70..245 (blocked toward the PNK-6 tower), its depression held up over the bustle cage astern
   stationLimits(enclosedStation(P, T_STATIONS.m2, true), [-4.2935, 0.0349],
     [[-4.2935, 0.094], [-4.1539, 0.113], [-4.0666, 0.127], [-3.9793, 0.18]]);
   stationLens(P, T_STATIONS.m2);
-  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.7279, 4.0317], [[3.8223, 0.18], [3.9095, 0.037], [3.9968, 0], [4.0317, 0]]);
+  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.1868, 4.2412], [[-1.1868, 0.018], [-1.1345, 0.18], [3.0543, 0.18],
+    [3.1416, 0.136], [3.2289, 0.074], [3.3161, 0.088], [3.4034, 0.139], [3.4907, 0.065], [3.5779, 0.074], [3.6652, 0.116],
+    [3.7525, 0.18]]);
   // bolted steel appliqué where the Thai tank carries no Duplet: two courses of 9 cm blocks on each of the six rear skirt
   // panels, flush on the flared face, four bolt heads on each block's outer face
   const face = new THREE.Vector2(SKIRT_FACE.innerX + 0.06 - SKIRT_FACE.outerX, DECK_Y - (SKIRT_FACE.bottomY + 0.05));
