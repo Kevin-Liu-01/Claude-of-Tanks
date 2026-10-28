@@ -1,16 +1,18 @@
 // The armour paint by panel (263, game/armorPaintPanels.ts): each connected triangle cluster of a painted draw takes one
-// zone (the area-weighted majority of the paint's own score), so a border falls on a part's edge; gear is bare; what the
-// pose decides (a hull part under the turret's sweep, a turret part by the barrel) and a geometry drawn twice keep the
-// per-point score (0). Held here: a tile across a border takes one zone, a side slab its side, an indexed box its faces,
-// gear above the hull bare, the barrel bare, the turret's sweep live, a shared geometry and an unpainted draw left out,
-// the slices equal to the whole, the same answer twice; the hook's attribute default and shader; and a T-72B3 battle
-// build, its draws near and far as unbaked, its far stand-ins carrying the panels.
+// zone (the area-weighted majority of the paint's own score), so a border falls on a part's edge; gear is bare; a part is
+// judged in its own rig's frame; a cluster with no majority goes by part (a small dome whole, a large welded casting split
+// at its creases); a turret part by the barrel and a geometry drawn twice keep the per-point score (0). Held here: a tile
+// across a border takes one zone, a side slab its side, an indexed box its faces, gear above the hull bare, the barrel
+// bare, a hull part under the turret the roof, a dome whole, a fold by its crease, the measure of where panels and the
+// per-point paint disagree, a shared geometry and an unpainted draw left out, the slices equal to the whole; the hook's
+// attribute default and shader; and a T-72B3 battle build, its draws near and far as unbaked, its far stand-ins carrying
+// the panels.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from '../vehicles/canvasFixture.test-support.mjs';
 
 const restoreCanvas = installCanvasFixture();
-const { bakePaintPanels, bakePaintPanelSteps, panelBakeStats } = await import('./armorPaintPanels.ts');
+const { bakePaintPanels, bakePaintPanelSteps, measurePanelDisagreement, panelBakeStats } = await import('./armorPaintPanels.ts');
 const { zoneAt, zonePlates } = await import('../sim/armorZones.ts');
 const { tagVehicleMaterial } = await import('../vehicles/appearanceAudit.ts');
 const { applyBurnHook, removeBurnHook, makeBurnUniforms } = await import('../vehicles/materials.ts');
@@ -24,7 +26,7 @@ const hullPlates = [
   plate('roof', [[-1, 2, 1], [1, 2, 1], [1, 2, -1], [-1, 2, -1]]),
   plate('rear', [[1, 0, -1], [-1, 0, -1], [-1, 2, -1], [1, 2, -1]]),
 ];
-const UPPER = 0, LOWER = 1, SIDE_R = 2;
+const UPPER = 0, LOWER = 1, SIDE_R = 2, ROOF = 4;
 const hullZones = zonePlates(hullPlates);
 const template = (turretZones = [], turretBox = null) => ({
   zones: [...hullZones, ...turretZones], hullZones: hullZones.length,
@@ -89,10 +91,41 @@ function hullScene() {
   assert.equal(meshes.tyre.geometry.getAttribute('apZone'), undefined, 'an unpainted draw carries no panels');
   assert.ok([...meshes.twinA.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a geometry drawn twice keeps the per-point score');
   assert.equal(stats.shared, 1);
-  assert.ok(stats.baked > 0 && stats.bare > 0 && stats.clusters > 0 && stats.votes <= 3 * stats.triangles, 'the tally');
+  assert.ok(stats.baked > 0 && stats.bare > 0 && stats.clusters > 0 && stats.votes <= 4 * stats.triangles, `the tally (${JSON.stringify(stats)})`);
   // the bake is once a geometry: a second bake under the same armour leaves it as it is
   const again = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, armor);
   assert.equal(again.geometries, 0, 'a baked vehicle bakes nothing twice');
+}
+
+// ---- a cluster with no majority, by part: a small dome whole, a large welded casting split at its crease
+{
+  const root = new THREE.Group(), hull = new THREE.Group();
+  root.add(hull);
+  // a dome (0.39 m²) on the glacis's top corner, across the glacis, the roof and the side
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0.85, 1.9, 0.85).toNonIndexed(), paint);
+  // a welded casting folded over the front edge: 1.6 x 0.6 m down the glacis and 1.6 x 0.6 m back over the roof, its
+  // normals shared (smooth) along the fold, so it welds as one cluster
+  const fold = new THREE.BufferGeometry();
+  const P = [[-0.8, 1.4, 1.02], [0.8, 1.4, 1.02], [0.8, 2.02, 1.02], [-0.8, 2.02, 1.02], [-0.8, 2.02, 0.4], [0.8, 2.02, 0.4]];
+  const N = [[0, 0, 1], [0, 0, 1], [0, Math.SQRT1_2, Math.SQRT1_2], [0, Math.SQRT1_2, Math.SQRT1_2], [0, 1, 0], [0, 1, 0]];
+  const tris = [[0, 1, 2], [0, 2, 3], [3, 2, 5], [3, 5, 4]];
+  fold.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat().flatMap((i) => P[i]), 3));
+  fold.setAttribute('normal', new THREE.Float32BufferAttribute(tris.flat().flatMap((i) => N[i]), 3));
+  const casting = new THREE.Mesh(fold, paint);
+  hull.add(dome, casting);
+  root.updateMatrixWorld(true);
+  measurePanelDisagreement(true);
+  const stats = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, {});
+  measurePanelDisagreement(false);
+  const domeValues = new Set(dome.geometry.getAttribute('apZone').array);
+  assert.ok(domeValues.size === 1 && [...domeValues][0] > 0, `a small dome across three zones takes one (${[...domeValues]})`);
+  const z = casting.geometry.getAttribute('apZone').array;
+  assert.ok(z[0] === z[3] && z[6] === z[9] && z[0] > 0 && z[6] > 0, 'each side of the fold is one piece');
+  assert.equal(z[0], UPPER + 1, 'the fold\'s front: the upper glacis');
+  assert.equal(z[6], ROOF + 1, 'its top: the roof');
+  assert.ok(stats.wholeParts >= 1 && stats.creaseParts >= 2, `parts by whole and by crease (${stats.wholeParts}, ${stats.creaseParts})`);
+  assert.ok(stats.bakedArea > 0 && stats.disagreeArea > 0 && stats.disagreeArea < stats.bakedArea,
+    `the dome's minority zones disagree with the per-point paint (${stats.disagreeArea.toFixed(3)} of ${stats.bakedArea.toFixed(3)} m²)`);
 }
 
 // ---- the slices equal the whole, the same answer twice
@@ -138,7 +171,7 @@ function hullScene() {
   gun.add(shield);
   root.updateMatrixWorld(true);
   bakePaintPanels(root, template(turretZones, [[-0.85, -0.05, -0.85], [0.85, 0.85, 1.6]]), { hull, turret, gun }, {});
-  assert.ok([...under.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a hull part under the turret\'s sweep is live');
+  assert.deepEqual(faceValues(under.geometry, [0, 1, 0]), [ROOF + 1], 'a hull part under the turret is hull armour at any yaw: the roof');
   assert.ok([...barrel.geometry.getAttribute('apZone').array].every((v) => v === -1), 'the barrel is bare');
   assert.ok([...cheek.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a turret part by the barrel is live');
   assert.deepEqual(faceValues(face.geometry, [0, 0, 1]), [hullZones.length + 1], 'a turret face clear of the barrel takes the turret\'s front');

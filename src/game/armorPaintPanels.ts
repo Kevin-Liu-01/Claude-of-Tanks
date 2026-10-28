@@ -4,9 +4,10 @@
 // across a skirt panel. Here every connected triangle cluster of a painted draw — the triangles that share its vertices:
 // a box's face, a tile, a panel — takes one zone, the area-weighted majority of that same score over its triangles,
 // written as the vertex attribute apZone (the zone + 1; PANEL_BARE for gear left bare; 0 the per-point score, as before),
-// so a border falls on a panel's edge. A cluster whose triangles split between zones (a welded casting across its cheek
-// and its roof) keeps the per-point score, and so does whatever the turret's yaw or the gun's elevation could move into
-// another frame: a hull part under the turret's envelope, a turret part near the barrel.
+// so a border falls on a panel's edge. Each part is judged in its own rig's frame (a hull part is hull armour at any yaw;
+// what rides the turret or the gun is the turret's). A cluster with no majority goes by part (264, Main): a small one (a
+// dome, a hatch) whole on its plurality, a large welded casting split at its creases, each piece voting again; a piece
+// still split keeps the per-point score, as does a turret part by the barrel (the gun's elevation decides there).
 //
 // Baked in slices once the overlay primes a vehicle (the battle visual streamer's staging, else the overlay's own frames),
 // once per geometry: copies of a spec share it. Each geometry is judged at one pose, its frames taken as it starts. Every
@@ -50,6 +51,22 @@ export interface PanelBakeStats {
   perPoint: number;
   /** Geometries drawn more than once (another place, another zone): zeros. */
   shared: number;
+  /** The per-point triangles by why: no zone held the majority, the pose decides (live), no plate faces them. */
+  perPointSplit: number;
+  perPointLive: number;
+  perPointNone: number;
+  /** Clusters with no majority that were baked by part: whole (a small part's plurality) or split at their creases. */
+  wholeParts: number;
+  creaseParts: number;
+  /** (measurePanelDisagreement) the painted area, the panels' share of it, and the part of that the per-point paint gives
+   * another zone (m²). */
+  paintedArea: number;
+  bakedArea: number;
+  disagreeArea: number;
+  /** ... by why: the per-point paint leaves it bare or unpainted; it judges it in the other frame; another plate. */
+  disagreeBare: number;
+  disagreeFrame: number;
+  disagreeZone: number;
   /** Clusters, and the votes they cast (one a flat cluster). */
   clusters: number;
   votes: number;
@@ -66,31 +83,18 @@ const VOTE_LIVE = -3;
 
 /** Which armour model baked a geometry (same-spec copies share theirs); a geometry seen under another is zeroed. */
 const bakedBy = new WeakMap<THREE.BufferGeometry, object | null>();
-/** Each template's hull and turret zones apart (zoneAt takes one frame's), and the cylinder the turret's yaw sweeps its
- * envelope and footprints over, in the turret's frame. */
+/** Each template's hull and turret zones apart (zoneAt takes one frame's). */
 interface FrameZones {
   readonly hull: ZonePlate[];
   readonly turret: ZonePlate[];
-  readonly sweepMinY: number;
-  readonly sweepMaxY: number;
-  readonly sweepR2: number;
 }
 const frameZones = new WeakMap<PanelTemplate, FrameZones>();
 function frameZonesOf(template: PanelTemplate): FrameZones {
   let split = frameZones.get(template);
-  if (split) return split;
-  const turret = template.zones.slice(template.hullZones);
-  let minY = template.turretMin.y, maxY = template.turretMax.y, r2 = 0;
-  const reach = (x: number, z: number) => { r2 = Math.max(r2, x * x + z * z); };
-  const boxes: Array<[readonly number[], readonly number[]]> = [[template.turretMin.toArray(), template.turretMax.toArray()]];
-  for (const zone of turret) if (zone.footprint) boxes.push([zone.footprint.min, zone.footprint.max]);
-  for (const [min, max] of boxes) {
-    if (!(max[0] >= min[0])) continue;
-    minY = Math.min(minY, min[1]); maxY = Math.max(maxY, max[1]);
-    for (const x of [min[0], max[0]]) for (const z of [min[2], max[2]]) reach(x, z);
+  if (!split) {
+    split = { hull: template.zones.slice(0, template.hullZones), turret: template.zones.slice(template.hullZones) };
+    frameZones.set(template, split);
   }
-  split = { hull: template.zones.slice(0, template.hullZones), turret, sweepMinY: minY, sweepMaxY: maxY, sweepR2: r2 };
-  frameZones.set(template, split);
   return split;
 }
 
@@ -127,18 +131,20 @@ function ownerOf(object: THREE.Object3D, frames: PanelFrames): Owner {
 /**
  * The paint's own judgement at one world point with its world normal (materials.ts ARMOR_PAINT_DIFFUSE_GLSL, the same
  * terms): its frame, its normal leaned on the frame's cell box, the gear it leaves bare, then the zone (sim/armorZones.ts
- * zoneAt, the mantlet's footprint first). Returns a vote; VOTE_LIVE where the pose decides (the turret's yaw, the gun's
- * elevation), so the bake leaves it to the per-point score.
+ * zoneAt, the mantlet's footprint first).
+ * - `perPoint` false (the bake): the frame is the part's own rig's: a hull part is hull armour at any yaw, what rides the
+ *   turret or the gun is the turret's wherever it stands (the per-fragment paint cannot know a part's rig and takes the
+ *   turret's frame inside its envelope: a hull deck under the turret's overhang changed zone with the yaw, a mantlet ahead
+ *   of the envelope stood bare). VOTE_LIVE where the gun's elevation decides (a turret part by the barrel).
+ * - `perPoint` true: exactly the per-fragment paint's rule (the frame by the envelope and the footprints), for the
+ *   measure of where a panel and the per-point paint disagree.
  */
 function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barrel: boolean, mode: number,
-  owner: Owner, world: THREE.Vector3, normalWorld: THREE.Vector3): number {
+  owner: Owner, world: THREE.Vector3, normalWorld: THREE.Vector3, perPoint = false): number {
   const zones = template.zones, hullN = template.hullZones;
+  const hasTurret = zones.length > hullN;
   const t = _t.copy(world).applyMatrix4(pose.turretInv);
-  // a hull part the turret's yaw can sweep its envelope over (yaw turns about the turret frame's y: a point's height and
-  // radius there stand still) is judged live
-  if (owner === 'hull' && zones.length > hullN && t.y >= split.sweepMinY && t.y <= split.sweepMaxY
-    && t.x * t.x + t.z * t.z <= split.sweepR2) return VOTE_LIVE;
-  let turret = zones.length > hullN && t.x >= template.turretMin.x && t.y >= template.turretMin.y && t.z >= template.turretMin.z
+  let turret = hasTurret && t.x >= template.turretMin.x && t.y >= template.turretMin.y && t.z >= template.turretMin.z
     && t.x <= template.turretMax.x && t.y <= template.turretMax.y && t.z <= template.turretMax.z;
   let overFoot = false;
   for (let k = hullN; k < zones.length; k++) {
@@ -150,14 +156,14 @@ function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barre
   if (barrel) {
     const g = _g.copy(world).applyMatrix4(pose.gunInv);
     const r2 = g.x * g.x + g.y * g.y;
-    if (owner === 'gun' && g.z > template.barrelFrom && r2 < template.barrelRadius * template.barrelRadius) return VOTE_BARE;
-    if (owner === 'turret' && g.z > template.barrelFrom - 0.1 && r2 < (template.barrelRadius + 0.1) ** 2) return VOTE_LIVE;
+    const inBarrel = g.z > template.barrelFrom && r2 < template.barrelRadius * template.barrelRadius;
+    if (inBarrel && (perPoint || owner === 'gun')) return VOTE_BARE;
+    if (!perPoint && owner === 'turret' && g.z > template.barrelFrom - 0.1 && r2 < (template.barrelRadius + 0.1) ** 2) return VOTE_LIVE;
   }
-  // what rides the turret or the gun is the turret's armour wherever it stands: a mantlet ahead of the turret's
-  // envelope, an ERA cheek's tip past it (the per-point paint judges them in the hull's frame, above the hull's cells,
-  // and leaves them bare behind a hard line: the critics' first defect); they turn with the turret, so no pose decides
-  if (owner !== 'hull' && zones.length > hullN) turret = true;
-  if (turret && owner === 'hull') return VOTE_LIVE;
+  if (!perPoint) {
+    turret = owner !== 'hull' && hasTurret;
+    if (owner === 'hull') overFoot = false;
+  }
   const p = turret ? t : _p.copy(world).applyMatrix4(pose.hullInv);
   const n = _n.copy(normalWorld).transformDirection(turret ? pose.turretInv : pose.hullInv);
   const centre = turret ? template.turretCentre : template.hullCentre;
@@ -200,6 +206,16 @@ const FLAT_DOT = 0.9995;
 const MAX_VOTES = 32;
 /** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
 const FLAT_SAMPLED = 8;
+/** A cluster with no majority under this area (m²: a dome, a hatch, a lamp's casing) takes its plurality as one part;
+ * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
+const SMALL_PART_M2 = 0.5;
+const PLURALITY = 0.4;
+/** Adjacent triangles whose faces turn more than ~30° apart lie on two sides of a crease. */
+const CREASE_DOT = 0.866;
+
+/** (lane tools) Also measure where a panel's zone and the per-point paint's disagree (bakedArea, disagreeArea). */
+let measureDisagreement = false;
+export function measurePanelDisagreement(on: boolean): void { measureDisagreement = on; }
 
 /** A three-component attribute's values as a plain array (a copy when it is interleaved or normalized). */
 function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined): ArrayLike<number> | null {
@@ -211,14 +227,24 @@ function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribu
   return out;
 }
 
+/** A geometry's clusters: each vertex's (`parent`, a union-find), its welded twin (`canon`: one vertex per welded corner),
+ * and the triangles' corners. */
+interface Clusters {
+  readonly parent: Int32Array;
+  readonly canon: Int32Array;
+  readonly triangles: number;
+  readonly corner: (t: number, k: number) => number;
+  readonly indexed: boolean;
+}
+
 /** Each vertex's cluster: by the index, and for a soup without one (the merged buckets), by a welded position and normal;
  * a yield every SLICE_TRIANGLES triangles' worth. */
-function* clusters(geometry: THREE.BufferGeometry): Generator<void, { parent: Int32Array; triangles: number; corner: (t: number, k: number) => number }, void> {
+function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, void> {
   const position = geometry.getAttribute('position');
   const index = geometry.index;
   const count = position.count;
-  const parent = new Int32Array(count);
-  for (let v = 0; v < count; v++) parent[v] = v;
+  const parent = new Int32Array(count), canon = new Int32Array(count);
+  for (let v = 0; v < count; v++) parent[v] = canon[v] = v;
   const triangles = Math.floor((index ? index.count : count) / 3);
   const corner = index ? (t: number, k: number) => index.getX(t * 3 + k) : (t: number, k: number) => t * 3 + k;
   if (!index) {
@@ -237,7 +263,7 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, { parent: In
           break;
         }
       }
-      if (match >= 0) union(parent, match, v);
+      if (match >= 0) { union(parent, match, v); canon[v] = match; }
       else { next[v] = head ?? -1; heads.set(key, v); }
       if (v % (SLICE_TRIANGLES * 3) === SLICE_TRIANGLES * 3 - 1) yield;
     }
@@ -248,7 +274,7 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, { parent: In
     union(parent, a, corner(t, 2));
     if (t % (SLICE_TRIANGLES * 4) === SLICE_TRIANGLES * 4 - 1) yield;
   }
-  return { parent, triangles, corner };
+  return { parent, canon, triangles, corner, indexed: !!index };
 }
 
 /**
@@ -311,7 +337,7 @@ export function* bakePaintPanelSteps(
       const welding = clusters(geometry);
       let welded = welding.next();
       while (!welded.done) { yieldSlice(); yield; sliceStarted = performance.now(); welded = welding.next(); }
-      const { parent, triangles, corner } = welded.value;
+      const { parent, canon, triangles, corner, indexed } = welded.value;
       stats.triangles += triangles;
       const mode = armorPaintMode(mesh.material as THREE.Material);
       const owner = ownerOf(mesh, frames);
@@ -320,7 +346,7 @@ export function* bakePaintPanelSteps(
       _normalWorld.getNormalMatrix(mesh.matrixWorld);
       const q = _normalWorld.elements;
       // each triangle's world centre, normal and area, and its cluster
-      const centres = new Float64Array(triangles * 3), normals = new Float64Array(triangles * 3);
+      const centres = new Float64Array(triangles * 3), normals = new Float64Array(triangles * 3), faces = new Float64Array(triangles * 3);
       const areas = new Float64Array(triangles);
       const roots = new Int32Array(triangles);
       for (let t = 0; t < triangles; t++) {
@@ -336,6 +362,7 @@ export function* bakePaintPanelSteps(
         _c.set(m[0] * cx + m[4] * cy + m[8] * cz, m[1] * cx + m[5] * cy + m[9] * cz, m[2] * cx + m[6] * cy + m[10] * cz);
         _normal.crossVectors(_b, _c);
         areas[t] = _normal.length() / 2;
+        if (areas[t] > 0) { faces[t * 3] = _normal.x / (2 * areas[t]); faces[t * 3 + 1] = _normal.y / (2 * areas[t]); faces[t * 3 + 2] = _normal.z / (2 * areas[t]); }
         if (n) {
           const nx = n[i0] + n[i1] + n[i2], ny = n[i0 + 1] + n[i1 + 1] + n[i2 + 1], nz = n[i0 + 2] + n[i1 + 2] + n[i2 + 2];
           _normal.set(q[0] * nx + q[3] * ny + q[6] * nz, q[1] * nx + q[4] * ny + q[7] * nz, q[2] * nx + q[5] * ny + q[8] * nz);
@@ -360,6 +387,97 @@ export function* bakePaintPanelSteps(
         tally[slot] += weight;
         stats.votes++;
       };
+      // a cluster with no majority, by part: a small one whole on its plurality (a dome, a hatch); a large one (a welded
+      // casting) split at its creases, each piece voting on all its triangles and taking its majority, or its plurality
+      // when it is small; a piece still split keeps the per-point score
+      function* resolveParts(start: number, end: number, total: number): Generator<void, void, void> {
+        const count = end - start;
+        const tv = new Int16Array(count);
+        for (let k = 0; k < count; k++) {
+          const t = order[start + k];
+          tv[k] = areas[t] > 0 ? vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
+            _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2])) : VOTE_NONE;
+          if (spend(4)) { yield; sliceStarted = performance.now(); }
+        }
+        stats.votes += count;
+        const part = new Int32Array(count);
+        let parts = 1;
+        if (total >= SMALL_PART_M2 && !indexed) {
+          part.fill(-1);
+          parts = 0;
+          // the triangles across each welded edge, then the pieces a crease bounds
+          const edges = new Map<number, number>(), across = new Int32Array(count * 3).fill(-1), span = position.count;
+          for (let k = 0; k < count; k++) {
+            const t = order[start + k];
+            for (let e = 0; e < 3; e++) {
+              const a = canon[corner(t, e)], b = canon[corner(t, (e + 1) % 3)];
+              const key = a < b ? a * span + b : b * span + a;
+              const other = edges.get(key);
+              if (other === undefined) edges.set(key, k * 3 + e);
+              else { across[k * 3 + e] = Math.floor(other / 3); across[other] = k; }
+            }
+          }
+          const stack: number[] = [];
+          for (let k = 0; k < count; k++) {
+            if (part[k] >= 0) continue;
+            part[k] = parts;
+            stack.push(k);
+            while (stack.length) {
+              const j = stack.pop()!, tj = order[start + j] * 3;
+              for (let e = 0; e < 3; e++) {
+                const o = across[j * 3 + e];
+                if (o < 0 || part[o] >= 0) continue;
+                const to = order[start + o] * 3;
+                if (faces[tj] * faces[to] + faces[tj + 1] * faces[to + 1] + faces[tj + 2] * faces[to + 2] < CREASE_DOT) continue;
+                part[o] = parts;
+                stack.push(o);
+              }
+            }
+            parts++;
+          }
+        }
+        // each piece in turn (a counting sort on its number), its area by vote
+        const first = new Int32Array(parts + 1);
+        for (let k = 0; k < count; k++) first[part[k] + 1]++;
+        for (let k = 0; k < parts; k++) first[k + 1] += first[k];
+        const inPart = new Int32Array(count), at = first.slice(0, parts);
+        for (let k = 0; k < count; k++) inPart[at[part[k]]++] = k;
+        for (let piece = 0; piece < parts; piece++) {
+          touched.length = 0;
+          let voted = 0;
+          for (let i = first[piece]; i < first[piece + 1]; i++) {
+            const k = inPart[i], area = areas[order[start + k]];
+            if (!(area > 0)) continue;
+            const slot = tv[k] + 3;
+            if (tally[slot] === 0) touched.push(slot);
+            tally[slot] += area;
+            voted += area;
+          }
+          let top = VOTE_NONE, topArea = -1;
+          for (const slot of touched) {
+            const key = slot - 3, area = tally[slot];
+            if (area > topArea || (area === topArea && key > top)) { top = key; topArea = area; }
+            tally[slot] = 0;
+          }
+          let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
+            ? top === VOTE_BARE ? PANEL_BARE : top + 1 : 0;
+          if (value === 0 && voted < SMALL_PART_M2 && top >= 0 && top < 127 && topArea >= PLURALITY * voted) value = top + 1;
+          const kept = first[piece + 1] - first[piece];
+          if (value !== 0) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }
+          if (value > 0) stats.baked += kept; else if (value === PANEL_BARE) stats.bare += kept;
+          else {
+            stats.perPoint += kept;
+            if (top === VOTE_LIVE) stats.perPointLive += kept;
+            else if (top === VOTE_NONE) stats.perPointNone += kept;
+            else stats.perPointSplit += kept;
+          }
+          if (value === 0) continue;
+          for (let i = first[piece]; i < first[piece + 1]; i++) {
+            const t = order[start + inPart[i]];
+            values[corner(t, 0)] = value; values[corner(t, 1)] = value; values[corner(t, 2)] = value;
+          }
+        }
+      }
       // per cluster: a flat one votes once at its area-weighted centre, a curved one on an even stride of its triangles;
       // the largest vote wins if it holds PANEL_MAJORITY of the area voted
       for (let start = 0; start < triangles;) {
@@ -415,7 +533,18 @@ export function* bakePaintPanelSteps(
           ? top === VOTE_BARE ? PANEL_BARE : top + 1 : 0;
         const kept = end - start;
         stats.clusters++;
-        if (value > 0) stats.baked += kept; else if (value === PANEL_BARE) stats.bare += kept; else stats.perPoint += kept;
+        if (value === 0 && voted > 0 && top !== VOTE_LIVE) {
+          yield* resolveParts(start, end, total);
+          start = end;
+          continue;
+        }
+        if (value > 0) stats.baked += kept; else if (value === PANEL_BARE) stats.bare += kept;
+        else {
+          stats.perPoint += kept;
+          if (top === VOTE_LIVE) stats.perPointLive += kept;
+          else if (top === VOTE_NONE) stats.perPointNone += kept;
+          else stats.perPointSplit += kept;
+        }
         if (value !== 0) {
           for (let k = start; k < end; k++) {
             const t = order[k];
@@ -424,6 +553,23 @@ export function* bakePaintPanelSteps(
         }
         start = end;
         if (spend(flat ? kept * (kept > FLAT_SAMPLED ? 1 : 3) : Math.min(kept, MAX_VOTES) * 4)) { yield; sliceStarted = performance.now(); }
+      }
+      if (measureDisagreement) {
+        for (let t = 0; t < triangles; t++) {
+          const value = values[corner(t, 0)];
+          if (areas[t] > 0) stats.paintedArea += areas[t];
+          if (!(value > 0) || !(areas[t] > 0)) continue;
+          const zone = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
+            _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2]), true);
+          stats.bakedArea += areas[t];
+          if (zone !== value - 1) {
+            stats.disagreeArea += areas[t];
+            if (zone < 0) stats.disagreeBare += areas[t];
+            else if ((zone >= template.hullZones) !== (value - 1 >= template.hullZones)) stats.disagreeFrame += areas[t];
+            else stats.disagreeZone += areas[t];
+          }
+          if (spend(4)) { yield; sliceStarted = performance.now(); }
+        }
       }
     }
     // into the attribute the build seeded (tankFactoryCore seedArmorPaintPanels), else a new one
@@ -442,7 +588,8 @@ export function* bakePaintPanelSteps(
 
 /** An empty tally for bakePaintPanelSteps. */
 export function panelBakeStats(): PanelBakeStats {
-  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
+  return { draws: 0, geometries: 0, triangles: 0, baked: 0, bare: 0, perPoint: 0, shared: 0, perPointSplit: 0, perPointLive: 0, perPointNone: 0, wholeParts: 0, creaseParts: 0, paintedArea: 0, bakedArea: 0, disagreeBare: 0, disagreeFrame: 0, disagreeZone: 0,
+    disagreeArea: 0, clusters: 0, votes: 0, ms: 0, slices: 0, sliceMs: 0 };
 }
 
 /** The whole bake at once (tools and receipts). */
