@@ -20,10 +20,15 @@ for (const [i, id] of SOURCE_X_IDS.entries()) {
   assert.deepEqual(donorSpec(TANK_SPECS, SOURCE_X_DONORS[id]).armor, donorArmor.get(id), 'donors are untouched');
 }
 
+// The combat trunnion row sits on gun-barrel-align-census's 0.1 mm grid (only a seated rig_turret keeps its authored pivot
+// to the nanometre, 55ffe4515c): kf51_panther's authored 0.39531175 m trunnion is its row's 0.3953 (since 240's anatomy
+// chain wrote the row), so the drawn trunnion, and the muzzle it carries, stand within that rounding of the combat frame.
+const ROW_HALF_STEP_M = 5e-5;
 function assertFrame(tank, spec, turret, gun) {
-  const close = (a, b, label) => assert.ok(a.distanceTo(b) < 1e-8, label);
+  const close = (a, b, label, tolerance = 1e-8) => assert.ok(a.distanceTo(b) < tolerance, label);
   close(turret.position, new THREE.Vector3(...spec.armor.turretPivot), 'visible yaw matches combat yaw');
-  close(gun.position, new THREE.Vector3(...spec.armor.gunPivot), 'visible trunnion matches combat trunnion');
+  assert.ok(gun.position.toArray().every((v, i) => Math.abs(v - spec.armor.gunPivot[i]) <= ROW_HALF_STEP_M),
+    'visible trunnion matches combat trunnion');
   const rotation = new THREE.Quaternion();
   for (const yaw of [-2.3, 0, 1.7]) for (const pitch of [-spec.gunDepressionDeg, 0, spec.gunElevationDeg]) {
     turret.rotation.y = yaw;
@@ -35,7 +40,7 @@ function assertFrame(tank, spec, turret, gun) {
       .applyQuaternion(rotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw))
       .add(new THREE.Vector3(...spec.armor.turretPivot));
     tank.root.localToWorld(expected);
-    close(tank.gunMuzzleWorld(new THREE.Vector3()), expected, 'rendered muzzle follows canonical combat frame');
+    close(tank.gunMuzzleWorld(new THREE.Vector3()), expected, 'rendered muzzle follows canonical combat frame', 2 * ROW_HALF_STEP_M);
   }
   turret.rotation.y = 0;
   gun.rotation.x = 0;

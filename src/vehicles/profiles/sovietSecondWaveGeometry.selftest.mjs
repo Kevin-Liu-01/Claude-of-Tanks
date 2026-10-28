@@ -17,8 +17,10 @@ const SOURCES={
     muzzle:5.766827075,boreFloor:5.59804,boreRadius:.0625,roof:2.105640266,wheelY:.43082499504089355,
     wheels:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465],
     hull:[[-.6,1.38950],[0,1.38950],[1.2,1.38950]],era:6},
-  t80u:{yaw:[0,1.55158,.0718698169],gun:[0,1.7564274071,1.4199398169],
-    muzzle:6.002754533,boreFloor:5.83777,boreRadius:.0625,roof:2.172451481,wheelY:.42247000336647034,
+  // 231 (gun-hull-fleet, 31235a8c85): the T-80U ring, the casting and the trunnion over it ride 65 mm higher
+  // (t80uXArmor.ts T80U_X_RING_RAISE_M), and the structural roof with them; the gun's own frame and x/z are kept.
+  t80u:{yaw:[0,1.61658,.0718698169],gun:[0,1.8214274071,1.4199398169],
+    muzzle:6.002754533,boreFloor:5.83777,boreRadius:.0625,roof:2.237451481,wheelY:.42247000336647034,
     wheels:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
     hull:[[-1.5,1.563],[0,1.544],[1.5,1.522]],era:4},
 };
