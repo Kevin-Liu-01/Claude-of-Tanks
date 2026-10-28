@@ -27,7 +27,7 @@ try{
    assert.equal(await pins.evaluateAll(nodes=>nodes.every(n=>{const r=n.getBoundingClientRect(),p=n.parentElement.getBoundingClientRect();return r.width>=40&&r.height>=40&&r.left>=p.left-1&&r.right<=p.right+1&&r.top>=p.top-1&&r.bottom<=p.bottom+1;})),true,`${name} ${id}: bounded touch targets`);
    for(let step=0;step<3;step++){
     await pins.nth(step).click();await photo.evaluate(img=>img.decode());assert.equal(await pins.nth(step).getAttribute('aria-pressed'),'true');
-    assert.equal(await guide.locator(':scope > .cot-guide__steps button').nth(step).getAttribute('aria-pressed'),'true');
+    assert.equal(await guide.locator(':scope > .cot-guide__steps button').nth(step).getAttribute('aria-selected'),'true');
     if(id==='smoke')assert.ok((await photo.getAttribute('src')).endsWith(step===0?'smoke-launch.webp':'smoke.webp'));
    }
    await guide.locator(':scope > .cot-guide__steps button').nth(0).focus();await page.keyboard.press('Enter');

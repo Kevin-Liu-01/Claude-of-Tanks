@@ -9,6 +9,7 @@ import { createLazyAudio } from '../audio/lazyAudio.ts';
 
 const order = [];
 let shouldFail = true;
+let noticeRetry = null;
 let loadingArgs = null;
 const lifecycle = createBattleEntryLifecycle({
   nextFrame: async () => {},
@@ -35,7 +36,7 @@ const runtime = createSoloBattleEntryRuntime({
   getSelectedMapId: () => 'desert',
   reportError: () => order.push('error'),
   // entry resilience (2026-09-25): the player sees the reason after the Garage is painted and the loader faded
-  presentFailure: async (error) => { order.push(`notice:${error.message}`); },
+  presentFailure: async (error, retry) => { order.push(`notice:${error.message}`); noticeRetry = retry; },
   onFailure: (error) => order.push(`beacon:${error.message}`),
 });
 
@@ -49,8 +50,17 @@ assert.deepEqual(order, ['cover', 'load', 'error', 'beacon:cold chunk failed', '
 assert.equal(lifecycle.pending, false);
 assert.equal(lifecycle.renderingCovered, false);
 
+// loading states (2026-10-27): the notice's one action runs the same entry again, the failed tank, field and rules
+assert.equal(typeof noticeRetry, 'function', 'the failure notice receives a retry');
 order.length = 0;
 shouldFail = false;
+noticeRetry();
+await new Promise((done) => setTimeout(done, 0));
+assert.deepEqual(loadingArgs, ['leo2_improved', 'desert', { randomRoster: false, gameMode: 'horde' }],
+  'the retry is the failed entry, not whatever the Garage selects now');
+assert.deepEqual(order, ['cover', 'load'], 'the retry covers and loads like the first press');
+
+order.length = 0;
 await runtime.beginSelected({ specId: 'm1a1_abrams_hc', mapId: 'winter' });
 assert.deepEqual(loadingArgs, [
   'm1a1_abrams_hc', 'winter', { randomRoster: true, gameMode: 'standard' },
@@ -206,7 +216,7 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /nextFrame: nextPaintFrame,/,
   'browser recovery must cross the real post-rAF task boundary before fading its cover');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
-  /presentFailure: \(error\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
+  /presentFailure: \(error, retry\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
   'the solo failure notice is demand-loaded from the same failure-only owner as the return notice');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /onFailure: \(error\) => entryTelemetry\.send\(\{[\s\S]{0,160}kind: 'entry_result'/,

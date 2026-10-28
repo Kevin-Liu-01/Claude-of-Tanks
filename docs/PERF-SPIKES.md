@@ -587,6 +587,13 @@ held by the settings pause, every cascade rendered each frame.
   sees a caster missing. Final frames cannot show it: the held
   scene still animates (clouds, wind, temporal post), and two frames with the merge off already differed on about as
   many crop pixels as off against on.
+- Live battles (2026-10-27, `tools/battle-spike-census.mjs --draw-attribution`, 30 sampled frames; off is
+  `--shadow-debug=noVehicleMerge`): the player's near tank (under 30 m) casts 16.5 shadow draws a frame with the merge
+  on and 22.5 off. The pair on one build (ed163c4af3, Verdant 7v7 cold): 16.5 on, 22.5 off. Earlier pairs on the lane's
+  previous build: Verdant 16.6 and 16.5 on against 22.5 off, Urban 16.5 on against 22.5 off. Its main-pass draws hold at
+  53. The far tanks (past 180 m) cast 3.3-4.2 a tank either way. Whole-pass and per-cascade totals are not an A/B
+  across census battles: the bots, the tanks in each band and the trees' shadows differ from run to run (the pair's
+  tank shadow draws by cascade were 22/9/9/4.5 on with 8 far tanks against 31/20/12/6 off with 11).
 
 ## The HUD's frame cost (UI-LOCKDOWN part E: 0.5 ms a frame)
 
