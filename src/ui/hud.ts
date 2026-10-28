@@ -2126,12 +2126,13 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb .nm .nw{position:relative;flex:0 0 auto;display:block;}
 .cot-hpb .nm .si{position:absolute;right:100%;top:50%;width:22px;height:11px;margin:-5.5px 4px 0 0;display:block;}
 /* (the silhouettes edged dark as the letters beside them are haloed: the ally's sat at 1.9:1 on snow, critic r3) */
-.cot-hpb .nm .si,.cot-tgt .cg{filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 1px 1px var(--surface-scene));}
+.cot-hpb .nm .si,.cot-tgt .cg{filter:drop-shadow(0 0 1px var(--surface-scene)) drop-shadow(0 0 1px var(--surface-scene))
+  drop-shadow(0 1px 1px var(--surface-scene));}
 .cot-hpb .nm span{display:block;min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
 .cot-hpb .vh{height:1.2em;padding:0 7px;font:600 var(--battle-fs-11)/1.2 ${FONT_COND};letter-spacing:.045em;color:var(--ink-2);
   white-space:nowrap;}
 /* (the quiet lines' halo doubled, so they hold over snow where their ink is the snow's own value) */
-.cot-hpb .vh,.cot-tgt .mt{text-shadow:var(--battle-control-label-halo),var(--battle-control-label-halo);}
+.cot-hpb .vh,.cot-tgt .mt,.cot-tgt .hp{text-shadow:var(--battle-control-label-halo),var(--battle-control-label-halo);}
 .cot-hpb.solo .vh,.cot-hpbars.short .cot-hpb .vh{display:none;}
 .cot-hpbars.short .cot-hpb .nm{padding-inline:5px;letter-spacing:.03em;}
 .cot-hpbars.short .cot-hpb .nm .si{display:none;}
@@ -2162,8 +2163,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);text-shadow:var(--battle-control-label-halo);}
 .cot-tgt .bk{padding:0;background:none;display:flex;flex-direction:column;align-items:center;}
 /* the name line: the silhouette and whoever holds the hull (the callsign, the player's name, a proving lane's name); each
-   line as tall as its type, so the zh floor's lines keep en's spacing */
-.cot-tgt .pl{position:relative;height:1.25em;font-size:var(--battle-fs-13);display:flex;align-items:center;}
+   line as tall as its type's glyphs, so the zh floor's lines keep en's spacing and no glyph stands past the plate's
+   painted edge (at 15 px the name rose 1 px over it, battle-hud-overlap) */
+.cot-tgt .pl{position:relative;height:1.4em;font-size:var(--battle-fs-13);display:flex;align-items:center;}
 /* (the name itself on the plate's axis, the silhouette hung before it, its box its drawn image, 2:1, its empty rear
    beside the name) */
 .cot-tgt .cg{position:absolute;right:100%;top:50%;width:28px;height:14px;margin:-7px 2px 0 0;color:var(--hud-enemy);
@@ -2175,7 +2177,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-tgt .nick{flex:none;font:600 1em/1 var(--hud-font);color:var(--ink-1);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
 /* (the tier and the vehicle in the UI face, "IX · T-90AM", as every vehicle line: the data face set it apart, r15) */
-.cot-tgt .mt{height:1.3em;margin-top:.15em;font-size:var(--battle-fs-12);display:flex;align-items:center;gap:var(--s1);}
+.cot-tgt .mt{height:1.35em;margin-top:.1em;font-size:var(--battle-fs-12);display:flex;align-items:center;gap:var(--s1);}
 .cot-tgt .tier{flex:none;font:600 1em/1 var(--font-ui);color:var(--ink-2);}
 .cot-tgt .veh{flex:none;font:500 1em/1 var(--font-ui);color:var(--ink-2);
   white-space:nowrap;overflow:visible;text-overflow:clip;}
@@ -2188,7 +2190,7 @@ html[data-cot-scoped] .cot-tgt .rng{display:none;}
 /* (the bar spans the text block, measured with the copy: the silhouette hangs before it, outside its span) */
 .cot-tgt .tr{align-self:center;width:100%;height:6px;margin-top:5px;}
 .cot-tgt .fl{height:100%;background:var(--hud-enemy);}
-.cot-tgt .hp{height:1.1em;margin-top:3px;font:500 var(--battle-fs-11)/1.1 var(--font-data);color:var(--ink-1);
+.cot-tgt .hp{height:1.35em;margin-top:2px;font:500 var(--battle-fs-11)/1.35 var(--font-data);color:var(--ink-1);
   white-space:nowrap;}
 /* (its rotated tip and ring inside the plate's painted box, the plate paints contained; clear of the points' slash) */
 .cot-tgt .anch{flex:none;width:10px;height:10px;margin:6px 0 4px;transform:rotate(45deg);background:var(--hud-enemy);
@@ -2392,10 +2394,10 @@ export function initHud(bus: EventBus): HudRuntime {
   const dmgLayer = markDatum(el('div', 'cot-dmglayer', root), 'damage-dealt');
 
   // --- over-target marker plate (WoT aiming loop feedback) ---
-  /** The width the plate keeps for its range ("· 1,240 m"), in its line's type size. */
-  const TARGET_RANGE_EM = 5;
+  /** The room the plate keeps past the range it shows, for its figures to grow by two, in its line's type size. */
+  const TARGET_RANGE_EM = 1.2;
   /** How far a plate sunk under a panel stands below it (positionTargetPlate). */
-  const PLATE_SINK_GAP = 3;
+  const PLATE_SINK_GAP = 6;
   /** The narrowest block (its bar never shorter), and its height as composed in full (measured on each new copy). */
   const TARGET_PLATE_MIN_W = 128, TARGET_PLATE_H = 68;
   /** From this large a window (the desktop width band and the tall height band) the plate steps up a size (.lg). */
@@ -2433,6 +2435,7 @@ export function initHud(bus: EventBus): HudRuntime {
   let tgtPlateWidth = TARGET_PLATE_MIN_W; // measured from its copy whenever the copy changes (updateTargetPlateCopy)
   let tgtPlateHeight = TARGET_PLATE_H; // the block as composed: the bar and its points leave it in the realistic mode
   let tgtMeasure = false; // its size step changed (resize): measured again with the next frame's copy
+  let tgtRangeChars = 0; // the range copy's length when measured (updateTargetPlateRange)
   // the vehicle line's and the points' shares of the height, which a plate sunk under a panel leaves (.tight, .tighter)
   let tgtMetaHeight = 0, tgtPointsHeight = 0;
   let tgtTight = 0, tgtPendingTight = 0; // 0 whole, 1 tight, 2 tighter: as written, and as positionTargetPlate placed it
@@ -6283,8 +6286,8 @@ export function initHud(bus: EventBus): HudRuntime {
     const metaFont = parseFloat(meta?.fontSize ?? '') || 12, metaMargin = parseFloat(meta?.marginTop ?? '') || 0;
     // (the name with the silhouette's room on both sides, the name on the axis)
     const nameWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 2 * (Math.ceil(tgtRefs.cg.offsetWidth || 0) + 2);
-    const metaWidth = Math.ceil(tgtRefs.tier.scrollWidth) + 4 + Math.ceil(tgtRefs.veh.scrollWidth) + 4
-      + Math.ceil(metaFont * TARGET_RANGE_EM);
+    const metaWidth = Math.ceil(tgtRefs.mt.scrollWidth) + Math.ceil(metaFont * TARGET_RANGE_EM);
+    tgtRangeChars = tgtRefs.rng.textContent?.length ?? 0;
     const textWidth = Math.max(Math.ceil(tgtRefs.nick.scrollWidth), metaWidth, Math.ceil(tgtRefs.hp.scrollWidth));
     tgtPlateWidth = Math.max(TARGET_PLATE_MIN_W, Math.min(440, Math.max(nameWidth, textWidth) + 8));
     tgtEl.style.width = `${tgtPlateWidth}px`;
@@ -6349,19 +6352,24 @@ export function initHud(bus: EventBus): HudRuntime {
     tgtRect = tgtRectScratch;
   }
 
+  /** The range from the player's tank, in whole metres, written before the copy is measured (updateTargetPlate): a range
+   *  grown past the room the plate keeps for it has the plate measured again. */
+  function updateTargetPlateRange(target: HudTargetTank): void {
+    const from = playerRef?.state?.pos;
+    const to = target.state.pos;
+    const rangeM = from ? Math.round(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)) : -1;
+    if (rangeM === tgtLastRangeM) return;
+    const copy = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
+    tgtRefs.rng.textContent = copy;
+    tgtLastRangeM = rangeM;
+    if (copy.length > tgtRangeChars + 2) tgtMeasure = true;
+  }
+
   function updateTargetPlateContent(target: HudTargetTank): void {
     const vehicleId = target.spec?.id ?? null;
     if (vehicleId && vehicleId !== tgtLastVehicleId) {
       maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', 'currentColor');
       tgtLastVehicleId = vehicleId;
-    }
-    // the range from the player's tank, in whole metres
-    const from = playerRef?.state?.pos;
-    const to = target.state.pos;
-    const rangeM = from ? Math.round(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)) : -1;
-    if (rangeM !== tgtLastRangeM) {
-      tgtRefs.rng.textContent = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
-      tgtLastRangeM = rangeM;
     }
     const fraction = Math.max(0, Math.min(1, target.combat.hp / target.combat.maxHp));
     const hpWidth = `${(fraction * 100).toFixed(1)}%`;
@@ -6425,6 +6433,7 @@ export function initHud(bus: EventBus): HudRuntime {
       hideTargetPlate();
       return;
     }
+    updateTargetPlateRange(target);
     updateTargetPlateCopy(target);
     positionTargetPlate();
     updateTargetPlateContent(target);
