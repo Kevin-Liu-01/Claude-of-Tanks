@@ -9,11 +9,14 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   generation workflow"; through Main: "the christian 2 is based off the leopard, take innnspo from japanese type 90. but
   dress it in a ton of netting and ghillie, which our strv 121 should also get a ton of btw to distinguishh it as
   swedish."; then to this lane directly: "that type90 is a leopard anyways so basee off of that type 90 pleasee. base all
-  the leopard 2a1-3 based off of the type 90 variant which is our best model of leopards". The last instruction governs:
-  the Christian II is an explicit first-party derivative of the Type 90 X build. (The Leopard 2A2/2A3 rebuild is this
-  lane's second item, Main 2026-10-27; it has its own packets.)
+  the leopard 2a1-3 based off of the type 90 variant which is our best model of leopards"; then, superseding it: "oh wait
+  whoops i madee a mistake. the new leo annd leo changes should rightfully be based on the new model and use totally new
+  tank generation. the type 90 is a separate tank". The last instruction governs: the Christian II is a fresh
+  first-party build at the supplied model's measured proportions (a Leopard 2-pattern hull and seven-wheel gear) with its
+  own Type 90-inspired turret; the Type 90 X is untouched. (The new Leopard 2A3 on the same construction is this lane's
+  second item, Main 2026-10-27; it has its own packet.)
 - IDs and display names: `christian2`, "Christian II" (new id; no production model replaced).
-- Implementation status: built (profiles/christian2.ts over profiles/type90X.ts); see the evidence matrix.
+- Implementation status: built fresh (profiles/christian2.ts, datums in christian2Armor.ts); see the evidence matrix.
 - Qualification status: concept route (first-party concept policy), no source score; see the matrix.
 - Publication status / exact authority: lane branch only; Main integrates (READY to "Claude of Tanks Main").
 - Worktree / branch / baseline commit: `.claude/worktrees/youthful-hypatia-16d3b5`, `item/christian2-262`, base
@@ -23,15 +26,15 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 
 ## Scope and preservation
 
-- Mode: explicit first-party derivative ("Make X based on Y": the Type 90 X recipe reused, with the Christian II's own
-  deltas). The supplied model is a concept's proportions oracle only.
+- Mode: new first-party concept build (the handbook's fresh generation). The supplied model is a concept's proportions
+  oracle only: its datums are measured, nothing of its surfaces is traced.
 - Owned files: `src/vehicles/profiles/christian2.ts`, `src/vehicles/christian2Specs.ts`, `src/vehicles/christian2Armor.ts`,
   the `christian2` suit row in `src/vehicles/ghillieFleetSuits.ts`, `src/vehicles/profiles/christian2.selftest.mjs`,
   `docs/references/concepts/christian2-20261027.json`, this packet; one registration line each in the shared tables.
-- Protected originals: `type90` (Type 90 X) stays byte-identical: `buildType90X` is only exported, not changed.
+- Protected originals: `type90` (Type 90 X) and every Leopard 2 (`leopard.ts`) byte-identical to origin/main.
 - Explicitly excluded: the oracle's own surfaces and details (Main 2026-10-27: "Treat it strictly as proportions, and don't
-  trace its surfaces or details"), its seven-wheel Leopard running gear (the owner chose the Type 90 base), any new
-  production Leopard work (second item).
+  trace its surfaces or details"), any reuse of the Type 90 X's stock (the selftest proves no mesh is shared), any
+  production Leopard change (second item).
 
 ## Source and comparison contract
 
@@ -45,7 +48,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   from it ships, so no `docs/ATTRIBUTION.md` entry (none applies).
 - Source limitations: fused material-merged meshes (no hull/turret/gun node ownership); a net/burlap wrap modelled over
   the gun and the turret face; game-style low-poly running gear.
-- Approved target: owner-authored concept (Type 90 X base), not the supplied model.
+- Approved target: owner-authored concept at the oracle's proportions, not the supplied model's surfaces.
 - Registration (for proportions only): Sketchfab root matrix maps source (x, y, z) to game (x, z, -y): source -Y forward
   becomes +Z, Z-up becomes +Y; determinant +1, scale 1 (the source is in metres). The sight bay and commander's head sit at
   game -X, the world's right of a +Z hull, as on a real Leopard 2 (not mirrored).
@@ -53,8 +56,10 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   roof 2.46-2.47 m (2.31 at its front edge), hull deck 1.63-1.70 m, ring centre z 0.37 m (radius 0.98 m), bore axis 2.00 m,
   breech z -0.17 m, muzzle z 5.70 m, turret front face z 1.66 m, side half-width 1.28 m stepping to 1.16 m over the bustle
   from z -1.2, bustle floor 1.85 m, seven road wheels.
-- Built versus oracle: the Type 90 X base measures 9.80 m overall (-0.8 %), 3.618 m wide (-0.6 %), roof 2.459 m (0 %),
-  six road wheels (owner's choice of base).
+- Built versus oracle: 9.581 m overall (-3.0 %: the oracle's 9.875 includes its rear stowage and tow gear, its hull plates
+  match within 1 cm), 3.636 m wide (-0.1 %), roof 2.47 m (0 %), muzzle z 5.71 (5.70), bore axis 2.00 m (2.00), ring
+  (0, 1.64, 0.37) (z 0.37), seven road wheels at the oracle's stations (mean of its staggered sides), the side half-width
+  1.28 m stepping to 1.16 m over the bustle.
 
 ## Concept (owner-authored; nation ruled by Main 2026-10-27)
 
@@ -62,20 +67,26 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   Nordic node in the Sweden tech tree (`SWEDEN_TREE.nations` gains 'Denmark'; flagNation stays Sweden); it wears the
   Danish flag and markings, fights with the Swedish teams (`countries.ts` VEHICLE_COUNTRY), and the Nordic decor kit.
 - Era / role: modern (2020s) main battle tank; precision doctrine (the netting is a concealment kit).
-- Design rationale: a three-crew MBT on the Type 90 X's hull, running gear and slab-sided turret, with its bustle
-  autoloader (a three-round cycle) and Rh 120 L/44, uprated with bolted spaced side modules along the compartment walls,
-  flank stowage bins on the bustle and a permanent heavy field net with beech garnish; a DM53-class APFSDS.
+- Design rationale: a three-crew MBT on a Leopard 2-pattern hull and seven-wheel running gear, with a long slab-sided
+  turret in the Type 90 manner: bolt-on frontal modules framing a box mantlet, the gunner's armoured sight box (right)
+  and the commander's panoramic head and cupola with a working 12.7 mm (left), a stepped bustle autoloader (a three-round
+  cycle) with blow-off panels feeding a 120 mm L/44; a permanent heavy field net with beech garnish; a DM53-class APFSDS.
 
 ## Construction work order
 
-- Gross form: the Type 90 X unchanged (hull 7.80 m, six 0.357 m road wheels, three return rollers, turret pivot
-  (0, 1.682, 0.157)), plus three spaced modules a side (world z -0.58..0.02, 0.07..0.66, 0.71..1.20; 55 mm standoff,
-  75 mm plates, y 1.80..2.26, following the wall's plan line), on spacer blocks with bolt heads; bins 0.15 x 0.29 x 0.46 m
-  on the bustle flanks (z -1.80..-1.34) on a shelf, clear of the smoke banks and whip pots.
-- Material roles: modules are permanent external armour (camouflaged), bins are painted fittings, the suit's net and
-  garnish are cloth/foliage (`open-lattice`).
-- Gameplay plates: six spaced plates (`christian2_side_module_{R,L}{0..2}`, 70 mm, KE 130 / CE 340) on the modules'
-  outer faces, from the same datum table the builder draws (`christian2Armor.ts`).
+- Datums (`christian2Armor.ts`, shared by the builder, the spec and the receipts): deck line z -3.80..3.45 (engine deck
+  1.78-1.80, compartment 1.63-1.64, upper glacis from z 1.55 down to the nose at 1.25), belly 0.54, tub half-width 1.00,
+  sponsons 1.67 with their floor at 1.36; seven road wheels r 0.348 at y 0.425 (z 2.417 .. -2.533), track centre 1.359,
+  width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
+  three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
+  (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
+  frontal modules to z 1.32 either side of a 0.71 m gun slot; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+- Material roles: hull, skirts and turret shell painted armour; the frontal modules permanent armour; sights glass in
+  armoured frames; bins, basket and rails painted fittings; the suit's net and garnish cloth/foliage (`open-lattice`).
+- Gameplay plates (`christian2Armor.ts`): glacis 460 mm (KE 420 / CE 640), lower front, sponson and tub sides 80, rear
+  45, roof 40; fore skirt blocks spaced (KE 60 / CE 220), aft panels 8; turret cheeks (KE 760 / CE 1100), box mantlet
+  (KE 900 / CE 1050, gun-following), compartment sides (KE 300 / CE 420), bustle sides (KE 160 / CE 220), rear 60, roof
+  40; modules and crew (driver right front, gunner right, commander left, autoloader in the bustle).
 
 ## Evidence matrix
 
@@ -86,3 +97,6 @@ See the round log; filled as each gate runs.
 - R1 (2026-10-27): first build on the Leopard 2A4 hull with an own turret, superseded the same hour by the owner's
   "base off of that type 90"; the Leopard hull split was reverted (leopard.ts byte-identical to origin/main).
 - R2: Type 90 X derivative, side modules and bins; 78,758 triangles HIGH before the suit; bounds equal the Type 90's.
+- R3 (2026-10-27, the owner's correction "the type 90 is a separate tank"): the Type 90 X derivative dropped (type90X.ts
+  back to origin/main byte-identical); a fresh build at the oracle's proportions: Leopard 2-pattern hull and seven-wheel
+  gear, own turret, own armour; the suit row refitted (drapes hang from over the turret walls' shoulders).

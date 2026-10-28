@@ -42,10 +42,10 @@ const now = camoBaselineRows({ specs, policy, materials });
 // joined after GT may follow them (camoPolicy.ts AUTHORED_PAINT_IDS_AFTER_GT).
 assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 pattern ids');
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
-assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer'],
-  'only the M6 Linebacker paint, the release-233 Signatures and the Type 10 Kaitaku paint append, after GT');
+assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint and the Christian II paint (262) append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
-assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer']);
+assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -57,7 +57,8 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // alias layer, so a renamed tank is held to its own production row.
 // Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
 // 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
-const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
+// Release 262: the Christian II and its Danish tri-tone.
+const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2'];
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,
   'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

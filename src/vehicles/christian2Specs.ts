@@ -1,45 +1,49 @@
-// The Christian II (release 262): a fictional Danish Army concept MBT, the Type 90 X's hull, running gear, turret and
-// Rh 120 L/44 with bolted side modules and heavy field netting (profiles/christian2.ts; docs/references/tanks/christian2.md,
-// docs/references/concepts/christian2-20261027.json). The owner, 2026-10-27: "base off of that type 90". Its spec clones
-// `type90` here, once it exists (sourceXSecondWaveSpecs.ts): its armour, frame and gun rig, the bustle autoloader's
-// three-round cycle, with the Christian II's own stats, round, number and paint, and the side modules' spaced plates.
-import './sourceXSecondWaveSpecs.ts';
+// The Christian II (release 262): a fictional Danish Army concept MBT, a fresh first-party build on a Leopard 2-pattern
+// hull with a Type 90-inspired bustle-autoloader turret and heavy field netting (profiles/christian2.ts;
+// docs/references/tanks/christian2.md, docs/references/concepts/christian2-20261027.json). Its spec takes the Leopard 2's
+// running and fire-control template from leo2a2 (terrain, pivot style, bloom, the 120 mm rounds) and is otherwise its own:
+// the combat envelope on its drawn hull and turret (christian2Armor.ts), its stats, its three-round bustle cycle, number
+// and paint.
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
-import { christian2SideModulePlates } from './christian2Armor.ts';
+import { christian2Armor } from './christian2Armor.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
-const spec = cloneFleetVariant(registries.tankSpecs, 'christian2', 'type90', { name: 'Christian II', nation: 'Denmark' });
+const spec = cloneFleetVariant(registries.tankSpecs, 'christian2', 'leo2a2', { name: 'Christian II', nation: 'Denmark' });
+delete spec.variantOf;
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
-// type90's silhouette rows are its source oracle's measurements; the concept has no oracle of its own.
+delete spec.gunPitchByYawDeg;
 stripSilhouetteDimensions(spec.dims);
-// the built vehicle: the Type 90 X hull 7.80 m, 9.80 m over the gun, 3.62 m over the skirts, roof 2.46 m
-Object.assign(spec.dims, { hullLengthM: 7.798844, overallLengthM: 9.80, widthM: 3.61781384, heightM: 2.459472 });
-// 2020s concept: the side modules and the suit's frames put 3.8 t on the Type 90's 50.2 t; a 1,500 hp pack and a
-// slightly slower pivot; a 3-round bustle cycle a little quicker than the Type 90's, firing a DM53-class APFSDS.
+// the built vehicle: the hull 7.25 m between its plates (7.49 m over its fittings), 9.58 m over the gun, 3.64 m over the
+// skirts, roof 2.47 m
+Object.assign(spec.dims, { hullLengthM: 7.49, overallLengthM: 9.581, widthM: 3.636, heightM: 2.47 });
+// 2020s concept: a Leopard 2-class 1,500 hp pack on 58 t; three crew with a bustle autoloader
 Object.assign(spec, {
-  hp: 2450, enginePowerHp: 1500, weightTons: 54.0, topSpeedKmh: 68, reverseSpeedKmh: 30,
-  hullTraverseDegS: 48, turretTraverseDegS: 42, gunPitchDegS: 34,
+  hp: 2500, enginePowerHp: 1500, weightTons: 58.0, topSpeedKmh: 68, reverseSpeedKmh: 30,
+  hullTraverseDegS: 44, turretTraverseDegS: 42, gunPitchDegS: 34, gunElevationDeg: 20, gunDepressionDeg: 9,
 });
 spec.gun = {
   ...spec.gun,
-  reloadS: 17.0, baseAccuracy: 0.28, aimTimeS: 1.65,
-  autoloader: { magazineSize: 3, intraClipS: 2.1, fullReloadS: 17.0 },
-  shells: spec.gun.shells.map((shell) => shell.type === 'APFSDS'
-    ? { ...shell, name: 'DM53A1 APFSDS', pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700, dmg: 530, velocityMps: 1750 }
-    : shell),
+  reloadS: 15.5, baseAccuracy: 0.27, aimTimeS: 1.6,
+  autoloader: { magazineSize: 3, intraClipS: 2.0, fullReloadS: 15.5 },
+  // DM53-class APFSDS from the L/44, a newer multi-purpose round and HE
+  shells: [
+    { ...spec.gun.shells[0], name: 'DM53A1 APFSDS', pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700, dmg: 530, velocityMps: 1750 },
+    { ...spec.gun.shells[1], name: 'DM11 HE-ABM', type: 'HE', pen100Mm: 40, pen1000Mm: 40, dmg: 590, velocityMps: 1000 },
+    { ...spec.gun.shells[1], name: 'DM12A2 HEAT-MP', pen100Mm: 600, pen1000Mm: 600, dmg: 480, velocityMps: 1400 },
+  ].sort((a, b) => ['APFSDS', 'HEAT', 'HE'].indexOf(a.type) - ['APFSDS', 'HEAT', 'HE'].indexOf(b.type)),
 };
+spec.armor = christian2Armor();
+// its own Danish tri-tone: olive ground with black-green, brown and a pale grey-green (one patch colour more than the
+// NATO coats, so it stays its own catalog paint)
 spec.visual = {
   ...spec.visual,
-  // its own Danish tri-tone: olive ground with black-green, brown and a pale grey-green (one patch colour more than the
-  // NATO coats, so it stays its own catalog paint)
   scheme: 'nato', base: '#45503a', weather: '#58604a', patches: ['#24291f', '#6b5a40', '#7b8263'],
   marking: 'number', number: '21', camoScale: 0.46,
 };
-spec.armor.turretPlates.push(...christian2SideModulePlates());
 
 registerFleetSpecs(registries, ['christian2'], { christian2: spec });

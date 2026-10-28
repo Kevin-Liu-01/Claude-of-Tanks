@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "ownerDecision": {
     "date": "2026-10-27",
-    "request": "add these new tanks using our rigoorous tank generation workflow; the christian 2 is based off the leopard, take innnspo from japanese type 90. but dress it in a ton of netting and ghillie; that type90 is a leopard anyways so basee off of that type 90 pleasee",
-    "scope": "A new Christian II: an explicit first-party derivative of the Type 90 X build (type90X.ts kept byte-identical), with bolted side armour modules, bustle bins, Danish markings and paint and a heavy field net. Nation ruled by the coordinator the same day: a fictional Danish Army concept drawn as a Nordic special in the Sweden tree. The supplied concept model is a proportions reference only; nothing of it ships."
+    "request": "add these new tanks using our rigoorous tank generation workflow; the christian 2 is based off the leopard, take innnspo from japanese type 90. but dress it in a ton of netting and ghillie; then: the new leo annd leo changes should rightfully be based on the new model and use totally new tank generation. the type 90 is a separate tank",
+    "scope": "A new Christian II: a fresh first-party build at the supplied concept model's measured proportions (a Leopard 2-pattern hull and seven-wheel running gear) carrying its own Type 90-inspired turret, Danish markings and paint and a heavy field net. The Type 90 X stays a separate tank (type90X.ts byte-identical). Nation ruled by the coordinator the same day: a fictional Danish Army concept drawn as a Nordic special in the Sweden tree. The supplied concept model is read for proportions only (not traced); nothing of it ships."
   },
   "concept": {
     "nation": "Denmark",
@@ -12,7 +12,7 @@
     "role": "main battle tank, precision doctrine",
     "crew": 3,
     "autoloader": "bustle, three-round cycle",
-    "rationale": "A three-crew tank on the Type 90 X's hull, running gear and slab-sided turret with its bustle autoloader and Rh 120 L/44, uprated with bolted spaced modules along the compartment walls, stowage bins on the bustle flanks and a permanent heavy field net worked with beech garnish for a woodland theatre; it fires a DM53-class APFSDS.",
+    "rationale": "A three-crew tank on a Leopard 2-pattern hull and running gear with a long slab-sided turret in the Type 90 manner (bolt-on frontal modules, box mantlet, the gunner's sight box and the commander's panoramic head on the roof) and a bustle autoloader feeding a 120 mm L/44, with a permanent heavy field net worked with beech garnish for a woodland theatre; it fires a DM53-class APFSDS.",
     "proportionsReference": {
       "file": "christian_ii_mbt.glb",
       "title": "Christian II MBT",
@@ -33,34 +33,34 @@
       "test": "src/vehicles/profiles/christian2.selftest.mjs",
       "ring": [
         0,
-        1.681682,
-        0.156993
+        1.64,
+        0.37
       ],
       "gunLocal": [
         0,
-        0.31540100000000004,
-        1.493039
+        0.36,
+        1.04
       ],
-      "barrelLengthM": 4.104592,
-      "barrelRadiusM": 0.0825,
+      "barrelLengthM": 4.29,
+      "barrelRadiusM": 0.1,
       "pitchDeg": [
-        -10,
+        -9,
         20
       ],
       "mainCaliberMm": 120,
       "weaponSystem": "conventional-cannon",
       "roofMachineGuns": 1,
-      "hullLengthM": 7.798844,
-      "widthM": 3.618,
-      "overallLengthM": 9.8,
-      "tallestM": 4.658,
+      "hullLengthM": 7.49,
+      "widthM": 3.636,
+      "overallLengthM": 9.581,
+      "tallestM": 3.867,
       "specDimensions": {
-        "hullLengthM": 7.798844,
-        "overallLengthM": 9.8,
-        "widthM": 3.61781384,
-        "heightM": 2.459472
+        "hullLengthM": 7.49,
+        "overallLengthM": 9.581,
+        "widthM": 3.636,
+        "heightM": 2.47
       },
-      "silhouette": "The Type 90 X's 7.80 m hull, six-wheel running gear and long slab-sided turret with its bustle autoloader, gunner's sight box and commander's panoramic head, carrying three bolted spaced armour modules along each compartment wall, stowage bins on the bustle flanks and a permanent heavy field net with beech garnish over the turret, the decks and the skirts; roof to 2.46 m, whips to 4.66 m."
+      "silhouette": "A Leopard 2-pattern hull (7.25 m between its plates, 7.49 m over its fittings) on seven road wheels a side with four return rollers, heavy bolted skirt blocks forward and thin panels aft, carrying a long slab-sided turret in the Type 90 manner: two bolt-on frontal modules with chamfered outer corners framing a box mantlet, the gunner's armoured sight box on the right of the roof and the commander's panoramic head and vision-block cupola with a working 12.7 mm on the left, a stepped narrower bustle autoloader with blow-off panels, bins and a rear basket; a 120 mm L/44 with a thermal sleeve and evacuator; a permanent heavy field net with beech garnish over the turret, the decks and the skirts and three wraps on the tube. Roof 2.47 m, whips to 3.87 m."
     }
   }
 }

@@ -359,13 +359,13 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.55, 3.20, 1.46, 0.42, 1.75, 41, (side) => (side < 0 ? [cut(-3.60, -2.40, 1.00, 1.60)] : [])),
     },
   },
-  // Release 262, the Christian II (the owner, 2026-10-27: "dress it in a ton of netting and ghillie"): the Type 90 X's
-  // build (profiles/christian2.ts) under far more than the fleet's DENSE garnish, in beech boughs (Denmark's woods,
-  // against the Strv 121's spruce). The roof netted over the bolted cheeks round the gunner's sight box, the commander's
-  // panoramic head and cupola, the hatch, the whip pots and the wind mast; drapes down both walls over the side modules,
-  // and over the bustle bins, the smoke banks between them bare; a drape off the rear basket; the engine deck, the deck
-  // edges under the turret's sweep and the glacis netted; four drapes a side over the skirts. Turret-local metres on
-  // the turret (pivot y 1.682, z 0.157), hull metres on the hull.
+  // Release 262, the Christian II (the owner, 2026-10-27: "dress it in a ton of netting and ghillie"): its own build
+  // (profiles/christian2.ts) under far more than the fleet's DENSE garnish, in beech boughs (Denmark's woods, against the
+  // Strv 121's spruce). The roof netted over the frontal modules and the bustle round the gunner's sight box, the
+  // commander's panoramic head and cupola, the gunner's hatch, the gun slot, the wind mast and the whip pots; drapes down
+  // both walls behind the smoke banks (a window left on the turret number) and over the bustle bins; a drape off the rear
+  // basket; the engine deck, the deck under the turret's sweep and the glacis netted; four drapes a side over the skirts.
+  // Turret-local metres on the turret (pivot y 1.64, z 0.37), hull metres on the hull.
   christian2: {
     id: 'christian2', seed: 2621, style: 'leafy', density: 2.4, leafScale: 0.96, boughShare: 0.5, foliageKind: 'beech',
     ...WOODLAND,
@@ -373,21 +373,38 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({
-        x0: -1.36, x1: 1.36, z0: -2.20, z1: 1.97, nx: 34, nz: 52, y: 0.70,
-        holes: [rect(0.32, 1.00, 0.60, 1.36), rect(-0.67, -0.32, 0.23, 0.57), rect(-1.07, -0.21, -0.44, 0.37),
-          rect(0.17, 0.88, -0.27, 0.27), rect(1.06, 1.30, -2.18, -1.95), rect(-1.30, -1.06, -2.18, -1.95),
-          rect(-0.13, 0.11, -2.38, -2.12)],
+        x0: -1.30, x1: 1.30, z0: -2.72, z1: 1.30, nx: 36, nz: 56, y: 0.84,
+        holes: [rect(-0.90, -0.34, 0.38, 1.02), rect(0.44, 0.80, 0.34, 0.70), rect(0.20, 1.00, -0.74, 0.06),
+          rect(-0.95, -0.29, -0.61, 0.05), rect(-0.40, 0.40, 0.86, 1.34), rect(-0.08, 0.08, -1.46, -1.30),
+          ...pair(0.84, 1.00, -2.54, -2.38)],
         garnishRiseM: 0.16, seed: 11,
       })],
-      side: [...flanks(-0.74, 1.08, 0.70, 0.46, 1.46, 17), ...flanks(-2.15, -1.48, 0.70, 0.42, 1.33, 19)],
-      face: [face({ z: -2.645, x0: -1.15, x1: 1.10, y0: 0.24, y1: 0.66, nx: 24, ny: 6, seed: 23 })],
+      // the walls' shoulders stand at 0.76-0.77 under the roof's bevel: the drapes hang from over them
+      side: [...flanks(-1.52, 0.06, 0.80, 0.50, 1.34, 17, {}, () => [cut(-0.92, -0.52, 0.27, 0.57)]),
+        ...flanks(-2.66, -1.62, 0.80, 0.46, 1.22, 19)],
+      face: [face({ z: -3.11, x0: -0.93, x1: 0.93, y0: 0.28, y1: 0.68, nx: 22, ny: 6, seed: 23 })],
     },
     hull: {
       top: [
-        laid({ x0: -1.70, x1: 1.70, z0: -3.88, z1: -0.30, nx: 34, nz: 36, y: 1.80, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.70, x1: 1.70, z0: -0.30, z1: 3.56, nx: 34, nz: 39, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -3.78, z1: -0.30, nx: 34, nz: 36, y: 1.82, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.66, x1: 1.66, z0: -0.30, z1: 3.40, nx: 34, nz: 38, y: 1.66, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      side: skirts(-3.45, 3.30, 1.40, 0.52, 1.80, 41),
+      side: skirts(-3.55, 3.20, 1.50, 0.52, 1.83, 41),
+    },
+    // three bound wraps on the L/44's tube (gun-local: the trunnion at the origin, the bore along +z): over the first
+    // thermal sleeve (radius 0.10), over the second ahead of the evacuator, and a band ahead of the collar short of the
+    // muzzle (the bare tube, 0.084); the sleeve bands, the evacuator, the collar and the muzzle stay bare
+    gun: {
+      top: [
+        { x0: -0.14, x1: 0.14, z0: 0.80, z1: 1.86, nx: 6, nz: 12, yAt: () => 0.120, seed: 61, tents: [], garnishRiseM: 0.05, garnishDensity: 4 },
+        { x0: -0.14, x1: 0.14, z0: 2.76, z1: 3.46, nx: 6, nz: 8, yAt: () => 0.120, seed: 63, tents: [], garnishRiseM: 0.04, garnishDensity: 4 },
+        { x0: -0.12, x1: 0.12, z0: 3.86, z1: 4.10, nx: 5, nz: 4, yAt: () => 0.102, seed: 65, tents: [], garnishRiseM: 0.04, garnishDensity: 4 },
+      ],
+      side: [-1, 1].flatMap((side) => [
+        { side, z0: 0.82, z1: 1.84, topAt: () => 0.10, bottomAt: () => -0.06, outAt: () => 0.124, seed: 67 + side },
+        { side, z0: 2.78, z1: 3.44, topAt: () => 0.10, bottomAt: () => -0.06, outAt: () => 0.124, seed: 71 + side },
+        { side, z0: 3.88, z1: 4.08, topAt: () => 0.08, bottomAt: () => -0.05, outAt: () => 0.104, seed: 75 + side },
+      ]),
     },
   },
   // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
