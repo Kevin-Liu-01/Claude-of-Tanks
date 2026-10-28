@@ -87,12 +87,12 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
       const zc = a + L * (k + 0.5), d = L - 0.016;
       if (k === 0) {
         P.add('hull', box(0.034, 0.12, d), side * 1.703, top - 0.06, zc);                  // fender strip
-        P.add('hullDark', box(0.03, 0.12, 0.014), side * 1.70, top - 0.06, a);
+        P.add('hullDark', box(0.028, 0.12, 0.014), side * 1.708, top - 0.06, a);
         continue;
       }
       P.add('hull', box(0.034, 0.24, d), side * 1.703, top - 0.12, zc);                    // proud upper band
       P.add('hull', box(0.028, 0.22, d), side * 1.697, top - 0.35, zc);                    // recessed lower band
-      P.add('hullDark', box(0.03, 0.44, 0.014), side * 1.70, top - 0.23, a + L * k);
+      P.add('hullDark', box(0.028, 0.44, 0.014), side * 1.708, top - 0.23, a + L * k); // seam, 23 mm clear of the belt
     }
     // the hanging rails along the sponson's edge, flush with each run's face (the fore blocks step 10 cm out)
     P.add('hullDetail', box(0.055, 0.02, b - a + 0.06), side * 1.6975, top + 0.01, (a + b) / 2);
