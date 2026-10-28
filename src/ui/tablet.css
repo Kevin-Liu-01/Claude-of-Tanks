@@ -11,8 +11,8 @@
    is 48 px, its tabs 40), and every drawer's close ---- */
 body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-gbar,.cot-garage .cot-compare-toggle,.cot-roster-search,
   .cot-facet-toggle,.cot-nav :is(.cot-gear,.cot-locale-switcher,.cot-github)){height:var(--cot-control-floor);min-height:var(--cot-control-floor);}
-body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-facet-toggle,.cot-car-arrow,.cot-nav :is(.cot-gear,.cot-locale-switcher,
-  .cot-github)){min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-facet-toggle,.cot-car-arrow,.cot-gbar .nv,.cot-nav :is(.cot-gear,
+  .cot-locale-switcher,.cot-github)){min-width:var(--cot-control-floor);}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-car-arrow{flex-basis:var(--cot-control-floor);}
 /* (the language switch and Settings stand in 34 px wrappers: the wrappers take the floor too, so the row keeps one centre
    line and Settings its column's edge; the iPad critic r1: 5 px low, 5 px past the readout) */
@@ -37,6 +37,8 @@ body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-garage .cot-dep
    until it is tapped or holds a query, so the row shows more nations (all fourteen at 1210 px) */
 body[data-cot-input='coarse']:is([data-cot-panels='persistent'],[data-cot-orientation='portrait']:not([data-cot-width='phone'])) .cot-country-chip{
   flex:1 0 auto;padding-inline:var(--s1);gap:var(--s1);}
+/* (and the count that steps the track, a bare "+5" in a 36 px box, takes the floor past a phone) */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-country-step{height:var(--cot-control-floor);min-width:var(--cot-control-floor);}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown){
   width:var(--cot-control-floor);padding:0;justify-content:center;}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
@@ -74,7 +76,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
   grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{width:var(--cot-control-floor);}
+/* (the dossier's button runs through the figures' padding to the plate's edges: in a short window's 48 px plate it was 32 tall) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{
+  width:var(--cot-control-floor);margin-block:calc(-1 * var(--s2));}
 /* (the acts follow the slots and the paint follows the acts, at its own width rather than a phone's whole row: the slots
    and acts share the first row from 744 px, the paint the second; at 601 the acts start the paint's row; at 1032 all is one) */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;flex:1 1 auto;}
