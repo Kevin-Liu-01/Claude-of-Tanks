@@ -1342,7 +1342,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     /** Coarse-pointer devices use the Blitz-style touch HUD and skip pointer
      *  lock. The responsive layout contract deliberately separates available
      *  space from interaction mode: a narrow mouse window keeps desktop aim,
-     *  while a laptop-width iPad keeps touch controls and overlay panels. */
+     *  while a laptop-width iPad keeps touch controls (its panels follow its space: docked held wide, folded upright). */
     isTouchLayout() {
       const responsiveInput = typeof document !== 'undefined'
         ? document.body?.dataset?.cotInput
