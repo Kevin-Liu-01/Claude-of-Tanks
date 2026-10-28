@@ -15,7 +15,10 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   merkava2b: { merkavaRoofMag1: [-2.1118, 2.1642], merkavaRoofMag2: [-1.85, 1.885] },
   merkava4b: { merkavaRoofMag1: [-3.4034, 1.9897] },
   t62_1975: { fitting_browningDerived_dshk: [-2.618, 1.0472] },
-  t72bu_1989: { t72buXRoofNsvt: [-3.5256, 0.384] },
+  // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the T-72BU's and
+  // the PT-91M's NSVT moved onto their cupola's rim and their roof; each arc re-measured against its stand (--dock)
+  t72bu_1989: { fitting_browningDerived_nsvt: [-4.1888, 1.117] },
+  pt91m: { fitting_browningDerived_nsvt: [-3.2463, 2.042] },
   type59: { type59RoofDShK: [-1.4835, 3.0543] },
   ztz85_iii: { fitting_browningDerived_qjc88: [-0.8029, 2.7925] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },

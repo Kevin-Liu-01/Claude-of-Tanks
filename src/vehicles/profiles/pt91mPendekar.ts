@@ -124,9 +124,10 @@ function roof(P:TankBuilderPort,shell:THREE.BufferGeometry):void{
  }
  const gunY=roofY(-.58,-.05)+.38;
  // Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current dimensions"): the
- // command NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its own pintle where the traced
- // post stood on the roof, in place of the post, receiver block, rods and box.
- libraryRoofMg(P,{station:'pt91mCommandMgStation',cls:'nsvt',seat:[-.58-YAW.x,roofY(-.58,-.05)-YAW.y,-.05-YAW.z]});
+ // command NSVT is the fleet's true-scale NSVT in a working station (libraryRoofMg.ts), its pintle on the commander's
+ // cupola race's front rim (the race top 0.135 over the dome there, clear of the hatch handle), in place of the traced
+ // post, receiver block, rods and box.
+ libraryRoofMg(P,{station:'pt91mCommandMgStation',cls:'nsvt',seat:[-.58-YAW.x,roofY(-.58,-.05)+.135-YAW.y,.17-YAW.z]});
  P.turretG.userData.pt91mRoofEquipmentReceipt={revision:'t72bu-pendekar-roof-r1',cupolas:2,periscopeBlocks:12,mainSight:'boxed-recessed',panorama:true,metMast:true};
  P.topY=Math.max(my+.844,gunY+.10)-YAW.y;
 }

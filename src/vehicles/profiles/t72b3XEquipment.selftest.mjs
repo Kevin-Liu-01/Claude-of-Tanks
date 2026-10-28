@@ -23,12 +23,24 @@ function checkCases(meshes){
   // Source's inclined central rear wall, not the draft short hanging box.
   near(back?.point.z,(.8108050267+.3969670955*1.8)/(-.9178328416)+.172150015831,.0005,'source inclined low rear case wall');
 }
-function checkRoof(meshes){
+// 264 (owner 2026-10-28: the T-72s' roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the traced
+// fork, boss and ammunition box are the T-64BV mod. 2017 / T-64BV1's (t64bvK1.ts, kept as it was); the T-72B3's
+// commander's gun is the library NSVT on its own working station.
+function checkMgMount(meshes){
   const top=(x,z)=>new THREE.Raycaster(new THREE.Vector3(x,4,z),new THREE.Vector3(0,-1,0),0,5).intersectObjects(meshes,false)[0];
   for(const z of [-.96,-.88])near(top(-.55,z)?.point.y,2.8327637126,.0002,'actual short beveled high MG boss');
   near(top(-.614,-.75)?.point.y,2.4321005344,.0002,'open fork reaches its true low crossmember');
   assert.ok(top(-.55,-1.24)?.point.y<1.5,'no false long high MG crossbar');
   near(top(-.55,-1.12)?.point.y,2.6706303024,.001,'source inclined ammunition-box lid');
+}
+function checkLibraryGun(tank){
+  const station=tank.root.getObjectByName('t72b3CommanderNsvtStation');
+  assert.ok(station,'the commander\'s NSVT stands on its own station');
+  let fit=null;station.traverse(o=>{if(!fit&&o.userData?.fittingRoot&&o.userData.fitting==='pintleMG')fit=o;});
+  assert.ok(fit&&/browningDerived/.test(fit.name)&&fit.userData.fittingExact!==true,`the fleet's own NSVT, not an authored stand-in (${fit?.name})`);
+}
+function checkRoof(meshes){
+  const top=(x,z)=>new THREE.Raycaster(new THREE.Vector3(x,4,z),new THREE.Vector3(0,-1,0),0,5).intersectObjects(meshes,false)[0];
   for(const z of [.05,.14])near(top(-.614,z)?.point.y,2.7282614466,.0001,'source octagonal commander optic crown');
   for(const [x,z,y]of [[.5,-.04,2.2053003311],[.8,-.04,2.4014003277],[.5,.1,2.2142002583],[.8,.1,2.4014003277],
     [.5,.5,2.1425001621],[.5,.75,2.1417002678]])near(top(x,z)?.point.y,y,.0002,'independent stepped Sosna courses');
@@ -87,7 +99,10 @@ function checkAntennas(meshes){
 }
 for(const quality of ['high','low']){
   const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
-  try{tank.root.updateMatrixWorld(true);const meshes=opaqueMeshes(tank.root);checkCases(meshes);checkRoof(meshes);checkDrumAir(meshes);checkDrumAttachment(tank);checkAntennas(meshes);}
+  try{tank.root.updateMatrixWorld(true);const meshes=opaqueMeshes(tank.root);checkCases(meshes);checkRoof(meshes);checkDrumAir(meshes);checkDrumAttachment(tank);checkAntennas(meshes);checkLibraryGun(tank);}
   finally{tank.dispose();}
+  const traced=createTank('t64bv1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  try{traced.root.updateMatrixWorld(true);checkMgMount(opaqueMeshes(traced.root));}
+  finally{traced.dispose();}
 }
-console.log('t72b3XEquipment: actual high/low source case tapers, inclined rear wall, open fork, short MG boss, optic courses and separate drum air pass');
+console.log('t72b3XEquipment: actual high/low source case tapers, inclined rear wall, open fork and short MG boss (on the T-64BV1), the library NSVT, optic courses and separate drum air pass');

@@ -44,12 +44,15 @@ function sourceForms(t){
     near(hit?.point.y,1.765735,.000003,'source actual transverse rear drum crown');
   }
   assert.equal(new THREE.Raycaster(new THREE.Vector3(0,1.75,-3.4954),new THREE.Vector3(0,-1,0),0,.35).intersectObject(detail,false).length,0,'real air between drums');
-  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
-  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
-  // two scene graphs made node inspect both whole and ran the process past 40 GB)
-  const mg=t.root.getObjectByName('sourceMachineGun_turretDark');assert.ok(ridesUnder(mg,t.root.getObjectByName('rig_turret')),'the AA station rides the turret');
-  const ray=new THREE.Raycaster(new THREE.Vector3(-.60653,2.68942,2.3),new THREE.Vector3(0,0,-1),0,.3);
-  near(ray.intersectObject(mg,false)[0]?.point.z,2.18421,.000003,'coherent actual source AA terminal');
+  // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the commander's
+  // NSVT is the library NSVT on its own working station; it rides the turret (an ancestor test: assert.equal on two scene
+  // graphs made node inspect both whole and ran the process past 40 GB) and lies along the turret's +Z at rest.
+  const station=t.root.getObjectByName('t72buCommanderNsvtStation');
+  assert.ok(station&&ridesUnder(station,t.root.getObjectByName('rig_turret')),'the AA station rides the turret');
+  let fit=null;station.traverse(o=>{if(!fit&&o.userData?.fittingRoot&&o.userData.fitting==='pintleMG')fit=o;});
+  assert.ok(fit&&/browningDerived/.test(fit.name),`the fleet's NSVT (${fit?.name})`);
+  const axis=new THREE.Vector3(0,0,1).transformDirection(fit.matrixWorld);
+  near(axis.distanceTo(new THREE.Vector3(0,0,1)),0,.000002,'the gun lies along its declared +Z');
 }
 const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 function gearAndEra(t){

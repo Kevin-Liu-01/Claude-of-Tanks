@@ -80,22 +80,15 @@ function gearAndFitting(tank){
     near(p.y,0.4607659876346588,.000002,'source road axle height (source .4728865 before the datum)');
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-p.z)<.000002),'documented average of paired source axle stations');
   }
-  const gun=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gun.parent;
-  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
-  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
-  // two scene graphs made node inspect both whole and ran the process past 40 GB)
-  assert.ok(ridesUnder(group,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
-  const source=new THREE.Vector3(-.21215,.54465,.81139).normalize();
-  // the working station rests level; posed at the source's elevation (its pitch node), the fitting is the source's
-  const pitchNode=group.parent?.name==='auxiliaryWeaponPitch'?group.parent:null,restPitch=pitchNode?.rotation.x??0;
-  if(pitchNode){pitchNode.rotation.x=0;tank.root.updateMatrixWorld(true);
-    const level=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
-    pitchNode.rotation.x=-(Math.asin(source.y)-Math.asin(Math.max(-1,Math.min(1,level.y))));tank.root.updateMatrixWorld(true);}
-  const axis=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
-  near(axis.distanceTo(source),0,.000002,'coherent elevated source AA firing axis');
-  const muzzle=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),ray=new THREE.Raycaster(muzzle.clone().addScaledVector(source,.01),source.clone().negate(),0,.06);
-  near(ray.intersectObject(gun,false)[0]?.point.distanceTo(muzzle),0,.000003,'actual source AA barrel end');
-  if(pitchNode){pitchNode.rotation.x=restPitch;tank.root.updateMatrixWorld(true);}
+  // 264 (owner 2026-10-28: the roof guns are the fleet's true-scale library guns, libraryRoofMg.ts): the commander's
+  // Kord is the library Kord on its own working station; it rides the turret (an ancestor test: assert.equal on two scene
+  // graphs made node inspect both whole and ran the process past 40 GB) and lies along the turret's +Z at rest.
+  const station=tank.root.getObjectByName('t72b3mCommanderKordStation');
+  assert.ok(station&&ridesUnder(station,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
+  let fit=null;station.traverse(o=>{if(!fit&&o.userData?.fittingRoot&&o.userData.fitting==='pintleMG')fit=o;});
+  assert.ok(fit&&/browningDerived/.test(fit.name),`the fleet's Kord (${fit?.name})`);
+  const axis=new THREE.Vector3(0,0,1).transformDirection(fit.matrixWorld);
+  near(axis.distanceTo(new THREE.Vector3(0,0,1)),0,.000002,'the gun lies along its declared +Z');
 }
 const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 for(const quality of ['high','low']){
@@ -103,4 +96,4 @@ for(const quality of ['high','low']){
   try{tank.root.updateMatrixWorld(true);frames(tank);bore(tank);covers(tank);gearAndFitting(tank);}
   finally{tank.dispose();}
 }
-console.log('t72b3mXGeometry: actual high/low physical joints, physical opening and recessed floor, native axles, ERA backing and elevated AA ownership pass; full visual gates separate');
+console.log('t72b3mXGeometry: actual high/low physical joints, physical opening and recessed floor, native axles, ERA backing and the library Kord station pass; full visual gates separate');
