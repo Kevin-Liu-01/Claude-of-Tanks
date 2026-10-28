@@ -39,10 +39,12 @@ const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(pla
   : 'publicPages.video.playAria', { label: videoName(video) });
 const videoTips = (playing: boolean): string => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip');
 if (pageVideos.length) {
-  void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
+  // (a player that did not arrive leaves the posters, and mounts once the browser is back online)
+  const mountPlayers = (): void => void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
     media = module;
     module.mountMediaPlayers(pageVideos, videoLabels, videoTips);
-  });
+  }).catch(() => addEventListener('online', mountPlayers, { once: true }));
+  mountPlayers();
 }
 const savingPictures = savingData() ? import('./responsivePicture.ts') : null;
 void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(document, true));
@@ -50,18 +52,39 @@ void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(doc
 // The media archive is used by docs, not the landing page. Keep its manifest,
 // rendering code, and CSS out of the home critical path.
 if (document.querySelector('[data-media-archive]')) {
-  Promise.all([
+  // (an archive whose module did not arrive mounts once the browser is back online)
+  const mountArchives = (): void => void Promise.all([
     import('./mediaArchive.css'),
     import('./mediaArchive.ts'),
-  ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives());
+  ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives())
+    .catch(() => addEventListener('online', mountArchives, { once: true }));
+  mountArchives();
 }
 
 
 
 
+// The landing's stills (the hero still over its inline preview, the bentos, the features, the modes rail's cards and the
+// trailer button's thumb) fade in once decoded, over their box's own tone or preview (home.css hides them from the first
+// paint), so none paints in half-drawn as it streams (owner 2026-10-27: "lets ensure we have good loadin gstates for
+// everything"). They are marked here, in the page's first module, so a still that arrives before the landing's own module
+// still fades (the loading census, round 6: the phone's lead duel and the thumb popped in; the slow-load critic: the hero
+// came in in bands). A still that failed keeps its box's tone until it loads (homePage.ts asks for it again online). The
+// box carries data-ready (the loading census's mark).
+const showStill = (image: HTMLImageElement): void => {
+  if (!image.naturalWidth || image.parentElement?.hasAttribute('data-ready')) return;
+  void image.decode().catch(() => undefined).then(() => image.parentElement?.setAttribute('data-ready', ''));
+};
+for (const image of document.querySelectorAll<HTMLImageElement>('.home .hero > .hero__still, .home .cot-c-media > img[loading="lazy"], .home .hero__thumb > img')) {
+  if (image.complete) showStill(image);
+  image.addEventListener('load', () => showStill(image));
+}
+
 // The landing's own behaviour (homePage.ts: the reel, the trailer's controls, the modes rail) loads with the landing
 // alone, so the manual, the Gallery and the other public pages carry neither its code nor its strings.
-if (document.querySelector('[data-hero-reel]')) void import('./homePage.ts');
+// (a landing whose module did not arrive keeps its served markup, and gains its behaviour once the browser is back online)
+const mountLanding = (): void => void import('./homePage.ts').catch(() => addEventListener('online', mountLanding, { once: true }));
+if (document.querySelector('[data-hero-reel]')) mountLanding();
 
 // Play now (Enter): Enter anywhere on the landing that is not a control follows the hero's Play link.
 const heroPlay = document.querySelector<HTMLAnchorElement>('[data-hero-play]');

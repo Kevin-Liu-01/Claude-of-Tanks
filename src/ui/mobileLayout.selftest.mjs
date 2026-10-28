@@ -253,6 +253,12 @@ assert.match(hud, /\.cot-hpb\{[^}]*width:128px;[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
 assert.match(hud, /bar\.layoutH = Math\.ceil\(bar\.root\.offsetHeight\)/,
   'a world tank label measures its height once with its copy, never per frame');
+// (a hidden label is placed at the height its lines will have: the two-line default kept a short window's one-line
+// labels out of every gap, so none showed to be measured)
+assert.match(hud, /if \(bar\.shown\) measureHpBar\(bar\);\s+else bar\.layoutH = hpBarRestH\(bar\);/,
+  'a hidden world tank label takes its rest height when its copy changes');
+assert.match(hud, /bar\.measure = true;\s+if \(!bar\.shown\) bar\.layoutH = hpBarRestH\(bar\);/,
+  'a hidden world tank label takes the short window\'s rest height when the window changes');
 // (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"; tools/marker-census.mjs renders it)
 assert.doesNotMatch(hud, /class="flg"|tgtRefs\.flg|\.cot-(?:hpb|tgt) [^{]*\.cot-flag/,
   'no marker over a tank carries a nation flag');

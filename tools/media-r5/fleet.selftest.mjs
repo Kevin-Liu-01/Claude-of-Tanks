@@ -3,7 +3,7 @@ import '../../src/vehicles/tankFactory.ts';
 import { PRODUCTION_TANK_IDS, TANK_SPECS } from '../../src/vehicles/specs.ts';
 import { isBuiltInCamoId, signatureCamoPatternId, stockCamoPatternIdFor } from '../../src/vehicles/camoPolicy.ts';
 import { CAST } from './cast.mjs';
-import { FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
+import { COMBAT, DUELS, FLEET, OWNER_NINE, SHOTS, siteScene } from './site50.mjs';
 import { takeBars } from './take-bars.mjs';
 import { resolveTankId } from '../../src/vehicles/tankIdAliases.ts';
 import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
@@ -13,7 +13,13 @@ import { sceneInCurrentTankIds } from '../../src/game/tankIdBoundaries.ts';
 // numbered on from 60, spread over the battlefields, each in its own tank's paint, each held to every per-take bar the
 // site takes are (take-bars.mjs).
 assert.ok(FLEET.length > 0, 'a fleet roster (fleet-plan.mjs writes fleet-roster.json)');
-assert.deepEqual(FLEET.map((s) => s[0]), Array.from({ length: FLEET.length }, (_, i) => i + 60), 'numbered on from 60 in order');
+// the roster's plan (s60-s224) numbered on from 60 in order; a vehicle added since (fleet-plan.mjs --append) numbered on
+// after it, never on a number another take holds (s225-s252 are the combat round's and the duels')
+const numbers = FLEET.map((s) => s[0]), PLANNED = 165, later = numbers.slice(PLANNED);
+assert.deepEqual(numbers.slice(0, PLANNED), Array.from({ length: Math.min(PLANNED, FLEET.length) }, (_, i) => i + 60), 'numbered on from 60 in order');
+assert.ok(later.every((n, i) => n > (i ? later[i - 1] : 60 + PLANNED - 1)), 'a later take numbered on in order');
+const held = new Set([...SHOTS, ...OWNER_NINE, ...COMBAT, ...DUELS].map((s) => s[0]));
+assert.deepEqual(later.filter((n) => held.has(n)), [], 'no later take on a number another take holds');
 const all = [...SHOTS, ...OWNER_NINE, ...FLEET];
 assert.equal(new Set(all.map((s) => s[1])).size, all.length, 'unique ids across every take');
 // The media scenes keep the ids they were written in (schema 1, unstamped) and the Studio resolves them at load (SSOT

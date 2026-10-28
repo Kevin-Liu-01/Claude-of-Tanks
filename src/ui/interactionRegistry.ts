@@ -159,7 +159,7 @@ export const INTERACTION_SITES = Object.freeze({
   'rooms-arrangement': { chooses: 'setting', options: 6, screen: 'rooms', owner: ROOMS, build: 'picker', marks: ['picker:rooms-arrangement', 'select:[data-arrange]'], lane: 'lead' },
 
   // ---- the battle (premiere-battle)
-  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'bespoke', marks: ['bespoke:dataset.view'], lane: 'premiere-battle' },
+  'scope-vision': { chooses: 'view', options: 4, screen: 'battle', owner: 'src/ui/aerialHud.ts', build: 'segmented', marks: ['segmented:.cot-scope-vision-seg'], lane: 'premiere-battle' },
   /** After a death, the ally the camera watches: the plate's picker over the spectator bar (Q and E still step). */
   'spectate-ally': { chooses: 'tank', options: 13, screen: 'battle', owner: 'src/ui/spectatorSwitcher.ts', build: 'picker', marks: ['picker:spectate-ally'], lane: 'premiere-battle' },
 
@@ -203,6 +203,11 @@ export const INTERACTION_SITES = Object.freeze({
   'docs-battle-reel': { chooses: 'take', options: 24, screen: 'site', owner: 'src/docs/battleReels.ts', build: 'picker', marks: ['picker:docs-battle-reel'], lane: 'premiere-site' },
   'docs-filming-stage': { chooses: 'view', options: 6, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-stage'], lane: 'premiere-site' },
   'docs-filming-take': { chooses: 'take', options: 8, screen: 'site', owner: 'src/docs/filming.ts', build: 'picker', marks: ['picker:docs-filming-take'], lane: 'premiere-site' },
+  // (262) the fleet chapter's grid: its five filters (nation, tier, era, class, role, each with its every-value choice) are
+  // one site on the kit's picker menu, its three presentations the segmented control (src/docs/chapters/fleetGrid.ts draws
+  // them, fleetGrid.ts wires them)
+  'docs-fleet-filter': { chooses: 'filter', options: 14, screen: 'site', owner: 'src/docs/fleetGrid.ts', build: 'picker', marks: ['picker:docs-fleet-filter'], lane: 'premiere-site' },
+  'docs-fleet-view': { chooses: 'view', options: 3, screen: 'site', owner: 'src/docs/chapters/fleetGrid.ts', build: 'segmented', marks: ['segmented:.dm-fleet__views', 'site/docs-fleet.html segmented:.dm-fleet__views'], lane: 'premiere-site' },
   // (2026-10-26) the archive's feature filter and the library's collections are the kit's tabs: each switches the view
   // under it (the archive's grid, the library's panel), navigation the census does not count as a choice
 } as const satisfies Readonly<Record<string, InteractionSite>>);

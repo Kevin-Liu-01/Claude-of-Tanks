@@ -126,7 +126,7 @@ export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: st
       mounted = true;
       void import('./technicalDrawing.ts').then(({ mountTechnicalDrawing }) => {
         mountTechnicalDrawing(drawingBox, vehicle.id, { kind, alt: vehicle.name }).ready.catch(() => {});
-      });
+      }).catch(() => { mounted = false; /* a chunk the network dropped: the next open of the section mounts it again */ });
     });
   }
   const detail = document.createElement('div'); detail.className = 'cot-guide__detail'; detail.id = `cot-guide-detail-${++sequence}`; detail.setAttribute('role','tabpanel'); detail.setAttribute('aria-live','polite'); detail.setAttribute('aria-atomic','true');

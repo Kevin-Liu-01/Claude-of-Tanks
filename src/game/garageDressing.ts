@@ -41,7 +41,7 @@ import { KitBuilder, kitRandom } from '../ui/garageKitGeometry.ts';
 import { garageKitSkin } from '../ui/garageKitSkins.ts';
 import { buildShadowBoard } from '../ui/garageWallKit.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
-import { optimizeGarageDressing } from './garageDressingOptimization.ts';
+import { optimizeGarageDressingSteps } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
 import { GARAGE_HERO_HEADING_RAD, GARAGE_PLATFORM_GEOMETRY } from './garagePresentationPose.ts';
@@ -108,6 +108,20 @@ export interface GarageDressingRuntime {
 
 type Scale3 = number | [number, number, number];
 type TrackedResource = { dispose(): void };
+
+/** The workshop optimization's slice between task turns (ms; optimizeWorkshopDisplays). */
+const OPTIMIZE_SLICE_MS = 8;
+
+/** One task turn back to the browser: scheduler.yield where it exists, else a message-channel task (unthrottled hidden). */
+function yieldTurn(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (typeof scheduler?.yield === 'function') return scheduler.yield();
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => { channel.port1.close(); resolve(); };
+    channel.port2.postMessage(0);
+  });
+}
 
 function countWorkshopTriangles(root: THREE.Object3D): number {
   let triangles = 0;
@@ -3568,9 +3582,13 @@ export function createGarageDressing(
 
   // Finalization remains outside first paint and runs only after the complete
   // shared authored set exists.
-  chunks.push(function optimizeWorkshopDisplays() {
+  // (2026-10-27, the room-stalls lane) a step at a time (optimizeGarageDressingSteps), a task turn back between
+  // OPTIMIZE_SLICE_MS slices: in one task the pass held a covered Garage return 206-330 ms (the rooms census). A pause
+  // mid-pass keeps the steps, and the chunk's next run resumes them where they stopped.
+  let optimizeSteps: Generator<void, unknown, void> | null = null;
+  chunks.push(async function optimizeWorkshopDisplays(stillValid) {
     const sourceTriangles = group.userData.verdantOriginalTriangleCount || 0;
-    optimizeGarageDressing(group, {
+    optimizeSteps ??= optimizeGarageDressingSteps(group, {
       // The Abrams bay owner nests inside the shared root but merges alone, so
       // each destination can still carry it to its own placement.
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot, ...(abramsBayRoot ? [abramsBayRoot] : []),
@@ -3583,6 +3601,14 @@ export function createGarageDressing(
         release: material => { engineCtx.releaseShadowMaterial!(material); },
       } : undefined,
     });
+    let sliceAt = performance.now();
+    for (let step = optimizeSteps.next(); !step.done; step = optimizeSteps.next()) {
+      if (performance.now() - sliceAt < OPTIMIZE_SLICE_MS) continue;
+      await yieldTurn();
+      requireGarageWork(stillValid);
+      sliceAt = performance.now();
+    }
+    optimizeSteps = null;
     const optimizedTriangles = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.optimizedWorkshopTriangleCount = optimizedTriangles;
     group.userData.optimizedWorkshopTriangleParity = optimizedTriangles === sourceTriangles;

@@ -424,7 +424,7 @@ body[data-cot-width='desktop'] .cot-studio .mapBtn .mn{display:none}
 .cot-studio .production-feature:hover{background:var(--surface-hover)}
 .cot-studio .production-feature:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .cot-studio .production-feature:disabled{cursor:default;opacity:.5}
-.cot-studio .production-feature img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:var(--r1);
+.cot-studio .production-feature img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:50% 50%;border-radius:var(--r1);
   background:var(--surface-raised)}
 .cot-studio .production-feature .production-kind,.st-tpl__kind{position:absolute;left:var(--s3);top:var(--s3);padding:3px var(--s2);
   border-radius:var(--r1);background:var(--glyph-plate);color:var(--ink-1);font:600 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-ui);

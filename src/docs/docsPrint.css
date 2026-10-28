@@ -1,0 +1,65 @@
+/* The Field Manual printed (Cmd+P, Save as PDF): one column of dark ink on paper. The kit's tokens turn to paper (the
+   surfaces fall away, the inks and lines take the graphite ramp, the tones darken toward it), the page's chrome (the
+   public nav, the shelf and its search, the contents, the pager, the footer, the players) stays on screen, headings keep
+   to what follows them, figures keep their captions, and an outside link prints its address. The badges' paper frames
+   are chapters.css's (tokens.json surface-badge-paper). In the overrides layer: printing is the reader's last word.
+   Docs CSS only; the game loads none of it. */
+/* the paper's own tokens (tokens.json semantic.print): a docs-only sheet, so the game's tokens carry none of them */
+@import url('../ui/tokens/surface-print.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer overrides{
+@media print{
+@page{size:A4;margin:16mm 15mm 18mm}
+/* paper: no fills, graphite inks and hairlines, the tones darkened toward the ink so they hold on white */
+:root{color-scheme:light;
+  --surface-scene:transparent;--surface-page:transparent;--surface-raised:transparent;--surface-menu:transparent;
+  --surface-nav:transparent;--surface-hover:transparent;--surface-plate:transparent;--scrim:transparent;
+  --plate-fill:transparent;--plate-highlight:none;--fill-faint:transparent;--fill-quiet:transparent;--fill-soft:transparent;
+  --chip-fill:transparent;--chip-fill-on:transparent;--glyph-plate:transparent;--row-plate:transparent;--side-plate:transparent;
+  --media-fade:none;
+  --ink-1:var(--print-ink-1);--ink-2:var(--print-ink-2);--ink-3:var(--print-ink-3);--ink-4:var(--print-ink-4);
+  --line-1:var(--print-line-1);--line-2:var(--print-line-2);--line-3:var(--print-line-3);--line-control:var(--print-line-control);
+  --ring-1:inset 0 0 0 1px var(--line-2);--ring-2:inset 0 0 0 1px var(--line-3);
+  --e1:none;--e2:none;--e3:none;--e4:none;--sil-shadow:none;
+  --accent:var(--print-accent);--accent-hi:var(--print-accent);--accent-lo:var(--print-accent-lo);
+  --accent-wash:var(--print-accent-wash);--text-accent:var(--print-text-accent);
+  --text-ok:var(--print-text-ok);--text-warn:var(--print-text-warn);--text-danger:var(--print-text-danger);
+  --text-info:var(--print-text-info);--text-own:var(--print-text-own);--text-enemy:var(--print-text-enemy);
+  --text-squad:var(--print-text-squad);
+  /* Chinese prints in Hiragino Sans GB: Chrome's PDF drops PingFang SC's glyphs (the screen keeps it first). The docs'
+     display and body faces read --font-ui; the data's mono face falls back to the same CJK face */
+  --font-ui:var(--print-font-ui);--font-mono:var(--print-font-mono)}
+/* what the paper keeps of a background is data (the tiers' bars, the drawings' keys, the lists' bullets): printed as drawn,
+   with background graphics on or off; the paper tokens leave no fill behind it */
+html{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+html,body{height:auto;min-height:0;background:none;color:var(--ink-1)}
+/* the icon sprites stay at the page's head: an empty sprite left past the last line printed a blank page */
+body>svg{position:absolute;inset:0 auto auto 0;width:0;height:0;overflow:hidden}
+/* the chrome stays on screen */
+:is(.public-skip,.public-nav,.public-footer,.docs-footer,.dm-side,.dm-search,.dm-toc,.dm-pager,.dm-crumb,
+  .docs-index-search,.docs-reels,.battle-reels,.docs-archive-dialog,.cot-media-toggle,dialog,video,.manual-search,.manual-count,
+  button:not(:has(svg[data-icon-category]))){display:none}
+/* one column, the page's own margins */
+.dm,.dm-body{display:block;max-width:none;min-height:0;margin:0;padding:0}
+.dm-main,.dm-article{min-width:0;max-width:none}
+/* the banner: its title in ink, no picture behind it */
+.dm-banner{height:auto;overflow:visible;background:none;isolation:auto}
+.dm-banner :is(img,picture,video),.dm-banner::before,.dm-banner::after{display:none}
+.dm-banner__t{position:static;padding:0 0 4mm;color:var(--ink-1)}
+.dm-banner *{text-shadow:none}
+.docs-hero{border:0}
+.docs-hero :is(img,picture,video),.docs-hero::before,.docs-hero::after{display:none}
+/* page breaks: a heading keeps to what follows it, a figure, table, card or block of code keeps whole */
+h1,h2,h3,h4,h5,h6{break-after:avoid;break-inside:avoid}
+:is(figure,.dm-figure,.dm-chart,table,thead,tr,pre,blockquote,.dm-roles li,.dm-equip li,.dm-table--stack>div,
+  .dm-mode,.dm-class,.dm-pair,.dm-diagram,.dm-cell,.dm-legend){break-inside:avoid}
+figcaption{break-before:avoid}
+p,li,dd{orphans:3;widows:3}
+.dm-section{padding-top:6mm;break-inside:auto}
+/* scrollers print whole: no fade masks, no clipped overflow */
+:is(.dm-table,.dm-table.is-scrollable,.dm-scroll){overflow:visible;mask:none;-webkit-mask:none}
+/* an outside link prints its address after it */
+.dm-article a[href^='http']:not(:has(img,svg,picture))::after{content:' (' attr(href) ')';font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-mono);
+  color:var(--ink-3);overflow-wrap:anywhere}
+}
+}

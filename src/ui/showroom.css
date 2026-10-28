@@ -390,7 +390,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
   background:var(--plate-fill);box-shadow:var(--ring-2);cursor:pointer;}
 .cot-lt-paint .cot-c-picker__media{position:absolute;inset:0;aspect-ratio:auto;border-radius:0;box-shadow:none;}
 .cot-lt-paint .cot-c-picker__media::after{content:none;}
-.cot-lt-paint .cot-c-picker__media canvas{display:block;width:100%;height:100%;object-fit:cover;}
+.cot-lt-paint .cot-c-picker__media canvas{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}
 /* the band's words in one case: the slots' and the paint's names in sentence case, as the acts beside them (the gauntlet
    10-25: EMPTY and FACTORY stood in capitals next to Callouts and Anatomy) */
 .cot-lt-paint .cot-c-picker__words{display:none;}
