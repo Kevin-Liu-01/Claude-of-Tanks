@@ -115,7 +115,7 @@ function glacisTilt(z: number): number {
 /**
  * The bow's tow eyes, the armoured headlight pods with their guards and the splash board on the glacis, the driver's
  * hatch and periscopes on its slope; the engine deck's round fan covers, radiator louvres, access plates and exhaust
- * grilles, the lifting eyes; the stern's exhaust louvres, tail lights, tow hooks, convoy light and stowage box.
+ * grilles, the lifting eyes; the stern's exhaust band, tail lights, tow hooks, convoy light and rack.
  */
 function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   const { box, cylX, cylY, torus } = KIT;
@@ -166,19 +166,24 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     for (const [lz, ly] of [[1.30, lineAt(H.deck, 1.30)], [-3.52, lineAt(H.deck, -3.52)]]) {
       KIT.liftEye(P, 'hullDetail', side * 1.50, ly + 0.015, lz);
     }
-    // the stern: the exhaust louvres high on the rear plate, a tail-light cluster outboard of them, a tow hook low
-    P.add('hullDark', box(0.56, 0.24, 0.006), side * 0.86, 1.62, -3.803);
-    for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.56, 0.035, 0.014), side * 0.86, 1.52 + k * 0.05, -3.81, -0.5, 0, 0);
-    P.add('hullDetail', box(0.18, 0.12, 0.05), side * 1.38, 1.62, -3.825);
-    for (const dx of [-0.045, 0.045]) P.add('hullGlass', box(0.06, 0.05, 0.012), side * 1.38 + dx, 1.62, -3.852);
+    // the stern's corners: a tail-light cluster under the exhaust band's ends, a tow hook low
+    P.add('hullDetail', box(0.18, 0.12, 0.05), side * 1.36, 1.28, -3.825);
+    for (const dx of [-0.045, 0.045]) P.add('hullGlass', box(0.06, 0.05, 0.012), side * 1.36 + dx, 1.28, -3.852);
     P.add('hullDetail', box(0.12, 0.10, 0.10), side * 0.80, 0.90, -3.85);
     P.add('hullDark', torus(0.055, 0.018, 10), side * 0.80, 0.84, -3.91);
   }
   P.add('hullDetail', box(0.30, 0.012, 0.80), 0, lineAt(H.deck, -3.12) + 0.006, -3.12);
   P.add('hullDetail', box(0.30, 0.10, 0.06), 0, 1.30, -3.83);                                  // convoy light
-  P.add('hull', box(1.10, 0.38, 0.34), 0, 1.61, -3.97);                                         // stowage box
-  P.add('hullDark', box(1.12, 0.012, 0.012), 0, 1.80, -4.14);
-  for (const dx of [-0.30, 0.30]) P.add('hullDark', box(0.10, 0.03, 0.02), dx, 1.70, -4.145);
+  // the exhaust outlet: one louvred band across the upper rear plate under the deck's lip
+  P.add('hullDark', box(2.90, 0.40, 0.006), 0, 1.57, -3.803);
+  for (let k = 0; k < 8; k++) P.add('hullDetail', box(2.90, 0.035, 0.014), 0, 1.40 + k * 0.048, -3.81, -0.5, 0, 0);
+  for (const y of [1.36, 1.78]) P.add('hullDetail', box(2.94, 0.03, 0.03), 0, y, -3.815);
+  // the stern rack: a tubular frame on the deck's lip, standing back over the exhaust
+  for (const y of [1.72, 1.82]) P.add('hullDetail', box(1.10, 0.03, 0.03), 0, y, -4.14);
+  for (const dx of [-0.55, 0.55]) {
+    P.add('hullDetail', box(0.03, 0.03, 0.34), dx, 1.82, -3.97);
+    P.add('hullDetail', box(0.03, 0.13, 0.03), dx, 1.765, -4.14);
+  }
 }
 
 /** Seven measured road wheels, the raised front idler, the rear sprocket and four return rollers a side. */
