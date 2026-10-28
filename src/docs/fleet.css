@@ -53,7 +53,7 @@
    foot a hairline as the site bar's is, so a row passing under it meets an edge */
 @media (width >= 768px) and (height >= 700px){
   .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);background:var(--surface-page);
-    box-shadow:0 1px 0 var(--line-2)}
+    border-bottom:1px solid var(--line-2)}
 }
 /* the segmented track stands as tall as the search and the triggers (36 px; 44 on touch, below) */
 .dm-fleet__views .cot-c-seg__opt{height:30px}
