@@ -30,7 +30,7 @@ import {
   garageHardstandGrainTexture,
 } from './garageHardstandProgram.ts';
 import type { HallMesh } from './garageHallKit.ts';
-import { buildVerdantFloorAlbedo, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
+import { buildVerdantFloorAlbedoSteps, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
 
 type RandomSource = () => number;
@@ -321,8 +321,9 @@ export function createGarageStage(
   pos: THREE.Vector3,
   initialVariantId = '',
   requestRender: () => void = () => {},
+  whenSettled?: (work: () => void) => void,
 ): GarageStageRuntime {
-  const steps = createGarageStageSteps(engineCtx, pos, initialVariantId, requestRender);
+  const steps = createGarageStageSteps(engineCtx, pos, initialVariantId, requestRender, whenSettled);
   for (;;) {
     const step = steps.next();
     if (step.done) return step.value;
@@ -341,6 +342,8 @@ export function* createGarageStageSteps(
   pos: THREE.Vector3,
   initialVariantId = '',
   requestRender: () => void = () => {},
+  /** Runs work once the Garage has settled (main.ts: after the boot completes); absent, the idle timeouts alone. */
+  whenSettled?: (work: () => void) => void,
 ): Generator<void, GarageStageRuntime, void> {
   const rng = mulberry32(90210);
   const group = new THREE.Group();
@@ -513,7 +516,10 @@ export function* createGarageStageSteps(
     const floorAnisotropy = aniso >= 8 ? 16 : aniso;
     const warmConcrete = (): void => { garageHardstandDetailTexture('concrete', floorAnisotropy); };
     const warmGrain = (): void => { garageHardstandGrainTexture(floorAnisotropy); later(warmConcrete, 8000); };
-    later(warmGrain, 6000);
+    // (boot-261) the 6 s idle timeout alone fired inside a long boot (the concrete relief's 0.27 s on the boot-259 phone
+    // census): the caller's settled signal comes first
+    if (whenSettled) whenSettled(() => later(warmGrain, 6000));
+    else later(warmGrain, 6000);
   }
   // The hall's finished floor (GA.05; the critic panel: "the floor is a smear ... a power-floated slab: saw-cut joints on
   // a ~6 m grid, a sheen that catches lamp and window highlights, track scuffs to the shutter, oil spots at the bays ...
@@ -521,9 +527,9 @@ export function* createGarageStageSteps(
   // the outdoor seeds compile anyway (no new program), with the concrete detail relief (aggregate, crazing, a broomed
   // grain) and a lower roughness for the sheen; it lies 3 mm over the depth-writing floor, drawn first of the decals.
   const shutterSpan = verdantHallShutter(HW);
-  function addHallFloorFinish(): void {
+  function* addHallFloorFinish(): Generator<void, void, void> {
     const albedo = track(new THREE.DataTexture(
-      buildVerdantFloorAlbedo({ halfWidthM: HW, shutterX: shutterSpan.x }),
+      yield* buildVerdantFloorAlbedoSteps({ halfWidthM: HW, shutterX: shutterSpan.x }),
       VERDANT_FLOOR_TEXELS, VERDANT_FLOOR_TEXELS, THREE.RGBAFormat,
     ));
     albedo.colorSpace = THREE.SRGBColorSpace;
@@ -556,7 +562,7 @@ export function* createGarageStageSteps(
     mesh.updateMatrix();
     group.add(mesh);
   }
-  addHallFloorFinish();
+  yield* addHallFloorFinish();
   yield;
 
   // Daylight in the hall (GA.05; the critic panel: "the roof lights and clerestories show sky, but no daylight reaches the

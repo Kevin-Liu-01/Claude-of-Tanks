@@ -413,6 +413,12 @@ installAccessibility();
 // gate prompt, and retry button respect the active locale from first paint.
 bindStaticI18nAuto();
 let bootComplete = false;
+// (boot-261) optional Garage work held until the boot completes (the stage's hardstand textures): run when it does
+const afterBootComplete: Array<() => void> = [];
+const whenBootSettled = (work: () => void): void => {
+  if (bootComplete) work();
+  else afterBootComplete.push(work);
+};
 const bootLifecycle = createBootLifecycle({
   screen: boot,
   yieldFrame: nextFrame,
@@ -875,6 +881,7 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
     GARAGE_POS,
     selectedGarageVariantId,
     () => invalidateGaragePresentation(),
+    whenBootSettled,
   );
   const stageYield = createOpaqueLoadingYielder(12, 80);
   let gs: ReturnType<typeof createGarageStage>;
@@ -4152,6 +4159,10 @@ if (STUDIO_BOOT_INTENT) {
 try { await awaitRendererProgramLinks(() => nextFrame()); } catch { /* the first frame waits for them as before */ }
 bootComplete = true;
 frameLoop.schedule();
+for (const work of afterBootComplete.splice(0)) work();
+// (boot-261) the gamepad service starts once the Garage has settled, not inside its build (input.ts watchGamepads)
+if (window.requestIdleCallback) window.requestIdleCallback(() => input.watchGamepads(), { timeout: 5000 });
+else setTimeout(() => input.watchGamepads(), 1500);
 if (!STUDIO_BOOT_INTENT && selectedGarageVariantId !== 'verdant_motor_pool') {
   // Keep the normal Verdant boot fast. A persisted outdoor choice hydrates
   // after readiness and never presents the removed synthetic map diorama.
