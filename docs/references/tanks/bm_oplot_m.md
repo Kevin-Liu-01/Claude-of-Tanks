@@ -2,7 +2,7 @@
 
 First-party procedural builds of KMDB's BM Oplot-M (Object 478DU9-1) and its Thai export, the BM Oplot-T
 (Object 478DU9-T), release 262. One builder, `buildOplotBM(P, 'm' | 't')` in `src/vehicles/profiles/oplotBM.ts`; shared
-datums and ERA sectors in `src/vehicles/oplotBMLayout.ts`; spec rows in `src/vehicles/ukraine.ts`. The Thai deltas are
+datums and ERA sectors in `src/vehicles/oplotFlankLayout.ts` (the OPLOT_BM_* block); spec rows in `src/vehicles/ukraine.ts`. The Thai deltas are
 in [bm_oplot_t.md](bm_oplot_t.md).
 
 ## Current status
@@ -26,7 +26,7 @@ in [bm_oplot_t.md](bm_oplot_t.md).
 - Mode: independent source-backed X build (`bm_oplot_m`) plus an explicit first-party derivative (`bm_oplot_t`,
   variant deltas in [bm_oplot_t.md](bm_oplot_t.md)); historical preservation of `t84` / `t84bm_oplot_m` (geometry
   untouched, names and tiers only; the T-84U's ammunition per Main's ruling).
-- Owned files: `src/vehicles/profiles/oplotBM.ts`, `src/vehicles/oplotBMLayout.ts`, the Oplot rows of
+- Owned files: `src/vehicles/profiles/oplotBM.ts`, `src/vehicles/oplotFlankLayout.ts` (the OPLOT_BM_* block), the Oplot rows of
   `src/vehicles/ukraine.ts`, `tools/oplot-bm-x-reference-overrides.ts` and its selftest, `src/vehicles/oplotBMGun.selftest.mjs`,
   this packet; registry rows for the two ids. Integrator: Main (release 262).
 - Raw source: `~/cot-lanes/oplot-ref/ukrainian_t-84bm_oplot-m.glb`, SHA-256
@@ -115,8 +115,9 @@ round-1/2 boxes with lofts through these sections.
 Authored at 4.0 times the print, baked once to the registered 4.10 (`OPLOT_BM_SCALE` 1.025); sections as tabled above.
 
 - Hull: loftHull on the measured deck/belly lines, fender ledges, the 6TD-2's radiator grilles and stern step grille,
-  driver's hatch, glacis Duplet (three courses of four a side, each seated by glacisEraCassette), dozer blade, bow flaps,
-  headlamp clusters, stern grille, recovery eyes and the unditching log on its brackets.
+  driver's hatch, glacis Duplet (three courses of four a side, each seated by glacisEraCassette), the stowed dozer
+  blade on its arms (measured: edge 0.275 m above the ground), headlamp clusters, stern grille, recovery eyes and the
+  unditching log on its brackets.
 - Skirts: the flared armoured box (inner 1.80, face 1.86 at the deck to 2.08 at 0.95, rolled noses to z 3.78) with its
   Duplet lids, and hinged rubber panels below it (`hullEquipment`: painted, outside the structural hull).
 - Running gear: six rubber-tyred wheels r 0.335, five rollers, rear sprocket, front idler, 580 mm track.
@@ -132,7 +133,7 @@ fuel barrels in back, lights, 2 gun towers instead of 1")
 
 | | Oplot-M (`buildOplotMKit`) | Oplot-T (`buildOplotTKit`) |
 | --- | --- | --- |
-| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear, its box sight on a post (clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-84..273) | M2 enclosed mini-turret on a raised armoured tower with a large searchlight (-248..4); 7.62 open cradle (-101..233) |
+| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear with its outboard sight-and-ammunition box (the print's; clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-83..229) | M2 enclosed mini-turret on a raised armoured tower with a large searchlight (-248..4); 7.62 open cradle (-101..233) |
 | Extra side armour | a lower Duplet course on each rubber skirt, seven gapped blocks a side (skirt sector) | two courses of 9 cm bolted blocks on the six rear skirt panels (addExternalArmor); a stand-off horizontal-slat cage round the turret's rear half |
 | Lights | LED bars on the cheek stacks, a work lamp astern | a searchlight on the left cheek, work lamps fore and aft |
 | Stern | twin 200 L drums (issue paint 1) strapped to the lower rear plate under the grille and the log | the same cradle, desert-issue drums (paint 3) |

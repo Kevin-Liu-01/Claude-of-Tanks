@@ -6,7 +6,7 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { apfsdsPenetration, modernArmor, plate, reactivePlate, shell } from './specHelpers.ts';
 import type { ArmorPlate } from './specHelpers.ts';
-import { OPLOT_BM_ERA, OPLOT_BM_FRAME } from './oplotBMLayout.ts';
+import { OPLOT_BM_ERA, OPLOT_BM_FRAME } from './oplotFlankLayout.ts';
 import { ukrainianAbramsCage } from './ukrainianDroneCage.ts';
 import {
   bindFleetRegistries,
@@ -102,14 +102,16 @@ const UKRAINE_SPECS = {
   bm_oplot_m: variant('bm_oplot_m', 't84', {
     name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#66704c', weather: '#77805a', patches: [],
     camoScale: 0.50,
-    dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
+    // the build's measured extents (geometry-gate), kit included: the stern drums, the skirt Duplet course and the
+    // roof stations (the published 9.72 m / 3.78 m / 2.2 m are the bare tank's: bm_oplot_m.md)
+    dims: { hullLengthM: 7.32, overallLengthM: 10.49, widthM: 4.40, heightM: 2.97 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
   bm_oplot_t: variant('bm_oplot_t', 't84', {
     name: 'T-84BM Oplot-T', number: '231', scheme: 'nato', base: '#b39466', weather: '#c3a578',
     patches: ['#7e4c37', '#5c4232', '#a17f58'], camoScale: 0.58,
-    dims: { hullLengthM: 6.92, overallLengthM: 10.02, widthM: 4.26, heightM: 2.214 },
+    dims: { hullLengthM: 7.32, overallLengthM: 10.49, widthM: 4.43, heightM: 2.97 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
@@ -178,7 +180,7 @@ const UKRAINE_SPECS = {
   for (const id of ['bm_oplot_m', 'bm_oplot_t'] as const) {
     const spec = UKRAINE_SPECS[id];
     const frame = modernArmor({
-      // the installed frame: the print at the registered uniform 4.10 (oplotBMLayout.ts OPLOT_BM_SCALE)
+      // the installed frame: the print at the registered uniform 4.10 (oplotFlankLayout.ts OPLOT_BM_SCALE)
       hl: 3.461, hw: 1.743, inW: 1.097, floor: 0.43, trkTop: 1.097, roofY: 1.497,
       turretPivot: [...OPLOT_BM_FRAME.turret], gunPivot: [...OPLOT_BM_FRAME.gun],
       barrelLenM: OPLOT_BM_FRAME.barrelM, barrelRadM: OPLOT_BM_FRAME.barrelR,
