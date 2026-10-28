@@ -205,12 +205,21 @@ let downloader: Core | null = null;
 let handedOff = false;
 let lifecycleInstalled = false;
 
-/** How much of a frame is on screen (its visible area, CSS px²; 0 without a layout). */
+/** The rows of the screen a page's content shows in: the viewport less its fixed bars, as the page declares them for
+ * scrolling (the root's scroll padding: the site bar above, a phone's Play bar below). */
+const contentRows = (): [number, number] => {
+  const root = typeof document !== 'undefined' ? document.documentElement : null;
+  const style = root && typeof getComputedStyle === 'function' ? getComputedStyle(root) : null;
+  return [parseFloat(style?.scrollPaddingTop ?? '') || 0, innerHeight - (parseFloat(style?.scrollPaddingBottom ?? '') || 0)];
+};
+
+/** How much of a frame is on screen, clear of the page's fixed bars (its visible area, CSS px²; 0 without a layout). */
 const shownArea = (core: Core): number => {
   const rect = core.frame.getBoundingClientRect?.();
   if (!rect || typeof innerWidth !== 'number' || typeof innerHeight !== 'number') return 0;
+  const [top, bottom] = contentRows();
   const across = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
-  const down = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
+  const down = Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top));
   return across * down;
 };
 

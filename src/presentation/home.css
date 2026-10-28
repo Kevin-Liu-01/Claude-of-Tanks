@@ -313,6 +313,9 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
    bar held at the bottom of the screen; the features one to a row */
 @media (width < 768px){
   .home{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
+  /* the fixed Play bar is the page's scroll padding below: a focused control or a jump never lands under it, and the
+     media player counts a film under it as off screen (mediaPlayer.ts shownArea) */
+  html{scroll-padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
   .home .public-nav__tools>.public-nav__cta{display:none}
   .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) var(--s4);background:var(--surface-page)}
   /* the picture spans 640 px, or the hero when it is shorter (a short phone), so its grade always ends in the page tone

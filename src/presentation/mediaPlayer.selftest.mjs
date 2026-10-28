@@ -269,6 +269,31 @@ const page = await freshModule();
   pair[1].video.dispatchEvent({ type: 'canplaythrough' });
   assert.deepEqual(pair.map(({ video }) => video.paused), [true, false], 'on the next scroll the frame further on screen plays');
   for (const player of pairPlayers) player.dispose();
+  // a frame under the page's fixed bar (the root's scroll padding) counts as off screen: the lead keeps the slot from a
+  // wider frame whose foot the phone's Play bar covers
+  dom.document.documentElement ??= {};
+  globalThis.getComputedStyle = () => ({ scrollPaddingTop: '72px', scrollPaddingBottom: '82px' });
+  clock += 5000;
+  const top = { top: 200, height: 340 }, under = { top: 600, height: 400 };
+  const covered = [top, under].map((rect) => frameWith(rect));
+  covered[0].video.getBoundingClientRect = () => ({ left: 24, right: 624, width: 600, bottom: top.top + top.height, ...top });
+  covered[1].video.getBoundingClientRect = () => ({ left: 24, right: 720, width: 696, bottom: under.top + under.height, ...under });
+  globalThis.innerHeight = 1000;
+  const coveredPlayers = covered.map(({ video }, index) => {
+    const player = page.createMediaPlayer(video, { label });
+    player.show({ sources: [{ src: `${PHONE}?covered${index}`, type: 'video/mp4', rung: 'phone' }] });
+    return player;
+  });
+  dom.intersect(covered[0].video, 1, true);
+  covered[0].video.dispatchEvent({ type: 'canplaythrough' });
+  clock += 2000;
+  dom.intersect(covered[1].video, 1, true);
+  covered[1].video.dispatchEvent({ type: 'canplaythrough' });
+  // on screen 696 x 400 = 278,400 px², clear of the bar 696 x 318 = 221,328: under a quarter more than the lead's 204,000
+  assert.deepEqual(covered.map(({ video }) => video.paused), [false, true], 'the part under the fixed bar does not count');
+  for (const player of coveredPlayers) player.dispose();
+  delete globalThis.getComputedStyle;
+  globalThis.innerHeight = 800;
   dom.setQuery(page.MEDIA_POLICY.phoneQuery, false);
   performance.now = realNow;
   delete globalThis.innerWidth;
