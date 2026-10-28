@@ -33,7 +33,10 @@ const walk = (dir, out = []) => {
   }
   return out;
 };
-assert.deepEqual([...walk('src'), 'index.html'].filter((path) => !path.endsWith('.selftest.mjs') && read(path).includes('docsPrint.css')),
+// a load is an import (CSS @import, a module import or a link), never a mention in a comment
+const LOADS_PRINT = /@import\s+url\(\s*['"]?[^'")]*docsPrint\.css|\bimport\s*(?:\(\s*)?['"][^'"]*docsPrint\.css|\bfrom\s*['"][^'"]*docsPrint\.css|href=["'][^"']*docsPrint\.css/;
+const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\/\/.*$/gm, '');
+assert.deepEqual([...walk('src'), 'index.html'].filter((path) => !path.endsWith('.selftest.mjs') && LOADS_PRINT.test(stripComments(read(path)))),
   ['src/docs/docs.css'], 'only the manual loads the print sheet');
 const IMPORT = "@import url('../ui/tokens/surface-print.css');";
 assert.ok(css.startsWith(`${IMPORT}\n${STYLE_LAYER_ORDER}`), 'the sheet imports the paper tokens, then opens with the layer order');
