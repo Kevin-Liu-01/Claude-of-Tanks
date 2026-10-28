@@ -1209,7 +1209,8 @@ function populateRivals(): void {
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
 function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  const top = Math.max(0, bar ? bar.bottom : 0);
+  // (under the bar's rule, which hangs 1 px below it: publicNav's .public-nav::after; the 261 critic's 1 px step)
+  const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (!panel) return { top, bottom: innerHeight };
   // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
