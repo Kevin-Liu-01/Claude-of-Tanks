@@ -165,11 +165,16 @@ function ringsOf(r: SourceRecord): TurretRing[] {
   return r.turretRings.map((g) => ({ z: g.z, side: g.side.map(([x, y]) => [x, y] as const), crown: g.crown }));
 }
 
+/** A source part in metres (merkavaFamilySource.ts packs the centre, size and quaternion in thousandths and a loft's
+ *  stations and sections in ten-thousandths; the kind, owner, role and loft axis are as they are). */
+const decodePart = (p: SourcePart): SourcePart =>
+  p.map((v, i) => (i === 0 || i === 1 || i === 12 || i === 13 ? v : v / (i >= 14 ? 10000 : 1000)));
+
 function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, basket: MerkavaMark['basket']): MerkavaMark {
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
-    id, hull, gear: gearOf(r), pivot, rings: ringsOf(r), slot: r.slot, parts: src.parts, gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
+    id, hull, gear: gearOf(r), pivot, rings: ringsOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
     basket, roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };
