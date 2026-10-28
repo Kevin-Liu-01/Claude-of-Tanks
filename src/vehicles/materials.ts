@@ -527,7 +527,7 @@ function textureSeedFor(key: string): number {
 }
 
 function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
-  if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
+  if (selection == null || selection === STORED_CAMO_SELECTION) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
   const patternId = resolveMultiplayerCamoPattern(specId, selection);
   return { key: `${specId}::${patternId}`, patternId, fixed: true };
 }
@@ -1313,6 +1313,13 @@ export function setCustomCamoSelection<Value>(specId: string, value: Value): Cus
   } catch (_) { /* private mode */ }
   return next;
 }
+
+/**
+ * A battle seat that wears its vehicle's stored paint, custom paint included, as the page's own battle paints its tanks: a
+ * sortie on the solo sim Worker names it for its seats (game/soloSimSortie.ts). A network seat's paint is a built-in id
+ * every peer can draw (getMultiplayerCamoSelection); this one never leaves the page.
+ */
+export const STORED_CAMO_SELECTION = '@stored';
 
 /** Public lobby/ranked selection; custom local paint degrades to Factory. */
 export function getMultiplayerCamoSelection(specId: string): CamoPatternId {
@@ -3915,12 +3922,14 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
  * (grilles, recesses, lights) and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
  * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
  * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
- * so a roof gun stays as bare as the main gun's barrel.
+ * so a roof gun stays as bare as the main gun's barrel; 4 the hull's rubber as 2, its grain flattened under the colour
+ * (its detail maps read as speckle through a tint: the blind critic, 262).
  */
 export function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
-  if (role === 'fittingPaint' || role === 'hullRubber') return 2;
+  if (role === 'fittingPaint') return 2;
+  if (role === 'hullRubber') return 4;
   if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
 }
@@ -3985,6 +3994,7 @@ const ARMOR_PAINT_DIFFUSE_GLSL = `
 vec3 apColor = vec3( 0.0 );
 float apMix = 0.0;
 float apLine = 0.0;
+float apFlat = 0.0;
 // (263) a baked panel (game/armorPaintPanels.ts): its cluster's one zone, so a border falls on a part's edge; below 0 a
 // bare panel; 0 the per-point score. One value a triangle, so the branch is the same across a pixel quad
 int apBaked = int( floor( vApZone + 0.5 ) );
@@ -4025,7 +4035,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
   // the hull's cells or past their ends (roof guns, antennas, tow gear)
   vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
   bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
-    || uApPaint > 2.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
+    || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
     || !apTurret && uApHullH.y > 0.0
       && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? apHullN : 0;
@@ -4086,11 +4096,15 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
       vec4 apNext = texelFetch( uApZones, ivec2( apSecondK * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
       apColor = mix( apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 ), apColor, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
     }
+    apFlat = step( 3.5, uApPaint );
     apMix = 0.45;
     // inside a footprint only its border is a border; outside, the scores' and a footprint's that takes another zone
     float apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
     apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
+    // the hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
+    // through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds)
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
     // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
@@ -4258,7 +4272,9 @@ ${ARMOR_PAINT_VERTEX_GLSL}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <roughnessmap_fragment>',
-        `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );`)
+        `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );\nroughnessFactor = mix( roughnessFactor, 0.85, apFlat );`)
+      .replace('#include <normal_fragment_maps>',
+        '#include <normal_fragment_maps>\nnormal = normalize( mix( normal, nonPerturbedNormal, 0.6 * apFlat ) );')
       .replace('#include <metalnessmap_fragment>',
         '#include <metalnessmap_fragment>\nmetalnessFactor = mix( metalnessFactor, 0.06, brnM );')
       .replace('#include <emissivemap_fragment>',

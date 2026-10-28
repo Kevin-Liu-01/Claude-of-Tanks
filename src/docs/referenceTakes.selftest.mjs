@@ -89,7 +89,7 @@ assert.match(reference, /\.join\(''\);\n\s+watchVehicleTakes\(records\);/, 'the 
 assert.equal(reference.match(/watchVehicleTakes\(/g).length, 1, 'only the vehicles reference');
 const data = JSON.parse(read('src/docs/reference.generated.json'));
 assert.equal(new Set(data.vehicles.map((vehicle) => vehicle.id)).size, data.vehicles.length, 'one record per vehicle id');
-assert.match(read('src/docs/topics.ts'), /void import\('\.\/reference\.ts'\)/, 'the reference itself loads on demand');
+assert.match(read('src/docs/topics.ts'), /whenOnline\(\(\) => import\('\.\/reference\.ts'\)/, 'the reference itself loads on demand (and again once back online)');
 for (const entry of ['src/docs/topics.ts', 'src/docs/reference.ts', 'src/docs/referenceTakes.ts']) {
   assert.ok(!staticImportClosure(entry, { root: ROOT }).has('src/ui/fleetTakes.ts'), `${entry} never loads the takes statically`);
 }

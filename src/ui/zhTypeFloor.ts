@@ -27,7 +27,6 @@ const SHELL: readonly string[] = [
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',
   // Deploy
   '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',
-  '.cot-custom-select-copy',
   // settings
   '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn',
   // service record

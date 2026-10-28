@@ -1007,8 +1007,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Leopard 2A3 knocks out a T-90M at Tidegate Polders at sunset",
-   "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M"
+   "en": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
+   "zh": "日落时分，一辆 Leopard 2A3 在潮闸圩田击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Leopard 2A3, Tidegate Polders",
@@ -1588,8 +1588,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A Merkava Mk 3 Baz knocks out a T-90M at Sunscar Oasis",
-   "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M"
+   "en": "A Merkava Mk 3 Baz knocks out a T-90M Proryv at Sunscar Oasis",
+   "zh": "一辆 Merkava Mk 3 Baz 在日痕绿洲击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Merkava Mk 3 Baz, Sunscar Oasis",
@@ -3405,12 +3405,12 @@
    "service_challenger_3"
   ],
   "title": {
-   "en": "A T-90M Proryv knocks out a Challenger 1 at Suzhou Creek in the evening light",
-   "zh": "傍晚，一辆 T-90M Proryv 在苏州河击毁一辆 Challenger 1"
+   "en": "A T-90AM II knocks out a Challenger 1 at Suzhou Creek in the evening light",
+   "zh": "傍晚，一辆 T-90AM II 在苏州河击毁一辆 Challenger 1"
   },
   "short": {
-   "en": "T-90M Proryv, Suzhou Creek",
-   "zh": "T-90M Proryv，苏州河"
+   "en": "T-90AM II, Suzhou Creek",
+   "zh": "T-90AM II，苏州河"
   }
  },
  {
@@ -3703,8 +3703,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A CV90 Mk 4 Concept knocks out a T-90M at Nordhavn Fjord",
-   "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M"
+   "en": "A CV90 Mk 4 Concept knocks out a T-90M Proryv at Nordhavn Fjord",
+   "zh": "一辆 CV90 Mk 4 Concept 在诺德港峡湾击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "CV90 Mk 4 Concept, Nordhavn Fjord",
@@ -3994,8 +3994,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "An Ares knocks out a T-90M at Saltwind Narrows at night",
-   "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M"
+   "en": "An Ares knocks out a T-90M Proryv at Saltwind Narrows at night",
+   "zh": "夜间，一辆 Ares 在盐风海峡击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "Ares, Saltwind Narrows",
@@ -4431,8 +4431,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A T-84 Oplot knocks out a T-90M at Frontier Basin",
-   "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M"
+   "en": "A T-84 Oplot knocks out a T-90M Proryv at Frontier Basin",
+   "zh": "一辆 T-84 Oplot 在边疆盆地击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "T-84 Oplot, Frontier Basin",
@@ -4756,8 +4756,8 @@
    "service_t90m"
   ],
   "title": {
-   "en": "A T-84BM Oplot-M knocks out a T-90M at Frontier Basin in the morning",
-   "zh": "清晨，一辆 T-84BM Oplot-M 在边疆盆地击毁一辆 T-90M"
+   "en": "A T-84BM Oplot-M knocks out a T-90M Proryv at Frontier Basin in the morning",
+   "zh": "清晨，一辆 T-84BM Oplot-M 在边疆盆地击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "T-84BM Oplot-M, Frontier Basin",
@@ -4936,12 +4936,12 @@
    "t72b3m_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_hc",
    "service_t90m"
   ],
   "title": {
-   "en": "An M1A1 Abrams HC knocks out a T-90M at Kestrel Airfield in the morning",
-   "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M"
+   "en": "An M1A1 Abrams HC knocks out a T-90M Proryv at Kestrel Airfield in the morning",
+   "zh": "清晨，一辆 M1A1 Abrams HC 在红隼机场击毁一辆 T-90M Proryv"
   },
   "short": {
    "en": "M1A1 Abrams HC, Kestrel Airfield",
@@ -5010,7 +5010,7 @@
    "t72b3_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_fep",
    "service_t90m"
   ],
   "title": {
@@ -5407,7 +5407,7 @@
    "t62mv1_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m60a3",
    "service_soviet_coldwar"
   ],
   "title": {
@@ -6005,6 +6005,42 @@
   "short": {
    "en": "T-90MS obr. 2011, Highland Reservoir",
    "zh": "T-90MS obr. 2011，高地水库"
+  }
+ },
+ {
+  "n": 253,
+  "id": "type10-dozer-mangrove",
+  "hero": "type10_dozer",
+  "nation": "Japan",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "night",
+  "anchor": [
+   -9.7,
+   -9.7
+  ],
+  "heading": 204.4,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "type10_dozer",
+   "raiju_ifv"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "paint_type10_dozer",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+   "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+  },
+  "short": {
+   "en": "Type 10 Kaitaku, Mangrove Reach",
+   "zh": "Type 10 Kaitaku，红树林水道"
   }
  }
 ]

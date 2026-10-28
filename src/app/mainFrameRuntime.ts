@@ -298,6 +298,8 @@ export function createMainFrameRuntime({
     lighting.setStaticPresentationDormant(
       game.phase === 'garage' && !garageShadowsDirty,
     );
+    // (battle-spikes-253) the near hulls' merged shadow casters in a live battle frame only (never the Garage or a killcam)
+    lighting.setVehicleShadowMerge(frame.inBattle && !frame.killcamActive);
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
     const stages = frameStages;
     stages?.stage(FRAME_STAGE.lighting);

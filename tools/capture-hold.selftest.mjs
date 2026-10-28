@@ -108,7 +108,38 @@ const pages = () => [{ name: 'a' }, { name: 'b' }];
   assert.deepEqual(events, ['queue', 'hold', 'release', 'close'], 'a failed shoot still releases and closes');
 }
 
+// 2026-10-27 (item 262): shoot's checkpoint() passes the class and cap to the lock and, at a hold-cap yield, freezes the
+// pages before the lock is given up and thaws and checks them once it is held again.
+{
+  const { events, lock, ...options } = rig();
+  let acquiredWith = null;
+  const acquire = lock.acquire;
+  lock.acquire = (ms, settings) => { acquiredWith = settings; return acquire(ms, settings); };
+  lock.checkpoint = async ({ beforeYield, afterResume }) => {
+    events.push('checkpoint');
+    await beforeYield();
+    events.push('yield');
+    events.push('hold again');
+    await afterResume();
+    return { yielded: true };
+  };
+  await runWarmHold({ ...options, lock, lockClass: 'render', holdCapMinutes: 30, holdCapReason: 'the full fleet',
+    warm: async () => ({ pages: pages() }),
+    shoot: async ({ checkpoint }) => { events.push('batch 1'); assert.equal((await checkpoint()).yielded, true); events.push('batch 2'); } });
+  assert.deepEqual([acquiredWith.lockClass, acquiredWith.holdCapMinutes, acquiredWith.holdCapReason], ['render', 30, 'the full fleet']);
+  assert.deepEqual(events.slice(events.indexOf('batch 1')), ['batch 1', 'checkpoint', 'freeze a', 'freeze b', 'yield', 'hold again',
+    'thaw a (session a)', 'thaw b (session b)', 'check a', 'check b', 'batch 2', 'freeze a', 'freeze b', 'release'],
+  'frozen before the yield, thawed and checked after it');
+}
+{
+  // a lock without checkpoint() (an older stand-in): checkpoint() is a no-op
+  const { events, ...options } = rig();
+  await runWarmHold({ ...options, warm: async () => ({ pages: [] }),
+    shoot: async ({ checkpoint }) => { assert.equal((await checkpoint()).yielded, false); events.push('shoot'); } });
+  assert.ok(events.includes('shoot'));
+}
+
 await assert.rejects(runWarmHold({ warm: async () => ({}) }), /needs warm\(\) and shoot\(\)/);
 assert.deepEqual(['SIGTERM', 'SIGINT', 'SIGHUP'].map((signal) => process.listenerCount(signal)), [0, 0, 0],
   'every run removes its signal handlers');
-console.log('capture-hold.selftest: warm and freeze while queued, thaw-check-shoot-refreeze in the hold, re-warm of a page lost at the thaw or while queued, the limit and grace, and cleanup on every path');
+console.log('capture-hold.selftest: warm and freeze while queued, thaw-check-shoot-refreeze in the hold, re-warm of a page lost at the thaw or while queued, the hold-cap checkpoint, the limit and grace, and cleanup on every path');
