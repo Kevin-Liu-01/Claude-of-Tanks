@@ -85575,16 +85575,16 @@
         }
       }
     },
-    "challenger1_granby": {
-      "id": "challenger1_granby",
+    "challenger_x": {
+      "id": "challenger_x",
       "name": "Challenger 1 Granby",
       "label": {
-        "id": "challenger1_granby",
+        "id": "challenger_x",
         "displayName": "Challenger 1 Granby",
         "shortName": "Challenger 1 Granby",
         "searchAliases": [
           "Challenger 1 Granby",
-          "challenger1_granby",
+          "challenger_x",
           "challenger1 granby"
         ],
         "noteKey": null
@@ -86861,14 +86861,14 @@
       },
       "assets": {
         "angle": {
-          "file": "challenger1_granby_angle.webp",
+          "file": "challenger_x_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
           "bytes": 21616,
           "sha256": "10dc90b93df90f761a9f32da838da34feec9a65ba1da5513c4667333596c2a72",
           "thumbnail": {
-            "file": "thumbs/challenger1_granby_angle.webp",
+            "file": "thumbs/challenger_x_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
@@ -86877,7 +86877,7 @@
           }
         },
         "top": {
-          "file": "challenger1_granby_top.webp",
+          "file": "challenger_x_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
@@ -86885,7 +86885,7 @@
           "sha256": "54632e62965e4603b32c365ce3075cd61f0982a56a8d902a83b025a1fcb7dd37"
         },
         "side": {
-          "file": "challenger1_granby_side.webp",
+          "file": "challenger_x_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
@@ -86893,7 +86893,7 @@
           "sha256": "582b21e9d1b3d243735a93e22d53b9ed74f8d4e1b492cdb6918a7f1ce70ceb47"
         },
         "topSilhouette": {
-          "file": "challenger1_granby_top_silhouette.png",
+          "file": "challenger_x_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
@@ -86901,7 +86901,7 @@
           "sha256": "62cb5836802ed1823bcd9159b189e0dbdc0c66c6aee92fa301a702d899922575"
         },
         "sideSilhouette": {
-          "file": "challenger1_granby_side_silhouette.png",
+          "file": "challenger_x_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
@@ -86909,7 +86909,7 @@
           "sha256": "45dd68eede3c7045c500860e52f6eb61436ae27bbafad8ec21ee5e873d7aa2d8"
         },
         "armorSide": {
-          "file": "challenger1_granby_armor_side.webp",
+          "file": "challenger_x_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
@@ -86917,7 +86917,7 @@
           "sha256": "7e4e03e6de24c229606f25b38589445ace0adbd62529ca92c697c286fa17fc3e"
         },
         "modulesSide": {
-          "file": "challenger1_granby_modules_side.webp",
+          "file": "challenger_x_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
@@ -86925,7 +86925,7 @@
           "sha256": "a5aab735a8f6fc08087d5a86cfa28fb1f693d0bafdd5a6adde9003f12ef0976a"
         },
         "crewSide": {
-          "file": "challenger1_granby_crew_side.webp",
+          "file": "challenger_x_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
@@ -86933,7 +86933,7 @@
           "sha256": "9c92c860d3d408519f24b388216c517a7ec479ad646015da93d59eea5b1ee617"
         },
         "markings": {
-          "file": "challenger1_granby_markings.png",
+          "file": "challenger_x_markings.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
@@ -86941,7 +86941,7 @@
           "sha256": "1c6243fce3687bbdbd955b6812b8c8948fe9db2ff5304cba873d7fa57e5693aa"
         },
         "technicalLabels": {
-          "file": "challenger1_granby_technical.json",
+          "file": "challenger_x_technical.json",
           "mime": "application/json",
           "bytes": 5222,
           "sha256": "bc5262313489d05d15a1ef3b989336f3e5fa51ddcc36117b4089161c2d947c14"

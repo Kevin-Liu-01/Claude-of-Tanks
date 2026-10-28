@@ -43,7 +43,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved',
   ]),
   challenger: Object.freeze([
-    'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'fv4034', 'challenger2',
+    'chieftain3', 'chieftain_mk9', 'challenger1_mk1', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2',
     'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3',
   ]),
   // 258: in shown-tier order (matchmaking reads it): the Sabra at II and the Namer at IV come before the Merkava 2 and 3

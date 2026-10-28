@@ -1,64 +1,19 @@
-# Challenger 1 Mk 2 (`challenger1_mk2`) — release 262 historical rebuild
+# Challenger 1 Mk 2 (`challenger1_mk2`) — release 262: the Mk 3's build, without the Op Granby kit
 
 ## Current status
 
-- Updated: 2026-10-27 (lane item/vickers-cr1-262, target release 262).
-- Owner request: "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,
-  turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well"
-  (2026-10-27); mid-lane: "really lock in manntlets and stuff and turret boxes and stuff".
-- Implementation: new first-party hull, running gear, turret and L11A5
-  (`src/vehicles/profiles/challenger1Historic.ts`, `challenger1HistoricTurret.ts`, datums in
-  `challenger1HistoricFrame.ts`), shared with the Granby variant ([challenger1_granby.md](challenger1_granby.md)). The oracle-fitted
-  build (stage-by-stage slab work against the recovered print, finished by a 1.12 x 0.84 x 1.0 turret squash) is
-  retired; its history is [challenger1.md](challenger1.md).
-- Qualification: see the lane's READY report (receipts, release gate, critics). The registered geometry-gate oracle
-  (`/models/tanks/community/recovered/challenger1.glb`, a print) is not the target any more: the target is the real
-  vehicle below. Its score is reported, not chased.
-- Publication: none from this lane (the integrator lands release 262).
-
-## Sources
-
-| Ref | What | Licence / access |
-|---|---|---|
-| S1 | Challenger 1 Mk III four-view drawing, the-blueprints.com `mbt-challenger-1-mk3.gif` (523 x 528) | free preview, measured only |
-| S2 | Bovington 64 KG 87 (Mk 3, desert), front-left and elevated rear-right, Commons, Morio | CC BY-SA 4.0 |
-| S3 | Bovington 64 KG 87, front, Commons "Challenger 1 MBT Mark 3 (4536087077)", Simon Q | CC BY 2.0 |
-| S4 | Bovington gate vehicle 05 SP 52, skirts off, Commons, Roland Turner | CC BY-SA 2.0 |
-| S5 | IFOR 1996 plan view, Commons `Challenger1MBT.JPEG` | public domain |
-| S6 | Dimensions: en/de/fr/pl Wikipedia "Challenger 1"; arcaneafvs.com; armedconflicts.com; armyrecognition.com fact sheet; FAS | text |
-| S7 | Royal Ordnance L11 (Wikipedia): 6.604 m, 55 calibres, +20/-10, sleeve, evacuator, MRS | text |
-
-Measurement method: S1 side and top views scaled on the 8.33 m hull (47.1 px/m; ground y 167.5, nose x 439); the
-side profile was also traced column by column. Photos fixed the shapes the drawing cannot (turret front, TOGS, the
-mesh basket, the boot, the guards).
-
-## Gap table — before (print-fitted build) / source / now
-
-| Quantity | Before (main 260) | Source | Now (262) |
-|---|---:|---:|---:|
-| Hull length | 8.22 m armour (8.36 with tail kit) | 8.32–8.33 m (S6) | 8.31 m armour (nose 4.165, tail -4.14) |
-| Overall, gun forward | 11.60 m | 11.56 m (S6) | 11.60 m (muzzle 7.39) |
-| Width over skirts | 3.53 m | 3.52 m (S6) | 3.52 m (skirt face ±1.76) |
-| Width over tracks | 3.07 m | 3.42 m (S6) | 3.42 m (650 mm track, 2.77 m centres) |
-| Height, turret roof | 2.42 (2.74 plateau squashed by 0.84) | 2.50 m (S6) | 2.48 m |
-| Height, commander's sight | ~2.75 | 2.95 m (S6) | 2.95 m (sight head) |
-| Turret width (armour) | **3.70 m** (1.12 squash) | ~2.55–2.75 m (S1 plan; 0.77 x hull width in S1 front) | **2.56 m** body, 2.90 over bins |
-| Turret length (armour) | 4.95 m | ~4.2 m body + bins (S1 plan) | 4.20 m body to the slot apex, 4.62 with the bustle bin |
-| Turret wall height | 0.74 m (squashed) | ~0.85 m (S1 side) | 0.74 m walls from 1.74 m, the ring housing hidden in their shadow |
-| Ground clearance | 0.52 | 0.50 m (S6) | 0.50 |
-| Road wheels | 6 x r 0.395 on 0.88 m | 6 aluminium, ~0.80–0.85 m, ~1.0 m pitch (S1, S6) | 6 x r 0.42 on 0.98 m (4.9 m on the ground) |
-| Return rollers | none (FSP-03 deferred) | 2 a side (S6) | 2 a side behind the skirts |
-| Sprocket / idler | rear (-2.64, 0.80) / front (3.62, 0.80) | rear sprocket high, front idler (S1) | rear (-3.30, 0.80) / front (3.66, 0.70) |
-| Skirts | 1.62 top, single plane | aluminium skirts to about hub height; front armoured section (S2, S4) | armoured front section raked over the idler to the bow, five rear panels, 1.42 top on the track-guard ledge |
-| Glacis | one plate, 1.19 → 1.575 | long shallow upper glacis, short steep nose (S2, S3) | 19° upper glacis 1.58 → 1.10, steep nose plate, lower nose plate to the belly |
-| Turret front | oracle wedge with a sight plinth | arrowhead in plan: cheeks run from the widest point to the gun slot at its apex, about 40 degrees off the centreline (S1 plan, S3) | full width to 1.30 m, cheeks at 37 degrees to the nose plates, which carry the wedge to the slot at 2.50 m; the roof falls 8 degrees over the front metre |
-| Mantlet / gun port | static cradle + collar | slot behind a dust cover, a nearly cylindrical canvas boot (S2, S3) | drum shield turning about the trunnion in the slot; a 0.38 m canvas boot, 0.30 m of it ahead of the nose, three low folds |
-| TOGS | sight block on the roof | armoured barbette on the right cheek's top, set back, the right smoke bank on its front corner (S3) | 0.50 x 0.95 m barbette on the right cheek's top behind the wedge, 0.24 m over the roof, door and glass |
-| Cupola | at +x (vehicle left) | commander right (S6: commander right, loader left) | commander's cupola right (-x), loader's hatch left |
-| Smoke dischargers | stacked clusters + decor pair | 5 a side, proud on brackets, angled up (S3, S6) | L8 banks of five on brackets, tubes up 35 degrees: the right at the barbette's corner, the left square to the left cheek |
-| Turret stowage | slab bins, rear basket rails | long flush mesh basket on the left wall, bins behind it and behind TOGS, bustle bin with jerrycans (S2, S5) | 1.45 m fine-mesh basket on the left wall, lidded bins behind it and behind the barbette, bustle bin hung at roof height with a jerrycan in a holder at each end |
-| L11A5 | uniform tube | thermal sleeve, evacuator, MRS (S7) | sleeve tapering 0.24 → 0.19 m with straps, extractor at mid-length, MRS mirror |
-| Engine deck / exhausts | louvre slab | raised deck, two grille banks (S2) | two rows of four louvred grilles; rear-plate exhaust louvres (inferred from CR2, S6) |
+- Updated 2026-10-28 (lane item/vickers-cr1-262, target release 262).
+- Owner ruling (2026-10-28): "like the challenger 1 mk 3 that is currently there, that turret is what it is actually like, and we should just use the weird turrets we invented to make nnew tanks like action X variants or connqueror orr smthg".
+- The Mk 2 rides the Mk 3's supplied-file build ([challenger1_x.md](challenger1_x.md);
+  `challenger1XSupplied.ts` `buildChallenger1SuppliedPlain`) without the Op Granby kit that build carries (the side
+  applique, the nose array and the rear drums): the Mk 1, Mk 2 and Mk 3 share the outer hull and turret (S6). Its spec
+  takes the build's dimensions, turret ring, trunnion and muzzle and its installed skirts as spaced armour
+  (`additionalFleetSpecs.ts` `onChallenger1SuppliedBuild`), and the Mk 3's installed size (x1.10, `vehicleSizePolicy.ts`).
+  The Mk 3 itself is untouched.
+- The release-262 rebuild from historical references (hull, two turrets, L11A5) became the fictional Challenger X and
+  X Sleek ([challenger_x.md](challenger_x.md)), whose doc keeps the references and the gap table.
+- Armour: the sourced Challenger 1 estimates below, early hull front; the Mk 3 takes the late hull front.
+- The old oracle-fitted build's history is [challenger1.md](challenger1.md).
 
 ## Armour estimates (release 262; ESTIMATES, not official figures)
 
@@ -107,12 +62,3 @@ Mk 1 is rated early.
 
 These numbers are provisional. Progression's fleet-wide gun-face hit-model fix lands last in 262 and moves every
 Western gun face, this one included; progression re-measures the tiers after it.
-
-## Decisions and open items
-
-- Exhausts: no CR1 source places them; the rear-plate louvres follow the Challenger 2 hull (S6). Open.
-- Decor: the rebuilt marks lay only a canvas roll on the rear deck (`decorManifestFor`). The fleet cargo's roof cans,
-  crates and bags read as clutter against the photos' clean grilles. There is one roof gun, the commander's L37.
-- Round 4 (2026-10-27, blind critics against S1-S5): arrowhead front, TOGS set back, long flush basket, the walls down
-  over the ring, the boot shortened, the loader's GPMG and its hoop removed, the floating glacis fittings seated.
-- Fairness: see the lane report (the tier VIII strength line before and after).

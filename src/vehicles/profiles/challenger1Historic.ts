@@ -1,12 +1,13 @@
-// Challenger 1 Mk 2 / Granby — release 262 rebuild from historical references (owner 2026-10-27: "redesign the ...
-// challenger 1 mk 2 ... turrets and hulls ... based on proper historical referrences so they will no longer look so
-// chungus"). Hull, running gear, turret and L11A5 are new first-party geometry authored from the published dimensions
-// and measured drawings recorded in docs/references/tanks/challenger1_mk2.md: hull 8.33 m, overall 11.55 m, 3.52 m
-// over the skirts, 2.50 m to the turret roof, six Hydrogas road wheels a side on a 1.02 m pitch, rear drive, a 2.56 m
-// slab-sided Chobham turret (77 % of the hull) with its long wedge front and bustle, the TOGS barbette and the
-// commander's No. 15 cupola on the vehicle's right (-x), the loader's hatch on the left. The two marks share the
-// hull and turret; the Granby variant carries the Op Granby kit (side applique, nose package, rear drums). The Mk 3
-// itself keeps its supplied-file build (challenger1X.ts; owner 2026-10-27: "the challenger mk 3 was fine").
+// Challenger X and Challenger X Sleek — release 262, fictional tanks on a hull rebuilt from the Challenger 1's historical
+// references (docs/references/tanks/challenger_x.md). The rebuild began as the Challenger 1 Mk 1 / Mk 2 / Granby
+// (owner 2026-10-27: "based on proper historical referrences so they will no longer look so chungus"); the owner then
+// ruled the supplied-file Mk 3's turret the real one ("that turret is what it is actually like, and we should just use
+// the weird turrets we invented to make nnew tanks like ... X variants", 2026-10-28), so the real marks use that build
+// (challenger1X.ts) and these turrets carry new tanks. Hull, running gear and L11A5 keep the Challenger 1's published
+// dimensions: hull 8.33 m, overall 11.55 m, 3.52 m over the skirts, six Hydrogas road wheels a side, rear drive. The
+// Challenger X carries the wide wedge turret (challenger1HistoricTurret.ts) and an applique kit after the Op Granby
+// fit (side cassettes, nose package, rear drums); the Challenger X Sleek carries the sleek turret
+// (challenger1SleekTurret.ts) on the plain hull.
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -130,7 +131,7 @@ function skirts(P: TankBuilderPort, side: number): void {
   for (const z of [-2.70, -1.75, -.80, .15, 1.10, 2.05, 2.90]) P.addEquipment('hullDark', box(.016, .05, .05), side * (xo + .006), SKIRT_TOP - .04, z);
 }
 
-// Op Granby (the Granby variant): bolted Chobham applique over the skirts, the nose package and the two jettisonable fuel drums.
+// The Challenger X's applique kit after the Op Granby fit: bolted cassettes over the skirts, the nose package and two fuel drums.
 function granbyKit(P: TankBuilderPort): void {
   const { innerX: xi, outerX: xo, low: lo, high: hi, rear, front } = CR1_GRANBY_APPLIQUE;
   for (const side of [-1, 1]) {
@@ -213,14 +214,14 @@ export function buildChallenger1Historic(P: TankBuilderPort, mark: Challenger1Ma
   glacisKit(P);
   engineDeck(P);
   for (const side of [-1, 1]) skirts(P, side);
-  if (mark === 'granby') granbyKit(P);
+  if (mark === 'x') granbyKit(P);
   runningGear(P);
-  if (mark === 'mk1') addChallenger1SleekTurret(P);
+  if (mark === 'x_sleek') addChallenger1SleekTurret(P);
   else addChallenger1HistoricTurret(P, mark);
   markings(P);
   // The turret's underside stands its seam over the 1.58 m roof plate; the engine deck behind the bulkhead is 10 cm
   // higher, so the bustle (whose floor is 1.70) may rise that far over it (turretSeatRace.ts).
   P.turretG.userData.turretSeatRiseM = .12;
-  P.hullG.userData.challenger1Rebuild = Object.freeze({ release: 262, mark, reference: 'docs/references/tanks/challenger1_mk2.md' });
+  P.hullG.userData.challenger1Rebuild = Object.freeze({ release: 262, mark, reference: 'docs/references/tanks/challenger_x.md' });
 }
 

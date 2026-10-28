@@ -37,6 +37,7 @@ import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 import { buildChallenger1Historic } from './challenger1Historic.ts';
+import { buildChallenger1SuppliedPlain } from './challenger1XSupplied.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
@@ -221,14 +222,15 @@ interface Challenger3ShellSection {
 // Profiles-class family map (merged by profiledProcedurals.ts — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
-  // the Challenger 1 Mk 2 is the historical rebuild it shares with the Mk 3 (challenger1Historic.ts).
-  challenger1_mk2: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'mk2') },
-  // release 262 (owner: the rebuild made for the Mk 3 becomes its own variant): the Op Granby fit on the rebuilt hull
-  challenger1_granby: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'granby') },
-  // Release 262 (owner 2026-10-27: "i want a version like the onne i told u to modify with a very sleek turret and good
-  // looking hull. so we can have annother mk"): the earlier Challenger 1 design's turret, drawn sleek, on the rebuilt hull.
-  challenger1_mk1: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'mk1') },
+  // Release 262 (owner 2026-10-28: the supplied-file Mk 3's turret "is what it is actually like"): the Mk 1 and Mk 2 are
+  // the Mk 3's build without its Op Granby kit (challenger1XSupplied.ts).
+  challenger1_mk2: { build: buildChallenger1SuppliedPlain },
+  challenger1_mk1: { build: buildChallenger1SuppliedPlain },
+  // ... "and we should just use the weird turrets we invented to make nnew tanks like ... X variants": the fictional
+  // Challenger X (the wide wedge turret and the applique kit) and Challenger X Sleek (the sleek turret), both on the hull
+  // rebuilt from the Challenger 1's references (challenger1Historic.ts).
+  challenger_x: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'x') },
+  challenger_x_sleek: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'x_sleek') },
 } satisfies VehicleProfileRecord;
 
 

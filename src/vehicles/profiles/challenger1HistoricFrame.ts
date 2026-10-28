@@ -1,7 +1,9 @@
 // Challenger 1 datums (release 262), from the published dimensions and the measured drawings in
 // docs/references/tanks/challenger1_mk2.md. Vehicle frame: ground y = 0, hull nose z = +4.165, +x the vehicle's left.
-/** mk2 and granby share the historical turret (granby in its Op Granby fit); mk1 carries the sleek turret on the same hull. */
-export type Challenger1Mark = 'mk1' | 'mk2' | 'granby';
+/** The fictional Challenger X tanks on the rebuilt hull (owner 2026-10-28: "use the weird turrets we invented to make new
+ *  tanks like ... X variants"): 'x' carries the wide wedge turret and the applique kit, 'x_sleek' the sleek turret. The
+ *  real Challenger 1 marks use the supplied-file build (challenger1X.ts). */
+export type Challenger1Mark = 'x' | 'x_sleek';
 type Point = readonly [number, number, number];
 
 export const CR1_HISTORIC = Object.freeze({

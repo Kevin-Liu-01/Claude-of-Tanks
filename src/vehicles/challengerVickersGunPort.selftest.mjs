@@ -1,7 +1,7 @@
-// 262 (owner on the Challenger 1 Mk 2 (with its Mk 1 and Granby variants) and Vickers Mk 1 rebuilds: "based on proper historical referrences so they
-// will no longer look so chungus"): each main gun leaves its turret through a real port and stays in it over its whole
-// published pitch range. The Challenger 1's L11A5 runs in the slot between its nose plates behind a drum shield and a
-// canvas boot; the Vickers Mk 1's L7A1 stands in a cast mantlet whose back is an arc about the trunnion. At every 5
+// 262 (owner on the Challenger 1 and Vickers Mk 1 rebuilds: "based on proper historical referrences so they will no
+// longer look so chungus"; the rebuilt Challenger turrets became the fictional Challenger X and X Sleek, 2026-10-28): each
+// main gun leaves its turret through a real port and stays in it over its whole published pitch range. The X tanks'
+// L11A5 runs in the slot between its nose plates behind a drum shield and a canvas boot; the Vickers Mk 1's L7A1 stands in a cast mantlet whose back is an arc about the trunnion. At every 5
 // degrees from full depression to full elevation (and at both stops), in battery and at the recoil stroke, the tube ahead of the port's face
 // keeps TURRET_GUN_PORT_KEEP_M from every turret part, the tube behind the face is hidden (inside the turret, the shield,
 // the mantlet or the boot), and the gun's mount ahead of the face never touches the turret.
@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TURRET_GUN_PORT_KEEP_M, turretGunPortProbe } from './gunHullClearance.test-support.mjs';
 
-for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'vickers_mk1']) {
+for (const id of ['challenger_x', 'challenger_x_sleek', 'vickers_mk1']) {
   const probe = turretGunPortProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] <= -7 && probe.pitchesDeg.at(-1) >= 20, `${id}: the sweep spans the published -7/-10 to +20 degrees`);
@@ -34,4 +34,4 @@ for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'v
     probe.dispose();
   }
 }
-console.log('challengerVickersGunPort.selftest: the Challenger 1 and Vickers Mk 1 guns stay in their ports over the full pitch range');
+console.log('challengerVickersGunPort.selftest: the Challenger X, X Sleek and Vickers Mk 1 guns stay in their ports over the full pitch range');
