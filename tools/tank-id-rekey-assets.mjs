@@ -19,7 +19,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
-import { TANK_ASSET_VIEWS, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata } from '../src/vehicles/tankAssets.ts';
+import { TANK_ASSET_VIEWS, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata, technicalLabelsFile } from '../src/vehicles/tankAssets.ts';
 
 const check = process.argv.includes('--check');
 const outDir = resolve('public/icons');
@@ -47,6 +47,14 @@ function assetRecord(file, view) {
   return record;
 }
 
+/** The technical diagrams' label sidecar (253): not a view, recorded as genIcons technicalLabelsRecord does. */
+function technicalLabelsRecord(file) {
+  const path = resolve(outDir, file);
+  if (!existsSync(path)) { failures.push(`missing ${file}`); return null; }
+  const buffer = readFileSync(path);
+  return { file, mime: 'application/json', bytes: buffer.length, sha256: sha256(buffer) };
+}
+
 const byName = new Map();
 for (const [key, entry] of Object.entries(manifest.tanks)) {
   const name = entry.label?.displayName;
@@ -68,7 +76,7 @@ for (const id of ids ?? []) {
   const files = requiredTankAssetFiles(id);
   const assets = {};
   for (const view of Object.keys(previous.assets ?? {})) {
-    const record = assetRecord(files[view], view);
+    const record = view === 'technicalLabels' ? technicalLabelsRecord(technicalLabelsFile(id)) : assetRecord(files[view], view);
     if (record) assets[view] = record;
   }
   // The same key order as genIcons: the page's record, then the assets.
