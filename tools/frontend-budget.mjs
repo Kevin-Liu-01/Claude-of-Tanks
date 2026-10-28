@@ -139,12 +139,23 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   game and cn between the two release builds, entry -23 B); garage-rail-end-loop 73b1dd157c and interaction-picker-254
   //   4c781561fc (the boot card's 1 px fixes, inline) small; integ's --ring-hot token.
   // Over 259's release build: game +1,200 B (entry +59 B), cn +1,261 B, Gallery +17 B, home +32 B, docs +124 B, 404 +15 B.
-  game: { brotliBytes: 1095494, requests: 128, entryBrotliBytes: 243525 },
-  cn: { brotliBytes: 1138356, requests: 129, entryBrotliBytes: 243525 },
-  gallery: { brotliBytes: 676879, requests: 75 },
-  home: { brotliBytes: 26694, requests: 8 },
-  docs: { brotliBytes: 33545, requests: 12 },
-  notFound: { brotliBytes: 16821, requests: 7 },
+  // 2026-10-27 (integrator 261, re-pinned at the release build of 63279ead2f; requests unchanged on every page):
+  // - the coordinator's named shares: "one surface stack, tank portraits in every list, kit pickers everywhere"
+  //   (interaction-picker-254 89f90bfe88); "consumable icons on the equipment badge" and "badge hues and paper hues"
+  //   (badge-hues-261 f46775977d); "Proving Ground plate, Deploy r45-r52, Manual r36-r40, Random's shuffle"
+  //   (brand-ui-primitives-250 569e626421); "Owner's T-90 names" (t90-names-261); "boot-261: stepped Garage boot" (+698 B
+  //   game); "battle-spikes: merged near-hull shadow casters and fracture caster profiles" (+941 B game); "iPad Garage:
+  //   docked tablet layout, tablet.css, touch camera" (ipad-ui-262 0757457b36).
+  // - the heads' own: brand-ui-garage-redesign-245 843dffd291, brand-ui-battle-242 f37467dc4c (a name line on every plate),
+  //   the room guard and leave (integ groups engine/programReceipt.ts into programWarm's chunk: no boot request), the
+  //   world slices and camera guard, the PL-01 gun fits, aps-flash-261 (lazy) and tier-fairness-261.
+  // Over 260's release build: game +8,456 B (entry +2,692 B), cn +8,464 B, Gallery +4,864 B, home +759 B, docs +803 B, 404 +769 B.
+  game: { brotliBytes: 1103950, requests: 128, entryBrotliBytes: 246217 },
+  cn: { brotliBytes: 1146820, requests: 129, entryBrotliBytes: 246217 },
+  gallery: { brotliBytes: 681743, requests: 75 },
+  home: { brotliBytes: 27453, requests: 8 },
+  docs: { brotliBytes: 34348, requests: 12 },
+  notFound: { brotliBytes: 17590, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

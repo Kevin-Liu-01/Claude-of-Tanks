@@ -50,7 +50,7 @@
 .cot-facet-clear{padding:0 11px;font:700 max(11.5px,var(--fs-floor-11),var(--fs-11)) var(--facet-font);letter-spacing:0;}
 .cot-facet-clear[hidden]{display:none;}
 .cot-facet-clear svg,.cot-facet-close svg{display:block;flex:0 0 auto;}
-.cot-facet-clear:hover{color:var(--accent-hi);border-color:var(--accent);}
+.cot-facet-clear:hover{color:var(--ink-1);border-color:var(--line-3);background:var(--surface-hover);}
 /* the focus wears the kit's focus ring, never the accent's edge, which is the selected state's (the r25 critic read a
    focused MBT chip as an edge-only selection) */
 .cot-facet-clear:focus-visible{outline:none;box-shadow:var(--focus-ring);}
@@ -105,7 +105,8 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-facet-pane
   pointer-events:none;}
 .cot-facet-panel:focus{outline:none;}
 /* the side with more chips fades out (the gauntlet 10-25: an orange arrow over a solid wash read as a chip cut mid-word);
-   the row's end pad lets its last chip scroll clear of the fade */
+   the row's end pad lets its last chip scroll clear of the fade, and the row shows whole chips (wholeChips): a sliver the
+   edge would cut hides (the r25 critic at 844 x 390 read the slivers under the fade as clipped words) */
 body[data-cot-panels='overlay'] .cot-facet-row{padding-inline-end:var(--s6);}
 body[data-cot-panels='overlay'] .cot-facet-rowwrap[data-more='r'] .cot-facet-row{
   -webkit-mask-image:linear-gradient(90deg,var(--surface-page) calc(100% - 32px),transparent);
@@ -122,6 +123,11 @@ body[data-cot-panels='persistent'] .cot-facet-search{display:none;}
    its padding is slimmer, and all three rows fit with no scroll (it overflowed by a few px). */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-panel{gap:5px;padding:6px 10px 6px;align-content:start;}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap{padding-top:6px;}
+/* the row's end count (garageFacetPanel.ts): a bare "+N" in the row's end pad, over its fade */
+.cot-facet-more{position:absolute;right:var(--s3);top:9px;bottom:0;display:flex;align-items:center;pointer-events:none;
+  font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);}
+.cot-facet-more[hidden]{display:none;}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-more{top:6px;}
 /* and its head keeps the tally, the search and close on one row, so the three rows of chips fit whole */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-tally{margin-right:0;}
 body[data-cot-height='short'][data-cot-panels='overlay'] :is(.cot-facet-tally b,.cot-facet-tally>.num:not(b)){font-size:var(--fs-20);}

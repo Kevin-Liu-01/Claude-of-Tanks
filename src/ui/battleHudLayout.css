@@ -379,14 +379,18 @@ body[data-cot-battle-layout] .cot-kill-lane{container:kill-lane/inline-size}
 @container kill-lane (max-width:259px){body[data-cot-battle-layout] .cot-kill-lane .cot-kf :is(.si:not(.src),.relation){display:none}}
 /* A lane narrower still stacks each row (battleHudLayout.ts FEED_STACK_W): the killer on its own line, the cause and the
    victim under it, 38 px a row (two lanes side by side at 390x844 read "Command…", gauntlet r8) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf{flex-basis:38px;flex-wrap:wrap;align-content:center;row-gap:3px}
 /* (the killer's flag beside it on its line, the victim's beside it on the cause's: three items on one line under a 100 %
    killer sent the victim to a third line, cut by the row's 38 px, at 568x256, gauntlet r17) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{flex:0 0 calc(100% - 20px);text-align:right}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf .k{flex:0 0 calc(100% - 20px)}
+body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .k{text-align:right}
+/* (the left lane's killer led by its flag, as its victim's line by the cause and the flag: after it, at the line's end,
+   the flag stood off its name, gauntlet r19) */
+body[data-cot-battle-layout] .cot-kill-lane.l[data-stack] .cot-kf .k+.cot-flag{order:-1}
 /* (the victim on the cause's line, held to the line less the cause's glyph, its flag and their gaps: a wrapping row breaks an item at its
    whole callsign's width before it can shrink, and the victim fell to a third line, the row's 38 px spilling under the
    toolbar, gauntlet r9) */
-body[data-cot-battle-layout] .cot-kill-lane.r[data-stack] .cot-kf .v{max-width:calc(100% - 40px)}
+body[data-cot-battle-layout] .cot-kill-lane[data-stack] .cot-kf .v{max-width:calc(100% - 40px)}
 /* (and a narrow personal lane gives its rows' inner end 4 px, the screen-edge gutter kept: its victims read "Commande…"
    at 136 px, 320x568) */
 @container kill-lane (max-width:207px){body[data-cot-battle-layout] .cot-kill-lane.l .cot-kf{padding-right:var(--s1)}}
@@ -710,10 +714,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (the planner's slot width, the detection's, so the stacked notices are one column (gauntlet r3 read three widths at
    390x844); never auto: an auto width shrank to the room right of its left edge, and a 150 px alert set five lines 96 px
    wide onto the ammo slot, r10g) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;box-sizing:border-box;width:var(--hud-touch-alert-w,214px);max-width:var(--hud-touch-alert-w,214px);justify-content:center;text-align:center;transform:translate(-50%,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;box-sizing:border-box;width:var(--hud-touch-alert-w,214px);max-width:var(--hud-touch-alert-w,214px);justify-content:flex-start;text-align:left;transform:translate(-50%,7px)}
+/* (and their glyphs in one column, the words after them from the same inset: centred, the two plates of one width set
+   their glyphs in two columns and a wrapped alert's glyph off its words, gauntlet r19 at 844x390) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{justify-content:start}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;width:136px;max-width:136px;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s2);gap:var(--s1);min-height:28px;text-align:left}
 /* (the tiniest landscapes, up to 340 px tall, where no place clears both: one 24 px row, the alert on one line in the
    detection's place while it shows, the detection under it: touchNoticePlan oneRow, the layout receipt at 568x256 and,
    where the parked chip beside the objective met the alert, 568x320) */

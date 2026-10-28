@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -38,25 +39,31 @@ function mountLanguageLinks(): void {
   }
 }
 
-/** The phone and tablet menu sheet: the trigger opens it; Escape, a link or a desktop layout closes it. */
+/** The phone and tablet menu sheet: the trigger opens it; Escape, a press outside it, a link or a desktop layout closes it. */
 function mountMenuSheet(): void {
   const trigger = document.querySelector<HTMLButtonElement>('.public-nav__menu-trigger');
   const menu = document.getElementById('public-nav-menu');
   if (!trigger || !menu) return;
+  // a transient surface (src/ui/components/surfaceStack.ts): opening it closes an open menu (the Gallery's rival), opening
+  // another closes it, and Escape and a press outside it are the stack's
+  const surface: TransientSurface = {
+    id: 'public-nav-menu',
+    element: () => menu,
+    owns: (node) => trigger.contains(node),
+    close: (reason) => set(false, reason === 'escape'),
+  };
   const set = (open: boolean, restoreFocus = false): void => {
+    if (open) openSurface(surface, trigger); else closeSurface(surface);
     menu.hidden = !open;
     trigger.setAttribute('aria-expanded', String(open));
     trigger.setAttribute('aria-label', t(open ? 'publicNav.closeMenu' : 'publicNav.openMenu'));
     if (!open && restoreFocus) trigger.focus();
+    // the focus moves into the sheet it opened, on its first destination
+    if (open) menu.querySelector<HTMLElement>('a[href], button')?.focus({ preventScroll: true });
   };
   trigger.addEventListener('click', () => set(Boolean(menu.hidden)));
   menu.addEventListener('click', (event) => {
     if (event.target instanceof Element && event.target.closest('a')) set(false);
-  });
-  window.addEventListener('keydown', (event) => {
-    if (event.code !== 'Escape' || menu.hidden) return;
-    event.preventDefault();
-    set(false, true);
   });
   matchMedia('(width >= 1100px)').addEventListener('change', (event) => { if (event.matches) set(false); });
 }

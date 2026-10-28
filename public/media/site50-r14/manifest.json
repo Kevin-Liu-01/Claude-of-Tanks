@@ -27,7 +27,7 @@
   },
   "s04-column-under-fire": {
    "map": "verdant",
-   "title": "A T-90M column drives into the fight on the country road",
+   "title": "A T-90M Proryv column drives into the fight on the country road",
    "round": "deliver-r14",
    "current": true,
    "sound": true
@@ -251,7 +251,7 @@
   },
   "s36-barn-knockout": {
    "map": "frontier",
-   "title": "A Type 10 knocks out a T-90M beside the burning barn",
+   "title": "A Type 10 knocks out a T-90M Proryv beside the burning barn",
    "round": "deliver-r14",
    "current": true,
    "sound": true
@@ -419,7 +419,7 @@
   },
   "s225-verdant-duel": {
    "map": "verdant",
-   "title": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+   "title": "A Leopard 2A7V races a T-90M Proryv across Verdant Fields at golden hour, trading broadsides",
    "round": "deliver-combat226",
    "current": true,
    "sound": true
@@ -440,7 +440,7 @@
   },
   "s228-street-1v2": {
    "map": "urban",
-   "title": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+   "title": "An AbramsX takes on a T-90M Proryv and a T-72B3 down Steinburg's main street at night",
    "round": "deliver-combat226",
    "current": true,
    "sound": true
@@ -524,7 +524,7 @@
   },
   "s87-leo2a4-otco-polders": {
    "map": "polders",
-   "title": "A Leopard 2A3 knocks out a T-90M at Tidegate Polders at sunset",
+   "title": "A Leopard 2A3 knocks out a T-90M Proryv at Tidegate Polders at sunset",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -1093,7 +1093,7 @@
    "id": "b27-recoil",
    "n": 27,
    "technique": "Recoil and blast",
-   "title": "T-90M fires: recoil, muzzle blast and the dust ring at 1/25 s",
+   "title": "T-90M Proryv fires: recoil, muzzle blast and the dust ring at 1/25 s",
    "map": "verdant",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1117,7 +1117,7 @@
    "id": "b30-salvo-longexp",
    "n": 30,
    "technique": "Long exposure",
-   "title": "Four T-14 and T-90M guns in one half-second frame",
+   "title": "Four T-14 and T-90M Proryv guns in one half-second frame",
    "map": "foundry",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1133,7 +1133,7 @@
    "id": "b32-embers",
    "n": 32,
    "technique": "Long exposure",
-   "title": "Embers streaming off a burning T-90M wreck, 1/4 s",
+   "title": "Embers streaming off a burning T-90M Proryv wreck, 1/4 s",
    "map": "foundry",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1173,7 +1173,7 @@
    "id": "b37-rack-near",
    "n": 37,
    "technique": "Rack focus (near)",
-   "title": "Focus on the K2 Black Panther in the foreground, the burning T-90M soft",
+   "title": "Focus on the K2 Black Panther in the foreground, the burning T-90M Proryv soft",
    "map": "autumn",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1181,7 +1181,7 @@
    "id": "b38-rack-far",
    "n": 38,
    "technique": "Rack focus (far)",
-   "title": "The same frame racked to the burning T-90M",
+   "title": "The same frame racked to the burning T-90M Proryv",
    "map": "autumn",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1213,7 +1213,7 @@
    "id": "b42-ots",
    "n": 42,
    "technique": "Over the shoulder",
-   "title": "Over the T-90M's turret toward the burning line",
+   "title": "Over the T-90M Proryv's turret toward the burning line",
    "map": "verdant",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
@@ -1221,7 +1221,7 @@
    "id": "b43-cookoff",
    "n": 43,
    "technique": "Explosion",
-   "title": "Ammunition cook-off: the T-90M turret leaves the hull",
+   "title": "Ammunition cook-off: the T-90M Proryv turret leaves the hull",
    "map": "badlands",
    "round": "shots/media-r5/final/blur-r14/renders"
   },
