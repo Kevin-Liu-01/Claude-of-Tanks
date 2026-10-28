@@ -474,6 +474,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 /* a key cap holds Latin legends only, never Chinese: in a Chinese document, where the label tokens step up to 13 px
    (tokens.css, src/ui/zhTypeFloor.ts), it keeps the Latin scale on the figure token, which holds in every locale */
 :lang(zh-CN) .cot-c-kbd{--fs-floor-11:var(--battle-fs-fig-11);--fs-11:calc(var(--battle-fs-fig-11) * var(--cot-type-scale))}
+/* a Chinese key cap (空格, 左键) is a word, not a figure: it keeps the zh floor its page sets */
+:lang(zh-CN) .cot-c-kbd[data-cjk]{--fs-floor-11:inherit;--fs-11:inherit}
 .docs-footer .brand .cot-wordmark .wm{width:auto;height:var(--wordmark-h,13px)}
 @media (pointer:coarse){.footer-links a{min-height:var(--btn-h-m)}}
 }

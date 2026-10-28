@@ -17,7 +17,11 @@ import type { RichSection } from './types.ts';
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
-const kbd = (id: ActionId): string => `<kbd class="cot-c-kbd">${esc(labelForCode(DEFAULT_BINDINGS[id] ?? null))}</kbd>`;
+// a Chinese key cap (空格, 左键) is a word, set at the zh floor (docs.css .cot-c-kbd[data-cjk])
+const kbd = (id: ActionId): string => {
+  const label = labelForCode(DEFAULT_BINDINGS[id] ?? null);
+  return `<kbd class="cot-c-kbd"${/[\u3400-\u9fff]/.test(label) ? ' data-cjk' : ''}>${esc(label)}</kbd>`;
+};
 
 /** A catalog line whose {placeholders} take markup (keys) or text (numbers, names): the line itself is escaped. */
 function line(key: string, values: Readonly<Record<string, string>>, markup: Readonly<Record<string, string>> = {}): string {
