@@ -1216,6 +1216,9 @@ body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:40px;min-width:44px
   border:0;border-radius:var(--control-radius);background:var(--surface-plate);box-shadow:var(--ring-2);}
 body[data-cot-panels='overlay'] .cot-facet-toggle:is([aria-expanded='true'],.is-active){color:var(--accent-hi);box-shadow:var(--ring-accent);}
 body[data-cot-input='coarse'] :is(.cot-country-chip,.cot-facet-toggle){min-height:44px}
+/* the strip's "+N" step is a touch target too (the iPad lane at 1133 x 612: 36 px wide); garage.ts measures its width
+   before it hides the nations it would cover */
+body[data-cot-input='coarse'] .cot-country-step{min-width:var(--cot-control-floor);height:var(--cot-control-floor)}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
