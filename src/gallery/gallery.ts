@@ -41,6 +41,7 @@ import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, segmented, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from '../ui/components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
@@ -308,7 +309,7 @@ let anatomyView: AnatomyView | null = null;
 let anatomyReady: Promise<void> = Promise.resolve();
 let armorMetric: ArmorMetric = 'ke';
 function loadAnatomy(): Promise<AnatomyModule> {
-  anatomyModule ??= import('./anatomyView.ts').catch((error: unknown) => { anatomyModule = null; throw error; });
+  anatomyModule ??= import('./anatomyView.ts');
   return anatomyModule;
 }
 const anatomyHost = (): AnatomyHost => ({
@@ -369,7 +370,10 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     colorDamageOverlay();
     if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
+    // a module that did not arrive cannot arrive again in this document: the anatomy layers keep the kit's error state,
+    // and their next press reloads the page once online
     settle();
+    markLoadFailed(modeButtons.filter((button) => isAnatomyMode(button.dataset.value as GalleryMode)), t('gallery.anatomy.loadFailed'));
     showToast(t('gallery.anatomy.loadFailed'), { severity: 'error' });
   });
 }
@@ -1664,7 +1668,8 @@ vehicleList.addEventListener('pointerover', (event) => {
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
-wireRoving(layerDock, (mode) => setMode(mode));
+// (a layer whose module did not arrive keeps the kit's error state: its press reloads the page once online)
+wireRoving(layerDock, (mode) => { if (!pressFailed(modeButtons.find((button) => button.dataset.value === mode))) setMode(mode); });
 $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;

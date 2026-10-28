@@ -476,15 +476,16 @@ assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?dat
 // the loading census 264: a failed chunk cannot load again in this document (Chrome keeps a failed import and a failed
 // modulepreload), so the failure offers Reload page and its triggers keep a quiet error state that needs no chunk, their
 // next press reloading the page once it is online
-assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?trigger\.dataset\.loadState = 'error';[^]{0,400}?actions: \[\{ label: t\('garage\.loadFailed\.reload'\), primary: true, keep: true, run: \(\) => \{ if \(navigator\.onLine !== false\) location\.reload\(\); \} \}\]/,
-  'a failed surface marks its triggers and offers Reload page');
-assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?loadState !== 'error'\) return false;\s*if \(navigator\.onLine !== false\) location\.reload\(\);/,
-  'a marked trigger\'s press reloads the page once it is online');
+assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\(triggers, text\);[^]{0,400}?actions: \[\{ label: t\('loadFailed\.reload'\), primary: true, keep: true, run: \(\) => \{ if \(navigator\.onLine !== false\) location\.reload\(\); \} \}\]/,
+  'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
+assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,
+  'a marked trigger\'s press reloads the page once it is online (the kit\'s pressFailed)');
 assert.match(garageSource, /if \(recordOpening \|\| reloadsForFailure\(recordTrigger, 'cot-record-load'/, 'the Service Record\'s open reads its trigger\'s failure');
 assert.match(garageSource, /if \(techTreeOpening \|\| reloadsForFailure\(techTreeTrigger, 'cot-techtree-load'/, 'the tech tree\'s open reads its trigger\'s failure');
 assert.match(garageSource, /reportLoadFailure\('cot-techtree-load', t\('garage\.techTree\.loadError'\),\s*\[techTreeTrigger, root\.querySelector<HTMLElement>\('\[data-mobile-nav="techTree"\]'\)\]\)/,
   'the tech tree\'s failure marks the bar\'s trigger and the phone menu\'s');
-assert.match(garageSource, /\[data-load-state='error'\]::after\{[^}]*background:var\(--danger\)/, 'a failed trigger shows a danger dot');
+assert.match(await readFile(new URL('./components/components.css', import.meta.url), 'utf8'),
+  /\[data-load-state='error'\]::after\{[^}]*background:var\(--danger\)/, 'a failed trigger shows the kit\'s danger dot');
 // the labels' overlay lays itself out only once its stylesheet stands (unstyled, it grew the dialog and snapped back), and
 // a phone's drawing sheet stands at its full height (the key arriving in flow raised a content-sized sheet)
 const labelsSource = await readFile(new URL('./technicalDiagramLabels.ts', import.meta.url), 'utf8');

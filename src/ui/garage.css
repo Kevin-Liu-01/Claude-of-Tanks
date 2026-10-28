@@ -39,10 +39,6 @@
 /* the Studio link holds its pressed look while the Studio's code loads (main.ts onPending; the loading census 262: F8 and the
    link gave no sign until the entry's cover) */
 :is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[aria-busy='true']{color:var(--ink-1);background:var(--surface-hover);cursor:progress;}
-/* a trigger whose surface did not load (garage.ts reportLoadFailure) keeps a danger dot, its press reloading the page */
-:is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[data-load-state='error']{position:relative;}
-:is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[data-load-state='error']::after{content:'';position:absolute;top:var(--s1);
-  right:var(--s1);width:8px;height:8px;border-radius:50%;background:var(--danger);}
 .cot-header-nav .nv.on{color:var(--ink-1);cursor:default;
   background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--btn-secondary-fill);}
 .cot-header-nav .nv .cot-c-kbd{margin-left:var(--s1);}

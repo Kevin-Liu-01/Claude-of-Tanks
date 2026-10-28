@@ -216,7 +216,7 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /nextFrame: nextPaintFrame,/,
   'browser recovery must cross the real post-rAF task boundary before fading its cover');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
-  /presentFailure: \(error, retry\) => import\('\.\/ui\/garageReturnFailure\.ts'\)/,
+  /presentFailure: \(error, retry\) => \{[\s\S]{0,160}return import\('\.\/ui\/garageReturnFailure\.ts'\)/,
   'the solo failure notice is demand-loaded from the same failure-only owner as the return notice');
 assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
   /onFailure: \(error\) => entryTelemetry\.send\(\{[\s\S]{0,160}kind: 'entry_result'/,

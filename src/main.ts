@@ -115,6 +115,7 @@ import {
 } from './world/maps/catalog.ts';
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
+import { isChunkFailure, markLoadFailed, pressFailed } from './ui/components/loadFailure.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
 import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
@@ -3740,7 +3741,13 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
-  presentFailure: (error, retry) => import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, retry)),
+  // A chunk that did not arrive cannot arrive again in this document (components/loadFailure.ts): the Battle button keeps
+  // the kit's error state, which needs no chunk (the notice below is one), and the notice offers Reload page, not a retry.
+  presentFailure: (error, retry) => {
+    const reload = isChunkFailure(error);
+    if (reload) garage.noteBattleLoadFailed();
+    return import('./ui/garageReturnFailure.ts').then(({ showSoloEntryFailure }) => showSoloEntryFailure(error, reload ? null : retry));
+  },
   onFailure: (error) => entryTelemetry.send({
     kind: 'entry_result', mode: 'solo', outcome: 'failed', code: 'entry_failed', error: describeError(error, location.origin),
   }),
@@ -4302,6 +4309,7 @@ await bootStage('post', async () => {
 // window.__STUDIO (schema in docs/STUDIO.md). main.ts only hands it these
 // integration seams plus the one tick() branch above — entry keys, panel,
 // actors, effects, capture all live in the studio module.
+const studioLinks = (): NodeListOf<Element> => document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]');
 let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
@@ -4357,10 +4365,7 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
-      }).catch((error: unknown) => {
-        studioLightRuntime = null; // a failed chunk fetch stays retryable
-        throw error;
-      });
+      }); // (a chunk that did not arrive cannot arrive again in this document: components/loadFailure.ts)
       const applied = await (await studioLightRuntime).apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
@@ -4398,8 +4403,15 @@ const studioAccess = createStudioAccess({
   keyTarget: window,
   // the Garage's Studio links read busy while the Studio's code loads (garage.css)
   onPending: (pending) => {
-    for (const link of document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]')) link.toggleAttribute('aria-busy', pending);
+    for (const link of studioLinks()) link.toggleAttribute('aria-busy', pending);
   },
+  // a Studio whose code did not arrive cannot arrive in this document: its links keep the kit's error state, and their
+  // next press (or F8) reloads the page once online (components/loadFailure.ts)
+  onEntryError: (error) => {
+    console.error('[studio] lazy entry failed', error);
+    markLoadFailed(studioLinks());
+  },
+  pressFailed: () => pressFailed(...studioLinks()),
 });
 studio = studioAccess.presentation;
 function preloadStudioIntent() { studioAccess.preloadIntent(); }

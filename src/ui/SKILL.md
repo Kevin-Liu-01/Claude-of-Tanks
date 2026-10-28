@@ -78,6 +78,13 @@ Decorative metadata such as repository stars must render a stable-width loading
 state or a bounded verified local cache, then refresh only through the cached
 same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
 Garage presentation depend on a third-party request.
+A lazy chunk that failed never loads again in its document (a failed import(),
+a failed modulepreload and a failed chunk stylesheet all stay failed), so no
+opener offers an in-page retry of one: its failure marks the trigger with
+`components/loadFailure.ts` `markLoadFailed` (a danger dot that needs no chunk),
+its next press goes through `pressFailed` (the page reloads once online, never
+by itself), and a page's enhancement asks once through `importWhenOnline`
+(`node src/ui/components/loadFailure.selftest.mjs`).
 Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
 space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
 writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`

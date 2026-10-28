@@ -8654,7 +8654,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!rangeCard) {
       rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
         rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
-      }).catch((error) => { rangeCardLoad = null; console.error('[hud] range card failed to load', error); });
+      // (asked once: a chunk that did not arrive cannot arrive again in this document, and a frame's retry logged each frame)
+      }).catch((error) => { console.error('[hud] range card failed to load', error); });
       return;
     }
     const player = frame.player || playerRef;

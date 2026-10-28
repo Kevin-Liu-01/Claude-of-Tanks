@@ -38,6 +38,7 @@ import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
@@ -1151,12 +1152,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
+      // (a chunk that did not arrive cannot arrive again in this document: the press reloads the page once online)
+      if (pressFailed(editHud)) return;
       editHud.disabled = true;
       try {
         const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
         if (open) openHudEditor(editHud);
       } catch {
         editHud.textContent = t('hudEditor.loadError');
+        markLoadFailed([editHud], t('hudEditor.loadError'));
       } finally { editHud.disabled = false; }
     });
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);

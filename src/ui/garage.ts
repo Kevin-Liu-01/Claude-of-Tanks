@@ -43,6 +43,7 @@ import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
 import { revealWhenReady } from './components/reveal.ts';
+import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -250,6 +251,9 @@ export interface GarageRuntime {
   attachPhoto(control: GaragePhotoControl): void;
   getSelectedMap(): string;
   startSolo(): void;
+  /** The battle did not start because part of the game did not arrive (main.ts presentFailure): the Battle button keeps
+   *  the kit's error state, and its next press (any launch) reloads the page once online. */
+  noteBattleLoadFailed(): void;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
@@ -1451,8 +1455,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
-      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only), with a Retry that runs the
-      // same open (the loading census 262: the toast had none; the next press retries too)
+      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only): the trigger's error state
+      // and Reload page (the loading census 262: the toast had none)
       reportLoadFailure('cot-record-load', t('garage.record.loadError'), [recordTrigger]);
     }
     finally { recordOpening = false; }
@@ -2002,36 +2006,34 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const notifyLater = (options: ToastOptions): void => {
     void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
   };
-  /** A surface whose chunks did not arrive cannot load them again in this document: Chrome keeps a failed import(), and a
-   *  failed modulepreload poisons every module that imports it (probed on 151: a retry, a fresh query and a never-tried
-   *  importer all fail once the network is back), and Vite's preload skips a stylesheet whose failed link still stands. So
-   *  the failure says so with Reload page, and its triggers keep a quiet error state that needs no chunk (the notice is one,
-   *  and offline it cannot arrive either: the loading census 264); their next press reloads the page once it is online. */
+  /** A surface whose chunks did not arrive cannot load them again in this document (components/loadFailure.ts: probed on
+   *  151 and 156). So the failure says so with Reload page, and its triggers keep the kit's error state, which needs no
+   *  chunk (the notice is one, and offline it cannot arrive either: the loading census 264); their next press reloads the
+   *  page once it is online. */
   const reportLoadFailure = (id: string, text: string, triggers: readonly (HTMLElement | null)[]): void => {
-    for (const trigger of triggers) {
-      if (!trigger) continue;
-      trigger.dataset.loadState = 'error';
-      trigger.setAttribute('aria-description', `${text} ${t('garage.loadFailed.reload')}`);
-    }
+    markLoadFailed(triggers, text);
     notifyLater({ id, severity: 'error', text,
       // (offline, a reload is the browser's error page: the press waits, and the notice keeps standing)
-      actions: [{ label: t('garage.loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
+      actions: [{ label: t('loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
   };
   /** A trigger whose surface failed to load: its press reloads the page (online), else says so again. */
   const reloadsForFailure = (trigger: HTMLElement | null, id: string, text: string): boolean => {
-    if (trigger?.dataset.loadState !== 'error') return false;
-    if (navigator.onLine !== false) location.reload();
-    else reportLoadFailure(id, text, [trigger]);
+    if (!pressFailed(trigger)) return false;
+    if (navigator.onLine === false) reportLoadFailure(id, text, [trigger]);
     return true;
   };
+  // (the picker draws its swatches again, so the studio's failure is the Garage's, marked on the swatch drawn now)
+  let customCamoStudioFailed = false;
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
+    if (customCamoStudioFailed) markLoadFailed([option], t('garage.camo.customStudioRetryTitle'));
+    if (reloadsForFailure(option, 'cot-custom-camo', t('garage.camo.customStudioRetryTitle'))) return;
     option?.setAttribute('aria-busy', 'true');
     try {
       await customCamoStudioAccess?.open();
     } catch (error) {
-      notifyLater({ id: 'cot-custom-camo', severity: 'error', text: t('garage.camo.customStudioRetryTitle'),
-        retry: () => customCamoStudioAccess?.open() ?? Promise.resolve() });
+      customCamoStudioFailed = true;
+      reportLoadFailure('cot-custom-camo', t('garage.camo.customStudioRetryTitle'), [option]);
       console.warn('[garage] custom camouflage studio failed to load', error);
     } finally {
       option?.removeAttribute('aria-busy');
@@ -2136,7 +2138,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // the studio's module loads on intent: a pointer or the focus near the sheet's last swatch
       const preloadStudio = (event: Event): void => {
         if (!eventElement(event)?.closest(`[data-id="${CUSTOM_CAMO_ID}"]`)) return;
-        customCamoStudioAccess?.preload().catch(() => { /* the press retries */ });
+        customCamoStudioAccess?.preload().catch(() => { /* the press says so */ });
       };
       host.addEventListener('pointerover', preloadStudio);
       host.addEventListener('focusin', preloadStudio);
@@ -3678,6 +3680,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // and any one of them throwing in an exotic environment would silently
     // block onBattle — a BATTLE button that does nothing is the worst failure
     // mode. Contain their failures; the phase flip always runs.
+    // (a battle that could not start because part of the game did not arrive cannot start in this document: the press
+    // reloads the page once online, noteBattleLoadFailed)
+    if (pressFailed(battleBtn)) return;
     try {
       if (emitClick) emit('ui:click', {});
       emit('ui:battleStart', { specId, mapId });
@@ -4980,6 +4985,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Enter the currently selected solo battle without reopening the play menu. */
     startSolo() {
       if (selectedId) launchBattle(selectedId, fieldMapId());
+    },
+    noteBattleLoadFailed() {
+      markLoadFailed([battleBtn], t('battle.entryFailed.reload'));
     },
 
     testDrive(specId?: string | null) {
