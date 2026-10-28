@@ -3,8 +3,8 @@
 // sources carry (hatches, the add-on turret packages, the skirt panels and sponson boxes, stowage, lights, smoke
 // launchers, sights) is drawn as a first-party primitive at its measured centre, size and attitude
 // (merkavaFamilySource.ts): a rounded box, a cylinder for the round hatches, a tube along its own axis for each smoke
-// discharger (the clusters' tubes and housings measured one by one), or a plate cut to its measured outline (the side
-// skirts' panels with their wavy lower edges). Add-on turret armour is the spec's
+// discharger (the clusters' tubes and housings measured one by one), a plate cut to its measured outline (the side
+// skirts' panels with their wavy lower edges), or a twin headlamp across its group's measured box. Add-on turret armour is the spec's
 // removable package (destructibleCluster), its side by the part's x.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -91,6 +91,17 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         else P.addExternalArmor('hull', partGeometry(p, none, seg));
         break;
       case ROLE.lantern:
+        if (p[0] === 6) {
+          // a twin headlamp: the rounded housing across its measured box and its two round lenses forward
+          const h = Math.min(sy, sx / 2), cy = p[3]!, cz = p[4]!, front = cz + sz / 2;
+          P.add('hullDetail', KIT.box(sx - h, h, sz), cx, cy, cz);
+          for (const side of [-1, 1]) {
+            P.add('hullDetail', KIT.cylZ(h / 2, sz, seg), cx + side * (sx - h) / 2, cy, cz);
+            P.addEquipment('hullGlass', markVehicleNightLens(KIT.xform(KIT.cylZ(h * 0.38, 0.012, seg), cx + side * sx / 4, cy, front + 0.004),
+              'headlight'));
+          }
+          break;
+        }
         // the lamp's pieces (housing, guard, lens); the lens on each forward-facing, unrotated piece with a face to carry it
         P.add(onTurret ? 'turretDetail' : 'hullDetail', partGeometry(p, off, seg));
         if (Math.abs(p[11]!) > 0.999 && sx * sy >= 0.004 && (onTurret || p[4]! > 0)) {

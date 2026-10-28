@@ -23,11 +23,20 @@ export interface TurretSlot {
 }
 
 /** The shell's solids lofted in the turret frame (pivot subtracted), each face flat; and its ring collar over the race. */
-export function buildMerkavaTurretShell(P: TankBuilderPort, shell: readonly ShellSolid[], pivot: readonly [number, number]): void {
+export function buildMerkavaTurretShell(P: TankBuilderPort, shell: readonly ShellSolid[], pivot: readonly [number, number],
+  slot: TurretSlot | null): void {
   const [py, pz] = pivot;
   for (const solid of shell) {
     const sections = solid.z.map((z, s) => ({ z: z - pz, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) }));
     P.add('turret', sectionSolid(sections, { sideQuadDiagonal: 'convex', preserveCapBoundary: true }));
+  }
+  if (slot) {
+    // the slot's floor between the cheeks at their base, from its back wall to the nose (under the gun's mask)
+    const ahead = shell.filter((solid) => solid.z[solid.z.length - 1]! > slot.z0 + 0.05);
+    const nose = Math.max(...ahead.map((solid) => solid.z[solid.z.length - 1]!));
+    const base = Math.min(...ahead.flatMap((solid) => solid.rings[0]!.map(([, y]) => y)));
+    const len = nose - slot.z0 - 0.02;
+    P.add('turret', KIT.box(slot.halfWidth * 2 + 0.04, 0.02, len), 0, base + 0.01 - py, slot.z0 + 0.01 + len / 2 - pz);
   }
   // the ring collar: from the deck up into the shell's base course, round the race (inside the base course's corners
   // over the stations within 0.4 m of the ring centre)

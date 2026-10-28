@@ -5,7 +5,7 @@
 // from the same fit (its deck, engine deck, nose, belly and stern courses, the sponsons' tops and undersides), since the
 // sources' hull plates are open and carry the turret ring's and hatches' openings. Sources and gap tables:
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
-import type { MerkavaFender, MerkavaGearSpec, MerkavaHullSpec } from './merkavaFamilyHull.ts';
+import { lineAt, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { MerkavaBasket, ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
@@ -160,7 +160,11 @@ function chamfered(profile: readonly (readonly [number, number])[]): [number, nu
  *  (the OBJ sources carry no pivots: the trunnion sits in the mask at the nose slot). The mask's sections run from the
  *  slot's back wall (the Mk 4: 0.55 m behind its nose) to its front, a section kept where it differs from the last kept
  *  by more than 12 mm. */
-function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: number, top: OverGunRecord): MerkavaGunSpec {
+// the family's full elevation (the specs' gunElevationDeg): the mask's stations behind the trunnion swing down by it
+const ELEVATION = 20 * Math.PI / 180;
+
+function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: number, top: OverGunRecord,
+  hull: MerkavaHullSpec): MerkavaGunSpec {
   const [, axisY] = r.barrelAxis;
   const tz = r.noseZ - trunnionBack;
   const trunnion: [number, number, number] = [0, axisY - pivot[0], tz - pivot[1]];
@@ -173,7 +177,18 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
     const last = kept[kept.length - 1];
     if (!last || i === sections.length - 1 || m.slice(1).some((v, k) => Math.abs(v - last[k + 1]!) > 0.012)) kept.push(m);
   });
-  const mantlet = kept.map(([z, x0, x1, y0, y1]) => [z - tz, x0, x1, y0 - axisY, y1 - axisY] as const);
+  // behind the trunnion the mask (inside the slot) keeps its underside 25 mm over the deck its swing passes, at full
+  // elevation and at any turret yaw (the highest deck course within its reach of the ring centre)
+  const deckWithin = (reach: number): number => {
+    let y = -Infinity;
+    for (let z = pivot[1] - reach; z <= pivot[1] + reach; z += 0.05) y = Math.max(y, lineAt(hull.top, z));
+    return y;
+  };
+  const mantlet = kept.map(([z, x0, x1, y0, y1]) => {
+    const back = tz - z, floor = back > 0 ? deckWithin(z - pivot[1] > 0 ? Math.hypot(z - pivot[1], x1) : pivot[1] - z) + 0.025
+      + back * Math.sin(ELEVATION) : -Infinity;
+    return [z - tz, x0, x1, Math.min(Math.max(y0, floor), y1 - 0.02) - axisY, y1 - axisY] as const;
+  });
   const local = ([min, max]: MeasuredBox): MeasuredBox =>
     [[min[0], min[1] - axisY, min[2] - tz], [max[0], max[1] - axisY, max[2] - tz]];
   const overGun: MerkavaOverGun = {
@@ -215,7 +230,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, ba
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
-    id, hull, gear: gearOf(r), fender: fenderOf(r), pivot, shell: shellOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
+    id, hull, gear: gearOf(r), fender: fenderOf(r), pivot, shell: shellOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
     basket, roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };

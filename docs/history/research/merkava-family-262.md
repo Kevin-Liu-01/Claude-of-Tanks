@@ -184,8 +184,26 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 - Critic, six clay boards (rev 7): clay 3-5/10, articulation 5-7/10, guns 3-4/10.
 - r7+ (`2b7b1d3875`): pale canvas on the stowage; the 3C and 4B suits re-seated on the new shapes (the 4B's turret drapes
   had floated behind it).
-- Next round: the turret shells as flat hard-edged faces fitted to the source's armour faces (not lofted stations); the
-  noses (vertical lower plate, hooks, lamps, fender over the sprocket); smoke dischargers from the source's grenade
-  groups; sleeve bands as the source draws them; perforated skirts; loaded curved baskets; semantic roles from the
-  source's MTL textures (spare track, ammunition boxes, nets).
+- Next round (the owner, 2026-10-28: "rebuild the turret shells as flat hard-edged faces fitted to the source's armour
+  faces, fix the noses (vertical lower plate, hooks, lamps, fender over the sprocket), add smoke dischargers, sleeve
+  bands and perforated skirts"): r8 below.
+- r8 (`7eeead3248`, receipt r4). Turret shells: the source turret group's largest welded piece is the cast shell
+  without its fittings, hatches, launchers or basket (the old rings took percentiles of everything, so the launchers
+  crumpled the Mk 1/2 cheeks: the owner's catch). Lane tool `turretsections.py` cuts it every 2.5 cm, cleans each cut
+  (a 5-station majority along z, a 5 cm close and open, the fill carved to an open bin's floor within 40 cm; hatch
+  holes stay filled), traces the outline, snaps its Douglas-Peucker corners (8 mm) onto the exact cut and tracks them
+  station to station as crease lines (order-preserving alignment against a velocity prediction; a crease that starts
+  or ends slides along its neighbours' edge). Solids split where unmatched creases would pile up; a station or crease
+  goes when the interpolated surface stays within 16 mm of the cut. Ahead of the slot: the cheeks and the base. 3.8k-
+  6.4k numbers a mark, delta-coded. Noses: the hull plates' measured courses replace the authored ones (the old brow
+  at 1.58 and grille trough came from the plate's openings under its separate hatches; the old 3.76 m nose was the
+  tow hooks' tips): the glacis to the front plate (Mk 1/2 z 3.518, Mk 3 3.539, Mk 4 3.986), the -X side's raised front
+  plate on the Mk 1 to Mk 3 (0.14 m proud, its edge diagonal to the nose), the lower plate steepening from 31 to 48
+  degrees, the sponsons on the glacis to the front fender boxes (measured per mark: `fenderfit.py`), the tow hooks, the
+  lower plate's brackets with their pins, the glacis rails and the towing shackle. Smoke dischargers: the sources'
+  grenade groups are empty; `smokefit.py` finds the tubes by shape (twelve a mark: the Mk 1 to Mk 3's cheek clusters
+  with their housings, the Mk 4's in its turret modules, replacing their box stand-ins). Barrels from 3 mm exact cuts
+  (`barrelfine.py`; the Mk 1B's sleeve clamps stand 3 mm proud, 4 cm wide), merged at 1.5 mm. Skirt panels: plates cut
+  to their traced outlines (`skirtfit.py`: the Mk 1B's wavy lower edges), their latches and hinges kept. The skirts'
+  holes and the Mk 4B's slatted front panel are not cut (owed); the twin-lens lamps are still the measured pieces.
 

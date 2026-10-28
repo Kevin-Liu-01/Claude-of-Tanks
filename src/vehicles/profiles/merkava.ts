@@ -46,7 +46,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
 
   const [py, pz] = mark.pivot;
   P.turretG.position.set(0, py, pz);
-  buildMerkavaTurretShell(P, mark.shell, mark.pivot);
+  buildMerkavaTurretShell(P, mark.shell, mark.pivot, mark.slot);
   buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz]);
