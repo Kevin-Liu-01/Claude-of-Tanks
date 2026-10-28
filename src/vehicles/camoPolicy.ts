@@ -805,6 +805,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   bm_oplot_t: 'paint_bm_oplot_t',
   // the PT-84 Orzeł in the Polish three-tone woodland (the Zubr family's authored paint), not the PL-01's digital
   pt84_orzel: 'paint_pl_t80u_modern',
+  // the Żbik in the urban block grey (the Sokół keeps Poland's factory coat, the PL-01's digital)
+  pt84_zbik: 'urbanblock',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

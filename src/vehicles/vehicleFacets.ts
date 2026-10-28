@@ -186,7 +186,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3',
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz',
     'merkava3c', 'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto',
-    'pt84_orzel', 'pt91a_twardy', 'pt91m', 'sabra_mk2', 'stb1', 'strv121', 'strv122', 't14_armata', 't62_1975', 't62mv1',
+    'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'pt91a_twardy', 'pt91m', 'sabra_mk2', 'stb1', 'strv121', 'strv122', 't14_armata', 't62_1975', 't62mv1',
     't64bv1', 't64bv_donbas', 't72_rys', 't72b3', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr',
     't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022', 't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii',
     't72b3m_kunlun', 't72b3m_wilk', 't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv',
@@ -236,7 +236,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   // Doctrine assault, plus the two siege breakthrough vehicles (KV-2, Jagdpanzer E100).
   breakthrough: Object.freeze([
     'jpz_e100', 'kv2', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d',
-    'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto', 'pt91a_twardy', 'pt91m',
+    'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto', 'pt84_zbik', 'pt91a_twardy', 'pt91m',
     't14_armata', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3_bastion_m', 't72b3_qilin',
     't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022', 't72b3m_bulat_m',
     't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't72b_1987', 't72bu', 't72bu_1989',
@@ -265,7 +265,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
   sniper: Object.freeze([
     'aft10', 'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger2e', 'challenger3',
-    'challenger3_proto', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
+    'challenger3_proto', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'pt84_sokol', 'strv103a',
     'strv103b', 'strv121', 'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
   scout: Object.freeze([
@@ -320,7 +320,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies.
   concept: Object.freeze([
     'carro45t', 'cv90_mk4_concept', 'griffin_viper', 'jpz_e100', 'm1a3', 'object695', 'pl01', 'pl01_105',
-    'pt84_orzel', 'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
+    'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
     't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',
     'type96_80_feng', 'upior', 'ztz99_longwei',

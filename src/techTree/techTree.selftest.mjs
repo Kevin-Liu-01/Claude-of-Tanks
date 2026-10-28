@@ -148,6 +148,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the older pair renamed Object 478DU2 (VI) and T-84U Oplot (VI on its period 2000 ammunition, score 0.772), the T-84U
 // leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
 // the Oplot-M's connector clears it. 262 (owner 2026-10-28): the PT-84 Orzeł, the Polish concept on the Oplot-M's base,
-// ends Poland's Twardy line at X (lane 3: the Upiór holds lane 2 at X).
-assert.equal(digest, '9c2db925f7671062', `tree content changed: re-pin to ${digest} if deliberate`);
+// ends Poland's Twardy line at X (lane 3: the Upiór holds lane 2 at X); its light hunter, the PT-84 Sokół, leads to it at
+// IX and the assault PT-84 Żbik branches from the Sokół at X (lane 4).
+assert.equal(digest, '747a8005b1791c46', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

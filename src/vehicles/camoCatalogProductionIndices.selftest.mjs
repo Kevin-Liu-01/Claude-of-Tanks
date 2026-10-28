@@ -73,8 +73,9 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // its stock Signature selection, AUTO and every other row are unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'bm_oplot_m', 'bm_oplot_t'];
-// Added since production in an existing authored paint (release 262: the PT-84 Orzeł in the Polish three-tone woodland).
-const ADDED_IN_AUTHORED_PAINT = { pt84_orzel: 'paint_pl_t80u_modern' };
+// Added since production in an existing coat (release 262: the PT-84 Orzeł in the Polish three-tone woodland, the Sokół
+// in Poland's factory PL-01 digital, the Żbik in the urban block grey).
+const ADDED_IN_AUTHORED_PAINT = { pt84_orzel: 'paint_pl_t80u_modern', pt84_sokol: 'service_pl01', pt84_zbik: 'urbanblock' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_AUTHORED_PAINT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

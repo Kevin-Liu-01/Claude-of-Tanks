@@ -76,7 +76,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'leclerc_s1', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'm1a1_abrams_sa', 'm1a1_abrams_aim',
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 'ua_t80bv', 't80u_kursk',
-    't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
+    't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel', 'pt84_sokol', 'pt84_zbik', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
     'm3a3_bradley', 'bmpt_t90', 'cv90',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
