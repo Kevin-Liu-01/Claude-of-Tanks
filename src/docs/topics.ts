@@ -391,6 +391,10 @@ export function topicHeroLadder(hero: string): TopicHeroLadder | null {
  *  tools/docs-prerender.mjs hands them in, so they ride in the served markup and never in this module's bundle. */
 let heroLqips: Readonly<Record<string, string>> = {};
 export function setTopicHeroLqips(table: Readonly<Record<string, string>>): void { heroLqips = table; }
+/** The banner's picture in a box of its own under the kit's reveal from the served markup: it waits over the banner's
+ *  preview and fades in once decoded (revealStills below), never painting in bands over a slow link. */
+const waitsOverPreview = (markup: string): string => (markup.startsWith('<picture>')
+  ? markup.replace('<picture>', '<picture data-reveal>') : `<picture data-reveal>${markup}</picture>`);
 /** A banner's preview, on the banner itself (docs.css .dm-banner): its picture fades in over it once decoded. */
 function bannerLqip(hero: string): string {
   const lqip = heroLqips[topicHeroLadder(hero)?.poster ?? hero];
@@ -407,11 +411,11 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
   const ladder = topicHeroLadder(hero);
   if (!ladder) {
     const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
-    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
+    return waitsOverPreview(pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving));
   }
   const poster = pictureMarkup({
     src: ladder.poster, rungs: [{ src: ladder.poster, width: 1920 }], width: 1920, height: 1080, alt,
-    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
+    eager: true, className: 'topic-hero-poster',
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
     saveData: { src: ladder.still, width: 640 },
     phone: { src: ladder.still, width: 640 },
@@ -422,7 +426,7 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
     ladder.phone ? `<source data-src="${ladder.phone}" type="video/mp4" data-rung="phone">` : '',
   ].join('');
   const label = alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  return `${poster}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
+  return `${waitsOverPreview(poster)}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
 }
 
 /** A text section's paragraph: its `code` spans, its numeric phrases held on one line (src/docs/designations.ts). */

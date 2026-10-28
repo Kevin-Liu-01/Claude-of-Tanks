@@ -59,7 +59,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const next = {};
     for (const path of wanted) {
       const out = join(scratch, 'lqip.webp');
-      execFileSync('cwebp', ['-quiet', '-resize', String(WIDTH), '0', '-q', '40', '-m', '6', '-metadata', 'none', join(ROOT, 'public', path), '-o', out]);
+      execFileSync('cwebp', ['-quiet', '-resize', String(WIDTH), '0', '-q', '75', '-m', '6', '-metadata', 'none', join(ROOT, 'public', path), '-o', out]);
       const bytes = readFileSync(out);
       if (bytes.length > MAX_BYTES) throw new Error(`hero-lqip: ${path}'s preview is ${bytes.length} B (over ${MAX_BYTES})`);
       next[path] = { sha256: sha(path), lqip: `data:image/webp;base64,${bytes.toString('base64')}` };

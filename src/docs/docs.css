@@ -82,9 +82,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero--visual>img{object-fit:cover;object-position:center 50%;filter:saturate(.88) contrast(1.08)}
 /* the LCP banners' inline previews (docs-prerender, tools/hero-lqip.mjs) on their boxes, cropped as their pictures are:
    the picture fades in over its preview once decoded (docs.ts, topics.ts revealStills), so a slow link never paints it
-   in bands; a chapter card's the same way, under its card */
+   in bands; a chapter card's the same way, under its card (a chapter banner's is in its own .dm-banner rule below) */
 .docs-hero--visual{background-image:var(--docs-hero-lqip,none);background-position:center 50%;background-size:cover;background-repeat:no-repeat}
-.dm-banner{background-image:var(--dm-banner-lqip,none);background-position:50% 62%;background-size:cover;background-repeat:no-repeat}
 .docs-chapter-grid .docs-chapter-media{background-image:var(--card-lqip,none);background-position:center;background-size:cover;background-repeat:no-repeat}
 .docs-hero-shade{background:linear-gradient(90deg,var(--scrim),var(--scrim) 30%,transparent 62%),linear-gradient(0deg,var(--surface-scene),transparent 42%)}
 .docs-hero--visual .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto;padding:76px 0 54px;grid-template-columns:minmax(0,1fr) minmax(420px,.82fr)}
@@ -194,7 +193,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-side a.dm-hit:hover,.dm-side a.dm-hit:focus-visible{color:var(--ink-2);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
 .dm-side.is-searching>.dm-grp,.dm-side.is-searching>a:not(.dm-home){display:none}
 .dm-main{min-width:0}
-.dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
+/* the banner's preview (topics.ts bannerLqip, the LQIPs' rule above) over its tone, cropped as its picture is */
+.dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--dm-banner-lqip,none) 50% 62%/cover no-repeat var(--surface-scene)}
 /* a short landscape phone keeps the chapter's first lines in its first view: the banner is as tall as its trail and title,
    which stand on the pause control's 16 px top inset in every locale, and the title steps down */
 @media (height < 520px){
