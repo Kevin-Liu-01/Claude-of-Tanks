@@ -425,7 +425,9 @@ const SI_CSS = `
   text-transform:none;vertical-align:middle;line-height:1;font-weight:700;}
 /* (centred in its chip by the box, not the line: the label sat 2 px under its top edge and 5 over its foot, gauntlet r5) */
 /* (zh's chip a line taller: its 13 px glyphs fill their em box and touched the ring, gauntlet r9) */
-:lang(zh-CN) .cot-si-kv b .q{min-height:18px;}
+/* (Chinese's taller glyphs 2 px off its rule at the row's own 18 px: at 1 px 间隙 met it, gauntlet r19; a 20 px chip grew
+   the row, and a tight card cut one more row) */
+:lang(zh-CN) .cot-si-kv b .q{min-height:18px;padding-block:2px;}
 /* (a damage row's Latin callsign and its figure at the Latin size in Chinese, as the kill feed's rows: zh's damage rows
    ran 17 % wider than its kill rows, gauntlet r10) */
 :lang(zh-CN) body .cot-si-toast .l1 .lat,:lang(zh-CN) body .cot-si-toast:not(.deflected) .l1 b{font-size:var(--battle-fs-fig-11);}

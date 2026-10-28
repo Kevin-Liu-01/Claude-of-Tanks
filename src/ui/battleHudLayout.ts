@@ -3,7 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
   type PlanRect,
 } from './mouseNoticePlan.ts';
-import { addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
@@ -186,6 +186,10 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
   '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-pips.show', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.cot-battle-notices .cot-aim-notice', '.flight-identity',
   '.cot-ear'].join(',');
+/** What the world plates keep clear of besides that furniture (sightFurniture.ts plateObstacles): Watch's and the
+ *  spectator's bars, the network strip; and the kill feed's rows, which give way to the target plate (FEED_ROWS). */
+const PLATE_OBSTACLES = '.cot-watch:not([hidden]),.cot-spec,.cot-mp-status.battle';
+const FEED_ROWS = '.cot-kill-lane .cot-kf:not(.out)';
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
@@ -223,6 +227,10 @@ const touchChipParked = (width: number, height: number) => (width > height && he
 const OBJECTIVE_COMPACT_H = 340;
 /** The layout variables that place an element on the centre line, written unrounded. */
 const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
+/** A portrait phone's signal tile keeps this far from the touch chrome beside it (properties' network-left). */
+const NETWORK_TILE_GAP = 6;
+/** The rosters' row pitch steps where they have room (snapRosterHeight). */
+const ROSTER_PITCH_STEP = 4;
 /** A short landscape's joystick and its gutter under it, from the window's foot (touchControls.ts: 108 px over 24). */
 const TOUCH_JOY_FOOTPRINT = 132;
 /** The parked warning's height at the most, its words on two lines (battleHudLayout.css .cot-aim-notice). */
@@ -353,7 +361,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const body = heightPx - ROSTER_HEAD_H;
     // (an icon grid wraps its silhouettes instead)
     const least = rosterRowLeast(count);
-    if (!count || root.querySelector(`${selector}.icon-grid`) || body >= count * least) return [heightPx, 0];
+    if (!count || root.querySelector(`${selector}.icon-grid`)) return [heightPx, 0];
+    // (a roster with room for its rows sets them on a 4 px step, 16 to 24 px (30 expanded), never the room's fraction:
+    // spread to its height, a spectating 900x700 roster's rows stood 20.8 px apart, gauntlet r19)
+    if (body >= count * least) {
+      const most = root.classList.contains('rosters-expanded') ? 30 : 24;
+      const pitch = Math.max(least, Math.min(most, Math.floor(body / count / ROSTER_PITCH_STEP) * ROSTER_PITCH_STEP));
+      return [Math.min(heightPx, ROSTER_HEAD_H + count * pitch), 0];
+    }
     const rows = Math.max(1, Math.floor((body - ROSTER_MORE_H) / least));
     return [ROSTER_HEAD_H + rows * least + ROSTER_MORE_H, Math.max(0, count - rows)];
   };
@@ -525,7 +540,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
           const centre = (left.top + left.bottom) / 2;
           const below = met.every((box) => box.top > centre);
           const floor = Math.min(...met.map((box) => box.top));
-          shift = below ? Math.max(0, Math.floor(left.left - Math.max(12, Math.min(...met.map((box) => box.left))))) : 0;
+          shift = below ? Math.max(0, Math.ceil(left.left - Math.max(12, Math.min(...met.map((box) => box.left))))) : 0;
           rise = !below ? Infinity : left.bottom + 8 - floor <= h / 2 ? Math.ceil(left.bottom + 8 - floor) : Math.ceil(left.bottom + 3 - floor);
           const risen = { left: left.left - shift, right: left.right - shift, top: left.top - rise, bottom: left.bottom - rise };
           if (rise > h / 2 || boxes.some((box) => apart(risen, box) < 3)) { seat = 'none'; rise = 0; shift = 0; }
@@ -560,6 +575,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (ribbon.classList.contains('yield') !== meets) ribbon.classList.toggle('yield', meets);
   }
+  /** The range that measures a feed row's copy (publishSightFurniture), made once (none in a stub document). */
+  let plateRange: Range | null = null;
   /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, on a touch layout the
    *  sixth-sense notice its seated warning chip yields to, and on either the centre notices the scope's arms end short of. */
   function publishSightFurniture(touch: boolean): void {
@@ -571,6 +588,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // the scope's line ended 5 px over the second FIRE's ring at 320x568, gauntlet r14)
       const pad = node.matches?.('.cot-touch.on .round') ? ROUND_CONTROL_PAD : 0;
       addSightFurniture(box.left - pad, box.top - pad, box.right + pad, box.bottom + pad);
+    }
+    for (const node of document.querySelectorAll(PLATE_OBSTACLES)) {
+      const box = shownBox(node);
+      if (box) addPlateObstacle(box.left, box.top, box.right, box.bottom);
+    }
+    // (each row by its copy's extent, not the lane-wide row box; a row standing aside for the target plate is laid out
+    // still, and is published as it is)
+    for (const node of document.querySelectorAll(FEED_ROWS)) {
+      if (!node.getClientRects().length) continue;
+      plateRange ??= typeof document.createRange === 'function' ? document.createRange() : null;
+      plateRange?.selectNodeContents(node);
+      const box = plateRange ? plateRange.getBoundingClientRect() : node.getBoundingClientRect();
+      addPlateObstacle(box.left, box.top, box.right, box.bottom, true, node);
     }
     // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
     // land on any frame of that, its first included; r10e)
@@ -1489,10 +1519,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // Keep incoming damage and an open chat usable during a burst of kills.
     const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
     const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
+    // (in Watch the left lane's killers are callsigns, never "You": a lane too narrow for two stacks its rows as the
+    // right one does; at 242 px both read "Commander…" at 320x568 in Watch's drone, gauntlet r18)
+    const leftPitch = touch && width < height && !wideFeed && document.documentElement?.dataset?.watch !== undefined
+      && Math.min(besideColumn, KILL_LANE_MAX_W) < FEED_STACK_W ? FEED_STACK_PITCH : 29;
+    killLeft?.toggleAttribute?.('data-stack', leftPitch !== 29);
     const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0),
-      killLeft?.childElementCount || 0);
+      killLeft?.childElementCount || 0, leftPitch);
     setRows(killLeft, killRowsLeft);
-    const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
+    const killHeightLeft = Math.max(0, killRowsLeft * leftPitch - 3);
     const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
     const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
 
@@ -1709,11 +1744,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // (the report and the log over a mouse layout's map take its width, their left edges on its edge, the card's plan
     // sized within it: 50 px wider, they stood 50 px left of the map under them, gauntlet r5)
     setBodyVar('--hud-report-width', reportWidth ? `${reportWidth}px` : '');
+    const portraitNetworkLeft = (mapBox: DOMRect | null, chromeBox: DOMRect | null): number => {
+      const beside = (mapBox?.right ?? 104) + 8;
+      const tile = read('.cot-mp-status.battle .cot-mp-strip')?.width ?? 44;
+      return chromeBox && beside + tile + NETWORK_TILE_GAP > chromeBox.left ? mapBox?.left ?? 12 : beside;
+    };
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
-      'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
+      // (a portrait phone's tile beside the map where the chrome's row leaves it room, else over the map's column, its left
+      // edge on the map's: beside it the outage word ran into the chrome plate's slant at 320x568, gauntlet r19; over the
+      // column at 390x844 it met the map's top)
+      'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : portraitNetworkLeft(map, chrome),
       'aim-warning-top': chipTop, 'aim-warning-left': chipLeft,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       // (a touch landscape's signal tile level with the map beside it: under the score it floated 44 px down the map's
