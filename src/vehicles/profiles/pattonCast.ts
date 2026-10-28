@@ -246,6 +246,8 @@ interface GearSpec {
   readonly rollerSpan?: readonly [number, number];
   /** Measured stations where the road wheels or return rollers are not evenly pitched, and the rollers' radius. */
   readonly wheelZs?: readonly number[];
+  /** Each side's own road-wheel stations (a torsion-bar hull's stagger), -x side first. */
+  readonly wheelZsBySide?: readonly [readonly number[], readonly number[]];
   readonly rollerZs?: readonly number[];
   readonly rollerR?: number;
   readonly idler: { readonly z: number; readonly y: number; readonly r: number };
@@ -286,6 +288,7 @@ function pattonGear(P: CastPort, xc: number, trackW: number, G: GearSpec): void 
     sprocket: G.sprocket, idler: G.idler, rollers: G.tension ? [...rollers, G.tension] : rollers, trackW,
     topY: G.rollerY + 0.04, paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: false,
     contactZF: G.contactZF, contactZR: G.contactZR, botY: G.botY,
+    ...(G.wheelZsBySide ? { wheelZsLeftM: G.wheelZsBySide[0], wheelZsRightM: G.wheelZsBySide[1], fitStaggeredGroundRun: true } : {}),
     trackBandHex: G.trackBandHex, trackBandRoughness: G.trackBandRoughness,
     trackBandEnvMapIntensity: G.trackBandEnvMapIntensity,
   });
@@ -1031,7 +1034,8 @@ function landmarkLoft(stations: readonly LandmarkStation[], rule: LandmarkRule, 
   samples.forEach((c, j) => { for (let i = 0; i <= c; i++) spanOf.push(j); });
   const smooth: number[] = [];
   for (let e = 0; e < n; e++) if (rule.smooth.includes(spanOf[e < h - 1 ? e : n - 1 - e])) smooth.push(e);
-  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth });
+  // the end stations' flat floors carry collinear points: keep each in the caps so the shell stays closed
+  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth, preserveCapBoundary: true });
   g.userData.pattonCastLoft = 'landmark';
   return g;
 }
@@ -1126,11 +1130,17 @@ const M48_DOME: readonly LandmarkStation[] = [
 
 const M48_GEAR: GearSpec = {
   wheelR: 0.33, wheelY: 0.41, span: [2.049, -1.959], rollerN: 5, rollerY: 1.123, rollerR: 0.18,
-  wheelZs: [2.049, 1.262, 0.469, -0.309, -1.085, -1.959], rollerZs: [1.544, 0.767, -0.012, -0.791, -1.671],
+  // the torsion bars stagger the sides: the -x side's stations run 10 cm behind the +x side's; the return rollers (one
+  // station list for both sides) sit between the two
+  wheelZs: [-1.959, -1.085, -0.309, 0.469, 1.262, 2.049],
+  wheelZsBySide: [[-2.060, -1.186, -0.411, 0.368, 1.161, 1.948], [-1.959, -1.085, -0.309, 0.469, 1.262, 2.049]],
+  rollerZs: [-1.723, -0.844, -0.065, 0.715, 1.492],
   idler: { z: 2.826, y: 0.883, r: 0.328 }, sprocket: { z: -2.884, y: 1.014, r: 0.348 },
   contactZF: 2.20, contactZR: -2.12, botY: 0.045,
 };
-const M48_XC = 1.477, M48_TRACK_W = 0.711;
+// the published 115 in track centres and 28 in track (the model's centres are 1.6 cm wider a side, which put the sprocket
+// hubs past the published 3.632 m width)
+const M48_XC = 1.4605, M48_TRACK_W = 0.711;
 
 function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
   const { box, cylX, cylY, cylZ, sph } = KIT;
@@ -1161,11 +1171,15 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     P.add('hullDetail', moldedBox(0.49, 0.20, 0.77, 0.02, P.q ? 2 : 1, 0.01), side * 1.405, 1.58, -1.93);
     for (const x of [1.24, 1.46]) P.add('hullDark', box(0.06, 0.13, 0.10), side * x, 1.62, -0.42);
     P.add('hullDetail', box(0.10, 0.17, 0.18), side * 1.04, 1.59, -2.57);
+    // the AVDS-1790's air cleaners: the tall boxes ahead of the rear bins, their tops chamfered down at the front
+    const [c0, c1] = side > 0 ? [1.16, 1.63] : [-1.63, -1.16];
+    P.add('hullDetail', skirtRun(c0, c1, [[-1.54, 1.495, 1.795], [-0.98, 1.495, 1.80], [-0.66, 1.495, 1.70]]));
+    P.add('hullDark', box(0.36, 0.02, 0.30), side * 1.395, 1.805, -1.25);
   }
   P.add('hullDetail', box(0.59, 0.035, 0.56), 1.33, 1.53, 2.01);
   P.add('hullDetail', cylY(0.30, 0.31, 0.15, P.q ? 28 : 14), 1.33, 1.62, 2.01);
   P.add('hullDark', cylY(0.20, 0.20, 0.02, P.q ? 24 : 12), 1.33, 1.70, 2.01);
-  P.add('hullDetail', box(1.15, 0.08, 0.16), -1.31, 1.585, 1.77);
+  P.add('hullDetail', box(1.07, 0.08, 0.16), -1.265, 1.585, 1.77);
   P.add('hullDetail', box(0.78, 0.17, 0.02), -1.41, 1.57, 1.655);
   yield 'm48HullBins';
   // bow: the driver's hatch and its three periscopes, the headlight groups on the glacis with their guards, the bow's
@@ -1181,7 +1195,12 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     P.add('hullDetail', box(0.20, 0.10, 0.28), side * 0.77, deckY(0.77, 2.57) + 0.03, 2.57);
     P.add('hullDark', box(0.42, 0.03, 0.05), side * 0.665, 1.50, 3.02);
     for (const x of [0.47, 0.86]) P.add('hullDark', box(0.03, 0.31, 0.05), side * x, 1.345, 3.02);
+    // the brush guard's hoop over the lamps
+    const g = [[side * 0.58, 1.40, 3.00], [side * 0.58, 1.58, 3.00], [side * 0.86, 1.58, 3.00], [side * 0.86, 1.40, 3.00]];
+    for (let i = 0; i < 3; i++) bar(P, 'hullDark', g[i], g[i + 1], 0.012);
     KIT.liftEye(P, 'hullDetail', side * 0.83, 0.86, 3.24, Math.PI / 2);
+    // the towing shackle hanging in the eye
+    P.add('hullDark', KIT.xform(KIT.torus(0.055, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0, [1, 1.3, 1]), side * 0.83, 0.79, 3.27);
   }
   yield 'm48HullBow';
   // engine deck: the hinge pairs along the seams of the centre doors and the side grille doors, the rear access plate
@@ -1217,7 +1236,7 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
   // idler on its arm, no tension wheel; shock absorbers at the first two and last stations, bump stops at every arm
   pattonGear(P, M48_XC, M48_TRACK_W, M48_GEAR);
   for (const side of [-1, 1]) {
-    for (const z of M48_GEAR.wheelZs ?? []) P.add('hullRunningGearDark', box(0.16, 0.21, 0.16), side * 1.14, 0.73, z);
+    for (const z of M48_GEAR.wheelZsBySide?.[side < 0 ? 0 : 1] ?? []) P.add('hullRunningGearDark', box(0.16, 0.21, 0.16), side * 1.14, 0.73, z);
     for (const [z, dz] of [[2.05, 1], [1.26, 1], [-1.96, -1]] as const) {
       bar(P, 'hullRunningGearDetail', [side * 1.36, 0.88, z + dz * 0.20], [side * 1.38, 1.10, z + dz * 0.42], 0.045);
     }
@@ -1284,14 +1303,17 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   P.add('turret', xform(sph(0.24, P.q ? 18 : 10, P.q ? 10 : 5), 0, 0, 0, 0, 0, 0, [1, 0.42, 1]), -0.557, L.y(cupTop - 0.01), L.z(0.05));
   P.add('turretDark', box(0.43, 0.025, 0.13), -0.56, L.y(cupTop + 0.03), L.z(-0.16));
   // the M60Ds ride pintle posts (no ring): the commander's on the cupola rim, the loader's on a post from the roof
-  P.add('turretDark', cylY(0.03, 0.035, 2.80 - cupTop + 0.06, 10), -1.00, L.y((2.80 + cupTop - 0.06) / 2), L.z(0.36));
-  roofM2(P, T, -1.00, 0.36, 2.80, { cls: 'mag', barrel: 0.60, scale: 0.95, seed: 485, ring: false });
+  // (the model's receivers from z -0.22, barrels to 0.99 at 3.06 and 2.93), each with its ammunition box outboard
+  P.add('turretDark', cylY(0.03, 0.035, 2.86 - cupTop + 0.06, 10), -1.00, L.y((2.86 + cupTop - 0.06) / 2), L.z(0.15));
+  roofM2(P, T, -1.00, 0.15, 2.86, { cls: 'mag', barrel: 0.70, scale: 0.95, seed: 485, ring: false });
+  P.add('turretDetail', box(0.09, 0.17, 0.27), -0.817, L.y(2.983), L.z(0.239), 0, Math.PI / 2, 0);
   const hatchTop = loaderHatch(P, T, 0.33, -0.28, 0.27);
   for (const x of [0.245, 0.417]) P.add('turretDark', box(0.05, 0.05, 0.31), x, L.y(hatchTop - 0.01), L.z(-0.28));
   {
-    const roof = seat.topAt(0.60, 0.34);
-    P.add('turretDark', cylY(0.03, 0.04, 2.66 - roof + 0.02, 10), 0.60, L.y((2.66 + roof - 0.02) / 2), L.z(0.34));
-    roofM2(P, T, 0.60, 0.34, 2.66, { cls: 'mag', scale: 0.95, seed: 486, ring: false });
+    const roof = seat.topAt(0.60, 0.13);
+    P.add('turretDark', cylY(0.03, 0.04, 2.72 - roof + 0.02, 10), 0.60, L.y((2.72 + roof - 0.02) / 2), L.z(0.13));
+    roofM2(P, T, 0.60, 0.13, 2.72, { cls: 'mag', barrel: 0.70, scale: 0.95, seed: 486, ring: false });
+    P.add('turretDetail', box(0.09, 0.17, 0.27), 0.785, L.y(2.848), L.z(0.225), 0, Math.PI / 2, 0);
   }
   {
     const y = seat.topAt(-0.563, 0.88);
@@ -1317,7 +1339,7 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
     });
     const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0),
       new THREE.Vector3(-0.768, 0.464, -0.441).normalize()));
-    const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, -1.194, L.y(2.345), L.z(-1.18), e.x, e.y, e.z); };
+    const at = (slot: string, g: Geo | null): void => { if (g) P.add(slot, g, -1.194, L.y(2.395), L.z(-1.18), e.x, e.y, e.z); };
     at('turretDark', spare.tire);
     at('turretDetail', spare.disc);
     at('turretDark', spare.dark);
@@ -1328,33 +1350,33 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   }
   KIT.tarpRoll(P, 'turretCloth', -0.064, L.y(2.34), L.z(-1.286), 0.99, 0.19, true, P.q ? 12 : 8);
   KIT.stowage(P, 'turretCloth', mulberry(488), [
-    [0.278, L.y(2.08), L.z(-1.616), 0.50, 0.36, 0.31], [-0.148, L.y(2.085), L.z(-1.638), 0.45, 0.37, 0.29],
+    [0.278, L.y(2.16), L.z(-1.616), 0.50, 0.50, 0.31], [-0.148, L.y(2.165), L.z(-1.638), 0.45, 0.51, 0.29],
   ]);
   P.add('turret', cylY(0.25, 0.27, 0.16, P.q ? 22 : 12), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.06), L.z(-1.0));
   P.add('turret', xform(sph(0.25, P.q ? 18 : 10, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.35, 1]), 0.68, L.y(seat.topAt(0.68, -1.0) + 0.14), L.z(-1.0));
   P.add('turretDetail', xform(box(0.16, 0.34, 0.25), 0, 0, 0, 0, 0.4, -0.25), 1.18, L.y(2.10), L.z(-0.68));
   yield 'm48TurretBustle';
-  // the flank racks: two tiers of ammunition boxes on the left, boxes and a bag on the right, the handrails over them,
-  // two helmets hung on the left rack; lifting eyes, whips, numbers
-  for (const [y, h] of [[1.84, 0.19], [2.04, 0.19]] as const) {
-    for (const z of [-0.33, 0.02, 0.37, 0.72]) {
-      P.add('turretDetail', moldedBox(0.22, h, 0.30, 0.015, P.q ? 2 : 1, 0.008), seat.sideAt(y, z) + 0.11, L.y(y), L.z(z));
+  // the flank racks: two tiers of slim ammunition boxes hung against each side of the casting (the model's stations
+  // differ a side), a rucksack hung over each rack, the handrails, two helmets on the left; whips, numbers
+  for (const [side, zs] of [[1, [-0.34, -0.02, 0.40, 0.72]], [-1, [-0.20, 0.12, 0.50, 0.81]]] as const) {
+    for (const y of [1.87, 2.05]) {
+      for (const z of zs) {
+        P.add('turretDetail', moldedBox(0.15, 0.20, 0.27, 0.012, P.q ? 2 : 1, 0.006), side * (seat.sideAt(y, z) + 0.07), L.y(y), L.z(z));
+      }
+    }
+    for (const z of side > 0 ? [-0.19, 0.57] : [-0.05, 0.67]) {
+      for (const y of [1.78, 2.0]) P.add('turretDetail', box(0.20, 0.16, 0.05), side * (seat.sideAt(y, z) + 0.09), L.y(y), L.z(z));
     }
   }
-  // the right rack: two tall boxes behind the bag, a box ahead of it
-  for (const [z, h, d] of [[-0.70, 0.42, 0.28], [-0.42, 0.42, 0.24], [0.65, 0.34, 0.38]] as const) {
-    P.add('turretDetail', moldedBox(0.22, h, d, 0.015, P.q ? 2 : 1, 0.008), -(seat.sideAt(1.95, z) + 0.11), L.y(1.76 + h / 2), L.z(z));
-  }
+  KIT.stowage(P, 'turretCloth', mulberry(489), [
+    [seat.sideAt(2.06, 0.26) + 0.20, L.y(2.06), L.z(0.26), 0.30, 0.36, 0.46],
+    [-(seat.sideAt(2.02, 0.37) + 0.20), L.y(2.02), L.z(0.37), 0.30, 0.38, 0.46],
+  ]);
   for (const side of [-1, 1]) {
     const rail: number[][] = [];
     for (let z = -0.5; z <= 1.36; z += 0.31) rail.push([side * (seat.sideAt(2.15, z) + 0.07), L.y(2.15), L.z(z)]);
     for (let i = 0; i + 1 < rail.length; i++) bar(P, 'turretDetail', rail[i], rail[i + 1], 0.016);
-    for (const z of [-0.5, 0.26, 0.87]) {
-      const x = side * (seat.sideAt(1.80, z) + 0.13);
-      P.add('turretDetail', box(0.24, 0.025, 0.05), x - side * 0.02, L.y(1.735), L.z(z));
-    }
   }
-  KIT.stowage(P, 'turretCloth', mulberry(489), [[-(seat.sideAt(2.05, 0.2) + 0.15), L.y(2.12), L.z(0.20), 0.30, 0.34, 0.48]]);
   for (const [x, z] of [[1.315, -0.18], [1.11, -0.379]] as const) {
     P.add('turretDetail', xform(sph(0.11, P.q ? 14 : 8, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [1, 0.75, 1]), x, L.y(2.10), L.z(z));
   }
@@ -1376,41 +1398,43 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   }
   P.addGunExtra(moldedBox(0.58, 0.44, 0.46, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, 0.70);
   P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, 0.935);
-  P.addGunExtra(sph(0.075, P.q ? 14 : 8, P.q ? 10 : 6), 0, 0.39, 0.925);
+  P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, 0.905);
   P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, 0.40);
   m48Gun(P);
   P.topY = L.y(3.06) + 0.12;
   yield 'm48Gun';
 }
 
-/** The A5's gun shield (gun frame): a cast plate 6.5 cm thick lofted up its height, its face leaning back from 0.43 m
- * ahead of the trunnion at its foot to 0.06 m at its crown (the model's 25 deg), the plan corners rounded, the front
- * outline the model's rounded rectangle (0.62 m wide at the foot, 1.03 m through the middle, 0.50 m at the crown). */
+/** The A5's gun shield (gun frame): a cast plate 6.5 cm thick lofted up its height, its face leaning back from 0.415 m
+ * ahead of the trunnion at its foot (0.23 m under the bore) to 0.07 m at its crown (the model's 25 deg), bowed 3 cm
+ * forward across its width, the front outline the model's rounded rectangle (1.03 m wide through the middle, its lower
+ * corners rounded at about 0.15 m, 0.50 m across the crown). */
 function m48Mantlet(q: boolean | undefined): Geo {
-  // h (over the bore axis), half-width; the face is the model's straight 25 deg line from 0.43 m ahead of the trunnion
-  // at the foot (h -0.26) to 0.06 m at the crown (h 0.49)
-  const rows = ([[-0.26, 0.31], [-0.21, 0.435], [-0.16, 0.48], [-0.06, 0.51], [0.04, 0.515], [0.14, 0.515], [0.24, 0.51],
-    [0.34, 0.48], [0.39, 0.42], [0.44, 0.35], [0.49, 0.25]] as const).map(([h, w]) => [h, w, 0.43 - (h + 0.26) * 0.493] as const);
-  const t = 0.065;
-  const steps = q ? 3 : 1;
-  const sections = rows.map(([h, w, f]) => {
-    const c = Math.min(0.03, t * 0.45, w * 0.3);
-    // counter-clockwise viewed from +h in (x, -d): the face's corners, then the back's
-    const yF = -f, yB = -(f - t);
-    const corners: readonly (readonly [number, number, number])[] = [
-      [w - c, yF + c, -Math.PI / 2], [w - c, yB - c, 0], [-(w - c), yB - c, Math.PI / 2], [-(w - c), yF + c, Math.PI],
-    ];
+  // h (over the bore axis), half-width
+  const rows: readonly (readonly [number, number])[] = [
+    [-0.23, 0.30], [-0.215, 0.39], [-0.19, 0.445], [-0.15, 0.485], [-0.09, 0.51], [0.04, 0.515], [0.14, 0.515],
+    [0.24, 0.51], [0.34, 0.48], [0.39, 0.42], [0.44, 0.35], [0.49, 0.25],
+  ];
+  const t = 0.065, bow = 0.03;
+  const n = q ? 8 : 4;
+  const sections = rows.map(([h, w]) => {
+    const f = 0.415 - (h + 0.23) * 0.483;
+    // counter-clockwise viewed from +h in (x, -d): the face left to right, then the back right to left
     const ring: SectionPoint[] = [];
-    for (const [cx, cy, a0] of corners) {
-      for (let i = 0; i <= steps; i++) {
-        const a = a0 + (Math.PI / 2) * (i / steps);
-        ring.push([cx + Math.cos(a) * c, cy + Math.sin(a) * c]);
-      }
+    for (let i = 0; i <= n; i++) {
+      const x = -w + (2 * w * i) / n;
+      ring.push([x, -(f + bow * (1 - (x / w) ** 2))]);
+    }
+    for (let i = n; i >= 0; i--) {
+      const x = -w + (2 * w * i) / n;
+      ring.push([x, -(f - t + bow * (1 - (x / w) ** 2))]);
     }
     return { z: h, ring };
   });
-  const n = sections[0].ring.length;
-  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: Array.from({ length: n }, (_, i) => i) });
+  const m = sections[0].ring.length;
+  // the face and the back shade round; the two thin ends keep their edges
+  const smooth = Array.from({ length: m }, (_, i) => i).filter((i) => i !== n && i !== m - 1);
+  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth });
   // loft axis (z) up, the ring's second axis back along the bore: (x, y, z) -> (x, z, -y)
   g.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
   return g;

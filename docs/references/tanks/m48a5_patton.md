@@ -53,7 +53,7 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
   driver's deck 1.47-1.53; engine deck crown 1.85; turret yaw centre z 0.58 (the dome's floor circle, r 1.24); gun bore
   axis y 1.921 (the 258 fix's 2.10 was for the old 1.80 deck), trunnion z 1.514, muzzle z 5.827; road wheels r 0.33 at
   z 2.049, 1.262, 0.469, -0.309, -1.085, -1.959, y 0.41; return rollers r 0.18 at y 1.123, z 1.544 … -1.671; idler
-  z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.954 m centres (xc 1.477).
+  z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.954 m centres (built on the published 2.921 m, 115 in, so the sprocket hubs stay inside the published 3.632 m width).
 - Published versus source: AFV48 hull with fenders 6.871 m (model 6.93); fire height 78.8 in = 2.00 m (model 1.92).
 - Rejected source parts: none; the model's fused stowage (bags, boxes) is rebuilt as first-party primitives at its
   measured seats.
@@ -97,3 +97,18 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 | Searchlight | on the mantlet | over the gun shield | on brackets over the tube, ahead of the shield |
 | Smoke dischargers | none | not confirmed on US A5s | none |
 | Rear | louvred plate | grille doors on the upper rear plate | grille doors, tail lights, pintle, phone box |
+
+## Evidence matrix (release 262, owner-model round)
+
+| Gate | Status | Revision | Command / artifact | Worst result / residual |
+| --- | --- | --- | --- | --- |
+| Source/conversion/frame integrity | PASS | raw `a7c37097…` | rigid 180 deg about y, scale 1; datums above from `~/cot-lanes/patton-262-evidence/source-m48a5/` | none |
+| Landmark construction (no sampled contours) | PASS | lane WIP | `M48_HULL` 24 rows, `M48_DOME` 23 rows of named knots + span bulges | the dome's lower band undercut is the model's |
+| Closed shells | PASS | lane WIP | `.qa-dev/patton262/loft-topology.mjs` (base-shell-integrity): hull and dome, HIGH and LOW: boundary 0, nonmanifold 0, inconsistent 0, crossings 0 | HIGH hull had 6 open cap edges before `preserveCapBoundary` |
+| Proportions | PASS | lane WIP | `pattonCastProportions.selftest.mjs`: hull 6.932 x 3.694 m, casting 3.37 x 2.48 x 0.93, 5 rollers, glacis 63.4 | width 1.7 % over the published 3.632 (sprocket hubs) |
+| Gun rig parity | PASS | lane WIP | `gun-barrel-align-census --rigs --update`: turretPivot (0, 1.633, 0.58), gunPivot (0, 0.288, 0.934), length 4.313, r 0.0875; M46/M47 rows refreshed too | 0 mm |
+| Independent critic | ROUND 1 DONE | r15 | subagent over `cmp/r15/*` (side 7, top 7, front 5, rear 6, turret 6, hull 8, mantlet 7) | fixed in r16: air cleaners, staggered wheels, slim flank racks and rucksacks, MG stations and ammo boxes, shield foot/bow, lamp, brush guards, shackles; the "shallow turret" is the stale turret seat (anatomy regen) |
+| Registered geometry gate | QUEUED | | `geometry-gate.mjs --ids=m48a5_patton --check` via the capture queue | |
+| Gun clearance / depression curve | NOT RUN (geometry changed) | | `gun-depression-sweep.mjs --ids=m48a5_patton`, `pattonGunClearance.selftest.mjs` | the 258 curve fails at yaw -161 on the new engine deck |
+| Anatomy fixpoint, fills, markings, seats, spare track, ledger | RUNNING | | ids-scoped chain | |
+| Release check, icons, hero cards, drawings | NOT RUN | | | |
