@@ -83,7 +83,8 @@ for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a4_otco','leo
     if(source==='add'&&['leo1a5-lower-bow','leo1a5-rear-applique','leo2a6m-thermal-skin'].includes(g.userData.primaryStockRole))repaired.push(g);
   }});
   try {
-    assert.equal(repaired.length,id==='leo1a5'?3:2,`${id}/${quality}: intended stock is repaired`);
+    // 262: the leo1a5 rebuild retired the rear cheek appliqué (its cast turret now carries the B&V wedge and side blocks)
+    assert.equal(repaired.length,id==='leo1a5'?1:2,`${id}/${quality}: intended stock is repaired`);
     for(const geometry of repaired) {
       assertClosedRecess(geometry,`${id}/${quality}/${geometry.userData.primaryStockRole}`);
       const part=shellPart(geometry),side=part.bounds.max.x<0?-1:1;
