@@ -45,6 +45,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "leclercClassicX": () => import('./interiorFillGroups/leclercClassicX.generated.ts'),
   "leclercX": () => import('./interiorFillGroups/leclercX.generated.ts'),
   "leopard": () => import('./interiorFillGroups/leopard.generated.ts'),
+  "leopard2a3B4": () => import('./interiorFillGroups/leopard2a3B4.generated.ts'),
   "leopardA6X": () => import('./interiorFillGroups/leopardA6X.generated.ts'),
   "leopardX": () => import('./interiorFillGroups/leopardX.generated.ts'),
   "lrmvLynx": () => import('./interiorFillGroups/lrmvLynx.generated.ts'),

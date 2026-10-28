@@ -15,9 +15,13 @@ delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
-delete spec.gunPitchByYawDeg;
 stripSilhouetteDimensions(spec.dims);
 spec.armor = leo2a3B4Armor();
+// the gun's depression by turret yaw over its own hull, measured with tools/gun-depression-sweep.mjs at 26 mm (lane
+// christian2-262): shallower over the headlight pods and up to level over the engine deck
+spec.gunPitchByYawDeg = [[0, -9], [15, -9], [17, -7.5], [19, -7], [23, -6.6], [26, -6.6], [27, -6.9], [28, -7.6],
+  [29, -8.8], [30, -9], [135, -9], [144, -5.3], [146, -3.6], [149, -2.6], [150, -1.4], [152, -0.3], [153, -0.1], [156, 0],
+  [157, 0.6], [158, 0.9], [160, 0.9], [163, 0.1], [178, 0.1], [180, -0.4]];
 spec.visual = { ...spec.visual, number: '232' };
 
 registerFleetSpecs(registries, ['leo2a3_b4'], { leo2a3_b4: spec });

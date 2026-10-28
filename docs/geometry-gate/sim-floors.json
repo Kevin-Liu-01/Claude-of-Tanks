@@ -79,6 +79,7 @@
     "leo2_revolution_proto": {"panYM":0.36,"bottomYM":0,"hullMin":[-1.989,0.36,-3.865],"hullMax":[1.989,1.71,3.85],"turretMinY":-0.02,"accepted":{"reason":"release 240 batch 251 turret ring collar (turretSeatRace.ts) and the batch geometry","by":"kevinliu","date":"2026-10-25","from":{"panYM":0.31}}},
     "leo2a2": {"panYM":0.51,"bottomYM":0,"hullMin":[-1.85,0.51,-3.86],"hullMax":[1.85,1.6,4],"turretMinY":-0.065},
     "leo2a3": {"panYM":0.51,"bottomYM":0,"hullMin":[-1.85,0.51,-3.86],"hullMax":[1.85,1.6,4],"turretMinY":-0.065},
+    "leo2a3_b4": {"panYM":0.54,"bottomYM":0,"hullMin":[-1.818,0.54,-4.14],"hullMax":[1.818,1.8,3.7],"turretMinY":-0.002,"accepted":{"reason":"first measurement","by":"kevinliu","date":"2026-10-27","from":"no earlier row"}},
     "leo2a4": {"panYM":0.26,"bottomYM":0,"hullMin":[-1.875,0.26,-3.74],"hullMax":[1.875,1.815,3.758],"turretMinY":-0.125},
     "leo2a4_otco": {"panYM":0.5,"bottomYM":0,"hullMin":[-1.875,0.5,-3.74],"hullMax":[1.875,1.815,3.72],"turretMinY":-0.15},
     "leo2a4_v": {"panYM":0.437,"bottomYM":0,"hullMin":[-1.875,0.437,-3.65],"hullMax":[1.875,1.7,3.945],"turretMinY":-0.0355,"accepted":{"reason":"release 240 turret seat (turretSeatRace.ts), the turret's underside stands its 3 cm seam over the deck round the ring, so its buried underbody pan came up out of the hull","by":"kevinliu","date":"2026-10-22","from":{"turretFloorY":-0.15}}},
