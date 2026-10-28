@@ -1249,7 +1249,7 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number; span?: boolean } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
   // on the bar's rule, which hangs 1 px below it (publicNav.css .public-nav::after): the menu's ring lies on that rule,
   // opaque over the dossier's picture, which runs under it
@@ -1260,7 +1260,9 @@ function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?
   // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
   const room = panelRoom(panel);
   const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
-  return { top: scrolls ? Math.max(top, room.top) : top, bottom: scrolls ? room.bottom : innerHeight, left: room.left, right: room.right };
+  // spanned at every width: at 2560 the dossier widens past a column (the 261 critic: a trigger-wide menu cut its text)
+  return { top: scrolls ? Math.max(top, room.top) : top, bottom: scrolls ? room.bottom : innerHeight, left: room.left, right: room.right,
+    span: true };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
