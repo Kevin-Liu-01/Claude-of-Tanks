@@ -276,9 +276,9 @@ if (existsSync(shipped)) {
   coverage = `the shipped index gives ${takes.size} of ${production.size} production vehicles their take`;
 }
 
-// At most two loops play at once on a page (the coordinator, 2026-10-13): a third pauses the one playing longest, which
-// resumes once a slot frees while still in view, and the viewer's own play always wins a slot.
-// (the policy is one per page, src/presentation/mediaPlayer.ts: the frame above leaves the page first)
+// At most two loops play at once on a page (the coordinator, 2026-10-13): a third of their size waits (a newcomer takes a
+// slot only from a frame it clearly outshows), plays once a slot frees while still in view, and the viewer's own play
+// always wins a slot. (the policy is one per page, src/presentation/mediaPlayer.ts; its receipt holds the shown-area rule)
 player.dispose();
 {
   const capped = await freshModule();
@@ -289,15 +289,15 @@ player.dispose();
     p.show(take);
     dom.intersect(frames[i], 0, true);
     dom.intersect(frames[i], 0.6);
-    assert.equal(videos[i].paused, false, `loop ${i + 1} starts: no other transfer is in flight`);
+    if (i < 2) assert.equal(videos[i].paused, false, `loop ${i + 1} starts: no other transfer is in flight`);
     videos[i].dispatchEvent({ type: 'canplaythrough' }); // its transfer buffers through: the slot frees for the next
   }
-  assert.deepEqual(videos.map((v) => v.paused), [true, false, false], 'a third loop pauses the one playing longest');
+  assert.deepEqual(videos.map((v) => v.paused), [false, false, true], 'a third loop of their size waits');
   dom.intersect(frames[1], 0, true);
-  assert.deepEqual(videos.map((v) => v.paused), [false, true, false], 'a freed slot resumes the crowded loop in view');
+  assert.deepEqual(videos.map((v) => v.paused), [false, true, false], 'a freed slot plays the waiting loop in view');
   dom.intersect(frames[1], 0.6);
-  assert.deepEqual(videos.map((v) => v.paused), [false, false, true], 'the newest to start crowds out the longest playing');
-  players[2].toggle();
+  assert.deepEqual(videos.map((v) => v.paused), [false, true, false], 'back in view, a loop waits its turn: it outshows neither');
+  players[1].toggle();
   assert.deepEqual(videos.map((v) => v.paused), [true, false, false], "the viewer's play wins a slot");
   for (const p of players) p.dispose();
 }

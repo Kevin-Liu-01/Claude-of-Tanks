@@ -54,6 +54,7 @@
     "src/ui/studioPanel.ts": {"colour":222,"fontSize":62,"letterSpacing":36,"zIndex":7,"shadow":14,"duration":3,"important":0},
     "src/ui/studioPlanView.ts": {"colour":0,"fontSize":1,"letterSpacing":1,"zIndex":0,"shadow":0,"duration":0,"important":0},
     "src/ui/studioProductionPanel.ts": {"colour":51,"fontSize":33,"letterSpacing":6,"zIndex":2,"shadow":2,"duration":1,"important":13},
+    "src/ui/tablet.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":2},
     "src/ui/teamNationsControl.ts": {"colour":8,"fontSize":3,"letterSpacing":2,"zIndex":0,"shadow":1,"duration":0,"important":0},
     "src/ui/touchControls.ts": {"colour":108,"fontSize":18,"letterSpacing":5,"zIndex":15,"shadow":21,"duration":14,"important":12},
     "src/ui/transition.ts": {"colour":20,"fontSize":5,"letterSpacing":4,"zIndex":1,"shadow":4,"duration":2,"important":1},

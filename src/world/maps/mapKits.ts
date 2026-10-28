@@ -65,7 +65,10 @@ import { SAAR_YARD_GAPS, dressSaarWorks } from './saarWorks.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { addArchedStoneBridge, addRuinedRiverBridge, alignWidth, archedBridgeDraws, localRng, type DressingBridgeDeck } from './archedStoneBridge.ts';
+import {
+  addArchedStoneBridge, addArchedStoneBridgeSteps, addRuinedRiverBridge, alignWidth, archedBridgeDraws, localRng,
+  type DressingBridgeDeck,
+} from './archedStoneBridge.ts';
 import {
   MILL_HOUSE_D, MILL_HOUSE_W, MILL_WHEEL_OFFSET, MILL_WHEEL_R, SLUICE_GATE_W, SLUICE_PIER_W,
   buildMillHouse, buildMillWheel, buildWeirSluice, mergeMillPlain,
@@ -886,28 +889,46 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 }
 
 /** Add map-specific geometry before the shared material buckets are merged. */
-export function dressMapExtras({
+export function dressMapExtras(ctx: DressingContext): void {
+  for (const _ of dressMapExtrasSteps(ctx)) { /* one task */ }
+}
+
+/** A checkpoint between the map kits' pieces, where the props build paces (props.ts PropsBuildSlice) and may end its task. */
+export interface DressingSlice { fine: true; progress: false; stage: string }
+// (260, the rooms census: the kits ran as one step of the props build, 118 ms on Cliffbridge) a checkpoint after each
+// kit and each bridge; the same pieces, draws and order
+const KIT_SLICE: DressingSlice = { fine: true, progress: false, stage: 'map-extras' };
+
+/** dressMapExtras with a checkpoint after each kit, for the props build's pacing. */
+export function* dressMapExtrasSteps({
   buildings,
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
   obstacles, colliders, animated, vehicleSetPieces, trees, clutter, structure, setPieceDestructible, rollingStockDestructible, tramDestructible,
-}: DressingContext): void {
+}: DressingContext): Generator<DressingSlice, void, void> {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
+  // (260) the trunks only for a kit that reads them (the boats): a map's every tree record, 46 ms on Cliffbridge, which
+  // has none
+  let trunks: Trunk[] | null = null;
   const focused = { mapId, L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible, tramDestructible };
+    get trunks(): Trunk[] { return trunks ??= trunksOf(trees); }, setPieceDestructible, rollingStockDestructible, tramDestructible };
   if (mapId === 'cliffbridge') {
     // (229, the owner: the big bridge "a lot more detailed") the Puente Nuevo's masonry
-    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused, 'ronda');
+    for (const deck of heightField.bridgeDecks ?? []) {
+      yield* addArchedStoneBridgeSteps(deck, heightField, rng, buckets, focused, 'ronda');
+      yield KIT_SLICE;
+    }
   }
-  if (kits.includes('coastal')) dressCoastalShore(focused);
+  if (kits.includes('coastal')) { dressCoastalShore(focused); yield KIT_SLICE; }
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
     else if (mapId === 'autumn') dressAmberfordRiver(focused);
     else dressAutumnRiver(focused);
+    yield KIT_SLICE;
   }
-  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge', kits.includes('saar') ? SAAR_YARD_GAPS : []);
-  if (kits.includes('winterLake')) dressWinterLakes(focused);
-  if (kits.includes('winterRiver')) dressWinterRiverBanks(focused);
+  if (kits.includes('rail')) { dressRailYard(focused, mapId === 'skybridge', kits.includes('saar') ? SAAR_YARD_GAPS : []); yield KIT_SLICE; }
+  if (kits.includes('winterLake')) { dressWinterLakes(focused); yield KIT_SLICE; }
+  if (kits.includes('winterRiver')) { dressWinterRiverBanks(focused); yield KIT_SLICE; }
   // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
   // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
   if (kits.includes('shanghai')) {
@@ -919,13 +940,15 @@ export function dressMapExtras({
       // (the arched bridge's draws burnt, so the kit's later dressing keeps its place on the map's stream)
       for (let k = archedBridgeDraws(deck); k > 0; k--) rng();
       addSuzhouBridge(deck, heightField, buckets, focused, deck === bund ? 'truss' : 'girder');
+      yield KIT_SLICE;
     }
     // the tram line down the Settlement's avenue, the bridgeheads' sandbagged posts, the creek's sampans (their own streams)
     dressShanghai({ ...focused, buildings }, mapId);
+    yield KIT_SLICE;
   }
   // the map-revival lane (2026-10-05): Ruinspires as Sarajevo — the boulevard's tram line, catenary, burnt trams and the
   // container screens at its crossings, the hillside cemeteries (maps/sarajevoStreets.ts; its own streams, never this one)
-  if (kits.includes('sarajevo')) dressSarajevo(focused, mapId);
+  if (kits.includes('sarajevo')) { dressSarajevo(focused, mapId); yield KIT_SLICE; }
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
   // draw sequences are untouched. Soft dressing in the existing baked/wood buckets; no collision record.
@@ -934,14 +957,15 @@ export function dressMapExtras({
     spawns: L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined,
     keepOut: shore.keepOut, jetties: shore.jetties, landings: shore.landings,
   });
+  yield KIT_SLICE;
   // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
   // its earlier dressing; a map without one draws nothing here.
-  if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
+  if (L.railSpurs?.length) { dressRailSpurs(focused, L.railSpurs); yield KIT_SLICE; }
   // the map-revival lane (2026-10-06): Ironworks' furnace line, its high-line over the bunker front and the receiving
   // yard's heaps (maps/saarWorks.ts), after the rail fan so each trestle and heap clears the sidings' records
-  if (kits.includes('saar')) dressSaarWorks(focused);
+  if (kits.includes('saar')) { dressSaarWorks(focused); yield KIT_SLICE; }
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
-  if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+  if (vehicleSetPieces?.length) { dressVehicleSetPieces(focused, vehicleSetPieces); yield KIT_SLICE; }
   // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
   // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
   if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);

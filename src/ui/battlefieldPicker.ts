@@ -82,6 +82,14 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
   /** The loop the preview wants playing ('' for none) and the dwell before it loads. */
   let wanted = '';
   let dwell = 0;
+  // its pictures (the still, Random's mosaic, the tactical plate) fade in once decoded over the box's tone (pickers.css);
+  // a picture already decoded keeps standing when the preview moves to it
+  host.querySelector<HTMLElement>('.cot-bf__hero')!.addEventListener('load', (event) => {
+    if (event.target instanceof HTMLImageElement) event.target.setAttribute('data-ready', '');
+  }, true);
+  const settle = (img: HTMLImageElement): void => {
+    if (img.complete && img.naturalWidth > 0) img.setAttribute('data-ready', ''); else img.removeAttribute('data-ready');
+  };
   // shown once it plays, so the still holds while it loads; a loop that starts after the preview moved on stops
   video.addEventListener('playing', () => {
     if (video.getAttribute('src') === wanted) video.classList.add('is-playing'); else video.pause();
@@ -107,8 +115,10 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     shownId = next?.id ?? null;
     const picture = next?.hero ?? next?.media?.poster ?? '';
     if (picture) hero.src = picture; else hero.removeAttribute('src');
+    settle(hero);
     // a card with no one picture (Random) shows its card's own mosaic
     heroMosaic.innerHTML = picture ? '' : (next?.media?.mosaic ?? []).slice(0, 4).map((src) => `<img src="${esc(src)}" alt="" decoding="async">`).join('');
+    heroMosaic.querySelectorAll('img').forEach(settle);
     name.textContent = next?.name ?? '';
     facts.innerHTML = (next?.facts ?? []).slice(0, 2).map((fact) => `<span>${esc(fact)}</span>`).join('');
     // Random has no one map to show: no tactical inset
@@ -116,6 +126,7 @@ export function createBattlefieldPicker(host: HTMLElement, options: BattlefieldP
     inset.hidden = !map;
     if (!map) return;
     plate.src = minimapAssetUrl(map);
+    settle(plate);
     drawer ??= import('./deployObjectives.ts');
     void drawer.then(({ drawDeployObjectives }) => (shownId === map ? drawDeployObjectives(canvas, map, mode) : undefined))
       .catch(() => { /* the bare tactical map */ });

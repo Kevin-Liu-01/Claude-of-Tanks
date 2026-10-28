@@ -15,9 +15,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCaptureLock, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
+import { classifyCommand, createCaptureLock, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
 // acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
+// and acquire's class from COT_SHOTS_LOCK_CLASS, which a lane may export
+process.env.COT_SHOTS_LOCK_CLASS = '';
 
 const root = mkdtempSync(join(tmpdir(), 'cot-capture-lock-'));
 const lockDir = join(root, 'capture.lock');
@@ -457,6 +459,243 @@ async function checkPlaceKey() {
   fourth.release();
 }
 
+// ---- lock classes and the hold cap (2026-10-27, item 262) ----------------------------------------------------------
+const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const slotsIn = (dir) => (existsSync(dir) ? readdirSync(dir).filter((name) => /^slot-\d+\.holder$/.test(name)).sort() : []);
+/** A lock instance on a private queue, with its events in `order` and its log lines in `logs`. */
+function classLock(prefix, extra = {}) {
+  const logs = [];
+  const lock = createCaptureLock({ lockDir: join(root, `${prefix}.lock`), queueDir: join(root, `${prefix}.queue`), lockStaleMs: 60_000,
+    ticketRefreshMs: 50, log: (message) => logs.push(message), ...extra });
+  return { lock, logs };
+}
+/** acquire() in the background: { done, held() }; the promise records `name` into `order` once held. */
+function take(lock, name, order, options) {
+  let held = false;
+  const done = lock.acquire(10_000, options).then(() => { held = true; order.push(name); });
+  return { done, held: () => held };
+}
+
+// Commands are classified by their script names only; timing wins; an unknown command is timing (exclusive).
+function checkClassifyCommand() {
+  const lane = '/Users/k/cot-lanes/web-nav-perf-240';
+  for (const command of [`${lane}/tools/genHeroCards.mjs --ids=kf51_u --out=/tmp/x`, 'tools/genIcons.mjs --views armorSide,modulesSide,crewSide',
+    'tools/genDrawings.mjs --ids=t72b3', `${lane}/tools/anatomy-render-set.mjs --ids=a`, 'tools/ui-gauntlet/capture.mjs --sizes=8',
+    'tools/garage-kit-sheet.mjs', `node ${lane}/tools/media-r5/with-capture-lock.mjs node tools/genIcons.mjs`]) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'render', from: 'command' }, `a render: ${command}`);
+  }
+  for (const command of ['tools/perfprobe.mjs --map=verdant', '/x/rust-sim-core-252/.qa-dev/rust/worker-sortie-probe.mjs dist /y',
+    `${lane}/tools/mp-room-census.mjs --dist=/x/genIcons-out`, 'tools/garage-action-timing.mjs', 'tools/visual-census-sheet.mjs']) {
+    assert.deepEqual(classifyCommand(command), { lockClass: 'timing', from: 'command' }, `timing: ${command}`);
+  }
+  assert.deepEqual(classifyCommand('/x/aps-frames.mjs --root=/y/gauntlet-run'), { lockClass: 'timing', from: 'default' },
+    'an unknown script is timing by default; its arguments never classify it');
+  assert.deepEqual(classifyCommand(''), { lockClass: 'timing', from: 'default' });
+}
+
+// Renders share the lock two at a time in one directory; a third waits for a slot; the last one out frees the path.
+async function checkSharedRenders() {
+  const order = [];
+  const [a, b, c] = ['a', 'b', 'c'].map(() => classLock('share').lock);
+  const lockAt = join(root, 'share.lock');
+  const first = take(a, 'a', order, { lockClass: 'render' });
+  await first.done;
+  const second = take(b, 'b', order, { lockClass: 'render' });
+  await second.done;
+  assert.deepEqual(order, ['a', 'b'], 'a second render holds while the first does');
+  const token = readToken(lockAt);
+  assert.equal(token.lockClass, 'render');
+  assert.deepEqual(token.group, { max: 2 }, 'owner.json records a render group of two');
+  assert.deepEqual(slotsIn(lockAt), ['slot-0.holder', 'slot-1.holder'], 'one slot file per member');
+  for (const slot of slotsIn(lockAt)) {
+    // older copies keep a directory whose *.holder file names a live pid on its first line (liveHolderFiles)
+    assert.match(readFileSync(join(lockAt, slot), 'utf8'), new RegExp(`^pid ${process.pid}\\n\\{`), 'a slot names its pid on line one');
+  }
+  assert.equal(a.heldClass, 'render');
+  const third = take(c, 'c', order, { lockClass: 'render' });
+  await settle(1_300);
+  assert.equal(third.held(), false, 'a third render waits: two slots');
+  assert.equal(a.release(), true, 'a member leaves');
+  assert.equal(existsSync(lockAt), true, 'the group stays while members hold');
+  await third.done;
+  assert.deepEqual(order, ['a', 'b', 'c'], 'the freed slot goes to the waiting render');
+  assert.equal(b.release(), true);
+  assert.equal(existsSync(lockAt), true);
+  assert.equal(c.release(), true);
+  assert.equal(existsSync(lockAt), false, 'the last member out removes the directory');
+  assert.equal(existsSync(`${lockAt}.members`), false, 'and leaves no members mutex');
+  assert.deepEqual(readdirSync(join(root, 'share.queue')).filter((name) => /\.[tw]$/.test(name)), [], 'every ticket is removed');
+}
+
+// A timing hold is exclusive: a render waits for it, and a timing ticket waits for the running renders to finish.
+async function checkTimingExclusion() {
+  const order = [];
+  const [timing, render, timing2, render2] = [0, 1, 2, 3].map(() => classLock('excl').lock);
+  const lockAt = join(root, 'excl.lock');
+  await take(timing, 't', order, { lockClass: 'timing' }).done;
+  assert.equal(readToken(lockAt).lockClass, 'timing', 'owner.json shows the class');
+  assert.equal(readToken(lockAt).group, undefined, 'a timing hold is no group');
+  const r = take(render, 'r', order, { lockClass: 'render' });
+  await settle(1_300);
+  assert.equal(r.held(), false, 'a render waits while a timing hold runs');
+  timing.release();
+  await r.done;
+  const t2 = take(timing2, 't2', order, { lockClass: 'timing' });
+  await settle(1_300);
+  assert.equal(t2.held(), false, 'a timing ticket waits for the running render');
+  render.release();
+  await t2.done;
+  const r2 = take(render2, 'r2', order, { lockClass: 'render' });
+  await settle(1_300);
+  assert.equal(r2.held(), false, 'nothing joins a timing hold');
+  timing2.release();
+  await r2.done;
+  render2.release();
+  assert.deepEqual(order, ['t', 'r', 't2', 'r2']);
+  assert.equal(existsSync(lockAt), false);
+}
+
+// FIFO between the classes: a render queued behind a waiting timing ticket does not take the free slot, so a stream
+// of renders cannot starve a timing ticket.
+async function checkNoStarvation() {
+  const order = [];
+  const [r1, t, r2, r3] = [0, 1, 2, 3].map(() => classLock('fair').lock);
+  await take(r1, 'r1', order, { lockClass: 'render' }).done;
+  const timing = take(t, 't', order, { lockClass: 'timing' });
+  const behind = take(r2, 'r2', order, { lockClass: 'render' });
+  const later = take(r3, 'r3', order, { lockClass: 'render' });
+  await settle(1_500);
+  assert.equal(timing.held(), false, 'the timing ticket waits for the running render');
+  assert.equal(behind.held() || later.held(), false, 'renders behind it do not take the free slot');
+  r1.release();
+  await timing.done;
+  await settle(700);
+  assert.deepEqual(order, ['r1', 't'], 'the timing ticket holds alone');
+  t.release();
+  await Promise.all([behind.done, later.done]);
+  assert.deepEqual(order.slice(0, 2), ['r1', 't']);
+  assert.deepEqual(new Set(order.slice(2)), new Set(['r2', 'r3']), 'then the renders behind it share');
+  r2.release();
+  r3.release();
+  assert.equal(existsSync(join(root, 'fair.lock')), false);
+}
+
+// The hold cap: checkpoint() keeps a hold under its cap or with nobody waiting, and past it with a waiter gives the
+// lock up and re-queues at the back; the cap is raised per ticket only with a reason.
+async function checkHoldCap() {
+  const logFile = join(root, 'cap.log');
+  const order = [];
+  const { lock: long, logs } = classLock('cap', { logFile });
+  const other = classLock('cap', { logFile }).lock;
+  const lockAt = join(root, 'cap.lock');
+  await assert.rejects(long.acquire(1_000, { holdCapMinutes: 45 }), /holdCapReason/, 'raising the cap needs a reason');
+  await assert.rejects(long.acquire(1_000, { lockClass: 'gpu' }), /not a lock class/);
+  await long.acquire(5_000, { holdCapMinutes: 45, holdCapReason: 'the full-fleet hero sheet' });
+  assert.equal(readToken(lockAt).capMs, 45 * 60_000, 'owner.json records the raised cap');
+  assert.equal(readToken(lockAt).capReason, 'the full-fleet hero sheet', 'and its reason');
+  long.release();
+  await assert.rejects(long.checkpoint(), /holds nothing/);
+  await long.acquire(5_000, { lockClass: 'render', holdCapMinutes: 0.01 }); // 0.6 s
+  assert.equal((await long.checkpoint()).yielded, false, 'under the cap: keep going');
+  await settle(700);
+  assert.equal((await long.checkpoint()).yielded, false, 'past the cap with nobody waiting: keep going');
+  assert.ok(logs.some((m) => /past its .*cap with nobody waiting/.test(m)));
+  const waiter = take(other, 'timing', order, { lockClass: 'timing' });
+  await until('the timing ticket queues', () => readdirSync(join(root, 'cap.queue')).some((name) => name.endsWith('.t')));
+  const steps = [];
+  const yielding = long.checkpoint({
+    beforeYield: async () => { steps.push(`before: ${existsSync(lockAt) ? 'held' : 'free'}`); },
+    afterResume: async () => { steps.push('resumed'); },
+  }).then((result) => { order.push('render again'); return result; });
+  await waiter.done;
+  assert.deepEqual(steps, ['before: held'], 'beforeYield runs while the lock is still held');
+  await settle(1_300);
+  assert.deepEqual(order, ['timing'], 'the yielded render waits behind the ticket it yielded to');
+  other.release();
+  const result = await yielding;
+  assert.equal(result.yielded, true);
+  assert.deepEqual(steps, ['before: held', 'resumed']);
+  assert.deepEqual(order, ['timing', 'render again'], 'it holds again once that hold is done');
+  assert.equal(long.heldClass, 'render', 'with its class kept');
+  long.release();
+  const records = readFileSync(logFile, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  assert.ok(records.some((r) => r.e === 'release' && /^hold cap: yielded/.test(r.reason ?? '')), 'the hold log says why it yielded');
+  assert.ok(records.some((r) => r.e === 'hold' && r.lockClass === 'render' && r.members === 1 && r.capMs === 600));
+}
+
+// Dead tickets and dead members: a dead timing ticket ahead of a render is removed; a live older copy's ticket (no
+// class) is exclusive; a dead member's slot is freed; a group whose members all died is reaped, also by a timing hold.
+async function checkDeadClassedCleanup() {
+  const queue = join(root, 'dead.queue'), lockAt = join(root, 'dead.lock');
+  mkdirSync(queue, { recursive: true });
+  const { lock, logs } = classLock('dead');
+  const ghost = deadPid();
+  writeFileSync(join(queue, `000000000000001-000000000000-${ghost}.t`), JSON.stringify({ format: 'cot-capture-ticket/1', pid: ghost,
+    refreshMs: 30_000, ready: true, lockClass: 'timing' }));
+  await lock.acquire(5_000, { lockClass: 'render' });
+  assert.ok(logs.some((m) => m.includes(`removed the dead ticket 000000000000001-000000000000-${ghost}.t`)), 'a dead timing ticket is removed');
+  lock.release();
+  // an older copy's ticket (a live bare pid) is exclusive: a render queued behind it waits, though the path is free
+  const older = `000000000000002-000000000000-${process.pid}.t`;
+  writeFileSync(join(queue, older), String(process.pid));
+  const order = [];
+  const behind = take(lock, 'render', order, { lockClass: 'render' });
+  await settle(1_300);
+  assert.equal(behind.held(), false, "a render does not pass an older copy's ticket");
+  unlinkSync(join(queue, older));
+  await behind.done;
+  // a member that died: its slot is removed when the next render joins, and the group goes on
+  const record = (pid) => `pid ${pid}\n${JSON.stringify({ format: 'cot-capture-lock-slot/1', pid, nonce: 'ghost', procStart: null,
+    ticket: null, startedAt: new Date().toISOString(), lockClass: 'render' })}\n`;
+  writeFileSync(join(lockAt, 'slot-1.holder'), record(ghost));
+  const { lock: joiner, logs: joinerLogs } = classLock('dead');
+  await joiner.acquire(5_000, { lockClass: 'render' });
+  assert.ok(joinerLogs.some((m) => m.includes(`removed the dead render slot slot-1.holder (pid ${ghost}`)), 'the dead slot is freed, and logged');
+  assert.deepEqual(slotsIn(lockAt), ['slot-0.holder', 'slot-1.holder'], 'and taken by the live render');
+  joiner.release();
+  lock.release();
+  assert.equal(existsSync(lockAt), false);
+  // a group whose every member died (its creator too): reaped by the next hold, a timing one here
+  plantOwner(lockAt, { pid: ghost, nonce: 'dead-group', lockClass: 'render', group: { max: 2 } });
+  writeFileSync(join(lockAt, 'slot-0.holder'), record(ghost));
+  await lock.acquire(5_000, { lockClass: 'timing' });
+  assert.ok(logs.some((m) => /reaped .*dead\.lock.*every member of its render group is dead/.test(m)), 'the dead group is reaped');
+  assert.equal(readToken(lockAt).lockClass, 'timing');
+  lock.release();
+  // a group with a live member is kept, even when its creator is dead (the owner token names the dead pid)
+  plantOwner(lockAt, { pid: ghost, nonce: 'live-group', lockClass: 'render', group: { max: 2 } });
+  writeFileSync(join(lockAt, 'slot-1.holder'), record(process.pid));
+  const timing = take(classLock('dead').lock, 'timing', order, { lockClass: 'timing' });
+  await settle(1_300);
+  assert.equal(timing.held(), false, 'a live member keeps its group though its creator died');
+  rmSync(lockAt, { recursive: true });
+  await timing.done;
+}
+
+// --lock-class on the command line overrides acquire's lockClass and the command's class; an older copy's hold (no
+// class) is exclusive to renders.
+async function checkClassOverrideAndOlderHold() {
+  const { lock } = classLock('override');
+  const lockAt = join(root, 'override.lock');
+  process.argv.push('--lock-class=render');
+  try {
+    await lock.acquire(5_000, { lockClass: 'timing' });
+  } finally {
+    process.argv.pop();
+  }
+  assert.equal(readToken(lockAt).lockClass, 'render');
+  const slot = JSON.parse(readFileSync(join(lockAt, 'slot-0.holder'), 'utf8').split('\n')[1]);
+  assert.equal(slot.classFrom, '--lock-class', 'the slot records where its class came from');
+  lock.release();
+  plantOwner(lockAt, { pid: process.pid, nonce: 'older-copy' }); // an older copy's hold: no class, no group
+  const order = [];
+  const render = take(classLock('override').lock, 'render', order, { lockClass: 'render' });
+  await settle(1_300);
+  assert.equal(render.held(), false, "a render never joins an older copy's hold");
+  rmSync(lockAt, { recursive: true });
+  await render.done;
+}
+
 try {
   const lock = createCaptureLock({ lockDir, queueDir });
   await lock.acquire(100);
@@ -510,6 +749,13 @@ try {
   await checkWarmingKeepsPlace();
   await checkPlaceKey();
   await checkJustInTimeWarm();
+  checkClassifyCommand();
+  await checkSharedRenders();
+  await checkTimingExclusion();
+  await checkNoStarvation();
+  await checkHoldCap();
+  await checkDeadClassedCleanup();
+  await checkClassOverrideAndOlderHold();
 
   // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
   const probeQueue = join(root, 'probe.queue');
@@ -545,7 +791,8 @@ try {
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf: () => 'node tools/media-production/cinema.mjs' }), MEDIA,
     'no perf ticket waiting: the lease keeps its place');
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, the hold log and waiting() passed');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, lock classes (shared renders, timing exclusion, no starvation, '
+    + 'the hold cap and its yield, dead classed tickets and members, the --lock-class override), the hold log and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

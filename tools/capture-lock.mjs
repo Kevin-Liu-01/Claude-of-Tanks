@@ -55,9 +55,10 @@ function readQueue(queueDir, ownTicket) {
 const TICKET_FORMAT = 'cot-capture-ticket/1';
 const DEFAULT_TICKET_SILENT_MS = 10 * 60 * 1000;
 
-function ticketText(refreshMs, ready, phase) {
+/** `terms`: the ticket's class and hold cap (see lock classes below); older copies read past the extra fields. */
+function ticketText(refreshMs, ready, phase, terms = {}) {
   return `${JSON.stringify({ format: TICKET_FORMAT, pid: process.pid, procStart: ownProcessStart(), refreshMs, ready, phase,
-    command: process.argv.slice(1).join(' ').slice(0, 200) })}\n`;
+    command: process.argv.slice(1).join(' ').slice(0, 200), ...terms })}\n`;
 }
 
 /** A ticket's owner record, or null for an older copy's bare pid (or an unreadable file). */
@@ -106,14 +107,92 @@ function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }
   return { live: true, ready: meta.ready !== false && !name.endsWith('.w') };
 }
 
-/** The first live ticket ready to hold, or `ownTicket` when none is ahead of it. Dead tickets ahead are removed (and
- *  logged); a warming ticket ahead keeps its place and is passed over. */
-function queueHead(queueDir, names, ownTicket, { staleMs, silentMs, log }) {
+// ---- lock classes and the hold cap (2026-10-27, item 262) -----------------------------------------------------------
+// The lock was fully exclusive: one UI gauntlet held it for its 60-minute budget with 11 tickets behind it while eight
+// tank lanes started icon, hero-card, anatomy-diagram and drawing chains. Two classes now:
+// - `timing` holds (perf probes, censuses, entry/leave timings, the Rust sorties, and every command not known to
+//   render) stay exclusive: nothing else holds while one runs, and one at the head waits for running renders to end;
+// - `render` holds (deterministic stills: genIcons, genHeroCards, genDrawings, the anatomy render sets, gauntlet
+//   captures, owner sheets) share the lock, RENDER_SLOTS at once, each browser under launchGuardedBrowser's caps.
+// FIFO between the classes: a render takes a slot only when every ready ticket ahead of it is a render and a slot is
+// free for it, so renders queued behind a timing ticket wait for it and a stream of renders cannot starve it. A ticket
+// or a hold of an older copy of this module (no class) is exclusive, as every hold was, and older copies keep their
+// rules: they never join a render group, and a group's directory looks held to them (see render groups below).
+// The class comes from `--lock-class=render|timing` on the command line, else acquire's `lockClass`, else
+// COT_SHOTS_LOCK_CLASS, else the command's script names (classifyCommand); the ticket, owner.json, the slot files and
+// the hold log record it, and `--status` shows it.
+// The hold cap (DEFAULT_HOLD_CAP_MS, 20 min): a holder past its cap gives the lock up at its next checkpoint() while
+// anyone waits and re-queues at the back. acquire's `holdCapMinutes` raises it for that ticket only, with a
+// `holdCapReason`; a holder that never calls checkpoint() keeps its hold and is logged once past the cap.
+const LOCK_CLASSES = ['timing', 'render'];
+const RENDER_SLOTS = 2;
+const DEFAULT_HOLD_CAP_MS = 20 * 60 * 1000;
+const TIMING_SCRIPTS = /perf|census|timing|sortie/i;
+const RENDER_SCRIPTS = /genIcons|genHeroCards|genDrawings|anatomy-render|gauntlet|sheet/i;
+
+/**
+ * The lock class a command line implies: { lockClass, from }. Only its script names count (a path after its last
+ * `tools/`, else its file name), so a lane directory such as web-nav-perf-240 does not make a render timing. A timing
+ * pattern wins over a render one, and a command matching neither is timing (exclusive, as every hold was).
+ */
+export function classifyCommand(command) {
+  const tokens = String(command ?? '').split(/\s+/).filter(Boolean);
+  const scripts = tokens.filter((token) => !token.startsWith('-') && /\.(?:[cm]?[jt]sx?|sh|py)$/i.test(token))
+    .map((token) => (/(?:^|\/)tools\//.test(token) ? token.replace(/^(?:.*\/)?tools\//, '') : token.replace(/^.*\//, '')));
+  const subject = (scripts.length ? scripts : tokens).join(' ');
+  if (TIMING_SCRIPTS.test(subject)) return { lockClass: 'timing', from: 'command' };
+  if (RENDER_SCRIPTS.test(subject)) return { lockClass: 'render', from: 'command' };
+  return { lockClass: 'timing', from: 'default' };
+}
+
+function lockClassArg(args) {
+  for (let index = 0; index < args.length; index++) {
+    if (args[index].startsWith('--lock-class=')) return args[index].slice('--lock-class='.length);
+    if (args[index] === '--lock-class') return args[index + 1] ?? '';
+  }
+  return null;
+}
+
+/** This acquisition's class: { lockClass, from }. `command` stands for the process's own command line (a wrapper names
+ *  the command it runs). The one variable it reads is read by name (see selftestLockTimeoutMs). */
+function resolveLockClass({ option = null, command = null, args = process.argv.slice(2), env = process.env.COT_SHOTS_LOCK_CLASS } = {}) {
+  for (const [value, from] of [[lockClassArg(args), '--lock-class'], [option, 'lockClass'], [env || null, 'COT_SHOTS_LOCK_CLASS']]) {
+    if (value === null || value === undefined) continue;
+    if (!LOCK_CLASSES.includes(value)) throw new TypeError(`${from}: not a lock class: ${JSON.stringify(value)} (timing or render)`);
+    return { lockClass: value, from };
+  }
+  return classifyCommand(command ?? process.argv.slice(1).join(' '));
+}
+
+/** The hold cap of one ticket: { capMs, capReason }. Raising it past DEFAULT_HOLD_CAP_MS needs a reason. */
+function resolveHoldCap(minutes, reason) {
+  const why = typeof reason === 'string' && reason.trim() ? reason.trim().slice(0, 200) : null;
+  if (minutes === null || minutes === undefined) return { capMs: DEFAULT_HOLD_CAP_MS, capReason: why };
+  const capMs = Number(minutes) * 60_000;
+  if (!(capMs > 0) || !Number.isFinite(capMs)) throw new TypeError(`holdCapMinutes: not a positive number: ${minutes}`);
+  if (capMs > DEFAULT_HOLD_CAP_MS && !why) {
+    throw new TypeError(`holdCapMinutes ${minutes} raises the ${DEFAULT_HOLD_CAP_MS / 60_000}-min hold cap: give a holdCapReason`);
+  }
+  return { capMs, capReason: why };
+}
+
+/** A ticket's class from its record: 'legacy' (exclusive) for an older copy's ticket. */
+const ticketClass = (meta) => (meta && LOCK_CLASSES.includes(meta.lockClass) ? meta.lockClass : 'legacy');
+
+/**
+ * The live tickets ready to hold ahead of `ownTicket`, in order, as { name, lockClass }, up to the first for which
+ * `enough(list)` holds. Dead tickets on the way are removed (and logged); a warming ticket keeps its place and is
+ * passed over.
+ */
+function readyAhead(queueDir, names, ownTicket, { staleMs, silentMs, log }, enough = () => true) {
+  const ahead = [];
   for (const name of names) {
-    if (name === ownTicket) return name;
+    if (name === ownTicket) break;
     const state = ticketLiveness(queueDir, name, { staleMs, silentMs });
     if (state.live) {
-      if (state.ready) return name;
+      if (!state.ready) continue;
+      ahead.push({ name, lockClass: ticketClass(readTicketMeta(queueDir, name)) });
+      if (enough(ahead)) break;
       continue;
     }
     try {
@@ -121,7 +200,7 @@ function queueHead(queueDir, names, ownTicket, { staleMs, silentMs, log }) {
       log(`[capture-lock] removed the dead ticket ${name}: ${state.why}`);
     } catch { /* raced */ }
   }
-  return ownTicket;
+  return ahead;
 }
 
 // ---- owned locks (2026-10-21, item 233) -------------------------------------------------------------------------------
@@ -214,6 +293,13 @@ function holdState(hold) {
   } catch (error) {
     return error.code === 'ENOENT' ? { state: 'lost', why: `${hold.lockDir} is gone` } : { state: 'unknown', why: `${hold.lockDir}: ${error.code}` };
   }
+  if (hold.slot) {
+    // a render group's member: the same directory, and its own slot file in it
+    if (!at.isDir || at.id !== hold.id) return { state: 'lost', why: `${hold.lockDir} is another directory now` };
+    const slot = readSlot(hold.lockDir, hold.slot);
+    if (slot.error) return slot.error === 'ENOENT' ? { state: 'lost', why: `its render slot ${hold.slot} is gone` } : { state: 'unknown', why: `${hold.slot}: ${slot.error}` };
+    return slot.record?.nonce === hold.nonce ? { state: 'ok' } : { state: 'lost', why: `${hold.slot} is another member's now` };
+  }
   const owner = at.isDir ? readOwner(hold.lockDir) : { state: 'missing' };
   if (owner.state === 'error') return { state: 'unknown', why: `${hold.lockDir}/${OWNER_FILE}: ${owner.code}` };
   const now = !at.isDir ? 'a file' : owner.state === 'ok' ? `held by ${describeToken(owner.token)}`
@@ -269,10 +355,11 @@ function renameAway(lockDir, id, tomb, log) {
 /**
  * Take `lockDir` with an owner token: mkdir (the atomic claim), then the token, written exclusively and read back
  * against the directory's dev:inode. Returns the hold, or null when the path is taken (or changed hands mid-claim).
- * `ticket` is the queue ticket the hold was served at (its stamp is recorded too). Throws only when the token cannot be
- * written into a directory this call created (a full disk); that directory is removed first.
+ * `ticket` is the queue ticket the hold was served at (its stamp is recorded too); `terms` its class and hold cap (an
+ * exclusive hold: timing unless named). Throws only when the token cannot be written into a directory this call created
+ * (a full disk); that directory is removed first.
  */
-export function claimOwnedLock(lockDir, { ticket = null } = {}) {
+export function claimOwnedLock(lockDir, { ticket = null, terms = {} } = {}) {
   try {
     mkdirSync(lockDir);
   } catch {
@@ -285,6 +372,7 @@ export function claimOwnedLock(lockDir, { ticket = null } = {}) {
     format: OWNER_FORMAT, pid: process.pid, nonce, id, ticket,
     stamp: typeof ticket === 'string' && /^\d{15}-/.test(ticket) ? Number(ticket.slice(0, 15)) : null,
     startedAt: new Date().toISOString(), procStart: ownProcessStart(), command: process.argv.slice(1).join(' ').slice(0, 300),
+    ...terms, lockClass: 'timing',
   };
   try {
     writeFileSync(join(lockDir, OWNER_FILE), `${JSON.stringify(token)}\n`, { flag: 'wx' });
@@ -315,6 +403,7 @@ export function refreshOwnedLock(hold, { log = stderrLog } = {}) {
   try {
     const now = new Date();
     utimesSync(hold.lockDir, now, now);
+    if (hold.slot) utimesSync(join(hold.lockDir, hold.slot), now, now);
     return true;
   } catch {
     return false;
@@ -325,6 +414,7 @@ export function refreshOwnedLock(hold, { log = stderrLog } = {}) {
  *  in one step and then cleared with whatever *.holder files were left in it. */
 export function releaseOwnedLock(hold, { log = stderrLog } = {}) {
   if (!hold) return false;
+  if (hold.slot) return leaveRenderGroup(hold, log);
   const check = holdState(hold);
   if (check.state !== 'ok') {
     log(check.state === 'lost'
@@ -336,6 +426,189 @@ export function releaseOwnedLock(hold, { log = stderrLog } = {}) {
   if (!renameAway(hold.lockDir, hold.id, tomb, log)) return false;
   clearTomb(tomb, log);
   return true;
+}
+
+// ---- render groups (2026-10-27, item 262) ----------------------------------------------------------------------------
+// Renders that share the lock hold one directory at the path: owner.json (the token of the member that created it, with
+// `group: { max }`) and one SLOT file per member, `slot-<k>.holder`, written exclusively. A slot's first line is
+// `pid <pid>`, the line older copies read as a live holder (liveHolderFiles), so they never reap the directory while a
+// member lives even after its creator has left; the directory is never empty, so a pre-owner-token copy cannot remove
+// it either. Members join and leave under a short mutex (MEMBERS_MUTEX_SUFFIX): a join counts the live slots and
+// removes dead ones (a dead pid, or a pid reused once the slot went a lockStaleMs without a refresh); the last member
+// out moves the directory away. A new group is made in that order (directory, the creator's slot, then owner.json),
+// so no reader sees a group token without a live member.
+const SLOT_FORMAT = 'cot-capture-lock-slot/1';
+const SLOT_FILE = /^slot-(\d+)\.holder$/;
+const MEMBERS_MUTEX_SUFFIX = '.members';
+const MEMBERS_MUTEX_STALE_MS = 10_000;
+/** A slot this young that cannot be parsed is a write in progress. */
+const SLOT_WRITE_GRACE_MS = 10_000;
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+const slotText = (record) => `pid ${record.pid}\n${JSON.stringify(record)}\n`;
+const isGroupToken = (token, id) => token.id === id && Number.isSafeInteger(token.group?.max) && token.group.max > 0;
+const groupMax = (token) => Math.min(token.group.max, 8);
+
+/** One slot file: { name, record, ageMs } (record null when unreadable), or { name, error } (its errno). */
+function readSlot(lockDir, name) {
+  let text, mtimeMs;
+  try {
+    text = readFileSync(join(lockDir, name), 'utf8');
+    mtimeMs = statSync(join(lockDir, name)).mtimeMs;
+  } catch (error) {
+    return { name, error: error.code ?? 'EIO' };
+  }
+  let record = null;
+  try {
+    const parsed = JSON.parse(text.slice(text.indexOf('\n') + 1));
+    if (parsed && parsed.format === SLOT_FORMAT && Number.isSafeInteger(parsed.pid) && typeof parsed.nonce === 'string') record = parsed;
+  } catch { /* torn, or being written */ }
+  return { name, record, ageMs: Date.now() - mtimeMs };
+}
+
+function readSlots(lockDir) {
+  let names;
+  try { names = readdirSync(lockDir); } catch { return []; }
+  return names.filter((name) => SLOT_FILE.test(name)).map((name) => readSlot(lockDir, name)).filter((slot) => !slot.error);
+}
+
+function slotLive(slot, lockStaleMs) {
+  if (!slot.record) return slot.ageMs < SLOT_WRITE_GRACE_MS;
+  return ownerLiveness(slot.record, slot.ageMs, lockStaleMs).alive;
+}
+
+/** Run `work` under the members mutex: { value }, or { busy: true } when the mutex stayed taken for `waitMs`. Its
+ *  critical sections are a few syscalls, so a mutex older than MEMBERS_MUTEX_STALE_MS was left by a dead process. */
+function withMembersMutex(lockDir, work, { waitMs = 1_000 } = {}) {
+  const mutex = `${lockDir}${MEMBERS_MUTEX_SUFFIX}`;
+  const until = Date.now() + waitMs;
+  for (;;) {
+    try {
+      mkdirSync(mutex);
+      break;
+    } catch (error) {
+      if (error.code !== 'EEXIST') return { busy: true };
+      try { if (Date.now() - statSync(mutex).mtimeMs > MEMBERS_MUTEX_STALE_MS) rmdirSync(mutex); } catch { /* raced */ }
+      if (Date.now() > until) return { busy: true };
+      sleepSync(5);
+    }
+  }
+  try {
+    return { value: work() };
+  } finally {
+    try { rmdirSync(mutex); } catch { /* raced */ }
+  }
+}
+
+/** Free render slots at `lockDir` as a waiter sees them (no mutex): all of them when the path is free, the group's
+ *  free ones when a render group holds it, none while an exclusive hold (an older copy's included) is there. */
+function freeRenderSlots(lockDir, lockStaleMs) {
+  let at;
+  try { at = pathId(lockDir); } catch (error) { return error.code === 'ENOENT' ? RENDER_SLOTS : 0; }
+  if (!at.isDir) return 0;
+  const owner = readOwner(lockDir);
+  if (owner.state !== 'ok' || !isGroupToken(owner.token, at.id)) return 0;
+  return Math.max(0, groupMax(owner.token) - readSlots(lockDir).filter((slot) => slotLive(slot, lockStaleMs)).length);
+}
+
+/**
+ * Take a render slot: start a group at a free path, or join the render group there while it has a free slot. Returns
+ * the hold ({ ..., slot, members }), or null (the path holds an exclusive lock, the group is full, or the mutex is busy).
+ */
+function claimRenderSlot(lockDir, { ticket = null, terms = {}, lockStaleMs = DEFAULT_LOCK_STALE_MS, log = stderrLog, logFile = null } = {}) {
+  const outcome = withMembersMutex(lockDir, () => {
+    const nonce = randomBytes(12).toString('hex');
+    const startedAt = new Date().toISOString();
+    const command = process.argv.slice(1).join(' ').slice(0, 300);
+    const record = { format: SLOT_FORMAT, pid: process.pid, procStart: ownProcessStart(), nonce, ticket, startedAt, command,
+      ...terms, lockClass: 'render' };
+    const write = (name) => {
+      try {
+        writeFileSync(join(lockDir, name), slotText(record), { flag: 'wx' });
+        return true;
+      } catch (error) {
+        if (['ENOENT', 'EEXIST', 'ENOTDIR'].includes(error.code)) return false;
+        throw new Error(`cot-shots lock: cannot write the render slot ${name} in ${lockDir} (${error.code ?? error.message})`);
+      }
+    };
+    let at;
+    try {
+      at = pathId(lockDir);
+    } catch (error) {
+      if (error.code !== 'ENOENT') return null;
+      try { mkdirSync(lockDir); } catch { return null; }
+      let id;
+      try { id = pathId(lockDir).id; } catch { return null; }
+      const slot = 'slot-0.holder';
+      const undo = () => { try { unlinkSync(join(lockDir, slot)); } catch { /* gone */ } try { if (sameDir(lockDir, id)) rmdirSync(lockDir); } catch { /* not empty */ } };
+      try {
+        if (!write(slot)) return null;
+        const token = { format: OWNER_FORMAT, pid: process.pid, nonce: randomBytes(12).toString('hex'), id, ticket,
+          stamp: typeof ticket === 'string' && /^\d{15}-/.test(ticket) ? Number(ticket.slice(0, 15)) : null, startedAt,
+          procStart: record.procStart, command, lockClass: 'render', group: { max: RENDER_SLOTS } };
+        writeFileSync(join(lockDir, OWNER_FILE), `${JSON.stringify(token)}\n`, { flag: 'wx' });
+      } catch (error) {
+        undo();
+        if (['ENOENT', 'EEXIST', 'ENOTDIR'].includes(error.code)) return null;
+        throw error;
+      }
+      const hold = { lockDir, id, nonce, slot, pid: process.pid, ticket, token: record, lockStaleMs, lostNoted: false, members: 1 };
+      if (holdState(hold).state === 'ok') return hold;
+      undo();
+      return null;
+    }
+    if (!at.isDir) return null;
+    const owner = readOwner(lockDir);
+    if (owner.state !== 'ok' || !isGroupToken(owner.token, at.id)) return null;
+    const taken = new Set();
+    let live = 0;
+    for (const slot of readSlots(lockDir)) {
+      taken.add(slot.name);
+      if (slotLive(slot, lockStaleMs)) { live += 1; continue; }
+      try { unlinkSync(join(lockDir, slot.name)); } catch { continue; }
+      taken.delete(slot.name);
+      const who = slot.record ? `pid ${slot.record.pid}, ticket ${slot.record.ticket ?? 'none'}` : 'unreadable';
+      log(`[capture-lock] removed the dead render slot ${slot.name} (${who}) from ${lockDir}`);
+      appendHoldLog(logFile, { e: 'reap', pid: slot.record?.pid ?? null, ticket: slot.record?.ticket ?? null, lockClass: 'render',
+        why: 'a dead render member', heldMs: slot.record ? Date.now() - Date.parse(slot.record.startedAt) || null : null });
+    }
+    const max = groupMax(owner.token);
+    if (live >= max) return null;
+    const slot = Array.from({ length: max }, (_, index) => `slot-${index}.holder`).find((name) => !taken.has(name));
+    if (!slot || !write(slot)) return null;
+    const hold = { lockDir, id: at.id, nonce, slot, pid: process.pid, ticket, token: record, lockStaleMs, lostNoted: false, members: live + 1 };
+    if (holdState(hold).state === 'ok') return hold;
+    // the directory changed hands between the check and the write (an older copy reaped it): take the slot back out
+    const stray = readSlot(lockDir, slot);
+    if (stray.record?.nonce === nonce) { try { unlinkSync(join(lockDir, slot)); } catch { /* gone */ } }
+    return null;
+  });
+  return outcome.busy ? null : outcome.value;
+}
+
+/** Leave a render group: drop this member's slot and, when no live member is left, move the directory away. */
+function leaveRenderGroup(hold, log) {
+  const refuse = (check) => {
+    log(check.state === 'lost'
+      ? `[capture-lock] release refused (${holdName(hold)}, ${hold.slot}): ${check.why}. This member no longer holds the lock, so it is left untouched.`
+      : `[capture-lock] release could not check its render slot (${holdName(hold)}: ${check.why}); it is reaped once this process exits.`);
+    return false;
+  };
+  const outcome = withMembersMutex(hold.lockDir, () => {
+    const check = holdState(hold);
+    if (check.state !== 'ok') return refuse(check);
+    try { unlinkSync(join(hold.lockDir, hold.slot)); } catch { return false; }
+    if (readSlots(hold.lockDir).some((slot) => slotLive(slot, hold.lockStaleMs ?? DEFAULT_LOCK_STALE_MS))) return true;
+    const tomb = `${hold.lockDir}.released-${hold.pid}-${hold.nonce}`;
+    if (renameAway(hold.lockDir, hold.id, tomb, log)) clearTomb(tomb, log);
+    return true;
+  }, { waitMs: 5_000 });
+  if (!outcome.busy) return outcome.value;
+  // The mutex stayed taken (a stuck peer): drop this member's slot only; a group left without members is reaped by the
+  // next waiter.
+  const check = holdState(hold);
+  if (check.state !== 'ok') return refuse(check);
+  try { unlinkSync(join(hold.lockDir, hold.slot)); return true; } catch { return false; }
 }
 
 /** Holder files (`*.holder`) in `dir` whose text names a live pid other than `except` (a timing block still running). */
@@ -383,6 +656,14 @@ function inspectLock(lockDir, { lockStaleMs, orphanStaleMs }) {
   if (!at.isDir) return { verdict: ageMs > orphanStaleMs ? 'orphan' : 'keep', id: at.id, file: true, ageMs };
   const owner = readOwner(lockDir);
   if (owner.state === 'error') return { verdict: 'keep', id: at.id, ageMs };
+  if (owner.state === 'ok' && isGroupToken(owner.token, at.id)) {
+    // a render group lives while any member does, whoever created it
+    const slots = readSlots(lockDir);
+    const members = slots.filter((slot) => slotLive(slot, lockStaleMs)).length;
+    if (members) return { verdict: 'live', id: at.id, token: owner.token, ageMs, group: true, members };
+    return { verdict: 'dead', id: at.id, token: owner.token, ageMs, group: true,
+      why: slots.length ? 'every member of its render group is dead' : 'its render group has no members left' };
+  }
   if (owner.state === 'ok' && owner.token.id === at.id) {
     const liveness = ownerLiveness(owner.token, ageMs, lockStaleMs);
     if (liveness.alive) return { verdict: 'live', id: at.id, token: owner.token, ageMs };
@@ -438,7 +719,10 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
   if (first.verdict === 'absent') return true;
   if (first.verdict !== 'dead' && first.verdict !== 'orphan') {
     if (note && first.ageMs > lockStaleMs) {
-      if (first.verdict === 'live') {
+      if (first.verdict === 'live' && first.group) {
+        noteOnce(first.token.nonce, `[capture-lock] ${lockDir} is held by a render group of ${first.members}, with no refresh for ` +
+          `${Math.round(first.ageMs / 60_000)} min: waiting (a group with a live member is never reaped)`, log);
+      } else if (first.verdict === 'live') {
         noteOnce(first.token.nonce, `[capture-lock] ${lockDir} is held by live ${describeToken(first.token)}, with no refresh for ` +
           `${Math.round(first.ageMs / 60_000)} min: waiting (a live owner's lock is never reaped; stop that process to free it)`, log);
       } else if (first.why) {
@@ -447,7 +731,7 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
     }
     return false;
   }
-  const result = withReapMutex(lockDir, () => {
+  const reap = () => {
     const again = inspectLock(lockDir, options);
     if (again.verdict === 'absent') return true;
     if (again.verdict !== first.verdict || again.id !== first.id) return false;
@@ -468,11 +752,16 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
       : `[capture-lock] reaped ${lockDir}: an unreadable owner token and no refresh for ${Math.round(again.ageMs / 60_000)} min`);
     if (again.verdict === 'dead') {
       appendHoldLog(logFile, { e: 'reap', pid: again.token.pid, ticket: again.token.ticket ?? null, why: again.why,
-        heldMs: Date.now() - Date.parse(again.token.startedAt ?? '') || null });
+        heldMs: Date.now() - Date.parse(again.token.startedAt ?? '') || null, ...(again.group ? { lockClass: 'render' } : {}) });
     }
     clearTomb(tomb, log);
     return true;
-  });
+  };
+  // a render group is reaped under its members mutex too, so no member joins between the check and the move
+  const result = withReapMutex(lockDir, first.group ? () => {
+    const inner = withMembersMutex(lockDir, reap);
+    return inner.busy ? false : inner.value;
+  } : reap);
   return result === true;
 }
 
@@ -624,6 +913,8 @@ export function createCaptureLock({
 } = {}) {
   let hold = null;
   let lastTicket = null;
+  // the hold's terms (its class, cap and the acquire arguments a checkpoint re-queues with) and when it began
+  let holdTerms = null, heldSince = 0;
   const queueRules = { staleMs: ticketStaleMs, silentMs: ticketSilentMs, log };
 
   /**
@@ -636,9 +927,18 @@ export function createCaptureLock({
    * keeps its place but is passed over; acquire then resolves with its result once this ticket heads the queue. A
    * `prepare` that throws leaves the queue and rethrows.
    * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
+   * `lockClass` ('timing' or 'render'), `command` (the command a wrapper runs, to classify it), `holdCapMinutes` and
+   * `holdCapReason` (2026-10-27): see lock classes and the hold cap above.
    */
-  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null,
+  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null, lockClass = null, command = null,
+    holdCapMinutes = null, holdCapReason = null,
     warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
+    const classed = resolveLockClass({ option: lockClass, command });
+    const cap = resolveHoldCap(holdCapMinutes, holdCapReason);
+    const terms = { lockClass: classed.lockClass, classFrom: classed.from, capMs: cap.capMs, ...(cap.capReason ? { capReason: cap.capReason } : {}) };
+    const render = terms.lockClass === 'render';
+    // a render needs to know whether every ready ticket ahead is a render, and how many there are up to its slots
+    const enough = render ? (ahead) => ahead.at(-1).lockClass !== 'render' || ahead.length >= RENDER_SLOTS : () => true;
     // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
     // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
     // died at its own 45-minute wait while the runner would have waited three hours).
@@ -647,7 +947,7 @@ export function createCaptureLock({
     mkdirSync(queueDir, { recursive: true });
     let ready = typeof prepare !== 'function';
     let preparing = null;
-    const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued');
+    const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued', terms);
     if (!ticket && place) ticket = ticketAt(placeStamp(queueDir, place));
     // not ready yet: wait as `.w`, out of older copies' sight (see ticket identity above)
     const suffix = ready ? '.t' : '.w';
@@ -689,21 +989,28 @@ export function createCaptureLock({
       for (;;) {
         if (prepareError) throw prepareError;
         const names = readQueue(queueDir, ownTicket);
-        const head = queueHead(queueDir, names, ownTicket, queueRules);
+        const ahead = readyAhead(queueDir, names, ownTicket, queueRules, enough);
         if (!ready && !preparing) {
-          const ahead = names.slice(0, Math.max(0, names.indexOf(ownTicket)))
+          const live = names.slice(0, Math.max(0, names.indexOf(ownTicket)))
             .filter((name) => ticketLiveness(queueDir, name, queueRules).live).length;
-          if (ahead <= warmAhead) startPrepare();
+          if (live <= warmAhead) startPrepare();
         }
-        const atHead = head === ownTicket;
-        if (atHead && ready) {
-          const claimed = claimOwnedLock(lockDir, { ticket: ownTicket });
+        const atHead = ahead.length === 0;
+        // timing (and every exclusive hold): the head of the queue, at a free path. A render: only renders ahead of it,
+        // fewer than the slots free for them, so it never passes a timing ticket nor a render queued before it.
+        const turn = ready && (render ? ahead.every((other) => other.lockClass === 'render') && ahead.length < freeRenderSlots(lockDir, lockStaleMs) : atHead);
+        if (turn) {
+          const claimed = render ? claimRenderSlot(lockDir, { ticket: ownTicket, terms, lockStaleMs, log, logFile })
+            : claimOwnedLock(lockDir, { ticket: ownTicket, terms });
           if (claimed) {
             hold = claimed;
+            heldSince = Date.now();
+            holdTerms = { ...terms, timeoutMs, command, holdCapMinutes, holdCapReason };
             heldLocks.add(api);
             if (place) { try { unlinkSync(placePath(queueDir, place)); } catch { /* gone */ } }
             appendHoldLog(logFile, { e: 'hold', pid: process.pid, ticket: ownTicket, waitedMs: Date.now() - startedAt, warmMs,
-              command: process.argv.slice(1).join(' ').slice(0, 300) });
+              lockClass: terms.lockClass, ...(render ? { members: claimed.members } : {}), capMs: terms.capMs,
+              ...(terms.capReason ? { capReason: terms.capReason } : {}), command: process.argv.slice(1).join(' ').slice(0, 300) });
             return prepared;
           }
         }
@@ -711,7 +1018,7 @@ export function createCaptureLock({
         // remove a directory that holds an owner token, and must not wait behind a dead one. Only the head claims.
         if (reapDeadLock(lockDir, { lockStaleMs, orphanStaleMs, log, logFile, note: atHead && ready }) && atHead && ready) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, atHead && ready ? 300 : 1000));
+        await new Promise((resolve) => setTimeout(resolve, turn || (atHead && ready) ? 300 : 1000));
       }
     } catch (error) {
       // A wait that ends without a hold still lets `prepare` finish, and hands its result to the caller to close.
@@ -729,7 +1036,39 @@ export function createCaptureLock({
   }
 
   function refresh() {
-    return refreshOwnedLock(hold, { log });
+    const refreshed = refreshOwnedLock(hold, { log });
+    if (refreshed && Date.now() - heldSince > holdTerms.capMs) {
+      noteOnce(`${hold.nonce}:cap`, `[capture-lock] this ${holdTerms.lockClass} hold (${holdName(hold)}) is past its ${holdTerms.capMs / 60_000}-min cap; `
+        + 'it gives the lock up only at a checkpoint(): call one between batches', log);
+    }
+    return refreshed;
+  }
+
+  /**
+   * Call between batches (2026-10-27). Past its hold cap while anyone waits, the hold is given up and this instance
+   * re-queues at the back with the same class and cap; it resolves once it holds the lock again. `beforeYield()` runs
+   * while the lock is still held (freeze the pages: nothing draws after the release), `afterResume()` once it is held
+   * again. Before the cap, or with nobody waiting, it returns at once. Resolves { yielded, heldMs, capMs, waitedMs }.
+   */
+  async function checkpoint({ beforeYield = null, afterResume = null, timeoutMs = null } = {}) {
+    if (!hold) throw new Error('checkpoint(): this lock holds nothing (call it between batches, while the lock is held)');
+    const heldMs = Date.now() - heldSince, terms = holdTerms;
+    if (heldMs < terms.capMs) return { yielded: false, heldMs, capMs: terms.capMs, waitedMs: 0 };
+    const waiters = waiting();
+    if (!waiters) {
+      noteOnce(`${hold.nonce}:cap-idle`, `[capture-lock] this ${terms.lockClass} hold is past its ${terms.capMs / 60_000}-min cap with nobody `
+        + 'waiting: it keeps the lock', log);
+      return { yielded: false, heldMs, capMs: terms.capMs, waitedMs: 0 };
+    }
+    log(`[capture-lock] this ${terms.lockClass} hold is past its ${terms.capMs / 60_000}-min cap (${(heldMs / 60_000).toFixed(1)} min) with `
+      + `${waiters} waiting: yielding at its checkpoint and re-queueing`);
+    if (beforeYield) await beforeYield();
+    release(`hold cap: yielded after ${(heldMs / 60_000).toFixed(1)} min with ${waiters} waiting`);
+    const queuedAt = Date.now();
+    await acquire(timeoutMs ?? terms.timeoutMs, { lockClass: terms.lockClass, command: terms.command,
+      holdCapMinutes: terms.holdCapMinutes, holdCapReason: terms.holdCapReason });
+    if (afterResume) await afterResume();
+    return { yielded: true, heldMs, capMs: terms.capMs, waitedMs: Date.now() - queuedAt };
   }
 
   /** `reason` (optional) is recorded on the hold-log line (the browser guard's release says why). */
@@ -739,7 +1078,7 @@ export function createCaptureLock({
     hold = null;
     heldLocks.delete(api);
     const released = releaseOwnedLock(releasing, { log });
-    appendHoldLog(logFile, { e: 'release', pid: process.pid, ticket: releasing.ticket, released,
+    appendHoldLog(logFile, { e: 'release', pid: process.pid, ticket: releasing.ticket, released, lockClass: holdTerms?.lockClass ?? null,
       heldMs: Date.now() - Date.parse(releasing.token.startedAt), ...(typeof reason === 'string' && reason ? { reason } : {}) });
     return released;
   }
@@ -765,8 +1104,8 @@ export function createCaptureLock({
     }).length;
   }
 
-  const api = { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; },
-    get heldTicket() { return hold?.ticket ?? null; } };
+  const api = { acquire, refresh, release, checkpoint, waiting, get lastTicket() { return lastTicket; },
+    get heldTicket() { return hold?.ticket ?? null; }, get heldClass() { return hold ? holdTerms.lockClass : null; } };
   return api;
 }
 
@@ -814,9 +1153,24 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   const hours = Number(process.argv.find((arg) => arg.startsWith('--hours='))?.slice(8)) || 6;
   const minutes = (ms) => `${(ms / 60_000).toFixed(1)} min`;
   const owner = readOwner(DEFAULT_LOCK_DIR);
-  if (owner.state === 'ok') {
+  const capOf = (record) => (Number(record.capMs) > 0 ? `, cap ${minutes(record.capMs)}${record.capReason ? ` (${record.capReason})` : ''}` : '');
+  let groupId = null;
+  try { groupId = pathId(DEFAULT_LOCK_DIR).id; } catch { /* free */ }
+  if (owner.state === 'ok' && isGroupToken(owner.token, groupId)) {
+    const slots = readSlots(DEFAULT_LOCK_DIR);
+    const live = slots.filter((slot) => slotLive(slot, DEFAULT_LOCK_STALE_MS));
+    console.log(`held by a render group: ${live.length} of ${groupMax(owner.token)} slots${slots.length > live.length ? ` (${slots.length - live.length} dead)` : ''}`);
+    for (const slot of slots) {
+      const record = slot.record ?? {};
+      const heldMs = Date.now() - Date.parse(record.startedAt ?? '');
+      console.log(`  ${slot.name}  render  held ${Number.isFinite(heldMs) ? minutes(heldMs) : '?'} by pid ${record.pid ?? '?'}${live.includes(slot) ? '' : ' (dead)'}`
+        + `${capOf(record)}: ${(record.command ?? '?').slice(0, 110)}`);
+    }
+  } else if (owner.state === 'ok') {
     const heldMs = Date.now() - Date.parse(owner.token.startedAt);
-    console.log(`held ${minutes(heldMs)} by pid ${owner.token.pid}${pidAlive(owner.token.pid) ? '' : ' (dead)'}: ${owner.token.command ?? '?'}`);
+    const lockClass = LOCK_CLASSES.includes(owner.token.lockClass) ? owner.token.lockClass : 'exclusive (an older copy: no class)';
+    console.log(`held ${minutes(heldMs)} by pid ${owner.token.pid}${pidAlive(owner.token.pid) ? '' : ' (dead)'}, ${lockClass}${capOf(owner.token)}: `
+      + `${owner.token.command ?? '?'}`);
   } else {
     let present = false;
     try { lstatSync(DEFAULT_LOCK_DIR); present = true; } catch { /* free */ }
@@ -831,7 +1185,8 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   for (const state of [...ready, ...warming].slice(0, 12)) {
     const age = Date.now() - Number(state.name.slice(0, 15));
     const phase = state.ready ? 'ready' : state.meta?.phase ?? 'warming';
-    console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
+    console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${ticketClass(state.meta).padEnd(6)}  `
+      + `${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
   }
   let lines = [];
   for (const file of [`${DEFAULT_LOG_FILE}.1`, DEFAULT_LOG_FILE]) {

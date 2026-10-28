@@ -139,12 +139,45 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   game and cn between the two release builds, entry -23 B); garage-rail-end-loop 73b1dd157c and interaction-picker-254
   //   4c781561fc (the boot card's 1 px fixes, inline) small; integ's --ring-hot token.
   // Over 259's release build: game +1,200 B (entry +59 B), cn +1,261 B, Gallery +17 B, home +32 B, docs +124 B, 404 +15 B.
-  game: { brotliBytes: 1095494, requests: 128, entryBrotliBytes: 243525 },
-  cn: { brotliBytes: 1138356, requests: 129, entryBrotliBytes: 243525 },
-  gallery: { brotliBytes: 676879, requests: 75 },
-  home: { brotliBytes: 26694, requests: 8 },
-  docs: { brotliBytes: 33545, requests: 12 },
-  notFound: { brotliBytes: 16821, requests: 7 },
+  // 2026-10-27 (integrator 261, re-pinned at the release build of 63279ead2f; requests unchanged on every page):
+  // - the coordinator's named shares: "one surface stack, tank portraits in every list, kit pickers everywhere"
+  //   (interaction-picker-254 89f90bfe88); "consumable icons on the equipment badge" and "badge hues and paper hues"
+  //   (badge-hues-261 f46775977d); "Proving Ground plate, Deploy r45-r52, Manual r36-r40, Random's shuffle"
+  //   (brand-ui-primitives-250 569e626421); "Owner's T-90 names" (t90-names-261); "boot-261: stepped Garage boot" (+698 B
+  //   game); "battle-spikes: merged near-hull shadow casters and fracture caster profiles" (+941 B game); "iPad Garage:
+  //   docked tablet layout, tablet.css, touch camera" (ipad-ui-262 0757457b36).
+  // - the heads' own: brand-ui-garage-redesign-245 843dffd291, brand-ui-battle-242 f37467dc4c (a name line on every plate),
+  //   the room guard and leave (integ groups engine/programReceipt.ts into programWarm's chunk: no boot request), the
+  //   world slices and camera guard, the PL-01 gun fits, aps-flash-261 (lazy) and tier-fairness-261.
+  // Over 260's release build: game +8,456 B (entry +2,692 B), cn +8,464 B, Gallery +4,864 B, home +759 B, docs +803 B, 404 +769 B.
+  // 2026-10-28 (integrator 262, re-pinned at the release build of 42d8b603fa; requests unchanged on every page: the one new
+  // game and cn boot request, app/lazyImportRetry.ts split out by loading-states-262's garageReturnFailure.ts as its third
+  // importer, is taken back by that lane's own 69a7e3d79c, cherry-picked). By chunk, game brotli over 261's release build:
+  // - main.css +977 B: "iPad tablet sizes" (ipad-ui-262 3c8adf97cb, tablet.css and techTree.css, about 60 %), "Garage
+  //   round D1-D18 from the iPad critics" (brand-ui-garage-redesign-245 1cca4edbdf, garage.css and showroom.css, about a
+  //   third), the lead's spanning menus and nation chips (interaction-picker-254 9d098a73e0, pickers.css), loading-states'
+  //   picture fades.
+  // - main.js (the entry) +1,184 B: "solo Worker default for quick battles" (solo-worker-warm-pacing-262 befcdbed54,
+  //   main.ts), the Garage round's garage.ts (+0.7 KB raw), mp-room-leave-262's cooperative optimizeGarageDressing,
+  //   loading-states' self-retrying battle entry.
+  // - i18n.js +335 B (every page): docs-home-262's Every tank topic, the kit's reveal primitive (loading-states-262 and
+  //   docs-home-262), the lead's surface stack; i18nCatalogEnUS +173 B: the heads' new strings; kitPicker +151 B: the
+  //   lead's spanning menus; testDriveLink +111 B: the kit's chips and segmented control (the lead, gallery-studio);
+  //   materials +98 B: the solo Worker's material keys; contextInfo +50 B (gallery-studio, lazy preload table);
+  //   battleLoad +13 B (loading-states' load card ARIA); botCallsigns +20 B (the sortie's callsigns from the page).
+  // - Gallery: gallery.js -488 B (the layers on the kit's segmented control) against the shared chunks above (+665 B).
+  // - home, docs, 404: i18n.js +335 B and publicNav +70 B on each (docs-home-262's quiet catches); home.css +259 B and
+  //   publicPages +180 B ("/home versus films" and the public loading states, media-home-versus-262 d390abce47 with
+  //   docs-home-262); docs.css +1,496 B and docs.js +131 B ("Every tank" fleet grid and canvas-ui's print stylesheet,
+  //   docs-print-261 f10680b6d0); notFound.js +47 B and notFound.css +26 B.
+  // Over 261's release build: game +2,944 B (entry +1,184 B), cn +3,136 B, Gallery +150 B, home +807 B, docs +2,225 B,
+  // 404 +477 B.
+  game: { brotliBytes: 1106894, requests: 128, entryBrotliBytes: 247401 },
+  cn: { brotliBytes: 1149956, requests: 129, entryBrotliBytes: 247401 },
+  gallery: { brotliBytes: 681893, requests: 75 },
+  home: { brotliBytes: 28260, requests: 8 },
+  docs: { brotliBytes: 36573, requests: 12 },
+  notFound: { brotliBytes: 18067, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };

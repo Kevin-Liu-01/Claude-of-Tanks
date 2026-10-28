@@ -19,14 +19,14 @@ try {
  await page.locator('.damage-workbench').scrollIntoViewIfNeeded();
  const before=await page.evaluate(()=>window.__TANK_GALLERY.getState());
  const era=before.damage.parts.find(p=>p.kind==='era');assert.ok(era,'T-90M exposes real ERA bindings');
- await page.locator(`[data-damage-target="${era.key}"]`).click();
+ await page.locator(`.damage-targets [data-id="${era.key}"]`).click();
  await page.locator('[data-damage-action=detonate]').click();
  assert.ok((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.removed.includes(era.key.slice(6)));
  await page.screenshot({path:resolve(out,'desktop-era.png')});
  await page.locator('[data-damage-action=repair]').click();
  assert.equal((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.removed.length,0);
- await page.locator('[data-damage-action="kind:module"]').click();
- await page.locator('[data-damage-target="module:trackL"]').click();
+ await page.locator('.damage-kinds [data-tab="module"]').click();
+ await page.locator('.damage-targets [data-id="module:trackL"]').click();
  await page.locator('[data-damage-action=disable]').click();
  await page.locator('[data-damage-action=hitboxes]').click();
  assert.equal((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.parts.find(p=>p.key==='module:trackL').state,'red');
@@ -43,8 +43,8 @@ try {
   const layout=await page.locator('.damage-workbench').evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,buttons:[...el.querySelectorAll('button')].map(b=>({height:b.getBoundingClientRect().height,width:b.getBoundingClientRect().width}))}));
   assert.ok(layout.scroll<=layout.client+1,`${name}: no horizontal overflow`);
   assert.ok(layout.buttons.every(b=>b.height>=43&&b.width>=43),`${name}: touch targets`);
-  await page.locator('[data-damage-action="kind:crew"]').click();
-  await page.locator('.damage-targets button').first().click();
+  await page.locator('.damage-kinds [data-tab="crew"]').click();
+  await page.locator('.damage-targets .cot-c-picker__opt').first().click();
   await page.locator('[data-damage-action=disable]').click();
   assert.ok((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.parts.some(p=>p.kind==='crew'&&p.state==='red'));
   await page.locator('[data-damage-action=reset]').click();
@@ -53,8 +53,8 @@ try {
  }
  await page.evaluate(()=>window.__TANK_GALLERY.loadTank('kf41_lynx'));
  assert.ok((await page.evaluate(()=>window.__TANK_GALLERY.getState())).damage.parts.every(p=>p.state==='ok'),'switching tanks clears damage');
- await page.locator('[data-damage-action="kind:module"]').click();
- const rack=page.locator('[data-damage-target="module:missileRack"]');
+ await page.locator('.damage-kinds [data-tab="module"]').click();
+ const rack=page.locator('.damage-targets [data-id="module:missileRack"]');
  if(await rack.count()){await rack.click();await page.locator('[data-damage-action=disable]').click();}
  assert.deepEqual(errors,[],'no browser runtime errors');
  await writeFile(resolve(out,'results.json'),JSON.stringify(receipts,null,2));

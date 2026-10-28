@@ -37,6 +37,7 @@ import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import type { PickerItem } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
@@ -587,7 +588,8 @@ const HINT_STAY_MS = 30000;
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has,
   // once the boot is idle: they act only on a hover, so they stay off the game's entry
-  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours())
+    .catch(() => { /* hover-only behaviours: the page works without them */ });
   if (typeof requestIdleCallback === 'function') requestIdleCallback(behaviours, { timeout: 4000 });
   else setTimeout(behaviours, 1000);
   ensureFonts();
@@ -1274,7 +1276,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
     // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); });
+    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); })
+      .catch(() => { /* the crew menu keeps its items without their flags */ });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
@@ -1857,9 +1860,20 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     root.classList.toggle('paused', open && isGamePaused());
   }
 
+  // a transient surface (components/surfaceStack.ts), modal: opening it closes whatever the page has open (a picker, a menu),
+  // its own menus stand on it, and Escape is the stack's, which closes the top one; a key being bound or a conflict to
+  // clear keeps its Escape (onPanelKey)
+  const surface: TransientSurface = {
+    id: 'settings',
+    element: () => root.querySelector('.cot-set-panel'),
+    close: () => api.close(),
+    modal: true,
+    keepsEscape: () => !!capture || !!conflict,
+  };
   function openPanel() {
     if (open) return;
     open = true;
+    openSurface(surface);
     hideResumeVeil(); // the panel supersedes the click-to-resume veil
     relockOnClose = isBattleActive(); // resume grabs the pointer again
     input.setEnabled(false); // menu owns the keyboard; also clears held keys
@@ -1899,6 +1913,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     open = false;
+    closeSurface(surface);
     root.classList.remove('open');
     root.classList.remove('paused'); // PAUSE: tag never outlives the panel
     window.removeEventListener('keydown', onPanelKey, true);

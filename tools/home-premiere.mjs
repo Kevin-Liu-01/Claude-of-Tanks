@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
+import { heroLqip } from './hero-lqip.mjs';
 import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
@@ -86,11 +87,17 @@ function syncAltCatalogs() {
     for (const clip of missing) catalog[altKeyOf(clip)] = clip.title[lang];
   }
 }
-/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung. */
+/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung. A
+ *  rung leads with its AV1 file only beside its VP9 twin (av1 then vp9, mobileAv1 then mobileVp9: brand-ui SPEC 8.3, held
+ *  by tools/media-fallback.selftest.mjs), its type naming its codec so the player can ask MediaCapabilities; the H.264
+ *  file every browser plays closes each rung. */
 function ladder(clip) {
-  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.film, clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
+  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.vp9 && clip.av1, clip.vp9, clip.film,
+    clip.mobileVp9 && clip.mobileAv1 && { ...clip.mobileAv1, rung: 'phone' }, clip.mobileVp9 && { ...clip.mobileVp9, rung: 'phone' },
+    clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
   for (const file of files) if (!existsSync(join(ROOT, 'public', file.path))) throw new Error(`home-premiere: ${file.path} is not in public/`);
-  return files.map((file) => `<source data-src="${file.path}" type="${file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm')}"`
+  // an AV1 file's type names its codec in quotes (video/webm; codecs="av01..."): escaped, so the attribute holds whole
+  return files.map((file) => `<source data-src="${file.path}" type="${esc(file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm'))}"`
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
 }
 const seconds = (clip) => (clip.film ?? clip.wide ?? clip.mobile)?.seconds ?? 0;
@@ -149,6 +156,8 @@ function heroBlock() {
   const shots = [first, ...moving.filter((clip) => clip !== first)].map((clip) => shotCaption(clip, clip === first)).join('');
   const trailer = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.webm');
   return `<header class="hero" aria-labelledby="hero-title" data-hero-reel>`
+    // its inline preview (tools/hero-lqip.mjs) paints at once under it; the still fades in over it once decoded
+    + `<div class="hero__lqip" aria-hidden="true" style="--hero-lqip:url(&quot;${heroLqip(heroDefault())}&quot;)"></div>`
     + `<img class="hero__still" src="${heroDefault()}" alt="${esc(lead.en)}" data-i18n-alt="${lead.key}" width="1920" height="${Math.round(1920 * size.height / size.width)}"`
     + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}">`
     + `<div class="hero__reel">${clips}</div>`
@@ -164,7 +173,9 @@ function heroBlock() {
     // the shot on screen and the reel's pause: the captions are the picture's (the poster's alt and the clips' labels name
     // the shots for assistive tech)
     + `<div class="hero__reelbar"><p class="hero__shots" aria-hidden="true">${shots}</p>`
-    + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
+    // the kit's square icon button from the first paint: its slot (home.css) is the size the reel shows it at, so the
+    // caption beside it never moves when it appears
+    + `<button class="hero__toggle ${btn('icon', '')}" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
     + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div></div>`
     + `<ul class="hero__stats" data-datum="fleet-counts">`
@@ -186,6 +197,10 @@ function heroBlock() {
     + filmButton('mute', 'sound', 'publicPages.film.mute', 'soundOff')
     + filmButton('full', 'fullscreen', 'publicPages.film.fullscreen')
     + `</div>`
+    // a film that cannot load (the link dropped) says so over its poster, with the kit's Retry (homePage.ts mountFilm)
+    + `<div class="cot-c-notice hero__film-failed" data-severity="error" role="alert" data-film-failed hidden>`
+    + `<span class="cot-c-notice__glyph">${iconMarkup('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-i18n="home.hero.trailerFailed">${esc(text('home.hero.trailerFailed'))}</span></span>`
+    + `<span class="cot-c-notice__acts"><button type="button" class="${btn('', '36')}" data-i18n="notice.retry">${esc(text('notice.retry'))}</button></span></div>`
     + `<button class="${btn('icon', '36')} hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
     + `${iconMarkup('close', 20)}</button></dialog>`
     + `</header>`;
@@ -298,22 +313,39 @@ function bentoPicture(rungs, lead) {
   return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
     + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
 }
-/** One still: its picture (its alt stays empty: the caption names it) and its two lines, the whole tile the way in. */
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines on their own scrim (home.css
+ *  .bento__words), the whole tile the way in. */
 const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
-  + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
+  + `<figcaption class="bento__cap"><a href="${href}"><span class="bento__words">${name}<span class="bento__where">${where.join('')}</span></span></a></figcaption></figure>`;
 const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
   + `${href ? `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a>` : ''}</header>`;
+// the duels that move (owner 2026-10-27: "in home, lets try to use our coolest versus videos too, make em load fast and
+// transition in"): the media lane's home-r2 duels, keyed by the versus still each one moves (the same staging). Its poster,
+// the loop's own first frame, takes the still's place, and the loop fades in over it on the features' player
+// (mediaPlayer.ts: its file only near the screen, revealed once it can play through, from its first frame).
+const DUELS = REEL.duels ?? {};
+const DUELS_MAX = 6;
 function duelsBlock() {
   if (VERSUS.featured?.length !== 12) throw new Error('home-premiere: public/media/versus-r1/manifest.json features no twelve');
+  const moving = Object.keys(DUELS);
+  const stray = moving.filter((id) => !VERSUS.featured.includes(id));
+  if (stray.length) throw new Error(`home-premiere: home-r2 duels ${stray.join(', ')} move no featured versus still`);
+  if (moving.length > DUELS_MAX) throw new Error(`home-premiere: home-r2 names ${moving.length} duels; the bento plays at most ${DUELS_MAX}`);
   const tiles = VERSUS.featured.map((id, i) => {
     const item = VERSUS.items.find((entry) => entry.id === id);
     if (!item?.rungs?.length) throw new Error(`home-premiere: versus ${id} has no rungs`);
     const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
     if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
     const name = matchup(id, [hero.id, foe.id]);
+    const clip = DUELS[id];
+    if (clip && !clip.poster?.rungs?.length) throw new Error(`home-premiere: duel ${id} has no poster`);
+    // the loop names itself for its player's control ("Play <matchup>"), in either language (publicPages.ts videoLabels)
+    const shot = clip && matchupOf(id, [hero.id, foe.id]);
+    const film = clip ? `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}"`
+      + ` data-label="${esc(shot.line)}" data-i18n-label="${shot.key}" data-i18n-vars="${esc(JSON.stringify(shot.vars))}">${ladder(clip)}</video>` : '';
     // the duel opens in the Gallery as a duel: its hero, its foe the rival (gallery.ts reads vs)
-    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), `${galleryHref(hero.id)}&amp;vs=${foe.id}`, name,
-      [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(clip ? clip.poster.rungs : item.rungs, i === 0) + film,
+      `${galleryHref(hero.id)}&amp;vs=${foe.id}`, name, [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
   });
   return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
     + bentoHead('duels-title', 'home.duels.title', '/docs/filming#library', 'publicNav.media')
@@ -334,8 +366,8 @@ function clipsBlock() {
     const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}"`
       + ` data-label="${esc(shot.line)}" data-i18n-label="${shot.key}" data-i18n-vars="${esc(JSON.stringify(shot.vars))}">${ladder(clip)}</video>`;
     return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
-      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
-      + `<span class="bento__where">${whereLine(clip)}</span></a></figcaption></figure>`;
+      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}"><span class="bento__words">${matchup(clip.id, clip.tanks)}`
+      + `<span class="bento__where">${whereLine(clip)}</span></span></a></figcaption></figure>`;
   });
   return `<section class="bento bento--clips" aria-labelledby="clips-title"><div class="home-shell">`
     + bentoHead('clips-title', 'home.clips.title') + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;
