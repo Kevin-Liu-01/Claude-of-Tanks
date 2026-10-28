@@ -63,6 +63,17 @@
     return false;
   };
   const inView = (r) => r.width > 2 && r.height > 2 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+  // when each image or video joined the document: one that arrives with its element (a cached picture a surface draws as
+  // it opens) never stood as an empty box, so it cannot pop
+  const joined = new WeakMap();
+  const stamp = (node) => {
+    if (node.nodeType !== 1) return;
+    const at = Math.round(performance.now());
+    if (node.matches('img,video')) joined.set(node, at);
+    for (const el of node.querySelectorAll?.('img,video') ?? []) joined.set(el, at);
+  };
+  new MutationObserver((records) => { for (const r of records) for (const n of r.addedNodes) stamp(n); })
+    .observe(document, { childList: true, subtree: true });
   const onMedia = (event) => {
     const el = event.target;
     const video = el instanceof HTMLVideoElement;
@@ -73,11 +84,14 @@
       const r = el.getBoundingClientRect();
       const drawn = drawnOpacity(el);
       const small = r.width < 64 && r.height < 64; // icons and flags: no fade owed
+      const waited = at - (joined.get(el) ?? 0);
       const entry = { el, t: at, kind: video ? 'video' : 'img', src: String(el.currentSrc || el.src || '').split('/').pop()?.slice(0, 80),
         node: describe(el), box: rect(r), inView: inView(r), drawn: Math.round(drawn * 100) / 100, faded: fading(el),
-        poster: video && !!el.poster, small };
-      // (a video's first frame replaces its own poster, already drawn: no pop)
-      entry.popped = entry.inView && !small && !entry.poster && drawn > 0.98 && !entry.faded && at > (paints['first-contentful-paint'] ?? 0) + 150;
+        poster: video && !!el.poster, small, waited };
+      // (a video's first frame replaces its own poster, already drawn: no pop; a picture that came within 100 ms of its
+      // element never stood empty)
+      entry.popped = entry.inView && !small && !entry.poster && waited > 100 && drawn > 0.98 && !entry.faded
+        && at > (paints['first-contentful-paint'] ?? 0) + 150;
       media.push(entry);
     });
   };

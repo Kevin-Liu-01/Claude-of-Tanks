@@ -18,7 +18,8 @@
 //             picture or a film arriving in a box that already reads (its text in) owes no announcement
 //   blocked   a layer over most of the window covered the page's navigation links while the surface loaded
 //   late      a site page's box painted more than a second after the page's first paint (its shell stood blank)
-//   no-retry  offline, the content never came and no quiet retry state stood up within 15 s
+//   no-retry  offline, the content never came, no quiet retry state stood up within 15 s, and it did not come by itself
+//             within 20 s of the network's return (an image that re-requests on 'online' is a quiet retry)
 //   broken    offline, a broken image (a load error drawn as one) in view
 // Every finding names the row's lane and owner, so the report routes itself (<out>/loading-census.json, by lane in
 // <out>/loading-census.md). Exit 1 on any finding outside --allow (a comma list of `<row>:<rule>`).
@@ -122,7 +123,9 @@ function judge(row, condition, t) {
     }
     if (t.covered && !row.modal) found.push({ rule: 'blocked', why: `${t.covered} covered the navigation` });
   } else {
-    if (t.readyMs === null && !t.retry) found.push({ rule: 'no-retry', why: 'offline, no content and no retry state in 15 s' });
+    if (t.readyMs === null && !t.retry && t.recoveredMs == null) {
+      found.push({ rule: 'no-retry', why: 'offline, no content and no retry state in 15 s, and none by itself 20 s after the network came back' });
+    }
     if (t.broken.length) found.push({ rule: 'broken', why: t.broken.slice(0, 3).join(', ') });
   }
   return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f, allowed: ALLOW.has(`${row.id}:${f.rule}`) }));
@@ -137,7 +140,12 @@ async function press(page, steps, touch = false) {
     const optional = step.startsWith('?');
     return { optional, choices: (optional ? step.slice(1) : step).split(' || ').map((c) => c.trim()) };
   };
-  const shows = (choices, timeout) => page.waitForSelector(choices.join(', '), { visible: true, timeout }).then(() => true, () => false);
+  // any visible match of any choice (a selector list's waitForSelector reads only its first match: the desktop nav's
+  // hidden Deploy hid the phone's battle card)
+  const shows = (choices, timeout) => page.waitForFunction((list) => list.some((sel) => [...document.querySelectorAll(sel)].some((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  })), { timeout, polling: 100 }, choices).then(() => true, () => false);
   // the first match in view of the first choice that has one (a hidden twin, a mobile menu's copy, is passed over)
   const pressOne = async (choices) => {
     for (const selector of choices) {
@@ -248,10 +256,21 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
           row, condition === 'offline' ? ROW_TIMEOUT_MS.offline : row.timeoutMs ?? ROW_TIMEOUT_MS.slow, condition === 'offline', since, NAV[pageName] ?? NAV.site);
         if (t.boxMs === null) t.boxSeen = await page.evaluate((b) => window.__ls.diagnose(b), row.box).catch(() => []);
         if (t.readyMs === null) t.readySeen = await page.evaluate((b) => window.__ls.diagnose(b), readySelector(row.ready)).catch(() => []);
+        // offline with no content and no retry: the network comes back, and the content may come by itself (an image that
+        // re-requests on 'online'); then the network drops again for the next row
+        if (condition === 'offline' && t.readyMs === null && !t.retry) {
+          await cdp.send('Network.emulateNetworkConditions', ONLINE);
+          const back = await page.evaluate(() => performance.now());
+          const again = await page.evaluate((r, s) => window.__ls.watch({ box: r.box, ready: r.ready, timeoutMs: 20_000, since: s, inBox: true }), row, back)
+            .catch(() => ({ readyMs: null }));
+          t.recoveredMs = again.readyMs;
+          await cdp.send('Network.emulateNetworkConditions', OFFLINE);
+        }
         previous.finished = t.readyMs !== null;
         const findings = judge(row, condition, t);
         results.push({ row: row.id, layout, condition, timeline: t, findings });
-        log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, cls ${t.cls}${t.retry ? `, retry ${t.retry}` : ''}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
+        log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, cls ${t.cls}${t.retry ? `, retry ${t.retry}` : ''}`
+          + `${t.recoveredMs != null ? `, came by itself ${t.recoveredMs} ms after the network` : ''}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
       } catch (error) {
         results.push({ row: row.id, layout, condition, error: String(error?.message ?? error).slice(0, 300) });
         log(`    ${row.id}: ERROR ${String(error?.message ?? error).slice(0, 200)}`);

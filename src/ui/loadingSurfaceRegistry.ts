@@ -95,7 +95,7 @@ export const LOADING_SURFACES = Object.freeze({
   'tech-tree': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: 'src/ui/techTree.ts', box: '.cot-tt', modal: true, ready: 'loaded:.cot-tt',
     open: { desktop: ['.cot-techtree-trigger'] } },
   'service-record': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: 'src/ui/serviceRecordDialog.ts', box: '#cot-record-modal', modal: true,
-    ready: '#cot-record-modal [role="progressbar"]', open: { desktop: ['.cot-record-trigger'] } },
+    ready: '#cot-record-modal .cot-record-tab', open: { desktop: ['.cot-record-trigger'] } },
   'settings': { page: 'game', path: '/', lane: 'premiere-site', owner: 'src/ui/settings.ts', box: '.cot-set-panel', modal: true, ready: '.cot-set-panel [role="tab"]',
     open: ['.cot-settings-slot button'] },
   // the battle last: its entry from Deploy, its load card the loading state, then its end
