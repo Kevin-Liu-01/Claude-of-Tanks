@@ -45,13 +45,21 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
   separate nodes `track_L`/`track_R`, `exportChassL1`/`R1` (running gear), `Hull_5`, `Turret_01_4`, `gun_01_Shape_6`;
   no LODs, no duplicate vehicles. Its stowed "drum" on the bustle's right rear is a spare road wheel (owner,
   2026-10-27).
-- Oracle: the same bytes at `public/models/tanks/community/m48a5_patton_ater.glb` (gitignored), registered in
-  `tools/vehicleComparisonSources.mjs`, `tools/procedural-fidelity.html` and `tools/visual-evaluator-page.html`.
-- Transform: rigid only, a 180 deg turn about y (`yawOffset: Math.PI`; the model faces -z), metres, scale 1, ground at
-  y 0. No per-axis warp.
+- Oracle (source-world certified, `docs/tank-generation/tool-map.md` §2 and §4): `node tools/source-x-oracle.mjs
+  --prepare=<raw> --recipe=.qa-dev/tank-run-m48a5/source-recipe.json` with the recipe `{id: m48a5_patton_x, axes: [-x, y,
+  -z], scale: 1, translation: [0, 0, 0]}` bakes `public/models/community-candidates/m48a5_patton_x_source.glb` (gitignored,
+  never shipped), sha256 `b54aff317407b292bd4d352a3d60ea0531a36bfbc3c21c698a9ba12ebb495285`, bounds x -1.886..1.835,
+  y 0..3.727, z -3.377..5.827, no meshes omitted. Certificate in `tools/source-world-registration.mjs` (turret
+  [-0.001963, 1.638327, 0.577502] = the Turret_01_4 node; gun [0, 1.9215, 1.761582] = the gun_01_Shape_6 node's station on
+  the tube's measured bore axis, the node origin itself sitting 11 cm over the bore at the shield's face); registration
+  in `tools/second-wave-x-reference-overrides.ts` (`qualityBar: 'exemplar'`, the 92 floor; turret Object_12, gun
+  Object_16; component masks). No width normalization: the earlier legacy registration (the raw file with
+  `yawOffset: Math.PI`) rescaled the model by its 3.72 m width, which the right-front bar inflates, to the published
+  3.63 m (a 2.4 % shrink) and read 70.4.
+- Transform: rigid only, a 180 deg turn about y (the model faces -z), metres, scale 1, ground at y 0. No per-axis warp.
 - Datums (measured on the oracle): ground 0; belly 0.38; turret deck 1.51 with a raised race collar r 1.24 to 1.633;
   driver's deck 1.47-1.53; engine deck crown 1.85; turret yaw centre z 0.58 (the dome's floor circle, r 1.24); gun bore
-  axis y 1.921 (the 258 fix's 2.10 was for the old 1.80 deck), trunnion z 1.514, muzzle z 5.827; road wheels r 0.33 at
+  axis y 1.921 (the 258 fix's 2.10 was for the old 1.80 deck), gun pivot z 1.7616 (the certificate), muzzle z 5.827; road wheels r 0.33 at
   z 2.049, 1.262, 0.469, -0.309, -1.085, -1.959, y 0.41; return rollers r 0.18 at y 1.123, z 1.544 … -1.671; idler
   z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.954 m centres (built on the published 2.921 m, 115 in, so the sprocket hubs stay inside the published 3.632 m width).
 - Published versus source: AFV48 hull with fenders 6.871 m (model 6.93); fire height 78.8 in = 2.00 m (model 1.92).

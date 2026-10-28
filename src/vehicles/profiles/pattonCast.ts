@@ -540,9 +540,10 @@ function rotorShield(r: number, back: number, w: number, a0: number, a1: number,
   const bevel = Math.min(0.07, w * 0.09);
   const g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(0.05, w - 2 * bevel), bevelEnabled: true, bevelThickness: bevel,
     bevelSize: bevel * 0.7, bevelSegments: q ? 4 : 2, curveSegments: 1 });
-  // shape (u along the bore, v up), extruded across: map to the gun frame (x across, y up, z along the bore)
+  // shape (u along the bore, v up), extruded across: turn it into the gun frame (x across, y up, z along the bore). A
+  // proper rotation (not an axis swap, which mirrors the casting inside out); the extrusion is centred, so x's sign is free
   g.translate(0, 0, -Math.max(0.05, w - 2 * bevel) / 2);
-  g.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1));
+  g.applyMatrix4(new THREE.Matrix4().makeRotationY(-Math.PI / 2));
   g.computeVertexNormals();
   return g;
 }
@@ -1066,7 +1067,10 @@ function bar(P: CastPort, slot: string, a: readonly number[], b: readonly number
 // collar's 1.633 m top; the 105 mm's trunnion at the model's 1.921 m bore axis (the 258 fix's 2.10 m was for the old
 // 1.80 m deck: the model's driver's deck is 1.47-1.53 and its turret deck 1.51, so the low mantlet clears at -9 deg).
 const M48_RING = { y: 1.633, z: 0.58 };
-const M48_TRUNNION = { y: 1.921, z: 1.514 };
+// The gun pivots where the source-world certificate puts it (tools/source-world-registration.mjs): the model's gun node
+// station on its bore axis. Its fittings are authored from the bore's station 1.514 (GUN_Z0) and moved onto the pivot.
+const M48_TRUNNION = { y: 1.921, z: 1.7616 };
+const GUN_Z0 = 1.514 - M48_TRUNNION.z;
 
 /** The cast boat hull: keel, chine knee, the widest bilge ridge, the waist under the deck edge, the deck edge, the
  * engine deck's raised centre (the hump knot), crown. */
@@ -1167,7 +1171,8 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
   // fender stowage: the long low boxes from the turret forward, the rear boxes over the sprockets, the round lid on the
   // left front fender, the bar across the right front fender, the box latches
   for (const side of [-1, 1]) {
-    P.add('hullDetail', moldedBox(0.38, 0.19, 2.00, 0.02, P.q ? 2 : 1, 0.01), side * 1.46, 1.58, 0.64);
+    // (3.5 cm lower than the model's so the gun shield's foot keeps its 2.6 cm over them abeam at -9 deg)
+    P.add('hullDetail', moldedBox(0.38, 0.155, 2.00, 0.02, P.q ? 2 : 1, 0.01), side * 1.46, 1.5625, 0.64);
     P.add('hullDetail', moldedBox(0.49, 0.20, 0.77, 0.02, P.q ? 2 : 1, 0.01), side * 1.405, 1.58, -1.93);
     for (const x of [1.24, 1.46]) P.add('hullDark', box(0.06, 0.13, 0.10), side * x, 1.62, -0.42);
     P.add('hullDetail', box(0.10, 0.17, 0.18), side * 1.04, 1.59, -2.57);
@@ -1386,20 +1391,20 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
   // gun: the trunnion on the model's bore axis; the sloped cast mantlet (its face leans back 25 deg), the gun's root
   // boss and bolted plate, the coax and telescope ports, the AN/VSS-1 searchlight on its posts and side rails
   P.gunG.position.set(0, M48_TRUNNION.y - T.ringY, M48_TRUNNION.z - T.ringZ);
-  P.addGunExtra(m48Mantlet(P.q), 0, 0, 0);
+  P.addGunExtra(m48Mantlet(P.q), 0, 0, GUN_Z0);
   // the boss ring on the shield's face round the bore, the gun's root sleeve through it, the coax and sight ports
-  P.addGunExtra(cylZ(0.20, 0.08, P.q ? 24 : 12), 0, 0, 0.33);
-  P.addGunExtra(cylZ(0.13, 0.27, P.q ? 20 : 12), 0, 0, 0.42);
+  P.addGunExtra(cylZ(0.20, 0.08, P.q ? 24 : 12), 0, 0, GUN_Z0 + 0.33);
+  P.addGunExtra(cylZ(0.13, 0.27, P.q ? 20 : 12), 0, 0, GUN_Z0 + 0.42);
   for (const side of [-1, 1]) {
-    P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.065, 0.06, P.q ? 12 : 8), side * 0.31, 0.11, 0.26);
-    P.addGunExtra(box(0.045, 0.37, 0.09), side * 0.247, 0.39, 0.425);
-    P.addGunExtra(box(0.05, 0.10, 0.26), side * 0.307, 0.32, 0.25);
-    P.addGunExtra(box(0.06, 0.05, 0.36), side * 0.305, 0.42, 0.687);
+    P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.065, 0.06, P.q ? 12 : 8), side * 0.31, 0.11, GUN_Z0 + 0.26);
+    P.addGunExtra(box(0.045, 0.37, 0.09), side * 0.247, 0.39, GUN_Z0 + 0.425);
+    P.addGunExtra(box(0.05, 0.10, 0.26), side * 0.307, 0.32, GUN_Z0 + 0.25);
+    P.addGunExtra(box(0.06, 0.05, 0.36), side * 0.305, 0.42, GUN_Z0 + 0.687);
   }
-  P.addGunExtra(moldedBox(0.58, 0.44, 0.46, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, 0.70);
-  P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, 0.935);
-  P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, 0.905);
-  P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, 0.40);
+  P.addGunExtra(moldedBox(0.58, 0.44, 0.46, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, GUN_Z0 + 0.70);
+  P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
+  P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.905);
+  P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
   m48Gun(P);
   P.topY = L.y(3.06) + 0.12;
   yield 'm48Gun';
@@ -1446,15 +1451,15 @@ function m48Gun(P: CastPort): void {
   const { cylZ } = KIT;
   const seg = P.q ? 22 : 12;
   const len = 4.313;
-  P.add('gun', cylZ(0.092, 1.52, seg, 0.094), 0, 0, 0.51 + 0.76);
-  P.add('gun', cylZ(0.098, 0.04, seg), 0, 0, 2.01);
-  P.add('gun', cylZ(0.128, 0.44, seg), 0, 0, 2.31);
-  P.add('gun', cylZ(0.128, 0.06, seg, 0.098), 0, 0, 2.06);
-  P.add('gun', cylZ(0.098, 0.06, seg, 0.128), 0, 0, 2.56);
-  P.add('gun', cylZ(0.098, 0.10, seg), 0, 0, 2.62);
-  P.add('gun', cylZ(0.087, len - 2.67, seg, 0.088), 0, 0, 2.67 + (len - 2.67) / 2);
-  muzzleBore(P, { z: len + 0.004, r: 0.087 * 0.78 });
-  P.muzzleZ = len;
+  P.add('gun', cylZ(0.092, 1.52, seg, 0.094), 0, 0, GUN_Z0 + 0.51 + 0.76);
+  P.add('gun', cylZ(0.098, 0.04, seg), 0, 0, GUN_Z0 + 2.01);
+  P.add('gun', cylZ(0.128, 0.44, seg), 0, 0, GUN_Z0 + 2.31);
+  P.add('gun', cylZ(0.128, 0.06, seg, 0.098), 0, 0, GUN_Z0 + 2.06);
+  P.add('gun', cylZ(0.098, 0.06, seg, 0.128), 0, 0, GUN_Z0 + 2.56);
+  P.add('gun', cylZ(0.098, 0.10, seg), 0, 0, GUN_Z0 + 2.62);
+  P.add('gun', cylZ(0.087, len - 2.67, seg, 0.088), 0, 0, GUN_Z0 + 2.67 + (len - 2.67) / 2);
+  muzzleBore(P, { z: GUN_Z0 + len + 0.004, r: 0.087 * 0.78 });
+  P.muzzleZ = GUN_Z0 + len;
 }
 
 export function* buildM48A5CastSteps(P: CastPort): TankProfileBuild {
@@ -1462,7 +1467,7 @@ export function* buildM48A5CastSteps(P: CastPort): TankProfileBuild {
   yield* m48TurretSteps(P);
   publishReceipt(P, {
     mark: 'm48a5', ring: [M48_RING.y, M48_RING.z], trunnion: [M48_TRUNNION.y, M48_TRUNNION.z],
-    muzzleZ: M48_TRUNNION.z + 4.313, device: 'none', evacuator: [M48_TRUNNION.z + 2.03, M48_TRUNNION.z + 2.59],
+    muzzleZ: 1.514 + 4.313, device: 'none', evacuator: [1.514 + 2.03, 1.514 + 2.59],
     roadWheels: 6, wheelR: M48_GEAR.wheelR, returnRollers: M48_GEAR.rollerN, tensionWheel: Boolean(M48_GEAR.tension),
     trackW: M48_TRACK_W, trackCentres: M48_XC * 2, glacisFromVerticalDeg: glacisDeg([3.22, 1.13], [2.50, 1.49]),
   });
