@@ -668,12 +668,6 @@ function cheek(P: TankBuilderPort, s: number, stage: Ztz20StageDeltas): void {
       .map(([t, y]) => at(t, face(y) + off, y).toArray());
     P.add('turret', part(orientedSlab(...ring(-0.005), ...ring(0.025)), 'cheek-plate'));
   }
-  // the chin's ribs under the nose line, every 0.12 m along both blocks (clear of the coax slot)
-  for (let t = 0.10; t < len - 0.05; t += 0.12) {
-    if (notch && t > notch[0] - 0.03 && t < notch[1] + 0.03) continue;
-    const r = at(t, -0.06, 1.54);
-    P.add('turret', part(box(0.025, 0.10, 0.12), 'cheek-chin-rib'), r.x, r.y, r.z, 0, Math.atan2(-uz, ux), 0);
-  }
   const s0 = notch ? notch[1] : 0, seam = at((s0 + split) / 2, face(1.975) + 0.004, 1.975);
   P.add('turretDark', part(box(split - s0 - 0.10, 0.012, 0.012), 'cheek-seam'), seam.x, seam.y, seam.z, 0, Math.atan2(-uz, ux), 0);
 }

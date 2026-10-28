@@ -121,10 +121,11 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.28 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 52, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
-    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): the gun's measured stop by turret yaw; over the glacis tiles
-    // and the bow lamps -7 to -5.5, the full 8 degrees across the flanks, over the engine deck astern -5.4 to -3.8.
-    gunPitchByYawDeg: [[0, -7], [15, -6.8], [16, -5.9], [19, -5.7], [37, -5.5], [38, -5.8], [39, -7.1], [40, -7.1], [44, -8],
-      [122, -8], [138, -5.4], [149, -3.8], [157, -3.8], [180, -4.4]],
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm, the measured 0.34 m thermal sleeve): the gun's stop by turret
+    // yaw; over the glacis tiles and the bow lamps -5.6 to -5, the full 8 degrees across the flanks, over the engine deck
+    // astern -4.7 to -3.5.
+    gunPitchByYawDeg: [[0, -5.6], [17, -5.5], [22, -5.1], [27, -5], [31, -5], [37, -5.3], [38, -5.5], [39, -6.6], [43, -6.6],
+      [51, -8], [105, -8], [136, -4.7], [147, -4], [148, -3.8], [153, -3.5], [170, -3.5], [171, -4.1], [180, -4]],
     gun: {
       // fire control inside the next-generation Tier X ceiling (balanceAudit: 1.44x the peer median after the pass)
       caliberMm: 105, reloadS: 4.6, baseAccuracy: 0.23, aimTimeS: 1.45,
@@ -140,8 +141,8 @@ const CHINESE_FRONTLINE_SPECS = {
     armor: modernArmor({
       hl: 3.565, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
-      // the combat barrel is the drawn gun: its thermal sleeve measures 0.104 m (gun-barrel-align census)
-      barrelLenM: 4.625, barrelRadM: 0.104,
+      // the combat barrel is the drawn gun: its muzzle measures 0.08 m at the brake's end cap (gun-barrel-align census)
+      barrelLenM: 4.625, barrelRadM: 0.08,
       glacis: [90, 560, 760], lower: [70, 340, 460], side: [55, 250, 370],
       skirt: [40, 120, 260], rear: 40, roof: 38,
       tw: 1.20, tFrontZ: 1.52, tRearZ: -2.00, tH: 0.89,
@@ -211,11 +212,12 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 50, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
-    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): over the bare glacis and bow lamps -7 to -5.6, the full 8
-    // degrees across the flanks, over the engine deck astern -4.8 to -3.8, and -1 over the stern trials basket.
-    gunPitchByYawDeg: [[0, -7], [6, -7], [8, -8], [15, -7.5], [16, -5.9], [19, -5.7], [30, -5.6], [32, -5.9], [38, -7.1],
-      [40, -7.1], [44, -8], [127, -8], [129, -7.3], [143, -4.8], [148, -4], [152, -3.8], [157, -3.8], [161, -4], [163, -1.4],
-      [164, -1], [167, -0.9], [169, -0.9], [172, -1.3], [173, -1], [178, -1], [180, -1.3]],
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm, the measured thermal sleeve): over the bare glacis and bow lamps
+    // -5.6 to -5.5, -6.5 off the bow quarters, the full 8 degrees across the flanks, over the engine deck astern -5.7 to
+    // -3.5, and -0.7 over the stern trials basket.
+    gunPitchByYawDeg: [[0, -5.6], [20, -5.5], [23, -5.5], [26, -5.8], [30, -6.5], [37, -6.5], [43, -6.6], [51, -8], [123, -8],
+      [128, -5.7], [129, -5.4], [138, -4.6], [146, -4.1], [148, -3.8], [153, -3.5], [161, -3.6], [163, -1.2], [164, -0.7],
+      [169, -0.7], [172, -1.1], [173, -0.7], [178, -0.7], [180, -1.1]],
     gun: {
       caliberMm: 105, reloadS: 4.8, baseAccuracy: 0.24, aimTimeS: 1.5,
       bloom: { move: 0.045, hullRot: 0.065, turret: 0.045, afterShot: 1.8 },

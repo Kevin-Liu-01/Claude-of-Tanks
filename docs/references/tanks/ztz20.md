@@ -24,7 +24,8 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 - Worktree / branch / baseline commit: `.claude/worktrees/cool-blackburn-0840b0`, `item/ztz20-262`, origin/main
   `7d045a7588`.
 - Current next action: see the handoff block at the end.
-- Blocking choices / known failures: none blocking; tiers await the owner's review (proposal sent to Main first).
+- Blocking choices / known failures: none blocking. Tiers approved (all X). Open: the ≥9 blind-critic bar (last round 6–8.5
+  a view) and the composed release gate.
 
 ## Scope and preservation
 
@@ -103,23 +104,23 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | raw 387d8655… | `shasum -a 256`; recipe as 2026-09-17 | — |
 | Every registered silhouette / raw aggregate | NOT APPLICABLE (owner-authored concept route) | | | |
-| Geometry components / dimension score / 3% check | NOT RUN | | | |
-| Independent 14-view critic / actual Gallery | NOT RUN | | | |
-| Winding, closure and intentional negative space | NOT RUN | | | |
-| Physical seats and yaw/pitch/recoil ownership | NOT RUN | | | |
-| High/low gear motion / strict band+shoe / duplicates | NOT RUN | | | |
-| Actual return rollers / track thickness / chassis-side closure | NOT RUN | | | |
-| Stored and instance-expanded triangles / build/draw/memory budgets | NOT RUN | | | |
-| Cold/warm/rapid tank-switch latency and frame gaps | NOT RUN | | | |
-| Primitive reuse / high-low reduction / accessory material roles | NOT RUN | | | |
+| Geometry components / dimension score / 3% check | PASS (concept rows) | lane head | `node tools/first-party-concept-check.mjs --ids=<the four>`; `tools/first-party-concept-policy.selftest.mjs` | every concept datum within its row |
+| Independent 14-view critic / actual Gallery | FAIL (open) / NOT RUN | r11 | seven blind-critic rounds on Node rasters beside the oracle (`.qa-dev/ztz20-262/raster.mjs`) | ≥9 every view not reached: last round 6–8.5 a view, nothing BROKEN; outline IoU 91–96 % (round 4) |
+| Winding, closure and intentional negative space | PASS | lane head | `node tools/tank-sealed-check.mjs --ids=<the four> --ledger=docs/geometry-gate/sealed.json --gate` | open px 0 in 33 views each; see-through 0; bore masked |
+| Physical seats and yaw/pitch/recoil ownership | PASS | lane head | `ztz20Family.selftest.mjs` (turret 0.9 cm over the hull at every yaw, HIGH and LOW; sweep negative control); `ztz20GunClearance.selftest.mjs`; `gun-barrel-align-census --gate` | gun 2.7 / 2.6 / 2.6 cm from the hull (25 mm floor); rigs 4/4 aligned, no rig rows |
+| High/low gear motion / strict band+shoe / duplicates | PASS (fleet receipts) | lane head | `trackGlitchSimulation.selftest.mjs`; `ztz100Prototype.selftest.mjs` (HIGH/LOW articulation) | — |
+| Actual return rollers / track thickness / chassis-side closure | PASS (construction) / NOT RUN (release probes) | | two real return rollers a side; closure in the sealed check | release-gate probes owed |
+| Stored and instance-expanded triangles / build/draw/memory budgets | NOT RUN (release gate) | | sealed-check HIGH counts: ztz20 100,168; ztz20_prototype 91,793; ztz100 97,049; ztz100_prototype 98,024 | budgets owed to `tank:release:check` |
+| Cold/warm/rapid tank-switch latency and frame gaps | NOT RUN | | | owed to the release gate |
+| Primitive reuse / high-low reduction / accessory material roles | NOT RUN | | | owed to the release gate |
 | Live/spent/reset ERA / permanent backing | NOT APPLICABLE (no ERA) | | | |
-| Main/aux armor finite rays / modules / crew | NOT RUN | | | |
-| Markings, colors, bores, actual roof weapon | NOT RUN | | | |
-| Original-model/record preservation | NOT RUN | | | |
-| Anatomy update / freshness | NOT RUN | | | |
-| Scoped assets / centering / source exclusion | NOT RUN | | | |
-| Composed release / complete tests / typecheck | NOT RUN | | | |
-| Public and private builds / attribution | NOT RUN | | | |
+| Main/aux armor finite rays / modules / crew | PASS | lane head | `npm run tank:anatomy:check`; `crewSeats.selftest.mjs`; `fleetBalance.selftest.mjs` | 4 measured sim floors within 5 cm |
+| Markings, colors, bores, actual roof weapon | PASS | lane head | marking-seat check; `remoteGunFleet`, `auxiliaryRoofGuns`, `ammunitionFlow`, `hudAmmoOut*` selftests | — |
+| Original-model/record preservation | PASS | lane head | `ztz100Prototype.selftest.mjs` (8-cell missile turret unchanged), `missileConceptCombat`, `guidedLauncherTubes` | — |
+| Anatomy update / freshness | PASS | lane head | ids-scoped chain (`.qa-dev/ztz20-262/chain3.zsh`): anatomy fixpoint on the second pass, fills, markings, seats, spare track, ledger, gun lines | `tank:anatomy:check` 223 current |
+| Scoped assets / centering / source exclusion | PASS (centering) / see READY (icons, hero, drawings) | lane head | `presentation-centering.mjs --update --ids=<the four>`; `genIcons`, `genHeroCards`, `genDrawings` per id | nothing from the GLB ships |
+| Composed release / complete tests / typecheck | NOT RUN (composed) / see READY | | targeted receipts (CN clearance, add-ons, stations; tier; tech tree; roster; product stats; shadow coverage) PASS | composed gate owed (load 350–880) |
+| Public and private builds / attribution | PASS (attribution) / see READY (build) | lane head | `npm run attribution:check` | — |
 
 ## Round log
 
@@ -127,3 +128,33 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   inside the fender lip (lip to 1.72), the deck ramp inside the ring collar's sweep (ramp moved behind z -1.76), the
   body front standing proud of the cheek slope (body front to z 0.10, cheek roots carry the crown back), the rack's side
   rails running astern.
+- r2 (2026-10-27): blind critic 5–7 a view. Fixed: a closed rear stowage block under the slat bays (the oracle is solid
+  there), flush bins, a stepped mantlet and sensor post, the muzzle reference sensor, the weapon-station yoke and feed,
+  cheek plates, chamfered cage corners, bow grilles; the ZTZ-100 depression curve; the tech-tree pin.
+- r3: about 7.4. Fixed: swept arrowhead cheeks with the V-notch, the coax moved into a right-cheek housing (production
+  only), a ribbed brake, a compact panoramic head, one weapon-station unit with a box launcher, chamfered bins, straight
+  belly lines, skirt tops on the glacis line, visible bolts, a finer cage, plain deck panels. The ZTZ-100 Prototype's
+  raised hatches sat 2.5 cm inside its missile platter's sweep: that stage now has flush hatches. The family selftest's
+  negative-control block moved under the cheeks' sweep (it could never trip where it stood).
+- r4–r5: about 7.1, then about 7.6 (whole views 7.5–8.5, outline IoU 91–96 %). The round-3 cheek tip stood 10 cm proud:
+  reverted to the measured nose line (x 0.40 / z 0.97 to x 1.21 / z 0.505, two stepped blocks, the production coax
+  slot). The oracle's turret views had been framed on (0, 1.8, 0), not the turret pivot: re-rendered on (0, 1.41, -0.55)
+  with `raster.mjs --tp`. Raked pod fronts; the measured weapon station (U yoke, gun over the sight, launcher on the post
+  box, feed arm); commander's sight; thermal sleeve and flat ribbed brake; tall mantlet sensor; periscope rings; bevelled
+  tiles; framed slat bays; hard-kill drums on legs; lift stubs; stern-bin brackets; skirt handles.
+- r6: about 7.3. The pods taper back to z -2.12 with the side bins behind them (measured from the depth maps), a squat
+  mantlet sensor, sight pedestal, thin smoke plate, a seven-row cage, stern-bin mounting arms. Geometry frozen.
+- r7: 6–8.5 a view, nothing BROKEN; critics contradicted one another, so each claim was checked against the oracle's
+  depth maps before any change. Removed the chin ribs (not on the oracle). The measured sleeve gives the ZTZ-20 and
+  ZTZ-100 a front depression of -5.6 degrees (was -7); full -8 across the flanks. The barrel radius is the drawn
+  0.08 m at the brake's end cap (spec, concept row and rig agree; no rig row).
+- Final chain (`.qa-dev/ztz20-262/chain3.zsh`): controls, rigs, anatomy (fixpoint on the second pass), rigs again,
+  fills, marking seats, mission seats, spare track, ledger, gun lines, rigs gate 4/4.
+
+## Handoff
+
+- Open: the ≥9 blind-critic bar on every view (last round 6–8.5); the composed `tank:release:check --gate` (its
+  budgets, switch latency and primitive probes); a live Garage and battle look at the four ids, HIGH and LOW. The
+  fleet count moved 221 → 223 (`src/productStats.ts`, README, the Field Manual prerender): on a main merge that adds
+  tanks, re-sum it.
+- Logged in `~/cot-launch-state/streams/TESTS-OWED.md` under "ZTZ-20 family 262".
