@@ -154,7 +154,14 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
     }
     const url = `${origin}${first.path}${first.path.includes('?') ? '&' : '?'}telemetry=off`;
     log(`  ${pageName} ${layout} ${condition}: ${url}`);
-    await page.goto(url, { waitUntil: 'commit', timeout: BOOT_TIMEOUT_MS });
+    // the navigation runs on while its rows are watched from its start: wait only for the new document's instrument
+    const navigation = page.goto(url, { waitUntil: 'domcontentloaded', timeout: BOOT_TIMEOUT_MS }).catch((error) => error);
+    for (let i = 0; ; i++) {
+      const ready = await page.evaluate(() => location.href !== 'about:blank' && !!window.__ls).catch(() => false);
+      if (ready) break;
+      if (i > 3000) throw new Error(`${url} never committed`);
+      await sleep(100);
+    }
     // the document rows, from the navigation's start
     for (const row of documentRows) {
       const t = await page.evaluate((r, timeoutMs, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, since: 0 }),
@@ -165,6 +172,8 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
       results.push({ row: row.id, layout, condition, timeline: t, findings });
       log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, fcp ${t.fcp}, cls ${t.cls}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
     }
+    const navigated = await navigation;
+    if (navigated instanceof Error) results.push({ row: first.id, layout, condition, error: `navigation: ${String(navigated.message).slice(0, 200)}` });
     if (!inAppRows.length) return results;
     // the page at rest before any in-app row
     await page.waitForSelector(rest, { visible: true, timeout: BOOT_TIMEOUT_MS });
@@ -216,7 +225,13 @@ try {
           const rowsHere = rows.filter((r) => condition === 'slow' || r.offline !== false);
           // the page at rest: its row's rest, or its first row's box
           const rest = rows.find((r) => r.rest)?.rest ?? rows[0].box;
-          if (rowsHere.length) report.results.push(...await pageRun(browser, server.origin, pageName, rowsHere, layout, condition, rest));
+          // a page that cannot run records why and the census goes on: one run reports every page
+          if (rowsHere.length) {
+            try { report.results.push(...await pageRun(browser, server.origin, pageName, rowsHere, layout, condition, rest)); } catch (error) {
+              report.results.push({ row: rowsHere[0].id, layout, condition, error: `page ${pageName}: ${String(error?.message ?? error).slice(0, 300)}` });
+              log(`  ${pageName} ${layout} ${condition}: ERROR ${String(error?.message ?? error).slice(0, 200)}`);
+            }
+          }
           writeFileSync(join(out, 'loading-census.json'), JSON.stringify(report, null, 2));
         }
       } finally {
