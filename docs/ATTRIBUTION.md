@@ -1050,6 +1050,16 @@ of real-world fidelity. Its pinned SHA-256 is
 `ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7`.
 
 
+## Challenger 3 TD oracle (2026-10-27, owner drop for release 262)
+
+- `challenger_3_td_mbt.glb` — "Challenger 3 TD MBT" by Jeyhun1985 (https://sketchfab.com/Jeyhun1985),
+  https://sketchfab.com/3d-models/challenger-3-td-mbt-4deed3c5fafc4b7cbecc8fd51a4c7142, CC-BY-4.0 (from the embedded
+  asset extras), SHA-256 `3a4b3fbbe52aad3e4d6f4d7d8b2ad0ba8952fc3498cf82cd05e960be60659f98`. A measurement oracle only,
+  kept outside the repository (`~/cot-lanes/new-tank-refs-262/`); no mesh, texture or derived render of it ships. The
+  playable `challenger3_td` and `challenger3_td_rws` are first-party procedural geometry attributed to Kevin B. Liu
+  (`profiles/challenger3Td.ts`); the measured rows are in
+  [the run packet](references/tanks/challenger3_td.md).
+
 ## Marder 2 photographic authoring reference (2026-09-29)
 
 The separate Marder 2 roster addition uses

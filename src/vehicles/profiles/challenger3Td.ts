@@ -364,10 +364,12 @@ const RWS_ID = 'challenger3_td_rws';
 /** Yaw centre on the roof (oracle frame) and the station's true-metre heights above it. */
 const RWS_SEAT = [0.80, 2.70, 0.10] as const;
 function buildRemoteStation(P: TankBuilderPort): void {
-  const { box, cylY: cy, cylZ: cz } = KIT;
+  const { box, cylX: cx, cylY: cy } = KIT;
   const base = [RWS_SEAT[0] * S, (RWS_SEAT[1] - PIVOT[1]) * S, (RWS_SEAT[2] - PIVOT[2]) * S] as const;
   const at = (dx: number, dy: number, dz: number): [number, number, number] => [base[0] + dx, base[1] + dy, base[2] + dz];
-  const pivot = at(0.05, 0.40, 0.02);
+  // every elevating part stays inside |x| 0.18 and 4 cm over the housing at the station's whole pitch (the cheeks stand
+  // at |x| 0.22-0.26): roof-station-sweep.mjs holds the moving stock 25 mm off the fixed
+  const pivot = at(0, 0.48, 0.02);
   // the gun: the fleet's Browning M2 construction, remote form (solenoid back plate, right-hand feed)
   const gun = new THREE.Group();
   gun.name = 'challenger3TdRemoteM2';
@@ -391,8 +393,10 @@ function buildRemoteStation(P: TankBuilderPort): void {
   // traversing body: the turntable ring on the roof, the low housing and the two cradle cheeks
   P.add('turretDark', cy(0.31, 0.33, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
   P.add('turretDetail', box(0.50, 0.20, 0.48), ...at(0, 0.15, 0));
-  P.add('turretDetail', box(0.46, 0.03, 0.44), ...at(0, 0.265, -0.01));
-  for (const side of [-1, 1]) P.add('turretDetail', box(0.04, 0.22, 0.30), ...at(0.05 + side * 0.16, 0.36, 0.02));
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.04, 0.30, 0.26), ...at(side * 0.24, 0.40, 0.02));
+    P.add('turretDark', cx(0.03, 0.04, 10), ...at(side * 0.20, 0.48, 0.02));               // trunnion pins, cheek-borne
+  }
   station.mark('yaw');
   // elevating mass: the day/thermal sight head right of the gun and its window, the ready box outboard of the feed
   const sight = new THREE.Group();
@@ -400,10 +404,9 @@ function buildRemoteStation(P: TankBuilderPort): void {
     const mesh = new THREE.Mesh(g, material); mesh.position.set(x, y, z); mesh.castShadow = mesh.receiveShadow = true;
     mesh.name = 'challenger3TdRemoteSight'; sight.add(mesh);
   };
-  part(box(0.15, 0.15, 0.30), P.mats.detail, pivot[0] - 0.15, pivot[1] + 0.01, pivot[2] + 0.04);
-  part(box(0.11, 0.08, 0.012), P.mats.glass, pivot[0] - 0.15, pivot[1] + 0.02, pivot[2] + 0.196);
-  part(box(0.12, 0.19, 0.30), P.mats.detail, pivot[0] + 0.15, pivot[1] - 0.03, pivot[2] - 0.02);
-  part(cz(0.03, 0.08, 10), P.mats.dark, pivot[0], pivot[1], pivot[2] - 0.02);
+  part(box(0.10, 0.15, 0.28), P.mats.detail, pivot[0] - 0.10, pivot[1] + 0.02, pivot[2] + 0.04);
+  part(box(0.07, 0.08, 0.012), P.mats.glass, pivot[0] - 0.10, pivot[1] + 0.03, pivot[2] + 0.186);
+  part(box(0.10, 0.17, 0.26), P.mats.detail, pivot[0] + 0.10, pivot[1] - 0.04, pivot[2] - 0.02);
   const pitching = new THREE.Group();
   pitching.add(gun, sight);
   FITTINGS.markExact(gun, 'pintleMG');
@@ -411,17 +414,10 @@ function buildRemoteStation(P: TankBuilderPort): void {
   P.turretG.userData.challenger3TdRemoteStation = Object.freeze({ seat: base, pivot, muzzleZ });
 }
 
-/** The field fit's own carriers: a bustle basket on the rear face and the side bins on both turret walls. */
+/** The field fit's own carriers: stowage bins on both turret walls (the bustle basket and its load are the decor
+ *  manifest's, decorations.ts, so its packs sit on its own frame). */
 function buildFieldKit(P: TankBuilderPort): void {
   const { turret } = owners(P);
-  // basket: tubular rails round an open floor hung off the raked rear face (-2.86 at the floor, -3.02 at the roof)
-  turret('turretPaintedDetail', box(2.30, 0.03, 0.42), 0, 2.08, -3.18);
-  for (const y of [2.30, 2.48]) turret('turretOpenLattice', box(2.34, 0.035, 0.035), 0, y, -3.40);
-  for (const side of [-1, 1]) {
-    turret('turretOpenLattice', box(0.035, 0.035, 0.44), side * 1.17, 2.48, -3.19);
-    for (const z of [-3.40, -3.00]) turret('turretOpenLattice', box(0.035, 0.42, 0.035), side * 1.17, 2.29, z);
-  }
-  for (const x of [-0.6, 0, 0.6]) turret('turretOpenLattice', box(0.035, 0.42, 0.035), x, 2.29, -3.40);
   for (const side of [-1, 1]) {
     // stowage bins on the walls behind the cheeks, under the side rail
     turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.475, 2.16, -1.30);

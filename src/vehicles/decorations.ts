@@ -2844,10 +2844,11 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
   ],
-  // its field fit (the owner, 2026-10-27: "and equipment and so on"): the crew's packs in the authored bustle basket, a
+  // its field fit (the owner, 2026-10-27: "and equipment and so on"): a bustle basket with the crew's packs, a
   // rolled net and a tarpaulin, jerrycans and a bin on the rear deck, spare links on a turret wall, the tow cable,
   // shackles and pioneer tools; the station and the whips are authored
   challenger3_td_rws: () => [
+    { kit: 'basket', p: 1, v: { w: 1.6, d: 0.45, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { center: true }] },
