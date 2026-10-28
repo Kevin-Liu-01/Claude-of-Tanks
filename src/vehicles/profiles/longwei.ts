@@ -254,10 +254,12 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
  * depression.
  */
 function addGlacisField(P: TankBuilderPort): void {
-  const w = 0.30, h = 0.30, d = 0.065;
+  // the outer column ends at 1.13, inside the track's inner face (1.158; 262 track-clip gate: the bottom row's outer
+  // brick stood in the belt where it climbs the idler)
+  const w = 0.29, h = 0.30, d = 0.065;
   for (const side of [-1, 1] as const) {
     P.eraCluster(side < 0 ? 'glacis_era_L' : 'glacis_era_R', (put) => {
-      for (const s of [0.42, 0.76, 1.10]) for (const x of [0.38, 0.70, 1.02]) {
+      for (const s of [0.42, 0.76, 1.10]) for (const x of [0.375, 0.68, 0.985]) {
         // s metres down the plate from the deck edge; bedded 5 mm into the plate along its normal (0, cos, sin)
         const out = d / 2 - 0.005;
         put(side * x, HULL.deckY - s * GLACIS_SIN + out * GLACIS_COS, HULL.deckEdgeZ + s * GLACIS_COS + out * GLACIS_SIN,
@@ -343,9 +345,9 @@ function addSkirts(P: TankBuilderPort): void {
         P.add('hullDark', KIT.box(0.006, 0.06, 0.06), side * (panelOut + 0.001), 0.82, z);
       }
     }
-    // the bow panel's front edge closed back to the track's outer face (outside it, clear of the idler), so the skirt
-    // reads as a plate with a closed nose rather than an open slot onto the track
-    P.add('hull', KIT.box(panelOut - 1.765, 1.235 - 0.98, 0.012), side * (1.765 + panelOut) / 2, (1.235 + 0.98) / 2, joints[0] - 0.012);
+    // the bow panel's front edge closed back to just outside the track's outer face (1.788; 262 track-clip gate: from
+    // 1.765 it stood in the belt over the idler), so the skirt reads as a plate with a closed nose, not an open slot
+    P.add('hull', KIT.box(panelOut - 1.81, 1.235 - 0.98, 0.012), side * (1.81 + panelOut) / 2, (1.235 + 0.98) / 2, joints[0] - 0.012);
     // one course of FY-5 bricks on the front three panels
     const sector = side < 0 ? 'skirt_era_L' : 'skirt_era_R';
     const brickL = 0.56, pitch = 0.60, t = 0.022;

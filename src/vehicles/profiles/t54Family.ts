@@ -11,8 +11,8 @@
 // 1.74 m) with its evacuator by the muzzle behind a canvas-covered slot; three fuel tanks and the oil tank on the right
 // fender, boxes and the exhaust on the left, two 200 L drums across the stern.
 //
-// Variants carry only their deltas: the T-55A's L-2 searchlight and OU-3 spot with the loader's DShK; the Type 59's
-// T-54A ventilator dome, its smaller searchlight and its Chinese fittings. Sides follow the vehicle (this world's +Z hull
+// Variants carry only their deltas: the T-55A's L-2 searchlight and OU-3 spot and no roof gun (the 1963 vehicle); the
+// Type 59's T-54A ventilator dome, its smaller searchlight, its loader's DShK and its Chinese fittings. Sides follow the vehicle (this world's +Z hull
 // has its LEFT at +X): the commander's cupola, the driver, the exhaust and the left-fender boxes at +X; the loader, the
 // coaxial MG, the searchlight, the headlights and the external tanks at -X. Every triangle is first-party procedural
 // geometry. Authorship: Kevin B. Liu (NOTICE.md).
@@ -34,8 +34,10 @@ const D2R = Math.PI / 180;
 const BELLY_Y = 0.40;
 /** Hull roof and the turret-ring plane (the oracle's 1.40-1.45; the Type 59 photo's 1.45). */
 const ROOF_Y = 1.42;
-/** Hull sides: the upper hull ±1.07 over the track run, the lower tub ±0.98 inside the track's inner edge (1.016). */
-const HULL_HALF_W = 1.07, TUB_HALF_W = 0.98, TUB_TOP_Y = 0.98;
+/** Hull sides: the upper hull ±1.07 from the fender line up, the lower tub ±0.98 inside the track's inner edge (1.023);
+ * the upper hull's underside (TUB_TOP_Y - 0.03) clears the track pads over the wheels and both wraps (262 track-clip
+ * gate: at 0.95 m the pads rode 2-3 cm into it). */
+const HULL_HALF_W = 1.07, TUB_HALF_W = 0.98, TUB_TOP_Y = 1.10;
 /** Fender shelf over the tracks, to the 3.27 m width (the oracle's 1.15-1.24; the photo's 1.14-1.17). */
 // the track guards ride 4 cm over the track's wrap on the idler (262 critic round: they stood high over a bare top run)
 const FENDER_Y = 1.11, FENDER_OUT = 1.635;
@@ -168,18 +170,21 @@ function castDome(): THREE.BufferGeometry {
 }
 
 /** A bent plate: a polyline in (z, y), z increasing, swept across x0..x1 (x0 < x1), `t` thick on its underside. */
-function bentPlateX(pts: readonly (readonly [number, number])[], x0: number, x1: number, t: number): THREE.BufferGeometry {
+function bentPlateX(pts: readonly (readonly [number, number])[], x0: number, x1: number,
+  t: number | readonly number[]): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
+  const at = (i: number): number => typeof t === 'number' ? t : t[i];
   for (let i = 0; i < pts.length - 1; i++) {
     const [za, ya] = pts[i], [zb, yb] = pts[i + 1];
     const len = Math.hypot(zb - za, yb - ya), tz = (zb - za) / len, ty = (yb - ya) / len;
     // inner joints overlap 4 mm so the bends close
     const ea = i > 0 ? 0.004 : 0, eb = i < pts.length - 2 ? 0.004 : 0;
     const az = za - tz * ea, ay = ya - ty * ea, bz = zb + tz * eb, by = yb + ty * eb;
-    const nz = ty * t, ny = -tz * t;   // the downward normal, times the thickness
+    // the downward normal, times the thickness at each end (a per-point list tapers the plate)
+    const nza = ty * at(i), nya = -tz * at(i), nzb = ty * at(i + 1), nyb = -tz * at(i + 1);
     // slab corner order: (-x,+z), (+x,+z), (+x,-z), (-x,-z); b is the forward end
     parts.push(KIT.slab(
-      [x0, by + ny, bz + nz], [x1, by + ny, bz + nz], [x1, ay + ny, az + nz], [x0, ay + ny, az + nz],
+      [x0, by + nyb, bz + nzb], [x1, by + nyb, bz + nzb], [x1, ay + nya, az + nza], [x0, ay + nya, az + nza],
       [x0, by, bz], [x1, by, bz], [x1, ay, az], [x0, ay, az]));
   }
   return KIT.mergeAll(parts);
@@ -222,8 +227,9 @@ function addHullBody(P: TankBuilderPort): void {
   P.add('hull', sectionSolid(through([REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, upperEnd]).map((z) => ({
     z, ring: ring(HULL_HALF_W, TUB_TOP_Y - 0.03, top(z)),
   }))));
-  P.add('hull', sectionSolid(through([REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, BELLY_FRONT_Z, NOSE_Z - 0.002]).map((z) => ({
-    z, ring: ring(TUB_HALF_W, bottom(z), Math.min(top(z), TUB_TOP_Y + 0.02)),
+  // the tub's top meets the glacis where the upper hull ends, so the plate runs on unbroken
+  P.add('hull', sectionSolid(through([REAR_Z, -2.78, -2.55, GLACIS_TOP_Z, ...[upperEnd, BELLY_FRONT_Z].sort((a, b) => a - b), NOSE_Z - 0.002]).map((z) => ({
+    z, ring: ring(TUB_HALF_W, bottom(z), Math.min(top(z), TUB_TOP_Y + 0.04)),
   }))));
 }
 
@@ -237,9 +243,16 @@ function addFenders(P: TankBuilderPort): void {
     [2.97, FENDER_Y - 0.10], [3.035, FENDER_Y - 0.19], [3.05, FENDER_Y - 0.27]];
   for (const side of [-1, 1]) {
     const x0 = side > 0 ? HULL_HALF_W - 0.01 : -FENDER_OUT, x1 = side > 0 ? FENDER_OUT : -(HULL_HALF_W - 0.01);
-    P.addMudguard('type59-front-scoop', 'hull', bentPlateX(scoop, x0, x1, 0.028));
-    // the scoop's outer lip turns down 0.12 m along its curve
-    P.add('hull', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, 0.12));
+    // the scoop runs in to the glacis edge (the tub's ±0.98: the upper hull ends at the fender line), and a short
+    // plate closes the deck corner between the upper hull's end and the scoop
+    const s0 = side > 0 ? TUB_HALF_W - 0.01 : -FENDER_OUT, s1 = side > 0 ? FENDER_OUT : -(TUB_HALF_W - 0.01);
+    P.addMudguard('type59-front-scoop', 'hull', bentPlateX(scoop, s0, s1, 0.028));
+    const upperEnd = GLACIS_TOP_Z + (ROOF_Y - (TUB_TOP_Y + 0.04)) / UPPER_GLACIS_TAN, cornerZ0 = upperEnd - 0.005;
+    P.add('hull', box(HULL_HALF_W - TUB_HALF_W, 0.028, scoop[0][0] - cornerZ0), side * (TUB_HALF_W + HULL_HALF_W - 0.02) / 2,
+      FENDER_Y + 0.001, (cornerZ0 + scoop[0][0]) / 2);
+    // the scoop's outer lip turns down along its curve, shallow over the idler's wrap and 0.10 m at the nose (262
+    // track-clip gate: a uniform 0.12 m lip dropped into the track's outer edge over the idler)
+    P.add('hull', bentPlateX(scoop.slice(1), side * FENDER_OUT - 0.014, side * FENDER_OUT + 0.014, [0.045, 0.06, 0.10, 0.10, 0.10]));
     // pressed stiffening ribs along the scoop
     for (const f of [0.25, 0.5, 0.75]) {
       const x = side * (HULL_HALF_W + (FENDER_OUT - HULL_HALF_W) * f);
