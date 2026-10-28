@@ -38,6 +38,11 @@
 .cot-c-picker__grid[data-more]{
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent)}
+/* a list's foot fades over 48 px, so the last row in view fades when the foot falls on its edge (the 261 critic: a sliver
+   of the next row took the whole fade) */
+.cot-c-picker--list .cot-c-picker__grid[data-more]{
+  -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s7)),transparent);
+  mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s7)),transparent)}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 /* every cell is laid out at its real size (no content-visibility placeholder): the grid opens on its choice by measuring
