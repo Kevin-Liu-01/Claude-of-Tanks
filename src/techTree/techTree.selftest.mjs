@@ -143,5 +143,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
 // (FAMILY_UPGRADES above).
-assert.equal(digest, '14cae73ceb1ad491', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
+// added; 'Denmark' joins the tree's nations).
+assert.equal(digest, '61bccc124b269af6', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

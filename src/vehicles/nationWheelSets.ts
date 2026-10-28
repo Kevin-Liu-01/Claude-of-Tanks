@@ -232,6 +232,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
+  christian2: { donor: 'leo2a4', reason: 'release 262: the Danish Christian II concept rides a Leopard 2-pattern hull and seven-wheel gear (Denmark has no wheel set) → Germany MBT donor' },
 });
 
 /** Pre-1950 hulls that keep their period wheel constructions (owner exception list, 2026-09-22). */

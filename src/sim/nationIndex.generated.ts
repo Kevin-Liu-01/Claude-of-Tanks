@@ -38,6 +38,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["cv9040c","sweden","modern",4],
   ["cv90105_tml","sweden","modern",2],
   ["strv121","sweden","modern",9],
+  ["christian2","sweden","modern",8],
   ["cv90_mk4_concept","sweden","modern",7],
   ["cv90_mk4","sweden","modern",7],
   ["kv2","russia","ww2",1],

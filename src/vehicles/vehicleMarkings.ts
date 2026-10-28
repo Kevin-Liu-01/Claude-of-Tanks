@@ -78,6 +78,7 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   pl: Object.freeze({ countryLabel: 'Poland', filterLabel: 'PL', insignia: 'pl-checker', designation: 'PL' }),
   kr: Object.freeze({ countryLabel: 'South Korea', filterLabel: 'KR', insignia: 'kr-taeguk', designation: 'ROK' }),
   se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
+  dk: Object.freeze({ countryLabel: 'Denmark', filterLabel: 'DK', insignia: 'dk-dannebrog', designation: 'DK' }),
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
@@ -128,6 +129,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   jpz_e100: anchor('hull', 'right', .38, .69, .28, 1),
   type10: anchor('turret', 'right', .30, .44, .24, 1),
   type90: anchor('hull', 'left', .24, .82, .24, 1),
+  // release 262: the Christian II's Dannebrog and number on its middle side module, painted on the drape over it
+  christian2: anchor('turret', 'left', .42, .50, .24, 1),
   amx40: anchor('turret', 'right', .34, .40, .24, -1),
   c1_ariete: anchor('turret', 'left', .31, .43, .24, 1),
   c2_ariete: anchor('turret', 'left', .31, .43, .24, 1),
@@ -405,7 +408,8 @@ export function vehicleMarkingPaintsOnSuit(
   specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
 ): boolean {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
-  return id === 'm1a1_abrams_fep';
+  // release 262: the Christian II's heavy suit covers its turret walls; its markings are painted on the drape
+  return id === 'm1a1_abrams_fep' || id === 'christian2';
 }
 
 /** Continuous side modules may carry markings outside the core hull. */
@@ -643,6 +647,16 @@ function drawSwedenCrowns({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   }
 }
 
+/** Release 262 (the Christian II): a small Dannebrog, the white Nordic cross on red, its upright off the hoist. */
+function drawDenmarkDannebrog({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
+  const w = radius * 1.7, h = radius * 1.28, x0 = cx - w / 2, y0 = cy - h / 2, bar = h * 0.16;
+  ctx.fillStyle = '#b8343a';
+  ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#ece8dc';
+  ctx.fillRect(x0 + w * 0.36 - bar / 2, y0, bar, h);
+  ctx.fillRect(x0, cy - bar / 2, w, bar);
+}
+
 function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
   ctx.strokeStyle = '#e0bd4c';
   ctx.lineWidth = size * 0.09;
@@ -682,6 +696,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'pl-checker': drawPolandChecker,
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
+  'dk-dannebrog': drawDenmarkDannebrog,
   'ua-trident': drawUkraineTrident,
 });
 

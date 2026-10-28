@@ -179,6 +179,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 259 (owner on both Strv 103s: "dont allow the strv 103 bs gun to like glitch through the front of its gate"): each
     // fixed tube leaves through its glacis housing's port and clears every hull part at every hull pitch
     'src/vehicles/strv103GunPort.selftest.mjs',
+    // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
+    // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
+    'src/vehicles/profiles/christian2.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',

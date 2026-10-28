@@ -81,3 +81,17 @@ delivered uncommitted-unstaged). What went: the ground-up §5.248 build
 - §5.254 pairs: shots/sweden-undo/{before,after}/strv122/ (14 sheets each,
   captured at their respective trees, 0/14 byte-identical).
 The NEXT list above is suspended while the donor-clone build stands.
+
+## Release 262: the Swedish field suit (`strv121`, lane christian2-262, its own READY)
+
+- Owner 2026-10-27 (through Main, verbatim): "dress it [the Christian II] in a ton of netting and ghillie, which our strv 121
+  should also get a ton of btw to distinguishh it as swedish." Main's brief: the Swedish Barracuda-style mobile
+  camouflage look and spruce foliage, gun, sights and hatches clear, assets and ghillie receipts re-run.
+- The disabled round-5 entry in `ghillieSuit.ts` (leafy, density 0.78, spruce, authored for an older geometry: roof
+  carrier at 1.08) is retired. `ghillieFleetSuits.ts` `strv121` is the fleet field suit fitted to today's build
+  (`buildStrv122`), measured on the assembled vehicle (turret roof 0.68-0.76 on the bustle and 0.87-0.99 on the 122 roof
+  armour, walls +-1.56 with the side plates, deck 1.84-1.89 aft and 1.70 amidships, cassettes at x 1.87 with tops at
+  1.49): style `ulcans` (Barracuda-like cut multispectral strips) with spruce boughs (boughShare 0.45), density 2.2 (above
+  the fleet's DENSE 1.8), Swedish greens, the turret netted over the wedge, roof armour and bustle, drapes on the walls
+  and over the bustle, a rear drape, the decks netted and four drapes a side over the cassettes; fieldClearanceM 0.03,
+  clothClearsGunStops, a garnish budget (70 % of each clump's cards, 45 % at LOW).
