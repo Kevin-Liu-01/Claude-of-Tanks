@@ -42,12 +42,16 @@ img{display:block;max-width:100%}
 /* ---- the hero reel: the poster paints first (the LCP), the clips crossfade over it (heroReel.ts) ---- */
 .hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto;grid-template-areas:"card" "stats";
   min-height:max(540px,var(--cot-viewport-height,100dvh));padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) 0;overflow:hidden;background:var(--surface-scene)}
-.hero__still,.hero__clip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
-/* the hero still's inline preview (home-premiere.mjs, tools/hero-lqip.mjs) under it, cropped as the still is */
-.hero__still{background:var(--hero-lqip,none) 50% 100%/cover no-repeat}
+.hero__still,.hero__clip,.hero__lqip{position:absolute;left:0;right:0;bottom:0;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
+/* the hero still's inline preview (home-premiere.mjs, tools/hero-lqip.mjs) paints at once under it, cropped as the still
+   is; the still fades in over it once decoded (publicPages.ts marks the hero data-ready), so a slow link never paints it
+   in bands (the slow-load critic: three hard-edged bands over 2 s on a phone); without scripting it shows as it loads */
+.hero__lqip{background:var(--hero-lqip,none) 50% 100%/cover no-repeat}
+@media (scripting:enabled){.home .hero:not([data-ready])>.hero__still{opacity:0}}
+.home .hero__still{transition:opacity var(--dur-base) var(--ease-enter)}
 .hero__reel{position:absolute;inset:0;pointer-events:none}
 /* the still, the reel, the grade and the words' scrims share one layer under the card: their order in the markup stacks them */
-.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
+.hero__lqip,.hero__still,.hero__reel,.hero__grade,.hero__lead::before,.hero__reelbar::before{z-index:-1}
 .hero__clip{opacity:0;transition:opacity var(--dur-stage) var(--ease-move)}
 .hero__clip.is-on{opacity:1}
 .hero__grade{position:absolute;inset:0;pointer-events:none;background:var(--home-hero-grade)}
@@ -327,8 +331,8 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) var(--s4);background:var(--surface-page)}
   /* the picture spans 640 px, or the hero when it is shorter (a short phone), so its grade always ends in the page tone
      inside the hero, never cut by the hero's edge (the /home r3 zh critic at 601x702) */
-  .hero__still,.hero__clip{top:0;bottom:auto;height:min(640px,100%);object-position:54% 50%}
-  .hero__still{background-position:54% 50%}
+  .hero__still,.hero__clip,.hero__lqip{top:0;bottom:auto;height:min(640px,100%);object-position:54% 50%}
+  .hero__lqip{background-position:54% 50%}
   .hero__reel{bottom:auto;height:min(640px,100%)}
   .hero__grade{bottom:auto;height:min(641px,100%);background:var(--home-phone-grade)}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after

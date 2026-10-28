@@ -80,6 +80,12 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero--visual::after{display:none}
 .docs-hero--visual>img,.docs-hero-shade{position:absolute;inset:0;width:100%;height:100%}
 .docs-hero--visual>img{object-fit:cover;object-position:center 50%;filter:saturate(.88) contrast(1.08)}
+/* the LCP banners' inline previews (docs-prerender, tools/hero-lqip.mjs) on their boxes, cropped as their pictures are:
+   the picture fades in over its preview once decoded (docs.ts, topics.ts revealStills), so a slow link never paints it
+   in bands; a chapter card's the same way, under its card */
+.docs-hero--visual{background-image:var(--docs-hero-lqip,none);background-position:center 50%;background-size:cover;background-repeat:no-repeat}
+.dm-banner{background-image:var(--dm-banner-lqip,none);background-position:50% 62%;background-size:cover;background-repeat:no-repeat}
+.docs-chapter-grid .docs-chapter-media{background-image:var(--card-lqip,none);background-position:center;background-size:cover;background-repeat:no-repeat}
 .docs-hero-shade{background:linear-gradient(90deg,var(--scrim),var(--scrim) 30%,transparent 62%),linear-gradient(0deg,var(--surface-scene),transparent 42%)}
 .docs-hero--visual .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto;padding:76px 0 54px;grid-template-columns:minmax(0,1fr) minmax(420px,.82fr)}
 .docs-hero--visual h1{font-size:var(--docs-h1);text-shadow:var(--hollow-shadow)}
@@ -100,6 +106,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-hero--visual{min-height:0}
 .docs-hero--visual .shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));padding:66px 0 36px}
 .docs-hero--visual>img{object-position:62% center}
+.docs-hero--visual{background-position:62% center}
 .docs-hero-shade{background:linear-gradient(0deg,var(--surface-scene),var(--scrim) 55%,transparent)}
 .docs-hero--visual h1{font-size:var(--docs-h1)}
 .process-sheet-group>header{align-items:flex-start;gap:5px;flex-direction:column}

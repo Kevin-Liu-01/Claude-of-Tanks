@@ -387,12 +387,15 @@ export function topicHeroLadder(hero: string): TopicHeroLadder | null {
   return null;
 }
 
-/** A banner picture's crop (docs.css .dm-banner>img object-position): its preview sits the same. */
-const BANNER_POSITION = '50% 62%';
 /** The inline previews (LQIP) behind the banners' pictures, by path (src/docs/heroLqip.json, tools/hero-lqip.mjs).
  *  tools/docs-prerender.mjs hands them in, so they ride in the served markup and never in this module's bundle. */
 let heroLqips: Readonly<Record<string, string>> = {};
 export function setTopicHeroLqips(table: Readonly<Record<string, string>>): void { heroLqips = table; }
+/** A banner's preview, on the banner itself (docs.css .dm-banner): its picture fades in over it once decoded. */
+function bannerLqip(hero: string): string {
+  const lqip = heroLqips[topicHeroLadder(hero)?.poster ?? hero];
+  return lqip ? ` style="--dm-banner-lqip:url(&quot;${lqip}&quot;)"` : '';
+}
 
 /**
  * A topic header: its take's first frame as the page's LCP picture (a 640 still under data saving, which never plays),
@@ -404,11 +407,11 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
   const ladder = topicHeroLadder(hero);
   if (!ladder) {
     const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
-    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster', lqip: heroLqips[hero], lqipPosition: BANNER_POSITION }, saving);
+    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
   }
   const poster = pictureMarkup({
     src: ladder.poster, rungs: [{ src: ladder.poster, width: 1920 }], width: 1920, height: 1080, alt,
-    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)', lqip: heroLqips[ladder.poster], lqipPosition: BANNER_POSITION,
+    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
     saveData: { src: ladder.still, width: 640 },
     phone: { src: ladder.still, width: 640 },
@@ -655,7 +658,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual" data-doc-size="16"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
     // then stays visual only
-    + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
+    + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner"${bannerLqip(topic.hero)}>${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a>`
     + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span>${groupLabel(group.key)}</span></span>`
     + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></span></nav>`

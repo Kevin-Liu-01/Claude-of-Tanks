@@ -11,9 +11,45 @@
   "sha256": "39bec0f41b62d78c3075a04834d52f3e53f1a439a706701a463d70b6f02a9bb0",
   "lqip": "data:image/webp;base64,UklGRrAAAABXRUJQVlA4IKQAAABwBQCdASogABIAPu1kqU2ppaQiMAgBMB2JQlwAU/4a4UySvTfT+vN+c/weCRuS5AH6lh4AAM4JbhpfZc7XMvL80SzAY9bNXaYDE2DdlLyqJmmZ4eg++XV12hbW9SGwqixz3OTp5OJT4zo9OPQNBhGTejUsC5qVNJIbs98/csbtTiRg8P6saJk7FJ3IdXcp7bGCYtBQCtsZ4W0bIbJ0SgWG3gAAAA=="
  },
+ "/media/docs-r1/banner-2560.webp": {
+  "sha256": "202da529a8224300a868b1f12e5d5f543df8a83c83469f7b2f9b0e38fa642676",
+  "lqip": "data:image/webp;base64,UklGRrgAAABXRUJQVlA4IKwAAACQBACdASogAA4APu1orU2ppqSiMAgBMB2JbACdMoR4GITT3PJvtZKA+ozAtAAA/utqkdrl/HkOGRvjPNAlwHkMDNl8tqSqTEowG7SJb3vXxK3b13JF/ojVKK1/uU7uWoZeiswsvuJGfMW+9rVUKotRcJnVmgQpLsGueMaZ/2TSGDHMFJO5aK7iea3eTizXqnSNxI1BbFGxIiY5jVfQVNXCScPO5DIhoGoF0AAA"
+ },
+ "/media/filming-r1/card.webp": {
+  "sha256": "917b31b671895f8566fc7e00a6753971b62a084732958dcbc9af53b28a7bee1c",
+  "lqip": "data:image/webp;base64,UklGRoIAAABXRUJQVlA4IHYAAADwAwCdASogAAYAPu1kqU4ppaOiMAgBMB2JZgCdMoAKOqg+Kw1ST3dgAP7ZpBYfkv1siYCPtPoPabkxq93BaGGl69TexCxj2Pk7Av9SJPaLa3Wx+L6FH//guJnzC+3gTrH33F7DwJnkebqFs0faUFBBIcK4i4AA"
+ },
+ "/media/home-r2/fleet-kv2-1280.webp": {
+  "sha256": "93faf4c76a5a8aa264911042a8fcf2620243bc7d67381137ec31ba1a644503ac",
+  "lqip": "data:image/webp;base64,UklGRpAAAABXRUJQVlA4IIQAAAAQBQCdASogABIAPu1krE+ppSQiMBgIATAdiWMAwcwQN+x0fhJMp0GZbfp5qOU8pvqgAPyC6tUJ281EG/KViN0nUejlDO/askhiTbSjhMn1ONIHjN7ipiwa4QyANqDQ92u+5Wr/NauzyysFfxT66JxeMoZnYlRORjQC0QsBNCZP2VuoAAA="
+ },
  "/media/home-r2/vs03-reservoir-k2-vt4a1-1440.webp": {
   "sha256": "8272eec2dbf444873f63f75ecb6ec550ee1760d99f3ba25ae6b952a43879cf9a",
   "lqip": "data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAADwAwCdASogABIAPuVio02pJbajMAwC0ByJQBWGcdhfZou5rwZnMuCAAOHVxXJ6J0jSWBw/zqgDlxOyb5AbtIRadlxgueEL//9RU4IfNDwZbPCSz5XWTRvFEUT+OYWZXTqYdkdwStfDhH/UI18C0IAA"
+ },
+ "/media/site50-r14/home/features/garage.webp": {
+  "sha256": "e8145ccebe9613a4aea654bb81a036682fd65e41f1bfb529abd4064eb0e95e98",
+  "lqip": "data:image/webp;base64,UklGRqIAAABXRUJQVlA4IJYAAABQBQCdASogABIAPu1iqE2ppaOiMAgBMB2JQBmcOAAG40zU/feBPYeumnlbvaxDNSUvweAA/u6hju+uVSEKIHuiuE67GUmHT0PtDw91L4eS13Dkh4VdUtjYhflW1oaZG1tDspg6iUIotYiYL36dH4I1rDoMI3n1k7XqqQDcnEegEPKgm08DLgtDFAtqKOTcoEAEkmyQAAA="
+ },
+ "/media/site50-r14/home/mechanics/armor.webp": {
+  "sha256": "7444bfbdbc33be07efba6e17cca383763af9d0c53c005a079d38f7f194822589",
+  "lqip": "data:image/webp;base64,UklGRpoAAABXRUJQVlA4II4AAAAQBQCdASogABIAPu1qqk8ppiOiMBgIATAdiUAY3oH3H2Cbif6Wu737Ta9j98e1uKSuAP7o7JJrBu7hHrj561XNo3md/+kH2WPRvKHsJ73QM0IpV/ErFJIh+0MN6AtRBKjKsLSWwaPNOUH3iPdcIb1AaPOZdnI07vl5aXRk4uy77mOo1LVm1YuDdNBQUwAA"
+ },
+ "/media/site50-r14/home/mechanics/buildings.webp": {
+  "sha256": "e3936cf9f991fc9cf0504ec628b2810cdb33a8a8dffbc9539e36e57a745ad2d0",
+  "lqip": "data:image/webp;base64,UklGRn4AAABXRUJQVlA4IHIAAAAwBACdASogABIAPu1mqk2ppaQjMAgBMB2JYgC7B6gAlWkEVUZwxsQW6bAA0zvTCpQPDAE+enHvWTFnqetTSeQ8zZdcKWY6SOQPyY4soXUzKLFv/sorbdqDpw+HGI9ODVr3BGCrDghV4x3Qg93SYiwAAAA="
+ },
+ "/media/site50-r14/home/mechanics/dossiers.webp": {
+  "sha256": "42ec2307d61e9da6307262775b1b8be71934a0aa514952e4c5e71e10b801572a",
+  "lqip": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAACQBACdASogABIAPu1kqU2ppaQiMAgBMB2JZwDLpB6P9vrS1BGEWJF2iUt09QAA/vEa+0Hxz0/qWWvE7lubiFZU/imOaxhBi4QpFYJdjQJWdhq6BBGt4DCeLZWKwAAA"
+ },
+ "/media/site50-r14/home/mechanics/mobile.webp": {
+  "sha256": "e9f54dba772e4d46f80feb1cc56a9c60579f7978bf73fd4de91756e0d78217be",
+  "lqip": "data:image/webp;base64,UklGRvAAAABXRUJQVlA4IOQAAAAwBgCdASogABIAPu1oq0+ppaOiMBgIATAdiWIAsRvCE/+LoPJ6yKrD+Wkqa9tR7VfmLgI2Aez/FOjMAPQEV3QGja+/ZqODgnV/MVB07WUwZ2d5/P6gkjroD6R9dEAof2D4690Qsuy13JIyrvrrLcDBbXhBflnuQNz+dWeJwtJ64vA4n1Q/j+zejk0rBfH16UXZ/cvevqmdTHBbDewM5K1cVWD3XdWk5/Z7yfAhw24we2fXegqLGKNuBBucVzC0b1l5w/RA7RRR3aDZ9pHvWAfK/gRdyVEIuHXxDIAQ3DsjavgAAAA="
+ },
+ "/media/site50-r14/home/modes/standard.webp": {
+  "sha256": "5df3db0e56afb45247def35777372794c9253da90c40741968eec03f266f7a31",
+  "lqip": "data:image/webp;base64,UklGRsIAAABXRUJQVlA4ILYAAABwBQCdASogABIAPu1kqk2ppaQiMAgBMB2JaACdMoMyfr/AT+Mte0aRC6hZL3LfJOVaS0HAAP7QWJ3gvC7/atZzO1lVIQ1gpsllbV+dE8Q8YAGeYBReZbz3hAukeyB5E9gRKgFYgE4Yd7XY6SZ6BOzpWtCMtyQx0p3hGRMSAvSeh2gfQSQ0bsicxkobnFrudeE+PcGQUBaoD6M/M4gg8mDnPH+CsLvi3is7VS6hL35Va5D2twAAAA=="
  },
  "/media/site50-r14/loops/s04-column-under-fire.jpg": {
   "sha256": "69b62b9d626c2e55a0224cb328d54802a4c4c97e41d8454f62ede056edffb667",
@@ -66,5 +102,37 @@
  "/media/site50-r14/loops/s34-furnace-salvo.jpg": {
   "sha256": "acc3f009dcc42b4378da00ce16be18673319be3ce25a67d55824af4406c3bcca",
   "lqip": "data:image/webp;base64,UklGRooAAABXRUJQVlA4IH4AAADQAwCdASogABIAPu1opU2ppiMiMBgMATAdiWUAnQAVS/EIoewAKAAA/u9djamiz1bW6T0Ll+Ip8A5YhmDhkiTdzkkhYRJiPGMbnSgL3+AdPYU92wp3Zmy3r6Zf+IxPNveWo5YXp/ZP95NvnrauPEYliGnCPOQ+S89VPoEAAAA="
+ },
+ "/media/site50-r14/stills/s03-square-pass-close.webp": {
+  "sha256": "b54c0a35702beb988c190b4cd606c2f66292d68a4f9c6693a35cd0697e22a51b",
+  "lqip": "data:image/webp;base64,UklGRowAAABXRUJQVlA4IIAAAABQBACdASogABIAPu1mqk2ppaQsMAgBgB2JZTcAA7dgplDPfb3F7SbW90CwAPfStOYAoJIWAAuTc2oiIyddfQfHV3X/mhBkJWaWHH5ZAAnLJNd1X+ADAoKtlrh6JVpIKdQHgZ9V8upX5Kkw50/oyD992LL0Si+AD+qoE3t/GLAAAA=="
+ },
+ "/media/site50-r14/stills/s04-column-under-fire.webp": {
+  "sha256": "6e029dae7ff00350d8cf0bac116115c2bb988d8afae3c4fce510b234d587a4d7",
+  "lqip": "data:image/webp;base64,UklGRqQAAABXRUJQVlA4IJgAAABQBQCdASogABIAPu1kqU2ppaOiMAgBMB2JZACdM2QDRG96I9G+2Szbe68ewe6XEZrkLAAA/trD32MBFXTO8BnWUQitsi7tn2wlZKODWShgRmRu+CUbto5G/f/fsA7HYqM2fgPuqSI02uVhXKNohoctHRFepHP76g+TXIcqWalmOWb+M6tsrlDt5hQ2z1h7VNYdRScTnIAAAA=="
+ },
+ "/media/site50-r14/stills/s16-street-duel.webp": {
+  "sha256": "833bbc6fa40a06b7695368061b2cfae5b1e5355fb177ba7ee2661f45bf1022a2",
+  "lqip": "data:image/webp;base64,UklGRq4AAABXRUJQVlA4IKIAAABwBQCdASogABIAPu1mqk2ppaQiMAgBMB2JQBdmWhZlAcNhIdAUYRl2GAPPG3z4eTYSq8tgAP7o8C82n0pEvvZVi9Qs/bGHdnc22MM+D9NnGY4CJW/kPIvnVtDDi9PrOFchHRFGsiMXNuyEM5pa2cCompNa14qLkTCjFyyo7SoKytIIIRX6JJGXFeUbNJXQ7R1YQLHY+x6z91LmJouN+SRKQAA="
+ },
+ "/media/site50-r14/stills/s20-road-return-fire-close.webp": {
+  "sha256": "d858e587aab5d9411ca740e5b539eebc34e5f77e961c4b73d2f59d289c6d251d",
+  "lqip": "data:image/webp;base64,UklGRsAAAABXRUJQVlA4ILQAAADQBQCdASogABIAPu1mq0+ppSOiMBgIATAdiWQArB/CfA7ToBP2N2T6jTzRWtI+mfd+ZUuKdL0gAP5buz1l3/lOMMylX14PPrtOoGIwGcXPkHvh1siRZtOOcSV7HMUaATYv4ZCjc5FiA9beKY+tFOSVPo9GWLBv0KVaXNyINRt7nPtq9RXfWJJHCbnfNoQyYpOSfY58a0ADAGypxvciDS78QMf3exCbq/rOuAuEmKNRgErAAAA="
+ },
+ "/media/site50-r14/stills/s23-village-crossroads.webp": {
+  "sha256": "9bc2817fb8126715e8e03a3fce1f922077964df7eb8a7794959a3759466846f6",
+  "lqip": "data:image/webp;base64,UklGRqoAAABXRUJQVlA4IJ4AAAAQBQCdASogABIAPu1iqE2ppaOiMAgBMB2JYgC+SBtq7KBLRkifuyoLZ7V+dy4hUFxQAPeLjoO+X5ZnfW3sg43giynEh4lcvJR8P9ZZj42A3mgKQ0HNb/bNewj4F0o1AavMPMyYL72f27IA3YA5kN6PorGuf9WsrjwGrrjgTDDRc3Ywm76CU5QNp4Nn1iOCiQtaZx9wcNGpk5A3kAAAAA=="
+ },
+ "/media/site50-r14/stills/s24-ice-duel.webp": {
+  "sha256": "3b664ff98e1bcec4ff95858326d7702a4f94cf1c90f30a27e218217d20639c98",
+  "lqip": "data:image/webp;base64,UklGRqAAAABXRUJQVlA4IJQAAABQBACdASogABIAPu1iqU2ppaOiMAgBMB2JQAAJDNmjpqRK8qWFFR2QXn6AAN1bAJeEGun+StWq/KBQiZjHcljL1GS1MBro8raDcj0+VrV3Im1ZAN2oc60EiXMjeb2qHaMGI8h0b6wQGGhIBEcWiD5P7mgUQx3jGz6FGVXFDVlm4GRawbb5GTQKaeG+4si9DQGVOgAA"
+ },
+ "/media/site50-r14/stills/s42-assault-above.webp": {
+  "sha256": "474907fe8cf50e992a2a8cbd954f83a3b6069b4205847220c0ce5fe6ac8e5cf1",
+  "lqip": "data:image/webp;base64,UklGRpAAAABXRUJQVlA4IIQAAABwBACdASogABIAPu1qq08ppiOiMBgIATAdiUAXZmHQMXYukUqly7QIfZTjAAD+7ubUtRjc0WYB3YFT/Bm0YzEwTM6/xftjnAf7DUyorvPUTidhACO3XIL9VXEANTqS1UFBn2DY8owDoXpLFQY/pAqjRpFoHWlSIcfAE9KdbaCyJM5gAAA="
+ },
+ "/media/ui-246/battle-firing.webp": {
+  "sha256": "1d756b38a94eb7c3e96b28d3a87b603dd0cca6fb196ab6e4da6921089d838ef7",
+  "lqip": "data:image/webp;base64,UklGRswAAABXRUJQVlA4IMAAAAAwBQCdASogABIAPu1kqk2ppaQiMAgBMB2JagCdL49s/wGDpUOLALMUOAaYMSJ4A0G/+AD+3IaJofVRKSNJGK4+xQ29v0pAvLzCZlvMRNjH/bBDh/Rfp0fCSIpchCzvYJbZWXKtkxe0vpjqGX4Y/HmRHmvmxFv7UH9tQYDWguguYlRRbfAfvDfEdcLRnQbj6uKebAxvOvy1Jjz1+7xpPeNuZ/ViIuMx6scMkWwgjSF5bC9a3gc5iJMqNHoI94SpcAA="
  }
 }

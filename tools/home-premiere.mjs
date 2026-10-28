@@ -156,9 +156,10 @@ function heroBlock() {
   const shots = [first, ...moving.filter((clip) => clip !== first)].map((clip) => shotCaption(clip, clip === first)).join('');
   const trailer = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.webm');
   return `<header class="hero" aria-labelledby="hero-title" data-hero-reel>`
-    // its inline preview (tools/hero-lqip.mjs) draws behind it until it decodes: a slow link sharpens it in place
+    // its inline preview (tools/hero-lqip.mjs) paints at once under it; the still fades in over it once decoded
+    + `<div class="hero__lqip" aria-hidden="true" style="--hero-lqip:url(&quot;${heroLqip(heroDefault())}&quot;)"></div>`
     + `<img class="hero__still" src="${heroDefault()}" alt="${esc(lead.en)}" data-i18n-alt="${lead.key}" width="1920" height="${Math.round(1920 * size.height / size.width)}"`
-    + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}" style="--hero-lqip:url(&quot;${heroLqip(heroDefault())}&quot;)">`
+    + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}">`
     + `<div class="hero__reel">${clips}</div>`
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to

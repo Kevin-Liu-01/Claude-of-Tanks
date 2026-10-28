@@ -64,17 +64,18 @@ if (document.querySelector('[data-media-archive]')) {
 
 
 
-// The landing's stills under the hero (the bentos, the features, the modes rail's cards) and the trailer button's thumb fade
-// in once decoded, over their box's own tone (home.css hides them from the first paint), so none paints in half-drawn as it
-// streams (owner 2026-10-27: "lets ensure we have good loadin gstates for everything"). They are marked here, in the page's
-// first module, so a still that arrives before the landing's own module still fades (the loading census, round 6: the
-// phone's lead duel and the thumb popped in). A still that failed keeps its box's tone until it loads (homePage.ts asks
-// for it again online). The box carries data-ready (the loading census's mark).
+// The landing's stills (the hero still over its inline preview, the bentos, the features, the modes rail's cards and the
+// trailer button's thumb) fade in once decoded, over their box's own tone or preview (home.css hides them from the first
+// paint), so none paints in half-drawn as it streams (owner 2026-10-27: "lets ensure we have good loadin gstates for
+// everything"). They are marked here, in the page's first module, so a still that arrives before the landing's own module
+// still fades (the loading census, round 6: the phone's lead duel and the thumb popped in; the slow-load critic: the hero
+// came in in bands). A still that failed keeps its box's tone until it loads (homePage.ts asks for it again online). The
+// box carries data-ready (the loading census's mark).
 const showStill = (image: HTMLImageElement): void => {
   if (!image.naturalWidth || image.parentElement?.hasAttribute('data-ready')) return;
   void image.decode().catch(() => undefined).then(() => image.parentElement?.setAttribute('data-ready', ''));
 };
-for (const image of document.querySelectorAll<HTMLImageElement>('.home .cot-c-media > img[loading="lazy"], .home .hero__thumb > img')) {
+for (const image of document.querySelectorAll<HTMLImageElement>('.home .hero > .hero__still, .home .cot-c-media > img[loading="lazy"], .home .hero__thumb > img')) {
   if (image.complete) showStill(image);
   image.addEventListener('load', () => showStill(image));
 }
