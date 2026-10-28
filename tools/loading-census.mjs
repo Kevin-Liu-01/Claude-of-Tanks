@@ -98,7 +98,7 @@ function plan() {
 }
 
 /** The documents whose first view is a page's own shell (the game's and the Studio's is the boot screen). */
-const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'gallery', '404']);
+const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'docs-fleet', 'gallery', '404']);
 
 /** The findings one row's timeline holds, under one condition. */
 function judge(row, condition, t) {

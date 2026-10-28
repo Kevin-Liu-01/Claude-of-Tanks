@@ -24,7 +24,7 @@ const walk = (dir) => {
 };
 walk(join(ROOT, 'src'));
 const PAGE_HTML = { game: ['index.html'], studio: ['index.html'], home: ['site/home.html'], docs: ['site/docs.html'],
-  'docs-topic': ['site/docs-tanks.html', 'site/docs-filming.html'], gallery: ['site/gallery.html'], '404': ['404.html'] };
+  'docs-topic': ['site/docs-tanks.html', 'site/docs-filming.html'], 'docs-fleet': ['site/docs-fleet.html'], gallery: ['site/gallery.html'], '404': ['404.html'] };
 const corpus = new Map();
 const corpusFor = (row) => {
   const key = `${row.page}|${row.owner}`;

@@ -16,7 +16,7 @@ export const LOADING_LANES = Object.freeze(['boot-loading', 'lead', 'premiere-si
 type Lane = (typeof LOADING_LANES)[number];
 
 /** The documents the census loads, each in a fresh browser context. */
-export const LOADING_PAGES = Object.freeze(['game', 'studio', 'home', 'docs', 'docs-topic', 'gallery', '404'] as const);
+export const LOADING_PAGES = Object.freeze(['game', 'studio', 'home', 'docs', 'docs-topic', 'docs-fleet', 'gallery', '404'] as const);
 type Page = (typeof LOADING_PAGES)[number];
 
 /** The census's way in: selectors pressed in turn from the page at rest; a leading `?` presses one only when it shows. */
@@ -125,6 +125,12 @@ export const LOADING_SURFACES = Object.freeze({
   'docs-topic-tanks': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: TOPICS, box: '.dm-banner', ready: 'loaded:.dm-banner', offline: false },
   'docs-tanks-reference': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: 'src/docs/reference.ts', box: '#reference',
     ready: '#reference .manual-record', scroll: true },
+
+  // the fleet grid (every playable tank's hero card, prerendered): its first view, then its middle scrolled into view
+  'docs-fleet': { page: 'docs-fleet', path: '/docs/fleet', lane: 'premiere-site', owner: 'src/docs/chapters/fleetGrid.ts',
+    box: '.dm-fleet__grid', ready: 'loaded:.dm-fleet__grid', offline: false },
+  'docs-fleet-lower': { page: 'docs-fleet', path: '/docs/fleet', lane: 'premiere-site', owner: 'src/docs/chapters/fleetGrid.ts',
+    box: '.dm-fleet__grid', ready: 'loaded:.dm-fleet__grid', scroll: true },
 
   // the Gallery: its list, its viewer and its dossier, from the document's start (a phone stacks the list and the dossier
   // under the viewer)
