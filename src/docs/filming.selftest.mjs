@@ -85,7 +85,7 @@ assert.match(read('site/docs.html'), /<a class="docs-chapter-wide" href="\/docs\
 // describes: since 2026-10-15 every card shows the current game)
 assert.match(read('tools/marketing-shots/generate-og-images.mjs'), /\['docs-filming', 'FILMING THE MEDIA', 'public\/media\/(?:site50-r14\/stills|versus-r1)\/[^']+\.webp'/);
 const topicsSource = read('src/docs/topics.ts');
-assert.match(topicsSource, /slug === 'filming'\) \{\n\s+void import\('\.\/filming\.ts'\)/, 'the viewer loads on demand, on its own page');
+assert.match(topicsSource, /slug === 'filming'\) \{\n\s+whenOnline\(\(\) => import\('\.\/filming\.ts'\)/, 'the viewer loads on demand, on its own page (and again once back online)');
 
 // The copy's numbers, held to the code that makes them true.
 const text = [filming.lede, ...filming.sections.flat()].join(' ');

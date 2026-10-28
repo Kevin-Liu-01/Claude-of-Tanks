@@ -91,8 +91,10 @@
 .dm-fleet__layer{position:absolute;inset:0;display:block}
 .dm-fleet__media>.dm-hc{width:auto;aspect-ratio:auto}
 .dm-fleet:not([data-view=hero]) [data-layer=hero],.dm-fleet:not([data-view=angle]) [data-layer=angle],.dm-fleet:not([data-view=side]) [data-layer=side]{display:none}
-.dm-fleet.is-live .dm-fleet__layer{opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
-.dm-fleet.is-live .dm-fleet__layer[data-ready]{opacity:1}
+/* a tile's pictures stand transparent over its tone from the first paint (each layer is the kit's reveal box, data-reveal
+   in the served markup: components.css) and fade in once they decode (topics.ts wireFleetGrid marks it data-ready), so a
+   picture that arrives before the scripts never pops in; without scripting they show as they load */
+@media (scripting:none){.dm-fleet__layer[data-reveal]>:is(img,picture){opacity:1}}
 .dm-fleet__media img[data-failed]{visibility:hidden}
 .dm-fleet__angle img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
 /* the side render under the chip's band: the chip's inset, its height and a step */
@@ -110,7 +112,7 @@
 .cot-c-menu__pop:has(>.cot-c-menu__picker[data-picker='docs-fleet-filter'])::backdrop{background:var(--scrim)}
 /* the empty state's line is the kit's (figures.css), not the chapter's prose (docs.css .dm-section p) */
 .dm-section .dm-fleet__empty p{margin:0;max-width:44ch;font:inherit;color:inherit}
-@media (prefers-reduced-motion:reduce){.dm-fleet.is-live .dm-fleet__layer{transition:none}}
+@media (prefers-reduced-motion:reduce){.dm-fleet__layer[data-reveal]>:is(img,picture){transition:none}}
 }
 /* printed (the manual's print sheet turns the kit's tokens to paper and hides the chrome): the grid without its bar, four
    tiles across the A4 column, each tile whole and drawn (no skipped layout, no fade), in the presentation on screen.
@@ -121,6 +123,6 @@
 .dm-fleet__grid{margin-top:4mm}
 .dm-fleet__list{--dm-fleet-cols:4}
 .dm-fleet__tile{content-visibility:visible;break-inside:avoid}
-.dm-fleet.is-live .dm-fleet__layer{opacity:1;transition:none}
+.dm-fleet__layer[data-reveal]>:is(img,picture){opacity:1;transition:none}
 }
 }

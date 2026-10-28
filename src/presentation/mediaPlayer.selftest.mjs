@@ -198,6 +198,10 @@ const page = await freshModule();
     video.dispatchEvent({ type: 'canplaythrough' });
   }
   assert.deepEqual(frames.map(({ video }) => video.paused), [false, false, true], 'a desktop plays two: the first two on, a third of their size waits');
+  players[2].toggle(); // the viewer plays the waiting frame
+  assert.deepEqual(frames.map(({ video }) => video.paused), [true, false, false], "the viewer's play never waits: the frame playing longest stands down");
+  players[2].toggle(); // and pauses it
+  assert.deepEqual(frames.map(({ video }) => video.paused), [false, false, true], 'its pause hands the slot back');
   dom.setQuery(page.MEDIA_POLICY.phoneQuery, true);
   assert.equal(page.maxPlaying(), 1);
   frames[0].video.dispatchEvent({ type: 'canplaythrough' });

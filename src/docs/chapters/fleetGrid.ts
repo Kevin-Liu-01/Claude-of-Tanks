@@ -189,7 +189,7 @@ function tileMarkup({ tank, code, facets, classLabel }: Tile, gallery: string, s
     + `${aliases ? ` data-aliases="${esc(aliases)}"` : ''}>`
     + `<a class="dm-fleet__card" href="${gallery}?id=${tank.id}${stamp ? `&amp;${stamp}` : ''}" aria-label="${esc(name)}">`
     + `<span class="dm-fleet__media cot-hc" data-hero-facing="${heroFacing()}">`
-    + `${heroCardMarkup(tank.id, '', { chip: false, className: 'dm-fleet__layer', attrs: 'data-layer="hero"' })}${heroTierChipHTML(tank.id)}</span>`
+    + `${heroCardMarkup(tank.id, '', { chip: false, className: 'dm-fleet__layer', attrs: 'data-layer="hero" data-reveal' })}${heroTierChipHTML(tank.id)}</span>`
     + `<span class="dm-fleet__words"><span class="dm-fleet__name">${nameHtml(tank.displayName)}</span>`
     + `<span class="dm-fleet__meta">${flagMarkup(code, 'cot-c-flag cot-c-flag--sm')}<span>${esc(classLabel)}</span></span></span></a></li>`;
 }

@@ -42,7 +42,7 @@ function layerMarkup(view: Exclude<View, 'hero'>, id: string, [angle, thumb, sid
     ? `<img src="/icons/${id}_angle.webp?v=${angle}" srcset="/icons/thumbs/${id}_angle.webp?v=${thumb} 256w, /icons/${id}_angle.webp?v=${angle} 512w"`
       + ` sizes="${SIZES}" width="512" height="512" alt="" loading="lazy" decoding="async">`
     : `<img src="/icons/${id}_side.webp?v=${side}" width="512" height="256" alt="" loading="lazy" decoding="async">`;
-  return `<span class="dm-fleet__layer dm-fleet__${view}" data-layer="${view}">${picture}</span>`;
+  return `<span class="dm-fleet__layer dm-fleet__${view}" data-layer="${view}" data-reveal>${picture}</span>`;
 }
 
 export function mountFleetGrid(root: HTMLElement, pending: () => Element | null): void {

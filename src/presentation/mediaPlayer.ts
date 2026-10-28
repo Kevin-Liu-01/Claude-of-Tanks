@@ -231,16 +231,17 @@ const SLOT_SETTLE_MS = 1000;
 const claimedAt = new WeakMap<Core, number>();
 const settled = (core: Core): boolean => performance.now() - (claimedAt.get(core) ?? -Infinity) >= SLOT_SETTLE_MS;
 
-/** Of the frames playing (but `except`), the least on screen that has held its slot a second; none when all are new. */
-function leastSettled(except: Core): Core | null {
+/** Of the frames playing (but `except`), the least on screen that has held its slot a second (none when all are new);
+ * with `anyAge`, the least on screen of them all (a tie goes to the one playing longest). */
+function leastSettled(except: Core, anyAge = false): Core | null {
   let least: Core | null = null;
   for (const other of playingNow) {
-    if (other !== except && settled(other) && (!least || shownArea(other) < shownArea(least))) least = other;
+    if (other !== except && (anyAge || settled(other)) && (!least || shownArea(other) < shownArea(least))) least = other;
   }
   return least;
 }
 
-function claimSlot(core: Core): void {
+function claimSlot(core: Core, byViewer: boolean): void {
   if (!playingNow.includes(core)) {
     playingNow.push(core);
     claimedAt.set(core, performance.now());
@@ -250,8 +251,11 @@ function claimSlot(core: Core): void {
     // section's lead picture takes its slot from a tile half below the fold (the /home r2 zh critic), and a frame just on
     // keeps it while the page settles
     let out = playingNow.includes(core) ? core : playingNow[playingNow.length - 1];
-    const least = leastSettled(out);
-    if (least && shownArea(out) > shownArea(least) * DISPLACE_MARGIN) out = least;
+    if (out === core && byViewer) out = leastSettled(core, true) ?? core; // the viewer's own play never waits
+    else {
+      const least = leastSettled(out);
+      if (least && shownArea(out) > shownArea(least) * DISPLACE_MARGIN) out = least;
+    }
     playingNow.splice(playingNow.indexOf(out), 1);
     out.crowded = true;
     crowdedOut.add(out);
@@ -527,7 +531,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
     }
     if (near && item.poster && video.getAttribute('poster') !== item.poster) video.poster = item.poster;
     const play = shouldPlay();
-    if (play) claimSlot(core);
+    if (play) claimSlot(core, wanted);
     else vacateSlot(core);
     const playingNowToo = play && !core.crowded;
     const warmNow = !playingNowToo && !!options.warm && near && !handedOff && !held && !manual() && mode === 'loop' && gate();
@@ -672,6 +676,16 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   motion?.addEventListener?.('change', sync);
   // The in-game Reduce motion choice (src/ui/accessibilitySettings.ts applyAccessibility announces it).
   if (typeof window !== 'undefined') window.addEventListener?.('cot:accessibility', sync);
+  // Files that failed while the link was down are asked for again once the browser is back online, and a poster that never
+  // drew is named afresh: a frame left on its tone comes back by itself (the loading census, round 6: the docs archive's
+  // films stayed on, frameless, after the network returned).
+  const onOnline = (): void => {
+    if (!item) return;
+    if (failed.size) failed.clear();
+    if (video.readyState === 0 && item.poster && video.getAttribute('poster') === item.poster) video.removeAttribute('poster'); // sync names it again
+    sync();
+  };
+  if (typeof window !== 'undefined') window.addEventListener?.('online', onOnline);
   players.add(core);
   installLifecycle();
 
@@ -700,6 +714,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', sync);
       motion?.removeEventListener?.('change', sync);
       if (typeof window !== 'undefined') window.removeEventListener?.('cot:accessibility', sync);
+      if (typeof window !== 'undefined') window.removeEventListener?.('online', onOnline);
       hoverTarget.removeEventListener('pointerenter', hoverOn);
       hoverTarget.removeEventListener('focusin', hoverOn);
       hoverTarget.removeEventListener('pointerleave', hoverOff);
@@ -765,7 +780,8 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
       ...(seconds > 0 ? { seconds } : {}),
     });
     video.addEventListener('play', () => video.classList.add('is-playing'));
-    video.addEventListener('pause', () => video.classList.remove('is-playing'));
+    // (a file that fails fires no pause: the film is not playing)
+    for (const type of ['pause', 'error']) video.addEventListener(type, () => video.classList.remove('is-playing'));
     // A frame is on screen until its source is released (a page poster shows through until then: the topic headers draw
     // their own). A loop comes on once it plays and can play through to its end, from its own first frame, which its
     // poster is (owner 2026-10-27: "make em load fast and transition in"): a slow link keeps the still instead of a film

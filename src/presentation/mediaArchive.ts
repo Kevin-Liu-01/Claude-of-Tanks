@@ -6,6 +6,7 @@ import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
+import { revealStills } from './revealStills.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
 /** The manifest's feature names in filter order. */
@@ -206,6 +207,8 @@ export async function mountMediaArchive(
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
       shotCard(shot, index, recipeForMedia(recipes, shot.src), options.takeTitle)));
+    // each card's still fades in once decoded; one the link dropped keeps the card's tone and loads again online
+    revealStills(grid.querySelectorAll<HTMLImageElement>('.media-archive-card-open > img'));
     count.value = t('mediaArchive.count', {
       shown: String(visible.length).padStart(2, '0'),
       total: String(filtered.length).padStart(2, '0'),
