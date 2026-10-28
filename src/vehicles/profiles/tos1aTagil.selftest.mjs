@@ -152,10 +152,18 @@ function closedLaunchStock(quality){
   const outer=authored.filter(p=>p.name==='launch-cell'),inner=authored.filter(p=>p.name==='launch-cell-liner');
   assert.equal(outer.length,24);assert.equal(inner.length,24);
   const original=new T.LatheGeometry([[.17,-.985],[.17,2.60],[.11,2.60],[.11,-.94],[.17,-.985]].map(p=>new T.Vector2(...p)),quality==='high'?12:8).rotateX(Math.PI/2);
+  // 264: the rear cone (each sector's fourth profile segment, r .11 at z -.94 to r .17 at -.985) lies wholly inside the
+  // breech floor (z -.967 to -.94) and the back plate (-1 to -.965), so the cell draws the other three segments
+  const sectors=quality==='high'?12:8,kept=[],buried=[];
+  for(let k=0;k<sectors;k++)for(let segment=0;segment<4;segment++)
+    (segment===3?buried:kept).push(...original.index.array.slice((k*4+segment)*6,(k*4+segment)*6+6));
+  const position=original.attributes.position;
+  for(const v of buried)assert(position.getZ(v)>=-1-1e-6&&position.getZ(v)<=-.94+1e-6,'the dropped rear cone lies inside the breech floor and back plate');
+  original.setIndex(kept);
   try{for(let i=0;i<24;i++){
     const expected=KIT.xform(original.clone(),M[i].x,M[i].y,0);
     try{
-      assert.deepEqual([...trianglePayload(outer[i].geometry),...trianglePayload(inner[i].geometry)].sort(),trianglePayload(expected),'material partition retains every original closed-tube triangle and normal exactly once');
+      assert.deepEqual([...trianglePayload(outer[i].geometry),...trianglePayload(inner[i].geometry)].sort(),trianglePayload(expected),'material partition retains every drawn closed-tube triangle and normal exactly once');
       assert(volume(outer[i].geometry)+volume(inner[i].geometry)>1e-10,'combined sleeve and outer wall remain finite outward-wound annular stock');
     }finally{expected.dispose();}
   }}finally{original.dispose();}

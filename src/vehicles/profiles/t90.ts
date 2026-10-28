@@ -959,8 +959,12 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
   // and latches, and the armoured plates carry their bolt heads.
   P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), sx, headCenterY, sz(0.322), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), sx, headCenterY + fitY(0.088), sz(0.345),
-    -0.18, yaw, 0);
+  // 264 (accessoryContact): the sun hood's rear lower edge rests on the sight housing's top face (headCenterY +
+  // fitY(0.085)) and its tilt lifts the front; centred at fitY(0.088) it sank its rear into the housing and crossed the
+  // bezel's top with no corner resting on either (the T-90AM II's Kord station, since 230's stock clearance)
+  const hoodTilt = 0.18, hoodH = fitY(0.016), hoodD = fit(0.07);
+  P.add('turretDark', box(fit(0.21), hoodH, hoodD), sx,
+    headCenterY + fitY(0.085) + hoodH / 2 * Math.cos(hoodTilt) + hoodD / 2 * Math.sin(hoodTilt), sz(0.345), -hoodTilt, yaw, 0);
   P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.326),
     0, yaw, 0);
   P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.336),

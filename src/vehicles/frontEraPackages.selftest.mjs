@@ -783,12 +783,14 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     assert.equal(digest(permanentNames), permanent, `${label}: reset keeps the permanent stock`);
     if (high) suitPositions().forEach((a, k) => assert(a.every((x, i) => x === liveSuit[k][i]), `${label}: reset puts the suit back as laid (${suitMeshes[k].name})`));
 
-    // cost
+    // cost (264: the turret seat's race and collar, turretSeatRace.ts since 240/252, are two fleet-wide draws every seated
+    // tank gained after gatefix2; they count apart from the draws, and their triangles stay inside the ceilings)
     let tris = 0, draws = 0;
     t.root.traverse(o => {
       if (!o.isMesh) return; let visible = true; for (let q = o; q; q = q.parent) visible &&= q.visible;
       if (!visible || isShadow(o)) return; const mats = Array.isArray(o.material) ? o.material : [o.material]; if (!mats.some(m => m.colorWrite)) return;
-      tris += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1); draws++;
+      tris += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1);
+      if (!o.userData.turretSeatRace) draws++;
     });
     const k = high ? 0 : 1, base = BASELINE[id];
     assert(tris <= base.tris[k], `${label}: drawn triangles ${tris} within the baseline ${base.tris[k]}`);

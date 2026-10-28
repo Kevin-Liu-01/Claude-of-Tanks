@@ -93,10 +93,11 @@ function launchCell(P: TankBuilderPort, axis: typeof MUZZLES[number]): void {
   const tube = new THREE.LatheGeometry(profile.map(([r, z]) => new THREE.Vector2(r, z)), n).rotateX(Math.PI / 2);
   // Partition the existing triangles, retaining their exact positions/normals.
   // Segment 2 is the inward cylindrical wall: unpainted dark metal, not camo.
-  // Together these two material surfaces remain one closed annular stock.
+  // Segment 3, the rear cone (r .11 at z -.94 to r .17 at -.985), lies wholly inside the breech floor (z -.967 to -.94)
+  // and the back plate (-1 to -.965), so it is never drawn (264: the launcher's triangle ceiling, 576 at HIGH).
   const liner = tube.clone(), painted: number[] = [], inward: number[] = [];
   const indices = tube.index!.array;
-  for (let sector = 0; sector < n; sector++) for (let segment = 0; segment < 4; segment++) {
+  for (let sector = 0; sector < n; sector++) for (let segment = 0; segment < 3; segment++) {
     const offset = (sector * 4 + segment) * 6;
     (segment === 2 ? inward : painted).push(...indices.slice(offset, offset + 6));
   }
