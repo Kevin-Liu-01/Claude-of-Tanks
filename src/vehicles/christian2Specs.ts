@@ -17,7 +17,7 @@ delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
 stripSilhouetteDimensions(spec.dims);
-// the built vehicle: the hull 7.25 m between its plates, 7.855 m from the fenders' tips to the stern box, 9.866 m over the
+// the built vehicle: the hull 7.25 m between its plates, 7.855 m from the fenders' tips to the stern rack, 9.866 m over the
 // gun, 3.672 m over the skirt blocks' bolts, roof 2.47 m
 Object.assign(spec.dims, { hullLengthM: 7.855, overallLengthM: 9.866, widthM: 3.672, heightM: 2.47 });
 // 2020s concept: a Leopard 2-class 1,500 hp pack on 58 t; three crew with a bustle autoloader

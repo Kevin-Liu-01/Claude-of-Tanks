@@ -116,7 +116,7 @@ See the round log; filled as each gate runs.
   two wraps hugging the tube).
 - R5 (blind critics 2 and 3): the skirts hang from the sponson's floor (1.36 m) so the upper hull's band shows; the heavy
   fore blocks bolted and stepped 10 cm out on their own rail; round fan covers, radiator louvres and access plates on the
-  engine deck; exhaust louvres, tail lights and a deeper stern box on the rear plate; the front fenders run out to the
+  engine deck; exhaust louvres, tail lights and a stern box on the rear plate (R6: one exhaust band and a stern rack); the front fenders run out to the
   oracle's 3.70 m; a 14 cm splash board; the rail clear of the smoke banks; the M2 laid outboard of the head; plumb whips;
   wall stowage boxes. Suit: the barrel wraps and the module-face cards dropped, the roof net opened by the fittings' own
   shapes, the hull drapes overlapped with their tops 13 cm under the deck edge (the gun's full-depression sweep over the
@@ -126,3 +126,6 @@ See the round log; filled as each gate runs.
 - Fairness at VIII (the tier-fairness-259 round robin, 120 m, six seeds, 29 peers): mantlet 900/1050 and a 2.0/15.5 s cycle
   0.642 (7/29 in band); 800/1000 and 2.1/17 s 0.47 (10/29) on the R4 build, 0.42 (9/29) on the final one; 850/1000 and
   2.1/17 s 0.499 (9/29), adopted.
+- R6 (the Leopard 2A3's blind critics on the shared hull): the last skirt panel a fender strip so the sprocket shows whole;
+  one continuous exhaust band across the upper rear plate and a deck-level tubular stern rack to the oracle's 4.155 m
+  instead of the stern box. Fairness re-run on the final build: mantlet 850/1000 and the 2.1/17 s cycle, 0.499 (9/29).
