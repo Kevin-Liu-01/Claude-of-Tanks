@@ -79,8 +79,9 @@ at HIGH), the tank-generation rule of sparse measured landmarks rather than samp
   and right turret views (89.7, 91.0). The page centres each silhouette on its centroid before scoring, so on a
   source-world certified pair any mass difference shows as a whole-pixel shift: a thick chase, the roof M60Ds 3.5 and 7 cm
   high, the left rangefinder end sunk in the casting and a low ventilator moved the centroids. The gun now follows the
-  model's stations, the M60Ds sit on its bores with its grip block, sight leaf and latch on posts where it stands them,
-  the rangefinder end stands proud and the ventilator rises to 2.57 m. `~/cot-lanes/patton-262-evidence/tools/fidsim.py`
+  model's stations, the M60Ds sit on its bores with its grip block, sight leaf and latch (their posts stay under the
+  fittings' yokes: a blind critic read the model's forward post stations as a socket hanging in the air beside our lower
+  shoulder), the rangefinder end stands proud and the ventilator rises to 2.57 m. `~/cot-lanes/patton-262-evidence/tools/fidsim.py`
   (384 px masks, the page's tilted cameras and score) estimates gun 99.8 and turret views 93.5-96.5 (the page read the
   left view 1.3 above the estimate before); the gate estimate rose to 92.9.
 - Not changed: the M48A5 casting's right-front shoulder is fuller in the model (roof about 2.5 m beside the cupola where

@@ -73,9 +73,10 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 - Fittings measured off the model (2026-10-28): whips at (0.71, -0.48) and (-0.31, -1.03) to 3.727 m (our seeded whip
   bows its tip 2 cm, so the bases sit 1-1.5 cm inboard); the M60Ds at the true 1.10 m (scale 1.15) over the model's
   z -0.22..1.11 span, level, on its bores (3.056 commander's, 2.92 loader's), with its back-plate and spade-grip block
-  (z -0.215..-0.10), rear-sight leaf (top 3.216 and 3.081) and feed-cover latch, on pintle posts under the receivers'
-  fronts (z 0.44 and 0.425) with a cradle on the commander's; the ammunition boxes are their own (the fitting's can is
-  off); the left rangefinder end proud of the casting (x 0.84-1.05; the right one sits half under the cupola); the
+  (z -0.215..-0.10), rear-sight leaf (top 3.216 and 3.081) and feed-cover latch; their posts stand under the fittings'
+  yokes (z 0.24 up the cupola's flank, z 0.23 on a base plate), not at the model's z 0.44 and 0.425, where our lower
+  right shoulder would leave the commander's post 0.4 m in the air; the ammunition boxes are their own (the fitting's can
+  is off); the left rangefinder end proud of the casting (x 0.84-1.05; the right one sits half under the cupola); the
   ventilator's drum and dome to 2.57; suspension-arm housings under the hull's edge 0.40 m ahead of each road wheel (x 0.88-1.10, y
   0.36-0.55); the tow cable along the left fender boxes; the short bar on the right front fender (x -1.89..-1.28); lift
   eyes on pads at the roof's front (top 2.64) and rear, just left of the centre line (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);

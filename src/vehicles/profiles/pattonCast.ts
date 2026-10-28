@@ -499,8 +499,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       // the bracket's post down to the glacis
       const gy = deckAt(H.toe[0] - 0.08);
       P.add('hullDark', box(0.05, by - 0.08 - gy + 0.03, 0.05), side * bx, (by - 0.08 + gy) / 2, H.toe[0] - 0.08);
-      // its brush guard: two rods from the bracket round the lamp to a cross bar 0.2 m ahead of the nose
-      for (const dx of [-0.04, 0.04]) bar(P, 'hullDark', [side * (bx + dx), by - 0.05, bz - 0.06], [side * (bx + dx), by + 0.04, 2.09], 0.01);
+      // its brush guard: rods from the bracket over the lamp to a cross bar 0.2 m ahead of the nose, the middle one
+      // splitting the guard's window
+      for (const dx of [-0.04, 0, 0.04]) bar(P, 'hullDark', [side * (bx + dx), by - 0.05, bz - 0.06], [side * (bx + dx), by + 0.04, 2.09], 0.01);
       P.add('hullDark', box(0.10, 0.012, 0.012), side * bx, by + 0.04, 2.09);
       continue;
     }
@@ -1035,7 +1036,10 @@ const M47_HULL_SPEC: PershingHullSpec = {
   deckY: 1.62, engineDeckY: 1.71, engineDeckZ: -1.20, tailTopY: 1.50, tailBotY: 0.70,
   sponsonHW: 1.45, sponsonY: 1.40, fenderHW: 1.756, fenderY: 1.40, trackW: 0.64, xc: 1.36,
   // the rear fender stays level over the sprocket, then turns down behind its wrap
-  fenderLine: [[-4.12, 1.08], [-4.00, 1.26], [-3.85, 1.40], [1.75, 1.40], [2.12, 1.10]], noseDepth: 0.04,
+  // the rear flaps hang under the fender's overhang only: across the whole track they closed a plan pocket between the
+  // track's end, the flap and the hull's corner
+  fenderLine: [[-4.12, 1.08], [-4.00, 1.26], [-3.85, 1.40], [1.75, 1.40], [2.12, 1.10]], rearFlapX: [1.33, 1.70],
+  noseDepth: 0.04,
   fenderBoxH: 0.26, fenderBoxX: [1.45, 1.66], fenderBoxes: [[0.50, -0.40], [-0.45, -1.45], [-1.50, -2.90]],
   outerBox: [1.66, 1.75, 1.40, 1.58, -2.00, -1.80],
   mufflers: false, bowLights: [0.72, 1.22, 1.92], frontFlap: false, bowEyesOnGlacis: true,
@@ -1341,9 +1345,10 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     P.add('hullDetail', box(0.20, 0.10, 0.28), side * 0.77, deckY(0.77, 2.57) + 0.03, 2.57);
     P.add('hullDark', box(0.42, 0.03, 0.05), side * 0.665, 1.50, 3.02);
     for (const x of [0.47, 0.86]) P.add('hullDark', box(0.03, 0.31, 0.05), side * x, 1.345, 3.02);
-    KIT.liftEye(P, 'hullDetail', side * 0.83, 0.86, 3.24, Math.PI / 2);
+    // set onto the nose's edge (in plan its ring meets the casting, leaving no pocket)
+    KIT.liftEye(P, 'hullDetail', side * 0.83, 0.86, 3.20, Math.PI / 2);
     // the towing shackle hanging in the eye
-    P.add('hullDark', KIT.xform(KIT.torus(0.055, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0, [1, 1.3, 1]), side * 0.83, 0.79, 3.27);
+    P.add('hullDark', KIT.xform(KIT.torus(0.055, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0, [1, 1.3, 1]), side * 0.83, 0.79, 3.23);
   }
   yield 'm48HullBow';
   // engine deck: the hinge pairs along the seams of the centre doors and the side grille doors, the rear access plate
