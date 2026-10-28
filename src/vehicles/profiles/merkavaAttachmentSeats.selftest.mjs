@@ -52,8 +52,9 @@ function localRay(owner,origin,direction,objects){
 function weaponStock(mg){
  const pitch=mg.children.find(o=>o.name==='auxiliaryWeaponPitch');
  if(!pitch)return mg.getObjectByName('browningDerivedMachineGunBody');
- // VH.14 (2026-10-15): a working crew-served MAG pitches the same receiver/barrel stock under its body name
- const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark'||o.name==='browningDerivedMachineGunBody');
+ // VH.14 (2026-10-15): a working crew-served MAG pitches the same receiver/barrel stock under its body name; since the
+ // riding cradle (229, 365c0f099a) it recoils in auxiliaryWeaponRecoil inside the pitch group (searched recursively)
+ const stock=pitch.getObjectByName('fitting_auxiliaryWeapon_dark')??pitch.getObjectByName('browningDerivedMachineGunBody');
  assert.ok(stock?.isMesh,'remote MAG receiver/barrel pitches inside its own fitting');return stock;
 }
 function barrelContinuous(mg,scale){
