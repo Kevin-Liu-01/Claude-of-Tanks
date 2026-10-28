@@ -12,7 +12,7 @@
   display:grid;grid-template-columns:minmax(0,1fr);gap:9px;padding:10px var(--s3) var(--s3);box-sizing:border-box;
   color:var(--ink-2);background:var(--surface-menu);
   border:1px solid var(--line-2);box-shadow:var(--e3);
-  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--accent) var(--surface-page);pointer-events:auto;
+  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;pointer-events:auto;
   contain:content;}
 .cot-facet-panel[hidden]{display:none;}
 /* The Garage's side of the filter, loaded with the panel: the open rail lifts over the side cards and the
@@ -65,24 +65,14 @@
 .cot-facet-rowwrap{position:relative;min-width:0;padding-top:9px;border-top:1px solid var(--line-1);}
 /* min-width:0: a wrapper's automatic minimum is its row's one-line width, which widened a phone's panel and page */
 .cot-facet-row{display:flex;flex-wrap:wrap;gap:5px;}
-.cot-facet-option{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:var(--s1) 10px 3px;cursor:pointer;
-  color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-2);
-  border-bottom:2px solid var(--line-3);outline:none;white-space:nowrap;
-  font:700 max(var(--fs-floor-12),var(--fs-12)) var(--facet-font);letter-spacing:0;transition:color var(--dur-fast),border-color var(--dur-fast),background var(--dur-fast);}
-.cot-facet-option svg{display:block;flex:0 0 auto;color:var(--ink-2);transition:color var(--dur-fast);}
+/* each value is the kit's chip (components.css .cot-c-chip: its fill, edge, hover plate, focus ring and the one pressed
+   state, 261); the facet keeps its glyphs' sizes and its counts' step */
+.cot-facet-option{white-space:nowrap;}
+.cot-facet-option svg{display:block;flex:0 0 auto;}
 .cot-facet-option[data-facet='vehicleClass'] svg{width:32px;height:16px;}
 .cot-facet-option[data-facet='battleRole'] svg,.cot-facet-option[data-facet='era'] svg{width:17px;height:17px;}
-.cot-facet-option .ct{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;color:var(--ink-3);}
-.cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:var(--ink-1);border-color:var(--line-control);}
-.cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:var(--ink-1);}
-.cot-facet-option:focus-visible{outline:none;box-shadow:var(--focus-ring);}
-/* the chosen value reads as chosen: an amber fill, edge and glyph */
-.cot-facet-option[aria-pressed='true']{color:var(--ink-1);border-color:var(--accent);border-bottom-color:var(--accent);
-  background:var(--accent-wash);box-shadow:var(--ring-accent);}
-.cot-facet-option[aria-pressed='true'] svg{color:var(--accent-hi);}
-.cot-facet-option[aria-pressed='true'] .ct{color:var(--accent-hi);}
+.cot-facet-option .cot-c-chip__count{font-size:max(var(--fs-floor-11),var(--fs-11));}
 .cot-facet-option:disabled{cursor:default;opacity:.5;}
-.cot-facet-option:disabled svg{color:var(--ink-4);}
 .cot-facet-empty{padding:var(--s3);}
 .cot-facet-empty[hidden]{display:none;}
 /* Phones: each facet is one swipeable line of chips, so the panel stays short above the roster; the side with more
@@ -123,11 +113,20 @@ body[data-cot-panels='persistent'] .cot-facet-search{display:none;}
    its padding is slimmer, and all three rows fit with no scroll (it overflowed by a few px). */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-panel{gap:5px;padding:6px 10px 6px;align-content:start;}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap{padding-top:6px;}
-/* the row's end count (garageFacetPanel.ts): a bare "+N" in the row's end pad, over its fade */
-.cot-facet-more{position:absolute;right:var(--s3);top:9px;bottom:0;display:flex;align-items:center;pointer-events:none;
+/* the row's end count (garageFacetPanel.ts): a bare "+N" beside the row, which ends where the count begins, so a chip it
+   would cover is cut by the row's edge and hides (the r27 critic at 844 x 390: "+3" over Flanker's count, "+2" over
+   狙击's); while it shows, it is the right end's cue and the row drops that end's fade */
+body[data-cot-panels='overlay'] .cot-facet-rowwrap{display:flex;align-items:center;}
+body[data-cot-panels='overlay'] .cot-facet-row{flex:1 1 auto;min-width:0;}
+.cot-facet-more{flex:none;display:flex;align-items:center;padding:0 var(--s3) 0 var(--s1);pointer-events:none;
   font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);color:var(--ink-2);}
 .cot-facet-more[hidden]{display:none;}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-more{top:6px;}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap:has(>.cot-facet-more:not([hidden])) .cot-facet-row{padding-inline-end:0;}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap:has(>.cot-facet-more:not([hidden]))[data-more='r'] .cot-facet-row{
+  -webkit-mask-image:none;mask-image:none;}
+body[data-cot-panels='overlay'] .cot-facet-rowwrap:has(>.cot-facet-more:not([hidden]))[data-more='lr'] .cot-facet-row{
+  -webkit-mask-image:linear-gradient(270deg,var(--surface-page) calc(100% - 32px),transparent);
+  mask-image:linear-gradient(270deg,var(--surface-page) calc(100% - 32px),transparent);}
 /* and its head keeps the tally, the search and close on one row, so the three rows of chips fit whole */
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-tally{margin-right:0;}
 body[data-cot-height='short'][data-cot-panels='overlay'] :is(.cot-facet-tally b,.cot-facet-tally>.num:not(b)){font-size:var(--fs-20);}
@@ -135,5 +134,5 @@ body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-search{order
 body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close,.cot-facet-search input){min-height:44px;}
 body[data-cot-input='coarse'] .cot-facet-search input{height:44px;}
 body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
-@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close{transition:none;}}
+@media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-clear,.cot-facet-close{transition:none;}}
 }

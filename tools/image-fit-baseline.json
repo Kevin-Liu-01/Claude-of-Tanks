@@ -36,9 +36,6 @@
     "src/ui/settings.ts": [
       ".cot-set-preview img"
     ],
-    "src/ui/showroom.css": [
-      ".cot-lt-swatch canvas"
-    ],
     "src/ui/studioPanel.css": [
       ".st-load__art",
       ".st-out .it .th",

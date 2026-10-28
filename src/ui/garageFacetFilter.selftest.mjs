@@ -104,7 +104,8 @@ const panelSource = readFileSync(new URL('./garageFacetPanel.ts', import.meta.ur
 const markupWrites = [...panelSource.matchAll(/\.innerHTML = ([^;]+);/g)].map((match) => match[1].trim());
 assert.ok(markupWrites.length >= 4, 'the panel draws its glyphs');
 for (const rhs of markupWrites) {
-  assert.match(rhs, /^(?:view\.glyph|(?:facetControlGlyphSVG|uiIconSVG)\('[a-z-]+', \d+\)|vehicleClassGlyphSVG\(CONCEPT_PROTOTYPE_CLASS_FILTER, \d+\)|emptyState\(\{ text: t\('[\w.]+'\)[^)]*\}\))$/,
+  // (261: a value is the kit's chip, which escapes its label, its count and its attributes; its glyph is view.glyph)
+  assert.match(rhs, /^(?:view\.glyph|(?:facetControlGlyphSVG|uiIconSVG)\('[a-z-]+', \d+\)|vehicleClassGlyphSVG\(CONCEPT_PROTOTYPE_CLASS_FILTER, \d+\)|emptyState\(\{ text: t\('[\w.]+'\)[^)]*\}\)|chip\(\{ label: view\.label, glyph: view\.glyph, [\s\S]*\}\))$/,
     `panel markup comes from a glyph builder: ${rhs}`);
 }
 assert.doesNotMatch(panelSource, /insertAdjacentHTML|outerHTML/, 'no other markup sink in the panel');

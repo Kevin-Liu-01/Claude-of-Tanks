@@ -412,7 +412,8 @@ export function getStoredDifficulty() {
 }
 
 /** The mouse's three buttons' catalog keys (the catalog's en reads LMB, MMB and RMB). */
-const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right' };
+// (the space bar too: a Chinese key cap reads 空格, the manual's r41 leftover)
+const MOUSE_LABELS: Readonly<Record<string, string>> = { Mouse0: 'input.mouse.left', Mouse1: 'input.mouse.middle', Mouse2: 'input.mouse.right', Space: 'input.key.space' };
 const LABEL_SPECIAL: Record<string, string> = {
   Space: 'SPACE', Escape: 'ESC', Tab: 'TAB', CapsLock: 'CAPS',
   Enter: 'ENTER', NumpadEnter: 'NUM ENTER', Backspace: 'BKSP',
