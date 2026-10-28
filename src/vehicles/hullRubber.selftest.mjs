@@ -1,8 +1,9 @@
 // The hull's rubber (262; Main's ruling 2026-10-28: the rear rubber skirts take their own material role): on a rendered
 // build every static rubber draw off the running gear (skirts, flaps, mudguards, mats) wears its own clone of the tyre
-// rubber, role hullRubber (tankFactoryCore separateHullRubber), so the scoped armour paint colours it by where it sits
-// (materials.ts armorPaintMode 2) and leaves the tyres bare (0). The clone is the tyres' rubber in every other way: the
-// same finish, maps, defines and program, so it draws and compiles as it did. A geometry receipt keeps the one rubber.
+// rubber, role hullRubber (tankFactoryCore separateHullRubber), so the scoped armour paint colours it by where it sits,
+// its grain flat under the colour (materials.ts armorPaintMode 4), and leaves the tyres bare (0). The clone is the tyres'
+// rubber in every other way: the same finish, maps, defines and program, so it draws and compiles as it did. A geometry
+// receipt keeps the one rubber.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
@@ -53,7 +54,7 @@ try {
     applyBurnHook(skirt, burn);
     applyBurnHook(tyre, burn);
     assert.equal(skirt.customProgramCacheKey(), tyre.customProgramCacheKey(), `${id}: one program for both`);
-    assert.equal(paintMode(skirt), 2, `${id}: the armour paint colours the hull rubber by where it sits`);
+    assert.equal(paintMode(skirt), 4, `${id}: the armour paint colours the hull rubber by where it sits, its grain flat`);
     assert.equal(paintMode(tyre), 0, `${id}: and leaves the tyres bare`);
     visual.dispose();
   }

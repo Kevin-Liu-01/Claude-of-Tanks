@@ -113,6 +113,21 @@ reports and kills without ending the process (`browserGuardOf(browser)`). A
 fixture's fake launcher gets its fake browser back unwatched; a fixture that
 strips imports and runs a tool's source passes a `launchGuardedBrowser` port.
 
+The capture lock has two classes (2026-10-27, item 262). `render` holds
+(genIcons, genHeroCards, genDrawings, anatomy render sets, gauntlet captures,
+sheets) share it, two at once, as one lock directory with a `slot-<k>.holder`
+per member; `timing` holds (perf, census, timing, sortie tools, and any
+command not known to render) stay exclusive and wait for running renders.
+FIFO holds between classes: a render never passes a ready timing ticket (or
+an older copy's unclassed one, which stays exclusive). The class comes from
+`--lock-class=render|timing`, else acquire's `lockClass`, else
+`COT_SHOTS_LOCK_CLASS`, else the command's script names (`classifyCommand`);
+`--status` shows it. Holds are capped at 20 min: call `lock.checkpoint()` (or
+shoot's `checkpoint` in `runWarmHold`, which freezes and thaws the pages)
+between batches, and past the cap with anyone waiting it gives the lock up and
+re-queues at the back. Raise the cap per ticket only: `holdCapMinutes` with a
+`holdCapReason`.
+
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read the tool's CLI/help and its current evidence doc, run a baseline, then

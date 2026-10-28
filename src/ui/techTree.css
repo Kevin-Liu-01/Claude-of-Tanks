@@ -123,6 +123,13 @@
 .cot-tt .tt-art .hc-host{--hc-band:max(8px,12cqh);--hc-share:.86;--hc-hshare:.7;--hc-cxr:.5}
 /* a flag's darkest stripe (Germany's black) still reads against the card's dark plate */
 .cot-tt .tt-art .hc-flag{filter:contrast(.7) brightness(1.2)}
+/* the class glyph under the tier chip on the chip's side (heroCard.css): the roster's rules for a card facing left (garage.css
+   and showroom.css, top 6 or 3 px in the corner its chip leaves free) reached these tiles too and set the glyph on the chip, over "Tier" (the iPad
+   critics g1 and g3); a tile too short for both keeps the chip (the tip and the detail name the class) */
+.cot-tt :is(.tt-art,.tt-detail-art)>.hc-host.cot-hc>.hc-class{top:calc(var(--hc-pad,8px) + 22px)}
+@container (height < 60px){.cot-tt :is(.tt-art,.tt-detail-art)>.hc-host.cot-hc>.hc-class{display:none}}
+/* (the chip and the glyph share the tile's pad, as heroCard.css sets them: the roster's 6 and 3 px reached the chip as well) */
+.cot-tt :is(.tt-art,.tt-detail-art)>.hc-host.cot-hc[data-hero-facing='left'] :is(.hc-tier,.hc-class){left:var(--hc-pad,8px)}
 .cot-tt .tt-portrait{position:absolute;inset:6% 6% 2%;width:88%;height:92%;object-fit:contain}
 .cot-tt .tt-name{flex:none;overflow:hidden;white-space:nowrap;padding:2px var(--s2) var(--s1);font-weight:600;
   font-size:var(--tt-name-fs);line-height:1.2;color:var(--ink-2)}

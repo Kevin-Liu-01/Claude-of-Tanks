@@ -22,6 +22,19 @@ export const sightNoticeCuts = {
   count: 0,
   boxes: Array.from({ length: 4 }, (): SightFurnitureBox => ({ x0: 0, y0: 0, x1: 0, y1: 0 })),
 };
+/** The panels the world plates (hud.ts: the target plate, the hull bars) also keep clear of, from the same pass: the
+ *  kill feed's rows, Watch's and the spectator's bars and the network strip (the plates critic, r20: on a phone the target
+ *  plate's name met the feed's last row and stood under Watch's bar). A `soft` one (a feed row, its element in `nodes`)
+ *  stops the hull bars but gives way to the target plate, which stands where the gun points: on a phone landscape the
+ *  feed's lane starts a plate's half-width from the sight. The reticle never reads them. */
+export const plateObstacles = {
+  count: 0,
+  boxes: Array.from({ length: 24 }, (): SightFurnitureBox => ({ x0: 0, y0: 0, x1: 0, y1: 0 })),
+  soft: Array.from({ length: 24 }, () => false),
+  nodes: Array.from({ length: 24 }, (): unknown => null),
+  /** A soft one standing aside this frame (hud.ts yieldFeedRows): hidden, it stops nothing. */
+  yielded: Array.from({ length: 24 }, () => false),
+};
 let passPrevious = 0;
 let cutsPrevious = 0;
 let passChanged = false;
@@ -33,6 +46,7 @@ export function clearSightFurniture(): void {
   passChanged = false;
   sightFurniture.count = 0;
   sightNoticeCuts.count = 0;
+  plateObstacles.count = 0;
 }
 
 /** Adds one box (a box under a pixel either way is nothing to keep clear of; past the capacity the rest are dropped). */
@@ -42,6 +56,18 @@ export function addSightFurniture(x0: number, y0: number, x1: number, y1: number
   const box = sightFurniture.boxes[index];
   if (index >= passPrevious || box.x0 !== x0 || box.y0 !== y0 || box.x1 !== x1 || box.y1 !== y1) passChanged = true;
   box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
+}
+
+/** Adds one panel the world plates keep clear of, `soft` with its element where it gives way to the target plate (past
+ *  the capacity the rest are dropped). */
+export function addPlateObstacle(x0: number, y0: number, x1: number, y1: number, soft = false, node: unknown = null): void {
+  if (plateObstacles.count >= plateObstacles.boxes.length || !(x1 - x0 >= 1 && y1 - y0 >= 1)) return;
+  const index = plateObstacles.count++;
+  const box = plateObstacles.boxes[index];
+  box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
+  plateObstacles.soft[index] = soft;
+  plateObstacles.nodes[index] = node;
+  plateObstacles.yielded[index] = false;
 }
 
 /** The sixth-sense notice's settled box while it shows on a touch layout (battleHudLayout): the warning chip the reticle
@@ -88,6 +114,32 @@ export function sightFurnitureGap(x0: number, y0: number, x1: number, y1: number
     if (apart < gap) gap = apart;
   }
   return gap;
+}
+
+/** How far a world plate's box keeps from the furniture and the plates' own obstacles, the soft ones left out where
+ *  `hard` (negative: it runs into one). */
+export function worldPlateGap(x0: number, y0: number, x1: number, y1: number, hard = false): number {
+  let gap = sightFurnitureGap(x0, y0, x1, y1);
+  for (let i = 0; i < plateObstacles.count; i++) {
+    if (plateObstacles.soft[i] && (hard || plateObstacles.yielded[i])) continue;
+    const box = plateObstacles.boxes[i];
+    const apart = Math.max(box.x0 - x1, x0 - box.x1, box.y0 - y1, y0 - box.y1);
+    if (apart < gap) gap = apart;
+  }
+  return gap;
+}
+
+/** The lowest foot of the furniture and the hard obstacles a world plate's box runs into (-Infinity where it meets none):
+ *  the target plate sinks under it (hud.ts positionTargetPlate). */
+export function worldPlateSink(x0: number, y0: number, x1: number, y1: number): number {
+  let foot = -Infinity;
+  for (let i = 0; i < sightFurniture.count + plateObstacles.count; i++) {
+    const obstacle = i - sightFurniture.count;
+    if (obstacle >= 0 && plateObstacles.soft[obstacle]) continue;
+    const box = obstacle < 0 ? sightFurniture.boxes[i] : plateObstacles.boxes[obstacle];
+    if (box.x0 < x1 && box.x1 > x0 && box.y0 < y1 && box.y1 > y0 && box.y1 > foot) foot = box.y1;
+  }
+  return foot;
 }
 
 /**

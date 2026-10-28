@@ -16,6 +16,10 @@
 // PNG: they are tiny flat alpha masks, and Chrome's canvas WebP encoder is
 // lossy-only (lossy alpha rings on mask edges).
 
+/** A tank's portrait for a list row or a trigger: its 3/4 view at 256 px (icons/thumbs), every tank in one framing, so a
+ *  picker crops them alike (pickers.css .is-tank). */
+export const tankThumbUrl = (id: string): string => `/icons/thumbs/${id}_angle.webp`;
+
 /** URL of a generated icon. @param {string} id tank id @param {string} view e.g. 'angle' */
 export const iconUrl = (id: string, view: string): string => `/icons/${id}_${view}.${
   /silhouette$/.test(view) ? 'png' : 'webp'}`;

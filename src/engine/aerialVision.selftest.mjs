@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { PerspectiveCamera } from 'three';
-import { getAerialVision, nextAerialVision, setAerialVision, aerialVisionCode, getScopeVision, cycleScopeVision } from './aerialVision.ts';
+import { getAerialVision, nextAerialVision, setAerialVision, aerialVisionCode, getScopeVision, cycleScopeVision, setScopeVision } from './aerialVision.ts';
 import { createAerialCamera } from './aerialCamera.ts';
 const values=new Map([['cot.aerialVision','night']]);globalThis.localStorage={getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)};
 assert.equal(getAerialVision(),'night','saved view restored');
@@ -23,3 +23,7 @@ console.log('aerialVision: four camera views, persistence, cycle, launch and exi
 assert.equal(getScopeVision(),'daylight','tank scopes start in ordinary daylight');
 assert.equal(cycleScopeVision(),'infrared');assert.equal(cycleScopeVision(),'thermal');assert.equal(cycleScopeVision(),'night');assert.equal(cycleScopeVision(),'daylight');
 assert.equal(getAerialVision(),'thermal','scope choice does not replace flight choice');
+// (the scope switch's segmented control picks a view outright; an unknown value keeps the current one)
+assert.equal(setScopeVision('night'),'night');assert.equal(getScopeVision(),'night');
+assert.equal(setScopeVision('bogus'),'night','an unknown view keeps the scope as it is');
+assert.equal(cycleScopeVision(),'daylight','the key steps on from the view picked');

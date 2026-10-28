@@ -6,7 +6,7 @@ import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
-  ghillieGarnishAtlas, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
+  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
 } from './vehicleFoliage.ts';
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
@@ -5831,7 +5831,9 @@ function* addGhillieOwner(
   if (netMesh && leafy) netMesh.userData[GHILLIE_TOP_VERTICES] = tops.reduce((n, t) => n + t.geometry.attributes.position.count, 0);
   const leaves = foliage.toGeometry();
   if (leaves) {
-    const atlas = leafy ? (field ? ghillieGarnishAtlas(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlas(garnishSpecies(cfg)))
+    // (boot-261) the garnish atlas paints in this build's steps the first time a species is asked for
+    const atlas = leafy
+      ? yield* (field ? ghillieGarnishAtlasSteps(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlasSteps(garnishSpecies(cfg)))
       : vehicleFoliageAtlas(theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland');
     const leavesShared = suitMats.leaves.has(atlas);
     const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));

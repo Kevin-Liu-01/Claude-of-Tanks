@@ -68,8 +68,8 @@
   --role-commander:#9ec9ff;--role-gunner:#ff9e7a;--role-loader:#c6a2ff;--role-driver:#7ee0b5;--role-radio:var(--paper-100);
   --e0:none;--e1:0 1px 0 rgba(255,255,255,.04) inset,0 0 0 1px var(--line-1);--e2:0 1px 0 rgba(255,255,255,.05) inset,0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
   --e1-flush:0 1px 0 rgba(255,255,255,.04) inset,inset 0 0 0 1px var(--line-1);--e2-flush:0 1px 0 rgba(255,255,255,.05) inset,inset 0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.35);
-  --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);--e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
-  --e5:0 1px 0 rgba(255,255,255,.07) inset,inset 2px 0 0 var(--accent),0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
+  --e3:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 18px 48px rgba(0,0,0,.5);--e3-span:0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px var(--line-2),0 0 0 1px var(--surface-menu),0 18px 48px rgba(0,0,0,.5);
+  --e4:0 1px 0 rgba(255,255,255,.07) inset,0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);--e5:0 1px 0 rgba(255,255,255,.07) inset,inset 2px 0 0 var(--accent),0 0 0 1px var(--line-3),0 32px 96px rgba(0,0,0,.6);
   --z-scene:0;--z-hud-world:6;--z-hud-sight:8;--z-hud-status:18;--z-hud-controls:24;--z-hud-score:30;--z-shell:100;
   --z-drawer:200;--z-menu:300;--z-modal:400;--z-toast:500;--z-boot:900;
   --inset-edge:max(24px,3vmin);--inset-top:calc(var(--inset-edge) + env(safe-area-inset-top,0px));--inset-right:calc(var(--inset-edge) + env(safe-area-inset-right,0px));

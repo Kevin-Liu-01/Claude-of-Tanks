@@ -4,11 +4,12 @@ import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import { PRODUCTION_PRESETS, productionAspect } from '../game/studioProduction.ts';
-import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
+import { sequenceTemplates, takeTemplates } from './studioTemplates.ts';
 import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { notice } from './components/notice.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { pickerText } from './pickerText.ts';
+import { tankThumbUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -37,8 +38,10 @@ const viewportEvents = [];
 const window = { dispatchEvent: event => viewportEvents.push({ type: event.type, mode: document.body.dataset.studioWorkspace }) };
 let locale = 'en-US';
 const presets = [
-  { id: 'one', map: 'coastal', title: 'First film', description: 'First sequence', durationMs: 12000, shots: ['Opening', 'Tracking'] },
-  { id: 'two', map: 'desert', title: 'Second film', description: 'Second sequence', durationMs: 15000, shots: ['Opening'] },
+  { id: 'one', map: 'coastal', title: 'First film', description: 'First sequence', durationMs: 12000, timeOfDay: 'day', category: 'showcase',
+    shots: ['Opening', 'Tracking', 'Reveal'] },
+  { id: 'two', map: 'desert', title: 'Second film', description: 'Second sequence', durationMs: 15000, timeOfDay: 'night', category: 'combat',
+    shots: ['Opening', 'Exchange', 'Aftermath'] },
 ];
 const source = readFileSync(new URL('./studioProductionPanel.ts', import.meta.url), 'utf8');
 const executable = stripTypeScriptTypes(source.replace(/^import .*;\n/gm, '').replace(/^export /gm, ''));
@@ -52,7 +55,7 @@ const siteIndex = { tankIdSchema: TANK_IDS.schema, takes: [
     map: 'desert', durationMs: 6600, scene: 'https://example.com/take.scene.json', thumb: '/media/site50-r14/stills/s02-foreign-thumb.webp' },
 ] };
 // Every tank's own take (owner 2026-10-12): fleet entries join the same index (group 'fleet', the vehicle's spec id) and
-// are reached by the Director's finder, never listed with the site's takes. Seven Leopards exceed one page of results.
+// are the template browser's (its Every tank chip and its search), never the shelf's.
 const SPEC_NAMES = { t90sm_2013: 'T-90SM', m1a1_abrams_hc: 'M1A2 Abrams', leo1: 'Leopard 1', leo2a2: 'Leopard 2A4', leo2a4_v: 'Leopard 2A5',
   leo2a4: 'Leopard 2A6', leo2_improved: 'Leopard 2A7V', leo2pl: 'Leopard 2PL', leo2a8: 'Leopard 2A8' };
 const fleetEntry = (vehicle, index) => ({ id: `s${60 + index}-fleet-${vehicle}`, group: 'fleet', vehicle,
@@ -67,8 +70,13 @@ const fetch = (url) => {
   const body = url.endsWith('/scenes/index.json') ? siteIndex : takeScene;
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 };
-const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
-const localStorage = { getItem: (key) => stored.get(key) ?? null };
+// the template browser (studioTemplateSheet.ts) needs the top layer: a stand-in records what it was opened with
+const sheets = [];
+const createTemplateSheet = (options) => {
+  const sheet = { options, opened: [], open(items, value) { sheet.opened.push({ items, value }); }, close() {}, isOpen: false };
+  sheets.push(sheet);
+  return sheet;
+};
 // the picker menu (pickerMenu.ts) needs the top layer: a stand-in records its options and chooses through them
 const menus = {};
 const createPickerMenu = (host, options) => {
@@ -81,9 +89,12 @@ const createPickerMenu = (host, options) => {
   menus[options.id] = menu;
   return menu;
 };
-const context = { document, window, Event, createPickerMenu, pickerText, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
-  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys };
-runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
+const productionPreset = (id) => presets.find((preset) => preset.id === id);
+const context = { document, window, Event, createPickerMenu, createTemplateSheet, pickerText, PRODUCTION_PRESETS: presets, productionAspect, productionPreset,
+  productionShotNames: (preset) => preset.shots, sequenceTemplates, takeTemplates, getLocale: () => locale, console, Promise, Error, fetch,
+  sceneLinkPath, t, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys,
+  tankThumbUrl };
+runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteTakes = siteTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;
 const S = {
@@ -146,14 +157,18 @@ for (const [workspace, group] of [['director', 'director'], ['battlefield', 'bat
 byData('workspace', 'effects').fire('click');
 assert.equal(byData('group', 'effects').hidden, false);
 assert.equal(byData('group', 'director').hidden, true);
-// The site's takes: listed once, the first time the Director opens; a card stages its scene through S.load, as Load
-// JSON does; a scene on another origin is never fetched. (Each step chains fetch, json and load: two ticks.)
+// The shelf: the sequences, then the site's filmed scenes once the index arrives (fetched once, when the Studio opens); a
+// scene's card stages its scene through S.load, as Load JSON does; a scene on another origin is never fetched. (Each step
+// chains fetch, json and load: two ticks.)
 await tick();
 assert.deepEqual(fetches, ['/media/site50-r14/scenes/index.json'], 'the takes index is fetched once, when the Studio opens');
+const shelf = all().find(element => element.className === 'production-library');
+assert.deepEqual(shelf.children.map(card => card.dataset.productionPreset ?? card.dataset.siteTake), ['one', 'two', 's01-street', 's02-foreign'],
+  'the shelf lays out the sequences, then the filmed scenes; every tank\'s take waits in the browser');
 const streetTake = byData('siteTake', 's01-street');
-assert.ok(streetTake, 'each take of the index becomes a card');
 assert.ok(streetTake.children.some(child => child.textContent === 'Street push'), 'a card carries the take\'s short title');
-assert.ok(streetTake.children.some(child => child.textContent === 'urban'), 'and its map');
+assert.ok(streetTake.children.some(child => child.textContent === t('map.urban')), 'and its map, in the reader\'s language');
+assert.ok(byData('productionPreset', 'two').children.some(child => child.textContent === t('studio.ws.seconds', { s: '15' })), 'a sequence card carries its length');
 streetTake.fire('click'); await tick(); await tick();
 assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s01-street.scene.json', 'a card fetches its own scene');
 assert.deepEqual(calls.filter(call => call[0] === 'load').map(call => call[1]), [takeScene], 'the take is staged through the Studio\'s load');
@@ -162,71 +177,54 @@ assert.deepEqual(notices.at(-1), ['Take staged as filmed. Play it, change it, or
 byData('siteTake', 's02-foreign').fire('click'); await tick(); await tick();
 assert.ok(!fetches.includes('https://example.com/take.scene.json'), 'a scene on another origin is refused');
 assert.equal(calls.filter(call => call[0] === 'load').length, 1);
-// Every tank's own take: the fleet entries stay out of the site's list and are reached through the finder, a page of
-// cards at a time; with no query it offers the take of the Director's featured tank, else the Garage's last tank.
-const siteLibrary = all().find(element => element.className === 'production-library' && element.children.includes(streetTake));
-assert.deepEqual(siteLibrary.children.map(card => card.dataset.siteTake), ['s01-street', 's02-foreign'], 'the default list is the site\'s takes');
-const fleetSection = all().find(element => element.className === 'production-takes production-fleet');
-assert.equal(fleetSection.hidden, false, 'an index with fleet takes shows the finder');
-assert.equal(byData('fleetSearch').attributes['aria-description'], t('studio.director.fleet.intro', { count: 9 }), 'its search counts the tanks');
-const fleetCards = () => all().filter(element => element.dataset.siteTake?.includes('-fleet-'));
-const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-hint').textContent;
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013'], 'the Garage tank\'s take, alone');
-assert.equal(fleetStatus(), t('studio.director.fleet.yourTank'));
-const search = byData('fleetSearch');
-search.value = 'Leopard'; search.fire('input');
-assert.equal(fleetCards().length, 6, 'a search shows one page of cards');
-assert.equal(fleetStatus(), t('studio.director.fleet.more', { shown: 6, count: 7 }), 'and says how many more match');
-search.value = 'fjord'; search.fire('input');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s61-fleet-m1a1_abrams_hc', 's63-fleet-leo2a2', 's65-fleet-leo2a4', 's67-fleet-leo2pl'],
-  'a map finds the takes filmed on it');
-assert.equal(fleetStatus(), '');
-search.value = '2A8'; search.fire('input');
-assert.equal(fleetCards()[0].children[0].src, '/maps/cards/verdant.webp', 'a take without a card picture shows its map');
-search.value = 'zzz'; search.fire('input');
-assert.equal(fleetCards().length, 0);
-assert.equal(fleetStatus(), t('studio.director.fleet.none', { query: 'zzz' }));
-search.value = ''; search.fire('input');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013']);
-const featuredTank = menus['studio-featured-tank'];
-assert.equal(featuredTank.options.items[0].id, 'default', "the Director's default leads");
-featuredTank.choose('leo2a4');
-assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-leo2a4'], 'the Director\'s featured tank comes first');
-featuredTank.choose('default');
-stored.clear(); search.fire('input');
-assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
-assert.equal(fleetStatus(), '', 'and no helper line: the placeholder says what to type');
-assert.equal(search.attributes['aria-label'], t('studio.director.fleet.search'), 'the finder keeps its name for assistive tech');
-stored.set(LAST_TANK_STORAGE_KEY, 't90sm_2013'); search.fire('input');
+// The browser: one set of every template (the sequences, the scenes, every tank's own take), opened on the one staged
+// last, by the Director's door or the feature card.
+const sheet = sheets[0];
+assert.ok(sheet, 'the Director builds one template browser');
+assert.deepEqual([...sheet.options.filters].map((filter) => filter.id), ['sequence', 'scene', 'tank', 'showcase', 'combat', 'environment', 'night']);
+assert.equal(byData('productionBrowse').children[0].textContent, t('studio.director.ui.browse', { count: 2 + 2 + 9 }), 'the door counts every template');
+byData('productionBrowse').fire('click');
+const opened = sheet.opened.at(-1);
+assert.equal(opened.value, 'take:s01-street', 'the browser opens on the template staged last');
+assert.deepEqual([...opened.items].map((item) => item.kind).filter((kind, i, list) => list.indexOf(kind) === i), ['sequence', 'scene', 'tank']);
+assert.equal(opened.items.length, 13);
+const leopard = opened.items.find((item) => item.id === 'take:s65-fleet-leo2a4');
+assert.equal(leopard.name, 'Leopard 2A6', 'a tank\'s take is named for its tank');
+assert.equal(leopard.loop, '/media/site50-r14/fleet/leo2a4.webm', 'and plays its own loop in the preview');
+assert.ok(leopard.tags.includes('tank'));
+assert.equal(opened.items.find((item) => item.id === 'seq:two').tags.includes('night'), true, 'a night sequence answers the Night chip');
+assert.deepEqual([...opened.items.find((item) => item.id === 'seq:one').acts].map(([name]) => name), ['Opening', 'Tracking', 'Reveal'], 'a sequence lists its acts');
 const loadsBefore = calls.filter(call => call[0] === 'load').length;
-fleetCards()[0].fire('click'); await tick(); await tick();
-assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s60-fleet-t90sm_2013.scene.json', 'a fleet card fetches its own scene');
+sheet.options.onChoose(leopard); await tick(); await tick();
+assert.equal(fetches.at(-1), '/media/site50-r14/scenes/s65-fleet-leo2a4.scene.json', 'a tank\'s take chosen in the browser fetches its scene');
 assert.equal(calls.filter(call => call[0] === 'load').length, loadsBefore + 1, 'and stages it as filmed');
-assert.equal(fleetCards()[0].attributes['aria-pressed'], 'true');
-search.value = 'T-90'; search.fire('input');
-assert.equal(fleetCards()[0].attributes['aria-pressed'], 'true', 'the staged take stays marked through a new search');
-assert.equal(streetTake.attributes['aria-pressed'], 'false');
-search.value = ''; search.fire('input');
+assert.equal(streetTake.attributes['aria-pressed'], 'false', 'the shelf no longer marks the scene before it');
+byData('productionFeature').fire('click');
+assert.equal(sheet.opened.at(-1).value, 'take:s65-fleet-leo2a4', 'the feature card is the browser\'s door too');
 panel.setVisible(true); panel.setVisible(false); await tick();
 assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1, 'reopening the Studio does not fetch the index again');
 // The shipped index is unstamped (schema 1): its t90sm is the T-90SM obr. 2013, today's t90sm_2013, and its t90sm_x is
 // the T-90SM X, today's t90sm; read through the stamp, neither offers the other tank's take (SSOT 2.19).
 {
   const fleetTake = (vehicle) => ({ id: `fleet-${vehicle}`, group: 'fleet', vehicle });
-  const legacy = context.siteFleetTakes({ takes: [fleetTake('t90sm'), fleetTake('t90sm_x'), { id: 's01', vehicle: 'm1a2' }] });
+  const legacy = context.siteTakes({ takes: [fleetTake('t90sm'), fleetTake('t90sm_x'), { id: 's01', vehicle: 'm1a2' }] });
   assert.deepEqual(legacy.map((take) => [take.id, take.vehicle]),
-    [['fleet-t90sm', resolveTankId('t90sm', 1)], ['fleet-t90sm_x', resolveTankId('t90sm_x', 1)]], 'an unstamped index is schema 1');
-  const current = context.siteFleetTakes({ tankIdSchema: TANK_IDS.schema, takes: [fleetTake('t90sm')] });
+    [['fleet-t90sm', resolveTankId('t90sm', 1)], ['fleet-t90sm_x', resolveTankId('t90sm_x', 1)], ['s01', 'm1a2']], 'an unstamped index is schema 1');
+  const current = context.siteTakes({ tankIdSchema: TANK_IDS.schema, takes: [fleetTake('t90sm')] });
   assert.equal(current[0].vehicle, 't90sm', 'a current index is read as written');
 }
-byData('productionPreset', 'two').fire('click');
 // the frame and the lens are the kit's segmented controls (a radio per option), every choice in view
 const frame = byData('productionFormat', 'portrait'); frame.fire('click');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');
 assert.equal(frame.attributes['aria-checked'], 'true', 'the chosen frame is the checked radio');
 assert.deepEqual(all().filter((element) => element.dataset.productionFormat).map((element) => element.dataset.productionFormat),
   ['landscape', 'portrait', 'square', 'card'], 'the frames include the 1.91:1 card');
+const featuredTank = menus['studio-featured-tank'];
+assert.equal(featuredTank.options.items[0].id, 'default', "the Director's default leads");
 featuredTank.choose('m1a1_abrams_hc');
+assert.equal(sheet.options.stars(), t('studio.director.ui.stars', { tank: 'M1A2 Abrams' }), 'the browser says whom a sequence stars');
+// a sequence's card stages it at once, casting the featured tank
+byData('productionPreset', 'two').fire('click');
 const stage = byData('productionStage'); stage.fire('click'); stage.fire('click');
 assert.equal(calls.filter(call => call[0] === 'stage').length, 1, 'one scene transaction despite repeated clicks');
 assert.equal(JSON.stringify(calls.find(call => call[0] === 'stage')[1]), JSON.stringify({ presetId: 'two', format: 'portrait', vehicleId: 'm1a1_abrams_hc' }));
@@ -252,22 +250,24 @@ S.recordingStatus = () => ({ active: true, supported: true }); panel.refresh();
 assert.equal(stage.disabled, true); assert.equal(byText('Stop recording').disabled, false);
 assert.equal(byText('Hide controls').disabled, true, 'recording keeps a stable native canvas size');
 assert.equal(byData('siteTake', 's01-street').disabled, true, 'a take cannot be loaded over a recording');
-assert.ok(fleetCards().length && fleetCards().every(card => card.disabled), 'nor a tank\'s own take');
+assert.equal(byData('productionBrowse').disabled, true, 'nor the browser opened');
+const openedBefore = sheet.opened.length; byData('productionBrowse').fire('click');
+assert.equal(sheet.opened.length, openedBefore);
 S.productionFormat = 'square'; panel.refresh();
 assert.equal(byData('productionFormat', 'square').attributes['aria-checked'], 'true', 'loading or scripting a different format synchronizes the export selector');
 const zhCatalog = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
 assert.equal(context.label('director'), 'Director');
 assert.equal(zhCatalog['studio.director.ui.director'], '导演台', 'the Director\'s words are in both catalogs');
-// The Sequence library's cards show each sequence's own frame (public/media/studio-r1, the media lane's renders), sized,
-// with the battlefield's card behind a missing still.
+// Every sequence shows its own frame (public/media/studio-r1, rendered by the engine with the Studio chrome hidden): a
+// 640 x 400 card and a 1280 x 800 preview, sized, with the battlefield's card behind a missing still.
 const studioMedia = JSON.parse(readFileSync(new URL('../../public/media/studio-r1/manifest.json', import.meta.url), 'utf8'));
-assert.match(source, /photo\.src = `\/media\/studio-r1\/sequence-\$\{preset\.id\}-640\.webp`;\s*photo\.width = 640;\s*photo\.height = 400;/,
-  'a Sequence card shows its own 640 x 400 frame, sized before it loads');
-assert.match(source, /photo\.addEventListener\('error', \(\) => \{ photo\.src = `\/maps\/cards\/\$\{preset\.map\}\.webp`; \}, \{ once: true \}\);/,
+assert.match(source, /photo\.addEventListener\('error', \(\) => \{ photo\.src = `\/maps\/cards\/\$\{template\.map\}\.webp`; \}, \{ once: true \}\);/,
   'a missing still falls back to the battlefield card once');
 for (const preset of PRODUCTION_PRESETS.map((entry) => entry.id)) {
-  const item = studioMedia.items.find((entry) => entry.preset === preset);
-  assert.ok(item && item.src === `/media/studio-r1/sequence-${preset}-640.webp` && item.width === 640 && item.height === 400,
-    `the studio-r1 manifest carries ${preset}'s 640 x 400 frame`);
+  for (const [width, height] of [[640, 400], [1280, 800]]) {
+    const item = studioMedia.items.find((entry) => entry.preset === preset && entry.width === width);
+    assert.ok(item && item.src === `/media/studio-r1/sequence-${preset}-${width}.webp` && item.height === height,
+      `the studio-r1 manifest carries ${preset}'s ${width} x ${height} frame`);
+  }
 }
-console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, every tank\'s take, staging races, exports, transport, recording locks and localization passed');
+console.log('studioProductionPanel.selftest: workspace selection, the templates (shelf, browser, every tank\'s take), staging races, exports, transport, recording locks and localization passed');
