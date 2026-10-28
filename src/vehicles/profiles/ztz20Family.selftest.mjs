@@ -160,7 +160,7 @@ for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
       assert.ok(Math.abs(body.min[2] - ZTZ20_DATUMS.sternPlateZ) < 1e-6 && Math.abs(body.max[2] - ZTZ20_DATUMS.noseZ) < 1e-6, `${id}: stern plate to nose`);
       assert.ok(Math.abs(body.max[1] - (stage.deck === 'flat' ? 1.41 : 1.465)) < 1e-6, `${id}: the ${stage.deck} engine deck`);
       assert.equal(count('rear-fender-box'), 2); assert.equal(count('crew-hatch'), 2, `${id}: the crew capsule's two hatches`);
-      assert.equal(count('crew-periscope-hood'), stage.hatches === 'flush' ? 0 : 4, `${id}: ${stage.hatches} crew hatches`);
+      assert.equal(count('crew-periscope-hood'), stage.hatches === 'flush' ? 0 : 10, `${id}: ${stage.hatches} crew hatches`);
       assert.equal(count('skirt-upper'), 16); assert.equal(count('skirt-front'), 2);
       assert.equal(count('skirt-lower'), stage.skirtLowerBand ? 12 : 0, `${id}: lower skirt band`);
       assert.equal(count('skirt-lip'), stage.skirtLip ? 10 : 0, `${id}: rubber lip`);
@@ -200,22 +200,24 @@ for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
       // the gun-tank turret and its deltas
       assert.equal(count('main-body'), 1); assert.equal(count('bustle'), 1); assert.equal(count('roof-plateau'), 1);
       assert.equal(count('flank-pod'), stage.pods === 'armour' ? 2 : 0); assert.equal(count('ballast-block'), stage.pods === 'ballast' ? 4 : 0);
-      for (const facet of ['cheek', 'cheek-filler', 'cheek-plate']) assert.equal(count(facet), 2, `${id}: ${facet}`);
+      for (const facet of ['cheek', 'cheek-outer', 'cheek-filler']) assert.equal(count(facet), 2, `${id}: ${facet}`);
+      assert.equal(count('cheek-plate'), 4, `${id}: a plate on each stepped cheek block`);
       assert.equal(count('gun-housing'), 1);
       assert.equal(count('aps-launcher-tube'), stage.apsTowers === 'launchers' ? 8 : 0, `${id}: hard-kill launchers`);
       assert.equal(count('aps-blank'), stage.apsTowers === 'blanked' ? 2 : 0, `${id}: blanked seats`);
       assert.equal(count('rws-missile-launcher'), stage.rws === 'twin-tube' ? 1 : 0, `${id}: weapon-station ATGM launcher`);
       assert.equal(count('coax-housing'), stage.coaxHousing ? 1 : 0); assert.equal(count('coax-seat-cover'), stage.coaxHousing ? 0 : 1);
+      for (const piece of ['cheek-tip', 'cheek-notch-wedge', 'cheek-notch-wall', 'cheek-notch-slab']) assert.equal(count(piece), stage.coaxHousing ? 1 : 0, `${id}: the coax slot in the right cheek`);
       assert.equal(count('coax-port'), stage.coaxHousing || stage.mantlet !== 'angular' ? 0 : 1, `${id}: the coax in the mantlet until its cheek housing`);
       assert.equal(count('brake-slot'), stage.brake === 'slotted' ? 10 : 0, `${id}: slotted brake`);
       assert.equal(count('brake-face'), stage.brake === 'slotted' ? 1 : 0);
       assert.equal(count('brake-port-ring'), stage.brake === 'round' ? 4 : 0, `${id}: round brake`);
-      assert.equal(count('brake-rib'), stage.brake === 'ribbed' ? 7 : 0, `${id}: ribbed brake`);
+      assert.equal(count('brake-rib'), stage.brake === 'ribbed' ? 16 : 0, `${id}: ribbed brake`);
       assert.equal(count('trials-mast'), stage.trialsMast ? 1 : 0); assert.equal(count('side-bin'), stage.bustleStowage ? 2 : 0);
       assert.equal(count('rack-slat'), stage.bustleStowage ? 21 : 0, `${id}: the three-bay rack's inclined slats`);
       assert.equal(count('rear-stowage-block'), stage.bustleStowage ? 1 : 0, `${id}: the closed rear stowage block under the slats`);
       assert.equal(count('muzzle-reference-sensor'), stage.sleeve ? 1 : 0, `${id}: muzzle reference sensor with the sleeve`);
-      assert.equal(count('rws-yoke-bridge'), stage.rws === 'none' ? 0 : 1, `${id}: the weapon station's sight yoke`);
+      assert.equal(count('rws-yoke-arm'), stage.rws === 'none' ? 0 : 2, `${id}: the weapon station's sight yoke`);
       assert.equal(count('smoke-tube'), stage.smoke ? 8 : 0);
       assert.equal(count('panoramic-head'), stage.commanderSight === 'panoramic' ? 1 : 0); assert.equal(count('periscope-block'), stage.commanderSight === 'periscope' ? 1 : 0);
       assert.equal(count('mantlet'), stage.mantlet === 'angular' ? 1 : 0); assert.equal(count('mantlet-early'), stage.mantlet === 'early' ? 1 : 0);
@@ -241,7 +243,7 @@ for (const id of ['ztz20', 'ztz20_prototype', 'ztz100', 'ztz100_prototype']) {
 }
 // the stages differ only where their deltas say: the hull census of the production and pre-production ZTZ-20 hulls
 // agrees outside the delta-owned parts
-const deltaParts = /^(glacis-|skirt-lower|skirt-lip|skirt-rail|cage-|stern-bin|stern-basket|aps-|rws-|coax-|mrs-|muzzle-reference|rear-stowage|rear-block|brake-|trials-|side-bin|rack-|deck-|filler-cap|exhaust|ballast-|periscope-|mantlet|thermal-|sleeve-|fume-|smoke-|panoramic-|flank-pod|pod-)/;
+const deltaParts = /^(glacis-|skirt-lower|skirt-lip|skirt-rail|cage-|stern-bin|stern-basket|aps-|rws-|coax-|cheek-tip|cheek-notch|mrs-|muzzle-reference|rear-stowage|rear-block|brake-|trials-|side-bin|rack-|deck-|filler-cap|exhaust|ballast-|periscope-|mantlet|thermal-|sleeve-|fume-|smoke-|panoramic-|flank-pod|pod-)/;
 const shared = (key) => Object.entries(counts[key]).filter(([p]) => !deltaParts.test(p) && !/^(concept-|pod-|backup-|pitch-|elevation-|bank-|sensor-|gunner-sight-(foot|stem|body|window)|service-|antenna-)/.test(p));
 assert.deepEqual(shared('ztz100/high').filter(([p]) => /^(hull-|rear-fender|crew-|skirt-upper|skirt-front|skirt-step|skirt-hanger|lamp|tow-|nose-|driver-|stern-louvre|tail-)/.test(p)),
   shared('ztz20/high').filter(([p]) => /^(hull-|rear-fender|crew-|skirt-upper|skirt-front|skirt-step|skirt-hanger|lamp|tow-|nose-|driver-|stern-louvre|tail-)/.test(p)),
