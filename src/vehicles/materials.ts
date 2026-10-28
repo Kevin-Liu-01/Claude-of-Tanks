@@ -4080,16 +4080,15 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
       vec4 apNext = texelFetch( uApZones, ivec2( apSecondK * ${ARMOR_PAINT_ZONE_TEXELS} + ${ARMOR_PAINT_ZONE_TEXELS} - 1, 0 ), 0 );
       apColor = mix( apNext.a > 0.5 ? apNext.rgb : vec3( 0.40, 0.45, 0.50 ), apColor, 0.5 + 0.5 * smoothstep( 0.0, 1.5, apMarginPx ) );
     }
-    // the hull's rubber (mode 4): the colour a little stronger over its dark base, so amber stays amber
     apFlat = step( 3.5, uApPaint );
-    apMix = 0.45 + 0.1 * apFlat;
+    apMix = 0.45;
     // inside a footprint only its border is a border; outside, the scores' and a footprint's that takes another zone
     float apPx = apForced ? 1e3 : apMarginPx;
     if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
     apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
-    // the hull's rubber takes most of the way to a flat tone near the painted steel's first: its grain maps showed
-    // through the colour as speckle, a light tone turned it pastel, a dark one turned amber red-orange (blind critics)
-    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.09 ), 0.9 * apFlat );
+    // the hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
+    // through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds)
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
     // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
