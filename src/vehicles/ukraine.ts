@@ -18,8 +18,9 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
+// (pt84_orzel, the Polish concept on the Oplot family's base, registers with its family; its nation is Poland)
 const UKRAINE_IDS = Object.freeze([
-  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 'bm_oplot_m', 'bm_oplot_t',
+  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 'bm_oplot_m', 'bm_oplot_t', 'pt84_orzel',
 ] as const);
 
 type UkraineStatOverrides = Partial<Pick<FleetTankSpec,
@@ -34,6 +35,7 @@ type UkraineStatOverrides = Partial<Pick<FleetTankSpec,
 
 interface UkraineVariantOptions {
   name: string;
+  nation?: string;
   number: string;
   scheme?: string;
   base?: string;
@@ -52,7 +54,7 @@ function variant(
 ): FleetTankSpec {
   const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
     name: options.name,
-    nation: 'Ukraine',
+    nation: options.nation || 'Ukraine',
   });
   Object.assign(spec, options.stats || {});
   spec.visual = {
@@ -118,6 +120,16 @@ const UKRAINE_SPECS = {
     patches: ['#7e4c37', '#5c4232', '#a17f58'], camoScale: 0.58,
     dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.43, heightM: 2.97 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
+      turretTraverseDegS: 44 },
+  }),
+  // Release 262 (owner 2026-10-28: "make a new polish version based on this style"): a first-party Polish concept on the
+  // Oplot-M's base (docs/references/concepts/pt84-orzel-20261028.json), in the Polish three-tone the Zubr family wears
+  pt84_orzel: variant('pt84_orzel', 't84', {
+    name: 'PT-84 Orzeł', nation: 'Poland', number: '184', scheme: 'nato', base: '#4a563b', weather: '#4a5c42',
+    patches: ['#29342d', '#827458'], camoScale: 0.52,
+    // the family's published hull and length (the stern drums excluded) and roof line; the width over the framed skirts
+    dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.42, heightM: 2.97 },
+    stats: { hp: 2750, enginePowerHp: 1200, weightTons: 52.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
   ua_m1a1: variant('ua_m1a1', 'm1a1ha', {
@@ -244,6 +256,61 @@ const UKRAINE_SPECS = {
       }),
     ];
   }
+}
+
+// The PT-84 Orzeł (Polish concept, release 262, tier X): the Oplot-M's installed frame and base armour, ERAWA-2 where
+// the build carries its Krata grids (the glacis field, the cheek and flank boxes, the full skirt run): a two-layer
+// cassette short of the Duplet, no anti-tandem layer. Its gun is the PT-17's: the KMDB KBM2 120 mm smoothbore in the
+// carousel loader (Bumar-Łabędy / KMDB, MSPO 2017), firing the Polish Army's NATO stock, the K2PL's K279 / K280 / K281,
+// and Luch's Falarick 120 gun-launched missile, made for NATO 120 mm guns.
+{
+  const spec = UKRAINE_SPECS.pt84_orzel;
+  const ERAWA2: EraProtection = Object.freeze({ keReduction: 0.20, ceFlatMm: 440 });
+  const ERAWA2_SKIRT: EraProtection = Object.freeze({ keReduction: 0.12, ceFlatMm: 320 });
+  const era = (name: string, v0: [number, number, number], v1: [number, number, number], v3: [number, number, number],
+    protection: EraProtection): ArmorPlate => plate(name, 12, v0, v1, v3, { kind: 'era', era: { ...protection } });
+  const frame = modernArmor({
+    hl: 3.461, hw: 1.743, inW: 1.097, floor: 0.43, trkTop: 1.097, roofY: 1.497,
+    turretPivot: [...OPLOT_BM_FRAME.turret], gunPivot: [...OPLOT_BM_FRAME.gun],
+    barrelLenM: OPLOT_BM_FRAME.barrelM, barrelRadM: OPLOT_BM_FRAME.barrelR,
+    glacis: [500, 560, 650], lower: [100, 140, 160], side: [80, 95, 110], skirt: [10, 12, 12],
+    rear: 45, roof: 40, tw: 1.51, tFrontZ: 1.49, tRearZ: -2.03, tH: 0.707,
+    cheek: [650, 620, 700], tSide: [300, 340, 400], tRear: 60, tRoof: 45, mantlet: [350, 400, 450],
+    bustleAmmo: true,
+  });
+  frame.hullPlates.push(
+    era(OPLOT_BM_ERA.glacis, [-1.13, 1.23, 3.03], [1.13, 1.23, 3.03], [-1.13, 1.455, 2.56], ERAWA2),
+    era(OPLOT_BM_ERA.skirtL, [2.02, 1.00, -2.80], [2.02, 1.00, 2.93], [2.02, 1.455, -2.80], ERAWA2_SKIRT),
+    era(OPLOT_BM_ERA.skirtR, [-2.02, 1.00, 2.93], [-2.02, 1.00, -2.80], [-2.02, 1.455, 2.93], ERAWA2_SKIRT),
+  );
+  frame.turretPlates.push(
+    era(OPLOT_BM_ERA.turretL, [0.42, 0.24, 1.78], [1.62, 0.15, 1.25], [0.42, 0.53, 1.78], ERAWA2),
+    era(OPLOT_BM_ERA.turretR, [-1.62, 0.15, 1.25], [-0.42, 0.24, 1.78], [-1.62, 0.53, 1.25], ERAWA2),
+    era(OPLOT_BM_ERA.flankL, [1.73, 0.09, -0.40], [1.73, 0.09, 1.20], [1.73, 0.575, -0.40], ERAWA2),
+    era(OPLOT_BM_ERA.flankR, [-1.73, 0.09, 1.20], [-1.73, 0.09, -0.40], [-1.73, 0.575, 1.20], ERAWA2),
+  );
+  spec.armor = frame;
+  spec.visual.trackWidthM = 0.58;
+  spec.gunElevationDeg = 14;
+  spec.gunDepressionDeg = 5;
+  // the KBM2's depression by turret yaw over this build (tools/gun-depression-sweep.mjs): the Oplot-M's curve, held up
+  // from 137 degrees where the barrel crosses the framed skirts' rear fields (oplotBMGun.selftest.mjs holds it)
+  spec.gunPitchByYawDeg = [[0, -5], [137, -5], [145, -3.8], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5],
+    [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]];
+  spec.gun.caliberMm = 120;
+  spec.gun.reloadS = 6.3;
+  spec.gun.baseAccuracy = 0.31;
+  spec.gun.aimTimeS = 1.8;
+  const k279 = apfsdsPenetration(700);
+  spec.gun.shells = [
+    shell('K279 APFSDS', 'APFSDS', 120, k279[0], k279[1], 530, 1760, { pen2000Mm: k279[2], count: 18 }),
+    shell('K280 HEAT-MP', 'HEAT', 120, 610, 610, 470, 1130, { count: 10 }),
+    shell('K281 HE', 'HE', 120, 45, 45, 580, 1000, { count: 12 }),
+    shell('Falarick 120 ATGM', 'HEAT', 120, 750, 750, 500, 380, {
+      pen2000Mm: 750, guided: true, guidanceTurnRateRadS: 0.62, reloadS: 8.0, count: 6, launcherTubes: 0,
+      soundProfile: 'arkan-launch',
+    }),
+  ];
 }
 
 UKRAINE_SPECS.ua_m1a1.armor.droneScreens = ukrainianAbramsCage();
