@@ -30,16 +30,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "centurion13": {
     "fitting@hull(-0.30,1.43,3.14)": [0.188, 1.27868, 3.46747, 0.18979, -0.68116, -0.18979, 0.68116, 1],
     "fitting@hull(0.36,1.43,3.14)": -1,
-    "strip@hull(-0.86,1.26,-3.76)": -1,
-    "strip@hull(0.86,1.26,-3.76)": -1,
-  },
-  "centurion3": {
-    "strip@hull(-0.86,1.26,-3.76)": -1,
-    "strip@hull(0.86,1.26,-3.76)": -1,
-  },
-  "centurion5_2": {
-    "strip@hull(-0.86,1.26,-3.76)": -1,
-    "strip@hull(0.86,1.26,-3.76)": -1,
   },
   "chieftain_mk9": {
     "fitting@hull(-0.62,1.43,2.79)": -1,

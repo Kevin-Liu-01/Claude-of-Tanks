@@ -239,10 +239,12 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   for (const s of [-1, 1]) {
     const [hz, hy] = onGlacis(0.30);
     if (m.kit === 'aus') {
-      // the Mk 5's armoured headlight box moved onto the front bin's lid, the spare road wheels taking the glacis
-      P.add('hullDetail', box(0.26, 0.20, 0.22), s * 1.22, 1.765, 2.80);
-      P.add('hullGlass', markVehicleNightLens(cylZ(0.07, 0.02, 14), 'headlight'), s * 1.22, 1.775, 2.915);
-      P.add('hullDark', box(0.27, 0.025, 0.08), s * 1.22, 1.875, 2.89);
+      // the spare road wheels take the glacis: a low armoured lamp on each front bin's raked face, under the barrel's
+      // sweep at full depression (a box on the lid held the gun level over the bow quarters)
+      const facePitch = Math.atan2(1.665 - (GUARD_Y + 0.01), 3.24 - 3.02);
+      P.add('hullDetail', xform(box(0.22, 0.12, 0.10), 0, 0, 0, -facePitch, 0, 0), s * 1.22, 1.62, 3.15);
+      P.add('hullGlass', markVehicleNightLens(cylZ(0.055, 0.02, 14), 'headlight'), s * 1.22, 1.615, 3.205);
+      P.add('hullDark', xform(box(0.23, 0.02, 0.06), 0, 0, 0, -facePitch, 0, 0), s * 1.22, 1.685, 3.17);
     } else if (m.kit === 'strv105') {
       // the Strv 104's lamp pairs on the front bins' lids, clear of the glacis tiles (the Bovington Strv 104)
       mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.13, r: 0.048,
@@ -601,6 +603,7 @@ function buildAvdsDeck(P: TankBuilderPort): void {
     P.add('hullDark', cylX(0.07, 0.10, 12), s * 1.30, GUARD_Y + 0.26, -2.62);
     // the tow cable along the deck's edge
     KIT.towCable(P, [[s * 1.04, top + 0.03, -1.60], [s * 1.06, top + 0.03, -2.40], [s * 1.04, top + 0.03, -3.20]]);
+    for (const cz of [-1.60, -3.20]) P.add('hullDark', box(0.07, 0.06, 0.07), s * 1.04, top + 0.03, cz);
   }
 }
 
@@ -692,6 +695,8 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
   if (!m.swedish && !m.idf && m.kit !== 'aus') {
     KIT.towCable(P, [[-1.20, 1.60, REAR_Z - 0.03], [-0.62, 1.30, REAR_Z - 0.06], [0, 1.52, REAR_Z - 0.04],
       [0.62, 1.30, REAR_Z - 0.06], [1.20, 1.60, REAR_Z - 0.03]]);
+    // the cable's eyes clamped in their ferrules on the plate's top corners (the tube itself is open-ended)
+    for (const s of [-1, 1]) P.add('hullDark', box(0.07, 0.07, 0.07), s * 1.20, 1.60, REAR_Z - 0.03);
   }
 }
 
