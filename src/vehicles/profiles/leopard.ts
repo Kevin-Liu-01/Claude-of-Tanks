@@ -46,6 +46,7 @@ import { chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedV
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
+import { buildLeo1A1 } from './leopard1A1.ts';
 import { recessClosedTurret, recessKF51BTurret, KF51B_GUN_RECESS } from './kf51bGunRecess.ts';
 import { addLeo2PrototypeMantlet, convexCrownedStock, leopardThermalSkin } from './leopardStructuralRepairs.ts';
 import { buildLeopardRevolutionPrototypeTurret } from './leopardRevolutionPrototypeTurret.ts';
@@ -15163,6 +15164,8 @@ export const LEOPARD_PROFILES = {
   // Owner-source rebuild (2026-08-18): articulated Leopard 1 oracle base plus
   // the complete procedural A5 cheek, optic, launcher and stowage package.
   leo1a5: { build: buildLeo1A5ArticulatedProfile },
+  // release 263: the bare cast-turret Leopard 1A1 on the 1A5's pre-262 hull
+  leo1a1: { build: buildLeo1A1 },
   // §5.248 germany-leopards ground-up builds (owner order — the
   // profiles/germany.js donor-wrapper builders are retired; these rows must
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).
