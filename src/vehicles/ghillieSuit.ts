@@ -5559,14 +5559,16 @@ function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
 }
 
 /**
- * A multispectral cover's garnish atlas: its cut flaps in the theatre's tones, and where its row names a species (the
- * Strv 121's spruce), that species' boughs in the bough tiles (263: the cover's boughs had been flaps too).
+ * A multispectral cover's garnish atlas: its cut flaps in the theatre's tones. (263) Where its row names a species and
+ * asks for boughs (the Strv 121's Barracuda-style cover with spruce: boughShare 0.45, foliageKind spruce), half its
+ * tufts are that species' sprigs: a fitted cover lays only its own short flat tufts (addTufts, wave 253: no bough card
+ * stands off a cover), so the row's spruce had never shown; the second tuft tile now carries it, laid as flat as a flap.
  */
 function* coverGarnishAtlasSteps(cfg: GhillieConfig, theatre: SuitTheatre): Generator<void, THREE.Texture | null, void> {
   const flaps = theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland';
   const kind = cfg.foliageKind;
   if (!kind || kind === 'garnish-woodland' || kind === 'garnish-arid') return vehicleFoliageAtlas(flaps);
-  return yield* ghillieGarnishAtlasSteps(kind, undefined, flaps);
+  return yield* ghillieGarnishAtlasSteps(kind, undefined, flaps, (cfg.boughShare ?? 0) > 0);
 }
 
 /** Run a stepped build at once. */
