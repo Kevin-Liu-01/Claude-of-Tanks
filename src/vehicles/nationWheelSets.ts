@@ -214,9 +214,9 @@ const NATION_ALIASES: Readonly<Record<string, string>> = Object.freeze({
 type WheelStandardException = Readonly<{ donor: WheelDonorId; reason: string }>;
 
 /**
- * Release 262 (Main, recommending the owner's historical exception): the Type 59 and the T-55A ride the T-54/T-55
- * "starfish" five-spoke wheel instead of their national standards (China's ZTZ-100 web, Russia's T-90 face). One switch:
- * false returns both to the standard.
+ * Release 262 (owner 2026-10-28, "Allow period wheels"): the Type 59 and the T-55A ride the T-54/T-55 "starfish"
+ * five-spoke wheel instead of their national standards (China's ZTZ-100 web, Russia's T-90 face); modern tanks keep the
+ * national standard. One switch: false returns both to the standard.
  */
 export const T54_STARFISH_WHEELS = true;
 
@@ -246,8 +246,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
   ...(T54_STARFISH_WHEELS ? {
-    type59: { donor: 'type59', reason: '262 (Main, owner exception pending): the T-54A-pattern Type 59 keeps its period starfish wheel' },
-    t55a: { donor: 'type59', reason: '262 (Main, owner exception pending): the T-55A keeps its period starfish wheel' },
+    type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
+    t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },
   } : {}),
 });
 

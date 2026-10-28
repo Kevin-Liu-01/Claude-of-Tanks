@@ -699,6 +699,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
     'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
+    // release 262: the Longwei concept's native profile fixture (its first-party concept route's test)
+    'src/vehicles/profiles/longwei.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',

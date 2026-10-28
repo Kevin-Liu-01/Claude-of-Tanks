@@ -26,7 +26,7 @@ cage and dozer blade. Kept: the six measured wheel stations and the gameplay dat
 | Photo G | commons: `ZTZ-99A_MBT_20170716.jpg` (Tyg728, CC BY-SA 4.0) | left side from the front: skirts with scalloped lower edge and access holes, bins, bustle, evacuator past mid-barrel |
 | Photo H | commons: `Type_99_MBT_front_right.jpg` (Max Smith, PD) | base 99: welded turret sides, QJC-88, skirts |
 | Photo I | commons: `Type_99_MBT_rear.jpg` (Max Smith, PD) | bustle basket, rear plate |
-| Oracle | `public/models/community-candidates/type_99a2_armored_warfare.glb` (local-only, registered) | turret 3.45 m over modules, 4.08 m long (Object_31); hull 7.76 m, 3.70 m over skirts |
+| Oracle (retired 2026-10-28) | `public/models/community-candidates/type_99a2_armored_warfare.glb` (local-only; guidance only since the concept registration) | turret 3.45 m over modules, 4.08 m long (Object_31); hull 7.76 m, 3.70 m over skirts |
 
 Photogrammetry (Photo F, 46 mm-equivalent, fender span 3.5 m): turret width over the side bins 3.1-3.3 m after the depth
 correction; turret length with the arrowhead and basket ≈4.0-4.4 m (Photo G, low confidence); evacuator front collar
@@ -82,3 +82,12 @@ sprocket behind the skirt, taller front mudguard boxes with headlights (moves th
 Track clip (262 release gate, strict exact audit): 54 band cells and 2 pad cells → 0/0. The skirt's bow end plate now
 starts at 1.81, outside the belt's outer face (1.788), and the glacis FY-5 columns sit at 0.375 / 0.68 / 0.985 with
 0.29 m bricks, so the outer column ends at 1.13, inside the belt's inner face (1.158), where the belt climbs the idler.
+
+First-party concept route (owner 2026-10-28, relayed by Main): the Longwei is an original design, so it is registered
+as a first-party concept (`docs/references/concepts/ztz99-longwei-20261028.json`, the `FIRST_PARTY_CONCEPTS` row in
+`tools/first-party-concept-policy.mjs`) instead of being scored against the ZTZ-99A2 Armored Warfare print (88.1/92 on
+the last committed packet, 88.3 in the 262 lane; the packet stays as the historical receipt). The concept is held to
+its pinned datums (ring 0/1.57/0.64, trunnion 0/0.3198/0.74, the 6.454 m 125 mm gun, −7/+14, one roof gun), its measured
+envelope within 3% at both qualities (3.732 m wide, 11.811 m long, 3.668 m to the whip tips) and its native fixture
+`src/vehicles/profiles/longwei.selftest.mjs` (hull, skirts, turret, basket, commander's station, muzzle and a closed
+roof at both qualities). Its variants are unchanged; the ZTZ-99A2 and the VT-4A1 keep their own comparison registrations.

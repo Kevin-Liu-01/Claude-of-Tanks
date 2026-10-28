@@ -55,7 +55,7 @@ the photo scale governs. Turret width ≈2.15 m (top view, perspective-corrected
 | Rear | two 200 L drums on brackets, BDSh smoke canisters | drums (T-62 chassis) | 2 transverse drums on raked brackets, 2 BDSh canisters, tail lamps, tow hooks |
 
 Main's rulings (2026-10-27): the road wheel is the T-54/T-55 cast five-spoke "starfish" (`t54-starfish-spoke`) through
-one switch, `T54_STARFISH_WHEELS` in nationWheelSets.ts (on, the owner's historical exception pending; false returns the
+one switch, `T54_STARFISH_WHEELS` in nationWheelSets.ts (on: the owner approved the historical exception on 2026-10-28, "Allow period wheels"; false returns the
 Type 59 to the Chinese ZTZ-100 standard and the T-55A to the Russian T-90 face). The gun takes the D-10T's own −5/+18
 (the donor T-62's −9/+20 was never sourced). The decor is curated (decorations.ts): the era default without the hanging
 bucket and without a second whip; the smoke banks stay because they carry the smoke consumable and the fleet has no
