@@ -55,9 +55,9 @@ const ROLE_ICONS: Readonly<Record<string, IconId>> = {
 const FACET_TEXT: Readonly<Record<FacetKey, readonly [string, string, IconId]>> = {
   nation: ['gallery.archive.filter.nation', 'gallery.archive.filter.allNations', 'globe'],
   tier: ['docs.fleet.tier', 'docs.fleet.allTiers', 'techTree'],
-  era: ['fleet.filter.era', 'docs.fleet.allEras', 'clock'],
-  class: ['fleet.filter.class', 'fleet.filter.allClasses', 'vehicle'],
-  role: ['fleet.filter.role', 'fleet.filter.allRoles', 'team'],
+  era: ['docs.fleet.era', 'docs.fleet.allEras', 'clock'],
+  class: ['docs.fleet.class', 'docs.fleet.allClasses', 'vehicle'],
+  role: ['docs.fleet.role', 'docs.fleet.allRoles', 'team'],
 };
 /** One choice a filter offers, as the kit picker takes it (src/ui/components/picker.ts PickerItem): an empty id is every
  *  value. `chip` is a nation's roster name, which the page turns into its flag's URL (src/ui/flags.ts). */

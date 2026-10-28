@@ -5,6 +5,7 @@ import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 import type { RichSection } from './chapters/types.ts';
 import { keepDesignations, keepPhrases } from './designations.ts';
+import { revealStills } from '../presentation/revealStills.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -510,7 +511,12 @@ function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia)
 function mountSearchEntry(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>('.dm-search input');
   if (!input) return;
-  input.addEventListener('focus', () => { void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input)); }, { once: true });
+  // a matching that did not arrive (the link dropped) loads again with the field's next focus
+  const mount = (): void => {
+    void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input))
+      .catch(() => input.addEventListener('focus', mount, { once: true }));
+  };
+  input.addEventListener('focus', mount, { once: true });
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey || !input.offsetParent) return;
     event.preventDefault();
@@ -656,6 +662,32 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
 
 const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
 
+/**
+ * A chapter's hero cards outside the fleet grid (the tanks chapter's classes): the card's flag and tank fade in together
+ * once both have decoded, under the kit's reveal sheet (components.css [data-reveal], [data-ready]). A card whose picture
+ * failed keeps its tone ([data-failed]) and loads again once the browser is back online.
+ */
+function revealHeroCards(cards: readonly HTMLElement[]): void {
+  const settle = (card: HTMLElement): void => {
+    const images = [...card.querySelectorAll('img')];
+    if (images.some((image) => !image.complete)) return;
+    if (images.some((image) => !image.naturalWidth)) { card.setAttribute('data-failed', ''); return; }
+    void Promise.all(images.map((image) => image.decode().catch(() => undefined))).then(() => card.setAttribute('data-ready', ''));
+  };
+  for (const card of cards) {
+    card.setAttribute('data-reveal', '');
+    for (const image of card.querySelectorAll('img')) for (const type of ['load', 'error']) image.addEventListener(type, () => settle(card));
+    settle(card);
+  }
+  if (cards.length) addEventListener('online', () => {
+    for (const card of cards) {
+      if (!card.hasAttribute('data-failed')) continue;
+      card.removeAttribute('data-failed');
+      for (const image of card.querySelectorAll('img')) image.src = image.getAttribute('src') ?? '';
+    }
+  });
+}
+
 /** A reader on the fleet chapter this long has its pictures warmed for a print, this many (a hero card is two) per idle turn. */
 const FLEET_WARM_AFTER_MS = 8000;
 const FLEET_WARM_BATCH = 12;
@@ -724,7 +756,9 @@ function wireFleetGrid(root: HTMLElement): void {
   let loading: Promise<void> | null = null;
   let mounted = false;
   const load = (): void => {
-    loading ??= import('./fleetGrid.ts').then(({ mountFleetGrid }) => { mounted = true; mountFleetGrid(root, () => pressed); });
+    // (a module that did not arrive loads again with the next intent)
+    loading ??= import('./fleetGrid.ts').then(({ mountFleetGrid }) => { mounted = true; mountFleetGrid(root, () => pressed); })
+      .catch(() => { loading = null; });
   };
   const onEarlyPress = (event: Event): void => {
     const control = event.target instanceof Element ? event.target.closest('button') : null;
@@ -770,20 +804,28 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   counterScaleCharts(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
+  // A part whose module did not arrive (the link dropped) leaves the page as served (the banner's poster, the chapter's
+  // prerendered text) and loads again once the browser is back online.
+  const whenOnline = (load: () => Promise<unknown>): void => {
+    void load().catch(() => addEventListener('online', () => whenOnline(load), { once: true }));
+  };
   if (heroVideos.length) {
-    void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
+    whenOnline(() => Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
       (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' }),
-      (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip')));
+      (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip'))));
   }
   const article = root.querySelector<HTMLElement>('article');
   if (article && reference) {
-    void import('./reference.ts').then(({mountReference}) => mountReference(article, slug));
+    whenOnline(() => import('./reference.ts').then(({mountReference}) => mountReference(article, slug)));
   }
   if (article && slug === 'filming') {
-    void import('./filming.ts').then(({mountFilming}) => mountFilming(article));
+    whenOnline(() => import('./filming.ts').then(({mountFilming}) => mountFilming(article)));
   }
   const fleet = article?.querySelector<HTMLElement>('[data-fleet]');
   if (fleet) wireFleetGrid(fleet);
+  // the banner's poster and the chapter's figures and hero cards fade in once decoded (the fleet grid's tiles have their own)
+  revealStills(root.querySelectorAll<HTMLImageElement>('.dm-banner img, .dm-figure > img'));
+  revealHeroCards([...root.querySelectorAll<HTMLElement>('.dm-hc')].filter((card) => !card.closest('.dm-fleet')));
 
   // the narrow layout folds the shelf into one scrolling row that opens on the current chapter
   const shelf = root.querySelector<HTMLElement>('.dm-side');

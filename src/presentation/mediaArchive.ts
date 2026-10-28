@@ -79,6 +79,8 @@ function loadPresentationManifest(): Promise<PresentationManifest> {
       return { shots: [...(fresh?.shots ?? []), ...base.shots.filter(shot =>
         shot.kind !== 'battlefield' || !refreshedMaps.has(shot.map))] };
     });
+    // a failed fetch is not kept: the next mount (a Retry, a return online) asks again
+    manifestPromise.catch(() => { manifestPromise = undefined; });
   }
   return manifestPromise;
 }
@@ -167,7 +169,12 @@ export async function mountMediaArchive(
   const [manifest, recipes] = await Promise.all([
     loadPresentationManifest(),
     loadCaptureRecipes().catch(() => ({ media: {}, recipes: {} })),
-  ]);
+  ]).catch((error: RuntimeValue) => {
+    // the archive that never arrived is not mounted: a Retry mounts it again (the loading census: the mark set before
+    // this wait and the kept failed manifest left the docs archive's Retry with nothing to do)
+    delete root.dataset.mediaMounted;
+    throw error;
+  });
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
   const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
   const limit = typeof options.limit === 'number' && Number.isFinite(options.limit)

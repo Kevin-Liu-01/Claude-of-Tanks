@@ -194,6 +194,10 @@ function heroBlock() {
     + filmButton('mute', 'sound', 'publicPages.film.mute', 'soundOff')
     + filmButton('full', 'fullscreen', 'publicPages.film.fullscreen')
     + `</div>`
+    // a film that cannot load (the link dropped) says so over its poster, with the kit's Retry (homePage.ts mountFilm)
+    + `<div class="cot-c-notice hero__film-failed" data-severity="error" role="alert" data-film-failed hidden>`
+    + `<span class="cot-c-notice__glyph">${iconMarkup('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" data-i18n="home.hero.trailerFailed">${esc(text('home.hero.trailerFailed'))}</span></span>`
+    + `<span class="cot-c-notice__acts"><button type="button" class="${btn('', '36')}" data-i18n="notice.retry">${esc(text('notice.retry'))}</button></span></div>`
     + `<button class="${btn('icon', '36')} hero__film-close" type="button" data-trailer-close aria-label="${esc(text('home.hero.closeTrailerAria'))}" data-i18n-aria-label="home.hero.closeTrailerAria">`
     + `${iconMarkup('close', 20)}</button></dialog>`
     + `</header>`;

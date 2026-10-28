@@ -50,9 +50,11 @@ addEventListener('online', () => {
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');
 if (reelHero) {
+  // (a reel whose module did not arrive leaves the poster, and starts once the browser is back online)
   const start = (): void => {
     void import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
-      () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') })));
+      () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') })))
+      .catch(() => addEventListener('online', start, { once: true }));
   };
   const idle = (): void => {
     if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 2000 });
@@ -125,6 +127,27 @@ const trailerDialog = document.querySelector<HTMLDialogElement>('[data-trailer-d
 const trailerVideo = trailerDialog?.querySelector<HTMLVideoElement>('video[data-trailer]') ?? null;
 if (trailerDialog && trailerVideo) {
   mountFilm(trailerDialog, trailerVideo);
+  // While the film buffers the dialog is busy (its poster shows); a film that cannot load (the link dropped, or a file
+  // that never arrives) says so over its poster with the kit's Retry, which loads it again (the loading census: the dialog
+  // waited seconds with nothing announced, and offline it never said the film could not load).
+  const failedNote = trailerDialog.querySelector<HTMLElement>('[data-film-failed]');
+  const busy = (on: boolean): void => { if (on) trailerDialog.setAttribute('aria-busy', 'true'); else trailerDialog.removeAttribute('aria-busy'); };
+  const fail = (): void => {
+    if (!trailerDialog.open || !failedNote) return;
+    busy(false);
+    failedNote.hidden = false;
+  };
+  trailerVideo.addEventListener('canplay', () => busy(false));
+  trailerVideo.addEventListener('error', fail);
+  // (every source failing ends on the last one's error, not the video's)
+  trailerVideo.querySelector('source:last-of-type')?.addEventListener('error', fail);
+  addEventListener('offline', () => { if (trailerVideo.readyState < 3) fail(); });
+  failedNote?.querySelector('button')?.addEventListener('click', () => {
+    failedNote.hidden = true;
+    busy(true);
+    trailerVideo.load();
+    void trailerVideo.play().catch(() => {});
+  });
   // on the page's surface stack while open (it closes the open nav menu as it opens; Escape is the stack's)
   dialogSurface(trailerDialog, 'home-trailer');
   document.querySelectorAll<HTMLButtonElement>('[data-trailer-open]').forEach((button) => button.addEventListener('click', () => {
@@ -136,12 +159,16 @@ if (trailerDialog && trailerVideo) {
     if (trailerVideo.dataset.poster && !trailerVideo.poster) trailerVideo.poster = trailerVideo.dataset.poster;
     if (named.length) trailerVideo.load();
     trailerDialog.showModal();
+    if (trailerVideo.readyState < 3) busy(true);
+    if (!navigator.onLine && trailerVideo.readyState < 3) fail();
     void trailerVideo.play().catch(() => {});
   }));
   trailerDialog.querySelector('[data-trailer-close]')?.addEventListener('click', () => trailerDialog.close());
   // a press on the backdrop closes it too
   trailerDialog.addEventListener('click', (event) => { if (event.target === trailerDialog) trailerDialog.close(); });
   trailerDialog.addEventListener('close', () => {
+    busy(false);
+    if (failedNote) failedNote.hidden = true;
     trailerVideo.pause();
     if (document.fullscreenElement) void document.exitFullscreen();
   });

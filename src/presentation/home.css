@@ -102,6 +102,8 @@ img{display:block;max-width:100%}
 .hero__film::backdrop{background:linear-gradient(var(--scrim),var(--scrim)),var(--scrim)}
 .hero__film video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:50% 50%;background:var(--surface-scene)}
 .hero__film-close{position:absolute;top:var(--s3);right:var(--s3);z-index:var(--z-lift);background:var(--surface-raised);color:var(--ink-1)}
+/* the film that cannot load says so over its poster, clear of the close button (homePage.ts mountFilm) */
+.hero__film-failed{position:absolute;top:var(--s3);left:var(--s3);right:calc(2 * var(--s3) + 36px);z-index:var(--z-lift)}
 /* the trailer's own controls: the kit's ghost icon buttons and the Studio's scrubber (studioPanel.css), never the browser's */
 .film-bar{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-top:1px solid var(--line-1);background:var(--surface-scene)}
 .film-btn{flex:none;color:var(--ink-1)}
@@ -408,7 +410,7 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
 }
 /* a short phone layout (a Split View half, 601 x 702): the hero's picture row gives up the room the fixed Play bar takes, so
    its counts stand whole above the bar in the first view */
-@media (width < 768px) and (height < 760px){.hero{grid-template-rows:minmax(360px,auto) auto}}
+@media (width < 768px) and (height < 720px){.hero{grid-template-rows:minmax(360px,auto) auto}}
 /* a narrow desktop card (under 900 px) cannot hold the caption beside the actions: the caption and the pause take their
    own row on the right, as tall as the pause, so the card steps 16 px above them and its own foot below (home r25). The
    card is a container only from 768 px, where no fixed Play bar lives inside it */
