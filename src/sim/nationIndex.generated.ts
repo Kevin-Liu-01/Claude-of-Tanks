@@ -70,6 +70,8 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["type100","china","next-generation",10],
   ["ztz100","china","next-generation",10],
   ["ztz100_prototype","china","next-generation",10],
+  ["ztz20_prototype","china","next-generation",10],
+  ["ztz20","china","next-generation",10],
   ["mbt70","germany","cold-war",3],
   ["object148_proto","russia","next-generation",10],
   ["object695","russia","next-generation",10],

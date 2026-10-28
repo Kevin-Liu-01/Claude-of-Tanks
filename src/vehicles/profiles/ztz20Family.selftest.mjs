@@ -53,7 +53,10 @@ assert.equal(tankLabelRecord(TANK_SPECS.ztz20).shortName, 'ZTZ-20');
 for (const id of ['ztz20', 'ztz20_prototype', 'ztz100']) {
   const spec = TANK_SPECS[id];
   assert.deepEqual(spec.armor.gunPivot, [0, ZTZ20_DATUMS.trunnion[1] - ZTZ20_DATUMS.turretPivot[1], ZTZ20_DATUMS.trunnion[2] - ZTZ20_DATUMS.turretPivot[2]].map((v) => +v.toFixed(4)));
-  assert.equal(spec.armor.gunBarrel.lengthM, ZTZ20_DATUMS.barrelLengthM); assert.equal(spec.armor.gunBarrel.radiusM, ZTZ20_DATUMS.barrelRadiusM);
+  // the combat barrel: the sleeved gun's measured 0.104 m, the bare-tube testbed's 0.072 (the concept rows)
+  assert.equal(spec.armor.gunBarrel.lengthM, ZTZ20_DATUMS.barrelLengthM);
+  assert.equal(spec.armor.gunBarrel.radiusM, firstPartyConcept(id).barrelRadiusM);
+  assert.equal(firstPartyConcept(id).barrelRadiusM, ZTZ20_STAGES[id].sleeve ? 0.104 : ZTZ20_DATUMS.barrelRadiusM);
 }
 // the production type outguns and outlasts its earlier steps; its turret testbed sits at or below it throughout
 assert.ok(TANK_SPECS.ztz20.gun.shells[0].pen100Mm > TANK_SPECS.ztz100.gun.shells[0].pen100Mm);

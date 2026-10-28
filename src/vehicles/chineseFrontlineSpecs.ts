@@ -121,6 +121,10 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.28 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 52, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): the gun's measured stop by turret yaw; over the glacis tiles
+    // and the bow lamps -7 to -5.5, the full 8 degrees across the flanks, over the engine deck astern -5.4 to -3.8.
+    gunPitchByYawDeg: [[0, -7], [15, -6.8], [16, -5.9], [19, -5.7], [37, -5.5], [38, -5.8], [39, -7.1], [40, -7.1], [44, -8],
+      [122, -8], [138, -5.4], [149, -3.8], [157, -3.8], [180, -4.4]],
     gun: {
       // fire control inside the next-generation Tier X ceiling (balanceAudit: 1.44x the peer median after the pass)
       caliberMm: 105, reloadS: 4.6, baseAccuracy: 0.23, aimTimeS: 1.45,
@@ -136,7 +140,8 @@ const CHINESE_FRONTLINE_SPECS = {
     armor: modernArmor({
       hl: 3.565, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
-      barrelLenM: 4.625, barrelRadM: 0.072,
+      // the combat barrel is the drawn gun: its thermal sleeve measures 0.104 m (gun-barrel-align census)
+      barrelLenM: 4.625, barrelRadM: 0.104,
       glacis: [90, 560, 760], lower: [70, 340, 460], side: [55, 250, 370],
       skirt: [40, 120, 260], rear: 40, roof: 38,
       tw: 1.20, tFrontZ: 1.52, tRearZ: -2.00, tH: 0.89,
@@ -161,6 +166,10 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 48, gunPitchDegS: 38, gunElevationDeg: 15, gunDepressionDeg: 8,
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): the testbed's early box mount is wide, so ahead its corners
+    // stop over the crew hatches at -4.2; the full 8 degrees across the flanks; over the engine deck astern -3.7 to -2.9.
+    gunPitchByYawDeg: [[0, -4.2], [34, -4.2], [35, -4.4], [36, -6.7], [39, -8], [127, -8], [142, -3.7], [147, -3.4], [164, -2.9],
+      [177, -3], [180, -3.4]],
     gun: {
       caliberMm: 105, reloadS: 4.8, baseAccuracy: 0.24, aimTimeS: 1.5,
       bloom: { move: 0.045, hullRot: 0.064, turret: 0.045, afterShot: 1.8 },
@@ -216,7 +225,8 @@ const CHINESE_FRONTLINE_SPECS = {
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
-      barrelLenM: 4.625, barrelRadM: 0.072,
+      // the combat barrel is the drawn gun: its thermal sleeve measures 0.104 m (gun-barrel-align census)
+      barrelLenM: 4.625, barrelRadM: 0.104,
       glacis: [90, 540, 740], lower: [70, 340, 460], side: [55, 240, 360],
       skirt: [35, 110, 240], rear: 40, roof: 38,
       tw: 1.20, tFrontZ: 1.68, tRearZ: -2.05, tH: 0.90,
@@ -239,9 +249,8 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 6,
-    // Measured (tools/gun-depression-sweep.mjs, 2026-10-22, lane 240): the 35 mm L/90 keeps its full depression to 155 deg
-    // of yaw; over the engine deck its tube rides above the rear-deck stowage.
-    gunPitchByYawDeg: [[0, -6], [155, -6], [156, 4.6], [157, 5.5], [159, 6.4], [162, 6.4], [163, 6], [164, 5.4], [173, 6], [180, 6]],
+    // Release 262 (tools/gun-depression-sweep.mjs at 26 mm): on the ZTZ-20 family hull's flat testbed deck the 35 mm L/90
+    // keeps its full 6 degrees all round (the 240 curve rode the old hull's rear-deck stowage).
     gun: {
       caliberMm: 35, reloadS: 12, baseAccuracy: 0.30, aimTimeS: 1.7,
       launcherSalvo: { rounds: 2, intervalS: .35 },

@@ -1,4 +1,4 @@
-# ZTZ-20 family (`ztz20`, `ztz100`, `ztz100_prototype`) — run packet
+# ZTZ-20 family (`ztz20`, `ztz20_prototype`, `ztz100`, `ztz100_prototype`) — run packet
 
 Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/templates/run-packet.md). Concept record:
 [ztz20-family-20261027.json](../concepts/ztz20-family-20261027.json) and its [explainer](../concepts/ztz20-family-20261027.md).
@@ -11,9 +11,13 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
   be completely new, not based off of qilin, and the ztz 100 is its prototype, ztz 20 needs to be designed from scratch
   and then it should update the ztz 100 which is a bad model rn". Coordinator: do not reuse the Qilin, Kunlun or Yun
   builders or the current ZTZ-100 geometry; rebuild `ztz100` and `ztz100_prototype` as the ZTZ-20's prototypes on the
-  same family base; prototypes never sit above their production type in tier.
-- IDs and display names: `ztz20` "ZTZ-20" (new), `ztz100` "ZTZ-100" (rebuilt: pre-production), `ztz100_prototype`
-  "ZTZ-100 Prototype" (hull and gear rebuilt; the owner's 2026-09-19 missile turret kept).
+  same family base; prototypes never sit above their production type in tier. Later the same day, verbatim: "wait keep
+  the ztz 100 prototype then add the ztz 20 and then have a ztz 20 prototype., how about that" — the ZTZ-100 Prototype
+  keeps its missile turret, a new ZTZ-20 Prototype turret testbed joins between the ZTZ-100 and the ZTZ-20. Tiers
+  approved ("wow great job. all apporoved."): all X.
+- IDs and display names: `ztz20` "ZTZ-20" (new), `ztz20_prototype` "ZTZ-20 Prototype" (new: turret testbed), `ztz100`
+  "ZTZ-100" (rebuilt: pre-production), `ztz100_prototype` "ZTZ-100 Prototype" (hull and gear rebuilt; the owner's
+  2026-09-19 missile turret kept). Lineage: ZTZ-100 Prototype → ZTZ-100 → ZTZ-20 Prototype → ZTZ-20.
 - Implementation status: implemented (profiles `ztz20Family.ts`, `ztz20.ts`, `ztz100Prototype.ts`).
 - Qualification status: see the evidence matrix; source fidelity NOT APPLICABLE (owner-authored concept route).
 - Publication status / exact authority: lane branch only; integration through Main (release 262).
@@ -38,6 +42,7 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 | ID | Stage | Hull/gear | Turret | Gun | Source support |
 | --- | --- | --- | --- | --- | --- |
 | `ztz20` | production | family hull, raised deck, tiles, three-band skirts, slat cage | arrowhead gun turret, hard-kill towers, twin-tube RWS, cheek bank, bins, rack | 105 mm, slotted brake | measured from the oracle |
+| `ztz20_prototype` | turret testbed | family hull, raised deck, bare glacis, three-band skirts, stern bin | the arrowhead turret, ballast blocks for the pods, fixed periscope, no RWS/hard-kill/smoke, trials mast | the new 105 mm in an early box mantlet, bare tube + fume extractor, slotted brake | family derivation (deliberate departures) |
 | `ztz100` | pre-production | family hull, raised deck, bare glacis, two-band skirts, stern bin + trials basket | same turret, blanked hard-kill seats, plain RWS, cheek cover, trials mast | 105 mm, round brake | family derivation (deliberate departures) |
 | `ztz100_prototype` | testbed | family hull, flat testbed deck, upper skirt band, stern bin | the owner's 2026-09-19 missile turret (unchanged) | HJ-P9 + 35 mm | family hull; owner-authored turret |
 
