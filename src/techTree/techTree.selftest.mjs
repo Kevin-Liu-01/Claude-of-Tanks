@@ -113,7 +113,7 @@ for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displa
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
   ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
-  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100']]) {
+  ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100'], ['ztz20_prototype', 'ztz20']]) {
   assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
 }
 // no tier piles up: at most about 1.6x the average
@@ -148,5 +148,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
 // added; 'Denmark' joins the tree's nations).
 // 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975.
+// 262: China's line ends ZTZ-100 Prototype → ZTZ-100 → ZTZ-20 Prototype → ZTZ-20, all at X.
 assert.equal(digest, 'MERGE263', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

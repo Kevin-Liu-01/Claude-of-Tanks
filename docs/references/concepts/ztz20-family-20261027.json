@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-27",
+    "request": "add these new tanks using our rigoorous tank generation workflow (the ZTZ-20 from the supplied [OD]ZTZ-20 Test-3); then: the ztz 20 should be completely new, not based off of qilin, and the ztz 100 is its prototype, ztz 20 needs to be designed from scratch and then it should update the ztz 100 which is a bad model rn; then: wait keep the ztz 100 prototype then add the ztz 20 and then have a ztz 20 prototype., how about that",
+    "scope": "A first-party ZTZ-20 family in four stages: the ZTZ-100 Prototype missile testbed (its 2026-09-19 turret on docs/references/concepts/missile-turrets-20260919.json, its hull and gear rebuilt on the family base), the pre-production ZTZ-100 (rebuilt), the ZTZ-20 Prototype turret testbed (new) and the production ZTZ-20 (new, measured from scratch on the supplied model). No Qilin, Kunlun or Yun builder and none of the retired ZTZ-100 geometry participates.",
+    "tiers": "approved by the owner 2026-10-27 (\"wow great job. all apporoved.\"): all X; a prototype never shows above its production type (ztz100_prototype <= ztz100, ztz20_prototype <= ztz20)"
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "concept": {
+    "nation": "China",
+    "era": "next-generation (late 2010s to early 2020s)",
+    "role": "main battle tank: a 45 t next-generation MBT with an unmanned turret and a three-crew hull capsule",
+    "lineage": [
+      "ztz100_prototype",
+      "ztz100",
+      "ztz20_prototype",
+      "ztz20"
+    ],
+    "stages": {
+      "ztz100_prototype": "missile testbed (c. 2017): the family hull and capsule proved under a missile turret, flush crew hatches under its low platter",
+      "ztz100": "pre-production (c. 2020): the gun turret with its systems blanked or in trials form, the earlier 105 mm",
+      "ztz20_prototype": "turret testbed (c. 2021): the ZTZ-20 turret's new high-pressure 105 mm in an early mount, trial ballast for the pods, a fixed commander's periscope, no weapon station or hard-kill system yet",
+      "ztz20": "production (early 2020s): hard-kill launchers, ATGM weapon station, the coaxial machine gun moved to an armoured right-cheek housing, the ribbed brake, glacis tiles, slat cage"
+    },
+    "rationale": "A lighter MBT for southern hills, plateau roads and river crossings than the 50-plus-tonne ZTZ-99 family; an unmanned turret over a hull crew capsule for a low 2.30 m turret roof; a high-pressure 105 mm gun with a compact autoloader keeps the turret narrow, the matured round closing most of the gap to the 125 mm tanks; raked composite cheeks, flank pods, glacis tiles, three-band skirts and a slat cage, with active protection on the production turret.",
+    "serviceClaim": "none: the names, stages and dates are the game's design history; no fielded vehicle or documented programme is claimed"
+  },
+  "measurementOracle": {
+    "title": "[OD]ZTZ-20 Test-3",
+    "author": "EXcaliburK117 (Sketchfab)",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/odztz-20-test-3-1df862f8ae2b4616ac6d2748f0487958",
+    "rawSha256": "387d86557d36ab649825d55a7059f8a82deed8099063df4c7731fe495b35da5d",
+    "registration": "uniform 0.92, translation (0, 0.00644, -0.12098), axes x,y,z (docs/references/tanks/ztz100_x.source-measurements.json)",
+    "use": "local measuring instrument only: 1 cm first-hit depth maps (docs/references/tanks/ztz20.md); no mesh, texture or vertex ships"
+  },
+  "designs": {
+    "ztz20": {
+      "id": "ztz20",
+      "test": "src/vehicles/profiles/ztz20Family.selftest.mjs",
+      "ring": [
+        0,
+        1.41,
+        -0.55
+      ],
+      "gunLocal": [
+        0,
+        0.35,
+        1.1
+      ],
+      "barrelLengthM": 4.625,
+      "barrelRadiusM": 0.08,
+      "pitchDeg": [
+        -8,
+        15
+      ],
+      "mainCaliberMm": 105,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.13,
+      "hullWidthM": 3.7,
+      "widthM": 3.81,
+      "overallLengthM": 9.24,
+      "tallestM": 3.035,
+      "specDimensions": {
+        "hullLengthM": 7.13,
+        "overallLengthM": 9.24,
+        "widthM": 3.7,
+        "heightM": 2.3
+      },
+      "silhouette": "Production ZTZ-20: a long low hull under composite glacis tiles and three-band side skirts with a stern slat cage, carrying a low unmanned arrowhead turret of two raked cheek blocks round a narrow gun housing, flank pods, two hard-kill launcher towers and a twin-tube weapon station; the long 105 mm gun in an angular thermal sleeve behind a slotted brake"
+    },
+    "ztz100": {
+      "id": "ztz100",
+      "test": "src/vehicles/profiles/ztz20Family.selftest.mjs",
+      "ring": [
+        0,
+        1.41,
+        -0.55
+      ],
+      "gunLocal": [
+        0,
+        0.35,
+        1.1
+      ],
+      "barrelLengthM": 4.625,
+      "barrelRadiusM": 0.104,
+      "pitchDeg": [
+        -8,
+        15
+      ],
+      "mainCaliberMm": 105,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.13,
+      "hullWidthM": 3.7,
+      "widthM": 3.726,
+      "overallLengthM": 9.35,
+      "tallestM": 2.91,
+      "specDimensions": {
+        "hullLengthM": 7.13,
+        "overallLengthM": 9.35,
+        "widthM": 3.7,
+        "heightM": 2.3
+      },
+      "silhouette": "Pre-production ZTZ-100: the ZTZ-20 hull and arrowhead turret at an earlier step, a bare glacis, two-band skirts, a stern bin under its trials basket, blanked hard-kill seats, a plain 12.7 mm station, a cheek-bank cover plate and a telemetry mast; the 105 mm gun behind a round multi-baffle brake"
+    },
+    "ztz20_prototype": {
+      "id": "ztz20_prototype",
+      "test": "src/vehicles/profiles/ztz20Family.selftest.mjs",
+      "ring": [
+        0,
+        1.41,
+        -0.55
+      ],
+      "gunLocal": [
+        0,
+        0.35,
+        1.1
+      ],
+      "barrelLengthM": 4.625,
+      "barrelRadiusM": 0.072,
+      "pitchDeg": [
+        -8,
+        15
+      ],
+      "mainCaliberMm": 105,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 0,
+      "hullLengthM": 7.13,
+      "hullWidthM": 3.7,
+      "widthM": 3.726,
+      "overallLengthM": 9.32,
+      "tallestM": 2.89,
+      "specDimensions": {
+        "hullLengthM": 7.13,
+        "overallLengthM": 9.32,
+        "widthM": 3.7,
+        "heightM": 2.3
+      },
+      "silhouette": "ZTZ-20 Prototype: the first ZTZ-20 turret as a testbed fit on the family hull, the arrowhead cheeks and spine housing with trial ballast blocks where the armour pods go, a fixed commander's periscope, no weapon station, hard-kill system or smoke banks, a telemetry mast, and the new high-pressure 105 mm in an early bolted box mantlet, bare tube with fume extractor and slotted brake"
+    }
+  },
+  "dimensionToleranceFraction": 0.03,
+  "requiredProof": [
+    "Actual HIGH/LOW profile fixture (src/vehicles/profiles/ztz20Family.selftest.mjs): stage deltas in the part census, measured datums, staggered road-wheel stations, recessed bore, slat-cage air, the turret clear of the hull at every yaw with a negative control",
+    "Gun clearance over the hull at every yaw at the published depression curve (src/vehicles/ztz20GunClearance.selftest.mjs)",
+    "Declared datums and the complete envelope within 3% with generated fills loaded (tools/first-party-concept-check.mjs)",
+    "Anatomy freshness, sealed hull, track sweep, module and crew ownership, assets and centering, tests and build",
+    "Independent native views against this design contract; no source-fidelity score"
+  ],
+  "retired": {
+    "ztz100": {
+      "record": "docs/references/tanks/ztz100_x.md",
+      "reason": "The 2026-09-17 source-study build compared against the same oracle (exemplar 92, never qualified: right view 91.83 at r7); the owner called it a bad model on 2026-10-27. Its GLB comparison registration is retired; the oracle now measures the ZTZ-20 concept."
+    }
+  }
+}

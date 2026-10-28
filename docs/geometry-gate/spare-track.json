@@ -4098,13 +4098,25 @@
    "hostSweep": []
   },
   "ztz100": {
-   "inputHash": "5401926f8a3863f4",
+   "inputHash": "840bf938c4e47812",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "ztz100_prototype": {
-   "inputHash": "310b90b97e63f177",
+   "inputHash": "16d115df04864acb",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "ztz20": {
+   "inputHash": "622266b79c7bc3f4",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "ztz20_prototype": {
+   "inputHash": "787f00e079ca3e32",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

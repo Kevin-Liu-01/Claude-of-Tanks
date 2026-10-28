@@ -38,6 +38,11 @@ const CONCEPT_DOCUMENTS = Object.freeze({
   object695:'docs/references/concepts/missile-turrets-20260919.json',
   type100:'docs/references/concepts/type100-ifv-20260919.json',
   christian2:'docs/references/concepts/christian2-20261027.json',
+  // 262 (owner 2026-10-27): the ZTZ-20, its turret testbed and the pre-production ZTZ-100; the missile testbed stays on
+  // its missile-turret record
+  ztz20:'docs/references/concepts/ztz20-family-20261027.json',
+  ztz100:'docs/references/concepts/ztz20-family-20261027.json',
+  ztz20_prototype:'docs/references/concepts/ztz20-family-20261027.json',
 });
 export const FIRST_PARTY_CONCEPTS = Object.freeze({
   // 2026-10-28 (release 262): the Longwei is the game's own ZTZ-99-lineage design; the owner ruled it onto this route
@@ -107,15 +112,19 @@ export const FIRST_PARTY_CONCEPTS = Object.freeze({
   }),
   ztz100_prototype: Object.freeze({
     id:'ztz100_prototype', test:'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
-    ring:[0,1.41,-.55], gunLocal:[0,.64,.80], barrelLengthM:1.45, barrelRadiusM:.045,
+    ring:[0,1.41,-.55], gunLocal:[0,.64,.80], barrelLengthM:3.50, barrelRadiusM:.045,
     pitchDeg:[-6,20], cells:8, backupCaliberMm:35, roofMachineGuns:0,
-    hullLengthM:6.94, hullWidthM:3.70, widthM:3.734, overallLengthM:7.70, tallestM:2.64,
+    // 262 (owner 2026-10-27, "the ztz 100 is its prototype"): the turret unchanged on the ZTZ-20 family hull
+    hullLengthM:7.13, hullWidthM:3.70, widthM:3.726, overallLengthM:7.90, tallestM:2.64,
     silhouette:'Broad low armored turret with two open pods of four round canisters and a short backup cannon',
   }),
   object695: Object.freeze({"id":"object695","test":"src/vehicles/profiles/object695X.selftest.mjs","ring":[0.0,1.935,-0.9900000000000001],"gunLocal":[0.0,0.792,0.18000000000000002],"barrelLengthM":1.215,"barrelRadiusM":0.036000000000000004,"pitchDeg":[-8,35],"cells":12,"backupCaliberMm":30,"roofMachineGuns":0,"hullLengthM":6.372,"widthM":3.5865,"tallestM":3.51,"silhouette":"Tall narrow pedestal with two separated six-cell pods and a short backup cannon","hullWidthM":3.5865,"overallLengthM":6.507000000000001}),
   type100: Object.freeze({"id":"type100","test":"src/vehicles/profiles/type100.selftest.mjs","ring":[0,1.818,-0.135],"gunLocal":[0,0.47700000000000004,0.5850000000000001],"barrelLengthM":2.115,"barrelRadiusM":0.0405,"pitchDeg":[-10,45],"cells":4,"guidedAmmoTotal":8,"mainCaliberMm":30,"roofMachineGuns":0,"hullLengthM":6.417,"hullWidthM":3.294,"widthM":3.33,"overallLengthM":6.57,"tallestM":3.204,"silhouette":"Broad straight-shouldered Chinese heavy IFV, shallow prow, rear troop compartment and compact chamfered autocannon turret with four low guided cells"}),
   // release 262: the Christian II, a Danish concept derived from the Type 90 X (docs/references/tanks/christian2.md)
   christian2: Object.freeze({"id":"christian2","test":"src/vehicles/profiles/christian2.selftest.mjs","ring":[0,1.64,0.37],"gunLocal":[0,0.36,1.04],"barrelLengthM":4.29,"barrelRadiusM":0.1025,"pitchDeg":[-9,20],"mainCaliberMm":120,"weaponSystem":"conventional-cannon","roofMachineGuns":1,"hullLengthM":7.855,"widthM":3.672,"overallLengthM":9.866,"tallestM":3.866,"specDimensions":{"hullLengthM":7.855,"overallLengthM":9.866,"widthM":3.672,"heightM":2.47},"silhouette":"A Leopard 2-pattern hull (7.25 m between its plates, 7.855 m from the fenders' tips to the stern rack) on seven road wheels a side with four return rollers, heavy bolted skirt blocks forward and thin panels aft, carrying a long slab-sided turret in the Type 90 manner: two bolt-on frontal modules with chamfered outer corners framing a box mantlet, the gunner's armoured sight box on the right of the roof and the commander's panoramic head and vision-block cupola with a working 12.7 mm on the left, a stepped narrower bustle autoloader with blow-off panels, bins and a rear basket; a 120 mm L/44 with a thermal sleeve and evacuator; a permanent heavy field net with beech garnish over the turret, the decks and the skirts and three wraps on the tube. Roof 2.47 m, whips to 3.87 m."}),
+  ztz20: Object.freeze({"id":"ztz20","test":"src/vehicles/profiles/ztz20Family.selftest.mjs","ring":[0,1.41,-0.55],"gunLocal":[0,0.35,1.1],"barrelLengthM":4.625,"barrelRadiusM":0.08,"pitchDeg":[-8,15],"mainCaliberMm":105,"weaponSystem":"conventional-cannon","roofMachineGuns":1,"hullLengthM":7.13,"hullWidthM":3.7,"widthM":3.81,"overallLengthM":9.24,"tallestM":3.035,"specDimensions":{"hullLengthM":7.13,"overallLengthM":9.24,"widthM":3.7,"heightM":2.3},"silhouette":"Production ZTZ-20: a long low hull under composite glacis tiles and three-band side skirts with a stern slat cage, carrying a low unmanned arrowhead turret of two raked cheek blocks round a narrow gun housing, flank pods, two hard-kill launcher towers and a twin-tube weapon station; the long 105 mm gun in an angular thermal sleeve behind a slotted brake"}),
+  ztz100: Object.freeze({"id":"ztz100","test":"src/vehicles/profiles/ztz20Family.selftest.mjs","ring":[0,1.41,-0.55],"gunLocal":[0,0.35,1.1],"barrelLengthM":4.625,"barrelRadiusM":0.104,"pitchDeg":[-8,15],"mainCaliberMm":105,"weaponSystem":"conventional-cannon","roofMachineGuns":1,"hullLengthM":7.13,"hullWidthM":3.7,"widthM":3.726,"overallLengthM":9.35,"tallestM":2.91,"specDimensions":{"hullLengthM":7.13,"overallLengthM":9.35,"widthM":3.7,"heightM":2.3},"silhouette":"Pre-production ZTZ-100: the ZTZ-20 hull and arrowhead turret at an earlier step, a bare glacis, two-band skirts, a stern bin under its trials basket, blanked hard-kill seats, a plain 12.7 mm station, a cheek-bank cover plate and a telemetry mast; the 105 mm gun behind a round multi-baffle brake"}),
+  ztz20_prototype: Object.freeze({"id":"ztz20_prototype","test":"src/vehicles/profiles/ztz20Family.selftest.mjs","ring":[0,1.41,-0.55],"gunLocal":[0,0.35,1.1],"barrelLengthM":4.625,"barrelRadiusM":0.072,"pitchDeg":[-8,15],"mainCaliberMm":105,"weaponSystem":"conventional-cannon","roofMachineGuns":0,"hullLengthM":7.13,"hullWidthM":3.7,"widthM":3.726,"overallLengthM":9.32,"tallestM":2.89,"specDimensions":{"hullLengthM":7.13,"overallLengthM":9.32,"widthM":3.7,"heightM":2.3},"silhouette":"ZTZ-20 Prototype: the first ZTZ-20 turret as a testbed fit on the family hull, the arrowhead cheeks and spine housing with trial ballast blocks where the armour pods go, a fixed commander's periscope, no weapon station, hard-kill system or smoke banks, a telemetry mast, and the new high-pressure 105 mm in an early bolted box mantlet, bare tube with fume extractor and slotted brake"}),
 });
 export function firstPartyConcept(id) {
   return Object.hasOwn(FIRST_PARTY_CONCEPTS,id) ? FIRST_PARTY_CONCEPTS[id] : null;

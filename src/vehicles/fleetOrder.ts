@@ -66,7 +66,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 'leo2a6_ua',
   ]),
   china: Object.freeze([
-    'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'vt4a1', 'type100', 'ztz100', 'ztz100_prototype',
+    'type59', 'ztz85_iii', 'ztz99_longwei', 'type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz99a', 'ztz99a2', 'vt4a1', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz20',
   ]),
   sweden: Object.freeze([
     'strv81', 'udes03', 'strv103a', 'strv103b', 'cv90', 'cv9040c', 'cv90105_tml', 'strv121', 'christian2', 'cv90_mk4_concept', 'cv90_mk4',

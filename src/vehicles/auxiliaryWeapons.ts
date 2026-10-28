@@ -114,7 +114,7 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t90a:b32Heavy,t90a_vladimir:b32Heavy,t90m:b32Heavy,
   t90sm:b32Heavy,t90ms_tagil:b32Heavy,
   t14_armata:b32Rifle,object148_proto:ubr6,
-  vt4a1:type54,ztz100:type54,
+  vt4a1:type54,ztz100:type54,ztz20:type54,
   griffin50mm:griffinRoofM2,
   mbt70:rh202,
   t62_1975:b32Nsvt,t62mv1:b32Nsvt,t64bv1:b32Nsvt,t64bv_donbas:b32Nsvt,t72bu_1989:b32Nsvt,t72bu:b32Nsvt,t72b3:b32Nsvt,
