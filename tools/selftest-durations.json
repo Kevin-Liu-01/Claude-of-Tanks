@@ -1046,6 +1046,7 @@
     "src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs": 3000,
     "src/vehicles/profiles/strv122XSurfaceAssembly.selftest.mjs": 12000,
     "src/vehicles/profiles/centurionFamily.selftest.mjs": 30000,
+    "src/vehicles/profiles/centurionGunClearance.selftest.mjs": 240000,
     "src/vehicles/profiles/suppliedShadowCoverage.selftest.mjs": 31000,
     "src/vehicles/profiles/swedishSiegeLine.selftest.mjs": 26000,
     "src/vehicles/profiles/t14RoofFidelity.selftest.mjs": 11000,

@@ -14,6 +14,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { mount } from './fittingMount.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -107,7 +108,8 @@ function hullSection(z: number): SolidSection {
 function buildHullBody(P: TankBuilderPort): void {
   const zs = [REAR_Z, -3.60, -3.48, -3.36, -1.00, -0.98, -0.97, 0, 2.40, 2.66, 2.80, 2.96, 2.98, 3.06, 3.20, 3.36, 3.50, NOSE_Z];
   P.add('hull', sectionSolid(zs.map(hullSection), { sideQuadDiagonal: 'convex' }));
-  // The engine deck stands 6.5 cm proud of the roof from behind the ring to the rear grille; its front lip is raked.
+  // The engine deck stands 6.5 cm proud of the roof from behind the ring to the rear plate's top course; its front lip
+  // is raked.
   P.add('hull', slab(
     [-1.47, ROOF_Y - 0.01, -1.04], [1.47, ROOF_Y - 0.01, -1.04], [1.47, ROOF_Y - 0.01, -3.36], [-1.47, ROOF_Y - 0.01, -3.36],
     [-1.47, ENGINE_DECK_Y, -1.10], [1.47, ENGINE_DECK_Y, -1.10], [1.47, ENGINE_DECK_Y, -3.36], [-1.47, ENGINE_DECK_Y, -3.36]));
@@ -234,8 +236,7 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
     } else if (m.mk5) {
       // the Mk 5's armoured headlight box: a steel box with its lamp window and hinged visor
       P.add('hullDetail', xform(box(0.26, 0.20, 0.22), 0, 0.10, 0, glacisPitch * 0.5, 0, 0), s * 0.82, hy, hz);
-      const lens = cylZ(0.07, 0.02, 14);
-      P.add('hullGlass', lens, s * 0.82, hy + 0.11, hz + 0.115);
+      P.add('hullGlass', markVehicleNightLens(cylZ(0.07, 0.02, 14), 'headlight'), s * 0.82, hy + 0.11, hz + 0.115);
       P.add('hullDark', box(0.27, 0.025, 0.08), s * 0.82, hy + 0.215, hz + 0.09);
       P.add('hullDark', box(0.016, 0.20, 0.016), s * 0.82 + 0.10, hy + 0.11, hz + 0.13);
       P.add('hullDark', box(0.016, 0.20, 0.016), s * 0.82 - 0.10, hy + 0.11, hz + 0.13);
@@ -261,7 +262,7 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
   // link brackets in place of the bin (Svenska Wikipedia, Strv 81B; the KATF 1960 catalogue via the War Thunder forum).
   const [lz, ly] = onGlacis(0.50);
   if (m.late) {
-    // the Mk 10/13's appliqué over the upper glacis between the lamps (its links ride on it)
+    // the Mk 10/13's appliqué plate over the upper glacis (its links ride on it)
     const [az, ay] = onGlacis(0.55);
     P.addExternalArmor('hull', xform(box(1.30, 0.05, 0.86), 0, 0, 0, glacisPitch, 0, 0), 0, ay + 0.03, az);
   }
@@ -395,11 +396,11 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
       P.add('hullDetail', box(0.16, 0.12, 0.05), s * 1.18, 1.56, REAR_Z - 0.02);
       P.add('hullGlass', box(0.10, 0.04, 0.012), s * 1.18, 1.58, REAR_Z - 0.036);
       P.add('hullDark', xform(cylZ(0.09, 0.07, 14), 0, 0, 0, 0, 0, 0), s * 1.18, 1.56, REAR_Z - 0.035);
-      KIT.spareTrackStrip(P, 'hull', s * 0.70, 1.30, REAR_Z - 0.035, 3, Math.PI / 2);
     } else {
       P.add('hullDetail', box(0.12, 0.08, 0.05), s * 1.18, 1.56, REAR_Z - 0.02);
       P.add('hullGlass', box(0.08, 0.04, 0.012), s * 1.18, 1.56, REAR_Z - 0.036);
-      KIT.spareTrackStrip(P, 'hull', s * 0.86, 1.26, REAR_Z - 0.035, 2, Math.PI / 2);
+      // the Swedish links on the rear plate (on the British marks the tow cable is slung where they would ride)
+      if (m.swedish) KIT.spareTrackStrip(P, 'hull', s * 0.86, 1.26, REAR_Z - 0.035, 2, -Math.PI / 2);
     }
   }
   if (m.swedish) {
@@ -413,6 +414,8 @@ function buildRearPlate(P: TankBuilderPort, m: MarkDesign): void {
     }
   }
   if (m.idf) {
+    // two links on the tub's rear plate between the AVDS boxes, under the convoy light (the Litani photograph)
+    KIT.spareTrackStrip(P, 'hull', 0, 1.20, REAR_Z - 0.035, 2, -Math.PI / 2);
     // the AVDS conversion's two louvred grille boxes on the upper rear plate (the 1978 rear photograph)
     for (const s of [-1, 1]) {
       P.add('hull', box(0.62, 0.52, 0.10), s * 0.58, 1.46, REAR_Z - 0.04);

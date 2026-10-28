@@ -18,6 +18,7 @@ Mk 5/2. Implementation: DONE.
 | AC10 | https://www.armedconflicts.com/-t73139 (Mk 10: hull 7.823 m, 9.855 m gun forward) |
 | L7 | https://en.wikipedia.org/wiki/Royal_Ordnance_L7 (L7A2: the L7A1 with a thermal sleeve) |
 | Owner | the Mk 13 head-on photograph and the Hum3D Mk 3 render supplied 2026-10-27 |
+| BovMk13 | Centurion Mk 13, The Tank Museum, Bovington, 2017, front-right, right and rear-left (Morio, Wikimedia Commons, CC BY-SA 4.0): the searchlight on the turret's left front beside the mantlet, the 2x3 discharger clusters on the turret's front corners, the mesh-guarded glacis lamps |
 
 ### Mark identity (against the rebuilt Mk 5/2)
 

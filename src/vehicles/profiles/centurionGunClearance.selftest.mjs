@@ -1,9 +1,9 @@
 // Release 262 (the rebuilt Centurion family, profiles/centurionFamily.ts; the lane brief: "the gun stays inside its
 // mantlet over the source elevation range ... the barrel never passes through the hull or stowage"): the Centurion Mk 3,
-// Mk 5/2, Strv 81B and Sho't Kal guns over their own hulls, from -10 to +20 degrees (the handbook's limits, W).
+// Mk 5/2, Mk 13, Strv 81B and Sho't Kal guns over their own hulls, from -10 to +20 degrees (the handbook's limits, W).
 //   - in its mantlet: the cast mantlet and its canvas cover pitch with the gun round its root, and ahead of the cover's
 //     face the tube keeps 25 mm from every drawn turret part that does not pitch with it (the casting, bins, cupola,
-//     sight, roof gun, dischargers) at every 5 degrees from -10 to +20; negative control: a rod across its path fails;
+//     sight, roof gun, dischargers, the Mk 13's searchlight) at every 5 degrees from -10 to +20; negative control: a rod across its path fails;
 //   - over its hull (gunHullClearance.test-support.mjs, the national lanes' measure): the barrel keeps 25 mm from every
 //     hull mesh at every degree of turret yaw at its published stop (CENTURION_GUN_PITCH_BY_YAW, measured with
 //     tools/gun-depression-sweep.mjs --no-suit), at level and at full elevation; the mount (mantlet, cover, coaxial gun)
@@ -17,7 +17,7 @@ import { getSpec } from '../specs.ts';
 import { gunHullProbe, gunHullSweep } from '../gunHullClearance.test-support.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = 0.020, BARREL_KEEP = 0.025, DEG = Math.PI / 180;
-const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal'];
+const IDS = process.env.CENTURION_GUN_IDS?.split(',') ?? ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13'];
 
 /** Closest distance from p to triangle (a, b, c) (Ericson). */
 function triDistance(p, a, b, c, ab, ac, ap, q) {
