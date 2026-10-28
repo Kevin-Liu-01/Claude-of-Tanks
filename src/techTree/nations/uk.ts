@@ -54,5 +54,8 @@ export const UK_TREE: NationTree = Object.freeze({
     node({ id: 'ajax', tier: 5, line: 'warrior', lane: 1, parents: ['warrior_tes_h'], slot: 'line' }),
     // Special
     node({ id: 'ares_apc', tier: 2, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    // release 262: the Royal Engineers' Mk 5 AVRE and the South African Olifant Mk 2 on the rebuilt Centurion family
+    node({ id: 'centurion5_avre', tier: 3, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    node({ id: 'olifant_mk2', tier: 5, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });
