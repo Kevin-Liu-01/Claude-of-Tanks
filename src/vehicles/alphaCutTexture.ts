@@ -48,15 +48,18 @@ export function* coverageMipChainSteps(level0: MipImage, cutoff: number): Genera
     }
     const now = coverage(dst);
     if (target > 0 && size >= 2 && (now < target * 0.7 || now > target * 1.3)) {
-      const alphas: number[] = [];
-      for (let i = 3; i < dst.length; i += 4) alphas.push(dst[i]);
-      alphas.sort((a, b) => b - a);
-      const quantile = Math.max(1, alphas[Math.min(alphas.length - 1, Math.max(0, Math.round(target * alphas.length) - 1))]);
+      // the alpha a descending sort would put at the target's rank, read from a 256-bin histogram (lighting.ts's)
+      const histogram = new Uint32Array(256);
+      for (let i = 3; i < dst.length; i += 4) histogram[dst[i]]++;
+      const count = dst.length / 4, rank = Math.min(count - 1, Math.max(0, Math.round(target * count) - 1));
+      let value = 0;
+      for (let v = 255, seen = 0; v >= 0; v--) { seen += histogram[v]; if (seen > rank) { value = v; break; } }
+      const quantile = Math.max(1, value);
       for (let i = 3; i < dst.length; i += 4) dst[i] = Math.max(0, Math.min(255, cut + (dst[i] - quantile) * 3));
     }
     chain.push(next);
     prev = next;
-    // (boot-261) a step a level: the first, a quarter of the atlas with its sorted alphas, is most of the chain
+    // (boot-261) a step a level: the first, a quarter of the atlas, is most of the chain
     if (size >= 64) yield;
   }
   return chain;
@@ -73,63 +76,69 @@ export function floodClearTexels(d: Uint8ClampedArray, size: number,
   { floor = 48, solid = 128, rings = 6, wrap = true, fillRest = true } = {}): void {
   const n = size * size;
   const known = new Uint8Array(n);
-  let mr = 0, mg = 0, mb = 0, count = 0;
+  let mr = 0, mg = 0, mb = 0, count = 0, clear = 0;
   for (let p = 0; p < n; p++) {
     const a = d[p * 4 + 3];
     if (a >= solid) { mr += d[p * 4]; mg += d[p * 4 + 1]; mb += d[p * 4 + 2]; count++; }
-    known[p] = a >= floor ? 1 : 0;
+    if (a >= floor) known[p] = 1; else clear++;
   }
   const mean = count ? [mr / count, mg / count, mb / count] : [70, 72, 52];
-  let next = new Uint8Array(known);
-  const nb = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]] as const;
-  for (let ring = 0; ring < rings; ring++) {
-    let grew = false;
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const p = y * size + x;
-      if (known[p]) continue;
+  // the texels still to flood: each ring reads only them, and keeps those it could not reach yet
+  const pending = new Int32Array(clear);
+  let held = 0;
+  for (let p = 0; p < n; p++) if (!known[p]) pending[held++] = p;
+  const grown = new Int32Array(clear);
+  for (let ring = 0; ring < rings && held > 0; ring++) {
+    let rest = 0, grew = 0;
+    for (let k = 0; k < held; k++) {
+      const p = pending[k], x = p % size, y = (p - x) / size;
       let r = 0, g = 0, b = 0, w = 0;
-      for (const [dx, dy] of nb) {
-        let qx = x + dx, qy = y + dy;
-        if (wrap) { qx = (qx + size) % size; qy = (qy + size) % size; } else if (qx < 0 || qy < 0 || qx >= size || qy >= size) continue;
-        const q = qy * size + qx;
-        if (!known[q]) continue;
-        const k = dx && dy ? 0.7 : 1;
-        r += d[q * 4] * k; g += d[q * 4 + 1] * k; b += d[q * 4 + 2] * k; w += k;
+      for (let dy = -1; dy <= 1; dy++) {
+        let qy = y + dy;
+        if (qy < 0 || qy >= size) { if (!wrap) continue; qy = qy < 0 ? size - 1 : 0; }
+        for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          let qx = x + dx;
+          if (qx < 0 || qx >= size) { if (!wrap) continue; qx = qx < 0 ? size - 1 : 0; }
+          const q = qy * size + qx;
+          if (!known[q]) continue;
+          const kw = dx && dy ? 0.7 : 1;
+          r += d[q * 4] * kw; g += d[q * 4 + 1] * kw; b += d[q * 4 + 2] * kw; w += kw;
+        }
       }
-      if (!w) continue;
+      if (!w) { pending[rest++] = p; continue; }
       d[p * 4] = r / w; d[p * 4 + 1] = g / w; d[p * 4 + 2] = b / w;
-      next[p] = 1;
-      grew = true;
+      grown[grew++] = p;
     }
-    known.set(next);
+    // a ring reads only the texels known before it
+    for (let k = 0; k < grew; k++) known[grown[k]] = 1;
+    held = rest;
     if (!grew) break;
-    next = new Uint8Array(known);
   }
-  if (fillRest) for (let p = 0; p < n; p++) if (!known[p]) { d[p * 4] = mean[0]; d[p * 4 + 1] = mean[1]; d[p * 4 + 2] = mean[2]; }
+  if (fillRest) for (let k = 0; k < held; k++) { const p = pending[k]; d[p * 4] = mean[0]; d[p * 4 + 1] = mean[1]; d[p * 4 + 2] = mean[2]; }
 }
 
-/** A repeating box blur of one channel (two passes of a sliding window per axis: close to a Gaussian of radius r). */
+/** A repeating box blur of one channel (a sliding window along each axis; radius r). */
 function blurWrap(src: Float32Array, size: number, r: number): Float32Array {
-  const out = Float32Array.from(src), tmp = new Float32Array(src.length);
-  const pass = (from: Float32Array, to: Float32Array, horizontal: boolean): void => {
-    const span = 2 * r + 1;
-    for (let line = 0; line < size; line++) {
+  const out = Float32Array.from(src), line = new Float32Array(size + 2 * r + 1);
+  const span = 2 * r + 1;
+  const pass = (data: Float32Array, stride: number, step: number): void => {
+    for (let l = 0; l < size; l++) {
+      const base = l * stride;
+      // the line with r texels of its own far end on either side (the tile repeats)
+      for (let k = 0; k < size; k++) line[k + r] = data[base + k * step];
+      for (let k = 0; k < r; k++) { line[k] = line[size + k]; line[size + r + k] = line[r + k]; }
+      line[size + 2 * r] = line[2 * r];
       let sum = 0;
-      const at = (k: number): number => {
-        const w = ((k % size) + size) % size;
-        return horizontal ? from[line * size + w] : from[w * size + line];
-      };
-      for (let k = -r; k <= r; k++) sum += at(k);
+      for (let k = 0; k < span; k++) sum += line[k];
       for (let k = 0; k < size; k++) {
-        if (horizontal) to[line * size + k] = sum / span; else to[k * size + line] = sum / span;
-        sum += at(k + r + 1) - at(k - r);
+        data[base + k * step] = sum / span;
+        sum += line[k + span] - line[k];
       }
     }
   };
-  for (let round = 0; round < 2; round++) {
-    pass(out, tmp, true);
-    pass(tmp, out, false);
-  }
+  pass(out, size, 1);
+  pass(out, 1, size);
   return out;
 }
 
