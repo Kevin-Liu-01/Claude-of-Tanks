@@ -19,6 +19,7 @@
 // Each is counted over the markings' footprint, the props' footprint (fittings, stowage, ERA, lamps, guns, decor) and
 // the whole tank. A manual probe, not part of npm test. Never edit src while it runs (vite would reload the page).
 import { launchGuardedBrowser } from './browser-launch.mjs';
+import { uniqueIds } from './id-list.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -27,7 +28,7 @@ import { createServer } from 'vite';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const ids = arg('ids', 'm1a2_abrams').split(',').filter(Boolean);
+const ids = uniqueIds(arg('ids', 'm1a2_abrams').split(',').filter(Boolean), 'marking-flicker-probe --ids');
 const out = resolve(arg('out', 'tmp/marking-flicker'));
 const views = arg('views', 'hero,left,rear').split(',').filter(Boolean);
 const zooms = arg('zooms', '0.6,1,1.7').split(',').map(Number);

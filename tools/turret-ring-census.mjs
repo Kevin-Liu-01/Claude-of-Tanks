@@ -25,6 +25,7 @@
 //   node tools/turret-ring-census.mjs --ids=... --receipts-from=<dir>/src/vehicles/combatAnatomyGroups  # a generated tree's
 // The receipt is --receipts-from's, else a registered calibration's (none is published), else measured here.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 
@@ -80,7 +81,7 @@ const SEAT_TOL = 1e-4;
 const FALLBACK_TOL = { deckY: 0.006, rimR: 0.015 };
 
 const allIds = Object.keys(FLEET_GROUP_BY_ID);
-const requested = flag('all') ? allIds : opt('ids', 't72b3').split(',').map((id) => id.trim()).filter(Boolean);
+const requested = flag('all') ? allIds : uniqueIds(opt('ids', 't72b3').split(',').map((id) => id.trim()).filter(Boolean), 'turret-ring-census --ids');
 const [shardK, shardN] = (opt('shard', '0/1')).split('/').map(Number);
 const done = new Set(existsSync(JSONL)
   ? readFileSync(JSONL, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line).id) : []);
