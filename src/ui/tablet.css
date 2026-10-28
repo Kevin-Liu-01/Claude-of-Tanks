@@ -29,6 +29,9 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='com
 body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg,.cot-deploy-camp .cot-c-btn){
   --h:var(--cot-control-floor);}
 body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-c-seg__opt,.cot-deploy-tank .chg){min-width:var(--cot-control-floor);}
+/* (and the Deploy tabs past a phone: a three-character zh label, 局域网, is 40 px across; the box takes the floor and centres
+   it, as Settings' tabs do) */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-garage .cot-deploy-tab{min-width:var(--cot-control-floor);justify-content:center;}
 /* the nations: each chip at its content and a touch target, growing to fill the row when every nation fits; when they
    cannot, the track keeps its fade and swipe (garage.ts's honest overflow contract). Docked, the search folds to its glyph
    until it is tapped or holds a query, so the row shows more nations (all fourteen at 1210 px) */
