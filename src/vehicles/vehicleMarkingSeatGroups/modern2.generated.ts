@@ -14,44 +14,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.6051776,
-          0.2735828,
-          -0.2266496
+          1.1763262,
+          0.406635,
+          -0.0876556
         ],
         "quaternion": [
-          -0.0941064,
-          0.7008167,
-          0.0941064,
-          0.7008167
+          -0.1771105,
+          0.6742259,
+          0.1821597,
+          0.6934472
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type59",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0132292
+        "maximumSurfaceErrorM": 0.0111288
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.23,
         "pos": [
-          1.3164141,
-          0.439827,
-          -0.9645273
+          1.1716638,
+          0.3365816,
+          -0.5571007
         ],
         "quaternion": [
-          -0.2570755,
-          0.8392037,
-          0.1403618,
-          0.4582007
+          -0.1539123,
+          0.8060997,
+          0.1071667,
+          0.5612749
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "type59",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0153825
+        "maximumSurfaceErrorM": 0.016983
       }
     ]
   },
@@ -156,15 +156,15 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.2112,
         "pos": [
-          -1.3772776,
-          0.284128,
-          -1.1677185
+          -1.2911009,
+          0.2328057,
+          -1.1680831
         ],
         "quaternion": [
-          -0.0788575,
-          -0.7339615,
-          -0.0720647,
-          0.6707374
+          -0.0535083,
+          -0.7263042,
+          -0.05035,
+          0.6834355
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ztz99_longwei",

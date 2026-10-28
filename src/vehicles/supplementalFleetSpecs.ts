@@ -122,9 +122,9 @@ function make(
 const SPECS: FleetTankSpec[] = [
   make('t62_1975', 'type59', 'Type 59', 'China',
     // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
-    // the visual is profiles/type59.ts, the PLA Type 59 (licensed T-54A) rebuilt from the published dimensions and
-    // museum photographs (docs/references/tanks/type59.md §262), on the T-55A's construction (profiles/t54Family.ts, the
-    // owner's 262 "make the type 59 be based on a type 55"). Stats stay the Type 59's; dims are the published
+    // the visual is the PLA Type 59 (licensed T-54A) on the T-55A's construction (profiles/t54Family.ts, the owner's 262
+    // "make the type 59 be based on a type 55"), checked against the published dimensions and museum photographs
+    // (docs/references/tanks/type59.md §262). Stats stay the Type 59's; dims are the published
     // 6.04 m hull, 9.00 m gun forward, 3.27 m width and 2.40 m height without the AA gun ([CZ-T54A], [GS-59spec]).
     // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
     // Type 69 print remains the registered measurement oracle.

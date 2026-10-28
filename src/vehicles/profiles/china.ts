@@ -1413,8 +1413,8 @@ function buildZTZ99A2Prototype(P: ChinaBuilderPort): void {
   });
 }
 
-// Type 59 (WZ-120): release 262's historical rebuild lives in profiles/type59.ts (the r3 refit on the widened
-// obr-1975 chassis is retired).
+// Type 59 (WZ-120): release 262's historical rebuild is the T-54A pattern on the T-54/T-55 family construction it
+// shares with the T-55A (profiles/t54Family.ts); the r3 refit on the widened obr-1975 chassis is retired.
 
 export const CHINA_PROFILES = {
   // §5.248 ground-up builds — no donor constructor in either call chain.
@@ -1423,6 +1423,6 @@ export const CHINA_PROFILES = {
   // receive the VT-derived rotating assembly from the same authored family.
   ztz99a: { build: buildZTZ99A2Prototype },
   ztz99a2: { build: buildZTZ99A2 },
-  // release 262: the historical T-54A-pattern rebuild (profiles/type59.ts).
+  // release 262: the historical T-54A-pattern rebuild (profiles/t54Family.ts).
   type59: { build: buildType59 },
 } satisfies VehicleProfileRecord;

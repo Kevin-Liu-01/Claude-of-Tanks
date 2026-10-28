@@ -494,9 +494,9 @@ function addTurretRoof(P: TankBuilderPort, v: T54Variant): void {
   for (const [x, z, a] of [[0.61, 0.44, 0.25], [-0.70, -0.20, -0.3]] as const) {
     KIT.periscope(P, 'turretDetail', x, skinAt(x, z) + 0.01, z, a);
   }
-  // radio antenna base at the rear of the roof
+  // radio antenna base at the left rear of the roof (the rear centre stays clear for the mission stand)
   {
-    const x = 0.12, z = -0.92;
+    const x = 0.68, z = -0.80;
     P.add('turretDetail', cylY(0.055, 0.07, 0.06, 10), x, skinAt(x, z) + 0.01, z);
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.72, r: 0.016, rake: -0.10, seed: 3 });
     whip.name = 'type59RadioWhip';
