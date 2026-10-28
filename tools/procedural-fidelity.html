@@ -101,7 +101,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262 (owner: "make the type 59 be based on a type 55"): the Type 59 is built on the T-54/T-55 family construction
+  // measured from the owner's T-55A model (profiles/t54Family.ts), so it is scored against that oracle like the T-55A
+  // (fused export: whole views, dims and floaters); the LastTriarius Type 69 print, the 261 oracle, is retired.
+  type59: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
   // 262 (owner 2026-10-27): the owner-supplied T-55A (Alex.Ka., CC BY-NC-ND 4.0, LOCAL-ONLY), prepared to its vehicle
   // meshes at one uniform scale by tools/source-x-oracle.mjs (docs/references/tanks/t55a.md). Its export fuses hull,
   // turret and gun by material, so the whole nine-view silhouette, dims and floaters are the honest comparison.

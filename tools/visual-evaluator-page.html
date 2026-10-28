@@ -80,7 +80,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // buildT44/buildType59 procedurals; the CC prints stay the measurement
   // references here (userdrops7 glb() helper expansion, verbatim).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262: the Type 59 and the new T-55A share the T-54/T-55 family construction measured from the owner's T-55A model
+  // (profiles/t54Family.ts); both compare against that prepared oracle (the Type 69 print retired)
+  type59: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
+  t55a: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // Owner-supplied articulated Leopard 1 oracle (Marina.Kardava,

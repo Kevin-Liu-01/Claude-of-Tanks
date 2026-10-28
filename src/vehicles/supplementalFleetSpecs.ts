@@ -138,8 +138,8 @@ const SPECS: FleetTankSpec[] = [
     // "make the type 59 be based on a type 55"), checked against the published dimensions and museum photographs
     // (docs/references/tanks/type59.md §262). Stats stay the Type 59's; dims are the published
     // 6.04 m hull, 9.00 m gun forward, 3.27 m width and 2.40 m height without the AA gun ([CZ-T54A], [GS-59spec]).
-    // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
-    // Type 69 print remains the registered measurement oracle.
+    // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The registered
+    // measurement oracle is the owner's T-55A model (procedural-fidelity.html; the LastTriarius Type 69 print retired).
     { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
       // the D-10T's own -5/+18 (262, Main: the donor T-62's -9/+20 was never sourced for these)
       gunElevationDeg: 18, gunDepressionDeg: 5,
@@ -154,9 +154,10 @@ const SPECS: FleetTankSpec[] = [
         })),
       },
       dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.40,
-        // the drawn envelope: rear drums to the fender tips, drums to the muzzle, the cupola crown band
-        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 8.96,
-        silhouetteHeightM: 2.40 },
+        // the drawn envelope (262 geometry gate's body extents): rear drums to the fender tips, drums to the muzzle, the
+        // DShK and cupola crown band
+        silhouetteHullLengthM: 6.54, silhouetteOverallLengthM: 8.86,
+        silhouetteHeightM: 2.57 },
       // china-palette hooks (PLA green family, ztz85_iii grammar — values
       // distinct per §H.4 family separation)
       visual: { marking: 'number', number: '406', base: '#374836',
@@ -182,7 +183,8 @@ const SPECS: FleetTankSpec[] = [
         })),
       },
       dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.35,
-        silhouetteHullLengthM: 6.51, silhouetteOverallLengthM: 8.96, silhouetteHeightM: 2.40 },
+        // the drawn envelope (262 geometry gate's body extents: drums to fender tips, drums to muzzle, cupola crown)
+        silhouetteHullLengthM: 6.52, silhouetteOverallLengthM: 8.87, silhouetteHeightM: 2.46 },
       visual: { marking: 'number', number: '214', trackWidthM: 0.60 } }),
   // -- T-80 turbine family ---------------------------------------------------
   make('t80uk', 't80', 'T-80', 'USSR/Russia',

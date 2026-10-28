@@ -553,15 +553,10 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     // the pinned ring datum). heightM keeps the broad panoramic/combat-station envelope; thin whips are excluded.
     dims: {
       hullLengthM: 7.6, overallLengthM: 11.8, widthM: 3.7, heightM: 3.16,
-      // The fused source's 12%-thickness side-body trace is 7.079 m; its
-      // published/full 7.76 m hull envelope includes thin guards and the
-      // rear U-cable.  Keep gameplay on the full physical envelope while
-      // letting the silhouette gate compare like with like.
-      silhouetteHullLengthM: 7.08,
-      // P95 normalization only: release 233's mast panoramic sight tops out at
-      // 3.17 m (the retired VT-derived command stack reached 3.60 m). Thin whip
-      // tips remain excluded from this datum.
-      silhouetteHeightM: 3.17,
+      // Release 262: the silhouette rows are the new build's measured body extents (the geometry gate's procedural
+      // trace): 7.16 m stern rack to nose, 11.70 m to the muzzle, 2.89 m over the roof stations (thin whips excluded).
+      silhouetteHullLengthM: 7.16, silhouetteOverallLengthM: 11.70,
+      silhouetteHeightM: 2.89,
     },
     // Segmented combat envelope following release 262's arrowhead turret and
     // new 99A-pattern hull (profiles/type99Armor.ts longweiArmor).

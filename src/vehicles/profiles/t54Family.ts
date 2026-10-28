@@ -557,7 +557,9 @@ function addSearchlight(P: TankBuilderPort, v: T54Variant): void {
   const { box, cylZ } = KIT;
   const r = v.searchlightR, x = -0.39 - r, y = 0.46, z = 0.58;
   // the oracle's lamp rides high on the turret's right front, linked to the gun: a riser off the cradle's right cheek
-  P.add('gunMountLamp', box(0.22, 0.06, 0.10), -0.20, 0.16, 0.66);              // arm off the cradle
+  // arm off the cradle out to the riser (262 geometry gate: the shorter arm left the lamp floating 16 cm clear of it)
+  const armEnd = x + 0.06, armLen = -0.09 - armEnd + 0.03;
+  P.add('gunMountLamp', box(armLen, 0.06, 0.10), -0.09 - armLen / 2, 0.16, 0.66);
   P.add('gunMountLamp', box(0.06, y - r - 0.16, 0.08), x + 0.06, (y - r + 0.16) / 2, z + 0.06);  // riser to the stirrup
   P.add('gunMountLamp', box(0.06, 0.12, 0.10), x, y - r - 0.03, z - 0.02);       // stirrup
   P.add('gunMountLamp', cylZ(r, 0.26, P.q ? 20 : 12), x, y, z);
