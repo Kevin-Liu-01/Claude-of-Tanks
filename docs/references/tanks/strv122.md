@@ -82,7 +82,7 @@ delivered uncommitted-unstaged). What went: the ground-up §5.248 build
   captured at their respective trees, 0/14 byte-identical).
 The NEXT list above is suspended while the donor-clone build stands.
 
-## Release 262: the Swedish field suit (`strv121`, lane christian2-262)
+## Release 262: the Swedish field suit (`strv121`, lane christian2-262, its own READY)
 
 - Owner 2026-10-27 (through Main, verbatim): "dress it [the Christian II] in a ton of netting and ghillie, which our strv 121
   should also get a ton of btw to distinguishh it as swedish." Main's brief: the Swedish Barracuda-style mobile
@@ -95,4 +95,3 @@ The NEXT list above is suspended while the donor-clone build stands.
   the fleet's DENSE 1.8), Swedish greens, the turret netted over the wedge, roof armour and bustle, drapes on the walls
   and over the bustle, a rear drape, the decks netted and four drapes a side over the cassettes; fieldClearanceM 0.03,
   clothClearsGunStops, a garnish budget (70 % of each clump's cards, 45 % at LOW).
-- The Christian II's beech suit and the Strv 121's spruce/ulcans suit are the two Nordic looks side by side.
