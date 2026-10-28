@@ -246,6 +246,10 @@ function rearBasket(P: TankBuilderPort, v: EarlyLeopard2): void {
  */
 function otcoPackage(P: TankBuilderPort, v: EarlyLeopard2): void {
   const { box, cylX, cylY } = KIT;
+  // The rim, its shrouds and their caps are a bolted frame and stand-off panels, not armour. They ride turretEquipment
+  // (the same paint) so the combat anatomy fits the turret's plates to the real walls (Main 2026-10-28: "Two tier IV
+  // tanks with identical combat data should be identical targets"); in the turret bucket they had pushed every plate
+  // out to the rim's edge, 2.90 by 4.35 m of composite against the 2A3's 2.54 by 4.00.
   // the rim: [z, inner x, outer x, inner z, outer z] stations, the inner edge on the turret's outline
   const rim: Array<[number, number, number, number]> = [
     [0.50, T.frontZ, 0.50, T.frontZ + 0.18], [T.frontHalfWidthM, T.frontZ, T.frontHalfWidthM + 0.10, T.frontZ + 0.18],
@@ -258,7 +262,7 @@ function otcoPackage(P: TankBuilderPort, v: EarlyLeopard2): void {
     for (let k = 0; k + 1 < rim.length; k++) {
       const [ax, az, bx, bz] = rim[k], [cx, cz, dx, dz] = rim[k + 1];
       const quad = (y: number) => [[sx * ax, y, az], [sx * bx, y, bz], [sx * dx, y, dz], [sx * cx, y, cz]];
-      P.add('turret', orientedSlab(...quad(lo), ...quad(hi)));
+      P.add('turretEquipment', orientedSlab(...quad(lo), ...quad(hi)));
     }
     // the rim's bolts along its outer edge
     for (let k = 1; k + 1 < rim.length; k++) {
@@ -269,12 +273,12 @@ function otcoPackage(P: TankBuilderPort, v: EarlyLeopard2): void {
     const out = T.halfWidthM + 0.11, z0 = T.cornerZ - 0.06, z1 = T.stepZ + 0.04, n = 4, L = (z0 - z1) / n;
     for (let k = 0; k < n; k++) {
       const zc = z0 - L * (k + 0.5);
-      P.add('turret', box(0.05, 0.45, L - 0.02), sx * out, hi + 0.225, zc, 0, 0, -sx * 0.035);
+      P.add('turretEquipment', box(0.05, 0.45, L - 0.02), sx * out, hi + 0.225, zc, 0, 0, -sx * 0.035);
       for (const y of [hi + 0.06, hi + 0.39]) for (const dz of [-L / 2 + 0.08, L / 2 - 0.08]) {
         P.add('turretDetail', cylX(0.018, 0.016, 8), sx * (out + 0.03), y, zc + dz);
       }
     }
-    P.add('turret', box(0.13, 0.03, z0 - z1), sx * (T.halfWidthM + 0.065), hi + 0.465, (z0 + z1) / 2);
+    P.add('turretEquipment', box(0.13, 0.03, z0 - z1), sx * (T.halfWidthM + 0.065), hi + 0.465, (z0 + z1) / 2);
     // the second radio pair's bases and whips, each in a four-post guard cage
     const ax = sx * 1.05, az = -1.50;
     P.add('turretDetail', cylY(0.035, 0.045, 0.06, 10), ax, T.roofY + 0.03, az);

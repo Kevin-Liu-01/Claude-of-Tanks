@@ -9,11 +9,15 @@
 //     three (the deeper fore skirt blocks), the batches told apart where they were built apart;
 //  3. the turret datums are the vehicle drawn: the ring and the trunnion where the rigs stand, on all three;
 //  4. each main gun keeps 25 mm from its hull at every yaw at its published depression stop; negative control: at the
-//     bare -9 degrees the gun meets the hull.
+//     bare -9 degrees the gun meets the hull;
+//  5. the OTCO's rim, shrouds and caps are equipment, not armour (Main 2026-10-28: "Two tier IV tanks with identical
+//     combat data should be identical targets"): its turret anatomy (the box, the collision slabs, the ring's race, the
+//     crew seats and every turret plate) is the 2A3's; negative control: the kit is built, standing out past the 2A3's walls.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS } from '../combatAnatomyCalibrations.ts';
 import { tankTier } from '../tier.ts';
 import { tankDisplayName } from '../tankLabels.ts';
 import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
@@ -56,7 +60,7 @@ const stock = (id) => {
   const tank = createTank(id, null, { ...options, quality: 'high' }), out = new Map();
   tank.root.traverse((o) => {
     if (!o.isMesh || !o.geometry || /ghillie/i.test(o.name)) return;
-    if (!/^(gear|track|hull$|hullDetail$|turret$|turretDetail$)/.test(o.name)) return;
+    if (!/^(gear|track|hull$|hullDetail$|turret$|turretDetail$|turretEquipment$)/.test(o.name)) return;
     out.set(`${o.parent?.name}/${o.name}`, [...(out.get(`${o.parent?.name}/${o.name}`) ?? []), geometryHash(o.geometry)]);
   });
   tank.dispose();
@@ -77,7 +81,9 @@ const differs = (a, b, name) => assert.notDeepEqual(pick(built[a], (n) => n === 
   `${a} and ${b} differ in ${name}`);
 differs('leo2a2', 'leo2a3_b4', 'hullDetail');            // pressed louvres against the fourth batch's round rods
 differs('leo2a2', 'leo2a3_b4', 'turretDetail');          // the crosswind plate, the tall radio bases, the working hatch
-differs('leo2a3', 'leo2a3_b4', 'turret');                // the OTCO's side shrouds
+differs('leo2a3', 'leo2a3_b4', 'turretEquipment');       // the OTCO's rim, shrouds and caps
+assert.deepEqual(pick(built.leo2a3, (n) => n === 'turret'), pick(built.leo2a3_b4, (n) => n === 'turret'),
+  'the OTCO\'s armoured turret is the 2A3\'s');
 assert.deepEqual(pick(built.leo2a3, (n) => n === 'hullDetail'), pick(built.leo2a3_b4, (n) => n === 'hullDetail'),
   'the OTCO is a fourth-batch hull');
 
@@ -108,4 +114,28 @@ for (const id of EARLY) {
     probe.dispose();
   }
 }
-console.log('leopard2a3B4.selftest: the early Leopard 2s\' specs and tiers, the shared construction and its batches, the datums drawn, the guns clear of their hulls PASS');
+// 5. the OTCO's turret anatomy is the 2A3's
+const anatomy = (id) => {
+  const c = COMBAT_ANATOMY_CALIBRATIONS[id];
+  assert.ok(c, `${id}: a committed anatomy calibration`);
+  // the ring's anatomy (its race, deck, well and floor); its footR is a coverage receipt of every turret mesh over the
+  // deck with no reader beyond capping the race, which the rim covers further out by design
+  const { seat, deckY, rimR, skirt, floorY, wellR, skinR } = c.turretRing;
+  return { box: [c.turret.min, c.turret.max, c.turret.bodyRoofY], collision: c.turretCollision,
+    ring: { seat, deckY, rimR, skirt, floorY, wellR, skinR }, seats: c.crewSeats, plates: getSpec(id).armor.turretPlates };
+};
+const otcoAnatomy = anatomy('leo2a3'), a3Anatomy = anatomy('leo2a3_b4');
+for (const key of Object.keys(a3Anatomy)) assert.deepEqual(otcoAnatomy[key], a3Anatomy[key], `the OTCO's turret ${key} is the 2A3's`);
+{
+  const tank = createTank('leo2a3', null, { ...options, quality: 'high' });
+  try {
+    const kit = tank.root.getObjectByName('turretEquipment');
+    assert.ok(kit?.geometry, 'negative control: the OTCO builds its rim and shrouds');
+    kit.geometry.computeBoundingBox();
+    const reach = Math.max(-kit.geometry.boundingBox.min.x, kit.geometry.boundingBox.max.x);
+    assert.ok(reach > a3Anatomy.box[1][0] + 0.10, `negative control: the rim stands ${(reach - a3Anatomy.box[1][0]).toFixed(2)} m past the 2A3's walls`);
+  } finally {
+    tank.dispose();
+  }
+}
+console.log('leopard2a3B4.selftest: the early Leopard 2s\' specs and tiers, the shared construction and its batches, the datums drawn, the guns clear of their hulls, the OTCO\'s kit outside its armour PASS');
