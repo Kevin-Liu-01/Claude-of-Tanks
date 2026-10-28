@@ -285,6 +285,7 @@
     "src/game/ammoSelectionPresentation.selftest.mjs": 1000,
     "src/game/armorAimOverlay.selftest.mjs": 1000,
     "src/game/armorAimOverlayAccess.selftest.mjs": 1000,
+    "src/game/armorPaintPanels.selftest.mjs": 12000,
     "src/game/battleAgainAction.selftest.mjs": 1000,
     "src/game/battleClientAccess.selftest.mjs": 1000,
     "src/game/battleEnding.selftest.mjs": 1000,

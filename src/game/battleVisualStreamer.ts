@@ -72,6 +72,8 @@ interface TextureUploadRenderer {
 
 interface ArmorAimWarmOwner<Entity extends BattleVisualEntity> {
   prime(entity: Entity): RuntimeValue;
+  /** (263) The armour paint's panels, baked under the staging budget before the programs and the far LOD are made. */
+  bakePanels?(entity: Entity, pause: () => Promise<void>): Promise<void>;
   warm(): () => void;
 }
 
@@ -337,6 +339,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const compileAt = now();
     visual.prewarmBurn?.();
     armorAimOverlay.prime(entity);
+    if (armorAimOverlay.bakePanels) await armorAimOverlay.bakePanels(entity, () => yieldForBudget(true));
     const restoreArmorWarmVisibility = armorAimOverlay.warm();
     try {
       if (options.compilePrograms !== false) forwardProgramWarm.compile(root);

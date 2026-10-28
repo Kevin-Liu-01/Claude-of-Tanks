@@ -3917,7 +3917,7 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
  * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
  * so a roof gun stays as bare as the main gun's barrel.
  */
-function armorPaintMode(mat: THREE.Material): number {
+export function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
   if (role === 'fittingPaint' || role === 'hullRubber') return 2;
@@ -3952,7 +3952,16 @@ uniform vec3 uApCounts;
 uniform sampler2D uApZones;
 varying vec3 vApW;
 varying vec3 vApN;
+varying float vApZone;
 `;
+
+/**
+ * (263) The vertex attribute a painted draw's panels carry (game/armorPaintPanels.ts): each connected triangle cluster's
+ * one zone + 1, ARMOR_PAINT_PANEL_BARE for gear left bare, 0 for the per-point score. A draw without it reads 0 (the
+ * hook's defaultAttributeValues).
+ */
+export const ARMOR_PAINT_ZONE_ATTRIBUTE = 'apZone';
+export const ARMOR_PAINT_PANEL_BARE = -1;
 
 const ARMOR_PAINT_VERTEX_GLSL = `
 {
@@ -3968,6 +3977,7 @@ const ARMOR_PAINT_VERTEX_GLSL = `
   #endif
   vApW = ( modelMatrix * apV ).xyz;
   vApN = mat3( modelMatrix ) * apNo;
+  vApZone = ${ARMOR_PAINT_ZONE_ATTRIBUTE};
 }
 `;
 
@@ -3975,7 +3985,11 @@ const ARMOR_PAINT_DIFFUSE_GLSL = `
 vec3 apColor = vec3( 0.0 );
 float apMix = 0.0;
 float apLine = 0.0;
-if ( uApOn > 0.5 && uApPaint > 0.5 ) {
+// (263) a baked panel (game/armorPaintPanels.ts): its cluster's one zone, so a border falls on a part's edge; below 0 a
+// bare panel; 0 the per-point score. One value a triangle, so the branch is the same across a pixel quad
+int apBaked = int( floor( vApZone + 0.5 ) );
+bool apPanel = apBaked > 0;
+if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
   vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
   int apHullN = int( uApCounts.x + 0.5 );
   int apZoneN = int( uApCounts.x + uApCounts.y + 0.5 );
@@ -3984,7 +3998,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   // the turret's: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells)
   bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
   bool apOverFoot = false;
-  for ( int f = 0; f < apFootN; f++ ) {
+  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
     if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
@@ -4015,7 +4029,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     || !apTurret && uApHullH.y > 0.0
       && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? apHullN : 0;
-  int apTo = apGear ? apFrom : apTurret ? apZoneN : apHullN;
+  int apTo = apGear || apPanel ? apFrom : apTurret ? apZoneN : apHullN;
   float apBest = -1e9;
   float apSecond = -1e9;
   int apBestK = -1;
@@ -4046,7 +4060,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   // how deep the point lies inside the footprint it lies deepest in (negative: how far outside the nearest)
   int apFootK = -1;
   float apFootIn = -1e3;
-  for ( int f = 0; f < apFootN; f++ ) {
+  for ( int f = 0; f < ( apPanel ? 0 : apFootN ); f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     int apFk = int( apFa.w + 0.5 );
     if ( apFk < apFrom || apFk >= apTo ) continue;
@@ -4055,8 +4069,8 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
     if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
   }
-  bool apForced = apFootK >= 0 && apFootIn > 0.0;
-  int apZone = apForced ? apFootK : apBestK;
+  bool apForced = apPanel || apFootK >= 0 && apFootIn > 0.0;
+  int apZone = apPanel ? apBaked - 1 : apForced ? apFootK : apBestK;
   // the border lines' margins, their derivatives taken outside the branches: a border is where the margin falls to 0
   // across pixels; two plates tied over a whole area (one plane, one outline) draw none
   float apMargin = apSecond > -1e8 ? apBest - apSecond : 1e3;
@@ -4165,7 +4179,9 @@ if ( uBurnT >= 0.0 && uCrOn > 0.5 ) {
 const BURN_HOOK_PRIOR = new WeakMap<THREE.Material, {
   hook: THREE.Material['onBeforeCompile']; key: THREE.Material['customProgramCacheKey'];
   wrapper: THREE.Material['onBeforeCompile']; ownHook: boolean; ownKey: boolean;
+  defaults: Record<string, number[]> | undefined; ownDefaults: boolean;
 }>();
+type AttributeDefaults = { defaultAttributeValues?: Record<string, number[]> };
 
 /**
  * Take this visual's disarmed burn hook off a material (2026-10-24, transitions-249): a surviving battle hero the Garage
@@ -4185,6 +4201,8 @@ export function removeBurnHook(mat: THREE.Material | null | undefined, burnU: Bu
   else delete (mat as { onBeforeCompile?: unknown }).onBeforeCompile;
   if (prior.ownKey) mat.customProgramCacheKey = prior.key;
   else delete (mat as { customProgramCacheKey?: unknown }).customProgramCacheKey;
+  if (prior.ownDefaults) (mat as AttributeDefaults).defaultAttributeValues = prior.defaults;
+  else delete (mat as AttributeDefaults).defaultAttributeValues;
   delete mat.userData.__burnU;
   mat.needsUpdate = true;
   return true;
@@ -4209,8 +4227,12 @@ export function applyBurnHook(
     hook: mat.onBeforeCompile, key: prevKey, wrapper: mat.onBeforeCompile,
     ownHook: Object.prototype.hasOwnProperty.call(mat, 'onBeforeCompile'),
     ownKey: Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey'),
+    defaults: (mat as AttributeDefaults).defaultAttributeValues,
+    ownDefaults: Object.prototype.hasOwnProperty.call(mat, 'defaultAttributeValues'),
   };
   BURN_HOOK_PRIOR.set(mat, prior);
+  // (263) a draw whose geometry carries no panels reads 0, the per-point score, never another program's generic value
+  (mat as AttributeDefaults).defaultAttributeValues = { ...(prior.defaults ?? {}), [ARMOR_PAINT_ZONE_ATTRIBUTE]: [0] };
   const paints = armorPaintMode(mat);
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
@@ -4221,7 +4243,7 @@ export function applyBurnHook(
     // paint (a detail mesh still wearing it): the inner mask stands, the outer adds only its (the same visual's) uniforms
     if (shader.vertexShader.includes('varying vec3 vBrnW;')) return;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\nattribute float ${ARMOR_PAINT_ZONE_ATTRIBUTE};\n${CRUMPLE_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n${CRUMPLE_NORMAL_GLSL}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 transformed += crD;
