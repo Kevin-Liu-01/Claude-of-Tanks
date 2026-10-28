@@ -89,5 +89,7 @@ assert.match(source, /closest\('\.cot-c-picker__thumb,\.cot-c-picker__media'\)\)
   "a card picture's load marks it ready");
 assert.match(source, /\.cot-c-picker__media img'\)\) \{\n\s+if \(img\.complete && img\.naturalWidth > 0\) img\.setAttribute\('data-ready', ''\);/,
   'a decoded one stands at once in render');
+assert.match(source, /globalThis\.addEventListener\?\.\('online', onOnline\)/, 'a picture the network dropped asks again once it is back');
+assert.match(source, /globalThis\.removeEventListener\?\.\('online', onOnline\)/, 'and the picker lets go of the page on dispose');
 
 console.log('picker.selftest: the filter (Random first, chips, search, favourites, recents), the memory, the grid step and the controller contract pass');
