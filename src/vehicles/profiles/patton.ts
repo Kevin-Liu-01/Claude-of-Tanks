@@ -175,6 +175,9 @@ interface PattonBuilderPort {
     ...rotation: number[]
   ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+  /** A consumable ERA plate's own authored parts (the Magach 3's Blazer, pattonCast.ts): external armour inside it. */
+  destructibleCluster(plateName: string, fill: () => void): void;
+  addExternalArmor(owner: 'hull' | 'turret', geometry: THREE.BufferGeometry, ...transform: number[]): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }

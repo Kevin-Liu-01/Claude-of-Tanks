@@ -24,13 +24,13 @@ over the gun.
 
 | Item | Source | Build |
 |---|---|---|
-| Gun | 90 mm M41 (about L/48), the long evacuator near the muzzle, the T-shaped deflector; 1.81 m past the hull front against the A5's 2.44 (AFV48, photos) | `m48M41`: the tube to the evacuator over its front third, the collar, the cross tube with its two dark ports, 3.80 m from the bore station |
+| Gun | 90 mm M41 (about L/48), the long evacuator right behind the deflector, the T-shaped deflector; 1.81 m past the hull front against the A5's 2.44 (AFV48, photos) | `m48M41`: the tube, the evacuator over its last 0.8 m, the collar, the cross tube (0.24 m across, 0.52 m wide) with its two dark ports, 3.80 m from the bore station |
 | Cupola | the M1 with its .50 inside, on the riser of vision blocks; in Vietnam an M2 often rode the hatch ring (WP48, photos) | `m48M1Cupola`: the riser with nine blocks, the squat body, the .50's sloped housing and port, five vision blocks, the domed hatch, the M28 sight head, an M2 on the hatch ring |
 | Searchlight | the xenon light on the gun shield (photos) | the A5's AN/VSS-1 |
 | Loader | an M60 on the loader's side (the Latrun photograph) | the A5's M60D on its post |
-| Running gear | five return rollers and the track-tension wheel on the converted A1 hulls (both photographs) | `m48Gear` 'a1' |
+| Running gear | five return rollers on the converted A1 hull and, on the Latrun tank, no track-tension wheel (the track runs straight from the last road wheel to the sprocket) | the A5's gear (`m48Gear` 'a5') |
 | Rear | armoured boxes round the tail lights (photo) | the A5's guarded tail lights |
-| Stowage | the bustle rack | the A5's rack and load without its spare wheel; no flank racks or rucksacks |
+| Stowage | the bustle rack | the A5's rack and load without its spare wheel; no flank racks or rucksacks; not the A5 model's drum on the left front fender or its long tow cable |
 | Weight | 48.5 t (AFV48) | spec |
 
 ### Not drawn
