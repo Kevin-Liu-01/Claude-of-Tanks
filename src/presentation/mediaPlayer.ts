@@ -214,13 +214,35 @@ const shownArea = (core: Core): number => {
   return across * down;
 };
 
+/** A frame displaces one playing only when it shows a quarter more of itself, so a near tie never trades. */
+const DISPLACE_MARGIN = 1.25;
+/** A frame that took its slot less than this long ago keeps it: a film never comes on and stands down again within a
+ * second (the /home r3 en critic: on a phone the lead duel came on, then a tile below took the one slot 70 ms later). */
+const SLOT_SETTLE_MS = 1000;
+const claimedAt = new WeakMap<Core, number>();
+const settled = (core: Core): boolean => performance.now() - (claimedAt.get(core) ?? -Infinity) >= SLOT_SETTLE_MS;
+
+/** Of the frames playing (but `except`), the least on screen that has held its slot a second; none when all are new. */
+function leastSettled(except: Core): Core | null {
+  let least: Core | null = null;
+  for (const other of playingNow) {
+    if (other !== except && settled(other) && (!least || shownArea(other) < shownArea(least))) least = other;
+  }
+  return least;
+}
+
 function claimSlot(core: Core): void {
-  if (!playingNow.includes(core)) playingNow.push(core);
+  if (!playingNow.includes(core)) {
+    playingNow.push(core);
+    claimedAt.set(core, performance.now());
+  }
   while (playingNow.length > maxPlaying()) { // (the cap shrinks when a desktop window narrows to a phone layout)
-    // the frame least on screen stands down, the oldest of equals: a section's lead picture keeps playing over a tile half
-    // below the fold (the /home r2 zh critic: the Head to head lead paused while two lower tiles played)
-    let out = playingNow[0];
-    for (const other of playingNow) if (shownArea(other) < shownArea(out)) out = other;
+    // the newcomer waits, unless it shows a quarter more than the least-shown frame that has played a second: a
+    // section's lead picture takes its slot from a tile half below the fold (the /home r2 zh critic), and a frame just on
+    // keeps it while the page settles
+    let out = playingNow.includes(core) ? core : playingNow[playingNow.length - 1];
+    const least = leastSettled(out);
+    if (least && shownArea(out) > shownArea(least) * DISPLACE_MARGIN) out = least;
     playingNow.splice(playingNow.indexOf(out), 1);
     out.crowded = true;
     crowdedOut.add(out);
@@ -228,18 +250,16 @@ function claimSlot(core: Core): void {
   }
 }
 
-/** A frame stood down for want of a slot takes one back once it shows a quarter more than the least-shown frame playing,
- * so the picture scrolled to plays, not one the page's edge or its fixed bar half hides (the /home r3 critics: the Head to
- * head lead stayed parked, fully on screen, while two lower tiles played). The margin keeps a near tie from trading. */
-const RECLAIM_MARGIN = 1.25;
+/** A frame stood down for want of a slot takes one back, on the next scroll, once it shows a quarter more than the
+ * least-shown frame that has played a second, so the picture scrolled to plays, not one the page's edge or its fixed bar
+ * half hides (the /home r3 critics: the Head to head lead stayed parked, fully on screen, while two lower tiles played). */
 let reclaiming = false;
 function reclaimSlot(): void {
   if (reclaiming || !crowdedOut.size || playingNow.length < maxPlaying()) return;
   reclaiming = true;
   for (const queued of [...crowdedOut]) {
-    let least = playingNow[0];
-    for (const other of playingNow) if (shownArea(other) < shownArea(least)) least = other;
-    if (!least || shownArea(queued) <= shownArea(least) * RECLAIM_MARGIN) continue;
+    const least = leastSettled(queued);
+    if (!least || shownArea(queued) <= shownArea(least) * DISPLACE_MARGIN) continue;
     crowdedOut.delete(queued);
     queued.crowded = false;
     queued.sync(); // its claim stands the least-shown frame down
