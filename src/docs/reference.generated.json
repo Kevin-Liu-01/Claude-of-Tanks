@@ -527,7 +527,7 @@
     },
     {
       "id": "t90m_proryv",
-      "name": "T-90M Proryv",
+      "name": "T-90AM II",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,
@@ -1392,7 +1392,7 @@
       "nation": "Italy",
       "role": "mbt",
       "tier": 7,
-      "hp": 2600,
+      "hp": 2200,
       "speed": 65,
       "reverse": 30,
       "hull": 46.2,
@@ -3551,7 +3551,7 @@
     },
     {
       "id": "t90m",
-      "name": "T-90M",
+      "name": "T-90M Proryv",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,

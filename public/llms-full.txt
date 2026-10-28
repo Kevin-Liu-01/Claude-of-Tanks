@@ -112,7 +112,7 @@ Primary policy links:
 - Procedural model pipeline: https://cot.kevinliu.studio/docs/models
 - Rendering and performance: https://cot.kevinliu.studio/docs/rendering
 - Bots and tactical AI: https://cot.kevinliu.studio/docs/ai
-- How the media was filmed: https://cot.kevinliu.studio/docs/filming
+- Filming the media: https://cot.kevinliu.studio/docs/filming
 - Repository: https://github.com/Kevin-Liu-01/Claude-of-Tanks
 - Creator: https://github.com/Kevin-Liu-01
 - Sitemap: https://cot.kevinliu.studio/sitemap.xml

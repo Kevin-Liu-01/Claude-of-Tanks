@@ -220,7 +220,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_tos1a_tagil: 'TOS-1A Steppe Bands',
   sig_t90a_burlak: 'T-90A Burlak Digital',
   sig_t90m: 'T-90AM Field Digital',
-  sig_t90m_proryv: 'T-90M Proryv Digital',
+  sig_t90m_proryv: 'T-90AM II Digital',
   sig_t90a: 'T-90A Service Digital',
   sig_t90a_vladimir: 'T-90A Vladimir Digital',
   sig_challenger2e: 'Challenger 2E',

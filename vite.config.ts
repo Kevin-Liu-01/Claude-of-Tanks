@@ -446,12 +446,17 @@ export default defineConfig({
             // 2026-10-26 (premiere-gallery-studio, 258): the hero cards' tier chip (ui/heroCardChips.ts, 0.4 KB, the Garage's roster
             // at boot and the lazy shared hero tiles) rides here too: it reads the locale runtime as pickerText does, and on its
             // own it was one more game and cn boot request.
-            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (261, the dropdown audit): the kit menu over a form's <select> (ui/selectPickerMenu.ts: the Rooms fields,
+            // the Gallery's markup primitive) rides here too; on its own it was one more Gallery boot request.
+            { name: 'kitPicker', test: /[\\/]src[\\/]ui[\\/](?:pinchZoomGuard|pickerText|heroCardChips|selectPickerMenu|components[\\/](?:picker|pickerMenu))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-26 (integrator 257): the GPU catch-up gate (engine/gpuCatchUp.ts, battle-spikes-253) is a leaf the
             // program warm owner imports at boot; once the lazy post passes became its second importer (9a878b0208, each
             // pass's links between tasks) it split out of programWarm's chunk into one more game and cn boot request
             // (564 B). It rides with the program warm owner again, as on 256.
-            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-27 (integrator 261): the program receipt (engine/programReceipt.ts, 0.8 KB, the room-stalls lane's
+            // revealPrograms and lateLinks receipts) is a leaf main imports at boot and the lazy network composition imports
+            // too; on its own it was one more game and cn boot request. It rides with the program warm owner it measures.
+            { name: 'programWarm', test: /[\\/]src[\\/]engine[\\/](?:programWarm|gpuCatchUp|programReceipt)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-25 (nav-perf): the spotting stats ride with the vehicle actions, where 252 had them; the Garage's lazy
             // equipment preview is their second importer, and on their own they were one more game boot request
             // 2026-10-25 (integrator 253): the DOM-free equipment rules (equipment-rules-253) ride with them too: the game and cn

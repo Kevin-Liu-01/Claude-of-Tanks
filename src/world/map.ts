@@ -741,12 +741,15 @@ function* assembleWorldSteps(
   // no visual/simulation detail is removed.
   group.userData.matrixTraversalFrozen = true;
   group.updateMatrixWorld = () => {};
+  // (260, the rooms census: the freeze, the craters' stamps and the ground occlusion's start were one 55-117 ms step)
+  yield;
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
   // DST-04 (2026-10-15): the map's pre-placed craters as bowls, decided once on this build's own records
   // (world/mapCraters.ts); every match on this world lays them first, and the shards carry them for the authority
   const mapCraters = mapCraterStamps(props.mapCraterSites, obstacles, heightField);
+  yield;
   // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
   // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
@@ -781,6 +784,7 @@ function* assembleWorldSteps(
   // around a hull, and a shell/LOS ray only the cells spanned by its segment.
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
+  yield;
   const queryColliders = createObstacleGrid(colliders);
   yield;
   // the scenery lane (2026-10-03): no grass, litter or tall grass grows up through a pavement's clints or a scree fan
@@ -999,6 +1003,7 @@ function* assembleWorldSteps(
   /** Whether the build left structures' damage measures to the idle measurer (the world's update, DEFERRED_MEASURE_MS a
    *  frame: round 4's load-time budget). */
   let deferredMeasures = true;
+  let nonFiniteCameraWarned = false; // (rel259) the world update's non-finite camera, said once
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
   const getStructureDamage = (structureIdx: number): StructureDamageSeam | null => {
     const cached = structureSeams.get(structureIdx);
@@ -1210,6 +1215,16 @@ function* assembleWorldSteps(
       focusPos: THREE.Vector3 | null = null,
       viewCamera: THREE.Camera | null = null,
     ) {
+      // (rel259, the integrator on Blackglass: a capture that set the shot camera to a non-finite position made the grass
+      // carpet's cell request throw "Invalid grass carpet cell" every frame, so no shot frame rendered) a camera that is not
+      // finite leaves the world's camera-driven streaming where it stands, and says so once
+      if (!Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.y) || !Number.isFinite(cameraPos.z)) {
+        if (!nonFiniteCameraWarned) {
+          nonFiniteCameraWarned = true;
+          console.warn(`[world] the camera's position is not finite (${cameraPos.x}, ${cameraPos.y}, ${cameraPos.z}): the world holds until it is`);
+        }
+        return;
+      }
       terrain.userData.updateLOD(cameraPos);
       // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
       groundCoverCraters.sync(boundGroundOverlay);
@@ -1220,10 +1235,12 @@ function* assembleWorldSteps(
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
-      vegetation.update(dt, cameraPos, cameraFwd, focusPos, viewCamera);
+      // (260, the rooms census: the trees' first partition and the sward's cold fill were one 205 ms update of the opening
+      // warm) the sward takes no candidates in the update that built the trees' whole partition; its cells resume the next
+      const partitioned = vegetation.update(dt, cameraPos, cameraFwd, focusPos, viewCamera);
       bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
-      tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
+      tallGrass.update(dt, cameraPos, focusPos, cameraFwd, !partitioned); // round 73: the sward's ring, wind and press
       trackMarks.update(cameraPos); // item 45: the ruts' distance fade and the ring's wrap
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
       // (destruction-slabs 227 round 4) the structures' damage measures the build deferred (structureDamageSeam.ts), a

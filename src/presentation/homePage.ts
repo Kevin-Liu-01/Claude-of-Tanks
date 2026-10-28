@@ -4,6 +4,7 @@
  * Copyright © 2026 Kevin B. Liu.
  */
 import { t } from '../ui/i18n.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
 // The hero reel (heroReel.ts): its clips take their turns once the page has loaded and gone idle, so the poster, the
 // page's LCP picture, never shares the pipe with a clip.
@@ -84,6 +85,8 @@ const trailerDialog = document.querySelector<HTMLDialogElement>('[data-trailer-d
 const trailerVideo = trailerDialog?.querySelector<HTMLVideoElement>('video[data-trailer]') ?? null;
 if (trailerDialog && trailerVideo) {
   mountFilm(trailerDialog, trailerVideo);
+  // on the page's surface stack while open (it closes the open nav menu as it opens; Escape is the stack's)
+  dialogSurface(trailerDialog, 'home-trailer');
   document.querySelectorAll<HTMLButtonElement>('[data-trailer-open]').forEach((button) => button.addEventListener('click', () => {
     const named = [...trailerVideo.querySelectorAll<HTMLSourceElement>('source[data-src]')];
     for (const source of named) {
