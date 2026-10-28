@@ -59,7 +59,7 @@ p,li,dd{orphans:3;widows:3}
 /* scrollers print whole: no fade masks, no clipped overflow */
 :is(.dm-table,.dm-table.is-scrollable,.dm-scroll){overflow:visible;mask:none;-webkit-mask:none}
 /* an outside link prints its address after it */
-.dm-article a[href^='http']:not(:has(img,svg,picture))::after{content:' (' attr(href) ')';font:400 .82em/1.3 var(--font-mono);
+.dm-article a[href^='http']:not(:has(img,svg,picture))::after{content:' (' attr(href) ')';font:400 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-mono);
   color:var(--ink-3);overflow-wrap:anywhere}
 }
 }
