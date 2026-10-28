@@ -51,7 +51,11 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
   align-self:flex-end;margin-left:auto;padding-left:0;}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{gap:var(--s1);}
+/* (in the band the acts stand over the bright floor beside the slots: they take the slots' plate, not the floating fill
+   they wear under a phone's bar; the iPad critic r2 read them see-through) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);
+  background:var(--plate-fill);box-shadow:var(--ring-2);}
 /* under 800 px across (an iPad mini, a Split View half) the fourteen chips do not fit one row: they take two rows of seven,
    every nation in view, the filter beside both, and the stack over them rises by the row */
 @media (width < 800px){
