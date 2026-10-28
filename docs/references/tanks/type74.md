@@ -506,13 +506,13 @@ it (`src/vehicles/profiles/type74Family.ts`), the production tank `buildType74Fa
 
 | Feature | 262 hull pass (79917245ef) | Owner's model | Production Type 74 after |
 |---|---|---|---|
-| Hull section | Tub ±0.98 under a flat 3.0 m deck at 1.375–1.395 out to fenders at ±1.57, a vertical 0.40 m sponson band | Sponsons over the tracks with sides sloping ~45 degrees from the tracks' outer edge to the deck edge | Floor 1.09, outer lip ±1.575, sides 42 degrees up to the deck edge ±1.27, deck 1.40; fender caps over the idlers |
-| Glacis | 29 degrees from a crest at +2.42 to a crease at +3.35 | 19 degrees from a crest at +1.87 to the nose's top edge at +3.35 | The model's; the lower plate 28 degrees to the belly |
-| Belly | 0.305 | 0.37–0.42 | 0.38 |
-| Running gear | Five wheels on a 0.8675 m pitch (+1.83..−1.64), sprocket (−3.00, 0.90) | Five on a 1.01 m pitch (+2.00..−2.05), idler +3.02, sprocket −2.92, both raised; the stern overhangs the sprocket | Five 0.74 m wheels at +2.00/+0.99/0.00/−1.01/−2.02, idler (+3.00, 0.66), sprocket (−2.95, 0.70) |
-| Turret | 18-station plan ±1.14, +1.35/−2.05; shell 0.465 m, crown at 1.885 | Plan ±1.33, +1.49/−2.12; full belt 0.07–0.24 m, sides rolling to a flat crown at 0.63 m, the bustle undercut | The model's plan and rings; crown at 2.05; cupola top 2.23 |
-| Gun | Bore 1.60, trunnion (0, 0.18, 1.15) | Bore 1.677 | Trunnion (0, 0.257, 1.18); `armor.gunPivot` follows |
-| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.33 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose); its underside 0.225 m under the bore, 5 cm over the deck it swings over |
+| Hull section | Tub ±0.98 under a flat 3.0 m deck at 1.375–1.395 out to fenders at ±1.57, a vertical 0.40 m sponson band | Sponsons over the tracks with sides sloping 45–50 degrees from the tracks' outer edge to the deck edge | Floor 1.23, outer lip ±1.575, sides 46 degrees up to the deck edge ±1.27, deck 1.58; fender caps over the idlers |
+| Glacis | 29 degrees from a crest at +2.42 to a crease at +3.35 | 21 degrees from a crest at +1.87 to the nose's top edge at +3.35 | 22 degrees, to the nose's top edge at 0.99; the lower plate 31 degrees to the belly |
+| Belly | 0.305 | 0.42–0.47 | 0.43 |
+| Running gear | Five wheels on a 0.8675 m pitch (+1.83..−1.64), sprocket (−3.00, 0.90) | Five on a 1.01 m pitch (+2.00..−2.05), idler +3.02, sprocket −2.92, both raised; the stern overhangs the sprocket | Five 0.84 m wheels at +2.00/+0.99/0.00/−1.01/−2.02, idler (+3.00, 0.75), sprocket (−2.95, 0.79) |
+| Turret | 18-station plan ±1.14, +1.35/−2.05; shell 0.465 m, crown at 1.885 | Plan ±1.33, +1.49/−2.12; full belt 0.08–0.27 m, sides rolling to a flat crown at 0.71 m, the bustle undercut | The model's plan and rings; ring datum 1.60, crown at 2.31 |
+| Gun | Bore 1.60, trunnion (0, 0.18, 1.15) | Bore 1.90 | Trunnion (0, 0.29, 1.18), bore 1.89; `armor.gunPivot` follows |
+| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.373 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose); its underside 0.254 m under the bore, 6 cm over the deck it swings over |
 | Searchlight | Cradle at x −0.625 | (the model's is the STB-1 box) | The cradle at x −0.80, clear of the larger mask |
 | Fender stowage | Four lockers on the flat fenders | (no fenders: sloped sides) | Two lockers on each side slope |
 | Mufflers | On the flat rear fenders | (mesh cylinders on the rear corners) | Muffler covers on the rear side slopes |

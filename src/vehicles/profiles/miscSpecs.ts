@@ -21,10 +21,10 @@ const communityArmor = (
   allowTurretless: false,
 } satisfies CommunityArmorOptions);
 
-// 262: measured by tools/gun-depression-sweep.mjs on the rebuilt hull (26 mm, the whole gun, every degree of yaw): the gun
-// rides up over the lamp boxes, the driver's periscopes, the side-slope lockers, the rear mufflers and the stern (the
-// family hull on the owner's STB-1 model, profiles/type74Family.ts)
-const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [8, -6], [9, -5.9], [14, -5.8], [46, -5.9], [47, -6], [142, -6], [144, -4.7], [145, -4.3], [151, -3.2], [156, -3.3], [157, -3], [159, -3], [160, -3.3], [161, -2], [162, -1.6], [164, -1.6], [168, -2.1], [169, -3.3], [178, -3.4], [180, -4.2]];
+// 262: measured by tools/gun-depression-sweep.mjs on the family hull at the owner's model's own proportions (26 mm, the
+// whole gun, every degree of yaw; profiles/type74Family.ts): -6 over the front and sides, the gun riding up over the
+// rear deck's edge, the stern's rail, clamps and tow eyes over the rear quarters
+const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [146, -6], [151, -4.7], [156, -4.4], [157, -4.1], [159, -4.1], [160, -4.2], [161, -2.8], [162, -2.4], [164, -2.4], [168, -2.9], [169, -4.1], [178, -4.4], [180, -5]];
 
 // Same authored combat row as the quarantined user-drop fallback. No external
 // model or visual builder participates in this module.
@@ -54,11 +54,14 @@ const TYPE74_SPEC = {
       shell('M393 HEP', 'HE', 105, 45, 45, 500, 730),
     ],
   },
-  dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.70 },
+  // 262 (Main's ruling): heightM is the P95 combat height the geometry gate measures on the build (the STB-1's rule too);
+  // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/type74.md)
+  dims: { hullLengthM: 6.7, overallLengthM: 9.42, widthM: 3.18, heightM: 2.83 },
   armor: communityArmor({
-    lenM: 6.7, widM: 3.18, hgtM: 2.25, turretPivot: [0, 1.42, 0.50],
-    // 262: the trunnion of the Type 74 family's mask on the owner's model (profiles/type74Family.ts), 0.257 m over the ring
-    gunPivot: [0, 0.257, 1.18], barrelLenM: 4.42, barrelRadM: 0.062,
+    // 262: the Type 74 family at the owner's model's own proportions (profiles/type74Family.ts): the ring datum 1.60 m up,
+    // the mask's trunnion 0.29 m over it; the armour seed's height is the old 2.25 m at those proportions
+    lenM: 6.7, widM: 3.18, hgtM: 2.54, turretPivot: [0, 1.60, 0.50],
+    gunPivot: [0, 0.29, 1.18], barrelLenM: 4.42, barrelRadM: 0.062,
     frontMm: 110, sideMm: 45, rearMm: 25, roofMm: 20,
     tFrontMm: 195, tSideMm: 80, tRearMm: 40, mantletMm: 195,
   }),

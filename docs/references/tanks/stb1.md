@@ -79,27 +79,35 @@ CC-BY-NC-4.0), kept as an authoring oracle only at `public/models/community-cand
 its stations were measured by rays (inside-out for the turret, outside-in for the hull in the hull's own frame, its
 4.9 degree skew to the traversed turret undone) and rebuilt from primitives in `src/vehicles/profiles/type74Family.ts`.
 
-Frame: x 0.972 (its tracks' 3.27 m to the published 3.18), y 0.86 (its 2.36 m crown to the published 2.25 m roof and
-cupola), z 0.989 and −0.074 (its 6.85 m hull to our 6.77, nose at +3.37).
+Frame: x and y 0.972 (its tracks' 3.27 m to the published 3.18; Main's 262 ruling keeps the model's own proportions,
+see "Height" below), z 0.989 and −0.074 (its 6.85 m hull to our 6.77, nose at +3.37). Until that ruling the build took
+y 0.86, which fitted its 2.36 m crown to the sources' 2.25 m with the cupola and stood the hull and turret 11% lower
+than the model.
 
-| Station | Model (program units) | Built |
+| Station | Model (program units, y 0.972) | Built |
 |---|---|---|
-| Tub | ±1.00, belly 0.37–0.42 | ±0.98 (the track corridor), belly 0.38 |
-| Sponsons | floor 1.07–1.12 over the track's top run; the outer edge at ±1.58; sides sloping 42–47 degrees to the deck edge ±1.27 | floor 1.09, edge ±1.575, 42 degrees to ±1.27; front faces at +2.40 with fender caps over the idlers |
-| Deck | 1.39–1.43, flat to the stern | 1.40 |
-| Glacis | crest +1.87 at the deck; 19 degrees to the nose's top edge (0.90, +3.35); lower plate 28 degrees to the belly at +2.55–2.65 | the same |
-| Stern | vertical plate at −3.41 from the deck to 0.76; lower plate raked forward to the belly at −3.00 | the same (STB-1); the production tank keeps its sloped plate |
+| Tub | ±1.00, belly 0.42–0.47 | ±0.98 (the track corridor), belly 0.43 |
+| Sponsons | floor 1.21–1.27 over the track's top run; the outer edge at ±1.58; sides sloping 45–50 degrees to the deck edge ±1.27 | floor 1.23, edge ±1.575, 46 degrees to ±1.27; front faces at +2.40 with fender caps over the idlers |
+| Deck | 1.57–1.62, flat to the stern | 1.58 |
+| Glacis | crest +1.87 at the deck; 21 degrees to the nose's top edge (1.02, +3.35); lower plate 31 degrees to the belly at +2.55–2.65 | crest +1.87, 22 degrees to the nose's top edge (0.99, +3.35), the lower plate 31 degrees |
+| Stern | vertical plate at −3.41 from the deck to 0.86; lower plate raked forward to the belly at −3.00 | the same (STB-1); the production tank keeps its sloped plate |
 | Rear sponsons | mesh-topped boxes flush with the deck, outer face at ±1.53, z −1.25..−2.55; mesh cylinders behind them | the same (STB-1) |
-| Running gear | five road wheels 0.79 m on a 1.01 m pitch at +2.00/+0.98/0.00/−1.01/−2.05; idler +3.02, sprocket −2.92 (both raised) | five 0.74 m wheels at +2.00/+0.99/0.00/−1.01/−2.02; idler (+3.00, 0.66), sprocket (−2.95, 0.70) |
-| Turret | ring datum 1.41 at z +0.49; 18-station plan ±1.33, +1.49/−2.12; full belt at 0.07–0.24, sides rolling in above; crown flat at 0.625–0.634; bustle undercut from 0.6 of the plan at the foot | the same plan and ten rings (refined to 36 × 19); pivot (0, 1.42, 0.50) |
-| Gun | bore 1.677 (0.257 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.257, 1.18) in the turret frame; tube 4.10 (STB-1), 3.91 (Type 74) |
-| Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | a 0.33 m drum in a 0.475 m channel and a domed oval face, its rim, two ports, a thick collar |
-| Searchlight | a six-lens box on the mask's left (x −0.14..−0.73), its foot at the bore, its top level with the crown | the same, riding the gun |
+| Running gear | five road wheels 0.84 m (centres 0.49) on a 1.01 m pitch at +2.00/+0.98/0.00/−1.01/−2.05; idler +3.02, sprocket −2.92 (both raised) | five 0.84 m wheels at +2.00/+0.99/0.00/−1.01/−2.02; idler (+3.00, 0.75), sprocket (−2.95, 0.79) |
+| Turret | ring datum 1.59 at z +0.49; 18-station plan ±1.33, +1.49/−2.12; full belt at 0.08–0.27, sides rolling in above; crown flat at 0.71–0.72; bustle undercut from 0.6 of the plan at the foot | the same plan and ten rings (refined to 36 × 19); pivot (0, 1.60, 0.50), crown 2.31 |
+| Gun | bore 1.90 (0.29 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.29, 1.18) in the turret frame; tube 4.10 (STB-1), 3.91 (Type 74) |
+| Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | a 0.373 m drum in a 0.475 m channel and a domed oval face, its rim, two ports, a thick collar |
+| Searchlight | a six-lens box beside the mask at x +0.14..+0.73 in the render frame, its foot at the bore, its top level with the crown | the same side (x +0.165..+0.725), riding the gun |
 
-Handedness: the model is in glTF chirality (its searchlight and commander's station on the vehicle's left and right);
-both tanks author their handed kit in the program frame (+x = the vehicle's right), so head-on beside the model they
-read mirrored. Per the PROGRAM-FRAME CHIRALITY LAW (`docs/BUILD-STANDARD.md` §A) this is not a defect; a fleet x-flip
-is the owner's call.
+Handedness (Main's 262 ruling: "put each kit item on the side the model shows", a per-tank placement, not a fleet
+x-flip): the model is in glTF chirality, and the first 262 build carried its kit over into the program frame
+(+x = the vehicle's right), so head-on beside the model the STB-1 read mirrored. The STB-1's handed kit now stands where
+the model's does in the render frame, checked on depth renders of the model in the gate's registration
+(`~/cot-lanes/stb1-type74-evidence/hand/`): the commander's raised station and remote gun, the gunner's sight head and
+its mask port, and the glacis' hooded lamp at −x; the loader's hatch, the round roof vent, the raised driver's hatch,
+the searchlight box and the coaxial gun's port at +x; the stern door, its extinguisher handle and the tail lamps (two at
+−x, one at +x) likewise. The crew follow their hatches (`internalLayoutRegistry.ts` `stb1ModelSides`; the driver's and
+the commander's seeds cross in `japan.ts`). The production Type 74's kit comes from its photographs and keeps the
+program frame (BUILD-STANDARD §A).
 
 Conflicts between the model and the sources, settled for the model (the owner's instruction):
 

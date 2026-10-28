@@ -139,15 +139,18 @@ Object.assign(type10_tk_x.gun.shells[0], {
 });
 scaleNonExternalArmor(type10_tk_x, 1.12);
 
-// 262: the STB-1's own curve, measured on its hull on the owner's model (tools/gun-depression-sweep.mjs, as the Type 74's)
-const STB1_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [3, -6], [6, -5.8], [30, -5.8], [32, -6], [144, -6], [146, -4.8], [147, -4.3], [148, -3.9], [154, -2.5], [157, -2.4], [160, -2.4], [161, -2.5], [163, -1.5], [165, -1.5], [166, -1.8], [167, -2.9], [170, -3.1], [175, -3], [180, -3]];
+// 262: the STB-1's own curve, measured on its hull at the owner's model's own proportions (tools/gun-depression-sweep.mjs,
+// as the Type 74's): -6 over the front and sides, the gun riding up over the rear deck's kit and the stern
+const STB1_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [145, -6], [148, -5], [152, -4.1], [158, -3.5], [160, -3.5], [161, -3.6], [162, -2.7], [163, -2.2], [165, -2.2], [166, -2.5], [167, -3.6], [172, -3.9], [180, -3.9]];
 
 const JAPAN_SPECS = {
   stb1: variant('stb1', 'type74', {
     name: 'STB-1', number: 'STB-1', scheme: 'solid',
     base: '#3c4937', weather: '#59624d', patches: ['#273126', '#59604b', '#77715b'],
     camoScale: 0.46,
-    dims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.25 },
+    // 262 (Main's ruling): heightM is the P95 combat height the geometry gate measures on the build, the Type 74's rule;
+    // at the owner's model's proportions it overrides the sources' 2.25 m with the cupola (docs/references/tanks/stb1.md)
+    dims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.73 },
     stats: { hp: 1750, enginePowerHp: 750, weightTons: 37.9, topSpeedKmh: 53,
       reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27, gunPitchByYawDeg: STB1_GUN_PITCH_BY_YAW_DEG },
     reloadS: 7.2, shellName: 'Type 93 APFSDS', armorFactor: 1.03,
@@ -197,6 +200,16 @@ JAPAN_SPECS.type10b.armor.turretPlates.push(
   reactivePlate('type10b_turret_era_R', 'right'),
   reactivePlate('type10b_turret_era_L', 'left'),
 );
+
+// 262 (Main: the STB-1's kit stands on the sides the owner's model shows it, profiles/type74Family.ts): its driver's
+// hatch and commander's station sit across the centreline from the Type 74's, so their crew seeds cross with them
+// (internalLayoutRegistry.ts stb1ModelSides); its gunner and loader seeds already sit on the model's sides.
+for (const box of JAPAN_SPECS.stb1.armor.crew) {
+  if (box.crew !== 'driver' && box.crew !== 'commander') continue;
+  const { min, max } = box;
+  box.min = [-max[0], min[1], min[2]];
+  box.max = [-min[0], max[1], max[2]];
+}
 
 registerFleetSpecs(registries, JAPAN_IDS, JAPAN_SPECS);
 
