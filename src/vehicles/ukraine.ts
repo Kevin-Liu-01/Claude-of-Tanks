@@ -106,8 +106,10 @@ const UKRAINE_SPECS = {
     camoScale: 0.50,
     // the build's measured extents (geometry-gate) without external stowage, as published dimensions are given: the
     // stern drums excluded; the skirt Duplet course and the roof stations included (the published 9.72 m / 3.78 m /
-    // 2.2 m are the bare tank's: bm_oplot_m.md)
-    dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.40, heightM: 2.96 },
+    // 2.2 m are the bare tank's: bm_oplot_m.md). The silhouette hull length is the hash-pinned oracle's own P95 body
+    // extent as the geometry gate measures it (its stepped stern's thin overhang falls under the band rule), never the
+    // candidate's.
+    dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.40, heightM: 2.96, silhouetteHullLengthM: 6.825 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
