@@ -39,7 +39,7 @@ import { iconUrl, tankThumbUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
-import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { createPickerMenu, panelRoom, type PickerMenu } from '../ui/components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
@@ -1238,20 +1238,20 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number; span?: boolean } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  // (under the bar's rule, which hangs 1 px below it: publicNav's .public-nav::after; the 261 critic's 1 px step)
+  // on the bar's rule, which hangs 1 px below it (publicNav.css .public-nav::after): the menu's ring lies on that rule,
+  // opaque over the dossier's picture, which runs under it
   const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
   if (!panel) return { top, bottom: innerHeight };
   // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
   // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
-  // (its inner box: inside its rule and its scrollbar)
-  const box = panel.getBoundingClientRect();
-  const left = box.left + panel.clientLeft, inTop = box.top + panel.clientTop;
+  const room = panelRoom(panel);
   const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
-  return { top: scrolls ? Math.max(top, inTop) : top, bottom: scrolls ? Math.min(innerHeight, inTop + panel.clientHeight) : innerHeight,
-    left, right: left + panel.clientWidth };
+  // spanned at every width: at 2560 the dossier widens past a column (the 261 critic: a trigger-wide menu cut its text)
+  return { top: scrolls ? Math.max(top, room.top) : top, bottom: scrolls ? room.bottom : innerHeight, left: room.left, right: room.right,
+    span: true };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */

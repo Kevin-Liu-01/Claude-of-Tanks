@@ -37,7 +37,7 @@ import type { EquipmentItem, EquipmentLock } from '../game/equipment.ts';
 import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
-import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -1278,13 +1278,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // its room is the readout column, side to side and top to foot: no stat label shows beside it and it never covers
       // the battle card (the r25 critic: "Da", "Re", "Hi" cut at its left edge; at 900 it ran past the column's edge); a
       // column no wider than a panel is spanned to its foot (pickerMenu.ts placeMenu), so no readout row shows cut under it
+      // (inside the column's rule, panelRoom: the menu's ring lies on it, the 261 critic's 1 px step at every size)
       bounds: () => {
-        const column = statsEl.getBoundingClientRect();
-        return column.width ? { top: column.top, bottom: column.bottom, left: column.left, right: column.right } : null;
+        const room = panelRoom(statsEl);
+        return room.right > room.left ? room : null;
       },
-      // a flag's chip names every nation under it, as the Gallery's versus list does ("Russia / Soviet Union")
+      // a flag's chip names every nation of the fleet under it, as the Gallery's versus list does ("Russia / Soviet
+      // Union"), whichever of them this group's peers hold (the 261 critic: "Russia" here, "Russia / Soviet Union" there)
       filters: nations.length > 1 ? nations.map((code) => ({ id: code,
-        label: [...new Set(peers.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
+        label: [...new Set(specs.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
       onChoose: (item) => {
         rivalChoice = item.id;
         emit('ui:click', {});

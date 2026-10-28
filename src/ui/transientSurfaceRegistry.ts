@@ -33,7 +33,7 @@ interface TransientSurfaceRow {
 
 const GARAGE = 'src/ui/garage.ts';
 const menuBox = (id: string): string => `.cot-c-menu__pop:has([data-picker="${id}"])`;
-const RIVAL_OPEN = ['?[data-compare][aria-pressed="false"]', '[data-picker-menu="garage-rival"]'] as const;
+const RIVAL_OPEN = ['?[data-compare="off"]', '[data-picker-menu="garage-rival"]'] as const;
 const SETTINGS_OPEN = ['.cot-settings-slot button'] as const;
 const DEPLOY_OPEN = ['.cot-battle-mode'] as const;
 
