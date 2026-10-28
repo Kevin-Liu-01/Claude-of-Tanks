@@ -1536,6 +1536,10 @@ const SHOW_UPRIGHT_DIST_MAX_M = 19;
 const SHOW_UPRIGHT_HERO_FILL = 0.7;    // the turntable (about 1.4 times the tank) stays on a phone's screen
 const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
 const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane
+// The framing at rest keeps the eye at a person's height over the pedestal plane: a stage high in a short upright window
+// (an iPad's Split View half, 601x702) lifted the pitch only to the guard's 0.7 m, and from knee height 19 m out the frame
+// lost the tank and the bay's back wall (the iPad sweep g4/g5); the pitch lifts on to this (a drag keeps the guard).
+const SHOW_REST_EYE_M = 1.6;
 const SHOW_SOLVE_ITERS = 9;
 // The camera blends onto a new framing (another hero, a moved stage rect: a panel opening, a resize) on --dur-base's time
 // constant instead of jumping to it; a reset, and a reader who asked for reduced motion, take it at once.
@@ -1882,7 +1886,7 @@ export function createShowroomOrbit(
   function solveHero(): number {
     liftPitch = 0;
     let solved = solveHeroAtPitch();
-    const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
+    const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_REST_EYE_M;
     const eyeY = (s: ShowroomSolve): number => {
       basis(heroYaw, heroPitchNow());
       return _sbCenter.y + _sbC.y * s.dist + _sbU.y * s.sy;
