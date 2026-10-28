@@ -66,6 +66,13 @@ try {
   assert.ok(screen.root === pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
   assert.equal(screen.root.classList.contains('leaving'), false);
   assert.equal(selectors.get('.mapname').textContent, 'Verdant');
+  // loading states (2026-10-27): a labelled region whose stage line and countdown speak, never the whole card at once
+  assert.equal(screen.root.getAttribute('role'), 'region', 'the card is a labelled region, not one status over every row');
+  assert.match(screen.root.innerHTML, /<span class="st" role="status">/, 'its stage line is the status');
+  assert.match(screen.root.innerHTML, /<div class="count" aria-live="polite">/, 'and its countdown speaks');
+  assert.doesNotMatch(screen.root.innerHTML, /class="foot" aria-live/, 'the percent is the progressbar\'s value, never read aloud');
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), 'true', 'the sheets are busy while they fill');
+  assert.equal(screen.root.getAttribute('aria-busy'), undefined, 'the card is never busy: that would hold its stage line back');
   // the direction's five steps (10-battle-load .prog .reg): each fills its fifth of the load
   const steps = [1, 2, 3, 4, 5].map((n) => selectors.get(`.fbar i:nth-child(${n}) b`));
   const fills = () => steps.map((step) => step.style.transform).join(' ');
@@ -98,6 +105,10 @@ try {
     assert.equal(fills(), scales(share, share, share, share, share));
     assert.equal(progress.getAttribute('aria-valuenow'), percent);
   }
+  screen.countdown(3);
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), undefined, 'loaded: the sheets are whole once the countdown runs');
+  screen.show(info);
+  assert.equal(selectors.get('.teams').getAttribute('aria-busy'), 'true', 'a restaged load is busy again');
   screen.progress(1, 'Ready');
   const leaving = screen.hide();
   assert.equal(screen.visible, false);

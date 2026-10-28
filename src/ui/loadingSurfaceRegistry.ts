@@ -87,7 +87,7 @@ export const LOADING_SURFACES = Object.freeze({
   'settings': { page: 'game', path: '/', lane: 'premiere-site', owner: 'src/ui/settings.ts', box: '.cot-set-panel', modal: true, ready: '.cot-set-panel [role="tab"]',
     open: ['.cot-settings-slot button'] },
   // the battle last: its entry from Deploy, its load card the loading state, then its end
-  'battle-entry': { page: 'game', path: '/', lane: 'boot-loading', owner: 'src/ui/battleLoad.ts', box: '.cot-bl', modal: true, ready: 'gone:.cot-bl',
+  'battle-entry': { page: 'game', path: '/', lane: 'premiere-battle', owner: 'src/ui/battleLoad.ts', box: '.cot-bl', modal: true, ready: 'gone:.cot-bl',
     open: [...DEPLOY_OPEN, '[data-battle-launch]'], timeoutMs: 900_000, stays: true },
   'end-screen': { page: 'game', path: '/', lane: 'premiere-battle', owner: 'src/ui/endScreen.ts', box: '.cot-es', modal: true, ready: 'loaded:.cot-es',
     debug: 'window.__DEBUG.slayEnemies()', timeoutMs: 120_000, offline: false },
