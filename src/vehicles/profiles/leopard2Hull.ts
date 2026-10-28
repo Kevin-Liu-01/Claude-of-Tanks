@@ -49,7 +49,7 @@ function hull(P: TankBuilderPort): void {
   })));
   for (const side of [-1, 1]) {
     // sponsons from the tub's wall out over the track, flat-floored at 1.36, their tops the deck line
-    const rows = hullStations(-3.70, 3.30).map((z): SolidSection => {
+    const rows = hullStations(-3.80, 3.30).map((z): SolidSection => {
       const top = Math.max(lineAt(H.deck, z), H.sponsonFloorY + 0.06);
       const ring: SectionPoint[] = [[tw - 0.02, H.sponsonFloorY], [H.sponsonHalfWidthM, H.sponsonFloorY],
         [H.sponsonHalfWidthM, top - 0.025], [H.sponsonHalfWidthM - 0.025, top], [tw - 0.02, top]];
@@ -115,7 +115,7 @@ function glacisTilt(z: number): number {
 /**
  * The bow's tow eyes, the armoured headlight pods with their guards and the splash board on the glacis, the driver's
  * hatch and periscopes on its slope; the engine deck's round fan covers, radiator louvres, access plates and exhaust
- * grilles, the lifting eyes; the stern's exhaust band, tail lights, tow hooks, convoy light and rack.
+ * grilles, the lifting eyes; the stern's exhaust band, tail lights, tow hooks and crossed tow cables, convoy light and rack.
  */
 function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   const { box, cylX, cylY, torus } = KIT;
@@ -136,10 +136,11 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   P.add('hullDetail', cylY(0.31, 0.32, 0.04, P.q ? 24 : 14), -0.55, hy + 0.012, hz, tilt, 0, 0);
   P.addHatch('hullHatch', cylY(0.26, 0.26, 0.03, P.q ? 20 : 12), -0.55, hy + 0.045, hz, tilt, 0, 0);
   P.add('hullDark', box(0.24, 0.02, 0.03), -0.55, hy + 0.068, hz - 0.12, tilt, 0, 0);
-  for (const dx of [-0.16, 0, 0.16]) {
-    const z = 2.38, y = lineAt(H.deck, z);
-    P.add('hullDetail', box(0.12, 0.06, 0.09), -0.55 + dx, y + 0.03, z, glacisTilt(z), 0, 0);
-    P.add('hullGlass', box(0.09, 0.025, 0.012), -0.55 + dx, y + 0.045, z + 0.046, glacisTilt(z), 0, 0);
+  P.add('hullDetail', box(0.12, 0.07, 0.10), -0.55, hy + 0.05, hz - 0.30, tilt, 0, 0);                 // hinge boss
+  for (const dx of [-0.17, 0, 0.17]) {
+    const z = 2.40, y = lineAt(H.deck, z);
+    P.add('hullDetail', box(0.15, 0.08, 0.10), -0.55 + dx, y + 0.04, z, glacisTilt(z), 0, 0);
+    P.add('hullGlass', box(0.11, 0.03, 0.012), -0.55 + dx, y + 0.055, z + 0.051, glacisTilt(z), 0, 0);
   }
   // the engine deck: the two round cooling-fan covers either side of a bolted access plate, the radiator louvres
   // outboard of them, two bolted access plates ahead on the deck's slope
@@ -183,6 +184,13 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   for (const dx of [-0.55, 0.55]) {
     P.add('hullDetail', box(0.03, 0.03, 0.34), dx, 1.82, -3.97);
     P.add('hullDetail', box(0.03, 0.13, 0.03), dx, 1.765, -4.14);
+    // a stay from the rack's corner down to the rear plate
+    P.add('hullDetail', box(0.025, 0.025, 0.42), dx, 1.585, -3.985, -0.86, 0, 0);
+  }
+  // the two tow cables crossed on the lower rear plate, their eyes on the tow hooks
+  for (const side of [-1, 1]) {
+    KIT.towCable(P, [[side * 0.80, 0.90, -3.865], [side * 0.36, 1.00, -3.84], [0, 1.06, -3.835], [-side * 0.62, 1.14, -3.835],
+      [-side * 1.12, 1.20, -3.84]], 0.0175);
   }
 }
 
