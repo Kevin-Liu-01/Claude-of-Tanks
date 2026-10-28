@@ -1,11 +1,12 @@
-// Challenger 1 Mk 2 / Mk 3 — release 262 rebuild from historical references (owner 2026-10-27: "redesign the ...
+// Challenger 1 Mk 2 / Granby — release 262 rebuild from historical references (owner 2026-10-27: "redesign the ...
 // challenger 1 mk 2 ... turrets and hulls ... based on proper historical referrences so they will no longer look so
 // chungus"). Hull, running gear, turret and L11A5 are new first-party geometry authored from the published dimensions
 // and measured drawings recorded in docs/references/tanks/challenger1_mk2.md: hull 8.33 m, overall 11.55 m, 3.52 m
 // over the skirts, 2.50 m to the turret roof, six Hydrogas road wheels a side on a 1.02 m pitch, rear drive, a 2.56 m
 // slab-sided Chobham turret (77 % of the hull) with its long wedge front and bustle, the TOGS barbette and the
 // commander's No. 15 cupola on the vehicle's right (-x), the loader's hatch on the left. The two marks share the
-// hull and turret; the Mk 3 carries the Op Granby kit (side applique, nose package, rear drums) its earlier build had.
+// hull and turret; the Granby variant carries the Op Granby kit (side applique, nose package, rear drums). The Mk 3
+// itself keeps its supplied-file build (challenger1X.ts; owner 2026-10-27: "the challenger mk 3 was fine").
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -62,9 +63,10 @@ function glacisKit(P: TankBuilderPort): void {
   // Driver's hatch at the glacis head (centre line) with his periscope, the splash board across the glacis and the
   // tow points on the nose plate.
   P.addHatch('hullDetail', cylY(.30, .31, .04, P.q ? 24 : 14), 0, 1.60, 2.30);
-  P.addEquipment('hullDark', box(.20, .06, .07), 0, 1.65, 2.62);
-  P.addModuleVisual('optics', 'hullGlass', box(.16, .03, .012), 0, 1.655, 2.66);
-  P.addEquipment('hullDetail', box(1.90, .05, .07), 0, 1.545, 2.86, .33, 0, 0);
+  // (the periscope on the roof at the glacis head, the splash board's foot on the 19-degree glacis: 1.474 m at z 2.86)
+  P.addEquipment('hullDark', box(.20, .06, .07), 0, 1.61, 2.50);
+  P.addModuleVisual('optics', 'hullGlass', box(.16, .03, .012), 0, 1.615, 2.538);
+  P.addEquipment('hullDetail', box(1.90, .07, .05), 0, 1.505, 2.86, .33, 0, 0);
   for (const side of [-1, 1]) {
     for (const x of [.42, .74]) {
       P.addEquipment('hullDetail', box(.13, .14, .12), side * x, .94, 4.10, -.95, 0, 0);
@@ -128,7 +130,7 @@ function skirts(P: TankBuilderPort, side: number): void {
   for (const z of [-2.70, -1.75, -.80, .15, 1.10, 2.05, 2.90]) P.addEquipment('hullDark', box(.016, .05, .05), side * (xo + .006), SKIRT_TOP - .04, z);
 }
 
-// Op Granby (Mk 3): bolted Chobham applique over the skirts, the nose package and the two jettisonable fuel drums.
+// Op Granby (the Granby variant): bolted Chobham applique over the skirts, the nose package and the two jettisonable fuel drums.
 function granbyKit(P: TankBuilderPort): void {
   const { innerX: xi, outerX: xo, low: lo, high: hi, rear, front } = CR1_GRANBY_APPLIQUE;
   for (const side of [-1, 1]) {
@@ -164,7 +166,7 @@ function granbyKit(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     const x = side * .90, y = 1.36, z = -4.48;
     P.addEquipment('hullFittingPaint', cylX(.29, .78, P.q ? 28 : 16), x, y, z);
-    for (const dx of [-.25, .25]) P.addEquipment('hullDark', torus(.296, .012, 24, 6).rotateY(Math.PI / 2), x + dx, y, z);
+    for (const dx of [-.25, .25]) P.addEquipment('hullDark', torus(.296, .012, 24, 6).rotateZ(Math.PI / 2), x + dx, y, z);
     for (const dx of [-.28, .28]) {
       P.addEquipment('hullDetail', box(.06, .06, .34), x + dx, y - .30, -4.33);
       P.addEquipment('hullDetail', box(.08, .42, .04), x + dx, y - .12, -4.185);
@@ -211,7 +213,7 @@ export function buildChallenger1Historic(P: TankBuilderPort, mark: Challenger1Ma
   glacisKit(P);
   engineDeck(P);
   for (const side of [-1, 1]) skirts(P, side);
-  if (mark === 'mk3') granbyKit(P);
+  if (mark === 'granby') granbyKit(P);
   runningGear(P);
   if (mark === 'mk1') addChallenger1SleekTurret(P);
   else addChallenger1HistoricTurret(P, mark);

@@ -8,7 +8,7 @@
   (2026-10-27); mid-lane: "really lock in manntlets and stuff and turret boxes and stuff".
 - Implementation: new first-party hull, running gear, turret and L11A5
   (`src/vehicles/profiles/challenger1Historic.ts`, `challenger1HistoricTurret.ts`, datums in
-  `challenger1HistoricFrame.ts`), shared with the Mk 3 ([challenger1_mk3.md](challenger1_mk3.md)). The oracle-fitted
+  `challenger1HistoricFrame.ts`), shared with the Granby variant ([challenger1_granby.md](challenger1_granby.md)). The oracle-fitted
   build (stage-by-stage slab work against the recovered print, finished by a 1.12 x 0.84 x 1.0 turret squash) is
   retired; its history is [challenger1.md](challenger1.md).
 - Qualification: see the lane's READY report (receipts, release gate, critics). The registered geometry-gate oracle

@@ -1,7 +1,7 @@
 // Challenger 1 datums (release 262), from the published dimensions and the measured drawings in
 // docs/references/tanks/challenger1_mk2.md. Vehicle frame: ground y = 0, hull nose z = +4.165, +x the vehicle's left.
-/** mk2 and mk3 share the historical turret (the mk3 in its Op Granby fit); mk1 carries the sleek turret on the same hull. */
-export type Challenger1Mark = 'mk1' | 'mk2' | 'mk3';
+/** mk2 and granby share the historical turret (granby in its Op Granby fit); mk1 carries the sleek turret on the same hull. */
+export type Challenger1Mark = 'mk1' | 'mk2' | 'granby';
 type Point = readonly [number, number, number];
 
 export const CR1_HISTORIC = Object.freeze({
@@ -26,7 +26,7 @@ export const CR1_HISTORIC = Object.freeze({
   }),
 });
 
-/** Op Granby applique cassettes outside the skirts (the Mk 3; its armour zones read them: sourceXWesternAuxArmor.ts). */
+/** Op Granby applique cassettes outside the skirts (the Granby variant; drawn, not yet charged as armour zones). */
 export const CR1_GRANBY_APPLIQUE = Object.freeze({
   innerX: CR1_HISTORIC.hull.skirtOuterX, outerX: CR1_HISTORIC.hull.skirtOuterX + .24, low: .36, high: 1.44, rear: -2.58, front: 3.30,
 });

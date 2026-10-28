@@ -1,4 +1,4 @@
-// 262 (owner on the Challenger 1 Mk 2/Mk 3 and Vickers Mk 1 rebuilds: "based on proper historical referrences so they
+// 262 (owner on the Challenger 1 Mk 2 (with its Mk 1 and Granby variants) and Vickers Mk 1 rebuilds: "based on proper historical referrences so they
 // will no longer look so chungus"): each main gun leaves its turret through a real port and stays in it over its whole
 // published pitch range. The Challenger 1's L11A5 runs in the slot between its nose plates behind a drum shield and a
 // canvas boot; the Vickers Mk 1's L7A1 stands in a cast mantlet whose back is an arc about the trunnion. At every 5
@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { TURRET_GUN_PORT_KEEP_M, turretGunPortProbe } from './gunHullClearance.test-support.mjs';
 
-for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'vickers_mk1']) {
+for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'vickers_mk1']) {
   const probe = turretGunPortProbe(id);
   try {
     assert.ok(probe.pitchesDeg[0] <= -7 && probe.pitchesDeg.at(-1) >= 20, `${id}: the sweep spans the published -7/-10 to +20 degrees`);

@@ -266,6 +266,9 @@ const SPECS: FleetTankSpec[] = [
   // Release 262 (owner 2026-10-27, "so we can have annother mk"): the Mk 1, the earlier design's sleek turret on the
   // rebuilt hull, on the Mk 2's combat row.
   make('challenger2', 'challenger1_mk1', 'Challenger 1 Mk 1', 'UK', challenger1Row()),
+  // Release 262 (owner 2026-10-27: the Mk 3 stays as it was, "but we can use the one we made for it into another variant"):
+  // the 1990-91 Op Granby fit (side applique, nose package, rear drums) on the rebuilt hull, on the Mk 2's combat row.
+  make('challenger2', 'challenger1_granby', 'Challenger 1 Granby', 'UK', challenger1Row()),
   make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },

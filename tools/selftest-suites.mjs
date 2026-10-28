@@ -579,6 +579,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/arieteX.selftest.mjs',
     'src/vehicles/profiles/arieteXSupplied.selftest.mjs',
     'src/vehicles/profiles/arieteXSuppliedRearTow.selftest.mjs',
+    'src/vehicles/profiles/challenger1XSupplied.selftest.mjs',
+    'src/vehicles/profiles/challenger1XSourceHood.selftest.mjs',
     'src/vehicles/profiles/strv122X.selftest.mjs',
     'src/vehicles/profiles/strv122XSupplied.selftest.mjs',
     'src/vehicles/profiles/strv122XSuppliedGear.selftest.mjs',

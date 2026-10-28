@@ -9,7 +9,7 @@ export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.fre
   t90_1992: 1.05, t90a_burlak_proto: 1.05, t90m_proryv: 1.05, t90ms_2011: 1.05,
   k21: .90, kf41_lynx: .90, type100: .90, lrmv_lynx: .90,
   borsuk: .90, ajax: .90, ares_apc: .90, griffin50mm: .90,
-  griffin_viper: .90, upior: 1.10,
+  griffin_viper: .90, challenger1_mk3: 1.10, upior: 1.10,
 });
 /** Additional longitudinal chassis change, before the uniform installed scale.
  * Turret-local armor, weapon stations and ring position retain their dimensions. */

@@ -224,6 +224,8 @@ export const CHALLENGER_PROFILES = {
   // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
   // the Challenger 1 Mk 2 is the historical rebuild it shares with the Mk 3 (challenger1Historic.ts).
   challenger1_mk2: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'mk2') },
+  // release 262 (owner: the rebuild made for the Mk 3 becomes its own variant): the Op Granby fit on the rebuilt hull
+  challenger1_granby: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'granby') },
   // Release 262 (owner 2026-10-27: "i want a version like the onne i told u to modify with a very sleek turret and good
   // looking hull. so we can have annother mk"): the earlier Challenger 1 design's turret, drawn sleek, on the rebuilt hull.
   challenger1_mk1: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'mk1') },

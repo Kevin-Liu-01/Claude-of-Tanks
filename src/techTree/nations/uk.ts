@@ -38,6 +38,8 @@ export const UK_TREE: NationTree = Object.freeze({
       id: 'challenger1_mk3', tier: 8, line: 'challenger', lane: 2, parents: ['challenger1_mk2', 'fv4034'],
       slot: 'line',
     }),
+    // release 262: the Op Granby fit on the rebuilt Mk 2
+    node({ id: 'challenger1_granby', tier: 8, line: 'challenger', lane: 4, parents: ['challenger1_mk2'], slot: 'line' }),
     node({ id: 'challenger2', tier: 9, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
     node({ id: 'challenger2e', tier: 9, line: 'challenger', lane: 2, parents: ['challenger2'], slot: 'line' }),
     node({ id: 'challenger3_proto', tier: 8, line: 'challenger', lane: 3, parents: ['challenger1_mk3'], slot: 'line' }),

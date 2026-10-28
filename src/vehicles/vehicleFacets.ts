@@ -176,7 +176,7 @@ export const CLASS_MECHANICAL_ROLES: Readonly<Record<VehicleClass, readonly stri
 const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Object.freeze({
   mbt: Object.freeze([
     'abramsx', 'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
-    'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3',
+    'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'challenger1_mk3',
     'challenger2', 'challenger2e', 'challenger3', 'challenger3_proto', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'k1a1', 'k1e1', 'k2_black_panther', 'k2b', 'kf51_evo',
     'kf51_panther', 'kf51_u', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a5',
@@ -264,7 +264,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   // Doctrine precision, plus the AFT-10 missile tank destroyer.
   sniper: Object.freeze([
-    'aft10', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger2e', 'challenger3',
+    'aft10', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'challenger1_mk3', 'challenger2', 'challenger2e', 'challenger3',
     'challenger3_proto', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'fv4034', 'strv103a',
     'strv103b', 'strv121', 'strv122', 'strv81', 'ua_challenger2', 'udes03',
   ]),
@@ -286,7 +286,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bmp2', 'bmp3',
     'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete', 'centurion3', 'centurion5_2',
-    'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'chieftain3', 'chieftain5',
+    'challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'challenger1_mk3', 'challenger2', 'challenger3', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9040c', 'cv90_mk4', 'dardo', 'fv510', 'fv510_milan',
     'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2', 'leclerc_s1', 'leclerc_s2',
     'leclerc_sxxi', 'leclerc_xlr', 'leo1a5', 'leo2_improved', 'leo2_revolution', 'leo2a2', 'leo2a3', 'leo2a4',
