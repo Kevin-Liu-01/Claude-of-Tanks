@@ -187,6 +187,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
+    // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
+    // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis
+    'src/vehicles/oplotBMGun.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -287,6 +290,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
     'src/vehicles/fittingSnap.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
+    // 262 (Main's ruling on the owner's Oplot kit): each set-aside owner-kit part is one rigid group under its rig
+    'tools/owner-kit-targets.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',
@@ -516,6 +521,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/profiles/aresApcX.selftest.mjs',
     'tools/ares-apc-x-reference.selftest.mjs',
+    // 262: the T-84BM Oplot-M's registered comparison oracle
+    'tools/oplot-bm-x-reference.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
     'src/vehicles/guidedLauncherTubes.selftest.mjs',
@@ -719,7 +726,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
     'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
-    'src/vehicles/profiles/oplotFenderBridge.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',

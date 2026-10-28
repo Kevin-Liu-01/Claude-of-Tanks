@@ -31,6 +31,12 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870',
     fused:true,turret:[0,2.10,-1.15],gun:[.05,2.38,-.13],
   },
+  // T-84BM Oplot-M (release 262): the owner-supplied 42manako print baked by source-x-oracle ([-x, y, -z], uniform 4.10,
+  // tracks centred, ground y 0, hull centred); the gun is fused into TUR, so the whole source is scored at rest.
+  bm_oplot_m: {
+    sha256:'d2adad43bba88a867f743aeeacf969587e7be0c2bbcaeee0259218f3145ab22a',
+    fused:true,turret:[-.012,1.4965,.185],gun:[-.012,1.808,1.518],
+  },
   ares_apc: {
     sha256:'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1',
     fused:true,turret:[-.3835,2.2502,.5027],gun:[-.4265,3.078,.397],

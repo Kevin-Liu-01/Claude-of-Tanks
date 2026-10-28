@@ -104,7 +104,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "t80u_kursk": {"turretPivot":[0,1.44,0],"gunPivot":[0,0.26,1.05],"lengthM":5.095},
   "t80uk": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2135,1.3481],"lengthM":4.5828,"radiusM":0.1093},
   "t84": {"turretPivot":[0.008,1.535,0.114315],"gunPivot":[0,0.35,1.02],"lengthM":4.26,"radiusM":0.1269},
-  "t84bm_oplot_m": {"turretPivot":[0,1.562,-0.33],"gunPivot":[0,0.3,1.9],"lengthM":4.58,"radiusM":0.101},
+  "t84bm_oplot_m": {"turretPivot":[-0.0119925,1.4965,0.1850125],"gunPivot":[0,0.3115,1.333],"lengthM":5.043,"radiusM":0.1107},
   "t90_1992": {"turretPivot":[0,1.5435,0],"gunPivot":[0,0.3045,1.0815],"lengthM":5.334},
   "t90a_2004": {"turretPivot":[0,1.335,-0.06],"gunPivot":[0,0.2396,0.825],"lengthM":4.92},
   "t90a_2006": {"turretPivot":[0,1.575,-0.7875],"gunPivot":[0,0.252,1.1025],"lengthM":5.586},

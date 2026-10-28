@@ -9,7 +9,7 @@ import type { TreeTier } from './model.ts';
 
 const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   abramsx: 10, aft10: 3, ajax: 5, amx10p: 3, amx10p_25: 4, amx30: 1, amx30b: 1, amx30b2: 1, amx40: 3, amx40_proto: 3,
-  amx56: 9, ares_apc: 2, bmp2: 1, bmp3: 2, bmp3_rok: 3, bmp3m_dragun125: 10, bmpt_t90: 6, bmpt_terminator2: 5,
+  amx56: 9, ares_apc: 2, bm_oplot_m: 10, bm_oplot_t: 10, bmp2: 1, bmp3: 2, bmp3_rok: 3, bmp3m_dragun125: 10, bmpt_t90: 6, bmpt_terminator2: 5,
   borsuk: 5, bwp1: 3, c1_ariete: 6, c1_ariete_preserie: 4, c1_ariete_proto_serie1: 6, c2_ariete: 7,
   c2_ariete_proto: 7, carro45t: 2, christian2: 8, centurion3: 2, centurion5_2: 3, challenger1_mk1: 8, challenger1_granby: 8, challenger1_mk2: 8, challenger1_mk3: 8,
   challenger2: 9, challenger2e: 9, challenger3: 10, challenger3_proto: 8, chieftain3: 2, chieftain5: 2,
@@ -30,7 +30,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   t72_rys: 5, t72b3: 6, t72b3_bastion_m: 8, t72b3_qilin: 7, t72b3_sich: 7, t72b3_zubr: 6, t72b3_zubr_ii: 6,
   t72b3m_2016: 6, t72b3m_2022: 6, t72b3m_bulat_m: 8, t72b3m_hetman: 7, t72b3m_hetman_ii: 7, t72b3m_kunlun: 7,
   t72b3m_wilk: 7, t72b_1987: 3, t72bu: 3, t72bu_1989: 3, t72m1_jaguar: 4, t80: 3, t80b: 4, t80bv: 4, t80u: 6,
-  t80u_bars_m: 8, t80u_husarz: 7, t80u_kursk: 6, t80u_yun: 7, t80u_zoria: 7, t80uk: 6, t84: 6, t84bm_oplot_m: 7,
+  t80u_bars_m: 8, t80u_husarz: 7, t80u_kursk: 6, t80u_yun: 7, t80u_zoria: 7, t80uk: 6, t84: 6, t84bm_oplot_m: 6,
   t90: 7, t90_1992: 7, t90a: 9, t90a_2004: 9, t90a_2006: 9, t90a_burlak: 9, t90a_burlak_proto: 9, t90a_vladimir: 9,
   t90am: 9, t90m: 10, t90m_proryv: 10, t90ms_2011: 9, t90ms_tagil: 9, t90sm: 9, t90sm_2013: 9, tos1a_tagil: 5,
   type10: 10, type100: 10, type10_dozer: 10, type10_tk_x: 9, type10b: 9, type59: 1, t55a: 1, type74: 1, type89: 6, type90: 8,

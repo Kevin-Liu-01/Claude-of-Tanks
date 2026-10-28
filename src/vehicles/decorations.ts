@@ -2624,7 +2624,7 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
  * Suited hulls (ghillieSuit.ts) and the Garage workshop exhibits stay out of the list.
  */
 const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
-  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' },
+  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' }, bm_oplot_m: { kind: 'oak' },
   ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
   t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a_2004: { kind: 'birch' },
   pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },

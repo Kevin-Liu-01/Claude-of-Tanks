@@ -30,8 +30,10 @@
 <script type="module">
 import * as THREE from 'three';
 import { K1_PHOTO_TARGET } from '/tools/k1-photo-target.mjs';
-import { verifySupplement } from '/tools/reference-supplement.mjs';
+import { supplementDigest, supplementSnapshot, verifySupplement } from '/tools/reference-supplement.mjs';
 import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
+import { OWNER_KIT_TARGETS } from '/tools/owner-kit-targets.mjs';
+import oplotOwnerKitReceipt from '/docs/references/tanks/bm_oplot_m-owner-kit-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
@@ -47,6 +49,7 @@ import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts
 import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
 import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 
@@ -70,6 +73,7 @@ import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-refe
 const LOCAL_REFERENCE_OVERRIDES = {
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...ARES_APC_X_REFERENCE_OVERRIDES,
+  ...OPLOT_BM_X_REFERENCE_OVERRIDES,
   ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ...ABRAMS_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,
@@ -223,7 +227,8 @@ const LOCAL_REFERENCE_OVERRIDES = {
   strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz99a2: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
-  t84bm_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },
+  // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
+  // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
   // 262: the new true T-64s compare against the T-64 prints their siblings use (the 42manako T-64BV1 and T-64BV Donbas
   // kitbash, local-only, CC-BY-NC); their builds follow published T-64 dimensions (docs/references/tanks/t64bm1m.md).
@@ -713,7 +718,31 @@ if(id==='k1a1' && params.get('comparison')!=='raw-source'){
   photoGroup.visible=false;
 }
 if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
-const comparisonScope=photoSupplement?{
+// Owner-directed kit (tools/owner-kit-targets.mjs, the same authenticated split): every named part must match its
+// receipt exactly before the numeric masks set it aside; a missing or changed receipt fails closed and names the digest.
+const OWNER_KIT_RECEIPTS={bm_oplot_m:oplotOwnerKitReceipt};
+const ownerKitTarget=params.get('comparison')!=='raw-source'?OWNER_KIT_TARGETS[id]??null:null;
+let ownerKit=null;const ownerKitGroups=[];
+if(ownerKitTarget){
+  const receipts=OWNER_KIT_RECEIPTS[id]?.parts??{},missing=[];
+  for(const part of ownerKitTarget.parts){
+    const digest=await supplementDigest(supplementSnapshot(procedural.root,part));
+    if(receipts[part.group]?.geometryPoseSha256!==digest)missing.push(`${part.group} ${digest}`);
+  }
+  if(missing.length)failFidelity(`owner kit parts without an accepted receipt or changed since it (geometryPoseSha256 now): ${missing.join('; ')}`);
+  ownerKit=[];
+  try{for(const part of ownerKitTarget.parts){
+    ownerKit.push({...await verifySupplement(procedural.root,part,receipts[part.group]),part:part.part,ownerWords:part.ownerWords});
+  }}catch(error){failFidelity(String(error.message));}
+  for(const part of ownerKitTarget.parts){const group=procedural.root.getObjectByName(part.group);group.visible=false;ownerKitGroups.push(group);}
+  document.querySelector('#summary').textContent += ' · owner kit set aside (authenticated)';
+}
+const comparisonScope=ownerKit?{
+  numericScope:'Registered print against the build without the owner-directed kit parts named in ownerKit',
+  ownerDecision:ownerKitTarget.ownerDecision,decisionDate:ownerKitTarget.decisionDate,
+  ownerKit,retained:ownerKitTarget.retained,rawSourceComparison:'?comparison=raw-source',
+  fullVehicleQualification:false,
+}:photoSupplement?{
   numericScope:'Supplied-model body excluding the separately reviewed photo weapon',
   ownerDecision:K1_PHOTO_TARGET.ownerDecision,decisionDate:K1_PHOTO_TARGET.decisionDate,
   photoSupplement,rawSourceComparison:'?comparison=raw-source',
@@ -1331,7 +1360,7 @@ for (const [name,value] of Object.entries(scores)) {
 window.__FIDELITY_REPORT={
   interiorFillRecordLoaded: hasInteriorFills(id),
   id,name:spec.name,sourcePath:source.glb.path,
-  comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+  comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : ownerKit ? 'source-without-owner-kit' : preservation ? 'preservation' : 'source-fidelity',
   ...(comparisonScope ? {comparisonScope} : {}),
   ...(preservation ? { preservationBaseline:preservation } : {}),
   // variantOf is combat lineage, not evidence of visual-builder delegation.
@@ -1418,7 +1447,7 @@ if (params.get('board')) {
   // Shaded evidence always shows the complete armed playable. Restore the
   // measurement scope afterwards so board mode cannot change geometry scores.
   const photoNodes=[];
-  if(photoGroup){photoGroup.visible=true;photoGroup.traverse(o=>{if(isRenderNode(o)){photoNodes.push(o);baseVisible.set(o,true);o.visible=true;}});}
+  for(const group of [photoGroup,...ownerKitGroups].filter(Boolean)){group.visible=true;group.traverse(o=>{if(isRenderNode(o)){photoNodes.push(o);baseVisible.set(o,true);o.visible=true;}});}
 
   // This equal-clay diagnostic is deliberately applied only after masks and
   // scores are finalized. Albedo, texture detail and instanced tread tints
@@ -1524,7 +1553,8 @@ if (params.get('board')) {
     procedural.root.updateMatrixWorld(true);
     addBoard('procedural turntable — 24 × 15°', cv);
   }
-  if(photoGroup){photoGroup.visible=false;for(const o of photoNodes){baseVisible.set(o,false);o.visible=false;}}
+  for(const group of [photoGroup,...ownerKitGroups].filter(Boolean))group.visible=false;
+  for(const o of photoNodes){baseVisible.set(o,false);o.visible=false;}
 }
 
 // ---- &profiles=1: measure the REFERENCE model into authoring data --------
@@ -2118,7 +2148,7 @@ if (params.get('geo')) {
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
     registration:sourceWorldRegistration || {mode:'legacy-hull-translation'},
-    comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+    comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : ownerKit ? 'source-without-owner-kit' : preservation ? 'preservation' : 'source-fidelity',
   ...(comparisonScope ? {comparisonScope} : {}),
     dimensionTarget:dimensionFrame ? 'hash-pinned source: fixed ruler plus full physical envelope'
       : preservation ? 'hash-pinned historical first-party baseline' : 'published specification',

@@ -315,7 +315,28 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   pt64_tur: { displayName: 'PT-64 Tur', shortName: 'PT-64 Tur', searchAliases: ['T-64 Tur', 'Polish T-64'] },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
   t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
-  t84bm_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
+  // Release 262 (owner 2026-10-27: "make the existing ones into lower tier tanks with new names / prototype names"): the
+  // two older Oplot builds take the names of what they are. t84 (an angular welded turret with integrated cheek ERA and
+  // its smoke banks moved to the turret rear, on a T-72-pattern chassis) is the 1992-95 T-84 prototype, Object 478DU2;
+  // t84bm_oplot_m (the welded Duplet turret before the armoured bustle compartment, in its wartime field kit) is the
+  // 2000 serial T-84U Oplot, Object 478DU9. The new T-84BM Oplot-M (478DU9-1) and Oplot-T (478DU9-T) are bm_oplot_m and
+  // bm_oplot_t. The ids stay: saves, rooms, replays and the Gallery key on them.
+  t84: {
+    displayName: 'Object 478DU2', shortName: 'Object 478DU2',
+    searchAliases: ['T-84', 'T-84 prototype', 'T-84 Oplot', 'Obyekt 478DU2', 'Ob. 478DU2'],
+  },
+  t84bm_oplot_m: {
+    displayName: 'T-84U Oplot', shortName: 'T-84U Oplot',
+    searchAliases: ['Object 478DU9', 'BM Oplot (2000)', 'T-84 Oplot (2000)', 'Obyekt 478DU9'],
+  },
+  bm_oplot_m: {
+    displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M',
+    searchAliases: ['BM Oplot-M', 'BM Oplot', 'Object 478DU9-1', 'Oplot M'],
+  },
+  bm_oplot_t: {
+    displayName: 'T-84BM Oplot-T', shortName: 'Oplot-T',
+    searchAliases: ['BM Oplot-T', 'Object 478DU9-T', 'Oplot T', 'Royal Thai Army Oplot', 'Thai Oplot'],
+  },
   ua_m1a1: { displayName: 'M1A1 SA (Ukraine)', shortName: 'M1A1 SA UA', searchAliases: ['M1A1 Abrams UA', 'M1A1 Abrams (Ukraine)'] },
 });
 

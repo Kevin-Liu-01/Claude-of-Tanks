@@ -329,7 +329,7 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 7.92, overallLengthM: 9.79, widthM: 3.17, heightM: 2.71 },
       visual: { number: 'V1' } }, JACK),
   // -- Ukraine ---------------------------------------------------------------
-  make('t80uk', 't84', 'T-84 Oplot', 'Ukraine',
+  make('t80uk', 't84', 'Object 478DU2', 'Ukraine',
     { hp: 2250, enginePowerHp: 1200, weightTons: 46, topSpeedKmh: 65,
       gun: { reloadS: 6.6 },
       // The current T-84 profile authors the Duplet field on the turret only.

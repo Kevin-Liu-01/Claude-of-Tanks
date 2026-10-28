@@ -7,7 +7,7 @@ import {auxiliaryWeaponProfile} from '../auxiliaryWeapons.ts';
 import {VEHICLE_SIZE_FACTORS} from '../vehicleSizePolicy.ts';
 // 2026-10-09 (owner order: "give the griffin 50 mm its old machine gun back"): the Griffin's working roof weapon is its
 // restored 10-07 M2 on the elevated cradle; the field roof 30 mm is gone.
-const targets=[['griffin50mm','griffin50RoofM2',12.7],['leo2a7v','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5','Leopard 2A5 remote 30 mm cannon',30],['leclerc_xlr','Leclerc XLR remote 30 mm cannon',30],['t84bm_oplot_m','Oplot-M protected heavy machine gun',12.7]];
+const targets=[['griffin50mm','griffin50RoofM2',12.7],['leo2a7v','Leopard 2A7V remote 30 mm cannon',30],['leo2_revolution','Leopard 2 Revolution remote 30 mm cannon',30],['leo2a5','Leopard 2A5 remote 30 mm cannon',30],['leclerc_xlr','Leclerc XLR remote 30 mm cannon',30],['t84bm_oplot_m','oplotUNsvt',12.7]];
 for(const quality of ['high','low'])for(const [id,name,caliber] of targets){
  const registered=auxiliaryCapabilities({id})?.guns.find(g=>g.name===name);
  assert.equal(registered?.caliberMm,caliber,`${id}: combat registry enables the authored cannon`);
@@ -75,7 +75,7 @@ for(const quality of ['high','low'])for(const id of rearIds){
  }finally{mat.dispose();tank.dispose()}
 }
 // Owner-requested attachment revisions: retain real contact and articulation.
-for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_oplot_m','ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
+for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}),mat=new MeshBasicMaterial({side:DoubleSide});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),body=new Mesh(turret.getObjectByName('turret').geometry,mat);body.updateMatrixWorld();
@@ -85,9 +85,9 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_o
    const stock=turret.getObjectByName('leo2a4m_xRoofMachineGun_yaw_turretDetail');
    assert(stock,'original mount and sights follow the functioning gun');
   }
-  if(id==='leo2a5'||id==='t84bm_oplot_m'){
+  if(id==='leo2a5'){
    let weapon;turret.traverse(o=>{if(o.userData.fieldWeaponScale)weapon=o});
-   assert.deepEqual(weapon.scale.toArray(),Array(3).fill(id==='leo2a5'?.7:.9),'requested weapon reduction');
+   assert.deepEqual(weapon.scale.toArray(),Array(3).fill(.7),'requested weapon reduction');
   }
   const cage=turret.userData.modernFieldCage;
   if(['ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3'].includes(id)){
