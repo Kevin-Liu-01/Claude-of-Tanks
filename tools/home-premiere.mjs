@@ -306,9 +306,10 @@ function bentoPicture(rungs, lead) {
   return `<img src="${base.path}" srcset="${sorted.map((rung) => `${rung.path} ${rung.width}w`).join(', ')}" sizes="${sizes}"`
     + ` width="1920" height="1080" alt="" loading="lazy" decoding="async">`;
 }
-/** One still: its picture (its alt stays empty: the caption names it) and its two lines, the whole tile the way in. */
+/** One still: its picture (its alt stays empty: the caption names it) and its two lines on their own scrim (home.css
+ *  .bento__words), the whole tile the way in. */
 const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} cot-c-media">${picture}`
-  + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
+  + `<figcaption class="bento__cap"><a href="${href}"><span class="bento__words">${name}<span class="bento__where">${where.join('')}</span></span></a></figcaption></figure>`;
 const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
   + `${href ? `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a>` : ''}</header>`;
 // the duels that move (owner 2026-10-27: "in home, lets try to use our coolest versus videos too, make em load fast and
@@ -358,8 +359,8 @@ function clipsBlock() {
     const film = `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}"`
       + ` data-label="${esc(shot.line)}" data-i18n-label="${shot.key}" data-i18n-vars="${esc(JSON.stringify(shot.vars))}">${ladder(clip)}</video>`;
     return `<figure class="bento__tile cot-c-media" data-clip="${clip.id}">${picture}${film}`
-      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}">${matchup(clip.id, clip.tanks)}`
-      + `<span class="bento__where">${whereLine(clip)}</span></a></figcaption></figure>`;
+      + `<figcaption class="bento__cap"><a href="${galleryHref(clip.tanks[0])}"><span class="bento__words">${matchup(clip.id, clip.tanks)}`
+      + `<span class="bento__where">${whereLine(clip)}</span></span></a></figcaption></figure>`;
   });
   return `<section class="bento bento--clips" aria-labelledby="clips-title"><div class="home-shell">`
     + bentoHead('clips-title', 'home.clips.title') + `<div class="bento__grid">${tiles.join('')}</div></div></section>`;

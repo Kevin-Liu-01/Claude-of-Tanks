@@ -269,6 +269,13 @@ img{display:block;max-width:100%}
 .bento__cap a::after{content:'';position:absolute;inset:0}
 .bento__cap a:focus-visible{outline:none}
 .bento__tile:has(a:focus-visible){box-shadow:var(--home-pick-ring)}
+/* a tile's words stand on their own plate, the hero's scrim feathered at its open edges (the media box clips it at the
+   tile's): a name that wraps to a second line over bright snow keeps 4.5:1, where the tile's foot fade ends at 62 % */
+.bento__words{position:relative;z-index:0;display:flex;flex-direction:column;gap:var(--s1);min-width:0}
+.bento__words::before{--feather:var(--s6);content:'';position:absolute;z-index:-1;pointer-events:none;background:var(--home-hero-scrim);
+  inset:calc(-1 * var(--feather)) calc(-1 * var(--feather)) calc(-1 * var(--feather) - var(--s4)) calc(-1 * var(--feather) - var(--s5));
+  --plate:linear-gradient(90deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent),linear-gradient(0deg,transparent,var(--ink-1) var(--feather) calc(100% - var(--feather)),transparent);
+  -webkit-mask-image:var(--plate);mask-image:var(--plate);-webkit-mask-composite:source-in;mask-composite:intersect}
 .bento__cap b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;text-wrap:balance}
 .bento__tile--lead .bento__cap b{font-size:var(--fs-36)}
 .bento__where{display:flex;flex-wrap:wrap;gap:0 var(--s2);font:400 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-2)}
@@ -394,6 +401,9 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .play-acts>.cot-c-seg{display:grid;grid-template-columns:1fr 1fr;flex:1 1 100%;overflow:visible}
   .play-acts>.cot-c-btn--icon:first-of-type{margin-left:auto}
 }
+/* a short phone layout (a Split View half, 601 x 702): the hero's picture row gives up the room the fixed Play bar takes, so
+   its counts stand whole above the bar in the first view */
+@media (width < 768px) and (height < 760px){.hero{grid-template-rows:minmax(360px,auto) auto}}
 /* a narrow desktop card (under 900 px) cannot hold the caption beside the actions: the caption and the pause take their
    own row on the right, as tall as the pause, so the card steps 16 px above them and its own foot below (home r25). The
    card is a container only from 768 px, where no fixed Play bar lives inside it */
