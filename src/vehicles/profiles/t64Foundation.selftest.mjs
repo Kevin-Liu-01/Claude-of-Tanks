@@ -5,6 +5,7 @@ import { getSpec } from '../specs.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 import { T64_GEAR, T64_ROAD_STATIONS } from './t64RunningGear.ts';
 import { T64_DATUMS } from '../t64Armor.ts';
+import { T64_FRAME } from './t64Foundation.ts';
 
 // 262 (owner 2026-10-27: the T-64BM1M "should be designed from scratchh as well", then "make these new tanks were making
 // fully nnew tnaks"): the T-64BM1M, the T-64BV and the T-64B1V mod. 2022 are true T-64s on one first-party base
@@ -24,6 +25,12 @@ const uniqueInstanceYs = (mesh) => {
   }
   return [...ys];
 };
+
+// The builders carry the frame's numbers themselves (a lazy import of the boot spec module splits it into a boot chunk):
+// they are the combat frame's, number for number.
+assert.deepEqual(JSON.parse(JSON.stringify(T64_FRAME)), JSON.parse(JSON.stringify({ turretPivot: T64_DATUMS.turretPivot,
+  trunnion: T64_DATUMS.trunnion, muzzleZ: T64_DATUMS.muzzleZ, structuralRoofM: T64_DATUMS.structuralRoofM })),
+'the builders\' T64_FRAME is t64Armor.ts T64_DATUMS');
 
 for (const [id, variant] of [['t64bm1m', 'bm1m'], ['t64bv', 'bv'], ['t64b1v_2022', 'b1v2022'], ['pt64_tur', 'tur']]) {
   assert.equal(FLEET_RENEWAL_DONORS[id], undefined, `${id}: no renewal donor frame (the T-64 frame, t64Armor.ts)`);

@@ -12,7 +12,7 @@
 // height, the roof rising from the gun to a crown over the hatches, the commander's cupola with the remote NSVT on the
 // right, the gunner's sight head ahead of his hatch on the left, the autoloader's case port aft.
 //
-// Hull frame: ground y 0, +Z bow, +X the vehicle's left. Turret frame: the ring centre on the deck (T64_DATUMS).
+// Hull frame: ground y 0, +Z bow, +X the vehicle's left. Turret frame: the ring centre on the deck (T64_FRAME).
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { boxSections, roofSheet, beamBetween, cappedTube } from './measuredPrimitives.ts';
@@ -20,13 +20,21 @@ import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { mount } from './fittingMount.ts';
 import { buildT64RunningGear } from './t64RunningGear.ts';
-import { T64_DATUMS } from '../t64Armor.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 /** An upright turned solid: KIT.cylY takes (top radius, bottom radius, height, segments). */
 const cyl = (rTop: number, h: number, segments: number, rBottom = rTop) => KIT.cylY(rTop, rBottom, h, segments);
-const PIVOT = T64_DATUMS.turretPivot, TRUNNION = T64_DATUMS.trunnion;
+/** The T-64 frame's ring, trunnion, muzzle and roof (t64Armor.ts T64_DATUMS, the combat frame's numbers), repeated so
+ * the lazy builders never import the boot spec module: a lazy importer splits it into a boot chunk of its own (one more
+ * request on every page, bundle-budget). t64Foundation.selftest holds the two equal. */
+export const T64_FRAME = Object.freeze({
+  turretPivot: Object.freeze([0, 1.40, -.10] as const),
+  trunnion: Object.freeze([0, 1.713, .62] as const),
+  muzzleZ: 5.85,
+  structuralRoofM: 2.19,
+} as const);
+const PIVOT = T64_FRAME.turretPivot, TRUNNION = T64_FRAME.trunnion;
 
 // ---------------------------------------------------------------- hull datums
 export const T64_HULL = Object.freeze({
@@ -264,7 +272,7 @@ function castTurret(P: TankBuilderPort): void {
 function gunMountAndGun(P: TankBuilderPort): void {
   // the 2A46M-1 in its cast mask (gun frame: the trunnion, +Z along the bore)
   P.gunG.position.set(TRUNNION[0] - PIVOT[0], TRUNNION[1] - PIVOT[1], TRUNNION[2] - PIVOT[2]);
-  const muzzle = T64_DATUMS.muzzleZ - TRUNNION[2];
+  const muzzle = T64_FRAME.muzzleZ - TRUNNION[2];
   P.add('gunMount', boxSections([[.02, .25, .20, -.24], [.30, .245, .19, -.22], [.44, .20, .155, -.165], [.56, .145, .115, -.105], [.60, .125, .10, -.09]]));
   // coaxial PKT port to the right of the mask
   P.add('gunMount', cylZ(.030, .12, 12), -.20, -.06, .62);
@@ -357,5 +365,5 @@ export function buildT64Turret(P: TankBuilderPort, options: T64BaseOptions = {})
 export function buildT64Base(P: TankBuilderPort, options: T64BaseOptions = {}): void {
   buildT64Hull(P, options);
   buildT64Turret(P, options);
-  P.topY = T64_DATUMS.structuralRoofM - PIVOT[1];
+  P.topY = T64_FRAME.structuralRoofM - PIVOT[1];
 }
