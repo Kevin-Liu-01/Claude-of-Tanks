@@ -2109,8 +2109,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     vehicle: () => (selectedId ? specById.get(selectedId) ?? null : null),
     locked: () => vehicleLocked,
     text: pickerText,
-    // a phone's sheet ends on whole rows that fill it, as the equipment's (v261: the zh sheets cut a row under the fade)
-    fitGrid: (grid) => { if (document.body.dataset.cotPanels === 'overlay') holdGridHeight(grid, (g) => fitWholeRows(g, false, true)); },
+    // its grid ends on whole rows as the equipment's: docked, its tiles balanced over the band's rows; a phone's sheet
+    // filled (v261: the zh sheets cut a row under the fade, and at 1024 x 600 the docked one sliced its second row)
+    fitGrid: (grid) => holdGridHeight(grid, fitPickerGrid),
     emit: (name, payload) => emit(name, payload as RuntimeValue),
   });
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
