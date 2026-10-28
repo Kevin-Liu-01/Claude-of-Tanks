@@ -3172,6 +3172,17 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
     && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
+  // Release 263: the rebuilt ZTZ-85-III (profiles/ztz85iii.ts) draws its own smoke banks, radio antenna, IR searchlight,
+  // stern drums and railed turret baskets, and carries reactive bricks on the glacis: a decor smoke pair, whip, lamp or
+  // drum would double them, spare links on the glacis would lie over the bricks, and turret-side kit and roof cargo
+  // stood against the baskets and crowded the roof (262 blind critics: "roof clutter", "smoke tubes in two rows").
+  if (spec.id === 'ztz85_iii') return manifest
+    .filter(row => !['smoke', 'antenna', 'light', 'drums'].includes(row.kit)
+      && !(row.kit === 'tracks' && ['glacis', 'turretSidePlate'].includes(row.slot[0]))
+      && !(['tarp', 'camonet', 'bin'].includes(row.kit) && row.slot[0] === 'turretSide'))
+    .map((row) => (row.kit === 'cargo' && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+      ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+      : row));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

@@ -21,7 +21,10 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   // the DShK turns from 175 degrees right to 25 degrees left of ahead: past 25 degrees left its sweep (the authority's
   // 20-degree chunks) crosses the dock, and from 85 degrees the commander's cupola (.qa-dev arc and dock probes, 262)
   type59: { type59RoofDShK: [-3.0543, 0.4363] },
-  ztz85_iii: { fitting_browningDerived_qjc88: [-0.8029, 2.7925] },
+  // 263: the rebuilt ZTZ-85-III's 12.7 mm on the commander's cupola clears its drone stand at every bearing
+  // (tools/roof-station-arcs.mjs --dock: none blocked); its own turret stock blocks 104-137 and -161..-141 degrees
+  // (tools/roof-station-arcs.mjs), so it turns from 138 degrees one way to 101 the other (2 degrees of margin)
+  ztz85_iii: { fitting_browningDerived_qjc88: [-2.4086, 1.7628] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
 });

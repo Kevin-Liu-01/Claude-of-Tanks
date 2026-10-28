@@ -5,7 +5,7 @@
 //   - the mantlet's root section stays inside the casting: the slot never opens a gap behind the mantlet.
 // The T-54/T-55 family's mantlet is the pleated canvas cover over the slot (profiles/t54Family.ts addMantletCover); the
 // Longwei's is the slim cast mantlet and its boot in the throat between the arrowhead cheeks (profiles/longwei.ts).
-// The ZTZ-85-III's (release 263) is its cast mount in the welded hexagon's snout under a canvas trumpet (profiles/ztz85iii.ts).
+// The ZTZ-85-III's (release 263) is its cast mount in the welded hexagon's snout under a short canvas cover (profiles/ztz85iii.ts).
 // Inside tests count crossings of a near-vertical ray through each closed bucket. A negative control removes the
 // Type 59's cover and must expose the tube.
 import assert from 'node:assert/strict';
@@ -21,8 +21,8 @@ const CASES = [
   { id: 'type59', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
   { id: 't55a', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
   { id: 'ztz99_longwei', front: 0.70, root: -0.25, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
-  // release 263: the rebuilt ZTZ-85-III's cast mount in the welded snout under its canvas trumpet (profiles/ztz85iii.ts)
-  { id: 'ztz85_iii', front: 1.00, root: -0.06, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
+  // release 263: the rebuilt ZTZ-85-III's cast mount in the welded snout under its short canvas cover (profiles/ztz85iii.ts)
+  { id: 'ztz85_iii', front: 0.54, root: -0.08, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
 ];
 
 /** The triangles of `mesh` in `frame`'s coordinates. */

@@ -1,9 +1,10 @@
 // The ZTZ-85-III — release 263 (owner 2026-10-28, after the 262 renders: "yeah going to need a totally new ztz 85
 // III"). A ground-up rebuild from the published Type 85 record (docs/references/tanks/ztz85_iii.md §263): the Type 80
 // hull lengthened for the Type 85 (6.325 m, 3.372 m over the skirts), its beak nose, six dual rubber-tyred road wheels
-// with the wider gaps forward, three return rollers, the rear drive sprocket, six-panel rubber skirts and the 85-III's
-// raised engine deck; the compact welded hexagonal turret of the Type 85 series (the "pig snout" mantlet between two
-// swept front faces, slatted side and rear stowage, smoke dischargers on the shoulders, the commander's cupola with its
+// with the wider gaps forward, three return rollers under an open upper run (the 85-III prototype ran without skirts),
+// the rear drive sprocket and the 85-III's raised engine deck; the compact welded hexagonal turret of the Type 85 series
+// (the "pig snout" mantlet between two swept front faces under a long shallow front slope, railed side and rear
+// baskets, smoke dischargers on the shoulders, the commander's cupola with its
 // 12.7 mm gun on the right, the gunner's sight on the left); the 125 mm smoothbore with its mid-tube evacuator; and the
 // 1995 package's explosive reactive armour on the upper glacis and the turret's front faces.
 //
@@ -46,8 +47,9 @@ const glacisY = (z: number): number => ROOF_Y - (z - GLACIS_TOP_Z) * UPPER_GLACI
 /** The sponsons reach out over the tracks to ±1.56 m from the fender line (1.07 m) up; the tub runs at ±1.04 m inside
  * the track's inner edge (1.085). */
 const HULL_HALF_W = 1.56, TUB_HALF_W = 1.04, SPONSON_Y = 1.07;
-/** The fender lip carries the skirts; their outer face is the published 3.372 m width (±1.688). */
-const FENDER_OUT = 1.66, SKIRT_X = 1.675, SKIRT_T = 0.026, SKIRT_BOTTOM_Y = 0.66;
+/** The fender shelf over the tracks to the published 3.372 m width (±1.685), its outer edge turned down 5 cm; the 85-III
+ * prototype ran without skirts, its upper track run and return rollers in the open. */
+const FENDER_OUT = 1.685, FENDER_LIP = 0.05;
 /** Where the upper hull ends: the glacis falls to the sponson's top there and the beak runs on at the tub's width. */
 const UPPER_END_Z = GLACIS_TOP_Z + (ROOF_Y - (SPONSON_Y + 0.07)) / UPPER_GLACIS_TAN;
 
@@ -63,12 +65,24 @@ const RETURN_ROLLER_ZS = [1.545, -0.185, -1.67];
 // ---------------------------------------------------------------------------
 /** The ring centre over the third road wheel (the photographs' turret centre, 3.1 m behind the nose). */
 const TURRET_PIVOT: Vec3 = [0, ROOF_Y, 0.05];
-/** The welded hexagon (the Type 85's turret plan): its belt (to 0.18 m) and its roof plan (0.60 m), half outlines from
- * the snout round the vehicle's left. The front faces sweep 40 degrees off the axis from the 0.80 m snout to the
- * shoulders and lean back above the belt; the sides lean in 6 cm; the rear corners are chamfered. */
-const BELT_Y = 0.18, ROOF_H = 0.60;
+/** The welded hexagon (the Type 85's turret plan): half outlines from the snout round the vehicle's left. The vertical
+ * belt (to 0.18 m); the two front faces sweeping 40 degrees off the axis from the 0.80 m snout to the shoulders, leaning
+ * back to their top edge (the brow, 0.46 m); the long shallow front slope rising from the brow to the flat roof (0.62 m)
+ * over the front 40% of the turret (the photographs' falling front roof); the sides leaning in 6 cm; chamfered rear
+ * corners. */
+const BELT_Y = 0.18, BROW_Y = 0.46, ROOF_H = 0.62;
 const BELT_PLAN: readonly (readonly [number, number])[] = [[0.40, 1.20], [1.13, 0.34], [1.16, 0.10], [1.16, -0.95], [0.96, -1.29]];
-const ROOF_PLAN: readonly (readonly [number, number])[] = [[0.36, 0.98], [1.06, 0.18], [1.10, 0.00], [1.10, -0.92], [0.92, -1.25]];
+const BROW_PLAN: readonly (readonly [number, number])[] = [[0.37, 1.06], [1.09, 0.22]];
+const ROOF_PLAN: readonly (readonly [number, number])[] = [[0.34, 0.18], [1.10, -0.04], [1.10, -0.92], [0.92, -1.25]];
+/** The turret's top surface height at (x, z) over the roof and the front slope (fittings seat on it). */
+function roofAt(x: number, z: number): number {
+  const ax = Math.abs(x);
+  const zBrow = BROW_PLAN[0][1] - Math.max(0, ax - BROW_PLAN[0][0]) * (BROW_PLAN[0][1] - BROW_PLAN[1][1]) / (BROW_PLAN[1][0] - BROW_PLAN[0][0]);
+  const zRoof = ROOF_PLAN[0][1] - Math.max(0, ax - ROOF_PLAN[0][0]) * (ROOF_PLAN[0][1] - ROOF_PLAN[1][1]) / (ROOF_PLAN[1][0] - ROOF_PLAN[0][0]);
+  if (z <= zRoof) return ROOF_H;
+  if (z >= zBrow) return BROW_Y;
+  return ROOF_H - (z - zRoof) / (zBrow - zRoof) * (ROOF_H - BROW_Y);
+}
 /** Bore axis 1.75 m over the ground: the trunnion 0.30 m over the ring, 0.92 m ahead of its centre. */
 const TRUNNION: Vec3 = [0, 0.30, 0.92];
 /** Muzzle 6.235 m ahead of the trunnion: 10.37 m from the stern (the 85-III's published gun-forward length). */
@@ -143,23 +157,24 @@ function bentPlateX(pts: readonly (readonly [number, number])[], x0: number, x1:
   return KIT.mergeAll(parts);
 }
 
-/** Fender lips over both tracks, the boxed front mudguards over the idlers (top plate falling to the nose, an outer
- * cheek in the skirt's plane) and short flaps behind the sprockets. */
+/** Fender shelves over both tracks with their outer edge turned down, the boxed front mudguards over the idlers (top
+ * plate falling to the nose, an outer cheek in the fender edge's plane) and short flaps behind the sprockets. */
 function addFenders(P: TankBuilderPort): void {
   const { box } = KIT;
   const lipZ0 = -3.10, lipZ1 = 2.62;
   const guard: [number, number][] = [[lipZ1 - 0.04, SPONSON_Y + 0.012], [2.84, SPONSON_Y + 0.005], [3.02, 1.03], [3.17, 0.94], [3.22, 0.83]];
   for (const side of [-1, 1]) {
-    // the lip under the sponson's edge, carrying the skirts
-    P.add('hull', box(FENDER_OUT - HULL_HALF_W + 0.02, 0.028, lipZ1 - lipZ0), side * (HULL_HALF_W + FENDER_OUT) / 2,
+    // the shelf under the sponson's edge and its turned-down outer edge (2.4 cm outside the track's outer face)
+    P.add('hull', box(FENDER_OUT - HULL_HALF_W + 0.01, 0.028, lipZ1 - lipZ0), side * (HULL_HALF_W - 0.01 + FENDER_OUT) / 2,
       SPONSON_Y - 0.004, (lipZ0 + lipZ1) / 2);
+    P.add('hull', box(0.014, FENDER_LIP, lipZ1 - lipZ0), side * (FENDER_OUT - 0.007), SPONSON_Y - 0.004 - FENDER_LIP / 2, (lipZ0 + lipZ1) / 2);
     const x0 = side > 0 ? TUB_HALF_W - 0.01 : -FENDER_OUT, x1 = side > 0 ? FENDER_OUT : -(TUB_HALF_W - 0.01);
     P.addMudguard('ztz85iii-front-guard', 'hull', bentPlateX(guard, x0, x1, 0.03));
-    // the guard's outer cheek, in the skirt's plane, from its top plate down to 0.80 m
+    // the guard's outer cheek, in the fender edge's plane, from its top plate down to 0.80 m
     const cheek: THREE.BufferGeometry[] = [];
     for (let i = 0; i < guard.length - 1; i++) {
       const [za, ya] = guard[i], [zb, yb] = guard[i + 1];
-      const xo = side * (SKIRT_X + SKIRT_T / 2), xi = side * (SKIRT_X - SKIRT_T / 2);
+      const xo = side * FENDER_OUT, xi = side * (FENDER_OUT - 0.026);
       cheek.push(KIT.slab([xi, yb, zb], [xo, yb, zb], [xo, ya, za], [xi, ya, za],
         [xi, 0.80, zb], [xo, 0.80, zb], [xo, 0.80, za], [xi, 0.80, za]));
     }
@@ -173,26 +188,8 @@ function addFenders(P: TankBuilderPort): void {
   }
 }
 
-/** Six rubber skirt panels a side from the front guard to the stern, hung from the fender lip over the upper run and
- * the tops of the wheels, each with three moulded ribs and a bevelled lower edge. */
-function addSkirts(P: TankBuilderPort): void {
-  const { box } = KIT;
-  const z0 = -3.06, z1 = 2.60, n = 6, gap = 0.014, panel = (z1 - z0) / n;
-  const top = SPONSON_Y - 0.004, h = top - SKIRT_BOTTOM_Y;
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < n; i++) {
-      const zc = z0 + panel * (i + 0.5), len = panel - gap;
-      P.add('hullRubber', box(SKIRT_T, h, len), side * SKIRT_X, SKIRT_BOTTOM_Y + h / 2, zc);
-      for (const f of [-0.30, 0, 0.30]) {
-        P.add('hullRubber', box(0.012, h - 0.08, 0.05), side * (SKIRT_X + SKIRT_T / 2 + 0.005), SKIRT_BOTTOM_Y + h / 2 + 0.02, zc + f * len);
-      }
-      // the hanger strip along the panel's top
-      P.add('hullDark', box(0.016, 0.05, len - 0.04), side * (SKIRT_X + SKIRT_T / 2 + 0.007), top - 0.03, zc);
-    }
-  }
-}
-
-/** Running gear: six dual road wheels, three return rollers over the wheel pairs, rear sprocket, front idler. */
+/** Running gear: six dual road wheels, three return rollers over the wheel pairs under the open upper run, rear
+ * sprocket, front idler. */
 function addRunningGear(P: TankBuilderPort): void {
   KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: WHEEL_R, wheelW: 0.30, wheelY: 0.40, xc: TRACK_XC, dishR: 0.80,
@@ -201,7 +198,7 @@ function addRunningGear(P: TankBuilderPort): void {
     rollers: RETURN_ROLLER_ZS.map((z) => ({ z, y: 0.86, r: 0.10 })),
     trackW: TRACK_W, topY: 0.87, botY: 0.02,
     contactZF: WHEEL_ZS[0] + 0.18, contactZR: WHEEL_ZS.at(-1)! - 0.18,
-    paintedEnds: true, coveredTop: true, arms: true, sprocketTeeth: true,
+    paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: true,
   });
 }
 
@@ -320,9 +317,11 @@ function planPoints(half: readonly (readonly [number, number])[], y: number): TH
   return [...left, ...right];
 }
 
-/** The welded shell: the vertical belt (y 0.02-0.18) under the sloped upper faces to the flat roof at 0.60 m. */
+/** The welded shell: the vertical belt (y 0.02-0.18), the leaning front faces to the brow, the long front slope and the
+ * flat roof at 0.62 m. */
 function weldedShell(): THREE.BufferGeometry {
-  const pts = [...planPoints(BELT_PLAN, 0.02), ...planPoints(BELT_PLAN, BELT_Y), ...planPoints(ROOF_PLAN, ROOF_H)];
+  const pts = [...planPoints(BELT_PLAN, 0.02), ...planPoints(BELT_PLAN, BELT_Y), ...planPoints(BROW_PLAN, BROW_Y),
+    ...planPoints(ROOF_PLAN, ROOF_H)];
   const g = new ConvexGeometry(pts);
   // box-projected UVs, one face per triangle (the hull is non-indexed), so it merges with the kit's solids
   const pos = g.getAttribute('position'), nrm = g.getAttribute('normal'), uv: number[] = [];
@@ -336,67 +335,66 @@ function weldedShell(): THREE.BufferGeometry {
   return g;
 }
 
-/** Point on a front face (the vehicle-left face when side = 1): `a` from the snout toward the shoulder, `b` from the
- * belt toward the roof edge, and the face's outward basis. */
-function frontFace(side: 1 | -1): { at: (a: number, b: number) => THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3; n: THREE.Vector3 } {
-  const b0 = new THREE.Vector3(side * BELT_PLAN[0][0], BELT_Y, BELT_PLAN[0][1]);
-  const b1 = new THREE.Vector3(side * BELT_PLAN[1][0], BELT_Y, BELT_PLAN[1][1]);
-  const r0 = new THREE.Vector3(side * ROOF_PLAN[0][0], ROOF_H, ROOF_PLAN[0][1]);
-  const r1 = new THREE.Vector3(side * ROOF_PLAN[1][0], ROOF_H, ROOF_PLAN[1][1]);
-  const u = b1.clone().sub(b0).normalize();
-  const v = r0.clone().add(r1).multiplyScalar(0.5).sub(b0.clone().add(b1).multiplyScalar(0.5)).normalize();
-  let n = new THREE.Vector3().crossVectors(u, v).normalize();
-  if (n.z < 0) n = n.negate();
-  // u and v are not quite square on the leaning face: rebuild v in the face plane
-  const vv = new THREE.Vector3().crossVectors(n, u).normalize();
-  if (vv.y < 0) vv.negate();
-  const at = (a: number, b: number): THREE.Vector3 => {
-    const lo = b0.clone().lerp(b1, a), hi = r0.clone().lerp(r1, a);
-    return lo.lerp(hi, b);
-  };
-  return { at, u, v: vv, n };
+/** A plane patch between two edges on one side (side = 1: the vehicle's left), `a` along the edges from their first
+ * point, `b` from the lower edge toward the upper; its basis is right-handed (u along, v up the patch, n outward), so a
+ * box laid on it keeps its outward winding. */
+function patch(side: 1 | -1, lo: readonly (readonly [number, number])[], loY: number, hi: readonly (readonly [number, number])[],
+  hiY: number): { at: (a: number, b: number) => THREE.Vector3; u: THREE.Vector3; v: THREE.Vector3; n: THREE.Vector3 } {
+  const l0 = new THREE.Vector3(side * lo[0][0], loY, lo[0][1]), l1 = new THREE.Vector3(side * lo[1][0], loY, lo[1][1]);
+  const h0 = new THREE.Vector3(side * hi[0][0], hiY, hi[0][1]), h1 = new THREE.Vector3(side * hi[1][0], hiY, hi[1][1]);
+  let u = l1.clone().sub(l0).normalize();
+  const up = h0.clone().add(h1).sub(l0).sub(l1).normalize();
+  let n = new THREE.Vector3().crossVectors(u, up).normalize();
+  // outward is forward (the faces) or up (the slope): flipping n flips u with it, so the basis stays right-handed
+  if (n.z + n.y < 0) { n = n.negate(); u = u.negate(); }
+  const v = new THREE.Vector3().crossVectors(n, u).normalize();
+  const at = (a: number, b: number): THREE.Vector3 => l0.clone().lerp(l1, a).lerp(h0.clone().lerp(h1, a), b);
+  return { at, u, v, n };
 }
 
-/** A box laid on a face basis, its back on the face. */
+/** A box laid on a patch basis, its back on the patch. */
 function faceBox(w: number, h: number, t: number, origin: THREE.Vector3, u: THREE.Vector3, v: THREE.Vector3, n: THREE.Vector3): THREE.BufferGeometry {
   const g = KIT.box(w, h, t);
   const m = new THREE.Matrix4().makeBasis(u, v, n).setPosition(origin.clone().addScaledVector(n, t / 2 + 0.004));
   return g.applyMatrix4(m);
 }
 
-/** The 1995 package on the turret's front faces: two rows of three bricks a face over the belt. */
+/** The 1995 package on the turret: a row of three bricks on each front face and a row of two on the front slope above
+ * it, standing proud of the plate. */
 function addTurretEra(P: TankBuilderPort): void {
   P.visualEraCluster('ztz85iii-turret-era', 'turret', () => {
     for (const side of [-1, 1] as const) {
-      const f = frontFace(side);
-      for (const b of [0.30, 0.74]) for (const a of [0.20, 0.50, 0.80]) {
-        P.add('turretExternalArmor', faceBox(0.27, 0.19, ERA_BRICK.t, f.at(a, b), f.u, f.v, f.n));
-        P.add('turretDark', faceBox(0.20, 0.016, ERA_BRICK.t + 0.012, f.at(a, b + 0.10), f.u, f.v, f.n));
+      const face = patch(side, BELT_PLAN, BELT_Y, BROW_PLAN, BROW_Y);
+      for (const a of [0.20, 0.50, 0.80]) {
+        P.add('turretExternalArmor', faceBox(0.27, 0.21, ERA_BRICK.t, face.at(a, 0.50), face.u, face.v, face.n));
+      }
+      const slope = patch(side, BROW_PLAN, BROW_Y, ROOF_PLAN, ROOF_H);
+      for (const a of [0.50, 0.78]) {
+        P.add('turretExternalArmor', faceBox(0.24, 0.26, ERA_BRICK.t - 0.01, slope.at(a, 0.26), slope.u, slope.v, slope.n));
       }
     }
   });
 }
 
-/** A slatted stowage box: floor, end plates, top and bottom rails and vertical slats on the outer face (xOut on a
- * side basket, z0 on the rear basket). */
-function slattedBox(P: TankBuilderPort, xIn: number, xOut: number, y0: number, y1: number, z0: number, z1: number,
+/** A railed stowage basket: floor, end plates, four horizontal rails on the outer face carried by vertical posts. The
+ * outer face is xOut on a side basket, z0 on the rear basket. */
+function railedBasket(P: TankBuilderPort, xIn: number, xOut: number, y0: number, y1: number, z0: number, z1: number,
   axis: 'x' | 'z'): void {
   const { box } = KIT;
   const cx = (xIn + xOut) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
   const dx = Math.abs(xOut - xIn), dy = y1 - y0, dz = Math.abs(z1 - z0);
+  const rails = [0, 1, 2, 3].map((i) => y0 + 0.04 + (dy - 0.06) * i / 3);
   P.add('turretDetail', box(dx, 0.025, dz), cx, y0 + 0.0125, cz);                       // floor
   if (axis === 'x') {
     for (const z of [z0, z1]) P.add('turretDetail', box(dx, dy, 0.025), cx, cy, z);       // end plates
-    const xo = xOut;
-    for (const y of [y0 + 0.03, y1 - 0.02]) P.add('turretDark', box(0.03, 0.03, dz), xo, y, cz);
-    const n = Math.max(3, Math.round(dz / 0.11));
-    for (let i = 1; i < n; i++) P.add('turretDetail', box(0.022, dy - 0.04, 0.03), xo, cy, z0 + (z1 - z0) * i / n);
+    for (const y of rails) P.add('turretDark', box(0.026, 0.026, dz), xOut, y, cz);
+    const n = Math.max(2, Math.round(dz / 0.34));
+    for (let i = 1; i < n; i++) P.add('turretDetail', box(0.03, dy - 0.03, 0.03), xOut, cy, z0 + (z1 - z0) * i / n);
   } else {
     for (const x of [xIn, xOut]) P.add('turretDetail', box(0.025, dy, dz), x, cy, cz);       // end plates
-    const zo = z0;   // the rear face
-    for (const y of [y0 + 0.03, y1 - 0.02]) P.add('turretDark', box(dx, 0.03, 0.03), cx, y, zo);
-    const n = Math.max(3, Math.round(dx / 0.11));
-    for (let i = 1; i < n; i++) P.add('turretDetail', box(0.03, dy - 0.04, 0.022), xIn + (xOut - xIn) * i / n, cy, zo);
+    for (const y of rails) P.add('turretDark', box(dx, 0.026, 0.026), cx, y, z0);
+    const n = Math.max(2, Math.round(dx / 0.34));
+    for (let i = 1; i < n; i++) P.add('turretDetail', box(0.03, dy - 0.03, 0.03), xIn + (xOut - xIn) * i / n, cy, z0);
   }
 }
 
@@ -406,10 +404,10 @@ function addStowage(P: TankBuilderPort): void {
   const { cylX, cylZ } = KIT;
   const wallX = 1.16, outX = 1.40, y0 = 0.14, y1 = 0.50;
   for (const side of [-1, 1]) {
-    slattedBox(P, side * wallX, side * outX, y0, y1, -1.06, 0.00, 'x');
+    railedBasket(P, side * wallX, side * outX, y0, y1, -1.06, 0.00, 'x');
     P.add('turretCloth', cylZ(0.11, 0.86, P.q ? 16 : 10), side * 1.28, y1 - 0.06, -0.53);
   }
-  slattedBox(P, -0.95, 0.95, 0.12, 0.50, -1.70, -1.27, 'z');
+  railedBasket(P, -0.95, 0.95, 0.12, 0.50, -1.70, -1.27, 'z');
   // the stowed snorkel tube along the rear basket, and a tarpaulin roll
   P.add('turretDetail', cylX(0.11, 1.50, P.q ? 20 : 12), 0, 0.40, -1.58);
   P.add('turretCloth', cylX(0.13, 1.10, P.q ? 16 : 10), 0, 0.33, -1.48);
@@ -431,8 +429,8 @@ function addTurretRoof(P: TankBuilderPort): void {
     const a = (i / 6) * Math.PI * 2 + 0.3;
     KIT.periscope(P, 'turretDetail', cx + Math.sin(a) * 0.30, y + 0.085, cz + Math.cos(a) * 0.30);
   }
-  // commander's day/night sight ahead of the cupola
-  P.add('turret', box(0.26, 0.20, 0.24), cx, y + 0.10, cz + 0.46);
+  // commander's day/night sight ahead of the cupola, its front over the start of the slope
+  P.add('turret', box(0.26, 0.26, 0.24), cx, y + 0.07, cz + 0.46);
   P.add('turretDark', box(0.20, 0.08, 0.02), cx, y + 0.13, cz + 0.585);
   P.add('turretGlass', box(0.16, 0.055, 0.008), cx, y + 0.13, cz + 0.597);
   // IR searchlight on the cupola's outer side
@@ -444,18 +442,20 @@ function addTurretRoof(P: TankBuilderPort): void {
     P.add('turretDark', cylZ(r + 0.008, 0.024, P.q ? 20 : 12), lx, ly, lz + 0.125);
     P.add('turretGlass', cylZ(r - 0.02, 0.008, P.q ? 20 : 12), lx, ly, lz + 0.14);
   }
-  // the 12.7 mm gun on the cupola's rear ring
+  // the 12.7 mm gun on its post on the cupola's rear ring (the photographs' tall cradle)
+  const post = 0.24;
+  P.add('turretDetail', cylY(0.035, 0.045, post, 12), cx, y + 0.075 + post / 2, cz - 0.24);
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.06,
     ammo: true, rotation: [0, 0, 0], seed: 8560, working: true, ridingCradle: true,
-  }), cx, y + 0.085, cz - 0.24);
-  // gunner's armoured sight box (left, ahead of his hatch)
+  }), cx, y + 0.075 + post, cz - 0.24);
+  // gunner's armoured sight box (left, ahead of his hatch), seated on the front slope
   {
-    const gx = 0.52, gz = 0.46;
-    P.add('turret', box(0.34, 0.24, 0.42), gx, y + 0.11, gz);
-    P.add('turret', box(0.38, 0.03, 0.30), gx, y + 0.245, gz + 0.04);
-    P.add('turretDark', box(0.24, 0.10, 0.02), gx, y + 0.15, gz + 0.215);
-    P.add('turretGlass', box(0.20, 0.07, 0.008), gx, y + 0.15, gz + 0.227);
+    const gx = 0.40, gz = 0.30, base = roofAt(gx, gz + 0.18) - 0.01, h = 0.26;
+    P.add('turret', box(0.32, h, 0.36), gx, base + h / 2, gz);
+    P.add('turret', box(0.36, 0.03, 0.26), gx, base + h + 0.012, gz + 0.03);
+    P.add('turretDark', box(0.22, 0.10, 0.02), gx, base + h - 0.09, gz + 0.185);
+    P.add('turretGlass', box(0.18, 0.07, 0.008), gx, base + h - 0.09, gz + 0.197);
   }
   // gunner's hatch (left)
   P.add('turretDetail', cylY(0.28, 0.29, 0.03, seg), 0.50, y + 0.012, -0.32);
@@ -468,13 +468,11 @@ function addTurretRoof(P: TankBuilderPort): void {
   P.add('turretDetail', cylY(0.05, 0.06, 0.05, 12), -0.74, y + 0.025, -1.02);
   P.add('turretDetail', cylY(0.022, 0.026, 0.42, 10), -0.74, y + 0.26, -1.02);
   P.add('turretDark', cylY(0.05, 0.05, 0.08, 12), -0.74, y + 0.50, -1.02);
-  // antennas at the rear corners
-  for (const [x, h, seed] of [[0.80, 0.95, 8543], [-0.86, 0.80, 8544]] as const) {
-    P.add('turretDetail', cylY(0.04, 0.05, 0.06, 10), x, y + 0.03, -1.10);
-    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.013, rake: x > 0 ? -0.04 : 0.04, seed }), x, y + 0.06, -1.10);
-  }
-  // lift eyes
-  for (const [x, z] of [[0.86, 0.30], [-0.86, 0.36], [0.82, -1.00], [-0.60, -1.12]] as const) {
+  // the radio antenna at the rear left corner
+  P.add('turretDetail', cylY(0.04, 0.05, 0.06, 10), 0.80, y + 0.03, -1.10);
+  mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 0.95, r: 0.013, rake: -0.04, seed: 8543 }), 0.80, y + 0.06, -1.10);
+  // lift eyes on the flat roof
+  for (const [x, z] of [[0.86, -0.12], [-0.92, -0.08], [0.82, -1.00], [-0.60, -1.12]] as const) {
     KIT.liftEye(P, 'turretDetail', x, y + 0.005, z);
   }
 }
@@ -490,29 +488,30 @@ function addSmokeDischargers(P: TankBuilderPort): void {
   }
 }
 
-/** The 125 mm gun in its mantlet (gun frame): the cast mount in the snout under a canvas trumpet, the coaxial MG's port
- * on the right, the tube in its thermal sleeve with the evacuator a little forward of mid-tube. */
+/** The 125 mm gun in its mantlet (gun frame): the cast mount in the snout under a short canvas cover, the coaxial MG's
+ * port on the right, the tube in its thermal sleeve with the evacuator a little forward of mid-tube. */
 function addGun(P: TankBuilderPort): void {
   const { box, cylZ } = KIT;
   const n = P.q ? 20 : 12;
-  P.addGunExtra(box(0.62, 0.44, 0.46), 0, -0.01, 0.17);
-  // canvas trumpet from the mount's face onto the tube
-  const stations: [number, number, number][] = [[0.36, 0.60, 0.48], [0.52, 0.52, 0.44], [0.68, 0.36, 0.34], [0.84, 0.27, 0.27], [1.00, 0.222, 0.222]];
+  // the cast mount, its face 8 cm proud of the snout
+  P.addGunExtra(box(0.50, 0.34, 0.38), 0, -0.01, 0.11);
+  // the short canvas cover from the mount's face onto the tube, about 0.3 m proud of the snout
+  const stations: [number, number, number][] = [[0.24, 0.42, 0.36], [0.36, 0.38, 0.33], [0.46, 0.30, 0.28], [0.54, 0.232, 0.232]];
   const round = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2;
     return [Math.cos(a) * w / 2, Math.sin(a) * h / 2] as const;
   });
   P.add('gunMountCanvasSkin', sectionSolid(stations.map(([z, w, h]) => ({ z, ring: round(w, h) })),
     { smoothSideEdges: Array.from({ length: n }, (_, i) => i) }));
-  for (const [z, w, h] of stations.slice(2, -1)) {
+  for (const [z, w, h] of stations.slice(1, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.116, 0.035, n), 0, 0, 0.985);
-  P.addGunExtraDark(cylZ(0.024, 0.08, 10), -0.22, -0.05, 0.42);
+  P.addGunExtraDark(cylZ(0.116, 0.035, n), 0, 0, 0.525);
+  P.addGunExtraDark(cylZ(0.024, 0.08, 10), -0.20, -0.06, 0.32);
   const ev = EVACUATOR;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    [0.80, 1.70, 0.104, 0.112], [1.70, ev.z0 - 0.08, 0.099, 0.104],
+    [0.40, 1.70, 0.104, 0.112], [1.70, ev.z0 - 0.08, 0.099, 0.104],
     [ev.z0 - 0.08, ev.z0, ev.r, 0.099], [ev.z0, ev.z1, ev.r, ev.r], [ev.z1, ev.z1 + 0.08, 0.098, ev.r],
     [ev.z1 + 0.08, MUZZLE_Z - 0.085, 0.094, 0.098], [MUZZLE_Z - 0.085, MUZZLE_Z, 0.090, 0.094],
   ], { rings: [[1.70, 0.110], [2.62, 0.106], [3.40, 0.105], [5.00, 0.100], [5.66, 0.098]], muzzle: MUZZLE_Z });
@@ -537,8 +536,8 @@ function addTurret(P: TankBuilderPort): void {
   addGun(P);
   // star and number on each wall's open forward panel, ahead of the side basket
   const num = P.spec.visual.number || '85-III';
-  P.decal('turret', 'star', null, 0.20, [1.146, 0.34, 0.18], Math.PI / 2);
-  P.decal('turret', 'number', num, 0.20, [-1.146, 0.34, 0.18], -Math.PI / 2);
+  P.decal('turret', 'star', null, 0.20, [1.143, 0.34, 0.14], Math.PI / 2);
+  P.decal('turret', 'number', num, 0.20, [-1.143, 0.34, 0.14], -Math.PI / 2);
   P.topY = ROOF_H + 0.24;
 }
 
@@ -546,7 +545,6 @@ function addTurret(P: TankBuilderPort): void {
 export function buildZTZ85III(P: TankBuilderPort): void {
   addHullBody(P);
   addFenders(P);
-  addSkirts(P);
   addRunningGear(P);
   addHullFront(P);
   addSponsonStowage(P);
@@ -556,17 +554,17 @@ export function buildZTZ85III(P: TankBuilderPort): void {
     revision: 'ztz85iii-r263',
     hullBodyM: Object.freeze({ rearZ: REAR_Z, noseZ: NOSE_Z, halfWidth: HULL_HALF_W, tubHalfWidth: TUB_HALF_W,
       roofY: ROOF_Y, engineDeckY: ENGINE_DECK_Y, bellyY: BELLY_Y }),
-    widthOverSkirtsM: (SKIRT_X + SKIRT_T / 2) * 2,
+    widthOverFendersM: FENDER_OUT * 2,
     upperGlacisDegFromLevel: Math.atan(UPPER_GLACIS_TAN) / D2R,
     roadWheelStations: WHEEL_ZS.length, roadWheelDiameterM: WHEEL_R * 2, returnRollers: RETURN_ROLLER_ZS.length,
-    trackWidthM: TRACK_W, trackGaugeM: TRACK_XC * 2, skirtPanels: 6, glacisEraBricks: 20, rearFuelDrums: 2,
+    trackWidthM: TRACK_W, trackGaugeM: TRACK_XC * 2, skirtPanels: 0, glacisEraBricks: 20, rearFuelDrums: 2,
     driverSide: 'left', exhaustSide: 'left',
   });
   P.turretG.userData.ztz85iiiReceipt = Object.freeze({
     revision: 'ztz85iii-r263',
     pivotLocalM: Object.freeze([...TURRET_PIVOT]), trunnionLocalM: Object.freeze([...TRUNNION]),
-    beltPlan: BELT_PLAN, roofPlan: ROOF_PLAN, roofHeightM: ROOF_H,
-    muzzleLocalZ: MUZZLE_Z, evacuator: EVACUATOR, frontEraBricks: 12, smokeDischargers: 8,
+    beltPlan: BELT_PLAN, browPlan: BROW_PLAN, roofPlan: ROOF_PLAN, browHeightM: BROW_Y, roofHeightM: ROOF_H,
+    muzzleLocalZ: MUZZLE_Z, evacuator: EVACUATOR, frontEraBricks: 10, smokeDischargers: 8,
     commanderSide: 'right', gunnerSide: 'left', roofMachineGuns: Object.freeze(['W-85 12.7 mm']),
   });
 }

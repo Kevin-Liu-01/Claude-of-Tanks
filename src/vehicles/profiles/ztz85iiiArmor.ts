@@ -30,8 +30,6 @@ export function createZTZ85IIIArmor(): ArmorEnvelope {
     sL('hull_side_upper_L', 35, 1.56, 1.07, 1.56, 1.45, -3.10, 2.58, { keMm: 40, ceMm: 40 }),
     sR('hull_side_lower_R', 35, 1.04, 0.47, 1.04, 1.07, -3.05, 2.72, { keMm: 40, ceMm: 40 }),
     sL('hull_side_lower_L', 35, 1.04, 0.47, 1.04, 1.07, -3.05, 2.72, { keMm: 40, ceMm: 40 }),
-    sR('skirt_R', 8, 1.688, 0.66, 1.688, 1.07, -3.06, 2.60, { keMm: 9, ceMm: 9, kind: 'spaced' }),
-    sL('skirt_L', 8, 1.688, 0.66, 1.688, 1.07, -3.06, 2.60, { keMm: 9, ceMm: 9, kind: 'spaced' }),
     sR('track_R', 20, 1.36, 0.10, 1.36, 0.95, -3.20, 3.00, { kind: 'external', moduleLink: 'trackR' }),
     sL('track_L', 20, 1.36, 0.10, 1.36, 0.95, -3.20, 3.00, { kind: 'external', moduleLink: 'trackL' }),
     rr('hull_rear', 25, 1.50, 0.68, -3.165, 1.37, -3.165, { keMm: 28, ceMm: 28 }),
@@ -39,16 +37,19 @@ export function createZTZ85IIIArmor(): ArmorEnvelope {
     rf('engine_deck', 20, 1.50, 1.53, -3.00, -1.74, { keMm: 23, ceMm: 23 }),
   ];
   const turretPlates = [
-    chR('turret_era_R', 15, 0.42, 1.27, 1.17, 0.39, 0.20, 0.58, 0.20, 0.04, era),
-    chL('turret_era_L', 15, 0.42, 1.27, 1.17, 0.39, 0.20, 0.58, 0.20, 0.04, era),
-    chR('turret_cheek_R', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.60, 0.22, 0.04, { keMm: 137, ceMm: 137 }),
-    chL('turret_cheek_L', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.60, 0.22, 0.04, { keMm: 137, ceMm: 137 }),
-    par('mantlet', 120, [-0.31, 0.07, 1.33], [0.31, 0.07, 1.33], [-0.31, 0.53, 1.31],
+    chR('turret_era_R', 15, 0.43, 1.26, 1.18, 0.38, 0.20, 0.50, 0.14, 0.03, era),
+    chL('turret_era_L', 15, 0.43, 1.26, 1.18, 0.38, 0.20, 0.50, 0.14, 0.03, era),
+    fr('turret_slope_era', 15, 1.00, 0.51, 0.86, 0.58, 0.42, era),
+    chR('turret_cheek_R', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.46, 0.14, 0.04, { keMm: 137, ceMm: 137 }),
+    chL('turret_cheek_L', 120, 0.40, 1.20, 1.13, 0.34, 0.02, 0.46, 0.14, 0.04, { keMm: 137, ceMm: 137 }),
+    // the long front slope from the brow (0.46 m) up to the roof (0.62 m)
+    fr('turret_upper_front', 70, 1.08, 0.46, 1.06, 0.62, 0.18, { keMm: 100, ceMm: 100 }),
+    par('mantlet', 120, [-0.24, 0.12, 1.42], [0.24, 0.12, 1.42], [-0.24, 0.48, 1.40],
       { keMm: 137, ceMm: 137, gunFollow: true }),
-    sR('turret_side_R', 45, 1.16, 0.02, 1.10, 0.60, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
-    sL('turret_side_L', 45, 1.16, 0.02, 1.10, 0.60, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
-    rr('turret_rear', 35, 0.95, 0.02, -1.29, 0.60, -1.25, { keMm: 40, ceMm: 40 }),
-    rf('turret_roof', 20, 1.08, 0.61, -1.25, 0.95, { keMm: 23, ceMm: 23 }),
+    sR('turret_side_R', 45, 1.16, 0.02, 1.10, 0.62, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
+    sL('turret_side_L', 45, 1.16, 0.02, 1.10, 0.62, -1.27, 0.30, { keMm: 51, ceMm: 51 }),
+    rr('turret_rear', 35, 0.95, 0.02, -1.29, 0.62, -1.25, { keMm: 40, ceMm: 40 }),
+    rf('turret_roof', 20, 1.08, 0.63, -1.25, 0.18, { keMm: 23, ceMm: 23 }),
   ];
   const modules = [
     mbox('engine', [-1.04, 0.47, -3.10], [1.04, 1.45, -1.80]),

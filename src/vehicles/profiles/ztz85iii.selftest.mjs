@@ -1,6 +1,6 @@
 // ZTZ-85-III (release 263, owner 2026-10-28: "yeah going to need a totally new ztz 85 III"): the native fixture of the
 // ground-up rebuild in profiles/ztz85iii.ts against the published Type 85 record (docs/references/tanks/ztz85_iii.md
-// §263), at both qualities: the 6.325 m hull and its 3.37 m skirts, six road wheels, the compact welded turret (no longer
+// §263), at both qualities: the 6.325 m hull and its 3.37 m fenders, six road wheels, the compact welded turret (no longer
 // the 4.55 m slab of releases 248-262), the cupola's 2.29 m crown, the 10.37 m gun forward and the crew stations' sides.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -27,15 +27,16 @@ for (const quality of ['high', 'low']) {
     const hullReceipt = hullRig.userData.ztz85iiiReceipt, turretReceipt = turretRig.userData.ztz85iiiReceipt;
     assert.ok(hullReceipt && turretReceipt, `${quality}: the rebuild's receipts ride the hull and turret rigs`);
 
-    // hull: the published 6.325 m from the stern plate to the beak, 3.37 m over the skirts, six road wheels a side
+    // hull: the published 6.325 m from the stern plate to the beak, 3.37 m over the fenders (the 85-III prototype ran
+    // without skirts), six road wheels a side
     near(hullReceipt.hullBodyM.noseZ - hullReceipt.hullBodyM.rearZ, 6.325, `${quality} hull length`, 0.006);
-    const skirts = box(named('hullRubber'));
-    near(skirts.max.x * 2, 3.40, `${quality} width over the skirts and their ribs`, 0.02);
+    near(box(named('hull')).max.x * 2, 3.37, `${quality} width over the fenders`, 0.01);
+    assert.equal(hullReceipt.skirtPanels, 0, `${quality}: the upper run and return rollers in the open`);
     assert.equal(hullReceipt.roadWheelStations, 6, `${quality}: six road wheels a side`);
     assert.equal(hullReceipt.returnRollers, 3, `${quality}: three return rollers`);
     near(hullReceipt.roadWheelDiameterM, 0.70, `${quality} road wheel`, 0.001);
 
-    // turret: the compact welded hexagon, 2.32 m wide and 2.5 m long, its roof at 2.05 m
+    // turret: the compact welded hexagon, 2.32 m wide and 2.5 m long, its roof at 2.07 m behind the long front slope
     const turret = box(named('turret'));
     near(turret.max.x - turret.min.x, 2.32, `${quality} turret width`, 0.02);
     assert.ok(turret.max.z - turret.min.z < 2.7, `${quality}: turret ${(turret.max.z - turret.min.z).toFixed(2)} m long, not the old 4.55 m slab`);
@@ -43,7 +44,7 @@ for (const quality of ['high', 'low']) {
     const roofHit = new THREE.Raycaster(new THREE.Vector3(0.20, 4, -0.85), new THREE.Vector3(0, -1, 0))
       .intersectObject(named('turret'), false)[0];
     assert.ok(roofHit, `${quality}: the turret roof is closed behind the hatches`);
-    near(roofHit.point.y, 2.05, `${quality} turret roof`, 0.02);
+    near(roofHit.point.y, 2.07, `${quality} turret roof`, 0.02);
     // the cupola's crown is the published 2.29 m height (the 12.7 mm gun and the whips stand above it)
     const hatches = box(named('turretHatch'));
     assert.ok(hatches.max.y <= 2.30 && hatches.max.y >= 2.10, `${quality}: cupola crown ${hatches.max.y.toFixed(3)} m`);

@@ -80,6 +80,18 @@ function variant(
   return spec;
 }
 
+/**
+ * Release 263: the rebuilt ZTZ-85-III's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz85_iii,
+ * the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): -5.5 degrees dead ahead and abeam
+ * (the canvas trumpet meets the deck edge 0.4 degrees short of the spec's 6); over the driver's hatch at 7-25 degrees it
+ * stays 1-3 degrees down, over the headlight guards at 26-39 about 2.5; over the raised engine deck from 136 degrees it
+ * rises to 0.5-1.3 degrees down.
+ */
+const ZTZ85III_GUN_PITCH_BY_YAW_DEG = Object.freeze([
+  [0, -5.5], [3, -5.3], [6, -4], [7, -3.1], [9, -2.4], [14, -1.1], [18, -1], [19, -1.1], [26, -2.9],
+  [29, -2.5], [37, -2.2], [38, -2.6], [39, -3.3], [41, -5.5], [136, -5.4], [137, -4.1], [138, -3.5], [141, -3],
+  [144, -2.6], [145, -2], [146, -1.8], [151, -1.3], [167, -1.1], [168, -0.8], [173, -0.5], [178, -0.8], [180, -1.1]] as const);
+
 const CHINA_SPECS = {
   // Release 263 (owner 2026-10-28, "yeah going to need a totally new ztz 85 III"): the ground-up rebuild of
   // profiles/ztz85iii.ts on the published Type 85 record (docs/references/tanks/ztz85_iii.md §263). Dims are the published
@@ -92,6 +104,9 @@ const CHINA_SPECS = {
     trackWidthM: 0.55,
     dims: {
       hullLengthM: 6.325, overallLengthM: 10.37, widthM: 3.372, heightM: 2.29,
+      // the drawn envelope (the build's body extents): the stern drums to the front guards, the drums to the muzzle, the
+      // 12.7 mm over the cupola
+      silhouetteHullLengthM: 6.92, silhouetteOverallLengthM: 10.91, silhouetteHeightM: 2.59,
     },
     stats: {
       hp: 1950, enginePowerHp: 1000, weightTons: 43.7, topSpeedKmh: 57,
@@ -141,6 +156,7 @@ const CHINA_SPECS = {
 // Tier-VIII fire-control package: the inherited 100 mm ammunition replaced with the ZTZ-85-III's 125 mm set.
 {
   const spec = CHINA_SPECS.ztz85_iii;
+  spec.gunPitchByYawDeg = ZTZ85III_GUN_PITCH_BY_YAW_DEG;
   spec.hp = 2100;
   spec.gun.reloadS = 6.8;
   spec.gun.baseAccuracy = 0.33;
