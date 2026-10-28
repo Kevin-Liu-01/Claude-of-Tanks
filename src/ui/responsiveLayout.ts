@@ -18,6 +18,9 @@ export const VIEWPORT_WIDTH_BANDS = Object.freeze({
 
 /** Fine-pointer windows at least this wide keep the persistent Garage sidebars. */
 const PERSISTENT_PANELS_MIN_WIDTH = 900;
+/** A touch screen held wide keeps them from this size up: an iPad on its side (1133 x 690 to 1376 x 960 in Safari). */
+const TOUCH_PANELS_MIN_WIDTH = 900;
+const TOUCH_PANELS_MIN_HEIGHT = 600;
 
 export const VIEWPORT_HEIGHT_BANDS = Object.freeze({
   short: Object.freeze({ min: 0, max: 519 }),
@@ -116,8 +119,14 @@ export function classifyViewport({
   // falls to 0.78 before anything is hidden — and only phones, compact widths, short heights and coarse-pointer
   // tablets/laptops (an iPad without a trackpad) fold the panels into overlays. The former laptop pressure rule
   // (< 1240 px or a tall viewport) folded ordinary desktop windows.
-  const pressuredTablet = widthBand === 'tablet' && (safeWidth < PERSISTENT_PANELS_MIN_WIDTH || input === 'coarse');
-  const pressuredLaptop = widthBand === 'laptop' && input === 'coarse';
+  // 2026-10-27 (owner: "the base ipad view is really really bad ... fix all ui on ipad"): a touch screen held wide with
+  // room for the docked layout (an iPad on its side, a Stage Manager window) keeps the persistent panels at touch sizes;
+  // folded, it showed the phone's sideways layout stretched over a tablet, a quarter of the screen dead.
+  const roomyTouch = input === 'coarse' && orientation === 'landscape'
+    && safeWidth >= TOUCH_PANELS_MIN_WIDTH && safeHeight >= TOUCH_PANELS_MIN_HEIGHT;
+  const pressuredTablet = widthBand === 'tablet'
+    && (safeWidth < PERSISTENT_PANELS_MIN_WIDTH || (input === 'coarse' && !roomyTouch));
+  const pressuredLaptop = widthBand === 'laptop' && input === 'coarse' && !roomyTouch;
   const overlayPanels = heightBand === 'short'
     || widthBand === 'phone' || widthBand === 'compact'
     || pressuredTablet || pressuredLaptop;

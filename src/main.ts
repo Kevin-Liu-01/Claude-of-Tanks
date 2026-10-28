@@ -150,6 +150,7 @@ import './ui/components/notices.css';
 import './ui/components/pickers.css';
 import './ui/garage.css';
 import './ui/showroom.css';
+import './ui/tablet.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
