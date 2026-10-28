@@ -30,7 +30,7 @@
   "amx40_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6d0063f8cb6f534b","gun":"bb973008b0ec5041"}},
   "amx56": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f35163c52e9cd369","gun":"a21c3573246a650f"}},
   "ares_apc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"383de3c1e1e970af","gun":"a7614cd19fa7d69b"}},
-  "bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0b9fcdecc74d0aa3","gun":"a91fee59ed5a3957"}},
+  "bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7182f7d90584f9b8","gun":"a91fee59ed5a3957"}},
   "bm_oplot_t": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4bec22e66f4e9e83","gun":"a55b2fbcd636bb78"}},
   "bmp2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5074e1fdc95274e8","gun":"b21d836e1f459b29"}},
   "bmp3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2341528e6d7afa9","gun":"1a34390dcb570fc3"}},
