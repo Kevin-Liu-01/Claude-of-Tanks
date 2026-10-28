@@ -36,9 +36,11 @@ function same(id, name, inCore, deferred) {
   checks++;
 }
 
-// the garage default (a field suit on hull and turret) under the battle and Garage builds, and the fleet's slowest
-// slice (a Ukrainian field net with its working clearances) under the battle build
-for (const [id, names] of [['m1a3', ['battleHigh', 'garage']], ['ua_challenger2', ['battleHigh']]]) {
+// a Group C field suit on hull and turret (the M1A2 TUSK's; 2026-10-28 the garage default m1a3, now the M1E3, rolls out
+// clean like the demonstrator) under the battle and Garage builds, and the fleet's slowest slice (a Ukrainian field net
+// with its working clearances) under the battle build
+const SUITED = 'm1a2_abrams_tusk';
+for (const [id, names] of [[SUITED, ['battleHigh', 'garage']], ['ua_challenger2', ['battleHigh']]]) {
   for (const name of names) {
     const options = DEFERRED_ASSEMBLY_BUILDS[name];
     const inCore = drainTimedSteps(createTankSteps(id, null, { ...options, assemblyInCore: true }));
@@ -49,7 +51,7 @@ for (const [id, names] of [['m1a3', ['battleHigh', 'garage']], ['ua_challenger2'
       assert.ok(deferred.slices.length >= inCore.slices.length + 8,
         `${id} ${name}: the suit builds in slices (${inCore.slices.length} -> ${deferred.slices.length} checkpoints)`);
       checks++;
-      if (id === 'm1a3' && name === 'garage') {
+      if (id === SUITED && name === 'garage') {
         // a synchronous caller (the covered boot) drains the same order
         const sync = createTank(id, null, options);
         try { same(id, `${name} synchronous`, inCore.visual, sync); } finally { sync.dispose(); }
@@ -74,7 +76,7 @@ try {
       setupShadowMaterial(material) { registered.add(material); return material; },
       releaseShadowMaterial(material) { return registered.delete(material); },
     };
-    const steps = createTankSteps('m1a3', context, DEFERRED_ASSEMBLY_BUILDS.garage);
+    const steps = createTankSteps(SUITED, context, DEFERRED_ASSEMBLY_BUILDS.garage);
     // click-perf-244: the core's own stage checkpoints come first; the completed core is the first captured one
     let reached = steps.next();
     while (!reached.done && !capture) reached = steps.next();

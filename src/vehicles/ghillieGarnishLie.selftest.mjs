@@ -41,7 +41,8 @@ installCanvasFixture();
 const { createTank } = await import('./tankFactory.ts');
 const { GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } = await import('./ghillieDrape.ts');
 
-const IDS = process.env.GARNISH_LIE_DEBUG ? [process.env.GARNISH_LIE_DEBUG] : ['cv90', 'merkava4b', 't72b3m_hetman_ii', 'leo2_revolution', 'griffin_viper', 'm1a3', 'strv103b', 'ztz99a2'];
+// (2026-10-28, m1e3-264: the m1a3 left the list; rebuilt as the M1E3 demonstrator it wears no field suit)
+const IDS = process.env.GARNISH_LIE_DEBUG ? [process.env.GARNISH_LIE_DEBUG] : ['cv90', 'merkava4b', 't72b3m_hetman_ii', 'leo2_revolution', 'griffin_viper', 'strv103b', 'ztz99a2'];
 // netting-pl (2026-10-13; the owner: "also add a bunch of ghillie on the husarz and zubr polish tanks"): the Polish field
 // suits (nationalPolandProtectionConfig.ts, hung on the slat screens) lay theirs the same way
 if (!process.env.GARNISH_LIE_DEBUG) IDS.push('t80u_husarz', 't72b3_zubr_ii');

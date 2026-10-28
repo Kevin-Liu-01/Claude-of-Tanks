@@ -1127,30 +1127,6 @@ function tejasSmokeCluster(
   }
 }
 
-// M256 mantlet: armored block + dust-cover bulge with dark cinch seams,
-// coax port, rotor collar. zOff pushes the kit to the embrasure face.
-// w2 = width fraction of the forward cover block (vertex r1: the tejas
-// oracle's plan corridor past the cheek line is only ±0.20 wide — a 0.84w
-// forward block lit plan columns the reference never reaches).
-function abramsMantlet(
-  P: AbramsBuilderPort,
-  s = 1,
-  w = 0.68,
-  h = 0.5,
-  zOff = 0,
-  w2 = 0.84,
-): void {
-  P.addGunExtra(box(w * s, h * s, 0.42 * s), 0, 0.01 * s, zOff + 0.12 * s);
-  P.addGunExtra(box(w * w2 * s, h * 0.78 * s, 0.24 * s), 0, 0.03 * s, zOff + 0.4 * s);
-  const ws = Math.min(0.86, w2 + 0.02);
-  P.addGunExtraDark(box(w * ws * s, 0.028, 0.028), 0, h * 0.32 * s, zOff + 0.5 * s);
-  P.addGunExtraDark(box(w * ws * s, 0.028, 0.028), 0, -h * 0.26 * s, zOff + 0.5 * s);
-  P.addGunExtraDark(box(0.028, h * 0.6 * s, 0.028), w * ws * 0.38 * s, 0.02 * s, zOff + 0.51 * s);
-  P.addGunExtraDark(box(0.028, h * 0.6 * s, 0.028), -w * ws * 0.38 * s, 0.02 * s, zOff + 0.51 * s);
-  P.addGunExtraDark(cylZ(0.042 * s, 0.18 * s, 10), w * ws * 0.42 * s, 0.09 * s, zOff + 0.5 * s);
-  P.addGunExtra(cylZ(0.15 * s, 0.28 * s, 14), 0, 0, zOff + 0.56 * s);
-}
-
 // CROWS-FORWARD shadow barrels (owner order 2026-08-07, §5.07: "focus on
 // making the crows machine guns point forward, not to the left"). At forward
 // rest a real RWS barrel rides ABOVE the roof line ALONG z — in the side
@@ -8054,6 +8030,11 @@ const M1E3_HULL: AbramsHullConfig = {
   noRearFlap: true,
   noDriverPeriscopes: true,
   noGlacisBoard: true,
+  // The hull builder's own road-aimed bow lamps, seated on the nose face at the
+  // demonstrator's corner light positions (the family's pod lenses shine level).
+  authoredBowLights: false,
+  bowLightForwardM: 0.18,
+  bowLightX: 1.05,
 };
 
 // Turret frame (rig_turret). The ring sits over the second road wheel: the
@@ -8127,7 +8108,7 @@ function* addM1E3HullSteps(P: AbramsBuilderPort, g: AbramsHullConfig): TankProfi
 }
 
 // The certified M1 closure stations (buildTejasFamily), reused unchanged: the
-// raked front shoulders over the idler lane, the headlight pods, the stern's
+// raked front shoulders over the idler lane, the stern's
 // full-height mid-step and return flanges, the rear shoulder roofs, corner
 // tongues and taillight guard plates behind the sprocket sweep, the rear-deck
 // grille pods and the belly rim. The skirt-plane wings, carrier tabs and the
@@ -8141,8 +8122,6 @@ function addM1E3FamilyClosures(P: AbramsBuilderPort): void {
       [1.065, 1.430, 3.17], [1.742, 1.385, 3.17], [1.742, 1.275, 3.51], [1.065, 1.335, 3.51],
       [1.065, 1.490, 3.17], [1.742, 1.445, 3.17], [1.742, 1.335, 3.51], [1.065, 1.395, 3.51]);
     P.add('hull', box(0.10, 0.08, 5.8), side * 1.01, 0.395, 0);
-    P.add('hull', box(0.09, 0.14, 0.058), side * 1.05, 1.27, 3.906);
-    P.add('hullDark', markVehicleNightLens(box(0.07, 0.12, 0.02), 'headlight'), side * 1.05, 1.27, 3.928);
   }
   P.add('hull', box(2.17, 0.715, 0.19), 0, 1.3275, -3.73);
   for (const side of [-1, 1]) {
@@ -8239,6 +8218,11 @@ function addM1E3GlacisAndHatches(P: AbramsBuilderPort, g: AbramsHullConfig): voi
       P.addModuleVisual('optics', 'hullGlass', box(0.105, 0.03, 0.012), x + dx, py + 0.026, pz + 0.04);
     }
   }
+}
+
+// The body's flat roof between the cheeks (z 0.31, y 0.62) and the bustle (z -0.70, y 0.68).
+function m1e3BodyRoofY(z: number): number {
+  return 0.62 + (0.68 - 0.62) * (0.31 - z) / (0.31 - M1E3_BODY_REAR_Z);
 }
 
 function addM1E3TurretShell(P: AbramsBuilderPort): void {
@@ -8385,10 +8369,11 @@ function addM1E3TurretSensors(P: AbramsBuilderPort): void {
       P.addModuleVisual('optics', 'turretGlass', box(0.012, 0.06, 0.07), cx + side * 0.052, 0.50, z);
     }
     smokeBank(P, side * 1.40, 0.43, -0.20, side, 0.78);
-    for (const z of [0.40, -1.32]) {
-      const y = z > 0 ? 0.64 : 0.72;
-      P.addEquipment('turret', box(0.10, 0.025, 0.09), side * 1.05, y + 0.012, z);
-      P.addEquipment('turretDetail', torus(0.032, 0.010, 10), side * 1.05, y + 0.038, z, Math.PI / 2);
+    // Lifting eyes on the body roof plane and on the bustle roof outboard of its blow-off panels.
+    for (const [x, z] of [[1.05, 0.20], [1.25, -1.32]]) {
+      const y = z > 0 ? m1e3BodyRoofY(z) : 0.72;
+      P.addEquipment('turret', box(0.10, 0.025, 0.09), side * x, y + 0.0085, z);
+      P.addEquipment('turretDetail', torus(0.032, 0.010, 10), side * x, y + 0.0345, z, Math.PI / 2);
     }
   }
   P.addEquipment('turret', cylY(0.05, 0.06, 0.08, 10), -0.92, 0.70, -0.50);

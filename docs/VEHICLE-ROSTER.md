@@ -32,7 +32,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 22 | PROD | `m1a1_abrams_sa` | M1A1 Abrams SA | USA | X | Modern | Production |
 | 23 | PROD | `m1a1_abrams_aim` | M1A1 Abrams AIM | USA | X | Modern | Production |
 | 24 | PROD | `m1a1_abrams_fep` | M1A1 Abrams FEP | USA | X | Modern | Production |
-| 25 | PROD | `m1a3` | M1A3 Abrams | USA | X | Next Generation | Production |
+| 25 | PROD | `m1a3` | M1E3 Abrams | USA | X | Next Generation | Production |
 | 26 | PROD | `abramsx` | AbramsX | USA | X | Next Generation | Production |
 | 27 | PROD | `strv81` | Stridsvagn 81 | Sweden | VII | Cold War | Production |
 | 28 | PROD | `udes03` | UDES 03 | Sweden | VIII | Cold War | Production |
