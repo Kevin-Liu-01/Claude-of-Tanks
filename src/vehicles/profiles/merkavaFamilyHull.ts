@@ -30,8 +30,9 @@ export interface MerkavaHullSpec {
   readonly upperHalfWidth: number;
   /** The rear door: centre height, width, height (on the stern plate). */
   readonly rearDoor: readonly [y: number, width: number, height: number];
-  /** The exhaust louvre on the right hull side: z0, z1. */
-  readonly exhaust: readonly [z0: number, z1: number];
+  /** The exhaust louvre on the right hull side: its panel's z0 and z1, its vanes' first and last z and their y0 and y1
+   *  (eight vertical vanes); null where the source shows none (the Mk 4's is under its side plates). */
+  readonly exhaust: readonly [z0: number, z1: number, vane0: number, vane1: number, y0: number, y1: number] | null;
 }
 
 export interface MerkavaGearSpec {
@@ -156,7 +157,8 @@ export function buildMerkavaRunningGear(P: TankBuilderPort, gear: MerkavaGearSpe
   });
 }
 
-/** The rear door (the two-leaf clamshell), its hinges and handle, and the exhaust louvre on the right side. */
+/** The rear door (the two-leaf clamshell), its hinges and handle, and the exhaust louvre on the right side: a dark
+ *  recessed panel, its top lip and eight vertical vanes. */
 export function buildMerkavaStern(P: TankBuilderPort, spec: MerkavaHullSpec): void {
   const { box, cylY, cylX } = KIT;
   const [doorY, doorW, doorH] = spec.rearDoor;
@@ -178,10 +180,11 @@ export function buildMerkavaStern(P: TankBuilderPort, spec: MerkavaHullSpec): vo
     for (const dy of [-0.30, 0.30]) P.add('hullDark', cylY(0.028, 0.028, 0.11, 10), side * (doorW / 2 + 0.03), doorY + dy * doorH, zDoor + 0.005);
   }
   P.add('hullDark', cylX(0.014, doorW * 0.5, 8), 0, doorY - doorH * 0.2, zDoor - 0.045);
-  const [ez0, ez1] = spec.exhaust;
-  const ey = lineAt(spec.sponsonTop, (ez0 + ez1) / 2) - 0.20;
-  P.add('hullDetail', box(0.03, 0.04, ez1 - ez0 + 0.06), -(spec.upperHalfWidth + 0.01), ey + 0.13, (ez0 + ez1) / 2);
-  for (let k = 0; k < 5; k++) {
-    P.add('hullDark', box(0.02, 0.025, ez1 - ez0), -(spec.upperHalfWidth + 0.004), ey + 0.08 - k * 0.04, (ez0 + ez1) / 2, 0, 0, 0.5);
+  if (!spec.exhaust) return;
+  const [ez0, ez1, v0, v1, ey0, ey1] = spec.exhaust, side = -(spec.upperHalfWidth + 0.004), h = ey1 - ey0;
+  P.add('hullDark', box(0.012, h, ez1 - ez0), side, (ey0 + ey1) / 2, (ez0 + ez1) / 2);
+  P.add('hullDetail', box(0.035, 0.03, ez1 - ez0 + 0.04), side - 0.01, ey1 + 0.015, (ez0 + ez1) / 2);
+  for (let k = 0; k < 8; k++) {
+    P.add('hullDetail', box(0.035, h, 0.022), side - 0.012, (ey0 + ey1) / 2, v0 + (v1 - v0) * (k / 7), 0, 0.45, 0);
   }
 }

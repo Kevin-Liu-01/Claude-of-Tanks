@@ -5,8 +5,23 @@ modules over its front, sides, rear and the whole roof; no loader's hatch on ear
 right with its remotely fired MAG; one smoke launcher at each turret front corner; only the right exhaust grille; the
 rearmost skirt section of bars (GS-4, WP-RU, AT-4, OTW). The Latrun Mk 4 photos cannot tell a 4 from a 4B.
 
-Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending (see the lane
-report). Facts compiled 2026-10-27 (sources below); every number in the build comes from this packet.
+The supplied Mk.4B carries 18 turret `ex_armor` plates, the 12.7 mm M2 high on the pointed gun housing (`mg_twin`, bore 2.81 m) and one roof MAG station; no right-side louvre shows above its side plates.
+
+Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
+packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
+[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
+
+## Supplied source (the approved target, owner 2026-10-27)
+
+| Item | Value |
+|---|---|
+| Archive | `~/Downloads/Claude of Tanks Models/merkava-mk4b.zip`, SHA-256 `5081b6e802a09e7d02396f7b6814b35e1710caec093386bb5a3f4d5fe90d4f88` |
+| Member | `source/Merkava Mk_4B.zip` → `Merkava Mk.4B.obj` (Wavefront OBJ + MTL, game-extracted, flattened groups) |
+| OBJ | SHA-256 `66f04acfa274dc672eb8c9a0e4fba1ec0dfce273d88c82f9b5d75649dcf6b7c2`, 28,003,572 bytes, 196 groups, 275,372 triangles |
+| Bounds (m) | -1.999, -0.032, -4.167 .. 1.999, 4.828, 5.053 (antennas included) |
+| Frame | identity: metres, +Y up, +Z the bow, +X the vehicle's left, ground y 0 |
+| Canonical oracle | `public/models/community-candidates/merkava4b_supplied_x_source.glb` (ignored), SHA-256 `b3d01d76b9bec5e7e5ca28effb6824e15170b6dd72bb6c8f61e0eda195f6fd3e`; `tools/source-world-registration.mjs` (fused) |
+| Licence | none recorded in the archive; owner-supplied, reference-only, never redistributed or loaded |
 
 ## Sources
 
@@ -48,38 +63,36 @@ report). Facts compiled 2026-10-27 (sources below); every number in the build co
 | Gun | MG253 120 mm L/44 (WP-EN: MG251-LR), 5.30 m, VIDCO sleeve in five segments, large pointed mantlet, evacuator ~0.8 m ahead of the mantlet; +20/-7 deg | WP-IMI, IMI, PHOTO |
 | Machine guns | coax; commander's MAG (right); a remote 12.7 mm M2 over the gun on some | GS-4, MT-4, WP-RU |
 
-## Measurements used by the build
+## Measured datums (source; hull frame: ground 0, hull centre 0, +Z the bow)
 
-| Station | Value | From |
+| Datum | Value | From |
 |---|---|---|
-| Deck | 1.60 m to z 1.96, the nose falling to 1.03 m | X-4 roof rays |
-| Road wheels | r 0.395, z -2.24 -1.40 -0.30 0.62 1.48 2.36 (re-spaced: the study's 0.69 m wheels sat 0.795 m apart) | X-4, 790 mm |
-| Sprocket / idler | z 3.30 / -3.04 | X-4 |
-| Turret | ring 0.45 m aft of the hull centre; the long nose 2.50 m ahead of it; core to +-1.64 under 12 cm modules; roof 0.88-0.94 over the deck | BP-4, X-4 sections, Latrun photos |
-| Gun | trunnion 2.20 m ahead of the ring at 1.99 m; muzzle at z 5.24 (9.04 m); evacuator 0.60 m centred 0.80 m ahead of the mantlet; five sleeve segments | published length, PHOTO |
+| Hull (structural) | z -3.83 .. 4.11, half-width 1.978, deck 1.70 | `vehicle#root` and sponsons |
+| Road wheels | six a side at z -2.313, -1.452, -0.273, 0.726, 1.657, 2.53; r 0.393, axles 0.443 | `wheel_l/r_01..06` |
+| Sprocket / idler | z 3.485 y 0.917 r 0.372 / z -3.105 y 0.864 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
+| Return rollers | 5 a side | `wheel_*_top_*` |
+| Track | centre +-1.515, width 0.578 | `track_l/r` |
+| Turret | ring centre z -1.257 at the deck; 45 stations at 0.05 m, crown 3.10, half-width to 1.79 | `bone_turret` / `turret` |
+| Gun (MG25x) | bore 2.159; barrel z 1.515 .. muzzle 5.055 (44 radial stations; muzzle r 0.085, evacuator r 0.174); mask z 0.59 .. 2.12 | `gun_barrel`, `bone_gun` |
+| Trunnion | y 2.159, z 0.650 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
+| Over the gun | `mg_twin` M2: z 1.15-2.81, bore 2.81 | `mg_twin` / `bone_gun` |
+| Detail parts | 97 (turret armour 18, hull armour 20) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
-## Gap table: the old pile vs the sources vs the 262 build
+## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
-| Feature | Old pile (release 260) | Sources | 262 build |
+| Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun length | muzzle at +4.34 ("the supplied Mk.4B oracle carries the compact MG253 gun run ... rather than extending to the published value"), barely clear of the hood | 9.04 m | 9.04 m, five segments, evacuator ahead of the mantlet |
-| Gun hood | a fixed brick moved onto rig_gun by receipt | large pointed mantlet | the turret's long nose over a mantlet riding rig_gun |
-| Turret packages | 10 cassettes a side | modules on sides and roof | side and cheek modules, the spec's two packages |
-| Loader's hatch | none | none on early tanks | none |
-| Depression | -2.7..-5.5 deg over the front | -7 deg (spec 8) | full spec depression over the front arc |
+| Gun | muzzle at +4.34, barely clear of the hood | muzzle z 5.055, 44-station barrel profile | the measured profile as one solid of revolution, muzzle at z 5.055; only the barrel recoils |
+| Over the gun | none | `mg_twin` M2: z 1.15-2.81, bore 2.81 | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle |
+| Turret shell | a fixed brick hood moved onto rig_gun by receipt | 45 stations, crown 3.10 | lofted through the stations; roof kit kept off the shell |
+| Turret armour | 10 cassettes a side | 18 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Running gear | oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
+| Depression | -2.7..-5.5 deg over the front | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 
 ## Build route (release 262)
 
-One family builder draws the six marks: `src/vehicles/profiles/merkava.ts` (the stepped builder and profile record) over
-`merkavaFamilyMarks.ts` (this mark's measured record), `merkavaFamilyHull.ts` (hull loft, sponsons over the track's top
-run, fenders, running gear, skirts, glacis and stern fittings), `merkavaFamilyTurret.ts` (the shell lofted from measured
-stations, the bolted packages, roof equipment, basket and ball-and-chain) and `merkavaFamilyGun.ts` (the barrel as one
-crisp-banded solid of revolution: tube, thermal sleeve and clamps, evacuator, muzzle; mantlet, collar and boot on
-rig_gun). The 13.8k-line `merkava.ts` pile it replaces, its oracle-fit constants and its seven fit receipts are retired;
-the old packet is in git history (`git show 24c5c5b039:docs/references/tanks/merkava4b.md`). Receipts:
-`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`.
-
-The registered comparison oracle (`public/models/tanks/community/recovered/*.glb`, tools/procedural-fidelity.html) is a
-width-normalised community print with a short gun (the old packets measured its muzzle 0.4-0.9 m short of the published
-length gun forward); the 262 build follows the published dimensions and the photos instead, so its print scores against
-that oracle are expected to move and are reported, not chased.
+`src/vehicles/profiles/merkava.ts` (the stepped builder) over `merkavaFamilyMarks.ts` (this mark's record, built from
+`merkavaFamilySource.ts`, the lane fit's measurements of the supplied model), `merkavaFamilyHull.ts`,
+`merkavaFamilyTurret.ts`, `merkavaFamilyGun.ts` and `merkavaFamilyDetails.ts`. Receipts:
+`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`. The pre-262 packet is in
+git history (`git show b93941ce9d:docs/references/tanks/merkava4b.md`).

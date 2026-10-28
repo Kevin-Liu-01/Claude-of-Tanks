@@ -6,7 +6,7 @@
 // sources' hull plates are open and carry the turret ring's and hatches' openings. Sources and gap tables:
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
 import type { MerkavaGearSpec, MerkavaHullSpec } from './merkavaFamilyHull.ts';
-import type { MerkavaBasket, TurretRing } from './merkavaFamilyTurret.ts';
+import type { MerkavaBasket, TurretRing, TurretSlot } from './merkavaFamilyTurret.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
 
@@ -19,6 +19,8 @@ export interface MerkavaMark {
   /** The turret ring centre in the hull frame: deck height and z. */
   readonly pivot: readonly [y: number, z: number];
   readonly rings: readonly TurretRing[];
+  /** The gun's slot through the turret's nose (the Mk 1 to Mk 3; the Mk 4's gun rides in its pointed housing). */
+  readonly slot: TurretSlot | null;
   readonly parts: readonly SourcePart[];
   readonly gun: MerkavaGunSpec;
   /** The bustle basket: from the shell's rear (z0) to the rack's end (z1), half-width, floor and rail heights (hull frame). */
@@ -45,7 +47,7 @@ const MK12_HULL: MerkavaHullSpec = {
     [0.45, 1.76], [0.80, 1.80], [2.20, 1.66], [2.70, 1.57], [3.05, 1.556], [3.10, 1.39], [3.30, 1.07]],
   sponsonUnderY: 1.33, lowerHalfWidth: 1.15, upperHalfWidth: 1.865,
   noseTaper: [[3.40, 1.15], [3.55, 1.07], [3.60, 0.84], [3.76, 0.73]],
-  rearDoor: [1.10, 0.60, 0.80], exhaust: [0.35, 1.35],
+  rearDoor: [1.10, 0.60, 0.80], exhaust: [0.35, 1.85, 0.72, 1.74, 1.43, 1.62],
 };
 
 // Mk 3 (the 3C and 3D sources): deck 1.69 with the raised rear course at 1.80, the driver's course to 1.79, the engine
@@ -63,7 +65,7 @@ const MK3_HULL: MerkavaHullSpec = {
     [3.10, 1.12], [3.30, 1.06]],
   sponsonUnderY: 1.32, lowerHalfWidth: 1.15, upperHalfWidth: 1.865,
   noseTaper: [[3.45, 1.12], [3.60, 1.05], [3.65, 0.73], [3.75, 0.725]],
-  rearDoor: [1.10, 0.60, 0.80], exhaust: [0.45, 1.50],
+  rearDoor: [1.10, 0.60, 0.80], exhaust: [0.35, 1.85, 0.72, 1.75, 1.45, 1.62],
 };
 
 // Mk 4 (the 4B source): the raised rear deck at 1.84-1.85, the deck at 1.69-1.74, the driver's course to 1.80-1.87 from
@@ -78,7 +80,7 @@ const MK4_HULL: MerkavaHullSpec = {
     [1.95, 1.814], [2.40, 1.706], [2.85, 1.613], [3.00, 1.556], [3.20, 1.489], [3.25, 1.166], [3.55, 1.166], [3.75, 1.109]],
   sponsonUnderY: 1.36, lowerHalfWidth: 1.16, upperHalfWidth: 1.915,
   noseTaper: [[3.75, 1.16], [3.95, 1.07], [4.10, 0.70]],
-  rearDoor: [1.30, 0.60, 0.70], exhaust: [0.45, 1.50],
+  rearDoor: [1.30, 0.60, 0.70], exhaust: null,
 };
 
 // ---------------------------------------------------------------------------------------------- from the source fit
@@ -95,42 +97,48 @@ function gearOf(r: SourceRecord): MerkavaGearSpec {
   };
 }
 
-/** The over-gun mount as the source measures it (hull frame): the 12.7 mm M2 (its `mg_twin` group: back plate, muzzle,
- *  bore height), its cradle on the mantlet's crown and its side ammunition box. */
+/** The over-gun 12.7 mm as the source measures it (hull frame): the M2 (its `mg_twin` group: back plate, muzzle, bore
+ *  height) and its side ammunition box. Its cradle is the gun mask's top (the mask's measured sections carry it). */
 interface OverGunRecord {
   readonly m2: readonly [rearZ: number, muzzleZ: number, axisY: number] | null;
-  readonly cradle: MeasuredBox;
   readonly ammoBox: MeasuredBox | null;
 }
 
 // the Mk 1B (in its gun bone), 2D, 3C and 3D sources share one M2 and box; the Mk 2B's cradle stands empty; the Mk 4B's
 // M2 rides higher on its pointed housing, its ammunition fed from the right
-const M2_MK1_3: Omit<OverGunRecord, 'm2'> = {
-  cradle: [[-0.10, 2.39, 0.50], [0.10, 2.55, 1.15]], ammoBox: [[0.06, 2.55, 0.85], [0.423, 2.806, 1.15]],
-};
+const MK1_3_BOX: MeasuredBox = [[0.06, 2.55, 0.85], [0.423, 2.806, 1.15]];
 const OVER_GUN: Readonly<Record<MerkavaMarkId, OverGunRecord>> = {
-  merkava1b: { m2: [0.453, 2.112, 2.705], ...M2_MK1_3 },
-  merkava2b: { m2: null, cradle: [[-0.21, 2.388, 0.512], [0.21, 2.50, 0.769]], ammoBox: null },
-  merkava2d: { m2: [0.45, 2.11, 2.70], ...M2_MK1_3 },
-  merkava3c: { m2: [0.449, 2.109, 2.70], ...M2_MK1_3 },
-  merkava3_baz: { m2: [0.449, 2.109, 2.70], ...M2_MK1_3 },
-  merkava4b: { m2: [1.152, 2.812, 2.814], cradle: [[-0.10, 2.46, 1.15], [0.10, 2.70, 1.85]], ammoBox: null },
+  merkava1b: { m2: [0.453, 2.112, 2.705], ammoBox: MK1_3_BOX },
+  merkava2b: { m2: null, ammoBox: null },
+  merkava2d: { m2: [0.45, 2.11, 2.70], ammoBox: MK1_3_BOX },
+  merkava3c: { m2: [0.449, 2.109, 2.70], ammoBox: MK1_3_BOX },
+  merkava3_baz: { m2: [0.449, 2.109, 2.70], ammoBox: MK1_3_BOX },
+  merkava4b: { m2: [1.152, 2.812, 2.814], ammoBox: null },
 };
 
-/** The gun: the measured barrel and mantlet in the gun frame, the trunnion `trunnionBack` behind the shell's nose course
- *  (the OBJ sources carry no pivots: the trunnion sits in the gun mask at the nose slot). */
+/** The gun: the measured barrel and gun mask in the gun frame, the trunnion `trunnionBack` behind the shell's nose course
+ *  (the OBJ sources carry no pivots: the trunnion sits in the mask at the nose slot). The mask's sections run from the
+ *  slot's back wall (the Mk 4: 0.55 m behind its nose) to its front, a section kept where it differs from the last kept
+ *  by more than 12 mm. */
 function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: number, top: OverGunRecord): MerkavaGunSpec {
   const [, axisY] = r.barrelAxis;
   const tz = r.noseZ - trunnionBack;
   const trunnion: [number, number, number] = [0, axisY - pivot[0], tz - pivot[1]];
   const barrel: RevolveStation[] = [[r.barrel[0]![0] - tz, 0], ...r.barrel.map(([z, rr]): RevolveStation => [z - tz, rr]),
     [r.barrel[r.barrel.length - 1]![0] - tz, 0]];
-  const mantlet = r.mantlet.map(([z, x0, x1, y0, y1]) => [z - tz, x0, x1, y0 - axisY, y1 - axisY] as const);
+  const start = r.slot ? r.slot.z0 - 0.05 : r.noseZ - 0.55;
+  const sections = r.gunMask.filter(([z]) => z >= start);
+  const kept: (typeof sections)[number][] = [];
+  sections.forEach((m, i) => {
+    const last = kept[kept.length - 1];
+    if (!last || i === sections.length - 1 || m.slice(1).some((v, k) => Math.abs(v - last[k + 1]!) > 0.012)) kept.push(m);
+  });
+  const mantlet = kept.map(([z, x0, x1, y0, y1]) => [z - tz, x0, x1, y0 - axisY, y1 - axisY] as const);
   const local = ([min, max]: MeasuredBox): MeasuredBox =>
     [[min[0], min[1] - axisY, min[2] - tz], [max[0], max[1] - axisY, max[2] - tz]];
   const overGun: MerkavaOverGun = {
     m2: top.m2 ? { rearZ: top.m2[0] - tz, muzzleZ: top.m2[1] - tz, axisY: top.m2[2] - axisY } : null,
-    cradle: local(top.cradle), ammoBox: top.ammoBox ? local(top.ammoBox) : null,
+    ammoBox: top.ammoBox ? local(top.ammoBox) : null,
   };
   return {
     model: r.barrel.some(([, rr]) => rr > 0.083) && r.barrel[r.barrel.length - 1]![1] > 0.079 ? 'MG25x' : 'M64',
@@ -147,7 +155,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, ba
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
-    id, hull, gear: gearOf(r), pivot, rings: ringsOf(r), parts: src.parts, gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
+    id, hull, gear: gearOf(r), pivot, rings: ringsOf(r), slot: r.slot, parts: src.parts, gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
     basket, roofGuns: r.mgs.map(([x, , z, foot]) => [x, foot, z] as const), antennas,
   };
 }

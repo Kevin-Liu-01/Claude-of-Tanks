@@ -38,7 +38,7 @@ for (const id of Object.keys(GUN)) {
       const gun = root.getObjectByName('rig_gun'), recoil = root.getObjectByName('rig_recoil');
       assert.ok(hull && turret && gun && recoil, `${at}: hull, turret, gun and recoil rigs`);
       const receipt = hull.userData.merkavaFamilyReceipt;
-      assert.equal(receipt?.revision, 'merkava-family-262-r2', `${at}: the family receipt`);
+      assert.equal(receipt?.revision, 'merkava-family-262-r3', `${at}: the family receipt`);
       assert.equal(receipt.mark, id);
       const mark = MERKAVA_MARKS[id], source = MERKAVA_SOURCE[id].record;
 
@@ -104,7 +104,7 @@ for (const id of Object.keys(GUN)) {
       assert.ok(level.distanceTo(world(mount, probe)) > 0.05, `${at}: the mantlet follows a 20-degree elevation`);
       gun.rotation.x = 0;
       root.updateMatrixWorld(true);
-      assert.equal(g.overGun, mark.gun.overGun?.kind ?? 'none', `${at}: the over-gun mount as measured`);
+      assert.equal(g.overGun, mark.gun.overGun?.m2 ? 'm2' : 'none', `${at}: the over-gun mount as measured`);
       assert.equal(Boolean(root.getObjectByName('merkavaOverGunM2')), g.overGun === 'm2',
         `${at}: the 12.7 mm over the gun where the source mounts it`);
 

@@ -45,7 +45,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
 
   const [py, pz] = mark.pivot;
   P.turretG.position.set(0, py, pz);
-  buildMerkavaRingShell(P, mark.rings, mark.pivot);
+  buildMerkavaRingShell(P, mark.rings, mark.pivot, mark.slot);
   buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz]);
@@ -60,7 +60,7 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [mid[0] * 0.98, mid[1] - py, rear.z - pz], Math.PI / 2);
   P.topY = Math.max(...mark.rings.map((r) => r.crown)) - py + 0.10;
   P.hullG.userData.merkavaFamilyReceipt = Object.freeze({
-    revision: 'merkava-family-262-r2', mark: mark.id, gun: gunReceipt,
+    revision: 'merkava-family-262-r3', mark: mark.id, gun: gunReceipt,
     pivotM: Object.freeze([...mark.pivot]), roadWheelStations: mark.gear.wheelZs.length,
     returnRollers: mark.gear.rollers.length, sourceParts: mark.parts.length, turretStations: mark.rings.length,
   });

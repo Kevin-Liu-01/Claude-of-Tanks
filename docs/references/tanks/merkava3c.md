@@ -5,8 +5,23 @@ modules with the Baz (Barak Zohar) fire control, its fez-shaped independent comm
 and the round loader's hatch; flat bolted turret modules, rubber-tyred road wheels, no protruding Dor Dalet cheeks. No
 Israeli source uses "3C" (FACTS: WP-HE-M, WP-RU, BTVT; [WT] naming only).
 
-Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending (see the lane
-report). Facts compiled 2026-10-27 (sources below); every number in the build comes from this packet.
+The supplied Mk.3C carries flat bolted modules (13 turret `ex_armor` plates) and the 12.7 mm M2 with its side ammunition box over the gun (`bone_mg_twin`), which the earlier 262 rebuild had read as "none".
+
+Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
+packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
+[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
+
+## Supplied source (the approved target, owner 2026-10-27)
+
+| Item | Value |
+|---|---|
+| Archive | `~/Downloads/Claude of Tanks Models/merkava-mk3c.zip`, SHA-256 `c270fc743ee9a30d4b65db494253c8c9c2b77a52d9a30a830e40c9466d75156f` |
+| Member | `source/Merkava Mk_3C.zip` → `Merkava Mk.3C.obj` (Wavefront OBJ + MTL, game-extracted, flattened groups) |
+| OBJ | SHA-256 `5c82063dbd8161f1be9240c16619273ca3bdfef3ad49fc00d3faafcbbf68dcb7`, 23,260,465 bytes, 178 groups, 225,939 triangles |
+| Bounds (m) | -1.988, -0.020, -4.208 .. 1.988, 5.168, 4.630 (antennas included) |
+| Frame | identity: metres, +Y up, +Z the bow, +X the vehicle's left, ground y 0 |
+| Canonical oracle | `public/models/community-candidates/merkava3c_supplied_x_source.glb` (ignored), SHA-256 `7d55fb050e1d27b8c6a383484a443a5557052f122910a8fb650fe908b53c87aa`; `tools/source-world-registration.mjs` (fused) |
+| Licence | none recorded in the archive; owner-supplied, reference-only, never redistributed or loaded |
 
 ## Sources
 
@@ -51,40 +66,36 @@ report). Facts compiled 2026-10-27 (sources below); every number in the build co
 | Machine guns | coax, commander's and loader's MAGs; 12.7 mm over the gun only on the LIC kit | MT-3, AR-3 |
 | Smoke | CL-3030, 12, a 2 x 3 cluster each side | HOW, WP-EN, PHOTO (2002) |
 
-## Measurements used by the build
+## Measured datums (source; hull frame: ground 0, hull centre 0, +Z the bow)
 
-| Station | Value | From |
+| Datum | Value | From |
 |---|---|---|
-| Deck | 1.69-1.72 m, the engine deck falling to 1.42 m at z 3.41, the nose plate to 1.10 | X-3D roof rays, re-centred on 7.60 m |
-| Belly | 0.48 m | ground clearance 0.45-0.53 |
-| Road wheels | r 0.395, axles 0.475, z -2.32 -1.44 -0.31 0.55 1.41 2.26 | X-3D stations, 790 mm |
-| Sprocket / idler | z 3.266 / -3.139 | X-3D |
-| Tracks | 0.66 m, centres +-1.53 (outer faces +-1.86 = 3.72 m) | published width |
-| Turret | ring 0.90 m aft of the hull centre; nose 2.32 m ahead of it; flat sides to +-1.45 under 10 cm modules; roof 0.86-0.88 over the deck | BP-3, X-3D sections, Latrun photos |
-| Gun | trunnion 1.92 m ahead of the ring at 2.09 m; muzzle at z 5.24 (9.04 m); evacuator 0.60 m centred 0.95 m ahead of the nose | published length, PHOTO, BP-3 |
+| Hull (structural) | z -3.75 .. 3.76, half-width 1.938, deck 1.70 | `vehicle#root` and sponsons |
+| Road wheels | six a side at z -2.55, -1.666, -0.537, 0.322, 1.18, 2.033; r 0.371, axles 0.433 | `wheel_l/r_01..06` |
+| Sprocket / idler | z 3.04 y 0.854 r 0.372 / z -3.365 y 0.823 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
+| Return rollers | 5 a side | `wheel_*_top_*` |
+| Track | centre +-1.532, width 0.637 | `track_l/r` |
+| Turret | ring centre z -0.931 at the deck; 48 stations at 0.05 m, crown 2.75, half-width to 1.46 | `bone_turret` / `turret` |
+| Gun (MG25x) | bore 2.076; barrel z 1.255 .. muzzle 4.635 (51 radial stations; muzzle r 0.085, evacuator r 0.174); mask z 0.90 .. 1.71 | `gun_barrel`, `bone_gun` |
+| Trunnion | y 2.076, z 1.050 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
+| Over the gun | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | `mg_twin` / `bone_gun` |
+| Detail parts | 74 (turret armour 13, hull armour 26) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
-## Gap table: the old pile vs the sources vs the 262 build
+## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
-| Feature | Old pile (release 260) | Sources | 262 build |
+| Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun length | muzzle at +4.58 (oracle nose +3.33: 8.74 m in a shifted frame); 5.36 m trunnion-to-muzzle through an oracle casting | 9.04 m | muzzle z 5.24 (9.04 m), 4.22 m trunnion to muzzle |
-| Over-gun 12.7 | — | LIC kit only | none |
-| Turret packages | 18 cells a side on an outer carrier ring | flat bolted modules | flat side and cheek modules, the spec's two packages |
-| Rear | oracle rack | armoured fuel tanks + baskets | both |
-| Depression | -1.7..-3.4 deg over the front | -7 deg (spec 8) | full spec depression over the front arc |
+| Gun | muzzle at +4.58 through an oracle casting, 5.36 m trunnion-to-muzzle | muzzle z 4.635, 51-station barrel profile | the measured profile as one solid of revolution, muzzle at z 4.635; only the barrel recoils |
+| Over the gun | none | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
+| Turret shell | oracle-fit casting | 48 stations, crown 2.75 | lofted through the stations; roof kit kept off the shell |
+| Turret armour | 18 cells a side on an outer carrier ring | 13 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Running gear | oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
+| Depression | -1.7..-3.4 deg over the front | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 
 ## Build route (release 262)
 
-One family builder draws the six marks: `src/vehicles/profiles/merkava.ts` (the stepped builder and profile record) over
-`merkavaFamilyMarks.ts` (this mark's measured record), `merkavaFamilyHull.ts` (hull loft, sponsons over the track's top
-run, fenders, running gear, skirts, glacis and stern fittings), `merkavaFamilyTurret.ts` (the shell lofted from measured
-stations, the bolted packages, roof equipment, basket and ball-and-chain) and `merkavaFamilyGun.ts` (the barrel as one
-crisp-banded solid of revolution: tube, thermal sleeve and clamps, evacuator, muzzle; mantlet, collar and boot on
-rig_gun). The 13.8k-line `merkava.ts` pile it replaces, its oracle-fit constants and its seven fit receipts are retired;
-the old packet is in git history (`git show 24c5c5b039:docs/references/tanks/merkava3c.md`). Receipts:
-`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`.
-
-The registered comparison oracle (`public/models/tanks/community/recovered/*.glb`, tools/procedural-fidelity.html) is a
-width-normalised community print with a short gun (the old packets measured its muzzle 0.4-0.9 m short of the published
-length gun forward); the 262 build follows the published dimensions and the photos instead, so its print scores against
-that oracle are expected to move and are reported, not chased.
+`src/vehicles/profiles/merkava.ts` (the stepped builder) over `merkavaFamilyMarks.ts` (this mark's record, built from
+`merkavaFamilySource.ts`, the lane fit's measurements of the supplied model), `merkavaFamilyHull.ts`,
+`merkavaFamilyTurret.ts`, `merkavaFamilyGun.ts` and `merkavaFamilyDetails.ts`. Receipts:
+`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`. The pre-262 packet is in
+git history (`git show b93941ce9d:docs/references/tanks/merkava3c.md`).

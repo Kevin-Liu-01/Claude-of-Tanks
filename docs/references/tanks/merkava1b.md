@@ -5,8 +5,23 @@ WP-HE-1): the ball-and-chain curtain on a small turret basket, replaced side ski
 reduced to one grille on the right. **No added turret armour**; the 60 mm mortar stays **external**, on the right by the
 commander's hatch; no hull rear baskets.
 
-Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending (see the lane
-report). Facts compiled 2026-10-27 (sources below); every number in the build comes from this packet.
+The supplied Mk.1B carries seven turret `ex_armor` plates (bound as the spec's two removable packages, superseding the earlier "no turret armour" reading of the 1B) and its 12.7 mm M2 inside the gun bone.
+
+Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
+packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
+[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
+
+## Supplied source (the approved target, owner 2026-10-27)
+
+| Item | Value |
+|---|---|
+| Archive | `~/Downloads/Claude of Tanks Models/merkava-mk1b.zip`, SHA-256 `685a52c520f536b8b00ad9a73cb5acaab06baee3e50ff5e3918ca0b206a7aacd` |
+| Member | `source/Merkava Mk_1B.zip` → `Merkava Mk.1B.obj` (Wavefront OBJ + MTL, game-extracted, flattened groups) |
+| OBJ | SHA-256 `bf1199f383ce03dc5b2b9cc438d62b1732adcdbb3ac894ca568a871831a362c1`, 22,696,809 bytes, 158 groups, 221,809 triangles |
+| Bounds (m) | -1.993, -0.020, -4.033 .. 1.993, 5.198, 4.722 (antennas included) |
+| Frame | identity: metres, +Y up, +Z the bow, +X the vehicle's left, ground y 0 |
+| Canonical oracle | `public/models/community-candidates/merkava1b_supplied_x_source.glb` (ignored), SHA-256 `bcf4f84b9685fe25bbacbab3cd89a6d8ed5086fc37fa24267ef9e821e9b8c3aa`; `tools/source-world-registration.mjs` (fused) |
+| Licence | none recorded in the archive; owner-supplied, reference-only, never redistributed or loaded |
 
 ## Sources
 
@@ -55,46 +70,36 @@ report). Facts compiled 2026-10-27 (sources below); every number in the build co
 | Rear door | two-leaf clamshell, 600 mm wide | WP-RU, WP-EN |
 | Skirts | six sections to about hub height (the refit's replacement skirts) | WP-RU, BTVT, PHOTO (Lešany) |
 
-## Measurements used by the build
+## Measured datums (source; hull frame: ground 0, hull centre 0, +Z the bow)
 
-| Station | Value (hull frame: ground 0, hull centre 0, +Z nose) | From |
+| Datum | Value | From |
 |---|---|---|
-| Deck | 1.66 m; the engine deck falling from z 0.95 to 1.36 at z 3.35, nose plate to 1.24 | BP-1 side (1.67), BP-2 (1.60) |
-| Belly | 0.50 m; lower glacis from z 2.95 to the nose at 1.06 | ground clearance, BP-1 |
-| Road wheels | r 0.395, axles 0.475, z -2.30 -1.42 -0.46 0.46 1.42 2.30 | 790 mm; BP-1 pitch (~0.98 m) vs the 4.52 m ground length |
-| Sprocket / idler | z 3.20 y 0.86 r 0.31 / z -3.12 y 0.80 r 0.30 | BP-1 (0.50 m behind the nose, 0.6 m inside the stern) |
-| Tracks | 0.64 m, centres at +-1.53 (outer faces at +-1.85 = 3.70 m) | published width without skirts |
-| Turret | ring 1.25 m aft of the hull centre; nose (gun) 2.50 m ahead of the ring at z 1.25; roof crown 0.84 over the deck (2.50 m); ears to +-1.32 | BP-1/BP-2 side and plan, photos |
-| Gun | trunnion 2.10 m ahead of the ring at 2.02 m; muzzle at z 4.905 (8.63 m gun forward); evacuator 0.55 m centred 0.65 m ahead of the nose | published length, PHOTO, BP-1 (gun axis 2.02) |
+| Hull (structural) | z -3.80 .. 3.77, half-width 1.891, deck 1.70 | `vehicle#root` and sponsons |
+| Road wheels | six a side at z -2.515, -1.55, -0.575, 0.39, 1.21, 2.175; r 0.396, axles 0.452 | `wheel_l/r_01..06` |
+| Sprocket / idler | z 3.04 y 0.86 r 0.372 / z -3.365 y 0.829 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
+| Return rollers | 5 a side | `wheel_*_top_*` |
+| Track | centre +-1.532, width 0.637 | `track_l/r` |
+| Turret | ring centre z -0.871 at the deck; 48 stations at 0.05 m, crown 2.79, half-width to 1.45 | `bone_turret` / `turret` |
+| Gun (M64) | bore 2.082; barrel z 1.195 .. muzzle 4.725 (68 radial stations; muzzle r 0.078, evacuator r 0.176); mask z 1.14 .. 1.21 | `gun_barrel`, `bone_gun` |
+| Trunnion | y 2.082, z 1.180 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
+| Over the gun | M2 in the gun bone: z 0.45-2.11, bore 2.705 | `mg_twin` / `bone_gun` |
+| Detail parts | 71 (turret armour 7, hull armour 25) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
-## Gap table: the old pile vs the sources vs the 262 build
+## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
-| Feature | Old pile (release 260) | Sources | 262 build |
+| Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun length | muzzle 1.30 m past an oracle nose at +3.05 (8.29 m gun forward in a shifted frame); trunnion-to-muzzle 5.11 m against a mantlet buried in an oracle-fit casting | 8.63 m gun forward; M68 5.35 m tube | muzzle at z 4.905 (8.63 m), 4.06 m trunnion to muzzle, full sleeve and evacuator |
-| Turret armour | eight invented "ERA" cells on each cheek, registered as removable packages | none added in the 1B refit (BTVT, WP-RU) | no packages; the spec's two turret plates stay (owner decision, see below) |
-| Mortar | roof pots/cans seated by oracle rays | external 60 mm on the right by the commander | external mortar on its cradle at the right |
-| Skirts | narrow fender-line plates, wheels open | the refit's six-section skirts to hub height | six panels to 0.56-0.58 m |
-| Running gear | wheels r 0.355, five rollers, oracle course | 790 mm wheels, 5 rollers (WP-RU) | r 0.395, 5 rollers |
-| Turret shape | oracle-fit rising-roof casting with fit receipts | narrow wedge with ears | lofted arrowhead with ears |
-| Depression | -0.7..-2.4 deg over the glacis (published curve) | -8.5 deg | full spec depression over the front arc (receipt) |
-
-**Owner decision (reported, not made here).** The spec (`additionalFleetSpecs.ts`) still registers two single-use turret
-plates (`merkava_merkava1b_turret_era_R/L`) for the 1B. The sources say the 1B carried no added turret armour, so the 262
-build draws none and binds none; removing the plates would lower the 1B's protection and is a stat change for the owner.
+| Gun | muzzle 1.30 m past an oracle nose at +3.05; trunnion-to-muzzle 5.11 m against a mantlet buried in an oracle-fit casting | muzzle z 4.725, 68-station barrel profile | the measured profile as one solid of revolution, muzzle at z 4.725; only the barrel recoils |
+| Over the gun | an over-gun M2 placed by oracle rays | M2 in the gun bone: z 0.45-2.11, bore 2.705 | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
+| Turret shell | oracle-fit rising-roof casting with fit receipts | 48 stations, crown 2.79 | lofted through the stations; roof kit kept off the shell |
+| Turret armour | eight invented cells on each cheek | 7 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Running gear | wheels r 0.355, five rollers, oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
+| Depression | -0.7..-2.4 deg over the glacis | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 
 ## Build route (release 262)
 
-One family builder draws the six marks: `src/vehicles/profiles/merkava.ts` (the stepped builder and profile record) over
-`merkavaFamilyMarks.ts` (this mark's measured record), `merkavaFamilyHull.ts` (hull loft, sponsons over the track's top
-run, fenders, running gear, skirts, glacis and stern fittings), `merkavaFamilyTurret.ts` (the shell lofted from measured
-stations, the bolted packages, roof equipment, basket and ball-and-chain) and `merkavaFamilyGun.ts` (the barrel as one
-crisp-banded solid of revolution: tube, thermal sleeve and clamps, evacuator, muzzle; mantlet, collar and boot on
-rig_gun). The 13.8k-line `merkava.ts` pile it replaces, its oracle-fit constants and its seven fit receipts are retired;
-the old packet is in git history (`git show 24c5c5b039:docs/references/tanks/merkava1b.md`). Receipts:
-`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`.
-
-The registered comparison oracle (`public/models/tanks/community/recovered/*.glb`, tools/procedural-fidelity.html) is a
-width-normalised community print with a short gun (the old packets measured its muzzle 0.4-0.9 m short of the published
-length gun forward); the 262 build follows the published dimensions and the photos instead, so its print scores against
-that oracle are expected to move and are reported, not chased.
+`src/vehicles/profiles/merkava.ts` (the stepped builder) over `merkavaFamilyMarks.ts` (this mark's record, built from
+`merkavaFamilySource.ts`, the lane fit's measurements of the supplied model), `merkavaFamilyHull.ts`,
+`merkavaFamilyTurret.ts`, `merkavaFamilyGun.ts` and `merkavaFamilyDetails.ts`. Receipts:
+`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`. The pre-262 packet is in
+git history (`git show b93941ce9d:docs/references/tanks/merkava1b.md`).

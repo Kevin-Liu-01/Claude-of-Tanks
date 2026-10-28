@@ -4,8 +4,23 @@
 bolt-on armour on hull and turret: boxes on the turret's sides and front, plates on the sponson sides above the skirts
 and on the left of the glacis, belly armour (BTVT, WP-HE-2).
 
-Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending (see the lane
-report). Facts compiled 2026-10-27 (sources below); every number in the build comes from this packet.
+The supplied Mk.2D carries the Dor Dalet boxes (30 turret `ex_armor` plates; the turret mesh itself includes the side modules, half-width to 1.56 m) and the 12.7 mm M2 with its side ammunition box over the gun (`bone_mg_twin`).
+
+Status: implementation in progress on `item/merkava-family-262`; qualification and publication pending. The family's run
+packet (scope, comparison contract, owner decisions, evidence matrix, round log) is
+[docs/history/research/merkava-family-262.md](../../history/research/merkava-family-262.md).
+
+## Supplied source (the approved target, owner 2026-10-27)
+
+| Item | Value |
+|---|---|
+| Archive | `~/Downloads/Claude of Tanks Models/merkava-mk2d.zip`, SHA-256 `c16e94a6823c98cda64fc27e08bd9aac07aea1afad5cd79565f3c2b54393cadb` |
+| Member | `source/Merkava Mk_2D.zip` → `Merkava Mk.2D.obj` (Wavefront OBJ + MTL, game-extracted, flattened groups) |
+| OBJ | SHA-256 `5686170353cee2f34bbe88406e17e39048040e1088060ab777857ed22a46a010`, 27,924,880 bytes, 219 groups, 259,381 triangles |
+| Bounds (m) | -1.992, -0.020, -4.033 .. 1.992, 5.197, 4.723 (antennas included) |
+| Frame | identity: metres, +Y up, +Z the bow, +X the vehicle's left, ground y 0 |
+| Canonical oracle | `public/models/community-candidates/merkava2d_supplied_x_source.glb` (ignored), SHA-256 `c76f1d522eb81314004c714c6fe98bcae19a06dd83f5ebaf5f3a54d76260c725`; `tools/source-world-registration.mjs` (fused) |
+| Licence | none recorded in the archive; owner-supplied, reference-only, never redistributed or loaded |
 
 ## Sources
 
@@ -43,32 +58,36 @@ report). Facts compiled 2026-10-27 (sources below); every number in the build co
 | Hull | appliqué on the sponson sides above the skirts; left glacis plate; belly armour | BTVT, WP-HE-2 |
 | Basket / chains | as Mk 2 | PHOTO (2009) |
 
-## Measurements used by the build
+## Measured datums (source; hull frame: ground 0, hull centre 0, +Z the bow)
 
-As the Mk 2B, with the turret's Dor Dalet boxes 16-18 cm deep standing 6-8 cm off the cheeks (z -0.60..2.40 in the
-turret frame) and 5 cm appliqué on the sponson sides above the skirts from z -1.6 to 2.2.
+| Datum | Value | From |
+|---|---|---|
+| Hull (structural) | z -3.80 .. 3.77, half-width 1.938, deck 1.70 | `vehicle#root` and sponsons |
+| Road wheels | six a side at z -2.515, -1.55, -0.575, 0.39, 1.21, 2.175; r 0.396, axles 0.452 | `wheel_l/r_01..06` |
+| Sprocket / idler | z 3.04 y 0.86 r 0.372 / z -3.365 y 0.829 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
+| Return rollers | 5 a side | `wheel_*_top_*` |
+| Track | centre +-1.532, width 0.637 | `track_l/r` |
+| Turret | ring centre z -1.050 at the deck; 48 stations at 0.05 m, crown 2.79, half-width to 1.76 | `bone_turret` / `turret` |
+| Gun (M64) | bore 2.082; barrel z 1.035 .. muzzle 4.725 (38 radial stations; muzzle r 0.078, evacuator r 0.140); mask z 1.17 .. 1.62 | `gun_barrel`, `bone_gun` |
+| Trunnion | y 2.082, z 1.180 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
+| Over the gun | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | `mg_twin` / `bone_gun` |
+| Detail parts | 121 (turret armour 30, hull armour 36) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
-## Gap table: the old pile vs the sources vs the 262 build
+## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
-| Feature | Old pile (release 260) | Sources | 262 build |
+| Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun length | muzzle 0.57 m past an oracle nose at +3.49; trunnion-to-muzzle 4.21 m (the stubbiest of the six) | as Mk 2 | 8.63 m |
-| Turret packages | 15 cells a side on wedge modules | Dor Dalet boxes | boxed modules on both cheeks, the spec's two packages |
-| Hull | oracle hull | sponson appliqué | 5 cm appliqué over the skirts |
-| Depression | blocked above +7.6 deg at yaw 7-11 and above +12.3 deg at yaw 147-153 | -8.5 deg | full spec depression over the front arc, no blocked window |
+| Gun | muzzle 0.57 m past an oracle nose at +3.49; trunnion-to-muzzle 4.21 m (the stubbiest of the six) | muzzle z 4.725, 38-station barrel profile | the measured profile as one solid of revolution, muzzle at z 4.725; only the barrel recoils |
+| Over the gun | none | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
+| Turret shell | oracle-fit casting | 48 stations, crown 2.79 | lofted through the stations; roof kit kept off the shell |
+| Turret armour | 15 cells a side on wedge modules | 30 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Running gear | oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
+| Depression | blocked above +7.6 deg at yaw 7-11 and above +12.3 deg at yaw 147-153 | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 
 ## Build route (release 262)
 
-One family builder draws the six marks: `src/vehicles/profiles/merkava.ts` (the stepped builder and profile record) over
-`merkavaFamilyMarks.ts` (this mark's measured record), `merkavaFamilyHull.ts` (hull loft, sponsons over the track's top
-run, fenders, running gear, skirts, glacis and stern fittings), `merkavaFamilyTurret.ts` (the shell lofted from measured
-stations, the bolted packages, roof equipment, basket and ball-and-chain) and `merkavaFamilyGun.ts` (the barrel as one
-crisp-banded solid of revolution: tube, thermal sleeve and clamps, evacuator, muzzle; mantlet, collar and boot on
-rig_gun). The 13.8k-line `merkava.ts` pile it replaces, its oracle-fit constants and its seven fit receipts are retired;
-the old packet is in git history (`git show 24c5c5b039:docs/references/tanks/merkava2d.md`). Receipts:
-`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`.
-
-The registered comparison oracle (`public/models/tanks/community/recovered/*.glb`, tools/procedural-fidelity.html) is a
-width-normalised community print with a short gun (the old packets measured its muzzle 0.4-0.9 m short of the published
-length gun forward); the 262 build follows the published dimensions and the photos instead, so its print scores against
-that oracle are expected to move and are reported, not chased.
+`src/vehicles/profiles/merkava.ts` (the stepped builder) over `merkavaFamilyMarks.ts` (this mark's record, built from
+`merkavaFamilySource.ts`, the lane fit's measurements of the supplied model), `merkavaFamilyHull.ts`,
+`merkavaFamilyTurret.ts`, `merkavaFamilyGun.ts` and `merkavaFamilyDetails.ts`. Receipts:
+`src/vehicles/profiles/merkavaFamily.selftest.mjs`, `merkavaFamilyGunClearance.selftest.mjs`. The pre-262 packet is in
+git history (`git show b93941ce9d:docs/references/tanks/merkava2d.md`).

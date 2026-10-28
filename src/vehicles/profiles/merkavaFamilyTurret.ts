@@ -15,16 +15,31 @@ export interface TurretRing {
   readonly crown: number;
 }
 
+/** The gun's slot through the shell's nose (the Mk 1 to Mk 3): from z0 (hull frame) to the nose, its half-width. */
+export interface TurretSlot {
+  readonly z0: number;
+  readonly halfWidth: number;
+}
+
 /** The cast shell lofted through the measured stations, in the turret frame (pivot subtracted): up the right side, over
- *  the crown, down the left; and its ring collar over the race. */
-export function buildMerkavaRingShell(P: TankBuilderPort, rings: readonly TurretRing[], pivot: readonly [number, number]): void {
+ *  the crown, down the left; on the Mk 1 to Mk 3 the gun's slot opens the crown from its z0 to the nose, down to just
+ *  over the base course, between the two cheeks (the gun's mask rides in it); and its ring collar over the race. */
+export function buildMerkavaRingShell(P: TankBuilderPort, rings: readonly TurretRing[], pivot: readonly [number, number],
+  slot: TurretSlot | null): void {
   const [py, pz] = pivot;
   const sections: SolidSection[] = rings.map((r) => {
     const side = r.side.map(([x, y]): SectionPoint => [Math.max(0.03, x), y - py]);
-    const top = side[side.length - 1]!;
-    const crown: SectionPoint = [0, Math.max(r.crown - py, top[1] + 0.004)];
+    const top = side[side.length - 1]!, c = Math.max(r.crown - py, top[1] + 0.004);
+    // the crown course: five points on the line from the side's top to the crown (the same roof), or the slot's walls
+    // and floor where the slot is open; the same count everywhere, so the loft runs straight into the slot
+    const qx = Math.min(slot?.halfWidth ?? 0.25, top[0] - 0.03), at = (x: number): number => c + (top[1] - c) * (x / top[0]);
+    const open = slot !== null && r.z >= slot.z0 - 1e-6;
+    const floor = Math.min(side[0]![1] + 0.03, at(qx) - 0.05);
+    const crown: SectionPoint[] = open
+      ? [[qx, at(qx)], [qx, floor], [0, floor], [-qx, floor], [-qx, at(qx)]]
+      : [[qx, at(qx)], [qx / 2, at(qx / 2)], [0, c], [-qx / 2, at(qx / 2)], [-qx, at(qx)]];
     const left = side.map(([x, y]): SectionPoint => [-x, y]).reverse();
-    return { z: r.z - pz, ring: [...side, crown, ...left] };
+    return { z: r.z - pz, ring: [...side, ...crown, ...left] };
   });
   P.add('turret', sectionSolid(sections, { sideQuadDiagonal: 'convex' }));
   // the ring collar: from the deck up into the shell's base course, round the race

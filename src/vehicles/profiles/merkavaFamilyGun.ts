@@ -3,8 +3,9 @@
 // (merkavaFamilySource.ts): the 105 mm M64 (the licensed M68) of the Mk 1 and Mk 2, the 120 mm MG251 of the Mk 3 and the
 // MG253 of the Mk 4. The barrel is one solid of revolution about the gun's +Z axis through the measured radii (revolveZ):
 // the tube, the thermal sleeve's sections and flanged clamps, the evacuator drum and its bands, the bare muzzle, each
-// section its own band so the steps read crisp and the tube stays circular. The mantlet is lofted through its measured
-// stations; it, the coaxial port and the over-gun mount pitch with the gun (rig_gun); only the barrel recoils
+// section its own band so the steps read crisp and the tube stays circular. The gun mask (the Mk 1 to Mk 3's long mask
+// riding in the turret's slot, the Mk 4's pointed housing; the over-gun cradle on its crown) is lofted through its
+// measured stations; it, the coaxial port and the over-gun M2 pitch with the gun (rig_gun); only the barrel recoils
 // (rig_recoil). Gun frame: origin on the trunnion axis, +Z along the bore.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
@@ -58,7 +59,7 @@ export interface MerkavaGunSpec {
   readonly muzzleZ: number;
   /** The barrel's revolved profile, closing on the axis at both ends. */
   readonly barrel: readonly RevolveStation[];
-  /** The mantlet's measured stations: z, the x extents and the y extents (gun frame). */
+  /** The gun mask's measured stations, its cradle on its crown: z, the x extents and the y extents (gun frame). */
   readonly mantlet: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[];
   /** The mount over the gun as measured. */
   readonly overGun: MerkavaOverGun | null;
@@ -67,12 +68,10 @@ export interface MerkavaGunSpec {
 /** A box as measured: min and max corners (gun frame). */
 export type MeasuredBox = readonly [min: readonly [number, number, number], max: readonly [number, number, number]];
 
-/** The 12.7 mm over the gun, as the source's `mg_twin` group measures it (gun frame), on its cradle. */
+/** The 12.7 mm over the gun, as the source's `mg_twin` group measures it (gun frame), on the mask's cradle. */
 export interface MerkavaOverGun {
-  /** The M2's receiver back plate, its muzzle and its bore height; null where the source carries the cradle alone. */
+  /** The M2's receiver back plate, its muzzle and its bore height; null where the source's cradle stands empty. */
   readonly m2: { readonly rearZ: number; readonly muzzleZ: number; readonly axisY: number } | null;
-  /** The cradle on the mantlet's crown. */
-  readonly cradle: MeasuredBox;
   /** The M2's side ammunition box (the Mk 1 to Mk 3's large box on its left), where the source carries one. */
   readonly ammoBox: MeasuredBox | null;
 }
@@ -83,7 +82,7 @@ const FLEET_M2 = Object.freeze({ rearZ: -0.290, muzzleZ: 1.271, axisY: 0.0515 })
 const boxOf = ([min, max]: MeasuredBox): [THREE.BufferGeometry, number, number, number] =>
   [KIT.box(max[0] - min[0], max[1] - min[1], max[2] - min[2]), (min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
 
-/** The mantlet lofted through its measured stations: a rounded rectangle at each, merged stations dropped. */
+/** The gun mask lofted through its measured stations: a rounded rectangle at each, merged stations dropped. */
 function mantletGeometry(stations: MerkavaGunSpec['mantlet']): THREE.BufferGeometry | null {
   const st = stations.filter((s, i) => i === 0 || s[0] > stations[i - 1]![0] + 1e-4);
   if (st.length < 2) return null;
@@ -112,9 +111,6 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
   P.add('gunMountDark', KIT.cylZ(0.022, 0.12, 12), 0.20, -0.04, face - 0.04);
   const top = gun.overGun;
   if (top) {
-    // the cradle on the mantlet's crown (the Mk 2B's stands empty)
-    const [cradle, cx, cy, cz] = boxOf(top.cradle);
-    P.add('gunMount', cradle, cx, cy, cz);
     if (top.m2) {
       // the 12.7 mm M2 over the gun, fired from inside the turret: the fleet M2 scaled to the measured back plate to
       // muzzle, its bore at the measured height
@@ -139,6 +135,6 @@ export function addMerkavaGun(P: TankBuilderPort, gun: MerkavaGunSpec): Readonly
   return Object.freeze({
     model: gun.model, muzzleZM: gun.muzzleZ, trunnionTurretM: Object.freeze([...gun.trunnion]),
     barrelStations: gun.barrel.length, outerRadiusM: outerR, mantletStations: gun.mantlet.length,
-    overGun: top?.m2 ? 'm2' : top ? 'cradle' : 'none',
+    overGun: top?.m2 ? 'm2' : 'none',
   });
 }
