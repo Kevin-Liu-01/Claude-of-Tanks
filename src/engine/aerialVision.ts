@@ -1,5 +1,5 @@
 /** Local sensor preference; never changes authoritative spotting or flight state. */
-export const AERIAL_VIEWS = ['infrared','thermal','night','daylight'] as const;
+const AERIAL_VIEWS = ['infrared','thermal','night','daylight'] as const;
 export type AerialVision = typeof AERIAL_VIEWS[number];
 const STORAGE_KEY='cot.aerialVision';
 let selected:AerialVision='infrared',loaded=false;
@@ -20,7 +20,12 @@ export function getScopeVision():AerialVision {
  return scopeSelected;
 }
 export function cycleScopeVision():AerialVision {
- scopeSelected=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(getScopeVision())+1)%AERIAL_VIEWS.length]!;
+ return setScopeVision(AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(getScopeVision())+1)%AERIAL_VIEWS.length]!);
+}
+/** The scope's view chosen outright (the switch's segmented control picks one of the four). */
+export function setScopeVision(value:AerialVision):AerialVision {
+ if(!AERIAL_VIEWS.includes(value))return getScopeVision();
+ scopeSelected=value;scopeLoaded=true;
  try{globalThis.localStorage?.setItem('cot.scopeVision',scopeSelected);}catch{}
  return scopeSelected;
 }
