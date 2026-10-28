@@ -67,20 +67,20 @@ packet (scope, comparison contract, owner decisions, evidence matrix, round log)
 | Sprocket / idler | z 3.04 y 0.86 r 0.372 / z -3.365 y 0.829 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
 | Return rollers | 5 a side | `wheel_*_top_*` |
 | Track | centre +-1.532, width 0.637 | `track_l/r` |
-| Turret | ring centre z -1.050 at the deck; 48 stations at 0.05 m, crown 2.79, half-width to 1.76 | `bone_turret` / `turret` |
-| Gun (M64) | bore 2.082; barrel z 1.035 .. muzzle 4.725 (38 radial stations; muzzle r 0.078, evacuator r 0.140); mask z 1.17 .. 1.62 | `gun_barrel`, `bone_gun` |
+| Turret | ring centre z -1.049 at the deck; 48 stations at 0.1 m (smoothed), crown 2.78, half-width to 1.75; gun slot from z 0.40, half-width 0.227 | `bone_turret` / `turret` |
+| Gun (M64) | bore 2.082; barrel z 1.035 .. muzzle 4.725 (24 radial stations; muzzle r 0.076, evacuator r 0.139); gun mask z -0.17 .. 1.62 | `gun_barrel`, `bone_gun` |
 | Trunnion | y 2.082, z 1.180 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
 | Over the gun | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | `mg_twin` / `bone_gun` |
-| Detail parts | 121 (turret armour 30, hull armour 36) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
+| Detail parts | 996 pieces (turret armour 154, hull armour 498): each connected source piece over 6 cm, a box or two-station loft | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
 ## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
 | Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun | muzzle 0.57 m past an oracle nose at +3.49; trunnion-to-muzzle 4.21 m (the stubbiest of the six) | muzzle z 4.725, 38-station barrel profile | the measured profile as one solid of revolution, muzzle at z 4.725; only the barrel recoils |
+| Gun | muzzle 0.57 m past an oracle nose at +3.49; trunnion-to-muzzle 4.21 m (the stubbiest of the six) | muzzle z 4.725, round tube 24 stations, evacuator r 0.139 | the measured round profile as one solid of revolution, steps chamfered, muzzle at z 4.725; the gun mask riding in the slot; only the barrel recoils |
 | Over the gun | none | `bone_mg_twin` M2: z 0.45-2.11, bore 2.70, box on its left | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
-| Turret shell | oracle-fit casting | 48 stations, crown 2.79 | lofted through the stations; roof kit kept off the shell |
-| Turret armour | 15 cells a side on wedge modules | 30 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Turret shell | oracle-fit casting | 48 stations, crown 2.78 | lofted through the smoothed stations, the gun slot open where the source has it; roof kit kept off the shell |
+| Turret armour | 15 cells a side on wedge modules | 154 `ex_armor` pieces | each piece at its measured attitude, the spec's two removable packages over the permanent shell |
 | Running gear | oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
 | Depression | blocked above +7.6 deg at yaw 7-11 and above +12.3 deg at yaw 147-153 | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 

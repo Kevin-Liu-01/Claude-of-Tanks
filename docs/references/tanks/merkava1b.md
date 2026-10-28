@@ -79,20 +79,20 @@ packet (scope, comparison contract, owner decisions, evidence matrix, round log)
 | Sprocket / idler | z 3.04 y 0.86 r 0.372 / z -3.365 y 0.829 r 0.37 | `wheel_*_drive`, `wheel_*_back` |
 | Return rollers | 5 a side | `wheel_*_top_*` |
 | Track | centre +-1.532, width 0.637 | `track_l/r` |
-| Turret | ring centre z -0.871 at the deck; 48 stations at 0.05 m, crown 2.79, half-width to 1.45 | `bone_turret` / `turret` |
-| Gun (M64) | bore 2.082; barrel z 1.195 .. muzzle 4.725 (68 radial stations; muzzle r 0.078, evacuator r 0.176); mask z 1.14 .. 1.21 | `gun_barrel`, `bone_gun` |
+| Turret | ring centre z -0.872 at the deck; 48 stations at 0.1 m (smoothed), crown 2.78, half-width to 1.44; gun slot from z 0.30, half-width 0.208 | `bone_turret` / `turret` |
+| Gun (M64) | bore 2.082; barrel z 1.195 .. muzzle 4.725 (34 radial stations; muzzle r 0.077, evacuator r 0.140); gun mask z -0.17 .. 1.23 | `gun_barrel`, `bone_gun` |
 | Trunnion | y 2.082, z 1.180 (constructed: the OBJ has no pivots; in the gun mask at the nose slot, uncertainty about +-0.2 m along the bore) | construction |
 | Over the gun | M2 in the gun bone: z 0.45-2.11, bore 2.705 | `mg_twin` / `bone_gun` |
-| Detail parts | 71 (turret armour 7, hull armour 25) | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
+| Detail parts | 740 pieces (turret armour 66, hull armour 408): each connected source piece over 6 cm, a box or two-station loft | `ex_armor*`, `ex_decor*`, `hatch*`, `ex_lantern*`, sights |
 
 ## Gap table: the old pile (release 260) vs the supplied source vs the 262 build
 
 | Feature | Old pile (release 260) | Supplied source | 262 build (rev 3) |
 |---|---|---|---|
-| Gun | muzzle 1.30 m past an oracle nose at +3.05; trunnion-to-muzzle 5.11 m against a mantlet buried in an oracle-fit casting | muzzle z 4.725, 68-station barrel profile | the measured profile as one solid of revolution, muzzle at z 4.725; only the barrel recoils |
+| Gun | muzzle 1.30 m past an oracle nose at +3.05; trunnion-to-muzzle 5.11 m against a mantlet buried in an oracle-fit casting | muzzle z 4.725, round tube 34 stations, evacuator r 0.140 | the measured round profile as one solid of revolution, steps chamfered, muzzle at z 4.725; the gun mask riding in the slot; only the barrel recoils |
 | Over the gun | an over-gun M2 placed by oracle rays | M2 in the gun bone: z 0.45-2.11, bore 2.705 | 12.7 mm M2 scaled to the source's back plate and muzzle, its bore at the measured height, on its cradle, the side ammunition box |
-| Turret shell | oracle-fit rising-roof casting with fit receipts | 48 stations, crown 2.79 | lofted through the stations; roof kit kept off the shell |
-| Turret armour | eight invented cells on each cheek | 7 `ex_armor` plates | the plates at their measured attitudes as the spec's two removable packages over the permanent shell |
+| Turret shell | oracle-fit rising-roof casting with fit receipts | 48 stations, crown 2.78 | lofted through the smoothed stations, the gun slot open where the source has it; roof kit kept off the shell |
+| Turret armour | eight invented cells on each cheek | 66 `ex_armor` pieces | each piece at its measured attitude, the spec's two removable packages over the permanent shell |
 | Running gear | wheels r 0.355, five rollers, oracle course | stations above | the same stations and radii; fleet track thickness (FSP-04) |
 | Depression | -0.7..-2.4 deg over the glacis | (the source carries no limits) | measured by `tools/gun-depression-sweep.mjs` on the rebuilt geometry (family packet) |
 

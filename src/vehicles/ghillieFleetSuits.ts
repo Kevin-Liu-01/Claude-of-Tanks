@@ -182,6 +182,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     fieldClearanceM: 0.03, maxHalfWidth: 2.08, hemFloorM: 0.85,
     // 245: under its measured curve (turretScaleGunPitch.ts) the hull net lay 9.9 mm under the barrel at yaw 138
     clothClearsGunStops: true,
+    // 262: the family rebuild's curve (-7.7 ahead) brings the barrel within 2.4 mm of the bow deck's leaves at yaw 7:
+    // the cards and the field clear the gun's whole envelope
+    cardsClearGunStops: true,
+    conservativeGunEnvelope: true,
     turret: {
       top: [
         laid({

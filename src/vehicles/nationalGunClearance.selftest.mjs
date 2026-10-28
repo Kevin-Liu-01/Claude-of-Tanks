@@ -76,9 +76,7 @@ const CURVES = {
   challenger2e: [[177,177]],
   fv510: [],
   fv510_milan: [],
-  merkava1b: [],
-  merkava2b: [],
-  merkava2d: [],
+  merkava2d: [[139, 145, 'skip']], // 262: the source's raked rear marker poles stand in the barrel's path at every pitch (owner decision)
   ua_challenger2: [[177,177]],
   leo2a5: [],
   leo2a6m: [],
