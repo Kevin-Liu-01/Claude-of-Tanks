@@ -10,9 +10,12 @@ registration, construction and combat data are in [bm_oplot_m.md](bm_oplot_m.md)
   (478DU9-T differs from 478DU9-1 by its air conditioner and auxiliary power unit), War Thunder's BM Oplot-T note
   (modified side screens, an additional rear ladder, an extra power unit), and the owner's desert-finish reference.
 - Air conditioner: a louvred housing with its fan on the bustle's rear face (profiles/oplotBM.ts buildBustleStowage).
-- Auxiliary power unit: a louvred box with its exhaust on the left rear fender, in place of that fender's last bin.
-- Side screens: Duplet only on the three forward panels of each skirt band; the rest of the band bare.
-- Stern boarding ladder right of the unditching log; the longer bustle stowage (two packs).
+- Auxiliary power unit: a low louvred box on the left rear fender, its exhaust out of the outboard face (low enough
+  that the main gun keeps level over it).
+- Side screens: Duplet only on the three forward panels of each skirt band; bolted appliqué plates on the rest.
+- Boarding steps hung off the left rear fender's end (clear of the stern drums); the longer bustle stowage (two packs).
+- Its own kit (owner: distinct): M2 mini-turret with a searchlight and a 7.62 open cradle, bolted appliqué on the rear
+  skirt panels, a bustle slat cage, a cheek searchlight and work lamps, desert-issue stern drums (bm_oplot_m.md, kits).
 - Finish: the owner's reference desert scheme (sand base, red-brown and dark-brown patches, `nato` painter), number
   231, the Thai tricolour as its insignia (`visual.insignia = 'th-flag'`, vehicleMarkings.ts drawThaiFlag); country,
   filter and designation stay Ukraine (the builder's nation).

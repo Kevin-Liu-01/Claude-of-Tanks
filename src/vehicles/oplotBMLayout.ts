@@ -6,10 +6,13 @@
  * (resizeAuthoredVehicle): the registered comparison scale 4.10 (tools/source-world-registration.mjs bm_oplot_m). */
 export const OPLOT_BM_SCALE = 1.025;
 
-/** Authoring-frame datums: the ring (hull frame), the trunnion (turret frame) and the print's 4.92 m barrel. */
+/** Authoring-frame datums: the ring (hull frame), the trunnion (turret frame) and the print's 4.92 m barrel. The ring
+ * and trunnion are the registered source datums (tools/source-world-registration.mjs bm_oplot_m: turret
+ * [-0.012, 1.4965, 0.185], gun [-0.012, 1.808, 1.518], the print's ring 12 mm right of its hull centre) divided by
+ * OPLOT_BM_SCALE, so the installed pivots land on them. */
 export const OPLOT_BM_AUTHORING = Object.freeze({
-  turret: Object.freeze([0, 1.47, 0.181] as const),
-  gun: Object.freeze([0, 0.295, 1.30] as const),
+  turret: Object.freeze([-0.0117, 1.46, 0.1805] as const),
+  gun: Object.freeze([0, 0.3039, 1.3005] as const),
   barrelM: 4.92,
   barrelR: 0.112,
   boreR: 0.0625,

@@ -118,7 +118,8 @@ function buildHull(P: TankBuilderPort): void {
   P.add('hullDark', box(1.70, 0.24, 0.024), 0, 1.00, stern - 0.013);
   for (let i = 0; i < 7; i++) P.add('hullDetail', box(0.20, 0.10, 0.018), -0.78 + i * 0.26, 1.00, stern - 0.026);
   for (const s of [-1, 1]) {
-    P.add('hullDark', KIT.torus(0.075, 0.02, 12), side(s, 0.84), 0.66, stern - 0.01, Math.PI / 2, 0, 0);
+    // recovery eyes welded to the raked lower rear plate, outboard of the stern drums
+    P.add('hullDark', KIT.torus(0.075, 0.02, 12), side(s, 1.00), 0.62, Z(-3.31), Math.PI / 2, 0, 0);
     P.add('hull', box(0.10, 0.20, 0.16), side(s, 0.95), 1.29, stern - 0.06);
   }
   P.addEquipment('hullDetail', cylX(0.10, 2.10, 20), 0, 1.36, stern - 0.15);
@@ -153,10 +154,15 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
   });
   for (const s of [-1, 1]) {
     // Armoured skirt box: its outer face flares from the deck edge down to 0.95, its nose rolls down over the idler.
+    // The bow cowl turns down over the idler on a quarter round (the references' rounded front mudguards): its top on
+    // a 0.46 m arc from the skirt line at z 3.30, its underside 0.10 below it once that clears the box's 0.95 bottom.
+    const cowl = [18, 36, 52, 66, 78, 87].map((deg) => {
+      const a = deg * Math.PI / 180, top = 0.84 + 0.43 * Math.cos(a);
+      return box5(3.30 + 0.46 * Math.sin(a), top, Math.min(bottomY, top - 0.10), outerX - 0.10 * (deg / 87) ** 2);
+    });
     const stations = [
       box5(-3.06, 1.42, 1.02, 2.00), box5(-2.96, DECK_Y, bottomY, outerX), box5(1.80, DECK_Y, bottomY, outerX),
-      box5(3.30, skirtTop(3.30), bottomY, outerX), box5(3.52, 1.22, 0.91, 2.06), box5(3.68, 1.11, 0.87, 2.03),
-      box5(3.78, 0.98, 0.86, 1.98),
+      box5(3.30, skirtTop(3.30), bottomY, outerX), ...cowl,
     ];
     P.add('hull', sectionSolid(stations.map(({ z, ring }) => ({ z, ring: sided(ring, s) }))));
     // panel seams on the face
@@ -193,10 +199,11 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Turret (frame: the ring at OPLOT_BM_AUTHORING.turret, 4.0 about the ring). Sections measured from the print: a welded body widening from
-// |x| 0.86 over the bustle to 1.47 at z 0.51, its roof 0.69 falling to 0.58 at the nose (z 0.97), the gun slot |x|
-// 0.41 between two Duplet stacks 0.43 m high whose fronts sweep from z 1.82 inboard to 1.21 at the flank (|x| 1.72),
-// flank ERA from the body side to |x| 1.72, smoke-launcher housings on the rear flanks, the bustle box offset right.
+// Turret (frame: the ring at OPLOT_BM_AUTHORING.turret, 4.0 about the ring; its floor on the deck line). Sections
+// measured from the print: a welded body widening from |x| 0.86 over the bustle to 1.47 at z 0.51, its roof 0.69
+// falling to 0.58 at the nose (z 0.97), the gun slot |x| 0.41 between two Duplet stacks 0.43 m high whose fronts
+// sweep from z 1.82 inboard to 1.21 at the flank (|x| 1.72), flank ERA from the body side to |x| 1.72,
+// smoke-launcher housings on the rear flanks, the bustle box offset right.
 
 const ROOF_Y = 0.69;
 const ERA_Y0 = 0.09, ERA_Y1 = 0.52;
@@ -210,7 +217,7 @@ function eraBlock(P: TankBuilderPort, sector: string, geometry: THREE.BufferGeom
 function buildTurretShell(P: TankBuilderPort): void {
   P.turretG.position.set(...OPLOT_BM_AUTHORING.turret);
   const body = (z: number, w: number, roof: number) => ({
-    z, ring: [[-w, -0.01], [w, -0.01], [w, roof - 0.09], [w - 0.09, roof], [-w + 0.09, roof], [-w, roof - 0.09]] as Ring,
+    z, ring: [[-w, 0.0], [w, 0.0], [w, roof - 0.09], [w - 0.09, roof], [-w + 0.09, roof], [-w, roof - 0.09]] as Ring,
   });
   P.add('turret', sectionSolid([
     body(-1.28, 0.86, ROOF_Y), body(-0.69, 1.00, ROOF_Y), body(-0.09, 1.23, ROOF_Y), body(0.51, 1.47, 0.63),
@@ -373,16 +380,26 @@ function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
 // its own pair of designs (sourceMachineGun: each a real auxiliary weapon at its calibre), its own extra side armour,
 // twin 200 L drums on the stern and its own lights. Turret stock in the turret frame; hull stock in the hull frame.
 
-interface Station { name: string; caliber: 12.7 | 7.62; x: number; z: number }
+/** A roof station: its gun, its ring centre and, for a tower, how far its race stands above the common one. */
+interface Station { name: string; caliber: 12.7 | 7.62; x: number; z: number; rise?: number }
 const RACE_Y = ROOF_Y + 0.08;
 
-/** A bolted ring pedestal standing a station's race above the roof. */
-function ringPedestal(P: TankBuilderPort, x: number, z: number, r: number): void {
-  P.addEquipment('turretDetail', cylY(r, r + 0.03, RACE_Y - ROOF_Y + 0.012, P.q ? 32 : 20), x, (RACE_Y + ROOF_Y - 0.012) / 2, z);
-  P.addEquipment('turretDark', cylY(r + 0.012, r + 0.012, 0.02, P.q ? 32 : 20), x, RACE_Y - 0.01, z);
+/** A bolted ring pedestal standing a station's race above the roof; a tower (rise) gets an armoured drum with ribs and
+ * a cable gland. */
+function ringPedestal(P: TankBuilderPort, x: number, z: number, r: number, race = RACE_Y): void {
+  P.addEquipment('turretDetail', cylY(r, r + 0.03, race - ROOF_Y + 0.012, P.q ? 32 : 20), x, (race + ROOF_Y - 0.012) / 2, z);
+  P.addEquipment('turretDark', cylY(r + 0.012, r + 0.012, 0.02, P.q ? 32 : 20), x, race - 0.01, z);
+  if (race - RACE_Y > 0.05) {
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3 + Math.PI / 6;
+      P.addEquipment('turretDetail', box(0.04, race - ROOF_Y - 0.04, 0.05), x + Math.cos(a) * (r + 0.025), (race + ROOF_Y) / 2 - 0.01, z + Math.sin(a) * (r + 0.025), 0, -a, 0);
+    }
+    P.addEquipment('turretDark', box(0.16, 0.12, 0.03), x, ROOF_Y + 0.10, z - r - 0.01);
+    P.addEquipment('turretDark', cylZ(0.03, 0.06, 10), x + 0.10, ROOF_Y + 0.06, z - r - 0.03);
+  }
   if (P.q) for (let i = 0; i < 10; i++) {
     const a = i * Math.PI / 5;
-    P.addEquipment('turretDark', cylY(0.011, 0.011, 0.012, 8), x + Math.cos(a) * (r - 0.015), RACE_Y + 0.004, z + Math.sin(a) * (r - 0.015));
+    P.addEquipment('turretDark', cylY(0.011, 0.011, 0.012, 8), x + Math.cos(a) * (r - 0.015), race + 0.004, z + Math.sin(a) * (r - 0.015));
   }
 }
 
@@ -418,57 +435,66 @@ function cradleStation(P: TankBuilderPort, S: Station): THREE.Group {
   w.add('turretDetail', box(0.18, 0.035, recv[2] + 0.12), S.x, pivotY - recv[1] / 2 - 0.02, pivotZ + 0.02);
   w.add('turretAmmo', box(0.14, 0.22, 0.34), S.x - 0.18, pivotY - 0.02, pivotZ - 0.04);
   w.add('turretDark', box(0.06, 0.05, 0.12), S.x - 0.10, pivotY + 0.05, pivotZ - 0.02);
-  w.add('turretDetail', box(0.15, 0.17, 0.24), S.x + 0.19, pivotY + 0.03, pivotZ + 0.04);
-  w.add('turretGlass', box(0.065, 0.065, 0.012), S.x + 0.16, pivotY + 0.06, pivotZ + 0.165);
-  w.add('turretGlass', box(0.04, 0.04, 0.012), S.x + 0.22, pivotY + 0.01, pivotZ + 0.165);
-  w.add('turretDark', box(0.17, 0.02, 0.27), S.x + 0.19, pivotY + 0.125, pivotZ + 0.06);
+  // the sight head: on the KT-12.7 raised on a post above the receiver (the references' box sight), beside it otherwise
+  const sightY = heavy ? pivotY + 0.30 : pivotY + 0.03, sightX = heavy ? S.x + 0.14 : S.x + 0.19;
+  if (heavy) {
+    w.add('turretDark', box(0.05, sightY - pivotY - 0.12, 0.05), sightX, (pivotY + sightY) / 2 + 0.005, pivotZ - 0.02);
+    w.add('turretDark', box(0.10, 0.03, 0.08), sightX - 0.03, pivotY + 0.08, pivotZ - 0.02);
+  }
+  w.add('turretDetail', box(heavy ? 0.20 : 0.15, heavy ? 0.20 : 0.17, heavy ? 0.28 : 0.24), sightX, sightY, pivotZ + 0.04);
+  w.add('turretGlass', box(heavy ? 0.09 : 0.065, heavy ? 0.08 : 0.065, 0.012), sightX - 0.03, sightY + 0.03, pivotZ + (heavy ? 0.185 : 0.165));
+  w.add('turretGlass', box(0.04, 0.04, 0.012), sightX + (heavy ? 0.06 : 0.03), sightY - (heavy ? 0.05 : 0.02), pivotZ + (heavy ? 0.185 : 0.165));
+  w.add('turretDark', box(heavy ? 0.22 : 0.17, 0.02, heavy ? 0.31 : 0.27), sightX, sightY + (heavy ? 0.11 : 0.095), pivotZ + 0.06);
   return w.finish();
 }
 
 /** An enclosed armoured mini-turret: faceted housing with its sight hood and the gun in a mantlet block. */
 function enclosedStation(P: TankBuilderPort, S: Station, searchlight = false): THREE.Group {
-  const heavy = S.caliber > 10, pivotY = RACE_Y + 0.21, pivotZ = S.z + 0.30;
+  const race = RACE_Y + (S.rise ?? 0), heavy = S.caliber > 10, pivotY = race + 0.21, pivotZ = S.z + 0.30;
   const muzzleZ = pivotZ + (heavy ? 1.12 : 0.80);
-  ringPedestal(P, S.x, S.z, 0.28);
+  ringPedestal(P, S.x, S.z, 0.28, race);
   const w = sourceMachineGun(P, [0, 0, 0], { name: S.name, caliberMm: S.caliber,
-    yaw: [S.x, RACE_Y, S.z], pivot: [S.x, pivotY, pivotZ], muzzle: [S.x, pivotY, muzzleZ] });
+    yaw: [S.x, race, S.z], pivot: [S.x, pivotY, pivotZ], muzzle: [S.x, pivotY, muzzleZ] });
   w.stage('yaw');
-  w.add('turretDetail', cylY(0.25, 0.26, 0.06, P.q ? 32 : 20), S.x, RACE_Y + 0.03, S.z);
+  w.add('turretDetail', cylY(0.25, 0.26, 0.06, P.q ? 32 : 20), S.x, race + 0.03, S.z);
   const ring = (half: number, top: number, roofHalf: number): [number, number][] =>
-    [[S.x - half, RACE_Y + 0.05], [S.x + half, RACE_Y + 0.05], [S.x + roofHalf, top], [S.x - roofHalf, top]];
+    [[S.x - half, race + 0.05], [S.x + half, race + 0.05], [S.x + roofHalf, top], [S.x - roofHalf, top]];
   w.add('turretDetail', sectionSolid([
-    { z: S.z - 0.40, ring: ring(0.22, RACE_Y + 0.25, 0.19) },
-    { z: S.z - 0.20, ring: ring(0.27, RACE_Y + 0.30, 0.22) },
-    { z: pivotZ - 0.10, ring: ring(0.27, RACE_Y + 0.30, 0.22) },
-    { z: pivotZ + 0.03, ring: ring(0.25, RACE_Y + 0.13, 0.23) },
+    { z: S.z - 0.40, ring: ring(0.22, race + 0.25, 0.19) },
+    { z: S.z - 0.20, ring: ring(0.27, race + 0.30, 0.22) },
+    { z: pivotZ - 0.10, ring: ring(0.27, race + 0.30, 0.22) },
+    { z: pivotZ + 0.03, ring: ring(0.25, race + 0.13, 0.23) },
   ]), 0, 0, 0);
-  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, RACE_Y + 0.305, S.z - 0.05);
-  w.add('turretDetail', box(0.11, 0.16, 0.22), S.x + 0.32, RACE_Y + 0.20, pivotZ - 0.15);
-  w.add('turretGlass', box(0.06, 0.06, 0.012), S.x + 0.32, RACE_Y + 0.22, pivotZ - 0.035);
-  w.add('turretDark', box(0.13, 0.02, 0.26), S.x + 0.32, RACE_Y + 0.29, pivotZ - 0.14);
+  w.add('turretDark', box(0.32, 0.02, 0.22), S.x, race + 0.305, S.z - 0.05);
+  w.add('turretDetail', box(0.11, 0.16, 0.22), S.x + 0.32, race + 0.20, pivotZ - 0.15);
+  w.add('turretGlass', box(0.06, 0.06, 0.012), S.x + 0.32, race + 0.22, pivotZ - 0.035);
+  w.add('turretDark', box(0.13, 0.02, 0.26), S.x + 0.32, race + 0.29, pivotZ - 0.14);
   w.stage('pitch');
   w.add('turretDetail', box(0.19, 0.15, 0.13), S.x, pivotY, pivotZ + 0.05);
   w.add('turretDark', cylZ(heavy ? 0.032 : 0.024, 0.20, P.q ? 16 : 12), S.x, pivotY, pivotZ + 0.21);
   w.add('turretDark', cylZ(heavy ? 0.016 : 0.010, muzzleZ - pivotZ - 0.38, P.q ? 12 : 8, heavy ? 0.019 : 0.012), S.x, pivotY, (pivotZ + 0.31 + muzzleZ - 0.07) / 2);
   w.add('turretDark', cylZ(heavy ? 0.022 : 0.016, 0.07, P.q ? 12 : 8), S.x, pivotY, muzzleZ - 0.035);
   if (searchlight) {
-    w.add('turretDetail', box(0.05, 0.05, 0.08), S.x - 0.13, pivotY + 0.02, pivotZ + 0.05);
-    w.add('turretDark', cylZ(0.065, 0.14, P.q ? 20 : 14), S.x - 0.19, pivotY + 0.03, pivotZ + 0.08);
+    w.add('turretDetail', box(0.07, 0.06, 0.10), S.x - 0.14, pivotY + 0.02, pivotZ + 0.05);
+    w.add('turretDark', cylZ(0.10, 0.20, P.q ? 24 : 16), S.x - 0.25, pivotY + 0.04, pivotZ + 0.06);
+    w.add('turretDark', cylZ(0.108, 0.025, P.q ? 24 : 16), S.x - 0.25, pivotY + 0.04, pivotZ + 0.15);
   }
   return w.finish();
 }
 
-function stationLens(P: TankBuilderPort, S: Station, pivotY: number, pivotZ: number): void {
+/** The enclosed station's searchlight glass, captured into its pitch stage so it lays with the gun. */
+function stationLens(P: TankBuilderPort, S: Station): void {
+  const pivotY = RACE_Y + (S.rise ?? 0) + 0.21, pivotZ = S.z + 0.30;
   const done = captureAuxiliaryStock(P, S.name, 'pitch');
-  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.053, 0.012, P.q ? 20 : 14), 'headlight', { searchlight: true, tint: 'cool' }),
-    S.x - 0.19, pivotY + 0.03, pivotZ + 0.151);
+  P.addEquipment('turretGlass', markVehicleNightLens(cylZ(0.088, 0.012, P.q ? 24 : 16), 'headlight', { searchlight: true, tint: 'cool' }),
+    S.x - 0.25, pivotY + 0.04, pivotZ + 0.166);
   done();
 }
 
-/** Twin 200 L drums across the stern on their cradle, behind the unditching log and level with it, so the gun still
- * depresses over the stern (their tops at the deck line: tools/gun-depression-sweep.mjs). */
+/** Twin 200 L drums strapped across the lower rear plate under the transom grille and the unditching log (the
+ * T-72/T-80 stowage): well below the deck line, so the gun keeps its depression over the stern. */
 function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number], seed: number): void {
-  const stern = -HULL_HALF_L, z = stern - 0.46, y = 1.30;
+  const stern = -HULL_HALF_L, z = stern - 0.24, y = 0.86;
   for (const s of [-1, 1]) {
     const drum = fuelDrumParts({ r: 0.20, len: 0.86, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
       detail: P.q === false ? 0 : 1, bold: true, paint, seed: seed + (s > 0 ? 1 : 0) });
@@ -476,12 +502,17 @@ function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number]
     P.add('hullBark', alongX(drum.body), side(s, 0.50), y, z);
     for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side(s, 0.50), y, z);
   }
-  // cradle: four arms under the log back to the stern plate, saddle posts under the drums, a cross tube between them
+  // cradle: four arms from the raked plate under the drums, saddles under each, a cross tube, and hold-down straps from
+  // the transom's lower edge over each drum
+  const armY = y - 0.225, plateZ = Z(-3.42) + (0.74 - armY) / (0.74 - 0.48) * (Z(-3.18) - Z(-3.42));
   for (const x of [-0.92, -0.08, 0.08, 0.92]) {
-    P.add('hullDark', box(0.05, 0.05, 0.47), x, y - 0.22, stern - 0.235);
-    P.add('hullDark', box(0.05, 0.12, 0.05), x, y - 0.17, z);
+    P.add('hullDark', box(0.05, 0.05, plateZ - z), x, armY, (z + plateZ) / 2);
+    P.add('hullDark', box(0.05, 0.05, 0.05), x, y - 0.18, z);
   }
-  P.add('hullDark', cylX(0.025, 1.90, 12), 0, y - 0.22, z - 0.04);
+  P.add('hullDark', cylX(0.025, 1.90, 12), 0, armY, z - 0.06);
+  for (const x of [-0.50, 0.50]) {
+    P.add('hullDark', beamBetween([x, 0.885, stern - 0.03], [x, y + 0.19, z + 0.06], 0.012, 8));
+  }
 }
 
 /** A guarded lamp facing forward (or aft), turret frame. */
@@ -507,7 +538,7 @@ const M_STATIONS = Object.freeze({
   kt762: { name: 'oplotMKt762', caliber: 7.62, x: 0.82, z: -1.06 },
 } as const);
 const T_STATIONS = Object.freeze({
-  m2: { name: 'oplotTM2', caliber: 12.7, x: -0.98, z: -0.98 },
+  m2: { name: 'oplotTM2', caliber: 12.7, x: -0.98, z: -0.98, rise: 0.24 },
   m240: { name: 'oplotTM240', caliber: 7.62, x: 0.82, z: -1.06 },
 } as const);
 
@@ -529,8 +560,8 @@ function buildOplotMKit(P: TankBuilderPort): void {
     const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
     for (let i = 0; i < 7; i++) {
       const z = Z(-1.70 + i * 0.66);
-      eraCassette(P, 'hull', sector, [side(s, 2.098), 0.64, z], [0.052, 0.38, Z(0.60)]);
-      for (const y of [0.47, 0.81]) P.add('hullDark', box(0.03, 0.03, Z(0.56)), side(s, 2.08), y, z);
+      eraCassette(P, 'hull', sector, [side(s, 2.1025), 0.64, z], [0.065, 0.38, Z(0.54)]);
+      for (const y of [0.47, 0.81]) P.add('hullDark', box(0.03, 0.03, Z(0.56)), side(s, 2.075), y, z);
     }
   }
   // lights: LED bars on the stacks' tops at the front corners, a work lamp astern on the bustle
@@ -546,33 +577,50 @@ function buildOplotTKit(P: TankBuilderPort): void {
   // the M2 clear -149..3 degrees (the 7.62 station, the PNK-6 tower and the cage astern); the 7.62 clear -80..246
   stationLimits(enclosedStation(P, T_STATIONS.m2, true), [-2.5656, 0.0175],
     [[-2.5656, 0.04], [-2.5133, 0.18], [-0.0698, 0.18], [0.0175, 0.155]]);
-  stationLens(P, T_STATIONS.m2, RACE_Y + 0.21, T_STATIONS.m2.z + 0.30);
+  stationLens(P, T_STATIONS.m2);
   stationLimits(cradleStation(P, T_STATIONS.m240), [-1.3614, 4.2586], [[-1.3614, 0], [-1.3090, 0.18], [4.1888, 0.18], [4.2586, 0.026]]);
-  // bolted steel appliqué on the flared skirt face where the Thai tank carries no Duplet: plates standing 4 cm proud on
-  // stand-off blocks, a bolted rim and four bolt heads each
+  // bolted steel appliqué where the Thai tank carries no Duplet: two courses of 9 cm blocks on each of the six rear skirt
+  // panels, flush on the flared face, four bolt heads on each block's outer face
   const face = new THREE.Vector2(SKIRT_FACE.innerX + 0.06 - SKIRT_FACE.outerX, DECK_Y - (SKIRT_FACE.bottomY + 0.05));
-  const tilt = Math.atan2(-face.x, face.y);
+  const tilt = Math.atan2(-face.x, face.y), out = 0.05;
+  const faceX = (y: number): number => SKIRT_FACE.outerX - (y - (SKIRT_FACE.bottomY + 0.05)) * (face.x / -face.y);
+  const span = (DECK_Y - SKIRT_FACE.bottomY - 0.10) / Math.cos(tilt), h = span / 2 - 0.02;
   for (const s of [-1, 1]) {
     for (let i = 0; i < 6; i++) {
-      const z0 = -2.92 + i * (6.20 / 9), z1 = z0 + 6.20 / 9 - 0.04, z = Z((z0 + z1) / 2);
-      const yc = (DECK_Y + SKIRT_FACE.bottomY) / 2 + 0.01, h = (DECK_Y - SKIRT_FACE.bottomY - 0.14) / Math.cos(tilt);
-      const xc = SKIRT_FACE.outerX - (yc - (SKIRT_FACE.bottomY + 0.05)) * (face.x / -face.y) + 0.045;
-      P.addExternalArmor('hull', box(0.03, h, Z(z1 - z0)), side(s, xc), yc, z, 0, 0, side(s, tilt));
-      for (const dy of [-h * 0.38, h * 0.38]) for (const dz of [-0.25, 0.25]) {
-        P.add('hullDark', cylX(0.017, 0.05, 8), side(s, xc - 0.015 - dy * Math.sin(tilt)), yc + dy * Math.cos(tilt), z + Z(dz), 0, 0, side(s, tilt));
+      const z0 = -2.92 + i * (6.20 / 9), z1 = z0 + 6.20 / 9 - 0.05, z = Z((z0 + z1) / 2);
+      for (const course of [-1, 1]) {
+        const along = course * (span / 4), yc = (DECK_Y + SKIRT_FACE.bottomY) / 2 + 0.02 + along * Math.cos(tilt);
+        const xc = faceX(yc) + out * Math.cos(tilt);
+        P.addExternalArmor('hull', box(0.09, h, Z(z1 - z0)), side(s, xc), yc + out * Math.sin(tilt), z, 0, 0, side(s, tilt));
+        for (const dy of [-h * 0.32, h * 0.32]) for (const dz of [-0.24, 0.24]) {
+          P.add('hullDark', cylX(0.02, 0.03, 8), side(s, xc + 0.05 * Math.cos(tilt) - dy * Math.sin(tilt)),
+            yc + out * Math.sin(tilt) + 0.05 * Math.sin(tilt) + dy * Math.cos(tilt), z + Z(dz), 0, 0, side(s, tilt));
+        }
       }
     }
   }
-  // anti-RPG cage round the bustle and the right bin: posts, two rails and vertical slats, open at the top
-  const cage: [number, number][] = [[-1.52, -0.95], [-1.52, -2.32], [0.46, -2.32]];
-  for (const [x, z] of cage) P.addEquipment('turretDetail', box(0.03, 0.46, 0.03), x, 0.47, z);
-  for (const y of [0.30, 0.68]) {
-    P.addEquipment('turretOpenLatticeDark', beamBetween([-1.52, y, -0.95], [-1.52, y, -2.32], 0.012, 8));
-    P.addEquipment('turretOpenLatticeDark', beamBetween([-1.52, y, -2.32], [0.46, y, -2.32], 0.012, 8));
+  // stand-off slat cage round the turret's rear half: 0.36-0.42 m off the bins, the bustle and the basket, heavy corner
+  // posts, three rails, slats at 11 cm, struts back to the turret
+  const cageY0 = 0.20, cageY1 = 0.64, cx0 = -1.80, cx1 = 1.70, cz0 = -2.66, czR = -0.90, czL = -1.12;
+  const runs: [[number, number], [number, number]][] = [[[cx0, czR], [cx0, cz0]], [[cx0, cz0], [cx1, cz0]], [[cx1, cz0], [cx1, czL]]];
+  for (const [x, z] of [[cx0, czR], [cx0, cz0], [cx1, cz0], [cx1, czL], [cx0, -1.78], [-0.05, cz0], [cx1, -1.89]] as const) {
+    P.addEquipment('turretDetail', box(0.06, cageY1 - cageY0 + 0.04, 0.06), x, (cageY0 + cageY1) / 2, z);
   }
-  for (let i = 1; i < 12; i++) P.addEquipment('turretOpenLatticeDark', box(0.008, 0.38, 0.012), -1.52, 0.49, -0.95 - i * 0.114);
-  for (let i = 1; i < 17; i++) P.addEquipment('turretOpenLatticeDark', box(0.012, 0.38, 0.008), -1.52 + i * 0.116, 0.49, -2.32);
-  for (const [x, z] of [[-1.44, -1.10], [-1.44, -2.20], [0.40, -2.26]] as const) P.addEquipment('turretDark', box(0.10, 0.03, 0.03), x + 0.04, 0.60, z);
+  for (const [[xa, za], [xb, zb]] of runs) {
+    for (const y of [cageY0 + 0.02, (cageY0 + cageY1) / 2, cageY1]) P.addEquipment('turretDetail', beamBetween([xa, y, za], [xb, y, zb], 0.02, 8));
+    // horizontal slats at 9 cm between the rails, 3 cm outboard of the posts (each run turns clockwise seen from
+    // above, so its right-hand normal points out)
+    const len = Math.hypot(xb - xa, zb - za), ox = (zb - za) / len * 0.03, oz = -(xb - xa) / len * 0.03;
+    for (let y = cageY0 + 0.07; y < cageY1 - 0.03; y += 0.09) {
+      if (Math.abs(y - (cageY0 + cageY1) / 2) < 0.03) continue;
+      P.addEquipment('turretOpenLatticeDark', beamBetween([xa + ox, y, za + oz], [xb + ox, y, zb + oz], 0.011, 6));
+    }
+  }
+  for (const y of [0.40, 0.58]) {
+    for (const z of [-1.10, -1.95]) P.addEquipment('turretDark', beamBetween([-1.43, y, z], [cx0, y, z], 0.018, 8));
+    for (const x of [-1.15, -0.30, 0.30]) P.addEquipment('turretDark', beamBetween([x, y, x < -0.8 ? -2.24 : -1.98], [x, y, cz0], 0.018, 8));
+    for (const z of [-1.45, -2.20]) P.addEquipment('turretDark', beamBetween([1.34, y, z], [cx1, y, z], 0.018, 8));
+  }
   // lights: a tropical searchlight on the left cheek's top, work lamps fore and aft
   {
     const x = 0.62, y = ERA_Y1 + 0.17, z = 1.38;
@@ -619,13 +667,13 @@ function buildGun(P: TankBuilderPort): void {
  * so the gun still clears it), the boarding steps hung off that fender's stern end beside the drums. */
 function buildThaiHullFittings(P: TankBuilderPort): void {
   const apuZ = Z(-2.50);
-  P.add('hull', box(0.50, 0.15, Z(0.74)), 1.50, DECK_Y + 0.075, apuZ);
-  for (let i = 0; i < 5; i++) P.add('hullDark', box(0.012, 0.09, 0.08), 1.753, DECK_Y + 0.075, apuZ + Z(-0.26 + i * 0.13));
-  for (const dz of [-0.30, 0.30]) P.add('hullDark', box(0.46, 0.012, 0.03), 1.50, DECK_Y + 0.154, apuZ + Z(dz));
-  P.add('hullDark', cylX(0.032, 0.07, 12), 1.785, DECK_Y + 0.06, apuZ + Z(0.26));
+  P.add('hull', box(0.50, 0.15, Z(0.74)), 1.72, DECK_Y + 0.075, apuZ);
+  for (let i = 0; i < 5; i++) P.add('hullDark', box(0.012, 0.09, 0.08), 1.973, DECK_Y + 0.075, apuZ + Z(-0.26 + i * 0.13));
+  for (const dz of [-0.30, 0.30]) P.add('hullDark', box(0.46, 0.012, 0.03), 1.72, DECK_Y + 0.154, apuZ + Z(dz));
+  P.add('hullDark', cylX(0.032, 0.07, 12), 2.005, DECK_Y + 0.06, apuZ + Z(0.26));
   const end = Z(-3.20) - 0.016;
-  for (const x of [1.22, 1.46]) P.addEquipment('hullDetail', box(0.03, 0.58, 0.03), x, 0.91, end);
-  for (let i = 0; i < 4; i++) P.addEquipment('hullDetail', box(0.27, 0.025, 0.03), 1.34, 0.69 + i * 0.15, end - 0.005);
+  for (const x of [1.22, 1.46]) P.addEquipment('hullDetail', box(0.035, 0.36, 0.035), x, 1.03, end);
+  for (const y of [0.87, 1.04]) P.addEquipment('hullDetail', box(0.275, 0.03, 0.06), 1.34, y, end - 0.01);
 }
 
 export function buildOplotBM(P: TankBuilderPort, variant: OplotBMVariant): void {

@@ -112,24 +112,36 @@ round-1/2 boxes with lofts through these sections.
 
 ## Construction
 
-- Hull: T-80UD-lineage loft (deck 1.455, 68 degree upper glacis from z 2.42 to the nose at 0.96, lower plate to the
-  0.44 belly), fender shelves to +-1.80, stowage bins, the 6TD-2's radiator grilles, its left-side exhaust box, driver's
-  hatch with three periscopes, the self-entrenching blade on the lower plate, headlamp clusters, stern grille, recovery
-  eyes and the unditching log.
-- Glacis Duplet: two courses of four modules a side, each seated by a downward ray (glacisEraCassette).
-- Skirts: a canted armoured band from the fender edge (1.79 to 1.875) with Duplet modules (eight a side on the
-  Oplot-M), hinged rubber panels to 0.30 raked up at both ends, a bow flap over the idler.
-- Running gear: shared rubber-tyred set, six wheels r 0.335 at y 0.43, five rollers r 0.085, sprocket r 0.30 at z -2.63,
-  idler r 0.26 at z 3.29, 580 mm track, band top 1.07.
-- Turret (ring at hull (0, 1.47, 0.19)): welded shell lofted at z -1.32..1.22 (half-width to 1.58, walls leaning in),
-  the armoured ammunition bustle to z -2.26 with blow-off roof panels, two Duplet cheek blocks either side of the gun slot
-  (front face to |x| 1.10, a 45 degree chamfer to the flank at 1.64), cassette lids on the faces and chamfers, two
-  courses of flank Duplet, the cast gun shield, the PNK-6 tower with its twin-window head ahead of the commander's
-  cupola, the gunner's sight box and IR illuminator, Varta jammer heads on the cheek corners and laser-warning heads at
-  the rear corners, six-tube aerosol banks, the right-side stowage bin, the left rear rail basket and two whips.
-- KT-12.7 remote mount (addFieldRoofWeapon) at the right rear of the roof; the commander's PNK-6 lays it.
-- KBA-3: trunnion at turret (0, 0.295, 1.30), stepped thermal sleeve with clamp bands, fume extractor at 2.30-2.86,
-  muzzle collar, true bore; muzzle at hull z 6.18 (9.72 m overall). Coax port right of the gun.
+Authored at 4.0 times the print, baked once to the registered 4.10 (`OPLOT_BM_SCALE` 1.025); sections as tabled above.
+
+- Hull: loftHull on the measured deck/belly lines, fender ledges, the 6TD-2's radiator grilles and stern step grille,
+  driver's hatch, glacis Duplet (three courses of four a side, each seated by glacisEraCassette), dozer blade, bow flaps,
+  headlamp clusters, stern grille, recovery eyes and the unditching log on its brackets.
+- Skirts: the flared armoured box (inner 1.80, face 1.86 at the deck to 2.08 at 0.95, rolled noses to z 3.78) with its
+  Duplet lids, and hinged rubber panels below it (`hullEquipment`: painted, outside the structural hull).
+- Running gear: six rubber-tyred wheels r 0.335, five rollers, rear sprocket, front idler, 580 mm track.
+- Turret: the measured body loft and bevels; the cheek Duplet columns as orientedSlab stacks with rising undersides,
+  two courses; flank Duplet; smoke housings with four tube mouths each; the bustle with its raised rear underside and
+  the right bin; cast gun shield; domed commander's cupola; PNK-6 tower (twin-window head); gunner's sight; IR lamp;
+  Varta heads on the cheek corners; laser-warning heads at the rear; lifting eyes; two whips.
+- KBA-3: ruSaddle and ruBoot, stepped thermal sleeve, fume extractor, muzzle collar and true bore; coax port right of
+  the gun.
+
+### The two specialist kits (owner 2026-10-27: "a lot more visually distinct and specialized with extra side armor,
+fuel barrels in back, lights, 2 gun towers instead of 1")
+
+| | Oplot-M (`buildOplotMKit`) | Oplot-T (`buildOplotTKit`) |
+| --- | --- | --- |
+| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear (clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-84..273) | M2 enclosed mini-turret with a boresighted searchlight (-149..3); 7.62 open cradle (-80..246) |
+| Extra side armour | a lower Duplet course on each rubber skirt, seven blocks a side (skirt sector) | bolted steel appliqué on the six rear skirt panels (addExternalArmor), a slat cage round the bustle and right bin |
+| Lights | LED bars on the cheek stacks, a work lamp astern | a searchlight on the left cheek, work lamps fore and aft |
+| Stern | twin 200 L drums (issue paint 1) behind the unditching log, tops on the deck line | the same cradle, desert-issue drums (paint 3) |
+| Hull fittings | none beyond the shared hull | the APU's low box on the left rear fender (side exhaust), boarding steps off that fender's end |
+| Stock coat | Ukrainian Plain Olive (`paint_bm_oplot_m`) | Ukrainian Three-Tone Desert (`paint_bm_oplot_t`) |
+
+Station arcs and depression tables come from `tools/roof-station-arcs.mjs` on the build (2 degrees, 0.01 rad margin).
+The drums and the APU are sized so the main gun still clears them: the measured curve is in the spec
+(`gunPitchByYawDeg`) and `oplotBMGun.selftest.mjs` holds it.
 
 ## Combat data (src/vehicles/ukraine.ts)
 
