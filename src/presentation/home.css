@@ -315,9 +315,11 @@ html[lang^='zh'] :is(h1,h2,h3,.feat__link,.play-tile__nm b){line-height:1.15}
   .home{padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
   .home .public-nav__tools>.public-nav__cta{display:none}
   .hero{grid-template-rows:minmax(438px,auto) auto;min-height:0;padding:calc(var(--shell-nav-h) + var(--s5)) var(--home-x) var(--s4);background:var(--surface-page)}
-  .hero__still,.hero__clip{top:0;bottom:auto;height:640px;object-position:54% 50%}
-  .hero__reel{bottom:auto;height:640px}
-  .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
+  /* the picture spans 640 px, or the hero when it is shorter (a short phone), so its grade always ends in the page tone
+     inside the hero, never cut by the hero's edge (the /home r3 zh critic at 601x702) */
+  .hero__still,.hero__clip{top:0;bottom:auto;height:min(640px,100%);object-position:54% 50%}
+  .hero__reel{bottom:auto;height:min(640px,100%)}
+  .hero__grade{bottom:auto;height:min(641px,100%);background:var(--home-phone-grade)}
   /* the fixed Play bar lives in the hero's isolated layer: the layer rises above the content-visibility sections after
      it, which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}

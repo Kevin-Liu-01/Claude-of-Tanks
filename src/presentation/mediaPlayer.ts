@@ -228,6 +228,25 @@ function claimSlot(core: Core): void {
   }
 }
 
+/** A frame stood down for want of a slot takes one back once it shows a quarter more than the least-shown frame playing,
+ * so the picture scrolled to plays, not one the page's edge or its fixed bar half hides (the /home r3 critics: the Head to
+ * head lead stayed parked, fully on screen, while two lower tiles played). The margin keeps a near tie from trading. */
+const RECLAIM_MARGIN = 1.25;
+let reclaiming = false;
+function reclaimSlot(): void {
+  if (reclaiming || !crowdedOut.size || playingNow.length < maxPlaying()) return;
+  reclaiming = true;
+  for (const queued of [...crowdedOut]) {
+    let least = playingNow[0];
+    for (const other of playingNow) if (shownArea(other) < shownArea(least)) least = other;
+    if (!least || shownArea(queued) <= shownArea(least) * RECLAIM_MARGIN) continue;
+    crowdedOut.delete(queued);
+    queued.crowded = false;
+    queued.sync(); // its claim stands the least-shown frame down
+  }
+  reclaiming = false;
+}
+
 function vacateSlot(core: Core): void {
   const at = playingNow.indexOf(core);
   if (at < 0) return;
@@ -593,6 +612,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
         else if (share < MEDIA_POLICY.pauseRatio) visible = false;
       }
       sync();
+      reclaimSlot();
     }, { threshold: [0, MEDIA_POLICY.pauseRatio, 0.25, MEDIA_POLICY.playRatio, 0.75, 1] });
     nearObserver.observe(frame);
     viewObserver.observe(frame);

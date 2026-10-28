@@ -156,7 +156,7 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--surface-hover);box-shadow:var(--docs-side-on)}
 /* a touch screen wide enough for the shelf (an iPad held wide) keeps its chapters and its search at the touch floor */
-@media (pointer:coarse){.dm-side a:not(.dm-home),.dm-home{min-height:var(--cot-control-floor,44px)}.dm-search__field{height:var(--cot-control-floor,44px)}}
+@media (pointer:coarse){.dm-side a:not(.dm-home),.dm-home{min-height:var(--cot-control-floor,44px)}}
 /* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
    take the shelf's place in the column */
 .dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
@@ -165,6 +165,8 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 var(--s3);border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
 .dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.dm-search__field:has(input:focus-visible){outline:2px solid var(--focus-ink);outline-offset:2px}.dm-main:focus{outline:none}
 .dm-search__field .doc-icon{width:16px;height:16px;margin-inline-start:-2px}
+/* the touch target after the field's own 36 px (the fleet r3 critic: the iPads' shelf search stayed 36 px) */
+@media (pointer:coarse){.dm-search__field{height:var(--cot-control-floor,44px)}}
 .dm-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
 .dm-search input::placeholder{color:var(--ink-3)}
 .dm-search input::-webkit-search-cancel-button{display:none}

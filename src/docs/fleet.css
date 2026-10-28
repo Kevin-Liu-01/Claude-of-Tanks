@@ -50,10 +50,11 @@
   .dm-fleet__views .cot-c-seg__opt{flex:none}
 }
 /* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate, its
-   foot a hairline as the site bar's is, so a row passing under it meets an edge */
+   foot a hairline as the site bar's is, so a row passing under it meets an edge; the plate reaches past the grid by its
+   padding, the hairline keeps the grid's own edges */
 @media (width >= 768px) and (height >= 700px){
-  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);background:var(--surface-page);
-    border-bottom:1px solid var(--line-2)}
+  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);
+    background:linear-gradient(var(--line-2),var(--line-2)) 50% 100%/calc(100% - 2 * var(--s2)) 1px no-repeat,var(--surface-page)}
 }
 /* the segmented track stands as tall as the search and the triggers (36 px; 44 on touch, below) */
 .dm-fleet__views .cot-c-seg__opt{height:30px}
