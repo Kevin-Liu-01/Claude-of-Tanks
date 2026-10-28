@@ -14,7 +14,8 @@
 //   spinner   a spinner turned where the box could have held a skeleton of its final layout
 //   shift     layout shift during the load (CLS over 0.01 between the press and the content's settling)
 //   pop       an image or video at least 64 px drawn at full opacity the frame it loaded (no fade, no hidden parent)
-//   silent    a wait over 1 s that nothing announced (aria-busy, a status or progressbar, a live region with text)
+//   silent    a wait over 1 s that nothing announced (aria-busy, a status or progressbar, a live region with text); a
+//             picture or a film arriving in a box that already reads (its text in) owes no announcement
 //   blocked   a layer over most of the window covered the page's navigation links while the surface loaded
 //   late      a site page's box painted more than a second after the page's first paint (its shell stood blank)
 //   no-retry  offline, the content never came and no quiet retry state stood up within 15 s
@@ -114,7 +115,11 @@ function judge(row, condition, t) {
     if (t.spinnerSeen && !t.samples.some((s) => s.state.skeleton || s.state.poster)) found.push({ rule: 'spinner', why: 'a spinner and no skeleton or poster' });
     if (t.cls > 0.01) found.push({ rule: 'shift', why: `CLS ${t.cls}: ${t.shifts.flatMap((s) => s.sources.map((x) => x.node)).slice(0, 4).join(', ')}` });
     if (t.popped.length) found.push({ rule: 'pop', why: t.popped.slice(0, 3).map((m) => `${m.kind} ${m.src} at ${m.node}`).join('; ') });
-    if ((wait === null || wait > 1000) && !t.announcedAs) found.push({ rule: 'silent', why: `a ${wait ?? 'never-ending'} ms wait with no aria-busy, status or live region` });
+    const pictures = /^(loaded|frame):/.test(row.ready);
+    const reads = t.waitSamples > 0 && (t.textSamples ?? 0) / t.waitSamples >= 0.5;
+    if ((wait === null || wait > 1000) && !t.announcedAs && !(pictures && reads)) {
+      found.push({ rule: 'silent', why: `a ${wait ?? 'never-ending'} ms wait with no aria-busy, status or live region` });
+    }
     if (t.covered && !row.modal) found.push({ rule: 'blocked', why: `${t.covered} covered the navigation` });
   } else {
     if (t.readyMs === null && !t.retry) found.push({ rule: 'no-retry', why: 'offline, no content and no retry state in 15 s' });
@@ -124,32 +129,45 @@ function judge(row, condition, t) {
 }
 
 /** Presses a row's way in from the page at rest: each step in turn; a leading `?` presses one only when it shows, and
- *  `a || b` presses the first of its selectors that shows (a layout's own control: the desktop nav's Deploy, a phone's). */
-async function press(page, steps) {
-  for (const step of steps) {
+ *  `a || b` presses the first of its selectors that shows (a layout's own control: the desktop nav's Deploy, a phone's).
+ *  A touch layout taps. A step that does not show within 10 s presses the one before it once more (a press a closing
+ *  surface swallowed), then waits on. */
+async function press(page, steps, touch = false) {
+  const parse = (step) => {
     const optional = step.startsWith('?');
-    const choices = (optional ? step.slice(1) : step).split(' || ').map((c) => c.trim());
-    const any = choices.map((c) => `${c}`).join(', ');
-    const shown = await page.waitForSelector(any, { visible: true, timeout: optional ? 1500 : 60_000 }).then(() => true, () => false);
+    return { optional, choices: (optional ? step.slice(1) : step).split(' || ').map((c) => c.trim()) };
+  };
+  const shows = (choices, timeout) => page.waitForSelector(choices.join(', '), { visible: true, timeout }).then(() => true, () => false);
+  // the first match in view of the first choice that has one (a hidden twin, a mobile menu's copy, is passed over)
+  const pressOne = async (choices) => {
+    for (const selector of choices) {
+      for (const handle of await page.$$(selector)) {
+        if (!await handle.isVisible().catch(() => false)) continue;
+        await (touch ? handle.tap() : handle.click()).catch(() => handle.evaluate((el) => el.click()));
+        return true;
+      }
+    }
+    return false;
+  };
+  let before = null;
+  for (const step of steps) {
+    const { optional, choices } = parse(step);
+    let shown = await shows(choices, optional ? 1500 : before ? 10_000 : 60_000);
+    if (!shown && !optional && before) {
+      await pressOne(before);
+      shown = await shows(choices, 50_000);
+    }
     if (!shown) {
       if (optional) continue;
       const seen = await page.evaluate((list) => list.flatMap((c) => window.__ls.diagnose(c)), choices).catch(() => []);
       throw new Error(`step ${choices.join(' || ')} never showed${seen.length ? `: ${seen.join(' | ')}` : ' (no match)'}`);
     }
-    // the first match in view of the first choice that has one (a hidden twin, a mobile menu's copy, is passed over)
-    let pressed = false;
-    for (const selector of choices) {
-      for (const handle of await page.$$(selector)) {
-        if (!await handle.isVisible().catch(() => false)) continue;
-        await handle.click().catch(() => handle.evaluate((el) => el.click()));
-        pressed = true;
-        break;
-      }
-      if (pressed) break;
-    }
+    if (await pressOne(choices)) before = choices;
     await sleep(150);
   }
 }
+/** The selector a row's ready reads (its loaded:, frame: or gone: form's own). */
+const readySelector = (ready) => /^(?:loaded|frame|gone):(.+)$/.exec(ready)?.[1] ?? ready;
 
 async function pageRun(browser, origin, pageName, rows, layout, condition, rest) {
   const context = await browser.createBrowserContext(); // a cold cache: nothing cached, no storage
@@ -167,10 +185,12 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
       Document.prototype.hasFocus = () => true; // the frame scheduler presents only to a focused document
       try { localStorage.setItem('cot.telemetry', 'off'); } catch { /* none */ }
     });
-    const recipe = (r) => (Array.isArray(r.open) ? r.open : r.open?.[layout]) ?? null;
-    const documentRows = rows.filter((r) => !r.open && !r.debug && !r.scroll);
+    const recipe = (r, key = 'open') => (Array.isArray(r[key]) ? r[key] : r[key]?.[layout]) ?? null;
+    const touch = VIEWPORTS[layout].hasTouch;
+    const scrolls = (r) => r.scroll === true || r.scroll === layout;
+    const documentRows = rows.filter((r) => !r.open && !r.debug && !scrolls(r));
     // an in-app row whose layout has no recipe never shows there (a desktop-only trigger)
-    const inAppRows = rows.filter((r) => (r.open || r.debug || r.scroll) && (!r.open || recipe(r)));
+    const inAppRows = rows.filter((r) => (r.open || r.debug || scrolls(r)) && (!r.open || recipe(r)));
     const first = documentRows[0] ?? rows[0];
     if (condition === 'slow') {
       await cdp.send('Network.emulateNetworkConditions', FAST_3G);
@@ -186,13 +206,16 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
       if (i > 3000) throw new Error(`${url} never committed`);
       await sleep(100);
     }
-    // the document rows, from the navigation's start
-    for (const row of documentRows) {
-      const t = await page.evaluate((r, timeoutMs, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, since: 0 }),
-        row, row.timeoutMs ?? (condition === 'slow' ? BOOT_TIMEOUT_MS : 120_000), NAV[pageName] ?? NAV.site).catch((error) => ({ error: String(error?.message ?? error) }));
+    // the document rows, from the navigation's start, all at once (one watched after another would read its box from the
+    // moment its watch began)
+    const timelines = await Promise.all(documentRows.map((row) => page.evaluate((r, timeoutMs, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, since: 0 }),
+      row, row.timeoutMs ?? (condition === 'slow' ? BOOT_TIMEOUT_MS : 120_000), NAV[pageName] ?? NAV.site).catch((error) => ({ error: String(error?.message ?? error) }))));
+    for (const [index, row] of documentRows.entries()) {
+      const t = timelines[index];
       if (t.error) { results.push({ row: row.id, layout, condition, error: t.error }); continue; }
       t.fcp = await page.evaluate(() => window.__ls.paints['first-contentful-paint'] ?? null);
       if (t.boxMs === null) t.boxSeen = await page.evaluate((b) => window.__ls.diagnose(b), row.box).catch(() => []);
+      if (t.readyMs === null) t.readySeen = await page.evaluate((b) => window.__ls.diagnose(b), readySelector(row.ready)).catch(() => []);
       const findings = condition === 'slow' ? judge({ ...row, document: true }, condition, t) : [];
       results.push({ row: row.id, layout, condition, timeline: t, findings });
       log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, fcp ${t.fcp}, cls ${t.cls}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
@@ -204,17 +227,28 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
     await page.waitForSelector(rest, { visible: true, timeout: BOOT_TIMEOUT_MS });
     await sleep(2000);
     if (condition === 'offline') await cdp.send('Network.emulateNetworkConditions', OFFLINE);
+    let previous = null;
     for (const row of inAppRows) {
+      // a row that starts from the one before it (the end of a battle) waits on that one's finish
+      if (previous?.stays && !previous.finished) {
+        results.push({ row: row.id, layout, condition, error: `needs ${previous.id}, which did not finish` });
+        log(`    ${row.id}: SKIPPED, ${previous.id} did not finish`);
+        previous = { id: row.id, stays: row.stays, finished: false };
+        continue;
+      }
+      previous = { id: row.id, stays: row.stays, finished: false };
       try {
         const since = await page.evaluate(() => performance.now());
         // a debug expression through the protocol (the page's CSP refuses eval), a task later so the watch starts first
         if (row.debug) await page.evaluate(`setTimeout(() => { ${row.debug}; }, 0)`);
-        if (recipe(row)) await press(page, recipe(row));
+        if (recipe(row)) await press(page, recipe(row), touch);
         // a below-the-fold row: its box scrolled to the window's middle, the way a reader reaches it
-        if (row.scroll) await page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'center', behavior: 'instant' }), row.box);
+        if (scrolls(row)) await page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'center', behavior: 'instant' }), row.box);
         const t = await page.evaluate((r, timeoutMs, offline, s, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, offline, since: s, inBox: true }),
           row, condition === 'offline' ? ROW_TIMEOUT_MS.offline : row.timeoutMs ?? ROW_TIMEOUT_MS.slow, condition === 'offline', since, NAV[pageName] ?? NAV.site);
         if (t.boxMs === null) t.boxSeen = await page.evaluate((b) => window.__ls.diagnose(b), row.box).catch(() => []);
+        if (t.readyMs === null) t.readySeen = await page.evaluate((b) => window.__ls.diagnose(b), readySelector(row.ready)).catch(() => []);
+        previous.finished = t.readyMs !== null;
         const findings = judge(row, condition, t);
         results.push({ row: row.id, layout, condition, timeline: t, findings });
         log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, cls ${t.cls}${t.retry ? `, retry ${t.retry}` : ''}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
@@ -224,10 +258,10 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
       }
       // back to the page at rest for the next row: close what the row opened
       if (!row.stays) for (let i = 0; i < 3; i++) { await page.keyboard.press('Escape').catch(() => {}); await sleep(200); }
-      if (row.leave) await press(page, row.leave).catch(() => {});
+      if (recipe(row, 'leave')) await press(page, recipe(row, 'leave'), touch).catch(() => {});
       // the next row starts from rest: no dialog or menu still open or closing
       if (!row.stays) {
-        await page.waitForFunction(() => !document.querySelector('#cot-battle-menu.open, .cot-modal-root.is-open, dialog[open], .cot-tt'),
+        await page.waitForFunction(() => !document.querySelector('#cot-battle-menu.open, .cot-modal-root.is-open, dialog[open], .cot-tt, .cot-garage[data-garage-panel="equipment"]'),
           { timeout: 5000, polling: 100 }).catch(() => {});
         await sleep(600);
       }
@@ -250,7 +284,7 @@ try {
   for (const [pageName, rows] of plan()) {
     for (const layout of LAYOUTS) {
       try {
-        browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900_000, defaultViewport: null,
+        browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 1_200_000, defaultViewport: null,
           args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--window-size=1460,1000'] },
           { label: `loading-census-${pageName}-${layout}` });
         for (const condition of CONDITIONS) {

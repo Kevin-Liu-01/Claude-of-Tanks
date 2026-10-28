@@ -76,7 +76,8 @@
       const entry = { el, t: at, kind: video ? 'video' : 'img', src: String(el.currentSrc || el.src || '').split('/').pop()?.slice(0, 80),
         node: describe(el), box: rect(r), inView: inView(r), drawn: Math.round(drawn * 100) / 100, faded: fading(el),
         poster: video && !!el.poster, small };
-      entry.popped = entry.inView && !small && drawn > 0.98 && !entry.faded && at > (paints['first-contentful-paint'] ?? 0) + 150;
+      // (a video's first frame replaces its own poster, already drawn: no pop)
+      entry.popped = entry.inView && !small && !entry.poster && drawn > 0.98 && !entry.faded && at > (paints['first-contentful-paint'] ?? 0) + 150;
       media.push(entry);
     });
   };
@@ -92,11 +93,13 @@
   addEventListener('unhandledrejection', (e) => errors.push({ t: Math.round(performance.now()), kind: 'rejection', what: String(e.reason?.message ?? e.reason).slice(0, 200) }));
 
   /** The element's box as drawn: inside the window and every ancestor that clips its overflow (a lazy image in a
-   *  scrolled-off list row is not in view). */
+   *  scrolled-off list row is not in view), up to the top layer (a modal dialog or an open popover escapes its parents). */
+  const topLayer = (e) => { try { return e.matches(':modal, :popover-open'); } catch { return false; } };
   const drawnRect = (el) => {
     const r = el.getBoundingClientRect();
     let left = Math.max(r.left, 0), top = Math.max(r.top, 0), right = Math.min(r.right, innerWidth), bottom = Math.min(r.bottom, innerHeight);
-    for (let e = el.parentElement; e && e !== document.documentElement && right > left && bottom > top; e = e.parentElement) {
+    for (let e = el.parentElement, child = el; e && e !== document.documentElement && right > left && bottom > top; child = e, e = e.parentElement) {
+      if (topLayer(child)) break;
       const cs = getComputedStyle(e);
       if (cs.position === 'fixed') break;
       if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
@@ -179,8 +182,10 @@
     }
     return null;
   };
-  const brokenMedia = () => [...document.querySelectorAll('img')]
-    .filter((img) => img.complete && img.naturalWidth === 0 && img.getAttribute('src') && visible(img)).map(describe);
+  /** The broken images in view: on the page, or under a box's matches (an in-app row's own). */
+  const brokenMedia = (scope = null) => [...document.querySelectorAll('img')]
+    .filter((img) => img.complete && img.naturalWidth === 0 && img.getAttribute('src') && visible(img)
+      && (!scope || [...document.querySelectorAll(scope)].some((b) => b.contains(img)))).map(describe);
 
   /**
    * Follow one surface's load. `box`: its container's selector; `ready`: the selector (or a function source) that holds
@@ -218,7 +223,7 @@
     const start = Math.round(since);
     const isReady = readiness(ready);
     const samples = [];
-    let boxAt = null, readyAt = null, covered = null, retry = null, spinnerSeen = false, announcedAs = null, bareSamples = 0, waitSamples = 0;
+    let boxAt = null, readyAt = null, covered = null, retry = null, spinnerSeen = false, announcedAs = null, bareSamples = 0, waitSamples = 0, textSamples = 0;
     for (;;) {
       const now = performance.now();
       // the box: its first match in view (a hidden twin earlier in the document is not the surface)
@@ -230,6 +235,7 @@
         waitSamples++;
         if (state.spinner) spinnerSeen = true;
         if (!state.skeleton && !state.poster && !state.media && !state.text) bareSamples++;
+        if (state.text) textSamples++;
         announcedAs ??= announced(box);
         covered ??= navCovered(box, nav);
         if (samples.length < 40 && (samples.length === 0 || JSON.stringify(state) !== JSON.stringify(samples.at(-1).state))) samples.push({ t: Math.round(now) - start, state });
@@ -246,13 +252,13 @@
     const windowShifts = shifts.filter((s) => s.t >= start && s.t <= end && !s.input);
     return {
       boxMs: boxAt === null ? null : boxAt - start, readyMs: readyAt === null ? null : readyAt - start,
-      waitSamples, bareSamples, spinnerSeen, announcedAs, covered, retry,
+      waitSamples, bareSamples, textSamples, spinnerSeen, announcedAs, covered, retry,
       cls: Math.round(windowShifts.reduce((n, s) => n + s.value, 0) * 1000) / 1000,
       shifts: windowShifts.slice(0, 12),
       // an in-app row's pops are its box's (Deploy's own pictures are not the battle entry's)
       popped: media.filter((m) => m.popped && m.t >= start && m.t <= end && (!inBox || [...document.querySelectorAll(boxSel)].some((b) => b.contains(m.el)))).slice(0, 12)
         .map(({ el, ...rest }) => rest),
-      broken: offline ? brokenMedia().slice(0, 12) : [], errors: errors.filter((e) => e.t >= start && e.t <= end).slice(0, 12), samples,
+      broken: offline ? brokenMedia(inBox ? boxSel : null).slice(0, 12) : [], errors: errors.filter((e) => e.t >= start && e.t <= end).slice(0, 12), samples,
     };
   }
 

@@ -21,6 +21,8 @@ type Page = (typeof LOADING_PAGES)[number];
 
 /** The census's way in: selectors pressed in turn from the page at rest; a leading `?` presses one only when it shows. */
 type Recipe = readonly string[];
+/** A recipe, or one per layout where they differ (a layout without one never shows the row). */
+type Recipes = Recipe | { readonly desktop?: Recipe; readonly phone?: Recipe };
 
 interface LoadingSurfaceRow {
   readonly page: Page;
@@ -35,9 +37,10 @@ interface LoadingSurfaceRow {
    *  video with a frame) or `gone:<sel>` (nothing matching in view). */
   readonly ready: string;
   /** Presses from the page at rest, per layout where they differ; none: the document's own first view. */
-  readonly open?: Recipe | { readonly desktop?: Recipe; readonly phone?: Recipe };
-  /** Scroll the box to the window's middle before watching (a section below the fold). */
-  readonly scroll?: boolean;
+  readonly open?: Recipes;
+  /** Scroll the box to the window's middle before watching (a section below the fold): on every layout, or only on a
+   *  phone, where the box stands below its first view. */
+  readonly scroll?: true | 'phone';
   /** A debug-surface expression that reaches the state (a battle's end), run instead of presses. */
   readonly debug?: string;
   /** The page at rest, before its in-app rows (a selector in view). */
@@ -49,7 +52,7 @@ interface LoadingSurfaceRow {
   /** A longer wait than the condition's default (ms). */
   readonly timeoutMs?: number;
   /** Presses that return to the page at rest after the row (Escape is pressed first, three times). */
-  readonly leave?: Recipe;
+  readonly leave?: Recipes;
   /** The next row starts from this one's state: no Escape after it (a battle the next row ends). */
   readonly stays?: true;
 }
@@ -62,6 +65,8 @@ const GALLERY = 'src/gallery/gallery.ts';
 // (the desktop nav's Deploy, or the battle mode control where the nav folds away: the room census's way in)
 const DEPLOY_OPEN = ['[data-nav="deploy"] || .cot-battle-mode'] as const;
 const GARAGE_REST = '.cot-garage .cot-cards';
+const SHEET = '.cot-garage[data-garage-panel="equipment"] .stats';
+const SHEET_CLOSE = ['?.cot-garage[data-garage-panel="equipment"] .stats .cot-dossier-close'] as const;
 
 /** The rows, document rows first within each page. */
 export const LOADING_SURFACES = Object.freeze({
@@ -70,13 +75,17 @@ export const LOADING_SURFACES = Object.freeze({
     rest: GARAGE_REST },
   'garage-roster': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage .cot-cards', ready: 'loaded:.cot-garage .cot-cards',
     offline: false },
-  // (a desktop's dossier stands in the docked Garage at rest: an empty recipe; a phone opens it)
+  // (a desktop's dossier stands in the docked Garage at rest: an empty recipe; a phone opens it as a sheet over the stage,
+  // its head on top and its overview scrolled below)
   'garage-dossier': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage .stats',
-    ready: '.cot-garage .stats .cot-headline', open: { desktop: [], phone: ['button[data-garage-panel="equipment"]'] } },
+    ready: '.cot-garage .stats .cot-headline', open: { desktop: [] } },
+  'garage-dossier-sheet': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: SHEET, modal: true,
+    ready: `${SHEET} .cot-dossier-title h3:not(:empty)`, open: { phone: ['.cot-overview-more'] }, leave: { phone: SHEET_CLOSE } },
+  // (a desktop's drawing stands at the Protection station; a phone's in the dossier sheet)
   'garage-drawing': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-technical-viewer', modal: true,
     ready: 'loaded:.cot-technical-viewer [data-technical-modal-image]',
-    open: { desktop: ['?.cot-overview-more', '?.cot-compact-equipment-trigger', '[data-technical-expand]'],
-      phone: ['button[data-garage-panel="equipment"]', '[data-technical-expand]'] } },
+    open: { desktop: ['.cot-station[data-station="protection"]', '[data-technical-expand]'], phone: ['.cot-overview-more', '[data-technical-expand]'] },
+    leave: { desktop: ['.cot-station[data-station="overview"]'], phone: SHEET_CLOSE } },
   'deploy': { page: 'game', path: '/', lane: 'premiere-site', owner: GARAGE, box: '#cot-battle-menu.open', modal: true, ready: 'loaded:#cot-battle-menu.open',
     open: [...DEPLOY_OPEN] },
   'deploy-battlefield': { page: 'game', path: '/', lane: 'premiere-site', owner: GARAGE, box: '[data-deploy-field-pop]',
@@ -112,16 +121,19 @@ export const LOADING_SURFACES = Object.freeze({
   'docs-reels': { page: 'docs', path: '/docs', lane: 'premiere-site', owner: 'src/docs/battleReels.ts', box: '#battle-reels', ready: 'loaded:#battle-reels .battle-reel-grid',
     scroll: true },
   'docs-archive': { page: 'docs', path: '/docs', lane: 'premiere-site', owner: 'src/presentation/mediaArchive.ts', box: '#docsArchive', modal: true,
-    ready: 'loaded:#docsArchiveBody', open: ['#docsArchiveOpen'] },
+    ready: 'frame:#docsArchive video', open: ['#docsArchiveOpen'] },
   'docs-topic-tanks': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: TOPICS, box: '.dm-banner', ready: 'loaded:.dm-banner', offline: false },
   'docs-tanks-reference': { page: 'docs-topic', path: '/docs/tanks', lane: 'premiere-site', owner: 'src/docs/reference.ts', box: '#reference',
     ready: '#reference .manual-record', scroll: true },
 
-  // the Gallery: its list, its viewer and its dossier, from the document's start
-  'gallery-list': { page: 'gallery', path: '/gallery', lane: 'premiere-gallery-studio', owner: GALLERY, box: '#vehicleList', ready: '#vehicleList .it', offline: false },
+  // the Gallery: its list, its viewer and its dossier, from the document's start (a phone stacks the list and the dossier
+  // under the viewer)
+  'gallery-list': { page: 'gallery', path: '/gallery', lane: 'premiere-gallery-studio', owner: GALLERY, box: '#vehicleList', ready: '#vehicleList .it', offline: false,
+    scroll: 'phone' },
   'gallery-viewer': { page: 'gallery', path: '/gallery', lane: 'premiere-gallery-studio', owner: GALLERY, box: '#viewport', ready: 'gone:#loadingState', offline: false,
     timeoutMs: 600_000 },
-  'gallery-dossier': { page: 'gallery', path: '/gallery', lane: 'premiere-gallery-studio', owner: GALLERY, box: '.dossier', ready: 'loaded:#dossierTake', offline: false },
+  'gallery-dossier': { page: 'gallery', path: '/gallery', lane: 'premiere-gallery-studio', owner: GALLERY, box: '.dossier', ready: 'loaded:#dossierTake', offline: false,
+    scroll: 'phone' },
 
   // the 404
   'not-found': { page: '404', path: '/no-such-page', lane: 'premiere-site', owner: 'src/presentation/notFound.ts', box: '.not-found', ready: 'loaded:.not-found__still',

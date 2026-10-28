@@ -53,8 +53,8 @@ for (const [id, row] of rows) {
     assert.ok(names.length, `${id}: its ${what} (${selector}) names a class, id or attribute`);
     assert.ok(names.some((name) => text.includes(name)), `${id}: its ${what} (${selector}) is still built: none of ${names.join(', ')} is in ${row.owner}, its page or a stylesheet`);
   }
-  const recipes = Array.isArray(row.open) ? [row.open] : Object.values(row.open ?? {});
-  for (const recipe of recipes) {
+  const recipesOf = (r) => (Array.isArray(r) ? [r] : Object.values(r ?? {}));
+  for (const recipe of [...recipesOf(row.open), ...recipesOf(row.leave)]) {
     for (const step of recipe) {
       const names = namesOf(step.replace(/^\?/, ''));
       assert.ok(names.some((name) => everything.includes(name)), `${id}: its press ${step} is still built`);
