@@ -5,6 +5,8 @@
 @import url('../ui/tokens/surface-docs.css');
 /* the manual-start block rides in this sheet: no extra stylesheet on the path to first paint */
 @import url('../presentation/manualStart.css');
+/* the manual printed (Cmd+P, Save as PDF): paper tokens, one column, the chrome off, page breaks; docsPrint.css */
+@import url('./docsPrint.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit}button{font:inherit;color:inherit}}
