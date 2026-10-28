@@ -52,13 +52,13 @@ async function measure(list) {
     try {
       tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
       const soups = ownerSoups(tank), found = [];
-      for (const [owner, soup] of Object.entries(soups)) for (const p of roofPockets(soup.tri, { ...OWNER_RULES[owner], body: soup.body, cells: flag('cells') })) found.push({ owner, ...p });
+      for (const [owner, soup] of Object.entries(soups)) for (const p of roofPockets(soup.tri, { ...OWNER_RULES[owner], body: soup.body, glass: soup.glass, cells: flag('cells') })) found.push({ owner, ...p });
       found.sort((a, b) => b.areaM2 - a.areaM2);
       const areaCm2 = found.reduce((t, p) => t + p.areaM2 * 1e4, 0);
       rows.push({ id, pockets: found.length, areaCm2: +areaCm2.toFixed(0), found });
       console.log(`${id}: ${found.length ? `${found.length} pocket(s), ${areaCm2.toFixed(0)} cm2` : 'none'} (${((Date.now() - started) / 1000).toFixed(1)} s)`);
       for (const p of found.slice(0, 8)) {
-        console.log(`  ${p.owner} ${(p.areaM2 * 1e4).toFixed(0)} cm2, ${p.volumeL.toFixed(1)} L, depth ${(p.depthM * 100).toFixed(0)} cm, roof y ${p.roof.join('..')}, box x ${p.box[0]}..${p.box[3]} y ${p.box[1]}..${p.box[4]} z ${p.box[2]}..${p.box[5]}, seen from ${p.sight.join(',')}`);
+        console.log(`  ${p.owner} ${(p.areaM2 * 1e4).toFixed(0)} cm2, ${p.volumeL.toFixed(1)} L, depth ${(p.depthM * 100).toFixed(0)} cm, roof y ${p.roof.join('..')}, box x ${p.box[0]}..${p.box[3]} y ${p.box[1]}..${p.box[4]} z ${p.box[2]}..${p.box[5]}, seen from ${p.sight.join(',')}${p.glazed ? ', GLAZED (a window)' : ''}`);
       }
     } catch (error) {
       rows.push({ id, error: String(error?.message || error) });

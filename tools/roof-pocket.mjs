@@ -27,6 +27,7 @@ const MIN_GAP_M = 0.03, ROOF_REACH_M = 0.60, FLOOR_GAP_M = 0.30, SLOT_M = 0.50, 
 /** A pocket is reported at this plan area and depth from its mouth. */
 export const POCKET_MIN_AREA_M2 = 0.004, POCKET_MIN_DEPTH_M = 0.04;
 const RUNNING_GEAR = /track|wheel|sprocket|idler|roller|bogie|suspension|gear|tread|link/i;
+const GLASS = /Glass$/;
 /** Per owner: the turret's false roofs need no floor (a slot can run to its base), and the air within 12 cm over its ring
  * plane is its seat on the hull; the hull's need a floor. */
 export const OWNER_RULES = Object.freeze({ turret: { floored: false, minY: 0.12 }, hull: { floored: true } });
@@ -55,7 +56,9 @@ export function ownerSoups(tank) {
     const inv = new THREE.Matrix4().copy(frame.matrixWorld).invert(), body = meshes.filter((m) => m.name === owner);
     const a = meshTriangles(body, inv).tri, b = meshTriangles(meshes.filter((m) => m.name !== owner), inv).tri;
     const tri = new Float64Array(a.length + b.length); tri.set(a); tri.set(b, a.length);
-    return { tri, body: a.length / 9 };
+    // the owner's glass (sight and vision panes, `*Glass` meshes): a recess with glass in it is a window, not a false roof
+    const glass = meshTriangles(meshes.filter((m) => GLASS.test(m.name)), inv).tri;
+    return { tri, body: a.length / 9, glass };
   };
   const out = {};
   if (turret) out.turret = soup('turret', meshesUnder(turret), turret);
@@ -69,7 +72,7 @@ export function ownerSoups(tank) {
 }
 
 /** The exposed pockets in one soup (Float64Array, 9 per triangle), largest plan area first. */
-export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity, cells: withCells = false } = {}) {
+export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity, cells: withCells = false, glass = null } = {}) {
   const n = tri.length / 9;
   if (!n) return [];
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -202,6 +205,20 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     if (!pocket[p] || !outside[p]) continue;
     for (const dir of sights) if (clearAlong(p, dir)) { seen[p] = 1; break; }
   }
+  // glass within two cells of a pocket's air makes it a window (a sight's or vision block's recess, glazed at its back)
+  const glassCell = new Set();
+  if (glass) for (let o = 0; o < glass.length; o += 9) {
+    for (const [u, v] of [[0, 0], [1, 0], [0, 1], [1 / 3, 1 / 3], [0.5, 0], [0, 0.5], [0.5, 0.5]]) {
+      const x = glass[o] + u * (glass[o + 3] - glass[o]) + v * (glass[o + 6] - glass[o]);
+      const y = glass[o + 1] + u * (glass[o + 4] - glass[o + 1]) + v * (glass[o + 7] - glass[o + 1]);
+      const z = glass[o + 2] + u * (glass[o + 5] - glass[o + 2]) + v * (glass[o + 8] - glass[o + 2]);
+      const i = Math.floor((x - lo[0]) / voxel), j = Math.floor((y - lo[1]) / voxel), k = Math.floor((z - lo[2]) / voxel);
+      for (let di = -2; di <= 2; di++) for (let dj = -2; dj <= 2; dj++) for (let dk = -2; dk <= 2; dk++) {
+        const ii = i + di, jj = j + dj, kk = k + dk;
+        if (ii >= 0 && jj >= 0 && kk >= 0 && ii < NX && jj < NY && kk < NZ) glassCell.add(idx(ii, jj, kk));
+      }
+    }
+  }
   // connected seen pockets: plan area, volume, mouth (faces onto outside non-pocket air) and depth from the mouth
   const comp = new Int32Array(NX * NY * NZ).fill(-1), pockets = [];
   for (let p0 = 0; p0 < pocket.length; p0++) {
@@ -253,7 +270,7 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     pockets.push({
       areaM2: columns.size * voxel * voxel, volumeL: cells.length * voxel ** 3 * 1000, mouthCells: frontier.length ? [...dist.values()].filter((d) => d === 0).length : 0,
       depthM: depth * voxel, box: box.map((v) => +v.toFixed(3)), roof: [+roofLo.toFixed(3), +roofHi.toFixed(3)],
-      sight: sight.map((v) => +v.toFixed(4)), seenFrac: +seenFrac.toFixed(3),
+      sight: sight.map((v) => +v.toFixed(4)), seenFrac: +seenFrac.toFixed(3), glazed: cells.some((p) => glassCell.has(p)),
       // with `cells`, the pocket's air cell centres (x, y, z flat, at most 30000 cells, evenly thinned), for probes
       ...(withCells ? { cells: cells.filter((_, h) => h % Math.ceil(cells.length / 30000) === 0).flatMap((p) => {
         const i = Math.floor(p / (NY * NZ)), j = Math.floor(p / NZ) % NY, k = p % NZ;
