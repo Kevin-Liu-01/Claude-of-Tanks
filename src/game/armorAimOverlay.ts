@@ -40,6 +40,9 @@ const ZONE_SAMPLES = 3;
  */
 const TURRET_ENVELOPE_GROW_M = 0.25;
 const TURRET_ENVELOPE_FLOOR_M = 0.05;
+/** The bare barrel: a cylinder of this radius (m) along the gun, from this far (m) ahead of the turret and its mantlet. */
+const BARREL_RADIUS_M = 0.25;
+const BARREL_CLEAR_M = 0.05;
 
 const LOW = new THREE.Color(0xe53d35);
 const MID = new THREE.Color(0xf0aa35);
@@ -67,11 +70,15 @@ interface ArmorPaintHandles {
     uApTurC: { value: THREE.Vector3 };
     uApHullH: { value: THREE.Vector3 };
     uApTurH: { value: THREE.Vector3 };
+    uApGunInv: { value: THREE.Matrix4 };
+    uApGun: { value: THREE.Vector2 };
     uApCounts: { value: THREE.Vector3 };
     uApZones: { value: THREE.DataTexture | null };
   };
   hull: THREE.Object3D;
   turret: THREE.Object3D | null;
+  /** The gun's rig group (its trunnion; +z along the barrel), when it has one. */
+  gun?: THREE.Object3D | null;
 }
 
 interface ArmorOverlayVisual {
@@ -111,6 +118,8 @@ interface PaintTemplate {
   readonly turretCentre: THREE.Vector3;
   readonly hullHalf: THREE.Vector3;
   readonly turretHalf: THREE.Vector3;
+  /** Gun-frame z where the bare barrel starts (just ahead of the turret's cells and its mantlet); NaN: no turret. */
+  readonly barrelFrom: number;
   readonly samples: ZoneSamples[];
 }
 
@@ -267,6 +276,13 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   }
   const turretCentre = turretCells.length ? turretMin.clone().add(turretMax).multiplyScalar(0.5) : new THREE.Vector3();
   const turretHalf = turretCells.length ? turretMax.clone().sub(turretMin).multiplyScalar(0.5) : new THREE.Vector3();
+  // the turret's front: its cells' and its mantlet's, whichever stands further ahead
+  let turretFront = turretMax.z;
+  for (const zone of turret) {
+    if (!zone.footprint) continue;
+    for (const point of (zone.plate as { verts?: readonly (readonly number[])[] }).verts || []) turretFront = Math.max(turretFront, point[2]);
+  }
+  const barrelFrom = turretCells.length ? turretFront - (armor.gunPivot?.[2] ?? 0) + BARREL_CLEAR_M : NaN;
   const hullMin = new THREE.Vector3(Infinity, Infinity, Infinity), hullMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
   for (const cell of armor.collisionShells?.hull || []) {
     hullMin.min(_world.fromArray(cell.min));
@@ -289,7 +305,7 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
   return { table, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre, turretCentre,
-    hullHalf, turretHalf, samples };
+    hullHalf, turretHalf, barrelFrom, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -361,6 +377,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       u.uApTurC.value.copy(entry.template.turretCentre);
       u.uApHullH.value.copy(entry.template.hullHalf);
       u.uApTurH.value.copy(entry.template.turretHalf);
+      const barrel = entry.paint.gun && Number.isFinite(entry.template.barrelFrom);
+      u.uApGun.value.set(barrel ? entry.template.barrelFrom : 0, barrel ? BARREL_RADIUS_M : 0);
     }
     u.uApOn.value = visible ? 1 : 0;
   }
@@ -373,6 +391,11 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     if (turret) {
       turret.updateWorldMatrix(true, false);
       frameInverse(turret, uniforms.uApTurInv.value);
+    }
+    const gun = entry.paint.gun;
+    if (gun) {
+      gun.updateWorldMatrix(true, false);
+      frameInverse(gun, uniforms.uApGunInv.value);
     }
   }
 
