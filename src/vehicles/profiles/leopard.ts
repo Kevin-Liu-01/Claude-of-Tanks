@@ -15267,14 +15267,8 @@ function buildLeo2A4M(...args: Parameters<typeof buildLeo2A4MSteps>): void {
 withBuildSteps(buildLeo2A4M, buildLeo2A4MSteps);
 
 export const LEOPARD_PROFILES = {
-  // Restore the detailed first-party 2A4 profile.  Leaving this id out of the
-  // family map silently selected modern2.ts's early box prototype after the
-  // source-backed wrapper was retired, erasing the authored hull, seven-wheel
-  // course, pre-wedge turret and service geometry preserved above.
-  leo2a4: { build: buildLeo2A6 },
-  leo2a4_v: { build: buildLeo2A5 },
-  leo2a4m: { build: buildLeo2A5A5NL },
-  leo2_improved: { build: buildLeo2A7V },
+  // 264: leo2a4, leo2a4_v, leo2a4m, leo2a4m_can, leo2a4_otco and leo2_improved are built on the release's construction
+  // (profiles/leopard2A4Family.ts); buildLeo2A5 stays for strv121 (sweden.ts) and buildLeo2A6M for leo2a6_ua
   leopard2_proto: { build: buildLeo2Proto },
   // Preserve the original authored model as Proto while the proper
   // Revolution has its independent source-based construction.
@@ -15290,7 +15284,5 @@ export const LEOPARD_PROFILES = {
   // §5.248 germany-leopards ground-up builds (owner order — the
   // profiles/germany.js donor-wrapper builders are retired; these rows must
   // stay ahead of any legacy same-key row in the profiledProcedurals merge).
-  leo2a4m_can: { build: buildLeo2A4M },
-  leo2a4_otco: { build: buildLeo2A6M },
   leo2a6_ua: { build: buildLeopard2A6UA },
 } satisfies VehicleProfileRecord;
