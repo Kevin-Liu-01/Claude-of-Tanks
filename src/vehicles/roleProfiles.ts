@@ -60,6 +60,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   type10_tk_x: { doctrine: 'flanker', viewM: 420, still: 0.232, moving: 0.172 },
   type10b: { doctrine: 'flanker', viewM: 435, still: 0.232, moving: 0.172 },
   // the dozer Type 10 breaches: assault doctrine, and the blade makes it the easier family member to spot
+  // the Christian II: the Type 90's hull and gun under heavy netting; a precision tank that keeps its cover still
+  christian2: { doctrine: 'precision', viewM: 415, still: 0.250, moving: 0.150 },
   type10_dozer: { doctrine: 'assault', viewM: 410, still: 0.205, moving: 0.145 },
   m2a2_bradley: { doctrine: 'support', viewM: 435, still: 0.270, moving: 0.210 },
   bmp2: { doctrine: 'support', viewM: 420, still: 0.285, moving: 0.225 },

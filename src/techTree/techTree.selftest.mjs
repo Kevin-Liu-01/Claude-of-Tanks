@@ -145,5 +145,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // (FAMILY_UPGRADES above). 262: the Challenger 1 Mk 1 (the sleek-turret mark) at VIII on the Challenger line, lane 0,
 // off the Chieftain Mk 5 beside the Mk 2; the Challenger 1 Granby (the Mk 3 rebuild as its own variant) at VIII, lane 4,
 // off the Chieftain Mk 10.
-assert.equal(digest, '6fa8743522d28151', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
+// added; 'Denmark' joins the tree's nations).
+assert.equal(digest, 'MERGE263', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

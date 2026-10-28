@@ -29,6 +29,7 @@ const CURVES = {
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],
+  strv121: [[140, 162]], // release 262: the mount over the engine deck's front quarters (the sweep's mountConflicts)
   m1a1: [],
   m1a1ha: [],
   m1a1_abrams_hc: [],
