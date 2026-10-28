@@ -220,8 +220,11 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       [0, upperGlacisY(2.82) + 0.07, 2.82],
       [0.76, upperGlacisY(3.18) + 0.07, 3.18],
     ], 0.024);
-    shovelTool(P, -1.05, centerDeckTopY(-0.25) + 0.015, -0.25);
-    P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, centerDeckTopY(-0.48) + 0.015, -0.48);
+    // The shovel and crowbar lie on the fender lockers' lids (1.50 m), out of the cast mantlet's sweep: on the deck
+    // beside the ring they stood under its underside whenever the gun was laid over the rear quarters.
+    const lockerLidTopY = 1.4995;
+    shovelTool(P, -1.43, lockerLidTopY + 0.015, -0.505);
+    P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.43, lockerLidTopY + 0.0125, -0.505);
 
     // Leopard engine deck: long intake fields, twin fan rings, transverse exhaust bank and rear louvres, all below the
     // rotating basket.
@@ -327,8 +330,8 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
     [0.46, 1.14, 0.05, 0.80],
     [0.76, 1.04, 0.05, 0.78],
     [0.96, 0.90, 0.055, 0.74],
-    [1.10, 0.72, 0.08, 0.68],
-    [1.18, 0.52, 0.14, 0.60],
+    [1.10, 0.72, 0.08, 0.70],
+    [1.18, 0.52, 0.14, 0.63],
   ];
   const castStations: readonly SolidSection[] = castStationRows.map(([z, w, yb, yt]) => ({ z, ring: castEggRing(w, yb, yt) }));
   // Casting surface helpers for seating fittings: the half-width at (z, y) and the roof height at z.
@@ -501,11 +504,13 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
 
   // The first-series cast mantlet and the L7A3. The casting's nose closes on a flat receiver; the mantlet is a cast bell
   // round the gun, as wide as the nose at its root and tapering to the collar, owned by the gun so it pitches with it.
-  const trunnionY = 0.36;
+  // The trunnion stands 0.40 m over the ring so the bell's underside clears the old hull's rising engine deck (1.74-1.77 m
+  // at its radius) when the gun is laid over the rear.
+  const trunnionY = 0.40;
   const trunnionZ = 1.00;
   const bell: readonly (readonly [number, number, number])[] = [
     // [gun-local z, half-width, half-height]
-    [-0.06, 0.44, 0.32], [0.10, 0.44, 0.32], [0.24, 0.41, 0.30], [0.36, 0.35, 0.265], [0.45, 0.28, 0.225],
+    [-0.06, 0.44, 0.30], [0.10, 0.44, 0.30], [0.24, 0.41, 0.285], [0.36, 0.35, 0.255], [0.45, 0.28, 0.22],
     [0.51, 0.215, 0.19], [0.54, 0.17, 0.165],
   ];
   const bellRing = (rx: number, ry: number): readonly SectionPoint[] => Array.from({ length: P.q ? 24 : 16 }, (_, k) => {

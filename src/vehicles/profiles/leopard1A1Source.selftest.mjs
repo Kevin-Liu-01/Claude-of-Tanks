@@ -62,7 +62,9 @@ const sideAt = (y, z = 0.06) => new THREE.Raycaster(new THREE.Vector3(3, turretR
 // (every second difference on an even height step is concave).
 const heights = [0.20, 0.32, 0.44, 0.56, 0.66, 0.74];
 const reach = heights.map((y) => sideAt(y));
-assert.ok(sideAt(0.03) < reach[0] - 0.05, `the casting's foot tucks in under its widest point (${sideAt(0.03)}, ${reach[0]})`);
+// (the ring seat trims the turret to its combat floor, so the foot is read 2 cm over the seated underside)
+const footY = tBox.min.y - turretRig.position.y + 0.02;
+assert.ok(sideAt(footY) < reach[0] - 0.05, `the casting's foot tucks in under its widest point (${sideAt(footY)}, ${reach[0]})`);
 assert.ok(reach.every(Number.isFinite), `the casting side is hit at every height (${reach})`);
 for (let i = 1; i < reach.length; i++) assert.ok(reach[i] <= reach[i - 1] + 1e-6, `the side rolls inward above its widest point (${reach})`);
 for (let i = 1; i < 4; i++) {
@@ -98,7 +100,7 @@ assert.equal(pintleMgs, 1, 'the loader\'s MG3 is the turret\'s one pintle gun');
 assert.equal(stowageRacks, 2, 'a stowage rack on each side of the bustle');
 
 // The cast bell mantlet: owned by the gun, as wide as the nose at its root, the L7A3 leaving it through a collar.
-assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.36, 1.00)) < 1e-8, 'the trunnion station');
+assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.40, 1.00)) < 1e-8, 'the trunnion station');
 const mantlet = gunRig.userData.leopard1A1MantletReceipt;
 assert.ok(mantlet?.seated && mantlet.castBell, 'the gun carries the cast bell mantlet');
 assert.ok(mantlet.bellRootWidth >= 0.85, `the bell's root spans the casting's nose (${mantlet.bellRootWidth})`);
