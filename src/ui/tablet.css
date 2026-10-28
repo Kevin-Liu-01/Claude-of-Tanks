@@ -25,6 +25,10 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:n
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
   flex:0 0 0;width:0;}
 
+/* ---- the Deploy screen on a touch screen: every segment and the tank card's change button a full touch target ---- */
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu .cot-c-seg__opt{min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu .cot-deploy-tank .chg{--h:var(--cot-control-floor);width:var(--cot-control-floor);}
+
 /* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
    The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
    the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
@@ -37,4 +41,16 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
   align-self:flex-end;margin-left:auto;padding-left:0;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);}
+/* under 800 px across (an iPad mini, a Split View half) the fourteen chips do not fit one row: they take two rows of seven,
+   every nation in view, and the stack over them rises by the row */
+@media (width < 800px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{
+    --cot-country-height:calc(2 * var(--cot-control-floor) + var(--s1));}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chips{
+    display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:var(--cot-control-floor);gap:var(--s1);
+    overflow:visible;padding-block:0;-webkit-mask-image:none;mask-image:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chip{justify-content:center;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-rail .cot-facet-toggle{
+    align-self:stretch;}
+}
 }
