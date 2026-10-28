@@ -109,7 +109,9 @@ assert.match(navCss, /\.public-nav::after\{content:'';position:absolute;inset:10
   'the bar\'s rule hangs under it');
 assert.match(shellSource, /class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu"/,
   'the phone menu trigger is static markup');
-assert.match(navSource, /event\.code !== 'Escape'/, 'the menu sheet closes with Escape');
+// the sheet is a transient surface: Escape and a press outside it are the surface stack's (components/surfaceStack.ts)
+assert.match(navSource, /id: 'public-nav-menu',[\s\S]*?close: \(reason\) => set\(false, reason === 'escape'\)/, 'the menu sheet closes with Escape, its focus back on the trigger');
+assert.match(navSource, /if \(open\) openSurface\(surface, trigger\); else closeSurface\(surface\);/, 'the menu sheet stands on the surface stack');
 assert.match(navSource, /setLocale\(locale\)/, 'the language links persist the choice through the canonical i18n owner');
 assert.match(shellSource, /\/brand\/partners\/general-translation\.png/, 'the footer credits General Translation with its packaged mark');
 assert.ok(existsSync(join(ROOT, 'public/brand/mark.svg')), 'the Bracket Chevron mark ships for the public pages');

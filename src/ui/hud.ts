@@ -1254,6 +1254,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import type { IconId } from './icons/icon.ts';
 // the alert band's line is the kit's notice queue (premiere-site's primitive, components/notice.ts)
 import { NoticeQueue, type QueuedToast } from './components/notice.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { setAttr, setData, setDisabled, setHidden, setText } from './domWrite.ts';
 import { CONSUMABLE_READY_MARK, cooldownRemaining } from '../game/consumables.ts';
 import {
@@ -2724,7 +2725,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const ally = (lastTanksRef || []).find((t) => t && t.id === id) || null;
       const allyTier = ally?.spec?.id ? tierNumeral(ally.spec.id) : '';
       const vehicle = ally?.spec?.name ?? '';
-      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle };
+      return { id, name: ally ? nickFor(ally) : String(id), vehicle: allyTier && vehicle ? `${allyTier} · ${vehicle}` : vehicle, specId: ally?.spec?.id };
     }), p.id ?? null);
     const card = spectatorCardModel(p);
     // same nickname the team panels show for this entity (nickById-backed)
@@ -3099,9 +3100,13 @@ export function initHud(bus: EventBus): HudRuntime {
   const slotPresentations: RetainedAmmunitionSlot[] = [];
   let touchAmmoOpen = false;
   let renderedTouchAmmoOpen: boolean | undefined;
+  // the open rack is a transient surface (components/surfaceStack.ts): opening it closes the spectate list or a menu, and a
+  // press outside it is the stack's
+  const ammoRackSurface: TransientSurface = { id: 'hud-ammo-rack', element: () => shellBox, close: () => setTouchAmmoOpen(false) };
   function setTouchAmmoOpen(open: boolean): void {
     const touch = document.body.classList.contains('cot-touch-layout');
     touchAmmoOpen = !!open && touch;
+    if (touchAmmoOpen) openSurface(ammoRackSurface, shellBox); else closeSurface(ammoRackSurface);
     if (renderedTouchAmmoOpen !== touchAmmoOpen) {
       shellBox.classList.toggle('touch-open', touchAmmoOpen);
       renderedTouchAmmoOpen = touchAmmoOpen;
@@ -3169,11 +3174,6 @@ export function initHud(bus: EventBus): HudRuntime {
     slotEls.push(s);
   }
   setTouchAmmoOpen(false);
-  window.addEventListener('pointerdown', (event) => {
-    if (touchAmmoOpen && event.target instanceof Node && !shellBox.contains(event.target)) {
-      setTouchAmmoOpen(false);
-    }
-  }, { capture: true });
   const conSep = el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)

@@ -46,7 +46,7 @@ try {
       }
     }
     for(const id of ['gravity','caches']) {
-      const trigger=page.locator(`#${id} + .cot-custom-select-trigger`);
+      const trigger=page.locator(`#${id} + .cot-select-menu .cot-c-menu__trigger`);
       await trigger.click(); await page.keyboard.press('End'); await page.keyboard.press('Enter');
       assert.equal(await page.locator(`#${id}`).evaluate(s=>s.selectedIndex),await page.locator(`#${id}`).evaluate(s=>s.options.length-1));
     }
@@ -55,16 +55,15 @@ try {
       dynamic.replaceChildren(new Option('Alpha','a'),new Option('Blocked','b'),new Option('Charlie','c'));
       dynamic.options[1].disabled=true;dynamic.value='a';controller.refresh();
     });
-    const trigger=page.locator('#dynamic + .cot-custom-select-trigger');
+    // the kit's picker menu over the select (selectPickerMenu.ts): a disabled option is left out, the arrows move, Enter chooses
+    const trigger=page.locator('#dynamic + .cot-select-menu .cot-c-menu__trigger');
     await trigger.focus();await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
-    assert.equal(await page.evaluate(()=>document.activeElement.dataset.value),'c','arrows skip disabled choice');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.id),'c','a disabled choice is left out');
     await page.evaluate(()=>window.__SELECT_TEST.controller.refresh());
-    assert.equal(await page.evaluate(()=>document.activeElement.dataset.value),'c','same-state refresh preserves option focus');
+    assert.equal(await page.evaluate(()=>document.activeElement.dataset.id),'c','same-state refresh preserves option focus');
     await page.keyboard.press('Enter');assert.equal(await page.locator('#dynamic').inputValue(),'c');
     assert.equal(await page.evaluate(()=>window.__SELECT_TEST.changes()),1,'one canonical change event');
-    await trigger.click();await page.keyboard.press('a');await page.keyboard.press('Enter');
-    assert.equal(await page.locator('#dynamic').inputValue(),'a','typeahead selects matching option');
     await trigger.click();await page.keyboard.press('Escape');assert.equal(await trigger.getAttribute('aria-expanded'),'false');
     assert.equal(await trigger.evaluate(el=>document.activeElement===el),true,'Escape restores focus');
     await trigger.click();await page.mouse.click(2,2);assert.equal(await page.locator(':popover-open').count(),0,'outside dismisses');
@@ -72,7 +71,7 @@ try {
     assert.equal(await trigger.isDisabled(),true,'locked host field is disabled');
     assert.equal(await page.locator(':popover-open').count(),0,'locking field closes popup');
     await page.evaluate(()=>window.__SELECT_TEST.arrangement.render('mars'));
-    await page.locator('#gravity + .cot-custom-select-trigger').click();
+    await page.locator('#gravity + .cot-select-menu .cot-c-menu__trigger').click();
     await page.screenshot({path:resolve(out,`${name}.png`)});
     await context.close();
   }

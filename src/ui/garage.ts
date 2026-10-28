@@ -14,7 +14,7 @@ import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage } from './imagePreload.ts';
 import { flagIconHTML } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
-import { iconUrl } from './icons.ts';
+import { iconUrl, tankThumbUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
@@ -24,7 +24,7 @@ import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
 import { createInfoButton } from './contextInfo.ts';
-import { containModalTab, createModal, isAnyModalOpen } from './modal.ts';
+import { containModalTab, createModal } from './modal.ts';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.ts), the
 // white-silhouette icon set (equipIcons.ts), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -38,6 +38,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
@@ -1253,8 +1254,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     slot.replaceWith(rivalHost);
     const peers = rivalPeers(spec);
     const items = peers.map((other) => ({ id: other.id, name: other.label?.displayName || other.name,
-      facts: [tNation(other.nation), t('garage.card.tier', { tier: tierNumeral(other.id) || '' })], tags: [countryCodeOf(other)],
-      media: { poster: iconUrl(other.id, 'side') } }));
+      // tier, then nation: every list of tanks reads its facts in one order (the Gallery's versus list, the 261 critic)
+      facts: [t('garage.card.tier', { tier: tierNumeral(other.id) || '' }), tNation(other.nation)], tags: [countryCodeOf(other)],
+      media: { poster: tankThumbUrl(other.id), tank: true } }));
     const group = `${statGroupOf(spec)}|${spec.id}`;
     // the chip is the bars' legend: their notch, then "vs", the rival's picture and its name (the menu's nation stays in it)
     const legend = (): void => {
@@ -1269,7 +1271,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const nations = [...new Set(peers.map(countryCodeOf))];
     rivalMenu = createPickerMenu(rivalHost, {
       id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival', items,
-      filters: nations.length > 1 ? nations.map((code) => ({ id: code, label: tNation(specs.find((other) => countryCodeOf(other) === code)?.nation || code) })) : undefined,
+      // a flag's chip names every nation under it, as the Gallery's versus list does ("Russia / Soviet Union")
+      filters: nations.length > 1 ? nations.map((code) => ({ id: code,
+        label: [...new Set(peers.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
       onChoose: (item) => {
         rivalChoice = item.id;
         emit('ui:click', {});
@@ -1401,8 +1405,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     recordOpenRevision++; serviceRecord?.close({ restoreFocus });
   };
   const isMobileNavigationOpen = () => !mobileNavMenu.hidden;
+  // the Garage's transient surfaces (components/surfaceStack.ts): the phone's navigation menu, the folded layout's dossier
+  // and the paint sheet, Deploy and its battlefield picker. One stands open at a level, the next replacing the last in the
+  // same press (owner 2026-10-27); Escape and a press outside are the stack's, which close only the top one
+  const mobileNavSurface: TransientSurface = {
+    id: 'garage-mobile-nav',
+    element: () => mobileNavMenu,
+    owns: (node) => mobileNavTrigger.contains(node),
+    close: (reason) => closeMobileNavigation({ restoreFocus: reason === 'escape' }),
+  };
   const closeMobileNavigation = ({ restoreFocus = false } = {}) => {
     if (!isMobileNavigationOpen()) return;
+    closeSurface(mobileNavSurface);
     mobileNavMenu.hidden = true;
     mobileNavTrigger.setAttribute('aria-expanded', 'false');
     mobileNavTrigger.setAttribute('aria-label', t('garage.mobileNav.openAria'));
@@ -1418,10 +1432,29 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const spec = dossierStale && !dossierFolded() ? specById.get(selectedId) : null;
     if (spec) renderStats(spec);
   };
+  /** A panel over the stage: the folded layout's dossier, or the paint sheet (over a scrim when folded, so a press outside
+   *  is the scrim's). */
+  const panelSurface = (panel: 'equipment' | 'appearance'): TransientSurface => ({
+    id: panel === 'equipment' ? 'garage-dossier' : 'garage-paint-sheet',
+    element: () => (panel === 'equipment' ? statsEl : root.querySelector('.cot-leftcol')),
+    // (its controls are the buttons that open it: the Garage's root wears the open panel's name too)
+    owns: (node) => node instanceof Element && !!node.closest(`button[data-garage-panel="${panel}"]`),
+    close: (reason) => { if (openGaragePanel() === panel) setGaragePanel('', { restoreFocus: reason === 'escape' }); },
+    get modal() { return isOverlayPanelLayout(); },
+  });
+  const panelSurfaces = { equipment: panelSurface('equipment'), appearance: panelSurface('appearance') } as const;
+  const surfaceOfPanel = (panel: string): TransientSurface | null =>
+    (panel === 'equipment' || panel === 'appearance' ? panelSurfaces[panel] : null);
   const setGaragePanel = (panel = '', { restoreFocus = false } = {}) => {
     const previous = openGaragePanel();
     // every paint (the band's last swatch) opens over the stage in a docked layout too; the other panels fold away there
     const next = panel && (isOverlayPanelLayout() || panel === 'appearance') ? panel : '';
+    if (previous !== next) {
+      const leaving = surfaceOfPanel(previous);
+      if (leaving) closeSurface(leaving);
+      const entering = surfaceOfPanel(next);
+      if (entering) openSurface(entering);
+    }
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
     if (next === 'equipment') renderStaleDossier();
@@ -1467,6 +1500,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   let technicalExpandTrigger: HTMLButtonElement | null = null;
   const technicalModal = createModal({
+    surface: 'garage-technical',
     title: t('garage.dossier.vehicleDossier'),
     size: 'wide',
     className: 'cot-technical-viewer',
@@ -1584,54 +1618,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const fieldPop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (fieldPop && !fieldPop.hidden && (fieldPop.parentElement?.id === 'cot-deploy-quick') === isOverlayPanelLayout()) closeDeployField();
   });
-  // a docked layout has no scrim under every paint: a press anywhere else closes it (in capture, before the stage's drag)
-  document.addEventListener('pointerdown', (event) => {
-    if (isOverlayPanelLayout() || openGaragePanel() !== 'appearance') return;
-    const target = eventElement(event);
-    if (target?.closest('.cot-leftcol, .cot-c-menu__pop, button[data-garage-panel="appearance"], .cot-modal-root')) return;
-    setGaragePanel('');
-  }, true);
+  // (a docked layout has no scrim under every paint: a press anywhere else closes it, the stack's outside press)
   const openMobileNavigation = () => {
-    closeBattleMenu();
-    setGaragePanel('');
+    openSurface(mobileNavSurface, mobileNavTrigger);
     mobileNavMenu.hidden = false;
     mobileNavTrigger.setAttribute('aria-expanded', 'true');
     mobileNavTrigger.setAttribute('aria-label', t('garage.mobileNav.closeAria'));
+    // the focus moves into the menu it opened, on its first destination
+    mobileNavMenu.querySelector<HTMLElement>('button, a[href]')?.focus({ preventScroll: true });
   };
   mobileNavTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isMobileNavigationOpen()) closeMobileNavigation();
     else openMobileNavigation();
   });
-  document.addEventListener('pointerdown', (event) => {
-    const target = eventNode(event);
-    if (isMobileNavigationOpen() && event.target !== mobileNavTrigger &&
-      !mobileNavTrigger.contains(target) && !mobileNavMenu.contains(target)) {
-      closeMobileNavigation();
-    }
-  });
-  // Escape belongs to the open disclosure. Capture it before the game's
-  // rebindable input layer so closing navigation cannot also open Settings.
-  window.addEventListener('keydown', (event) => {
-    if (!isMobileNavigationOpen() || event.code !== 'Escape') return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    closeMobileNavigation({ restoreFocus: true });
-  }, true);
-  window.addEventListener('keydown', (event) => {
-    // an open picker menu's Escape is its own (it closes the menu, the sheet stays)
-    if (!openGaragePanel() || event.code !== 'Escape' || isAnyModalOpen() || eqOpenSlot >= 0
-      || eventElement(event)?.closest('.cot-c-menu__pop')) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    setGaragePanel('', { restoreFocus: true });
-  }, true);
-  window.addEventListener('keydown', (event) => {
-    if (!battleMenu.classList.contains('open') || event.code !== 'Escape') return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    closeBattleMenu({ restoreFocus: true });
-  }, true);
+  // (Escape closes the open disclosure, the panel or Deploy through the stack, ahead of the game's rebindable input layer,
+  // so closing one never also opens Settings)
   // The card strip and the flags snap each stop to an item's start (owner 10-24: no card or flag cut at the left edge).
   // Their last stop needs the end padding that lands it on one too, measured only when a rail's width or items change.
   const railEndKeys = new WeakMap<HTMLElement, string>();
@@ -2206,10 +2208,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function measureEqTitle(): void {
     eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
   }
+  // the picker is a transient surface (components/surfaceStack.ts): opening it closes whatever else is open at its level (the
+  // consumables' picker, a menu) as it enters, and Escape and a press outside it and its slots are the stack's (the 261
+  // report: a consumable slot, which shares the slots' class, left this open and opened nothing)
+  const eqSurface: TransientSurface = {
+    id: 'garage-equipment',
+    element: () => eqpickEl,
+    owns: (node) => loadoutEl.contains(node),
+    close: (reason) => closeEqPicker({ restoreFocus: reason === 'escape' }),
+  };
   function openEqPicker(slot: number): void {
     // a tank the room has locked says so (it blocked silently: the census's bar line 5)
     if (vehicleLocked) { notifyLater({ id: 'cot-equipment-locked', severity: 'info', text: t('garage.vehicleLocked') }); return; }
     void loadEquipmentPreview().catch(() => {});
+    openSurface(eqSurface, loadoutEl.querySelector(`.eqslot[data-slot="${slot}"]`));
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
     root.classList.add('picker-open');
@@ -2217,10 +2229,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the focus lands on the slot's own item (or Empty), where the arrows start
     eqPicker.focus();
     document.addEventListener('keydown', eqKeydown);
-    document.addEventListener('mousedown', eqOutside, true);
   }
-  function closeEqPicker() {
+  /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
+  function closeEqPicker({ restoreFocus = true } = {}) {
     if (eqOpenSlot < 0) return;
+    closeSurface(eqSurface);
     const slot = eqOpenSlot;
     eqOpenSlot = -1;
     eqPreviewId = null;
@@ -2229,16 +2242,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     root.classList.remove('picker-open', 'picker-over-readout');
     for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
-    document.removeEventListener('mousedown', eqOutside, true);
-    loadoutEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
+    if (restoreFocus) loadoutEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
   function eqKeydown(e: KeyboardEvent): void {
     containModalTab(e, eqpickEl, eqpickEl);
-    if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); closeEqPicker(); }
-  }
-  function eqOutside(e: MouseEvent): void {
-    const target = eventElement(e);
-    if (!eqpickEl.contains(target) && !target?.closest('.eqslot')) closeEqPicker();
   }
 
   eqpickEl.addEventListener('click', (e) => {
@@ -3654,6 +3661,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const list = requiredElement<HTMLElement>(battleMenu, '#cot-deploy-quick');
     const dock = docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-deploy-field');
     if (pop.parentElement !== dock) dock.append(pop);
+    openSurface(deployFieldSurface, root.querySelector('[data-deploy-field]'));
     pop.hidden = false;
     (docked ? list : requiredElement<HTMLElement>(battleMenu, '.cot-battle-details')).classList.add('is-picking');
     // docked, the list shows the picker from its top; in a phone's column the picker scrolls into view where it opened
@@ -3718,6 +3726,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function closeDeployField(): void {
     const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
     if (!pop || pop.hidden) return;
+    closeSurface(deployFieldSurface);
     pop.hidden = true;
     for (const host of root.querySelectorAll('#cot-deploy-quick, .cot-battle-details')) host.classList.remove('is-picking');
     if (deployFieldColumnScroll !== null) {
@@ -3733,7 +3742,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (tab.dataset.tabbar === current) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
     }
   }
+  const deploySurface: TransientSurface = {
+    id: 'deploy',
+    element: () => battleMenu,
+    owns: (node) => battleModeBtn.contains(node),
+    close: (reason) => closeBattleMenu({ restoreFocus: reason === 'escape' }),
+    modal: true,
+  };
+  const deployFieldSurface: TransientSurface = {
+    id: 'deploy-battlefield',
+    element: () => root.querySelector('[data-deploy-field-pop]'),
+    owns: (node) => !!root.querySelector('[data-deploy-field]')?.contains(node),
+    close: (reason) => {
+      closeDeployField();
+      if (reason === 'escape') root.querySelector<HTMLButtonElement>('[data-deploy-field]')?.focus();
+    },
+  };
   function closeBattleMenu({ restoreFocus = false } = {}) {
+    if (!battleMenu.classList.contains('open')) return;
+    closeSurface(deploySurface);
     markTabbar('garage');
     closeDeployField();
     arrangementPanel?.close();
@@ -3792,8 +3819,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       void ensureDeployStyles().then(openBattleMenu, () => { deployStyled = true; openBattleMenu(); });
       return;
     }
-    closeMobileNavigation();
-    setGaragePanel('');
+    openSurface(deploySurface, battleModeBtn);
     renderBattleOptions();
     renderDeployTank();
     renderDeployLower();
@@ -4546,35 +4572,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // an open picker menu (the compare rival) owns its keys: F, / and the arrows are its own there
     if (target?.closest('.cot-c-menu__pop')) return;
     if (eqOpenSlot >= 0) return; // The nested equipment picker owns its keyboard boundary.
-    // Deploy's pickers own their keys (Enter chooses, never deploys); the open battlefield picker's Escape still closes it here.
-    // A picker menu's popover (the further options' counts and nations) sits in the body and keeps every key.
-    if (target?.closest('.cot-c-menu__pop')) return;
-    if (target?.closest('[data-deploy-field-pop], [data-deploy-modes]') && e.code !== 'Escape') return;
+    // Deploy's pickers own their keys (Enter chooses, never deploys). A picker menu's popover (the further options' counts and
+    // nations) sits in the body and keeps every key. (Escape is the surface stack's: it closes the top surface, the
+    // battlefield picker before Deploy, a panel, the phone's navigation, before any key reaches here.)
+    if (target?.closest('.cot-c-menu__pop, [data-deploy-field-pop], [data-deploy-modes]')) return;
     if (openGaragePanel()) {
       const drawer = openGaragePanel() === 'equipment' ? statsEl : requiredElement<HTMLElement>(root, '.cot-leftcol');
       containModalTab(e, drawer, drawer);
-      if (e.code === 'Escape') {
-        setGaragePanel('', { restoreFocus: true });
-        e.preventDefault();
-      }
-      return;
-    }
-    if (e.code === 'Escape' && isMobileNavigationOpen()) {
-      closeMobileNavigation({ restoreFocus: true });
-      e.preventDefault();
-      return;
-    }
-    if (e.code === 'Escape' && battleMenu.classList.contains('open')) {
-      // an open battlefield picker takes the first Escape
-      const fieldPop = battleMenu.querySelector<HTMLElement>('[data-deploy-field-pop]');
-      if (fieldPop && !fieldPop.hidden) {
-        closeDeployField();
-        battleMenu.querySelector<HTMLButtonElement>('[data-deploy-field]')?.focus();
-        e.preventDefault();
-        return;
-      }
-      closeBattleMenu({ restoreFocus: true });
-      e.preventDefault();
       return;
     }
     const typing = target?.closest('input,select,textarea,[contenteditable="true"]');

@@ -10,6 +10,7 @@
 // battle tray name the same items. The battle reads the same save at spawn.
 
 import { createPicker, type PickerItem, type PickerText } from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import {
@@ -173,6 +174,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     pendingSlot = -1;
     const current = items();
     if (!current.length) return;
+    openSurface(surface, host.querySelector(`.csslot[data-slot="${slot}"]`));
     openSlot = slot;
     titleEl.textContent = t('garage.equipment.tag.slot', { slot: slot + 1 });
     picker?.dispose();
@@ -197,28 +199,27 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     // equipment picker measures its own)
     requestAnimationFrame(() => panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`));
     picker.focus();
-    document.addEventListener('keydown', onKeydown);
-    document.addEventListener('mousedown', onOutside, true);
   }
 
-  function close(): void {
+  /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
+  function close({ restoreFocus = true } = {}): void {
     if (openSlot < 0) return;
+    closeSurface(surface);
     const slot = openSlot;
     openSlot = -1;
     panel.classList.remove('open');
     root.classList.remove('picker-open');
     for (const el of host.querySelectorAll<HTMLElement>('.csslot')) el.classList.remove('open');
-    document.removeEventListener('keydown', onKeydown);
-    document.removeEventListener('mousedown', onOutside, true);
-    host.querySelector<HTMLElement>(`.csslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
+    if (restoreFocus) host.querySelector<HTMLElement>(`.csslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
-  function onKeydown(event: KeyboardEvent): void {
-    if (event.code === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
-  }
-  function onOutside(event: MouseEvent): void {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!panel.contains(target) && !target?.closest('.csslot')) close();
-  }
+  // a transient surface (components/surfaceStack.ts): opening it closes the equipment's picker or a menu as it enters, and
+  // Escape and a press outside it and its slots are the stack's
+  const surface: TransientSurface = {
+    id: 'garage-consumables',
+    element: () => panel,
+    owns: (node) => host.contains(node),
+    close: (reason) => close({ restoreFocus: reason === 'escape' }),
+  };
 
   function render(): void {
     const vehicle = options.vehicle();
@@ -256,7 +257,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   return {
     render,
-    close,
+    close: () => close(),
     dispose() {
       pendingSlot = -1;
       close();
