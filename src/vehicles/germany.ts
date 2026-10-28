@@ -109,7 +109,8 @@ function variant(
 
 const GERMANY_SPECS = {
   leo2a3: variant('leo2a3', 'leo2a2', {
-    name: 'Leopard 2A3', number: 'OTCO', scheme: 'stripes',
+    // 262: shown as the 2A2 OTCO (tankLabels.ts); the fourth batch's 2A3 is leo2a3_b4
+    name: 'Leopard 2A2 OTCO', number: 'OTCO', scheme: 'stripes',
     base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'],
     camoScale: 0.44,
     dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.90 },

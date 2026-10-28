@@ -205,7 +205,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   service_ua_m2a3_bradley: 'UA Bradley Digital',
   sig_abramsx: 'AbramsX Prototype',
   sig_m551_sheridan: 'M551 Sheridan Field',
-  sig_leo2a4_otco: 'Leopard 2A3',
+  sig_leo2a4_otco: 'Leopard 2A2 OTCO',
   sig_mbt70: 'MBT-70 Flecktarn',
   sig_kf51b: 'KF51-U',
   sig_bmpt_t90: 'BMPT T-90 Digital',

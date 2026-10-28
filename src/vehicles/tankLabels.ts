@@ -160,9 +160,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
+  // 262 (Main): the build the fleet showed as the 2A3 is a 2A2 in the OTCO turret configuration; the fourth batch's 2A3
+  // is leo2a3_b4
   leo2a3: {
+    displayName: 'Leopard 2A2 OTCO', shortName: 'Leopard 2A2 OTCO',
+    searchAliases: ['Leopard 2A4 OTCO', 'Leopard 2A3 OTCO', '2A2 OTCO'],
+  },
+  leo2a3_b4: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
-    searchAliases: ['Leopard 2A4 OTCO', '2A3'],
+    searchAliases: ['Leopard 2A3 fourth batch', '2A3', 'Leopard 2A3 4. Los'],
   },
   leo2a4m_can: {
     displayName: 'Leopard 2A4M CAN', shortName: 'Leopard 2A4M CAN',

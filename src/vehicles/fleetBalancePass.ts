@@ -445,6 +445,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   cannonReload(registry, 'leo2a3', 6.4);
   // 260 (a balance trim, not fidelity): IV fairness; no sourced period round defeats the basic package's turret front
   turretFront(registry, 'leo2a3', 0.9);
+  // 262: the fourth batch's Leopard 2A3 (leopard2a3B4Specs.ts) carries the 2A3's combat data, these trims included
+  cannonReload(registry, 'leo2a3_b4', 6.4);
+  turretFront(registry, 'leo2a3_b4', 0.9);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
