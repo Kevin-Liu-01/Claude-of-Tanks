@@ -19,10 +19,11 @@
   loader's hatch and periscope and of the brow step; its M2 (12.7 mm) is the fleet's Browning construction in remote
   form (`machineGunGeometry.ts`) at true calibre on a working `beginAuxiliaryStation` rig (yaw body: turntable,
   housing, cradle cheeks at |x| 0.26-0.30 m with the trunnion pins; elevating: the gun, the sight head with its window
-  and the ready box, all inside |x| 0.20 m and over the housing by 4 cm or more at full travel; the pivot 0.48 m over
-  the roof). Its barrel's full sweep clears the commander's sight head (3.42, 2.3 m away), the cupola, the mast and
+  and the ready box, all inside |x| 0.20 m and over the housing by 4 cm or more at full travel; the pivot 0.58 m over
+  the roof, so the receiver's back clears the loader's hatch at the full 43 degrees). Its barrel's full sweep clears the commander's sight head (3.42, 2.3 m away), the cupola, the mast and
   both whips; `tools/roof-station-sweep.mjs` holds its moving stock 25 mm off the fixed (r1 failed at 18-25 mm with
-  the first packing; r2 22 mm forward, the M2 feed under the right cheek).
+  the first packing; r2 22 mm forward, the M2 feed under the right cheek; r3 24 mm at yaws -28..15, the receiver's back on the
+  loader's hatch at 40-43 degrees with the pivot at 0.48 m, which the 0.58 m trunnion clears).
 - Equipment: stowage bins on both turret walls behind the cheeks (authored) and the decor manifest's field kit (a
   bustle basket with the crew's packs, a rolled net, tarpaulin, jerrycans, a bin, spare links, tow cable, shackles,
   tools, rations).

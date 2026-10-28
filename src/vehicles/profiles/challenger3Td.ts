@@ -368,9 +368,10 @@ function buildRemoteStation(P: TankBuilderPort): void {
   const base = [RWS_SEAT[0] * S, (RWS_SEAT[1] - PIVOT[1]) * S, (RWS_SEAT[2] - PIVOT[2]) * S] as const;
   const at = (dx: number, dy: number, dz: number): [number, number, number] => [base[0] + dx, base[1] + dy, base[2] + dz];
   // every elevating part stays inside |x| 0.20 (the M2's right-hand feed reaches it) and 4 cm over the housing at the
-  // station's whole pitch; the cheeks stand at |x| 0.26-0.30 and the pins' tips at 0.24: roof-station-sweep.mjs holds
-  // the moving stock 25 mm off the fixed
-  const pivot = at(0, 0.48, 0.02);
+  // station's whole pitch; the cheeks stand at |x| 0.26-0.30 and the pins' tips at 0.24; the trunnion stands 0.58 m over
+  // the roof so the receiver's back, 0.58 m behind it, keeps over the loader's hatch at full elevation (43 deg):
+  // roof-station-sweep.mjs holds the moving stock 25 mm off the fixed
+  const pivot = at(0, 0.58, 0.02);
   // the gun: the fleet's Browning M2 construction, remote form (solenoid back plate, right-hand feed)
   const gun = new THREE.Group();
   gun.name = 'challenger3TdRemoteM2';
@@ -395,8 +396,8 @@ function buildRemoteStation(P: TankBuilderPort): void {
   P.add('turretDark', cy(0.31, 0.33, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
   P.add('turretDetail', box(0.50, 0.20, 0.48), ...at(0, 0.15, 0));
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.30, 0.26), ...at(side * 0.28, 0.40, 0.02));
-    P.add('turretDark', cx(0.03, 0.03, 10), ...at(side * 0.255, 0.48, 0.02));              // trunnion pins, cheek-borne
+    P.add('turretDetail', box(0.04, 0.40, 0.26), ...at(side * 0.28, 0.45, 0.02));
+    P.add('turretDark', cx(0.03, 0.03, 10), ...at(side * 0.255, 0.58, 0.02));              // trunnion pins, cheek-borne
   }
   station.mark('yaw');
   // elevating mass: the day/thermal sight head right of the gun and its window, the ready box outboard of the feed
