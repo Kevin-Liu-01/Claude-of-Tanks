@@ -703,10 +703,26 @@ export function mountMediaPlayers(videos: Iterable<HTMLVideoElement>, labels: Me
     });
     video.addEventListener('play', () => video.classList.add('is-playing'));
     video.addEventListener('pause', () => video.classList.remove('is-playing'));
-    // A frame is on screen from its first played frame until its source is released (a page poster shows through
-    // until then: the topic headers draw their own).
-    video.addEventListener('playing', () => video.classList.add('has-frame'));
-    video.addEventListener('emptied', () => video.classList.remove('has-frame'));
+    // A frame is on screen until its source is released (a page poster shows through until then: the topic headers draw
+    // their own). A loop comes on once it plays and can play through to its end, from its own first frame, which its
+    // poster is (owner 2026-10-27: "make em load fast and transition in"): a slow link keeps the still instead of a film
+    // that stalls, and the fade from the still never jumps. A viewer's own play shows its first frame. The film carries
+    // data-ready once on screen (the loading census's mark).
+    let revealed = false;
+    const reveal = (): void => {
+      if (revealed || video.paused || (mode === 'loop' && video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA)) return;
+      revealed = true;
+      if (mode === 'loop' && video.currentTime > 0.05) video.currentTime = 0;
+      video.classList.add('has-frame');
+      video.setAttribute('data-ready', '');
+    };
+    video.addEventListener('playing', reveal);
+    video.addEventListener('canplaythrough', reveal);
+    video.addEventListener('emptied', () => {
+      revealed = false;
+      video.classList.remove('has-frame');
+      video.removeAttribute('data-ready');
+    });
     mounted.push(player);
   }
   return mounted;

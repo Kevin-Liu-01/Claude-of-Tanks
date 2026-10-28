@@ -6,6 +6,23 @@
 import { t } from '../ui/i18n.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
+// The landing's stills under the hero (the bentos, the features, the modes rail's cards) fade in once decoded, over their
+// box's own tone (the kit's media box), so none paints in half-drawn as it streams (owner 2026-10-27: "lets ensure we have
+// good loadin gstates for everything"). A still that failed counts as ready: its box's tone stays, never a hidden frame.
+// The box carries data-ready (the loading census's mark). Stills already decoded are marked before the page's class
+// arms the fade, so none of them blinks.
+const settleStill = (image: HTMLImageElement): void => {
+  const box = image.closest('.cot-c-media');
+  if (!box || box.hasAttribute('data-ready')) return;
+  if (image.complete) void image.decode().catch(() => undefined).then(() => box.setAttribute('data-ready', ''));
+};
+const stills = [...document.querySelectorAll<HTMLImageElement>('.cot-c-media > img[loading="lazy"]')];
+for (const image of stills) {
+  if (image.complete) image.closest('.cot-c-media')?.setAttribute('data-ready', '');
+  else for (const type of ['load', 'error']) image.addEventListener(type, () => settleStill(image), { once: true });
+}
+document.body.classList.add('home-live');
+
 // The hero reel (heroReel.ts): its clips take their turns once the page has loaded and gone idle, so the poster, the
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');

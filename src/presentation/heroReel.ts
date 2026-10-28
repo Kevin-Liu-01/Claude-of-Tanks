@@ -3,9 +3,12 @@
  *
  * The first clip's poster paints with the document and is the page's LCP; nothing here runs before the page has loaded
  * and gone idle. Then the clips (tools/home-premiere.mjs writes them without a source) take their turns: a clip gets its
- * file (mediaPlayer.ts chooseSource: the phone rung on a phone), decodes while the one before it plays, and crossfades in
- * when that one's turn ends. A clip that is not ready yet holds the turn; the playing one loops meanwhile. Only the
- * playing clip and the next hold a file and a decoder.
+ * file (mediaPlayer.ts chooseSource: the phone rung on a phone), buffers while the one before it plays, and crossfades in
+ * from its first frame when that one's turn ends and it can play through to its end (owner 2026-10-27: "make em load fast
+ * and transition in since its the first load and might take a while"): the first clip fades in over the poster, which is
+ * its own first frame, only then. A clip that cannot play through yet holds the turn; the playing one loops meanwhile.
+ * Only the playing clip and the next hold a file and a decoder. A clip on screen carries data-ready (the loading
+ * census's mark).
  *
  * It never moves by itself under reduced motion or data saving (the poster stays), stops while the hero is off screen or
  * the tab is hidden, and has a pause control (WCAG 2.2.2). The Play hand-off (mediaPlayer.ts abortPageMedia) ends it.
@@ -30,7 +33,8 @@ export interface HeroReel {
   dispose(): void;
 }
 
-const ready = (video: HTMLVideoElement): boolean => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
+/** A clip comes on only once it can play through to its end: on a slow link the still holds instead of a stalling film. */
+const ready = (video: HTMLVideoElement): boolean => video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA;
 
 export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): HeroReel | null {
   const clips = [...hero.querySelectorAll<HTMLVideoElement>('video[data-reel-clip]')];
@@ -69,6 +73,7 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   /** Let a clip go: its file, its decoder and its frame. */
   const release = (video: HTMLVideoElement): void => {
     video.classList.remove('is-on');
+    video.removeAttribute('data-ready');
     video.pause();
     if (!video.getAttribute('src')) return;
     video.removeAttribute('src');
@@ -95,11 +100,14 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   const bringOn = (index: number): void => {
     const video = clips[index];
     const previous = current >= 0 ? clips[current] : null;
+    // its first frame is up: a paused clip says so as it plays, one already buffering by playing as its rewind lands
     const onFrame = (): void => {
       video.removeEventListener('playing', onFrame);
+      video.removeEventListener('seeked', onFrame);
       if (stopped) return;
       video.style.zIndex = String(++layer);
       video.classList.add('is-on');
+      video.setAttribute('data-ready', '');
       for (const shot of shots) shot.classList.toggle('is-on', shot.dataset.reelShot === video.dataset.shot);
       current = index;
       if (previous && previous !== video) window.setTimeout(() => { if (clips[current] !== previous) release(previous); }, FADE_MS);
@@ -108,29 +116,44 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
       nextIndex(index);
       schedule();
     };
-    video.addEventListener('playing', onFrame);
+    video.addEventListener(video.paused ? 'playing' : 'seeked', onFrame);
     video.currentTime = 0;
     void video.play().catch(() => {
       video.removeEventListener('playing', onFrame);
+      video.removeEventListener('seeked', onFrame);
       schedule();
     });
+  };
+
+  /** The clip buffering for its turn: it plays muted and unseen (a browser that holds back a preload, Safari's, buffers
+   *  only what plays) until it can play through, then comes on from its first frame. */
+  let pending: HTMLVideoElement | null = null;
+  const await_ = (index: number, when: () => boolean): void => {
+    const video = clips[index];
+    if (pending !== video) {
+      pending?.pause();
+      pending = video;
+      const onReady = (): void => {
+        video.removeEventListener('canplaythrough', onReady);
+        if (pending === video) pending = null;
+        if (running() && when()) bringOn(index);
+        else video.pause();
+      };
+      video.addEventListener('canplaythrough', onReady);
+    }
+    void video.play().catch(() => {});
   };
 
   function advance(): void {
     if (!running()) return;
     const index = nextIndex(current);
     if (index < 0 || index === current) return;
-    const video = clips[index];
-    if (ready(video)) {
+    if (ready(clips[index])) {
       bringOn(index);
       return;
     }
-    // not decoded yet: the playing clip keeps the turn (it loops) until this one can play through
-    const onReady = (): void => {
-      video.removeEventListener('canplay', onReady);
-      if (running()) bringOn(index);
-    };
-    video.addEventListener('canplay', onReady);
+    // not able to play through yet: the playing clip keeps the turn (it loops) until this one can
+    await_(index, () => true);
   }
 
   const resume = (): void => {
@@ -139,7 +162,7 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
       const first = nextIndex(-1);
       if (first >= 0) {
         if (ready(clips[first])) bringOn(first);
-        else clips[first].addEventListener('canplay', () => { if (running() && current < 0) bringOn(first); }, { once: true });
+        else await_(first, () => current < 0);
       }
       return;
     }
@@ -150,6 +173,7 @@ export function mountHeroReel(hero: HTMLElement, labels: () => HeroReelLabels): 
   const halt = (): void => {
     clearTimeout(timer);
     if (current >= 0) clips[current].pause();
+    pending?.pause();
   };
 
   const sync = (): void => (running() ? resume() : halt());
