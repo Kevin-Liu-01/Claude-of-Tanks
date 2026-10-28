@@ -1025,7 +1025,12 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     getDeviceTier,
   });
   const hudRuntime = createPerfHud({ renderer, game, trace: devTrace,
-    readRenderFrame: () => post.lastCompletedFrame });
+    readRenderFrame: () => post.lastCompletedFrame,
+    // its close and Escape turn the saved setting off, as the Interface switch and F9 do
+    onClose: () => {
+      input.setSetting('showDebugHud', false);
+      perfHud.setVisible(false);
+    } });
   hudRuntime.setTelemetryProvider(telemetry.collect);
   devTrace?.configure({ getTelemetry: telemetry.collect });
   return { hud: hudRuntime, telemetry };
@@ -1577,6 +1582,9 @@ const garageModePreview = createGarageModePreviewRuntime({
 });
 const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag' || garagePreviewMode === 'infected';
 
+// The Garage's Studio button: the Studio access boundary's own open once it is wired below (a press before then does
+// nothing, as an F8 then did)
+let openStudio = (): void => {};
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
@@ -1610,6 +1618,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onOverlayChange: () => invalidateGaragePresentation(),
   actionKeyFor: (binding) => input.labelFor(input.getBinding(binding, 0)),
   onStudioIntent: preloadStudioIntent,
+  onStudio: () => openStudio(),
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
   maps: garageMaps,
   garageVariants: GARAGE_VARIANTS.map((variant) => ({
@@ -2460,7 +2469,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     devTrace,
   }),
 });
-// The same persisted setting owns both F8 and the Interface switch. The lazy
+// The same persisted setting owns F9, the Interface switch and the panel's close. The lazy
 // facade makes this available in production without adding ordinary-player
 // transfer or per-frame work.
 input.onAction('perfHud', () => {
@@ -3734,8 +3743,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
     return {
       mapId: known ? resolved : 'random', ...(known ? { mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : {}),
       ...(teams ? { allies: teams.allies, enemies: teams.enemies, teams: teamNationsFlags(teams.teamNations) } : {}),
-      // the rules row (mode chip, clock) from the cover's first frame, as the loading owner's show draws it
-      modeId: normalizeGameMode(options?.gameMode ?? 'standard'), ...(options?.campaignOperationId ? { campaign: true } : {}),
+      // (the rules row's mode: the entry's own, soloBattleEntryRuntime.ts withChosenMode)
     };
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
@@ -4398,6 +4406,7 @@ const studioAccess = createStudioAccess({
   keyTarget: window,
 });
 studio = studioAccess.presentation;
+openStudio = () => studioAccess.open();
 function preloadStudioIntent() { studioAccess.preloadIntent(); }
 function loadStudioRuntime() { return studioAccess.loadRuntime(); }
 

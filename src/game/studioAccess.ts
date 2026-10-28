@@ -37,6 +37,8 @@ interface StudioAccess {
   preloadModule(): Promise<StudioModule>;
   preloadIntent(): void;
   loadRuntime(): Promise<StudioRuntime>;
+  /** Enter the Studio from the Garage (the Garage's Studio button; F8 there takes the same way). */
+  open(): void;
   installKeyboard(): void;
   uninstallKeyboard(): void;
 }
@@ -98,14 +100,19 @@ export function createStudioAccess({
     return request;
   };
 
+  const open = (): void => {
+    if (getPhase() !== 'garage') return;
+    loadRuntime()
+      .then((loaded) => loaded.enter())
+      .catch(onEntryError);
+  };
+
   const onKeyDown: EventListener = (rawEvent): void => {
     const event = rawEvent as KeyboardEvent;
     if (event.code !== 'F8' || event.repeat || getPhase() !== 'garage') return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    loadRuntime()
-      .then((loaded) => loaded.enter())
-      .catch(onEntryError);
+    open();
   };
 
   const installKeyboard = (): void => {
@@ -127,6 +134,7 @@ export function createStudioAccess({
       preloadFxModule().catch(() => null);
     },
     loadRuntime,
+    open,
     installKeyboard,
     uninstallKeyboard,
   };

@@ -509,10 +509,12 @@ export const PENDING_ROSTER_SLOTS = 7;
 
 /**
  * The rules row's mode chip: the mode alone, as its normalized id names it ("Turbo Ball"; a Standard battle reads
- * "Random Battle · Standard"). The screen names the battlefield in its title, so the chip carries no battlefield
- * subtitle, and the plan's objectives (modeId) are this same mode's.
+ * "Random Battle · Standard"), and a campaign operation by its own title ("Operation Iron Ridge"). The screen names the
+ * battlefield in its title, so the chip carries no battlefield subtitle, and the plan's objectives (modeId) are this
+ * same mode's.
  */
-export function battleLoadModeLabel(modeId: string): string {
+export function battleLoadModeLabel(modeId: string, campaignOperationId?: string | null): string {
+  if (campaignOperationId) return t(`campaign.op.${campaignOperationId}.title`);
   return modeId === 'standard' ? t('battleLoad.randomStandard') : t(`playMenu.matchMode.${modeId}.label`);
 }
 
@@ -530,6 +532,8 @@ export interface PendingBattlefield {
    *  frame, so the loading owner's show does not grow the head under the sides (phones dropped them 25-50 px). */
   readonly modeId?: string;
   readonly campaign?: boolean;
+  /** The campaign operation the chip names (its title, battleLoadModeLabel). */
+  readonly campaignOperationId?: string | null;
 }
 
 /**
@@ -956,7 +960,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const sides = planned ? { allies: side(planned.allies, seats?.allies), enemies: side(planned.enemies, seats?.enemies) } : seats;
       api.show({
         mapName: chosen?.mapName ?? '',
-        mode: t('battleLoad.kicker'),
+        // (the chosen mode from the cover's first frame, as the loading owner's show names it: the placeholder's words
+        // stood over a Proving Ground and a campaign operation until that show, the 262 production check)
+        mode: pending?.modeId ? battleLoadModeLabel(pending.modeId, pending.campaignOperationId) : t('battleLoad.kicker'),
         ...(chosen ? { biome: chosen.mapId } : {}),
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         ...(pending?.modeId ? { modeId: pending.modeId } : {}),

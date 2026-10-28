@@ -856,7 +856,7 @@ body[data-cot-width='phone'] #cot-perfhud{
   z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
-body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:48px!important;overflow:hidden!important}
+body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded){max-height:52px!important;overflow:hidden!important}
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded) [data-grid],
 body[data-cot-width='phone'] #cot-perfhud:not(.mobile-expanded) [data-grid]{display:none!important}
 body[data-cot-width='compact'] #cot-perfhud .ph-mobile-toggle,

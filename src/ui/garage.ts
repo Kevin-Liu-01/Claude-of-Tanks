@@ -206,6 +206,8 @@ interface GarageOptions {
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
   readonly onBattleIntent?: (request: { readonly specId: string; readonly mapId: string }) => void;
   readonly onStudioIntent?: () => void;
+  /** Open the Studio (main.ts: its lazy access boundary's own open, the one F8 takes in the Garage). */
+  readonly onStudio?: () => void;
   readonly onTankIntent?: (specId: string) => void;
   readonly maps?: readonly GarageMap[];
   readonly garageVariants?: readonly GarageVariantView[];
@@ -4530,9 +4532,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
 
-  // r9.1 header nav — Studio rides the exact F8 production path (studio.ts
-  // listens on window keydown and gates on game.phase === 'garage'); Home and
-  // Docs use their public pretty routes. Garage is the current screen.
+  // r9.1 header nav — Studio opens through its access boundary's own open (main.ts onStudio), the one F8 takes in the
+  // Garage: a synthetic F8 here was heard by the input layer's diagnostics key too, so a press on Studio toggled the
+  // battle diagnostics (owner 2026-10-28: "sometimes battle diagnostics randomly appears when u click stuff"). Home
+  // and Docs use their public pretty routes. Garage is the current screen.
   recordTrigger.addEventListener('click', () => {
     emit('ui:click', {});
     if (isRecordOpen()) closeServiceRecord();
@@ -4540,7 +4543,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const openStudio = () => {
     emit('ui:click', {});
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
+    opts.onStudio?.();
   };
   const openDocs = () => {
     emit('ui:click', {});
