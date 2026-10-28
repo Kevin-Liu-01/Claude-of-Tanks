@@ -38,7 +38,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, openSurface, openSurfaceIds, type TransientSurface } from './components/surfaceStack.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
@@ -1453,8 +1453,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch {
       // a failed chunk fetch says so where the player looks (it was a tip on the trigger only), with a Retry that runs the
       // same open (the loading census 262: the toast had none; the next press retries too)
-      notifyLater({ id: 'cot-record-load', severity: 'error', text: t('garage.record.loadError'),
-        actions: [{ label: t('notice.retry'), primary: true, run: () => { void openServiceRecord(trigger); } }] });
+      reportLoadFailure('cot-record-load', t('garage.record.loadError'), () => { void openServiceRecord(trigger); });
     }
     finally { recordOpening = false; }
   };
@@ -2002,6 +2001,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // was one more game boot request; Main's no-extra-request ruling)
   const notifyLater = (options: ToastOptions): void => {
     void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
+  };
+  /** A surface whose chunks did not arrive says so with a Retry that runs the same open. Offline the notice is a chunk that
+   *  cannot arrive either (the loading census 264: the Tech Tree and the Service Record stood silent), so the open runs
+   *  again once the network is back, the quiet retry of the drawing and the stills, unless the player has pressed on since,
+   *  another surface stands or the Garage has gone. */
+  const reportLoadFailure = (id: string, text: string, retry: () => void): void => {
+    notifyLater({ id, severity: 'error', text, actions: [{ label: t('notice.retry'), primary: true, run: retry }] });
+    if (navigator.onLine !== false) return;
+    const waiting = new AbortController();
+    const settle = (): void => waiting.abort();
+    window.addEventListener('pointerdown', settle, { capture: true, signal: waiting.signal });
+    window.addEventListener('keydown', settle, { capture: true, signal: waiting.signal });
+    window.addEventListener('online', () => {
+      settle();
+      if (root.style.display !== 'none' && !openSurfaceIds().length && !document.querySelector('.cot-modal-root.is-open')) retry();
+    }, { signal: waiting.signal });
   };
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
@@ -4650,8 +4665,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
       // retries too
       console.error('[garage] tech tree failed to open:', err);
-      notifyLater({ id: 'cot-techtree-load', severity: 'error', text: t('garage.techTree.loadError'),
-        actions: [{ label: t('notice.retry'), primary: true, run: () => { void openTechTree(opener); } }] });
+      reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'), () => { void openTechTree(opener); });
     } finally {
       techTreeOpening = false;
     }

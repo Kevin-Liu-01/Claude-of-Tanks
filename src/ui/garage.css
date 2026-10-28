@@ -1332,6 +1332,9 @@ body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-width='phone'] .cot-technical-viewer-figure{--tv-max-h:calc(var(--cot-viewport-height,100dvh) - 245px)}
+/* a phone's drawing sheet stands at its full height from the press: the labels' key lands in flow under the drawing, and a
+   sheet sized to its content rose by the key's height as it arrived (the loading census 264, CLS 0.45) */
+body[data-cot-width='phone'] .cot-modal.cot-technical-viewer{height:calc(var(--cot-viewport-height,100dvh) - 16px)}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
   --cot-roster-height:62px;--cot-country-height:38px;
 }

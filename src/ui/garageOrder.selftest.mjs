@@ -473,9 +473,21 @@ assert.match(garageSource, /technicalModalImage\.src = iconUrl\([^;]+;[^]{0,120}
   'the drawing fades in through the kit\'s reveal');
 assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?data-failed[^]{0,80}?technicalModalImage\.src = src/,
   'a drawing the network dropped loads again once it is back');
+// the loading census 264: offline the notice cannot arrive either, so the open runs again once the network is back, unless
+// the player pressed on, another surface stands or the Garage went
+assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?actions: \[\{ label: t\('notice\.retry'\), primary: true, run: retry \}\][^]{0,200}?navigator\.onLine !== false\) return;[^]{0,300}?'pointerdown', settle[^]{0,120}?'keydown', settle[^]{0,120}?'online', \(\) => \{\s*settle\(\);\s*if \(root\.style\.display !== 'none' && !openSurfaceIds\(\)\.length && !document\.querySelector\('\.cot-modal-root\.is-open'\)\) retry\(\);/,
+  'a dialog whose chunks failed offline opens once the network is back, quietly');
 for (const [id, open] of [['cot-record-load', 'openServiceRecord\\(trigger\\)'], ['cot-techtree-load', 'openTechTree\\(opener\\)']]) {
-  assert.match(garageSource, new RegExp(`id: '${id}'[^]{0,160}?actions: \\[\\{ label: t\\('notice\\.retry'\\)[^]{0,60}?${open}`),
-    `${id}'s error toast carries a Retry that runs the same open`);
+  assert.match(garageSource, new RegExp(`reportLoadFailure\\('${id}', t\\('[^']+'\\), \\(\\) => \\{ void ${open}; \\}\\)`),
+    `${id}'s failure carries a Retry, and offline a retry on the network's return, that runs the same open`);
 }
+// the labels' overlay lays itself out only once its stylesheet stands (unstyled, it grew the dialog and snapped back), and
+// a phone's drawing sheet stands at its full height (the key arriving in flow raised a content-sized sheet)
+const labelsSource = await readFile(new URL('./technicalDiagramLabels.ts', import.meta.url), 'utf8');
+assert.match(labelsSource, /const render = \(\): void => \{\s*if \(!styled\) return;/, 'the overlay does not lay out before its sheet');
+assert.match(labelsSource, /void sheetReady\.then\(\(\) => \{ if \(disposed\) return; styled = true; render\(\); \}/,
+  'the overlay lays out once its sheet stands, unless it was disposed');
+assert.match(garageSource, /body\[data-cot-width='phone'\] \.cot-modal\.cot-technical-viewer\{height:calc\(var\(--cot-viewport-height,100dvh\) - 16px\)\}/,
+  'a phone\'s drawing sheet stands at its full height from the press');
 
 console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');
