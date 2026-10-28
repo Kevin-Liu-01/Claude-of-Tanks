@@ -746,6 +746,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "challenger3_td": {
+   "inputHash": "787848a922169068",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger3_td_rws": {
+   "inputHash": "cea55840ccd06545",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "chieftain3": {
    "inputHash": "9d93215aad075a77",
    "runs": [],
