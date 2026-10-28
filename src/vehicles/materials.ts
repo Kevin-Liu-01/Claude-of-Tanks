@@ -3914,12 +3914,14 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
  * (grilles, recesses, lights) and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
  * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
  * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
- * so a roof gun stays as bare as the main gun's barrel.
+ * so a roof gun stays as bare as the main gun's barrel; 4 the hull's rubber as 2, its grain flattened under the colour
+ * (its detail maps read as speckle through a tint: the blind critic, 262).
  */
 function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
-  if (role === 'fittingPaint' || role === 'hullRubber') return 2;
+  if (role === 'fittingPaint') return 2;
+  if (role === 'hullRubber') return 4;
   if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
 }
@@ -3974,6 +3976,7 @@ const ARMOR_PAINT_DIFFUSE_GLSL = `
 vec3 apColor = vec3( 0.0 );
 float apMix = 0.0;
 float apLine = 0.0;
+float apFlat = 0.0;
 if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   vec3 apT = ( uApTurInv * vec4( vApW, 1.0 ) ).xyz;
   int apHullN = int( uApCounts.x + 0.5 );
@@ -4010,7 +4013,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   // the hull's cells or past their ends (roof guns, antennas, tow gear)
   vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
   bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
-    || uApPaint > 2.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
+    || abs( uApPaint - 3.0 ) < 0.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
     || !apTurret && uApHullH.y > 0.0
       && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? apHullN : 0;
@@ -4076,6 +4079,9 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     if ( apFootK >= 0 && apFootK != apBestK ) apPx = min( apPx, apFootPx );
     apLine = 1.0 - smoothstep( 0.6, 1.8, apPx );
     // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
+    // the hull's rubber (mode 4) takes a flat tone first: its grain maps would show through the colour as speckle
+    apFlat = step( 3.5, uApPaint );
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.16 ), apFlat );
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor * 0.42, apLine * 0.8 );
@@ -4234,7 +4240,9 @@ ${ARMOR_PAINT_VERTEX_GLSL}`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${BURN_COMMON_GLSL}\n${ARMOR_PAINT_COMMON_GLSL}`)
       .replace('#include <roughnessmap_fragment>',
-        `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );`)
+        `${BURN_DIFFUSE_GLSL}\n${ARMOR_PAINT_DIFFUSE_GLSL}\n#include <roughnessmap_fragment>\nroughnessFactor = mix( roughnessFactor, 0.95, brnM );\nroughnessFactor = mix( roughnessFactor, 0.85, apFlat );`)
+      .replace('#include <normal_fragment_maps>',
+        '#include <normal_fragment_maps>\nnormal = normalize( mix( normal, nonPerturbedNormal, apFlat ) );')
       .replace('#include <metalnessmap_fragment>',
         '#include <metalnessmap_fragment>\nmetalnessFactor = mix( metalnessFactor, 0.06, brnM );')
       .replace('#include <emissivemap_fragment>',
