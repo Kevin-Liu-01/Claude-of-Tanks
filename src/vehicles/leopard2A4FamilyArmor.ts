@@ -34,21 +34,25 @@ export const LEO2A4_TURRET = Object.freeze({
   barrelL44M: 4.10,
   barrelL55M: 5.34,
   barrelRadiusM: 0.084,
-  /** The front block: its rear seam (the 2A6 X's station), its corners' chamfer, its faces. */
+  /** The front block (photographed 2A4s: Austrian, Croatian, Singaporean): from its rear seam (the 2A6 X's station) the
+   *  cheeks' top runs level to `bevelZ`, then a 40-degree bevel slopes forward and down to the vertical faces, which stand
+   *  from the floor to `faceTopY`; the outer corners are cut back to the walls from `cornerZ`. */
   blockZ: 1.0977,
-  cornerZ: 1.36,
+  cornerZ: 1.38,
+  bevelZ: 1.45,
   faceZ: 1.65,
-  /** The faces lean back this much from their foot to the block's top, and their outer edges stand this far back. */
+  faceTopY: 0.61,
+  /** The faces lean back this much from their foot to their top. */
   faceRakeM: 0.03,
-  faceSweepM: 0.04,
-  slotHalfWidthM: 0.34,
+  /** The gun slot between the cheeks, filled by the wide flat mantlet (about 40 % of the front, as photographed). */
+  slotHalfWidthM: 0.50,
   /** The 2A6 X's core walls (the turret is wider right of the gun) and the faces' outer edges. */
   wallRightM: 1.2742,
   wallLeftM: 1.1769,
-  faceRightM: 0.95,
-  faceLeftM: 0.86,
+  faceRightM: 1.10,
+  faceLeftM: 1.01,
   floorY: 0.058,
-  blockTopY: 0.73,
+  blockTopY: 0.74,
   roofY: 0.791,
   /** The floor rises over the bustle (the 2A6 X: 1.698 m at z 0.26, 1.786 at -0.47, 1.854 from -1.02). */
   bustleFloorY: 0.214,
@@ -62,8 +66,9 @@ export const LEO2A4_TURRET = Object.freeze({
   rearFloorY: 0.25,
   /** The mantlet's face in the gun's frame, 3 cm behind the cheeks' faces. */
   mantletFaceZ: 0.20,
-  /** The EMES 15 window in the right cheek's face (x centre, half-width, foot and head) and its 45 mm recess. */
-  emes: Object.freeze({ x: -0.72, halfW: 0.13, y0: 0.40, y1: 0.70, recessM: 0.045 }),
+  /** The EMES 15 sight's window: a pocket cut through the right cheek's upper face and bevel (x centre, half-width, its
+   *  foot, the block's top), open forward and upward back to the glass at `pocketZ`. */
+  emes: Object.freeze({ x: -0.72, halfW: 0.14, y0: 0.38, y1: 0.74, pocketZ: 1.42 }),
   /** The commander's ring (right) and the loader's (left): the 2A6 X's measured rings [x, z, radius, height]. */
   commander: Object.freeze([-0.6221, -0.0401, 0.31935, 0.164] as const),
   loader: Object.freeze([0.53145, -0.01375, 0.37077, 0.102] as const),
@@ -127,6 +132,8 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
   const plates = new Map<string, ArmorPlate>();
   for (const p of [...legacy.hullPlates, ...legacy.turretPlates]) if (!plates.has(p.name)) plates.set(p.name, p);
   const used = new Set<string>();
+  // a kit that seats one of the construction's own plates on its add-on (an appliqué's face) overrides that plate's seat
+  const seated = (name: string, g: ArmorPlate): ArmorPlate => o.kitPlates?.[name]?.plate ?? g;
   const take = (name: string): PlateValues | null => {
     const p = plates.get(name);
     if (!p) return null;
@@ -168,26 +175,29 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
       const z0 = Math.min(...geometry.verts.map((v) => v[2])), z1 = Math.max(...fore.verts.map((v) => v[2]));
       g = (sx > 0 ? sR : sL)('skirt', 1, x, y0, x, y1, z0, z1);
     }
-    hullPlates.push(carry(g, name, need(name)));
+    hullPlates.push(carry(seated(name, g), name, need(name)));
   }
   // the turret: the cheek faces either side of the gun slot, the 2A6/2A5 frontal layers inside the block behind them,
   // the EMES 15 window's recess (right), the mantlet, the walls, the rear plate and the roof
   const gy = T.gunLocal[1], mz = T.gunLocal[2] + T.mantletFaceZ, top = T.blockTopY - 0.01;
   const turretPlates: ArmorPlate[] = [
-    carry(chR('turret_cheek_R', 1, T.slotHalfWidthM, T.faceZ, T.faceLeftM, T.faceZ - T.faceSweepM, T.floorY, top, T.faceRakeM),
+    // the cheek plates lean from the faces' foot to the bevel's top edge (the face and its bevel, one plane each side)
+    carry(seated('turret_cheek_R', chR('turret_cheek_R', 1, T.slotHalfWidthM, T.faceZ, T.faceLeftM, T.faceZ, T.floorY, top,
+      T.faceZ - T.bevelZ)),
       'turret_cheek_R', need('turret_cheek_R')),
-    carry(chL('turret_cheek_L', 1, T.slotHalfWidthM, T.faceZ, T.faceRightM, T.faceZ - T.faceSweepM, T.floorY, top, T.faceRakeM),
+    carry(seated('turret_cheek_L', chL('turret_cheek_L', 1, T.slotHalfWidthM, T.faceZ, T.faceRightM, T.faceZ, T.floorY, top,
+      T.faceZ - T.bevelZ)),
       'turret_cheek_L', need('turret_cheek_L')),
-    carry(plate('mantlet', 1, [-0.30, gy - 0.23, mz], [0.30, gy - 0.23, mz], [-0.30, gy + 0.27, mz], { gunFollow: true }),
+    carry(plate('mantlet', 1, [-0.48, gy - 0.23, mz], [0.48, gy - 0.23, mz], [-0.48, gy + 0.30, mz], { gunFollow: true }),
       'mantlet', need('mantlet')),
-    carry(sR('turret_side_R', 1, T.wallLeftM, T.floorY, T.wallLeftM, T.roofY - 0.03, T.bustleEndZ, T.cornerZ),
-      'turret_side_R', need('turret_side_R')),
-    carry(sL('turret_side_L', 1, T.wallRightM, T.floorY, T.wallRightM, T.roofY - 0.03, T.bustleEndZ, T.cornerZ),
-      'turret_side_L', need('turret_side_L')),
+    carry(seated('turret_side_R', sR('turret_side_R', 1, T.wallLeftM, T.floorY, T.wallLeftM, T.roofY - 0.03, T.bustleEndZ,
+      T.cornerZ)), 'turret_side_R', need('turret_side_R')),
+    carry(seated('turret_side_L', sL('turret_side_L', 1, T.wallRightM, T.floorY, T.wallRightM, T.roofY - 0.03, T.bustleEndZ,
+      T.cornerZ)), 'turret_side_L', need('turret_side_L')),
     carry(rr('turret_rear', 1, T.rearLeftM, T.rearFloorY, T.rearZ, T.rearRoofY, T.rearZ), 'turret_rear', need('turret_rear')),
     carry(rf('turret_roof', 1, T.wallLeftM * 0.92, T.roofY, T.rearZ, T.blockZ), 'turret_roof', need('turret_roof')),
   ];
-  const emes = T.emes, ez = T.faceZ - emes.recessM;
+  const emes = T.emes, ez = emes.pocketZ;
   const recess = take('turret_sight_recess');
   if (recess) {
     turretPlates.push(carry(plate('turret_sight_recess', 1, [emes.x + emes.halfW, emes.y0, ez], [emes.x - emes.halfW, emes.y0, ez],
@@ -215,6 +225,7 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
   }
   // the kit's own plates (ERA fields, appliqué layers) seated on its drawn surfaces
   for (const [name, kit] of Object.entries(o.kitPlates ?? {})) {
+    if (used.has(name)) continue;                                          // it overrode a construction plate's seat
     const v = take(name);
     if (!v) throw new Error(`leopard2A4FamilyArmor: ${id}'s kit seats ${name}, which its record does not carry`);
     (kit.rig === 'hull' ? hullPlates : turretPlates).push(carry(kit.plate, name, v));
