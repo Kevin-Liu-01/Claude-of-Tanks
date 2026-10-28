@@ -263,7 +263,15 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   },
   ztz100: {
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
-    searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
+    searchAliases: ['Type 100', 'Type 100 main battle tank', 'ZTZ-20 pre-production', 'ZTZ-20 prototype', '100式坦克'],
+  },
+  ztz20_prototype: {
+    displayName: 'ZTZ-20 Prototype', shortName: 'ZTZ-20 Proto',
+    searchAliases: ['ZTZ-20 prototype', 'ZTZ 20 prototype', 'ZTZ-20 testbed', '20式坦克 原型车'],
+  },
+  ztz20: {
+    displayName: 'ZTZ-20', shortName: 'ZTZ-20',
+    searchAliases: ['ZTZ 20', 'Type 20', 'PLA next-generation tank', 'ZTZ-100 production', '20式坦克'],
   },
   ztz100_prototype: {
     displayName: 'ZTZ-100 Prototype', shortName: 'ZTZ-100 Proto',

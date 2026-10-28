@@ -1,5 +1,14 @@
 # ZTZ-100 Prototype (`ztz100_prototype`)
 
+## Family hull — 2026-10-27 (release 262)
+
+Owner 2026-10-27 ("the ztz 100 is its prototype"): the testbed's hull and running gear are now the ZTZ-20 family base
+at its earliest stage (`profiles/ztz20Family.ts` `ZTZ20_STAGES.ztz100_prototype`: bare glacis, upper skirt band only,
+a closed stern bin, the flat testbed engine deck its missile turret's 1.425 platter clears at every yaw). The missile
+turret of the 2026-09-19 owner decision is unchanged; its concept row was amended for the family hull envelope
+(`missile-turrets-20260919.json` `amendments`). Packet: `docs/references/tanks/ztz20.md`.
+
+
 The owner-directed Tier IX prototype preserves the original chassis and running
 gear, with a new low armored turret carrying eight round 152 mm missile
 canisters in two open four-cell pods. A short 35 mm cannon occupies the central

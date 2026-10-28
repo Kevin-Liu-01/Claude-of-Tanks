@@ -81,7 +81,7 @@ expect('m1a3', 'm1a1_abrams_hc'); expect('abramsx', 'm1a1_abrams_hc'); // m1a2_l
 expect('m1a1_abrams_hc', 'm1a1_abrams_hc', 'donor'); expect('ua_m1a1', 'm1a1_abrams_hc', 'donor');
 expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
 expect('griffin_viper', 'm1a1_abrams_hc'); expect('griffin50mm', 'm1a1_abrams_hc'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
-expect('type59', 'ztz100'); expect('ztz100_prototype', 'ztz100'); expect('aft10', 'type100');
+expect('type59', 'ztz100'); expect('ztz100_prototype', 'ztz100', 'donor'); expect('ztz20', 'ztz100', 'donor'); expect('ztz20_prototype', 'ztz100', 'donor'); expect('aft10', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv121'); expect('strv103b', 'strv121'); expect('strv121', 'strv121'); expect('cv90', 'cv90_mk4');
 expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther', 'donor'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel

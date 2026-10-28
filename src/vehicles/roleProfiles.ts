@@ -117,6 +117,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   vt4a1: { doctrine: 'assault', viewM: 410, still: 0.178, moving: 0.118 },
   type100: { doctrine: 'support', viewM: 450, still: 0.262, moving: 0.202 },
   ztz100: { doctrine: 'assault', viewM: 435, still: 0.188, moving: 0.128 },
+  ztz20: { doctrine: 'assault', viewM: 440, still: 0.186, moving: 0.126 },
+  ztz20_prototype: { doctrine: 'assault', viewM: 430, still: 0.188, moving: 0.128 },
   ztz100_prototype: { doctrine: 'assault', viewM: 425, still: 0.186, moving: 0.126 },
   mbt70: { doctrine: 'flanker', viewM: 425, still: 0.230, moving: 0.170 },
   object148_proto: { doctrine: 'assault', viewM: 425, still: 0.175, moving: 0.115 },

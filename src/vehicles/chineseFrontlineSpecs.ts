@@ -108,11 +108,92 @@ const CHINESE_FRONTLINE_SPECS = {
       marking: 'number', number: 'LZ83', trackWidthM: 0.58, camoScale: 0.38, digitalCellK: 2.4,
     },
   },
+  // ZTZ-20 (release 262, owner 2026-10-27): the production type of the ZTZ-100 programme, an owner-authored concept
+  // (docs/references/concepts/ztz20-family-20261027.json) measured from the "[OD]ZTZ-20 Test-3" oracle and built from
+  // scratch on the ZTZ-20 family base (profiles/ztz20Family.ts). The pre-production ZTZ-100 and the ZTZ-100 Prototype
+  // testbed are its earlier stages. Against the ZTZ-100: the matured high-pressure 105 mm round, the faster autoloader
+  // and fire control, the composite glacis tiles, the hard-kill launchers and the slat cage.
+  ztz20: {
+    id: 'ztz20', name: 'ZTZ-20', nation: 'China', era: 'next-generation', role: 'mbt',
+    hp: 2650,
+    enginePowerHp: 1300, weightTons: 45, topSpeedKmh: 72, reverseSpeedKmh: 30,
+    hullTraverseDegS: 48,
+    terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.28 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 52, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
+    gun: {
+      // fire control inside the next-generation Tier X ceiling (balanceAudit: 1.44x the peer median after the pass)
+      caliberMm: 105, reloadS: 4.6, baseAccuracy: 0.23, aimTimeS: 1.45,
+      bloom: { move: 0.042, hullRot: 0.060, turret: 0.042, afterShot: 1.7 },
+      shells: [
+        shell('DTW-105A APFSDS', 'APFSDS', 105, 870, 810, 440, 1650, { pen2000Mm: 710 }),
+        shell('DTP-105A HEAT-MP', 'HEAT', 105, 490, 490, 430, 1150),
+        shell('DTB-105A HE', 'HE', 105, 44, 44, 510, 760),
+      ],
+    },
+    // the concept row's spec dimensions (hull, gun to cage, skirt planes); the complete envelope is 3.81 x 9.24 x 3.035
+    dims: { hullLengthM: 7.13, overallLengthM: 9.24, widthM: 3.70, heightM: 2.30, silhouetteHeightM: 3.03 },
+    armor: modernArmor({
+      hl: 3.565, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
+      turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
+      barrelLenM: 4.625, barrelRadM: 0.072,
+      glacis: [90, 560, 760], lower: [70, 340, 460], side: [55, 250, 370],
+      skirt: [40, 120, 260], rear: 40, roof: 38,
+      tw: 1.20, tFrontZ: 1.52, tRearZ: -2.00, tH: 0.89,
+      cheek: [150, 640, 860], tSide: [90, 310, 410], tRear: 55, tRoof: 40,
+      mantlet: [170, 570, 750], loader: false, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'digital', base: '#49593f', weather: '#5c684c',
+      patches: ['#707d58', '#695f48', '#29372d'],
+      marking: 'number', number: '201', trackWidthM: 0.515, camoScale: 0.36, digitalCellK: 2.4,
+    },
+  },
+  // ZTZ-20 Prototype (release 262, owner 2026-10-27: "keep the ztz 100 prototype then add the ztz 20 and then have a ztz
+  // 20 prototype"): the first ZTZ-20 turret, a testbed fit on the family hull between the ZTZ-100 and the ZTZ-20: the new
+  // high-pressure 105 mm in an early bolted mount without its sleeve, trial ballast where the armour pods go, a fixed
+  // periscope for the commander, no weapon station, hard-kill system or smoke banks yet. At or below the ZTZ-20 throughout.
+  ztz20_prototype: {
+    id: 'ztz20_prototype', name: 'ZTZ-20 Prototype', nation: 'China', era: 'next-generation', role: 'mbt',
+    hp: 2450,
+    enginePowerHp: 1300, weightTons: 46, topSpeedKmh: 70, reverseSpeedKmh: 28,
+    hullTraverseDegS: 46,
+    terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 48, gunPitchDegS: 38, gunElevationDeg: 15, gunDepressionDeg: 8,
+    gun: {
+      caliberMm: 105, reloadS: 4.8, baseAccuracy: 0.24, aimTimeS: 1.5,
+      bloom: { move: 0.045, hullRot: 0.064, turret: 0.045, afterShot: 1.8 },
+      shells: [
+        shell('DTW-105A APFSDS (trials lot)', 'APFSDS', 105, 855, 795, 435, 1640, { pen2000Mm: 700 }),
+        shell('DTP-105A HEAT-MP', 'HEAT', 105, 480, 480, 425, 1150),
+        shell('DTB-105A HE', 'HE', 105, 42, 42, 505, 760),
+      ],
+    },
+    // the concept row's spec dimensions; the complete envelope is measured in docs/references/tanks/ztz20.md
+    dims: { hullLengthM: 7.13, overallLengthM: 9.32, widthM: 3.70, heightM: 2.30, silhouetteHeightM: 2.89 },
+    armor: modernArmor({
+      hl: 3.565, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
+      turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
+      barrelLenM: 4.625, barrelRadM: 0.072,
+      glacis: [90, 540, 740], lower: [70, 340, 460], side: [55, 240, 360],
+      skirt: [40, 120, 260], rear: 40, roof: 38,
+      tw: 1.20, tFrontZ: 1.52, tRearZ: -2.00, tH: 0.89,
+      cheek: [150, 630, 850], tSide: [70, 240, 320], tRear: 50, tRoof: 38,
+      mantlet: [150, 520, 700], loader: false, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'digital', base: '#49593f', weather: '#5c684c',
+      patches: ['#707d58', '#695f48', '#29372d'],
+      marking: 'number', number: '20-02', trackWidthM: 0.515, camoScale: 0.36, digitalCellK: 2.4,
+    },
+  },
   // ZTZ-100 (owner 2026-09-17): the PLA's next-generation main battle tank, generated from the owner's supplied
   // "[OD]ZTZ-20 Test-3" reference model (a local comparison oracle only, see
   // docs/references/tanks/ztz100_x.source-measurements.json). Seven road wheels, a 105 mm autoloaded gun in a
   // faceted unmanned turret with two sensor towers, a rear weapon station, a right-cheek missile bank and a stern
-  // slat cage. First-party procedural build (profiles/ztz100X.ts).
+  // slat cage. First-party procedural build (profiles/ztz100X.ts). 262 (owner 2026-10-27, "the ztz 100 is its prototype"):
+  // the pre-production stage of the ZTZ-20 family (profiles/ztz20Family.ts ZTZ20_STAGES.ztz100), its combat record kept.
   ztz100: {
     id: 'ztz100', name: 'ZTZ-100', nation: 'China', era: 'next-generation', role: 'mbt',
     hp: 2600,
@@ -130,7 +211,8 @@ const CHINESE_FRONTLINE_SPECS = {
         shell('DTB-105 HE', 'HE', 105, 42, 42, 500, 760),
       ],
     },
-    dims: { hullLengthM: 6.94, overallLengthM: 8.98, widthM: 3.70, heightM: 2.31, silhouetteHeightM: 3.04 },
+    // 262: the family hull (stern plate to nose 7.13) and the stern bin's basket to the muzzle
+    dims: { hullLengthM: 7.13, overallLengthM: 9.35, widthM: 3.70, heightM: 2.30, silhouetteHeightM: 2.91 },
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
@@ -178,7 +260,8 @@ const CHINESE_FRONTLINE_SPECS = {
     },
     // 2026-10-22 (lane 240, owner-approved): the backup gun's calibre-true 35 mm L/90 tube carries the muzzle 2.05 m
     // further forward (3.75 m ahead of the hull datum), past the bow.
-    dims: { hullLengthM: 6.94, overallLengthM: 7.825, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
+    // 262: the ZTZ-20 family hull under the unchanged turret (7.13 hull, the stern bin to the muzzle 7.90)
+    dims: { hullLengthM: 7.13, overallLengthM: 7.90, widthM: 3.726, heightM: 1.90, silhouetteHeightM: 2.64 },
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.64, 0.80],

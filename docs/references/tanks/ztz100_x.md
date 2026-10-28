@@ -1,5 +1,15 @@
 # ZTZ-100 (`ztz100_x`) — reference packet (2026-09-17)
 
+## Superseded — 2026-10-27 (release 262)
+
+The owner, 2026-10-27, verbatim through the coordinator: "the ztz 20 should be completely new, not based off of qilin,
+and the ztz 100 is its prototype, ztz 20 needs to be designed from scratch and then it should update the ztz 100 which
+is a bad model rn". The source-study build below (`profiles/ztz100X.ts`, its receipt and its GLB comparison
+registration) is retired. `ztz100` is now the pre-production stage of the ZTZ-20 family, an owner-authored concept
+(`docs/references/concepts/ztz20-family-20261027.json`, packet `docs/references/tanks/ztz20.md`); the same oracle and
+registration now measure the production ZTZ-20. Everything below is history.
+
+
 ## Current integrated status — 2026-09-18
 
 Implemented draft; final qualification and publication are pending. The owner

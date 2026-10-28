@@ -35,12 +35,8 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     sha256:'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1',
     fused:true,turret:[-.3835,2.2502,.5027],gun:[-.4265,3.078,.397],
   },
-  // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
-  // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
-  ztz100: {
-    sha256:'7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1',
-    fused:true,turret:[0,1.41,-.55],gun:[0,1.76,.55],
-  },
+  // ztz100 retired 2026-10-27 (release 262): the '[OD]ZTZ-20 Test-3' bake (7eeb9852…758f1) now measures the ZTZ-20
+  // family concept (docs/references/tanks/ztz20.md) and certifies no comparison.
   strv122: {
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],

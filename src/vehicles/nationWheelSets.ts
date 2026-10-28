@@ -65,8 +65,9 @@ interface NationWheelDonor {
 }
 
 export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Object.freeze({
-  ztz100: Object.freeze({ donor: 'ztz100', self: ['ztz100'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
-    note: 'Objects 7/17 raised hub, recessed web and curved rim shoulder over paired tire bands, with the twelve hub hexes and eight web fasteners (ztz100X.ts).' }),
+  // 262: the ZTZ-20 family hull (ztz20Family.ts) draws the construction natively for all four stages
+  ztz100: Object.freeze({ donor: 'ztz100', self: ['ztz100', 'ztz20', 'ztz20_prototype', 'ztz100_prototype'], pattern: 'armored-hub-six', construction: 'ztz100-recessed-web',
+    note: 'Objects 7/17 raised hub, recessed web and curved rim shoulder over paired tire bands, with the twelve hub hexes and eight web fasteners (ztz20Family.ts).' }),
   type100: Object.freeze({ donor: 'type100', self: ['type100'], pattern: 'pressed-six', construction: 'type100-paired-pressed',
     note: 'Two pressed six-rib dishes and two tires around a real guide channel (type100RunningGear.ts).' }),
   merkava4b: Object.freeze({ donor: 'merkava4b', self: ['merkava4b'], pattern: 'deep-dish-eight', construction: 'merkava-deep-dish',

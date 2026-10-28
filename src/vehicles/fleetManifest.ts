@@ -60,7 +60,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   cv90MkivSourceX: Object.freeze(['cv90_mk4']),
   cv90105TmlSourceX: Object.freeze(['cv90105_tml']),
   sabraMk2SourceX: Object.freeze(['sabra_mk2']),
-  modern2: Object.freeze(['mbt70', 'object148_proto', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100', 'ztz100_prototype', 'object695']),
+  modern2: Object.freeze(['mbt70', 'object148_proto', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'object695']),
   franceCore: Object.freeze(['amx40_proto']),
   xk2: Object.freeze(['xk2_black_panther']),
   modern3Core: Object.freeze(['k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv']),

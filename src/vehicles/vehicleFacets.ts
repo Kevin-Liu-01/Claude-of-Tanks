@@ -195,7 +195,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013',
     'type10', 'type10_dozer', 'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type96_72_long',
     'type96_72m_lei', 'type96_80_feng', 'type96b', 'ua_challenger2', 'ua_m1a1', 'ua_m1a2_abrams', 'ua_t80bv',
-    'vickers_mk1', 'vt4a1', 'xk2_black_panther', 'ztz100', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2',
+    'vickers_mk1', 'vt4a1', 'xk2_black_panther', 'ztz100', 'ztz20', 'ztz20_prototype', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2',
   ]),
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
@@ -243,8 +243,8 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     't72m1_jaguar', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria', 't90', 't90_1992', 't90a',
     't90a_2004', 't90a_2006', 't90a_burlak', 't90a_burlak_proto', 't90a_vladimir', 't90am', 't90m',
     't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'type10_dozer', 'type59', 'type96_72_long',
-    'type96_72m_lei', 'type96b', 'vt4a1', 'ztz100', 'ztz100_prototype', 'ztz85_iii', 'ztz99_longwei', 'ztz99a',
-    'ztz99a2',
+    'type96_72m_lei', 'type96b', 'vt4a1', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'ztz85_iii',
+    'ztz99_longwei', 'ztz99a', 'ztz99a2',
   ]),
   frontline: Object.freeze([
     'abramsx', 'centurion3', 'centurion5_2', 'kf51_evo', 'kf51_panther', 'kf51_u', 'leo2_improved',
@@ -302,7 +302,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     't84', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
     't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tos1a_tagil', 'type10', 'type100',
     'type10_dozer', 'type59', 'type74', 'type89', 'type90', 'type96b', 'ua_challenger2', 'ua_m1a1',
-    'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1', 'warrior_tes_h', 'ztz100',
+    'ua_m1a2_abrams', 'ua_m2a3_bradley', 'ua_t80bv', 'vickers_mk1', 'vt4a1', 'warrior_tes_h',
     'ztz99a', 'ztz99a2',
   ]),
   // Real prototypes, demonstrators and pre-series vehicles that never reached series service in this form. (owner
@@ -314,7 +314,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
     'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't90a_burlak',
     't90a_burlak_proto', 'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther',
-    'ztz100_prototype', 'ztz85_iii',
+    'ztz100', 'ztz100_prototype', 'ztz20_prototype', 'ztz85_iii',
   ]),
   // Paper designs and project-authored vehicles: the "(Concept)" national families, the owner's originals
   // (Upiór, Object 695, Griffin Viper, Longwei, Raijū) and the unbuilt studies.
@@ -323,7 +323,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'raiju_ifv', 't72_rys', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii',
     't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't80u_bars_m',
     't80u_husarz', 't80u_yun', 't80u_zoria', 'type96_72_long', 'type96_72m_lei',
-    'type96_80_feng', 'upior', 'ztz99_longwei',
+    'type96_80_feng', 'upior', 'ztz20', 'ztz99_longwei',
   ]),
 });
 

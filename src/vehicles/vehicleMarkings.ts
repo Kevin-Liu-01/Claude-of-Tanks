@@ -305,6 +305,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // number was hidden below their sides in ordinary quarter views.
   ztz100_prototype: anchor('turret', 'left', 0.18, 0.32, 0.24, 1),
   ztz100: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  ztz20: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  ztz20_prototype: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
   // The shallow rotating base cannot carry a flush readable emblem. Use
   // the permanent forward hull modules, clear of their seams and fittings.
   object695: anchor('hull', 'left', 0.60, 0.52, 0.26, 1),

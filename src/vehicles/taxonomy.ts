@@ -93,7 +93,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     't14_armata', 'object148_proto', 'kurganets25', 'object695', 'bmp3m_dragun125',
     'kf51_panther', 'kf51_evo', 'kf51_u', 'm1a3', 'abramsx', 'griffin50mm',
-    'type100', 'ztz100', 'ztz100_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
+    'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'pl01', 'pl01_105', 'upior', 'raiju_ifv',
   ]),
 });
 
