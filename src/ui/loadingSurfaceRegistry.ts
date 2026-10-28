@@ -59,7 +59,8 @@ const HOME = 'src/presentation/homePage.ts';
 const DOCS = 'src/docs/docs.ts';
 const TOPICS = 'src/docs/topics.ts';
 const GALLERY = 'src/gallery/gallery.ts';
-const DEPLOY_OPEN = ['.cot-battle-mode'] as const;
+// (the desktop nav's Deploy, or the battle mode control where the nav folds away: the room census's way in)
+const DEPLOY_OPEN = ['[data-nav="deploy"] || .cot-battle-mode'] as const;
 const GARAGE_REST = '.cot-garage .cot-cards';
 
 /** The rows, document rows first within each page. */
@@ -69,17 +70,18 @@ export const LOADING_SURFACES = Object.freeze({
     rest: GARAGE_REST },
   'garage-roster': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage .cot-cards', ready: 'loaded:.cot-garage .cot-cards',
     offline: false },
-  'garage-dossier': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage[data-garage-panel="equipment"] .stats',
-    ready: '.cot-garage .stats .cot-technical-tabs', open: { phone: ['button[data-garage-panel="equipment"]'] } },
+  // (a desktop's dossier stands in the docked Garage at rest: an empty recipe; a phone opens it)
+  'garage-dossier': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-garage .stats',
+    ready: '.cot-garage .stats .cot-technical-tabs', open: { desktop: [], phone: ['button[data-garage-panel="equipment"]'] } },
   'garage-drawing': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: GARAGE, box: '.cot-technical-viewer', modal: true,
     ready: 'loaded:.cot-technical-viewer [data-technical-modal-image]',
     open: { desktop: ['[data-technical-expand]'], phone: ['button[data-garage-panel="equipment"]', '[data-technical-expand]'] } },
-  'deploy': { page: 'game', path: '/', lane: 'premiere-site', owner: GARAGE, box: '.cot-battle-menu', modal: true, ready: 'loaded:.cot-battle-menu',
+  'deploy': { page: 'game', path: '/', lane: 'premiere-site', owner: GARAGE, box: '#cot-battle-menu.open', modal: true, ready: 'loaded:#cot-battle-menu.open',
     open: [...DEPLOY_OPEN] },
   'deploy-battlefield': { page: 'game', path: '/', lane: 'premiere-site', owner: GARAGE, box: '[data-deploy-field-pop]',
-    ready: 'loaded:[data-deploy-field-pop]', open: [...DEPLOY_OPEN, '[data-deploy-field]'] },
+    ready: 'loaded:[data-deploy-field-pop]', open: [...DEPLOY_OPEN, '#cot-battle-menu.open [data-deploy-field]'] },
   'rooms': { page: 'game', path: '/', lane: 'premiere-site', owner: 'src/ui/playMenu.ts', box: '.cot-play .panel', modal: true,
-    ready: '.cot-play .panel .modes', open: [...DEPLOY_OPEN, '[data-deploy-room="private"]'] },
+    ready: '.cot-play .panel .modes', open: [...DEPLOY_OPEN, '#cot-battle-menu.open [data-deploy-room="private"]'] },
   'tech-tree': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: 'src/ui/techTree.ts', box: '.cot-tt', modal: true, ready: 'loaded:.cot-tt',
     open: { desktop: ['.cot-techtree-trigger'] } },
   'service-record': { page: 'game', path: '/', lane: 'premiere-gallery-studio', owner: 'src/ui/serviceRecordDialog.ts', box: '.cot-modal', modal: true,
@@ -88,7 +90,7 @@ export const LOADING_SURFACES = Object.freeze({
     open: ['.cot-settings-slot button'] },
   // the battle last: its entry from Deploy, its load card the loading state, then its end
   'battle-entry': { page: 'game', path: '/', lane: 'premiere-battle', owner: 'src/ui/battleLoad.ts', box: '.cot-bl', modal: true, ready: 'gone:.cot-bl',
-    open: [...DEPLOY_OPEN, '[data-battle-launch]'], timeoutMs: 900_000, stays: true },
+    open: [...DEPLOY_OPEN, '#cot-battle-menu.open [data-battle-launch]'], timeoutMs: 900_000, stays: true },
   'end-screen': { page: 'game', path: '/', lane: 'premiere-battle', owner: 'src/ui/endScreen.ts', box: '.cot-es', modal: true, ready: 'loaded:.cot-es',
     debug: 'window.__DEBUG.slayEnemies()', timeoutMs: 120_000, offline: false },
 

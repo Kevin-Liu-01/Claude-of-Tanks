@@ -73,7 +73,7 @@
       const r = el.getBoundingClientRect();
       const drawn = drawnOpacity(el);
       const small = r.width < 64 && r.height < 64; // icons and flags: no fade owed
-      const entry = { t: at, kind: video ? 'video' : 'img', src: String(el.currentSrc || el.src || '').split('/').pop()?.slice(0, 80),
+      const entry = { el, t: at, kind: video ? 'video' : 'img', src: String(el.currentSrc || el.src || '').split('/').pop()?.slice(0, 80),
         node: describe(el), box: rect(r), inView: inView(r), drawn: Math.round(drawn * 100) / 100, faded: fading(el),
         poster: video && !!el.poster, small };
       entry.popped = entry.inView && !small && drawn > 0.98 && !entry.faded && at > (paints['first-contentful-paint'] ?? 0) + 150;
@@ -91,10 +91,31 @@
   addEventListener('error', (e) => errors.push({ t: Math.round(performance.now()), kind: 'error', what: String(e.message).slice(0, 200) }));
   addEventListener('unhandledrejection', (e) => errors.push({ t: Math.round(performance.now()), kind: 'rejection', what: String(e.reason?.message ?? e.reason).slice(0, 200) }));
 
+  /** The element's box as drawn: inside the window and every ancestor that clips its overflow (a lazy image in a
+   *  scrolled-off list row is not in view). */
+  const drawnRect = (el) => {
+    const r = el.getBoundingClientRect();
+    let left = Math.max(r.left, 0), top = Math.max(r.top, 0), right = Math.min(r.right, innerWidth), bottom = Math.min(r.bottom, innerHeight);
+    for (let e = el.parentElement; e && e !== document.documentElement && right > left && bottom > top; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.position === 'fixed') break;
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+      const c = e.getBoundingClientRect();
+      left = Math.max(left, c.left); top = Math.max(top, c.top); right = Math.min(right, c.right); bottom = Math.min(bottom, c.bottom);
+    }
+    return { width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  };
   const visible = (el) => {
     if (!el) return false;
+    const r = drawnRect(el);
+    return r.width > 2 && r.height > 2 && drawnOpacity(el) > 0.05;
+  };
+  /** Laid out at all (display, visibility, a box), whatever its opacity: what `gone:` asks of a cover that fades in. */
+  const rendered = (el) => {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
     const r = el.getBoundingClientRect();
-    return inView(r) && drawnOpacity(el) > 0.05;
+    return r.width > 2 && r.height > 2 && !el.closest('[hidden]');
   };
   // a skeleton, or a revealed box still on its tone (src/ui/components/reveal.ts)
   const SKELETON = '[data-skeleton],[class*="skeleton"],[class*="shimmer"],[class*="placeholder"],.cot-c-skel,[data-reveal]:not([data-ready])';
@@ -177,11 +198,11 @@
     if (kind === 'frame') {
       return () => [...document.querySelectorAll(sel)].some((v) => visible(v) && (v.readyState >= 2 || v.closest('.has-frame')));
     }
-    if (kind === 'gone') return () => ![...document.querySelectorAll(sel)].some(visible);
+    if (kind === 'gone') return () => ![...document.querySelectorAll(sel)].some(rendered);
     return () => [...document.querySelectorAll(sel)].some(visible);
   };
 
-  async function watch({ box: boxSel, ready, nav = 'nav a[href], a[data-boot-link]', timeoutMs = 60_000, offline = false, since = performance.now() }) {
+  async function watch({ box: boxSel, ready, nav = 'nav a[href], a[data-boot-link]', timeoutMs = 60_000, offline = false, since = performance.now(), inBox = false }) {
     const start = Math.round(since);
     const isReady = readiness(ready);
     const samples = [];
@@ -198,9 +219,10 @@
         if (!state.skeleton && !state.poster && !state.media && !state.text) bareSamples++;
         announcedAs ??= announced(box);
         covered ??= navCovered(box, nav);
-        if (offline) retry ??= retryShown(box);
         if (samples.length < 40 && (samples.length === 0 || JSON.stringify(state) !== JSON.stringify(samples.at(-1).state))) samples.push({ t: Math.round(now) - start, state });
       }
+      // offline, a retry anywhere counts: the surface may never have opened (a failed chunk), or have closed into a notice
+      if (offline) retry ??= retryShown(box && visible(box) ? box : null) ?? retryShown(null);
       if (offline && retry) break;
       if (now - since > timeoutMs) break;
       await new Promise((done) => setTimeout(done, 100));
@@ -213,10 +235,19 @@
       boxMs: boxAt === null ? null : boxAt - start, readyMs: readyAt === null ? null : readyAt - start,
       waitSamples, bareSamples, spinnerSeen, announcedAs, covered, retry,
       cls: Math.round(windowShifts.reduce((n, s) => n + s.value, 0) * 1000) / 1000,
-      shifts: windowShifts.slice(0, 12), popped: media.filter((m) => m.popped && m.t >= start && m.t <= end).slice(0, 12),
+      shifts: windowShifts.slice(0, 12),
+      // an in-app row's pops are its box's (Deploy's own pictures are not the battle entry's)
+      popped: media.filter((m) => m.popped && m.t >= start && m.t <= end && (!inBox || document.querySelector(boxSel)?.contains(m.el))).slice(0, 12)
+        .map(({ el, ...rest }) => rest),
       broken: offline ? brokenMedia().slice(0, 12) : [], errors: errors.filter((e) => e.t >= start && e.t <= end).slice(0, 12), samples,
     };
   }
 
-  window.__ls = { t0, shifts, media, errors, paints, watch, read, announced, retryShown, brokenMedia, describe };
+  /** What a selector matches right now, for a step or a box that never showed: each match's box, display and opacity. */
+  const diagnose = (sel) => [...document.querySelectorAll(sel)].slice(0, 4).map((el) => {
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el), d = drawnRect(el);
+    return `${describe(el)} rect ${rect(r).join(',')} drawn ${Math.round(d.width)}x${Math.round(d.height)} display ${cs.display} `
+      + `visibility ${cs.visibility} opacity ${Math.round(drawnOpacity(el) * 100) / 100}${el.closest('[hidden]') ? ' hidden' : ''}${el.closest('[inert]') ? ' inert' : ''}`;
+  });
+  window.__ls = { t0, shifts, media, errors, paints, watch, read, announced, retryShown, brokenMedia, describe, diagnose };
 })();

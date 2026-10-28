@@ -16,6 +16,7 @@
 //   pop       an image or video at least 64 px drawn at full opacity the frame it loaded (no fade, no hidden parent)
 //   silent    a wait over 1 s that nothing announced (aria-busy, a status or progressbar, a live region with text)
 //   blocked   a layer over most of the window covered the page's navigation links while the surface loaded
+//   late      a site page's box painted more than a second after the page's first paint (its shell stood blank)
 //   no-retry  offline, the content never came and no quiet retry state stood up within 15 s
 //   broken    offline, a broken image (a load error drawn as one) in view
 // Every finding names the row's lane and owner, so the report routes itself (<out>/loading-census.json, by lane in
@@ -94,12 +95,19 @@ function plan() {
   return byPage;
 }
 
+/** The documents whose first view is a page's own shell (the game's and the Studio's is the boot screen). */
+const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'gallery', '404']);
+
 /** The findings one row's timeline holds, under one condition. */
 function judge(row, condition, t) {
   const found = [];
   const wait = t.readyMs === null ? null : t.readyMs - (t.boxMs ?? 0);
   if (condition === 'slow') {
-    if (t.boxMs === null) found.push({ rule: 'bare', why: 'the box never painted' });
+    if (t.boxMs === null) found.push({ rule: 'bare', why: `the box never painted${t.boxSeen?.length ? `: ${t.boxSeen.join(' | ')}` : ' (no match)'}` });
+    // a site document's box paints with its shell: one that stands blank behind a painted page for a second is late
+    else if (row.document && SITE_PAGES.has(row.page) && t.fcp !== null && t.fcp !== undefined && t.boxMs - t.fcp > 1000) {
+      found.push({ rule: 'late', why: `the page painted at ${t.fcp} ms and this box at ${t.boxMs} ms` });
+    }
     else if ((wait === null || wait > 400) && t.waitSamples > 0 && t.bareSamples / t.waitSamples > 0.5) {
       found.push({ rule: 'bare', why: `the box stood empty for ${t.bareSamples} of ${t.waitSamples} samples (${wait ?? 'never'} ms to content)` });
     }
@@ -115,14 +123,25 @@ function judge(row, condition, t) {
   return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f, allowed: ALLOW.has(`${row.id}:${f.rule}`) }));
 }
 
-/** Presses a row's way in from the page at rest: each selector in turn; a leading `?` presses one only when it shows. */
+/** Presses a row's way in from the page at rest: each step in turn; a leading `?` presses one only when it shows, and
+ *  `a || b` presses the first of its selectors that shows (a layout's own control: the desktop nav's Deploy, a phone's). */
 async function press(page, steps) {
   for (const step of steps) {
     const optional = step.startsWith('?');
-    const selector = optional ? step.slice(1) : step;
-    const handle = await page.waitForSelector(selector, { visible: true, timeout: optional ? 1500 : 60_000 }).catch(() => null);
-    if (!handle) { if (optional) continue; throw new Error(`step ${selector} never showed`); }
-    await handle.click().catch(async () => { await page.evaluate((s) => document.querySelector(s)?.click(), selector); });
+    const choices = (optional ? step.slice(1) : step).split(' || ').map((c) => c.trim());
+    const any = choices.map((c) => `${c}`).join(', ');
+    const shown = await page.waitForSelector(any, { visible: true, timeout: optional ? 1500 : 60_000 }).then(() => true, () => false);
+    if (!shown) {
+      if (optional) continue;
+      const seen = await page.evaluate((list) => list.flatMap((c) => window.__ls.diagnose(c)), choices).catch(() => []);
+      throw new Error(`step ${choices.join(' || ')} never showed${seen.length ? `: ${seen.join(' | ')}` : ' (no match)'}`);
+    }
+    for (const selector of choices) {
+      const handle = await page.$(selector);
+      if (!handle || !await handle.isVisible().catch(() => false)) continue;
+      await handle.click().catch(async () => { await page.evaluate((s) => document.querySelector(s)?.click(), selector); });
+      break;
+    }
     await sleep(150);
   }
 }
@@ -168,7 +187,8 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
         row, row.timeoutMs ?? (condition === 'slow' ? BOOT_TIMEOUT_MS : 120_000), NAV[pageName] ?? NAV.site).catch((error) => ({ error: String(error?.message ?? error) }));
       if (t.error) { results.push({ row: row.id, layout, condition, error: t.error }); continue; }
       t.fcp = await page.evaluate(() => window.__ls.paints['first-contentful-paint'] ?? null);
-      const findings = condition === 'slow' ? judge(row, condition, t) : [];
+      if (t.boxMs === null) t.boxSeen = await page.evaluate((b) => window.__ls.diagnose(b), row.box).catch(() => []);
+      const findings = condition === 'slow' ? judge({ ...row, document: true }, condition, t) : [];
       results.push({ row: row.id, layout, condition, timeline: t, findings });
       log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, fcp ${t.fcp}, cls ${t.cls}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
     }
@@ -187,8 +207,9 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
         if (recipe(row)) await press(page, recipe(row));
         // a below-the-fold row: its box scrolled to the window's middle, the way a reader reaches it
         if (row.scroll) await page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'center', behavior: 'instant' }), row.box);
-        const t = await page.evaluate((r, timeoutMs, offline, s, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, offline, since: s }),
+        const t = await page.evaluate((r, timeoutMs, offline, s, nav) => window.__ls.watch({ box: r.box, ready: r.ready, nav, timeoutMs, offline, since: s, inBox: true }),
           row, condition === 'offline' ? ROW_TIMEOUT_MS.offline : row.timeoutMs ?? ROW_TIMEOUT_MS.slow, condition === 'offline', since, NAV[pageName] ?? NAV.site);
+        if (t.boxMs === null) t.boxSeen = await page.evaluate((b) => window.__ls.diagnose(b), row.box).catch(() => []);
         const findings = judge(row, condition, t);
         results.push({ row: row.id, layout, condition, timeline: t, findings });
         log(`    ${row.id}: box ${t.boxMs} ms, ready ${t.readyMs} ms, cls ${t.cls}${t.retry ? `, retry ${t.retry}` : ''}${findings.length ? ` -> ${findings.map((f) => f.rule).join(',')}` : ''}`);
