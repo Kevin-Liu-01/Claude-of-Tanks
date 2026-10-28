@@ -133,21 +133,25 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason). Filled as the lan
 | Gate | Status | Revision | Command / artifact | Result |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | ca57b0c7ad | source-x-oracle --inspect; md5 above | 139 meshes, frame above |
-| Every registered silhouette / raw aggregate | NOT RUN | | procedural-fidelity / geometry-gate | |
-| Geometry components / dimension score / 3% check | NOT RUN | | geometry-gate | |
-| Independent critic / actual Gallery | NOT RUN | | blind critics (Agent) | |
-| Winding, closure and intentional negative space | NOT RUN | | tank-sealed-check | |
-| Gun clearance over its own turret (tube ahead of the mask, -6/0/+14 deg, rod negative control) | PASS | WIP | `node src/vehicles/profiles/t64GunClearance.selftest.mjs` | 16.9-21.2 cm (BM1M 16.9 cm from the Nizh) |
-| Running gear / turret datum receipt | PASS | WIP | `node src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs` | six wheels, four rollers a side, all three |
-| Physical seats and yaw/pitch/recoil ownership | NOT RUN | | | |
-| High/low gear motion / strict band+shoe / duplicates | NOT RUN | | track-clip-audit, track-duplicate-audit | |
-| Return rollers / track thickness / chassis closure | NOT RUN | | wheel-review | |
-| Triangles | measured | | Node build | HIGH 119.5k (BM1M), 124.4k (mod. 2017) before LOW |
-| Live/spent/reset ERA / permanent backing | NOT RUN | | | |
-| Anatomy update / freshness | NOT RUN | | tank:anatomy:update / check | |
-| Composed release (lane) | NOT RUN | | tank:release:check --ids --gate --lane | |
-| Typecheck / attribution | NOT RUN | | | |
-
+| Every registered silhouette / raw aggregate | OWED | | tank:release:check scoring stage (procedural-fidelity --board; geometry gate) | queued behind the capture FIFO; the PT-64 Tur is a concept (comparison N/A, `pt64-tur-20261027.json`) |
+| Geometry components / dimension score / 3% check | OWED | | geometry-gate; first-party-concept-check (Tur) | Tur's datums agree with its spec exactly (`assertConceptDatums`); bounds 3.544 x 9.69 x 3.658 m |
+| Independent critic / actual Gallery | PASS (3 rounds) | 65f5be85c4, f3cf753a33 | blind critics (Agent) on rasters | critic 2: BM1M 4-5/10, mod. 2022 5-6/10 -> fixed (R4/R5); critic 3: Tur 6/10 -> fixed (T3); shaded studio renders r2/r3 |
+| Winding, closure and intentional negative space | see chain4 | | tank-sealed-check --update-ledger, --gate | new rows recorded for the four |
+| Gun clearance over its own turret (tube ahead of the mask, -6/0/+14 deg, rod negative control) | PASS | 1298ed5bb2 | `node src/vehicles/profiles/t64GunClearance.selftest.mjs` | all four ids |
+| Gun over its hull at every yaw on the published curve | PASS | 53961fea79 | `GUN_CLEARANCE_IDS=... node src/vehicles/nationalGunClearance.selftest.mjs` | 4 curves keep 25 mm at every yaw and legal pitch; each bare depression meets the hull (293 s) |
+| Depression curves | measured | b4d1e58854 | `tools/gun-depression-sweep.mjs` (26 mm) | -6 ahead/abeam; -4.4 over the mudguard crowns (19-41); +2.7 over the rear-quarter shelf tanks; -2.8 (-2.1 mod. 2022) astern; no mount conflicts |
+| Gun barrel alignment | PASS | 65f5be85c4 | gun-barrel-align-census --gate | 0 mm offset, 0 deg, all aligned (no rig rows) |
+| Running gear / turret datum receipt | PASS | 1198a46a48 | `node src/vehicles/profiles/t64Foundation.selftest.mjs` | six wheels, four rollers a side, T64_FRAME = T64_DATUMS, all four ids |
+| Physical seats and yaw/pitch/recoil ownership | PASS | 53961fea79 | gen-mission-attachment-seats --check | 4/4 PASS |
+| Spare track | PASS | 53961fea79 | spare-track-placement-check --update/--check | 4 rows, 0 problems |
+| High/low gear motion / strict band+shoe / duplicates | see chain4 / OWED | | track-duplicate-audit; track-clip-audit (release check) | |
+| Triangles | measured | | Node build | HIGH: BM1M 119.5k, T-64BV 121.0k, mod. 2022 122.9k, Tur 123.8k |
+| Anatomy update / freshness | PASS | 53961fea79 | gen-combat-anatomy to its fixpoint, --check | first sim floors accepted; fills, markings, controls, seats, spare checks PASS |
+| Fleet-geometry ledger / gun lines | PASS | 53961fea79 | fleet-geometry-ledger --update; gun-junction-census --update | 4 rows each |
+| Generated tables touch only the new ids | PASS | 53961fea79 | decoded diff against main | every modified table differs from main only in the four new ids (row order moved in the Polish groups) |
+| Bundle | over by bytes | 1198a46a48 | npm run build; bundle-budget --check | requests within pins; game/cn +5.9 KB raw, +1.46 KB br, entry +50 B; gallery +5.9 KB, +1.39 KB br (the four tanks' boot data): the integrator's re-pin |
+| Composed release (lane) | OWED | | tank:release:check --ids --gate --lane | starts when the icon hold ends (`.qa-dev/t64bm1m/release-after-icons.zsh`) |
+| Typecheck / attribution | PASS | f3cf753a33 | node tools/typecheck.mjs; npm run attribution:check | TypeScript 7 clean, oxlint clean; attribution: 225 playable models name Kevin B. Liu, 18,485 tracked files covered |
 ## Balance
 
 Capability score (RETIER-257 formula recomputed on this tree: 0.35 stats + 0.25 generation + 0.20 era + 0.20 x the
