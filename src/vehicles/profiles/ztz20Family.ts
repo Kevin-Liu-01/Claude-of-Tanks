@@ -335,7 +335,7 @@ function skirts(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
         for (const dz of [-0.28, 0.28]) bolt(s * (H.skirtLow + 0.004), H.lowerHem + 0.06, zc + dz);
       }
       // two grab handles on the lower band (measured z 0.10 and 1.94)
-      for (const z of [0.10, 1.94]) P.add('hullDetail', part(box(0.02, 0.03, 0.24), 'skirt-handle'), s * (H.skirtLow + 0.012), 0.75, z);
+      for (const z of [0.10, 1.94]) P.add('hullDetail', part(box(0.03, 0.05, 0.26), 'skirt-handle'), s * (H.skirtLow + 0.016), 0.75, z);
       // the lower band hangs from a rail under the upper band's hem
       P.add('hullDark', part(box(H.skirtFwd - H.skirtLow + 0.02, 0.04, 5.40), 'skirt-rail'), s * ((H.skirtFwd + H.skirtLow) / 2 - 0.01), H.skirtStep, 0.10);
     }
@@ -402,13 +402,13 @@ function sternPlate(P: TankBuilderPort): void {
 /** Production stern: an open slat cage round the stern and the rear flanks, horizontal slats on posts. */
 function slatCage(P: TankBuilderPort): void {
   // the rear run across the stern meets the side runs on chamfered corners (measured: 0.29 m each way)
-  const z0 = -4.05, xs = 1.89, xc = xs - 0.29, zc = z0 + 0.29, ys = [0.72, 0.84, 0.96, 1.08, 1.20, 1.32] as const, top = 1.43;
+  const z0 = -4.05, xs = 1.89, xc = xs - 0.29, zc = z0 + 0.29, ys = [0.71, 0.815, 0.92, 1.025, 1.13, 1.235, 1.34] as const, top = 1.43;
   const L = 'hullOpenLatticeDark', diag = Math.hypot(xs - xc, zc - z0);
   for (const y of ys) {
-    P.addEquipment(L, part(box(xc * 2, 0.022, 0.010), 'cage-slat'), 0, y, z0);
+    P.addEquipment(L, part(box(xc * 2, 0.016, 0.010), 'cage-slat'), 0, y, z0);
     for (const s of [-1, 1]) {
-      P.addEquipment(L, part(box(0.010, 0.022, -0.40 - zc), 'cage-slat'), s * xs, y, (zc - 0.40) / 2);
-      P.addEquipment(L, part(box(diag, 0.022, 0.010), 'cage-slat'), s * (xs + xc) / 2, y, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
+      P.addEquipment(L, part(box(0.010, 0.016, -0.40 - zc), 'cage-slat'), s * xs, y, (zc - 0.40) / 2);
+      P.addEquipment(L, part(box(diag, 0.016, 0.010), 'cage-slat'), s * (xs + xc) / 2, y, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
     }
   }
   for (const s of [-1, 1]) {
@@ -429,7 +429,7 @@ function sternStowage(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   P.addEquipment('hullFittingPaint', part(box(1.70, 0.36, 0.34), 'stern-bin'), 0, 1.20, zf - 0.17);
   for (const dx of [-0.56, 0, 0.56]) P.add('hullDark', part(box(0.03, 0.30, 0.012), 'stern-bin-rib'), dx, 1.20, zf - 0.346);
   P.add('hullDark', part(box(1.72, 0.03, 0.36), 'stern-bin-lid'), 0, 1.395, zf - 0.17);
-  for (const s of [-1, 1]) P.add('hullDark', part(box(0.06, 0.06, H.sternZ - zf + 0.03), 'stern-bin-bracket'), s * 0.70, 1.04, (H.sternZ + zf) / 2 - 0.01);
+  for (const s of [-1, 1]) P.add('hullDark', part(box(0.16, 0.08, H.sternZ - zf + 0.03), 'stern-bin-bracket'), s * 0.70, 1.05, (H.sternZ + zf) / 2 - 0.01);
   if (stage.stern === 'stowage-basket') {
     const L = 'hullOpenLatticeDark', z0 = zf - 0.36, z1 = zf - 0.02;
     for (const y of [1.44, 1.56]) {
@@ -489,7 +489,7 @@ const FLOOR = 1.48;
 const T = {
   roofRear: 2.30, bodyRoofRear: 2.23, roofFront: 2.20, bodyFrontZ: 0.10, bodyRearZ: -1.00, bodyHalf: 1.20, bustleHalf: 0.91,
   bustleRearZ: -2.60,
-  podInner: 1.12, podOuter: 1.51, podTop: 2.14, podFrontZ: -0.05, podShoulderZ: -0.48, podRearZ: -1.62, podTailZ: -1.75,
+  podInner: 1.12, podOuter: 1.51, podTop: 2.14, podFrontZ: -0.05, podShoulderZ: -0.48, podRearZ: -1.62, podTailZ: -2.12,
   gunY: ZTZ20_DATUMS.trunnion[1], gunZ: ZTZ20_DATUMS.trunnion[2], gunLen: ZTZ20_DATUMS.barrelLengthM,
 } as const;
 /** Main-body roof: 2.20 at the body's front rising to 2.23 at its rear, where the 2.30 rear plateau stands proud. */
@@ -560,9 +560,10 @@ function flankPod(P: TankBuilderPort, s: number): void {
     return { z: tz(z), ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as SectionPoint).reverse() };
   };
   P.addExternalArmor('turret', part(sectionSolid([
-    station(T.podTailZ, T.podOuter - 0.07, 1.74, T.podTop - 0.04),
-    station(T.podRearZ, T.podOuter, 1.723, T.podTop),
-    station(-1.30, T.podOuter, 1.68, T.podTop),
+    station(T.podTailZ, 1.36, 1.76, T.podTop - 0.04),
+    station(-1.90, 1.45, 1.736, T.podTop - 0.02),
+    station(T.podRearZ, T.podOuter, 1.706, T.podTop),
+    station(-1.30, T.podOuter, 1.672, T.podTop),
     station(T.bodyRearZ - 0.01, T.podOuter, 1.64, T.podTop),
     station(T.bodyRearZ + 0.01, T.podOuter, 1.64, T.podTop),
     station(T.podShoulderZ, T.podOuter, 1.64, T.podTop),
@@ -667,6 +668,12 @@ function cheek(P: TankBuilderPort, s: number, stage: Ztz20StageDeltas): void {
       .map(([t, y]) => at(t, face(y) + off, y).toArray());
     P.add('turret', part(orientedSlab(...ring(-0.005), ...ring(0.025)), 'cheek-plate'));
   }
+  // the chin's ribs under the nose line, every 0.12 m along both blocks (clear of the coax slot)
+  for (let t = 0.10; t < len - 0.05; t += 0.12) {
+    if (notch && t > notch[0] - 0.03 && t < notch[1] + 0.03) continue;
+    const r = at(t, -0.06, 1.54);
+    P.add('turret', part(box(0.025, 0.10, 0.12), 'cheek-chin-rib'), r.x, r.y, r.z, 0, Math.atan2(-uz, ux), 0);
+  }
   const s0 = notch ? notch[1] : 0, seam = at((s0 + split) / 2, face(1.975) + 0.004, 1.975);
   P.add('turretDark', part(box(split - s0 - 0.10, 0.012, 0.012), 'cheek-seam'), seam.x, seam.y, seam.z, 0, Math.atan2(-uz, ux), 0);
 }
@@ -691,7 +698,7 @@ function smokeBanks(P: TankBuilderPort, s: number): void {
   const align = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
   const stock: AxialWheelStation[] = [[-0.25, 0], [-0.25, 0.038], [-0.13, 0.038], [-0.13, 0.042], [-0.10, 0.042],
     [-0.10, 0.038], [-0.02, 0.038], [-0.02, 0.041], [0, 0.041], [0, 0]];
-  P.add('turretDark', part(box(0.38, 0.05, 0.16), 'smoke-bank-base'), s * 1.24, ty(T.podTop + 0.025), tz(-0.40));
+  P.add('turretDark', part(box(0.38, 0.012, 0.16), 'smoke-bank-base'), s * 1.24, ty(T.podTop + 0.006), tz(-0.40));
   for (const lane of [1.11, 1.20, 1.29, 1.38]) {
     const x = s * lane, y = ty(T.podTop + 0.12), z = tz(-0.36);
     P.add('turretDark', part(lathedWheelSection(stock, P.q ? 14 : 8).rotateY(-Math.PI / 2).applyQuaternion(align), 'smoke-tube'), x, y, z);
@@ -731,7 +738,8 @@ function apsTower(P: TankBuilderPort, s: number, stage: Ztz20StageDeltas): void 
 function panoramicSight(P: TankBuilderPort): void {
   const x = -0.60, zc = -0.055, z = tz(zc), roofY = ztz20TurretRoofY(zc), y = ty(roofY), n = P.q ? 20 : 12;
   P.add('turret', part(box(0.38, 0.03, 0.30), 'panoramic-base'), x, y + 0.015, z);
-  const top = y + 2.41 - roofY, low = y + 0.03;
+  P.add('turretDark', part(cylY(0.12, 0.13, 0.04, n), 'panoramic-bearing'), x, y + 0.05, z);
+  const top = y + 2.41 - roofY, low = y + 0.07;
   const ring: SectionPoint[] = [[x - 0.15, low], [x + 0.15, low], [x + 0.15, top - 0.05], [x + 0.10, top], [x - 0.10, top], [x - 0.15, top - 0.05]];
   P.addEquipment('turret', part(sectionSolid([z - 0.135, z + 0.135].map((zz) => ({ z: zz, ring }))), 'panoramic-head'));
   for (const [dx, dy, r] of [[-0.05, 0.12, 0.05], [0.07, 0.15, 0.03], [0.07, 0.08, 0.02]] as const) {
@@ -789,7 +797,7 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     }
     for (const dz of [-0.30, 0.34]) P.add('turret', part(box(0.19, 0.25, 0.08), 'rws-missile-clamp'), -0.47, ty(2.905), tz(sz + dz));
     // the feed arm: a C sweeping from the electronics box's top over to the gun's breech (apex 2.99)
-    P.add('turretDark', part(new THREE.TorusGeometry(0.3054, 0.03, 8, P.q ? 20 : 12, 115 * Math.PI / 180).rotateZ(30 * Math.PI / 180), 'rws-feed-arm'), 0.18, ty(2.6846), tz(sz - 0.02));
+    P.add('turretDark', part(new THREE.TorusGeometry(0.3054, 0.045, 8, P.q ? 20 : 12, 115 * Math.PI / 180).rotateZ(30 * Math.PI / 180), 'rws-feed-arm'), 0.18, ty(2.6846), tz(sz - 0.02));
   }
   station.mark('yaw');
   // the pitching gun: receiver, feed tray, ammunition box with its curved feed chute over to the tray, barrel and hider
@@ -819,15 +827,15 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
  * every 60 mm of rise, on posts. */
 function bustleStowage(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
-    const ring: SectionPoint[] = [[0.91, ty(1.74)], [1.27, ty(1.74)], [1.27, ty(2.06)], [1.19, ty(2.14)], [0.91, ty(2.14)]];
+    const ring: SectionPoint[] = [[0.91, ty(1.76)], [1.27, ty(1.76)], [1.27, ty(2.08)], [1.23, ty(2.12)], [0.91, ty(2.12)]];
     const sided = s > 0 ? ring : ring.map(([x, y]) => [-x, y] as SectionPoint).reverse();
-    P.addEquipment('turret', part(sectionSolid([tz(-2.45), tz(-1.70)].map((z) => ({ z, ring: sided }))), 'side-bin'));
-    P.add('turretDark', part(box(0.008, 0.008, 0.73), 'side-bin-lid-seam'), s * 1.272, ty(2.01), tz(-2.075));
-    for (const dz of [-0.24, 0.24]) P.add('turretDark', part(box(0.008, 0.26, 0.025), 'side-bin-strap'), s * 1.272, ty(1.88), tz(-2.075) + dz);
-    for (const dz of [-0.12, 0.12]) P.add('turretDetail', part(box(0.016, 0.04, 0.035), 'side-bin-latch'), s * 1.276, ty(1.98), tz(-2.075) + dz);
+    P.addEquipment('turret', part(sectionSolid([tz(-2.45), tz(-2.15)].map((z) => ({ z, ring: sided }))), 'side-bin'));
+    P.add('turretDark', part(box(0.008, 0.008, 0.28), 'side-bin-lid-seam'), s * 1.272, ty(2.02), tz(-2.30));
+    for (const dz of [-0.09, 0.09]) P.add('turretDark', part(box(0.008, 0.22, 0.025), 'side-bin-strap'), s * 1.272, ty(1.90), tz(-2.30) + dz);
+    P.add('turretDetail', part(box(0.016, 0.04, 0.035), 'side-bin-latch'), s * 1.276, ty(1.99), tz(-2.30));
   }
   // the rear block: one closed body from the bins' rear to the slat face
-  const yb = 1.742, yt = 2.14, rise = 0.60; // the face runs 0.60 m aft-to-fore per metre of rise
+  const yb = 1.76, yt = 2.12, rise = 0.60; // the face runs 0.60 m aft-to-fore per metre of rise
   const faceZ = (y: number): number => -3.17 + (y - yb) * rise;
   const corners: THREE.Vector3[] = [];
   for (const y of [yb, yt]) for (const s of [-1, 1]) {
@@ -875,8 +883,8 @@ function mainGun(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     P.addGunExtra(part(sectionSolid([mantlet(0.70, 0.27, 1.54, 2.00, 0.06), mantlet(1.00, 0.29, 1.55, 2.00, 0.08),
       mantlet(1.10, 0.22, 1.57, 1.97, 0.05), mantlet(1.30, 0.18, 1.62, 1.93, 0.08)]), 'mantlet'));
     // the gunner's sensor on its post over the mantlet top (measured: head to 2.20 over x -0.10..0.05, z 1.10-1.24)
-    P.addGunExtra(part(box(0.15, 0.27, 0.14), 'mantlet-sensor'), -0.03, gy(2.065), gz(1.18));
-    P.addGunExtraDark(part(box(0.10, 0.07, 0.008), 'mantlet-sensor-window'), -0.03, gy(2.13), gz(1.254));
+    P.addGunExtra(part(box(0.15, 0.22, 0.17), 'mantlet-sensor'), -0.03, gy(2.05), gz(1.18));
+    P.addGunExtraDark(part(box(0.10, 0.07, 0.008), 'mantlet-sensor-window'), -0.03, gy(2.10), gz(1.269));
     // coaxial machine gun port on the mantlet's right shoulder (until the production coax moves to its cheek housing)
     if (!stage.coaxHousing) P.addGunExtraDark(part(cylZ(0.022, 0.12, P.q ? 12 : 8), 'coax-port'), 0.14, gy(1.67), gz(1.22));
   } else {
