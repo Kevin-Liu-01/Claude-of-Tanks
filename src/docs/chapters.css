@@ -223,7 +223,8 @@
 .dm-maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
 .dm-map{display:grid;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);scroll-margin-top:calc(var(--shell-nav-h) + var(--s4))}
 .dm-map img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
-.dm-map__name{display:flex;align-items:center;gap:8px;padding:9px 11px;font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-1)}
+/* a map card's label row pads as a class card's body does: 12 px on a desktop, 9 on a phone (r38) */
+.dm-map__name{display:flex;align-items:center;gap:8px;padding:9px 12px;font:600 max(var(--fs-floor-12),var(--fs-14))/1.2 var(--font-body);color:var(--ink-1)}
 .dm-map__tags{display:inline-flex;gap:5px;margin-left:auto;color:var(--ink-3)}
 .dm-map:target{box-shadow:var(--ring-2)}
 @media (width < 768px){
@@ -232,7 +233,7 @@
   .dm-classes>.dm-class:last-child:nth-child(odd){grid-column:1/-1}
   .dm-class__body{padding:8px 9px 10px}
   .dm-maps{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
-  .dm-map__name{padding:7px 8px;font-size:max(var(--fs-floor-12),var(--fs-13))}
+  .dm-map__name{padding:7px 9px;font-size:max(var(--fs-floor-12),var(--fs-13))}
   .dm-bars b{min-width:3.5em}
 }
 /* the multiplayer, sound and studio chapters: ways in, seats drawn to scale, steps, linked chips, glyph rows */
