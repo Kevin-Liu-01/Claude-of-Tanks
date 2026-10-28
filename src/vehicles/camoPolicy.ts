@@ -803,6 +803,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
   bm_oplot_m: 'paint_bm_oplot_m',
   bm_oplot_t: 'paint_bm_oplot_t',
+  // the PT-84 Orzeł in the Polish three-tone woodland (the Zubr family's authored paint), not the PL-01's digital
+  pt84_orzel: 'paint_pl_t80u_modern',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
