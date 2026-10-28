@@ -143,7 +143,7 @@ export function placeMenu(
 /** A panel's room for a menu: its box inside its own rule, so a spanning menu's ring (the elevation's 1 px line, outside
  *  its box) lies on that rule (the 261 critics: a ring a pixel past the readout's rule), and over its scrollbar, which
  *  would otherwise show beside the menu; within the window. */
-export function panelRoom(node: Element): Required<MenuRoom> {
+export function panelRoom(node: Element): Required<Omit<MenuRoom, 'span'>> {
   const win = node.ownerDocument.defaultView ?? window;
   const box = node.getBoundingClientRect(), style = win.getComputedStyle(node);
   const rule = (side: 'top' | 'right' | 'bottom' | 'left'): number => parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
