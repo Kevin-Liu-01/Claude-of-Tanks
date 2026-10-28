@@ -15,6 +15,8 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
+// the tablet layer (main.ts loads it at boot): the touch HUD's tablet sizes, item 262
+import '../../src/ui/tablet.css';
 import { PerspectiveCamera, Vector3, WebGLRenderer } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';

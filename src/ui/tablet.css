@@ -61,6 +61,21 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
    they wear under a phone's bar; the iPad critic r2 read them see-through) */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);
   background:var(--plate-fill);box-shadow:var(--ring-2);}
+/* ---- the battle's touch layout on a tablet: the phone's HUD sizes (a 116 px map, the hull panel at .58, the dial at
+   .78-.82) left a tablet's screen mostly empty and the map unreadable at arm's length. From a tablet's width, short and
+   tight windows aside (a phone held wide keeps its seats), the map reads at 176 px, the hull panel at .82 and the dial at
+   .92; an upright iPad mini (compact width, standard or tall) takes a 140 px map and keeps the phone's HP row. The toasts
+   and the network corner keep their 8 px from the larger map. FIRE, the stick and every pinned seat stay their own. */
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']){
+  --hud-touch-mm:calc(176px * var(--mm-k,1));}
+body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall']){--hud-touch-mm:calc(140px * var(--mm-k,1));}
+body.cot-touch-layout{--hud-touch-mm-top:max(8px,env(safe-area-inset-top));}
+body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait']{--hud-touch-mm-top:calc(max(8px,env(safe-area-inset-top)) + 100px);}
+:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-minimap{width:var(--hud-touch-mm)!important;height:var(--hud-touch-mm)!important;}
+:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])):not([data-map-slot]) .cot-si-toasthost{top:calc(var(--hud-touch-mm-top) + var(--hud-touch-mm) + 8px);}
+:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])):not([data-map-slot]) .cot-net{left:calc(max(var(--s3),env(safe-area-inset-left)) + var(--hud-touch-mm) + 8px);}
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-dp{transform:scale(.82);}
+body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-drive{transform:scale(.92);}
 /* under 800 px across (an iPad mini, a Split View half) the fourteen chips do not fit one row: they take two rows of seven,
    every nation in view, the filter beside both, and the stack over them rises by the row */
 @media (width < 800px){
