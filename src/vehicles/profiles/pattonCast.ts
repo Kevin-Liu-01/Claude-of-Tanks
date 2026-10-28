@@ -354,6 +354,8 @@ interface PershingHullSpec {
   readonly outerBox?: readonly [number, number, number, number, number, number];
   /** Where the knee's rounding meets the flat upper glacis plate (the plate runs from here to the toe). */
   readonly glacisShoulder?: readonly [number, number];
+  /** The fender's support brackets under its outer edge (z stations), where the reference shows them. */
+  readonly fenderBrackets?: readonly number[];
 }
 
 function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string, HullFrame> {
@@ -430,6 +432,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
     P.add('hull', fenderRun(a, b, line, 0.03));
     // the fender's outer lip
     P.add('hullDetail', box(0.025, 0.07, lip1 - lip0), side * (fx1 - 0.012), H.fenderY - 0.045, (lip0 + lip1) / 2);
+  }
+  for (const z of H.fenderBrackets ?? []) {
+    for (const side of [-1, 1]) P.add('hullDark', box(0.10, 0.10, 0.06), side * (H.fenderHW - 0.05), H.fenderY - 0.08, z);
   }
   const boxH = H.fenderBoxH ?? 0.22;
   const [bx0, bx1] = H.fenderBoxX ?? [H.fenderHW - 0.28, H.fenderHW - 0.02];
@@ -907,7 +912,7 @@ const M46_HULL_SPEC: PershingHullSpec = {
   deckY: 1.62, engineDeckY: 1.73, engineDeckZ: -1.30, tailTopY: 1.61, tailBotY: 0.64,
   sponsonHW: 1.45, sponsonY: 1.40, fenderHW: 1.756, fenderY: 1.40, trackW: 0.64, xc: 1.36,
   fenderLine: [[-4.24, 1.40], [1.45, 1.40], [1.62, 1.32]], rearFlapH: 0.37, rearFlapX: [1.06, 1.75], noseDepth: 0.10,
-  sponsonFrontBox: [0.94, 1.17, 1.45, 1.68, 1.50, 1.68], fenderBoxH: 0.25, fenderBoxX: [1.45, 1.61],
+  sponsonFrontBox: [0.94, 1.17, 1.45, 1.68, 1.50, 1.68], fenderBrackets: [-3.55, -1.80, 0, 0.45, 0.90], fenderBoxH: 0.25, fenderBoxX: [1.45, 1.61],
   fenderBoxes: [[1.20, 0.25], [0.20, -0.75], [-0.80, -1.85], [-1.90, -3.05]], mufflers: false, bowLights: [0.70, 1.15, 1.90],
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [1.02, -2.68], rollerN: 5, rollerY: 1.04, rollerSpan: [0.55, -2.40],
@@ -1024,7 +1029,7 @@ const M47_HULL_SPEC: PershingHullSpec = {
   fenderBoxH: 0.26, fenderBoxX: [1.45, 1.66], fenderBoxes: [[0.50, -0.40], [-0.45, -1.45], [-1.50, -2.90]],
   outerBox: [1.66, 1.75, 1.40, 1.58, -2.00, -1.80],
   mufflers: false, bowLights: [0.72, 1.22, 1.92], frontFlap: false, bowEyesOnGlacis: true,
-  sponsonFrontBox: [0.94, 1.30, 1.45, 1.63, 0.92, 1.18],
+  sponsonFrontBox: [0.94, 1.30, 1.45, 1.63, 0.92, 1.18], fenderBrackets: [-0.45, 0, 0.43, 1.30],
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [0.92, -2.65], rollerN: 3, rollerY: 1.04, rollerSpan: [0.25, -2.15],
     idler: { z: 1.64, y: 0.88, r: 0.30 }, sprocket: { z: -3.65, y: 1.04, r: 0.30 },
