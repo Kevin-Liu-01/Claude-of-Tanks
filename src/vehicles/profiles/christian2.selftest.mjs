@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
-import { CHRISTIAN2_HULL as H, CHRISTIAN2_TURRET as T } from '../christian2Armor.ts';
+import { CHRISTIAN2_TURRET as T } from '../christian2Armor.ts';
+import { LEOPARD2_HULL as H } from '../leopard2HullDatums.ts';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 import { firstPartyConcept } from '../../../tools/first-party-concept-policy.mjs';
 import { assertConceptDatums } from '../../../tools/first-party-concept-datums.mjs';
@@ -30,7 +31,7 @@ const spec = getSpec('christian2');
 assert.equal(spec.name, 'Christian II');
 assert.equal(spec.nation, 'Denmark');
 assert.equal(spec.variantOf, undefined, 'no fleet parent');
-assert.deepEqual(spec.gun.autoloader, { magazineSize: 3, intraClipS: 2.0, fullReloadS: 15.5 }, 'the bustle autoloader cycle');
+assert.deepEqual(spec.gun.autoloader, { magazineSize: 3, intraClipS: 2.1, fullReloadS: 17 }, 'the bustle autoloader cycle');
 assert.ok(spec.armor.turretPlates.some((p) => p.name === 'mantlet' && p.gunFollow), 'the box mantlet follows the gun');
 
 // 2. none of the Type 90 X's stock

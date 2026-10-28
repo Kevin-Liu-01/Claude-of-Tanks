@@ -29,6 +29,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 - Mode: new first-party concept build (the handbook's fresh generation). The supplied model is a concept's proportions
   oracle only: its datums are measured, nothing of its surfaces is traced.
 - Owned files: `src/vehicles/profiles/christian2.ts`, `src/vehicles/christian2Specs.ts`, `src/vehicles/christian2Armor.ts`,
+  the release's shared Leopard 2-pattern hull (`src/vehicles/profiles/leopard2Hull.ts`, `src/vehicles/leopard2HullDatums.ts`;
+  the Leopard 2A3 of the fourth batch rides it too),
   the `christian2` suit row in `src/vehicles/ghillieFleetSuits.ts`, `src/vehicles/profiles/christian2.selftest.mjs`,
   `docs/references/concepts/christian2-20261027.json`, this packet; one registration line each in the shared tables.
 - Protected originals: `type90` (Type 90 X) and every Leopard 2 (`leopard.ts`) byte-identical to origin/main.
@@ -56,10 +58,10 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   roof 2.46-2.47 m (2.31 at its front edge), hull deck 1.63-1.70 m, ring centre z 0.37 m (radius 0.98 m), bore axis 2.00 m,
   breech z -0.17 m, muzzle z 5.70 m, turret front face z 1.66 m, side half-width 1.28 m stepping to 1.16 m over the bustle
   from z -1.2, bustle floor 1.85 m, seven road wheels.
-- Built versus oracle: 9.581 m overall (-3.0 %: the oracle's 9.875 includes its rear stowage and tow gear, its hull plates
-  match within 1 cm), 3.636 m wide (-0.1 %), roof 2.47 m (0 %), muzzle z 5.71 (5.70), bore axis 2.00 m (2.00), ring
-  (0, 1.64, 0.37) (z 0.37), seven road wheels at the oracle's stations (mean of its staggered sides), the side half-width
-  1.28 m stepping to 1.16 m over the bustle.
+- Built versus oracle: 9.757 m overall (-1.2 %), 3.672 m wide over the fore blocks' bolts (+0.9 %), roof 2.47 m (0 %),
+  muzzle z 5.71 (5.70), bore axis 2.00 m (2.00), ring (0, 1.64, 0.37) (z 0.37), seven road wheels at the oracle's
+  stations (mean of its staggered sides), the turret's side half-width 1.28 m stepping to 1.16 m over the bustle, the
+  skirts hanging 0.46 m from the sponson's floor at 1.36 m.
 
 ## Concept (owner-authored; nation ruled by Main 2026-10-27)
 
@@ -74,13 +76,18 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 
 ## Construction work order
 
-- Datums (`christian2Armor.ts`, shared by the builder, the spec and the receipts): deck line z -3.80..3.45 (engine deck
+- Datums (`leopard2HullDatums.ts` for the hull, `christian2Armor.ts` for the turret; shared by the builders, the spec and
+  the receipts): deck line z -3.80..3.45 (engine deck
   1.78-1.80, compartment 1.63-1.64, upper glacis from z 1.55 down to the nose at 1.25), belly 0.54, tub half-width 1.00,
   sponsons 1.67 with their floor at 1.36; seven road wheels r 0.348 at y 0.425 (z 2.417 .. -2.533), track centre 1.359,
   width 0.643, idler front (3.187, 0.895, r 0.26), sprocket rear (-3.20, 0.895, r 0.30), four return rollers; skirts:
   three bolted fore blocks (z 1.42..3.16, face 1.818) and six thin aft panels (face 1.72), tops 1.50. Turret ring
   (0, 1.64, 0.37); shell half-width 1.28 to the step at z -1.57, bustle 1.16 to z -2.73, roof 0.74 (front) .. 0.83,
   frontal modules to z 1.32 either side of a 0.71 m gun slot; trunnion (0, 0.36, 1.04), L/44 tube 4.29 m, r 0.084.
+- Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
+  the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
+  of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
+  on the 2A3), lifting eyes, tail-light clusters, tow hooks, a convoy light and a rear stowage box.
 - Material roles: hull, skirts and turret shell painted armour; the frontal modules permanent armour; sights glass in
   armoured frames; bins, basket and rails painted fittings; the suit's net and garnish cloth/foliage (`open-lattice`).
 - Gameplay plates (`christian2Armor.ts`): glacis 460 mm (KE 420 / CE 640), lower front, sponson and tub sides 80, rear
@@ -100,3 +107,10 @@ See the round log; filled as each gate runs.
 - R3 (2026-10-27, the owner's correction "the type 90 is a separate tank"): the Type 90 X derivative dropped (type90X.ts
   back to origin/main byte-identical); a fresh build at the oracle's proportions: Leopard 2-pattern hull and seven-wheel
   gear, own turret, own armour; the suit row refitted (drapes hang from over the turret walls' shoulders).
+- R4 (blind critic 1 FAIL: barrel cloth fins, bare turret front, card-like drapes, the driver's hatch sunk in the glacis,
+  a toy-like engine deck and rear, the M2 over the panoramic head, the ring slit, a fender whisker): the hull and gear
+  split into the shared `leopard2Hull.ts` (per-mesh hashes identical before the fixes), the critic's hull fixes there; the
+  cupola raised to stand its vision blocks 20 cm over the roof (their view cones had cleared the roof net and so the
+  wall drapes' anchor), the M2 moved to the cupola's rear-outboard rim and laid outboard of the head, a ring guard; the
+  suit's drapes re-laid (three long hull drapes a side, wall drapes ahead of the smoke banks, the frontal modules' faces,
+  two wraps hugging the tube).

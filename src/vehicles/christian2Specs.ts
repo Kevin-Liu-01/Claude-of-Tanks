@@ -18,9 +18,9 @@ delete spec.label;
 delete spec.roster;
 delete spec.gunPitchByYawDeg;
 stripSilhouetteDimensions(spec.dims);
-// the built vehicle: the hull 7.25 m between its plates (7.49 m over its fittings), 9.58 m over the gun, 3.64 m over the
-// skirts, roof 2.47 m
-Object.assign(spec.dims, { hullLengthM: 7.49, overallLengthM: 9.581, widthM: 3.636, heightM: 2.47 });
+// the built vehicle: the hull 7.25 m between its plates (7.59 m over its fittings and stern box), 9.757 m over the gun,
+// 3.672 m over the skirt blocks' bolts, roof 2.47 m
+Object.assign(spec.dims, { hullLengthM: 7.59, overallLengthM: 9.757, widthM: 3.672, heightM: 2.47 });
 // 2020s concept: a Leopard 2-class 1,500 hp pack on 58 t; three crew with a bustle autoloader
 Object.assign(spec, {
   hp: 2500, enginePowerHp: 1500, weightTons: 58.0, topSpeedKmh: 68, reverseSpeedKmh: 30,
@@ -28,8 +28,10 @@ Object.assign(spec, {
 });
 spec.gun = {
   ...spec.gun,
-  reloadS: 15.5, baseAccuracy: 0.27, aimTimeS: 1.6,
-  autoloader: { magazineSize: 3, intraClipS: 2.0, fullReloadS: 15.5 },
+  // the tier-fairness round robin at VIII (the 800 mm mantlet insert and this cycle: strength 0.47, 10 of 29 pairs in
+  // band; lane evidence fairlever.txt)
+  reloadS: 17, baseAccuracy: 0.27, aimTimeS: 1.6,
+  autoloader: { magazineSize: 3, intraClipS: 2.1, fullReloadS: 17 },
   // DM53-class APFSDS from the L/44, a newer multi-purpose round and HE
   shells: [
     { ...spec.gun.shells[0], name: 'DM53A1 APFSDS', pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700, dmg: 530, velocityMps: 1750 },
