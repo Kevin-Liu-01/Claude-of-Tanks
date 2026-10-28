@@ -52,14 +52,14 @@ in [bm_oplot_t.md](bm_oplot_t.md).
 
 | Gate | Status | Command / artifact | Result |
 | --- | --- | --- | --- |
-| Source/conversion/frame integrity | PASS | source-x-oracle --inspect/--prepare; `tools/oplot-bm-x-reference.selftest.mjs` | hashes pinned, no omissions |
-| Registered silhouettes (92 every view) | PENDING | `procedural-fidelity.mjs --ids=bm_oplot_m --check --board --neutral-board` (queued) | |
-| Geometry gate (92 every component, 3% dims) | PENDING | `geometry-gate.mjs --ids=bm_oplot_m --check` (queued) | |
-| Independent critic (9/10 every view) | NOT RUN | blind critic on GPU renders | |
-| Turret parenting / winding / track clip | PENDING | turret-parent-audit, winding-audit --check, track-clip-audit --exact --strict (queued) | |
-| Gun clearance over -5..+14 | PENDING | gun-depression-sweep (r4 running) then `oplotBMGun.selftest.mjs` | |
-| Anatomy, fills, markings, seats, spare, ledger, gun lines | NOT RUN | lane chain after geometry freezes | |
-| Assets / hero cards / drawings / centering | NOT RUN | after the chain | |
+| Source/conversion/frame integrity | PASS | source-x-oracle --inspect/--prepare; `tools/oplot-bm-x-reference.selftest.mjs` | hashes pinned, no omissions; ring and trunnion on the certificate datums (r8) |
+| Registered silhouettes (92 every view) | FAIL r8, r12 QUEUED | `procedural-fidelity.mjs --ids=bm_oplot_m --check --board --neutral-board` | r8: 92.1 overall; front 89.3, left 90.0, right 89.6, frontright 91.5, rear 91.6 below 92. r12 adds the measured blade, cowl and KT-12.7 box (CPU IoU front 0.848 -> 0.880). The owner's kit (second station, drums, skirt course) is procedural-only area by design |
+| Geometry gate (92 every component, 3% dims) | FAIL r8, r12 QUEUED | `geometry-gate.mjs --ids=bm_oplot_m --check` | r8: whole 89.3, dims 0 (spec dims were the bare tank's; now the build's measured extents), floaters 100 |
+| Independent critic | PASS (2 rounds) | blind subagents on z-buffered renders vs the owner's references | round 1: FAIL distinctness -> kits reworked; round 2: both recognisable, distinctness PASS; the defects they named fixed or answered (roof "hole" and fender "pits" were a painter's-sort artefact of the lane renderer) |
+| Turret parenting / winding / track clip | turret-parent explained; winding, track clip QUEUED | turret-parent-audit, winding-audit --check, track-clip-audit --exact --strict | turret-parent: one "stranded" hullHatch per id = the driver's hatch under the cheek ERA overhang, 6 cm clear |
+| Gun clearance over -5..+14 | PASS | gun-depression-sweep r9 -> `gunPitchByYawDeg`; `oplotBMGun.selftest.mjs` | worst 2.7 cm (Oplot-T over its APU), full -5 to 142 / 134 deg of yaw |
+| Anatomy, fills, markings, seats, spare, ledger, gun lines | PASS | lane chain (ids-scoped), r12 | anatomy fixpoint PASS, rigs gate PASS, ids-only diffs |
+| Assets / hero cards / drawings / centering | centering PASS; icons, drawings QUEUED; hero cards after icons | presentation-centering --update; genIcons; genDrawings | |
 | Composed release (lane) | NOT RUN | `tank:release:check -- --ids=... --gate --lane` | |
 
 ## Sources
