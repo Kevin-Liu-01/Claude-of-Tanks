@@ -9,7 +9,7 @@
   "href": "/docs/start#garage",
   "title": "Pick a tank",
   "chapter": "Your first battle",
-  "text": "01 The Garage opens on your fleet of 221 tanks. Pick one: its dossier shows the armor, the gun and how it moves, and the Tank Gallery opens its full anatomy."
+  "text": "01 The Garage opens on your fleet of 222 tanks. Pick one: its dossier shows the armor, the gun and how it moves, and the Tank Gallery opens its full anatomy."
  },
  {
   "href": "/docs/start#deploy",
@@ -123,19 +123,19 @@
   "href": "/docs/tanks#classes",
   "title": "Classes",
   "chapter": "Tanks and equipment",
-  "text": "Tier X Main battle tank 159 AbramsX Tier III Medium tank 7 Centurion Mk 5/2 Tier I Heavy tank 1 KV-2 Tier X Light tank 6 BMP-3M Dragun 125 Tier X Infantry fighting vehicle 35 Griffin 50 mm Tier II Armored personnel carrier 1 Ares APC Tier X Tank destroyer 7 Object 695 Tier V Self-propelled anti-aircraft 1 M6 Linebacker Tier X Fire support vehicle 4 ZTZ-100 Prototype Open any of them in the Tank Gallery"
+  "text": "Tier X Main battle tank 159 AbramsX Tier III Medium tank 8 Centurion Mk 5/2 Tier I Heavy tank 1 KV-2 Tier X Light tank 6 BMP-3M Dragun 125 Tier X Infantry fighting vehicle 35 Griffin 50 mm Tier II Armored personnel carrier 1 Ares APC Tier X Tank destroyer 7 Object 695 Tier V Self-propelled anti-aircraft 1 M6 Linebacker Tier X Fire support vehicle 4 ZTZ-100 Prototype Open any of them in the Tank Gallery"
  },
  {
   "href": "/docs/tanks#roles",
   "title": "Battle roles",
   "chapter": "Tanks and equipment",
-  "text": "A role is how the tank plays: the bots drive it that way, and the Garage filters by it. Breakthrough 68 Heavy armor and hit points: leads the push and absorbs fire. Frontline 42 Balanced main-line tank: armor, mobility and firepower in proportion. Flanker 44 Fast and agile: strikes the sides and relocates quickly. Sniper 19 Accurate long-range gun: fights from cover at distance. Scout 15 Spots for the team and avoids sustained fights. Support 33 Autocannons, missiles or fire support that back the tanks."
+  "text": "A role is how the tank plays: the bots drive it that way, and the Garage filters by it. Breakthrough 69 Heavy armor and hit points: leads the push and absorbs fire. Frontline 42 Balanced main-line tank: armor, mobility and firepower in proportion. Flanker 44 Fast and agile: strikes the sides and relocates quickly. Sniper 19 Accurate long-range gun: fights from cover at distance. Scout 15 Spots for the team and avoids sustained fights. Support 33 Autocannons, missiles or fire support that back the tanks."
  },
  {
   "href": "/docs/tanks#tiers",
   "title": "Tiers and nations",
   "chapter": "Tanks and equipment",
-  "text": "A tank's tier is its column in its nation's tech tree. X 28 IX 36 VIII 29 VII 17 VI 20 V 15 IV 19 III 19 II 19 I 19 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
+  "text": "A tank's tier is its column in its nation's tech tree. X 28 IX 36 VIII 29 VII 17 VI 20 V 15 IV 19 III 19 II 19 I 20 13 nations Soviet Union 44 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
  },
  {
   "href": "/docs/tanks#equipment",

@@ -135,6 +135,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
     // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
     'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-28 (release 262 CN, the Type 59 / T-55A and Longwei rebuilds): each gun stays inside its mantlet at every
+    // degree from full depression to full elevation
+    'src/vehicles/cnGunMantlet.selftest.mjs',
     // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
     // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
     'src/vehicles/qilinRearFill.selftest.mjs',

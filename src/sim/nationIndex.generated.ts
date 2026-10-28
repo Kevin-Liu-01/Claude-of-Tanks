@@ -12,6 +12,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["m1a1_abrams_fep","usa","modern",8],
   ["m1a3","usa","next-generation",10],
   ["abramsx","usa","next-generation",10],
+  ["t55a","russia","cold-war",1],
   ["t62_1975","russia","cold-war",1],
   ["t64bv1","russia","cold-war",3],
   ["t72b3m_2022","russia","modern",6],
