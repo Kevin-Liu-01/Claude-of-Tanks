@@ -1,0 +1,198 @@
+// src/vehicles/alphaCutTexture.ts — straight-alpha finishing for the vehicles' alpha-cut textures: the suits'
+// garnished net (camoNetTexture.ts), the fitted cover's cut-leaf fabric (ghillieSuit.ts) and the garnish atlases
+// (vehicleFoliage.ts). three.js only, like camoNetTexture.ts, so the decor's nets can use it without the fleet.
+//
+// The ghillie render lane (263, 2026-10-28; the GPU-still critic on the Christian II and the Strv 121: "the net reads
+// flat: no visible depth, sag or shadowing between the net and the hull", "black specks and dark fringes at grazing
+// angles"). Three faults every suit shared:
+// - A canvas stores premultiplied colour, so every transparent texel of a painted net read back black (0, 0, 0, 0).
+//   Bilinear filtering at the cut and every mip level averaged that black into the cords' and strips' edges: a dark rim
+//   round each strand up close, a net that darkened and speckled with range. A finished texture keeps straight alpha
+//   in an ImageData and floods each transparent texel with the colour of the cloth beside it (floodClearTexels).
+// - The GPU's box mips thinned the cut with range (and lighting.ts built its coverage mips from the same black): the
+//   texture carries its own coverage-preserving chain (coverageMipChainSteps, the trees' rule).
+// - Nothing in a net was shaded by what lay over it. The height map the bump reads already says which strip lies over
+//   which: occlusion baked from it darkens what lies under the garnish, and the net's gaps under thick garnish take the
+//   shade they would show, the hull in the garnish's shadow (shadeFromHeight), so a laid net reads as a layer standing
+//   off the hull, not a print on it. Baked into the map, it costs no draw, sampler or shader variant.
+import * as THREE from 'three';
+
+export type MipImage = { data: Uint8ClampedArray; width: number; height: number };
+export const mipImage = (size: number): MipImage => (typeof ImageData === 'function'
+  ? new ImageData(size, size) as MipImage
+  : { data: new Uint8ClampedArray(size * size * 4), width: size, height: size });
+
+/**
+ * The coverage-preserving mip chain of an ImageData atlas (lighting.ts buildCoverageMipmaps' rule, run on the straight
+ * alpha directly: a canvas round trip would premultiply away the flood tone of the transparent texels). Each level is
+ * a 2 x 2 box of the one above, then its alpha is remapped so the share of texels passing the cut matches level 0 —
+ * a distant card keeps its leafy silhouette instead of thinning below the cut or resolving as a flood rectangle. A
+ * power-of-two box never reads across the image's edge, so a repeating net tiles at every level.
+ */
+export function* coverageMipChainSteps(level0: MipImage, cutoff: number): Generator<void, MipImage[], void> {
+  const cut = Math.round(cutoff * 255);
+  const coverage = (d: Uint8ClampedArray): number => {
+    let pass = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] >= cut) pass++;
+    return pass / (d.length / 4);
+  };
+  const target = coverage(level0.data);
+  const chain: MipImage[] = [level0];
+  let prev = level0;
+  for (let size = level0.width >> 1; size >= 1; size >>= 1) {
+    const next = mipImage(size);
+    const src = prev.data, dst = next.data, sw = size * 2;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const tl = ((y * 2) * sw + x * 2) * 4, bl = tl + sw * 4, o = (y * size + x) * 4;
+      for (let c = 0; c < 4; c++) dst[o + c] = (src[tl + c] + src[tl + 4 + c] + src[bl + c] + src[bl + 4 + c] + 2) >> 2;
+    }
+    const now = coverage(dst);
+    if (target > 0 && size >= 2 && (now < target * 0.7 || now > target * 1.3)) {
+      const alphas: number[] = [];
+      for (let i = 3; i < dst.length; i += 4) alphas.push(dst[i]);
+      alphas.sort((a, b) => b - a);
+      const quantile = Math.max(1, alphas[Math.min(alphas.length - 1, Math.max(0, Math.round(target * alphas.length) - 1))]);
+      for (let i = 3; i < dst.length; i += 4) dst[i] = Math.max(0, Math.min(255, cut + (dst[i] - quantile) * 3));
+    }
+    chain.push(next);
+    prev = next;
+    // (boot-261) a step a level: the first, a quarter of the atlas with its sorted alphas, is most of the chain
+    if (size >= 64) yield;
+  }
+  return chain;
+}
+
+/**
+ * Flood every texel under `floor` alpha with the colour of the cloth nearest it (a few rings of dilation from the
+ * texels at or over it, then the image's mean cloth colour, of its texels at or over `solid`, for what the rings never
+ * reach), keeping its alpha: filtering at the cut and the mips then blend the cloth with its own colour, never with
+ * black. `wrap`: the image repeats (a net), so the rings run across its edges. `fillRest` false: texels the rings never
+ * reach keep their colour (an atlas whose tiles carry their own mean-tone flood).
+ */
+export function floodClearTexels(d: Uint8ClampedArray, size: number,
+  { floor = 48, solid = 128, rings = 6, wrap = true, fillRest = true } = {}): void {
+  const n = size * size;
+  const known = new Uint8Array(n);
+  let mr = 0, mg = 0, mb = 0, count = 0;
+  for (let p = 0; p < n; p++) {
+    const a = d[p * 4 + 3];
+    if (a >= solid) { mr += d[p * 4]; mg += d[p * 4 + 1]; mb += d[p * 4 + 2]; count++; }
+    known[p] = a >= floor ? 1 : 0;
+  }
+  const mean = count ? [mr / count, mg / count, mb / count] : [70, 72, 52];
+  let next = new Uint8Array(known);
+  const nb = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]] as const;
+  for (let ring = 0; ring < rings; ring++) {
+    let grew = false;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const p = y * size + x;
+      if (known[p]) continue;
+      let r = 0, g = 0, b = 0, w = 0;
+      for (const [dx, dy] of nb) {
+        let qx = x + dx, qy = y + dy;
+        if (wrap) { qx = (qx + size) % size; qy = (qy + size) % size; } else if (qx < 0 || qy < 0 || qx >= size || qy >= size) continue;
+        const q = qy * size + qx;
+        if (!known[q]) continue;
+        const k = dx && dy ? 0.7 : 1;
+        r += d[q * 4] * k; g += d[q * 4 + 1] * k; b += d[q * 4 + 2] * k; w += k;
+      }
+      if (!w) continue;
+      d[p * 4] = r / w; d[p * 4 + 1] = g / w; d[p * 4 + 2] = b / w;
+      next[p] = 1;
+      grew = true;
+    }
+    known.set(next);
+    if (!grew) break;
+    next = new Uint8Array(known);
+  }
+  if (fillRest) for (let p = 0; p < n; p++) if (!known[p]) { d[p * 4] = mean[0]; d[p * 4 + 1] = mean[1]; d[p * 4 + 2] = mean[2]; }
+}
+
+/** A repeating box blur of one channel (two passes of a sliding window per axis: close to a Gaussian of radius r). */
+function blurWrap(src: Float32Array, size: number, r: number): Float32Array {
+  const out = Float32Array.from(src), tmp = new Float32Array(src.length);
+  const pass = (from: Float32Array, to: Float32Array, horizontal: boolean): void => {
+    const span = 2 * r + 1;
+    for (let line = 0; line < size; line++) {
+      let sum = 0;
+      const at = (k: number): number => {
+        const w = ((k % size) + size) % size;
+        return horizontal ? from[line * size + w] : from[w * size + line];
+      };
+      for (let k = -r; k <= r; k++) sum += at(k);
+      for (let k = 0; k < size; k++) {
+        if (horizontal) to[line * size + k] = sum / span; else to[k * size + line] = sum / span;
+        sum += at(k + r + 1) - at(k - r);
+      }
+    }
+  };
+  for (let round = 0; round < 2; round++) {
+    pass(out, tmp, true);
+    pass(tmp, out, false);
+  }
+  return out;
+}
+
+export interface CutTextureShade {
+  /** The cut (0..1) the material tests: a texel at or over it is cloth. */
+  readonly cutoff: number;
+  /** A texel's shade at the lowest height of the cloth, relative to the highest (1: height does not shade). */
+  readonly lowShade: number;
+  /** How strongly cloth lying under its surroundings darkens (the strips over a cord, a bunch's foot). */
+  readonly occlusion: number;
+  /** The blur radii (texels) the occlusion reads its surroundings at, near and broad. */
+  readonly radii: readonly [number, number];
+  /**
+   * The net's gaps under thick garnish: a clear texel whose broad surroundings stand over `fill[0]` of full height
+   * begins to take `tone` (sRGB, the hull in the garnish's shadow), fully over `fill[1]`. Absent: every gap stays open.
+   */
+  readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number] };
+}
+
+/**
+ * Bake the occlusion of a painted cut texture from its height map (straight-alpha `d`, `height` read from the bump
+ * canvas, one grey channel): cloth darkens with depth and where its surroundings stand over it, and gaps under thick
+ * garnish fill with the shade beneath it. Returns the share of texels it filled.
+ */
+export function shadeFromHeight(d: Uint8ClampedArray, height: Uint8ClampedArray, size: number, shade: CutTextureShade): number {
+  const n = size * size, cut = Math.round(shade.cutoff * 255);
+  const h = new Float32Array(n);
+  for (let p = 0; p < n; p++) h[p] = height[p * 4] / 255;
+  const near = blurWrap(h, size, shade.radii[0]), broad = blurWrap(h, size, shade.radii[1]);
+  let filled = 0;
+  for (let p = 0; p < n; p++) {
+    const o = p * 4;
+    const under = Math.max(0, 0.6 * near[p] + 0.4 * broad[p] - h[p]);
+    if (d[o + 3] >= cut) {
+      const k = (shade.lowShade + (1 - shade.lowShade) * h[p]) * Math.max(0.3, 1 - shade.occlusion * under);
+      d[o] *= k; d[o + 1] *= k; d[o + 2] *= k;
+      continue;
+    }
+    if (!shade.gaps) continue;
+    const t = THREE.MathUtils.smoothstep(broad[p], shade.gaps.fill[0], shade.gaps.fill[1]);
+    if (t <= 0) continue;
+    // a little lighter toward the gap's open edge, darkest under the garnish's middle
+    const k = 1.25 - 0.45 * t;
+    d[o] = shade.gaps.tone[0] * k; d[o + 1] = shade.gaps.tone[1] * k; d[o + 2] = shade.gaps.tone[2] * k;
+    // a gap fills only where the shade is deep enough to read: its edge is the smooth field's contour at the cut
+    d[o + 3] = Math.round(255 * THREE.MathUtils.clamp(0.5 + (t - 0.5) * 2.4, 0, 1));
+    if (d[o + 3] >= cut) filled++;
+  }
+  return filled / n;
+}
+
+/** A straight-alpha texture over a finished ImageData with its coverage-preserving mips (sRGB colour). */
+export function straightAlphaTexture(image: MipImage, cutoff: number, name: string, repeat: boolean, anisotropy = 4): THREE.Texture {
+  const texture = new THREE.Texture(image as unknown as HTMLImageElement);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = anisotropy;
+  const steps = coverageMipChainSteps(image, cutoff);
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  texture.mipmaps = next.value as unknown as typeof texture.mipmaps;
+  texture.generateMipmaps = false;
+  texture.name = name;
+  texture.needsUpdate = true;
+  return texture;
+}

@@ -6,16 +6,17 @@ import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
-  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
+  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, volumeLitFoliage, type FoliageCard, type VehicleFoliageKind,
 } from './vehicleFoliage.ts';
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import {
-  FIELD_NET_PALETTES, garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette,
-  type SuitTheatre,
+  FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
+  type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
+import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -2109,7 +2110,7 @@ const srgbLin = (c: number): number => { const v = c / 255; return v <= 0.04045 
 
 /** Metres of cover per texture repeat (the paint's own patch scale). */
 const COVER_TILE_M = 1.6;
-const coverCache = new Map<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null>();
+const coverCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
 
 /** The cover's colours: the scheme's base and patches (sRGB), from the vehicle's active camouflage. */
 interface CoverPalette { readonly base: readonly [number, number, number]; readonly patches: ReadonlyArray<readonly [number, number, number]> }
@@ -2219,23 +2220,28 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
 }
 
 /** The fitted cover's fabric for a scheme (cached per palette and seed; null without a DOM). */
-function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
   const key = `${pal.base.join(',')}|${pal.patches.map((c) => c.join(',')).join('|')}|${seed}`;
   if (coverCache.has(key)) return coverCache.get(key)!;
-  let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
+  let out: { map: THREE.Texture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
     try {
       const canvas = document.createElement('canvas'), height = document.createElement('canvas');
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
-      const hctx = height.getContext('2d') as CanvasRenderingContext2D | null;
+      const hctx = height.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
       if (ctx && hctx) {
-        paintCutLeafCover(ctx, hctx, NET_TEXTURE_PX, pal, seed);
-        const map = new THREE.CanvasTexture(canvas);
-        map.colorSpace = THREE.SRGBColorSpace;
+        const S = NET_TEXTURE_PX;
+        paintCutLeafCover(ctx, hctx, S, pal, seed);
+        // (263, alphaCutTexture.ts) each flap shades the fabric round its foot and the fabric under the flaps darkens,
+        // so the cover reads in relief; straight alpha with its own mips keeps the cut-outs' edges free of black
+        const image = ctx.getImageData(0, 0, S, S);
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.72, occlusion: 2.6, radii: [3, 9] });
+        floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
+        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
-        for (const t of [map, bump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
-        map.name = `ghillieCover:${seed}`;
+        bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+        bump.anisotropy = 4;
         bump.name = `ghillieCoverHeight:${seed}`;
         out = { map, bump };
       }
@@ -3358,7 +3364,7 @@ function makeNet(
       // three's bump slope is the height change per screen pixel times bumpScale: kept near the cloth's own 0.5 so the
       // cords and strips stand in relief up close without sparkling at range
       m.bumpScale = leafy ? 0.7 : 0.6;
-      m.alphaTest = 0.5;
+      m.alphaTest = NET_ALPHA_CUT;
       m.transparent = false;
     }
   });
@@ -5552,6 +5558,24 @@ function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
   return wheels?.color ? suitTheatreOf(wheels.color) : 'woodland';
 }
 
+/**
+ * A multispectral cover's garnish atlas: its cut flaps in the theatre's tones, and where its row names a species (the
+ * Strv 121's spruce), that species' boughs in the bough tiles (263: the cover's boughs had been flaps too).
+ */
+function* coverGarnishAtlasSteps(cfg: GhillieConfig, theatre: SuitTheatre): Generator<void, THREE.Texture | null, void> {
+  const flaps = theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland';
+  const kind = cfg.foliageKind;
+  if (!kind || kind === 'garnish-woodland' || kind === 'garnish-arid') return vehicleFoliageAtlas(flaps);
+  return yield* ghillieGarnishAtlasSteps(kind, undefined, flaps);
+}
+
+/** Run a stepped build at once. */
+function drainSteps<T>(steps: Generator<void, T, void>): T {
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
 function garnishSpecies(cfg: GhillieConfig): SprayKind {
   const kind = cfg.foliageKind ?? 'oak';
   return kind === 'garnish-woodland' || kind === 'garnish-arid' ? 'oak' : kind;
@@ -5834,9 +5858,9 @@ function* addGhillieOwner(
     // (boot-261) the garnish atlas paints in this build's steps the first time a species is asked for
     const atlas = leafy
       ? yield* (field ? ghillieGarnishAtlasSteps(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlasSteps(garnishSpecies(cfg)))
-      : vehicleFoliageAtlas(theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+      : yield* coverGarnishAtlasSteps(cfg, theatre);
     const leavesShared = suitMats.leaves.has(atlas);
-    const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    const mat = leavesShared ? suitMats.leaves.get(atlas)! : volumeLitFoliage(makeCloth(P, (m) => configureFoliageMaterial(m, atlas)));
     if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
@@ -5859,7 +5883,7 @@ function* addGhillieOwner(
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
         if (!leafy) {
-          mat.map = vehicleFoliageAtlas(t === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+          mat.map = drainSteps(coverGarnishAtlasSteps(cfg, t));
           return;
         }
         const now = meanStrip(t, field);
