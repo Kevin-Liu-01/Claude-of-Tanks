@@ -8,7 +8,7 @@ import type { FleetTankSpec } from './specContracts.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-export const T64_FAMILY_IDS = Object.freeze(['t64bv', 't64b1v_2022', 't64bm1m'] as const);
+export const T64_FAMILY_IDS = Object.freeze(['t64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur'] as const);
 
 function t64(id: string, donorId: string, name: string, nation: string, visual: Partial<FleetTankSpec['visual']>,
   stats: Partial<Pick<FleetTankSpec, 'hp' | 'enginePowerHp' | 'weightTons' | 'topSpeedKmh'>>): FleetTankSpec {
@@ -33,11 +33,19 @@ const T64_FAMILY_SPECS = {
   t64bm1m: t64('t64bm1m', 't64bv1', 'T-64BM1M', 'Ukraine',
     { ...UA_DIGITAL, number: '641', base: '#45503b', weather: '#5a604b', patches: ['#2e362c', '#5f5d46', '#746a50'] },
     { hp: 2150, enginePowerHp: 1000, weightTons: 45.0, topSpeedKmh: 65 }),
+  // the PT-64 Tur (owner 2026-10-27: "lets create a polish t64 variannnt and add it too"): a first-party Polish what-if,
+  // a T-64B1 through the PT-91 Twardy programme (profiles/pt64Tur.ts). The mod. 2017's record; the 5TDFM (850 hp, the
+  // T-64BM Bulat's engine) and the ERAWA-2 weight (45.5 t); the Polish three-tone the Zubr wears
+  pt64_tur: t64('pt64_tur', 't64bv_donbas', 'PT-64 Tur', 'Poland',
+    { scheme: 'nato', base: '#4a563b', weather: '#4a5c42', patches: ['#29342d', '#827458'], marking: 'number', number: '264' },
+    { hp: 2150, enginePowerHp: 850, weightTons: 45.5, topSpeedKmh: 60 }),
 } satisfies Record<string, FleetTankSpec>;
 
 // The T-64BM1M fires Ukraine's stock 125 mm rounds; as a T-64B1 it has no gun-launched missile (Oryx 2021).
 Object.assign(T64_FAMILY_SPECS.t64bm1m.gun.shells[0], { name: '3BM42 Mango APFSDS' });
 Object.assign(T64_FAMILY_SPECS.t64bm1m.gun.shells[1], { name: '3BK29 HEAT' });
 Object.assign(T64_FAMILY_SPECS.t64bm1m.gun.shells[2], { name: '3OF26 HE-Frag' });
+// The PT-64 Tur fires the PT-91's Polish 125 mm APFSDS-T (Mesko's Pronit).
+Object.assign(T64_FAMILY_SPECS.pt64_tur.gun.shells[0], { name: 'Pronit APFSDS-T' });
 
 registerFleetSpecs(registries, T64_FAMILY_IDS, T64_FAMILY_SPECS);

@@ -109,7 +109,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet armoured-hub six-fastener disc (t14X.ts draws the generic stock); no other Russian next-generation MBT hull exists.' }),
   // 262 (owner 2026-10-27, via Main: the true T-64s get "the T-64's distinctive small road wheels, six a side, with
   // their internal shock absorption, and the thin track"): the T-64 family draws its own construction natively.
-  t64bm1m: Object.freeze({ donor: 't64bm1m', self: ['t64bm1m', 't64bv', 't64b1v_2022'], pattern: 'pressed-eight', construction: 't64-steel-tyred-dual',
+  t64bm1m: Object.freeze({ donor: 't64bm1m', self: ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur'], pattern: 'pressed-eight', construction: 't64-steel-tyred-dual',
     note: 'The T-64 dual road wheel: steel-tyred pressed halves on an internal rubber ring, twelve pressed dimples round a six-bolt hub (t64RunningGear.ts).' }),
   bmp3m_dragun125: Object.freeze({ donor: 'bmp3m_dragun125', self: ['bmp3m_dragun125'], pattern: 'armored-hub-six', construction: 'dragun-rolled-lip',
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),

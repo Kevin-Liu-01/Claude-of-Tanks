@@ -144,5 +144,5 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
 // (FAMILY_UPGRADES above). 262: the new true T-64s, the T-64BM1M and the T-64B1V mod. 2022 at IV under the T-64BV mod. 2017
 // and the T-64BV at III beside the T-64BV1.
-assert.equal(digest, 'a93c375d9293d1be', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, 'd18f689129fc7a7d', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

@@ -99,7 +99,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ukraine: Object.freeze([
     't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 't64bm1m', 't64b1v_2022',
   ]),
-  poland: Object.freeze(['t72m1_jaguar', 'pt91a_twardy', 'pl01', 'pl01_105']),
+  poland: Object.freeze(['t72m1_jaguar', 'pt91a_twardy', 'pl01', 'pl01_105', 'pt64_tur']),
   abramsSourceX: Object.freeze(['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams']),
   abrams: Object.freeze([
     'm1a1_abrams_hc', 'm1a1', 'm1a1ha', 'm1a1_abrams_sa', 'm1a1_abrams_aim',

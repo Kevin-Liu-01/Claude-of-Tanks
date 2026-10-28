@@ -24,17 +24,21 @@ export const T64_DATUMS = Object.freeze({
   trackWidthM: .54,
 } as const);
 
-export type T64Variant = 'bm1m' | 'bv' | 'b1v2022';
+export type T64Variant = 'bm1m' | 'bv' | 'b1v2022' | 'tur';
 
 const NIZH = { keReduction: .30, ceFlatMm: 600 } as const;
 const NIZH_SCREEN = { keReduction: .12, ceFlatMm: 420 } as const;
 const KONTAKT1 = { keReduction: .05, ceFlatMm: 400 } as const;
 const KONTAKT1_SKIRT = { keReduction: .03, ceFlatMm: 300 } as const;
+/** The PT-64 Tur's ERAWA-2 cassettes: the PT-91M's values (glacis and turret; its skirts). */
+const ERAWA2 = { keReduction: .20, ceFlatMm: 450 } as const;
+const ERAWA2_SKIRT = { keReduction: .05, ceFlatMm: 280 } as const;
 
 /** Seed quads for each variant's reactive sectors, named as the builders' destructible clusters; the combat-anatomy
  * generator replaces each with the exact envelope of the cassettes the build emits. */
 function eraZones(variant: T64Variant): { hullPlates: ArmorPlate[]; turretPlates: ArmorPlate[] } {
-  const main = variant === 'bm1m' ? NIZH : KONTAKT1, skirt = variant === 'bm1m' ? NIZH_SCREEN : KONTAKT1_SKIRT;
+  const main = variant === 'bm1m' ? NIZH : variant === 'tur' ? ERAWA2 : KONTAKT1;
+  const skirt = variant === 'bm1m' ? NIZH_SCREEN : variant === 'tur' ? ERAWA2_SKIRT : KONTAKT1_SKIRT;
   const [, py, pz] = T64_DATUMS.turretPivot;
   const era = (e: { keReduction: number; ceFlatMm: number }) => ({ kind: 'era', era: { ...e } });
   return {

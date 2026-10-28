@@ -90,7 +90,7 @@ function tubeClearance(tank, pitch) {
   return { d: Math.sqrt(best), part, samples: samples.length };
 }
 
-for (const id of ['t64bm1m', 't64bv', 't64b1v_2022']) {
+for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) {
   const spec = getSpec(id);
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {

@@ -88,6 +88,7 @@ export function synchronizeFleetRenewalMetadata():void{
   applyT64PhysicalFrame(TANK_SPECS.t64bv,donors.t72b3,'bv',T64_DATUMS.dims);
   applyT64PhysicalFrame(TANK_SPECS.t64b1v_2022,donors.t72b3,'b1v2022',{...T64_DATUMS.dims,widthM:3.72});
   applyT64PhysicalFrame(TANK_SPECS.t64bm1m,donors.t72b3,'bm1m',{...T64_DATUMS.dims,widthM:3.61});
+  applyT64PhysicalFrame(TANK_SPECS.pt64_tur,donors.t72b3,'tur',{...T64_DATUMS.dims,widthM:3.55});
   TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
   // release 231: the T-80UK's own measured stops (its command kit over the rear deck; t80uXArmor.ts)
   TANK_SPECS.t80uk.gunPitchByYawDeg=T80UK_X_GUN_PITCH_BY_YAW_DEG;

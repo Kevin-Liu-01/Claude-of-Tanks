@@ -1,7 +1,7 @@
 # T-64BM1M and the true T-64 base — run packet
 
 Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "New tank from this GLB; name it X" for
-`t64bm1m`, then "Do the whole family" for the T-64s rebuilt on its base (`t64bv1`, `t64bv_donbas`).
+`t64bm1m`, then two more new tanks on its base (`t64bv`, `t64b1v_2022`); `t64bv1` and `t64bv_donbas` stay as on main.
 
 ## Current status
 
@@ -144,8 +144,15 @@ Capability score (RETIER-257 formula recomputed on this tree: 0.35 stats + 0.25 
 251 tier): T-64BM1M 0.548 (tier IV band 0.502-0.600, median 0.575); T-64BV1 0.476 (III); T-64BV mod. 2017 0.571 (IV).
 Proposed: T-64BM1M at IV beside the mod. 2017 (Ukraine tree, `soviet` line, parent `t64bv_donbas`), with the Soviet
 fire-control floor and the 259 tier-IV footing its sibling takes (mantlet x1.45, pen 780/709/639, 6.2 s).
-**Owner approval (2026-10-27, via Main): "wow great job. all apporoved."** T-64BV1 III, T-64BV mod. 2017 IV, T-64BM1M IV
-(parent `t64bv_donbas`, FAMILY_UPGRADES `t64bv1` -> `t64bm1m`).
+**Owner approval (2026-10-27, via Main): "wow great job. all apporoved."** T-64BV1 III, T-64BV mod. 2017 IV, T-64BM1M IV.
+After the new-ids ruling the kept pair hold those tiers and the new ids take their twins': `t64bv` 0.476 (III, the
+T-64BV1's record), `t64b1v_2022` 0.571 (IV, the mod. 2017's record plus slat weight), `t64bm1m` 0.548 (IV); Main told.
+
+Tech tree (`techTree.selftest` pin e04449d58efb4a62, 13 trees, 224 vehicles): the layout receipt allows one clean
+placement each. Russia: `t64bv` tier 3, `t80` line, lane 8, parent `t62_1975` (a sibling of the T-64BV1: any lane under
+`t64bv1` sits on its connector to the T-80). Ukraine: `t64bv_donbas` -> `t64b1v_2022` (lane 1) -> `t64bm1m` (lane 0),
+the deepest modernisation last (lanes 3+ sit on the Donbas -> M2A3 run). FAMILY_UPGRADES: `t64bv1` -> `t64bv`,
+`t64bv1` -> `t64bm1m`, `t64bv_donbas` -> `t64b1v_2022`.
 
 ## Round log
 

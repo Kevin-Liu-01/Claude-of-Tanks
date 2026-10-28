@@ -25,7 +25,7 @@ const uniqueInstanceYs = (mesh) => {
   return [...ys];
 };
 
-for (const [id, variant] of [['t64bm1m', 'bm1m'], ['t64bv', 'bv'], ['t64b1v_2022', 'b1v2022']]) {
+for (const [id, variant] of [['t64bm1m', 'bm1m'], ['t64bv', 'bv'], ['t64b1v_2022', 'b1v2022'], ['pt64_tur', 'tur']]) {
   assert.equal(FLEET_RENEWAL_DONORS[id], undefined, `${id}: no renewal donor frame (the T-64 frame, t64Armor.ts)`);
   near(getSpec(id).visual.trackWidthM, T64_DATUMS.trackWidthM, `${id}: the T-64's 540 mm track`);
   const tank = build(id);
@@ -63,4 +63,4 @@ for (const [id, variant] of [['t64bm1m', 'bm1m'], ['t64bv', 'bv'], ['t64b1v_2022
   }
 }
 
-console.log('t64Foundation.selftest: the T-64BM1M, T-64BV and T-64B1V mod. 2022 run the T-64 course (six wheels, four rollers a side) with an articulated turret at the T-64 datum');
+console.log('t64Foundation.selftest: the T-64BM1M, T-64BV, T-64B1V mod. 2022 and PT-64 Tur run the T-64 course (six wheels, four rollers a side) with an articulated turret at the T-64 datum');

@@ -77,6 +77,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t64bm1m: 'the Nizh T-64B1 at IV (capability 0.548): the Soviet fire-control floor and its mod. 2017 sibling\'s 259 tier-IV footing (mantlet, pen, 6.2 s cycle)',
   t64bv: 'the true-T-64 T-64BV: the T-64BV1\'s record and the Soviet fire-control floor',
   t64b1v_2022: 'the true-T-64 T-64B1V mod. 2022 at IV: the mod. 2017\'s record, fire-control floor and 259 tier-IV footing',
+  pt64_tur: 'the Polish what-if PT-64 Tur at IV on the true T-64: the mod. 2017\'s record, ERAWA-2, fire-control floor and 259 tier-IV footing',
 } as const);
 
 interface FleetBalanceOutlier {
