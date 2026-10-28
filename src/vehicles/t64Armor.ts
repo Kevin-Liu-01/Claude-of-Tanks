@@ -26,6 +26,25 @@ export const T64_DATUMS = Object.freeze({
 
 export type T64Variant = 'bm1m' | 'bv' | 'b1v2022' | 'tur';
 
+/** Each variant's measured stops (tools/gun-depression-sweep.mjs, 26 mm from the hull, every degree of yaw, 262): the full
+ * 6 degrees ahead and abeam; the bow mudguards' crowns under the jacket at 19-41 degrees; over the rear quarter the gun
+ * rides the right shelf's fuel tanks and the left's SPTA boxes (the T-64's own rear-quarter stop); the engine deck (and
+ * the mod. 2022's rear slat screens) astern. */
+const T64_GUN_PITCH_BY_YAW_DEG: Readonly<Record<T64Variant, readonly (readonly number[])[]>> = Object.freeze({
+  bm1m: Object.freeze([[0,-6],[17,-6],[19,-5.1],[21,-4.7],[28,-4.4],[35,-4.4],[37,-4.6],[39,-4.9],[42,-6],[127,-6],
+    [128,-2.4],[129,-0.1],[130,1],[131,1.6],[134,2.4],[139,2.7],[143,2.7],[155,1.5],[158,1.6],[159,1.6],[160,1.5],
+    [161,0.8],[163,-2.8],[180,-2.8]] as const),
+  bv: Object.freeze([[0,-6],[17,-6],[19,-5.1],[21,-4.7],[28,-4.4],[35,-4.4],[37,-4.6],[38,-4.8],[42,-6],[127,-6],
+    [128,-2.4],[129,-0.1],[130,1],[131,1.6],[134,2.4],[139,2.7],[143,2.7],[155,1.5],[158,1.6],[159,1.6],[160,1.5],
+    [161,0.8],[163,-2.8],[180,-2.8]] as const),
+  b1v2022: Object.freeze([[0,-6],[17,-6],[19,-5.1],[21,-4.7],[28,-4.4],[35,-4.4],[37,-4.6],[38,-4.8],[42,-6],[127,-6],
+    [128,-2.4],[129,-0.1],[130,1],[131,1.6],[134,2.4],[139,2.7],[143,2.7],[155,1.5],[158,1.6],[159,1.6],[160,1.5],
+    [161,0.8],[162,-1.3],[163,-2],[180,-2.1]] as const),
+  tur: Object.freeze([[0,-6],[17,-6],[19,-5.1],[21,-4.7],[28,-4.4],[35,-4.4],[37,-4.6],[38,-4.8],[42,-6],[127,-6],
+    [128,-2.4],[129,-0.1],[130,1],[131,1.6],[134,2.4],[139,2.7],[143,2.7],[155,1.5],[158,1.6],[159,1.6],[160,1.5],
+    [161,0.8],[163,-2.8],[180,-2.8]] as const),
+});
+
 const NIZH = { keReduction: .30, ceFlatMm: 600 } as const;
 const NIZH_SCREEN = { keReduction: .12, ceFlatMm: 420 } as const;
 const KONTAKT1 = { keReduction: .05, ceFlatMm: 400 } as const;
@@ -69,6 +88,7 @@ export function applyT64PhysicalFrame(spec: FleetTankSpec, donor: FleetTankSpec,
   spec.armor.turretPivot = [tx, ty, tz];
   spec.armor.gunPivot = [gx - tx, gy - ty, gz - tz];
   spec.armor.gunBarrel.lengthM = T64_DATUMS.muzzleZ - gz;
+  spec.gunPitchByYawDeg = T64_GUN_PITCH_BY_YAW_DEG[variant];
   spec.armor.hullPlates = spec.armor.hullPlates.filter(p => !p.era);
   spec.armor.turretPlates = spec.armor.turretPlates.filter(p => !p.era);
   const zones = eraZones(variant);

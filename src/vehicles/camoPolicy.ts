@@ -798,8 +798,6 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
   t64bm1m: 'sig_ua_t64bv',
   t64b1v_2022: 'sig_ua_t64bv',
-  // 262: the PT-64 Tur wears the Polish three-tone the Zubr wears (pt64Tur.ts)
-  pt64_tur: 'paint_pl_t80u_modern',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

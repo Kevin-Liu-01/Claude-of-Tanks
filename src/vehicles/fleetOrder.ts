@@ -55,7 +55,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10_dozer', 'type10b',
   ]),
   national_ua: Object.freeze(["t80u_zoria", "t72b3m_hetman", "t72b3m_hetman_ii", "t72b3_sich"]),
-  national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii"]),
+  national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii", "pt64_tur"]),
   national_cn: Object.freeze(["t80u_yun", "t72b3m_kunlun", "t72b3_qilin"]),
   national_ru: Object.freeze(["t80u_bars_m", "t72b3m_bulat_m", "t72b3_bastion_m"]),
   french_ifv: Object.freeze(['amx10p', 'amx10p_25']),
@@ -74,7 +74,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),
   poland: Object.freeze([
-    't72m1_jaguar', 't72_rys', 'pt91a_twardy', 'pt64_tur', 'pl01', 'borsuk',
+    't72m1_jaguar', 't72_rys', 'pt91a_twardy', 'pl01', 'borsuk',
   ]),
 } as const);
 
