@@ -179,7 +179,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
         const z = -2.58 + k * 0.83;
         P.addEquipment('hull', box(0.42, 0.16, 0.72), s * 1.43, 1.395, z);
         P.addEquipment('hull', box(0.44, 0.025, 0.74), s * 1.43, 1.487, z);
-        P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.655, 1.395, z + 0.22);
+        P.add('hullDark', box(0.022, 0.07, 0.11), s * 1.649, 1.395, z + 0.22);
       }
     }
     P.mats.rubber.color.setHex(0x34372d);
@@ -213,7 +213,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.add('hull', box(0.10, 0.10, 0.13), s * 0.70, 0.64, 3.37);
       liftEye(P, 'hullDetail', s * 1.17, centerDeckTopY(1.65) + 0.015, 1.65, s * 0.45);
       P.addEquipment('hull', cylY(0.010, 0.010, 0.34, 7), s * 1.58, 1.48, 3.36, 0, 0, s * 0.08);
-      P.addEquipment('hull', sph(0.018, 8), s * 1.60, 1.65, 3.36);
+      P.addEquipment('hull', sph(0.018, 8), s * (1.58 - Math.sin(0.08) * 0.17), 1.48 + Math.cos(0.08) * 0.17, 3.36);
     }
     towCable(P, [
       [-0.76, upperGlacisY(3.18) + 0.07, 3.18],
@@ -251,7 +251,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.addEquipment('hullCloth', box(0.56, 0.66, 0.24), canX, 1.44, -3.45);
       P.addEquipment('hullCloth', box(0.48, 0.09, 0.22), canX, 1.805, -3.45);
       P.addEquipment('hullDark', box(0.23, 0.075, 0.07), canX, 1.87, -3.45);
-      P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.88, -3.45);
+      P.addEquipment('hullDark', cylY(0.035, 0.040, 0.045, 10), canX + s * 0.16, 1.8695, -3.45);
       P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.44, -3.582, 0, 0, 0.66);
       P.addEquipment('hullDark', box(0.035, 0.50, 0.020), canX, 1.44, -3.584, 0, 0, -0.66);
       P.addEquipment('hullDark', box(0.62, 0.035, 0.28), canX, 1.80, -3.45);
@@ -259,7 +259,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX - 0.30, 1.44, -3.45);
       P.addEquipment('hullDark', box(0.035, 0.75, 0.28), canX + 0.30, 1.44, -3.45);
       P.addEquipment('hullDark', box(0.075, 0.11, 0.40), canX, 1.10, -3.34, 0.26, 0, 0);
-      P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.34, 1.49, -3.545);
+      P.add('hullGlass', box(0.10, 0.08, 0.018), s * 1.18, 1.49, -3.553);
     }
 
     // Seven 690 mm dual wheels on the Leopard trapezoid course, both drums lifted 50 mm so the end wraps rise cleanly
@@ -383,12 +383,12 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       // Wegmann 76 mm smoke dischargers: four per side in a two-by-two block on each front roof corner, firing forward
       // and out over the cheeks.
       const dZ = 0.56, dX = castHalfWidthAt(dZ, castRoofAt(dZ) - 0.05) - 0.16;
-      // (its bracket runs down into the roof's rolled edge, so the outboard tubes never stand off the casting)
-      P.addEquipment('turret', box(0.30, 0.10, 0.24), s * dX, castRoofAt(dZ) - 0.03, dZ, 0, s * 0.10, 0);
+      // (its block runs down into the roof's rolled edge and up round both rows of tube breeches, so no tube stands off it)
+      P.addEquipment('turret', box(0.30, 0.20, 0.24), s * dX, castRoofAt(dZ) + 0.02, dZ, 0, s * 0.10, 0);
       for (let k = 0; k < 4; k++) {
         const col = k % 2, row = Math.floor(k / 2);
         P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.22, P.q ? 12 : 8)), 0, 0, 0, -0.62, s * 0.30, 0),
-          s * (dX - 0.06 + col * 0.12), castRoofAt(dZ) + 0.07 + row * 0.08, dZ + 0.02 - row * 0.05);
+          s * (dX - 0.06 + col * 0.12), castRoofAt(dZ) + 0.03 + row * 0.07, dZ + 0.02 - row * 0.05);
       }
 
       liftEye(P, 'turretDetail', s * 0.70, castRoofAt(0.30) + 0.01, 0.30, s * 0.45);
@@ -398,7 +398,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
     // The commander's cupola on the right rear roof (eight periscopes, a domed hatch) with the TRP-2A periscopic sight
     // ahead of it; the loader's flat hatch and MG3 station on the left.
     const cmdX = 0.50, cmdZ = -0.52;
-    P.addCupola('turret', cylY(0.28, 0.30, 0.08, P.q ? 22 : 14), cmdX, castRoofY + 0.03, cmdZ);
+    P.addCupola('turret', cylY(0.28, 0.30, 0.10, P.q ? 22 : 14), cmdX, castRoofY + 0.04, cmdZ);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
       P.add('turretGlass', box(0.06, 0.045, 0.018), cmdX + Math.sin(a) * 0.255, castRoofY + 0.10, cmdZ + Math.cos(a) * 0.255, 0, a, 0);
@@ -474,7 +474,7 @@ function* buildLeo1A1Steps(P: TankBuilderPort): TankProfileBuild {
       [0.54, bustleFloorY + 0.17, -2.36, 0.44, 0.30, 0.44],
     ]);
     jerryCan(P, 'turretCloth', 0.66, bustleFloorY + 0.26, -2.50, 0.16);
-    tarpRoll(P, 'turretCloth', -0.04, bustleTopY - 0.03, -2.30, 0.94, 0.09, true, P.q ? 12 : 8);
+    tarpRoll(P, 'turretCloth', -0.04, bustleTopY - 0.06, -2.30, 0.94, 0.09, true, P.q ? 12 : 8);
     ammoCan(P, 'turretDark', -0.70, bustleFloorY + 0.14, -2.52, 0.12);
 
     P.turretG.userData.leopard1A1TurretFinishReceipt = {
