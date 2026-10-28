@@ -74,7 +74,11 @@ const BOUNDS_MIN_H = 240;
 const SPAN_MAX_W = 640;
 
 /** The room a menu stands in: a panel's (with its sides) or the window's. */
-interface MenuRoom { readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number }
+interface MenuRoom {
+  readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number;
+  /** span the panel whatever its width (a dossier that widens past a column on a large screen) */
+  readonly span?: boolean;
+}
 
 interface MenuPlace {
   readonly sheet: boolean;
@@ -110,7 +114,7 @@ export function placeMenu(
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false, span: false };
   }
-  const span = bounds.left !== undefined && bounds.right !== undefined && bounds.right - bounds.left <= SPAN_MAX_W;
+  const span = bounds.left !== undefined && bounds.right !== undefined && (bounds.span ?? bounds.right - bounds.left <= SPAN_MAX_W);
   // a spanning menu fills its panel's room (panelRoom) on its sides and its far edge: a panel scrolls its rows to its edge
   // and a dossier's picture runs to its sides, so a gap there showed them beside the menu (the 261 critics: zh 900's
   // 自动机枪, the Gallery hero's strips)
