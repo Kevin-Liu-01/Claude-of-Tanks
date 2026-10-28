@@ -12,7 +12,7 @@ import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'fleet', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -33,7 +33,9 @@ for (const id of TOPIC_ORDER) {
   const rich = richSections(id);
   if (rich) {
     // a chapter built from the game's tables (src/docs/chapters): its own sections, anchors and pictures
-    assert.ok(topic.rich && rich.length >= 3, `${id} remains a substantive manual`);
+    // a chapter that is one whole-body section (the fleet's grid) holds every tank; any other has three sections or more
+    if (topic.full) assert.ok(topic.rich && rich.length === 1, `${id} is one section that takes the body`);
+    else assert.ok(topic.rich && rich.length >= 3, `${id} remains a substantive manual`);
     assert.equal(new Set(rich.map((section) => section.id)).size, rich.length, `${id}: one anchor per section`);
     for (const section of rich) {
       assert.match(section.id, /^[a-z][a-z0-9-]*$/, `${id}#${section.id}: a plain anchor`);
@@ -136,6 +138,28 @@ for (const slug of TOPIC_ORDER) {
 }
 assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
   'the script keeps a chapter prerendered for its locale and only wires it');
+
+// the fleet chapter: one tile per playable tank, each linking to its Gallery dossier by its display name (never an id),
+// and each filter's choices counting every tank once
+{
+  const [grid] = richSections('fleet');
+  const tiles = [...grid.html.matchAll(/<li class="dm-fleet__tile" data-id="([^"]+)"[\s\S]*?<\/li>/g)];
+  const assets = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks;
+  assert.deepEqual(tiles.map(([, id]) => id).sort(), Object.keys(assets).sort(), 'the fleet grid has one tile per playable tank');
+  for (const [tile, id] of tiles) {
+    assert.match(tile, new RegExp(`href="/gallery\\?id=${id}[&"]`), `${id}: its tile opens its Gallery dossier`);
+    const name = tile.match(/<span class="dm-fleet__name">([\s\S]*?)<\/span><span class="dm-fleet__meta">/)?.[1]?.replace(/<[^>]+>/g, '').replace(/\u00a0/g, ' ');
+    assert.equal(name, assets[id].label.displayName, `${id}: its tile names it by its display name, never its id`);
+  }
+  const data = JSON.parse(grid.html.match(/<script type="application\/json" id="dmFleetData">([\s\S]*?)<\/script>/)[1]);
+  assert.equal(data.total, tiles.length, 'the grid counts every tile');
+  assert.deepEqual(data.facets.map((facet) => facet.key), ['nation', 'tier', 'era', 'class', 'role'], 'the grid filters by nation, tier, era, class and role');
+  for (const facet of data.facets) {
+    assert.equal(facet.options[0].id, '', `${facet.key}: its first choice is every value`);
+    assert.equal(facet.options.slice(1).reduce((sum, option) => sum + option.count, 0), tiles.length, `${facet.key}: its choices count every tank once`);
+  }
+  assert.ok(!topics.fleet.full || !readFileSync(join(ROOT, 'site/docs-fleet.html'), 'utf8').includes('class="dm-toc"'), 'the fleet grid takes the body without a contents rail');
+}
 
 // the tanks chapter's hero cards feather their flags as the Garage does: the docs token is the policy's mask
 const docsTokens = JSON.parse(readFileSync(join(ROOT, 'src/ui/tokens/tokens.json'), 'utf8')).component['surface-docs'];

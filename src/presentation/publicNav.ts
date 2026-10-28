@@ -24,8 +24,13 @@ if (!localeRouteChanged) {
   localizeDocumentLinks(document, getLocale());
 }
 
+// (a count whose module did not arrive stands down as one that did not load: githubStars.ts's 'unavailable' state)
 const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
-  .then(({ mountGitHubStars }) => mountGitHubStars(document));
+  .then(({ mountGitHubStars }) => mountGitHubStars(document))
+  .catch(() => document.querySelectorAll<HTMLElement>('[data-github-stars]').forEach((node) => {
+    node.dataset.githubStarsState = 'unavailable';
+    node.removeAttribute('aria-busy');
+  }));
 
 const isLocale = (value: string | null): value is SupportedLocale => value === 'en-US' || value === 'zh-CN';
 
@@ -92,9 +97,10 @@ function hydrateIcons(root: ParentNode): void {
     return ref.startsWith('#') && !document.getElementById(ref.slice(1));
   });
   if (!slots.length && !missing) return;
+  // (a set that did not arrive leaves the slots empty, and fills them once the browser is back online)
   void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
     for (const slot of slots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 24);
-  });
+  }).catch(() => addEventListener('online', () => hydrateIcons(root), { once: true }));
 }
 
 hydrateIcons(document);
@@ -120,6 +126,7 @@ window.setTimeout(() => {
 }, 2400);
 
 // the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load
-const behaviours = (): void => void import('../ui/components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+const behaviours = (): void => void import('../ui/components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours())
+  .catch(() => addEventListener('online', behaviours, { once: true }));
 if ('requestIdleCallback' in window) requestIdleCallback(behaviours, { timeout: 1500 });
 else setTimeout(behaviours, 300);

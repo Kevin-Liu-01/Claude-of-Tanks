@@ -57,7 +57,8 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:no
 assert.match(garageSource,
   /<div class="cot-lt-band"><div class="cot-lt-group">[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-group">[\s\S]*?<div class="cot-lt-paint"/,
   'every layout keeps the equipment slots and the paint in view under the name');
-assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
+// (the 261 census builds the band's paint on the kit's picker, so the button is made in code, not markup)
+assert.match(garageSource, /paintAll\.className = 'cot-c-btn cot-c-btn--icon cot-lt-paint-all';\s*paintAll\.dataset\.garagePanel = 'appearance';/,
   'the band\'s last swatch opens every paint');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"[\s\S]*data-deploy-field aria-expanded="false"/,
   'the battle card shows the battlefield and the Deploy screen\'s field chooses it');
@@ -252,6 +253,12 @@ assert.match(hud, /\.cot-hpb\{[^}]*width:128px;[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
 assert.match(hud, /bar\.layoutH = Math\.ceil\(bar\.root\.offsetHeight\)/,
   'a world tank label measures its height once with its copy, never per frame');
+// (a hidden label is placed at the height its lines will have: the two-line default kept a short window's one-line
+// labels out of every gap, so none showed to be measured)
+assert.match(hud, /if \(bar\.shown\) measureHpBar\(bar\);\s+else bar\.layoutH = hpBarRestH\(bar\);/,
+  'a hidden world tank label takes its rest height when its copy changes');
+assert.match(hud, /bar\.measure = true;\s+if \(!bar\.shown\) bar\.layoutH = hpBarRestH\(bar\);/,
+  'a hidden world tank label takes the short window\'s rest height when the window changes');
 // (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"; tools/marker-census.mjs renders it)
 assert.doesNotMatch(hud, /class="flg"|tgtRefs\.flg|\.cot-(?:hpb|tgt) [^{]*\.cot-flag/,
   'no marker over a tank carries a nation flag');

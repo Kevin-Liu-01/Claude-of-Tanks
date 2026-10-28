@@ -405,6 +405,7 @@ export default defineConfig({
         docsTanks: resolve(process.cwd(), 'site/docs-tanks.html'),
         docsStart: resolve(process.cwd(), 'site/docs-start.html'),
         docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
+        docsFleet: resolve(process.cwd(), 'site/docs-fleet.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
@@ -544,7 +545,7 @@ export default defineConfig({
       'site/docs-simulation.html', 'site/docs-rendering.html',
       'site/docs-ai.html',
       'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-studio.html',
-      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
+      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-fleet.html', 'site/docs-start.html', 'site/docs-tanks.html', 'site/docs-combat.html', 'site/docs-battlefields.html',
     ],
     include: [
       'three',

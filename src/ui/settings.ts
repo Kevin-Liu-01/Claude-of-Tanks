@@ -588,7 +588,8 @@ const HINT_STAY_MS = 30000;
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has,
   // once the boot is idle: they act only on a hover, so they stay off the game's entry
-  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours())
+    .catch(() => { /* hover-only behaviours: the page works without them */ });
   if (typeof requestIdleCallback === 'function') requestIdleCallback(behaviours, { timeout: 4000 });
   else setTimeout(behaviours, 1000);
   ensureFonts();
@@ -1275,7 +1276,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     });
     // Flag assets are browser-only; retain the settings policy's Node import.
-    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); });
+    void import('./flags.ts').then(({ flagIconUrl }) => { if (crewField.isConnected) crewMenu.setItems(crewItems(flagIconUrl)); })
+      .catch(() => { /* the crew menu keeps its items without their flags */ });
     const crewNote = el('div', 'cot-set-note', crew);
     crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
