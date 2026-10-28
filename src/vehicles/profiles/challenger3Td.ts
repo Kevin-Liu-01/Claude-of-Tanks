@@ -154,7 +154,7 @@ function buildHull(P: TankBuilderPort): void {
     ]));
     // skirt plates and their top rail
     P.add('hull', profileSkirtGeometry(SKIRT, side), 0, 0, DZ * S, 0, 0, 0, S);
-    hull('hullDetail', box(0.03, 0.03, 5.55), side * 1.752, 1.535, 0.95);
+    hull('hullDetail', box(0.03, 0.03, 5.105), side * 1.752, 1.535, 0.7275);           // to 3.28, where the skirt drops
     // the rear skirt's rail stands flush with its plates (3 mm proud): under the bustle's sweep the suit's drapes are tied
     // low and hang plumb from the rail's line, so a proud rail left them 2 cm off the skirt (ghillieSuit.selftest)
     hull('hullDetail', box(0.03, 0.03, 2.05), side * 1.737, 1.415, -2.80);
@@ -169,13 +169,16 @@ function buildHull(P: TankBuilderPort): void {
     for (const z of [2.60, -1.60]) hull('hullDetail', box(0.06, 0.08, 0.22), side * 1.775, 1.50, z);
     for (const z of [-2.62, -1.20, 0.10, 1.40, 2.70]) hull('hullDark', box(0.012, 0.45, 0.025), side * 1.749, 1.175, z);
     for (const z of [2.20, 0.95, -0.35, -1.45, -2.55]) hull('hullDetail', cylY(0.12, 0.12, 0.05, P.q ? 20 : 12), side * 1.46, 1.735, z);
-    KIT.towCable(P, [[1.66, 1.73, 2.95], [1.68, 1.735, 1.0], [1.68, 1.74, -1.0], [1.67, 1.75, -3.30]]
+    // the cable lies on the hull top's edge and follows it down the glacis to the front (the oracle's 1.52 at z 3.0)
+    KIT.towCable(P, [[1.64, 1.55, 3.00], [1.65, 1.635, 2.40], [1.66, 1.72, 1.60], [1.67, 1.725, 0.0], [1.67, 1.73, -3.30]]
       .map(([x, y, z]) => [side * x * S, y * S, (z + DZ) * S] as [number, number, number]));
-    // the front mudguard boxes over the idlers and their indicator lamps
-    hull('hullPaintedDetail', box(0.45, 0.12, 0.30), side * 1.30, 1.43, 3.60);
+    // the mudguards' front lip, folded down to 1.10 (the oracle's), and the lamp guard blocks across the glacis edge
+    // (the oracle's 1.54 band at z 3.14-3.26 over x 0.92-1.40) with their indicator lamps
+    hull('hull', box(0.825, 0.19, 0.025), side * 1.3325, 1.195, 3.834);
+    hull('hullPaintedDetail', box(0.48, 0.16, 0.12), side * 1.16, 1.47, 3.20);
     const indicator = box(0.08, 0.05, 0.012);
     markVehicleNightLens(indicator, 'marker');
-    hull('hullGlass', indicator, side * 1.42, 1.44, 3.756);
+    hull('hullGlass', indicator, side * 1.32, 1.50, 3.266);
     // Hydrogas units on the hull side above each station, inboard of the track
     for (const z of ROAD_WHEEL_Z) hull('hullRunningGearDark', box(0.15, 0.35, 0.34), side * 1.005, 1.025, z);
     // headlight clusters and guards on the glacis corners
@@ -256,12 +259,10 @@ function buildTurret(P: TankBuilderPort): void {
   for (const side of [-1, 1]) turret('turret', planeSolid([...common, [-side, 0, 0, -SLOT_HALF], [0, 0, -1, -1.2]]));
   // the slot's receipt (gunHullClearance.test-support.mjs gunSlotProbe): its face and half-width in the turret frame
   P.turretG.userData.gunSlot = Object.freeze({ faceZ: (SLOT_FACE - PIVOT[2]) * S, halfWidth: SLOT_HALF * S });
-  // the slot's hinged cover on the brow: a plate from the slot face up to the roof, its hinge lugs and rod at the top
-  turret('turretDetail', planeSolid([[0, 1, 0.2, 2.73 + 0.035], [0, -1, -0.2, -2.73], [0, 0, 1, 1.64], [0, 0, -1, -1.02],
-    [1, 0, 0, 0.42], [-1, 0, 0, 0.42]]));
-  for (const x of [-0.36, 0.36]) turret('turretDetail', box(0.07, 0.10, 0.12), x, 2.565, 1.00);
-  turret('turretDark', cylX(0.022, 0.80, 10), 0, 2.575, 1.00);
-  turret('turretDark', box(0.80, 0.012, 0.02), 0, 2.73 - 0.2 * 1.36 + 0.04, 1.36);
+  // the hinge frame over the mantlet's top edge at the slot face: two posts on the cheeks' inner edges (the oracle's
+  // 2.50 tops at x 0.46, z 1.60) and the bar between them, clear of the mantlet's top at full elevation
+  for (const x of [-0.46, 0.46]) turret('turretDetail', box(0.07, 0.11, 0.12), x, 2.475, 1.60);
+  turret('turretDark', cylX(0.022, 0.86, 10), 0, 2.50, 1.60);
   // the bearing race and its collar under the floor (covers the hull-to-turret gap at every bearing)
   turret('turret', cylY(1.15, 1.15, 0.10, P.q ? 64 : 32), 0, 1.835, 0.451);
   turret('turretDark', cylY(1.17, 1.17, 0.02, P.q ? 64 : 32), 0, 1.79, 0.451);
@@ -275,15 +276,15 @@ function buildTurret(P: TankBuilderPort): void {
   const gunnerPane = box(0.30, 0.10, 0.02);
   turret('turretGlass', gunnerPane, -0.675, 2.735, 0.715, -0.46, 0, 0);
   // commander's cupola: the race, the hatch and eight vision blocks, on the right behind the sight
-  // the cupola: a D-shaped base plate (its straight edge inboard), the periscope ring on it and the domed lid
+  // the cupola: a D-shaped base plate (its straight edge inboard), the periscope ring on it and the flat lid
   turret('turretCupola', planeSolid([[0, 1, 0, 2.73], [0, -1, 0, -2.64], [1, 0, 0, -0.04], [-1, 0, 0, 1.06],
     [0, 0, 1, -0.12], [0, 0, -1, 1.20], [0.71, 0, 0.71, 0.71 * (-0.04 - 0.30) + 0.71 * -0.12],
     [0.71, 0, -0.71, 0.71 * (-0.04 - 0.30) - 0.71 * -1.20]]));
   turret('turretCupola', cylY(0.40, 0.42, 0.13, P.q ? 32 : 16), -0.55, 2.795, -0.66);
   P.addHatch('turretHatch', cylY(0.33, 0.35, 0.04, P.q ? 28 : 14).scale(S, S, S), -0.55 * S, (2.88 - PIVOT[1]) * S,
     (-0.66 - PIVOT[2]) * S);
-  // the lid's dome: a 0.94 m sphere's cap, 0.33 m across its foot and 6 cm high, on the hatch
-  turret('turretDetail', KIT.sph(0.94, P.q ? 24 : 12, 0.359), -0.55, 2.96 - 0.94, -0.66);
+  // the lid: flat, 2.94 over the ring's 2.91 (the oracle's; a domed lid read as a bubble)
+  turret('turretDetail', cylY(0.30, 0.31, 0.06, P.q ? 24 : 12), -0.55, 2.91, -0.66);
   turret('turretDetail', box(0.14, 0.05, 0.10), -0.55, 2.915, -0.98);
   for (let k = 0; k < 8; k++) {
     const a = (k + 0.5) / 8 * Math.PI * 2;
@@ -335,26 +336,28 @@ function buildMainGun(P: TankBuilderPort): void {
   // the mantlet's lower edge stands 4 cm over the oracle's (1.80): there it rode 12-16 mm over the hull deck once the
   // turret left the glacis trough, a standing mount conflict at yaw 6-48 (gun-depression-sweep); 1.84 still closes the
   // slot under the turret floor (1.86 at the slot face) and clears the deck by 6 cm at level
-  const mantlet = sectionSolid(([[1.40, 1.85, 2.42], [1.72, 1.84, 2.42], [2.12, 1.89, 2.385], [2.30, 1.915, 2.22],
-    [2.40, 1.915, 2.17]] as const)
-    .map(([z, bottom, top]) => ({ z, ring: [[-0.42, bottom], [0.42, bottom], [0.42, top], [-0.42, top]] as SectionPoint[] })));
-  gun('gunMount', mantlet);
-  gun('gunMountDark', box(0.86, 0.04, 0.05), 0, 1.90, 2.39);
-  // the boresight port on the raked face and the shroud strip over the root jacket ahead of the mantlet
-  gun('gunMountDark', box(0.10, 0.02, 0.16), 0.12, 2.31, 2.22, 0.73, 0, 0);
-  gun('gunMount', box(0.40, 0.05, 0.22), 0, 2.145, 2.50);
-  // coax: its port in the mantlet's face, left of and above the bore, and the barrel's mouth in it
-  gun('gunMountDark', cylZ(0.034, 0.03, 10), 0.285, 2.185, 2.395);
-  gun('gunMountDark', cylZ(0.022, 0.10, 8), 0.285, 2.185, 2.38);
+  // the body fills the slot (|x| 0.42): its top 2.41 to z 1.84, then its face raked 37 degrees down to 2.02 at 2.32
+  // (the oracle's hmap at |x| 0.20-0.42); the nose over the jacket (|x| 0.18) holds 2.38 to z 2.12 and falls to the
+  // jacket's top at 2.56
+  const section = (half: number) => ([z, bottom, top]: readonly [number, number, number]) =>
+    ({ z, ring: [[-half, bottom], [half, bottom], [half, top], [-half, top]] as SectionPoint[] });
+  gun('gunMount', sectionSolid(([[1.40, 1.85, 2.42], [1.72, 1.84, 2.41], [1.84, 1.86, 2.38], [2.32, 1.91, 2.02]] as const)
+    .map(section(0.42))));
+  gun('gunMount', sectionSolid(([[1.84, 1.90, 2.38], [2.12, 1.91, 2.38], [2.56, 1.93, 2.17]] as const).map(section(0.18))));
+  // the boresight port on the nose's slope
+  gun('gunMountDark', box(0.10, 0.02, 0.16), 0, 2.30, 2.30, 0.445, 0, 0);
+  // coax: its port in the body's raked face, left of and above the bore, and the barrel's mouth in it
+  gun('gunMountDark', cylZ(0.034, 0.05, 10), 0.285, 2.185, 2.11);
+  gun('gunMountDark', cylZ(0.022, 0.10, 8), 0.285, 2.185, 2.10);
   // the root thermal jacket, bore evacuator and the clamp band on the tube (they recoil with it)
   const len = (MUZZLE_Z - TRUNNION[2]) * S;
   KIT.buildGun(P, { len, r: 0.095 * S, sleeve: false, evac: null, collar: false, baseR: 0.15 * S });
   const seg = P.q ? 24 : 12;
   gun('gun', cylZ(0.14, 0.73, seg), 0, 2.031, 2.765);
   // the bore evacuator rides 3 cm high of the bore line (the oracle's 2.063 centre), with its tapered ends
-  gun('gun', cylZ(0.166, 0.60, seg), 0, 2.061, 3.54);
-  gun('gun', cylZ(0.166, 0.11, seg, 0.10), 0, 2.045, 3.185);
-  gun('gun', cylZ(0.10, 0.11, seg, 0.166), 0, 2.045, 3.895);
+  gun('gun', cylZ(0.166, 0.46, seg), 0, 2.061, 3.575);                  // 3.30-3.85 with its short rounded ends
+  gun('gun', cylZ(0.166, 0.05, seg, 0.125), 0, 2.055, 3.32);
+  gun('gun', cylZ(0.125, 0.05, seg, 0.166), 0, 2.055, 3.83);
   gun('gun', cylZ(0.112, 0.08, seg), 0, 2.031, 5.40);
   muzzleBore(P, { len, r: 0.095 * S });
 }
@@ -367,12 +370,12 @@ function buildMainGun(P: TankBuilderPort): void {
 // the loader's hatch and periscope and of the brow step.
 const RWS_ID = 'challenger3_td_rws';
 /** Yaw centre on the roof (oracle frame) and the station's true-metre heights above it. */
-const RWS_SEAT = [0.80, 2.70, 0.10] as const;
+const RWS_SEAT = [0.80, 2.70, 0.13] as const;
 function buildRemoteStation(P: TankBuilderPort): void {
   const { box, cylX: cx, cylY: cy } = KIT;
   const base = [RWS_SEAT[0] * S, (RWS_SEAT[1] - PIVOT[1]) * S, (RWS_SEAT[2] - PIVOT[2]) * S] as const;
   const at = (dx: number, dy: number, dz: number): [number, number, number] => [base[0] + dx, base[1] + dy, base[2] + dz];
-  // every elevating part stays inside |x| 0.20 (the M2's right-hand feed reaches it) and 4 cm over the housing at the
+  // every elevating part stays inside |x| 0.20 (the M2's right-hand feed reaches it) and 3 cm over the housing at the
   // station's whole pitch; the cheeks stand at |x| 0.26-0.30 and the pins' tips at 0.24; the trunnion stands 0.58 m over
   // the roof so the receiver's back, 0.58 m behind it, keeps over the loader's hatch at full elevation (43 deg):
   // roof-station-sweep.mjs holds the moving stock 25 mm off the fixed
@@ -380,7 +383,9 @@ function buildRemoteStation(P: TankBuilderPort): void {
   // the gun: the fleet's Browning M2 construction, remote form (solenoid back plate, right-hand feed)
   const gun = new THREE.Group();
   gun.name = 'challenger3TdRemoteM2';
-  const layout = createPintleLayout({ cls: 'm2', remote: true, ammo: true, feed: 'right', detail: P.q ? 1 : 0 }, {
+  // a new station publishes the muzzle it draws, so it carries the M2's true barrel (crewL), not the fleet's station datum
+  const layout = createPintleLayout({ cls: 'm2', remote: true, ammo: true, feed: 'right', datumBarrel: false,
+    detail: P.q ? 1 : 0 }, {
     add(slot, geometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
       const material = slot === 'detail' ? P.mats.detail : P.mats.weaponSteel ?? P.mats.dark;
       const mesh = new THREE.Mesh(geometry, material);
@@ -397,22 +402,25 @@ function buildRemoteStation(P: TankBuilderPort): void {
     name: 'challenger3TdRemoteStation', caliberMm: 12.7,
     yaw: at(0, 0, 0), pivot, muzzle: [pivot[0], pivot[1], pivot[2] + muzzleZ],
   });
-  // traversing body: the turntable ring on the roof, the low housing and the two cradle cheeks
-  P.add('turretDark', cy(0.31, 0.33, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
-  P.add('turretDetail', box(0.50, 0.20, 0.48), ...at(0, 0.15, 0));
+  // traversing body: the turntable ring on the roof, the low housing (its top edges chamfered 4 cm) and the two cradle
+  // cheeks; the ring's foot keeps 7 cm from the loader's hatch hinges and stays on the roof proper short of the brow step
+  P.add('turretDark', cy(0.28, 0.30, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
+  P.add('turretDetail', planeSolid([[1, 0, 0, 0.25], [-1, 0, 0, 0.25], [0, 0, 1, 0.22], [0, 0, -1, 0.22], [0, 1, 0, 0.10],
+    [0, -1, 0, 0.07], [1, 1, 0, 0.31], [-1, 1, 0, 0.31], [0, 1, 1, 0.28], [0, 1, -1, 0.28]]), ...at(0, 0.12, 0));
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.40, 0.26), ...at(side * 0.28, 0.45, 0.02));
+    P.add('turretDetail', box(0.04, 0.43, 0.26), ...at(side * 0.28, 0.435, 0.02));
     P.add('turretDark', cx(0.03, 0.03, 10), ...at(side * 0.255, 0.58, 0.02));              // trunnion pins, cheek-borne
   }
   station.mark('yaw');
-  // elevating mass: the day/thermal sight head right of the gun and its window, the ready box outboard of the feed
+  // elevating mass: the day/thermal sight head on a post over the receiver, its window forward, and the ready box
   const sight = new THREE.Group();
   const part = (g: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number): void => {
     const mesh = new THREE.Mesh(g, material); mesh.position.set(x, y, z); mesh.castShadow = mesh.receiveShadow = true;
     mesh.name = 'challenger3TdRemoteSight'; sight.add(mesh);
   };
-  part(box(0.10, 0.15, 0.28), P.mats.detail, pivot[0] - 0.10, pivot[1] + 0.02, pivot[2] + 0.04);
-  part(box(0.07, 0.08, 0.012), P.mats.glass, pivot[0] - 0.10, pivot[1] + 0.03, pivot[2] + 0.186);
+  part(box(0.04, 0.07, 0.06), P.mats.detail, pivot[0], pivot[1] + 0.115, pivot[2] - 0.04);
+  part(box(0.15, 0.12, 0.24), P.mats.detail, pivot[0], pivot[1] + 0.20, pivot[2] + 0.02);
+  part(box(0.11, 0.07, 0.012), P.mats.glass, pivot[0], pivot[1] + 0.20, pivot[2] + 0.146);
   part(box(0.10, 0.17, 0.26), P.mats.detail, pivot[0] + 0.10, pivot[1] - 0.04, pivot[2] - 0.02);
   const pitching = new THREE.Group();
   pitching.add(gun, sight);
@@ -426,10 +434,10 @@ function buildRemoteStation(P: TankBuilderPort): void {
 function buildFieldKit(P: TankBuilderPort): void {
   const { turret } = owners(P);
   for (const side of [-1, 1]) {
-    // stowage bins on the walls behind the cheeks, under the side rail
-    turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.475, 2.16, -1.30);
-    turret('turretPaintedDetail', box(0.18, 0.26, 0.80), side * 1.475, 2.14, -2.45);
-    for (const z of [-1.80, -0.80, -2.75, -2.15]) turret('turretDark', box(0.012, 0.04, 0.06), side * 1.568, 2.24, z);
+    // stowage bins hung on the side rail behind the cheeks (their inner faces on the rail's outer face, 1.413)
+    turret('turretPaintedDetail', box(0.18, 0.30, 1.20), side * 1.505, 2.16, -1.30);
+    turret('turretPaintedDetail', box(0.18, 0.26, 0.80), side * 1.505, 2.14, -2.45);
+    for (const z of [-1.80, -0.80, -2.75, -2.15]) turret('turretDark', box(0.012, 0.04, 0.06), side * 1.598, 2.24, z);
   }
 }
 
