@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills} from '../interiorFills.ts';
+import {combatAnatomyCalibration} from '../combatAnatomyCalibrationRegistry.ts';
+import {turretSeatPlane} from '../turretSeatPlane.ts';
 
 await ensureInteriorFills('m551a1_tts');
 
@@ -29,6 +31,17 @@ function hasVertex(mesh,point){
   const p=mesh.geometry.attributes.position;
   for(let i=0;i<p.count;i++)if(vector(p,i).distanceToSquared(point)<1e-10)return true;
   return false;
+}
+// 264: since 247's ring receipt (6e540cd73e) the turret seat (turretSeatRace.ts seatTurretOverDeck) lays the corners under
+// its plane onto it, so the low ERA layers' corners are drawn 3-19 mm up: a stock corner survives as authored or seated
+function seatedPoint(root,mesh,point){
+  const seat=turretSeatPlane(combatAnatomyCalibration('m551a1_tts')?.turretRing,root.getObjectByName('rig_turret').userData);
+  if(!seat)return point;
+  root.updateMatrixWorld(true);
+  const toHull=root.getObjectByName('rig_hull').matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+  const p=point.clone().applyMatrix4(toHull),r=Math.hypot(p.x-seat.cx,p.z-seat.cz);
+  p.y=Math.max(p.y,seat.planeAt(Math.max(seat.keepR,r)));
+  return p.applyMatrix4(toHull.clone().invert());
 }
 
 for(const quality of ['high','low']){
@@ -78,7 +91,8 @@ for(const quality of ['high','low']){
     const samples=[...lugs.map(g=>({mesh:turret.getObjectByName('turret'),point:vector(g.attributes.position,0)})),
       ...feet.map(g=>({mesh:turret.getObjectByName('turretEquipment'),point:vector(g.attributes.position,0)})),
       ...layers.map(g=>({mesh:turret.getObjectByName('turretExternalArmor'),point:vector(g.attributes.position,0)}))];
-    for(const sample of samples)assert(hasVertex(sample.mesh,sample.point),'audited stock actually survives the production merge');
+    for(const sample of samples)assert(hasVertex(sample.mesh,sample.point)||hasVertex(sample.mesh,seatedPoint(tank.root,sample.mesh,sample.point)),
+      'audited stock actually survives the production merge');
     tank.root.updateMatrixWorld(true);const deck=hull.getWorldPosition(new THREE.Vector3());
     for(const degrees of [-180,-84,0,84,180]){
       turret.rotation.y=THREE.MathUtils.degToRad(degrees);tank.root.updateMatrixWorld(true);

@@ -157,7 +157,9 @@ for (const quality of ['high', 'low']) {
       frontRay.set(origin,new THREE.Vector3(-side,0,0));
       const hit=frontRay.intersectObjects(visibleMeshes,false)[0];
       if (hit && /_ghillie_/.test(hit.object.name)) continue;
-      assert.equal(hit?.object.name,'turret','side sightline exposes the thin circular bearing');
+      // (264: since 252 the turret seat's ring collar, turretSeatRace.ts addSeatCollar, ce10d80591, stands in the seam just
+      // outside the bearing, in the turret's paint: the ring the sightline meets is the collar or the bearing)
+      assert.ok(['turret', 'turretSeatCollar'].includes(hit?.object.name),'side sightline exposes the thin circular bearing');
       assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<1.3,'visible stock is the bearing, not a turret side panel');
       seen++;
     }

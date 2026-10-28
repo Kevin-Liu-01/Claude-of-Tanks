@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { authoringRigSpec } from '../combatGunRigSeat.ts';
 
 const EPSILON_M = 0.002;
 const near = (actual, expected, epsilon = EPSILON_M) =>
@@ -23,8 +24,12 @@ try {
   assert.ok(turret && gun && shell?.geometry,
     'AbramsX retains canonical turret, gun and structural shell nodes');
 
-  assert.deepEqual(spec.armor.turretPivot, [0, 1.95, -0.04],
+  // 230 (4499464c2b): the builder seats rig_turret in the profile-authored frame and the combat-rig table
+  // (combatGunRigs.generated.ts, measured row y 1.962) seats the combat pivot where rig_turret is drawn
+  assert.deepEqual(authoringRigSpec(spec).armor.turretPivot, [0, 1.95, -0.04], 'the authored, centered AbramsX turret ring');
+  assert.deepEqual(spec.armor.turretPivot, turret.position.toArray(),
     'combat and presentation publish the centered AbramsX turret ring');
+  assert.ok(spec.armor.turretPivot[0] === 0 && spec.armor.turretPivot[2] === -0.04, 'the ring stays on the centreline at z -0.04');
   assert.deepEqual(spec.armor.gunPivot, [0, -0.02, 2.189],
     'combat gun axis follows the rebased visual gun without moving in world space');
   assert.ok(near(turret.position.z, -0.04, 1e-9),

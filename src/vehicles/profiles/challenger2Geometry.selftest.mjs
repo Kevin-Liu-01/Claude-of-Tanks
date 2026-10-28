@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
+import { turretSeatPlane } from '../turretSeatPlane.ts';
 
 const tank = createTank('challenger2', null, {
   proceduralOnly: true,
@@ -77,6 +79,20 @@ assert.equal(turret.filter(([x, y, z]) => x < -1.47
   && y < 0.40 && z > 1.36 && z < 1.44).length, 0,
 'stray loader-side front block must not return');
 
+// 264: since 246's anatomy chain (860e8dbfbb) the turret seat (turretSeatRace.ts seatTurretOverDeck) lays the corners under
+// its plane onto it, so a low gasket corner is drawn 8-11 mm up: a corner counts as authored or as the seat lays it
+tank.root.updateMatrixWorld(true);
+const seatPlane = turretSeatPlane(combatAnatomyCalibration('challenger2')?.turretRing, tank.root.getObjectByName('rig_turret').userData);
+assert.ok(seatPlane, 'challenger2 is seated over its ring receipt');
+function seatedCorner(meshName) {
+  const toHull = tank.root.getObjectByName('rig_hull').matrixWorld.clone().invert().multiply(tank.root.getObjectByName(meshName).matrixWorld);
+  const toMesh = toHull.clone().invert();
+  return (corner) => {
+    const p = corner.clone().applyMatrix4(toHull), r = Math.hypot(p.x - seatPlane.cx, p.z - seatPlane.cz);
+    p.y = Math.max(p.y, seatPlane.planeAt(Math.max(seatPlane.keepR, r)));
+    return p.applyMatrix4(toMesh);
+  };
+}
 const cheekReceipt = tank.root.getObjectByName('rig_turret')?.userData.challenger2CheekPanelReceipt;
 assert.equal(cheekReceipt?.panels?.length, 2, 'both cheek panels need a seating receipt');
 assert.ok(near(Math.atan2(-cheekReceipt.cheekSetbackM, cheekReceipt.cheekRiseM), -0.970681, 1e-5),
@@ -95,9 +111,9 @@ for (const panel of cheekReceipt.panels) {
   assert.ok(panel.weldInnerClearanceM >= panel.faceOuterClearanceM,
     `${label} cheek welds must remain seated on the armor face`);
 
-  for (const [bucket, center, dimensions] of [
-    [turretDark, panel.gasketCenter, [0.72, 0.58, 0.030]],
-    [turret, panel.faceCenter, [0.58, 0.45, 0.014]],
+  for (const [bucket, center, dimensions, seated] of [
+    [turretDark, panel.gasketCenter, [0.72, 0.58, 0.030], seatedCorner('turretDark')],
+    [turret, panel.faceCenter, [0.58, 0.45, 0.014], seatedCorner('turret')],
   ]) {
     const q = new THREE.Quaternion().setFromEuler(rotation);
     for (const x of [-dimensions[0] / 2, dimensions[0] / 2]) {
@@ -105,7 +121,8 @@ for (const panel of cheekReceipt.panels) {
         for (const z of [-dimensions[2] / 2, dimensions[2] / 2]) {
           const corner = new THREE.Vector3(x, y, z).applyQuaternion(q)
             .add(new THREE.Vector3(...center));
-          assert.ok(bucket.some(vertex => vertex.every((value, axis) => near(value, corner.getComponent(axis)))),
+          const drawn = (point) => bucket.some(vertex => vertex.every((value, axis) => near(value, point.getComponent(axis))));
+          assert.ok(drawn(corner) || drawn(seated(corner)),
             `${label} cheek layer corner must be present in the rendered mesh`);
         }
       }
@@ -162,8 +179,11 @@ assert.ok(roofReceipt.station.verticalOverlapM >= 0.01,
   'weapon-station receiver cheeks must overlap the trunnion ring vertically');
 assert.ok(roofReceipt.station.receiverSupportFrontZ < roofReceipt.station.ringRearZ,
   'weapon-station support and ring must form one connected assembly');
-assert.ok(stationEquipment.some(([x, y, z]) => x > 0.58 && x < 0.63
-  && y > 0.70 && y < 0.85 && z > 0.32 && z < 0.36),
+// (264: since 235, f8089e5a9b, the turret's squash is baked off rig_turret, so the rig frame reads the authored window
+// through turretSectionScale)
+const [sx, sy, sz] = tank.root.getObjectByName('rig_turret').userData.turretSectionScale ?? [1, 1, 1];
+assert.ok(stationEquipment.some(([x, y, z]) => x > 0.58 * sx && x < 0.63 * sx
+  && y > 0.70 * sy && y < 0.85 * sy && z > 0.32 * sz && z < 0.36 * sz),
 'extended receiver cheek must visibly overlap the trunnion envelope');
 
 assert.equal(roofReceipt.smokeMouths.length, 10,
