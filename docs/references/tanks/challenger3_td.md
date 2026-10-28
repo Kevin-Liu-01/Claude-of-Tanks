@@ -7,12 +7,14 @@
   the second ruling the same day, verbatim: "challenger 3 td should get a tonn of ghillie as well".
 - IDs and display names: `challenger3_td`, "Challenger 3 TD" (aliases: Challenger 3 Technology Demonstrator,
   Challenger 3 ATD, CR3 TD, RBSL demonstrator).
-- Implementation status: IN PROGRESS (see the round log).
-- Qualification status: NOT RUN (see the evidence matrix).
+- Implementation status: BUILT (r0-r9); both ids registered, anatomy, assets and drawings generated.
+- Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9; every other lane receipt
+  PASS (see the evidence matrix and `~/cot-launch-state/streams/TESTS-OWED.md`, the cr3td-262 section).
 - Publication status: lane branch only; integration through Main (release 262).
 - Worktree / branch / baseline commit: `.claude/worktrees/dazzling-engelbart-21c8ce`, `item/cr3td-262`, from
   `origin/main` `7d045a7588`.
-- Current next action: see the round log.
+- Current next action: Main's ruling on the exemplar gate residuals (the suspension arms the oracle omits; the muzzle
+  reference box against the barrel-align census), then the integrator's bundle re-pin.
 - Blocking choices / known failures: none blocking; the dimension conflicts below are recorded, not resolved.
 
 ## Scope and preservation
