@@ -2852,6 +2852,35 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "t55a": {
+   "inputHash": "ba1237edcf9d472c",
+   "runs": [
+    {
+     "index": 0,
+     "site": "strip:strip@addFenderStowage@profiles/t54Family.ts",
+     "source": "strip",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.01,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.92,
+      "host": "hull<fenders<-addFenders@profiles/t54Family.ts:234>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "t62_1975": {
    "inputHash": "0a8d9f613d2edf36",
    "runs": [
@@ -3806,12 +3835,12 @@
    "hostSweep": []
   },
   "type59": {
-   "inputHash": "4ca087a0dcc2cc6d",
+   "inputHash": "18c0c8450ffd1b7c",
    "runs": [
     {
      "index": 0,
-     "site": "adhoc:t62-aft-links-L@<anon>@profiles/russia.ts",
-     "source": "adhoc",
+     "site": "strip:strip@addFenderStowage@profiles/t54Family.ts",
+     "source": "strip",
      "frame": "hull",
      "registered": true,
      "classes": [],
@@ -3823,33 +3852,11 @@
       "gap": 0,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:507>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "adhoc:t62-aft-links-R@<anon>@profiles/russia.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.65,
-      "gap": 0.35,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:507>"
+      "exposure": 0.92,
+      "host": "hull<fenders<-addFenders@profiles/t54Family.ts:234>"
      }
     }
    ],
@@ -4142,7 +4149,7 @@
    "hostSweep": []
   },
   "ztz99_longwei": {
-   "inputHash": "4425e966e581870b",
+   "inputHash": "ce06f758510f1fb5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
