@@ -3,6 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
   type PlanRect,
 } from './mouseNoticePlan.ts';
+import { scratchCanvas } from './uiCanvas.ts';
 import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
@@ -38,7 +39,8 @@ let copyMeasure: CanvasRenderingContext2D | null | undefined;
 export function objectiveCopyOver(node: Element | null | undefined, copy: string, width: number): boolean {
   const cell = width - OBJECTIVE_CHROME_W;
   if (copyMeasure === undefined) {
-    const canvas = typeof document !== 'undefined' && typeof document.createElement === 'function' ? document.createElement('canvas') : null;
+    // (an offscreen measure, uiCanvas's scratch canvas: UI-LOCKDOWN A's census holds every canvas to uiCanvas.ts)
+    const canvas = typeof document !== 'undefined' && typeof document.createElement === 'function' ? scratchCanvas(1, 1) : null;
     const context = typeof canvas?.getContext === 'function' ? canvas.getContext('2d') : null;
     copyMeasure = typeof context?.measureText === 'function' ? context : null;
   }

@@ -33,6 +33,7 @@ import { arrangeVehicleControls, isJumpMode } from './vehicleControlOrder.ts';
 import { vehicleAction } from '../game/vehicleActions.ts';
 import { DESKTOP_OUTPUT_PIXEL_BUDGET } from '../engine/resolutionPolicy.ts';
 import { createUiCanvas, scratchCanvas, type UiCanvas } from './uiCanvas.ts';
+import { consumableIconSVG } from './equipIcons.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { formatNumber, getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
@@ -846,9 +847,9 @@ const TAG_GROUP_GAP = 16;
 const AIM_WARNING_CHIP_ABOVE = 14;
 const AIM_WARNING_CHIP_BELOW = 10;
 /** Half the scope vision switch's height: aerialHud.css seats it beside the sight, level with the marker (48 px tall on
- *  a mouse layout, 46 on touch). The warning chip set above the sight keeps over its band (sniperChipAboveY): a wide
- *  chip reaches past the switch's inner edge (80 px from the marker on a short window). */
-const SCOPE_VISION_HALF_H = 24;
+ *  a mouse layout; on touch its four views two by two, 94 px). The warning chip set above the sight keeps over its band
+ *  (sniperChipAboveY): a wide chip reaches past the switch's inner edge (80 px from the marker on a short window). */
+const SCOPE_VISION_HALF_H = 24, SCOPE_VISION_TOUCH_HALF_H = 47;
 /** How far right of the aim point the hit confirmation's 4:30 shard reaches once settled (hitConfirmVisualState). */
 const HIT_SHARD_CLEAR = Math.ceil(0.7071 * (18.5 + 13) + 3.5);
 /** How the scope's readout row sets its zoom plate and the warning chip, and where its line goes (sniperReadoutStack). */
@@ -1397,7 +1398,8 @@ const TRAY_INK = 'rgba(238,244,250,0.86)';
 // their names stay apart, so the sim/network layer never depends on i18n.
 const CONSUMABLE_KEYS = ['4', '5', '6'] as const;
 const consumableLabel = (id: string): string => t(consumableNameKey(id));
-const consumableSvg = (id: ConsumableId): string => uiIconSVG(CONSUMABLE_ICONS[id], 20, TRAY_INK);
+// (the item's badge, framed in its category's colour: one icon source per item, the Garage's and the tray's, Main 261)
+const consumableSvg = (id: ConsumableId): string => consumableIconSVG(id, 20, TRAY_INK);
 
 // Procedural shell artwork for the ammo slots: one consistent silhouette
 // language across the loadout — every icon is a vertical projectile of the
@@ -2113,9 +2115,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   text-shadow:var(--battle-control-label-halo);}
 /* one block on the tank (owner 2026-10-27): the name line, the silhouette and whoever holds the hull, the vehicle under
    it in the quieter ink, the bar the block's width and the side's pointer; a hull with no callsign keeps the vehicle on
-   the name line alone (.solo); a short window's bar keeps only the name (.short: the phone's narrow band between its
-   panels, where the zh floor's 13 px callsign and its silhouette met the ammunition card; the tank under the gun keeps
-   its vehicle line on the target plate). Its lines are as tall as their type (the zh floor's names had met the vehicle
+   the name line alone (.solo); a short or narrow window's bar keeps only the name (.short: a phone's narrow band between
+   its panels, where the zh floor's 13 px callsign and its silhouette met the ammunition card; the tank under the gun
+   keeps its vehicle line on the target plate). Its lines are as tall as their type (the zh floor's names had met the vehicle
    line), and its height is measured with its copy (measureHpBar). */
 .cot-hpb .nm{height:1.3em;padding:1px 7px 0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
   font-family:${FONT_COND};white-space:nowrap;
@@ -5494,7 +5496,9 @@ export function initHud(bus: EventBus): HudRuntime {
    *  it and the range tag hung at the 1:30, whichever is highest (the gun's ring can sit off the marker, under it: a small
    *  ring lagging low sends the chip here too). */
   function sniperChipAboveY(draw: ReticleDrawState): number {
-    const top = Math.min(aboveSightTop(draw), draw.cy - SCOPE_VISION_HALF_H, draw.tagTopY);
+    // (two by two on a touch layout, the lit view alone on one under 300 px tall: aerialHud.css)
+    const half = document.body.classList.contains('cot-touch-layout') && h > 300 ? SCOPE_VISION_TOUCH_HALF_H : SCOPE_VISION_HALF_H;
+    const top = Math.min(aboveSightTop(draw), draw.cy - half, draw.tagTopY);
     return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
   }
 
@@ -5961,8 +5965,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const hpBarPlaced = Array.from({ length: 96 }, () => ({ x0: 0, y0: 0, x1: 0, y1: 0 }));
   /** A hull bar's box until measured (.cot-hpb: the name and vehicle lines, the bar and the side's pointer; solo). */
   const HP_BAR_H = 52, HP_BAR_SOLO_H = 39;
-  /** Under this tall (the short height band) every bar keeps its name alone (.short). */
-  const HP_BAR_VEHICLE_MIN_H = 520;
+  /** Under this tall or this wide (the short height band, the phone width band) every bar keeps its name alone (.short):
+   *  a portrait phone's 390 px held no two-line bar beside its panels (battle-hud-overlap's staged markers, 390x844). */
+  const HP_BAR_VEHICLE_MIN_H = 520, HP_BAR_VEHICLE_MIN_W = 520;
   let hpBarsShort = false;
   /** Inside this range a plate stands further off its tank's top (plateLift) and a hull bar a size up (plateNear). */
   const PLATE_LIFT_RANGE_M = 320;
@@ -6088,7 +6093,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!camera) return;
     const seen = hpBarsSeen;
     seen.clear();
-    const short = h < HP_BAR_VEHICLE_MIN_H;
+    const short = h < HP_BAR_VEHICLE_MIN_H || w < HP_BAR_VEHICLE_MIN_W;
     if (short !== hpBarsShort) {
       hpBarsShort = short;
       hpLayer.classList.toggle('short', short);

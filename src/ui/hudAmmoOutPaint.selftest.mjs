@@ -992,12 +992,12 @@ const scopeStates = {
 // under 540 px wide takes the compact 104x46 plate in the mouse seat (the full plate has no room beside the ring there).
 const AERIAL_CSS = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
 const MOUSE_SEAT = 'left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%)';
-const COMPACT_SEAT = '@media(pointer:coarse),(max-width:539px){\n .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}\n'
+const COMPACT_SEAT = '@media(pointer:coarse),(max-width:539px){\n .cot-scope-vision .flight-key{display:none}\n'
   + ' .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;'
   + 'min-height:46px;';
 // (a portrait under 343 px wide narrows it to fit on the screen's 12 px gutter: at 8 px it stood off the plates, gauntlet r8)
 const TOUCH_SEAT = ' .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);'
-  + 'width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}\n}';
+  + 'width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:92px}\n';
 assert.ok(AERIAL_CSS.includes(MOUSE_SEAT) && AERIAL_CSS.includes('min-width:156px;min-height:48px'),
   'the sheet seats the mouse vision switch right of the sight, 156x48 at least');
 assert.ok(AERIAL_CSS.includes(COMPACT_SEAT), 'the sheet seats the compact plate (touch, a narrow mouse window) right of the sight');
@@ -1006,8 +1006,10 @@ function visionSwitchBox(width, height, touch) {
   const vmin = Math.min(width, height);
   if (touch) {
     const x1 = width / 2 - 0.15 * vmin - 8;
-    const w = Math.max(88, Math.min(104, width / 2 - 0.15 * vmin - 16));
-    return { x0: x1 - w, y0: height / 2 - 23, x1, y1: height / 2 + 23 };
+    // (the four views two by two on touch, 44 px each: 94 px tall; under 300 px tall the lit view alone, 48 px)
+    if (height <= 300) return { x0: x1 - 48, y0: height / 2 - 24, x1, y1: height / 2 + 24 };
+    const w = Math.max(92, Math.min(104, width / 2 - 0.15 * vmin - 16));
+    return { x0: x1 - w, y0: height / 2 - 47, x1, y1: height / 2 + 47 };
   }
   if (width < 540) {
     const x0 = Math.min(width / 2 + Math.max(0.15 * vmin + 8, 80), width - 112);
