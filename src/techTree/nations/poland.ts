@@ -34,7 +34,7 @@ export const POLAND_TREE: NationTree = Object.freeze({
     }),
     // Twardy
     node({ id: 'pt91a_twardy', tier: 5, line: 'pt91_side', lane: 2, parents: ['t72m1_jaguar'], slot: 'line' }),
-    node({ id: 'pt84_orzel', tier: 10, line: 'pt91_side', lane: 2, parents: ['pt91a_twardy'], slot: 'line' }),
+    node({ id: 'pt84_orzel', tier: 10, line: 'pt91_side', lane: 3, parents: ['pt91a_twardy'], slot: 'line' }),
     // PL-01
     node({ id: 'pl01', tier: 10, line: 'pl01', lane: 1, parents: ['upior'], slot: 'line', builds: ['pl01_105'] }),
     // Special

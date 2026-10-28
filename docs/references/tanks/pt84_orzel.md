@@ -1,0 +1,47 @@
+# PT-84 Orzeł (`pt84_orzel`) — packet
+
+A first-party Polish game concept on the T-84BM Oplot-M / Oplot-T base, built by `buildOplotBM(P, 'pl')`
+(profiles/oplotBM.ts); the hull, running gear, welded turret and armoured bustle are the Oplot-M's (registration,
+sections and frames in [bm_oplot_m.md](bm_oplot_m.md)). Release 262, tier X, Poland. Owner 2026-10-28: "make a new
+polish version based on this style". Owner-authored design record:
+`docs/references/concepts/pt84-orzel-20261028.json` (no source print; the release gate reads it through
+`tools/first-party-concept-policy.mjs`).
+
+## The what-if
+
+Poland never fielded the Oplot. The Orzeł ("eagle") is what the Bumar-Łabędy / KMDB partnership behind the PT-17
+(MSPO 2017: a T-72 / PT-91 hull with a new turret, the Ukrainian 120 mm smoothbore in an autoloader firing NATO rounds,
+Ukrainian ERA, a 12.7 mm ZSMU remote station and Obra-3 laser warning) might have put on the Oplot itself, in the
+fleet's Polish design language (the Zubr family's Krata, `profiles/polandFrontEra.ts`; the PT-64 Tur).
+
+Sources for the real parts: Defence-Blog and Army Recognition on the PT-17 (MSPO 2017: Bumar-Łabędy with KMDB, the 120 mm
+KBM2, Ukrainian ERA, the ZSMU A4 12.7 mm station, Obra-3); Defence24 on ZM Tarnów's ZSMU-1276 (WKM-B 12.7 mm or
+UKM-2000C 7.62 mm); Luch's Falarick 120 (a gun-launched missile for NATO 120 mm guns); the K2PL's K279 / K280 / K281
+rounds (the fleet's K2 rows, modern3Specs.ts).
+
+## What makes it its own tank
+
+- Krata ERA in place of the Duplet: framed ERAWA-2 grids, each cassette 3 cm down inside a welded frame of rails and
+  mullions 9 cm proud: two 3 x 3 glacis fields either side of the gun's slot; welded cheek boxes on the Duplet stacks'
+  plan (set back 10 cm), each column's face a framed field of two; a 4 x 2 field on each turret flank; and every one of
+  the nine skirt panels its own framed field of two (one where the box falls to the bow): the owner's extra side armour.
+- Tellur 81 mm smoke: the PT-91's two by twelve, a six by two bank low on each smoke housing, its number above it.
+- PCO's round panoramic commander's head on a mast in place of the PNK-6 tower.
+- Obra-3: four laser-warning heads (the cheek boxes' outer tops, the bustle corners) in place of the Varta jammers.
+- Two ZM Tarnów ZSMU-1276 remote stations (two gun towers, as the Oplot-M and Oplot-T): a 12.7 mm WKM-B on a tower over
+  the commander's side, a 7.62 mm UKM-2000 on the gunner's; each with its ZMO optronic head over its arm and its ammunition
+  box on the left, working auxiliary weapons (auxiliaryWeapons.ts `wkmb`).
+- The Polish rear stowage box across the bustle with a strapped tarpaulin roll; the basket's field stores (two jerrycans,
+  a canvas roll lengthwise, a wrapped bundle); twin guarded work lamps on each cheek box; olive drums on the stern.
+- Finish: the Polish three-tone woodland the Zubr family wears (`paint_pl_t80u_modern`), number 184, the Polish checker on
+  the right bin's face.
+
+## Combat data (ukraine.ts)
+
+- The Oplot-M's installed frame and base armour; ERAWA-2 sectors where the build carries the grids: glacis, cheeks and
+  flanks 0.20 / 440 mm, skirts 0.12 / 320 mm (a two-layer cassette short of the Duplet's 0.26 / 480 with its anti-tandem
+  layer).
+- The KBM2 120 mm in the carousel loader: 6.3 s, K279 APFSDS (700 mm at 2 km on the fleet scale), K280 HEAT-MP, K281 HE,
+  Falarick 120 (750 mm, guided, 6 rounds); -5 / +14 with its own measured depression curve (held up from 137 degrees,
+  where the barrel crosses the framed skirts' rear fields).
+- 52.0 t (the grids), 1,200 hp, 70 km/h, hp 2,750, traverse 44 deg/s, flanker.
