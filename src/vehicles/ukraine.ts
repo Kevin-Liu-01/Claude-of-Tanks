@@ -165,6 +165,16 @@ const UKRAINE_SPECS = {
   const era = (name: string, v0: [number, number, number], v1: [number, number, number], v3: [number, number, number],
     protection: typeof DUPLET | typeof DUPLET_SKIRT): ArmorPlate =>
     plate(name, 12, v0, v1, v3, { kind: 'era', era: { ...protection } });
+  // The KBA-3's depression by turret yaw over each build (tools/gun-depression-sweep.mjs, 25 mm kept, recoil included):
+  // the full -5 degrees forward and abeam, held up over the unditching log and the stern drums astern, and on the
+  // Oplot-T to about level over its APU on the left rear fender (oplotBMGun.selftest.mjs holds both).
+  const GUN_PITCH_BY_YAW_DEG: Record<'bm_oplot_m' | 'bm_oplot_t', [number, number][]> = {
+    bm_oplot_m: [[0, -5], [142, -5], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5], [163, -3.2],
+      [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]],
+    bm_oplot_t: [[0, -5], [134, -5], [135, -3.9], [136, -1.7], [137, -0.7], [138, -0.3], [142, -0.2], [153, -0.1],
+      [154, -0.3], [155, -1.3], [157, -4.6], [160, -4.5], [162, -3.5], [163, -3.2], [168, -2.6], [171, -2.7], [176, -3.3],
+      [180, -3.3]],
+  };
   for (const id of ['bm_oplot_m', 'bm_oplot_t'] as const) {
     const spec = UKRAINE_SPECS[id];
     const frame = modernArmor({
@@ -193,6 +203,7 @@ const UKRAINE_SPECS = {
     if (id === 'bm_oplot_t') spec.visual.insignia = 'th-flag';
     spec.gunElevationDeg = 14;
     spec.gunDepressionDeg = 5;
+    spec.gunPitchByYawDeg = GUN_PITCH_BY_YAW_DEG[id];
     spec.gun.reloadS = 6.3;
     spec.gun.baseAccuracy = 0.31;
     spec.gun.aimTimeS = 1.8;

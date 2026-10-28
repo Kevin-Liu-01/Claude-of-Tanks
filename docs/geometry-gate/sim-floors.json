@@ -18,6 +18,8 @@
     "amx40_proto": {"panYM":0.34,"bottomYM":0,"hullMin":[-1.68,0.34,-3.4],"hullMax":[1.68,1.763,3.43],"turretMinY":-0.042},
     "amx56": {"panYM":0.2997,"bottomYM":0,"hullMin":[-1.8,0.2997,-3.3102],"hullMax":[1.8,1.6773,3.5024],"turretMinY":-0.1694},
     "ares_apc": {"panYM":0.387,"bottomYM":0,"hullMin":[-1.755,0.387,-3.2454],"hullMax":[1.755,2.043,3.0951],"turretMinY":0},
+    "bm_oplot_m": {"panYM":0.2255,"bottomYM":0,"hullMin":[-2.132,0.4305,-3.6042],"hullMax":[2.132,1.4965,3.6953],"turretMinY":-0.0307,"accepted":{"reason":"first measurement","by":"kevinliu","date":"2026-10-27","from":"no earlier row"}},
+    "bm_oplot_t": {"panYM":0.2255,"bottomYM":0,"hullMin":[-2.132,0.4305,-3.6042],"hullMax":[2.132,1.4965,3.6953],"turretMinY":-0.0307,"accepted":{"reason":"first measurement","by":"kevinliu","date":"2026-10-27","from":"no earlier row"}},
     "bmp2": {"panYM":0.35,"bottomYM":0,"hullMin":[-1.575,0.35,-3.3292],"hullMax":[1.575,1.64,3.365],"turretMinY":-0.78},
     "bmp3": {"panYM":0.3,"bottomYM":0,"hullMin":[-1.615,0.3,-3.645],"hullMax":[1.615,1.8,3.57],"turretMinY":-1.14},
     "bmp3_rok": {"panYM":0.35,"bottomYM":0,"hullMin":[-1.6527,0.35,-3.3292],"hullMax":[1.6527,1.64,3.365],"turretMinY":-0.04,"accepted":{"reason":"release 240 batch 251 turret ring collar (turretSeatRace.ts) and the batch geometry","by":"kevinliu","date":"2026-10-25","from":{"turretFloorY":0.01}}},

@@ -573,12 +573,13 @@ function buildOplotMKit(P: TankBuilderPort): void {
 /** The Thai Oplot-T's export kit: two stations of its own pattern, bolted appliqué on the skirt boxes, a bustle cage,
  *  a searchlight and desert drums. */
 function buildOplotTKit(P: TankBuilderPort): void {
-  // the M2's mini-turret carries a boresighted searchlight on its mantlet's left
-  // the M2 clear -149..3 degrees (the 7.62 station, the PNK-6 tower and the cage astern); the 7.62 clear -80..246
-  stationLimits(enclosedStation(P, T_STATIONS.m2, true), [-2.5656, 0.0175],
-    [[-2.5656, 0.04], [-2.5133, 0.18], [-0.0698, 0.18], [0.0175, 0.155]]);
+  // the M2's mini-turret on its tower carries a boresighted searchlight on its mantlet's left; it clears -248..4 degrees
+  // (blocked toward the PNK-6 tower and the 7.62), its depression held up at the far end of that arc; the 7.62 clears
+  // -101..233 (blocked toward the tower)
+  stationLimits(enclosedStation(P, T_STATIONS.m2, true), [-4.2935, 0.0349],
+    [[-4.2935, 0.094], [-4.1539, 0.113], [-4.0666, 0.127], [-3.9793, 0.18]]);
   stationLens(P, T_STATIONS.m2);
-  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.3614, 4.2586], [[-1.3614, 0], [-1.3090, 0.18], [4.1888, 0.18], [4.2586, 0.026]]);
+  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.7279, 4.0317], [[3.8223, 0.18], [3.9095, 0.037], [3.9968, 0], [4.0317, 0]]);
   // bolted steel appliqué where the Thai tank carries no Duplet: two courses of 9 cm blocks on each of the six rear skirt
   // panels, flush on the flared face, four bolt heads on each block's outer face
   const face = new THREE.Vector2(SKIRT_FACE.innerX + 0.06 - SKIRT_FACE.outerX, DECK_Y - (SKIRT_FACE.bottomY + 0.05));

@@ -168,6 +168,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "bm_oplot_m": {
+   "inputHash": "b184a09bf45ed4fc",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "bm_oplot_t": {
+   "inputHash": "46492f8702752233",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "bmp2": {
    "inputHash": "fa0db03d0f22ec8a",
    "runs": [

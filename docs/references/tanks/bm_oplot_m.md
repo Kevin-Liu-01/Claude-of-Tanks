@@ -132,11 +132,11 @@ fuel barrels in back, lights, 2 gun towers instead of 1")
 
 | | Oplot-M (`buildOplotMKit`) | Oplot-T (`buildOplotTKit`) |
 | --- | --- | --- |
-| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear (clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-84..273) | M2 enclosed mini-turret with a boresighted searchlight (-149..3); 7.62 open cradle (-80..246) |
-| Extra side armour | a lower Duplet course on each rubber skirt, seven blocks a side (skirt sector) | bolted steel appliqué on the six rear skirt panels (addExternalArmor), a slat cage round the bustle and right bin |
+| Stations (sourceMachineGun, working) | KT-12.7 open cradle at the right rear, its box sight on a post (clear -248..4 deg); KT-7.62 enclosed mini-turret at the left rear (-84..273) | M2 enclosed mini-turret on a raised armoured tower with a large searchlight (-248..4); 7.62 open cradle (-101..233) |
+| Extra side armour | a lower Duplet course on each rubber skirt, seven gapped blocks a side (skirt sector) | two courses of 9 cm bolted blocks on the six rear skirt panels (addExternalArmor); a stand-off horizontal-slat cage round the turret's rear half |
 | Lights | LED bars on the cheek stacks, a work lamp astern | a searchlight on the left cheek, work lamps fore and aft |
-| Stern | twin 200 L drums (issue paint 1) behind the unditching log, tops on the deck line | the same cradle, desert-issue drums (paint 3) |
-| Hull fittings | none beyond the shared hull | the APU's low box on the left rear fender (side exhaust), boarding steps off that fender's end |
+| Stern | twin 200 L drums (issue paint 1) strapped to the lower rear plate under the grille and the log | the same cradle, desert-issue drums (paint 3) |
+| Hull fittings | none beyond the shared hull | the APU's low box out on the left rear fender edge (side exhaust), a stirrup step off that fender's end |
 | Stock coat | Ukrainian Plain Olive (`paint_bm_oplot_m`) | Ukrainian Three-Tone Desert (`paint_bm_oplot_t`) |
 
 Station arcs and depression tables come from `tools/roof-station-arcs.mjs` on the build (2 degrees, 0.01 rad margin).
