@@ -77,7 +77,7 @@ try {
   assert.match(screen.root.innerHTML, /<div class="count" aria-live="polite">/, 'and its countdown speaks');
   assert.doesNotMatch(screen.root.innerHTML, /class="foot" aria-live/, 'the percent is the progressbar\'s value, never read aloud');
   assert.equal(selectors.get('.teams').getAttribute('aria-busy'), 'true', 'the sheets are busy while they fill');
-  assert.equal(screen.root.getAttribute('aria-busy'), undefined, 'the card is never busy: that would hold its stage line back');
+  assert.ok(screen.root.getAttribute('aria-busy') === undefined, 'the card is never busy: that would hold its stage line back');
   // the direction's five steps (10-battle-load .prog .reg): each fills its fifth of the load
   const steps = [1, 2, 3, 4, 5].map((n) => selectors.get(`.fbar i:nth-child(${n}) b`));
   const fills = () => steps.map((step) => step.style.transform).join(' ');
