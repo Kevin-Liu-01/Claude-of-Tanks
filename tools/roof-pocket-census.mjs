@@ -26,7 +26,7 @@ for (const id of ids) {
   try {
     tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
     const soups = ownerSoups(tank), found = [];
-    for (const [owner, tri] of Object.entries(soups)) for (const p of roofPockets(tri, OWNER_RULES[owner])) found.push({ owner, ...p });
+    for (const [owner, soup] of Object.entries(soups)) for (const p of roofPockets(soup.tri, { ...OWNER_RULES[owner], body: soup.body })) found.push({ owner, ...p });
     found.sort((a, b) => b.areaM2 - a.areaM2);
     const areaCm2 = found.reduce((t, p) => t + p.areaM2 * 1e4, 0);
     rows.push({ id, pockets: found.length, areaCm2: +areaCm2.toFixed(0), found });

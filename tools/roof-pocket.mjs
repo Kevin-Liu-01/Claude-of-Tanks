@@ -11,6 +11,8 @@
 //   walls on both sides along x or along z within SLOT_M: a slot or hole in the body, not the open air under a bustle,
 //   which runs out to one side. On the hull a FLOOR within FLOOR_GAP_M is needed too: a fender over open ground (its
 //   track left out) is no pocket.
+// - Only the armour body's own undersides roof a pocket (the owner's mesh, the armour paint): a stowage rack, a basket or
+//   a launcher's tube bank is equipment, open by design, though it still walls and hides.
 // - The roof must be a panel, not a bar: the columns MIN_PANEL_M away along one axis and half that along the other carry a
 //   roof in the same band (a rail, a handle or a lifting eye is no roof; a 13 cm slot under a step is). Air within BASE_M
 //   of the owner's lowest point is its seat (the turret on its ring), never a pocket.
@@ -25,27 +27,34 @@ const MIN_GAP_M = 0.03, ROOF_REACH_M = 0.60, FLOOR_GAP_M = 0.30, SLOT_M = 0.50, 
 /** A pocket is reported at this plan area and depth from its mouth. */
 export const POCKET_MIN_AREA_M2 = 0.004, POCKET_MIN_DEPTH_M = 0.04;
 const RUNNING_GEAR = /track|wheel|sprocket|idler|roller|bogie|suspension|gear|tread|link/i;
-/** Per owner: the turret's false roofs need no floor (a slot can run to its base); the hull's need one. */
-export const OWNER_RULES = Object.freeze({ turret: { floored: false }, hull: { floored: true } });
+/** Per owner: the turret's false roofs need no floor (a slot can run to its base), and the air within 12 cm over its ring
+ * plane is its seat on the hull; the hull's need a floor. */
+export const OWNER_RULES = Object.freeze({ turret: { floored: false, minY: 0.12 }, hull: { floored: true } });
 
-/** The two rigid owners' triangle soups in their own frames: the turret (gun at rest) and the hull without its running gear. */
+/** The two rigid owners' triangle soups in their own frames, { tri, body }: the turret (gun at rest) and the hull without
+ * its running gear, the armour body's own mesh (named for its owner: the armour-paint bucket) first, `body` triangles. */
 export function ownerSoups(tank) {
   tank.root.updateMatrixWorld(true);
   const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret');
+  const soup = (owner, meshes, frame) => {
+    const inv = new THREE.Matrix4().copy(frame.matrixWorld).invert(), body = meshes.filter((m) => m.name === owner);
+    const a = meshTriangles(body, inv).tri, b = meshTriangles(meshes.filter((m) => m.name !== owner), inv).tri;
+    const tri = new Float64Array(a.length + b.length); tri.set(a); tri.set(b, a.length);
+    return { tri, body: a.length / 9 };
+  };
   const out = {};
-  if (turret) out.turret = meshTriangles(meshesUnder(turret), new THREE.Matrix4().copy(turret.matrixWorld).invert()).tri;
+  if (turret) out.turret = soup('turret', meshesUnder(turret), turret);
   if (hull) {
-    const hullMeshes = meshesUnder(hull, turret ? [turret] : []).filter((m) => {
+    out.hull = soup('hull', meshesUnder(hull, turret ? [turret] : []).filter((m) => {
       for (let p = m; p && p !== hull; p = p.parent) if (RUNNING_GEAR.test(p.name || '')) return false;
       return true;
-    });
-    out.hull = meshTriangles(hullMeshes, new THREE.Matrix4().copy(hull.matrixWorld).invert()).tri;
+    }), hull);
   }
   return out;
 }
 
 /** The exposed pockets in one soup (Float64Array, 9 per triangle), largest plan area first. */
-export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false } = {}) {
+export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false, body = Infinity, minY = -Infinity } = {}) {
   const n = tri.length / 9;
   if (!n) return [];
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
@@ -72,10 +81,10 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
   // per column: crossings -> solid intervals -> voxel occupancy, and each cell's roof / floor
   const solid = new Uint8Array(NX * NY * NZ), roofY = new Float32Array(NX * NY * NZ).fill(NaN);
   const idx = (i, j, k) => (i * NY + j) * NZ + k;
-  const ys = [], dirs = [];
+  const ys = [], dirs = [], ofBody = [];
   for (let i = 0; i < NX; i++) for (let k = 0; k < NZ; k++) {
     const c = i * NZ + k, px = cx(i), pz = cz(k);
-    ys.length = 0; dirs.length = 0;
+    ys.length = 0; dirs.length = 0; ofBody.length = 0;
     for (let e = start[c]; e < start[c + 1]; e++) {
       const o = list[e] * 9;
       const ax = tri[o], ay = tri[o + 1], az = tri[o + 2], bx = tri[o + 3], by = tri[o + 4], bz = tri[o + 5], qx = tri[o + 6], qy = tri[o + 7], qz = tri[o + 8];
@@ -86,18 +95,20 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
       ys.push(ay + s * (by - ay) + r * (qy - ay));
       // normal y = (b-a) x (c-a) . y = uz*vx - ux*vz = -den: a face facing down (normal y < 0) enters the solid going up
       dirs.push(-den < 0 ? 1 : -1);
+      ofBody.push(list[e] < body);
     }
     if (!ys.length) continue;
     const order = ys.map((_, e) => e).sort((a, b) => ys[a] - ys[b] || dirs[b] - dirs[a]);
+    const bodyUnderside = (y) => ys.some((v, e) => ofBody[e] && dirs[e] > 0 && Math.abs(v - y) < 0.002);
     const intervals = [];
     let w = 0, open = null;
     for (const e of order) {
       const before = w;
       w = Math.max(0, w + dirs[e]);
       if (before === 0 && w > 0) open = ys[e];
-      else if (before > 0 && w === 0) { intervals.push([open, ys[e]]); open = null; }
+      else if (before > 0 && w === 0) { intervals.push([open, ys[e], bodyUnderside(open)]); open = null; }
     }
-    if (open !== null) intervals.push([open, open + voxel]);                    // an entry never closed: a plate one cell thick
+    if (open !== null) intervals.push([open, open + voxel, bodyUnderside(open)]);                    // an entry never closed: a plate one cell thick
     for (const [y0, y1] of intervals) {
       const j0 = Math.max(0, Math.floor((y0 - lo[1]) / voxel)), j1 = Math.min(NY - 1, Math.floor((y1 - lo[1]) / voxel));
       for (let j = j0; j <= j1; j++) solid[idx(i, j, k)] = 1;
@@ -105,6 +116,7 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     // the air under each solid's underside, down to the solid below (or ROOF_REACH_M) is roofed by that underside; with
     // `floored` only between two solids FLOOR_GAP_M apart or less (the hull: a fender over open ground is no pocket)
     for (let m = floored ? 1 : 0; m < intervals.length; m++) {
+      if (!intervals[m][2]) continue;                                       // only the armour body's own undersides roof a pocket
       const roof = intervals[m][0], below = m ? intervals[m - 1][1] : -Infinity;
       if (floored && roof - below > FLOOR_GAP_M) continue;
       const floor = Math.max(below, roof - ROOF_REACH_M);
@@ -134,7 +146,7 @@ export function roofPockets(tri, { voxel = VOXEL_M, all = false, floored = false
     const roofed = (ii, kk) => ii >= 0 && kk >= 0 && ii < NX && kk < NZ && Math.abs(roofY[idx(ii, j, kk)] - r) < 0.06;
     const along = (r1, di, dk) => roofed(i - di * r1, k - dk * r1) || roofed(i + di * r1, k + dk * r1);
     if (!((along(reach, 1, 0) && along(narrow, 0, 1)) || (along(reach, 0, 1) && along(narrow, 1, 0)))) continue;
-    if (j < baseCells) continue;
+    if (j < baseCells || lo[1] + (j + 0.5) * voxel < minY) continue;
     if ((wall(i, j, k, 1, 0) && wall(i, j, k, -1, 0)) || (wall(i, j, k, 0, 1) && wall(i, j, k, 0, -1))) pocket[p] = 1;
   }
   // the outside air: a flood fill through air from the frame's border

@@ -4,9 +4,9 @@
 // the owner marked on the S1 (the field->mid riser's back faces, the sight tower's pedestal ring, the mid->high riser's
 // back faces and underside) nor under the cheek corner fields beside them, on any of the three ids it builds. Measured by
 // tools/roof-pocket.mjs on the turret (gun at rest, its own frame): until 261 every id read pockets on all of them.
-// The other turret pockets are held shrink-only per id (REMAINING_CM2): the open gunner's sight bay, the recess under the
-// mantlet and the centre rear notch are the real vehicle's; the slots behind the side boxes and at the rear corners
-// were routed with the fleet census. Negative control: a plate laid over a 13 cm slot between two blocks is a pocket.
+// The other turret pockets are held shrink-only per id (REMAINING_CM2): the open gunner's sight bay and the centre rear
+// notch are the real vehicle's; the slots behind the side boxes and at the rear corners were routed with the fleet
+// census. Negative control: a plate laid over a 13 cm slot between two blocks is a pocket.
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { OWNER_RULES, ownerSoups, roofPockets } from '../../../tools/roof-pocket.mjs';
@@ -23,7 +23,7 @@ const MARKED = {
   'corner field left': [[-1.36, 0.36, 1.10], [-0.98, 0.44, 1.5]],
 };
 // turret pocket plan area left per id after 261 (cm2): may only shrink
-const REMAINING_CM2 = { leclerc_s1: 9100, leclerc_s2: 8424, leclerc_sxxi: 9980 };
+const REMAINING_CM2 = { leclerc_s1: 5384, leclerc_s2: 5572, leclerc_sxxi: 7476 };
 const under = (p, [lo, hi]) => p.box[0] <= hi[0] + 0.05 && p.box[3] >= lo[0] - 0.05 && p.box[2] <= hi[2] + 0.08 && p.box[5] >= lo[2] - 0.08
   && p.box[1] <= hi[1] + 0.05 && p.box[4] >= lo[1] - 0.30;
 
@@ -31,7 +31,7 @@ const T0 = Date.now();
 for (const id of Object.keys(REMAINING_CM2)) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {
-    const pockets = roofPockets(ownerSoups(tank).turret, OWNER_RULES.turret);
+    const soup = ownerSoups(tank).turret, pockets = roofPockets(soup.tri, { ...OWNER_RULES.turret, body: soup.body });
     for (const [name, box] of Object.entries(MARKED)) {
       const hit = pockets.find((p) => under(p, box));
       assert.equal(hit, undefined, `${id}: a see-through pocket under the ${name} (${hit && `${(hit.areaM2 * 1e4).toFixed(0)} cm2 at ${hit.box}`})`);
