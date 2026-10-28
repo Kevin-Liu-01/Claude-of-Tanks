@@ -282,6 +282,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
+    // 262 (Main's ruling on the Challenger 3 TD): each oracle-blind fleet part is named, ruled and carried once
+    'tools/oracle-blind-parts.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',

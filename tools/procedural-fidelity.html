@@ -49,6 +49,7 @@ import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-override
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
+import { ORACLE_BLIND_PARTS } from '/tools/oracle-blind-parts.mjs';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -677,6 +678,8 @@ window.__REFERENCE_QUALITY_BARS = Object.fromEntries(referenceIds.map((tankId) =
   (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.qualityBar || 'fleet',
 ]));
 window.__REFERENCE_IDS = referenceIds;
+// the fidelity driver keeps a raw-source comparison beside each oracle-blind exemption (tools/oracle-blind-parts.mjs)
+window.__ORACLE_BLIND_IDS = Object.keys(ORACLE_BLIND_PARTS);
 
 if (params.has('registry')) {
   // Geometry tooling needs the eligible-ID census before it opens a source.
@@ -792,6 +795,36 @@ const baseVisible = new WeakMap();
 for (const root of [reference.root, procedural.root]) {
   root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o) && !isCamouflageSuit(o)); });
 }
+// Fleet-standard parts the registered oracle cannot judge (tools/oracle-blind-parts.mjs, Main's ruling in 262): each
+// named mesh must be the one mesh of its declared role, and each reference node pattern must match its declared count,
+// before the part leaves the track profile (every other mask keeps it); ?comparison=raw-source compares it unexempted.
+const oracleBlindTarget=params.get('comparison')!=='raw-source'?ORACLE_BLIND_PARTS[id]??null:null;
+const oracleBlindTrackNodes=new Map();
+let oracleBlindParts=null;
+if(oracleBlindTarget){
+  oracleBlindParts=[];
+  for(const part of oracleBlindTarget.parts){
+    if(part.masks!=='trackProfile')failFidelity(`oracle-blind ${part.key}: unknown mask scope ${part.masks}`);
+    for(const {name,appearanceRole} of part.procedural){
+      const found=[];procedural.root.traverse(o=>{if(o.name===name)found.push(o);});
+      if(found.length!==1||!isRenderNode(found[0])||found[0].userData.appearanceRole!==appearanceRole)
+        failFidelity(`oracle-blind ${part.key}: ${name} must be the one ${appearanceRole} mesh (found ${found.length})`);
+      oracleBlindTrackNodes.set(found[0],baseVisible.get(found[0]));
+    }
+    if(part.reference){
+      const pattern=new RegExp(part.reference.node),found=[];
+      reference.root.traverse(o=>{if(isRenderNode(o)&&pattern.test(o.name||''))found.push(o);});
+      if(found.length!==part.reference.count)
+        failFidelity(`oracle-blind ${part.key}: ${part.reference.node} matched ${found.length} reference meshes, not ${part.reference.count}`);
+      for(const o of found)oracleBlindTrackNodes.set(o,baseVisible.get(o));
+    }
+    oracleBlindParts.push({key:part.key,masks:part.masks,part:part.part,rulingWords:part.rulingWords,reason:part.reason,
+      procedural:part.procedural.map(p=>p.name),reference:part.reference?.node??null});
+  }
+  document.querySelector('#summary').textContent += ' · track profile without the oracle-blind track parts (Main\'s ruling)';
+}
+const oracleBlindScope=oracleBlindParts?{decision:oracleBlindTarget.decision,decisionDate:oracleBlindTarget.decisionDate,
+  packet:oracleBlindTarget.packet,parts:oracleBlindParts,rawSourceComparison:'?comparison=raw-source'}:null;
 
 function forEachBoxCorner(box, fn) {
   for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
@@ -1246,10 +1279,18 @@ const gunComponentMasksAvailable=source?.glb?.gunComponentMasks !== false && com
 // hull mask perfectly usable.  Such references may opt into that narrower,
 // explicit track-only measurement without re-enabling component scores.
 const trackComponentMasksAvailable = componentMasksAvailable || source?.glb?.trackComponentMasks === true;
-const [refTrack,procTrack]=lowerBand(
-  trackComponentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole,
-  trackComponentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole,
-);
+let trackRefMask=trackComponentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole;
+let trackProcMask=trackComponentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole;
+if(oracleBlindTrackNodes.size){
+  // an oracle-blind track part (tools/oracle-blind-parts.mjs) leaves the track profile alone: the same right view is
+  // drawn again without it on both sides, and every other mask keeps it
+  const camera=cameraFor(ANGLES.right),part=trackComponentMasksAvailable?'hull':'whole';
+  for(const o of oracleBlindTrackNodes.keys())baseVisible.set(o,false);
+  trackRefMask=renderMask(reference,procedural,camera,part);
+  trackProcMask=renderMask(procedural,reference,camera,part);
+  for(const [o,base] of oracleBlindTrackNodes)baseVisible.set(o,base);
+}
+const [refTrack,procTrack]=lowerBand(trackRefMask,trackProcMask);
 const trackMetric=compare(refTrack,procTrack);
 if (params.get('components')) overlayCanvas('track profile',refTrack,procTrack,trackMetric);
 const hullSideBounds=bounds(rawMasks.right.refHull);
@@ -1354,6 +1395,7 @@ window.__FIDELITY_REPORT={
   fallback:spec.publicVisualFallback || spec.visualBase || id,
   score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),requiredMinimum:requiredFidelity,qualityBar:source?.qualityBar||'fleet',gatePassed,
   gateFailures:fidelityGate.failures,
+  ...(oracleBlindScope ? {oracleBlindParts:oracleBlindScope} : {}),
   rawScore:totalScore,rawScores,rawMinView:minView,
   registration:sourceWorldRegistration || {mode:useHullLengthAnchor ? 'legacy-hull-length-normalization' : 'legacy-width-normalization'},
   normalizationAnchors:{applied:!preservation && !sourceWorldCertificate,

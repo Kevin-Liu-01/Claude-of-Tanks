@@ -2,20 +2,21 @@
 
 ## Current status
 
-- Updated: 2026-10-27 (release 262 lane `item/cr3td-262`).
+- Updated: 2026-10-28 (release 262 lane `item/cr3td-262`).
 - Owner request: 2026-10-27, verbatim: "add these new tanks using our rigoorous tank generation workflow". Main relayed
   the second ruling the same day, verbatim: "challenger 3 td should get a tonn of ghillie as well".
 - IDs and display names: `challenger3_td`, "Challenger 3 TD" (aliases: Challenger 3 Technology Demonstrator,
   Challenger 3 ATD, CR3 TD, RBSL demonstrator).
-- Implementation status: BUILT (r0-r10); both ids registered, anatomy, assets and drawings generated.
-- Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9; every other lane receipt
-  PASS (see the evidence matrix and `~/cot-launch-state/streams/TESTS-OWED.md`, the cr3td-262 section).
+- Implementation status: BUILT (r0-r11); both ids registered, anatomy, assets and drawings generated. Tier VIII
+  (owner, 2026-10-28).
+- Qualification status: geometry gate 89.2/92 (exemplar) NOT PASSED, causes measured in r9 and r11; procedural
+  fidelity 96.6 PASS under Main's track-shoe exemption (r11; 96.1 with tracks 89.2 unexempted); every other lane
+  receipt PASS (see `~/cot-launch-state/streams/TESTS-OWED.md`, the cr3td-262 section).
 - Publication status: lane branch only; integration through Main (release 262).
 - Worktree / branch / baseline commit: `.claude/worktrees/dazzling-engelbart-21c8ce`, `item/cr3td-262`, from
   `origin/main` `7d045a7588`.
-- Current next action: Main's ruling on the exemplar gate residuals (the suspension arms the oracle omits; the muzzle
-  reference box against the barrel-align census; the track profile's centre guide rib, r10), then the integrator's
-  bundle re-pin.
+- Current next action: Main's ruling on the gate after r11 (the arms stay compared, since the oracle draws trailing-arm
+  units; the muzzle box kept out holds the turret plan view at 89.2), then the integrator's bundle re-pin.
 - Blocking choices / known failures: none blocking; the dimension conflicts below are recorded, not resolved.
 
 ## Scope and preservation
@@ -189,7 +190,7 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   centres; spec dims set to the measured envelope (9.63 / 13.15 / 4.06 / 3.74). Result 91.2/92: dims 100, stations
   95.5, turret 93.3, whole 92.2, hull 91.19 (front view). The hull deficit is two measured items: eight front columns
   where the fleet's forged suspension arms (axle bosses at 0.43-0.53 m, x 0.97-1.17) stand under the oracle's lowest
-  point there (0.61 m; the oracle models no arms), about 2.7 points; and the centre column, where the reference's
+  point there (0.61 m; "the oracle models no arms" was wrong: r11 found its trailing-arm units), about 2.7 points; and the centre column, where the reference's
   front hull mask reads 2.20 m though its own stern pole (Object_2, present in the canonical file to 2.83 m) stands
   there and the side view sees it. The rear depression stops were re-measured with the pole's true height: 8.4/8.7/8.7
   at 178-180 (nationalGunClearance PASS).
@@ -207,6 +208,22 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   alone (89.2): the oracle's lower run is a 0.07-0.08 m band with a continuous centre guide rib to 0.18 m between the
   wheels, where the fleet shoe draws a 0.05 m band with its guides under the band's top; it joins the r9 running-gear
   residuals for Main's ruling.
+- r11 (Main's ruling, 2026-10-28): the owner approved both ids at tier VIII. Main ruled a documented exemption for "the
+  fleet's forged suspension arms (the oracle has none) and the fleet track shoe (the oracle draws a thicker band with a
+  centre rib)", the muzzle reference box staying out. Track shoe: `tools/oracle-blind-parts.mjs` names both belts (the
+  build's `gearTrackBandL`/`R`, `gearTrackPads` and its simplified level; the oracle's `Object_5`/`Object_8`, |x|
+  1.20-1.85 to 1.47 m) with the ruling's words and the r10 measurements, and `procedural-fidelity.html` draws the right
+  view again without them on both sides for the track profile alone (every other mask keeps them; a missing or
+  re-roled mesh, or another reference node count, stops the page). The fidelity driver keeps the unexempted comparison
+  beside it (`?comparison=raw-source`). Fidelity 96.6 PASS, tracks 94.8 (unexempted 96.1, tracks 89.2); the other
+  components unchanged. Arms: measured, not exempted. The oracle draws a trailing-arm unit at every station
+  (`Object_17`: |x| 0.93-1.10, y 0.55-0.94, 0.75-1.0 m long with the pivot ahead of the wheel; installed 0.61-1.04 m),
+  so r9's "no arms" was wrong. The fleet arms' axle bosses reach 0.43 m and the build's hydrogas boxes end at 0.94 m:
+  set aside (a lane run of the same split on `gearSuspensionLinks` and `gearSuspensionJointBosses`), the front hull view
+  fell to 90.5 against 91.2 compared (the columns at |x| 1.10-1.17 now 0.33 m short of the oracle's units). They stay
+  compared; the measured fix is geometry (this tank's units from 0.61 m at |x| 1.02-1.21 along each arm, and the arm's
+  boss no lower), a new geometry hash and asset round. The gate is unchanged at 89.2/92: the turret plan view 89.2 and
+  the plan whole view 90.7 are the muzzle box kept out (with it, 93.3 and 95.7), the hull 91.2 the arms.
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),
