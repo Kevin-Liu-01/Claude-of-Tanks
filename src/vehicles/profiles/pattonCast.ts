@@ -332,7 +332,11 @@ interface PershingHullSpec {
   readonly trackW: number;
   readonly xc: number;
   readonly gear: GearSpec;
-  readonly mark: 'm46' | 'm47';
+  readonly mark: 'm46' | 'm47' | 'm60';
+  /** The driver's hatches' x on the bow deck (the M46/M47's driver and co-driver; the M60's one driver on the centre line). */
+  readonly driverHatchX?: readonly number[];
+  /** Headlight groups on the front fenders' outer edges (x, y, z) in their guards, where the glacis carries none. */
+  readonly fenderLights?: readonly [number, number, number];
   /** The fender's top line, rear to front (z, y), where it steps (the reference's rear muffler deck, the low front
    *  fenders), its stowage boxes' height and the mufflers' centre height. */
   readonly fenderLine?: readonly (readonly [number, number])[];
@@ -484,8 +488,8 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
   }
   yield 'pershingHullMufflers';
   // 6. Bow: driver's and co-driver's hatches with periscopes, headlight groups with brush guards, tow eyes, the bow gun.
-  for (const side of [-1, 1]) {
-    const hx = side * 0.55, hz = H.knee[0] - 0.42;
+  for (const hx of H.driverHatchX ?? [-0.55, 0.55]) {
+    const side = hx < 0 ? -1 : 1, hz = H.knee[0] - 0.42;
     // near-flush hatch rings and lids (the gun's shield passes over them at full depression)
     P.add('hull', cylY(0.30, 0.31, 0.03, P.q ? 20 : 12), hx, H.deckY + 0.012, hz);
     P.add('hullDetail', cylY(0.26, 0.27, 0.02, P.q ? 20 : 12), hx, H.deckY + 0.035, hz);
@@ -496,6 +500,16 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
   for (const side of [-1, 1]) {
     const lights = FITTINGS.lightCluster({ mats: P.mats, pods: H.mark === 'm47' ? 2 : 1, spacing: 0.14, r: 0.062,
       rake: -0.20, seed: side > 0 ? 471 : 469, nightKind: 'headlight' });
+    if (H.fenderLights) {
+      // on the front fender's outer edge in its guard: rods over the lamp and a hoop ahead of it
+      const [fx, fy, fz] = H.fenderLights;
+      lights.position.set(side * fx, fy, fz);
+      P.hullG.add(lights);
+      P.add('hullDark', box(0.12, fy - H.fenderY + 0.02, 0.10), side * fx, (fy + H.fenderY) / 2 - 0.05, fz - 0.06);
+      for (const dx of [-0.06, 0, 0.06]) bar(P, 'hullDark', [side * (fx + dx), fy - 0.06, fz - 0.08], [side * (fx + dx), fy + 0.07, fz + 0.16], 0.01);
+      P.add('hullDark', box(0.16, 0.012, 0.012), side * fx, fy + 0.07, fz + 0.16);
+      continue;
+    }
     if (H.bowLights) {
       // on a bracket from the nose, ahead of it
       const [bx, by, bz] = H.bowLights;
@@ -842,7 +856,7 @@ function bustleNumbers(P: CastPort, T: TurretFrame, z: number, frac: number, sca
 
 /** What pattonCastProportions.selftest.mjs reads back from a build: the authored datums and the running gear's counts. */
 interface PattonCastReceipt {
-  readonly mark: 'm46' | 'm47' | 'm48a5';
+  readonly mark: 'm46' | 'm47' | 'm48a5' | 'm60a1' | 'm60a3';
   readonly ring: readonly [number, number];
   readonly trunnion: readonly [number, number];
   readonly muzzleZ: number;
@@ -859,7 +873,7 @@ interface PattonCastReceipt {
 
 function publishReceipt(P: CastPort, receipt: PattonCastReceipt): void {
   P.turretG.userData.pattonCastReceipt = Object.freeze({ revision: 'patton-cast-262', ...receipt });
-  if (receipt.mark !== 'm48a5') {
+  if (receipt.mark === 'm46' || receipt.mark === 'm47') {
     // the post-war American fit the M46/M47 carry (americanModernization.selftest.mjs): the Sheridan-derived M2HB, the
     // paired guarded headlight groups, two radio whips and the seated bustle stowage
     P.turretG.userData.americanModernizationReceipt = Object.freeze({
@@ -1720,5 +1734,132 @@ export function* buildM48A5CastSteps(P: CastPort): TankProfileBuild {
     muzzleZ: 1.514 + 4.313, device: 'none', evacuator: [1.514 + 2.026, 1.514 + 2.596],
     roadWheels: 6, wheelR: M48_GEAR.wheelR, returnRollers: M48_GEAR.rollerN, tensionWheel: Boolean(M48_GEAR.tension),
     trackW: M48_TRACK_W, trackCentres: M48_XC * 2, glacisFromVerticalDeg: glacisDeg([3.22, 1.13], [2.50, 1.49]),
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// M60 family (M60A1, M60A3): read off the owner's models at true size (docs/references/tanks/m60a1.md, m60a3.md)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const M60_RING = { y: 1.733, z: 0.55 };
+// The needle-nose turret, measured about the owner's M60A1 casting's own centre line: flat walls 1.35 out at the 1.87
+// waist leaning straight in to a flat roof at 2.68 (1.05 out), the long nose a flat-sided wedge narrowing to 0.69 at
+// 1.85; the bustle lifts its floor to 1.97 and closes at -1.82 under the rack.
+const M60_TURRET: readonly CastStation[] = [
+  { z: 1.95, bot: 1.72, top: 2.20, hw: 0.56, roof: 0.70, foot: 0.90, waist: 0.45, nUp: 1.25, nLo: 3, crown: 0.02 },
+  { z: 1.85, bot: 1.70, top: 2.27, hw: 0.69, roof: 0.80, foot: 0.88, waist: 0.45, nUp: 1.25, nLo: 3, crown: 0.03 },
+  { z: 1.60, bot: 1.70, top: 2.38, hw: 0.90, roof: 0.66, foot: 0.95, waist: 0.30, nUp: 1.25, nLo: 3, crown: 0.04 },
+  { z: 1.30, bot: 1.71, top: 2.46, hw: 1.125, roof: 0.78, foot: 0.98, waist: 0.17, nUp: 1.25, nLo: 3, crown: 0.04 },
+  { z: 1.00, bot: 1.724, top: 2.56, hw: 1.28, roof: 0.70, foot: 0.98, waist: 0.15, nUp: 1.25, nLo: 3, crown: 0.03 },
+  { z: 0.60, bot: 1.733, top: 2.68, hw: 1.35, roof: 0.78, foot: 0.97, waist: 0.14, nUp: 1.25, nLo: 3 },
+  { z: 0.20, bot: 1.735, top: 2.683, hw: 1.345, roof: 0.79, foot: 0.97, waist: 0.14, nUp: 1.25, nLo: 3 },
+  { z: -0.30, bot: 1.738, top: 2.683, hw: 1.315, roof: 0.80, foot: 0.95, waist: 0.12, nUp: 1.25, nLo: 3 },
+  { z: -0.80, bot: 1.808, top: 2.683, hw: 1.234, roof: 0.81, foot: 0.96, waist: 0.10, nUp: 1.25, nLo: 3 },
+  { z: -1.20, bot: 1.866, top: 2.683, hw: 1.17, roof: 0.86, foot: 0.97, waist: 0.12, nUp: 1.25, nLo: 3 },
+  { z: -1.50, bot: 1.91, top: 2.68, hw: 1.12, roof: 0.88, foot: 0.96, waist: 0.15, nUp: 1.25, nLo: 3 },
+  { z: -1.70, bot: 1.97, top: 2.67, hw: 1.08, roof: 0.90, foot: 0.94, waist: 0.30, nUp: 1.25, nLo: 3 },
+  { z: -1.82, bot: 2.10, top: 2.64, hw: 1.00, roof: 0.88, foot: 0.90, waist: 0.50, nUp: 1.25, nLo: 3 },
+];
+// The 105 mm M68 on its trunnion behind the mantlet, the bore evacuator two thirds out, a plain muzzle at 6.00 (the
+// owner's model); the A3's thermal sleeve thickens the tube.
+const M60_GUN: GunSpec = {
+  trunnionZ: 1.62, axisY: 2.10, muzzleZ: 6.00, r0: 0.105, r1: 0.082, evac: { z0: 3.55, z1: 4.05, r: 0.13 }, device: 'none',
+};
+const M60_HULL_SPEC: PershingHullSpec = {
+  mark: 'm60', tailZ: -3.39, toe: [3.45, 1.12], knee: [1.75, 1.757], bellyFrontZ: 2.40, bellyRearZ: -2.65, bellyY: 0.459,
+  deckY: 1.757, engineDeckY: 1.89, engineDeckZ: -1.15, tailTopY: 1.85, tailBotY: 0.92,
+  sponsonHW: 1.30, sponsonY: 1.46, fenderHW: 1.82, fenderY: 1.52, trackW: 0.71, xc: 1.46,
+  // the fender level from the rear corner, sloping down over the idler at the bow
+  fenderLine: [[-3.56, 1.40], [-3.32, 1.52], [2.95, 1.52], [3.25, 1.45], [3.56, 1.25]],
+  fenderBoxH: 0.26, fenderBoxX: [1.48, 1.80], fenderBoxes: [[2.85, 2.10], [1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
+  mufflers: false, frontFlap: false, noseDepth: 0.37, driverHatchX: [0], fenderLights: [1.62, 1.42, 3.05],
+  rearGrille: [0.94, 1.30, 1.80, 0.16],
+  gear: {
+    wheelR: 0.34, wheelY: 0.428, span: [2.01, -2.296], wheelZs: [-2.296, -1.427, -0.591, 0.259, 1.141, 2.010],
+    rollerN: 3, rollerY: 1.19, rollerZs: [-1.424, 0.097, 1.823], rollerR: 0.167,
+    idler: { z: 2.972, y: 0.978, r: 0.34 }, sprocket: { z: -2.98, y: 1.052, r: 0.35 }, contactZF: 2.30, contactZR: -2.60,
+  },
+};
+
+function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
+  const { box, cylY, cylZ, sph } = KIT;
+  const T: TurretFrame = { ringY: M60_RING.y, ringZ: M60_RING.z, stations: M60_TURRET };
+  const L = tl(T);
+  P.turretG.position.set(0, T.ringY, T.ringZ);
+  P.add('turret', castSolid(M60_TURRET, P.q, T.ringZ, T.ringY));
+  yield 'm60TurretCasting';
+  // the M19 commander's cupola on the right: its race ring on the roof, the vision-block body, the domed hatch, and the
+  // M85 in its mount on the cupola's front (the model's ring 1.16 across at (-0.52, -0.03), the body to 3.08)
+  {
+    const [cx, cz] = [-0.52, -0.03];
+    const roof = frameTop(T, cx, cz);
+    P.add('turret', cylY(0.56, 0.58, 0.06, P.q ? 28 : 16), cx, L.y(roof + 0.02), L.z(cz));
+    P.add('turret', cylY(0.48, 0.53, 0.30, P.q ? 28 : 16), cx, L.y(roof + 0.20), L.z(cz));
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+      P.add('turretGlass', box(0.12, 0.06, 0.012), cx + Math.sin(a) * 0.515, L.y(roof + 0.22), L.z(cz + Math.cos(a) * 0.515), 0, a, 0);
+    }
+    P.add('turret', KIT.xform(sph(0.40, P.q ? 22 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.28, 1]), cx, L.y(roof + 0.35), L.z(cz));
+    P.add('turretDark', cylY(0.30, 0.31, 0.04, P.q ? 22 : 12), cx + 0.05, L.y(roof + 0.44), L.z(cz - 0.08));
+    // the M85's armoured mount on the cupola's front, its receiver and barrel forward
+    P.add('turret', moldedBox(0.30, 0.20, 0.42, 0.02, P.q ? 2 : 1, 0.01), -0.45, L.y(roof + 0.26), L.z(0.42));
+    P.add('turretDark', box(0.12, 0.10, 0.30), -0.45, L.y(roof + 0.24), L.z(0.66));
+    P.add('turretDark', cylZ(0.022, 0.80, 10), -0.45, L.y(roof + 0.22), L.z(1.18));
+    P.add('turretDark', cylZ(0.032, 0.18, 10), -0.45, L.y(roof + 0.22), L.z(0.86));
+  }
+  // the loader's hatch on the left, the gunner's periscope ahead of the cupola, the ventilator on the bustle roof
+  loaderHatch(P, T, 0.47, 0.03, 0.30);
+  roofScope(P, T, -0.65, 0.95, 0, 0.12);
+  ventilator(P, T, 0.35, -1.30, 0.16);
+  yield 'm60TurretRoof';
+  // the bustle's stowage rack, the lifting eyes on the cheeks, the A3's smoke banks and crosswind mast
+  bustleBasket(P, T, -1.70, -2.03, 1.15, 2.15, 2.60, 601);
+  for (const side of [-1, 1]) {
+    const z = 1.20, y = 2.48;
+    KIT.liftEye(P, 'turretDetail', side * (castSideAt(M60_TURRET, y, z) - 0.06), L.y(y + 0.02), L.z(z), Math.PI / 2);
+  }
+  if (a3) {
+    for (const side of [-1, 1]) {
+      // six M239 tubes in two rows on a base plate on each front cheek, angled out and up
+      const [bx, by, bz] = [side * 1.20, 2.15, 1.06];
+      P.add('turretDark', box(0.42, 0.06, 0.52), bx, L.y(by - 0.10), L.z(bz), 0, side * 0.35, 0);
+      for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
+        P.add('turretDark', KIT.xform(cylZ(0.042, 0.24, 10), 0, 0, 0, -0.45, side * 0.55, 0), bx + side * (c - 1) * 0.11,
+          L.y(by + r * 0.10), L.z(bz + (c - 1) * 0.05));
+      }
+    }
+    // the crosswind sensor's mast on the bustle roof's left rear
+    const wy = frameTop(T, 0.67, -1.35);
+    P.add('turretDark', cylY(0.02, 0.025, 3.40 - wy, 8), 0.67, L.y((3.40 + wy) / 2), L.z(-1.35));
+    P.add('turretDark', box(0.10, 0.08, 0.10), 0.67, L.y(3.44), L.z(-1.35));
+  }
+  bustleNumbers(P, T, -1.30, 0.55, 0.24);
+  yield 'm60TurretFittings';
+  // gun: the M60's broad mantlet on the trunnion (a rotor face 0.96 out, 1.06 wide, from 1.74 to 2.52), the A1's AN/VSS-1
+  // searchlight on top of it
+  const G = M60_GUN;
+  P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
+  P.addGunExtra(rotorShield(0.96, 0.15, 1.06, -0.385, 0.453, P.q), 0, 0, 0);
+  P.addGunExtra(cylZ(0.16, 0.20, P.q ? 18 : 10), 0, 0, 1.00);
+  P.addGunExtraDark(box(0.08, 0.08, 0.04), 0.30, 0.05, 0.965);
+  P.addGunExtraDark(box(0.09, 0.09, 0.04), -0.32, 0.12, 0.955);
+  if (!a3) {
+    P.addGunExtra(moldedBox(0.62, 0.42, 0.80, 0.03, P.q ? 2 : 1, 0.015), 0, 0.47, 0.62);
+    P.add('gunMountGlass', cylZ(0.17, 0.02, P.q ? 20 : 12), 0, 0.47, 1.025);
+  }
+  pattonGun(P, a3 ? { ...G, r0: 0.118, r1: 0.096 } : G);
+  P.topY = L.y(3.12) + 0.12;
+  yield 'm60Gun';
+}
+
+export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a3'): TankProfileBuild {
+  yield* pershingHullSteps(P, M60_HULL_SPEC);
+  yield* m60TurretSteps(P, variant === 'a3');
+  const H = M60_HULL_SPEC, G = M60_GUN;
+  publishReceipt(P, {
+    mark: variant === 'a3' ? 'm60a3' : 'm60a1', ring: [M60_RING.y, M60_RING.z], trunnion: [G.axisY, G.trunnionZ],
+    muzzleZ: G.muzzleZ, device: G.device, evacuator: [G.evac?.z0 ?? 0, G.evac?.z1 ?? 0], roadWheels: 6, wheelR: H.gear.wheelR,
+    returnRollers: H.gear.rollerN, tensionWheel: false, trackW: H.trackW, trackCentres: H.xc * 2,
+    glacisFromVerticalDeg: glacisDeg(H.toe, H.knee),
   });
 }

@@ -50,7 +50,7 @@ import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, conve
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
-import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps } from './pattonCast.ts';
+import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps, buildM60CastSteps } from './pattonCast.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -3279,9 +3279,11 @@ export const PATTON_PROFILES = {
       hull: M60A2_HULL, fit: M60A2_FIT, sections: M60A2_SECTIONS, muzzle: 3.712,
     }),
   },
-  m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60Steps(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 })) },
+  // Release 265 (the owner, 2026-10-28: "rework ALL the m60s, their models proper are in my folders"): the M60A1 and
+  // M60A3 are new measured castings at true size in pattonCast.ts (docs/references/tanks/m60a1.md, m60a3.md).
+  m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a1')) },
   // A3 TTS: the supplied A3 oracle resolves the correct variant package —
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
-  m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60Steps(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: 1.42, sleeve: true, a3: true, gunLen: 4.435 })) },
+  m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a3')) },
 } satisfies VehicleProfileRecord;
