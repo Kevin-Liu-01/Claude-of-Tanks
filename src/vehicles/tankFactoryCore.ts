@@ -11847,7 +11847,13 @@ export function* createTankRuntimeSteps(
       const evidence = verifyCarvedMuzzleBore(root, frame);
       frame.userData.muzzleSeatReceipt = Object.freeze({...frame.userData.muzzleSeatReceipt, ...evidence});
     }
+    // (boot-261) the finishers' checkpoints: the Garage hero's tail ran as one 0.44 s slice on the boot-259 phone census
+    // (the fills, the batches, the depth layers' plane walk). The root is still private; a cancelled build disposes it
+    // (the finally below). The waits come off the stamps after them, so each stage's interval stays its own.
+    const tailWait = { ms: 0, checkpoints: 0 };
+    const tailCheckpoint = function* (): Generator<void, void, void> { tailWait.checkpoints++; yield* coreCheckpoint(tailWait); };
     const tailFillsFinishedAt = performance.now();
+    yield* tailCheckpoint();
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert the working-gear finish after every authored
@@ -11861,7 +11867,8 @@ export function* createTankRuntimeSteps(
     // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
     // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull
     tagUnlitVehicleMaterials(engineCtx, root);
-    const tailNormalizeFinishedAt = performance.now();
+    const tailNormalizeFinishedAt = performance.now() - tailWait.ms;
+    yield* tailCheckpoint();
 
     // Align complete banks before static batching can flatten their socket owners.
     alignSmokeBanks(root);
@@ -11926,7 +11933,8 @@ export function* createTankRuntimeSteps(
       }
     }
 
-    const tailBatchFinishedAt = performance.now();
+    const tailBatchFinishedAt = performance.now() - tailWait.ms;
+    yield* tailCheckpoint();
 
     // P21 (staticDrawMerge.ts): fold contiguous same-material runs of the final
     // layer order into one draw per articulation owner, then move every
@@ -12018,9 +12026,11 @@ export function* createTankRuntimeSteps(
       root.userData.staticMergeFarSavedDraws = farMergeRuns.reduce((sum, run) => sum + run.sources.length - 1, 0);
     }
     // 243: offsets bounded by contact, then the markings' draws above the armour they are painted on (coplanarDepth.ts)
+    yield* tailCheckpoint();
     depthLayers = assignCoplanarDepth(root, depthLayers);
     depthLayers = [...depthLayers, ...markingDepthRecords(root, depthLayers, decalMeshes)];
     if (farLayers) {
+      yield* tailCheckpoint();
       farLayers = assignCoplanarDepth(root, farLayers);
       farLayers = [...farLayers, ...markingDepthRecords(root, farLayers, decalMeshes)];
       installCoplanarDepthLayers(root, depthLayers, { far: farLayers, mode: farMergeMode });
@@ -12029,13 +12039,14 @@ export function* createTankRuntimeSteps(
     }
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
-    const tailFinalizeFinishedAt = performance.now();
+    const tailFinalizeFinishedAt = performance.now() - tailWait.ms;
+    yield* tailCheckpoint();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
     // Only battle builds combine their submissions; no silhouette, cascade
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
-    const tailShadowBatchFinishedAt = performance.now();
+    const tailShadowBatchFinishedAt = performance.now() - tailWait.ms;
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
     // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
     // looks, so the sniper sight (a narrower field of view, cameraRig fov = 60 / zoom) draws a magnified enemy's near
@@ -12049,7 +12060,10 @@ export function* createTankRuntimeSteps(
       batchFinishedAt: tailBatchFinishedAt,
       finalizeFinishedAt: tailFinalizeFinishedAt,
       shadowBatchFinishedAt: tailShadowBatchFinishedAt,
-      shareFinishedAt: performance.now(),
+      shareFinishedAt: performance.now() - tailWait.ms,
+      // (boot-261) the finishers' own checkpoints and their waits, apart from the decoration's (decorYieldMs)
+      checkpoints: tailWait.checkpoints,
+      waitMs: tailWait.ms,
     };
 
     TANK_CLONE_SOURCES.set(visual, {

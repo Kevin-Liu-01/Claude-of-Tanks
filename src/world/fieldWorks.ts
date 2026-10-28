@@ -899,7 +899,8 @@ export function* buildFieldWorks(
   const feet: number[] = []; // x, z, dx, dz, kind
   let rowIndex = 0;
   for (let x = -SQUARE; x <= SQUARE; x += step, rowIndex++) {
-    if (rowIndex % 40 === 39) yield { fine: true, progress: false, stage: 'field-works' };
+    // (260, the rooms census: forty rows, 24k land-use queries, were one 180 ms step under load) ten rows a checkpoint
+    if (rowIndex % 10 === 9) yield { fine: true, progress: false, stage: 'field-works' };
     for (let z = -SQUARE; z <= SQUARE; z += step) {
       receipt.scanned++;
       landAt(x, z, s);

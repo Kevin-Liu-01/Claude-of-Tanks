@@ -246,8 +246,9 @@ assert.match(chinesePrivateMetadata?.title || '', /加入 Commander 09HY 的 LAN
 assert.match(chinesePrivateMetadata?.description || '', /HKP5XW/,
   'localized metadata must preserve the dynamic room-code placeholder');
 assert.equal(chinesePrivateMetadata?.canonical, `${SITE}/cn/`);
+// (boot r23, 4921a457c5: the Chinese title spaces a Latin host name on its sides only, '加入' + (...) + hostName)
 assert.match(readFileSync(join(ROOT, 'index.html'), 'utf8'),
-  /chineseRoute \? '加入 ' \+ hostName/,
+  /chineseRoute \? '加入 ?'[^:]*hostName/,
   'the pre-boot private-room banner must not flash English on a Chinese route');
 assert.match(privateRoomMetadata(new URL(`${SITE}/?room=I0O123`))?.description || '', /room LQQL23/,
   'crawler metadata must normalize ambiguous room characters exactly like the lobby');

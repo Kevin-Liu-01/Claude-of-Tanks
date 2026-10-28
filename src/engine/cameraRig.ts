@@ -1524,7 +1524,7 @@ const SHOW_IDLE_RETURN_S = 2.0;        // idle before the spring back engages
 const SHOW_RETURN_TAU_S = 0.75;        // spring-back ease
 const SHOW_SETTLE_EPS = 1e-5;          // explicit rest; stop rewriting one pose forever
 const SHOW_ZOOM_STEP = 0.9;            // per wheel notch
-const SHOW_ZOOM_MIN = 0.62;
+const SHOW_ZOOM_MIN = 0.45;            // closest dolly, as a share of the fit (the tank's near radius can hold it further: clampZoom)
 const SHOW_ZOOM_MAX = 1.55;
 const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
 // A screen held upright (the 246 Garage fix): the hero framed whole, gun included, in a frame narrower than it is tall.
@@ -1729,7 +1729,11 @@ interface ShowroomOrbit {
   beginDrag(): void;
   drag(dxPx: number, dyPx: number): void;
   endDrag(): void;
+  /** Stop a drag without its release momentum: a second finger turned the drag into a pinch. */
+  cancelDrag(): void;
   wheel(notches: number): void;
+  /** A pinch's spread since the last call (> 1 apart, toward the tank): the tank grows by that factor. */
+  pinch(scale: number): void;
   /** Hold the framing: no idle spring back to the hero pose while held (the Garage's photo mode). */
   hold(on: boolean): void;
   /** Steer toward a view: yaw and pitch in radians (the pitch kept inside the turntable's clamp), the dolly (1 = the
@@ -2321,6 +2325,16 @@ export function createShowroomOrbit(
       Math.abs(zoom - previousZoom) > Number.EPSILON;
   }
 
+  /** A dolly target inside what the camera can reach from this view: from the tank's near radius (the camera never enters
+   *  the silhouette) to the bay's reach, as shares of the fitted distance. A target past either end moved nothing and had
+   *  to be wound back before the next pinch or notch did anything (2026-10-27, the iPad review: "fix zoom amounts"). */
+  function clampZoom(target: number): number {
+    const base = Math.max(heroDist, solve(yaw, pitch, SHOW_KEEP_FILL, 0).dist, 1e-3);
+    const min = Math.max(SHOW_ZOOM_MIN, nearDist / base);
+    const max = Math.max(min, Math.min(SHOW_ZOOM_MAX, distMax() / base));
+    return THREE.MathUtils.clamp(target, min, max);
+  }
+
   const api: ShowroomOrbit = {
     /** True once a hero has been measured (the orbit owns the camera). */
     get active() { return running && haveBox; },
@@ -2435,6 +2449,13 @@ export function createShowroomOrbit(
       lastInputMs = performance.now();
     },
 
+    cancelDrag(): void {
+      dragging = false;
+      yawVel = pitchVel = 0;
+      sinceInputS = 0;
+      lastInputMs = performance.now();
+    },
+
     /**
      * Wheel zoom inside clamps derived from the fitted hero distance.
      * @param {number} notches positive = zoom in
@@ -2444,8 +2465,15 @@ export function createShowroomOrbit(
       if (!haveBox || !notches || !Number.isFinite(notches)) return;
       // fractional notches (2026-09-19): a trackpad scroll or pinch dollies proportionally to its travel
       const n = THREE.MathUtils.clamp(notches, -3, 3);
-      tZoom = THREE.MathUtils.clamp(tZoom * Math.pow(SHOW_ZOOM_STEP, n),
-        SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      tZoom = clampZoom(tZoom * Math.pow(SHOW_ZOOM_STEP, n));
+      sinceInputS = 0;
+      lastInputMs = performance.now();
+    },
+
+    pinch(scale: number): void {
+      if (!haveBox || !(scale > 0) || !Number.isFinite(scale)) return;
+      // the fingers' spread is the tank's growth (a 2x spread halves the distance), as a map or a photo pinches
+      tZoom = clampZoom(tZoom / THREE.MathUtils.clamp(scale, 0.5, 2));
       sinceInputS = 0;
       lastInputMs = performance.now();
     },
@@ -2458,7 +2486,7 @@ export function createShowroomOrbit(
       if (!haveBox || !Number.isFinite(yawRad) || !Number.isFinite(pitchRad)) return;
       tYaw = yaw + wrapPi(yawRad - yaw);
       tPitch = THREE.MathUtils.clamp(pitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
-      tZoom = THREE.MathUtils.clamp(zoomTo, SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      tZoom = clampZoom(zoomTo);
       yawVel = pitchVel = 0;
       sinceInputS = 0;
       lastInputMs = performance.now();

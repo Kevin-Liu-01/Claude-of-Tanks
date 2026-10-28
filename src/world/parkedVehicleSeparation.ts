@@ -239,6 +239,8 @@ export function* seatCartsClearSteps<T extends ParkedVehicle>(carts: readonly T[
         seat = [x, z]; by = r;
         break;
       }
+      // (260, the rooms census: one cart's search, every ring's headings against what stands near, was a 100 ms step)
+      if (!seat) yield;
     }
     if (seat) {
       receipt.slid.push({ kind: cart.kind, from: [round2(cart.x), round2(cart.z)], to: [round2(seat[0]), round2(seat[1])], by });
@@ -259,6 +261,7 @@ export function* seatCartsClearSteps<T extends ParkedVehicle>(carts: readonly T[
           seat = [x, z]; by = r;
           break;
         }
+        if (!seat) yield;
       }
     }
     if (seat) {
