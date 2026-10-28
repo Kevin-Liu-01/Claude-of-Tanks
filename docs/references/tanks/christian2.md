@@ -87,7 +87,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
 - Hull fittings (`leopard2Hull.ts`): armoured headlight pods with guards at the glacis's front corners, a V splash board,
   the driver's hatch and three periscopes set to the glacis's slope (right), radiator grilles over dark wells either side
   of an access plate and two fan covers on the engine deck, exhaust grilles at its rear corners (louvres here, round rods
-  on the 2A3), lifting eyes, tail-light clusters, tow hooks, a convoy light and a rear stowage box.
+  on the 2A3), lifting eyes, tail-light clusters, tow hooks, a convoy light and a tubular stern rack
+  (R6; a stern box until then), a louvred exhaust band across the upper rear plate.
 - Material roles: hull, skirts and turret shell painted armour; the frontal modules permanent armour; sights glass in
   armoured frames; bins, basket and rails painted fittings; the suit's net and garnish cloth/foliage (`open-lattice`).
 - Gameplay plates (`christian2Armor.ts`): glacis 460 mm (KE 420 / CE 640), lower front, sponson and tub sides 80, rear
@@ -116,7 +117,8 @@ See the round log; filled as each gate runs.
   two wraps hugging the tube).
 - R5 (blind critics 2 and 3): the skirts hang from the sponson's floor (1.36 m) so the upper hull's band shows; the heavy
   fore blocks bolted and stepped 10 cm out on their own rail; round fan covers, radiator louvres and access plates on the
-  engine deck; exhaust louvres, tail lights and a stern box on the rear plate (R6: one exhaust band and a stern rack); the front fenders run out to the
+  engine deck; exhaust louvres, tail lights and a stern box on the rear plate (R6: one exhaust band and a stern rack);
+  the front fenders run out to the
   oracle's 3.70 m; a 14 cm splash board; the rail clear of the smoke banks; the M2 laid outboard of the head; plumb whips;
   wall stowage boxes. Suit: the barrel wraps and the module-face cards dropped, the roof net opened by the fittings' own
   shapes, the hull drapes overlapped with their tops 13 cm under the deck edge (the gun's full-depression sweep over the
