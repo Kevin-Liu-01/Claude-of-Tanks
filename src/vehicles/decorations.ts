@@ -2979,6 +2979,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  // Release 262 (the owner on the M48A5: "match its geometry!", from the supplied model): the rebuild authors the model's
+  // complete equipment (its bustle rack and load, spare wheel, flank racks and rucksacks, two M60Ds, two whips, the
+  // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
+  // two of them crossing beside the flank racks. Only the functional smoke pair stays (the control inventory's apertures).
+  if (spec.id === 'm48a5_patton') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
@@ -3035,16 +3040,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     ['turretSide', { side: seatSide, rear: true }],
     ['fender', { side: seatSide, zFrac: -0.30, small: true }],
   ];
-  const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => (
-    spec.id === 'm48a5_patton'
-      ? [
-        ['hullRearRack', { x: seatSide * (0.12 + xOffset) }],
-        ['rearDeck', { corner: seatSide, back: true, small: true }],
-        ['rearDeck', { center: true, back: true, small: true }],
-        ['fender', { side: seatSide, zFrac: -0.30, small: true }],
-      ]
-      : aftRoutes(seatSide, xOffset)
-  );
+  const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => aftRoutes(seatSide, xOffset);
   // Hull-only service routes keep the rear rack as the preferred station and
   // never climb onto the turret.
   const hullServiceRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => {
