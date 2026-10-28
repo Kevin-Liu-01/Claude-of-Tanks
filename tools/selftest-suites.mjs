@@ -1986,6 +1986,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/worldMaterialsBeforeCompile.selftest.mjs', // battle-spikes-253: both entries patch the world before compiling it
     'src/game/simStepRetention.selftest.mjs', // battle-spikes-253: simStep stores no closure that keeps a battle's world
     'src/engine/gpuCatchUp.selftest.mjs', // battle-spikes-253: link polls ask only once the GPU caught up to their last poll
+    'src/engine/nearVehicleShadowMerge.selftest.mjs', // battle-spikes-253: the near hulls' opaque detail cast through merged casters
     'src/engine/textureUploadStaging.selftest.mjs', // room-stalls-258: a scene's texture uploads one at a time under a frame budget before its draws
     'src/world/simulationProgramWarm.selftest.mjs', // battle-spikes-253: the GPU simulations' programs linked under the cover
     'src/world/propsMaterialGeometry.selftest.mjs',
