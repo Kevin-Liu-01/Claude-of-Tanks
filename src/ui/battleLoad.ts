@@ -781,7 +781,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     void import('./flags.ts').then(({ flagIconHTML }) => {
       if (host.dataset.flagsPass !== pass) return; // a later roster took this side
       host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => flagIconHTML(fill, 14, 10)).join('');
-    });
+    }).catch(() => { /* a flag is decoration: its held box stays empty, and the next roster tries again */ });
   }
 
   /** Tiers show only where the battle mixes them: a rank every vehicle shares says nothing (less text). */
