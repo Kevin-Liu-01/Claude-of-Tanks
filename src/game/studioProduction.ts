@@ -143,11 +143,13 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Shore road follow', 'Village pass', 'Fjord reveal'], headingDeg: -107.8,
     cast: [cast('lead', 'challenger3', [-15.3, -84.1], -107.8, 22), cast('wing', 'challenger2', [3, -81], -107.8, 22)],
     rigs: ['rear', 'track', 'hero', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'dpm', dust: 0.3 },
+  // up the quay by the middle arm's head, the water behind the column from every camera; from behind on the last
+  // vehicle, so none stands between the rear rig and its tank (the inland road showed no water, stills261 f)
   { id: 'harbor-golden', title: 'Harbor at golden hour', description: 'A British column leaves the harbor as the light goes gold: head-on, from behind, then the whole bay.',
     map: 'fjord', timeOfDay: 'golden', durationMs: 8000, category: 'environment',
-    shots: ['Harbor exit', 'Column from behind', 'Bay reveal'], headingDeg: 40.2,
-    cast: [cast('lead', 'ajax', [-38.9, -18.4], 40.2, 22), cast('wing', 'ares_apc', [-56, -20], 40.2, 22), cast('third', 'challenger3', [-43, -35], 40.2, 22)],
-    rigs: ['hero', 'rear', 'track', 'overhead'], subjects: ['lead', 'lead', 'third'], camo: 'dpm', dust: 0.3 },
+    shots: ['Harbor exit', 'Column from behind', 'Bay reveal'], headingDeg: 0,
+    cast: [cast('lead', 'ajax', [276, 32], 0, 22), cast('wing', 'ares_apc', [264, 19.7], 0, 22), cast('third', 'challenger3', [283.6, 16.7], 0, 22)],
+    rigs: ['hero', 'rear', 'track', 'overhead'], subjects: ['lead', 'third', 'third'], camo: 'dpm', dust: 0.3 },
   // the north-east dunes, the low sun (azimuth 104) behind the eastern palms from the portrait's camera; the souk's
   // route drove under its shade roof, out of every camera's sight from its third second (stills261 e)
   { id: 'oasis-sunset', title: 'Oasis sunset', description: 'Merkavas cross the oasis as the sun sets behind the palms.',
