@@ -445,6 +445,9 @@ a:focus-visible,button:focus-visible,video:focus-visible{outline:2px solid var(-
 .docs-shelf h2{display:flex;align-items:center;gap:10px;margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
 .docs-shelf h2 .doc-icon{width:24px;height:24px;color:var(--ink-3)}
 @media (width >= 1100px){.docs-shelf .docs-chapter-grid a:nth-child(n+6):not(.docs-chapter-wide){grid-column:span 3;grid-template-rows:164px auto auto}}
+/* a shelf of ten (Play, since the fleet chapter): the cards after the lead pair go four across, two whole rows, where
+   three then four across left the tenth alone on a row */
+@media (width >= 1100px){.docs-shelf .docs-chapter-grid:has(>a:nth-child(10)) a:nth-child(n+3):not(.docs-chapter-wide){grid-column:span 3;grid-template-rows:164px auto auto}}
 .docs-reels .battle-reels{margin:0;padding-top:0;border-top:0}
 .docs-reels .battle-reels-head h2{margin:0;font:600 var(--fs-28)/1.1 var(--font-display);color:var(--ink-1)}
 /* a wide index sets the takes beside the player, as tall as it and scrolling within (stacked, the player alone filled a
