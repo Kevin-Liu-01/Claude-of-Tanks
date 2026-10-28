@@ -1763,7 +1763,7 @@ const M60_TURRET: readonly CastStation[] = [
 // The 105 mm M68 on its trunnion behind the mantlet, the bore evacuator two thirds out, a plain muzzle at 6.00 (the
 // owner's model); the A3's thermal sleeve thickens the tube.
 const M60_GUN: GunSpec = {
-  trunnionZ: 1.62, axisY: 2.10, muzzleZ: 6.00, r0: 0.105, r1: 0.082, evac: { z0: 3.55, z1: 4.05, r: 0.13 }, device: 'none',
+  trunnionZ: 1.62, axisY: 2.10, muzzleZ: 6.00, r0: 0.105, r1: 0.082, evac: { z0: 3.30, z1: 3.83, r: 0.13 }, device: 'none',
 };
 const M60_HULL_SPEC: PershingHullSpec = {
   mark: 'm60', tailZ: -3.39, toe: [3.45, 1.12], knee: [1.75, 1.757], bellyFrontZ: 2.40, bellyRearZ: -2.65, bellyY: 0.459,
@@ -1771,9 +1771,8 @@ const M60_HULL_SPEC: PershingHullSpec = {
   sponsonHW: 1.30, sponsonY: 1.46, fenderHW: 1.82, fenderY: 1.52, trackW: 0.71, xc: 1.46,
   // the fender level from the rear corner, sloping down over the idler at the bow
   fenderLine: [[-3.56, 1.40], [-3.32, 1.52], [2.95, 1.52], [3.25, 1.45], [3.56, 1.25]],
-  fenderBoxH: 0.26, fenderBoxX: [1.48, 1.80], fenderBoxes: [[2.85, 2.10], [1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
+  fenderBoxH: 0.26, fenderBoxX: [1.32, 1.78], fenderBoxes: [[2.85, 2.10], [1.00, 0.20], [-0.40, -1.20], [-1.45, -2.80]],
   mufflers: false, frontFlap: false, noseDepth: 0.37, driverHatchX: [0], fenderLights: [1.62, 1.42, 3.05],
-  rearGrille: [0.94, 1.30, 1.80, 0.16],
   gear: {
     wheelR: 0.34, wheelY: 0.428, span: [2.01, -2.296], wheelZs: [-2.296, -1.427, -0.591, 0.259, 1.141, 2.010],
     rollerN: 3, rollerY: 1.19, rollerZs: [-1.424, 0.097, 1.823], rollerR: 0.167,
@@ -1794,12 +1793,12 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     const [cx, cz] = [-0.52, -0.03];
     const roof = frameTop(T, cx, cz);
     P.add('turret', cylY(0.56, 0.58, 0.06, P.q ? 28 : 16), cx, L.y(roof + 0.02), L.z(cz));
-    P.add('turret', cylY(0.48, 0.53, 0.30, P.q ? 28 : 16), cx, L.y(roof + 0.20), L.z(cz));
+    P.add('turret', cylY(0.53, 0.56, 0.32, P.q ? 28 : 16), cx, L.y(roof + 0.21), L.z(cz));
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
-      P.add('turretGlass', box(0.12, 0.06, 0.012), cx + Math.sin(a) * 0.515, L.y(roof + 0.22), L.z(cz + Math.cos(a) * 0.515), 0, a, 0);
+      P.add('turretGlass', box(0.12, 0.06, 0.012), cx + Math.sin(a) * 0.555, L.y(roof + 0.24), L.z(cz + Math.cos(a) * 0.555), 0, a, 0);
     }
-    P.add('turret', KIT.xform(sph(0.40, P.q ? 22 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.28, 1]), cx, L.y(roof + 0.35), L.z(cz));
+    P.add('turret', KIT.xform(sph(0.46, P.q ? 22 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), cx, L.y(roof + 0.36), L.z(cz));
     P.add('turretDark', cylY(0.30, 0.31, 0.04, P.q ? 22 : 12), cx + 0.05, L.y(roof + 0.44), L.z(cz - 0.08));
     // the M85's armoured mount on the cupola's front, its receiver and barrel forward
     P.add('turret', moldedBox(0.30, 0.20, 0.42, 0.02, P.q ? 2 : 1, 0.01), -0.45, L.y(roof + 0.26), L.z(0.42));
@@ -1813,7 +1812,7 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
   ventilator(P, T, 0.35, -1.30, 0.16);
   yield 'm60TurretRoof';
   // the bustle's stowage rack, the lifting eyes on the cheeks, the A3's smoke banks and crosswind mast
-  bustleBasket(P, T, -1.70, -2.03, 1.15, 2.15, 2.60, 601);
+  bustleBasket(P, T, -1.70, -2.03, 0.98, 2.15, 2.60, 601);
   for (const side of [-1, 1]) {
     const z = 1.20, y = 2.48;
     KIT.liftEye(P, 'turretDetail', side * (castSideAt(M60_TURRET, y, z) - 0.06), L.y(y + 0.02), L.z(z), Math.PI / 2);
@@ -1835,11 +1834,11 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
   }
   bustleNumbers(P, T, -1.30, 0.55, 0.24);
   yield 'm60TurretFittings';
-  // gun: the M60's broad mantlet on the trunnion (a rotor face 0.96 out, 1.06 wide, from 1.74 to 2.52), the A1's AN/VSS-1
+  // gun: the M60's mantlet on the trunnion (a rotor face 0.96 out, 0.76 wide, from 1.74 to 2.52), the A1's AN/VSS-1
   // searchlight on top of it
   const G = M60_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
-  P.addGunExtra(rotorShield(0.96, 0.15, 1.06, -0.385, 0.453, P.q), 0, 0, 0);
+  P.addGunExtra(rotorShield(0.96, 0.15, 0.76, -0.385, 0.453, P.q), 0, 0, 0);
   P.addGunExtra(cylZ(0.16, 0.20, P.q ? 18 : 10), 0, 0, 1.00);
   P.addGunExtraDark(box(0.08, 0.08, 0.04), 0.30, 0.05, 0.965);
   P.addGunExtraDark(box(0.09, 0.09, 0.04), -0.32, 0.12, 0.955);
