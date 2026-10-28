@@ -4396,6 +4396,10 @@ const studioAccess = createStudioAccess({
   // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
   getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
   keyTarget: window,
+  // the Garage's Studio links read busy while the Studio's code loads (garage.css)
+  onPending: (pending) => {
+    for (const link of document.querySelectorAll('[data-nav="studio"], [data-mobile-nav="studio"]')) link.toggleAttribute('aria-busy', pending);
+  },
 });
 studio = studioAccess.presentation;
 function preloadStudioIntent() { studioAccess.preloadIntent(); }

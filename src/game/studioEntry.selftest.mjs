@@ -183,4 +183,10 @@ await scenario({ directBoot: false, time: 'sunset' });
 await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
+// the build's wait leaves the way out live: Exit stays outside the inert parts, and its press abandons the entry (doExit's
+// entryGeneration step; the loading census 262: the whole app went inert, Exit included)
+const panelSource = readFileSync(new URL('../ui/studioPanel.ts', import.meta.url), 'utf8');
+assert.match(panelSource, /setStage\(stage\) \{[^]{0,900}?if \(part !== exitBtn\) \(part as HTMLElement\)\.inert = waiting;/,
+  'every part of the Studio waits through a build but Exit');
+assert.doesNotMatch(panelSource, /app\.inert = /, 'the app itself is never inert (Exit is inside it)');
 console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load and Garage return ordering pass');

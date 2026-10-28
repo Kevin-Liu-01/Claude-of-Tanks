@@ -30,6 +30,8 @@ interface StudioAccessOptions {
   getPhase(): string;
   keyTarget?: KeyboardEventTarget | null;
   onEntryError?: (error: RuntimeValue) => void;
+  /** While F8's (or the Studio link's) press waits for the Studio's code, before the entry's own cover takes over. */
+  onPending?: (pending: boolean) => void;
 }
 
 interface StudioAccess {
@@ -57,6 +59,7 @@ export function createStudioAccess({
   getPhase,
   keyTarget = typeof window !== 'undefined' ? window : null,
   onEntryError = (error) => console.error('[studio] lazy entry failed', error),
+  onPending = () => {},
 }: StudioAccessOptions): StudioAccess {
   let runtime: StudioRuntime = INACTIVE_STUDIO;
   let modulePromise: Promise<StudioModule> | null = null;
@@ -103,9 +106,12 @@ export function createStudioAccess({
     if (event.code !== 'F8' || event.repeat || getPhase() !== 'garage') return;
     event.preventDefault();
     event.stopImmediatePropagation();
+    // the press answers at once (the loading census 262: F8 gave no sign until the entry's cover, seconds later on a slow
+    // network)
+    onPending(true);
     loadRuntime()
-      .then((loaded) => loaded.enter())
-      .catch(onEntryError);
+      .then((loaded) => { onPending(false); return loaded.enter(); })
+      .catch((error: RuntimeValue) => { onPending(false); onEntryError(error); });
   };
 
   const installKeyboard = (): void => {

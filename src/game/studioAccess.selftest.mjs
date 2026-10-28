@@ -53,7 +53,9 @@ const access = createStudioAccess({
   createContext: (fx) => ({ fx }),
   getPhase: () => phase,
   keyTarget: keys,
+  onPending: (pending) => pendings.push(pending),
 });
+const pendings = [];
 
 access.preloadIntent();
 access.preloadIntent();
@@ -71,7 +73,9 @@ assert.deepEqual(keys.press('F8'), { prevented: false, stopped: false });
 phase = 'garage';
 assert.deepEqual(keys.press('F8', { repeat: true }), { prevented: false, stopped: false });
 assert.deepEqual(keys.press('F8'), { prevented: true, stopped: true });
+assert.deepEqual(pendings, [true], 'the press answers at once, before the Studio\'s code arrives');
 await new Promise((resolve) => setTimeout(resolve, 0));
+assert.deepEqual(pendings, [true, false], 'the wait ends when the runtime is in, before the entry\'s cover');
 assert.equal(prepares, 1);
 assert.equal(fxCreates, 1);
 assert.equal(enters, 1);

@@ -36,6 +36,9 @@
 @media (hover:hover) and (pointer:fine){
   .cot-header-nav .nv:hover{color:var(--ink-1);background:var(--surface-hover);}
 }
+/* the Studio link holds its pressed look while the Studio's code loads (main.ts onPending; the loading census 262: F8 and the
+   link gave no sign until the entry's cover) */
+:is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[aria-busy='true']{color:var(--ink-1);background:var(--surface-hover);cursor:progress;}
 .cot-header-nav .nv.on{color:var(--ink-1);cursor:default;
   background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--btn-secondary-fill);}
 .cot-header-nav .nv .cot-c-kbd{margin-left:var(--s1);}
