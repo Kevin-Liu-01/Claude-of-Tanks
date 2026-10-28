@@ -2393,16 +2393,17 @@ export function createGarageDressing(
     }
     // the turning rolls and their shell stand east of the roller shutter's sightline from the Garage camera (the
     // garage critic panel, 2026-10-14: "the shutter doesn't read ... move the screen and bowser off its axis"): seen
-    // from the hero's camera the opening spans x -0.5..4.5 at this depth
-    for (const x of [5.5, 9.5]) {
+    // from the hero's camera the opening spans x -0.5..4.5 at this depth. The shell is a bare-steel section ending
+    // short of the hero's rear on screen (the iPad critic r2, D18: the 5.55 m olive tube read as a tank behind the hull)
+    for (const x of [5.45, 7.0]) {
       factoryPut(mat.steelMid, x, 0.46, 19.3, 1.05, 0.72, 1.85);
       for (const zOffset of [-0.56, 0.56]) {
         factoryCylinderPut(mat.rubber, x, 0.78, 19.3 + zOffset,
           0.34, 0.56, Math.PI / 2);
       }
     }
-    factoryCylinderPut(mat.olive, 7.5, 1.72, 19.3,
-      1.02, 5.55, 0, Math.PI / 2);
+    factoryCylinderPut(mat.steelMid, 6.22, 1.6, 19.3,
+      0.9, 3.0, 0, Math.PI / 2);
     const cageCenterX = 14.1;
     for (const xOffset of [-2.35, 2.35]) {
       for (const zOffset of [-1.45, 1.45]) {
@@ -2456,9 +2457,10 @@ export function createGarageDressing(
     addCoreShellRack();
     wallSignAt('BAY 02', 'east_bay_02');
     extinguisherAt('east_extinguisher');
-    // oil drum cluster (one with a hand pump), plus a tipped drum
+    // oil drum cluster (one with a hand pump), plus a tipped drum; the red drum stands behind the blue one (the iPad
+    // critic r2, D17: red in the gap under the gun read as part of the tank)
     for (const [dx, dz, c] of [
-      [21.3, 7.6, mat.redCabDark], [20.5, 8.2, mat.blueSteel], [21.4, 8.7, mat.olive],
+      [21.3, 7.6, mat.blueSteel], [20.5, 8.2, mat.redCabDark], [21.4, 8.7, mat.olive],
     ] as readonly [number, number, THREE.Material][]) {
       put(G.drum, c, dx, 0.58, dz, rng() * Math.PI);
     }

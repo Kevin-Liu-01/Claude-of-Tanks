@@ -19,7 +19,7 @@ import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThum
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import { createGarageCamoPicker, type GarageCamoPicker } from './camoPicker.ts';
-import { readMemory } from './components/picker.ts';
+import { createPicker, readMemory } from './components/picker.ts';
 import { pickerText } from './pickerText.ts';
 import type { ToastOptions } from './components/notice.ts';
 import { CUSTOM_CAMO_ID, camoTagNation, customCamoPatternId } from '../vehicles/camoPolicy.ts';
@@ -280,20 +280,42 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
   fit(grid);
   grid.style.minHeight = `${Math.ceil(Math.max(floor, grid.getBoundingClientRect().height))}px`;
 }
+/** How far a fitted sheet's rows may give (their tiles' padding) to bring one more row in, or grow to fill the room. */
+// (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
+const FIT_SHRINK_PX = 10;
+const FIT_STRETCH_PX = 36;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
- * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic).
+ * peeked row of glyphs with no names read as a row cut through its icons to the r20q critic). `fill` (a phone's sheet)
+ * leaves no strip empty under those rows while more wait below: its rows take one height, the tallest tile's give or take
+ * what brings in a row that misses by a few pixels or fills what is left over, and the scroll stops on them (garage.css),
+ * so the window stays whole wherever it scrolls.
  */
-function fitWholeRows(grid: HTMLElement, peek = true): void {
+function fitWholeRows(grid: HTMLElement, peek = true, fill = false): void {
   grid.style.maxHeight = '';
   grid.style.removeProperty('--peek');
+  grid.style.gridAutoRows = '';
   const style = getComputedStyle(grid);
   if (grid.scrollHeight > grid.clientHeight + 1 && style.overflowY !== 'visible') {
+    const pad = parseFloat(style.paddingBottom) || 0;
+    const gap = parseFloat(style.rowGap) || 0;
+    // a grid fitted to whole rows ends one row gap under its last (its --peek): the room is measured against that foot, not
+    // the deeper default pad (v261: a row 3 px into the default 16 px pad was dropped, a row's height empty under the
+    // grid at 390 x 844 and one row of cards over 74 px of nothing at 844 x 390, the 261 critic's B8)
+    const room = grid.clientHeight - (peek ? pad : gap);
+    if (fill && !peek) {
+      const tallest = Math.max(0, ...[...grid.children].map((child) => child.getBoundingClientRect().height));
+      const rows = room - (parseFloat(style.paddingTop) || 0) + gap;
+      if (tallest > 0) {
+        let count = Math.max(1, Math.floor(rows / (tallest + gap)));
+        if (tallest - (rows / (count + 1) - gap) <= FIT_SHRINK_PX) count += 1;
+        const height = Math.min(tallest + FIT_STRETCH_PX, rows / count - gap);
+        grid.style.gridAutoRows = `${Math.floor(height * 100) / 100}px`;
+      }
+    }
     // the lowest row foot that shows whole, and the next row (rows may differ in height: a phone's tiles carry one to
     // four lines)
     const top = grid.getBoundingClientRect().top + grid.clientTop - grid.scrollTop;
-    const pad = parseFloat(style.paddingBottom) || 0;
-    const room = grid.clientHeight - pad;
     let foot = 0, nextTop = Infinity, nextHeight = 0;
     for (const child of grid.children) {
       const box = child.getBoundingClientRect();
@@ -303,7 +325,6 @@ function fitWholeRows(grid: HTMLElement, peek = true): void {
     }
     if (foot > 0 && !peek) {
       // the window ends one row gap under the last whole row, where the next row has not begun
-      const gap = parseFloat(style.rowGap) || 0;
       grid.style.maxHeight = `${Math.floor(Math.min(grid.clientHeight, foot + gap))}px`;
       grid.style.setProperty('--peek', `${Math.round(gap)}px`);
     } else if (foot > 0) {
@@ -868,16 +889,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     panel.setAttribute('aria-label', t('garage.gallery.title'));
     panel.innerHTML =
       `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
-      `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">&#8249;</button>` +
-      `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">&#8250;</button>` +
+      `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">${uiIconSVG('chevronLeft', 14)}</button>` +
+      `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">${uiIconSVG('chevronRight', 14)}</button>` +
       `<div class="fcap"></div></div>` +
-      `<div class="ftitle cot-sidebar-section-title"><span class="fdots">` +
-      FEATURED_SHOTS.map(() => '<span></span>').join('') +
+      `<div class="ftitle cot-sidebar-section-title"><span class="fdots" role="group" aria-label="${t('garage.gallery.title')}">` +
+      FEATURED_SHOTS.map((_, n) => `<button type="button" tabindex="-1" aria-label="${escapeHtmlAttribute(t('garage.gallery.shot', { n: n + 1, count: FEATURED_SHOTS.length }))}"></button>`).join('') +
       `</span></div>`;
     root.appendChild(panel);
     const layers = panel.querySelectorAll<HTMLElement>('.fly');
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
-    const dots = panel.querySelectorAll<HTMLElement>('.fdots span');
+    const dots = panel.querySelectorAll<HTMLButtonElement>('.fdots button');
     const shotEl = requiredElement<HTMLElement>(panel, '.fshot');
     let idx = -1;
     let front = 0;
@@ -896,6 +917,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       layers[front ^ 1].classList.remove('on');
       capEl.textContent = t(FEATURED_SHOTS[i].capKey, FEATURED_SHOTS[i].capVars);
       dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      // the picture in view is the dots' one tab stop (the arrows step the rotation from it)
+      for (const dot of dots) { dot.tabIndex = -1; dot.removeAttribute('aria-current'); }
+      dots[i].tabIndex = 0;
+      dots[i].setAttribute('aria-current', 'true');
       idx = i;
     };
     const preload = (i: number, cb: (url: string) => void, priority: ImagePriority = 'low'): void => {
@@ -995,6 +1020,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       e.stopPropagation(); advance(); rearm();
     });
     dots.forEach((d, k) => d.addEventListener('click', () => { jump(k); rearm(); }));
+    // the keys (261, the lead's follow-up): the arrows, Home and End move the rotation from the dots and the focus with it
+    requiredElement<HTMLElement>(panel, '.fdots').addEventListener('keydown', (event) => {
+      const count = FEATURED_SHOTS.length;
+      const to = ({ ArrowRight: idx + 1, ArrowLeft: idx - 1, Home: 0, End: count - 1 } as Record<string, number>)[event.key];
+      if (to === undefined || idx < 0) return;
+      event.preventDefault();
+      const next = (to + count) % count;
+      jump(next);
+      rearm();
+      dots[next].focus({ preventScroll: true });
+    });
     shotEl.addEventListener('mouseenter', () => { if (timer) { clearInterval(timer); timer = 0; } });
     shotEl.addEventListener('mouseleave', arm);
     return {
@@ -1212,7 +1248,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     };
     // the rival is the kit's picker menu (mountRivalMenu, after the readout is drawn): a raw select in the census
     // the station's title stands on the Compare row, left of it (owner 10-26: "to the left of compare it should have a title")
-    const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.station.overview'), '', 'Performance', true)}` +
+    // (the figures' own name, never the station's: the Overview tab over it already names the station; the iPad critic r2)
+    const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.dossier.section.performance'), '', 'Performance', true)}` +
       (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
       // Compare turns the rival on; once on, the chip is Clear, an action, never a pressed state (the r25 critic: a pressed
       // Clear wore the kit's selected state while the rival it compares with did not)
@@ -1540,9 +1577,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<figure class="cot-technical-viewer-figure" id="cot-technical-viewer-panel" role="tabpanel" ` +
     `aria-labelledby="cot-technical-viewer-tab-armor">` +
     `<img data-technical-modal-image alt="" draggable="false" decoding="async">` +
-    `<figcaption data-technical-modal-caption></figcaption></figure>`;
+    `</figure>`;
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
-  const technicalModalCaption = requiredElement<HTMLElement>(technicalModal.body, '[data-technical-modal-caption]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
   const technicalModalTabs = [...technicalModal.body.querySelectorAll<HTMLButtonElement>('[data-technical-modal-view]')];
 
@@ -1552,12 +1588,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!view || !spec) return;
     const translated = translateTechnicalView(view);
     const name = spec.label?.displayName || spec.name;
-    // the title names the tank and the drawing; the caption under it says what the drawing shows (once: a subtitle and
-    // a tagline said it again, the r18 critic)
-    technicalModal.setTitle(`${name} · ${translated.label}`);
+    // the title names the tank and the selected tab under it the drawing (the r27 critic: "· Armor" said the tab again and
+    // wrapped alone on a phone); what the drawing shows is the image's text, not a caption under it
+    technicalModal.setTitle(name);
     technicalModalImage.src = iconUrl(spec.id, view.assetView);
     technicalModalImage.alt = `${name} ${translated.caption.toLowerCase()}`;
-    technicalModalCaption.textContent = translated.caption;
     technicalModalPanel.setAttribute('aria-labelledby', `cot-technical-viewer-tab-${view.id}`);
     for (const tab of technicalModalTabs) {
       const active = tab.dataset.technicalModalView === view.id;
@@ -1766,25 +1801,33 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     back.hidden = !hasLeft;
     on.hidden = !hasRight;
     const box = chipsEl.getBoundingClientRect();
-    const lo = box.left + (hasLeft ? back.offsetWidth + 4 : 0);
-    const hi = box.right - (hasRight ? on.offsetWidth + 4 : 0);
-    let before = 0, after = 0;
-    for (const chip of chipsEl.children) {
-      const r = chip.getBoundingClientRect();
-      const cut = r.width > 0 && (r.left < lo - 0.5 || r.right > hi + 0.5);
-      chip.classList.toggle('is-cut', cut);
-      if (cut && r.right <= lo + 0.5) before += 1;
-      else if (cut) after += 1;
-    }
-    for (const [step, n, key] of [[back, before, 'garage.country.before'], [on, after, 'garage.country.after']] as const) {
-      const label = t(key, { count: n });
-      if (step.getAttribute('aria-label') === label) continue;
-      step.setAttribute('aria-label', label);
-      step.title = label;
-      step.textContent = `+${n}`;
+    // a count's own text sets its width: a second pass when a new count changed it, so a nation it would cover hides
+    // under it (the r27 critic: "+5" over Poland's count once a search had narrowed every flag to "0")
+    for (let pass = 0; pass < 2; pass++) {
+      const widths = [back.offsetWidth, on.offsetWidth];
+      const lo = box.left + (hasLeft ? widths[0] + 4 : 0);
+      const hi = box.right - (hasRight ? widths[1] + 4 : 0);
+      let before = 0, after = 0;
+      for (const chip of chipsEl.children) {
+        const r = chip.getBoundingClientRect();
+        const cut = r.width > 0 && (r.left < lo - 0.5 || r.right > hi + 0.5);
+        chip.classList.toggle('is-cut', cut);
+        if (cut && r.right <= lo + 0.5) before += 1;
+        else if (cut) after += 1;
+      }
+      for (const [step, n, key] of [[back, before, 'garage.country.before'], [on, after, 'garage.country.after']] as const) {
+        const label = t(key, { count: n });
+        if (step.getAttribute('aria-label') === label) continue;
+        step.setAttribute('aria-label', label);
+        step.title = label;
+        step.textContent = `+${n}`;
+      }
+      if (back.offsetWidth === widths[0] && on.offsetWidth === widths[1]) break;
     }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
+  // a nation's count changes its width (a search's "0", a filter's tally): the rail measures again where the flags moved
+  const countryChipResize = typeof ResizeObserver === 'function' ? new ResizeObserver(queueCountryRailAffordances) : null;
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
     // ctrl+wheel is a trackpad pinch: the app-wide pinch guard owns it, so the rail never scrolls on one
@@ -1894,7 +1937,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const stats = statsEl.getBoundingClientRect();
       root.classList.toggle('picker-over-readout', eqpickEl.getBoundingClientRect().right > stats.left - 1);
     }
-    fitWholeRows(grid, false);
+    fitWholeRows(grid, false, document.body.dataset.cotPanels === 'overlay');
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
@@ -2070,6 +2113,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     vehicle: () => (selectedId ? specById.get(selectedId) ?? null : null),
     locked: () => vehicleLocked,
     text: pickerText,
+    // its grid ends on whole rows as the equipment's: docked, its tiles balanced over the band's rows; a phone's sheet
+    // filled (v261: the zh sheets cut a row under the fade, and at 1024 x 600 the docked one sliced its second row)
+    fitGrid: (grid) => holdGridHeight(grid, fitPickerGrid),
     emit: (name, payload) => emit(name, payload as RuntimeValue),
   });
   // --- EQUIPMENT SYSTEM: slot boxes on the stats card + item picker --------
@@ -2260,6 +2306,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
 
+  // a sheet's readout that changes height (an item with projected values after Empty, or back) gives the cards its room or
+  // takes it: the grid is fitted to whole rows again (the 261 critic: 140 px empty under a short readout at 390 x 844, a
+  // cut fourth row, one row of cards at 1024 x 600 and 844 x 390)
+  if (typeof ResizeObserver === 'function') {
+    let readoutHeight = -1;
+    new ResizeObserver(() => {
+      const height = eqReadoutEl.getBoundingClientRect().height;
+      if (eqOpenSlot < 0 || height === readoutHeight || document.body.dataset.cotPanels !== 'overlay') { readoutHeight = height; return; }
+      readoutHeight = height;
+      const grid = eqPicker.grid();
+      if (grid) { grid.style.minHeight = ''; fitPickerGrid(grid); }
+    }).observe(eqReadoutEl);
+  }
+
   function measureEqTitle(): void {
     eqpickEl.style.setProperty('--eq-title-w', `${Math.ceil(eqTitleEl.getBoundingClientRect().width)}px`);
   }
@@ -2379,7 +2439,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintCamoSwatch(canvas, spec, patternId === CUSTOM_CAMO_ID && camoOpts?.getCustom
       ? customCamoPatternId(camoOpts.getCustom(spec.id)) : patternId);
   };
-  // The band's paint (the 245 redesign): what the tank wears, named, then three more to try in one press and every paint.
+  // The band's paint (the 245 redesign; the kit's picker since the 261 census): what the tank wears, named, then three
+  // more to try in one press, and every paint. A paint under a mouse or a pen, or under the keyboard's focus, shows on the
+  // hero at once (INTERACTION-REDESIGN B, main.ts garageCamoTryOn); leaving the row puts the worn paint back.
+  const paintPickerHost = document.createElement('div');
+  const paintAll = document.createElement('button');
+  paintAll.type = 'button';
+  paintAll.className = 'cot-c-btn cot-c-btn--icon cot-lt-paint-all';
+  paintAll.dataset.garagePanel = 'appearance';
+  paintAll.setAttribute('aria-controls', 'cot-garage-camos');
+  paintAll.setAttribute('aria-label', t('garage.tools.appearanceHint'));
+  paintAll.innerHTML = uiIconSVG('camouflage', 18);
+  paintEl.append(paintPickerHost, paintAll);
+  let bandPicker: ReturnType<typeof createPicker> | null = null;
   function refreshBandPaint(spec: GarageTankSpec, selectedPatternId: string): void {
     if (!camoOpts) { paintEl.hidden = true; return; }
     const patterns = camoOpts.patterns;
@@ -2388,75 +2460,35 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const memory = readMemory(`camo.${spec.id}`);
     const picks = [...new Set([selectedPatternId, ...memory.recent, ...memory.favourites, ...BAND_PAINT_PICKS])]
       .filter((id, index) => index === 0 || (id !== CUSTOM_CAMO_ID && patterns.includes(id))).slice(0, 4);
-    const allLabel = t('garage.tools.appearanceHint');
-    paintEl.innerHTML = picks.map((patternId, index) => {
-      const label = escapeHtmlAttribute(camoPatternLabel(patternId));
-      return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}">` +
-        (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
-    }).join('') +
-      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
-      `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
-    paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
-      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
-      button.prepend(canvas);
-      paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
-    });
-  }
-  paintEl.addEventListener('click', (event) => {
-    const target = eventElement(event);
-    if (target?.closest('[data-garage-panel]')) {
-      emit('ui:click', {});
-      setGaragePanel(openGaragePanel() === 'appearance' ? '' : 'appearance');
-      return;
+    const items = picks.map((patternId) => ({ id: patternId, name: camoPatternLabel(patternId) }));
+    if (bandPicker) bandPicker.setItems(items, selectedPatternId);
+    else {
+      bandPicker = createPicker(paintPickerHost, {
+        id: 'garage-paint-band', label: t('garage.tools.camos'), items, value: selectedPatternId, layout: 'swatches', text: pickerText(),
+        onPreview: (item) => { if (selectedId && !vehicleLocked) camoOpts?.preview?.(selectedId, item?.id ?? null); },
+        onChoose: (item) => {
+          if (!camoOpts || !selectedId || vehicleLocked) return;
+          emit('ui:click', {});
+          if (camoOpts.get(selectedId) !== item.id) wearCamo(item.id);
+          paintPickerHost.querySelector<HTMLElement>('.cot-c-picker__opt')?.focus({ preventScroll: true });
+        },
+      });
     }
-    const swatch = target?.closest<HTMLButtonElement>('[data-lt-paint]');
-    const patternId = swatch?.dataset.ltPaint;
-    if (!patternId || !camoOpts || !selectedId || vehicleLocked) return;
-    emit('ui:click', {});
-    if (camoOpts.get(selectedId) === patternId) return;
-    wearCamo(patternId);
-    paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
-  });
-
-  // the row's arrows (and Home and End) move between its paints and the every-paint button, the focus trying each on;
-  // Enter or Space wears one (the interaction census: the arrows stepped the tank from here)
-  paintEl.addEventListener('keydown', (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const items = [...paintEl.querySelectorAll<HTMLButtonElement>('button')];
-    const at = items.indexOf(document.activeElement as HTMLButtonElement);
-    if (at < 0) return;
-    const to = event.key === 'ArrowRight' ? Math.min(items.length - 1, at + 1) : event.key === 'ArrowLeft' ? Math.max(0, at - 1)
-      : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : -1;
-    if (to < 0) return;
-    event.preventDefault();
-    items[to].focus({ preventScroll: true });
-  });
-
-  // the try-on (INTERACTION-REDESIGN B): a paint under a mouse or a pen, or under the keyboard's focus, shows on the hero
-  // at once (main.ts garageCamoTryOn); leaving the row or the sheet puts the worn paint back. A touch shows nothing
-  // until its press wears the paint (a scroll over the sheet left a try-on behind).
-  function wireCamoTryOn(host: HTMLElement, selector: string, idOf: (option: HTMLElement) => string | undefined): void {
-    const tryOn = (patternId: string | null): void => {
-      if (selectedId && !vehicleLocked) camoOpts?.preview?.(selectedId, patternId);
-    };
-    host.addEventListener('pointerover', (event) => {
-      if (event.pointerType === 'touch') return;
-      const option = eventElement(event)?.closest<HTMLElement>(selector);
-      const patternId = option ? idOf(option) : undefined;
-      if (patternId) tryOn(patternId);
-    });
-    host.addEventListener('pointerleave', (event) => { if (event.pointerType !== 'touch') tryOn(null); });
-    host.addEventListener('focusin', (event) => {
-      const option = eventElement(event)?.closest<HTMLElement>(selector);
-      const patternId = option?.matches(':focus-visible') ? idOf(option) : undefined;
-      if (patternId) tryOn(patternId);
-    });
-    host.addEventListener('focusout', (event) => {
-      if (!(event.relatedTarget instanceof Node && host.contains(event.relatedTarget))) tryOn(null);
-    });
+    paintAll.setAttribute('aria-expanded', String(openGaragePanel() === 'appearance'));
+    // each paint's swatch, painted for this tank on the picker's drawn options
+    for (const option of paintPickerHost.querySelectorAll<HTMLElement>('.cot-c-picker__opt[data-id]')) {
+      const media = document.createElement('span');
+      media.className = 'cot-c-picker__media';
+      const canvas = createUiCanvas(null, '', { draw: paintCamoSwatchSurface }).canvas;
+      media.append(canvas);
+      option.prepend(media);
+      paintBandSwatch(canvas, spec, option.dataset.id || selectedPatternId);
+    }
   }
-  wireCamoTryOn(paintEl, '[data-lt-paint]', (option) => option.dataset.ltPaint);
+  paintAll.addEventListener('click', () => {
+    emit('ui:click', {});
+    setGaragePanel(openGaragePanel() === 'appearance' ? '' : 'appearance');
+  });
 
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
@@ -2564,6 +2596,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     chipsEl.appendChild(all);
     chipById.set(ALL_COUNTRIES, all);
+    countryChipResize?.observe(all);
     for (const group of countryGroups) {
       const count = group.count;
       const chip = document.createElement('button');
@@ -2588,6 +2621,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
+      countryChipResize?.observe(chip);
     }
   }
   initializeCountryChips();
@@ -3080,7 +3114,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   /**
    * The selected vehicle's actions (owner 10-25: "be able to see the actions u can do with tank"): the battle's
    * vehicle-action table read for it (vehicleActionsFor), each with its glyph, name and key in the table's order, its
-   * use in the hover tip. The chips wrap, never truncate.
+   * use in the hover tip. They are facts set as the figures over them are, not chips (the iPad critic r2 read framed
+   * chips as buttons); they wrap, never truncate.
    */
   function actionsRow(spec: GarageTankSpec): string {
     const keyFor = (binding: VehicleActionBinding): string | null | undefined => {
@@ -3089,7 +3124,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const actions = vehicleActionsFor(spec, {}, keyFor);
     if (!actions.length) return '';
     return `<div class="cot-actions" role="list" aria-label="${t('garage.actions.heading')}">` + actions.map((action) =>
-      `<span class="cot-c-chip cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
+      `<span class="cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
       `${uiIconSVG(action.glyph, 15)}<span>${action.label}</span><kbd class="cot-c-kbd">${action.key}</kbd></span>`).join('') +
       `</div>`;
   }
@@ -4546,7 +4581,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
     photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
     void photoMode.then(({ openPhotoMode }) => openPhotoMode({
-      stage: control.stage, showroom: control.showroom, still: control.still, keycap,
+      stage: control.stage, showroom: control.showroom, still: control.still, keycap, segmented, wireRoving,
       fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
       click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
     })).catch(() => { photoMode = null; });

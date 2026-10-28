@@ -128,6 +128,8 @@ interface ChoiceOption {
   /** Show the glyph only; the label is the accessible name, which the hover tip shows. */
   readonly iconOnly?: boolean;
   readonly disabled?: boolean;
+  /** The key that chooses it (the Gallery's 1-5 layers): a key cap inside the option, and its aria-keyshortcuts. */
+  readonly key?: string;
 }
 
 interface SegmentedOptions {
@@ -145,8 +147,10 @@ export function segmented(options: SegmentedOptions): string {
     const glyph = option.icon ? icon(option.icon, { size: 16 }) : '';
     const text = option.iconOnly ? '' : `<span>${esc(option.label)}</span>`;
     const name = option.iconOnly ? ` aria-label="${esc(option.label)}"` : '';
+    const key = option.key ? ` aria-keyshortcuts="${esc(option.key)}"` : '';
     return `<button type="button" role="radio" class="cot-c-seg__opt" data-value="${esc(option.value)}" aria-checked="${on}"`
-      + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}>${glyph}${text}</button>`;
+      + ` tabindex="${on ? 0 : -1}" data-ui-sound="select"${option.disabled ? ' disabled' : ''}${name}${key}>${glyph}${text}`
+      + `${option.key ? keycap(option.key) : ''}</button>`;
   }).join('');
   return `<div class="cot-c-seg${options.className ? ` ${options.className}` : ''}" role="radiogroup" `
     + `aria-label="${esc(options.label)}"${attrs(options.attrs)}>${items}</div>`;
