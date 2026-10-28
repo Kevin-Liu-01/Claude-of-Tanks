@@ -84,7 +84,7 @@ const leadOf = (ids) => ids.find((id) => !/_x$/.test(tankSeedId(id)) && !/legacy
 const NATION_WORD = {
   USA: 'US Army', Germany: 'Bundeswehr', Russia: 'Russian', USSR: 'Soviet', 'USSR/Russia': 'Soviet', UK: 'British', France: 'French',
   China: 'PLA', Italy: 'Italian', Japan: 'JGSDF', Poland: 'Polish', 'South Korea': 'ROK', Sweden: 'Swedish', Israel: 'IDF',
-  Ukraine: 'Ukrainian', Atlantis: 'Atlantean',
+  Ukraine: 'Ukrainian', Atlantis: 'Atlantean', 'South Africa': 'SANDF',
 };
 const PATTERN_WORD = {
   solid: 'Plain', nato: 'Three-Tone', stripes: 'Bands', digital: 'Digital', 'russian-digital': 'Digital', splinter: 'Splinter',
@@ -114,11 +114,8 @@ const nationWord = (nation, era) => {
   if (nation === 'USSR') return 'Soviet';
   return NATION_WORD[nation] || nation || 'Fleet';
 };
-// a paint named for the force that wore it where the spec keeps its design nation (release 262: the Olifant Mk 2 keeps
-// the Centurion's British nation in the UK tree; its coat is the South African Army's)
-const OPERATOR_WORD = { olifant_mk2: 'SANDF' };
-const nameParts = (recipe, nation, env, era, lead) => ({
-  who: OPERATOR_WORD[lead] || nationWord(nation, era),
+const nameParts = (recipe, nation, env, era) => ({
+  who: nationWord(nation, era),
   word: PATTERN_WORD[recipe.scheme] || 'Livery',
   envWord: ENV_WORD[env] || 'Woodland',
   tone: recipe.scheme === 'solid' ? toneWord(recipe.base) : null,
@@ -152,7 +149,7 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   const nationTag = camoNationTag(spec.nation) || null;
   const env = environmentOf(recipe), style = styleOf(recipe);
   const tags = [nationTag, env, style, 'signature'].filter(Boolean);
-  const parts = nameParts(recipe, spec.nation, env, spec.era, lead);
+  const parts = nameParts(recipe, spec.nation, env, spec.era);
   // A paint id is a saved and wire-sent camo id: it keeps the lead's schema-1 spelling (tankIdAliases.ts), so a rename
   // never orphans a player's paint or a room's allowlist.
   return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };

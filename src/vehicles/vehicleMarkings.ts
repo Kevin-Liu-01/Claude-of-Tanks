@@ -79,6 +79,7 @@ const COUNTRY_MARKINGS: Readonly<Record<string, CountryMarking>> = Object.freeze
   kr: Object.freeze({ countryLabel: 'South Korea', filterLabel: 'KR', insignia: 'kr-taeguk', designation: 'ROK' }),
   se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
+  za: Object.freeze({ countryLabel: 'South Africa', filterLabel: 'ZA', insignia: 'za-castle', designation: 'SA' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
 
@@ -662,6 +663,23 @@ function drawUkraineTrident({ ctx, cx, cy, size, radius }: InsigniaPainterArgs):
   ctx.stroke();
 }
 
+/** The South African castle: the five-bastioned Castle of Good Hope outline the SANDF's insignia draw, gold on blue. */
+function drawSouthAfricaCastle({ ctx, cx, cy, size, radius }: InsigniaPainterArgs): void {
+  ring(ctx, cx, cy, radius * 0.86, '#2f4f86');
+  ctx.fillStyle = '#e2b84e';
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + k * Math.PI / 5, r = radius * (k % 2 === 0 ? 0.70 : 0.46);
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#ece6d6';
+  ctx.lineWidth = size * 0.035;
+  ctx.stroke();
+}
+
 function drawFallbackShield({ ctx, cx, cy, radius }: InsigniaPainterArgs): void {
   ctx.fillStyle = '#d6a74f';
   ctx.beginPath();
@@ -688,6 +706,7 @@ const NATIONAL_INSIGNIA_PAINTERS: Readonly<Record<string, InsigniaPainter>> = Ob
   'kr-taeguk': drawKoreaTaeguk,
   'se-crowns': drawSwedenCrowns,
   'ua-trident': drawUkraineTrident,
+  'za-castle': drawSouthAfricaCastle,
 });
 
 /** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */

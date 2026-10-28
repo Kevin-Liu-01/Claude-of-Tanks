@@ -17,10 +17,11 @@ import se from 'flag-icons/flags/4x3/se.svg?url';
 import ua from 'flag-icons/flags/4x3/ua.svg?url';
 import us from 'flag-icons/flags/4x3/us.svg?url';
 import xx from 'flag-icons/flags/4x3/xx.svg?url';
+import za from 'flag-icons/flags/4x3/za.svg?url';
 import { flagIconCode } from './flagCodes.ts';
 
 const FLAG_URL: Readonly<Record<string, string>> = Object.freeze({
-  ca, cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx,
+  ca, cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx, za,
 });
 
 /** Bundled official flag URL for CSS backgrounds and image elements. */

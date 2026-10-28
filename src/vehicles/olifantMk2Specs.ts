@@ -4,16 +4,17 @@
 // composite armour with a stabilised commander's thermal sight on a post and the 105 mm GT-3B with its thermal sleeve
 // (tanks-encyclopedia, Olifant Mk 2; Wikipedia, Olifant; the Commons photographs). No source shows a remote-controlled
 // machine gun: the loader's pintle 7.62 mm is the Mk 1B's documented anti-aircraft gun. Built as the family's
-// 'olifant_mk2' mark (profiles/centurionFamily.ts; docs/references/tanks/olifant_mk2.md). It clones the Mk 5/2 and keeps
-// the British design nation in the UK tree (as the Leopard 2A4M CAN keeps its German one); its own package: the
-// diesel, the composite turret, the stabilised fire control and the GT-3B's modern APFSDS. The SANDF's three-tone coat.
+// 'olifant_mk2' mark (profiles/centurionFamily.ts; docs/references/tanks/olifant_mk2.md). It clones the Mk 5/2 and flies
+// South Africa's flag (owner 2026-10-28: "do it then"), drawn in the UK tree's special lane beside the Centurions it
+// came from; its own package: the diesel, the composite turret, the stabilised fire control and the GT-3B's modern
+// APFSDS. The SANDF's three-tone coat.
 import './classicFleetSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
-const spec = cloneFleetVariant(registries.tankSpecs, 'olifant_mk2', 'centurion5_2', { name: 'Olifant Mk 2', nation: 'UK', era: 'modern' });
+const spec = cloneFleetVariant(registries.tankSpecs, 'olifant_mk2', 'centurion5_2', { name: 'Olifant Mk 2', nation: 'South Africa', era: 'modern' });
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;

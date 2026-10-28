@@ -22,6 +22,7 @@ export const FLAG_ICON_CODE_BY_NATION: Readonly<Record<string, string>> = Object
   Sweden: 'se',
   Ukraine: 'ua',
   Canada: 'ca',
+  'South Africa': 'za',
   Community: 'xx',
 });
 

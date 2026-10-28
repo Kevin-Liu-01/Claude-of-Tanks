@@ -10,7 +10,8 @@ const node = (row: TreeNode): TreeNode => Object.freeze({
 
 export const UK_TREE: NationTree = Object.freeze({
   id: 'uk',
-  nations: Object.freeze(['UK']),
+  // release 262: the South African Olifant Mk 2 is drawn with the Centurions it came from
+  nations: Object.freeze(['UK', 'South Africa']),
   flagNation: 'UK',
   name: 'United Kingdom',
   lines: Object.freeze([

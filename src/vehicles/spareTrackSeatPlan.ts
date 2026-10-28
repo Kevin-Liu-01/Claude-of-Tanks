@@ -135,6 +135,10 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "strv103a": {
     "fitting@hull(0.98,1.61,2.30)": 45,
   },
+  "strv105": {
+    "strip@hull(-0.86,1.26,-3.76)": 45,
+    "strip@hull(0.86,1.26,-3.76)": 46,
+  },
   "strv121": {
     "fitting@hull(-1.68,1.68,-1.72)": [-1.77712, 1.62201, -1.762, 0, 0, 0.71571, 0.6984, 1],
     "fitting@hull(-1.68,1.68,-2.58)": [-1.77712, 1.62201, -2.512, 0, 0, 0.71571, 0.6984, 1],
