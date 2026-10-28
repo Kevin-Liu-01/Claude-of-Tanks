@@ -2984,6 +2984,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
+  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) carry only their curated
+  // light load (a blind critic on the cited Bundeswehr photos, 2026-10-28: the roof "nearly clean"); the fleet's
+  // seven-piece field cargo stood a case, a drum, tarps and a can rack over the bustle and the engine deck.
+  if (spec.id === 'leo2a2' || spec.id === 'leo2a3' || spec.id === 'leo2a3_b4') return TANK_MANIFESTS[spec.id](spec, rng);
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
+// (262: the 2A2 and the 2A3 OTCO left this family's hull for the new Leopard construction, profiles/leopard2a3B4.ts)
 const expectedHalfWidths = new Map([
-  ['leo2a2', 0.92],
-  ['leo2a3', 0.92],
   ['leo2a4m_can', 0.88],
   ['leo2a4', 0.88],
   ['leo2a4_otco', 0.88],
