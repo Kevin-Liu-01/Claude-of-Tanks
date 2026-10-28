@@ -16,14 +16,14 @@
 // heads at the turret's front corners; the 6TD-2 deck with its left-side exhaust; six rubber-tyred road wheels, five
 // return rollers, rear drive. The Oplot-T adds, per the KMDB delivery notes and the Royal Thai Army tanks of
 // 2014-2018, the air conditioner on the bustle and the auxiliary power unit on the left rear fender; it carries the
-// longer rear stowage basket, a stern boarding ladder and its own skirt layout (Duplet on the three forward panels).
+// longer rear stowage basket, boarding steps off the left rear fender and its own skirt layout (Duplet on the three forward panels).
 //
 // Frames: hull metres with +Z forward and +X the tank's left, authored at 4.0 times the print and baked once to the
 // registered 4.10 (resizeAuthoredVehicle, OPLOT_BM_SCALE). The turret frame sits on the ring at
 // OPLOT_BM_AUTHORING.turret; the gun frame at OPLOT_BM_AUTHORING.gun inside it.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
+import { KIT, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { loftHull, tubeGun, ruSaddle, ruBoot } from './russia.ts';
 import { eraCassette, glacisEraCassette } from './modernizationFittings.ts';
@@ -31,9 +31,8 @@ import { markEraHitFaces } from './eraHitFaces.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { beamBetween } from './measuredPrimitives.ts';
-import { DRUM_ISSUE_PAINTS, fuelDrumParts, place } from '../accessoryPrimitives.ts';
+import { DRUM_ISSUE_PAINTS, fabricRollParts, fuelDrumParts, place } from '../accessoryPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { fabricRollParts } from '../accessoryPrimitives.ts';
 import { OPLOT_BM_AUTHORING, OPLOT_BM_ERA, OPLOT_BM_SCALE } from '../oplotBMLayout.ts';
 import { resizeAuthoredVehicle } from './vehicleSize.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -174,7 +173,7 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
     const bottomAt = (z: number): number => (z < -1.55 ? 0.22 + (-1.55 - z) * 0.40 : z > 2.60 ? 0.22 + (z - 2.60) * 0.45 : 0.22);
     for (let i = 0; i < rubberZ.length - 1; i++) {
       const pa = rubberZ[i] + 0.008, pb = rubberZ[i + 1] - 0.008, a = Z(pa), b = Z(pb);
-      P.hangMudguard(`oplot-bm-skirt-${s}-${i}`, 'hull', orientedSlab(
+      P.hangMudguard(`oplot-bm-skirt-${s}-${i}`, 'hullEquipment', orientedSlab(
         [side(s, 2.052), bottomAt(pa), a], [side(s, 2.070), bottomAt(pa), a], [side(s, 2.070), bottomAt(pb), b], [side(s, 2.052), bottomAt(pb), b],
         [side(s, 2.052), 0.975, a], [side(s, 2.070), 0.975, a], [side(s, 2.070), 0.975, b], [side(s, 2.052), 0.975, b]), 0, 0, 0);
     }
@@ -466,9 +465,10 @@ function stationLens(P: TankBuilderPort, S: Station, pivotY: number, pivotZ: num
   done();
 }
 
-/** Twin 200 L drums across the stern on their cradle, above the unditching log. */
+/** Twin 200 L drums across the stern on their cradle, behind the unditching log and level with it, so the gun still
+ * depresses over the stern (their tops at the deck line: tools/gun-depression-sweep.mjs). */
 function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number], seed: number): void {
-  const z = -HULL_HALF_L - 0.30, y = 1.66;
+  const stern = -HULL_HALF_L, z = stern - 0.46, y = 1.30;
   for (const s of [-1, 1]) {
     const drum = fuelDrumParts({ r: 0.20, len: 0.86, straps: [0.15, 0.85], buckleAt: 2.62, bungHead: s > 0 ? 1 : -1,
       detail: P.q === false ? 0 : 1, bold: true, paint, seed: seed + (s > 0 ? 1 : 0) });
@@ -476,12 +476,12 @@ function sternDrums(P: TankBuilderPort, paint: readonly [number, number, number]
     P.add('hullBark', alongX(drum.body), side(s, 0.50), y, z);
     for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side(s, 0.50), y, z);
   }
-  // cradle: two saddles on arms back to the stern plate, a cross tube between them
+  // cradle: four arms under the log back to the stern plate, saddle posts under the drums, a cross tube between them
   for (const x of [-0.92, -0.08, 0.08, 0.92]) {
-    P.add('hullDark', box(0.05, 0.05, 0.36), x, y - 0.21, z + 0.13);
-    P.add('hullDark', box(0.05, 0.16, 0.05), x, y - 0.15, z - 0.02);
+    P.add('hullDark', box(0.05, 0.05, 0.47), x, y - 0.22, stern - 0.235);
+    P.add('hullDark', box(0.05, 0.12, 0.05), x, y - 0.17, z);
   }
-  P.add('hullDark', cylX(0.025, 1.90, 12), 0, y - 0.21, z - 0.04);
+  P.add('hullDark', cylX(0.025, 1.90, 12), 0, y - 0.22, z - 0.04);
 }
 
 /** A guarded lamp facing forward (or aft), turret frame. */
@@ -512,9 +512,18 @@ const T_STATIONS = Object.freeze({
 } as const);
 
 /** The Ukrainian Oplot-M's wartime kit: two stations, a lower Duplet course on the skirts, LED bars, olive drums. */
+/** Each station's traverse and, where the roof stock rises under its barrel, its depression (mount-local radians;
+ * tools/roof-station-arcs.mjs on this build, 2 degrees and 0.01 rad of margin, the full 0.18 rad between bands). */
+function stationLimits(root: THREE.Group, yawArc: [number, number], depressionByYaw?: [number, number][]): void {
+  root.userData.yawArc = yawArc;
+  if (depressionByYaw) root.userData.depressionByYaw = depressionByYaw;
+}
+
 function buildOplotMKit(P: TankBuilderPort): void {
-  cradleStation(P, M_STATIONS.kt127);
-  enclosedStation(P, M_STATIONS.kt762);
+  // the KT-12.7 clear -248..4 degrees (blocked toward the PNK-6 tower and the 7.62 station); the KT-7.62 clear -84..273
+  stationLimits(cradleStation(P, M_STATIONS.kt127), [-4.2935, 0.0349], [[-0.0524, 0.18], [0.0349, 0.125]]);
+  stationLimits(enclosedStation(P, M_STATIONS.kt762), [-1.4312, 4.7298],
+    [[-1.4312, 0.023], [-1.2915, 0.051], [-1.2043, 0.18], [4.6426, 0.18], [4.7298, 0.04]]);
   // a lower Duplet course bolted along each rubber skirt (the owner's extra side armour), seven blocks a side
   for (const s of [-1, 1]) {
     const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
@@ -534,9 +543,11 @@ function buildOplotMKit(P: TankBuilderPort): void {
  *  a searchlight and desert drums. */
 function buildOplotTKit(P: TankBuilderPort): void {
   // the M2's mini-turret carries a boresighted searchlight on its mantlet's left
-  enclosedStation(P, T_STATIONS.m2, true);
+  // the M2 clear -149..3 degrees (the 7.62 station, the PNK-6 tower and the cage astern); the 7.62 clear -80..246
+  stationLimits(enclosedStation(P, T_STATIONS.m2, true), [-2.5656, 0.0175],
+    [[-2.5656, 0.04], [-2.5133, 0.18], [-0.0698, 0.18], [0.0175, 0.155]]);
   stationLens(P, T_STATIONS.m2, RACE_Y + 0.21, T_STATIONS.m2.z + 0.30);
-  cradleStation(P, T_STATIONS.m240);
+  stationLimits(cradleStation(P, T_STATIONS.m240), [-1.3614, 4.2586], [[-1.3614, 0], [-1.3090, 0.18], [4.1888, 0.18], [4.2586, 0.026]]);
   // bolted steel appliqué on the flared skirt face where the Thai tank carries no Duplet: plates standing 4 cm proud on
   // stand-off blocks, a bolted rim and four bolt heads each
   const face = new THREE.Vector2(SKIRT_FACE.innerX + 0.06 - SKIRT_FACE.outerX, DECK_Y - (SKIRT_FACE.bottomY + 0.05));
@@ -604,15 +615,17 @@ function buildGun(P: TankBuilderPort): void {
   P.add('gunDark', cylZ(0.016, 0.04, 10), -0.20, -0.08, 0.32);
 }
 
-/** Thai export fittings on the hull: the APU on the left rear fender, the boarding ladder on the stern. */
+/** Thai export fittings on the hull: the APU's low armoured box on the left rear fender (exhaust out of its outboard face,
+ * so the gun still clears it), the boarding steps hung off that fender's stern end beside the drums. */
 function buildThaiHullFittings(P: TankBuilderPort): void {
-  P.add('hull', box(0.50, 0.32, Z(0.74)), 1.46, DECK_Y + 0.16, Z(-2.10));
-  for (let i = 0; i < 5; i++) P.add('hullDark', box(0.012, 0.18, 0.08), 1.713, DECK_Y + 0.17, Z(-2.36 + i * 0.13));
-  P.add('hullDark', cylY(0.035, 0.035, 0.16, 12), 1.58, DECK_Y + 0.40, Z(-2.36));
-  P.add('hullDark', box(0.52, 0.02, Z(0.76)), 1.46, DECK_Y + 0.33, Z(-2.10));
-  const stern = -HULL_HALF_L;
-  for (const x of [-1.08, -0.84]) P.addEquipment('hullDetail', box(0.03, 0.62, 0.03), x, 1.02, stern - 0.045);
-  for (let i = 0; i < 4; i++) P.addEquipment('hullDetail', box(0.27, 0.025, 0.03), -0.96, 0.78 + i * 0.15, stern - 0.05);
+  const apuZ = Z(-2.50);
+  P.add('hull', box(0.50, 0.15, Z(0.74)), 1.50, DECK_Y + 0.075, apuZ);
+  for (let i = 0; i < 5; i++) P.add('hullDark', box(0.012, 0.09, 0.08), 1.753, DECK_Y + 0.075, apuZ + Z(-0.26 + i * 0.13));
+  for (const dz of [-0.30, 0.30]) P.add('hullDark', box(0.46, 0.012, 0.03), 1.50, DECK_Y + 0.154, apuZ + Z(dz));
+  P.add('hullDark', cylX(0.032, 0.07, 12), 1.785, DECK_Y + 0.06, apuZ + Z(0.26));
+  const end = Z(-3.20) - 0.016;
+  for (const x of [1.22, 1.46]) P.addEquipment('hullDetail', box(0.03, 0.58, 0.03), x, 0.91, end);
+  for (let i = 0; i < 4; i++) P.addEquipment('hullDetail', box(0.27, 0.025, 0.03), 1.34, 0.69 + i * 0.15, end - 0.005);
 }
 
 export function buildOplotBM(P: TankBuilderPort, variant: OplotBMVariant): void {

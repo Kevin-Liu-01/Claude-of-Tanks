@@ -4,7 +4,7 @@
 // degree of turret yaw the gun (every gun mesh, the recoiling parts in battery and at 0.135 m) keeps GUN_HULL_KEEP_M from
 // every hull mesh at its yaw's depression stop, at level and at full elevation (gunHullClearance.test-support.mjs).
 // Negative control: the same gun at the bare -5 degrees all round (no curve) comes within that distance of its hull
-// astern, where the bustle carries the barrel over the engine deck.
+// astern, where the barrel crosses the unditching log and the stern drums.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from './gunHullClearance.test-support.mjs';
 
