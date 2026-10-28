@@ -1097,8 +1097,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
   // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the denser steps; 'bars'
   // drops the scale bars before '4' drops a station's later plates (the r25 critic: Firepower at 1280 lost its Ammunition
-  // and Armament over 170 px of empty column, the step before overflowing by a few rows)
-  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4']);
+  // and Armament over 170 px of empty column, the step before overflowing by a few rows); '5' sets the actions as glyphs
+  // and keys when even '4' overflows a short docked window (v261 e: 1024 x 600 cut its last action row by 17 px)
+  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4', '1 2 3 bars 4 5']);
   const readoutDensities = new Map<string, number>();
   function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
