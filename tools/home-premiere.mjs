@@ -86,9 +86,12 @@ function syncAltCatalogs() {
     for (const clip of missing) catalog[altKeyOf(clip)] = clip.title[lang];
   }
 }
-/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung. */
+/** A clip's ladder in the media player's order (mediaPlayer.ts chooseSource): wide screens, the film, the phone rung, each
+ *  rung's AV1 file first where the media lane encoded one (its type names its codec: the player asks MediaCapabilities
+ *  whether it decodes smoothly, and falls back to the H.264 file after it). */
 function ladder(clip) {
-  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.film, clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
+  const files = [clip.wide && { ...clip.wide, rung: 'wide' }, clip.av1, clip.film, clip.mobileAv1 && { ...clip.mobileAv1, rung: 'phone' },
+    clip.mobile && { ...clip.mobile, rung: 'phone' }].filter(Boolean);
   for (const file of files) if (!existsSync(join(ROOT, 'public', file.path))) throw new Error(`home-premiere: ${file.path} is not in public/`);
   return files.map((file) => `<source data-src="${file.path}" type="${file.type ?? (file.path.endsWith('.mp4') ? 'video/mp4' : 'video/webm')}"`
     + `${file.rung ? ` data-rung="${file.rung}"` : ''}>`).join('');
@@ -303,17 +306,33 @@ const bentoTile = (cls, picture, href, name, where) => `<figure class="${cls} co
   + `<figcaption class="bento__cap"><a href="${href}">${name}<span class="bento__where">${where.join('')}</span></a></figcaption></figure>`;
 const bentoHead = (id, key, href, linkKey) => `<header class="home-head"><h2 class="home-h2" id="${id}">${t(key, 'span', 't-hollow')}</h2>`
   + `${href ? `<a class="${btn('', '')}" href="${href}">${t(linkKey)}${iconMarkup('chevronRight', 18)}</a>` : ''}</header>`;
+// the duels that move (owner 2026-10-27: "in home, lets try to use our coolest versus videos too, make em load fast and
+// transition in"): the media lane's home-r2 duels, keyed by the versus still each one moves (the same staging). Its poster,
+// the loop's own first frame, takes the still's place, and the loop fades in over it on the features' player
+// (mediaPlayer.ts: its file only near the screen, revealed once it can play through, from its first frame).
+const DUELS = REEL.duels ?? {};
+const DUELS_MAX = 6;
 function duelsBlock() {
   if (VERSUS.featured?.length !== 12) throw new Error('home-premiere: public/media/versus-r1/manifest.json features no twelve');
+  const moving = Object.keys(DUELS);
+  const stray = moving.filter((id) => !VERSUS.featured.includes(id));
+  if (stray.length) throw new Error(`home-premiere: home-r2 duels ${stray.join(', ')} move no featured versus still`);
+  if (moving.length > DUELS_MAX) throw new Error(`home-premiere: home-r2 names ${moving.length} duels; the bento plays at most ${DUELS_MAX}`);
   const tiles = VERSUS.featured.map((id, i) => {
     const item = VERSUS.items.find((entry) => entry.id === id);
     if (!item?.rungs?.length) throw new Error(`home-premiere: versus ${id} has no rungs`);
     const hero = item.tanks.find((entry) => entry.role === 'hero'), foe = item.tanks.find((entry) => entry.role === 'foe');
     if (!hero || !foe) throw new Error(`home-premiere: versus ${id} names no hero and foe`);
     const name = matchup(id, [hero.id, foe.id]);
+    const clip = DUELS[id];
+    if (clip && !clip.poster?.rungs?.length) throw new Error(`home-premiere: duel ${id} has no poster`);
+    // the loop names itself for its player's control ("Play <matchup>"), in either language (publicPages.ts videoLabels)
+    const shot = clip && matchupOf(id, [hero.id, foe.id]);
+    const film = clip ? `<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-duration="${seconds(clip)}"`
+      + ` data-label="${esc(shot.line)}" data-i18n-label="${shot.key}" data-i18n-vars="${esc(JSON.stringify(shot.vars))}">${ladder(clip)}</video>` : '';
     // the duel opens in the Gallery as a duel: its hero, its foe the rival (gallery.ts reads vs)
-    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(item.rungs, i === 0), `${galleryHref(hero.id)}&amp;vs=${foe.id}`, name,
-      [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
+    return bentoTile(`bento__tile${i === 0 ? ' bento__tile--lead' : ''}`, bentoPicture(clip ? clip.poster.rungs : item.rungs, i === 0) + film,
+      `${galleryHref(hero.id)}&amp;vs=${foe.id}`, name, [t(`map.${item.map}`), t(`atmosphere.${item.hour}`)]);
   });
   return `<section class="bento bento--duels" aria-labelledby="duels-title"><div class="home-shell">`
     + bentoHead('duels-title', 'home.duels.title', '/docs/filming#library', 'publicNav.media')

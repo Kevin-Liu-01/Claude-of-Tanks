@@ -37,15 +37,16 @@
 .dm-fleet__menu[data-fleet-facet=role]{grid-area:role}
 .dm-fleet__views{grid-area:views;display:flex}
 .dm-fleet__views .cot-c-seg__opt{flex:1 1 0}
-.dm-fleet__count{grid-area:count;margin:0;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);white-space:nowrap}
+.dm-fleet__count{grid-area:count;justify-self:start;margin:0;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);white-space:nowrap}
 @container fleet (width >= 640px){
   .dm-fleet__bar{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"search search views" "nation tier era" "class role count"}
 }
 @container fleet (width >= 900px){
+  /* the count reads as the search's result, beside its field */
   .dm-fleet__bar{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"search search count views views" "nation tier era class role"}
+  .dm-fleet__count{padding-inline-start:var(--s1)}
   .dm-fleet__views{justify-self:end}
   .dm-fleet__views .cot-c-seg__opt{flex:none}
-  .dm-fleet__count{justify-self:end}
 }
 /* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate */
 @media (width >= 768px) and (height >= 700px){
@@ -68,7 +69,8 @@
   contain-intrinsic-size:0 calc((100cqi - (var(--dm-fleet-cols) - 1) * var(--dm-fleet-gap)) / var(--dm-fleet-cols) / var(--dm-fleet-ar) + var(--dm-fleet-words))}
 .dm-fleet__tile[hidden]{display:none}
 .dm-fleet__card{position:relative;display:flex;flex-direction:column;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);
-  color:inherit;text-decoration:none;transition:box-shadow var(--dur-fast) var(--ease-enter)}
+  color:inherit;text-decoration:none}
+/* the hover ring is a step, not a fade: a ring's shadow is a repaint (tools/motion-lint.mjs colour) */
 .dm-fleet__card:hover{box-shadow:var(--ring-3)}
 .dm-fleet__card:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 /* the picture's box holds the presentation's aspect and the scene's tone, the tile's placeholder until its picture has
@@ -88,5 +90,7 @@
 .dm-fleet__meta{display:flex;align-items:center;gap:var(--s2);height:var(--dm-fleet-meta);min-width:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3);white-space:nowrap}
 .dm-fleet__meta .cot-c-flag{margin-inline:1px}
 .dm-fleet__empty{margin-top:var(--s4)}
-@media (prefers-reduced-motion:reduce){.dm-fleet__card,.dm-fleet.is-live .dm-fleet__layer{transition:none}}
+/* the empty state's line is the kit's (figures.css), not the chapter's prose (docs.css .dm-section p) */
+.dm-section .dm-fleet__empty p{margin:0;max-width:44ch;font:inherit;color:inherit}
+@media (prefers-reduced-motion:reduce){.dm-fleet.is-live .dm-fleet__layer{transition:none}}
 }

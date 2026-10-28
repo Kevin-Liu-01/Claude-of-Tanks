@@ -115,7 +115,7 @@ export function mountFleetGrid(root: HTMLElement, pending: () => Element | null)
       ...(option.chip ? { chip: flagIconUrl(option.chip) } : option.glyph ? { glyph: option.glyph } : {}),
     }));
     menus.set(facet.key, createPickerMenu(host, {
-      id: `docs-fleet-${facet.key}`, label: facet.label, items, value: state[facet.key] || ALL, layout: 'list', text: pickerText(),
+      id: 'docs-fleet-filter', label: facet.label, items, value: state[facet.key] || ALL, layout: 'list', text: pickerText(),
       onChoose: (item) => { state[facet.key] = item.id === ALL ? '' : item.id; apply(); },
     }));
   }

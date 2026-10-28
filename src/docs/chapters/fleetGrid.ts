@@ -157,7 +157,7 @@ export function fleetGridData(): FleetGridData {
 function triggerMarkup(facet: FleetFacet): string {
   const every = facet.options[0];
   return `<div class="dm-fleet__menu" data-fleet-facet="${facet.key}"><button type="button" class="cot-c-menu__trigger" aria-haspopup="listbox"`
-    + ` aria-expanded="false" data-picker-menu="docs-fleet-${facet.key}" data-ui-sound="press" aria-label="${esc(`${facet.label}: ${every.name}`)}">`
+    + ` aria-expanded="false" data-picker-menu="docs-fleet-filter" data-ui-sound="press" aria-label="${esc(`${facet.label}: ${every.name}`)}">`
     + `<span class="cot-c-menu__glyph">${icon(every.glyph!, { size: 18 })}</span>`
     + `<span class="cot-c-menu__words"><span class="cot-c-menu__name">${esc(every.name)}</span></span>`
     + `<span class="cot-c-menu__chev">${icon('chevronDown', { size: 16 })}</span></button></div>`;
@@ -194,7 +194,7 @@ export function fleetGridSections(): RichSection[] {
   const search = `<label class="dm-search__field dm-fleet__search">${icon('search', { size: 16 })}`
     + `<input type="search" data-fleet-search placeholder="${esc(data.text.placeholder)}" aria-label="${esc(t('docs.fleet.searchLabel'))}"`
     + ` autocomplete="off" spellcheck="false" enterkeyhint="search"></label>`;
-  const count = `<p class="dm-fleet__count" role="status" data-fleet-count>${esc(data.text.total.replace('{total}', String(data.total)))}</p>`;
+  const count = `<span class="dm-fleet__count" role="status" data-fleet-count>${esc(data.text.total.replace('{total}', String(data.total)))}</span>`;
   const bar = `<div class="dm-fleet__bar">${search}<div class="dm-fleet__menus">${data.facets.map(triggerMarkup).join('')}</div>${views}${count}</div>`;
   const empty = emptyState({ text: t('docs.fleet.empty'), icon: 'search', className: 'dm-fleet__empty',
     action: { label: t('picker.clear'), attrs: { 'data-fleet-clear': '' } } }).replace('class="cot-c-empty', 'hidden class="cot-c-empty');

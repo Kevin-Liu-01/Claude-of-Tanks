@@ -208,7 +208,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.simulation.title'),
     pageTitle: t('metadata.docsSimulation.title'),
     lede: t('docs.topic.simulation.lede'),
-    hero: '/media/site50-r14/loops/s24-ice-duel.webm',
+    hero: '/media/site50-r14/loops/s226-church-duel.webm',
     icon: 'simulation',
     sectionIcons: ['simulation', 'interface', 'perception', 'navigation', 'verification'],
     sections: [
@@ -281,7 +281,7 @@ export const topics: Record<string, TopicDefinition> = {
     title: t('docs.topic.filming.title'),
     pageTitle: t('metadata.docsFilming.title'),
     lede: t('docs.topic.filming.lede'),
-    hero: '/media/site50-r14/loops/s21-fields-assault.webm',
+    hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
     icon: 'filming',
     sectionIcons: ['specification', 'filming', 'workflow', 'navigation', 'perception', 'studio', 'critique', 'rendering', 'audio', 'release', 'gallery'],
     sections: [
@@ -471,11 +471,16 @@ function titleMarkup(title: string, phrases: readonly string[] = []): string {
   if (cut < 0) {
     const breaks = [...title.matchAll(/ /g)].map((match) => match.index ?? 0)
       .filter((at) => !VOICE_TAIL.has(title.slice(0, at).split(' ').pop()?.toLowerCase() ?? ''));
-    if (!breaks.length) return `<span>${title}</span>`;
+    if (!breaks.length) return `<span>${holdTail(title)}</span>`;
     cut = breaks.reduce((best, at) => (Math.abs(at - title.length / 2) < Math.abs(best - title.length / 2) ? at : best));
   }
-  return `<span>${title.slice(0, cut).trim()}</span> <span class="t-hollow">${title.slice(cut).trim()}</span>`;
+  return `<span>${holdTail(title.slice(0, cut).trim())}</span> <span class="t-hollow">${holdTail(title.slice(cut).trim())}</span>`;
 }
+
+/** A short function word holds to the word after it (a no-break space), so no line of a title ends on one: a phone sets
+ *  the two voices as one balanced run, which had left "HEAR THE BATTLE THE / WAY A CREW DOES" (the manual's r41). */
+const holdTail = (text: string): string => text.split(' ').reduce((out, word, index, words) => (index === words.length - 1
+  ? out + word : out + word + (VOICE_TAIL.has(word.toLowerCase()) ? '\u00a0' : ' ')), '');
 
 function cjkTitleMarkup(title: string, phrases: readonly string[]): string {
   const marked = phrases.length > 1 && phrases.join('') === title;
