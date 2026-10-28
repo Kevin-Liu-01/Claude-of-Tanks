@@ -193,6 +193,16 @@ function armorChallenger3X(): ArmorEnvelope {
   armor.boundingRadiusM = 6.85;
   return armor;
 }
+// The TD's measured main-gun depression by absolute turret yaw (tools/gun-depression-sweep.mjs --no-suit, 26 mm, the
+// whole gun in battery and recoiled): the full 10 degrees over the glacis trough, 8-9 off it, 5-6 over the front deck's
+// edges, the full 10 over the flanks, easing over the engine deck and 8 up over the stern pole astern. No mount
+// conflict (the mantlet's lower edge stands 6 cm over the deck). The field fit shares the hull, turret and gun.
+const CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = Object.freeze([
+  [0, -10], [2, -8.9], [9, -8.5], [25, -8], [26, -6.9], [27, -6.2], [28, -6], [30, -6], [31, -6.2], [33, -7.1],
+  [34, -6], [35, -5.2], [37, -4.7], [42, -4.7], [43, -4.8], [44, -5], [45, -5.4], [46, -6.1], [49, -6.2], [65, -8.8],
+  [71, -9.6], [72, -10], [107, -10], [123, -7.5], [125, -7], [141, -4.1], [158, -1.3], [159, -0.5], [160, -0.2],
+  [164, 0], [165, 0.6], [168, 1.4], [177, 1.5], [178, 7.7], [179, 8.1], [180, 8.1]
+]);
 // Challenger 3 TD (release 262, docs/references/tanks/challenger3_td.md): RBSL's Advanced Technology Demonstrator in
 // its trials fit, a Challenger 2 hull under the new turret, no APS. Authored in the installed frame its builder draws
 // (profiles/challenger3Td.ts: the oracle's metres x1.10, its fender span centred), so no plate needs a rig scale. The
@@ -434,6 +444,7 @@ const CHALLENGER_SPECS = {
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gunPitchByYawDeg: CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG,
     gun: {
       // Rheinmetall's 120 mm L55A1 smoothbore; its 2021 release names temperature-independent KE and programmable HE
       caliberMm: 120, reloadS: 6.6, baseAccuracy: 0.25, aimTimeS: 1.7,
@@ -465,6 +476,7 @@ const CHALLENGER_SPECS = {
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gunPitchByYawDeg: CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 120, reloadS: 6.6, baseAccuracy: 0.25, aimTimeS: 1.7,
       bloom: { move: 0.04, hullRot: 0.06, turret: 0.06, afterShot: 2.2 },
