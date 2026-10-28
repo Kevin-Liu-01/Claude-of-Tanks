@@ -61,7 +61,7 @@ stays a first-party closed casting or fitting (no slab stacks, no per-column pod
 | Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres (the reference's 1.04-1.68 lane) |
 | Sprocket / idler | (-3.80, 0.88) / (1.70, 0.70) | (-3.86, 1.02) / (1.63, 0.88): the raised Pershing sprocket |
 | Gun | r 0.112-0.075 | r 0.125-0.095 (the reference's tube is 0.31 m across throughout; the real M3A1's is not, so ours stops short of it) |
-| Headlights | on the glacis | on brackets ahead of the nose with brush guards to z 2.09 |
+| Headlights | on the glacis | on brackets ahead of the nose with brush guards to z 2.09, three rods each (an open guard window read as a plan hole) |
 
 The gate's hull registration is the side silhouette's body span; the build's ends match the reference's (z -4.25 and
 2.01), so the turret is compared in place.

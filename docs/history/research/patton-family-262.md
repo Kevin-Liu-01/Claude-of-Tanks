@@ -87,3 +87,11 @@ at HIGH), the tank-generation rule of sparse measured landmarks rather than samp
 - Not changed: the M48A5 casting's right-front shoulder is fuller in the model (roof about 2.5 m beside the cupola where
   ours is 2.1-2.3 m). Reshaping the dome would move every armour, crew and seat receipt; the component views pass without
   it.
+- Plan contiguity (B2: 6 cm cells on the hull-anchored lattice at every sub-cell phase, the build with its interior
+  fills): enclosed holes in the M46/M47 brush guards' windows ahead of the lamps, an M47 pocket between the track's end,
+  the rear flap and the hull's corner, and an M48A5 pocket between each bow towing eye and the nose. A middle rod splits
+  each guard's window, the M47's rear flaps hang under the fender's overhang only (x 1.33-1.70; across the whole track
+  they closed the pocket), and the M48A5's eyes and shackles sit 4 cm back on the nose's edge.
+  `~/cot-lanes/patton-262-evidence/tools/contigsim.py` (lane evidence: pixel-centre raster of the export, the same cells,
+  phases and exterior flood) reads none on any of the three. The M46's hidden-gap ledger row (the old build's lamp gap)
+  is pruned through `contig-phase-audit` and `contig-hidden-gaps --prune`.

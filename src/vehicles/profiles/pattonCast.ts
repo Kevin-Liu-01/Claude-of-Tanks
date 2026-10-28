@@ -1345,10 +1345,11 @@ function* m48HullSteps(P: CastPort): Generator<string, HullFrame> {
     P.add('hullDetail', box(0.20, 0.10, 0.28), side * 0.77, deckY(0.77, 2.57) + 0.03, 2.57);
     P.add('hullDark', box(0.42, 0.03, 0.05), side * 0.665, 1.50, 3.02);
     for (const x of [0.47, 0.86]) P.add('hullDark', box(0.03, 0.31, 0.05), side * x, 1.345, 3.02);
-    // set onto the nose's edge (in plan its ring meets the casting, leaving no pocket)
-    KIT.liftEye(P, 'hullDetail', side * 0.83, 0.86, 3.20, Math.PI / 2);
+    KIT.liftEye(P, 'hullDetail', side * 0.83, 0.86, 3.24, Math.PI / 2);
+    // its bracket plate back into the nose (in plan the ring alone left a pocket against the casting's edge)
+    P.add('hullDetail', box(0.16, 0.06, 0.12), side * 0.80, 0.86, 3.17);
     // the towing shackle hanging in the eye
-    P.add('hullDark', KIT.xform(KIT.torus(0.055, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0, [1, 1.3, 1]), side * 0.83, 0.79, 3.23);
+    P.add('hullDark', KIT.xform(KIT.torus(0.055, 0.016, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0, [1, 1.3, 1]), side * 0.83, 0.79, 3.27);
   }
   yield 'm48HullBow';
   // engine deck: the hinge pairs along the seams of the centre doors and the side grille doors, the rear access plate

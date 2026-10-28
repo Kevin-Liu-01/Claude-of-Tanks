@@ -56,12 +56,12 @@ stays a first-party closed casting or fitting.
 | Ventilator | left rear roof | on the bustle roof's centre line, r 0.23 |
 | Antennas, lift eyes | two whips, four eyes | none (the reference carries neither) |
 | Glacis | knee 1.28, toe 2.15 at 1.12 | knee 0.92 at 1.61, toe 2.01 at 1.00 (the reference's 60° plate), nose 0.04 deep |
-| Fenders | 1.56 with 0.22 boxes | 1.40 with 0.26 boxes to 1.66 along its length, sloping down at both ends (at the rear it stays level to -3.85 and turns down behind the sprocket's wrap, where the reference's straight ramp from -3.60 cut through the track); a box on the outer edge |
+| Fenders | 1.56 with 0.22 boxes | 1.40 with 0.26 boxes to 1.66 along its length, sloping down at both ends (at the rear it stays level to -3.85 and turns down behind the sprocket's wrap, where the reference's straight ramp from -3.60 cut through the track); rear flaps under the fender's overhang only (x 1.33-1.70: across the whole track they closed a plan pocket with the hull's corner); a box on the outer edge |
 | Mufflers | drums on the rear fenders | none (the reference has none) |
 | Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres |
 | Sprocket / idler | (-3.78, 0.92) / (1.78, 0.80) | (-3.65, 1.04) / (1.64, 0.88) |
 | Gun | r 0.112-0.075, M36 0.54 wide, muzzle 4.33 | r 0.125-0.095, M36 crossbar 0.68 and front block 0.49 (the reference's), muzzle 4.40 |
-| Headlights | on the glacis | big groups on brackets ahead of the nose, guards to z 2.09 |
+| Headlights | on the glacis | big groups on brackets ahead of the nose, guards to z 2.09 with a middle rod (an open guard window read as a plan hole) |
 
 
 ## Historical record (release 260 and earlier)
