@@ -75,9 +75,9 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   // A sensor change the optics actually made (a press or the key) is announced once, for its sound.
   const announceScope=()=>bus.emit('ui:visionChanged',{});
   const switchScope=()=>{if(!scopeView.hidden){cycleScopeVision();announceScope();}};bus.on('ui:aerialVision',switchScope);
-  // (a touch window too short for the views two by two shows the lit one alone, a finger's 44 px, and a tap on it steps
-  // on: aerialHud.css; at 568x256 the four met the speedometer)
-  const scopeSingle=typeof matchMedia==='function'?matchMedia('(pointer:coarse) and (max-height:300px)'):null;
+  // (a touch window too short or too narrow for the views two by two shows the lit one alone, a finger's 44 px, and a tap
+  // on it steps on: aerialHud.css; at 568x256 the four met the speedometer, at 320x568 the scope readouts' seats)
+  const scopeSingle=typeof matchMedia==='function'?matchMedia('(pointer:coarse) and (max-height:300px),(pointer:coarse) and (max-width:340px)'):null;
   wireRoving(scopeSeg,value=>{
     if(value!==getScopeVision()){setScopeVision(value as AerialVision);announceScope();}
     else if(scopeSingle?.matches){cycleScopeVision();announceScope();}

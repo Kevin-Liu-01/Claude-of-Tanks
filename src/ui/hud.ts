@@ -849,7 +849,8 @@ const AIM_WARNING_CHIP_BELOW = 10;
 /** Half the scope vision switch's height: aerialHud.css seats it beside the sight, level with the marker (48 px tall on
  *  a mouse layout; on touch its four views two by two, 94 px). The warning chip set above the sight keeps over its band
  *  (sniperChipAboveY): a wide chip reaches past the switch's inner edge (80 px from the marker on a short window). */
-const SCOPE_VISION_HALF_H = 24, SCOPE_VISION_TOUCH_HALF_H = 47;
+const SCOPE_VISION_HALF_H = 24;
+const SCOPE_VISION_TOUCH_HALF_H = 47;
 /** How far right of the aim point the hit confirmation's 4:30 shard reaches once settled (hitConfirmVisualState). */
 const HIT_SHARD_CLEAR = Math.ceil(0.7071 * (18.5 + 13) + 3.5);
 /** How the scope's readout row sets its zoom plate and the warning chip, and where its line goes (sniperReadoutStack). */
@@ -3403,7 +3404,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const sniperStackScratch = { y: 0, lineX: 0, zoomX: 0, zoomY: 0 };
   /** The scope row's parts for this repaint (sniperReadoutStack fills it; settleSniperRow reads it): no closure per frame.
    *  `best*` hold the place that reached least far into the furniture (the last resort). */
-  const sniperRowScratch = { lineW: 0, zoomW: 0, chipW: 0, lineTop: 0, lineFoot: 0, lineLeft: 0, zoomLeft: 0, chipRight: 0,
+  const sniperRowScratch = { lineW: 0, zoomW: 0, chipW: 0, lineTop: 0, lineFoot: 0, lineOver: 0, lineLeft: 0, zoomLeft: 0, chipRight: 0,
     besideLeft: 0, chipAbove: false, noZoom: false, chipOverY: 0, mode: 'stack' as SniperRowMode,
     bestClear: -Infinity, bestMode: 'stack' as SniperRowMode, bestChipAbove: false, bestNoZoom: false };
   /** One part of the scope row (sniperRowPart). */
@@ -5265,6 +5266,9 @@ export function initHud(bus: EventBus): HudRuntime {
     // zoom plate's 11.9 and 1.3, the warning chip's AIM_WARNING_CHIP_ABOVE and _BELOW.
     row.lineTop = line.round ? 14.7 : 10;
     row.lineFoot = line.round ? 4.7 : 1.1;
+    // (and the struck round's strike 3.75 px past the round's left edge with its 1.5 px stroke: the row rose clear of what
+    // its round's box kept from and left the strike 1.25 px from a centred controls row at 800x400)
+    row.lineOver = line.round ? 4 : 0;
     row.chipRight = draw.cx - row.lineW / 2 - TAG_GROUP_GAP;
     // the column under the marker: a struck rack's strike 3 px past the rack (2 px past its shells), a live rack's
     // contours 1.5 px past it, the scope's struck round (8 px wide, its strike 6 px past its middle), the countdown
@@ -5339,7 +5343,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const row = sniperRowScratch;
     const out = sniperPartScratch;
     if (part === 0) {
-      out.x0 = row.lineLeft; out.x1 = row.lineLeft + row.lineW; out.top = row.lineTop; out.foot = row.lineFoot;
+      out.x0 = row.lineLeft - row.lineOver; out.x1 = row.lineLeft + row.lineW; out.top = row.lineTop; out.foot = row.lineFoot;
       return true;
     }
     if (part === 1) {
@@ -5496,8 +5500,9 @@ export function initHud(bus: EventBus): HudRuntime {
    *  it and the range tag hung at the 1:30, whichever is highest (the gun's ring can sit off the marker, under it: a small
    *  ring lagging low sends the chip here too). */
   function sniperChipAboveY(draw: ReticleDrawState): number {
-    // (two by two on a touch layout, the lit view alone on one under 300 px tall: aerialHud.css)
-    const half = document.body.classList.contains('cot-touch-layout') && h > 300 ? SCOPE_VISION_TOUCH_HALF_H : SCOPE_VISION_HALF_H;
+    // (two by two on a touch layout, the lit view alone on one under 300 px tall or 340 px wide: aerialHud.css)
+    const half = document.body.classList.contains('cot-touch-layout') && h > 300 && w > 340
+      ? SCOPE_VISION_TOUCH_HALF_H : SCOPE_VISION_HALF_H;
     const top = Math.min(aboveSightTop(draw), draw.cy - half, draw.tagTopY);
     return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;
   }
@@ -5694,10 +5699,23 @@ export function initHud(bus: EventBus): HudRuntime {
     // over the sight, where the DETECTED notice shows, was taken for a small ring that leaves room under it)
     let best = sightFurnitureGap(draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW);
     if (best < SIGHT_MARK_RING_GAP && touch) {
+      const seat = y;
       const near = Math.max(belowRing(draw) + AIM_WARNING_CHIP_ABOVE,
         draw.cy + draw.centerClearanceRadius + 6 + AIM_WARNING_CHIP_ABOVE, marks);
       const clear = sightFurnitureGap(draw.cx - half, near - AIM_WARNING_CHIP_ABOVE, draw.cx + half, near + AIM_WARNING_CHIP_BELOW);
       if (near < y && clear > best) { best = clear; y = near; }
+      // ... or 3 px under what its seat met (a portrait phone's vision switch, its views two by two, reached 1 px over the
+      // chip's seat under the sight at 390x844)
+      let under = seat;
+      for (let i = 0; i < sightFurniture.count; i++) {
+        const box = sightFurniture.boxes[i];
+        if (box.x0 < draw.cx + half && box.x1 > draw.cx - half && box.y0 < seat + AIM_WARNING_CHIP_BELOW
+          && box.y1 + SIGHT_MARK_RING_GAP > seat - AIM_WARNING_CHIP_ABOVE) {
+          under = Math.max(under, box.y1 + SIGHT_MARK_RING_GAP + AIM_WARNING_CHIP_ABOVE);
+        }
+      }
+      const underClear = sightFurnitureGap(draw.cx - half, under - AIM_WARNING_CHIP_ABOVE, draw.cx + half, under + AIM_WARNING_CHIP_BELOW);
+      if (under > seat && under + AIM_WARNING_CHIP_BELOW <= h - 4 && underClear > best) { best = underClear; y = under; }
     }
     if (best < SIGHT_MARK_RING_GAP) {
       const over = sniperChipAboveY(draw);

@@ -446,17 +446,18 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
  .cot-scope-vision .cot-c-seg__opt{flex:none;width:44px;min-width:44px;height:44px}
  .cot-scope-vision .cot-c-seg__opt svg{width:20px;height:20px}
 }
-/* (a touch window under 300 px tall: the lit view alone, a tap steps on, aerialHud.ts; the four two by two met the
-   speedometer at 568x256) */
-@media(pointer:coarse) and (max-height:300px){
+/* (a touch window under 300 px tall or 340 px wide: the lit view alone, a tap steps on, aerialHud.ts; the four two by two
+   met the speedometer at 568x256 and took the scope readouts' seats at 320x568) */
+@media(pointer:coarse) and (max-height:300px),(pointer:coarse) and (max-width:340px){
  .cot-hud .cot-scope-vision{width:auto;min-width:0}
  .cot-scope-vision .cot-scope-vision-seg{grid-template-columns:44px}
  .cot-scope-vision .cot-c-seg__opt:not([aria-checked=true]){display:none}
 }
-/* (a portrait phone's switch reaches the screen's 12 px gutter, its left edge on the column the plates under it keep: at
-   its 104 px it started at 25 px at 390x844, gauntlet r19) */
+/* (a portrait phone's switch on the screen's 12 px gutter, its left edge on the column the plates under it keep: at its
+   104 px it started at 25 px at 390x844, gauntlet r19; at its views' own width, two by two, so the scope's plain stack
+   keeps the column under the sight: stretched to the sight's side it stood 2 px from the zoom plate at 360x640) */
 @media(pointer:coarse) and (orientation:portrait){
- .cot-hud .cot-scope-vision{width:max(92px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)))}
+ .cot-hud .cot-scope-vision{left:max(12px,env(safe-area-inset-left));right:auto;width:auto;min-width:0}
 }
 /* A shot report or the open combat log over the mouse seat (critic r9: under about 1200 px wide): the mirror seat left of
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
