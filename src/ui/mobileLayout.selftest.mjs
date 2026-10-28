@@ -57,7 +57,8 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:no
 assert.match(garageSource,
   /<div class="cot-lt-band"><div class="cot-lt-group">[\s\S]*?<div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-group">[\s\S]*?<div class="cot-lt-paint"/,
   'every layout keeps the equipment slots and the paint in view under the name');
-assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
+// (the 261 census builds the band's paint on the kit's picker, so the button is made in code, not markup)
+assert.match(garageSource, /paintAll\.className = 'cot-c-btn cot-c-btn--icon cot-lt-paint-all';\s*paintAll\.dataset\.garagePanel = 'appearance';/,
   'the band\'s last swatch opens every paint');
 assert.match(garageSource, /data-deploy-pic aria-hidden="true"[\s\S]*data-deploy-field aria-expanded="false"/,
   'the battle card shows the battlefield and the Deploy screen\'s field chooses it');

@@ -1248,7 +1248,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     };
     // the rival is the kit's picker menu (mountRivalMenu, after the readout is drawn): a raw select in the census
     // the station's title stands on the Compare row, left of it (owner 10-26: "to the left of compare it should have a title")
-    const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.station.overview'), '', 'Performance', true)}` +
+    // (the figures' own name, never the station's: the Overview tab over it already names the station; the iPad critic r2)
+    const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.dossier.section.performance'), '', 'Performance', true)}` +
       (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
       // Compare turns the rival on; once on, the chip is Clear, an action, never a pressed state (the r25 critic: a pressed
       // Clear wore the kit's selected state while the rival it compares with did not)
@@ -3111,7 +3112,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   /**
    * The selected vehicle's actions (owner 10-25: "be able to see the actions u can do with tank"): the battle's
    * vehicle-action table read for it (vehicleActionsFor), each with its glyph, name and key in the table's order, its
-   * use in the hover tip. The chips wrap, never truncate.
+   * use in the hover tip. They are facts set as the figures over them are, not chips (the iPad critic r2 read framed
+   * chips as buttons); they wrap, never truncate.
    */
   function actionsRow(spec: GarageTankSpec): string {
     const keyFor = (binding: VehicleActionBinding): string | null | undefined => {
@@ -3120,7 +3122,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const actions = vehicleActionsFor(spec, {}, keyFor);
     if (!actions.length) return '';
     return `<div class="cot-actions" role="list" aria-label="${t('garage.actions.heading')}">` + actions.map((action) =>
-      `<span class="cot-c-chip cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
+      `<span class="cot-action" role="listitem" data-tip="${escapeHtmlAttribute(action.help)}">` +
       `${uiIconSVG(action.glyph, 15)}<span>${action.label}</span><kbd class="cot-c-kbd">${action.key}</kbd></span>`).join('') +
       `</div>`;
   }

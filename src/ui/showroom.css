@@ -319,8 +319,10 @@ body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(
   margin:calc(-1 * var(--s6)) 0 calc(var(--s2) - var(--s5)) calc(-1 * var(--s4));
   background:var(--stage-scrim);}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-36);}
+/* (the plate's edge on the gutter, as the band's slots under it stand: hung 8 px past it, its words met the name's edge but
+   the plate stood outside the column; the iPad critic r2) */
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:max(var(--fs-floor-11),var(--fs-14));padding:var(--s1) var(--s3);column-gap:var(--s3);
-  margin-left:calc(-1 * var(--s2));border-radius:var(--control-radius);background:var(--glyph-plate);}
+  border-radius:var(--control-radius);background:var(--glyph-plate);}
 .cot-lt-band{display:flex;align-items:flex-end;gap:var(--s3);max-width:100%;pointer-events:auto;}
 .cot-lt-band>*{display:flex;align-items:stretch;gap:var(--s1);min-width:0;}
 .cot-lt-band>*+*{padding-left:var(--s3);border-left:1px solid var(--line-2);}
@@ -335,6 +337,11 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-act>span{white-space:nowrap;
   font:500 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-ui);letter-spacing:0;text-transform:none;color:var(--ink-2);}
 .cot-lt-act[aria-pressed='true']>span{color:var(--accent);}
+/* every name in the band on one line (the iPad critic r2: Empty, Repair, Factory and the acts sat 2 to 5 px apart): a
+   slot's or an act's name stands the paint name plate's inset (2 + 3 px) over the tile's foot, its glyph centred in the
+   room over it */
+.cot-garage .cot-lt-band :is(.cot-lt-act,.eqslot)>:is(svg,.plus){margin-block:auto;}
+.cot-garage .cot-lt-band :is(.cot-lt-act>span,.eqslot>.sl){margin-bottom:5px;}
 /* the slots: the fitted item's glyph and short name, an empty slot dashed with its plus */
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables){display:flex;}
 .cot-garage :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{width:68px;height:100%;gap:3px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);

@@ -301,11 +301,14 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .features li.note{height:auto;padding:var(--s2);border:1px dashed var(--line-2);box-shadow:none;background:none;line-height:1.45}
 .vsc{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:var(--s2);padding:var(--s3) var(--s3);
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
-/* both sides share their rows (flag, silhouette from the top) */
+/* both sides from the top: the selection's silhouette, the rival's flag and silhouette */
 .vsc .s{display:grid;grid-template-rows:auto auto 1fr;align-content:start;align-self:stretch;gap:var(--s2);min-width:0}
 .vsc .s.r{justify-items:end}
 .vsc .s.r{align-items:flex-end;text-align:right}
 .vsc .s .cot-c-sil{width:64px;height:20px;color:var(--ink-2)}
+/* the rival's flag stands beside its silhouette, inside it, not over it: the two silhouettes share one line at the card's
+   outer edges (media: on a wide screen the rival's flag row set its silhouette a row under the selection's) */
+@media (width >= 768px){.vsc .s.r{grid-template-rows:auto;grid-auto-flow:column;justify-content:end;align-items:center}}
 .vsc .mid{display:flex;flex-direction:column;gap:var(--s2);color:var(--ink-3);font:500 max(var(--fs-floor-11),var(--fs-12))/1 var(--font-data);text-align:center}
 .vsc .mid>div{display:grid;grid-template-columns:minmax(64px,auto) 20px minmax(64px,auto);align-items:center;gap:var(--s1)}
 .vsc .mid em small{margin-left:3px;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}

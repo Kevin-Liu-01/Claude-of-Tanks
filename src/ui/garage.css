@@ -98,8 +98,12 @@ body[data-cot-panels='overlay'] .cot-garage-variant-control{display:none;}
 .cot-nav [data-github-stars][data-github-stars-state='unavailable']{visibility:hidden;}
 @keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
+/* the bar's glyph-only controls (the language, the repository, Settings) read as one set, as its destinations do: no
+   plate, the destinations' ink, one glyph size (the iPad critic r2: the globe and GitHub marks at 13 px read as ghosts
+   beside a 22 px gear, which wore a frame once the settings sheet loaded) */
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
-  right:auto;top:auto;border-color:transparent;background:transparent;}
+  right:auto;top:auto;border-color:transparent;background:transparent;box-shadow:none;color:var(--ink-2);}
+.cot-nav .cot-gear svg,.cot-header-nav :is(.cot-locale-switcher,.cot-github) .nvi{width:16px;height:16px;}
 @media (hover:hover){.cot-nav .cot-gear:hover{background:var(--surface-hover);}}
 /* GitHub is its mark and its star count; the name stays in its accessible label */
 .cot-header-nav .cot-github .nav-label{display:none;}
@@ -561,8 +565,9 @@ body[data-cot-panels='overlay'] .cot-country-step{grid-column:2;}
 .cot-card.hc-n2{--hc-n2:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:var(--line-control);transform:translateY(-2px);}
 .cot-card.sel:hover{transform:none;}
-.cot-card.sel{border-color:var(--accent);transform:none;
-  box-shadow:0 8px 26px rgba(240,140,20,.28);}
+/* the accent edge alone marks the chosen card, as it marks the chosen nation (the iPad critic r2: an amber glow under it
+   was a second selected look) */
+.cot-card.sel{border-color:var(--accent);transform:none;}
 .cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px var(--s1) 2px;
   font:500 var(--hc-tier)/1 var(--font-mono);letter-spacing:0;
@@ -1444,6 +1449,8 @@ html[lang^='zh'] .cot-lt-id .lt-tier{gap:0;}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-2);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
 .cot-lt-id .lt-tier b{color:var(--ink-1);}
+/* the tier in the data face it wears on every card and in the record (the iPad critic r2: "Tier" in two faces) */
+.cot-lt-id .lt-tier{font-family:var(--font-data);}
 body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossier-head .sub,.stats-ti){display:none;}
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
@@ -1472,13 +1479,18 @@ body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossi
 
 
 
-/* the selected vehicle's actions (overview): kit chips with the glyph, the name and the key; they wrap, never truncate */
-.cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3);}
+/* the selected vehicle's actions (overview): what the tank can do, set as the figures over them are (the iPad critic r2
+   read the kit's framed chips as buttons, which they are not): the glyph in the figures' glyph column, the name in their
+   label's face, the key at the end; under a rule, they wrap, never truncate */
+.cot-garage .cot-actions{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);margin-top:var(--s3);padding-top:var(--s3);
+  border-top:1px solid var(--line-1);}
 /* the docked readout sets the actions two to a row (four never leave one alone on a line), the key cap at each end */
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
-body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{justify-content:flex-start;min-width:0;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-action{min-width:0;}
 body[data-cot-panels='persistent'] .cot-garage .stats .cot-action .cot-c-kbd{margin-left:auto;}
-.cot-garage .cot-action{padding:0 var(--s2);gap:var(--s2);color:var(--ink-1);}
+.cot-garage .cot-action{display:flex;align-items:center;gap:var(--s3);min-height:var(--s5);
+  font:500 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-ui);color:var(--ink-2);}
+.cot-garage .cot-action>svg{flex:none;width:20px;height:18px;color:var(--ink-3);}
 .cot-garage .cot-action>span{white-space:nowrap;}
 .cot-garage .cot-action .cot-c-kbd{height:20px;min-width:20px;padding:0 var(--s1);}
 
