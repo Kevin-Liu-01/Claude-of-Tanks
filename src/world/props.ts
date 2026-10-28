@@ -56,7 +56,7 @@ import {
 } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
-import { dressMapExtras, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
+import { dressMapExtrasSteps, railBedSpans, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
@@ -262,7 +262,9 @@ import { makeRuin, roughenChunk, rubblePileParts } from './maps/regional/ruinGra
 import { breachRubble } from './maps/wallBreachRubble.ts'; // (the looks lane, r2 sweep: the breach's drawn rubble)
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import {
+  buildRegionalParts, kitLegacy, rebuildRegionalStructure, rebuildRegionalStructureSteps, resolveRegionalArchitecture,
+} from './maps/regional/index.ts';
 import {
   bindStructureSpans, describeStructure, measureOtherMapStructures, tagStructureVertices, type StructureMaterialEntry,
   type StructureSpan,
@@ -4544,15 +4546,25 @@ ${snowCap ? `
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
+    for (const _ of ensureSteelAtlasSteps(reason)) { /* one task: a recorded building's */ }
+  }
+  // (260, the rooms census: a steel part the plan did not foresee painted the whole atlas in one step of the props build,
+  // 59 ms on Cliffbridge) the on-demand paint sixteen rows a checkpoint, as the planned paint above
+  function* ensureSteelAtlasSteps(reason: string): Generator<PropsBuildSlice, void, void> {
     if (steel || mobileProps) return; // round 78: the phones never paint it
-    const started = performance.now();
     const painter = makeSteelAtlas(noi, aniso, steelAtlasSize);
+    let ms = 0, rowStart = performance.now();
     let step = painter.next();
-    while (!step.done) step = painter.next();
+    while (!step.done) {
+      ms += performance.now() - rowStart; // synchronous paint time only, not the awaited ticks between rows
+      yield step.value;
+      rowStart = performance.now();
+      step = painter.next();
+    }
     steel = step.value;
     steelAtlas.painted = true;
     steelAtlas.fallback = reason;
-    steelAtlas.ms = performance.now() - started;
+    steelAtlas.ms = ms + performance.now() - rowStart;
     steelAtlas.size = steelAtlasSize;
     mats.steel.map = steel.albedo;
     mats.steel.normalMap = steel.normal;
@@ -5556,7 +5568,7 @@ ${snowCap ? `
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
     const wallBucket = pickWall(stream);
     const info = builder(stream, tmp, wallBucket);
-    if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
+    if (tmp.steel?.length) yield* ensureSteelAtlasSteps('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     settleCatalogCuts(tmp);
@@ -5676,7 +5688,7 @@ ${snowCap ? `
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
       // (props.plannedSiteTwins: a twin is built from its partner's pose — its hashes and form choices — on its own ground)
-      const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+      const rebuilt = yield* rebuildRegionalStructureSteps(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
           ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) },
         kitPose?.x ?? px, kitPose?.z ?? pz, kitPose?.rot ?? rot);
@@ -5939,8 +5951,8 @@ ${snowCap ? `
         jitterBuildingUvs(tmp, stream);
         if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
         if (regionalArchitecture) {
-          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
-            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot) ?? tmp;
+          tmp = (yield* rebuildRegionalStructureSteps(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+            { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun }, entry.x, entry.z, entry.rot)) ?? tmp;
         }
         addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
         _quat.setFromAxisAngle(_upAxis, entry.rot);
@@ -9240,6 +9252,8 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
+        // (260, the rooms census: the debris and the solids' placement were one 126 ms step) the solids their own step
+        yield { fine: true };
         // Separate hull/turret solids follow the exact visible yaw and slope pose.
         // A sideways gun must never turn the empty space beside a wreck into a wall.
         const placement = new THREE.Matrix4().makeRotationFromQuaternion(quat)
@@ -9279,6 +9293,8 @@ ${snowCap ? `
           if (!baked) continue;
           const seat = seatWreck(baked, x, z, yaw, false);
           if (!seat) continue;
+          // (260, the rooms census: a pair's two seat tests, each a scan of every solid and tree, were one 242 ms step)
+          yield { fine: true, progress: false, stage: 'wreck-seats' };
           const twin = seatWreck(baked, 2 * cx - seat.x, 2 * cz - seat.z, seat.yaw + Math.PI, true);
           if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < 2 * Math.hypot(baked.hx, baked.hz) + 2) continue;
           yield* commitWreck(specId, baked, seat);
@@ -9480,21 +9496,23 @@ ${snowCap ? `
   // wall, rock and wreck stands: a yard on each house's freest side, its fence or wall modules (destructibles) with a
   // gate, an outbuilding the kit builds and kitchen-garden beds, each placed only where it clears the road frontage,
   // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
-  function placeRegionalYards(): void {
+  // (260: a kit's yards were one step of the props build, 4.9 s of Cliffbridge's in Node) a checkpoint after each yard
+  const YARD_SLICE: PropsBuildSlice = { fine: true, progress: false, stage: 'regional-yards' };
+  function* placeRegionalYards(): Generator<PropsBuildSlice, void, void> {
     if (!regionalArchitecture) return;
-    if (regionalArchitecture.yard) placeYards(regionalArchitecture.yard, seed + 1307);
+    if (regionalArchitecture.yard) yield* placeYards(regionalArchitecture.yard, seed + 1307);
     // (the facades lane, 2026-10-06) the churchyard after the house yards, on a stream of its own (they stand as before),
     // its counts under their own key
     if (P.churchyard && regionalArchitecture.churchyard) {
       const houseYards = group.userData.regionalYards;
       delete group.userData.regionalYards;
-      placeYards(regionalArchitecture.churchyard, seed + 1311);
+      yield* placeYards(regionalArchitecture.churchyard, seed + 1311);
       group.userData.regionalChurchyards = group.userData.regionalYards;
       if (houseYards) group.userData.regionalYards = houseYards;
       else delete group.userData.regionalYards;
     }
   }
-  function placeYards(yard: YardStyle, streamSeed: number): void {
+  function* placeYards(yard: YardStyle, streamSeed: number): Generator<PropsBuildSlice, void, void> {
     if (!regionalArchitecture) return;
     const style = regionalArchitecture;
     const kinds = new Set(yard.kinds);
@@ -9634,17 +9652,19 @@ ${snowCap ? `
         stats.courts++;
         courted.add(house);
         barns.push(planned.partner);
+        yield YARD_SLICE;
       }
       for (const barn of barns) {
         const behind = planYard(barn, world, yard, yrngYard, seg, regionalBodies.get(barn), yardBackSide(barn, world));
         if (behind) placePlan(barn, behind, yard.fence, yard.gate, seg, sink);
+        yield YARD_SLICE;
       }
     }
     for (const house of houses) {
       if (courted.has(house)) continue;
       const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
-      if (!plan) continue;
-      placePlan(house, plan, yard.fence, yard.gate, seg, sink);
+      if (plan) placePlan(house, plan, yard.fence, yard.gate, seg, sink);
+      yield YARD_SLICE;
     }
     trimCropRowsInYards(rects);
     if (yard.tidy) paveSlots(houses, rects, holes);
@@ -9718,7 +9738,7 @@ ${snowCap ? `
     }
     if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
-  placeRegionalYards();
+  yield* placeRegionalYards();
   if (P.dressingRules?.yardClutterClear) placeYardClutter();
   // authored ground-cover holes (props.groundCoverHoles): ground no blade or tuft grows through that no solid marks — a
   // spring's pool inside its stone rim (Oasis round 3, wave 135: "dry grass cards sprout through the spring's water");
@@ -10313,7 +10333,22 @@ ${snowCap ? `
         groundContact: true,
         decalKind: 'ground-contact',
       });
-      lowStones.layScuffs(group, contactGeometry, () => contactDarkeningMaterial(makeGroundDecalTexture(noi, aniso, 'dirt')));
+      // (260, the rooms census: the foundations' layers were one 113 ms step of the props build) a checkpoint after each
+      // layer; a build closed at one releases the inputs still private (the scuffs' discs, the aprons')
+      let layered = false;
+      try {
+        yield { fine: true, progress: false, stage: 'ground-foundation-layers' };
+        lowStones.layScuffs(group, contactGeometry, () => contactDarkeningMaterial(makeGroundDecalTexture(noi, aniso, 'dirt')));
+        yield { fine: true, progress: false, stage: 'ground-foundation-layers' };
+        layered = true;
+      } finally {
+        if (!layered) {
+          for (const geometry of apronGeos) {
+            try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
+          }
+          lowStones.releasePendingDiscs();
+        }
+      }
       if (foundryDonors && !P.streetRows && contactGeometry) {
         // Keep the same merged decal and vertex windows. Only the six moved
         // foundations are resampled against their new terrain after dressing.
@@ -10504,7 +10539,11 @@ ${snowCap ? `
     placeTrackTears(corridors);
   }
   yield* placeGroundBlendDecals();
-  if (P.groundMarkings) placeGroundMarkings(group, P.groundMarkings, (px, pz) => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz), (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [], L.roads, aniso, (m) => engineCtx.setupShadowMaterial(m));
+  if (P.groundMarkings) {
+    // (260) the markings their own step, after the churn strips'
+    yield { fine: true, progress: false, stage: 'ground-markings' };
+    placeGroundMarkings(group, P.groundMarkings, (px, pz) => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz), (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [], L.roads, aniso, (m) => engineCtx.setupShadowMaterial(m));
+  }
   yield { fine: true, stage: 'ground-decals' };
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
@@ -10726,7 +10765,8 @@ ${snowCap ? `
     yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };
   }
   yield* joinStructureShells();
-  dressMapExtras({
+  // (260) the kits with a checkpoint after each kit and bridge (mapKits.ts dressMapExtrasSteps)
+  yield* dressMapExtrasSteps({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
     buildings: buildingFeatures,
@@ -11436,7 +11476,7 @@ ${snowCap ? `
       let built = families.get(p.family);
       if (!built) {
         built = buildYardFamily(p.family, mapId); // props lane A #2: the map's own yard forms
-        if (built.material === 'steel') ensureSteelAtlas('yard:' + p.family);
+        if (built.material === 'steel') yield* ensureSteelAtlasSteps('yard:' + p.family);
         families.set(p.family, built);
       }
       const piece = built.geometry.clone();
@@ -11998,17 +12038,29 @@ ${snowCap ? `
     }
     imI.instanceColor!.needsUpdate = true;
   }
+  function* poolBuildSlices(steps: Generator<void, THREE.BufferGeometry, void>, kind: string): Generator<PropsBuildSlice, THREE.BufferGeometry, void> {
+    let step = steps.next();
+    while (!step.done) {
+      yield { fine: true, progress: false, stage: 'pool-build-' + kind };
+      step = steps.next();
+    }
+    return step.value;
+  }
   function* prepareDestructiblePoolGeometry(
     kind: string, pool: DestructiblePool,
   ): Generator<PropsBuildSlice, {
     geoI: THREE.BufferGeometry; groundCoverDetail: GroundCoverSolidProfile | null;
   }, void> {
-    const geoI = pool.meta.build(drng);
+    // (260, the rooms census: a parked vehicle's bake was one 297 ms step) a stepped build paces between its checkpoints
+    const geoI = pool.meta.buildSteps ? yield* poolBuildSlices(pool.meta.buildSteps(drng), kind) : pool.meta.build(drng);
     let transferred = false;
     try {
       // (battle-spikes-253) the build and the refit in their own slices (Steinburg's pillbox pool was one 182 ms task)
       yield { fine: true, progress: false, stage: 'pool-refit-' + kind };
       const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
+      // (260, the Saltwind census: the refit and the first fits, or the refit and the pool's mesh, were one step) the
+      // placement after the refit its own slice
+      yield { fine: true, progress: false, stage: 'pool-place-' + kind };
       let fitted = 0;
       for (let index = 0; index < pool.records.length; index++) {
         const record = pool.records[index];
@@ -12088,6 +12140,15 @@ ${snowCap ? `
     }
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
+    // (260, the room-stalls lane's Saltwind census: a pool's mesh, its tint and its shadow stand-in's build were one step of
+    // the 205-327 ms tasks) the stand-in its own step; a build closed here releases the pool's private mesh
+    let poolHeld = true;
+    try {
+      yield { fine: true, progress: false, stage: 'pool-caster-' + kind };
+      poolHeld = false;
+    } finally {
+      if (poolHeld) { geoI.dispose(); imI.dispose(); }
+    }
     const castsDynamicShadow = destructibleCastsShadow(meta);
     imI.castShadow = castsDynamicShadow;
     imI.receiveShadow = true;

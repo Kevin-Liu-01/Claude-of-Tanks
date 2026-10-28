@@ -24,7 +24,7 @@ const entries = [
   ['kf51_panther', 'kf51_evo', 'KF51 Panther'],
   ['t90a', 't90a_2004', 'T-90A'],
   ['t90a_vladimir', 't90a_2006', 'T-90A Vladimir'],
-  ['t90m', 't90am', 'T-90M'],
+  ['t90m', 't90am', 'T-90M Proryv'],
   ['t90sm', 't90sm_2013', 'T-90SM'],
   ['t14_armata', 'object148_proto', 'T-14 Armata'],
 ] as const;

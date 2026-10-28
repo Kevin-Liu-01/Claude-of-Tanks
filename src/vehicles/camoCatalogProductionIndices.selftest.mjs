@@ -38,6 +38,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // visual carries its measured 0.60 m track (spec.visual.trackWidthM, read by the track contact and track marks) for the
 // retired 0.55; scheme, colours, pattern and seed are unchanged. type59 306893e0db54f6ad -> c3e94da916bc0b93. Its
 // ZTZ-85-III variant keeps its own 0.55 m track (china.ts), so its row is production's.
+// Re-pinned 2026-10-27 (owner: the T-90 names, display only): one selection moved by its label alone, the tier X
+// chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
+// it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
+// b46847ff7755abb9.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });

@@ -12,6 +12,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { launchGuardedBrowser } from './browser-launch.mjs';
 import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { uniqueIds } from './id-list.mjs';
@@ -38,7 +39,7 @@ const server = await createServer({
   logLevel: 'error', optimizeDeps: { noDiscovery: true }, server: toolServerOptions(7600),
 });
 await server.listen();
-const browser = await puppeteer.launch({
+const browser = await launchGuardedBrowser(puppeteer, {
   headless: 'new', protocolTimeout: 15 * 60 * 1000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--max-old-space-size=3072'],
 });

@@ -74,7 +74,7 @@ import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
-import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
+import { buildOutlandWaterGeometrySteps, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
@@ -8274,7 +8274,8 @@ function* createSplatMaterialSteps(
   const liteTerrain = { value: resolvePresetName().endsWith('ultralow') ? 1 : 0 };
   const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
-  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
+  // (260, the rooms census: 64 rows of the bake were one 191 ms step under load) sixteen rows a checkpoint
+  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 16);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {
@@ -9305,7 +9306,8 @@ function* terrainBuildSteps(
         total: CHUNKS * CHUNKS + 2,
       };
       const fine = needsFineGrid
-        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress) : null;
+        // (260, the rooms census: eight rows, 792 height samples, were one 260 ms step under load) two rows a checkpoint
+        ? yield* buildFineGridSteps(heightField, cx0, cz0, progress, 2) : null;
       if (fine) initialFineGridCount++;
       const lods: Array<THREE.BufferGeometry | null> = [null, null, null];
       for (const level of initialLevels) {
@@ -9404,6 +9406,8 @@ function* terrainBuildSteps(
           finishHorizonRingGeometry(horizonMesh.geometry, {
             ground: heightField, shoreAt, foldAt, roadExits: ringInfo.roadExits ?? null, columns, bands,
           });
+          // (260, the rooms census: the ring's finish and its ground binding were one step of the world build)
+          yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
         }
         bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
           columns, bands, continuousGround: true, ground: heightField, seamFinished: true,
@@ -9490,8 +9494,15 @@ function* terrainBuildSteps(
       // same material so fresnel, glitter and the deep colour do not end in a straight line at the red line.
       // Round 47 (2026-09-23): the apron follows the bay's own contour past the edge (a grid of wet cells), the derived
       // sector only carries the open sea from 120–360 m out — see edgeWater.ts buildOutlandWaterGeometry.
-      const seaApron = buildOutlandWaterGeometry(seaOpenings, heightField.getOutlandWaterAt ?? null, heightField.size / 2,
+      // (260, the room-stalls lane's rooms census on Saltwind: the apron's grid was one 190 ms step) built a few rows a step
+      const apronSteps = buildOutlandWaterGeometrySteps(seaOpenings, heightField.getOutlandWaterAt ?? null, heightField.size / 2,
         undefined, { cellM: 8, depthM: waterContactProfile(cfg.id || '').depthM, ramp: cfg.splat.seaRamp || [0.40, 0.78] });
+      let apronStep = apronSteps.next();
+      while (!apronStep.done) {
+        yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+        apronStep = apronSteps.next();
+      }
+      const seaApron = apronStep.value;
       if (seaApron) {
         const apron = new THREE.Mesh(seaApron, water.mesh.material);
         apron.name = 'shallowWaterSeaApron';

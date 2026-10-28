@@ -40,7 +40,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   leo2a3: 'slow the cycle for same-tier fairness at IV; 260: a balance trim of the turret front (x0.9): no sourced period round defeats the basic package\'s turret front',
   chieftain_mk10: 'keep the Mk 9 rebuild on its donor\'s slower cycle and hull at IV',
   c2_ariete: 'trim the Tier X armour and hull it brought to VII and fire its prototype\'s rounds; the cadence stays over the C1',
-  c2_ariete_proto: 'trim the Tier X armour it brought to VII and slow its cycle and aim',
+  c2_ariete_proto: 'trim the Tier X armour it brought to VII, slow its cycle and aim, and (261) carry 2,200 HP, under the production C2',
   t72b3_sich: 'offset the weaker donor hull front with hull and a quicker autoloader for same-tier fairness at VII',
   t80u_husarz: 'add hull for same-tier fairness at VII',
   t72b3m_wilk: 'add hull for same-tier fairness at VII',

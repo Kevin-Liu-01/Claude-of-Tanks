@@ -33,7 +33,7 @@ assert.deepEqual(fitConsumable(['repair', 'first_aid', 'extinguisher'], 1, 'foli
 
 const view = consumableSlotsView(['repair', 'aps_charge', 'governor_override']);
 assert.deepEqual(view.map((slot) => slot.action), [...CONSUMABLE_SLOT_ACTIONS], 'the slots answer the existing actions');
-assert.deepEqual(view.map((slot) => slot.iconId), ['repair', 'csAps', 'csGovernor']);
+assert.deepEqual(view.map((slot) => slot.iconId), ['csRepair', 'csAps', 'csGovernor']);
 assert.equal(view[1].nameKey, 'consumable.apsCharge.name');
 assert.deepEqual(view.map((slot) => [slot.cooldownS, slot.charges]), [[35, null], [45, 2], [45, 2]]);
 saveConsumables('t3', ['foliage', 'rations', 'track_links'], modern);
