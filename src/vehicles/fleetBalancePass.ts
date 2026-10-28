@@ -423,10 +423,6 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // square at its nominal 340 mm, where the earlier mantlet's curved face read 363-814 mm; x1.45 holds its tier II
   // strength (0.45 before the rebuild, 0.48 after; it read 0.07 without this).
   mantlet(registry, 'vickers_mk1', 1.45);
-  // Tier VIII, 262 (the Challenger 1 historical rebuild): the rebuilt nose front stands vertical, as on the real vehicle,
-  // so the range's centre-mass rounds meet the gun slot (mantlet_slot, the Challenger 2's plate) square at its nominal
-  // 450 mm KE, where the Challenger 2's raked slot face reads ~737 mm; x1.4 (630 mm) holds tier9-rifled-peers in its band.
-  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby']) mantlet(registry, id, 1.4);
   for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;

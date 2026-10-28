@@ -14,44 +14,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          -1.1509372,
+          -1.206,
           0.3878924,
           0.1852
         ],
         "quaternion": [
-          -0.1439878,
-          -0.6922915,
-          -0.1439878,
-          0.6922915
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "challenger1_mk1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0126925
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          -1.0471894,
+          -1.1033203,
           0.3877523,
-          0.6668232
+          0.6689708
         ],
         "quaternion": [
-          -0.1172233,
-          -0.5636079,
-          -0.1665043,
-          0.8005505
+          0,
+          -0.5665968,
+          0,
+          0.8239952
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "challenger1_mk1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0172555
       }
     ]
   },
@@ -85,18 +85,67 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.26,
         "pos": [
-          -1.2685941,
+          -1.1882153,
           0.4215,
-          1.1265195
+          1.1301595
         ],
         "quaternion": [
           0,
-          -0.6880198,
+          -0.4434674,
           0,
-          0.7256919
+          0.8962905
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "challenger1_mk2",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "challenger1_granby": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.286,
+          0.5295,
+          0.1
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger1_granby",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.26,
+        "pos": [
+          -1.286,
+          0.5295,
+          0.562
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "challenger1_granby",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

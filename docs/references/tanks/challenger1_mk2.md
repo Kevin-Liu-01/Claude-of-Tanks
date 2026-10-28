@@ -60,6 +60,54 @@ mesh basket, the boot, the guards).
 | L11A5 | uniform tube | thermal sleeve, evacuator, MRS (S7) | sleeve tapering 0.24 → 0.19 m with straps, extractor at mid-length, MRS mirror |
 | Engine deck / exhausts | louvre slab | raised deck, two grille banks (S2) | two rows of four louvred grilles; rear-plate exhaust louvres (inferred from CR2, S6) |
 
+## Armour estimates (release 262; ESTIMATES, not official figures)
+
+Main asked on 2026-10-27 for the Challenger 1s to stop inheriting the Challenger 2's armour package. That package was
+turret cheeks 600/900 and glacis 500/800 here, against 751/1126 on the Challenger 2 itself after its compensation.
+The Chobham figures are still classified, and no official KE/CE values are public. The values below are community
+estimates. They are compiled from declassified or unnamed documents, which their posters do not identify. Treat them
+as estimates. All values are mm RHA equivalent, given as KE / CE.
+
+| Ref | Source | What it gives |
+|---|---|---|
+| A1 | War Thunder forum, "Challenger 1 MBT - Technical Data and Discussions", posts of 2026-06-19 by Kobes-Kamov (forum.warthunder.com/t/23266, pages 26-27). Cites figures from an attached image; names no document. | Turret front: 430-500 KE "depending on source"; 500 KE head-on, 430 KE the minimum across about +-20 degrees. Hull front: 300 KE / 580 CE on the early Mk 1 and Mk 2, raised to 350 KE / 700 CE on the late (Desert Storm) Mk 3. |
+| A2 | Same thread, 2026-06-19/20, BARElement-psn (in-game protection analysis) | Hull 330-337 KE on the Mk 1/Mk 2 and 350-362 KE on the Mk 3, against 3BM22-type rounds; Mk 3 hull CE 614-750. These are consistent with A1. |
+| A3 | War Thunder wiki (old), "Challenger Mk.2", as quoted by the search index (the page now returns 401) | Turret front 470 KE (about 550 without the long-rod modifier) / 600 CE; turret sides 140 KE / 300 CE; upper front plate 220 KE (game value). |
+| A4 | War Thunder forum (search summary), another post in the same thread | Turret 480 KE / 600 CE; 435 KE across a 60-degree arc. |
+
+Step 2, the fleet's scale (Main's ruling, 2026-10-27: "put the CR1 estimates on the fleet's own scale, and derive
+the factor rather than picking it"). For each zone, the factor is the median ratio of game value to public estimate
+over the fleet's sourced Western peers, with KE and CE taken separately because their ratios differ. No packet in
+`docs/references` carried armour estimates, so the peers' estimates come from the same class of public sources:
+
+| Peer | Zone | Public estimate KE / CE | Source | Game value KE / CE | Ratio KE / CE |
+|---|---|---:|---|---:|---:|
+| Leopard 2A4 | turret front | 415 / 750-800 (775) | War Thunder forum, "Leopard 2 composite armour" (forum.warthunder.com/t/74313); the later package, 60-degree arc | 546 / 780 | 1.316 / 1.006 |
+| M1A1 (1985) | turret front | 460 / 750 | War Thunder forum (Abrams armour threads), quoting declassified British Chieftain-replacement reports; KE over +-20 degrees, CE over +-27 degrees | 731 / 1075 | 1.589 / 1.433 |
+| M1A1 | hull front (non-DU) | 350 / 750 | War Thunder forum, "Hull Armor of the M1 Abrams" (forum.warthunder.com/t/59315), from British and Swedish evaluations | 516 / 645 (lower_front) | 1.474 / 0.860 |
+
+Factors:
+- Turret: KE x1.452, CE x1.220 (the median of the Leopard 2A4 and the M1A1).
+- Hull: KE x1.474, CE x0.860 (the M1A1 alone; no Leopard 2A4 hull estimate was found).
+
+Ratings (`src/vehicles/challenger1Armor.ts` keeps both the raw estimates and the factors):
+
+| Plate | Before (Challenger 2 package) | Raw estimate | Now (fleet scale) | Basis |
+|---|---:|---:|---:|---|
+| Turret cheeks (front) | 600 / 900 | 470 / 600 | **682 / 732** | A1 430-500 KE, A3/A4 470-480 KE, 600 CE |
+| Gun slot (mantlet_slot) | 450 / 550 | 430 / 600 | **624 / 732** | A1, the frontal arc's minimum |
+| Turret sides | 300 / 450 | 140 / 300 | **203 / 366** | A3 |
+| Upper glacis and lower front: Mk 1, Mk 2 | 500 / 800 and 300 / 400 | 300 / 580 | **442 / 499** | A1 (early marks), A2 |
+| Upper glacis and lower front: Mk 3, Granby | as above | 350 / 700 | **516 / 602** | A1 (the late Mk 3's hull), A2 |
+| Everything else (sides, skirts, roof, rear) | Challenger 2 donor | — | unchanged | no source |
+
+The marks differ only in the hull front, which the sources raise on the late Mk 3. The Mk 3 clones the Mk 2's armour
+(`sourceXSecondWaveSpecs.ts`) and is then rated late. The Granby variant is the Desert Storm fit and is rated late. The
+Mk 1 is rated early.
+
+These numbers are provisional. Progression's fleet-wide gun-face hit-model fix lands last in 262 and moves every
+Western gun face, this one included; progression re-measures the tiers after it.
+
 ## Decisions and open items
 
 - Exhausts: no CR1 source places them; the rear-plate louvres follow the Challenger 2 hull (S6). Open.

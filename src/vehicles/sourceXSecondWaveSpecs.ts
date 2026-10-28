@@ -18,6 +18,7 @@ import {createT90MSXArmorZones,T90MS_X_SOURCE_DATUMS} from './t90msXArmor.ts';
 import { LECLERC_CLASSIC_X_DATUMS } from './profiles/leclercClassicXFrame.ts';
 import { ARIETE_C1_X_DATUMS, ARIETE_X_FAMILY_SCALE, ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG } from './profiles/arieteXFamilyFrame.ts';
 import { CHALLENGER1_SUPPLIED_DATUMS } from './profiles/challenger1XSuppliedFrame.ts';
+import { rateChallenger1Armor } from './challenger1Armor.ts';
 import { STRV122_SUPPLIED_DATUMS } from './profiles/strv122XSuppliedFrame.ts';
 import { applySourceXAuxArmor } from './sourceXAuxArmor.ts';
 import { applyLeclercClassicXFieldKitArmor } from './leclercClassicXKitArmor.ts';
@@ -238,6 +239,8 @@ export function synchronizeSecondWaveXCombatMetadata(): void {
     for (const key of fields) Object.assign(target, { [key]: structuredClone(donor[key]) });
     target.armor = structuredClone(donor.armor);
     fitArmorToDims(target.armor, donor.dims, armorFitDimensions(id, target.dims));
+    // 262: the Mk 3 is the late Challenger 1, whose hull front the public estimates raise over the Mk 2's
+    if (id === 'challenger1_mk3') rateChallenger1Armor(target.armor, 'late');
     applyAuthoredFrame(target, id);
     restoreInstalledVehicleFrame(target);
   }

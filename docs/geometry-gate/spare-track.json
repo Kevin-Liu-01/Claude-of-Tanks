@@ -687,20 +687,26 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "challenger1_granby": {
+   "inputHash": "95410209887a96c9",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "challenger1_mk1": {
-   "inputHash": "605287ee25ce85c7",
+   "inputHash": "741d92afad11c80f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "a5d57e3fd3406ab2",
+   "inputHash": "061cd6cd8a36a884",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "243d9eb57e6d8dbd",
+   "inputHash": "cf789a77a1a75998",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
