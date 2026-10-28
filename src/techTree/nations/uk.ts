@@ -32,10 +32,15 @@ export const UK_TREE: NationTree = Object.freeze({
       builds: ['chieftain3'],
     }),
     node({ id: 'challenger1_mk2', tier: 8, line: 'challenger', lane: 1, parents: ['chieftain5'], slot: 'line' }),
+    // release 262: the Mk 1, the earlier design's sleek turret on the rebuilt hull
+    node({ id: 'challenger1_mk1', tier: 8, line: 'challenger', lane: 0, parents: ['chieftain5'], slot: 'line' }),
     node({
       id: 'challenger1_mk3', tier: 8, line: 'challenger', lane: 2, parents: ['challenger1_mk2', 'fv4034'],
       slot: 'line',
     }),
+    // release 262: the Op Granby fit on the rebuilt hull, drawn off the Chieftain Mk 10 (the up-armoured line: Stillbrew,
+    // then the Gulf applique) so its connector runs clear of the Mk 3 and the Challenger 3 prototype
+    node({ id: 'challenger1_granby', tier: 8, line: 'challenger', lane: 4, parents: ['chieftain_mk10'], slot: 'line' }),
     node({ id: 'challenger2', tier: 9, line: 'challenger', lane: 1, parents: ['challenger1_mk3'], slot: 'line' }),
     node({ id: 'challenger2e', tier: 9, line: 'challenger', lane: 2, parents: ['challenger2'], slot: 'line' }),
     node({ id: 'challenger3_proto', tier: 8, line: 'challenger', lane: 3, parents: ['challenger1_mk3'], slot: 'line' }),

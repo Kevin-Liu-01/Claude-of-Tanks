@@ -2671,21 +2671,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.2 }, slot: ['turretSide', { side: -1 }] },
   ],
   // --- Cold war ---
-  // Round 5 (2026-10-08; wave 254: "the rear kit is a few tiny, clean, rigid lumps", the bucket "hangs in space"; wave 262
-  // on the desert line: "olive kit bags, upright green cans, a brown box and a grey bin ... unstrapped"): the Challenger 1
-  // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and
-  // gains a fat canvas roll across the rear deck, laid ahead of the roof gear so the stern reads at play distance; the
-  // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
-  challenger1_mk2: () => [
-    { kit: 'smoke', p: 1, v: { v: '4' }, slot: ['turretCheekPair', {}] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
-    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
-    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
-    { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
-  ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
     // The native M60 builder owns one compact open-lattice bustle envelope
@@ -2974,6 +2959,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'leo2_revolution' || spec.id === 'leo2_revolution_proto') return [
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] },
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
+  ];
+  // Release 262 (the Challenger 1 rebuild's blind critics, against the reference photos: "the real deck is clean
+  // grilles"; the fleet cargo's roof cans, crates and bags read as clutter on the rebuilt turret and deck): the Mk 1, Mk 2
+  // and Granby carry their own bins, mesh basket, bustle bin and L8 banks, and the decor lays only a canvas roll across
+  // the rear deck (no smoke pair, whip, bow hooks, side links, IR light, bucket or cargo pools).
+  if (spec.id === 'challenger1_mk1' || spec.id === 'challenger1_mk2' || spec.id === 'challenger1_granby') return [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
   ];
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
@@ -3889,9 +3881,12 @@ const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, n
   strv103b: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
   strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
-  // round 4 (2026-10-07): the Challenger 1 commander's L37 cupola on the low right roof (turret-local (0.50, -0.81),
-  // turret pivot z 0.362): the bedrolls the decor laid there would bury the new gun's pintle and can.
-  challenger1_mk2: [[0.50, -0.45, 0.62]],
+  // round 4 (2026-10-07): the Challenger 1 roof guns' stations, so the decor's bedrolls never bury a pintle or its can.
+  // Release 262: the rebuilt turret's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
+  challenger1_mk2: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  challenger1_granby: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  // the Mk 1's sleek turret: its low cupola (right) and loader's hatch (left)
+  challenger1_mk1: [[-0.50, -0.45, 0.60], [0.50, -0.70, 0.52]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */
