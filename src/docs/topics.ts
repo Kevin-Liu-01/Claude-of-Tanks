@@ -387,6 +387,13 @@ export function topicHeroLadder(hero: string): TopicHeroLadder | null {
   return null;
 }
 
+/** A banner picture's crop (docs.css .dm-banner>img object-position): its preview sits the same. */
+const BANNER_POSITION = '50% 62%';
+/** The inline previews (LQIP) behind the banners' pictures, by path (src/docs/heroLqip.json, tools/hero-lqip.mjs).
+ *  tools/docs-prerender.mjs hands them in, so they ride in the served markup and never in this module's bundle. */
+let heroLqips: Readonly<Record<string, string>> = {};
+export function setTopicHeroLqips(table: Readonly<Record<string, string>>): void { heroLqips = table; }
+
 /**
  * A topic header: its take's first frame as the page's LCP picture (a 640 still under data saving, which never plays),
  * and the take's loop over it under the site's one playback policy (src/presentation/mediaPlayer.ts): the 960 rung
@@ -397,11 +404,11 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
   const ladder = topicHeroLadder(hero);
   if (!ladder) {
     const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
-    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
+    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster', lqip: heroLqips[hero], lqipPosition: BANNER_POSITION }, saving);
   }
   const poster = pictureMarkup({
     src: ladder.poster, rungs: [{ src: ladder.poster, width: 1920 }], width: 1920, height: 1080, alt,
-    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
+    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)', lqip: heroLqips[ladder.poster], lqipPosition: BANNER_POSITION,
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
     saveData: { src: ladder.still, width: 640 },
     phone: { src: ladder.still, width: 640 },

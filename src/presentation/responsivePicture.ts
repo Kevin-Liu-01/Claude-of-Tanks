@@ -88,6 +88,8 @@ export interface PictureOptions {
   readonly className?: string;
   /** An inline LQIP data URI (≤ 1 KB) drawn behind the picture until it decodes. */
   readonly lqip?: string;
+  /** Where the LQIP sits: the picture's own object-position (default its centre), so the two crop alike. */
+  readonly lqipPosition?: string;
   /** The still's dominant tone, behind the LQIP (or alone). */
   readonly tone?: string;
   /** What data saving shows instead (default the 640 rung): a still that never swaps into a video may be another frame. */
@@ -124,7 +126,7 @@ function pictureAttributes(options: PictureOptions, saving = stillDataSaver()): 
   if (options.lqip && options.lqip.length > LQIP_MAX_BYTES * 1.4) {
     throw new Error(`responsivePicture: the LQIP for ${options.src} is over ${LQIP_MAX_BYTES} B`);
   }
-  const backdrop = [options.lqip ? `url("${options.lqip}") center/cover no-repeat` : '', options.tone ?? '']
+  const backdrop = [options.lqip ? `url("${options.lqip}") ${options.lqipPosition ?? 'center'}/cover no-repeat` : '', options.tone ?? '']
     .filter(Boolean).join(' ');
   if (backdrop) attributes.push(['style', `background:${backdrop}`]);
   return attributes;

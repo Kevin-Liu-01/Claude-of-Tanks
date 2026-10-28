@@ -30,7 +30,11 @@ if (emit) {
   await import('../src/ui/i18nCatalog.ts');
   const { setLocale } = await import('../src/ui/i18n.ts');
   await setLocale(emit);
-  const { TOPIC_GROUPS, TOPIC_ORDER, topicPageMarkup } = await import('../src/docs/topics.ts');
+  const { TOPIC_GROUPS, TOPIC_ORDER, topicHeroLadder, topicPageMarkup, topics, setTopicHeroLqips } = await import('../src/docs/topics.ts');
+  // each banner's inline preview (tools/hero-lqip.mjs: throws on a missing or stale one)
+  const { heroLqip } = await import('./hero-lqip.mjs');
+  setTopicHeroLqips(Object.fromEntries(Object.values(topics).map(({ hero }) => topicHeroLadder(hero)?.poster ?? hero)
+    .map((path) => [path, heroLqip(path)])));
   const { t } = await import('../src/ui/i18n.ts');
   const { richSections } = await import('../src/docs/chapters/index.ts');
   const { manualRecords } = await import('../src/docs/searchIndex.ts');

@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { iconMarkup } from '../src/presentation/publicShell.ts';
+import { heroLqip } from './hero-lqip.mjs';
 import { MEDIA_PAUSE_ICON } from '../src/presentation/mediaPlayer.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 import '../src/vehicles/tankFactory.ts';
@@ -155,8 +156,9 @@ function heroBlock() {
   const shots = [first, ...moving.filter((clip) => clip !== first)].map((clip) => shotCaption(clip, clip === first)).join('');
   const trailer = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.webm');
   return `<header class="hero" aria-labelledby="hero-title" data-hero-reel>`
+    // its inline preview (tools/hero-lqip.mjs) draws behind it until it decodes: a slow link sharpens it in place
     + `<img class="hero__still" src="${heroDefault()}" alt="${esc(lead.en)}" data-i18n-alt="${lead.key}" width="1920" height="${Math.round(1920 * size.height / size.width)}"`
-    + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}">`
+    + ` fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}" style="--hero-lqip:url(&quot;${heroLqip(heroDefault())}&quot;)">`
     + `<div class="hero__reel">${clips}</div>`
     + `<div class="hero__grade" aria-hidden="true"></div>`
     // the game's mark and name live in the nav bar alone (owner 2026-10-25: "keep the logo in the navbar, dont need to

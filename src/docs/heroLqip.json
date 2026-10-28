@@ -1,0 +1,70 @@
+{
+ "/maps/fjord.webp": {
+  "sha256": "f1a2bb06bf30f3070ec8978eb76326780153173077da1233fd8201c43e4cf2e2",
+  "lqip": "data:image/webp;base64,UklGRnoAAABXRUJQVlA4IG4AAACQBACdASogABIAPuFWpU2opKOiN/qoARAcCWMAqPQZtk2xrhR/XRUlMJC/awAA/tObW0c4DXc5GwpVEV3RCrUxrsPVXBUIoxrjBioDJxaAurVnj8ZAL/XYreVrjI4lnPOcR/2Fk0ir5Fkog6SAAA=="
+ },
+ "/media/docs-hero-r2/frontier-t90m-leo2a6.jpg": {
+  "sha256": "d4d159917ec87a7f3d991d10c71266ab84b3800aef64e77c0d66d23c75da2453",
+  "lqip": "data:image/webp;base64,UklGRoAAAABXRUJQVlA4IHQAAAAQBACdASogABIAPu1orE+ppiQiMBgIATAdiWMAViKBwV9gSpJ4ALrk2AD+Ul2vkdcWBOPhu3q4q+PkTGaw/JE7qDR/quBWkpuBzWgQq1a45PiuPDfYFtVtvel8iGJT+IyaNXJBP1cqw8ATgPtZCh8nKAAAAA=="
+ },
+ "/media/docs-hero-r2/verdant-challenger3-t80u.jpg": {
+  "sha256": "39bec0f41b62d78c3075a04834d52f3e53f1a439a706701a463d70b6f02a9bb0",
+  "lqip": "data:image/webp;base64,UklGRrAAAABXRUJQVlA4IKQAAABwBQCdASogABIAPu1kqU2ppaQiMAgBMB2JQlwAU/4a4UySvTfT+vN+c/weCRuS5AH6lh4AAM4JbhpfZc7XMvL80SzAY9bNXaYDE2DdlLyqJmmZ4eg++XV12hbW9SGwqixz3OTp5OJT4zo9OPQNBhGTejUsC5qVNJIbs98/csbtTiRg8P6saJk7FJ3IdXcp7bGCYtBQCtsZ4W0bIbJ0SgWG3gAAAA=="
+ },
+ "/media/home-r2/vs03-reservoir-k2-vt4a1-1440.webp": {
+  "sha256": "8272eec2dbf444873f63f75ecb6ec550ee1760d99f3ba25ae6b952a43879cf9a",
+  "lqip": "data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAADwAwCdASogABIAPuVio02pJbajMAwC0ByJQBWGcdhfZou5rwZnMuCAAOHVxXJ6J0jSWBw/zqgDlxOyb5AbtIRadlxgueEL//9RU4IfNDwZbPCSz5XWTRvFEUT+OYWZXTqYdkdwStfDhH/UI18C0IAA"
+ },
+ "/media/site50-r14/loops/s04-column-under-fire.jpg": {
+  "sha256": "69b62b9d626c2e55a0224cb328d54802a4c4c97e41d8454f62ede056edffb667",
+  "lqip": "data:image/webp;base64,UklGRswAAABXRUJQVlA4IMAAAADwBACdASogABIAPu1kqk2ppaQiMAgBMB2JYgCo+vABJvZvyIZaptWEvm5uGvWwqJgA/tq/H2wthuD+RmaQCxbwI/JZEDsO2cSgwgZS+vlrxh/3V6VDbkSjc+EHomUOB8XzRXGWmFym84mS7ifUkPkOo92vNYh+ITsRjGA1FYf0J15Ac59cPfDMIjhS3YylDx4P00fQbma1gUIqdmdpl+eTitSyzloZF/r7n55/ILr0Xj0cSlCEObGFjQyBKO6IAAA="
+ },
+ "/media/site50-r14/loops/s05-barn-advance.jpg": {
+  "sha256": "d6fad30f8a94c21e12965e4f16d7e4264210f9591fede27c9eeaaf4b9d2cacf4",
+  "lqip": "data:image/webp;base64,UklGRpAAAABXRUJQVlA4IIQAAACwBACdASogABIAPu1iqU2ppaQiMAgBMB2JQBWGaYgu8i5XoTW6Na2niBf848mgAP68ctPkRIcj1G0RDOPASDrFelfblioWxxVGeVJpSb1u3VRBb9hafTG45HsjZBFrHZVNhB9B+igpUDxPaEvOi2H/FvfmxDtKf0A7JV07xlX/WuD2AAA="
+ },
+ "/media/site50-r14/loops/s07-lake-shellfire.jpg": {
+  "sha256": "cc967e00797c8eeac07a3acc25f2d99aa52fffb3509ee4f2e21acb92c785ce47",
+  "lqip": "data:image/webp;base64,UklGRqYAAABXRUJQVlA4IJoAAABwBQCdASogABIAPu1irFAppSQisBgIATAdiWMAuwAyq6kE17a3lqmN6zOQ5RxGBl+dU14AAP3fRZGpxYJubV097JO8clc4diV/YoI68ElIgQlguI6Et6QccM6bCA8YZNZ5BYEVR8tLweuxiiLdFx8d3B+eqeco1tpD+La038u4crhrqQeSrPJyrrYISIXVBQpIloTGlsA4AAAA"
+ },
+ "/media/site50-r14/loops/s18-street-knockout.jpg": {
+  "sha256": "4af95db1fc2d836a689be079560376a938c318ba035f77dd0a3a3c5b1703e076",
+  "lqip": "data:image/webp;base64,UklGRogAAABXRUJQVlA4IHwAAABQBACdASogABIAPuFeqE2opSQsMAwBgBwJYwCCSQfabmW6leIax5ReCzYAAP7uq/oTKr3wxgXkZFsP/+m0SiZ0sl6Jmaf/SLxfvgcVV1Nb7hms9GQAsV18yGmbF9QqDLiBpwK4k0s5T6NuzOAivcZUW6GC7cFzUBrnwAAA"
+ },
+ "/media/site50-r14/loops/s20-road-return-fire.jpg": {
+  "sha256": "da6d5f2b72fb78f7948e22ced9a11fc4d41bdf29f565e39f8aac76d5679453d5",
+  "lqip": "data:image/webp;base64,UklGRqgAAABXRUJQVlA4IJwAAABQBACdASogABIAPu1qq08ppiOiMBgIATAdiWMAxvQu8VyqEtRBDxrif1EAAP6D/cXBem6us2CV8Pw3PAzqbBIt6Um9SU8iu11vDEjsVvruUeZfqTvO1bZjdNLAhkEtBcy4LZf9g2+q9UuxgZimbs/YrTEgnsirJXniE6nBgd5O0cWjTbd2ZrE5ezrpTIm/wbrYOE7siaIrYweIAAA="
+ },
+ "/media/site50-r14/loops/s21-fields-assault.jpg": {
+  "sha256": "478307cc0b44b9ae8825d1d2501128cba0d9a68ac26e12a0efb33a9ac1a193bf",
+  "lqip": "data:image/webp;base64,UklGRqIAAABXRUJQVlA4IJYAAABQBACdASogABIAPu1ip02ppaOiMAgBMB2JQBkTBHtrEwOKfuUj9+X0j2QAAP59ZBsoG3Oa9WiGskLeBtONFzxakw0DXEHq3Wg1glrqCxDryg50THGzO71kCntoM1Xee/5FIXphp63jVRfzewy0zHtpaNICBnahOkHR2ag71lC+U6vMEZRzGyl9WptZnq7J/5G8ncWsAAA="
+ },
+ "/media/site50-r14/loops/s226-church-duel.jpg": {
+  "sha256": "bf783bfc587f241b539edbf38684c19abf827c4ee0d45af8e3702871627344ff",
+  "lqip": "data:image/webp;base64,UklGRrQAAABXRUJQVlA4IKgAAADQBACdASogABIAPu1irVAppSQisBgIATAdiWQAnTNCwO5e+afeGKMWFAhqWiJRwADh3q/dOB8F0E6ecZzlook2YDez6C/HWJrFwQZFYyfdynp0jNABnEXQZ0KL3m/hpN3VLY6TTIat+DsX8tK7/NvUg7Bmu0Um0AvK0fkL/19pTaEa9cbM6WrcbyvO+gxWameb72If7Whusa20/6jnTC2zA55FDet8AAA="
+ },
+ "/media/site50-r14/loops/s227-oasis-duel.jpg": {
+  "sha256": "e628e629659704e8993677945b17a06d17d3336e2a591c4da690e9912cae4dfa",
+  "lqip": "data:image/webp;base64,UklGRrYAAABXRUJQVlA4IKoAAABQBQCdASogABIAPu1oqk8ppiOiMBgIATAdiWwAnTLfAYyv4iSlVnFqM1JTTHdVmOqAQgAA/r27mcMMgZnxA5pNnOvcM8xcHjUF/NtNHbhETSIf7Qh2BKoPk9j1rOqnWgmWNTY6wr3m50Q56tWRnqAE+k7nimlaKRgH8FM8Azi14PXLAiIKScIAB0iqc2JWwfqaUOBg62XHsyYD/zVN12nrW/lSCX9b7YAAAA=="
+ },
+ "/media/site50-r14/loops/s23-village-crossroads.jpg": {
+  "sha256": "19730f654c7ca0c6153b73d87ca837ad4288c088178a9561dd5d37080d53cfe6",
+  "lqip": "data:image/webp;base64,UklGRr4AAABXRUJQVlA4ILIAAAAwBQCdASogABIAPu1kq1AppSOisBgIATAdiWMAriB2kSOAv6+iKNklHpjcP/JW3pdPAADLSts+GbqJE6eugUzdH8NeD7BTPHTAdrIpVLM9tlIh+89TVRCnQ4JJet+9c64MYybt0C79FA9T/xmi4BxWW5b29N3NDZj2PF1tUI4aYQEPh/LcyPYDO91nsfSM239HK/9kZD35IDifAMMFqW34mKs3SWGouBtCJHZbCxKqAAAA"
+ },
+ "/media/site50-r14/loops/s24-ice-duel.jpg": {
+  "sha256": "ec3ddd06107907daf9a19a86e00f8768c8c1203d014ccd293aca818665beedaa",
+  "lqip": "data:image/webp;base64,UklGRpYAAABXRUJQVlA4IIoAAAAwBQCdASogABIAPu1mqk2ppaQiMAgBMB2JZQCnFCFCfz7i2F8Z8+LmklqZlarU5GkHAAD8eFCoORTq/vg3HvPq9rSpdtJEfg4ucW0A8fMzB9pHTKL7LkHltQvtko5iPR4hpsd2X/zMUNCyfkkBIenJTPTNkyEAtM8rPKsnnvYsCeubiHOwqiUAAAA="
+ },
+ "/media/site50-r14/loops/s26-minaret-fire.jpg": {
+  "sha256": "b3a54b11ae7b6dab3d05a85440cb97c0595f2a918df48b3a9312a1023f55107d",
+  "lqip": "data:image/webp;base64,UklGRrIAAABXRUJQVlA4IKYAAAAwBQCdASogABIAPu1kqk2ppaQiMAgBMB2JYgCdMtPnJCvxMomlThEzKK5Kqjxerb9PAADdccW1NFBVs5sjQcujNoUeyjsTF+LsLnT9bUvb3xbmDcg6npWJ8yIr5Wt3C1G3+WQntmKYj6VLk3ct7JZxpcZ9Bmii9VCwqEu4lzXYwdhLWihEYwnnDweT5MW2BJbz5gm5ZVyJD7rnl+K0PUYBI1e23AAA"
+ },
+ "/media/site50-r14/loops/s33-water-tower.jpg": {
+  "sha256": "009d2f5230ec94981721cf5e3c7c25a5d60d6146f7d75be9c012341880bc24b8",
+  "lqip": "data:image/webp;base64,UklGRrAAAABXRUJQVlA4IKQAAABQBQCdASogABIAPu1kqE2ppaOiMAgBMB2JYwDCoNBDCRjKrZ6pvHNfH6StuRQFtaX4bUwA/vLEN+JR9AlfefivhVjYWXD09SUtgujhs/xv3i5WBbQdV61Qovs3flMEqLS85zWtUx7aVtq6ksbTRORR4AT/0nTNB83L+9ZmsZMotUynwfrBmTM2yaH5n0Jeokmu2c1qAJK+C06YFnZ3cD9Y/AAAAA=="
+ },
+ "/media/site50-r14/loops/s34-furnace-salvo.jpg": {
+  "sha256": "acc3f009dcc42b4378da00ce16be18673319be3ce25a67d55824af4406c3bcca",
+  "lqip": "data:image/webp;base64,UklGRooAAABXRUJQVlA4IH4AAADQAwCdASogABIAPu1opU2ppiMiMBgMATAdiWUAnQAVS/EIoewAKAAA/u9djamiz1bW6T0Ll+Ip8A5YhmDhkiTdzkkhYRJiPGMbnSgL3+AdPYU92wp3Zmy3r6Zf+IxPNveWo5YXp/ZP95NvnrauPEYliGnCPOQ+S89VPoEAAAA="
+ }
+}
