@@ -186,6 +186,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3',
     'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'mbt70', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz',
     'merkava3c', 'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto',
+    'olifant_mk2',
     'pt91a_twardy', 'pt91m', 'sabra_mk2', 'stb1', 'strv121', 'strv122', 't14_armata', 't62_1975', 't62mv1',
     't64bv1', 't64bv_donbas', 't72_rys', 't72b3', 't72b3_bastion_m', 't72b3_qilin', 't72b3_sich', 't72b3_zubr',
     't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022', 't72b3m_bulat_m', 't72b3m_hetman', 't72b3m_hetman_ii',
@@ -200,7 +201,8 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
-    'carro45t', 'centurion13', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'shot_kal', 'strv81', 'type59',
+    'carro45t', 'centurion13', 'centurion3', 'centurion5_2', 'centurion5_avre', 'm46_patton', 'm47_patton', 'shot_kal', 'strv105',
+    'strv81', 'type59',
   ]),
   heavy: Object.freeze([
     'kv2',
@@ -235,7 +237,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
 const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> = Object.freeze({
   // Doctrine assault, plus the two siege breakthrough vehicles (KV-2, Jagdpanzer E100).
   breakthrough: Object.freeze([
-    'jpz_e100', 'kv2', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d',
+    'centurion5_avre', 'jpz_e100', 'kv2', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d',
     'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto', 'pt91a_twardy', 'pt91m',
     't14_armata', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3_bastion_m', 't72b3_qilin',
     't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022', 't72b3m_bulat_m',
@@ -252,7 +254,8 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7v', 'm1a1',
     'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams',
     'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm1a3', 'm46_patton', 'm47_patton',
-    'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'sabra_mk2', 'shot_kal', 'ua_m1a1', 'ua_m1a2_abrams',
+    'm48a5_patton', 'm60a1', 'm60a2', 'm60a3', 'olifant_mk2', 'sabra_mk2', 'shot_kal', 'strv105', 'ua_m1a1',
+    'ua_m1a2_abrams',
   ]),
   flanker: Object.freeze([
     'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'c1_ariete', 'c1_ariete_preserie',
@@ -286,6 +289,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bmp2', 'bmp3',
     'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete', 'centurion13', 'centurion3', 'centurion5_2',
+    'centurion5_avre',
     'challenger1_mk2', 'challenger1_mk3', 'challenger2', 'challenger3', 'chieftain3', 'chieftain5',
     'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9040c', 'cv90_mk4', 'dardo', 'fv510', 'fv510_milan',
     'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx', 'kv2', 'leclerc_s1', 'leclerc_s2',
@@ -295,7 +299,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'm2a2_bradley',
     'm3a3_bradley', 'm46_patton', 'm47_patton', 'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2',
     'm60a3', 'm6_linebacker', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
-    'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'pt91a_twardy',
+    'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'olifant_mk2', 'pt91a_twardy',
     'pt91m', 'puma_s1', 'sabra_mk2', 'shot_kal', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b', 'strv121',
     'strv122', 'strv81', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022',
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk',
@@ -312,7 +316,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'abramsx', 'amx40', 'amx40_proto', 'bmp3m_dragun125', 'bmpt_t90', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete_proto', 'challenger2e', 'challenger3_proto', 'cv90105_tml', 'fv4034',
     'griffin50mm', 'k2b', 'kf51_evo', 'kf51_panther', 'kf51_u', 'kurganets25', 'leo2_revolution_proto',
-    'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 't14_armata', 't90a_burlak',
+    'leopard2_proto', 'marder2', 'mbt70', 'object148_proto', 'stb1', 'strv105', 't14_armata', 't90a_burlak',
     't90a_burlak_proto', 'type10_tk_x', 'type10b', 'type90_kyumaru', 'type90a', 'udes03', 'xk2_black_panther',
     'ztz100_prototype', 'ztz85_iii',
   ]),

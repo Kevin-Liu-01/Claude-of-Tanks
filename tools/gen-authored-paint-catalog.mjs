@@ -114,8 +114,11 @@ const nationWord = (nation, era) => {
   if (nation === 'USSR') return 'Soviet';
   return NATION_WORD[nation] || nation || 'Fleet';
 };
-const nameParts = (recipe, nation, env, era) => ({
-  who: nationWord(nation, era),
+// a paint named for the force that wore it where the spec keeps its design nation (release 262: the Olifant Mk 2 keeps
+// the Centurion's British nation in the UK tree; its coat is the South African Army's)
+const OPERATOR_WORD = { olifant_mk2: 'SANDF' };
+const nameParts = (recipe, nation, env, era, lead) => ({
+  who: OPERATOR_WORD[lead] || nationWord(nation, era),
   word: PATTERN_WORD[recipe.scheme] || 'Livery',
   envWord: ENV_WORD[env] || 'Woodland',
   tone: recipe.scheme === 'solid' ? toneWord(recipe.base) : null,
@@ -127,7 +130,7 @@ const labelEn = ({ who, word, envWord, tone }) => (tone
 const NATION_ZH = {
   'US Army': '美国陆军', Bundeswehr: '联邦国防军', Russian: '俄罗斯', Soviet: '苏联', British: '英国', French: '法国', PLA: '解放军',
   Italian: '意大利', JGSDF: '陆上自卫队', Polish: '波兰', ROK: '韩国', Swedish: '瑞典', IDF: '以色列国防军', Ukrainian: '乌克兰',
-  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军',
+  Atlantean: '亚特兰蒂斯', Fleet: '联合', Wehrmacht: '德国国防军', SANDF: '南非国防军',
 };
 const PATTERN_ZH = {
   Plain: '单色', 'Three-Tone': '三色', Bands: '条带', Digital: '数码', Splinter: '碎片', Desert: '沙漠', Ambush: '伏击', Flecktarn: '斑点',
@@ -149,7 +152,7 @@ const entries = [...groups.values()].map(({ recipe, ids }) => {
   const nationTag = camoNationTag(spec.nation) || null;
   const env = environmentOf(recipe), style = styleOf(recipe);
   const tags = [nationTag, env, style, 'signature'].filter(Boolean);
-  const parts = nameParts(recipe, spec.nation, env, spec.era);
+  const parts = nameParts(recipe, spec.nation, env, spec.era, lead);
   // A paint id is a saved and wire-sent camo id: it keeps the lead's schema-1 spelling (tankIdAliases.ts), so a rename
   // never orphans a player's paint or a room's allowlist.
   return { id: `${PAINT_ID_PREFIX}${tankSeedId(lead)}`, lead, sourceTankIds: ids, nation: spec.nation || null, label: labelEn(parts), labelZh: labelZh(parts), tags, visual: recipe };

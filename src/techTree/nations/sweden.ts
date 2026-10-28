@@ -17,6 +17,7 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
     { id: 'strv', name: 'Strv 81 to Strv 122' },
     { id: 'strv_side', name: 'UDES 03' },
     { id: 'cv90', name: 'CV90' },
+    { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
     // Strv 81 to Strv 122
@@ -34,5 +35,7 @@ export const SWEDEN_TREE: NationTree = Object.freeze({
       id: 'cv90_mk4', tier: 7, line: 'cv90', lane: 3, parents: ['cv9040c'], slot: 'line',
       builds: ['cv90_mk4_concept'],
     }),
+    // Special (release 262: the Strv 105 prototype)
+    node({ id: 'strv105', tier: 4, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

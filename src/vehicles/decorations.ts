@@ -2709,6 +2709,20 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
   ],
+  strv105: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  olifant_mk2: () => [
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
+  // the AVRE's rear basket is authored (profiles/centurionFamily.ts): deck stowage only
+  centurion5_avre: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
   shot_kal: () => [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: -1 }] },

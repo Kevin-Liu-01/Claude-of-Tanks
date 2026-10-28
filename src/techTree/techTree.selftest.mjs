@@ -142,6 +142,7 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above).
-assert.equal(digest, '1ed4e1a0f2befa80', `tree content changed: re-pin to ${digest} if deliberate`);
+// (FAMILY_UPGRADES above). 262: the Sho't Kal (Israel's special lane at III), the Centurion Mk 13 (III, after the Mk 5/2),
+// the Strv 105 (Sweden's new special lane at IV), the Mk 5 AVRE (III) and the Olifant Mk 2 (V) in the UK's special lane.
+assert.equal(digest, 'ff9dfde0397dacf2', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
