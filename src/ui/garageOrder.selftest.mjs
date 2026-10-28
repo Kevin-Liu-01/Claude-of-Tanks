@@ -463,5 +463,19 @@ assert.match(garageSource,
 assert.match(garageSource,
   /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
+// the loading census 262: the drawing's box is 2:1 from the first paint (an auto width collapsed it, CLS 0.35), its tone
+// stands under it, it fades in through the kit's reveal and loads again once the network is back
+assert.match(garageSource, /\.cot-technical-viewer-figure img\{[^}]*width:min\(100%,calc\(var\(--tv-max-h\) \* 2\)\)/,
+  'the expanded drawing holds its 2:1 box before its file arrives');
+assert.match(garageSource, /\.cot-technical-viewer-figure::before\{[^}]*aspect-ratio:2\/1;[^}]*background:var\(--fill-quiet\)/,
+  'a tone stands where the drawing will be');
+assert.match(garageSource, /technicalModalImage\.src = iconUrl\([^;]+;[^]{0,120}?revealWhenReady\(technicalModalPanel, technicalModalImage\)/,
+  'the drawing fades in through the kit\'s reveal');
+assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?data-failed[^]{0,80}?technicalModalImage\.src = src/,
+  'a drawing the network dropped loads again once it is back');
+for (const [id, open] of [['cot-record-load', 'openServiceRecord\\(trigger\\)'], ['cot-techtree-load', 'openTechTree\\(opener\\)']]) {
+  assert.match(garageSource, new RegExp(`id: '${id}'[^]{0,160}?actions: \\[\\{ label: t\\('notice\\.retry'\\)[^]{0,60}?${open}`),
+    `${id}'s error toast carries a Retry that runs the same open`);
+}
 
 console.log('garageOrder.selftest: ordering, map default, filters, hidden horizontal rail and its settled end pad verified');

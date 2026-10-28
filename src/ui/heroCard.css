@@ -16,6 +16,7 @@
   max-width:none;object-fit:cover;object-position:0 0;-webkit-mask-image:var(--hc-flag-mask);mask-image:var(--hc-flag-mask);
   opacity:var(--hc-flag-opacity,.94);pointer-events:none;transition:opacity var(--dur-fast);}
 .cot-hc[data-hero-facing='left'] .hc-flag{object-position:100% 0;}
+.cot-hc .hc-flag[data-pending]{opacity:0;}
 .cot-hc .hc-tank{position:absolute;z-index:1;max-width:none;height:auto;pointer-events:none;
   --hc-k:min(calc(100cqw * var(--hc-share) / var(--hc-cw)),calc((100cqh - var(--hc-band)) * var(--hc-hshare) / var(--hc-ch)),calc(100cqw * 0.88 / var(--hc-fw)));
   width:var(--hc-k);

@@ -149,6 +149,10 @@ for (const gunSide of ['left', 'right']) {
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
   assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
   assert.match(cardTs, /--hc-gs:-1/, 'the mirror is the --hc-gs custom property');
+  // the flag fades in once loaded, as the tank does (the loading census 262); a card prerendered whole has no pending flag
+  assert.match(cardTs, /flagImg\.setAttribute\('data-pending', ''\)[^]*?flagImg\.addEventListener\('error', settle/, 'a decorated card\'s flag waits for its file');
+  assert.match(layerCss, /\.cot-hc \.hc-flag\[data-pending\]\{opacity:0;\}/, 'a pending flag stays transparent, then fades on the flag\'s own transition');
+  assert.match(cardTs, /\.catch\(\(\) => \{ manifestRequest = null; return null; \}\)/, 'a manifest request the network dropped is forgotten');
   // Every surface that shows cards loads the card module and its stylesheet together, lazily (no static CSS import
   // in a graph, and no extra static chunk on the game page: the boundary is inline at each surface).
   assert.doesNotMatch(cardTs, /^import ['"][^'"]+\.css['"]/m, 'heroCard.ts imports no stylesheet statically');

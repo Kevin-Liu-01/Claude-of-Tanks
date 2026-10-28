@@ -42,6 +42,7 @@ import { closeSurface, openSurface, type TransientSurface } from './components/s
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
+import { revealWhenReady } from './components/reveal.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
 import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
@@ -1434,11 +1435,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
   const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
-  const openServiceRecord = async () => {
+  const openServiceRecord = async (opener?: HTMLElement) => {
     if (recordOpening) return;
     closeGarageVariantMenu(); setGaragePanel('');
     const revision = ++recordOpenRevision;
-    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger;
+    const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
     recordOpening = true;
     try {
       const [{ createServiceRecordDialog }] = await Promise.all([
@@ -1450,8 +1451,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
     } catch {
-      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only); the next press retries
-      notifyLater({ id: 'cot-record-load', severity: 'error', text: t('garage.record.loadError') });
+      // a failed chunk fetch says so where the player looks (it was a tip on the trigger only), with a Retry that runs the
+      // same open (the loading census 262: the toast had none; the next press retries too)
+      notifyLater({ id: 'cot-record-load', severity: 'error', text: t('garage.record.loadError'),
+        actions: [{ label: t('notice.retry'), primary: true, run: () => { void openServiceRecord(trigger); } }] });
     }
     finally { recordOpening = false; }
   };
@@ -1582,6 +1585,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const technicalModalImage = requiredElement<HTMLImageElement>(technicalModal.body, '[data-technical-modal-image]');
   const technicalModalPanel = requiredElement<HTMLElement>(technicalModal.body, '#cot-technical-viewer-panel');
   const technicalModalTabs = [...technicalModal.body.querySelectorAll<HTMLButtonElement>('[data-technical-modal-view]')];
+  // the drawing fades in over its box's tone (the loading census 262: it popped in 19-23 s on Fast 3G, its dialog jumping
+  // as it arrived, and offline it was a broken frame); one the network dropped loads again, quietly, once it is back
+  window.addEventListener('online', () => {
+    const src = technicalModalImage.getAttribute('src');
+    if (!src || !technicalModalPanel.hasAttribute('data-failed')) return;
+    technicalModalImage.src = src;
+    revealWhenReady(technicalModalPanel, technicalModalImage);
+  });
 
   const selectTechnicalModalView = (viewId: GarageTechnicalViewId): void => {
     const view = technicalViewById.get(viewId);
@@ -1594,6 +1605,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     technicalModal.setTitle(name);
     technicalModalImage.src = iconUrl(spec.id, view.assetView);
     technicalModalImage.alt = `${name} ${translated.caption.toLowerCase()}`;
+    revealWhenReady(technicalModalPanel, technicalModalImage);
     technicalModalPanel.setAttribute('aria-labelledby', `cot-technical-viewer-tab-${view.id}`);
     for (const tab of technicalModalTabs) {
       const active = tab.dataset.technicalModalView === view.id;
@@ -4245,6 +4257,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else tank.addEventListener('load', () => copy.classList.add('hc-loaded'), { once: true });
       tank.loading = 'eager';
     }
+    const flagImg = copy.querySelector<HTMLImageElement>('img.hc-flag[data-pending]');
+    if (flagImg) {
+      if (flagImg.complete) flagImg.removeAttribute('data-pending');
+      else flagImg.addEventListener('load', () => flagImg.removeAttribute('data-pending'), { once: true });
+    }
     const feather = cardsEl.style.getPropertyValue('--hc-flag-mask');
     if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
@@ -4630,9 +4647,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       screen.open(opener);
       techTreeTrigger.setAttribute('aria-expanded', 'true');
     } catch (err) {
-      // a failed chunk fetch says so (it reached the console only); the next press retries
+      // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
+      // retries too
       console.error('[garage] tech tree failed to open:', err);
-      notifyLater({ id: 'cot-techtree-load', severity: 'error', text: t('garage.techTree.loadError') });
+      notifyLater({ id: 'cot-techtree-load', severity: 'error', text: t('garage.techTree.loadError'),
+        actions: [{ label: t('notice.retry'), primary: true, run: () => { void openTechTree(opener); } }] });
     } finally {
       techTreeOpening = false;
     }
