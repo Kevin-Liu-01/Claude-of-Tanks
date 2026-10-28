@@ -180,6 +180,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 262: the Christian II (a Danish concept on the Type 90 X): the shared Type 90 X stock, its side modules on the
     // built wall, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
+    'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
