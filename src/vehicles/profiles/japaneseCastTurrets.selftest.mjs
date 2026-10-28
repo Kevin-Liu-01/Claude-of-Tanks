@@ -64,8 +64,14 @@ for (const [id, expected] of Object.entries(CASES)) {
     `${id}: the shell's length, nose cut for the mask to the bustle, stays the model's (${turretSize.z.toFixed(3)} m)`);
   assert.ok(turretSize.y >= expected.height[0] && turretSize.y <= expected.height[1],
     `${id}: the cast turret and its roof stay in their height class (${turretSize.y.toFixed(3)} m)`);
-  assert.ok(turretBounds.min.y <= hullBounds.max.y,
-    `${id}: the turret's foot ring rests on the hull deck instead of floating`);
+  // the seat (turretSeatRace.ts) stands the shell's foot a 3 cm seam over the deck round its race: no more, no buried foot
+  const ringAt = turretRig.getWorldPosition(new THREE.Vector3());
+  const deckRay = new THREE.Raycaster(new THREE.Vector3(ringAt.x, hullBounds.max.y + 0.5, ringAt.z), new THREE.Vector3(0, -1, 0));
+  const deckY = deckRay.intersectObject(hull, false)[0]?.point.y;
+  assert.ok(Number.isFinite(deckY), `${id}: the hull's deck lies under the turret ring`);
+  const seam = turretBounds.min.y - deckY;
+  assert.ok(seam >= 0 && seam <= 0.035,
+    `${id}: the turret's foot ring stands its seam over the deck instead of floating (${(seam * 1000).toFixed(1)} mm)`);
   assert.ok(mountBounds.min.z < turretBounds.max.z && mountBounds.max.z > turretBounds.max.z,
     `${id}: the mask stays seated in its channel while projecting forward of the cheeks`);
 
