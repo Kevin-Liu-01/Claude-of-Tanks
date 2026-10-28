@@ -3168,9 +3168,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
-  // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
-  // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
-  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
+  // The Longwei carries its own stacked smoke banks on its arrowhead blocks (release 262, profiles/longwei.ts): a decor
+  // pair would double them, and a roll on a turret side stood against the blocks' outer faces.
+  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke'
+    && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0] === 'turretSide'));
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

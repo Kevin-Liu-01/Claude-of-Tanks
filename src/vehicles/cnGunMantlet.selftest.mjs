@@ -17,8 +17,8 @@ const RAY = new THREE.Vector3(0.013, 1, 0.007).normalize();
 
 const CASES = [
   // front: the mantlet's front in gun-local z; root: the root section's gun-local z; cover: the mantlet buckets
-  { id: 'type59', front: 0.92, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
-  { id: 't55a', front: 0.92, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
+  { id: 'type59', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
+  { id: 't55a', front: 1.14, root: 0.10, cover: ['gunMountCanvasSkin'], casting: ['turret'] },
   { id: 'ztz99_longwei', front: 0.70, root: -0.25, cover: ['gunMount', 'gunMountCanvasSkin'], casting: ['turret'] },
 ];
 

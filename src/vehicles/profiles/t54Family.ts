@@ -63,7 +63,7 @@ const TURRET_PIVOT: Vec3 = [0, ROOF_Y, -0.08];
 /** The cast dome (the oracle): a near-round plan, 2.54 m wide, its crown 0.22 m behind the ring centre (1.58 m to the
  * front casting, 1.03 m to the rear), rising 0.78 m as a superellipse (exponent 2.6: a steep lower band and the
  * T-55's broad crown). */
-const DOME = Object.freeze({ H: 0.78, cz: -0.22, side: 1.27, front: 1.58, rear: 1.03, nFront: 1.85, nRear: 2.3, vExp: 2.6, sink: 0.03 });
+const DOME = Object.freeze({ H: 0.78, cz: -0.22, side: 1.27, front: 1.58, rear: 1.03, nFront: 1.45, nRear: 2.3, vExp: 2.6, sink: 0.03 });
 /** Bore axis 1.74 m over the ground (the oracle's muzzle; [GS-59spec] 1.738 m): the trunnion 0.32 m over the ring,
  * 0.62 m ahead of its centre. */
 const TRUNNION: Vec3 = [0, 1.74 - ROOF_Y, 0.62];
@@ -482,15 +482,16 @@ function addTurretRoof(P: TankBuilderPort, v: T54Variant): void {
     P.add('turret', cylY(0.12, 0.13, 0.06, P.q ? 20 : 12), x, base + 0.03, z);
     P.add('turret', KIT.xform(sph(0.14, P.q ? 20 : 12, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.45, 1]), x, base + 0.055, z);
   }
-  // gunner's sight aperture left of the gun: a hooded slit in the casting
+  // gunner's sight aperture left of the gun: a small round hooded port low in the casting (262 critic round: the raised
+  // box set high read as a tile stuck on)
   {
-    const h = 0.50, t = domeAngleForX(0.36, h, 1), p = domePoint(t, h), n = domeNormal(t, h);
+    const h = 0.30, t = domeAngleForX(0.34, h, 1), p = domePoint(t, h), n = domeNormal(t, h);
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
     const e = new THREE.Euler().setFromQuaternion(q);
-    const hood = p.clone().addScaledVector(n, 0.015);
-    P.add('turretDetail', box(0.16, 0.26, 0.05), hood.x, hood.y, hood.z, e.x, e.y, e.z);
-    const slit = p.clone().addScaledVector(n, 0.042);
-    P.addModuleVisual('optics', 'turretGlass', box(0.07, 0.17, 0.008), slit.x, slit.y, slit.z, e.x, e.y, e.z);
+    const hood = p.clone().addScaledVector(n, 0.004);
+    P.add('turretDetail', KIT.cylZ(0.075, 0.03, 14), hood.x, hood.y, hood.z, e.x, e.y, e.z);
+    const slit = p.clone().addScaledVector(n, 0.020);
+    P.addModuleVisual('optics', 'turretGlass', KIT.cylZ(0.045, 0.006, 14), slit.x, slit.y, slit.z, e.x, e.y, e.z);
   }
   // the gunner's periscope ahead of the commander and the loader's on the right
   for (const [x, z, a] of [[0.61, 0.44, 0.25], [-0.70, -0.20, -0.3]] as const) {
@@ -517,10 +518,11 @@ function addTurretRoof(P: TankBuilderPort, v: T54Variant): void {
 function addMantletCover(P: TankBuilderPort): void {
   const { cylZ } = KIT;
   // [z, width, height]: a rounded canvas bag 0.46 m wide at the slot, gathered to a clamp on the tube
-  // 262 critic round: short and tapering onto the tube like the reference's collar, not a long blunt snout
-  const stations: [number, number, number][] = [[0.10, 0.46, 0.52], [0.62, 0.46, 0.50], [0.74, 0.38, 0.40],
-    [0.84, 0.28, 0.28], [0.92, 0.215, 0.215]];
-  const n = P.q ? 20 : 12, e = 2 / 5;   // superellipse exponent 5: the square canvas boot over the slot
+  // the oracle's trumpet (262 critic rounds): a round pleated cone from the slot flowing onto the tube at 1.15 m, the
+  // narrow neck the egg-shaped casting runs into
+  const stations: [number, number, number][] = [[0.10, 0.50, 0.52], [0.58, 0.48, 0.48], [0.76, 0.37, 0.37],
+    [0.96, 0.27, 0.27], [1.15, 0.212, 0.212]];
+  const n = P.q ? 20 : 12, e = 1;   // round sections
   const ring = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
     return [Math.sign(c) * Math.abs(c) ** e * w / 2, Math.sign(s) * Math.abs(s) ** e * h / 2] as const;
@@ -531,7 +533,7 @@ function addMantletCover(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(2, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.112, 0.035, n), 0, 0, 0.905);
+  P.addGunExtraDark(cylZ(0.110, 0.035, n), 0, 0, 1.135);
   // the coaxial 7.62 mm's port in the cover, right of the gun
   P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.66);
 }

@@ -360,19 +360,21 @@ function type96BFrameArmor(): ArmorEnvelope {
 // the roof line (0.76) 0.40 m behind the front edge.
 const LONGWEI_THROAT_X = 0.30, LONGWEI_CHEEK_OUTER_X = 1.57;
 const LONGWEI_CHEEK_SWEEP = (1.55 - 0.72) / (1.42 - 0.30);
-const LONGWEI_CHEEK_LOW_Y = 0.045, LONGWEI_CHEEK_HIGH_Y = 0.54, LONGWEI_CHEEK_LEAN = 0.06, LONGWEI_CHEEK_TOP_RUN = 0.26;
+const LONGWEI_CHEEK_LOW_Y = 0.045, LONGWEI_CHEEK_THROAT_TOP_Y = 0.28, LONGWEI_CHEEK_OUTER_TOP_Y = 0.62;
+const LONGWEI_CHEEK_TOP_RUN_PER_RISE = 1.4;
 const longweiCheekZ = (ax: number): number => 1.55 - (ax - LONGWEI_THROAT_X) * LONGWEI_CHEEK_SWEEP;
-/** A point on the cheek face at |x| ax, height y in 0.045..0.54. */
-const longweiCheekFace = (side: number, ax: number, y: number): MutableVec3 =>
-  [side * ax, y, longweiCheekZ(ax)
-    - LONGWEI_CHEEK_LEAN * (y - LONGWEI_CHEEK_LOW_Y) / (LONGWEI_CHEEK_HIGH_Y - LONGWEI_CHEEK_LOW_Y)];
+/** The cheek face's front-top edge height at |x| ax (it falls toward the gun throat). */
+const longweiCheekTopY = (ax: number): number => LONGWEI_CHEEK_THROAT_TOP_Y
+  + (LONGWEI_CHEEK_OUTER_TOP_Y - LONGWEI_CHEEK_THROAT_TOP_Y) * (ax - LONGWEI_THROAT_X) / (LONGWEI_CHEEK_OUTER_X - LONGWEI_THROAT_X);
+/** A point on the (vertical) cheek face at |x| ax, height y. */
+const longweiCheekFace = (side: number, ax: number, y: number): MutableVec3 => [side * ax, y, longweiCheekZ(ax)];
 
 function longweiTurretPlates(): ArmorPlate[] {
   // the cassette field's outer face: the cheek face moved out 59 mm along its normal
   const faceNormal = (side: number): MutableVec3 => {
     const a = longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_LOW_Y);
     const b = longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_LOW_Y);
-    const c = longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_HIGH_Y);
+    const c = longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_THROAT_TOP_Y);
     const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
     let n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
     if (n[2] < 0) n = n.map((k) => -k);
@@ -384,8 +386,8 @@ function longweiTurretPlates(): ArmorPlate[] {
     return [p[0] + n[0] * d, p[1] + n[1] * d, p[2] + n[2] * d];
   };
   const top = (side: number, ax: number, rear: boolean): MutableVec3 => (rear
-    ? [side * ax, 0.76, longweiCheekZ(ax) - LONGWEI_CHEEK_TOP_RUN]
-    : [side * ax, LONGWEI_CHEEK_HIGH_Y, longweiCheekZ(ax) - LONGWEI_CHEEK_LEAN]);
+    ? [side * ax, 0.76, longweiCheekZ(ax) - LONGWEI_CHEEK_TOP_RUN_PER_RISE * (0.76 - longweiCheekTopY(ax))]
+    : [side * ax, longweiCheekTopY(ax), longweiCheekZ(ax)]);
   const plates: ArmorPlate[] = [];
   for (const side of [1, -1]) {
     const tag = side > 0 ? 'R' : 'L';
@@ -393,12 +395,14 @@ function longweiTurretPlates(): ArmorPlate[] {
       side > 0 ? [a, b, c, d] : [b, a, d, c]);
     plates.push(
       armorPlate(`turret_era_${tag}`, 15, quad(
-        out(side, longweiCheekFace(side, 0.37, 0.09), 0.059), out(side, longweiCheekFace(side, 1.51, 0.09), 0.059),
-        out(side, longweiCheekFace(side, 1.51, 0.49), 0.059), out(side, longweiCheekFace(side, 0.37, 0.49), 0.059)),
+        out(side, longweiCheekFace(side, 0.37, 0.08), 0.059), out(side, longweiCheekFace(side, 1.51, 0.08), 0.059),
+        out(side, longweiCheekFace(side, 1.51, longweiCheekTopY(1.51) - 0.06), 0.059),
+        out(side, longweiCheekFace(side, 0.37, longweiCheekTopY(0.37) - 0.06), 0.059)),
       { kind: 'era', era: FY4 }),
       armorPlate(`turret_cheek_${tag}`, 700, quad(
         longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_LOW_Y), longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_LOW_Y),
-        longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_HIGH_Y), longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_HIGH_Y)),
+        longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_OUTER_TOP_Y),
+        longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_THROAT_TOP_Y)),
       { keMm: 600, ceMm: 850 }),
       armorPlate(`turret_cheek_upper_${tag}`, 700, quad(
         top(side, LONGWEI_THROAT_X, false), top(side, LONGWEI_CHEEK_OUTER_X, false),
