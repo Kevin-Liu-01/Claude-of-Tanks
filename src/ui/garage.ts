@@ -38,7 +38,7 @@ import { equipIconId, equipIconSVG } from './equipIcons.ts';
 import { EQUIPMENT_EMPTY_ID, createGarageEquipmentPicker } from './garageEquipmentPicker.ts';
 import { createGarageConsumables, type GarageConsumables } from './garageConsumables.ts';
 import { createPickerMenu, panelRoom, type PickerMenu } from './components/pickerMenu.ts';
-import { closeSurface, openSurface, openSurfaceIds, type TransientSurface } from './components/surfaceStack.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { tierChipHTML } from './heroCardChips.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, segmented, setRoving, statChip, tag, wireRoving } from './components/components.ts';
@@ -1436,7 +1436,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
   const openServiceRecord = async (opener?: HTMLElement) => {
-    if (recordOpening) return;
+    if (recordOpening || reloadsForFailure(recordTrigger, 'cot-record-load', t('garage.record.loadError'))) return;
     closeGarageVariantMenu(); setGaragePanel('');
     const revision = ++recordOpenRevision;
     const trigger = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger);
@@ -1453,7 +1453,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch {
       // a failed chunk fetch says so where the player looks (it was a tip on the trigger only), with a Retry that runs the
       // same open (the loading census 262: the toast had none; the next press retries too)
-      reportLoadFailure('cot-record-load', t('garage.record.loadError'), () => { void openServiceRecord(trigger); });
+      reportLoadFailure('cot-record-load', t('garage.record.loadError'), [recordTrigger]);
     }
     finally { recordOpening = false; }
   };
@@ -2002,21 +2002,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const notifyLater = (options: ToastOptions): void => {
     void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
   };
-  /** A surface whose chunks did not arrive says so with a Retry that runs the same open. Offline the notice is a chunk that
-   *  cannot arrive either (the loading census 264: the Tech Tree and the Service Record stood silent), so the open runs
-   *  again once the network is back, the quiet retry of the drawing and the stills, unless the player has pressed on since,
-   *  another surface stands or the Garage has gone. */
-  const reportLoadFailure = (id: string, text: string, retry: () => void): void => {
-    notifyLater({ id, severity: 'error', text, actions: [{ label: t('notice.retry'), primary: true, run: retry }] });
-    if (navigator.onLine !== false) return;
-    const waiting = new AbortController();
-    const settle = (): void => waiting.abort();
-    window.addEventListener('pointerdown', settle, { capture: true, signal: waiting.signal });
-    window.addEventListener('keydown', settle, { capture: true, signal: waiting.signal });
-    window.addEventListener('online', () => {
-      settle();
-      if (root.style.display !== 'none' && !openSurfaceIds().length && !document.querySelector('.cot-modal-root.is-open')) retry();
-    }, { signal: waiting.signal });
+  /** A surface whose chunks did not arrive cannot load them again in this document: Chrome keeps a failed import(), and a
+   *  failed modulepreload poisons every module that imports it (probed on 151: a retry, a fresh query and a never-tried
+   *  importer all fail once the network is back), and Vite's preload skips a stylesheet whose failed link still stands. So
+   *  the failure says so with Reload page, and its triggers keep a quiet error state that needs no chunk (the notice is one,
+   *  and offline it cannot arrive either: the loading census 264); their next press reloads the page once it is online. */
+  const reportLoadFailure = (id: string, text: string, triggers: readonly (HTMLElement | null)[]): void => {
+    for (const trigger of triggers) {
+      if (!trigger) continue;
+      trigger.dataset.loadState = 'error';
+      trigger.setAttribute('aria-description', `${text} ${t('garage.loadFailed.reload')}`);
+    }
+    notifyLater({ id, severity: 'error', text,
+      // (offline, a reload is the browser's error page: the press waits, and the notice keeps standing)
+      actions: [{ label: t('garage.loadFailed.reload'), primary: true, keep: true, run: () => { if (navigator.onLine !== false) location.reload(); } }] });
+  };
+  /** A trigger whose surface failed to load: its press reloads the page (online), else says so again. */
+  const reloadsForFailure = (trigger: HTMLElement | null, id: string, text: string): boolean => {
+    if (trigger?.dataset.loadState !== 'error') return false;
+    if (navigator.onLine !== false) location.reload();
+    else reportLoadFailure(id, text, [trigger]);
+    return true;
   };
   async function openCustomCamoStudio(): Promise<void> {
     const option = makeOwnOption();
@@ -4640,7 +4646,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const techTreeTrigger = requiredElement<HTMLButtonElement>(root, '.cot-techtree-trigger');
   let techTreeOpening = false;
   const openTechTree = async (opener: HTMLElement | null): Promise<void> => {
-    if (techTreeOpening) return;
+    if (techTreeOpening || reloadsForFailure(techTreeTrigger, 'cot-techtree-load', t('garage.techTree.loadError'))) return;
     emit('ui:click', {});
     techTreeOpening = true;
     closeMobileNavigation();
@@ -4665,7 +4671,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // a failed chunk fetch says so (it reached the console only), with a Retry that runs the same open; the next press
       // retries too
       console.error('[garage] tech tree failed to open:', err);
-      reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'), () => { void openTechTree(opener); });
+      reportLoadFailure('cot-techtree-load', t('garage.techTree.loadError'),
+        [techTreeTrigger, root.querySelector<HTMLElement>('[data-mobile-nav="techTree"]')]);
     } finally {
       techTreeOpening = false;
     }
