@@ -81,9 +81,15 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
         for (const y of [top - 0.08, bottom + 0.08]) P.add('hullDetail', KIT.cylX(0.022, 0.018, 8), side * 1.827, y, z);
       }
     }
+    // six panels aft; over the sprocket the last is a 12 cm fender strip, so the sprocket and its wrap show whole
     const n = 6, a = -3.66, b = 1.40, L = (b - a) / n;
     for (let k = 0; k < n; k++) {
       const zc = a + L * (k + 0.5), d = L - 0.016;
+      if (k === 0) {
+        P.add('hull', box(0.034, 0.12, d), side * 1.703, top - 0.06, zc);                  // fender strip
+        P.add('hullDark', box(0.03, 0.12, 0.014), side * 1.70, top - 0.06, a);
+        continue;
+      }
       P.add('hull', box(0.034, 0.24, d), side * 1.703, top - 0.12, zc);                    // proud upper band
       P.add('hull', box(0.028, 0.22, d), side * 1.697, top - 0.35, zc);                    // recessed lower band
       P.add('hullDark', box(0.03, 0.44, 0.014), side * 1.70, top - 0.23, a + L * k);

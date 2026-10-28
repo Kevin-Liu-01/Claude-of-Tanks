@@ -393,9 +393,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       ],
       // three long overlapping drapes a side from the sponson's wall, their tops 13 cm under the deck's edge (the gun's
       // low sweep over the sides at full depression stays clear of their garnish): over the heavy fore blocks, amidships
-      // and aft over the panels
+      // and aft over the panels, ending ahead of the sprocket
       side: [...flanks(1.36, 3.16, 1.50, 0.58, 1.86, 41), ...flanks(-1.40, 1.42, 1.50, 0.54, 1.78, 47),
-        ...flanks(-3.50, -1.10, 1.50, 0.56, 1.78, 53)],
+        ...flanks(-2.80, -1.10, 1.50, 0.56, 1.78, 53)],
     },
   },
   // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
