@@ -7,6 +7,7 @@
  * Esc closes and never reaches the Studio's own Esc; focus returns to where it was.
  */
 import { t } from './i18n.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 
 export interface StudioCommand {
   readonly id: string;
@@ -126,10 +127,14 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
     close();
     command.run();
   }
+  // a modal transient surface (components/surfaceStack.ts): opening it closes the Studio's open popover, Escape is the
+  // stack's, and a press on its own scrim closes it
+  const surface: TransientSurface = { id: 'studio-commands', element: () => box, close: () => close(), modal: true };
   function open(): void {
     if (!root.hidden) { input.select(); return; }
     all = commands();
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    openSurface(surface, returnFocus);
     input.value = '';
     current = 0;
     root.hidden = false;
@@ -138,6 +143,7 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
   }
   function close(): void {
     if (root.hidden) return;
+    closeSurface(surface);
     root.hidden = true;
     returnFocus?.focus?.({ preventScroll: true });
     returnFocus = null;
@@ -148,7 +154,6 @@ export function createCommandPalette(commands: () => readonly StudioCommand[]): 
     if (event.key === 'ArrowDown') { event.preventDefault(); move(1); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); move(-1); }
     else if (event.key === 'Enter') { event.preventDefault(); const command = shown[current]; if (command) run(command); }
-    else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
     else if (event.key === 'Tab') event.preventDefault(); // the field is the dialog's one stop
   });
   // a press outside the box closes it
