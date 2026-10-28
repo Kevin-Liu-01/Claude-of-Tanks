@@ -88,11 +88,13 @@ function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
       P.add('hull', box(0.028, 0.22, d), side * 1.697, top - 0.35, zc);                    // recessed lower band
       P.add('hullDark', box(0.03, 0.44, 0.014), side * 1.70, top - 0.23, a + L * k);
     }
-    // the hanging rail along the sponson's edge, over both runs
-    P.add('hullDetail', box(0.17, 0.02, 3.16 - a), side * 1.745, top + 0.01, (a + 3.16) / 2);
-    // front mudguard over the idler and the rear flap off the sponson's end
-    P.add('hull', sectionSolid([[3.16, 1.34, 1.40], [3.36, 1.28, 1.36], [3.52, 1.18, 1.27]].map(([z, bottom, top]): SolidSection => {
-      const r: SectionPoint[] = [[1.05, bottom], [1.72, bottom], [1.72, top], [1.05, top]];
+    // the hanging rails along the sponson's edge, flush with each run's face (the fore blocks step 10 cm out)
+    P.add('hullDetail', box(0.055, 0.02, b - a + 0.06), side * 1.6975, top + 0.01, (a + b) / 2);
+    P.add('hullDetail', box(0.148, 0.02, 1.74), side * 1.744, top + 0.01, 2.29);
+    // front mudguard over the idler, running out ahead of the nose with a turned-down lip, and the rear flap off the
+    // sponson's end
+    P.add('hull', sectionSolid([[3.16, 1.32, 1.40], [3.40, 1.25, 1.33], [3.62, 1.18, 1.26], [3.70, 1.12, 1.24]].map(([z, foot, lid]): SolidSection => {
+      const r: SectionPoint[] = [[1.05, foot], [1.72, foot], [1.72, lid], [1.05, lid]];
       return { z, ring: side > 0 ? r : mirrorRing(r) };
     })));
     P.hangMudguard(o.flapName, 'hullRubber', box(0.60, 0.42, 0.025), side * 1.36, 1.15, -3.74);
@@ -121,7 +123,7 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     for (const gx of [-0.165, 0.165]) P.add('hullDetail', box(0.016, 0.20, 0.30), px + gx, py + 0.09, pz + 0.03);
     P.add('hullDetail', box(0.346, 0.016, 0.016), px, py + 0.19, pz + 0.17);
     // the splash board's arm: from the apex ahead of the driver back and out across the glacis
-    P.add('hullDetail', box(0.88, 0.14, 0.03), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
   }
   // the driver's hatch (right front) on the glacis's slope, its periscopes ahead of it
   const hz = 2.06, hy = lineAt(H.deck, hz), tilt = glacisTilt(hz);
@@ -168,8 +170,9 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
   }
   P.add('hullDetail', box(0.30, 0.012, 0.80), 0, lineAt(H.deck, -3.12) + 0.006, -3.12);
   P.add('hullDetail', box(0.30, 0.10, 0.06), 0, 1.30, -3.83);                                  // convoy light
-  P.add('hull', box(1.10, 0.30, 0.24), 0, 1.50, -3.92);                                         // stowage box
-  P.add('hullDark', box(1.12, 0.012, 0.012), 0, 1.655, -4.04);
+  P.add('hull', box(1.10, 0.38, 0.34), 0, 1.61, -3.97);                                         // stowage box
+  P.add('hullDark', box(1.12, 0.012, 0.012), 0, 1.80, -4.14);
+  for (const dx of [-0.30, 0.30]) P.add('hullDark', box(0.10, 0.03, 0.02), dx, 1.70, -4.145);
 }
 
 /** Seven measured road wheels, the raised front idler, the rear sprocket and four return rollers a side. */

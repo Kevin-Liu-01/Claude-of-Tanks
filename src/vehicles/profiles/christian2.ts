@@ -149,6 +149,9 @@ function flankEquipment(P: TankBuilderPort): void {
     bank.position.set(sx * (T.halfWidthM + 0.10), 0.46, 0.36);
     P.turretG.add(bank);
     P.add('turretDetail', box(0.12, 0.06, 0.44), sx * (T.halfWidthM + 0.06), 0.37, 0.36);
+    // a stowage box on each compartment wall behind the smoke bank
+    P.add('turretDetail', box(0.10, 0.30, 0.56), sx * (T.halfWidthM + 0.05), 0.44, -0.95);
+    P.add('turretDark', box(0.104, 0.012, 0.52), sx * (T.halfWidthM + 0.052), 0.56, -0.95);
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.30, r: 0.011, seed: 26220 + (sx > 0 ? 1 : 0),
       rotation: [-0.06, 0, 0] });
     whip.position.set(sx * 0.92, 0.81, -2.46);

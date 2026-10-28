@@ -22,6 +22,7 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "challenger1X": () => import('./interiorFillGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./interiorFillGroups/chieftain10X.generated.ts'),
   "chieftain5X": () => import('./interiorFillGroups/chieftain5X.generated.ts'),
+  "christian2": () => import('./interiorFillGroups/christian2.generated.ts'),
   "cv90105TmlSourceX": () => import('./interiorFillGroups/cv90105TmlSourceX.generated.ts'),
   "cv9040CSourceX": () => import('./interiorFillGroups/cv9040CSourceX.generated.ts'),
   "cv90MkivSourceX": () => import('./interiorFillGroups/cv90MkivSourceX.generated.ts'),

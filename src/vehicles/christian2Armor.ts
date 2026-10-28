@@ -74,7 +74,7 @@ export function christian2Armor(): ArmorEnvelope {
     boundingRadiusM: 6.1, // the muzzle 5.71 m ahead, 2.0 m up
     turretPivot: [Td.pivot[0], Td.pivot[1], Td.pivot[2]],
     gunPivot: [Td.gunLocal[0], Td.gunLocal[1], Td.gunLocal[2]],
-    gunBarrel: { lengthM: Td.barrelLengthM, radiusM: 0.1 }, // the thermal sleeve's 0.10 m
+    gunBarrel: { lengthM: Td.barrelLengthM, radiusM: 0.1025 }, // the thermal sleeve's radius (the rig census measures it)
     hullPlates: hull.hullPlates, turretPlates, modules, crew,
   };
 }

@@ -16,11 +16,10 @@ delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
-delete spec.gunPitchByYawDeg;
 stripSilhouetteDimensions(spec.dims);
-// the built vehicle: the hull 7.25 m between its plates (7.59 m over its fittings and stern box), 9.757 m over the gun,
-// 3.672 m over the skirt blocks' bolts, roof 2.47 m
-Object.assign(spec.dims, { hullLengthM: 7.59, overallLengthM: 9.757, widthM: 3.672, heightM: 2.47 });
+// the built vehicle: the hull 7.25 m between its plates, 7.855 m from the fenders' tips to the stern box, 9.866 m over the
+// gun, 3.672 m over the skirt blocks' bolts, roof 2.47 m
+Object.assign(spec.dims, { hullLengthM: 7.855, overallLengthM: 9.866, widthM: 3.672, heightM: 2.47 });
 // 2020s concept: a Leopard 2-class 1,500 hp pack on 58 t; three crew with a bustle autoloader
 Object.assign(spec, {
   hp: 2500, enginePowerHp: 1500, weightTons: 58.0, topSpeedKmh: 68, reverseSpeedKmh: 30,
@@ -40,6 +39,13 @@ spec.gun = {
   ].sort((a, b) => ['APFSDS', 'HEAT', 'HE'].indexOf(a.type) - ['APFSDS', 'HEAT', 'HE'].indexOf(b.type)),
 };
 spec.armor = christian2Armor();
+// the gun's depression by turret yaw over its own hull, measured with tools/gun-depression-sweep.mjs --no-suit at 26 mm
+// (lane christian2-262): shallower over the headlight pods at the front corners and up to level over the engine deck;
+// held at +0.6 from 163 degrees to dead astern (the bare hull allows 0.1 to -0.4 there; the engine deck's net keeps 25 mm
+// only above +0.5)
+spec.gunPitchByYawDeg = [[0, -9], [15, -9], [17, -7.5], [19, -7], [23, -6.6], [26, -6.6], [27, -6.9], [28, -7.6],
+  [29, -8.8], [30, -9], [135, -9], [144, -5.3], [146, -3.6], [149, -2.6], [150, -1.4], [152, -0.3], [153, -0.1], [156, 0],
+  [157, 0.6], [158, 0.9], [160, 0.9], [163, 0.6], [180, 0.6]];
 // its own Danish tri-tone: olive ground with black-green, brown and a pale grey-green (one patch colour more than the
 // NATO coats, so it stays its own catalog paint)
 spec.visual = {

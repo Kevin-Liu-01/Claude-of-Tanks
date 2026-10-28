@@ -58,7 +58,7 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/christian2-
   roof 2.46-2.47 m (2.31 at its front edge), hull deck 1.63-1.70 m, ring centre z 0.37 m (radius 0.98 m), bore axis 2.00 m,
   breech z -0.17 m, muzzle z 5.70 m, turret front face z 1.66 m, side half-width 1.28 m stepping to 1.16 m over the bustle
   from z -1.2, bustle floor 1.85 m, seven road wheels.
-- Built versus oracle: 9.757 m overall (-1.2 %), 3.672 m wide over the fore blocks' bolts (+0.9 %), roof 2.47 m (0 %),
+- Built versus oracle: 9.866 m overall (-0.1 %), 3.672 m wide over the fore blocks' bolts (+0.9 %), roof 2.47 m (0 %),
   muzzle z 5.71 (5.70), bore axis 2.00 m (2.00), ring (0, 1.64, 0.37) (z 0.37), seven road wheels at the oracle's
   stations (mean of its staggered sides), the turret's side half-width 1.28 m stepping to 1.16 m over the bustle, the
   skirts hanging 0.46 m from the sponson's floor at 1.36 m.
@@ -114,3 +114,14 @@ See the round log; filled as each gate runs.
   wall drapes' anchor), the M2 moved to the cupola's rear-outboard rim and laid outboard of the head, a ring guard; the
   suit's drapes re-laid (three long hull drapes a side, wall drapes ahead of the smoke banks, the frontal modules' faces,
   two wraps hugging the tube).
+- R5 (blind critics 2 and 3): the skirts hang from the sponson's floor (1.36 m) so the upper hull's band shows; the heavy
+  fore blocks bolted and stepped 10 cm out on their own rail; round fan covers, radiator louvres and access plates on the
+  engine deck; exhaust louvres, tail lights and a deeper stern box on the rear plate; the front fenders run out to the
+  oracle's 3.70 m; a 14 cm splash board; the rail clear of the smoke banks; the M2 laid outboard of the head; plumb whips;
+  wall stowage boxes. Suit: the barrel wraps and the module-face cards dropped, the roof net opened by the fittings' own
+  shapes, the hull drapes overlapped with their tops 13 cm under the deck edge (the gun's full-depression sweep over the
+  sides took the garnish there).
+- Depression curve published (`gunPitchByYawDeg`, sweep at 26 mm, --no-suit): -9 degrees over the sides, -6.6 to -7.5 over
+  the headlight pods (yaw 17-29), rising to about level over the engine deck (yaw 144-180).
+- Fairness at VIII (the tier-fairness-259 round robin, 120 m, six seeds, 29 peers): mantlet 900/1050 and a 2.0/15.5 s cycle
+  0.642 (7/29 in band); 800/1000 and 2.1/17 s 0.47 (10/29), adopted.

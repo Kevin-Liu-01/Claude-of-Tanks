@@ -56,6 +56,7 @@
   "chieftain5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"302ec75e45255e53","gun":"b1535e564074f8e3"}},
   "chieftain_mk10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c98fd77a742b833c","gun":"3f68eb9128176147"}},
   "chieftain_mk9": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"abfaa19389d55002","gun":"8d1e597a90e0fe9d"}},
+  "christian2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c4678a46009fe77b","gun":"9b15730e67afb16e"}},
   "cv90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"019383d5cb29e655","gun":"0fc9fd77fe8cc681"}},
   "cv90105_tml": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3a04c184b755b291","gun":"c78e4ddc90605565"}},
   "cv9040c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fb478e303747836c","gun":"194289542e0810c0"}},
