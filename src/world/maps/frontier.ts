@@ -403,5 +403,8 @@ export default {
   shot: { pos: [150, 40, -330], look: [-20, 2, 40] },
   // round 3 (2026-10-06): the mill ponds' water sheet (splat.seaLake) — still ponds: a breath of the westerly over a few
   // hundred metres of fetch, no foam or breakers, the stream's gravel faintly lit under it
-  ocean: { windSpeed: 2.2, windDirDeg: 250, fetchKm: 0.4, amplitude: 0.45, foam: 0, breakers: 0, caustics: 0.3 },
+  // (2026-10-28, the world-reds lane; sceneWind since 241) windDirDeg is where the wind blows TOWARD (engine/cloudscapes.ts,
+  // sceneWind.ts): the westerly is the ground profile's 53°, the way the grass and the trees lean; the 250° authored as the
+  // westerly's bearing FROM turned the ponds, the clouds and the smoke against them once the ocean block drove the scene wind
+  ocean: { windSpeed: 2.2, windDirDeg: 53, fetchKm: 0.4, amplitude: 0.45, foam: 0, breakers: 0, caustics: 0.3 },
 } satisfies import('./contracts.ts').MapCompositionConfig;
