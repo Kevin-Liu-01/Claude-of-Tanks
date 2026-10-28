@@ -73,9 +73,8 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
   centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // m48a5_patton §5.45 build flip (patton lane 2026-08-08): render = buildM48
-  // procedural; the CC-BY print stays the measurement reference here.
-  m48a5_patton: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // release 262: the owner's M48A5, source-world certified (second-wave-x-reference-overrides.ts)
+  m48a5_patton: SECOND_WAVE_X_REFERENCE_OVERRIDES.m48a5_patton,
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): renders =
   // buildT44/buildType59 procedurals; the CC prints stay the measurement
   // references here (userdrops7 glb() helper expansion, verbatim).

@@ -2458,9 +2458,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercRoofRig.selftest.mjs',
     'src/vehicles/profiles/leclercGunHousingRig.selftest.mjs',
     'src/vehicles/profiles/carro45tRoof.selftest.mjs',
-    'src/vehicles/profiles/pattonGeometryContinuity.selftest.mjs',
-    'src/vehicles/profiles/pattonLowTurrets.selftest.mjs',
-    'src/vehicles/profiles/m48RoofSeating.selftest.mjs',
+    // release 262: the M46, M47 and M48A5 rebuilt as measured castings (profiles/pattonCast.ts) replace the old
+    // Patton continuity, low-turret and M48 roof-seating receipts
+    'src/vehicles/profiles/pattonCastProportions.selftest.mjs',
+    'src/vehicles/profiles/pattonGunClearance.selftest.mjs',
     'src/vehicles/profiles/m60a2Starship.selftest.mjs',
     'src/vehicles/profiles/sheridan.selftest.mjs',
     'src/vehicles/profiles/sheridanTtsAttachmentSeats.selftest.mjs',

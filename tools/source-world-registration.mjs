@@ -168,6 +168,14 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, {
     sha256: study.oracleSha256, fused: true, turret: [...study.turret], gun: [...study.gun],
   }])),
+  // M48A5 (release 262): the owner-supplied ater.studio model ("use this patton for the m48"), raw sha256 a7c37097...89c7fc,
+  // baked by source-x-oracle (axes -x, y, -z; scale 1; no translation). Turret: the Turret_01_4 node's origin. Gun: the
+  // gun_01_Shape_6 node's station (z 1.7616) on the tube's measured bore axis (y 1.9215; the node origin itself sits
+  // 11 cm over the bore at the shield's face). Separate hull, turret and gun meshes (Object_14 / 12 / 16).
+  m48a5_patton: {
+    sha256:'b54aff317407b292bd4d352a3d60ea0531a36bfbc3c21c698a9ba12ebb495285',
+    turret:[-.001963,1.638327,.577502], gun:[0,1.9215,1.761582],
+  },
   kurganets25: {
     sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
     fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],

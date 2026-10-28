@@ -1979,44 +1979,19 @@
    "hostSweep": []
   },
   "m46_patton": {
-   "inputHash": "5324a05460fa6e28",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@t26CastTurretStage2@profiles/patton.ts",
-     "source": "fitting",
-     "frame": "turret",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.168,
-      "gap": 0.832,
-      "air": 0,
-      "hidden": 0.005,
-      "sunkMaxM": 0.013,
-      "sweepM": 0,
-      "traverseM": 0,
-      "exposure": 0.956,
-      "host": "turret<t26CastTurretStage1@profiles/patton.ts:1587>"
-     }
-    }
-   ],
+   "inputHash": "39784298a81781cc",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m47_patton": {
-   "inputHash": "b06680df8d115c6a",
+   "inputHash": "19937e5a56bf1dec",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m48a5_patton": {
-   "inputHash": "31d6a56f572f43c6",
+   "inputHash": "e1d560787a04718a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

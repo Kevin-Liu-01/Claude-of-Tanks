@@ -165,4 +165,12 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     gunPivot: [.018886, 1.8791055, 1.998880],
     componentMasks: true, directGunComponentMasks: true,
   } },
+  // Release 262: the owner-supplied M48A5 (docs/references/tanks/m48a5_patton.md), source-world certified; its hull,
+  // turret and gun are separate source meshes.
+  m48a5_patton: { source: 'glb', qualityBar: 'exemplar', glb: {
+    path: '/models/community-candidates/m48a5_patton_x_source.glb',
+    turretNode: '^Object_12$', gunNode: '^Object_16$',
+    autoPivot: true, pivot: [-.001963, 1.638327, .577502], gunPivot: [0, 1.9215, 1.761582],
+    componentMasks: true, directGunComponentMasks: true,
+  } },
 } as const;
