@@ -180,6 +180,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
+    // release 262: the fourth batch's Leopard 2A3 on the same hull: the 2A3's combat data, the shared construction, its gun
+    // clear of its hull at its published stops
     'src/vehicles/profiles/leopard2a3B4.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
