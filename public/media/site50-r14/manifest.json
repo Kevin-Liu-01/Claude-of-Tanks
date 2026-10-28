@@ -2685,10 +2685,10 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 95897,
-   "sha256": "8e7247122e9309b38c696f9b5e6790c4df8c1441b82b308328cd77fa26a9a45e",
+   "bytes": 96590,
+   "sha256": "231028820ca731f39017cc2a47a0e302d6e86e01260619924e2c42142556ae0d",
    "source": null,
-   "vehicles": 185
+   "vehicles": 186
   },
   {
    "path": "media/site50-r14/fleet/k1a1_x.jpg",
@@ -5819,6 +5819,29 @@
    "vehicle": "ztz99a2"
   },
   {
+   "path": "media/site50-r14/fleet/type10_dozer.webm",
+   "bytes": 410194,
+   "sha256": "47d9d512b27c4c7d7671a1ace6bab03da39903f531d3cf360829cfbf64bdd376",
+   "width": 640,
+   "height": 360,
+   "fps": 30.0,
+   "seconds": 6.0,
+   "audio": null,
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.mp4",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
+   "path": "media/site50-r14/fleet/type10_dozer.jpg",
+   "bytes": 35627,
+   "sha256": "2f8740d402a8ee13a36268d6406db9ae06206aea7e8ad487a6392b9b84d64b51",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove-close-4k.png",
+   "take": "s253-type10-dozer-mangrove",
+   "round": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261",
+   "vehicle": "type10_dozer"
+  },
+  {
    "path": "media/site50-r14/frames/b01-pan-runway-thumb.webp",
    "bytes": 8346,
    "sha256": "d346848077ec2062d12f35d4d359d514e109b0ebe590e0e5b8916fa131d9386a",
@@ -8371,10 +8394,10 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 98536,
-   "sha256": "f7adae9ffbbec187f0480b5ab9cc3192873706c3442a39035f529e668394c3cd",
+   "bytes": 99088,
+   "sha256": "bb4555bca1569cdb590a20aed5189a4c3ba167e38c530383569c2582c3140cb8",
    "source": null,
-   "takes": 193
+   "takes": 194
   },
   {
    "path": "media/site50-r14/scenes/s01-main-street-push.scene.json",
@@ -9533,6 +9556,12 @@
    "bytes": 76692,
    "sha256": "1fcfd90b5f487b6c31be8630adc70d379f07f24aed0bdbc7e2cfc2c0b03886d3",
    "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera.scene.json"
+  },
+  {
+   "path": "media/site50-r14/scenes/s253-type10-dozer-mangrove.scene.json",
+   "bytes": 77948,
+   "sha256": "c3d031063afeb7fb4adbe28c1df778b682563cf9cef7e3d9750fdcdaa3b76e3a",
+   "source": "shots/media-r5/tmp/modes-257/shots/media-r5/site50/deliver-fleet261/s253-type10-dozer-mangrove/s253-type10-dozer-mangrove.scene.json"
   },
   {
    "path": "media/site50-r14/stills/s01-main-street-push-close-thumb.webp",
