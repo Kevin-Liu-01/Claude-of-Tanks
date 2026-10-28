@@ -148,11 +148,13 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Harbor exit', 'Column from behind', 'Bay reveal'], headingDeg: 40.2,
     cast: [cast('lead', 'ajax', [-38.9, -18.4], 40.2, 22), cast('wing', 'ares_apc', [-56, -20], 40.2, 22), cast('third', 'challenger3', [-43, -35], 40.2, 22)],
     rigs: ['hero', 'rear', 'track', 'overhead'], subjects: ['lead', 'lead', 'third'], camo: 'dpm', dust: 0.3 },
+  // the north-east dunes, the low sun (azimuth 104) behind the eastern palms from the portrait's camera; the souk's
+  // route drove under its shade roof, out of every camera's sight from its third second (stills261 e)
   { id: 'oasis-sunset', title: 'Oasis sunset', description: 'Merkavas cross the oasis as the sun sets behind the palms.',
     map: 'oasis', timeOfDay: 'sunset', durationMs: 8000, category: 'environment',
-    shots: ['Dune follow', 'Palm-line portrait', 'Oasis reveal'], headingDeg: -107.8,
-    cast: [cast('lead', 'merkava4_barak', [141.4, 87.8], -107.8, 22), cast('wing', 'merkava3_baz', [158, 89], -107.8, 22)],
-    rigs: ['rear', 'hero', 'track', 'overhead'], subjects: ['lead', 'lead', 'lead'], camo: 'desert', dust: 0.6 },
+    shots: ['Dune follow', 'Palm-line portrait', 'Oasis reveal'], headingDeg: -120,
+    cast: [cast('lead', 'merkava4_barak', [224, 320], -120, 22), cast('wing', 'merkava3_baz', [236, 331.5], -120, 22)],
+    rigs: ['rear', 'hero', 'track', 'overhead'], subjects: ['lead', 'lead', 'lead'], mirror: true, camo: 'desert', dust: 0.6 },
   { id: 'orchard-column', title: 'Orchard column', description: 'Three Italian vehicles thread the orchard rows: from above, at track level, then the valley.',
     map: 'orchard', timeOfDay: 'day', durationMs: 8000, category: 'environment',
     shots: ['Over the rows', 'Between the trees', 'Valley reveal'], headingDeg: 121.1,
