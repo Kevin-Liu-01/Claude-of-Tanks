@@ -83,12 +83,19 @@ function gunCorridor(tank,leaves){
  assert.ok(minX-maxX>.025,'real side air stays open for every pitch and recoil, which transform only Y/Z');
  return minX-maxX;
 }
+// 264: the wedges turn about the turret's axis, so a hull vertex beyond their widest plan radius never comes under them at
+// any yaw (258's rear drums, aaeec60ef1, are the hull's tallest vertex now, aft of that circle): the hull is read inside it
 function continuousHullGap(tank,geometries){
  const inverse=tank.root.matrixWorld.clone().invert();let hullMax=-Infinity;
+ const axis=tank.root.getObjectByName('rig_turret').position;
+ let sweepR=0;for(const g of geometries){const p=g.attributes.position;for(let i=0;i<p.count;i++)sweepR=Math.max(sweepR,Math.hypot(p.getX(i),p.getZ(i)));}
  tank.root.getObjectByName('rig_hull').traverse(m=>{
   if(!m.isMesh||m.userData.shadowOnly||m.userData.authoredShadowProxy)return;
-  const p=m.geometry.attributes.position,matrix=inverse.clone().multiply(m.matrixWorld);
-  for(let i=0;i<p.count;i++)hullMax=Math.max(hullMax,new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix).y);
+  const p=m.geometry.attributes.position,matrix=inverse.clone().multiply(m.matrixWorld),v=new THREE.Vector3();
+  for(let i=0;i<p.count;i++){
+   v.fromBufferAttribute(p,i).applyMatrix4(matrix);
+   if(Math.hypot(v.x-axis.x,v.z-axis.z)<=sweepR)hullMax=Math.max(hullMax,v.y);
+  }
  });
  const turretY=tank.root.getObjectByName('rig_turret').position.y;
  let armorMin=Infinity;for(const g of geometries){const p=g.attributes.position;for(let i=0;i<p.count;i++)armorMin=Math.min(armorMin,p.getY(i)+turretY);}
