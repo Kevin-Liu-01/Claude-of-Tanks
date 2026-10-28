@@ -3910,16 +3910,17 @@ export const ARMOR_PAINT_ZONE_TEXELS = 8;
 export const ARMOR_PAINT_ZONE_EDGES = 6;
 
 /**
- * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, rubber, canvas,
- * wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings and the dark steel (grilles,
- * recesses, lights) by where they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
+ * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, the tyres' rubber,
+ * canvas, wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings, the dark steel
+ * (grilles, recesses, lights) and the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) by where
+ * they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
  * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
  * so a roof gun stays as bare as the main gun's barrel.
  */
 function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
-  if (role === 'fittingPaint') return 2;
+  if (role === 'fittingPaint' || role === 'hullRubber') return 2;
   if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
 }
