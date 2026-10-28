@@ -170,7 +170,9 @@ function heroBlock() {
     // the shot on screen and the reel's pause: the captions are the picture's (the poster's alt and the clips' labels name
     // the shots for assistive tech)
     + `<div class="hero__reelbar"><p class="hero__shots" aria-hidden="true">${shots}</p>`
-    + `<button class="hero__toggle" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
+    // the kit's square icon button from the first paint: its slot (home.css) is the size the reel shows it at, so the
+    // caption beside it never moves when it appears
+    + `<button class="hero__toggle ${btn('icon', '')}" type="button" data-reel-toggle hidden aria-label="${esc(text('publicPages.reel.pauseAria'))}" data-i18n-aria-label="publicPages.reel.pauseAria">`
     // the media player's own pause glyph (mediaPlayer.ts), so the reel's control and the features' are one
     + `<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="${MEDIA_PAUSE_ICON}"/></svg></button></div></div>`
     + `<ul class="hero__stats" data-datum="fleet-counts">`

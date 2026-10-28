@@ -2,7 +2,7 @@
 // SHOWCASE §5.4-5.5, BUI-F7). Proves, on the fake DOM the fleet-take receipts use: no source before the near margin;
 // play at half visible, pause below a tenth; release after ten seconds; one transfer at a time with the waiting frame
 // nearest the viewport centre next; two playing on a desktop and one on a phone; hover play after 150 ms; the pause
-// control on loops over five seconds; the AV1 → VP9 → H.264 ladder by canPlayType and MediaCapabilities; zero video
+// control on every loop that plays by itself (and a film over five seconds); the AV1 → VP9 → H.264 ladder by canPlayType and MediaCapabilities; zero video
 // sources under reduced motion and data saving; the Play hand-off; and that neither this module nor
 // responsivePicture.ts enters the game entry's boot graph.
 import assert from 'node:assert/strict';
@@ -93,7 +93,7 @@ function frameWith(rect = { top: 0, height: 360 }) {
 }
 
 // 3. One page loop: no source until near, the transfer starts in the near margin (warm), play at half visible, keep
-// playing down to a tenth, pause below it, release ten seconds later; the control pauses a loop over five seconds.
+// playing down to a tenth, pause below it, release ten seconds later; the control pauses a playing loop.
 const page = await freshModule();
 {
   const { frame, video } = frameWith();
@@ -139,13 +139,13 @@ const page = await freshModule();
   assert.equal(video.loads, loads + 1, 'and load() cancels the transfer');
   player.dispose();
   assert.equal(frame.children.length, 1, 'dispose removes the control');
-  // a short loop autoplays without a control (WCAG 2.2.2 covers motion over five seconds)
+  // a short loop shows its pause control too: it plays on past its file's end (WCAG 2.2.2 counts the motion, not the file)
   const short = frameWith();
   const brief = page.createMediaPlayer(short.video, { label, warm: true });
   brief.show({ sources: [{ src: LOOP, type: 'video/webm' }], seconds: 4 });
   dom.intersect(short.video, 0.9, true);
   assert.equal(short.video.paused, false);
-  assert.equal(short.frame.children[1].hidden, true, 'a four-second loop plays with no control');
+  assert.equal(short.frame.children[1].hidden, false, 'a four-second loop shows its pause control while it plays');
   brief.dispose();
 }
 

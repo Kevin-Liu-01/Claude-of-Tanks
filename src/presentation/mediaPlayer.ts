@@ -13,7 +13,7 @@
  * - Source ladder: AV1 (first, only where MediaCapabilities calls it smooth), then VP9, then H.264, as the markup lists
  *   them; a phone plays its phone rung, a wide screen its wide rung.
  * - Reduced motion and data saving (Save-Data, 2g/3g) never name a source by themselves: the poster stays, with a play
- *   button. Decorative loops are aria-hidden; the control names the video; a loop longer than five seconds shows its
+ *   button. Decorative loops are aria-hidden; the control names the video; a loop that plays (it runs on past its end) shows its
  *   pause control (WCAG 2.2.2).
  * - abortPageMedia() is the landing's Play hand-off: every transfer stops before the game document is requested.
  *
@@ -81,7 +81,7 @@ export interface MediaPlayerOptions {
   readonly controlParent?: HTMLElement | null;
   /** The control's classes (default: the kit's square icon button over media, MEDIA_TOGGLE_CLASS). */
   readonly controlClass?: string;
-  /** auto: shown when motion waits for the viewer or the loop runs longer than five seconds; always; none. */
+  /** auto: shown when motion waits for the viewer or a loop plays (or a film runs longer than five seconds); always; none. */
   readonly control?: 'auto' | 'always' | 'none';
   /** The element whose hover or focus plays a hover player (default: the frame). */
   readonly hoverTarget?: HTMLElement;
@@ -437,8 +437,10 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   const render = (playing: boolean): void => {
     if (!control || !glyph) return;
     const reachable = !!item && !!pick(true);
-    const seconds = item?.seconds ?? (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity);
-    // auto: a pause button on a playing loop over five seconds; a play button whenever the loop waits for the viewer
+    // a loop plays on past its file's end, so its motion lasts as long as it plays: WCAG 2.2.2 counts the motion, and a
+    // four-second loop gets its pause control as a six-second one does (the /home r1 critic: a duel with none on a tablet)
+    const seconds = video.loop ? Infinity : item?.seconds ?? (Number.isFinite(video.duration) && video.duration > 0 ? video.duration : Infinity);
+    // auto: a pause button on a playing loop or a playing film over five seconds; a play button whenever it waits for the viewer
     // (reduced motion, data saving, their own pause, a slot another loop took); nothing while it is about to start
     // by itself (off screen, or its transfer queued), so no play button flashes ahead of every loop
     const waitsForViewer = manual() || held || wanted || core.crowded || mode !== 'loop';
