@@ -10,7 +10,7 @@
   takes the build's dimensions, turret ring, trunnion and muzzle and its installed skirts as spaced armour
   (`additionalFleetSpecs.ts` `onChallenger1SuppliedBuild`), and the Mk 3's installed size (x1.10, `vehicleSizePolicy.ts`).
   The Mk 3 itself is untouched.
-- The release-262 rebuild from historical references (hull, two turrets, L11A5) became the fictional Challenger X and
+- The release-262 rebuild from historical references (hull, two turrets, L11A5) became the fictional FV4030/5 and
   X Sleek ([challenger_x.md](challenger_x.md)), whose doc keeps the references and the gap table.
 - Armour: the sourced Challenger 1 estimates below, early hull front; the Mk 3 takes the late hull front.
 - The old oracle-fitted build's history is [challenger1.md](challenger1.md).

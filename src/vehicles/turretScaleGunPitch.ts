@@ -33,8 +33,8 @@ strv81: [
   [36, 1.7], [37, 0], [89, -0.1], [97, -0.6], [100, -1], [102, -1.7], [104, -2.7], [118, -2.7], [121, 0.9],
   [122, 2], [124, 2], [125, -3.6], [129, -3.4], [130, -2.6], [133, -1], [134, -0.7], [136, -0.4], [145, 0.3],
   [146, 0.8], [147, 1], [148, 1.1], [149, 1.1], [150, 3.3], [173, 3.4], [180, 3.3]],
-  // depression 10, elevation 20; mountConflicts [] (262: the fictional Challenger X tanks on the hull rebuilt from the
-  // Challenger 1's references; its rear deck sets both curves. The real marks ride the Mk 3's supplied-file build.)
+  // depression 10, elevation 20; mountConflicts [] (262: the fictional FV4030/5 and FV4030/6 on the hull rebuilt from
+  // the Challenger 1's references; its rear deck sets both curves. The real marks ride the Mk 3's supplied-file build.)
 challenger_x: [
   [0, -10], [133, -10], [134, -9.4], [135, -7.8], [136, -6.6], [137, -6.2], [141, -6.2], [142, -5.8], [143, -5.7],
   [149, -5.3], [150, -4.8], [153, -3.8], [156, -3], [157, -2.3], [158, -1.9], [159, -1.8], [163, -1.8], [167, -2.3],

@@ -1,4 +1,4 @@
-// Challenger X Sleek turret (release 262; built as the Challenger 1 Mk 1's, the owner, 2026-10-27: "i like the new cr ur building but i want a version
+// FV4030/6 turret (release 262; built as the Challenger 1 Mk 1's, the owner, 2026-10-27: "i like the new cr ur building but i want a version
 // like the onne i told u to modify with a very sleek turret and good looking hull. so we can have annother mk"). The
 // earlier Challenger 1 design's language — the asymmetric crown (the commander's plateau high on the right, the loader's
 // roof lower on the left), cheeks swept hard back from a pointed gun nose, long raked-nose bins and a stepped bustle —

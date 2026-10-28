@@ -118,8 +118,12 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   chieftain3: { displayName: 'Chieftain Mk 3' },
   challenger1_mk1: { displayName: 'Challenger 1 Mk 1' },
   challenger1_mk2: { displayName: 'Challenger 1 Mk 2' },
-  challenger_x: { displayName: 'Challenger X' },
-  challenger_x_sleek: { displayName: 'Challenger X Sleek' },
+  // The fictional Challenger 1 developments take the numbers after the Challenger 1's FV4030/4 (the Shir 1 was /2, the
+  // Shir 2 /3); no real vehicle carries FV4030/5 or /6 (the owner, 2026-10-28: "proper numerical or fv designations").
+  challenger_x: { displayName: 'FV4030/5', searchAliases: ['Challenger X', 'FV 4030/5', 'Challenger 1 development'] },
+  challenger_x_sleek: {
+    displayName: 'FV4030/6', searchAliases: ['Challenger X Sleek', 'FV 4030/6', 'Challenger 1 development'],
+  },
   fv4034: { displayName: 'FV4034', searchAliases: ['Challenger predecessor', 'FV 4034'] },
   challenger2e: { displayName: 'Challenger 2E', searchAliases: ['Enhanced Challenger 2', 'CR2E'] },
   ua_challenger2: {

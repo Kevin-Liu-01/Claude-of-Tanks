@@ -1,12 +1,12 @@
-// Challenger X and Challenger X Sleek — release 262, fictional tanks on a hull rebuilt from the Challenger 1's historical
+// FV4030/5 and FV4030/6 — release 262, fictional tanks on a hull rebuilt from the Challenger 1's historical
 // references (docs/references/tanks/challenger_x.md). The rebuild began as the Challenger 1 Mk 1 / Mk 2 / Granby
 // (owner 2026-10-27: "based on proper historical referrences so they will no longer look so chungus"); the owner then
 // ruled the supplied-file Mk 3's turret the real one ("that turret is what it is actually like, and we should just use
 // the weird turrets we invented to make nnew tanks like ... X variants", 2026-10-28), so the real marks use that build
 // (challenger1X.ts) and these turrets carry new tanks. Hull, running gear and L11A5 keep the Challenger 1's published
 // dimensions: hull 8.33 m, overall 11.55 m, 3.52 m over the skirts, six Hydrogas road wheels a side, rear drive. The
-// Challenger X carries the wide wedge turret (challenger1HistoricTurret.ts) and an applique kit after the Op Granby
-// fit (side cassettes, nose package, rear drums); the Challenger X Sleek carries the sleek turret
+// FV4030/5 carries the wide wedge turret (challenger1HistoricTurret.ts) and an applique kit after the Op Granby
+// fit (side cassettes, nose package, rear drums); the FV4030/6 carries the sleek turret
 // (challenger1SleekTurret.ts) on the plain hull.
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
@@ -131,7 +131,7 @@ function skirts(P: TankBuilderPort, side: number): void {
   for (const z of [-2.70, -1.75, -.80, .15, 1.10, 2.05, 2.90]) P.addEquipment('hullDark', box(.016, .05, .05), side * (xo + .006), SKIRT_TOP - .04, z);
 }
 
-// The Challenger X's applique kit after the Op Granby fit: bolted cassettes over the skirts, the nose package and two fuel drums.
+// The FV4030/5's applique kit after the Op Granby fit: bolted cassettes over the skirts, the nose package and two fuel drums.
 function granbyKit(P: TankBuilderPort): void {
   const { innerX: xi, outerX: xo, low: lo, high: hi, rear, front } = CR1_GRANBY_APPLIQUE;
   for (const side of [-1, 1]) {

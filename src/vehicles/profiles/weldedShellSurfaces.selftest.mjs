@@ -67,7 +67,7 @@ const targets={
   // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build
   challenger1_mk2:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
   challenger1_mk1:{expected:5,select:p=>(p.bucket==='turret'&&p.site.includes('at body (')&&p.site.includes('challenger1XSuppliedTurret.ts'))||(p.bucket==='hull'&&p.site.includes('at sponson (')&&p.site.includes('challenger1XSuppliedHull.ts')),sectionContour:p=>p.bucket==='hull'?7:p.part.size.z>3?6:4},
-  // release 262: the Challenger X's slab-sided body, gun ridge, two sloped cheeks and the two gun-nose plates either side
+  // release 262: the FV4030/5's slab-sided body, gun ridge, two sloped cheeks and the two gun-nose plates either side
   // of the slot (challenger1HistoricTurret.ts)
   challenger_x:{expected:6,select:p=>p.bucket==='turret'&&p.site.includes('at shell (')&&p.site.includes('challenger1HistoricTurret.ts')&&p.part.geometryType==='BufferGeometry',sectionContour:p=>p.part.size.x>1.2?8:p.part.size.z>1?7:6},
   kf41_lynx:{expected:8,select:p=>(p.bucket==='hull'&&p.site.includes('buildLynxHull (')&&p.part.geometryType==='BufferGeometry'&&(p.part.vertices.length===70||(p.part.vertices.length===8&&p.part.bounds.max.z<-3)))||(p.bucket==='turret'&&((p.site.includes('buildLynxTurretArmor (')&&p.part.vertices.length===30)||p.site.includes('addLynxTurretCheek ('))),sectionContour:p=>p.part.geometryType==='ExtrudeGeometry'?null:p.bucket==='hull'?(p.part.vertices.length===70?10:4):p.part.vertices.length===30?6:5},

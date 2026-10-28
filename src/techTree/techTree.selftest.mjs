@@ -143,7 +143,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
 // (FAMILY_UPGRADES above). 262: the Challenger 1 Mk 1 at VIII on the Challenger line, lane 0, off the Chieftain Mk 5
-// beside the Mk 2; the fictional Challenger X and X Sleek (the rebuilt hull's turrets as their own tanks) at VIII, lanes 4
+// beside the Mk 2; the fictional FV4030/5 and FV4030/6 (the rebuilt hull's turrets as their own tanks) at VIII, lanes 4
 // and 5, off the Chieftain Mk 10.
 assert.equal(digest, '01296ecce5940998', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

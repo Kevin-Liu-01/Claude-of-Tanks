@@ -227,7 +227,7 @@ export const CHALLENGER_PROFILES = {
   challenger1_mk2: { build: buildChallenger1SuppliedPlain },
   challenger1_mk1: { build: buildChallenger1SuppliedPlain },
   // ... "and we should just use the weird turrets we invented to make nnew tanks like ... X variants": the fictional
-  // Challenger X (the wide wedge turret and the applique kit) and Challenger X Sleek (the sleek turret), both on the hull
+  // FV4030/5 (the wide wedge turret and the applique kit) and FV4030/6 (the sleek turret), both on the hull
   // rebuilt from the Challenger 1's references (challenger1Historic.ts).
   challenger_x: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'x') },
   challenger_x_sleek: { build: (P: TankBuilderPort) => buildChallenger1Historic(P, 'x_sleek') },

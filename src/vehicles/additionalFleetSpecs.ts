@@ -243,8 +243,8 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
   return spec;
 }
 
-/** The Challenger 1 combat row (release 262: the Mk 1, the Mk 2 and the fictional Challenger X tanks share it; a fresh
- *  object per call), on the Challenger 2's plate layout rated with the Challenger 1's public armour estimates
+/** The Challenger 1 combat row (release 262: the Mk 1, the Mk 2 and the fictional FV4030/5 and FV4030/6 share it; a
+ *  fresh object per call), on the Challenger 2's plate layout rated with the Challenger 1's public armour estimates
  *  (challenger1Armor.ts). */
 const challenger1Row = (hull: Challenger1HullFront): VariantPatch => ({
       armor: rateChallenger1Armor(copy(requireFleetSpec('challenger2').armor), hull),
@@ -287,10 +287,10 @@ const SPECS: FleetTankSpec[] = [
   // Release 262 (owner 2026-10-27, "so we can have annother mk"): the Mk 1, on the Mk 2's build and combat row.
   onChallenger1SuppliedBuild('challenger1_mk1', 'Challenger 1 Mk 1'),
   // Release 262 (owner 2026-10-28: "use the weird turrets we invented to make nnew tanks like ... X variants"): the
-  // fictional Challenger X (the wide wedge turret and an applique kit after the Op Granby fit) and Challenger X Sleek
+  // fictional FV4030/5 (the wide wedge turret and an applique kit after the Op Granby fit) and FV4030/6
   // (the sleek turret) on the hull rebuilt from the Challenger 1's references, on the Challenger 1's combat row.
-  make('challenger2', 'challenger_x', 'Challenger X', 'UK', challenger1Row('late')),
-  make('challenger2', 'challenger_x_sleek', 'Challenger X Sleek', 'UK', challenger1Row('early')),
+  make('challenger2', 'challenger_x', 'FV4030/5', 'UK', challenger1Row('late')),
+  make('challenger2', 'challenger_x_sleek', 'FV4030/6', 'UK', challenger1Row('early')),
   make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },

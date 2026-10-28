@@ -1,4 +1,4 @@
-# Challenger X and Challenger X Sleek (`challenger_x`, `challenger_x_sleek`) — release 262, fictional
+# FV4030/5 and FV4030/6 (`challenger_x`, `challenger_x_sleek`) — release 262, fictional
 
 ## Current status
 
@@ -6,10 +6,15 @@
   Challenger 1 Mk 1 and Mk 2 (and a Granby variant) from historical references; the owner then ruled (2026-10-28):
   "like the challenger 1 mk 3 that is currently there, that turret is what it is actually like, and we should just use the weird turrets we invented to make nnew tanks like action X variants or connqueror orr smthg". The real marks now ride the Mk 3's supplied-file build ([challenger1_mk2.md](challenger1_mk2.md)); the
   rebuilt hull carries these two.
-- Challenger X (`challenger_x`, the Granby id re-keyed): the wide wedge turret (round 5: main's old Mk 2 width, slope
+- Designations (owner 2026-10-28: "make the challenger x vairants have proper numerical or fv designations"): the
+  numbers after the Challenger 1's FV4030/4 in the Shir line (FV4030/2 Shir 1 / Khalid, FV4030/3 Shir 2). Neither
+  FV4030/5 nor FV4030/6 belongs to a real vehicle (Wikipedia's list of FV series vehicles; no source found for
+  either). The ids stay `challenger_x` and `challenger_x_sleek`; the names "Challenger X" and "Challenger X Sleek" stay
+  as search aliases.
+- FV4030/5 (`challenger_x`, the Granby id re-keyed): the wide wedge turret (round 5: main's old Mk 2 width, slope
   and side stowage on the rebuild) and an applique kit after the Op Granby fit (side cassettes, nose blocks, rear drums).
   The Challenger 1's combat row with the late hull front; tier VIII, the Challenger line's lane 4 off the Chieftain Mk 10.
-- Challenger X Sleek (`challenger_x_sleek`): the sleek turret on the plain rebuilt hull (owner 2026-10-27: "a very sleek
+- FV4030/6 (`challenger_x_sleek`): the sleek turret on the plain rebuilt hull (owner 2026-10-27: "a very sleek
   turret and good looking hull"). The Challenger 1's combat row with the early hull front; tier VIII, lane 5 off the
   Chieftain Mk 10.
 - Implementation: `src/vehicles/profiles/challenger1Historic.ts` (marks `'x'` and `'x_sleek'`), `challenger1HistoricTurret.ts`,
@@ -30,10 +35,10 @@
   nose plates, the rear wall is undercut 25 cm, and the bustle is narrowed to 1.1 m with a basket hung off it. TOGS is a
   flat box inside the right cheek line, 9 cm over the roof, its front raked 55 degrees (round 4, a blind critic against
   the photos and the earlier build).
-- It shares the gun nose, slot, drum shield, canvas boot and L11A5 with the Challenger X (`addChallenger1GunNose`,
+- It shares the gun nose, slot, drum shield, canvas boot and L11A5 with the FV4030/5 (`addChallenger1GunNose`,
   `addChallenger1Gun`), so the gun-port receipt and the gun rig hold the same way.
 
-## The Challenger X's applique kit (after the Op Granby fit)
+## The FV4030/5's applique kit (after the Op Granby fit)
 
 Sources (S1–S7 below; the Op Granby notes from en/fr/pl Wikipedia, 1420kh.co.uk, the QRH museum): the Mk 1,
 Mk 2 and Mk 3 share the outer hull and turret; the marks differ internally (TOGS fitted from the Mk 2, armoured charge

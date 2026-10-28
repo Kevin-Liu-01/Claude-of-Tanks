@@ -85577,14 +85577,17 @@
     },
     "challenger_x": {
       "id": "challenger_x",
-      "name": "Challenger X",
+      "name": "FV4030/5",
       "label": {
         "id": "challenger_x",
-        "displayName": "Challenger X",
-        "shortName": "Challenger X",
+        "displayName": "FV4030/5",
+        "shortName": "FV4030/5",
         "searchAliases": [
-          "Challenger X",
-          "challenger_x"
+          "FV4030/5",
+          "challenger_x",
+          "challenger x",
+          "FV 4030/5",
+          "Challenger 1 development"
         ],
         "noteKey": null
       },
@@ -86803,7 +86806,7 @@
         ]
       },
       "geometryHash": "934da0b4",
-      "metadataHash": "9fabe17e",
+      "metadataHash": "6385c9b3",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0836
@@ -86949,14 +86952,17 @@
     },
     "challenger_x_sleek": {
       "id": "challenger_x_sleek",
-      "name": "Challenger X Sleek",
+      "name": "FV4030/6",
       "label": {
         "id": "challenger_x_sleek",
-        "displayName": "Challenger X Sleek",
-        "shortName": "Challenger X Sleek",
+        "displayName": "FV4030/6",
+        "shortName": "FV4030/6",
         "searchAliases": [
-          "Challenger X Sleek",
-          "challenger_x_sleek"
+          "FV4030/6",
+          "challenger_x_sleek",
+          "challenger x sleek",
+          "FV 4030/6",
+          "Challenger 1 development"
         ],
         "noteKey": null
       },
@@ -88163,7 +88169,7 @@
         ]
       },
       "geometryHash": "402b4a6f",
-      "metadataHash": "d6f83f92",
+      "metadataHash": "f27df486",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0085

@@ -1,4 +1,4 @@
-// Challenger X turret and the Challenger 1's L11A5 (release 262; first built for the Challenger 1 Mk 2, then a fictional
+// FV4030/5 turret and the Challenger 1's L11A5 (release 262; first built for the Challenger 1 Mk 2, then a fictional
 // tank of its own, owner 2026-10-28). The turret (round 5; the owner: "the old challengerr 1 mk 2 has the better turret
 // shape though, that is wider, very sloped, good things on side. combine ur new and the old") is main's wide wedge: a
 // slab-sided box 2.96 m wide with a long bustle, and ahead of the 0.60 m station two broad cheek plates falling 20

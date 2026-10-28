@@ -53,10 +53,10 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
     .map((island) => island.parts.map((part) => part.bucket)), [],
     `${id}: every flap, hanger and mudguard plate reaches the hull`);
 }
-// Challenger 1: the census places the bucket parts where their meshes render. The Challenger X turrets stand whole on
-// their castings; the Mk 1 and Mk 2 carry the Mk 3's turret (challenger1XSupplied.ts), so the plain fit floats nothing the
-// Mk 3 does not, and the Mk 3 keeps at most its two known gaps (a roof fitting on the right, 2 cm; a fitting on the gun
-// nose, 1.6 cm).
+// Challenger 1: the census places the bucket parts where their meshes render. The FV4030/5 and FV4030/6 turrets stand
+// whole on their castings; the Mk 1 and Mk 2 carry the Mk 3's turret (challenger1XSupplied.ts), so the plain fit floats
+// nothing the Mk 3 does not, and the Mk 3 keeps at most its two known gaps (a roof fitting on the right, 2 cm; a
+// fitting on the gun nose, 1.6 cm).
 {
   const floating = (id) => bodyIslands(collectStock(id).parts, 'turret').filter((island) => (island.gapM ?? 1) >= 0.015)
     .map((island) => island.min.map((v) => v.toFixed(2)).join());
