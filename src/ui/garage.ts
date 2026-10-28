@@ -281,7 +281,8 @@ function holdGridHeight(grid: HTMLElement, fit: (grid: HTMLElement) => void): vo
   grid.style.minHeight = `${Math.ceil(Math.max(floor, grid.getBoundingClientRect().height))}px`;
 }
 /** How far a fitted sheet's rows may give (their tiles' padding) to bring one more row in, or grow to fill the room. */
-const FIT_SHRINK_PX = 8;
+// (10: v261c's zh 844 x 390 sheet missed its second row by 8.4 px; a tile's 15 px of padding keeps 2 to 3 px a side)
+const FIT_SHRINK_PX = 10;
 const FIT_STRETCH_PX = 36;
 /**
  * `peek` false ends the grid on its last whole row, its scrollbar the cue that more rows wait (the equipment picker: its
