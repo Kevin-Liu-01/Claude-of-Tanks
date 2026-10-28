@@ -22,6 +22,16 @@
 - Receipts: the gun-port receipt (`challengerVickersGunPort.selftest.mjs`) holds the tube in its mantlet over the whole
   pitch range; the depression curve and the release chain are in the lane report.
 
+### Armour and fairness (262)
+
+- Sources: Wikipedia, "Vickers MBT", infobox. Gun mantlet 80 mm, turret front 60 mm, glacis 60 mm, lower hull front
+  80 mm. The spec's mantlet is 340 mm KE, from the Chieftain Mk 9 donor, so the sources do not put it thicker and
+  there is no fidelity fix.
+- Fairness: tier II strength 0.45 before the upgrade, 0.07 after. The rebuilt cast mantlet's flat face meets the range's
+  centre-mass rounds square at its nominal 340, where the earlier mantlet's curved face read 363-814. Main vetoed a
+  balance lever: the 262 gun-face hit-model fix changes how every mantlet is read. The drop is logged for progression's
+  post-fix table.
+
 ## Historical references (collected for this lane)
 
 | Ref | What | Licence |

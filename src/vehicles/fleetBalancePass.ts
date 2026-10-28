@@ -419,10 +419,6 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
 export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
   for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
-  // Tier II, 262 (the Vickers Mk 1 upgrade): its rebuilt cast mantlet's flat face meets the range's centre-mass rounds
-  // square at its nominal 340 mm, where the earlier mantlet's curved face read 363-814 mm; x1.45 holds its tier II
-  // strength (0.45 before the rebuild, 0.48 after; it read 0.07 without this).
-  mantlet(registry, 'vickers_mk1', 1.45);
   for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;

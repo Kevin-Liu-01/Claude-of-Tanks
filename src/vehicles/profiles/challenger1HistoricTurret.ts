@@ -47,6 +47,14 @@ const BODY: readonly TurretStation[] = [
  *  to the slot at its apex, flat underneath over the chin. */
 const NOSE: readonly TurretStation[] = [[2.06, .70, 1.72, 2.33], [2.50, .40, 1.70, 2.24]];
 const SLOT = .25;
+/** The body's roof height at a station (linear between BODY stations), for fittings seated on the sloping roof. */
+function roofAt(z: number): number {
+  for (let i = 1; i < BODY.length; i++) {
+    const [z0, , , h0] = BODY[i - 1], [z1, , , h1] = BODY[i];
+    if (z <= z1) return h0 + (h1 - h0) * Math.max(0, (z - z0) / (z1 - z0));
+  }
+  return BODY[BODY.length - 1][3];
+}
 
 function shell(P: TankBuilderPort): void {
   P.add('turret', local(sectionSolid(BODY.map(([z, w, lo, hi]) => ({ z, ring: turretRing(w, lo, hi) })), { sideQuadDiagonal: 'convex' })));
@@ -88,16 +96,16 @@ function stowage(P: TankBuilderPort): void {
   bin(P, 1.365, 2.12, -.86, .17, .52, 1.12, 1);
   // The bustle bin hung across the back at roof height on two hanger arms, lidded, with a jerrycan in a frame holder at
   // each end; nothing stands over the roof.
-  const z0 = -1.72, z1 = -2.10, zc = (z0 + z1) / 2;
+  const z0 = -1.69, z1 = -2.10, zc = (z0 + z1) / 2;
   eq(P, box(1.84, .40, z0 - z1), 0, 2.19, zc);
   eq(P, box(1.86, .022, z0 - z1 + .02), 0, 2.40, zc - .005);
   eq(P, cylX(.011, 1.76, 8), 0, 2.41, z0 - .015, 'turretDark');
   for (const x of [-.62, 0, .62]) eq(P, box(.10, .07, .024), x, 2.33, z1 - .012, 'turretDark');
   for (const x of [-.70, .70]) strut(P, [x, 2.06, -1.66], [x, 1.98, z1 + .04], .022);
   for (const side of [-1, 1]) {
-    const x = side * 1.04;
-    eq(P, box(.16, .44, .34), x, 2.17, zc, 'turretCloth');
-    for (const y of [2.02, 2.34]) eq(P, box(.20, .02, .36), x, y, zc, 'turretDark');
+    const x = side * 1.01;
+    eq(P, box(.16, .44, .38), x, 2.17, zc, 'turretCloth');
+    for (const y of [2.02, 2.34]) eq(P, box(.20, .02, z0 - z1 + .01), x, y, zc, 'turretDark');
     eq(P, box(.20, .46, .02), x, 2.18, z1 - .005, 'turretDark');
   }
 }
@@ -125,8 +133,8 @@ function meshBasket(P: TankBuilderPort): void {
   const x0 = 1.29, x1 = 1.47, lo = 1.96, hi = 2.40, z0 = -.22, z1 = 1.23;
   basketBox(P, [x0, x1], [lo, hi], [z0, z1], .06, .008);
   for (const z of [z0 + .12, (z0 + z1) / 2, z1 - .12]) strut(P, [1.27, 1.93, z], [x1, lo - .015, z], .018);
-  eq(P, box(.13, .26, .90), 1.38, lo + .15, .40, 'turretCloth');
-  eq(P, box(.13, .18, .30), 1.38, lo + .11, -.02, 'turretCloth');
+  eq(P, box(.13, .26, .90), 1.355, lo + .13, .40, 'turretCloth');
+  eq(P, box(.13, .18, .30), 1.355, lo + .09, -.02, 'turretCloth');
 }
 
 function togsBarbette(P: TankBuilderPort): void {
@@ -179,12 +187,13 @@ function roofFittings(P: TankBuilderPort): void {
   for (let i = 0; i < 5; i++) eq(P, box(.50, .012, .03), .62, roof + .123, -1.68 + i * .09, 'turretDark');
   eq(P, cylY(.09, .10, .06, 14), -.10, roof + .03, -1.30);
   // Aerial bases at the rear corners and lifting eyes on the roof edge.
-  for (const [x, z] of [[-.92, -1.62], [.95, -1.10]] as const) {
-    eq(P, cylY(.05, .06, .09, 12), x, roof + .045, z);
-    eq(P, cylY(.009, .012, 1.9, 6), x, roof + 1.04, z, 'turretDark');
+  for (const [x, z] of [[-.92, -1.25], [.95, -1.10]] as const) {
+    eq(P, cylY(.05, .06, .09, 12), x, roofAt(z) + .045, z);
+    eq(P, cylY(.009, .012, 1.9, 6), x, roofAt(z) + 1.04, z, 'turretDark');
   }
+  // lifting eyes lying on the roof, which falls toward the nose and the bustle
   for (const [x, z] of [[-.40, 1.45], [.98, .80], [-.98, -1.55], [.98, -1.55]] as const) {
-    eq(P, torus(.045, .014, 10, 6), x, roof + .045, z, 'turretDark');
+    eq(P, torus(.045, .014, 10, 6), x, roofAt(z) + .010, z, 'turretDark');
   }
 }
 
