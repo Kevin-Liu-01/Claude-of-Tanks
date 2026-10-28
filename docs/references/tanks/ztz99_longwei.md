@@ -60,11 +60,21 @@ Combat envelope: the turret plates follow the drawn surfaces (cheek face, cheek 
 bins, bustle, roof); strengths carry release 233's values. The skirt ERA zone shrinks to the single course; the spaced
 skirt zone now runs the full length. Crew boxes follow the 99A layout.
 
-Fairness (balance range, shown-tier VI MBT peers): before (main 260) mean 0.681, 8/15 pairs inside 0.2-0.8; after mean
-0.700, 6/15 inside (c1_ariete 0.792, c1_ariete_proto_serie1 0.75, t72b3 1, t72b3_zubr 0.167, t72b3_zubr_ii 0.167,
-t72b3m_2016 0.833, t72b3m_2022 0.833, t80u 1, t80u_kursk 0.917, t80uk 1, t84 1, type96_72m_lei 0.5, type96_80_feng 0.542,
-type96b 0.333, xk2_black_panther 0.667). Stats unchanged; the move is the new combat envelope's.
+Fairness (balance range, shown-tier VI MBT peers): before (main 260) mean 0.681, 8/15 pairs inside 0.2-0.8; after
+(the final build) mean 0.561, 8/15. Stats unchanged. The arrowhead's raked top takes most frontal hits on the balance
+range, so its rating sets the pair outcomes: rated as the face (700 mm) the Longwei swept its tier (0.80, 3/15), at
+400 mm or less it lost it (0.35, 3/15); 560 mm (KE 490, CE 690) is the fair point. (modern2Specs.generated.ts carries
+the plates: regenerate it after any type99Armor edit.)
 
 Main gun by yaw (measured on the new hull, `tools/gun-depression-sweep.mjs --ids=ztz99_longwei`, no mount conflict): the
 full 7° except over the front quarters (the fender boxes and lamps hold it to −3.1° to −4.6° at 21-33°) and over the
 powerpack deck from 136°, where it stays 0.4-2.9° above level.
+
+Turret after the critic rounds (262, against the ZTZ-99A photographs): vertical arrowhead faces whose front-top edge
+falls from 0.62 m at the outer corner to 0.28 m at the gun throat under one planar top (the 99A's narrowing face and
+raked beak), the outer corners flush with the side modules (±1.57) and a seam at each module; the side modules' lower
+lip just over the deck rising to clear the powerpack ramp on traverse; a floor across the throat under the mantlet; the
+core 0.30 m longer with a 0.62 m basket; two three-tube smoke banks stacked on each block's outer face. Skirts reach
+the hubs with angular notches and 3 cm V-gaps; the front fender hoods are closed over the idler. Blind critic: 4 → 4 →
+5 → 5 → 6/10 PASS. Open notes (follow-ups): a turret-rear stowage drum, the lower nose corner over the idler, the rear
+sprocket behind the skirt, taller front mudguard boxes with headlights (moves the measured depression curve).

@@ -404,10 +404,13 @@ function longweiTurretPlates(): ArmorPlate[] {
         longweiCheekFace(side, LONGWEI_CHEEK_OUTER_X, LONGWEI_CHEEK_OUTER_TOP_Y),
         longweiCheekFace(side, LONGWEI_THROAT_X, LONGWEI_CHEEK_THROAT_TOP_Y)),
       { keMm: 600, ceMm: 850 }),
-      armorPlate(`turret_cheek_upper_${tag}`, 700, quad(
+      // the wedge's top plane, which takes most frontal hits at the balance range (its rake toward the throat): a little
+      // lighter than the face. 262 fairness sweep at tier VI: the face's 700 mm swept the tier (0.80, 3/15 pairs fair),
+      // 400 mm or less lost it (0.35, 3/15); 560 mm gives 0.56 with 8/15 (before the redesign 0.68, 8/15)
+      armorPlate(`turret_cheek_upper_${tag}`, 560, quad(
         top(side, LONGWEI_THROAT_X, false), top(side, LONGWEI_CHEEK_OUTER_X, false),
         top(side, LONGWEI_CHEEK_OUTER_X, true), top(side, LONGWEI_THROAT_X, true)),
-      { keMm: 600, ceMm: 850 }),
+      { keMm: 490, ceMm: 690 }),
     );
   }
   return [

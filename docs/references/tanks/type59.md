@@ -73,9 +73,8 @@ FrontSide turret showed the inside of its far wall; it is wound outward now, one
 dock's support must read the same at each). The combat calibration did not change (only the turret source hash).
 
 Fairness (balance range, `runBalanceSeries`, six seeds × both range ends, against the shown-tier I MBT peers):
-before (main 260) mean 0.257, 5/12 pairs inside 0.2-0.8; after mean 0.236, 6/12 inside (amx30 0.583, amx30b 0.417,
-amx30b2 0.083, leo1a5 0.75, m48a5_patton 0.25, m60a1 0.083, m60a3 0, merkava1b 0.25, stb1 0.333, t62_1975 0, type74
-0.083, ztz85_iii 0). The new geometry moves the combat envelope only; stats and the 262 package are unchanged.
+before (main 260) mean 0.257, 5/12 pairs inside 0.2-0.8; after (the final build) mean 0.233, 6/12 inside. The new
+geometry moves the combat envelope only; stats and the 262 package are unchanged.
 
 ---
 
@@ -401,3 +400,10 @@ scratchpad. ORCHESTRATOR NOTES: (1) icons for type59 not regenerated
 (orchestrator lane per §5.246); (2) the shared ledger.json working-tree
 diff interleaves sibling lanes' rows — type59's row update is this
 lane's; (3) delivered UNCOMMITTED-UNSTAGED per order.
+
+Blind-critic rounds (262, against the museum photographs and the owner's T-55A model): 5/10 → 6 → 6 → 6 → 6/10 PASS.
+Fixed along the way: the cast dome wound inside out (rendered see-through), track guards 6 cm lower with a turned-down
+lip, the starfish wheel as a dished disc with windows, the tube's conical root, the egg plan (front taper to the neck)
+and the oracle's pleated trumpet cover, the gunner's sight as a low round port. Open notes (follow-ups): sprocket teeth
+hidden under the track band (fleet sprocket code), loader's hatch / cupola spacing (the oracle's measured stations are
+kept), smaller fender boxes, the rear mudflap, Type 59 handrails.
