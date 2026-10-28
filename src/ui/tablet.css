@@ -14,6 +14,15 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-gbar,.cot-g
 body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-facet-toggle,.cot-car-arrow,.cot-nav :is(.cot-gear,.cot-locale-switcher,
   .cot-github)){min-width:var(--cot-control-floor);}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-car-arrow{flex-basis:var(--cot-control-floor);}
+/* (the language switch and Settings stand in 34 px wrappers: the wrappers take the floor too, so the row keeps one centre
+   line and Settings its column's edge; the iPad critic r1: 5 px low, 5 px past the readout) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-nav :is(.cot-settings-slot,.cot-locale-credit-wrap){
+  min-width:var(--cot-control-floor);height:var(--cot-control-floor);}
+/* the staging plate's picker (garage.css sets its own height over the kit's touch floor) */
+body[data-cot-input='coarse'] .cot-garage-variant-control .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
+/* with no favourites and no count shown, the nations run to the rail's end, flush with the cards under them */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-country-rail:has(>.cot-roster-fav[hidden]):has(>.cot-roster-count[hidden]) .cot-country-chips{
+  grid-column:3 / -1;}
 body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--tabs-h:calc(var(--cot-control-floor) + 2 * var(--s1));}
 /* the Deploy screen's tank card change button too, and every Deploy segment */
 body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg){--h:var(--cot-control-floor);}
@@ -36,6 +45,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{--cot-figures-h:116px;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
+  grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{width:var(--cot-control-floor);}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
   align-self:flex-end;margin-left:auto;padding-left:0;}
