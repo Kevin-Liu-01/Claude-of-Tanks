@@ -1,12 +1,13 @@
 // Merkava family marks (release 262): the measured record of each of the six marks the family builder draws, matched to
 // the owner-supplied source models (2026-10-27: "need to match the geometry of these"; Merkava Mk 1B, 2B, 2D, 3C, 3D
-// and 4B; local comparison inputs, never redistributed or loaded). The running gear, turret stations, gun, mantlet and
+// and 4B; local comparison inputs, never redistributed or loaded). The running gear, turret shell, gun, mantlet and
 // every detail part come from the source fit (merkavaFamilySource.ts); the hull's lines below are authored per chassis
 // from the same fit (its deck, engine deck, nose, belly and stern courses, the sponsons' tops and undersides), since the
 // sources' hull plates are open and carry the turret ring's and hatches' openings. Sources and gap tables:
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
-import type { MerkavaGearSpec, MerkavaHullSpec } from './merkavaFamilyHull.ts';
-import type { MerkavaBasket, TurretRing, TurretSlot } from './merkavaFamilyTurret.ts';
+import type { MerkavaFender, MerkavaGearSpec, MerkavaHullSpec } from './merkavaFamilyHull.ts';
+import type { MerkavaBasket, ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
+import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
 
@@ -16,9 +17,12 @@ export interface MerkavaMark {
   readonly id: MerkavaMarkId;
   readonly hull: MerkavaHullSpec;
   readonly gear: MerkavaGearSpec;
+  /** The front fender boxes over the sprockets as measured (the +X box); null where the source carries none. */
+  readonly fender: MerkavaFender | null;
   /** The turret ring centre in the hull frame: deck height and z. */
   readonly pivot: readonly [y: number, z: number];
-  readonly rings: readonly TurretRing[];
+  /** The turret shell's measured solids (hull frame). */
+  readonly shell: readonly ShellSolid[];
   /** The gun's slot through the turret's nose (the Mk 1 to Mk 3; the Mk 4's gun rides in its pointed housing). */
   readonly slot: TurretSlot | null;
   readonly parts: readonly SourcePart[];
@@ -32,55 +36,76 @@ export interface MerkavaMark {
 }
 
 // ---------------------------------------------------------------------------------------------- the three chassis
-// Mk 1 / Mk 2 (the Mk 1B, 2B and 2D sources share it): deck 1.68-1.71 with the raised rear course at 1.78-1.81, the
-// driver's course to 1.76, the engine deck falling from z 1.45 to 1.50 at 2.45 and stepping to the grille at 1.24-1.28,
-// the full-width brow at z 2.9-3.1 (1.58) and the upper glacis down to the nose at 1.12; belly 0.42; the stern
-// raked from (-3.32, 1.72) to (-3.5, 0.92); sponsons to +-1.865 over the track, their undersides at 1.33.
+// Each from its source's hull plate (the root's largest welded piece; its deck is open under the separate engine and
+// transmission hatches, which are measured detail parts): the deck, the glacis falling 0.28 m a metre to the front
+// plate, the lower plate steepening from 31 to 48 degrees up to it, the belly and the raked stern; the sponsons' tops
+// along the same glacis to the front fender boxes (measured per mark, MerkavaMark.fender); the nose's fittings.
+// Mk 1 / Mk 2 (the Mk 1B, 2B and 2D sources share it): deck 1.68-1.76, the glacis from (1.45, 1.74) to the front plate
+// at z 3.518 (1.165 over its +X side), the -X side's raised front plate standing 0.14 m proud from z 2.95, its inboard
+// edge running from x 0.17 to the centreline at the nose; the lower plate from the belly (0.41) at z 2.65 to 1.105 at
+// the front plate; sponsons to +-1.865 over the track, their undersides at 1.33.
 const MK12_HULL: MerkavaHullSpec = {
   top: [[-3.70, 0.86], [-3.50, 0.92], [-3.42, 1.20], [-3.32, 1.72], [-3.00, 1.78], [-2.55, 1.81], [-2.45, 1.75],
-    [-2.00, 1.71], [-1.85, 1.68], [0.35, 1.68], [0.65, 1.74], [1.30, 1.76], [1.45, 1.72], [2.00, 1.585], [2.45, 1.50],
-    [2.50, 1.28], [2.85, 1.24], [2.92, 1.48], [3.00, 1.58], [3.10, 1.48], [3.20, 1.38], [3.30, 1.34], [3.40, 1.26],
-    [3.50, 1.19], [3.60, 1.12], [3.76, 1.12]],
-  bottom: [[-3.70, 0.69], [-3.20, 0.67], [-3.00, 0.46], [-2.90, 0.42], [2.60, 0.42], [2.70, 0.44], [3.00, 0.61],
-    [3.20, 0.69], [3.35, 0.80], [3.42, 0.92], [3.76, 0.97]],
+    [-2.00, 1.71], [-1.85, 1.68], [0.35, 1.68], [0.70, 1.76], [1.20, 1.76], [1.25, 1.745], [1.45, 1.74], [3.518, 1.165]],
+  bottom: [[-3.70, 0.69], [-3.20, 0.67], [-3.00, 0.46], [-2.90, 0.41], [2.65, 0.41], [2.70, 0.438], [3.20, 0.735],
+    [3.30, 0.821], [3.40, 0.949], [3.50, 1.084], [3.518, 1.105]],
   sponsonTop: [[-3.79, 1.35], [-3.56, 1.36], [-3.52, 1.62], [-3.30, 1.73], [-2.70, 1.77], [-1.75, 1.70], [0.15, 1.69],
-    [0.45, 1.76], [0.80, 1.80], [2.20, 1.66], [2.70, 1.57], [3.05, 1.556], [3.10, 1.39], [3.30, 1.07]],
+    [0.55, 1.68], [0.70, 1.76], [1.20, 1.76], [1.45, 1.74], [2.72, 1.388]],
   sponsonUnderY: 1.33, lowerHalfWidth: 1.15, upperHalfWidth: 1.865,
-  noseTaper: [[3.40, 1.15], [3.55, 1.07], [3.60, 0.84], [3.76, 0.73]],
+  noseTaper: [[3.40, 1.15], [3.518, 1.10]],
   rearDoor: null, exhaust: [0.35, 1.85, 0.72, 1.74, 1.43, 1.62],
+  raisedPlate: {
+    top: [[2.94, 1.334], [2.95, 1.474], [3.20, 1.391], [3.35, 1.323], [3.45, 1.257], [3.518, 1.20]],
+    stepX: [[2.95, 0.17], [3.20, 0.14], [3.40, 0.06], [3.518, 0.0]],
+  },
+  nose: {
+    hook: [0.677, 0.92, 3.381, 1.171, 3.618, 3.765], lugXs: [0.22, 0.43, 0.84, 1.043], lugRun: [0.933, 3.374, 1.171, 3.554],
+    railXs: [0.61, 0.771], railRun: [3.10, 3.468], shackle: [0.914, 0.684, 0.819, 3.347],
+  },
 };
 
-// Mk 3 (the 3C and 3D sources): deck 1.69 with the raised rear course at 1.80, the driver's course to 1.79, the engine
-// deck at 1.52-1.55 from z 1.65 to 2.4, stepping to the grille at 1.23-1.28, the full-width brow at z 2.9-3.1 (1.58) and
-// the upper glacis down to the nose at 1.05; belly 0.41.
+// Mk 3 (the 3C and 3D sources): deck 1.68-1.755, the glacis from (1.55, 1.741) to the front plate at z 3.539 (1.165 over
+// its +X side), the raised front plate from z 2.95 (its edge from x 0.35 to the centreline); the lower plate from 0.405
+// at z 2.65 to 1.14; belly 0.405.
 const MK3_HULL: MerkavaHullSpec = {
   top: [[-3.70, 1.20], [-3.62, 1.64], [-3.40, 1.665], [-3.25, 1.745], [-2.95, 1.796], [-2.75, 1.79], [-2.65, 1.735],
-    [-2.00, 1.69], [-1.90, 1.66], [0.40, 1.68], [0.70, 1.75], [1.30, 1.79], [1.40, 1.74], [1.50, 1.59], [1.65, 1.545],
-    [2.40, 1.52], [2.48, 1.42], [2.52, 1.28], [2.85, 1.23], [2.92, 1.48], [3.00, 1.58], [3.10, 1.47], [3.20, 1.38],
-    [3.30, 1.30], [3.40, 1.26], [3.50, 1.20], [3.60, 1.08], [3.70, 1.05], [3.75, 1.05]],
-  bottom: [[-3.70, 0.67], [-3.30, 0.633], [-3.10, 0.426], [-2.90, 0.41], [2.60, 0.41], [2.75, 0.46], [3.00, 0.61],
-    [3.20, 0.68], [3.35, 0.80], [3.45, 0.915], [3.75, 0.92]],
-  sponsonTop: [[-3.75, 1.48], [-3.70, 1.63], [-2.95, 1.75], [-1.80, 1.695], [0.30, 1.686], [0.50, 1.73], [0.65, 1.797],
-    [0.90, 1.79], [1.45, 1.743], [1.60, 1.70], [1.85, 1.675], [2.20, 1.651], [2.65, 1.585], [2.90, 1.521], [3.05, 1.44],
-    [3.10, 1.12], [3.30, 1.06]],
+    [-2.00, 1.69], [-1.90, 1.66], [0.40, 1.68], [0.70, 1.755], [1.20, 1.755], [1.25, 1.739], [1.55, 1.741], [2.90, 1.366],
+    [3.00, 1.30], [3.40, 1.20], [3.539, 1.165]],
+  bottom: [[-3.70, 0.67], [-3.30, 0.633], [-3.10, 0.426], [-2.90, 0.405], [2.65, 0.405], [2.70, 0.433], [3.20, 0.730],
+    [3.30, 0.815], [3.40, 0.946], [3.50, 1.085], [3.539, 1.14]],
+  sponsonTop: [[-3.75, 1.48], [-3.70, 1.63], [-2.95, 1.75], [-1.80, 1.695], [0.30, 1.686], [0.50, 1.686], [0.70, 1.755],
+    [1.20, 1.755], [1.45, 1.738], [2.72, 1.383]],
   sponsonUnderY: 1.32, lowerHalfWidth: 1.15, upperHalfWidth: 1.865,
-  noseTaper: [[3.45, 1.12], [3.60, 1.05], [3.65, 0.73], [3.75, 0.725]],
+  noseTaper: [[3.40, 1.15], [3.539, 1.10]],
   rearDoor: [1.10, 0.60, 0.80], exhaust: [0.35, 1.85, 0.72, 1.75, 1.45, 1.62],
+  raisedPlate: {
+    top: [[2.94, 1.369], [2.95, 1.468], [3.00, 1.453], [3.20, 1.376], [3.30, 1.331], [3.40, 1.285], [3.50, 1.227], [3.539, 1.20]],
+    stepX: [[2.95, 0.35], [3.20, 0.15], [3.40, 0.05], [3.539, 0.0]],
+  },
+  nose: {
+    hook: [0.677, 0.914, 3.381, 1.162, 3.617, 3.756], lugXs: [0.228, 0.435, 0.827, 1.013], lugRun: [0.98, 3.418, 1.162, 3.576],
+    railXs: [0.612, 0.768], railRun: [3.064, 3.435], shackle: [0.875, 0.70, 0.835, 3.363],
+  },
 };
 
-// Mk 4 (the 4B source): the raised rear deck at 1.84-1.85, the deck at 1.69-1.74, the driver's course to 1.80-1.87 from
-// z 1.2 to 1.9, the glacis to 1.55 at 2.4-2.65 and the nose to 1.20 at z 4.1; belly 0.45; sponsons to +-1.915.
+// Mk 4 (the 4B source): the raised rear deck at 1.84-1.85, the deck at 1.695, the driver's course to 1.79-1.805 from
+// z 0.85 to 1.85, the deck at 1.61 to z 2.4 and the glacis from there to the front plate at z 3.986 (1.20); the lower
+// plate from the belly (0.452) at z 3.08 to 1.175; sponsons to +-1.915.
 const MK4_HULL: MerkavaHullSpec = {
   top: [[-3.80, 1.20], [-3.40, 1.76], [-3.00, 1.84], [-2.25, 1.85], [-2.00, 1.83], [-1.85, 1.78], [-1.50, 1.74],
-    [-1.45, 1.695], [0.90, 1.71], [1.20, 1.80], [1.90, 1.80], [1.95, 1.685], [2.40, 1.554], [2.65, 1.55], [2.80, 1.49],
-    [3.40, 1.33], [3.80, 1.29], [3.95, 1.213], [4.10, 1.20]],
+    [-1.45, 1.695], [0.82, 1.695], [0.86, 1.79], [1.15, 1.805], [1.85, 1.79], [1.88, 1.61], [2.40, 1.61], [2.45, 1.599],
+    [3.986, 1.20]],
   bottom: [[-3.80, 1.10], [-3.40, 1.10], [-3.25, 1.086], [-3.20, 0.85], [-3.15, 0.733], [-3.05, 0.733], [-2.85, 0.685],
-    [-2.65, 0.494], [-2.60, 0.46], [3.10, 0.45], [3.20, 0.52], [3.65, 0.814], [3.80, 0.888], [3.95, 0.98], [4.10, 0.99]],
-  sponsonTop: [[-3.80, 1.71], [-2.55, 1.84], [-2.30, 1.81], [-2.25, 1.695], [0.60, 1.695], [0.80, 1.835],
-    [1.95, 1.814], [2.40, 1.706], [2.85, 1.613], [3.00, 1.556], [3.20, 1.489], [3.25, 1.166], [3.55, 1.166], [3.75, 1.109]],
+    [-2.65, 0.494], [-2.60, 0.452], [3.08, 0.452], [3.70, 0.858], [3.80, 0.946], [3.90, 1.064], [3.986, 1.175]],
+  sponsonTop: [[-3.80, 1.71], [-2.55, 1.84], [-2.30, 1.81], [-2.25, 1.695], [0.84, 1.695], [0.88, 1.842], [1.05, 1.815],
+    [1.95, 1.815], [3.22, 1.466]],
   sponsonUnderY: 1.36, lowerHalfWidth: 1.16, upperHalfWidth: 1.915,
-  noseTaper: [[3.75, 1.16], [3.95, 1.07], [4.10, 0.70]],
-  rearDoor: [1.30, 0.60, 0.70], exhaust: null,
+  noseTaper: [[3.80, 1.16], [3.986, 1.10]],
+  rearDoor: [1.30, 0.60, 0.70], exhaust: null, raisedPlate: null,
+  nose: {
+    hook: [0.672, 1.0, 3.85, 1.20, 3.96, 4.112], lugXs: [], lugRun: [1.0, 3.85, 1.15, 3.95],
+    railXs: [], railRun: [0, 0], shackle: [0.901, 0.743, 0.878, 3.852],
+  },
 };
 
 // ---------------------------------------------------------------------------------------------- from the source fit
@@ -161,8 +186,24 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   };
 }
 
-function ringsOf(r: SourceRecord): TurretRing[] {
-  return r.turretRings.map((g) => ({ z: g.z, side: g.side.map(([x, y]) => [x, y] as const), crown: g.crown }));
+/** The shell's solids in metres (merkavaFamilySource.ts packs each solid's stations and its sections' x, y pairs in
+ *  millimetres, every section after the first as its change from the one before). */
+function shellOf(r: SourceRecord): ShellSolid[] {
+  return r.turretShell.map((g) => {
+    let acc: number[] = [];
+    const rings = g.r.map((flat, s) => {
+      acc = s === 0 ? [...flat] : acc.map((v, i) => v + flat[i]!);
+      return Array.from({ length: acc.length / 2 }, (_, i): SectionPoint => [acc[2 * i]! / 1000, acc[2 * i + 1]! / 1000]);
+    });
+    return { z: g.z.map((v) => v / 1000), rings };
+  });
+}
+
+/** The front fender box as measured (merkavaFamilySource.ts: xi, xo, z0, z1, top0, top1, bottom, side0). */
+function fenderOf(r: SourceRecord): MerkavaFender | null {
+  if (!r.fender) return null;
+  const [xi, xo, z0, z1, top0, top1, bottom, side0] = r.fender;
+  return { xi: xi!, xo: xo!, z0: z0!, z1: z1!, top0: top0!, top1: top1!, bottom: bottom!, side0: side0! };
 }
 
 /** A source part in metres (merkavaFamilySource.ts packs the centre, size and quaternion in thousandths and a loft's
@@ -174,7 +215,7 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number, ba
   const src = MERKAVA_SOURCE[id], r = src.record;
   const pivot: readonly [number, number] = [r.deck, r.pivotZ];
   return {
-    id, hull, gear: gearOf(r), pivot, rings: ringsOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
+    id, hull, gear: gearOf(r), fender: fenderOf(r), pivot, shell: shellOf(r), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id]),
     basket, roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };

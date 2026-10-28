@@ -2,7 +2,9 @@
 // and need to match the geometry of these" — the supplied Mk 1B, 2B, 2D, 3C, 3D and 4B source models). Every detail the
 // sources carry (hatches, the add-on turret packages, the skirt panels and sponson boxes, stowage, lights, smoke
 // launchers, sights) is drawn as a first-party primitive at its measured centre, size and attitude
-// (merkavaFamilySource.ts): a rounded box, or a cylinder for the round hatches. Add-on turret armour is the spec's
+// (merkavaFamilySource.ts): a rounded box, a cylinder for the round hatches, a tube along its own axis for each smoke
+// discharger (the clusters' tubes and housings measured one by one), or a plate cut to its measured outline (the side
+// skirts' panels with their wavy lower edges). Add-on turret armour is the spec's
 // removable package (destructibleCluster), its side by the part's x.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -32,14 +34,24 @@ function loftGeometry(p: SourcePart): THREE.BufferGeometry {
     .applyMatrix4(LOFT_BASES[ax]!);
 }
 
+/** A plate part's solid in its own frame: its measured outline extruded between its two faces along its axis. */
+function plateGeometry(p: SourcePart): THREE.BufferGeometry {
+  const ax = p[13]!, t0 = p[14]!, t1 = p[15]!;
+  const ring = Array.from({ length: (p.length - 16) / 2 }, (_, k): SectionPoint => [p[16 + k * 2]!, p[17 + k * 2]!]);
+  return sectionSolid([{ z: t0, ring }, { z: t1, ring }]).applyMatrix4(LOFT_BASES[ax]!);
+}
+
 /** The part's geometry in its own frame (centred, axis-aligned), oriented and placed in the owner's frame. */
 function partGeometry(p: SourcePart, offset: readonly [number, number, number], seg: number): THREE.BufferGeometry {
   const [kind, , cx, cy, cz, sx, sy, sz, qx, qy, qz, qw] = p as readonly number[] as [number, number, number, number,
     number, number, number, number, number, number, number, number];
   let g: THREE.BufferGeometry;
   if (kind === 1) g = KIT.cylY(Math.max(sx, sz) / 2, Math.max(sx, sz) / 2, sy, seg);
+  else if (kind === 3) g = markSmokeTube(KIT.cylZ(Math.max(sx, sy) / 2, sz, seg));
   else if (kind === 4) {
     try { g = loftGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
+  } else if (kind === 5) {
+    try { g = plateGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
   } else g = KIT.box(sx, sy, sz);
   q.set(qx, qy, qz, qw).normalize();
   e.setFromQuaternion(q);
@@ -86,19 +98,12 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
             frontFace(p, off, 0.004, (w, h) => KIT.box(Math.max(0.04, w * 0.7), Math.max(0.03, h * 0.6), 0.008)), 'headlight'));
         }
         break;
-      case ROLE.smoke: {
-        // the launcher block and its tubes, each with its own forward aperture
+      case ROLE.smoke:
+        // a discharger tube as measured (its muzzle marked for the launch effect) with its dark bore, or the housing
+        // round a cluster of them
         P.add('turretDetail', partGeometry(p, off, seg));
-        const cols = Math.max(1, Math.min(4, Math.round(sx / 0.11))), rows = Math.max(1, Math.min(3, Math.round(sy / 0.11)));
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const dx = (c - (cols - 1) / 2) * (sx / cols), dy = (r - (rows - 1) / 2) * (sy / rows);
-            const tube = markSmokeTube(KIT.cylZ(Math.min(0.045, sx / cols * 0.4), 0.06, 12));
-            P.add('turretDetail', frontFace(p, off, 0.02, () => KIT.xform(tube, dx, dy, 0)));
-          }
-        }
+        if (p[0] === 3) P.add('turretDark', frontFace(p, off, 0.001, (w, h) => KIT.cylZ(Math.max(w, h) * 0.36, 0.004, 12)));
         break;
-      }
       case ROLE.optic:
         P.add(onTurret ? 'turretDetail' : 'hullDetail', partGeometry(p, off, seg));
         P.add(onTurret ? 'turretGlass' : 'hullGlass',

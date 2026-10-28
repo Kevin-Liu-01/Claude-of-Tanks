@@ -1,18 +1,19 @@
-// Merkava family turrets (release 262). The cast-and-welded shell lofted through the measured stations of the mark's
-// source (merkavaFamilySource.ts: the Mk 1 and Mk 2's turret with its rounded base "ears" and narrowing nose; the Mk 3's
-// flat-sided core; the Mk 4's broad stepped turret), its ring collar, the bustle basket and its ball-and-chain curtain,
-// the working roof machine guns at their measured mounts and the whip antennas. The hatches, sights, add-on armour,
-// smoke launchers and stowage are the measured detail parts (merkavaFamilyDetails.ts). Turret frame: the ring centre at
-// deck height, +Z forward.
+// Merkava family turrets (release 262). The shell as measured from the mark's source (merkavaFamilySource.ts): flat
+// welded faces between straight crease lines, each solid lofted through the stations where its faces turn (the Mk 1 and
+// Mk 2's wedge over its flared base "ears"; the Mk 3's flat-sided core; the Mk 4's broad core under its modules); ahead of
+// the gun's slot the Mk 1 to Mk 3's two cheeks and the base under the slot's floor are their own solids. Then its ring
+// collar, the bustle basket and its ball-and-chain curtain, the working roof machine guns at their measured mounts and
+// the whip antennas. The hatches, sights, add-on armour, smoke launchers and stowage are the measured detail parts
+// (merkavaFamilyDetails.ts). Turret frame: the ring centre at deck height, +Z forward.
 import { KIT, FITTINGS } from './kit.ts';
-import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
+import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-/** A measured turret station: the shell's half-width up its side from the base course, and the roof's crown (hull frame). */
-export interface TurretRing {
-  readonly z: number;
-  readonly side: readonly (readonly [halfWidth: number, y: number])[];
-  readonly crown: number;
+/** One solid of the shell (hull frame): its stations along z and its section at each, every section with the same count
+ *  (the crease lines between its flat faces), counter-clockwise. */
+export interface ShellSolid {
+  readonly z: readonly number[];
+  readonly rings: readonly (readonly SectionPoint[])[];
 }
 
 /** The gun's slot through the shell's nose (the Mk 1 to Mk 3): from z0 (hull frame) to the nose, its half-width. */
@@ -21,55 +22,76 @@ export interface TurretSlot {
   readonly halfWidth: number;
 }
 
-/** The cast shell lofted through the measured stations, in the turret frame (pivot subtracted): up the right side, over
- *  the crown, down the left; on the Mk 1 to Mk 3 the gun's slot opens the crown from its z0 to the nose, down to just
- *  over the base course, between the two cheeks (the gun's mask rides in it); and its ring collar over the race. */
-export function buildMerkavaRingShell(P: TankBuilderPort, rings: readonly TurretRing[], pivot: readonly [number, number],
-  slot: TurretSlot | null): void {
+/** The shell's solids lofted in the turret frame (pivot subtracted), each face flat; and its ring collar over the race. */
+export function buildMerkavaTurretShell(P: TankBuilderPort, shell: readonly ShellSolid[], pivot: readonly [number, number]): void {
   const [py, pz] = pivot;
-  const sections: SolidSection[] = rings.map((r) => {
-    const side = r.side.map(([x, y]): SectionPoint => [Math.max(0.03, x), y - py]);
-    const top = side[side.length - 1]!, c = Math.max(r.crown - py, top[1] + 0.004);
-    // the crown course: five points on the line from the side's top to the crown (the same roof), or the slot's walls
-    // and floor where the slot is open; the same count everywhere, so the loft runs straight into the slot
-    const qx = Math.min(slot?.halfWidth ?? 0.25, top[0] - 0.03), at = (x: number): number => c + (top[1] - c) * (x / top[0]);
-    const open = slot !== null && r.z >= slot.z0 - 1e-6;
-    const floor = Math.min(side[0]![1] + 0.03, at(qx) - 0.05);
-    const crown: SectionPoint[] = open
-      ? [[qx, at(qx)], [qx, floor], [0, floor], [-qx, floor], [-qx, at(qx)]]
-      : [[qx, at(qx)], [qx / 2, at(qx / 2)], [0, c], [-qx / 2, at(qx / 2)], [-qx, at(qx)]];
-    const left = side.map(([x, y]): SectionPoint => [-x, y]).reverse();
-    return { z: r.z - pz, ring: [...side, ...crown, ...left] };
-  });
-  P.add('turret', sectionSolid(sections, { sideQuadDiagonal: 'convex' }));
-  // the ring collar: from the deck up into the shell's base course, round the race
-  const base = Math.min(...rings.map((r) => r.side[0]![1])) - py;
-  const collarR = Math.min(1.05, ...rings.filter((r) => Math.abs(r.z - pz) < 0.4).map((r) => r.side[0]![0] - 0.04));
-  const h = Math.max(0.06, base + 0.06);
+  for (const solid of shell) {
+    const sections = solid.z.map((z, s) => ({ z: z - pz, ring: solid.rings[s]!.map(([x, y]): SectionPoint => [x, y - py]) }));
+    P.add('turret', sectionSolid(sections, { sideQuadDiagonal: 'convex', preserveCapBoundary: true }));
+  }
+  // the ring collar: from the deck up into the shell's base course, round the race (inside the base course's corners
+  // over the stations within 0.4 m of the ring centre)
+  let base = Infinity, collarR = 1.05;
+  for (const solid of shell) {
+    solid.z.forEach((z, s) => {
+      const ring = solid.rings[s]!, low = Math.min(...ring.map(([, y]) => y));
+      base = Math.min(base, low);
+      if (Math.abs(z - pz) < 0.4) {
+        const half = Math.max(...ring.filter(([, y]) => y < low + 0.02).map(([x]) => Math.abs(x)));
+        collarR = Math.min(collarR, half - 0.04);
+      }
+    });
+  }
+  const h = Math.max(0.06, base - py + 0.06);
   P.add('turret', KIT.cylY(collarR, collarR + 0.02, h, P.q ? 40 : 24), 0, h / 2 - 0.02, 0);
 }
 
-/** The roof's height under (x, z) in the hull frame: the measured station's side, interpolated up to its crown. */
-export function turretRoofAt(rings: readonly TurretRing[], x: number, z: number): number {
-  let best = rings[0]!;
-  for (const r of rings) if (Math.abs(r.z - z) < Math.abs(best.z - z)) best = r;
-  const top = best.side[best.side.length - 1]!;
-  const u = Math.min(1, Math.abs(x) / Math.max(1e-6, top[0]));
-  return best.crown + (top[1] - best.crown) * u;
+/** A solid's section at z (its stations' crease lines interpolated), or null outside its stations. */
+function sectionAt(solid: ShellSolid, z: number): readonly SectionPoint[] | null {
+  const zs = solid.z;
+  if (z < zs[0]! || z > zs[zs.length - 1]!) return null;
+  let s = 0;
+  while (s + 2 < zs.length && zs[s + 1]! < z) s++;
+  const f = (z - zs[s]!) / Math.max(1e-9, zs[s + 1]! - zs[s]!), a = solid.rings[s]!, b = solid.rings[s + 1]!;
+  return a.map(([x, y], i): SectionPoint => [x + (b[i]![0] - x) * f, y + (b[i]![1] - y) * f]);
 }
 
-/** The shell's outer surface under (x, z) in the hull frame: the roof inside its top course, else the side where it
- *  crosses |x| (the highest crossing), else the base course. */
-function turretSurfaceAt(rings: readonly TurretRing[], x: number, z: number): number {
-  let best = rings[0]!;
-  for (const r of rings) if (Math.abs(r.z - z) < Math.abs(best.z - z)) best = r;
-  const side = best.side, ax = Math.abs(x);
-  if (ax <= side[side.length - 1]![0]) return turretRoofAt([best], x, z);
-  for (let k = side.length - 1; k > 0; k--) {
-    const [h0, y0] = side[k - 1]!, [h1, y1] = side[k]!;
-    if ((ax - h0) * (ax - h1) <= 0 && Math.abs(h1 - h0) > 1e-6) return y0 + (y1 - y0) * ((ax - h0) / (h1 - h0));
+/** The shell's outer surface over (x, z) in the hull frame: the highest crossing of the sections at z with the vertical
+ *  through x, else the nearest station's highest point. */
+function turretSurfaceAt(shell: readonly ShellSolid[], x: number, z: number): number {
+  let top = -Infinity;
+  for (const solid of shell) {
+    const ring = sectionAt(solid, z);
+    if (!ring) continue;
+    ring.forEach(([x0, y0], i) => {
+      const [x1, y1] = ring[(i + 1) % ring.length]!;
+      if ((x - x0) * (x - x1) <= 0 && Math.abs(x1 - x0) > 1e-9) top = Math.max(top, y0 + (y1 - y0) * ((x - x0) / (x1 - x0)));
+    });
   }
-  return side[0]![1];
+  if (top > -Infinity) return top;
+  let best = shell[0]!, bz = Infinity;
+  for (const solid of shell) for (const sz of solid.z) if (Math.abs(sz - z) < bz) { bz = Math.abs(sz - z); best = solid; }
+  const s = best.z.reduce((k, sz, i) => (Math.abs(sz - z) < Math.abs(best.z[k]! - z) ? i : k), 0);
+  return Math.max(...best.rings[s]!.map(([, y]) => y));
+}
+
+/** A point on the shell's right flank at z (hull frame): the middle of the longest face there that looks outboard. */
+export function turretFlankAt(shell: readonly ShellSolid[], z: number): readonly [x: number, y: number] {
+  let best: readonly [number, number] = [0, 0], len = -1;
+  for (const solid of shell) {
+    const ring = sectionAt(solid, z);
+    if (!ring) continue;
+    ring.forEach(([x0, y0], i) => {
+      const [x1, y1] = ring[(i + 1) % ring.length]!, l = Math.hypot(x1 - x0, y1 - y0);
+      if (x0 > 0 && x1 > 0 && l > len && (y1 - y0) / Math.max(1e-9, l) > 0.8) { len = l; best = [(x0 + x1) / 2, (y0 + y1) / 2]; }
+    });
+  }
+  return best;
+}
+
+/** The shell's highest point (hull frame). */
+export function turretShellTop(shell: readonly ShellSolid[]): number {
+  return Math.max(...shell.flatMap((solid) => solid.rings.flatMap((ring) => ring.map(([, y]) => y))));
 }
 
 export interface MerkavaBasket {
@@ -125,7 +147,7 @@ const FLEET_MAG = Object.freeze({ rearZ: -0.308, length: 1.260 });
 
 /** The working roof machine guns at their measured mounts, scaled to the source gun's span, and the whip antennas at
  *  their measured feet and heights (the Mk 4's two short width rods stand on the hull's front corners). */
-export function buildMerkavaRoofWeapons(P: TankBuilderPort, rings: readonly TurretRing[],
+export function buildMerkavaRoofWeapons(P: TankBuilderPort, shell: readonly ShellSolid[],
   guns: readonly (readonly [number, number, number, number, number])[],
   antennas: readonly (readonly [number, number, number, number])[], pivot: readonly [number, number]): void {
   const [py, pz] = pivot;
@@ -137,7 +159,7 @@ export function buildMerkavaRoofWeapons(P: TankBuilderPort, rings: readonly Turr
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale, seed: 904, tone: 'two-tone', ammo: true,
       shield: false, ring: false, working: true, ridingCradle: true });
     mg.name = `merkavaRoofMag${i + 1}`;
-    const surface = turretSurfaceAt(rings, x, z), seat = Math.max(foot, surface);
+    const surface = turretSurfaceAt(shell, x, z), seat = Math.max(foot, surface);
     mg.position.set(x, seat - py, z0 - FLEET_MAG.rearZ * scale - pz);
     P.turretG.add(mg);
     if (seat - surface > 0.03) {

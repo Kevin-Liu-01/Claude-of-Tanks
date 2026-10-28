@@ -2,8 +2,9 @@
 // from its measured courses (merkavaFamilyMarks.ts: the deck, the engine deck and nose, the belly, the raked stern),
 // sponsons over the tracks from the lower hull's side out to their measured width, between their measured undersides
 // and tops, fenders over the track ends, the stern door, and the running gear at the source's stations: six road wheels
-// a side, the return rollers at their own heights and sizes, the front sprocket and rear idler. Skirts, sponson boxes
-// and the rest of the kit are the measured detail parts (merkavaFamilyDetails.ts). Hull frame: ground y = 0, +Z the
+// a side, the return rollers at their own heights and sizes, the front sprocket and rear idler; the front fender boxes
+// over the sprockets and the nose's hooks, brackets and rails as measured. Skirts, sponson boxes and the rest of the kit
+// are the measured detail parts (merkavaFamilyDetails.ts). Hull frame: ground y = 0, +Z the
 // nose, +X the vehicle's left.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
@@ -34,6 +35,32 @@ export interface MerkavaHullSpec {
   /** The exhaust louvre on the right hull side: its panel's z0 and z1, its vanes' first and last z and their y0 and y1
    *  (eight vertical vanes); null where the source shows none (the Mk 4's is under its side plates). */
   readonly exhaust: readonly [z0: number, z1: number, vane0: number, vane1: number, y0: number, y1: number] | null;
+  /** The raised front plate on the glacis's -X side (the Mk 1 to Mk 3): its top course from its back edge to the nose
+   *  and its inboard edge's x along z (the step runs diagonally to the nose); null where the glacis is one course. */
+  readonly raisedPlate: { readonly top: readonly HullLinePoint[]; readonly stepX: readonly HullLinePoint[] } | null;
+  readonly nose: MerkavaNoseFittings;
+}
+
+/** The nose's fittings as measured on the source's hull plates (at +X and mirrored, but for the shackle). */
+export interface MerkavaNoseFittings {
+  /** The tow hooks: x; the base bracket along the lower plate from (y0, z0) to (y1, z1); the hook forward to tipZ. */
+  readonly hook: readonly [x: number, y0: number, z0: number, y1: number, z1: number, tipZ: number];
+  /** The brackets standing on the lower plate: their x and the run they lie along it, (y0, z0) to (y1, z1). */
+  readonly lugXs: readonly number[];
+  readonly lugRun: readonly [y0: number, z0: number, y1: number, z1: number];
+  /** The paired guard rails on the glacis: their x and z run. */
+  readonly railXs: readonly number[];
+  readonly railRun: readonly [z0: number, z1: number];
+  /** The towing shackle under the +X lower plate: x, its loop's bottom and top, z. */
+  readonly shackle: readonly [x: number, y0: number, y1: number, z: number] | null;
+}
+
+/** The front fender box over a sprocket as measured (the +X box; the -X box mirrors it): its inboard and outboard x, its
+ *  z from the sponson's end to its front plate, its top plate's height at each, its side and front plates' lower edge
+ *  and the z where the side plate reaches it. */
+export interface MerkavaFender {
+  readonly xi: number; readonly xo: number; readonly z0: number; readonly z1: number;
+  readonly top0: number; readonly top1: number; readonly bottom: number; readonly side0: number;
 }
 
 export interface MerkavaGearSpec {
@@ -73,18 +100,27 @@ function stationZs(lines: readonly (readonly HullLinePoint[])[], z0: number, z1:
   return [...zs].sort((a, b) => a - b);
 }
 
-/** The central hull: the lower hull between the tracks, from the belly to the deck, lofted along its courses. */
+/** The glacis's height over (x, z): the -X side's raised front plate inboard of its step, else the top course. */
+function deckAt(spec: MerkavaHullSpec, x: number, z: number): number {
+  const r = spec.raisedPlate, top = lineAt(spec.top, z);
+  return r && z >= r.top[0]![0] && x < lineAt(r.stepX, z) ? Math.max(top, lineAt(r.top, z)) : top;
+}
+
+/** The central hull: the lower hull between the tracks, from the belly to the deck, lofted along its courses; on the
+ *  Mk 1 to Mk 3 the glacis's -X side stands on its raised front plate, stepped up along the plate's inboard edge. */
 function centralHull(spec: MerkavaHullSpec): THREE.BufferGeometry {
-  const bevel = 0.05, taper = spec.noseTaper;
+  const bevel = 0.05, taper = spec.noseTaper, raised = spec.raisedPlate;
   const z0 = Math.max(spec.top[0]![0], spec.bottom[0]![0]);
   const z1 = Math.min(spec.top[spec.top.length - 1]![0], spec.bottom[spec.bottom.length - 1]![0]);
-  const sections: SolidSection[] = stationZs([spec.top, spec.bottom, taper], z0, z1).map((z) => {
-    const top = lineAt(spec.top, z), bot = Math.min(lineAt(spec.bottom, z), top - 0.01);
+  const lines = [spec.top, spec.bottom, taper, ...(raised ? [raised.top, raised.stepX] : [])];
+  const sections: SolidSection[] = stationZs(lines, z0, z1).map((z) => {
+    const top = lineAt(spec.top, z), xs = raised ? lineAt(raised.stepX, z) : 0;
+    const high = Math.max(top, deckAt(spec, xs - 0.02, z)), bot = Math.min(lineAt(spec.bottom, z), top - 0.01);
     const hw = z >= taper[0]![0] ? Math.min(spec.lowerHalfWidth, lineAt(taper, z)) : spec.lowerHalfWidth;
     const b = Math.min(bevel, (top - bot) * 0.3, hw * 0.3);
     const ring: SectionPoint[] = [
-      [-hw + b, bot], [hw - b, bot], [hw, bot + b], [hw, top - b * 0.6], [hw - b * 0.6, top],
-      [-hw + b * 0.6, top], [-hw, top - b * 0.6], [-hw, bot + b],
+      [-hw + b, bot], [hw - b, bot], [hw, bot + b], [hw, top - b * 0.6], [hw - b * 0.6, top], [xs + 0.01, top],
+      [xs - 0.01, high], [-hw + b * 0.6, high], [-hw, high - b * 0.6], [-hw, bot + b],
     ];
     return { z, ring };
   });
@@ -122,19 +158,75 @@ function fender(spec: MerkavaHullSpec, side: 1 | -1, z0: number, z1: number): TH
   }));
 }
 
-/** Hull body: the central loft, the two sponsons and the fenders over the track ends, in 'hull'. */
-export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, gear: MerkavaGearSpec): void {
+/** A front fender box over the sprocket: its sloped top plate, front plate, outboard side plate (raked up to the top
+ *  plate's back edge) and the inboard plate's upper band; 2 cm steel. */
+function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
+  const t = 0.02, topAt = (z: number): number => f.top0 + (f.top1 - f.top0) * ((z - f.z0) / Math.max(1e-6, f.z1 - f.z0));
+  const plate = (stations: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[]): THREE.BufferGeometry =>
+    sectionSolid(stations.map(([z, x0, x1, y0, y1]) => {
+      const ring: SectionPoint[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      return { z, ring: side > 0 ? ring : mirror(ring) };
+    }));
+  return [
+    plate([[f.z0, f.xi, f.xo, f.top0 - t, f.top0], [f.z1, f.xi, f.xo, f.top1 - t, f.top1]]),
+    plate([[f.z1 - t, f.xi, f.xo, f.bottom, topAt(f.z1 - t) - t], [f.z1, f.xi, f.xo, f.bottom, f.top1 - t]]),
+    plate([[f.z0, f.xo - t, f.xo, f.top0 - 0.10, f.top0 - t], [f.side0, f.xo - t, f.xo, f.bottom, topAt(f.side0) - t],
+      [f.z1 - t, f.xo - t, f.xo, f.bottom, topAt(f.z1 - t) - t]]),
+    plate([[f.z0, f.xi, f.xi + t, f.top0 - 0.25, f.top0 - t], [f.z1 - t, f.xi, f.xi + t, Math.max(f.bottom, f.top1 - 0.25), topAt(f.z1 - t) - t]]),
+  ];
+}
+
+/** Hull body: the central loft, the two sponsons, the fenders over the track ends and the front fender boxes over the
+ *  sprockets, in 'hull'. */
+export function buildMerkavaHullBody(P: TankBuilderPort, spec: MerkavaHullSpec, gear: MerkavaGearSpec,
+  box: MerkavaFender | null): void {
   P.add('hull', centralHull(spec));
-  const [z0, z1] = sponsonRange(spec);
+  // the sponsons run on to the fender boxes, over the glacis's last shallow course
+  const [z0, zEnd] = sponsonRange(spec), z1 = box ? Math.max(zEnd, box.z0 + 0.02) : zEnd;
   const line = spec.sponsonTop, tail = line[0]![0], nose = line[line.length - 1]![0];
   for (const side of [1, -1] as const) {
     P.add('hull', sponson(spec, side, z0, z1));
-    if (z1 < nose - 0.05) P.add('hull', fender(spec, side, z1 - 0.02, nose));
+    if (!box && z1 < nose - 0.05) P.add('hull', fender(spec, side, z1 - 0.02, nose));
     if (z0 > tail + 0.05) P.add('hull', fender(spec, side, tail, z0 + 0.02));
+    if (box) for (const g of fenderBox(box, side)) P.add('hull', g);
     // the front mudflap hung under the fender's nose
-    const flapZ = nose - 0.05;
+    const flapZ = box ? box.z1 - 0.03 : nose - 0.05, flapY = box ? box.bottom - 0.10 : lineAt(line, flapZ) - 0.15;
     P.hangMudguard(`merkavaBowFlap${side > 0 ? 'L' : 'R'}`, 'hullRubber', KIT.box(gear.trackW * 0.95, 0.20, 0.012),
-      side * gear.trackX, lineAt(line, flapZ) - 0.15, flapZ);
+      side * gear.trackX, flapY, flapZ);
+  }
+}
+
+/** The nose's fittings (MerkavaNoseFittings): the tow hooks on their brackets, the brackets standing on the lower plate
+ *  with their pins, the guard rails down the glacis and the towing shackle. */
+export function buildMerkavaNose(P: TankBuilderPort, spec: MerkavaHullSpec): void {
+  const { box, cylX, torus, xform } = KIT, n = spec.nose;
+  // a bar lying along the plate from (y0, z0) to (y1, z1), standing d off it (out: +1 forward and down off the lower
+  // plate, -1 up off the glacis)
+  const along = (bucket: string, x: number, y0: number, z0: number, y1: number, z1: number, w: number, d: number, out = 1): void => {
+    const dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dy, dz), uy = dy / len, uz = dz / len;
+    P.add(bucket, box(w, len, d), x, (y0 + y1) / 2 - out * uz * d / 2, (z0 + z1) / 2 + out * uy * d / 2, Math.atan2(uz, uy), 0, 0);
+  };
+  const [hx, hy0, hz0, hy1, hz1, tipZ] = n.hook, [ly0, lz0, ly1, lz1] = n.lugRun;
+  for (const side of [1, -1]) {
+    // the tow hook: its bracket on the lower plate, the hook's body forward of the plate and its curled tip
+    along('hullDetail', side * hx, hy0, hz0, hy1, hz1, 0.10, 0.07);
+    const hy = hy1 - 0.08, len = tipZ - 0.05 - (hz1 - 0.03);
+    P.add('hullDetail', box(0.075, 0.075, len), side * hx, hy, hz1 - 0.03 + len / 2);
+    P.add('hullDetail', xform(torus(0.042, 0.02, 14, 8), 0, 0, 0, 0, 0, Math.PI / 2), side * hx, hy - 0.035, tipZ - 0.05);
+    for (const x of n.lugXs) {
+      along('hullDetail', side * x, ly0, lz0, ly1, lz1, 0.07, 0.05);
+      for (const t of [0.3, 0.85]) {
+        const y = ly0 + (ly1 - ly0) * t, z = lz0 + (lz1 - lz0) * t;
+        P.add('hullDark', cylX(0.018, 0.10, 10), side * x, y - 0.03, z + 0.03);
+      }
+    }
+    const [rz0, rz1] = n.railRun;
+    for (const x of n.railXs) along('hullDetail', side * x, deckAt(spec, side * x, rz0), rz0, deckAt(spec, side * x, rz1), rz1, 0.035, 0.05, -1);
+  }
+  if (n.shackle) {
+    const [sx, sy0, sy1, sz] = n.shackle, r = (sy1 - sy0) / 2;
+    P.add('hullDetail', box(0.19, 0.07, 0.07), sx, sy1 + 0.035, sz);
+    P.add('hullDark', xform(torus(r, 0.014, 16, 8), 0, 0, 0, Math.PI / 2, 0, 0), sx, sy0 + r, sz + 0.02);
   }
 }
 

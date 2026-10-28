@@ -10,8 +10,8 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
-import { buildMerkavaHullBody, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
-import { buildMerkavaBasket, buildMerkavaRingShell, buildMerkavaRoofWeapons } from './merkavaFamilyTurret.ts';
+import { buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
+import { buildMerkavaBasket, buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
 import { buildMerkavaSourceDetails } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
 
@@ -36,33 +36,35 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   // assembled build
   addVehicleGhillieSuit(P);
 
-  buildMerkavaHullBody(P, mark.hull, mark.gear);
+  buildMerkavaHullBody(P, mark.hull, mark.gear, mark.fender);
   yield 'merkavaHull';
   buildMerkavaRunningGear(P, mark.gear);
   yield 'merkavaRunningGear';
   buildMerkavaStern(P, mark.hull);
+  buildMerkavaNose(P, mark.hull);
   yield 'merkavaHullFittings';
 
   const [py, pz] = mark.pivot;
   P.turretG.position.set(0, py, pz);
-  buildMerkavaRingShell(P, mark.rings, mark.pivot, mark.slot);
+  buildMerkavaTurretShell(P, mark.shell, mark.pivot);
   buildMerkavaBasket(P, mark.basket, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz]);
-  buildMerkavaRoofWeapons(P, mark.rings, mark.roofGuns, mark.antennas, mark.pivot);
+  buildMerkavaRoofWeapons(P, mark.shell, mark.roofGuns, mark.antennas, mark.pivot);
   yield 'merkavaDetails';
 
   const gunReceipt = addMerkavaGun(P, mark.gun);
   yield 'merkavaGun';
 
   // the tactical number on the bustle's flank
-  const rear = mark.rings[Math.min(4, mark.rings.length - 1)]!, mid = rear.side[Math.floor(rear.side.length / 2)]!;
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [mid[0] * 0.98, mid[1] - py, rear.z - pz], Math.PI / 2);
-  P.topY = Math.max(...mark.rings.map((r) => r.crown)) - py + 0.10;
+  const flankZ = Math.min(...mark.shell.map((solid) => solid.z[0]!)) + 0.45, flank = turretFlankAt(mark.shell, flankZ);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [flank[0] * 0.98, flank[1] - py, flankZ - pz], Math.PI / 2);
+  P.topY = turretShellTop(mark.shell) - py + 0.10;
   P.hullG.userData.merkavaFamilyReceipt = Object.freeze({
-    revision: 'merkava-family-262-r3', mark: mark.id, gun: gunReceipt,
+    revision: 'merkava-family-262-r4', mark: mark.id, gun: gunReceipt,
     pivotM: Object.freeze([...mark.pivot]), roadWheelStations: mark.gear.wheelZs.length,
-    returnRollers: mark.gear.rollers.length, sourceParts: mark.parts.length, turretStations: mark.rings.length,
+    returnRollers: mark.gear.rollers.length, sourceParts: mark.parts.length,
+    turretStations: mark.shell.reduce((n, solid) => n + solid.z.length, 0),
   });
 }
 

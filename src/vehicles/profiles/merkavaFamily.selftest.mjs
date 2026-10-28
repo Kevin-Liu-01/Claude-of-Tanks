@@ -38,7 +38,7 @@ for (const id of Object.keys(GUN)) {
       const gun = root.getObjectByName('rig_gun'), recoil = root.getObjectByName('rig_recoil');
       assert.ok(hull && turret && gun && recoil, `${at}: hull, turret, gun and recoil rigs`);
       const receipt = hull.userData.merkavaFamilyReceipt;
-      assert.equal(receipt?.revision, 'merkava-family-262-r3', `${at}: the family receipt`);
+      assert.equal(receipt?.revision, 'merkava-family-262-r4', `${at}: the family receipt`);
       assert.equal(receipt.mark, id);
       const mark = MERKAVA_MARKS[id], source = MERKAVA_SOURCE[id].record;
 
