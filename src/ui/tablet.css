@@ -61,7 +61,7 @@ body[data-cot-input='coarse'] .cot-set-slider input[type=range]::-moz-range-thum
 
 /* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
    The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
-   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band after the paint
+   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
    (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). A window
    under 720 px tall (a Split View half on an iPad held wide, 601x702) keeps the phone's three figures and one row of
    nations: with six and two rows, and the acts on a row of their own, the stack rose to the bar and hid the tank. */
@@ -72,6 +72,9 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
   grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{width:var(--cot-control-floor);}
+/* (the acts follow the slots and the paint follows the acts, at its own width rather than a phone's whole row: the slots
+   and acts share the first row from 744 px, the paint the second; at 601 the acts start the paint's row; at 1032 all is one) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;flex:1 1 auto;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
   align-self:flex-end;margin-left:auto;padding-left:0;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{gap:var(--s1);}
