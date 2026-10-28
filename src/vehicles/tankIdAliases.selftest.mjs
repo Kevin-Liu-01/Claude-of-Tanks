@@ -166,8 +166,8 @@ const SEEDED = {
   '../fx/projectileTracers.ts': /SOVIET_DESIGN\.test\(tankSeedId\(String\(shooter\?\.id \?\? ''\)\)\)/,
   // Gates on the `_x` suffix and names built from an id (hit zones, ERA clusters) keep their schema-1 spelling.
   'additionalFleetSpecs.ts': /const prefix = tankSeedId\(idPrefix\);[\s\S]*merkava_\$\{tankSeedId\(id\)\}_turret_era_R/,
-  // (262: the Merkava family builder names its removable turret packages, profiles/merkavaFamilyTurret.ts)
-  'profiles/merkavaFamilyTurret.ts': /const sector = `merkava_\$\{tankSeedId\(P\.spec\.id\)\}_turret_era_/,
+  // (262: the Merkava family builder names its removable turret packages, profiles/merkavaFamilyDetails.ts)
+  'profiles/merkavaFamilyDetails.ts': /const sector = `merkava_\$\{tankSeedId\(P\.spec\.id\)\}_turret_era_/,
   'profiles/chineseFrontline.ts': /visualEraCluster\(`\$\{tankSeedId\(variant\)\}-integrated-chevron-front`/,
 };
 assert.match(readFileSync(new URL('./decorations.ts', import.meta.url), 'utf8'), /\/_x\$\/\.test\(tankSeedId\(spec\.id\)\)/,

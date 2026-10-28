@@ -13,9 +13,7 @@ import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 // These are real browser-facade builds, not replacement builders or a reduced
 // geometry/material fixture. This is CPU structural/material evidence, not GPU
 // rendering, pixel presentation, frame-time or browser performance evidence.
-// (262: the Merkava sample is the Mk 2B, whose bolted turret screens are its removable packages; the Mk 1B carried no
-// add-on turret armour and draws none since the family rebuild)
-const IDS = ['t64bv1', 't80uk', 't80bv', 't90am', 'ua_m1a2_abrams', 'merkava2b'];
+const IDS = ['t64bv1', 't80uk', 't80bv', 't90am', 'ua_m1a2_abrams', 'merkava1b'];
 const ROOT_EXCLUSIONS = new Set([
   'eraVisualBindingReceipt', // The one intentionally omitted diagnostic payload.
   'coreBuildTiming', 'decorBuildMs', 'decorYieldMs', // Measured elapsed time only.
