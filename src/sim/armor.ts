@@ -508,10 +508,44 @@ function cellInterval(index: number): CellInterval {
   return record;
 }
 
+/** What a cell's entry point meets with zone plates on: the zone's plate and, when given, a normal (NaN: the face's). */
+export interface PanelPlateHit {
+  plate: unknown;
+  nx: number;
+  ny: number;
+  nz: number;
+}
+type PanelPlateResolver = (
+  cells: readonly ArmorCollisionCell[],
+  plates: readonly ArmorPlate[] | undefined,
+  x: number, y: number, z: number,
+  nx: number, ny: number, nz: number,
+  out: PanelPlateHit,
+) => boolean;
+/**
+ * Zone plates (262, off by default): sim/armorZonePlates.ts installs its resolver here when switched on, so this module
+ * (in every boot) carries no zone code. Null: each cell face's own plate and normal, as ever.
+ */
+let panelPlateResolver: PanelPlateResolver | null = null;
+/** With zone plates, the cells a frame traces: its slices with their seams sealed (sim/armorZonePlates.ts). */
+type CellSealer = (cells: readonly ArmorCollisionCell[]) => readonly ArmorCollisionCell[];
+let cellSealer: CellSealer | null = null;
+export function setPanelPlateResolver(resolver: PanelPlateResolver | null, sealer: CellSealer | null = null): void {
+  panelPlateResolver = resolver;
+  cellSealer = resolver ? sealer : null;
+}
+/** The cells traceTank traces for a frame's collision cells: the same list, or with zone plates on, its sealed copy. */
+export function tracedCollisionCells<T extends readonly ArmorCollisionCell[] | undefined>(cells: T): T {
+  return (cellSealer && cells?.length ? cellSealer(cells) : cells) as T;
+}
+/** The zone a cell's entry point meets (scratch: the trace allocates nothing for it). */
+const _panelHit: PanelPlateHit = { plate: null, nx: 0, ny: 0, nz: 0 };
+
 function traceCollisionShell(
   cells: readonly ArmorCollisionCell[] | undefined,
   frame: FrameIndex,
   out: ArmorIntersection[],
+  plates?: readonly ArmorPlate[],
 ): void {
   if (!Array.isArray(cells) || !cells.length) return;
   _cellIntervals.length = 0;
@@ -537,17 +571,26 @@ function traceCollisionShell(
     // resolve against, so leave it to the next closed component.
     const face = first.face;
     if (!face || !face.plate) continue;
-    const n = face.normal;
+    let plate = face.plate;
+    let nx = face.normal[0], ny = face.normal[1], nz = face.normal[2];
+    // zone plates (262, flag off by default): the plate (and with plate angles, the normal) of the zone the entry is in
+    if (panelPlateResolver) {
+      const f = _fromL[frame], d = _dirL[frame];
+      if (panelPlateResolver(cells, plates, f.x + d.x * first.t, f.y + d.y * first.t, f.z + d.z * first.t, nx, ny, nz, _panelHit)) {
+        plate = _panelHit.plate as ArmorPlate;
+        if (_panelHit.nx === _panelHit.nx) { nx = _panelHit.nx; ny = _panelHit.ny; nz = _panelHit.nz; }
+      }
+    }
     const cosI = Math.min(1, Math.max(0,
-      -(_dirN[frame].x * n[0] + _dirN[frame].y * n[1] + _dirN[frame].z * n[2])));
+      -(_dirN[frame].x * nx + _dirN[frame].y * ny + _dirN[frame].z * nz)));
     out.push(finishFrameHit({
       t: first.t,
       tExit,
       kind: 'plate',
-      plate: face.plate,
+      plate,
       collisionFace: face,
       impactAngleDeg: detMath.acos(cosI) * DEG_PER_RAD,
-    }, frame, first.t, n[0], n[1], n[2]));
+    }, frame, first.t, nx, ny, nz));
   }
 }
 
@@ -1347,12 +1390,12 @@ export function traceTank(
 
   const collisionShells = armorModel.collisionShells || null;
 
-  const hullCells = collisionShells?.hull;
-  const turretCells = collisionShells?.turret;
+  const hullCells = tracedCollisionCells(collisionShells?.hull);
+  const turretCells = tracedCollisionCells(collisionShells?.turret);
   tracePlates(armorModel.hullPlates, FR_HULL, !!hullCells?.length, eraSpent, trackShapes, out);
   tracePlates(armorModel.turretPlates, FR_TURRET, !!turretCells?.length, eraSpent, trackShapes, out);
-  traceCollisionShell(hullCells, FR_HULL, out);
-  traceCollisionShell(turretCells, FR_TURRET, out);
+  traceCollisionShell(hullCells, FR_HULL, out, armorModel.hullPlates);
+  traceCollisionShell(turretCells, FR_TURRET, out, armorModel.turretPlates);
   traceExternalWeapons(armorModel.externalWeapons, out);
   if (drone) {
     tracePlates(armorModel.droneScreens?.hull, FR_HULL, false, eraSpent, null, out);

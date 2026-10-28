@@ -22,7 +22,7 @@ import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 import { armorSkinPanels } from './armorSkin.ts';
-import { zonePlates } from './armorZones.ts';
+import { zonePlates } from '../sim/armorZones.ts';
 import { ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
 
 const SAMPLE_INTERVAL_MS = 110;

@@ -904,6 +904,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/armorAimOverlay.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
+    // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
+    'src/sim/armorZonePlates.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',

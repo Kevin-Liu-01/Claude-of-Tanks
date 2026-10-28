@@ -22,6 +22,7 @@ import { stockCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { ZONE_FACING_MIN, ZONE_FACING_WEIGHT, ZONE_OUTSIDE_WEIGHT } from '../sim/armorZones.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
@@ -3909,9 +3910,9 @@ function armorPaintRole(mat: THREE.Material): boolean {
  * The scoped armour flashlight as paint (262; owner, 2026-10-27: "check how camos apply ... that camo changes colour
  * depending on where the tank part is"): every fragment of the vehicle's own armour paint takes the colour of the armour
  * zone it lies in — the authored plate (glacis, lower plate, cheek, mantlet, side, roof, rear) as combatAnatomy's
- * nearestPlate judges a cell face, per point: the plane it lies nearest, plus 0.75 m a metre outside the plate's outline
- * and 1.25 m for facing away (more than ~83° away: never), in the hull's or the turret's combat frame (the turret's where
- * the point is inside the turret's envelope). The score is linear between planes, so borders are straight. Only what is
+ * nearestPlate judges a cell face, per point (sim/armorZones.ts zoneAt, the score zone plates trace with), in the hull's
+ * or the turret's combat frame (the turret's where the point is inside the turret's envelope). The score is linear
+ * between planes, so borders are straight. Only what is
  * seen is painted: no shell over the cells, nothing hidden behind skirts or ERA. Zone borders draw as anti-aliased
  * lines where the two best scores meet.
  */
@@ -3968,13 +3969,14 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   for ( int k = apFrom; k < apTo; k++ ) {
     vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
     float apFacing = dot( apPl.xyz, apN );
-    if ( apFacing < 0.12 ) continue;
+    if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
     float apGapOut = 0.0;
     for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
       vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
       apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
     }
-    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - 0.75 * apGapOut - 1.25 * ( 1.0 - apFacing );
+    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
+      - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
     if ( apScore > apBest ) {
       apSecond = apBest;
       apBest = apScore;
