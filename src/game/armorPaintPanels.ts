@@ -196,10 +196,9 @@ function union(parent: Int32Array, a: number, b: number): void {
   if (ra !== rb) parent[ra < rb ? rb : ra] = ra < rb ? ra : rb;
 }
 
-/** Positions weld on a 0.2 mm grid (a key per cell), normals within ~2.5°. */
+/** Positions weld on a 0.2 mm grid (a key per cell). */
 const WELD_PER_M = 5000;
 const WELD_SPAN = 131072;
-const WELD_NORMAL_DOT = 0.999;
 /** A cluster whose normals all lie within ~1.8° of its first is flat: one vote at its area-weighted centre. */
 const FLAT_DOT = 0.9995;
 /** A curved cluster votes on at most this many of its triangles (an even stride). */
@@ -227,8 +226,8 @@ function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribu
   return out;
 }
 
-/** A geometry's clusters: each vertex's (`parent`, a union-find), its welded twin (`canon`: one vertex per welded corner),
- * and the triangles' corners. */
+/** A geometry's clusters: each triangle's (`parent`, a union-find over triangles), each vertex's welded twin (`canon`: one
+ * vertex per welded corner), and the triangles' corners. */
 interface Clusters {
   readonly parent: Int32Array;
   readonly canon: Int32Array;
@@ -237,42 +236,66 @@ interface Clusters {
   readonly indexed: boolean;
 }
 
-/** Each vertex's cluster: by the index, and for a soup without one (the merged buckets), by a welded position and normal;
- * a yield every SLICE_TRIANGLES triangles' worth. */
+/**
+ * The parts of a geometry: triangles joined across every edge they share (corners welded by position) where their faces
+ * turn less than a crease (CREASE_DOT), so a part is a surface its creases bound: a box's faces stay apart, a faceted
+ * dome, a bevel's run or a smooth casting holds together (264: a dome drawn flat-shaded voted facet by facet). An indexed
+ * geometry's triangles that share a vertex stay together too (one value a vertex). A yield every SLICE_TRIANGLES.
+ */
 function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, void> {
   const position = geometry.getAttribute('position');
   const index = geometry.index;
   const count = position.count;
-  const parent = new Int32Array(count), canon = new Int32Array(count);
-  for (let v = 0; v < count; v++) parent[v] = canon[v] = v;
+  const canon = new Int32Array(count);
   const triangles = Math.floor((index ? index.count : count) / 3);
+  const parent = new Int32Array(triangles);
+  for (let t = 0; t < triangles; t++) parent[t] = t;
   const corner = index ? (t: number, k: number) => index.getX(t * 3 + k) : (t: number, k: number) => t * 3 + k;
-  if (!index) {
-    const p = plain(position)!, n = plain(geometry.getAttribute('normal'));
-    const heads = new Map<number, number>();
-    const next = new Int32Array(count).fill(-1);
-    const half = WELD_SPAN / 2;
-    for (let v = 0; v < count; v++) {
-      const key = ((Math.round(p[v * 3] * WELD_PER_M) + half) * WELD_SPAN + Math.round(p[v * 3 + 1] * WELD_PER_M) + half)
-        * WELD_SPAN + Math.round(p[v * 3 + 2] * WELD_PER_M) + half;
-      const head = heads.get(key);
-      let match = -1;
-      for (let w = head ?? -1; w >= 0; w = next[w]) {
-        if (!n || n[w * 3] * n[v * 3] + n[w * 3 + 1] * n[v * 3 + 1] + n[w * 3 + 2] * n[v * 3 + 2] > WELD_NORMAL_DOT) {
-          match = w;
-          break;
-        }
-      }
-      if (match >= 0) { union(parent, match, v); canon[v] = match; }
-      else { next[v] = head ?? -1; heads.set(key, v); }
-      if (v % (SLICE_TRIANGLES * 3) === SLICE_TRIANGLES * 3 - 1) yield;
-    }
+  const p = plain(position)!;
+  // corners welded by position (0.2 mm)
+  const heads = new Map<number, number>();
+  const half = WELD_SPAN / 2;
+  for (let v = 0; v < count; v++) {
+    const key = ((Math.round(p[v * 3] * WELD_PER_M) + half) * WELD_SPAN + Math.round(p[v * 3 + 1] * WELD_PER_M) + half)
+      * WELD_SPAN + Math.round(p[v * 3 + 2] * WELD_PER_M) + half;
+    const head = heads.get(key);
+    if (head === undefined) { heads.set(key, v); canon[v] = v; } else canon[v] = head;
+    if (v % (SLICE_TRIANGLES * 3) === SLICE_TRIANGLES * 3 - 1) yield;
   }
+  // each triangle's face direction (local: a rigid frame keeps the angles)
+  const face = new Float64Array(triangles * 3);
   for (let t = 0; t < triangles; t++) {
-    const a = corner(t, 0);
-    union(parent, a, corner(t, 1));
-    union(parent, a, corner(t, 2));
-    if (t % (SLICE_TRIANGLES * 4) === SLICE_TRIANGLES * 4 - 1) yield;
+    const a = corner(t, 0) * 3, b = corner(t, 1) * 3, c = corner(t, 2) * 3;
+    const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+    const wx = p[c] - p[a], wy = p[c + 1] - p[a + 1], wz = p[c + 2] - p[a + 2];
+    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+    const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (length > 1e-18) { face[t * 3] = nx / length; face[t * 3 + 1] = ny / length; face[t * 3 + 2] = nz / length; }
+  }
+  // across each shared edge, short of a crease
+  const edges = new Map<number, number>();
+  for (let t = 0; t < triangles; t++) {
+    for (let e = 0; e < 3; e++) {
+      const a = canon[corner(t, e)], b = canon[corner(t, (e + 1) % 3)];
+      if (a === b) continue;
+      const key = a < b ? a * count + b : b * count + a;
+      const other = edges.get(key);
+      if (other === undefined) { edges.set(key, t); continue; }
+      if (face[t * 3] * face[other * 3] + face[t * 3 + 1] * face[other * 3 + 1] + face[t * 3 + 2] * face[other * 3 + 2] >= CREASE_DOT) {
+        union(parent, t, other);
+      }
+    }
+    if (t % SLICE_TRIANGLES === SLICE_TRIANGLES - 1) yield;
+  }
+  // an indexed geometry: the triangles that share a vertex, together
+  if (index) {
+    const owner = new Int32Array(count).fill(-1);
+    for (let t = 0; t < triangles; t++) {
+      for (let k = 0; k < 3; k++) {
+        const v = corner(t, k);
+        if (owner[v] < 0) owner[v] = t; else union(parent, owner[v], t);
+      }
+    }
   }
   return { parent, canon, triangles, corner, indexed: !!index };
 }
@@ -370,14 +393,14 @@ export function* bakePaintPanelSteps(
         const length = _normal.length();
         if (length > 1e-8) _normal.multiplyScalar(1 / length);
         normals[t * 3] = _normal.x; normals[t * 3 + 1] = _normal.y; normals[t * 3 + 2] = _normal.z;
-        roots[t] = find(parent, i0 / 3);
+        roots[t] = find(parent, t);
         if (spend(1)) { yield; sliceStarted = performance.now(); }
       }
-      // the triangles in cluster order (a counting sort on the root vertex)
-      const starts = new Int32Array(position.count + 1);
+      // the triangles in cluster order (a counting sort on the root triangle)
+      const starts = new Int32Array(triangles + 1);
       for (let t = 0; t < triangles; t++) starts[roots[t] + 1]++;
-      for (let v = 0; v < position.count; v++) starts[v + 1] += starts[v];
-      const order = new Int32Array(triangles), fill = starts.slice(0, position.count);
+      for (let v = 0; v < triangles; v++) starts[v + 1] += starts[v];
+      const order = new Int32Array(triangles), fill = starts.slice(0, triangles);
       for (let t = 0; t < triangles; t++) order[fill[roots[t]]++] = t;
       if (spend(triangles >> 3)) { yield; sliceStarted = performance.now(); }
       const cast = (t: number, weight: number): void => {
@@ -459,8 +482,9 @@ export function* bakePaintPanelSteps(
             if (area > topArea || (area === topArea && key > top)) { top = key; topArea = area; }
             tally[slot] = 0;
           }
-          let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
-            ? top === VOTE_BARE ? PANEL_BARE : top + 1 : 0;
+          // a piece is never baked bare here: a collar round the bore whose barrel share wins keeps the per-point score,
+          // which leaves only the barrel's cylinder bare (the round-5 critic: the ZTZ-99A's collar untinted)
+          let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top >= 0 && top < 127 ? top + 1 : 0;
           if (value === 0 && voted < SMALL_PART_M2 && top >= 0 && top < 127 && topArea >= PLURALITY * voted) value = top + 1;
           const kept = first[piece + 1] - first[piece];
           if (value !== 0) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }

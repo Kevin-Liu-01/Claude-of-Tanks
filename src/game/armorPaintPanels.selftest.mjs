@@ -103,8 +103,8 @@ function hullScene() {
   root.add(hull);
   // a dome (0.39 m²) on the glacis's top corner, across the glacis, the roof and the side
   const dome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0.85, 1.9, 0.85).toNonIndexed(), paint);
-  // a welded casting folded over the front edge: 1.6 x 0.6 m down the glacis and 1.6 x 0.6 m back over the roof, its
-  // normals shared (smooth) along the fold, so it welds as one cluster
+  // a casting folded over the front edge: 1.6 x 0.6 m down the glacis and 1.6 x 0.6 m back over the roof, its normals
+  // shared (smooth) along the fold: the fold is a crease, so it is two parts
   const fold = new THREE.BufferGeometry();
   const P = [[-0.8, 1.4, 1.02], [0.8, 1.4, 1.02], [0.8, 2.02, 1.02], [-0.8, 2.02, 1.02], [-0.8, 2.02, 0.4], [0.8, 2.02, 0.4]];
   const N = [[0, 0, 1], [0, 0, 1], [0, Math.SQRT1_2, Math.SQRT1_2], [0, Math.SQRT1_2, Math.SQRT1_2], [0, 1, 0], [0, 1, 0]];
@@ -112,18 +112,24 @@ function hullScene() {
   fold.setAttribute('position', new THREE.Float32BufferAttribute(tris.flat().flatMap((i) => P[i]), 3));
   fold.setAttribute('normal', new THREE.Float32BufferAttribute(tris.flat().flatMap((i) => N[i]), 3));
   const casting = new THREE.Mesh(fold, paint);
-  hull.add(dome, casting);
+  // the same dome drawn flat-shaded (each facet its own normals) on the other corner: still one part
+  const faceted = new THREE.SphereGeometry(0.25, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(-0.85, 1.9, 0.85).toNonIndexed();
+  faceted.computeVertexNormals();
+  const facets = new THREE.Mesh(faceted, paint);
+  hull.add(dome, casting, facets);
   root.updateMatrixWorld(true);
   measurePanelDisagreement(true);
   const stats = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, {});
   measurePanelDisagreement(false);
   const domeValues = new Set(dome.geometry.getAttribute('apZone').array);
   assert.ok(domeValues.size === 1 && [...domeValues][0] > 0, `a small dome across three zones takes one (${[...domeValues]})`);
+  const facetValues = new Set(facets.geometry.getAttribute('apZone').array);
+  assert.ok(facetValues.size === 1 && [...facetValues][0] > 0, `a flat-shaded dome, facet by facet, is one part (${[...facetValues]})`);
   const z = casting.geometry.getAttribute('apZone').array;
-  assert.ok(z[0] === z[3] && z[6] === z[9] && z[0] > 0 && z[6] > 0, 'each side of the fold is one piece');
+  assert.ok(z[0] === z[3] && z[6] === z[9] && z[0] > 0 && z[6] > 0, 'each side of the fold is one part');
   assert.equal(z[0], UPPER + 1, 'the fold\'s front: the upper glacis');
   assert.equal(z[6], ROOF + 1, 'its top: the roof');
-  assert.ok(stats.wholeParts >= 1 && stats.creaseParts >= 2, `parts by whole and by crease (${stats.wholeParts}, ${stats.creaseParts})`);
+  assert.ok(stats.wholeParts >= 1, `a part with no majority baked whole (${stats.wholeParts})`);
   assert.ok(stats.bakedArea > 0 && stats.disagreeArea > 0 && stats.disagreeArea < stats.bakedArea,
     `the dome's minority zones disagree with the per-point paint (${stats.disagreeArea.toFixed(3)} of ${stats.bakedArea.toFixed(3)} m²)`);
 }
@@ -237,4 +243,4 @@ function hullScene() {
 }
 
 restoreCanvas();
-console.log('armorPaintPanels.selftest: panels on parts\' edges, gear bare, the pose\'s parts live, shared and unpainted left out, slices = whole, the hook\'s default, a battle build\'s draws unchanged');
+console.log('armorPaintPanels.selftest: panels on parts\' edges, gear bare, parts in their own rig\'s frame, no-majority clusters by part, the disagreement measure, shared and unpainted left out, slices = whole, the hook\'s default, a battle build\'s draws unchanged');
