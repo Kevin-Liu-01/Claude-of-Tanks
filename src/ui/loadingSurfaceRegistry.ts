@@ -51,7 +51,7 @@ interface LoadingSurfaceRow {
   readonly offline?: false;
   /** A longer wait than the condition's default (ms). */
   readonly timeoutMs?: number;
-  /** Presses that return to the page at rest after the row (Escape is pressed first, three times). */
+  /** Presses that return to the page at rest after the row (Escape is pressed first, while a surface it opened stands). */
   readonly leave?: Recipes;
   /** The next row starts from this one's state: no Escape after it (a battle the next row ends). */
   readonly stays?: true;

@@ -256,12 +256,20 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
         results.push({ row: row.id, layout, condition, error: String(error?.message ?? error).slice(0, 300) });
         log(`    ${row.id}: ERROR ${String(error?.message ?? error).slice(0, 200)}`);
       }
-      // back to the page at rest for the next row: close what the row opened
-      if (!row.stays) for (let i = 0; i < 3; i++) { await page.keyboard.press('Escape').catch(() => {}); await sleep(200); }
+      // back to the page at rest for the next row: Escape while a surface the row opened stands (the stack's, or a native
+      // dialog); an Escape on the bare Garage opens Settings, which then covered every later row's presses
+      if (!row.stays) {
+        for (let i = 0; i < 4; i++) {
+          const open = await page.evaluate(() => (window.__cotSurfaces?.() ?? []).length + document.querySelectorAll('dialog[open]').length).catch(() => 0);
+          if (!open) break;
+          await page.keyboard.press('Escape').catch(() => {});
+          await sleep(250);
+        }
+      }
       if (recipe(row, 'leave')) await press(page, recipe(row, 'leave'), touch).catch(() => {});
       // the next row starts from rest: no dialog or menu still open or closing
       if (!row.stays) {
-        await page.waitForFunction(() => !document.querySelector('#cot-battle-menu.open, .cot-modal-root.is-open, dialog[open], .cot-tt, .cot-garage[data-garage-panel="equipment"]'),
+        await page.waitForFunction(() => !document.querySelector('#cot-battle-menu.open, .cot-modal-root.is-open, dialog[open], .cot-tt, .cot-settings.open, .cot-garage[data-garage-panel="equipment"]'),
           { timeout: 5000, polling: 100 }).catch(() => {});
         await sleep(600);
       }
