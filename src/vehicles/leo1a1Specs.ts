@@ -17,11 +17,11 @@ delete spec.publicVisualFallback;
 delete spec.label;
 delete spec.roster;
 // The 1A1's own depression curve, measured on its casting and the old hull (tools/gun-depression-sweep.mjs, 26 mm; no
-// mount conflict): the full -9 degrees but for the bow's width rods at 26-33 and the stern deck, exhaust and fuel cans aft
+// mount conflict): the full -9 degrees but for the bow's width rods at 26-31 and the stern deck, exhaust and fuel cans aft
 // of 149 degrees.
-spec.gunPitchByYawDeg = [[0, -9], [25, -9], [26, -8.8], [27, -7.9], [28, -7.5], [30, -7.5], [31, -7.6], [33, -9],
-  [149, -9], [154, -6.8], [155, -5.6], [158, -3.9], [159, -3.5], [164, -3.4], [165, -2.4], [166, -1.9], [169, -1.8],
-  [172, -1.8], [175, -3], [180, -3]];
+spec.gunPitchByYawDeg = [[0, -9], [25, -9], [27, -7.7], [28, -7.6], [30, -7.6], [31, -8], [32, -9], [149, -9],
+  [154, -6.8], [155, -5.6], [158, -3.9], [159, -3.5], [164, -3.4], [165, -2.5], [166, -2.1], [167, -1.8], [172, -1.8],
+  [175, -3], [180, -3]];
 stripSilhouetteDimensions(spec.dims);
 // 40.0 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.61 m over the cupola.
 Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.61 });
