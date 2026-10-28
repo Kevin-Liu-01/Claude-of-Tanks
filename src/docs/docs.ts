@@ -2,6 +2,7 @@ import { t } from '../ui/i18n.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 
 mountDocsIcons();
 
@@ -96,6 +97,8 @@ archiveOpen?.addEventListener('click', () => {
   void loadArchive().catch(() => loadFailed(loadArchive));
 });
 archiveClose?.addEventListener('click', () => archiveDialog?.close());
+// on the page's surface stack while open (Escape is the stack's)
+if (archiveDialog) dialogSurface(archiveDialog, 'docs-archive');
 archiveDialog?.addEventListener('close', stopArchiveMotion);
 archiveDialog?.addEventListener('click', (event) => {
   if (event.target === archiveDialog) archiveDialog.close();

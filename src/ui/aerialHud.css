@@ -435,6 +435,11 @@ html[data-flight=drone] .cot-touch .flight-climb:active{box-shadow:var(--ring-ac
     screen's 12 px gutter: at 8 px it stood off the plates beside it at 320x568, gauntlet r8) */
  .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)));min-width:88px}
 }
+/* (a portrait phone's switch reaches the screen's 12 px gutter, its left edge on the column the plates under it keep: at
+   its 104 px it started at 25 px at 390x844, gauntlet r19) */
+@media(pointer:coarse) and (orientation:portrait){
+ .cot-hud .cot-scope-vision{width:max(88px,calc(50% - 15vmin - 20px - env(safe-area-inset-left)))}
+}
 /* A shot report or the open combat log over the mouse seat (critic r9: under about 1200 px wide): the mirror seat left of
    the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
    seatScopeVision; the I key still cycles the view). */

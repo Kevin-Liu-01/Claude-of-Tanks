@@ -4,6 +4,7 @@ import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
@@ -87,6 +88,7 @@ function ensureLightbox(): HTMLDialogElement {
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.className = 'media-lightbox';
+  dialogSurface(dialog, 'media-archive');
   dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="${t('mediaArchive.lightbox.closeAria')}">${icon('close', { size: 20 })}</button></figcaption></figure>`;
   const closeButton = dialog.querySelector<HTMLButtonElement>('button');
   if (!closeButton) throw new Error('media lightbox close control is unavailable');

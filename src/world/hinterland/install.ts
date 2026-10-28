@@ -18,6 +18,19 @@ interface EngineLike {
 
 /** The Hinterland's group: the land, then (HL-6) the outland's buildings and trees. */
 export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown, ground: unknown = null): THREE.Object3D {
+  const steps = createHinterlandObjectSteps(wire, engineCtx, ground);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/**
+ * createHinterlandObject with a checkpoint after its surface and after its land (260, the rooms census: the install was
+ * one 35 ms step of the world build); the same objects.
+ */
+export function* createHinterlandObjectSteps(
+  wire: HinterlandWire, engineCtx: unknown, ground: unknown = null,
+): Generator<void, THREE.Object3D, void> {
   const engine = (engineCtx ?? {}) as EngineLike;
   const group = new THREE.Group();
   group.name = 'hinterland';
@@ -29,6 +42,7 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown,
   // (a map whose pair the carried ground lost keeps the near band's own atlas: wire.nearGround, spec.ts)
   const battlefieldGround = wire.nearGround === false ? null : hinterlandGroundFrom(ground);
   const surface = createHinterlandSurface(wire, { lite, ground: battlefieldGround });
+  yield;
   // (one air for the land and the outland: their far haze ends in the dome's own sky)
   const air = createHinterlandAir(wire.air ?? 1);
   const land = createHinterlandMesh({
@@ -42,6 +56,7 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown,
     patchQuads: lite ? 16 : 32,
   });
   group.add(land.mesh);
+  yield;
   const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air, battlefieldGround ? hinterlandRoadColor(battlefieldGround) : null);
   if (outland) group.add(outland);
   group.userData.hinterlandLand = land;
