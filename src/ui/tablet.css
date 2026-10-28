@@ -1,0 +1,70 @@
+/* The tablet layer (owner 2026-10-27: "the base ipad view is really really bad ... fix all ui on ipad"). Copyright © 2026
+   Kevin B. Liu.
+   A touch screen held wide with room for the docked layout (an iPad on its side, a Stage Manager window) keeps the
+   persistent panels (responsiveLayout.ts roomyTouch) instead of the phone's sideways layout stretched over it. This layer
+   sets the docked layout's controls at the touch floor (--cot-control-floor, 44 px), and gives a tablet held upright the
+   room the phone's stack leaves; every measure, plate and primitive stays the layouts' own. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+/* ---- docked on a touch screen: the bar's destinations, the language, the repository, Settings, the readout's compare
+   chip and the fleet's search, filter and arrows each a full touch target; the station tabs too (a short window's row
+   is 48 px, its tabs 40), and every drawer's close ---- */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-gbar,.cot-garage .cot-compare-toggle,.cot-roster-search,
+  .cot-facet-toggle,.cot-nav :is(.cot-gear,.cot-locale-switcher,.cot-github)){height:var(--cot-control-floor);min-height:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-facet-toggle,.cot-car-arrow,.cot-nav :is(.cot-gear,.cot-locale-switcher,
+  .cot-github)){min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-car-arrow{flex-basis:var(--cot-control-floor);}
+/* (the language switch and Settings stand in 34 px wrappers: the wrappers take the floor too, so the row keeps one centre
+   line and Settings its column's edge; the iPad critic r1: 5 px low, 5 px past the readout) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-nav :is(.cot-settings-slot,.cot-locale-credit-wrap){
+  min-width:var(--cot-control-floor);height:var(--cot-control-floor);}
+/* the staging plate's picker (garage.css sets its own height over the kit's touch floor) */
+body[data-cot-input='coarse'] .cot-garage-variant-control .cot-c-menu__trigger{min-height:var(--cot-control-floor);}
+/* with no favourites and no count shown, the nations run to the rail's end, flush with the cards under them */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-country-rail:has(>.cot-roster-fav[hidden]):has(>.cot-roster-count[hidden]) .cot-country-chips{
+  grid-column:3 / -1;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--tabs-h:calc(var(--cot-control-floor) + 2 * var(--s1));}
+/* the Deploy screen's tank card change button too, and every Deploy segment */
+body[data-cot-input='coarse'] .cot-garage :is(.cot-drawer-close,.cot-battle-menu .cot-deploy-tank .chg){--h:var(--cot-control-floor);}
+body[data-cot-input='coarse'] .cot-garage .cot-battle-menu :is(.cot-c-seg__opt,.cot-deploy-tank .chg){min-width:var(--cot-control-floor);}
+/* the nations: each chip at its content and a touch target, growing to fill the row when every nation fits; when they
+   cannot, the track keeps its fade and swipe (garage.ts's honest overflow contract). Docked, the search folds to its glyph
+   until it is tapped or holds a query, so the row shows more nations (all fourteen at 1210 px) */
+body[data-cot-input='coarse']:is([data-cot-panels='persistent'],[data-cot-orientation='portrait']:not([data-cot-width='phone'])) .cot-country-chip{
+  flex:1 0 auto;padding-inline:var(--s1);gap:var(--s1);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown){
+  width:var(--cot-control-floor);padding:0;justify-content:center;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
+  flex:0 0 0;width:0;}
+
+/* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
+   The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
+   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
+   (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-wordmark .wm{display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{--cot-figures-h:116px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
+  grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{width:var(--cot-control-floor);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
+  align-self:flex-end;margin-left:auto;padding-left:0;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{gap:var(--s1);}
+/* (in the band the acts stand over the bright floor beside the slots: they take the slots' plate, not the floating fill
+   they wear under a phone's bar; the iPad critic r2 read them see-through) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);
+  background:var(--plate-fill);box-shadow:var(--ring-2);}
+/* under 800 px across (an iPad mini, a Split View half) the fourteen chips do not fit one row: they take two rows of seven,
+   every nation in view, the filter beside both, and the stack over them rises by the row */
+@media (width < 800px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{
+    --cot-country-height:calc(2 * var(--cot-control-floor) + var(--s1));}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chips{
+    display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:var(--cot-control-floor);gap:var(--s1);
+    overflow:visible;padding-block:0;-webkit-mask-image:none;mask-image:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) :is(.cot-country-chip,.cot-country-rail .cot-facet-toggle){
+    justify-content:center;align-self:stretch;}
+}
+}

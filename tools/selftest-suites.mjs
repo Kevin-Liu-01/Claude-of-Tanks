@@ -55,6 +55,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
     'src/fx/hullBurstEarth.selftest.mjs',
+    // 2026-10-27 (261, premiere-battle on live 259): the APS interception's flash, fragments and grey-white puff
+    'src/fx/apsIntercept.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
     'src/fx/thermalGroundAndEmbers.selftest.mjs',
     // (orange-rings-230) the crater marks lit as the ground they lie on (Steinburg's glowing rings)
@@ -702,6 +704,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
+    // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
+    'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
     'src/vehicles/profiles/oplotFenderBridge.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
@@ -912,6 +916,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/camoPicker.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
+    // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
+    // every surface the source opens registered with its owner and its place
+    'src/ui/components/surfaceStack.selftest.mjs',
+    'src/ui/transientSurfaceRegistry.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -1021,6 +1029,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tokens/modeColours.selftest.mjs',
     // item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs and rules only
     'src/ui/tokens/settingsColours.selftest.mjs',
+    // 261 (owner: consumables "represented uniquely but as cool-y as eqquipment"): the item badge's category hues, one
+    // token group, consumables CVD-checked against equipment, Settings, teams and ink
+    'src/ui/tokens/badgeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
@@ -1342,6 +1353,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
+    'src/engine/programReceipt.selftest.mjs', // 2026-10-27 (the room-stalls lane): programs linked past a warm, as a receipt
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry

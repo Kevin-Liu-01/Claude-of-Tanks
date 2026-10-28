@@ -645,6 +645,8 @@ function bufferAttribute(
 
 /** a missile's record lingers this long after its round is gone (its wire parts and its trail ends where it was) */
 const MISSILE_RECORD_LINGER_S = 0.48;
+/** an APS interceptor's flash lives two frames at 60 Hz: a bright frame, never a glow (apsIntercept) */
+const APS_FLASH_LIFE_S = 1 / 30;
 /** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
 const MAX_ATGM_BODIES = 48;
 /** (ac130-fx-228) a gunship shot whose muzzle sits this close to the camera is the pilot's own lens (the sim fires from
@@ -3011,6 +3013,65 @@ function* createFxSteps(
       col3(colHex0, _puffO.col0); col3(colHex1, _puffO.col1);
       _puffO.alpha = 1.0; _puffO.grav = 0; _puffO.birthOffset = birthOffset;
       particles.emit('fire', _puffO);
+    }
+  }
+
+  /**
+   * An active protection system's interception (the consumables catalog's APS charge). On live 259 it read as a dirt
+   * hit (premiere-battle): an ERA tile's dark burst, then the round's orange-brown column, and no bright frame. The
+   * interceptor goes off two metres out from the hull, so it is a small white flash for one or two frames (additive, the
+   * flash pool), then fragments, hot streaks thrown off the hull and grey steel that falls, and a grey-white puff that
+   * drifts away. A shaped-charge round it breaks up adds a warm core for a few frames, never a column.
+   */
+  function apsIntercept(pos: THREE.Vector3, normal: THREE.Vector3, explosive: boolean): void {
+    const dk = distBoost(pos.x, pos.y, pos.z);
+    _puffO.pos[0] = pos.x; _puffO.pos[1] = pos.y; _puffO.pos[2] = pos.z;
+    _puffO.vel[0] = 0; _puffO.vel[1] = 0; _puffO.vel[2] = 0;
+    _puffO.life = APS_FLASH_LIFE_S;
+    _puffO.size0 = 0.55 * dk; _puffO.size1 = 1.0 * dk;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xffffff, _puffO.col0); col3(0xfff1c8, _puffO.col1);
+    _puffO.alpha = 1; _puffO.grav = 0; _puffO.birthOffset = 0;
+    particles.emit('flash', _puffO);
+    if (explosive) {
+      _puffO.life = 0.08;
+      _puffO.size0 = 0.3 * dk; _puffO.size1 = 0.6 * dk;
+      col3(0xffe2b0, _puffO.col0); col3(0xff9a40, _puffO.col1);
+      _puffO.alpha = 0.7;
+      particles.emit('fire', _puffO);
+    }
+    // the fragments: a tight white-hot fan off the hull, a wider dimmer one, and grey steel that falls cold
+    sparkFan(pos, normal, 16, 26 * dk, 0.9, 0xfff4dc, 0.22, 0.03 * dk, 0.04);
+    sparkFan(pos, normal, 10, 14 * dk, 1.9, 0xffe0b0, 0.38, 0.022 * dk, 0.03);
+    basisFrom(normal, _v1, _v2);
+    for (let i = 0; i < 6; i++) {
+      const a = rng() * Math.PI * 2;
+      const side = 2 + rng() * 4;
+      _debO.pos[0] = pos.x; _debO.pos[1] = pos.y; _debO.pos[2] = pos.z;
+      _debO.vel[0] = normal.x * (4 + rng() * 6) + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * side;
+      _debO.vel[1] = normal.y * (4 + rng() * 6) + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * side + 2;
+      _debO.vel[2] = normal.z * (4 + rng() * 6) + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * side;
+      _debO.life = 1.1 + rng() * 0.4; _debO.scale = 0.03 + rng() * 0.04; _debO.spin = 14 + rng() * 16;
+      _debO.axis[0] = rng() - 0.5; _debO.axis[1] = rng() - 0.5; _debO.axis[2] = rng() - 0.5;
+      _debO.groundY = groundY(pos.x, pos.z); _debO.hot = 0; _debO.seed = rng(); _debO.birthOffset = 0;
+      particles.emit('debris', _debO);
+    }
+    // the charge's own smoke: a compact cold grey-white puff in the propellant pool (torn powder smoke, not a cotton
+    // ball, and out of the shared smoke ring a busy battle cycles), drifting off the hull for one to two seconds
+    for (let i = 0; i < 6; i++) {
+      const a = rng() * Math.PI * 2, r = rng() * 0.25;
+      _puffO.pos[0] = pos.x + normal.x * 0.3 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * r;
+      _puffO.pos[1] = pos.y + normal.y * 0.3 + (_v1.y * Math.cos(a) + _v2.y * Math.sin(a)) * r;
+      _puffO.pos[2] = pos.z + normal.z * 0.3 + (_v1.z * Math.cos(a) + _v2.z * Math.sin(a)) * r;
+      _puffO.vel[0] = normal.x * (0.8 + rng() * 0.8) + (rng() - 0.5) * 0.6;
+      _puffO.vel[1] = normal.y * (0.8 + rng() * 0.8) + 0.4 + rng() * 0.4;
+      _puffO.vel[2] = normal.z * (0.8 + rng() * 0.8) + (rng() - 0.5) * 0.6;
+      _puffO.life = 1.3 + rng() * 0.8;
+      _puffO.size0 = (0.5 + rng() * 0.2) * dk; _puffO.size1 = (1.6 + rng() * 0.6) * dk;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.8;
+      col3(0xe4e2dd, _puffO.col0); col3(0xbdbab3, _puffO.col1);
+      _puffO.alpha = 0.42 + rng() * 0.1; _puffO.grav = 0.4; _puffO.birthOffset = 0;
+      particles.emit('psmoke', _puffO);
     }
   }
 
@@ -6623,12 +6684,8 @@ function* createFxSteps(
         _v4.set(e.nx ?? 0, e.ny ?? 1, e.nz ?? 0);
         if (_v4.lengthSq() < 1e-6) _v4.copy(_UP);
         else _v4.normalize();
-        fx.impact('era', _v3, _v4, e.caliberMm || 90);
         const info = e.shellId != null ? shellMunitions.get(e.shellId) : null;
-        if (blast && info && isExplosive(info.munition) && info.chargeKg > 0) {
-          plateBurst(blast, { x: e.x, y: e.y, z: e.z, nx: _v4.x, ny: _v4.y, nz: _v4.z,
-            munition: info.munition, chargeKg: Math.max(0.3, info.chargeKg * 0.5), ground: null });
-        }
+        apsIntercept(_v3, _v4, !!info && isExplosive(info.munition) && info.chargeKg > 0);
       });
       onFxEvent(bus, 'shell:expired', (e) => {
         if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
