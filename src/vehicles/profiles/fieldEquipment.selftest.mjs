@@ -74,8 +74,9 @@ for(const quality of ['high','low'])for(const id of rearIds){
   console.log(id,quality,'exposed rear cans, log and measured hull contacts PASS');
  }finally{mat.dispose();tank.dispose()}
 }
-// Owner-requested attachment revisions: retain real contact and articulation.
-for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_oplot_m','ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
+// Owner-requested attachment revisions: retain real contact and articulation. (262: the Challenger 1 Mk 3 is the rebuilt
+// Op Granby vehicle and no longer carries the modern field cage its supplied-file turret had; flagged to Main.)
+for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_oplot_m','ua_challenger2','leo2a6_ua','m1a3','challenger3','t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}),mat=new MeshBasicMaterial({side:DoubleSide});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),body=new Mesh(turret.getObjectByName('turret').geometry,mat);body.updateMatrixWorld();
@@ -90,7 +91,7 @@ for(const quality of ['high','low'])for(const id of ['leo2a5m','leo2a5','t84bm_o
    assert.deepEqual(weapon.scale.toArray(),Array(3).fill(id==='leo2a5'?.7:.9),'requested weapon reduction');
   }
   const cage=turret.userData.modernFieldCage;
-  if(['ua_challenger2','leo2a6_ua','m1a3','challenger3','challenger1_mk3'].includes(id)){
+  if(['ua_challenger2','leo2a6_ua','m1a3','challenger3'].includes(id)){
    assert.equal(cage.panels,6);assert.equal(cage.anchors.length,12);
    for(const anchor of cage.anchors){
     const [x,y,z]=anchor.map(v=>v*(VEHICLE_SIZE_FACTORS[id]??1));

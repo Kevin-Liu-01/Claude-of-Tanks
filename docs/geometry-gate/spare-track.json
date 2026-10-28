@@ -687,14 +687,20 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "challenger1_mk1": {
+   "inputHash": "605287ee25ce85c7",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "challenger1_mk2": {
-   "inputHash": "51a18f1520a504d9",
+   "inputHash": "a5d57e3fd3406ab2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "cf789a77a1a75998",
+   "inputHash": "243d9eb57e6d8dbd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4050,7 +4056,7 @@
    "hostSweep": []
   },
   "vickers_mk1": {
-   "inputHash": "d0e463b23cccc1d2",
+   "inputHash": "054dcb0b3e2f8c6b",
    "runs": [
     {
      "index": 0,
@@ -4073,7 +4079,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.852,
-      "host": "hull<loftBandCorridor@profiles/uk.ts:399>"
+      "host": "hull<loftBandCorridor@profiles/uk.ts:401>"
      }
     }
    ],

@@ -113,7 +113,7 @@ for (const side of [-1, 1]) {
   close(gap[0].point.x, (side < 0 ? -1.529119 : 1.5299605) * ARIETE_SCALE, 'Ariete inner leaf through outer seam');
   // a cassette's face, the skirt behind a joint between two cassettes, and an uncovered rear skirt panel
   const joint = GRANBY.rear + CR1_GRANBY_PITCH - CR1_GRANBY_JOINT / 2;
-  for (const [y, z, x] of [[1.0, -2.0, GRANBY.outerX], [1.0, joint, GRANBY.innerX], [1.0, -3.0, GRANBY.innerX]]) {
+  for (const [y, z, x] of [[1.0, -2.0, GRANBY.outerX], [1.0, joint, GRANBY.innerX], [1.0, -2.75, GRANBY.innerX]]) {
     const hits = shot('challenger1_mk3', [side * 2.2, y, z], [side * 1.65, y, z]);
     assert.equal(hits.length, 1, 'Challenger cassette/joint/uncovered panel charges one exposed inherited family');
     close(hits[0].point.x, side * x, 'Challenger exact cassette face or exposed skirt');

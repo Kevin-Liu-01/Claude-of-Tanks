@@ -215,10 +215,11 @@ export function addChallenger1Gun(P: TankBuilderPort): void {
     const r = sleeve(z) + .005;
     P.add('gunDark', lathe([[z - .016, r - .012], [z - .016, r], [z + .016, r], [z + .016, r - .012]], P.q ? 24 : 14));
   }
-  // muzzle reference system mirror on a slim strut over the muzzle (held clear of the tube's own section, so the drawn
-  // bore axis the gun-barrel census fits stays the tube's)
-  P.add('gunDark', box(.08, .07, .20), 0, .19, 7.24 - T);
-  P.add('gunDark', box(.025, .08, .04), 0, .125, 7.27 - T);
+  // muzzle reference system mirror on a slim post over the muzzle: the mirror stands outside the 0.22 m round the bore
+  // that the gun-barrel census cuts, the 3 cm post between two of its 4 cm stations (7.24 and 7.28 m), so the drawn
+  // bore axis it fits stays the tube's
+  P.add('gunDark', box(.08, .07, .18), 0, .27, 7.22 - T);
+  P.add('gunDark', box(.02, .16, .028), 0, .165, 7.26 - T);
   // drum shield behind the nose slot, turning with the gun about the trunnion, and the canvas boot from inside the slot
   // onto the sleeve
   P.add('gunMount', cylX(.235, SLOT * 2 - .03, P.q ? 28 : 16), 0, 0, 0);
