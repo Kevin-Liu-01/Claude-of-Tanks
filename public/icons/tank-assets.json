@@ -705042,22 +705042,22 @@
               [
                 0.2379,
                 0.0508,
-                1.9601
+                1.9684
               ],
               [
                 1.487,
                 0.0508,
-                0.8812
+                0.8876
               ],
               [
                 1.487,
-                0.6143,
-                0.7949
+                0.6151,
+                0.8011
               ],
               [
                 0.2379,
-                0.6143,
-                1.8738
+                0.6151,
+                1.8819
               ]
             ]
           },
@@ -705073,22 +705073,22 @@
               [
                 -1.487,
                 0.0508,
-                0.8812
+                0.8876
               ],
               [
                 -0.2379,
                 0.0508,
-                1.9601
+                1.9684
               ],
               [
                 -0.2379,
-                0.6143,
-                1.8738
+                0.6151,
+                1.8819
               ],
               [
                 -1.487,
-                0.6143,
-                0.7949
+                0.6151,
+                0.8011
               ]
             ]
           },
@@ -705103,23 +705103,23 @@
             "verts": [
               [
                 -0.3569,
-                0.1212,
-                2.02
+                0.1213,
+                2.0284
               ],
               [
                 0.3569,
-                0.1212,
-                2.02
+                0.1213,
+                2.0284
               ],
               [
                 0.3569,
-                0.4969,
-                1.99
+                0.4975,
+                1.9984
               ],
               [
                 -0.3569,
-                0.4969,
-                1.99
+                0.4975,
+                1.9984
               ]
             ]
           },
@@ -705135,7 +705135,7 @@
               [
                 1.487,
                 0.0508,
-                0.9112
+                0.9176
               ],
               [
                 1.487,
@@ -705144,13 +705144,13 @@
               ],
               [
                 1.487,
-                0.6143,
+                0.6151,
                 -2.735
               ],
               [
                 1.487,
-                0.6143,
-                0.9112
+                0.6151,
+                0.9176
               ]
             ]
           },
@@ -705171,16 +705171,16 @@
               [
                 -1.487,
                 0.0508,
-                0.9112
+                0.9176
               ],
               [
                 -1.487,
-                0.6143,
-                0.9112
+                0.6151,
+                0.9176
               ],
               [
                 -1.487,
-                0.6143,
+                0.6151,
                 -2.735
               ]
             ]
@@ -705206,12 +705206,12 @@
               ],
               [
                 -1.4126,
-                0.6143,
+                0.6151,
                 -2.735
               ],
               [
                 1.4127,
-                0.6143,
+                0.6151,
                 -2.735
               ]
             ]
@@ -705227,22 +705227,22 @@
             "verts": [
               [
                 -1.487,
-                0.6221,
-                0.9112
+                0.6229,
+                0.9176
               ],
               [
                 1.487,
-                0.6221,
-                0.9112
+                0.6229,
+                0.9176
               ],
               [
                 1.487,
-                0.6221,
+                0.6229,
                 -2.735
               ],
               [
                 -1.487,
-                0.6221,
+                0.6229,
                 -2.735
               ]
             ]
@@ -705564,13 +705564,13 @@
             "name": "gun",
             "min": [
               -0.2379,
-              0.1369,
-              -1.3864
+              0.137,
+              -1.384
             ],
             "max": [
               0.2379,
-              0.5125,
-              1.9601
+              0.5132,
+              1.9684
             ],
             "turretLocal": true
           },
@@ -705594,13 +705594,13 @@
             "name": "autoloader",
             "min": [
               -0.7494,
-              0.188,
-              -2.5735
+              0.1882,
+              -2.5732
             ],
             "max": [
               0.7494,
-              0.4044,
-              -1.7427
+              0.4048,
+              -1.741
             ],
             "turretLocal": true
           },
@@ -705659,8 +705659,8 @@
             ],
             "max": [
               1.0409,
-              0.5016,
-              -1.5812
+              0.5022,
+              -1.5792
             ],
             "turretLocal": true
           },
@@ -705669,13 +705669,13 @@
             "name": "radio",
             "min": [
               -0.8922,
-              0.0899,
-              -2.4203
+              0.09,
+              -2.4198
             ],
             "max": [
               -0.1487,
-              0.3607,
-              -1.5812
+              0.3611,
+              -1.5792
             ],
             "turretLocal": true
           },
@@ -706150,12 +706150,12 @@
             "min": [
               0.4171,
               -1.4623,
-              -0.823
+              -0.8191
             ],
             "max": [
               0.8765,
               -0.123,
-              -0.0016
+              0.0022
             ],
             "turretLocal": true
           },
@@ -706165,19 +706165,19 @@
             "min": [
               0.4543,
               -1.4652,
-              -1.4751
+              -1.473
             ],
             "max": [
               0.724,
               -0.1401,
-              -0.7675
+              -0.7654
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "8e9d8009",
-      "metadataHash": "e48a8303",
+      "geometryHash": "8d607317",
+      "metadataHash": "3618d33b",
       "presentationAnchor": {
         "xM": -0.0044,
         "zM": -0.0973
@@ -706185,8 +706185,8 @@
       "presentationHash": "836e99e8",
       "presentationProjection": {
         "centerYM": 1.951,
-        "topHalfM": 5.745,
-        "sideHalfM": 2.8725
+        "topHalfM": 5.7473,
+        "sideHalfM": 2.8736
       },
       "appearance": {
         "version": 1,
@@ -706238,15 +706238,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26832,
-          "sha256": "b1135b09204bab55f5f121342934c820b99e7c5da03f016cccaad08a6e26dfbb",
+          "bytes": 26694,
+          "sha256": "d2e9c30b16bc3471cc14148c59b9eec82cbe4357b202730461a7575741e63671",
           "thumbnail": {
             "file": "thumbs/pl01_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10782,
-            "sha256": "671c3f5df192014c04cec1291a81ed9710bcfd9685e30f3ca72e15b78e77d8fe"
+            "bytes": 10752,
+            "sha256": "802422c5c9ba3122c59688b71859b49d041524ba96d1a06a4d91440408eb85bf"
           }
         },
         "top": {
@@ -706254,56 +706254,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15494,
-          "sha256": "edb8358a40386c4e116f0f95c2c2ba472dd8a37082b7a53449f9f4555578a4ee"
+          "bytes": 15738,
+          "sha256": "4d400114229429856ac907a01c44497e1684825ce132dafaf7507951622b7542"
         },
         "side": {
           "file": "pl01_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11970,
-          "sha256": "80f22b84b752ade103407c438d3cba1eedbc5ee726089d86dbc970329efb455c"
+          "bytes": 13308,
+          "sha256": "8b6e7dd8a9cda7a528749a564b238acf1ae780aa4e2080f87a2cebf55aa4add8"
         },
         "topSilhouette": {
           "file": "pl01_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1618,
-          "sha256": "16036ab642ba193b1861b9d066acff17f68868dc7b9bf240858123dbb83ef626"
+          "bytes": 1579,
+          "sha256": "60aad1c3d780939d112f7ac686fabc2f6485533f4ab4afa1cfd4d895f77c8a41"
         },
         "sideSilhouette": {
           "file": "pl01_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4457,
-          "sha256": "b96f84523f0a636942ca05c3221ed5321166a3fb2b4b834a63c55ff57a3f6c11"
+          "bytes": 4311,
+          "sha256": "ec7b4e97457d45bbdb9066dbbdacc7a71c2130ef1b400579ccef920d870a4bd5"
         },
         "armorSide": {
           "file": "pl01_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33928,
-          "sha256": "b56a873e0b064c6865b771b35f297873fc7ba07d2607c6d8644aed24edb62b5f"
+          "bytes": 34394,
+          "sha256": "e24cfcf22c3f7a788ff826f5983c86db778dcc221e15d0954dac74a956310413"
         },
         "modulesSide": {
           "file": "pl01_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32202,
-          "sha256": "97c45b3856650a400d804d8da45e63eff1064b6ee1706fdfe3cb810b093c5e5e"
+          "bytes": 32604,
+          "sha256": "fa4e5b4a706cb63eede1499a59e9547f81540ea00418cb2bb0d8697a75c20ca9"
         },
         "crewSide": {
           "file": "pl01_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28808,
-          "sha256": "7d347f7ea07bffab12ff951fc12326c1d44624335d685a08be653ffab1a2b309"
+          "bytes": 29256,
+          "sha256": "896e627c6bb60611dbf30f03e468396379a61a905de49db041e52c6fb036e407"
         },
         "markings": {
           "file": "pl01_markings.png",
@@ -706316,8 +706316,8 @@
         "technicalLabels": {
           "file": "pl01_technical.json",
           "mime": "application/json",
-          "bytes": 4687,
-          "sha256": "84aa0f5f49bcdb639bea2a7098cd7f41dbe6c5d7be0ed0d5b508c9808d3b95c0"
+          "bytes": 4680,
+          "sha256": "91a93c1ea9686cc48a24bf77a59aca395ac8307d17a094e49ff1ff269d3c24fe"
         }
       }
     },
@@ -713849,22 +713849,22 @@
               [
                 0.2379,
                 0.0508,
-                1.9601
+                1.9684
               ],
               [
                 1.487,
                 0.0508,
-                0.8812
+                0.8876
               ],
               [
                 1.487,
-                0.6143,
-                0.7949
+                0.6151,
+                0.8011
               ],
               [
                 0.2379,
-                0.6143,
-                1.8738
+                0.6151,
+                1.8819
               ]
             ]
           },
@@ -713880,22 +713880,22 @@
               [
                 -1.487,
                 0.0508,
-                0.8812
+                0.8876
               ],
               [
                 -0.2379,
                 0.0508,
-                1.9601
+                1.9684
               ],
               [
                 -0.2379,
-                0.6143,
-                1.8738
+                0.6151,
+                1.8819
               ],
               [
                 -1.487,
-                0.6143,
-                0.7949
+                0.6151,
+                0.8011
               ]
             ]
           },
@@ -713910,23 +713910,23 @@
             "verts": [
               [
                 -0.3569,
-                0.1212,
-                2.02
+                0.1213,
+                2.0284
               ],
               [
                 0.3569,
-                0.1212,
-                2.02
+                0.1213,
+                2.0284
               ],
               [
                 0.3569,
-                0.4969,
-                1.99
+                0.4975,
+                1.9984
               ],
               [
                 -0.3569,
-                0.4969,
-                1.99
+                0.4975,
+                1.9984
               ]
             ]
           },
@@ -713942,7 +713942,7 @@
               [
                 1.487,
                 0.0508,
-                0.9112
+                0.9176
               ],
               [
                 1.487,
@@ -713951,13 +713951,13 @@
               ],
               [
                 1.487,
-                0.6143,
+                0.6151,
                 -2.735
               ],
               [
                 1.487,
-                0.6143,
-                0.9112
+                0.6151,
+                0.9176
               ]
             ]
           },
@@ -713978,16 +713978,16 @@
               [
                 -1.487,
                 0.0508,
-                0.9112
+                0.9176
               ],
               [
                 -1.487,
-                0.6143,
-                0.9112
+                0.6151,
+                0.9176
               ],
               [
                 -1.487,
-                0.6143,
+                0.6151,
                 -2.735
               ]
             ]
@@ -714013,12 +714013,12 @@
               ],
               [
                 -1.4126,
-                0.6143,
+                0.6151,
                 -2.735
               ],
               [
                 1.4127,
-                0.6143,
+                0.6151,
                 -2.735
               ]
             ]
@@ -714034,22 +714034,22 @@
             "verts": [
               [
                 -1.487,
-                0.6221,
-                0.9112
+                0.6229,
+                0.9176
               ],
               [
                 1.487,
-                0.6221,
-                0.9112
+                0.6229,
+                0.9176
               ],
               [
                 1.487,
-                0.6221,
+                0.6229,
                 -2.735
               ],
               [
                 -1.487,
-                0.6221,
+                0.6229,
                 -2.735
               ]
             ]
@@ -714371,13 +714371,13 @@
             "name": "gun",
             "min": [
               -0.2379,
-              0.1369,
-              -1.3864
+              0.137,
+              -1.384
             ],
             "max": [
               0.2379,
-              0.5125,
-              1.9601
+              0.5132,
+              1.9684
             ],
             "turretLocal": true
           },
@@ -714401,13 +714401,13 @@
             "name": "autoloader",
             "min": [
               -0.7494,
-              0.188,
-              -2.5735
+              0.1882,
+              -2.5732
             ],
             "max": [
               0.7494,
-              0.4044,
-              -1.7427
+              0.4048,
+              -1.741
             ],
             "turretLocal": true
           },
@@ -714466,8 +714466,8 @@
             ],
             "max": [
               1.0409,
-              0.5016,
-              -1.5812
+              0.5022,
+              -1.5792
             ],
             "turretLocal": true
           },
@@ -714476,13 +714476,13 @@
             "name": "radio",
             "min": [
               -0.8922,
-              0.0899,
-              -2.4203
+              0.09,
+              -2.4198
             ],
             "max": [
               -0.1487,
-              0.3607,
-              -1.5812
+              0.3611,
+              -1.5792
             ],
             "turretLocal": true
           },
@@ -715053,12 +715053,12 @@
             "min": [
               0.4171,
               -1.4623,
-              -0.823
+              -0.8191
             ],
             "max": [
               0.8765,
               -0.123,
-              -0.0016
+              0.0022
             ],
             "turretLocal": true
           },
@@ -715068,28 +715068,28 @@
             "min": [
               0.4543,
               -1.4652,
-              -1.4751
+              -1.473
             ],
             "max": [
               0.724,
               -0.1401,
-              -0.7675
+              -0.7654
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "71ceddc4",
-      "metadataHash": "0543cc45",
+      "geometryHash": "d0610201",
+      "metadataHash": "3b72b54d",
       "presentationAnchor": {
         "xM": 0,
-        "zM": -0.0514
+        "zM": -0.0516
       },
-      "presentationHash": "26ea5760",
+      "presentationHash": "2ae5e07e",
       "presentationProjection": {
         "centerYM": 1.9517,
-        "topHalfM": 5.6938,
-        "sideHalfM": 2.8469
+        "topHalfM": 5.6965,
+        "sideHalfM": 2.8482
       },
       "appearance": {
         "version": 1,
@@ -715143,15 +715143,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32228,
-          "sha256": "64b5a327b5f084e591328022fbbd0214f09e2ce8597d3c0ba1eed67764604d41",
+          "bytes": 32278,
+          "sha256": "8d9fcc5afa4c97bd628fb38a2c252bde84a13173ae7c17f858ab0175dfd0c8e4",
           "thumbnail": {
             "file": "thumbs/pl01_105_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11782,
-            "sha256": "b8c7823ccea9385594d13cc5cf670251d14ca0b37b38d336ca45991b48f4c1e1"
+            "bytes": 11800,
+            "sha256": "806d4cda25e115db2cc121e629055517b8f66ec68d1e33a8557eca2ac3c8c003"
           }
         },
         "top": {
@@ -715159,56 +715159,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18642,
-          "sha256": "20ff6595084420342a96ecf728ef02da40efa397fca475579327eb8a3a74ec04"
+          "bytes": 18540,
+          "sha256": "84340ff72ef954e6e4d246cea23e92fc2d71c9fceef228b771223a561058f24d"
         },
         "side": {
           "file": "pl01_105_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12838,
-          "sha256": "37f2a4e21c03a403ccee0e7a145cd59277a1dea76db0ef381a356a1890fa58bf"
+          "bytes": 13958,
+          "sha256": "f4d1da1bd36848a425520cdf071011000dc2f81eedbfef0a35ae51af49100b08"
         },
         "topSilhouette": {
           "file": "pl01_105_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1733,
-          "sha256": "86a132a6354bd2631eeb25ca3e635ecc96541671eea118b9f6f37df300441744"
+          "bytes": 1650,
+          "sha256": "2d929f88f4e511b54c982ee6b6bf0470a34fb7520541cca6b44bc493837ef535"
         },
         "sideSilhouette": {
           "file": "pl01_105_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4899,
-          "sha256": "5452afa813e20399629a19d4eb61d794e948a6dfbc0d579f3b54a12700e3b786"
+          "bytes": 4749,
+          "sha256": "2cf76057880097642a0741fcabdf6029ad2678cf47a5fbe84076caa046431982"
         },
         "armorSide": {
           "file": "pl01_105_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 41912,
-          "sha256": "fba7db12e7117974b91f886d1069cbb94156953c17d86062d422f812f2d80596"
+          "bytes": 42130,
+          "sha256": "c45d8a87e39071d0eed5d5c90f798c12794d7508eb1906d2578c166e5969a26c"
         },
         "modulesSide": {
           "file": "pl01_105_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33274,
-          "sha256": "ab32d0e603f2aaad4e02da2445cafc1dcc899b459fa38f0238117329e7e61561"
+          "bytes": 33512,
+          "sha256": "c416f802686b18b88aba13befcee77edf0b5e1f56d7798adeef0f2daf1a622d4"
         },
         "crewSide": {
           "file": "pl01_105_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30150,
-          "sha256": "282241e892eb90fa470564332b1c7999429873ed8e1a00ce669dd9ce5bcc5f66"
+          "bytes": 30372,
+          "sha256": "38b63a4b06ec85dd57b92b0ae93d0f135a4dd2699eabebfd09c8640cbf9f33ea"
         },
         "markings": {
           "file": "pl01_105_markings.png",
@@ -715221,8 +715221,8 @@
         "technicalLabels": {
           "file": "pl01_105_technical.json",
           "mime": "application/json",
-          "bytes": 5101,
-          "sha256": "dc6e8e275e42806fac834b5cd36f33f1ba848cb55acd28b65755e3c40f35d285"
+          "bytes": 5117,
+          "sha256": "d11e3ccce0e119b559b0d7cbfe4e987f64686076fee3280839ac9b034eb80d8a"
         }
       }
     },
@@ -1861645,13 +1861645,13 @@
     },
     "t90m": {
       "id": "t90m",
-      "name": "T-90M",
+      "name": "T-90M Proryv",
       "label": {
         "id": "t90m",
-        "displayName": "T-90M",
-        "shortName": "T-90M",
+        "displayName": "T-90M Proryv",
+        "shortName": "T-90M Proryv",
         "searchAliases": [
-          "T-90M",
+          "T-90M Proryv",
           "t90m"
         ],
         "noteKey": null
@@ -1870160,7 +1870160,7 @@
         ]
       },
       "geometryHash": "446e829e",
-      "metadataHash": "7751b9d7",
+      "metadataHash": "9d8ba0df",
       "presentationAnchor": {
         "xM": 0.0006,
         "zM": -0.0769
@@ -1870303,13 +1870303,13 @@
     },
     "t90m_proryv": {
       "id": "t90m_proryv",
-      "name": "T-90M Proryv",
+      "name": "T-90AM II",
       "label": {
         "id": "t90m_proryv",
-        "displayName": "T-90M Proryv",
-        "shortName": "T-90M Proryv",
+        "displayName": "T-90AM II",
+        "shortName": "T-90AM II",
         "searchAliases": [
-          "T-90M Proryv",
+          "T-90AM II",
           "t90m_proryv",
           "t90m proryv"
         ],
@@ -1879819,7 +1879819,7 @@
         ]
       },
       "geometryHash": "664829d4",
-      "metadataHash": "1d09209a",
+      "metadataHash": "c9fd82a2",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": -0.138

@@ -143,7 +143,10 @@ const STYLE = `
 :lang(zh-CN) .co-crew{width:30px;height:30px;margin:-15px 0 0 -15px}
 .co.is-off,.co-crew.is-off{display:none}
 @media (pointer:coarse){.subs .cot-c-chip{height:40px}:root .co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
-@media (width < 768px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}
+/* the tablet row and a phone keep the toggles to their glyphs (named and tipped), so the row stays one line over the narrow
+   stage (the g17 critic: at 900 x 700 Crew's five toggles stacked three lines down the stage) */
+@media (width < 1100px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}}
+@media (width < 768px){
   #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);width:100%}
 }
 `;
@@ -513,6 +516,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       button.dataset.uiSound = 'toggle';
       button.setAttribute('aria-pressed', String(view[toggle]));
       button.setAttribute('aria-label', t(`gallery.anatomy.toggle.${toggle}`));
+      button.dataset.tip = t(`gallery.anatomy.toggle.${toggle}`);
       button.innerHTML = uiIconSVG(CHIP_ICONS[toggle], 15);
       const label = document.createElement('span');
       label.textContent = t(`gallery.anatomy.toggle.${toggle}`);

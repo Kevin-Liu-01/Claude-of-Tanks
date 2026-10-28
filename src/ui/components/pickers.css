@@ -7,7 +7,7 @@
 /* ---- the picker (picker.ts): the one "choose one of a set". The things themselves as cards, swatches or rows; the
    chosen one wears the accent's wash and edge, as tiles do; a search and chips past eight items ---- */
 .cot-c-picker{display:flex;flex-direction:column;gap:var(--s1);min-width:0;min-height:0;max-height:100%}
-.cot-c-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-bottom:var(--s1)}
+.cot-c-picker__bar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding-bottom:var(--s1);container:picker-bar/inline-size}
 .cot-c-picker__search{flex:1 1 200px;box-sizing:border-box;min-width:0;height:36px;margin:0;padding:0 var(--s3);border:0;border-radius:var(--control-radius);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);}
 .cot-c-picker__search::placeholder{color:var(--ink-3)}
@@ -18,18 +18,26 @@
 .cot-c-picker__more{flex:none}
 .cot-c-picker__more[hidden]{display:none}
 .cot-c-picker__more.is-back svg{transform:scaleX(-1)}
-/* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row */
-@media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
+/* a short or compact screen (under 720 px tall) gives the cards the height: the search and the filters share one row where
+   the bar is wide enough to show its chips (a 312 px picker beside Deploy's plate kept one chip, cut, Deploy r42-r45) */
+@media (height < 720px){@container picker-bar (width >= 480px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}}
 .cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;overflow:hidden}
 .cot-c-picker__chips>[data-off]{visibility:hidden}
+/* a strip of whole chips (picker.ts wholeChips, the kit's picker rows, the Garage's nations, a sheet's facet rows): it stops
+   on chip starts, and a chip its edge would cut is hidden but focusable */
+.cot-c-whole{scroll-snap-type:x mandatory}
+.cot-c-whole>*{scroll-snap-align:start}
+.cot-c-whole>.is-cut{opacity:0;pointer-events:none}
 .cot-c-picker__chips-tail{flex:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
 /* where a surface bounds the picker's height the grid scrolls in place. Its 12 px band of padding at the top and the foot
    carries the scroll edges' fade, so at rest nothing fades and the focus ring stays in view, and scrolled cards pass under
-   the fade instead of a hard cut */
+   the fade instead of a hard cut; a card scrolled into view (a focus, a reveal) stops clear of both fades (Deploy r45: the
+   chosen last card stood half under the foot's) */
 .cot-c-picker__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);flex:1 1 auto;min-height:0;
   margin:0 calc(-1 * var(--s1));padding:var(--s2) var(--s1);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  scroll-padding-block:var(--s2) var(--s6);
   scrollbar-color:var(--line-3) transparent;
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s2)),transparent)}
@@ -74,6 +82,9 @@
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
+/* a card menu whose room holds no whole row of 16:9 pictures crops them to 3:1, so a row stands whole with its names
+   (pickerMenu.ts place, squat) */
+.cot-c-menu__pop.is-squat .cot-c-picker__media{aspect-ratio:3/1}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
 .cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}

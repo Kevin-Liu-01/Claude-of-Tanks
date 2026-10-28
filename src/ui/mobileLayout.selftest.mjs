@@ -247,8 +247,11 @@ assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input
   'settings and F8 must converge on the same diagnostics visibility path');
 assert.doesNotMatch(perfHud, /cot\.perfhud\.v1|PROD_BUILD/,
   'the diagnostics panel must not retain a second private persistence or production gate');
-assert.match(hud, /\.cot-hpb\{[^}]*width:128px;height:40px[^}]*contain:layout paint style/,
+// (its width a stable floor until its copy is measured; its height as its lines compose it, measured with the copy)
+assert.match(hud, /\.cot-hpb\{[^}]*width:128px;[^}]*contain:layout paint style/,
   'world tank labels must start from stable geometry before one-time name measurement');
+assert.match(hud, /bar\.layoutH = Math\.ceil\(bar\.root\.offsetHeight\)/,
+  'a world tank label measures its height once with its copy, never per frame');
 // (owner 2026-10-26, "dont show flags inn inn game enemy markers (*or friends s)"; tools/marker-census.mjs renders it)
 assert.doesNotMatch(hud, /class="flg"|tgtRefs\.flg|\.cot-(?:hpb|tgt) [^{]*\.cot-flag/,
   'no marker over a tank carries a nation flag');
@@ -264,7 +267,7 @@ assert.match(hud, /\.cot-tgt \.bk\{[^}]*background:none/,
   'aimed-at labels must not paint a broad dark rectangle over the battlefield');
 assert.doesNotMatch(hud, /\.cot-(?:hpb \.nm span|tgt \.nick|tgt \.veh)\{[^}]*text-overflow:ellipsis/,
   'world-space player and vehicle labels must never replace names with ellipses');
-assert.match(hud, /const plateX = bar\.sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - 42;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
+assert.match(hud, /const plateX = bar\.sx - bar\.layoutW \* 0\.5;[\s\S]*const plateY = bar\.sy - bar\.layoutH - bar\.lift;[\s\S]*translate3d\(\$\{plateX\.toFixed\(1\)\}px,\$\{plateY\.toFixed\(1\)\}px,0\)/,
   'world tank labels must remain centered on their literal projected tank anchors');
 assert.doesNotMatch(hud, /updateHpBars\._layout|layout\.sort|placed\.layoutY - 36/,
   'world tank labels must be allowed to overlap instead of entering screen-space lanes');
