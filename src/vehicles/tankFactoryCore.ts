@@ -1149,6 +1149,33 @@ function applyRubberSurfaceUVs(root: THREE.Object3D): void {
   });
 }
 
+/**
+ * 262 (Main's ruling, 2026-10-28): the rubber the hull wears — skirts, flaps, mudguards, mats — draws in its own
+ * material (role hullRubber), so the scoped armour paint takes it by where it sits (materials.ts armorPaintMode) while
+ * the tyres stay bare. One clone per source rubber, after the appearance normaliser set its finish, so it reads as the
+ * tyres do; every static rubber draw off the running gear moves together, so the draws that merged still merge.
+ */
+function separateHullRubber(root: THREE.Object3D, disposables: Array<{ dispose(): void }>): void {
+  const clones = new Map<THREE.Material, THREE.Material>();
+  root.traverse((object) => {
+    if (!isVehicleMesh(object) || Array.isArray(object.material)) return;
+    const material = object.material;
+    if (material?.userData?.appearanceRole !== 'tireRubber') return;
+    for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
+      if (owner.userData?.runningGear || /^gear/.test(owner.name || '')) return;
+    }
+    let clone = clones.get(material);
+    if (!clone) {
+      clone = cloneVehicleMaterial(material);
+      clone.name = 'cot:hull-rubber';
+      clone.userData = { ...(material.userData || {}), appearanceRole: 'hullRubber' };
+      disposables.push(clone);
+      clones.set(material, clone);
+    }
+    object.material = clone;
+  });
+}
+
 function isolatedGearMaterial<M extends THREE.Material>(
   material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
 ): M {
@@ -11829,6 +11856,7 @@ export function* createTankRuntimeSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    if (root.userData.usesSharedMaterialTextures) separateHullRubber(root, disposables);
     applyRubberSurfaceUVs(root);
     // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
     // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull

@@ -52,6 +52,8 @@ const FIXED_ROLE_COLOR: Readonly<Record<string, number>> = Object.freeze({
   trackSteel: VEHICLE_APPEARANCE_PALETTE.trackSteel,
   trackHardware: VEHICLE_APPEARANCE_PALETTE.trackSteel,
   tireRubber: VEHICLE_APPEARANCE_PALETTE.tireRubber,
+  // the hull's rubber (skirts, flaps, mats: tankFactoryCore separateHullRubber) is the tyres' rubber
+  hullRubber: VEHICLE_APPEARANCE_PALETTE.tireRubber,
   wheelTire: VEHICLE_APPEARANCE_PALETTE.tireRubber,
   wheelInset: VEHICLE_APPEARANCE_PALETTE.tireRubber,
   gearShadow: VEHICLE_APPEARANCE_PALETTE.gearShadow,

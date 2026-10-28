@@ -356,6 +356,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90BurlakXRear.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXSkirtMounts.selftest.mjs',
     'src/vehicles/burlakFixedSidePaint.selftest.mjs',
+    // 262: the hull's rubber (skirts, flaps, mats) its own material, painted by place; the tyres bare
+    'src/vehicles/hullRubber.selftest.mjs',
     'src/vehicles/fixedPaintedPanel.selftest.mjs',
     'src/vehicles/broadFixedStockPaint.selftest.mjs',
     'src/vehicles/registeredGuardPaint.selftest.mjs',

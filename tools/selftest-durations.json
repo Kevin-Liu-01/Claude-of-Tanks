@@ -803,6 +803,7 @@
     "src/vehicles/ghillieSuit.selftest.mjs": 227000,
     "src/vehicles/guidedLauncherTubes.selftest.mjs": 30000,
     "src/vehicles/historicalT90MLamps.selftest.mjs": 13000,
+    "src/vehicles/hullRubber.selftest.mjs": 5000,
     "src/vehicles/ifvReplicas.selftest.mjs": 12000,
     "src/vehicles/internalLayoutRegistry.selftest.mjs": 5000,
     "src/vehicles/jagdpanzerE100XArmor.selftest.mjs": 36000,
