@@ -55,16 +55,17 @@ body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-set-tab{min-wid
 
 /* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
    The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
-   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
-   (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). */
+   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band after the paint
+   (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). A window
+   under 720 px tall (a Split View half on an iPad held wide, 601x702) keeps the phone's three figures and one row of
+   nations: with six and two rows, and the acts on a row of their own, the stack rose to the bar and hid the tank. */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-wordmark .wm{display:block;}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{--cot-figures-h:116px;}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage{--cot-figures-h:116px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
   grid-template-columns:minmax(0,1fr) var(--cot-control-floor);}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-overview-more{width:var(--cot-control-floor);}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
   align-self:flex-end;margin-left:auto;padding-left:0;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{gap:var(--s1);}
@@ -76,26 +77,25 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
    .78-.82) left a tablet's screen mostly empty and the map unreadable at arm's length. From a tablet's width, short and
    tight windows aside (a phone held wide keeps its seats), the map reads at 176 px, the hull panel at .82 and the dial at
    .92; an upright iPad mini (compact width, standard or tall) takes a 140 px map and keeps the phone's HP row. The toasts
-   and the network corner keep their 8 px from the larger map. FIRE, the stick and every pinned seat stay their own. */
+   and the feed follow the larger map on their own (battleHudLayout.ts seats them from its measured foot: a fixed top here
+   stacked the toasts on the left feed, the HUD receipt at every iPad size). FIRE, the stick and every pinned seat stay
+   their own. */
 body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']){
   --hud-touch-mm:calc(176px * var(--mm-k,1));}
 body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall']){--hud-touch-mm:calc(140px * var(--mm-k,1));}
-body.cot-touch-layout{--hud-touch-mm-top:max(8px,env(safe-area-inset-top));}
-body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait']{--hud-touch-mm-top:calc(max(8px,env(safe-area-inset-top)) + 100px);}
 :is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-minimap{width:var(--hud-touch-mm)!important;height:var(--hud-touch-mm)!important;}
-:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])):not([data-map-slot]) .cot-si-toasthost{top:calc(var(--hud-touch-mm-top) + var(--hud-touch-mm) + 8px);}
-:is(body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']),body.cot-touch-layout[data-cot-width='compact'][data-cot-orientation='portrait']:is([data-cot-height='standard'],[data-cot-height='tall'])):not([data-map-slot]) .cot-net{left:calc(max(var(--s3),env(safe-area-inset-left)) + var(--hud-touch-mm) + 8px);}
 body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-dp{transform:scale(.82);}
 body.cot-touch-layout:is([data-cot-width='tablet'],[data-cot-width='laptop'],[data-cot-width='desktop']):not([data-cot-height='short'],[data-cot-height-density='tight']) .cot-drive{transform:scale(.92);}
-/* under 800 px across (an iPad mini, a Split View half) the fourteen chips do not fit one row: they take two rows of seven,
-   every nation in view, the filter beside both, and the stack over them rises by the row */
+/* under 800 px across (an iPad mini upright) the fourteen chips do not fit one row: they take two rows of seven, every
+   nation in view, the filter beside both, and the stack over them rises by the row (720 px tall and up: a shorter window
+   keeps the phone's one swiped row) */
 @media (width < 800px){
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage{
     --cot-country-height:calc(2 * var(--cot-control-floor) + var(--s1));}
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chips{
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-country-chips{
     display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:var(--cot-control-floor);gap:var(--s1);
     overflow:visible;padding-block:0;-webkit-mask-image:none;mask-image:none;}
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) :is(.cot-country-chip,.cot-country-rail .cot-facet-toggle){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) :is(.cot-country-chip,.cot-country-rail .cot-facet-toggle){
     justify-content:center;align-self:stretch;}
 }
 }
