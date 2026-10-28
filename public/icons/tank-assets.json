@@ -738954,17 +738954,17 @@
           }
         ]
       },
-      "geometryHash": "3522c59c",
+      "geometryHash": "f93015eb",
       "metadataHash": "d3a95b32",
       "presentationAnchor": {
-        "xM": 0.0001,
-        "zM": -0.0468
+        "xM": 0.0002,
+        "zM": -0.048
       },
-      "presentationHash": "424033a7",
+      "presentationHash": "19277d72",
       "presentationProjection": {
         "centerYM": 1.5186,
-        "topHalfM": 6.2477,
-        "sideHalfM": 3.1238
+        "topHalfM": 6.249,
+        "sideHalfM": 3.1245
       },
       "appearance": {
         "version": 1,
@@ -738980,7 +738980,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 9,
-          "gunmetal": 11,
+          "gunmetal": 12,
           "opticGlass": 3,
           "tireRubber": 1,
           "wood": 1,
@@ -739016,15 +739016,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21868,
-          "sha256": "35c8cf645326f8521017e7cf7cfff31a9c095c8932f3ee2712a82615edfde77b",
+          "bytes": 21824,
+          "sha256": "56b295913729aeda4488e16d3ed2b2d654f2a8e3620417397d9c3b2c262fcb46",
           "thumbnail": {
             "file": "thumbs/stb1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9030,
-            "sha256": "2f5aa3d5c15a4887519c36b6ea47784bac4e475521e332fd8538629c84878c4c"
+            "bytes": 9026,
+            "sha256": "625b9bb7fee6123a45d29d421aa6c4ad9389d788ebc3aadf8ed2e5278a0b26ab"
           }
         },
         "top": {
@@ -739032,56 +739032,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8358,
-          "sha256": "59e706e5b9fe2efb6e7d7d752ec1e32f93771c85cdab7af45fbe3fa3fb2f233f"
+          "bytes": 8362,
+          "sha256": "c53651152e3afb95517c824e649a1d3fb9bff4bd70a21bfc274767afed7d8fdd"
         },
         "side": {
           "file": "stb1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9122,
-          "sha256": "ef559be60b002910943bfb5647585b404a4ce48fe47078b6f35af8a83dda2811"
+          "bytes": 9240,
+          "sha256": "736c39d3d13ebc164f7185ef329a3336f1b446896e89e301a243d90ef2b23049"
         },
         "topSilhouette": {
           "file": "stb1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1045,
-          "sha256": "df09614c86d4e1cf5c97825546de63c6ad1de495c6d3b179dd76dded10d85c9d"
+          "bytes": 1037,
+          "sha256": "8b8155f5c5000dd0429597414903f74ae236489e4c9c39021fed289e31a497e1"
         },
         "sideSilhouette": {
           "file": "stb1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4150,
-          "sha256": "1199a683bffd4cb477e6464195d47efbcd652f3816bdf49ba3c1c5c537b9d3f9"
+          "bytes": 4193,
+          "sha256": "bc432d58b95918876e5e8e276ad7648a01bb7437d693a2efe70c6d4584642cc7"
         },
         "armorSide": {
           "file": "stb1_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23654,
-          "sha256": "9c70a7e62cf0c27439b4c6ab4585564749f8046b8eafab69db4e6e97a0c9d3e3"
+          "bytes": 23618,
+          "sha256": "a9cf00c91be11323fe19679f6d512c0ce0232498ab7ac9d5fe74bb293c6a6aba"
         },
         "modulesSide": {
           "file": "stb1_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22702,
-          "sha256": "22953658ffa06521f884ddfc017122b20578a82a78d8becb3d3a02342bc32ce7"
+          "bytes": 22504,
+          "sha256": "ab1498d9af4407a2909ed8d3d557b9b157d47a58a273308be732faf869d94d0e"
         },
         "crewSide": {
           "file": "stb1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20018,
-          "sha256": "0e4cf07e2d81a254a3fe7a88b832719b002fc306140567ef88a929b9340b3105"
+          "bytes": 19930,
+          "sha256": "446a96e28edabba48a6ab85d08a57a09801b87a9df9fc3dc0f6790abc0810049"
         },
         "markings": {
           "file": "stb1_markings.png",
@@ -739094,8 +739094,8 @@
         "technicalLabels": {
           "file": "stb1_technical.json",
           "mime": "application/json",
-          "bytes": 5543,
-          "sha256": "b1a412df342bfa7264b46d76491c2e3fa01c285722e526df619125afdc7353eb"
+          "bytes": 5537,
+          "sha256": "f9546b3c30e598ba21c955b9a724681a75746e0842af37ebd4d807dfe160621d"
         }
       }
     },
