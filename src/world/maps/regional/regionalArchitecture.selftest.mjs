@@ -291,6 +291,9 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
+  // (260) the props build's paced rebuild: the same recording, drained at once
+  // oxlint-disable-next-line require-yield -- the recording rebuild returns at once
+  rebuildRegionalStructureSteps: function* (...args) { return recordingRebuild(...args); },
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage, settleCatalogCuts,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
@@ -308,6 +311,7 @@ const stage = new Function(...Object.keys(dependencies), `return ${stripTypeScri
   const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   const ensureSteelAtlas = () => {};
+  const ensureSteelAtlasSteps = function* () {};
   const regionalSun = config.sky?.sunAzimuthDeg !== undefined ? { sunAzimuthDeg: config.sky.sunAzimuthDeg } : {}; // props.ts: the sun the kit's roofs weather by
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   ${section('function mergeInto(', 'type GroundDecalKind')}

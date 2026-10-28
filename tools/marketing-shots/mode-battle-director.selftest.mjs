@@ -72,7 +72,8 @@ assert.equal(tank.state._ride.v, 0);
 for (const [slot, recipe] of Object.entries(RECIPES)) {
   assert.equal(recipeFor(slot), recipe);
   assert.ok(typeof recipe.run === 'function' || typeof recipe.custom === 'function', `${slot} has a run or custom step`);
-  assert.ok(/^(modes|mechanics|features)\//.test(slot), `${slot} is a home-page slot`);
+  // (deploy/<mode>: a Deploy plate's still, the media lane's deploy-r1 panels, bf50a803fe)
+  assert.ok(/^(modes|mechanics|features|deploy)\//.test(slot), `${slot} is a home-page or Deploy plate slot`);
 }
 assert.equal(recipeFor('modes/none'), null);
 

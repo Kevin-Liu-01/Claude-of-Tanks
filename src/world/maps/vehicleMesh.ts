@@ -468,14 +468,26 @@ export class VehicleMesh {
    * colour multiplies it in game).
    */
   build(weathering: VehicleWeathering): THREE.BufferGeometry {
+    const steps = this.buildSteps(weathering);
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+  }
+
+  /**
+   * build() with a checkpoint every VEHICLE_BUILD_SLICE vertices of the occlusion's rays and of the shading (260, the
+   * rooms census: a parked vehicle's bake was one 297 ms step of the props build); the same geometry.
+   */
+  *buildSteps(weathering: VehicleWeathering): Generator<void, THREE.BufferGeometry, void> {
     const count = this.pos.length / 3;
     const position = new Float32Array(this.pos);
     const normal = new Float32Array(this.nrm);
     const uv = new Float32Array(count * 2);
     const color = new Float32Array(count * 3);
     const surf = new Uint8Array(count * 3);
-    const ao = ambientOcclusion(position, normal, this.idx, weathering.voxelAo);
+    const ao = yield* ambientOcclusionSteps(position, normal, this.idx, weathering.voxelAo);
     for (let v = 0; v < count; v++) {
+      if (v > 0 && v % VEHICLE_BUILD_SLICE === 0) yield;
       const px = position[v * 3], py = position[v * 3 + 1], pz = position[v * 3 + 2];
       const nx = normal[v * 3], ny = normal[v * 3 + 1], nz = normal[v * 3 + 2];
       const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
@@ -511,6 +523,9 @@ export class VehicleMesh {
     return geometry;
   }
 }
+
+/** Vertices between a stepped build's checkpoints (VehicleMesh.buildSteps). */
+const VEHICLE_BUILD_SLICE = 2048;
 
 // ---------------------------------------------------------------------------------------------------- shading
 
@@ -622,7 +637,9 @@ const AO_DIRS: readonly Vec3[] = (() => {
  * hemisphere for 1.4 m, the ground plane (y = 0) counting as an occluder — wheel wells, beds, the underside and the
  * gaps between parts go dark the way they do under a sky.
  */
-function ambientOcclusion(position: Float32Array, normal: Float32Array, index: readonly number[], voxel: boolean): Float32Array {
+function* ambientOcclusionSteps(
+  position: Float32Array, normal: Float32Array, index: readonly number[], voxel: boolean,
+): Generator<void, Float32Array, void> {
   const count = position.length / 3;
   const ao = new Float32Array(count);
   let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
@@ -659,10 +676,12 @@ function ambientOcclusion(position: Float32Array, normal: Float32Array, index: r
         position[a + 2] * q + position[b + 2] * u + position[c + 2] * w);
     }
   }
+  yield;
   const reach = 1.4, step = cell * 0.9;
   // vertices split only by material share a position and a normal: cast their rays once
   const seen = new Map<string, number>();
   for (let v = 0; v < count; v++) {
+    if (v > 0 && v % VEHICLE_BUILD_SLICE === 0) yield;
     const px = position[v * 3], py = position[v * 3 + 1], pz = position[v * 3 + 2];
     const vx = normal[v * 3], vy = normal[v * 3 + 1], vz = normal[v * 3 + 2];
     const key = `${Math.round(px * 500)},${Math.round(py * 500)},${Math.round(pz * 500)},${Math.round(vx * 8)},${Math.round(vy * 8)},${Math.round(vz * 8)}`;

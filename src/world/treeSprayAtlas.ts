@@ -1461,6 +1461,23 @@ function paintShrubStemTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng):
  */
 export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0,
   shrub = false): THREE.Texture {
+  return drainAtlasSteps(makeSprayAtlasSteps(kind, rng, size, tone, snow, shrub));
+}
+
+/** A stepped atlas bake run whole (the synchronous callers' path through the same statements). */
+export function drainAtlasSteps<Result>(steps: Generator<void, Result, void>): Result {
+  let result = steps.next();
+  while (!result.done) result = steps.next();
+  return result.value;
+}
+
+/**
+ * makeSprayAtlas a tile, a pass at a time (boot-261: the Garage hero's ghillie garnish painted its atlas inside one
+ * 0.9 s build slice on the phone census): the same canvas operations and texel passes in the same order, so the same
+ * texels, with a step after each painted tile and each tile's falloff and padding.
+ */
+export function* makeSprayAtlasSteps(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0,
+  shrub = false): Generator<void, THREE.Texture, void> {
   const s = Math.max(64, size | 0), T = SPRAY_ATLAS_TILES, S = Math.floor(s / T);
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -1485,9 +1502,10 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     // take (vegetation.ts buildGrownTree); the bottom row stays bare (its own stream: the leaf painting never moves)
     if (snow > 0.05 && ty === 0) paintSpraySnow(ctx, twigs, S * (kind === 'birch-bare' || BARE_PAINTERS[kind] ? 0.035 : 0.07), snow, snowRng);
     ctx.restore();
+    yield;
   }
   const image = ctx.getImageData(0, 0, s, s);
-  finishSprayTiles(image.data, s, S, T);
+  yield* finishSprayTilesSteps(image.data, s, S, T);
   applyTone(image.data, tone);
   const texture = new THREE.Texture(image as unknown as HTMLImageElement);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -1502,6 +1520,11 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
  * kept) and the flood of empty texels with the tile's mean leaf tone.
  */
 export function finishSprayTiles(d: Uint8ClampedArray, s: number, S: number, T: number): void {
+  drainAtlasSteps(finishSprayTilesSteps(d, s, S, T));
+}
+
+/** finishSprayTiles with a step after each tile's falloff and after its padding. */
+function* finishSprayTilesSteps(d: Uint8ClampedArray, s: number, S: number, T: number): Generator<void, void, void> {
   for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
     let r = 0, g = 0, b = 0, n = 0;
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
@@ -1518,7 +1541,9 @@ export function finishSprayTiles(d: Uint8ClampedArray, s: number, S: number, T: 
       d[i + 3] = Math.round(d[i + 3] * fall);
       if (d[i + 3] < 24) { d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; }
     }
+    yield;
     padSprayTile(d, s, S, tx, ty, fr, fg, fb);
+    yield;
   }
 }
 
