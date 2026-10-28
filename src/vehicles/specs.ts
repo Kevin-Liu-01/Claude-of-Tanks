@@ -393,11 +393,8 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
 
   kv2: {
     id: 'kv2', name: 'KV-2', nation: 'USSR', era: 'ww2', role: 'heavy',
-    community: {
-      author: 'Comrade1280',
-      source: 'https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296',
-      license: 'CC-BY 4.0',
-    },
+    // 262: the Comrade1280 print credit is retired; the build follows historical references
+    // (docs/references/tanks/kv2.md keeps the print's provenance, docs/ATTRIBUTION.md its record)
     hp: 1250,
     enginePowerHp: 600, weightTons: 52, topSpeedKmh: 34, reverseSpeedKmh: 7,
     hullTraverseDegS: 20,

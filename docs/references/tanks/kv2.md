@@ -36,54 +36,60 @@ Copies of the Commons images and the measured crops are kept outside the reposit
 | Hull length (plates) | −3.50..3.07 (6.57) + hook brackets to −3.615/3.26 | 6.675 (S1 KV-1) | nose 3.30, rear −3.375 (6.675) |
 | Upper hull | full-width deck slab ±1.44..±1.615 at 1.60-1.68, sponson walls to ±1.615 | hull box ≈1.86 wide, sides vertical belly to roof (S1, S3, S4) | box ±0.925, roof 1.65 |
 | Fenders | deck-level plane at 1.585-1.60, ±0.99..±1.615 | shelf 0.28 m under the roof (S3 1.37; S4/S6) | shelves at 1.37, ±0.925..±1.66, sloped front mudguards |
-| Bow | stepped bow 1.40/1.31/1.13 nose shelf | driver plate 30°, glacis 70° (20° above horizontal), lower plate 25° (S1) | 1.65→1.30 driver plate, glacis to 0.92 at 3.26, lower plate to the belly at 3.05 |
-| Stern | tail plate −3.50 + chamfers | upper 50°, lower plate curved 0-90° (S1, S4 rear, S6) | upper plate 1.65→1.31, vertical to 1.03, quarter-round to the belly |
+| Bow | stepped bow 1.40/1.31/1.13 nose shelf | driver plate 30°, glacis 70° (20° above horizontal), lower plate 25° (S1); a tall driver's plate over a short glacis strip (S4) | driver's plate 1.65→1.15 (0.50 m, roof edge z 2.36), glacis strip to 0.94 at 3.27, lower plate to the belly at 3.085 |
+| Stern | tail plate −3.50 + chamfers | upper 50°, lower plate curved 0-90° (S1, S4 rear, S6) | the deck rolls over on a 0.42 m radius to vertical at 1.23, vertical to 1.03, a 0.60 m quarter-round to the belly |
 | Track | 0.645 wide, band 0.970..1.615 | 0.70 wide (S1) | 0.70, band 0.96..1.66 |
-| Return rollers | 3 × r 0.085 at y 1.04 | ~0.30 m diameter (S3, S4) | 3 × r 0.15 |
+| Return rollers | 3 × r 0.085 at y 1.04 (the kit drew 0.18 m) | ~0.30-0.39 m tyred dish rollers (S3, S5) | 3 × 0.34 m × 0.20 m at z 1.52 / −0.20 / −1.96 |
+| Idler | r 0.255 | ~0.65-0.70 m spoked (S3) | r 0.33 (0.66 m), eight radial spokes |
+| Road wheels | six a side, stamped six-pocket face | six double-rimmed small wheels (S1); 1941 stamped wheels (S2, S5); the museum tank's cast spoked wheels are a later fit (S4) | unchanged: the 1941 stamped six-pocket wheels, matching the 1941 turret |
 | Turret width | 1.89 (walls ±0.945) | 1.93-1.97 (S3), = hull width (S3 plan) | 1.94 |
 | Turret roof | 3.09-3.17 + periscope pods to 3.27 | 3.24-3.25 to the roof (S1, S3) | roof 3.24, fittings above |
 | Turret length (body) | ≈2.75 with cheek wedges and a bulge | 2.75-2.96 (S3, S5) | 2.75, front plate at world 1.37 |
 | Rear overhang | skirt at 1.67 to −0.63, cheek wedges | soffit 1.85-1.89 over the deck (S3, S4) | soffit 1.91, rear wall 1.33 tall |
 | Rear door | 0.70 × 0.70 plate | ≈0.85-0.9 square, hinged on the tank's right, DT ball on its left (S4, S5) | 0.84 × 0.84, offset 0.20 to the right |
-| Mantlet | r 0.46 bolted disc + 1.00 × 0.62 × 0.50 box + cone + chin | cylindrical drum ≈0.95 Ø × 1.02 + shield box 0.60 × 0.69 (S3, S4) | drum r 0.47 × 1.04, box 0.62 × 0.72 × 0.58 with a chamfered chin |
-| Barrel | r 0.115, mouth at world 3.36 (inside the hooks) | 152.4 bore, 3.70 m L/24.5, half-jacketed (S2); muzzle ≈0.27 past the bow (6.95 overall, S1) | jacket r 0.132, tube r 0.111, muzzle at 3.57 |
-| Trunnion | world (0, 2.58, 1.00) | axis 2.50 (S2) - 2.66 (S3) | (0, 2.58, 1.37) |
-| Gun arc (spec) | +12 / −5 | +18 / −3 (S1) | spec unchanged (gameplay); clearance receipt covers −5..+18 |
+| Mantlet | r 0.46 bolted disc + 1.00 × 0.62 × 0.50 box + cone + chin | cylindrical drum ≈1.0-1.1 Ø × 1.02, its top level with the roof, smooth convex end caps + shield box (S3, S4) | drum r 0.53 × 1.08 with domed caps; box 0.74 × 0.67 × 0.54 with one 45° chin and seam bolts |
+| Barrel | r 0.115, mouth at world 3.36 (inside the hooks) | 152.4 bore, 3.70 m L/24.5, half-jacketed (S2); S1's table gives 6.95 m overall (muzzle ≈0.27 past the bow), the drawing and the photographs put the muzzle at the bow (S3, S4) | jacket r 0.132, tube r 0.111, muzzle at 3.47 (0.17 past the bow): 6.85 m overall (Main ruling 262) |
+| Trunnion | world (0, 2.58, 1.00) | axis 2.50 (S2) - 2.66 (S3) | (0, 2.67, 1.27), 0.10 m behind the front plate |
+| Gun arc (spec) | +12 / −5 | +18 / −3 (S1) | spec unchanged (gameplay, Main ruling 262: the source arc goes to progression's fairness pass); clearance receipt covers −5..+18 |
 
 ### Construction (src/vehicles/profiles/soviet-heavy.ts, `KV2`)
 
 - **Hull:** one `sectionSolid` box ±0.925 from the 0.43 belly to the 1.65 roof; stations at every bow and stern plate
-  corner: the 0.40 m driver's plate at 30° (roof edge z 2.20), the glacis at 20° to the nose at 3.30 (0.93), the
-  lower plate at 25° to the belly at 3.085; the stern's upper plate (1.65 → 1.31 over 0.425 m, ~51° from vertical),
+  corner: the 0.50 m driver's plate at 30° (roof edge z 2.36), a short 20° glacis strip to the nose at 3.30 (0.93),
+  the lower plate at 25° to the belly at 3.085; at the stern the deck rolls over on a 0.42 m radius to vertical at 1.23,
   then the curved lower plate (vertical to 1.03, a 0.60 m quarter-round to the belly at −2.775). Weld beads on every
-  plate joint the eye follows; bolted roof and deck plate joints.
+  plate joint the eye follows; bolted roof and deck plate joints; bump-stop brackets over each road wheel.
 - **Fenders:** 22 mm shelves at 1.37 from −3.34 to 2.30 with a 40 mm turned-down lip, sloped front mudguards to
-  (3.24, 1.18) with inner cheek plates down to the glacis edge (no open slot from the front), four flat-bar triangular
-  frames a side against the hull wall, bolt rows, two long stowage boxes on the rear fenders, shovel and axe (left),
-  screw jack and block (right).
+  (3.24, 1.18) ending in a 0.12 m turned-down flap, inner cheek plates down to the glacis edge (no open slot from the
+  front), four angle-iron triangles a side standing off the hull wall, bolt rows, two long stowage boxes on the rear
+  fenders, shovel and axe (left), screw jack and block (right), spare links on the right front fender (VEH-13 run
+  `kv-fender-links`).
 - **Fittings:** driver's vision block on the centre line, bow DT ball on the tank's left, headlight on its right,
-  two driver's periscopes and the radio operator's flush hatch ahead of the turret, the 71-TK-3 whip 2.19 m off the
-  ring axis (outside every turret sweep, 0.18 m under the tube at −5°), bolt row and towing eyes on the lower nose
-  plate, spare links on the glacis (VEH-13 run `kv-nose-deck-links`); engine access plate, two side intake louvres,
-  the transverse outlet louvre, two round transmission hatches, exhaust cowls on the upper rear plate, towing eyes on
-  the curved lower rear plate.
+  two driver's periscopes and the radio operator's flush hatch ahead of the turret, the 71-TK-3 whip 2.27 m off the
+  ring axis (outside every turret sweep, 0.11 m under the tube at −5°), bolt row and towing eyes on the lower nose
+  plate; engine access plate, two short intake grilles, two 0.64 m bolted transmission covers, hooded exhausts on the
+  deck's rear edge, towing eyes on the curved lower rear plate.
 - **Running gear:** the family `sovGear` at xc 1.31, a 0.70 m track (band 0.96..1.66), six 0.60 m road wheels a side
-  (span 4.60, centre −0.05) with the early stamped six-pocket face, three 0.30 m return rollers (y 0.995), sprocket
-  (−2.98, 0.80, r 0.33), idler (2.93, 0.80, r 0.30); the print-era cleat comb, guard rail and hangers are gone.
+  (span 4.60, centre −0.05) with the early stamped six-pocket face, three 0.34 m × 0.20 m return rollers (y 0.96),
+  sprocket (−2.98, 0.80, r 0.33), idler (2.90, 0.80, r 0.33) on eight radial spokes; the print-era cleat comb, guard
+  rail and hangers are gone.
 - **Turret (ring at z 0.32, seat 1.67):** one `sectionSolid` of 75 mm plates: sides ±0.97, front plate at 1.05
-  (world 1.37) between 45° cheeks to ±0.85, a 0.13 m chamfer over the front plate up to the 1.57 roof (world 3.24),
-  rear plate at −1.70 (world −1.38), its last 0.63 m standing over the deck on a 0.24 soffit (world 1.91). Welds on
-  every corner and round the roof, floor bolts, two raised bolted bars either side of the mantlet, side stiffeners,
-  two grab handles, a pistol port and a browed vision slit a side, the 0.84 m rear door hung on the tank's right edge
-  with strap hinges and a bolt frame, the rear DT ball on the left, the commander's hatch at the left rear, two
-  periscope domes at the roof's front corners, the ventilator, a signal port and four lifting eyes.
-- **M-10T:** the cradle drum (r 0.50 × 1.08, rolled end edges, bolted end plates) turns on the trunnion at the
-  front plate (turret-local 0, 0.93, 1.05 = world 0, 2.60, 1.37); the 0.74 × 0.72 × 0.62 shield box with its chin
-  cut back and a raised tube boss; the tube to the mouth at gun-local 2.20 (world 3.57: 6.95 m overall) under a
-  half-jacket (r 0.132, S2's *Halbmantelrohr*) with its seam ring; the shadow-named bore device on a floorless void.
-- **Spec:** dims 6.675 hull / 6.95 overall / 3.32 / 3.25; combat pivots on the drawn trunnion (gun-barrel census
-  ALIGNED, offset 0 mm, angle 0, axial 0, radius −12 mm, no combat-rig row). Gameplay stats unchanged (the spec's
-  +12/−5 arc stays; S1 gives +18/−3: an owner decision).
+  (world 1.37) between 45° cheeks to ±0.85, a 3 cm bevel over the front plate to the 1.57 roof (world 3.24), rear plate
+  at −1.70 (world −1.38), its last 0.78 m standing over the deck behind a square 0.22 m step (soffit world 1.91). Welds
+  on every corner and round the roof, floor bolts, a welded bar either side of the mantlet, side stiffeners, two U
+  grab handles, a pistol port and a browed vision slit a side, the 0.84 m rear door hung on the tank's right edge on
+  two big hinge blocks, the rear DT ball on the left, the commander's hatch at the left rear, two periscope domes at
+  the roof's front corners, the ventilator, a signal port and four lifting eyes.
+- **M-10T:** the cradle drum (r 0.53 × 1.08, rolled end edges, smooth domed caps) turns on the trunnion 0.10 m behind
+  the front plate (turret-local 0, 1.00, 0.95 = world 0, 2.67, 1.27), its top level with the roof; the 0.74 × 0.67 ×
+  0.54 shield box with one 45° chin, round-head bolts down its seam and a low tube boss; the tube to the mouth at
+  gun-local 2.20 (world 3.47) under a half-jacket (r 0.132, S2's *Halbmantelrohr*); the shadow-named bore device on a
+  floorless void.
+- **Spec:** dims 6.675 hull / 6.85 overall / 3.32 / 3.25; combat pivots on the drawn trunnion (gun-barrel census
+  ALIGNED, offset 0 mm, angle 0, axial 0, radius −12 mm, no combat-rig row). Gameplay stats unchanged. The
+  Comrade1280 print credit (`spec.community`) is retired (Main ruling 262): no geometry follows the print; it stays
+  below in this packet's history, in docs/ATTRIBUTION.md's community wave 2 table and as the local comparison record
+  in tools/vehicleComparisonSources.mjs.
 
 ### Critic round (two blind critics against S3-S5) and what changed
 
