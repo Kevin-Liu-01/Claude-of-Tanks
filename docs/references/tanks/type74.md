@@ -512,9 +512,10 @@ it (`src/vehicles/profiles/type74Family.ts`), the production tank `buildType74Fa
 | Running gear | Five wheels on a 0.8675 m pitch (+1.83..−1.64), sprocket (−3.00, 0.90) | Five on a 1.01 m pitch (+2.00..−2.05), idler +3.02, sprocket −2.92, both raised; the stern overhangs the sprocket | Five 0.74 m wheels at +2.00/+0.99/0.00/−1.01/−2.02, idler (+3.00, 0.66), sprocket (−2.95, 0.70) |
 | Turret | 18-station plan ±1.14, +1.35/−2.05; shell 0.465 m, crown at 1.885 | Plan ±1.33, +1.49/−2.12; full belt 0.07–0.24 m, sides rolling to a flat crown at 0.63 m, the bustle undercut | The model's plan and rings; crown at 2.05; cupola top 2.23 |
 | Gun | Bore 1.60, trunnion (0, 0.18, 1.15) | Bore 1.677 | Trunnion (0, 0.257, 1.18); `armor.gunPivot` follows |
-| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.33 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose) |
+| Mask | Drum 0.18 m, channel ±0.48, face 0.345 ahead of the trunnion | A broad face from the turret's foot nearly to its crown | Drum 0.33 m, channel ±0.515, the canvas-laced mask block's face 0.42 ahead (0.11 m proud of the nose); its underside 0.225 m under the bore, 5 cm over the deck it swings over |
 | Searchlight | Cradle at x −0.625 | (the model's is the STB-1 box) | The cradle at x −0.80, clear of the larger mask |
 | Fender stowage | Four lockers on the flat fenders | (no fenders: sloped sides) | Two lockers on each side slope |
 | Mufflers | On the flat rear fenders | (mesh cylinders on the rear corners) | Muffler covers on the rear side slopes |
 | Turret stowage | Baskets hugging the bustle's flanks | A rail at the bustle's rear | A bustle basket across the rear face |
 | Driver's hatch | Flush on the deck at +2.00 | A raised octagon on the glacis (the STB-1's) | Flush, laid on the glacis at +2.15, the three periscopes ahead |
+| Gun curve (gunPitchByYawDeg) | Measured on the 262 hull pass | — | Re-measured on the family hull (tools/gun-depression-sweep.mjs, 26 mm, whole gun): −6 over the front and sides (−5.8 to −5.9 at yaws 9–46 over the lamp boxes), rising over the rear quarters to −1.6 at yaws 162–164 (the stern's tow eyes and lifting eyes) and −4.2 dead astern. The STB-1's: −6 to yaw 144, −1.5 at 163–165, −3 astern |

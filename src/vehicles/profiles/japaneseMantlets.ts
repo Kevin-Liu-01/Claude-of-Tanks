@@ -152,7 +152,8 @@ interface MaskSeatFit {
   readonly channelHalf: number;
   readonly receiverR: number;
   readonly drumR: number;
-  /** the drum's underside under the bore through its travel: level with the turret's foot over the deck */
+  /** the drum's underside under the bore through its travel: over the deck by more than the gun's 26 mm keep, at every
+   * bearing the turret swings it (the mask block's lowest corner, at full depression, stays above it too) */
   readonly drumLow: number;
   readonly drumHalf: number;
   /** the receiver's floor, turret frame: just over the shell's foot ring */
@@ -181,14 +182,14 @@ const DRUM_TRAVEL = 15 * Math.PI / 180;
 // Type 74 (production): the broad external mask
 // ---------------------------------------------------------------------------------------------------------------------
 const T74 = {
-  seat: { channelHalf: 0.515, receiverR: 0.36, drumR: 0.33, drumLow: 0.27, drumHalf: 0.50, floorY: 0.05, pinR: 0.06 },
+  seat: { channelHalf: 0.515, receiverR: 0.36, drumR: 0.33, drumLow: 0.225, drumHalf: 0.50, floorY: 0.05, pinR: 0.06 },
   // the mask block ahead of the drum, its face 0.11 m proud of the turret's nose
   stations: [
-    { z: 0.00, half: 0.500, lo: -0.270, hi: 0.330, rb: 0.060, rt: 0.075 },
-    { z: 0.16, half: 0.496, lo: -0.262, hi: 0.326, rb: 0.060, rt: 0.080 },
-    { z: 0.28, half: 0.484, lo: -0.250, hi: 0.310, rb: 0.060, rt: 0.088 },
-    { z: 0.37, half: 0.460, lo: -0.236, hi: 0.288, rb: 0.058, rt: 0.085 },
-    { z: 0.42, half: 0.425, lo: -0.222, hi: 0.262, rb: 0.050, rt: 0.075 },
+    { z: 0.00, half: 0.500, lo: -0.225, hi: 0.330, rb: 0.060, rt: 0.075 },
+    { z: 0.16, half: 0.496, lo: -0.222, hi: 0.326, rb: 0.060, rt: 0.080 },
+    { z: 0.28, half: 0.484, lo: -0.215, hi: 0.310, rb: 0.060, rt: 0.088 },
+    { z: 0.37, half: 0.460, lo: -0.208, hi: 0.288, rb: 0.058, rt: 0.085 },
+    { z: 0.42, half: 0.425, lo: -0.200, hi: 0.262, rb: 0.050, rt: 0.075 },
   ] as const,
 };
 
@@ -256,14 +257,14 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
 // STB-1 (prototype): the owner's model's rounded oval mask
 // ---------------------------------------------------------------------------------------------------------------------
 const STB1 = {
-  seat: { channelHalf: 0.475, receiverR: 0.36, drumR: 0.33, drumLow: 0.27, drumHalf: 0.46, floorY: 0.05, pinR: 0.06 },
+  seat: { channelHalf: 0.475, receiverR: 0.36, drumR: 0.33, drumLow: 0.225, drumHalf: 0.46, floorY: 0.05, pinR: 0.06 },
   // an oval face (corner radii near its half-height) domed forward of the drum, 0.08 m proud of the turret's nose
   stations: [
-    { z: 0.00, half: 0.460, lo: -0.270, hi: 0.330, rb: 0.140, rt: 0.160 },
-    { z: 0.14, half: 0.452, lo: -0.262, hi: 0.322, rb: 0.170, rt: 0.190 },
-    { z: 0.26, half: 0.430, lo: -0.245, hi: 0.300, rb: 0.200, rt: 0.220 },
-    { z: 0.34, half: 0.395, lo: -0.222, hi: 0.270, rb: 0.200, rt: 0.220 },
-    { z: 0.385, half: 0.340, lo: -0.190, hi: 0.230, rb: 0.170, rt: 0.190 },
+    { z: 0.00, half: 0.460, lo: -0.225, hi: 0.330, rb: 0.140, rt: 0.160 },
+    { z: 0.14, half: 0.452, lo: -0.222, hi: 0.322, rb: 0.170, rt: 0.190 },
+    { z: 0.26, half: 0.430, lo: -0.215, hi: 0.300, rb: 0.200, rt: 0.220 },
+    { z: 0.34, half: 0.395, lo: -0.205, hi: 0.270, rb: 0.190, rt: 0.220 },
+    { z: 0.385, half: 0.340, lo: -0.185, hi: 0.230, rb: 0.165, rt: 0.190 },
   ] as const,
 };
 
@@ -278,8 +279,8 @@ export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometr
   P.add('gunMount', maskSolid(STB1.stations, steps));
   // the rim: a dark bead 6 mm proud round the oval where its face leaves the drum
   P.add('gunMountDark', maskSolid([
-    { z: 0.255, half: 0.438, lo: -0.252, hi: 0.307, rb: 0.205, rt: 0.225 },
-    { z: 0.275, half: 0.434, lo: -0.249, hi: 0.303, rb: 0.205, rt: 0.225 },
+    { z: 0.255, half: 0.438, lo: -0.220, hi: 0.307, rb: 0.200, rt: 0.225 },
+    { z: 0.275, half: 0.434, lo: -0.218, hi: 0.303, rb: 0.200, rt: 0.225 },
   ], steps));
   // a port either side of the bore, a little over it: the telescope's on the right, the coaxial gun's on the left
   portBoss(P, 0.245, 0.11, 0.36, 0.06, 'sight', P.q ? 20 : 12);

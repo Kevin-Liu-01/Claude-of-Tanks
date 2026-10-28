@@ -21,6 +21,11 @@ const communityArmor = (
   allowTurretless: false,
 } satisfies CommunityArmorOptions);
 
+// 262: measured by tools/gun-depression-sweep.mjs on the rebuilt hull (26 mm, the whole gun, every degree of yaw): the gun
+// rides up over the lamp boxes, the driver's periscopes, the side-slope lockers, the rear mufflers and the stern (the
+// family hull on the owner's STB-1 model, profiles/type74Family.ts)
+const TYPE74_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [8, -6], [9, -5.9], [14, -5.8], [46, -5.9], [47, -6], [142, -6], [144, -4.7], [145, -4.3], [151, -3.2], [156, -3.3], [157, -3], [159, -3], [160, -3.3], [161, -2], [162, -1.6], [164, -1.6], [168, -2.1], [169, -3.3], [178, -3.4], [180, -4.2]];
+
 // Same authored combat row as the quarantined user-drop fallback. No external
 // model or visual builder participates in this module.
 const TYPE74_SPEC = {
@@ -39,6 +44,7 @@ const TYPE74_SPEC = {
   // −6.5/+9.5); the hydropneumatic hull pitch below (the special action, which bots engage when halted on a target)
   // carries it to −14/+17. It was −10/+15 at the gun.
   turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 9, gunDepressionDeg: 6,
+  gunPitchByYawDeg: TYPE74_GUN_PITCH_BY_YAW_DEG,
   gun: {
     caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.29, aimTimeS: 1.7,
     bloom: BLOOM_MODERN,

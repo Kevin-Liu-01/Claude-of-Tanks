@@ -181,12 +181,13 @@ function addProductionHullKit(P: TankBuilderPort): void {
       x: s * 1.2835, y: FLOOR - 0.10, z: -3.22, thickness: 0.035, length: 0.52, height: 0.18,
       material: 'rubber', rotation: [0, Math.PI / 2, 0], crown: 0.007, frontCut: 0.018, rearCut: 0.013 });
   }
-  // stowage lockers and the pioneer tools on the side slopes, the bustle's sweep clear over them
+  // stowage lockers on the side slopes, low on them: their tops stay under the deck line, where the mask and the bustle
+  // swing over them, and their outer edges inside the width anchor
   for (const s of [-1, 1]) for (const [z, len] of [[0.85, 0.80], [-0.30, 0.90]] as const) {
-    const p = onSlope(s, 0.62, 0.07);
-    P.addEquipment('hull', box(0.20, 0.14, len), p.x, p.y, z, 0, 0, p.rz);
-    const lid = onSlope(s, 0.62, 0.142);
-    P.add('hullDark', box(0.21, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
+    const p = onSlope(s, 0.45, 0.05);
+    P.addEquipment('hull', box(0.16, 0.10, len), p.x, p.y, z, 0, 0, p.rz);
+    const lid = onSlope(s, 0.45, 0.102);
+    P.add('hullDark', box(0.17, 0.008, len - 0.06), lid.x, lid.y, z, 0, 0, lid.rz);
   }
   // the pioneer tools on the rear deck strip, outside the bustle's sweep; the rear deck's lifting eyes
   shovelTool(P, -1.12, DECK + 0.015, -2.40);

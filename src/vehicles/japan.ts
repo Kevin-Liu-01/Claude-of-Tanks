@@ -139,6 +139,9 @@ Object.assign(type10_tk_x.gun.shells[0], {
 });
 scaleNonExternalArmor(type10_tk_x, 1.12);
 
+// 262: the STB-1's own curve, measured on its hull on the owner's model (tools/gun-depression-sweep.mjs, as the Type 74's)
+const STB1_GUN_PITCH_BY_YAW_DEG: readonly (readonly [number, number])[] = [[0, -6], [3, -6], [6, -5.8], [30, -5.8], [32, -6], [144, -6], [146, -4.8], [147, -4.3], [148, -3.9], [154, -2.5], [157, -2.4], [160, -2.4], [161, -2.5], [163, -1.5], [165, -1.5], [166, -1.8], [167, -2.9], [170, -3.1], [175, -3], [180, -3]];
+
 const JAPAN_SPECS = {
   stb1: variant('stb1', 'type74', {
     name: 'STB-1', number: 'STB-1', scheme: 'solid',
@@ -146,7 +149,7 @@ const JAPAN_SPECS = {
     camoScale: 0.46,
     dims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.25 },
     stats: { hp: 1750, enginePowerHp: 750, weightTons: 37.9, topSpeedKmh: 53,
-      reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27 },
+      reverseSpeedKmh: 20, turretTraverseDegS: 32, gunPitchDegS: 27, gunPitchByYawDeg: STB1_GUN_PITCH_BY_YAW_DEG },
     reloadS: 7.2, shellName: 'Type 93 APFSDS', armorFactor: 1.03,
   }),
   type90a: variant('type90a', 'type90_kyumaru', {
