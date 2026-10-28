@@ -277,7 +277,8 @@ const FACT_GROUPS: readonly FactGroup[] = [
 
 /* (owner 2026-10-28: "make it look better and have a exit button"): the kit's HUD plate, its type and tokens, the
    readouts in fact rows by group, a close of the kit's own (48 px) and the QA actions as kit buttons. Pointer-transparent
-   but for its controls: a battle press goes through it. */
+   but for its controls: a battle press goes through it. (Its rows set close: with the QA actions it stood 846 px tall at
+   1920x1080, over the minimap's title.) */
 const PERF_HUD_CSS = `
 #cot-perfhud{position:fixed;top:12px;right:12px;z-index:var(--z-menu);width:min(420px,calc(100vw - 24px));
   max-height:calc(var(--cot-viewport-height,100dvh) - 24px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain;
@@ -294,22 +295,22 @@ const PERF_HUD_CSS = `
 #cot-perfhud.mobile-expanded .ph-mobile-toggle svg{transform:rotate(180deg)}
 #cot-perfhud .ph-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:var(--s5);padding:var(--s1) var(--s4) var(--s3);
   grid-template-areas:"frame render" "frame memory" "quality quality" "simulation world" "network world" "shadows shadows" "actions actions"}
-#cot-perfhud .ph-group{min-width:0;padding:var(--s3) 0 var(--s1);border-top:1px solid var(--line-1)}
+#cot-perfhud .ph-group{min-width:0;padding:var(--s2) 0 var(--s1);border-top:1px solid var(--line-1)}
 #cot-perfhud .ph-group[data-group=frame],#cot-perfhud .ph-group[data-group=render]{border-top:0}
 ${FACT_GROUPS.map(({ id }) => `#cot-perfhud .ph-group[data-group=${id}]{grid-area:${id}}`).join('\n')}
-#cot-perfhud .ph-cap{margin:0 0 var(--s1);font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-ui);letter-spacing:var(--track-label-s);
+#cot-perfhud .ph-cap{margin:0 0 2px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-ui);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-3)}
 #cot-perfhud .ph-facts{margin:0;display:grid;grid-template-columns:minmax(0,1fr);column-gap:var(--s5)}
 #cot-perfhud .ph-group.wide .ph-facts{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-#cot-perfhud .ph-fact{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);min-width:0;padding:1px 0}
+#cot-perfhud .ph-fact{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);min-width:0}
 #cot-perfhud .ph-fact[hidden]{display:none}
 #cot-perfhud .ph-fact.long{grid-column:1/-1}
-#cot-perfhud .ph-fact dt{flex:none;font:500 max(var(--fs-floor-12),var(--fs-12))/1.35 var(--font-ui);color:var(--ink-2);white-space:nowrap}
-#cot-perfhud .ph-fact dd{min-width:0;margin:0;font:500 max(var(--fs-floor-12),var(--fs-12))/1.35 var(--font-data);
+#cot-perfhud .ph-fact dt{flex:none;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-ui);color:var(--ink-2);white-space:nowrap}
+#cot-perfhud .ph-fact dd{min-width:0;margin:0;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-data);
   color:var(--ink-1);text-align:right;overflow-wrap:anywhere}
 #cot-perfhud.has-error .ph-group dd{color:var(--ink-3)}
 /* (the actions share the row by their words and wrap whole: a third of the panel each cut "Copy summary" at 1920) */
-#cot-perfhud .ph-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:var(--s2);padding-top:var(--s3);
+#cot-perfhud .ph-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:var(--s2);padding-top:var(--s2);
   border-top:1px solid var(--line-1);pointer-events:auto}
 #cot-perfhud .ph-actions .cot-c-btn{flex:1 1 auto;padding-inline:var(--s3)}
 #cot-perfhud .ph-action-status{flex:1 0 100%;min-height:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-ui);
