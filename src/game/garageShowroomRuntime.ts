@@ -30,7 +30,9 @@ interface ShowroomOrbitControl {
   beginDrag(): void;
   drag(dx: number, dy: number): void;
   endDrag(): void;
+  cancelDrag(): void;
   wheel(notches: number): void;
+  pinch(scale: number): void;
   hold(on: boolean): void;
   aim(yawRad: number, pitchRad: number, zoomTo?: number): void;
   debugState(): Record<string, RuntimeValue>;
@@ -111,22 +113,58 @@ export function createGarageShowroomRuntime({
   const control = createShowroomOrbit(camera, rig, orbitOptions) as ShowroomOrbitControl;
   let enabled = false;
   let dragPointer = -1;
+  // 2026-10-27 (the iPad review: "fix zoom amounts"): one finger turns the tank, two pinch it. Every pointer down on the
+  // stage is tracked by its client position: a second finger ends the turn without a flick and pinches from there, and the
+  // finger left after a pinch turns the tank again from where it rests. A drag's step is its client position's (iOS
+  // Safari's touch pointers carry no reliable movementX); a pointer without one (a test's synthetic move) keeps movementX.
+  const pointers = new Map<number, { x: number; y: number }>();
+  let pinchSpread = 0;
+  const spread = (): number => {
+    const [a, b] = [...pointers.values()];
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
+  const startDrag = (pointerId: number) => {
+    dragPointer = pointerId;
+    control.beginDrag();
+  };
 
   const onPointerDown = (event: PointerEvent) => {
     if (!enabled || event.button !== 0) return;
-    dragPointer = event.pointerId;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     try { element.setPointerCapture?.(event.pointerId); } catch (_) { /* embedded panes */ }
-    control.beginDrag();
+    if (pointers.size === 1) {
+      startDrag(event.pointerId);
+    } else if (pointers.size === 2) {
+      dragPointer = -1;
+      control.cancelDrag();
+      pinchSpread = spread();
+    }
   };
   const onPointerMove = (event: PointerEvent) => {
-    if (enabled && event.pointerId === dragPointer) {
-      control.drag(event.movementX || 0, event.movementY || 0);
+    const last = pointers.get(event.pointerId);
+    if (!enabled || !last) return;
+    const { clientX: x, clientY: y } = event;
+    const placed = typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y);
+    const dx = placed ? x - last.x : event.movementX || 0;
+    const dy = placed ? y - last.y : event.movementY || 0;
+    if (placed) { last.x = x; last.y = y; }
+    if (pointers.size >= 2) {
+      const now = spread();
+      if (pinchSpread > 0 && now > 0) control.pinch(now / pinchSpread);
+      pinchSpread = now;
+    } else if (event.pointerId === dragPointer) {
+      control.drag(dx, dy);
     }
   };
   const endDrag = (event: PointerEvent) => {
-    if (event.pointerId !== dragPointer) return;
-    dragPointer = -1;
-    control.endDrag();
+    if (!pointers.delete(event.pointerId)) return;
+    if (event.pointerId === dragPointer) {
+      dragPointer = -1;
+      control.endDrag();
+    }
+    pinchSpread = pointers.size >= 2 ? spread() : 0;
+    const [rest] = pointers.keys();
+    if (pointers.size === 1 && rest !== undefined && dragPointer === -1 && enabled) startDrag(rest);
   };
   // 2026-09-19: the dolly follows the DISTANCE scrolled (wheelNotches.ts) — a mouse click is one notch, a trackpad
   // scroll or pinch (ctrl+wheel) glides proportionally instead of stepping once per event; Safari reports the
@@ -153,10 +191,10 @@ export function createGarageShowroomRuntime({
     if (!(typeof scale === 'number' && scale > 0)) return;
     const ratio = scale / gestureScale;
     gestureScale = scale;
-    if (restores) return;
-    // one notch per 1.25x of pinch, the same feel as a pinch through ctrl+wheel
-    const units = Math.log(ratio) / Math.log(1.25);
-    if (units) control.wheel(units);
+    // a touch pinch is the two pointers' (onPointerMove): Safari's gesture events for it only keep the page from zooming;
+    // a trackpad pinch (no pointers down) dollies by its own spread
+    if (restores || pointers.size >= 2) return;
+    control.pinch(ratio);
   };
 
   element.addEventListener('pointerdown', onPointerDown);
@@ -175,6 +213,8 @@ export function createGarageShowroomRuntime({
     stop() {
       enabled = false;
       dragPointer = -1;
+      pointers.clear();
+      pinchSpread = 0;
       control.stop();
     },
     reset: () => control.reset(),
@@ -184,6 +224,7 @@ export function createGarageShowroomRuntime({
     dispose() {
       enabled = false;
       dragPointer = -1;
+      pointers.clear();
       control.stop();
       element.removeEventListener('pointerdown', onPointerDown);
       element.removeEventListener('pointermove', onPointerMove);

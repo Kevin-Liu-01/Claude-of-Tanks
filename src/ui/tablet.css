@@ -1,0 +1,40 @@
+/* The tablet layer (owner 2026-10-27: "the base ipad view is really really bad ... fix all ui on ipad"). Copyright © 2026
+   Kevin B. Liu.
+   A touch screen held wide with room for the docked layout (an iPad on its side, a Stage Manager window) keeps the
+   persistent panels (responsiveLayout.ts roomyTouch) instead of the phone's sideways layout stretched over it. This layer
+   only sets the docked layout's controls at the touch floor (--cot-control-floor, 44 px); every measure, plate and
+   primitive stays the docked layout's own. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+/* ---- the game bar: each destination, the language, the repository and Settings a full touch target ---- */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-gbar{height:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-nav :is(.cot-gear,.cot-locale-switcher,.cot-github){
+  min-width:var(--cot-control-floor);height:var(--cot-control-floor);min-height:var(--cot-control-floor);}
+/* ---- the readout's compare chip and the fleet's search, filter and arrows ---- */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-garage .cot-compare-toggle{height:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] :is(.cot-roster-search,.cot-facet-toggle){height:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-facet-toggle{min-width:var(--cot-control-floor);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-car-arrow{min-width:var(--cot-control-floor);flex-basis:var(--cot-control-floor);}
+/* the nations: each chip at its content and a touch target, growing to fill the row when every nation fits; when they
+   cannot, the track keeps its fade and swipe (garage.ts's honest overflow contract). Docked, the search folds to its glyph
+   until it is tapped or holds a query, so the row shows more nations */
+body[data-cot-input='coarse']:is([data-cot-panels='persistent'],[data-cot-orientation='portrait']:not([data-cot-width='phone'])) .cot-country-chip{
+  flex:1 0 auto;padding-inline:var(--s1);gap:var(--s1);}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown){
+  width:var(--cot-control-floor);padding:0;justify-content:center;}
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
+  flex:0 0 0;width:0;}
+
+/* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
+   The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;
+   the room a tablet adds goes to the wordmark, all six figures, and the stage's acts in the band beside the slots
+   (on a phone they stand under the bar's buttons, which on a tablet left them floating in the empty stage). */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-wordmark .wm{display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage{--cot-figures-h:116px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline{row-gap:var(--s3);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>.cot-lt-paint){order:2;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts{position:static;order:1;flex-direction:row;
+  align-self:flex-end;margin-left:auto;padding-left:0;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);}
+}
