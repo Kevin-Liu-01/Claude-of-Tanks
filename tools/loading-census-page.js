@@ -121,7 +121,9 @@
   const SKELETON = '[data-skeleton],[class*="skeleton"],[class*="shimmer"],[class*="placeholder"],.cot-c-skel,[data-reveal]:not([data-ready])';
   const BUSY = '[aria-busy="true"]';
   const STATUS = '[role="status"],[role="progressbar"],[role="alert"],[aria-live="polite"],[aria-live="assertive"],output';
-  const RETRY_TEXT = /retry|try again|reload|offline|重试|再试|离线|重新加载/i;
+  // a control that runs the load again, or a notice that names the network (a stat called "Reload" is neither)
+  const RETRY_CONTROL = /retry|try again|reload page|reconnect|重试|再试|重新加载/i;
+  const NETWORK_NOTE = /offline|connection|network|retry|try again|离线|网络|连接|重试/i;
   /** What one box shows right now. */
   const read = (box) => {
     const r = box.getBoundingClientRect();
@@ -169,9 +171,11 @@
   /** A quiet retry state: a visible control or note that names a retry or the network, inside the box or announced. */
   const retryShown = (box) => {
     const scope = box ?? document.body;
-    for (const el of scope.querySelectorAll('button,[role="button"],a,[role="alert"],[role="status"],[data-load-state="error"],p,span')) {
+    for (const el of scope.querySelectorAll('button,[role="button"],a,[role="alert"],[role="status"],[data-load-state="error"],.cot-c-notice')) {
       if (!visible(el)) continue;
-      if (el.matches('[data-load-state="error"]') || RETRY_TEXT.test(el.textContent ?? '') || RETRY_TEXT.test(el.getAttribute('aria-label') ?? '')) return describe(el);
+      const words = `${el.textContent ?? ''} ${el.getAttribute('aria-label') ?? ''}`;
+      if (el.matches('[data-load-state="error"]')) return describe(el);
+      if (el.matches('button,[role="button"],a') ? RETRY_CONTROL.test(words) : NETWORK_NOTE.test(words)) return `${describe(el)} "${words.trim().slice(0, 60)}"`;
     }
     return null;
   };
@@ -198,7 +202,15 @@
     if (kind === 'frame') {
       return () => [...document.querySelectorAll(sel)].some((v) => visible(v) && (v.readyState >= 2 || v.closest('.has-frame')));
     }
-    if (kind === 'gone') return () => ![...document.querySelectorAll(sel)].some(rendered);
+    if (kind === 'gone') {
+      // gone once seen: a cover the parser has not reached yet is not a cover that left
+      let seen = false;
+      return () => {
+        const shown = [...document.querySelectorAll(sel)].some(rendered);
+        seen ||= shown;
+        return seen && !shown;
+      };
+    }
     return () => [...document.querySelectorAll(sel)].some(visible);
   };
 
@@ -209,7 +221,8 @@
     let boxAt = null, readyAt = null, covered = null, retry = null, spinnerSeen = false, announcedAs = null, bareSamples = 0, waitSamples = 0;
     for (;;) {
       const now = performance.now();
-      const box = document.querySelector(boxSel);
+      // the box: its first match in view (a hidden twin earlier in the document is not the surface)
+      const box = [...document.querySelectorAll(boxSel)].find(visible) ?? document.querySelector(boxSel);
       if (box && visible(box) && boxAt === null) boxAt = Math.round(now);
       if (isReady()) { readyAt = Math.round(now); break; }
       if (box && visible(box)) {
@@ -237,7 +250,7 @@
       cls: Math.round(windowShifts.reduce((n, s) => n + s.value, 0) * 1000) / 1000,
       shifts: windowShifts.slice(0, 12),
       // an in-app row's pops are its box's (Deploy's own pictures are not the battle entry's)
-      popped: media.filter((m) => m.popped && m.t >= start && m.t <= end && (!inBox || document.querySelector(boxSel)?.contains(m.el))).slice(0, 12)
+      popped: media.filter((m) => m.popped && m.t >= start && m.t <= end && (!inBox || [...document.querySelectorAll(boxSel)].some((b) => b.contains(m.el)))).slice(0, 12)
         .map(({ el, ...rest }) => rest),
       broken: offline ? brokenMedia().slice(0, 12) : [], errors: errors.filter((e) => e.t >= start && e.t <= end).slice(0, 12), samples,
     };

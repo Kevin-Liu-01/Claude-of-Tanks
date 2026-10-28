@@ -136,11 +136,16 @@ async function press(page, steps) {
       const seen = await page.evaluate((list) => list.flatMap((c) => window.__ls.diagnose(c)), choices).catch(() => []);
       throw new Error(`step ${choices.join(' || ')} never showed${seen.length ? `: ${seen.join(' | ')}` : ' (no match)'}`);
     }
+    // the first match in view of the first choice that has one (a hidden twin, a mobile menu's copy, is passed over)
+    let pressed = false;
     for (const selector of choices) {
-      const handle = await page.$(selector);
-      if (!handle || !await handle.isVisible().catch(() => false)) continue;
-      await handle.click().catch(async () => { await page.evaluate((s) => document.querySelector(s)?.click(), selector); });
-      break;
+      for (const handle of await page.$$(selector)) {
+        if (!await handle.isVisible().catch(() => false)) continue;
+        await handle.click().catch(() => handle.evaluate((el) => el.click()));
+        pressed = true;
+        break;
+      }
+      if (pressed) break;
     }
     await sleep(150);
   }
@@ -220,6 +225,12 @@ async function pageRun(browser, origin, pageName, rows, layout, condition, rest)
       // back to the page at rest for the next row: close what the row opened
       if (!row.stays) for (let i = 0; i < 3; i++) { await page.keyboard.press('Escape').catch(() => {}); await sleep(200); }
       if (row.leave) await press(page, row.leave).catch(() => {});
+      // the next row starts from rest: no dialog or menu still open or closing
+      if (!row.stays) {
+        await page.waitForFunction(() => !document.querySelector('#cot-battle-menu.open, .cot-modal-root.is-open, dialog[open], .cot-tt'),
+          { timeout: 5000, polling: 100 }).catch(() => {});
+        await sleep(600);
+      }
       if (LOCK) await lock.checkpoint();
     }
     if (condition === 'offline') await cdp.send('Network.emulateNetworkConditions', ONLINE);
