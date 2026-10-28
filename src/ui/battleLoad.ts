@@ -193,7 +193,11 @@ ${WIDE} .cot-bl .hero .scrim{background:var(--battle-load-grade);}
   font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}.cot-bl .thead .flags:empty{display:none;}
 .cot-bl .team.ally .thead{color:var(--text-own);}
-.cot-bl .team.foe .thead{color:var(--text-enemy);flex-direction:row-reverse;}
+/* (the foe heading reads right to left from its right edge, so the flags the roster brings widen it leftward from where
+   it stands: laid out left to right and pushed right, its box moved 26 px left as its flag arrived, the loading census on
+   a phone; its words and flags keep their own direction) */
+.cot-bl .team.foe .thead{color:var(--text-enemy);direction:rtl;}
+.cot-bl .team.foe .thead>*{direction:ltr;}
 /* (each side's name on a plate of its own, in its team's ink: red on the pale sky read 1.2:1 with a halo alone, and a
    team-coloured underline was a one-edge stripe, gauntlet r2) */
 .cot-bl .team .thead{align-self:flex-start;width:max-content;height:auto;min-height:24px;padding:var(--s1) var(--s3);

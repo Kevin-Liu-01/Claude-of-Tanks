@@ -314,9 +314,26 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
     'systems-top', 'systems-width', 'systems-left', 'objective-top', 'objective-bottom', 'objective-width', 'objective-left',
     'report-right', 'flight-right-clearance', 'tray-shift']);
+  // A part whose box comes into being (the systems row as the vehicle's controls mount into it) stands hidden until the
+  // pass seats it: drawn first where its empty box stood, the row jumped 271 px across a phone's window a frame later as
+  // the pass seated it (the loading census, CLS 0.031 at the battle's start). The resize reaches here before that frame
+  // paints; the next frame's pass (refresh) shows it, then seats it, before that frame paints.
+  const SEATED_ON_ARRIVAL = '.cot-vehicle-controls';
+  const sized = new WeakMap<Element, boolean>();
+  const seating = new Set<HTMLElement>();
   const resize = new ResizeObserver((entries) => {
-    if (entries?.length) for (const entry of entries) planInput(entry.target);
-    else planInputs = true;
+    if (entries?.length) {
+      for (const entry of entries) {
+        planInput(entry.target);
+        const has = !!entry.contentRect && entry.contentRect.width > 0 && entry.contentRect.height > 0;
+        if (has && sized.get(entry.target) === false && (entry.target as HTMLElement).matches?.(SEATED_ON_ARRIVAL) && (entry.target as HTMLElement).style) {
+          const node = entry.target as HTMLElement;
+          node.style.setProperty('visibility', 'hidden');
+          seating.add(node);
+        }
+        sized.set(entry.target, has);
+      }
+    } else planInputs = true;
     schedule();
   });
   // DOMTokenList.remove() still emits an attribute record when the class was
@@ -833,12 +850,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
   }
   function refresh() {
+    // (the parts held for their seat show where this pass seats them: shown before it measures, so it reads their boxes
+    // (held hidden, the row read as empty and was seated so, then moved a pass later), they paint only after their seat)
+    for (const node of seating) node.style.removeProperty('visibility');
+    seating.clear();
+    relayout();
+  }
+  function relayout() {
     frame = 0;
     // The end report owns the frame from its first frame until the garage (endScreen.ts body.cot-si-report): the HUD under it
     // is hidden or covered, and its teardown's mutations asked for full passes measuring a HUD nobody sees (Main, from the
     // nav-perf census: 400 + 251 ms over 11 tasks from the end to the garage, worst on a 4x phone). The report's exit
     // relayouts again (the class's own mutation).
     if (document.body.classList.contains('cot-si-report')) return;
+    // From the battle's decision (endScreen.ts body.cot-es-armed) to that frame the HUD holds its seats: the report is
+    // coming over it, and the passes in between seated the countdown's fading dial and the alert under it again, twice
+    // (the loading census, CLS 0.028 on a phone's end screen). A new battle's phase lifts the class.
+    if (document.body.classList.contains('cot-es-armed')) return;
     // (the HUD's own switch first, hud.ts setMode: a hidden HUD is known without a layout read, the read that forced the
     // frame's reflow at a pass's start, the perf lane's census)
     const visible = root.style?.display === 'none' ? false : !!root.getClientRects().length;
@@ -1612,6 +1640,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar('--hud-aim-warning-max', beside && altFire ? `${Math.floor(altFire.left - 4 - chipLeft)}px` : '');
     }
     let touchPlan = null;
+    // (the touch dial up this pass: once it stands down it keeps its seat and scale while it fades out after GO; set to
+    // the plan's default under it, it jumped 98 px over the alert as it faded, the loading census on a phone)
+    let touchCountdownShown = false;
     // (no place clears both notices and the detection's would cross a panel: the alert stands in its place while it shows)
     let detectionCovers = false;
     if (touch) {
@@ -1629,6 +1660,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (the countdown's own box, unscaled: the plan sets its scale)
       const countdownNode = document.querySelector<HTMLElement>('.cot-prebattle.on');
       const touchCountdown = countdownNode && shownBox(countdownNode) ? { w: countdownNode.offsetWidth, h: countdownNode.offsetHeight } : null;
+      touchCountdownShown = !!touchCountdown;
       const rulesNode = document.querySelector<HTMLElement>('.cot-prebattle-rules');
       const touchRules = touchCountdown && rulesNode?.offsetWidth ? { w: rulesNode.offsetWidth, h: rulesNode.offsetHeight } : null;
       // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
@@ -1785,7 +1817,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'battle-notices-top': Math.ceil(Math.max(noticeTop + noticeH, alertTop + alertH) + 8),
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split; tops and widths
       // only, every element on the centre line: noticeCentreLine.ts)
-      'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
+      'touch-alert-w': touchPlan?.alertW ?? width - 24,
+      'touch-countdown-top': touchCountdownShown && touchPlan ? touchPlan.countdownTop
+        : parseFloat(document.body.style.getPropertyValue('--hud-touch-countdown-top')) || top + 8,
       'touch-rules-top': touchPlan?.rulesTop ?? height,
       'objective-top': objectivePlace.top, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
       'objective-width': objectivePlace.width, 'objective-left': objectivePlace.left,
@@ -1812,7 +1846,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount,
       alert: !!root.querySelector('.cot-alert.show') }, medalWaiting, medalFeedWait);
     // (the touch countdown's and its rules panel's scales and the top slot's buttons a row, unitless)
-    const countdownScale = String(touchPlan?.countdownScale ?? 1);
+    const countdownScale = touchCountdownShown ? String(touchPlan?.countdownScale ?? 1)
+      : document.body.style.getPropertyValue('--hud-touch-countdown-scale') || '1';
     if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {
       document.body.style.setProperty('--hud-touch-countdown-scale', countdownScale);
     }
