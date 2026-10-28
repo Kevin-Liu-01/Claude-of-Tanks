@@ -16,10 +16,10 @@
 //   -2.10; fender lips to x ±1.72 over the tracks, the stepped side skirts to ±1.85 (forward) and ±1.765 (aft);
 // - seven 0.3135 m road wheels on staggered left/right stations, drive sprocket aft, idler forward, two return
 //   rollers, a 0.515 m track centred at x ±1.2485;
-// - an unmanned arrowhead turret on the ring (0, 1.41, -0.55): two raked cheek blocks closing on a narrow gun housing,
+// - an unmanned arrowhead turret on the ring (0, 1.41, -0.55): two raked cheek blocks either side of a narrow gun housing,
 //   a 2.40 m main body under a roof that climbs from 2.15 to the 2.30 rear plateau, flank pods to ±1.51, side bins and
 //   a closed rear stowage block under three slat bays; the 105 mm gun's trunnion at (0, 1.76, 0.55), its muzzle 4.625 m
-//   ahead (z 5.175) behind a slotted brake, an angular thermal sleeve over the rear two thirds of the tube.
+//   ahead (z 5.175) behind a slim ribbed brake, an angular thermal sleeve over the rear two thirds of the tube.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
@@ -51,6 +51,8 @@ export interface Ztz20StageDeltas {
   readonly stern: 'slat-cage' | 'stowage-basket' | 'stowage-bin';
   /** Engine deck: the raised production deck (1.465 behind the ring) or the missile testbed's flat deck at the roof line. */
   readonly deck: 'raised' | 'flat';
+  /** Crew hatches: the raised production hatches, or the missile testbed's flush plates under its turret platter's sweep. */
+  readonly hatches: 'raised' | 'flush';
   // The gun-turret deltas (the missile testbed carries its own turret, ztz100Prototype.ts).
   /** Flank modules: the armour pods, or the turret testbed's trial ballast blocks in their place. */
   readonly pods: 'armour' | 'ballast';
@@ -62,14 +64,15 @@ export interface Ztz20StageDeltas {
   readonly rws: 'twin-tube' | 'plain' | 'none';
   /** Commander's sight: the gimballed panoramic head, or the testbed's fixed periscope block. */
   readonly commanderSight: 'panoramic' | 'periscope';
-  /** Countermeasure launcher bank on the right cheek (production) or its cover plate. */
-  readonly cheekBank: boolean;
+  /** The coaxial machine gun in its armoured housing in the right cheek's notch (production), or in the mantlet with a
+   * cover plate over the housing's seat. */
+  readonly coaxHousing: boolean;
   /** Gun mount: the angular moving mantlet, or the testbed's early bolted box mantlet. */
   readonly mantlet: 'angular' | 'early';
   /** The angular thermal sleeve over the tube (a bare tube with its fume extractor without it). */
   readonly sleeve: boolean;
-  /** Slotted flat brake (the high-pressure gun) or the earlier round multi-baffle brake. */
-  readonly brake: 'slotted' | 'round';
+  /** The production gun's slim ribbed round brake, the testbed's slotted box brake, or the earlier multi-baffle brake. */
+  readonly brake: 'ribbed' | 'slotted' | 'round';
   /** Trials instrumentation: telemetry mast and GPS dome on the bustle. */
   readonly trialsMast: boolean;
   /** Side stowage bins and the rear stowage block with its slat bays on the bustle. */
@@ -78,24 +81,24 @@ export interface Ztz20StageDeltas {
 
 export const ZTZ20_STAGES: Readonly<Record<Ztz20Stage, Ztz20StageDeltas>> = Object.freeze({
   ztz100_prototype: Object.freeze({
-    glacisTiles: false, skirtLowerBand: false, skirtLip: false, stern: 'stowage-bin', deck: 'flat',
-    pods: 'armour', smoke: true, apsTowers: 'blanked', rws: 'plain', commanderSight: 'panoramic', cheekBank: false,
+    glacisTiles: false, skirtLowerBand: false, skirtLip: false, stern: 'stowage-bin', deck: 'flat', hatches: 'flush',
+    pods: 'armour', smoke: true, apsTowers: 'blanked', rws: 'plain', commanderSight: 'panoramic', coaxHousing: false,
     mantlet: 'angular', sleeve: true, brake: 'round', trialsMast: true, bustleStowage: false,
   }),
   ztz100: Object.freeze({
-    glacisTiles: false, skirtLowerBand: true, skirtLip: false, stern: 'stowage-basket', deck: 'raised',
-    pods: 'armour', smoke: true, apsTowers: 'blanked', rws: 'plain', commanderSight: 'panoramic', cheekBank: false,
+    glacisTiles: false, skirtLowerBand: true, skirtLip: false, stern: 'stowage-basket', deck: 'raised', hatches: 'raised',
+    pods: 'armour', smoke: true, apsTowers: 'blanked', rws: 'plain', commanderSight: 'panoramic', coaxHousing: false,
     mantlet: 'angular', sleeve: true, brake: 'round', trialsMast: true, bustleStowage: true,
   }),
   ztz20_prototype: Object.freeze({
-    glacisTiles: false, skirtLowerBand: true, skirtLip: true, stern: 'stowage-bin', deck: 'raised',
-    pods: 'ballast', smoke: false, apsTowers: 'none', rws: 'none', commanderSight: 'periscope', cheekBank: false,
+    glacisTiles: false, skirtLowerBand: true, skirtLip: true, stern: 'stowage-bin', deck: 'raised', hatches: 'raised',
+    pods: 'ballast', smoke: false, apsTowers: 'none', rws: 'none', commanderSight: 'periscope', coaxHousing: false,
     mantlet: 'early', sleeve: false, brake: 'slotted', trialsMast: true, bustleStowage: false,
   }),
   ztz20: Object.freeze({
-    glacisTiles: true, skirtLowerBand: true, skirtLip: true, stern: 'slat-cage', deck: 'raised',
-    pods: 'armour', smoke: true, apsTowers: 'launchers', rws: 'twin-tube', commanderSight: 'panoramic', cheekBank: true,
-    mantlet: 'angular', sleeve: true, brake: 'slotted', trialsMast: false, bustleStowage: true,
+    glacisTiles: true, skirtLowerBand: true, skirtLip: true, stern: 'slat-cage', deck: 'raised', hatches: 'raised',
+    pods: 'armour', smoke: true, apsTowers: 'launchers', rws: 'twin-tube', commanderSight: 'panoramic', coaxHousing: true,
+    mantlet: 'angular', sleeve: true, brake: 'ribbed', trialsMast: false, bustleStowage: true,
   }),
 });
 
@@ -254,7 +257,7 @@ function glacis(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
 }
 
 /** Crew capsule roof: two chamfered octagonal hatches with periscopes, and the driver's forward vision block. */
-function crewHatches(P: TankBuilderPort): void {
+function crewHatches(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   const outline: readonly (readonly [number, number])[] = [
     [-0.20, -0.29], [0.20, -0.29], [0.29, -0.20], [0.29, 0.16], [0.16, 0.29], [-0.16, 0.29], [-0.29, 0.16], [-0.29, -0.20],
   ];
@@ -266,6 +269,13 @@ function crewHatches(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     // the hatch tops stay under the turret's 1.48 floor that sweeps over them
     const x = s * 0.55, z = 1.32, y = ztz20RoofY(z);
+    if (stage.hatches === 'flush') {
+      // the testbed's flush plates (to 1.418): its missile turret's platter sweeps 1.44 over this part of the roof
+      P.add('hullDark', part(hatch(1, 0.004), 'crew-hatch-seat'), x, y, z);
+      P.addHatch('hull', part(hatch(0.92, 0.006), 'crew-hatch'), x, y + 0.002, z);
+      for (const dx of [-0.15, 0.15]) P.addModuleVisual('optics', 'hullGlass', part(box(0.12, 0.006, 0.05), 'crew-periscope'), x + dx, y + 0.003, z + 0.36);
+      continue;
+    }
     P.add('hullDark', part(hatch(1, 0.04), 'crew-hatch-seat'), x, y - 0.01, z);
     P.addHatch('hull', part(hatch(0.92, 0.025), 'crew-hatch'), x, y + 0.03, z);
     for (const dx of [-0.15, 0.15]) {
@@ -282,26 +292,34 @@ function crewHatches(P: TankBuilderPort): void {
 }
 
 /** Side skirts: the full-height upper band (forward plane 1.85, aft plane 1.765), the lower band and the rubber lip. */
+/** The skirt top: level at 1.36 down the hull, then 2 cm under the glacis line as it falls to the bow (measured). */
+function skirtTopY(z: number): number {
+  return Math.min(H.skirtTop, ztz20RoofY(z) - 0.02);
+}
 function skirts(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
-  const bolt = (x: number, y: number, z: number): void => { P.add('hullDetail', part(cylX(0.012, 0.018, 8), 'skirt-bolt'), x, y, z); };
+  const bolt = (x: number, y: number, z: number): void => { P.add('hullDetail', part(cylX(0.020, 0.016, 8), 'skirt-bolt'), x, y, z); };
   for (const s of [-1, 1]) {
     // upper band panels; the aft panels stand on the inset aft plane, the forward run on the full-width plane
     const upperZ = [-3.80, -2.94, -2.08, -1.22, H.skirtSplitZ, 0.46, 1.32, 2.18, 2.84];
     for (let i = 0; i < upperZ.length - 1; i++) {
       const z0 = upperZ[i] + 0.01, z1 = upperZ[i + 1] - 0.01, zc = (z0 + z1) / 2, outer = zc < H.skirtSplitZ ? H.skirtAft : H.skirtFwd;
-      P.addExternalArmor('hull', part(box(H.plate, H.skirtTop - H.skirtStep, z1 - z0), 'skirt-upper'), s * (outer - H.plate / 2), (H.skirtTop + H.skirtStep) / 2, zc);
-      for (const dz of [-0.32, 0, 0.32]) for (const y of [H.skirtTop - 0.07, 1.07, H.skirtStep + 0.07]) bolt(s * (outer + 0.004), y, zc + dz);
+      const t0 = skirtTopY(z0), t1 = skirtTopY(z1), xo = s * outer, xi = s * (outer - H.plate);
+      P.addExternalArmor('hull', part(t0 === H.skirtTop && t1 === H.skirtTop
+        ? box(H.plate, H.skirtTop - H.skirtStep, z1 - z0).translate(s * (outer - H.plate / 2), (H.skirtTop + H.skirtStep) / 2, zc)
+        : orientedSlab([xi, H.skirtStep, z0], [xo, H.skirtStep, z0], [xo, H.skirtStep, z1], [xi, H.skirtStep, z1],
+          [xi, t0, z0], [xo, t0, z0], [xo, t1, z1], [xi, t1, z1]), 'skirt-upper'));
+      for (const dz of [-0.32, 0, 0.32]) for (const y of [skirtTopY(zc + dz) - 0.07, 1.07, H.skirtStep + 0.07]) bolt(s * (outer + 0.004), y, zc + dz);
       P.add('hullDark', part(box(0.008, 0.012, z1 - z0 - 0.04), 'skirt-upper-seam'), s * (outer + 0.002), 1.07 + 0.03, zc);
     }
     // the step between the aft and forward planes, and the hangers onto the fender lip
     P.add('hull', part(box(H.skirtFwd - H.skirtAft + 0.02, H.skirtTop - H.skirtStep, 0.04), 'skirt-step'), s * ((H.skirtFwd + H.skirtAft) / 2 - 0.01), (H.skirtTop + H.skirtStep) / 2, H.skirtSplitZ);
     P.add('hull', part(box(H.skirtAft - H.plate - H.lipOuter + 0.01, 0.05, H.skirtSplitZ + 3.80), 'skirt-hanger'), s * ((H.skirtAft - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (H.skirtSplitZ - 3.80) / 2);
-    P.add('hull', part(box(H.skirtFwd - H.plate - H.lipOuter + 0.01, 0.05, 2.84 - H.skirtSplitZ), 'skirt-hanger'), s * ((H.skirtFwd - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (2.84 + H.skirtSplitZ) / 2);
+    P.add('hull', part(box(H.skirtFwd - H.plate - H.lipOuter + 0.01, 0.05, H.glacisTopZ - H.skirtSplitZ), 'skirt-hanger'), s * ((H.skirtFwd - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (H.glacisTopZ + H.skirtSplitZ) / 2);
     // front panel: angled in over the idler, its lower edge rising toward the bow
     const xo = s * H.skirtFwd, xi = s * (H.skirtFwd - H.plate);
     P.addExternalArmor('hull', part(orientedSlab(
       [xi, H.skirtStep, 2.85], [xo, H.skirtStep, 2.85], [s * 1.64, 1.06, 3.36], [s * 1.60, 1.06, 3.36],
-      [xi, H.skirtTop, 2.85], [xo, H.skirtTop, 2.85], [s * 1.64, 1.30, 3.36], [s * 1.60, 1.30, 3.36],
+      [xi, skirtTopY(2.85), 2.85], [xo, skirtTopY(2.85), 2.85], [s * 1.64, skirtTopY(3.36), 3.36], [s * 1.60, skirtTopY(3.36), 3.36],
     ), 'skirt-front'));
     if (stage.skirtLowerBand) {
       const lowerZ = [-2.60, -1.70, -0.80, 0.10, 1.00, 1.90, 2.80];
@@ -324,15 +342,17 @@ function skirts(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   }
 }
 
-/** Engine deck: two recessed louvre fields either side of the spine, filler caps, the exhaust grille and access plates. */
+/** Engine deck: two bolted access panels with lifting handles either side of the spine (the oracle's deck is plain
+ * plates; its grilles are on the stern plate), filler caps, the exhaust grille and the forward access plates. */
 function deck(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   const y = stage.deck === 'flat' ? H.roof : H.deck;
   for (const s of [-1, 1]) {
     const x = s * 0.70, z = -3.02, w = 0.95, d = 0.80;
-    P.add('hullDark', part(box(w, 0.012, d), 'deck-grille'), x, y + 0.002, z);
-    for (const dz of [-d / 2, d / 2]) P.add('hullDetail', part(box(w + 0.04, 0.012, 0.035), 'deck-grille-frame'), x, y + 0.006, z + dz);
-    for (const dx of [-w / 2, w / 2]) P.add('hullDetail', part(box(0.035, 0.012, d), 'deck-grille-frame'), x + dx, y + 0.006, z);
-    for (let i = 0; i < 9; i++) P.add('hullDetail', part(box(w - 0.06, 0.008, 0.016), 'deck-grille-bar'), x, y + 0.008, z - d / 2 + 0.06 + (i * (d - 0.12)) / 8);
+    P.add('hull', part(box(w, 0.012, d), 'deck-panel'), x, y + 0.006, z);
+    for (const dx of [-w / 2 + 0.05, w / 2 - 0.05]) for (const dz of [-d / 2 + 0.05, 0, d / 2 - 0.05]) {
+      P.add('hullDetail', part(cylY(0.012, 0.012, 0.008, 6), 'deck-panel-bolt'), x + dx, y + 0.014, z + dz);
+    }
+    for (const dz of [-0.20, 0.20]) P.add('hullDetail', part(box(0.16, 0.02, 0.02), 'deck-panel-handle'), x, y + 0.022, z + dz);
     // access plates ahead of the grilles (the raised deck; the testbed's flat deck lies under its turret platter's sweep)
     if (stage.deck === 'flat') continue;
     P.add('hull', part(box(0.62, 0.010, 0.36), 'deck-access-plate'), s * 0.62, y + 0.005, -2.36);
@@ -377,22 +397,22 @@ function slatCage(P: TankBuilderPort): void {
   const z0 = -4.05, xs = 1.89, xc = xs - 0.29, zc = z0 + 0.29, ys = [0.72, 0.84, 0.96, 1.08, 1.20, 1.32] as const, top = 1.43;
   const L = 'hullOpenLatticeDark', diag = Math.hypot(xs - xc, zc - z0);
   for (const y of ys) {
-    P.addEquipment(L, part(box(xc * 2, 0.035, 0.012), 'cage-slat'), 0, y, z0);
+    P.addEquipment(L, part(box(xc * 2, 0.022, 0.010), 'cage-slat'), 0, y, z0);
     for (const s of [-1, 1]) {
-      P.addEquipment(L, part(box(0.012, 0.035, -0.40 - zc), 'cage-slat'), s * xs, y, (zc - 0.40) / 2);
-      P.addEquipment(L, part(box(diag, 0.035, 0.012), 'cage-slat'), s * (xs + xc) / 2, y, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
+      P.addEquipment(L, part(box(0.010, 0.022, -0.40 - zc), 'cage-slat'), s * xs, y, (zc - 0.40) / 2);
+      P.addEquipment(L, part(box(diag, 0.022, 0.010), 'cage-slat'), s * (xs + xc) / 2, y, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
     }
   }
   for (const s of [-1, 1]) {
-    for (const z of [zc, -3.50, -2.90, -2.30, -1.70, -1.05, -0.42]) P.addEquipment(L, part(box(0.03, top - 0.66, 0.03), 'cage-post'), s * xs, (top + 0.66) / 2, z);
-    for (const x of [0.36, 1.10, xc]) P.addEquipment(L, part(box(0.03, top - 0.66, 0.03), 'cage-post'), s * x, (top + 0.66) / 2, z0);
-    P.addEquipment(L, part(box(0.03, 0.03, -0.40 - zc), 'cage-rail'), s * xs, top, (zc - 0.40) / 2);
-    P.addEquipment(L, part(box(diag, 0.03, 0.03), 'cage-rail'), s * (xs + xc) / 2, top, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
+    for (const z of [zc, -3.50, -2.90, -2.30, -1.70, -1.05, -0.42]) P.addEquipment(L, part(box(0.02, top - 0.66, 0.02), 'cage-post'), s * xs, (top + 0.66) / 2, z);
+    for (const x of [0.36, 1.10, xc]) P.addEquipment(L, part(box(0.02, top - 0.66, 0.02), 'cage-post'), s * x, (top + 0.66) / 2, z0);
+    P.addEquipment(L, part(box(0.022, 0.022, -0.40 - zc), 'cage-rail'), s * xs, top, (zc - 0.40) / 2);
+    P.addEquipment(L, part(box(diag, 0.022, 0.022), 'cage-rail'), s * (xs + xc) / 2, top, (z0 + zc) / 2, 0, -s * Math.PI / 4, 0);
     // arms from the fender boxes and the skirt hangers out to the cage
     for (const z of [-3.70, -2.30, -1.05]) P.addEquipment(L, part(box(xs - 1.76, 0.03, 0.03), 'cage-arm'), s * (xs + 1.76) / 2, 1.36, z);
     P.addEquipment(L, part(box(0.03, 0.03, ZTZ20_DATUMS.sternFenderZ - z0 - 0.01), 'cage-arm'), s * 1.10, 1.36, (z0 + ZTZ20_DATUMS.sternFenderZ) / 2);
   }
-  P.addEquipment(L, part(box(xc * 2 + 0.03, 0.03, 0.03), 'cage-rail'), 0, top, z0);
+  P.addEquipment(L, part(box(xc * 2 + 0.02, 0.022, 0.022), 'cage-rail'), 0, top, z0);
 }
 
 /** Pre-production and testbed sterns: a closed stowage bin, and for the ZTZ-100 an open basket over it. */
@@ -441,7 +461,7 @@ export function buildZtz20Hull(P: TankBuilderPort, stageId: Ztz20Stage): void {
   const stage = ZTZ20_STAGES[stageId];
   hullBody(P, stage);
   glacis(P, stage);
-  crewHatches(P);
+  crewHatches(P, stage);
   skirts(P, stage);
   deck(P, stage);
   sternPlate(P);
@@ -484,12 +504,11 @@ function bodySection(z: number, half: number, roof: number, floor = FLOOR, chamf
 function turretBody(P: TankBuilderPort): void {
   // ring collar and the turret basket's skirt over the hull ring
   P.add('turretDark', part(cylY(1.14, 1.18, 0.10, P.q ? 48 : 24), 'ring-collar'), 0, ty(1.43), 0);
-  // bustle: the armoured box under the 2.30 rear plateau, its underside rising aft (measured: the rear surface at
-  // 1.65 / z -2.41, the rear face from 1.75 at z -2.60) so the back of the turret overhangs the deck
+  // bustle: the armoured box under the 2.30 rear plateau, its underside one straight facet rising aft (measured: the
+  // rear surface at 1.65 / z -2.41, the rear face from 1.75 at z -2.60) so the back of the turret overhangs the deck
   P.add('turret', part(sectionSolid([
     bodySection(T.bustleRearZ, T.bustleHalf - 0.04, T.roofRear - 0.05, 1.76, 0.06),
-    bodySection(T.bustleRearZ + 0.10, T.bustleHalf, T.roofRear, 1.68, 0.08),
-    bodySection(-2.35, T.bustleHalf, T.roofRear, 1.62, 0.08),
+    bodySection(T.bustleRearZ + 0.10, T.bustleHalf, T.roofRear, 1.70, 0.08),
     bodySection(-1.60, T.bustleHalf, T.roofRear, 1.50, 0.08),
     bodySection(T.bodyRearZ - 0.02, T.bustleHalf, T.roofRear, FLOOR, 0.08),
   ]), 'bustle'));
@@ -534,8 +553,8 @@ function flankPod(P: TankBuilderPort, s: number): void {
   };
   P.addExternalArmor('turret', part(sectionSolid([
     station(T.podTailZ, T.podOuter - 0.07, 1.74, T.podTop - 0.04),
-    station(T.podRearZ, T.podOuter, 1.73, T.podTop),
-    station(-1.30, T.podOuter, 1.70, T.podTop),
+    station(T.podRearZ, T.podOuter, 1.723, T.podTop),
+    station(-1.30, T.podOuter, 1.68, T.podTop),
     station(T.bodyRearZ - 0.01, T.podOuter, 1.64, T.podTop),
     station(T.bodyRearZ + 0.01, T.podOuter, 1.64, T.podTop),
     station(T.podShoulderZ, T.podOuter, 1.64, T.podTop),
@@ -575,53 +594,48 @@ function periscopeSight(P: TankBuilderPort): void {
   P.addModuleVisual('optics', 'turretGlass', part(box(0.16, 0.05, 0.008), 'periscope-glass'), x, y + 0.13, z + 0.122);
 }
 
-/** Arrowhead cheek, measured from the front first-hit map at x 0.35-1.21: a set-back chin raked forward from the floor to
- * the nose at 1.62, the face raked back 30 degrees to 1.99, a short ledge at 2.04-2.07 stepping back 0.26, and the riser
- * to the body roof; two facets in plan (inner x 0.33-0.60 almost square to the bore, outer x 0.58-1.21 at 58 degrees),
- * each a loft of that profile along its nose line, and an outer filler that closes the cheek onto the body side. */
+/** Arrowhead cheek, measured from the first-hit maps: one swept face from the tip beside the mantlet (x 0.40, z 1.07) to
+ * the outer corner (x 1.21, z 0.49); in section a set-back chin raked forward from the floor to the nose at 1.62, the
+ * face raked back 30 degrees to 1.99, a short ledge at 2.04-2.07 stepping back 0.26, and the riser to the body roof. The
+ * profile is lofted along the face line and cut at the gun housing's side (x 0.31), so a V-notch opens between the tip
+ * and the mantlet; an outer filler closes the cheek onto the body side. */
 const CHEEK_PROFILE: readonly SectionPoint[] = [
   [-0.95, FLOOR], [-0.13, FLOOR], [0, 1.62], [-0.21, 1.99], [-0.24, 2.04], [-0.50, 2.07], [-0.95, 2.12],
 ];
-const CHEEK_NOSE = { inner: [0.33, 0.97], joint: [0.60, 0.895], outer: [1.21, 0.505] } as const;
-/** One cheek facet: the profile lofted along the nose line from a to b (hull x, z), returned in turret-local metres. */
-function cheekFacet(a: readonly [number, number], b: readonly [number, number]): { geometry: THREE.BufferGeometry; outerRing: THREE.Vector3[] } {
-  const d = new THREE.Vector3(b[0] - a[0], 0, b[1] - a[1]);
-  const length = d.length(); d.normalize();
-  const n = new THREE.Vector3(-d.z, 0, d.x); if (n.z < 0) n.negate();
-  const up = new THREE.Vector3(0, 1, 0), axis = new THREE.Vector3().crossVectors(n, up);
-  const forward = axis.dot(d) > 0, origin = forward ? a : b;
-  const geometry = sectionSolid([0, length].map((z) => ({ z, ring: CHEEK_PROFILE })));
-  const m = new THREE.Matrix4().makeBasis(n, up, axis).setPosition(origin[0], -RING[1], origin[1] - RING[2]);
-  geometry.applyMatrix4(m);
-  const end = forward ? length : 0;
-  const outerRing = CHEEK_PROFILE.map(([u, y]) => new THREE.Vector3(u, y, end).applyMatrix4(m));
-  return { geometry, outerRing };
-}
+const CHEEK_NOSE = { inner: [0.40, 1.07], outer: [1.21, 0.49] } as const;
+const CHEEK_CUT_X = 0.31;
+const CHEEK_RAKE = 0.21 / 0.37; // the face sets back 0.21 over its 0.37 rise
 function cheek(P: TankBuilderPort, s: number): void {
-  const mirror = (q: readonly number[]): [number, number] => [s * q[0], q[1]];
-  const inner = cheekFacet(mirror(CHEEK_NOSE.inner), mirror([CHEEK_NOSE.joint[0] + 0.02, CHEEK_NOSE.joint[1] - 0.006]));
-  const outer = cheekFacet(mirror([CHEEK_NOSE.joint[0] - 0.02, CHEEK_NOSE.joint[1] + 0.012]), mirror(CHEEK_NOSE.outer));
-  P.addExternalArmor('turret', part(inner.geometry, 'cheek-inner'));
-  P.addExternalArmor('turret', part(outer.geometry, 'cheek-outer'));
-  // the outer filler: the outer facet's end profile closed onto the body side plane and the body's front
-  const end = outer.outerRing;
-  const tip = end.reduce((best, v) => (Math.abs(v.x) > Math.abs(best.x) ? v : best));
-  const side = s * T.bodyHalf, frontZ = tz(T.bodyFrontZ - 0.02);
-  const pts = [...end, ...end.map((v) => new THREE.Vector3(side, v.y, Math.min(v.z, tip.z))),
-    new THREE.Vector3(side, ty(FLOOR), frontZ), new THREE.Vector3(side, ty(2.12), frontZ)];
-  P.addExternalArmor('turret', convexPart(pts, 'cheek-filler'));
-  // each facet's appliqué plate, proud of the face with a 4 cm border of the face showing round it
-  for (const [a, b] of [[CHEEK_NOSE.inner, CHEEK_NOSE.joint], [CHEEK_NOSE.joint, CHEEK_NOSE.outer]] as const) {
-    const [ax, az] = mirror(a), [bx, bz] = mirror(b), dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
-    const flip = dx / len < 0 ? -1 : 1, nx = (-dz / len) * flip, nz = (dx / len) * flip;
-    const rake = 0.21 / 0.37; // the face sets back 0.21 over its 0.37 rise
-    const at = (t: number, y: number, off: number): [number, number, number] => {
-      const back = y > 1.62 ? (y - 1.62) * rake : (1.62 - y) * (0.13 / 0.14);
-      return [ax + dx * t + nx * (off - back), ty(y), tz(az + dz * t) + nz * (off - back)];
-    };
-    const e = 0.04 / len, ring = (off: number): (readonly number[])[] => [at(e, 1.665, off), at(1 - e, 1.665, off), at(1 - e, 1.95, off), at(e, 1.95, off)];
-    P.add('turret', part(orientedSlab(...ring(-0.005), ...ring(0.025)), 'cheek-plate'));
+  const ax = s * CHEEK_NOSE.inner[0], az = CHEEK_NOSE.inner[1], dx = s * CHEEK_NOSE.outer[0] - ax, dz = CHEEK_NOSE.outer[1] - az;
+  const len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
+  const flip = ux >= 0 ? 1 : -1, nx = -uz * flip, nz = ux * flip; // the face's forward normal
+  const at = (t: number, u: number, y: number): THREE.Vector3 => new THREE.Vector3(ax + ux * t + nx * u, ty(y), tz(az + uz * t + nz * u));
+  // the lofted prism's two end profiles, clipped to the half-space outboard of the housing's side
+  const ends = [0, len].map((t) => CHEEK_PROFILE.map(([u, y]) => at(t, u, y)));
+  const side = (v: THREE.Vector3): number => s * v.x - CHEEK_CUT_X;
+  const pts = ends.flat().filter((v) => side(v) >= 0);
+  for (let i = 0; i < CHEEK_PROFILE.length; i++) {
+    const j = (i + 1) % CHEEK_PROFILE.length;
+    for (const [a, b] of [[ends[0][i], ends[1][i]], [ends[0][i], ends[0][j]], [ends[1][i], ends[1][j]]]) {
+      const fa = side(a), fb = side(b);
+      if ((fa < 0) !== (fb < 0)) pts.push(a.clone().lerp(b, fa / (fa - fb)));
+    }
   }
+  P.addExternalArmor('turret', convexPart(pts, 'cheek'));
+  // the outer filler: the outer end profile closed onto the body side plane and the body's front
+  const end = ends[1];
+  const tip = end.reduce((best, v) => (Math.abs(v.x) > Math.abs(best.x) ? v : best));
+  const bodySide = s * T.bodyHalf, frontZ = tz(T.bodyFrontZ - 0.02);
+  P.addExternalArmor('turret', convexPart([...end, ...end.map((v) => new THREE.Vector3(bodySide, v.y, Math.min(v.z, tip.z))),
+    new THREE.Vector3(bodySide, ty(FLOOR), frontZ), new THREE.Vector3(bodySide, ty(2.12), frontZ)], 'cheek-filler'));
+  // the face's appliqué plate, proud of the face with a border of the face showing round it
+  const face = (y: number): number => -(y - 1.62) * CHEEK_RAKE;
+  const t0 = 0.07, t1 = len - 0.05;
+  const ring = (off: number): (readonly number[])[] => [[t0, 1.665], [t1, 1.665], [t1, 1.95], [t0, 1.95]]
+    .map(([t, y]) => at(t, face(y) + off, y).toArray());
+  P.add('turret', part(orientedSlab(...ring(-0.005), ...ring(0.025)), 'cheek-plate'));
+  const seam = at(len / 2, face(1.975) + 0.004, 1.975);
+  P.add('turretDark', part(box(len - 0.10, 0.012, 0.012), 'cheek-seam'), seam.x, seam.y, seam.z, 0, Math.atan2(-uz, ux), 0);
 }
 
 /** Fixed gun housing: the central spine between the cheeks, its roof falling from 2.20 at the body to 2.03 over the
@@ -676,39 +690,35 @@ function apsTower(P: TankBuilderPort, s: number, stage: Ztz20StageDeltas): void 
   P.addModuleVisual('optics', 'turretGlass', part(box(0.006, 0.10, 0.14), 'aps-radar-face'), x + s * 0.112, base + 0.16, z);
 }
 
-/** Commander's panoramic sight on the roof's left front (measured y 2.18-2.41, x -0.76..-0.43): a low armoured base, the
- * U saddle, and a low box head with a rounded front carrying three receivers. */
+/** Commander's panoramic sight on the roof's left front (measured y 2.18-2.41, x -0.76..-0.43): a low armoured base and
+ * bearing under a compact head whose top is a half drum along the line of sight, three receivers in its face. */
 function panoramicSight(P: TankBuilderPort): void {
-  const x = -0.60, z = tz(-0.08), y = ty(ztz20TurretRoofY(-0.08));
+  const x = -0.60, z = tz(-0.02), y = ty(ztz20TurretRoofY(-0.02));
   const n = P.q ? 20 : 12;
-  P.add('turret', part(box(0.48, 0.04, 0.46), 'panoramic-base'), x, y + 0.02, z);
-  P.add('turretDark', part(cylY(0.14, 0.15, 0.04, n), 'panoramic-bearing'), x, y + 0.06, z);
-  P.add('turretDetail', part(box(0.34, 0.04, 0.18), 'panoramic-saddle'), x, y + 0.10, z);
-  for (const dx of [-0.165, 0.165]) P.add('turretDetail', part(box(0.03, 0.15, 0.14), 'panoramic-yoke'), x + dx, y + 0.17, z);
-  // the head: a low box whose front is a half-round (a lathed drum across the box's front edge)
-  P.addEquipment('turret', part(box(0.29, 0.20, 0.17), 'panoramic-head'), x, y + 0.20, z - 0.03);
-  P.addEquipment('turret', part(cylX(0.10, 0.29, n), 'panoramic-head-front'), x, y + 0.20, z + 0.055);
-  for (const dx of [-0.16, 0.16]) P.add('turretDetail', part(cylX(0.055, 0.02, n), 'panoramic-pivot'), x + dx, y + 0.20, z);
-  for (const [dx, dy, r] of [[-0.06, 0.03, 0.040], [0.05, 0.04, 0.028], [0.06, -0.03, 0.018]] as const) {
-    P.add('turretDark', part(cylZ(r + 0.008, 0.03, n), 'panoramic-receiver'), x + dx, y + 0.20 + dy, z + 0.145);
-    P.addModuleVisual('optics', 'turretGlass', part(cylZ(r, 0.004, n), 'panoramic-glass'), x + dx, y + 0.20 + dy, z + 0.162);
+  P.add('turret', part(box(0.32, 0.02, 0.30), 'panoramic-base'), x, y + 0.01, z);
+  P.add('turretDark', part(cylY(0.08, 0.09, 0.03, n), 'panoramic-bearing'), x, y + 0.035, z);
+  P.addEquipment('turret', part(box(0.24, 0.06, 0.18), 'panoramic-head'), x, y + 0.08, z);
+  P.addEquipment('turret', part(new THREE.CylinderGeometry(0.12, 0.12, 0.18, n, 1, false, Math.PI / 2, Math.PI).rotateX(Math.PI / 2), 'panoramic-head-top'), x, y + 0.11, z);
+  for (const [dx, dy, r] of [[-0.045, 0.12, 0.040], [0.05, 0.14, 0.028], [0.05, 0.075, 0.018]] as const) {
+    P.add('turretDark', part(cylZ(r + 0.008, 0.012, n), 'panoramic-receiver'), x + dx, y + dy, z + 0.096);
+    P.addModuleVisual('optics', 'turretGlass', part(cylZ(r, 0.004, n), 'panoramic-glass'), x + dx, y + dy, z + 0.104);
   }
-  P.add('turretDetail', part(box(0.31, 0.015, 0.22), 'panoramic-hood'), x, y + 0.305, z + 0.01);
 }
 
-/** Right-cheek countermeasure bank (production; measured x 0.44-0.58, y 1.74-1.95): a compact hooded launcher box in the
- * corner between the cheek and the housing; the earlier stages carry its cover plate. */
-function cheekBank(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
-  if (!stage.cheekBank) {
-    P.add('turretDark', part(box(0.14, 0.02, 0.40), 'cheek-bank-cover'), 0.50, ty(2.07), tz(0.62));
+/** The production coaxial machine gun in its armoured housing in the right cheek's notch beside the mantlet (measured x
+ * 0.43-0.56, z 0.59-1.03, top 1.90): a hooded box with the long barrel jacket ahead of it; the earlier stages carry the
+ * coax in the mantlet and a cover plate on the housing's seat. */
+function coaxHousing(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
+  const x = 0.495;
+  if (!stage.coaxHousing) {
+    P.add('turretDark', part(box(0.14, 0.02, 0.24), 'coax-seat-cover'), x, ty(2.058), tz(0.55));
     return;
   }
-  P.addEquipment('turret', part(box(0.145, 0.19, 0.42), 'cheek-bank'), 0.51, ty(1.84), tz(1.03));
-  P.add('turret', part(box(0.17, 0.02, 0.50), 'cheek-bank-hood'), 0.51, ty(1.945), tz(1.07));
-  for (const dy of [-0.045, 0.045]) {
-    P.add('turretDark', part(cylZ(0.04, 0.02, P.q ? 14 : 10), 'cheek-bank-mouth'), 0.51, ty(1.84) + dy, tz(1.245));
-  }
-  P.add('turretDark', part(box(0.17, 0.04, 0.06), 'cheek-bank-bracket'), 0.51, ty(1.73), tz(0.90));
+  P.addEquipment('turret', part(box(0.13, 0.17, 0.40), 'coax-housing'), x, ty(1.82), tz(0.84));
+  P.add('turret', part(box(0.16, 0.02, 0.26), 'coax-housing-hood'), x, ty(1.915), tz(0.95), 0.10, 0, 0);
+  P.add('turretDark', part(box(0.10, 0.10, 0.012), 'coax-housing-face'), x, ty(1.81), tz(1.046));
+  P.add('turretDark', part(cylZ(0.026, 0.10, P.q ? 12 : 8), 'coax-barrel-jacket'), x, ty(1.80), tz(1.09));
+  P.add('turretDark', part(cylZ(0.016, 0.50, P.q ? 10 : 6), 'coax-barrel'), x, ty(1.80), tz(1.39));
 }
 
 /** Remote weapon station on the roof centre: yaw ring and pedestal, the sight box, the 12.7 mm gun in its cradle,
@@ -738,16 +748,15 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   // the station's bulk: the electronics box on its right and the tall post box on its left (measured y 2.40-2.96)
   P.addEquipment('turret', part(box(0.20, 0.34, 0.42), 'rws-electronics'), 0.40, ty(roof + 0.30), tz(sz - 0.05));
   P.addEquipment('turret', part(box(0.14, 0.46, 0.24), 'rws-post-box'), -0.22, ty(roof + 0.36), tz(sz - 0.02));
+  // the housing's back plate joining the post box, the pedestal and the electronics box into one unit
+  P.add('turret', part(box(0.59, 0.27, 0.12), 'rws-housing'), 0.005, ty(2.525), tz(sz - 0.20));
   if (stage.rws === 'twin-tube') {
     // the left arm off the post box's top, the launcher post and the twin-tube pod clamped to it
     P.add('turret', part(box(0.24, 0.07, 0.20), 'rws-missile-arm'), -0.27, ty(2.78), tz(sz));
     P.add('turret', part(box(0.07, 0.27, 0.20), 'rws-missile-post'), -0.375, ty(2.885), tz(sz));
-    for (const y of [2.84, 2.97]) {
-      P.addEquipment('turretDark', part(cylZ(0.058, 1.30, n), 'rws-missile-tube'), -0.44, ty(y), tz(sz + 0.02));
-      P.add('turretDetail', part(cylZ(0.062, 0.05, n), 'rws-missile-tube-band'), -0.44, ty(y), tz(sz + 0.60));
-      P.add('turretDetail', part(new THREE.CircleGeometry(0.05, n), 'rws-missile-tube-cap'), -0.44, ty(y), tz(sz + 0.671));
-    }
-    for (const dz of [-0.30, 0.34]) P.add('turret', part(box(0.15, 0.27, 0.08), 'rws-missile-clamp'), -0.44, ty(2.89), tz(sz + dz));
+    P.addEquipment('turretDark', part(box(0.15, 0.23, 1.30), 'rws-missile-launcher'), -0.44, ty(2.905), tz(sz + 0.02));
+    for (const y of [2.85, 2.96]) P.add('turretDetail', part(new THREE.CircleGeometry(0.045, n), 'rws-missile-cell'), -0.44, ty(y), tz(sz + 0.672));
+    for (const dz of [-0.30, 0.34]) P.add('turret', part(box(0.17, 0.25, 0.08), 'rws-missile-clamp'), -0.44, ty(2.905), tz(sz + dz));
   }
   station.mark('yaw');
   // the pitching gun: receiver, feed tray, ammunition box, the curved feed chute over to the tray, barrel and flash hider
@@ -774,14 +783,15 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
  * every 60 mm of rise, on posts. */
 function bustleStowage(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
-    const x = s * 1.09, z = tz(-2.075), y = 1.97;
-    P.addEquipment('turret', part(box(0.36, 0.46, 0.75), 'side-bin'), x, ty(y), z);
-    P.add('turret', part(box(0.37, 0.02, 0.76), 'side-bin-lid'), x, ty(2.21), z);
-    for (const dz of [-0.24, 0.24]) P.add('turretDark', part(box(0.008, 0.40, 0.025), 'side-bin-strap'), s * 1.272, ty(y), z + dz);
-    for (const dz of [-0.12, 0.12]) P.add('turretDetail', part(box(0.016, 0.04, 0.035), 'side-bin-latch'), s * 1.276, ty(2.12), z + dz);
+    const ring: SectionPoint[] = [[0.91, ty(1.74)], [1.27, ty(1.74)], [1.27, ty(2.06)], [1.19, ty(2.14)], [0.91, ty(2.14)]];
+    const sided = s > 0 ? ring : ring.map(([x, y]) => [-x, y] as SectionPoint).reverse();
+    P.addEquipment('turret', part(sectionSolid([tz(-2.45), tz(-1.70)].map((z) => ({ z, ring: sided }))), 'side-bin'));
+    P.add('turretDark', part(box(0.008, 0.008, 0.73), 'side-bin-lid-seam'), s * 1.272, ty(2.01), tz(-2.075));
+    for (const dz of [-0.24, 0.24]) P.add('turretDark', part(box(0.008, 0.26, 0.025), 'side-bin-strap'), s * 1.272, ty(1.88), tz(-2.075) + dz);
+    for (const dz of [-0.12, 0.12]) P.add('turretDetail', part(box(0.016, 0.04, 0.035), 'side-bin-latch'), s * 1.276, ty(1.98), tz(-2.075) + dz);
   }
   // the rear block: one closed body from the bins' rear to the slat face
-  const yb = 1.742, yt = 2.15, rise = 0.60; // the face runs 0.60 m aft-to-fore per metre of rise
+  const yb = 1.742, yt = 2.14, rise = 0.60; // the face runs 0.60 m aft-to-fore per metre of rise
   const faceZ = (y: number): number => -3.17 + (y - yb) * rise;
   const corners: THREE.Vector3[] = [];
   for (const y of [yb, yt]) for (const s of [-1, 1]) {
@@ -830,8 +840,8 @@ function mainGun(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     P.addGunExtraDark(part(box(0.05, 0.14, 0.05), 'mantlet-sensor-post'), -0.03, gy(2.01), gz(1.16));
     P.addGunExtra(part(box(0.14, 0.11, 0.20), 'mantlet-sensor'), -0.03, gy(2.135), gz(1.17));
     P.addGunExtraDark(part(box(0.10, 0.06, 0.008), 'mantlet-sensor-window'), -0.03, gy(2.14), gz(1.274));
-    // coaxial machine gun port on the mantlet's right shoulder
-    P.addGunExtraDark(part(cylZ(0.022, 0.12, P.q ? 12 : 8), 'coax-port'), 0.14, gy(1.67), gz(1.22));
+    // coaxial machine gun port on the mantlet's right shoulder (until the production coax moves to its cheek housing)
+    if (!stage.coaxHousing) P.addGunExtraDark(part(cylZ(0.022, 0.12, P.q ? 12 : 8), 'coax-port'), 0.14, gy(1.67), gz(1.22));
   } else {
     // the testbed's early mount: a straight bolted box round the new gun's cradle, its face plate proud, no coax
     P.addGunExtra(part(sectionSolid([mantlet(0.70, 0.25, 1.55, 2.00), mantlet(1.18, 0.25, 1.55, 2.00)]), 'mantlet-early'));
@@ -864,8 +874,13 @@ function mainGun(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     const extractor: AxialWheelStation[] = [[0, 0.072], [0.06, 0.104], [0.42, 0.104], [0.48, 0.072]];
     P.add('gun', part(lathedWheelSection(extractor, n).rotateY(-Math.PI / 2), 'fume-extractor'), 0, 0, gz(2.70));
   }
-  const mouthOuter = stage.brake === 'slotted' ? 0.085 : 0.095, bore = 0.0525;
-  if (stage.brake === 'slotted') {
+  const mouthOuter = stage.brake === 'slotted' ? 0.085 : stage.brake === 'ribbed' ? 0.097 : 0.095, bore = 0.0525;
+  if (stage.brake === 'ribbed') {
+    // ribbed brake: a slim round body under seven fine baffle ribs, its deeper end cap round the muzzle
+    const body: AxialWheelStation[] = [[0, 0.072], [0, 0.088], [0.49, 0.088], [0.49, 0.097], [0.56, 0.097], [0.56, 0.072]];
+    P.add('gunDark', part(lathedWheelSection(body, n).rotateY(-Math.PI / 2), 'brake-body'), 0, 0, brakeStart);
+    for (let i = 0; i < 7; i++) P.add('gunDark', part(torus(0.091, 0.007, n, 6).rotateX(Math.PI / 2), 'brake-rib'), 0, 0, brakeStart + 0.06 + i * 0.065);
+  } else if (stage.brake === 'slotted') {
     // slotted brake: a slim box body (top and bottom plates, slotted cheeks) round a core tube, a pierced front plate and
     // the muzzle rim
     P.add('gunDark', part(new THREE.CylinderGeometry(0.085, 0.085, 0.56, n, 1, true).rotateX(Math.PI / 2), 'brake-core'), 0, 0, brakeStart + 0.28);
@@ -910,7 +925,7 @@ export function buildZtz20Turret(P: TankBuilderPort, stageId: Ztz20Stage): void 
   }
   gunHousing(P);
   if (stage.commanderSight === 'panoramic') panoramicSight(P); else periscopeSight(P);
-  cheekBank(P, stage);
+  coaxHousing(P, stage);
   if (stage.rws !== 'none') weaponStation(P, stage);
   if (stage.bustleStowage) bustleStowage(P);
   if (stage.trialsMast) trialsMast(P);

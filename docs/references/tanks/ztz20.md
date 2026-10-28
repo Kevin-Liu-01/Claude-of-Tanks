@@ -41,10 +41,10 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 
 | ID | Stage | Hull/gear | Turret | Gun | Source support |
 | --- | --- | --- | --- | --- | --- |
-| `ztz20` | production | family hull, raised deck, tiles, three-band skirts, slat cage | arrowhead gun turret, hard-kill towers, twin-tube RWS, cheek bank, bins, rack | 105 mm, slotted brake | measured from the oracle |
+| `ztz20` | production | family hull, raised deck, tiles, three-band skirts, slat cage | arrowhead gun turret, hard-kill towers, twin-cell RWS, coax in the right-cheek housing, bins, slatted rear block | 105 mm, ribbed brake, muzzle sensor | measured from the oracle |
 | `ztz20_prototype` | turret testbed | family hull, raised deck, bare glacis, three-band skirts, stern bin | the arrowhead turret, ballast blocks for the pods, fixed periscope, no RWS/hard-kill/smoke, trials mast | the new 105 mm in an early box mantlet, bare tube + fume extractor, slotted brake | family derivation (deliberate departures) |
-| `ztz100` | pre-production | family hull, raised deck, bare glacis, two-band skirts, stern bin + trials basket | same turret, blanked hard-kill seats, plain RWS, cheek cover, trials mast | 105 mm, round brake | family derivation (deliberate departures) |
-| `ztz100_prototype` | testbed | family hull, flat testbed deck, upper skirt band, stern bin | the owner's 2026-09-19 missile turret (unchanged) | HJ-P9 + 35 mm | family hull; owner-authored turret |
+| `ztz100` | pre-production | family hull, raised deck, bare glacis, two-band skirts, stern bin + trials basket | same turret, blanked hard-kill seats, plain RWS, coax in the mantlet, trials mast | 105 mm, round brake | family derivation (deliberate departures) |
+| `ztz100_prototype` | testbed | family hull, flat testbed deck, flush crew hatches, upper skirt band, stern bin | the owner's 2026-09-19 missile turret (unchanged) | HJ-P9 + 35 mm | family hull; owner-authored turret |
 
 ## Source and comparison contract
 
@@ -68,8 +68,8 @@ Template: [docs/tank-generation/templates/run-packet.md](../../tank-generation/t
 - Datums (game frame): hull 7.13 m (stern plate z -3.55 to nose z 3.58), rear fender boxes to z -3.80; skirt planes
   ±1.85 forward / ±1.765 aft; roof 1.41, engine deck 1.465 (the oracle's 1.50 lowered 3.5 cm so the bustle clears it at
   every yaw), glacis 6.4° to the nose line y 1.20; turret ring (0, 1.41, -0.55); turret floor 1.48, bustle floor 1.50,
-  rear plateau 2.30, flank pods ±1.51 between z -0.05 and -1.75; arrowhead cheek face x 1.21 / z 0.42 to x 0.34 /
-  z 0.97, knee 1.81, crown 2.12; gun trunnion (0, 1.76, 0.55), muzzle z 5.175, tube radius 0.072; launcher towers at
+  rear plateau 2.30, flank pods ±1.51 between z -0.05 and -1.75; arrowhead cheek face swept from x 0.40 / z 1.07 to
+  x 1.21 / z 0.49 (top view; the face's nose line), cut at the housing side x 0.31, knee 1.81, crown 2.12; gun trunnion (0, 1.76, 0.55), muzzle z 5.175, tube radius 0.072; launcher towers at
   ±1.26 / z -0.82 (top 2.55); weapon station z -0.78; seven road wheels r 0.3135 at y 0.374 on the left stations
   -2.3375 … 2.1705 and the right side staggered 90 mm forward; sprocket z -2.961, idler z 2.9915, rollers z -0.933 /
   0.648; track 0.515 at x ±1.2485.

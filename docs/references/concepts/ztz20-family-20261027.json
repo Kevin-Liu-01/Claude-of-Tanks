@@ -20,10 +20,10 @@
       "ztz20"
     ],
     "stages": {
-      "ztz100_prototype": "missile testbed (c. 2017): the family hull and capsule proved under a missile turret",
+      "ztz100_prototype": "missile testbed (c. 2017): the family hull and capsule proved under a missile turret, flush crew hatches under its low platter",
       "ztz100": "pre-production (c. 2020): the gun turret with its systems blanked or in trials form, the earlier 105 mm",
       "ztz20_prototype": "turret testbed (c. 2021): the ZTZ-20 turret's new high-pressure 105 mm in an early mount, trial ballast for the pods, a fixed commander's periscope, no weapon station or hard-kill system yet",
-      "ztz20": "production (early 2020s): hard-kill launchers, ATGM weapon station, countermeasure bank, glacis tiles, slat cage"
+      "ztz20": "production (early 2020s): hard-kill launchers, ATGM weapon station, the coaxial machine gun moved to an armoured right-cheek housing, the ribbed brake, glacis tiles, slat cage"
     },
     "rationale": "A lighter MBT for southern hills, plateau roads and river crossings than the 50-plus-tonne ZTZ-99 family; an unmanned turret over a hull crew capsule for a low 2.30 m turret roof; a high-pressure 105 mm gun with a compact autoloader keeps the turret narrow, the matured round closing most of the gap to the 125 mm tanks; raked composite cheeks, flank pods, glacis tiles, three-band skirts and a slat cage, with active protection on the production turret.",
     "serviceClaim": "none: the names, stages and dates are the game's design history; no fielded vehicle or documented programme is claimed"
