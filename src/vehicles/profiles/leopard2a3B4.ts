@@ -33,9 +33,10 @@ function turretShell(P: TankBuilderPort): void {
   P.add('turret', sectionSolid([
     s(T.rearZ, T.rearHalfWidthM, 0.27, 0.76, 0.80),
     s(-2.45, T.bustleHalfWidthM, T.bustleFloorY, 0.78, T.roofY),
-    s(T.stepZ - 0.04, T.bustleHalfWidthM, T.bustleFloorY, 0.78, T.roofY + 0.005),
-    s(T.stepZ, T.halfWidthM, T.bustleFloorY, 0.78, T.roofY + 0.005),
-    s(-1.29, T.halfWidthM, 0.16, 0.78, T.roofY + 0.005),
+    // the bustle's floor eases up from the ring to its full 0.21 m only behind the step
+    s(T.stepZ - 0.04, T.bustleHalfWidthM, 0.17, 0.78, T.roofY + 0.005),
+    s(T.stepZ, T.halfWidthM, 0.16, 0.78, T.roofY + 0.005),
+    s(-1.29, T.halfWidthM, 0.12, 0.78, T.roofY + 0.005),
     s(-0.87, T.halfWidthM, T.floorY, 0.78, T.roofY),
     s(-0.40, T.halfWidthM, T.floorY, 0.77, T.roofY),
     s(T.cornerZ, T.halfWidthM, T.floorY, 0.66, 0.70),
@@ -138,13 +139,14 @@ function flankEquipment(P: TankBuilderPort): void {
     // the SEM 80/90 radios' short antenna bases on the bustle roof, their whips
     P.add('turretDetail', cylY(0.05, 0.06, 0.08, 10), sx * 0.80, T.roofY + 0.04, -2.25);
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.20, r: 0.011, seed: 26240 + (sx > 0 ? 1 : 0),
-      rotation: [-0.08, 0, sx * 0.03] });
+      rotation: [-0.06, 0, 0] });
     whip.position.set(sx * 0.80, T.roofY + 0.08, -2.25);
     P.turretG.add(whip);
   }
-  // the ammunition hatch on the left (loader's) wall, as built: a bolted plate with its hinge line
-  P.add('turretDetail', box(0.02, 0.36, 0.52), T.halfWidthM + 0.01, 0.42, -0.30);
-  P.add('turretDark', box(0.022, 0.012, 0.50), T.halfWidthM + 0.012, 0.61, -0.30);
+  // the ammunition hatch on the left (loader's) wall, as built: a raised plate on its frame, the hinge line and a handle
+  P.add('turretDetail', box(0.035, 0.38, 0.54), T.halfWidthM + 0.0175, 0.42, -0.30);
+  P.add('turretDark', box(0.037, 0.012, 0.52), T.halfWidthM + 0.019, 0.615, -0.30);
+  P.add('turretDetail', box(0.03, 0.03, 0.14), T.halfWidthM + 0.05, 0.38, -0.30);
 }
 
 /** The bustle's rear plate and the open basket hung off it. */
