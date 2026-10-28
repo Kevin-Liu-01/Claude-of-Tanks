@@ -105,7 +105,10 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
           frontFace(p, off, 0.003, (w, h) => KIT.box(Math.max(0.03, w * 0.7), Math.max(0.02, h * 0.35), 0.008)));
         break;
       case ROLE.stowage:
-        P.add(onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail', partGeometry(p, off, seg));
+        // the Merkava's pale kit (FSP-06): the large irregular pieces (bags, tarps, rolls: lofts) in pale canvas, the
+        // boxes and cans in fitting paint
+        P.add(p[0] === 4 ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'),
+          partGeometry(p, off, seg));
         break;
       default:
         if (sx * sy * sz > 1e-6) P.add(onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail', partGeometry(p, off, seg));
