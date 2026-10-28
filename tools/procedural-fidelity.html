@@ -227,6 +227,13 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
   pt91a_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
   strv103b: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
+  // release 262: "Challenger 3 TD MBT" by Jeyhun1985 (CC-BY-4.0; sha256 3a4b3fbbe52aad3e…), the TD's measurement oracle
+  // (docs/references/tanks/challenger3_td.md). An OBJ conversion: unnamed material-merged nodes. The turret is
+  // Object_24 with the roof furniture, sights and whips (22, 23, 25, 26, 19); the gun Object_20 with its muzzle and coax
+  // (6, 3). +Z forward after the Sketchfab root. Its field fit (challenger3_td_rws) is a derivative: not registered here.
+  challenger3_td: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/challenger3_td_source.glb',
+    turretNode:'^Object_24$', turretFollowers:'^Object_(?:19|22|23|25|26)$', gunNode:'^Object_20$', gunFollowers:'^Object_(?:3|6)$',
+    autoPivot:true } },
   strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   strv121: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },

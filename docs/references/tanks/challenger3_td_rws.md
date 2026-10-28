@@ -18,11 +18,11 @@
 - Remote station: Protector-class, front-left on the roof proper (yaw centre oracle (0.80, 2.70, 0.10)), clear of the
   loader's hatch and periscope and of the brow step; its M2 (12.7 mm) is the fleet's Browning construction in remote
   form (`machineGunGeometry.ts`) at true calibre on a working `beginAuxiliaryStation` rig (yaw body: turntable,
-  housing, cradle cheeks at |x| 0.22-0.26 m with the trunnion pins; elevating: the gun, the sight head with its window
-  and the ready box, all inside |x| 0.15 m and over the housing by 4 cm or more at full travel; the pivot 0.48 m over
+  housing, cradle cheeks at |x| 0.26-0.30 m with the trunnion pins; elevating: the gun, the sight head with its window
+  and the ready box, all inside |x| 0.20 m and over the housing by 4 cm or more at full travel; the pivot 0.48 m over
   the roof). Its barrel's full sweep clears the commander's sight head (3.42, 2.3 m away), the cupola, the mast and
   both whips; `tools/roof-station-sweep.mjs` holds its moving stock 25 mm off the fixed (r1 failed at 18-25 mm with
-  the first packing).
+  the first packing; r2 22 mm forward, the M2 feed under the right cheek).
 - Equipment: stowage bins on both turret walls behind the cheeks (authored) and the decor manifest's field kit (a
   bustle basket with the crew's packs, a rolled net, tarpaulin, jerrycans, a bin, spare links, tow cable, shackles,
   tools, rations).

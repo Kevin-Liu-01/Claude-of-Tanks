@@ -230,6 +230,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // fidelity harness row.
   challenger3_proto: { source:'glb', glb:{ path:'/models/tanks/community/challenger_3.glb',
     turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true, yawOffset:-Math.PI/2 } },
+  // release 262: the Challenger 3 TD oracle (Jeyhun1985, CC-BY-4.0, measurement only); mirrors the fidelity row
+  challenger3_td: { source:'glb', glb:{ path:'/models/community-candidates/challenger3_td_source.glb',
+    turretNode:'^Object_24$', turretFollowers:'^Object_(?:19|22|23|25|26)$', gunNode:'^Object_20$', gunFollowers:'^Object_(?:3|6)$',
+    autoPivot:true } },
   leo2a4: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
     turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },
   kf51_evo: { source:'glb', glb:{ path:'/models/tanks/kf51_grip420.glb',

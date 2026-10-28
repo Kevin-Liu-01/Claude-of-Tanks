@@ -165,7 +165,7 @@ function buildHull(P: TankBuilderPort): void {
     hull('hullGlass', lamp, side * 1.30, 1.44, -4.365);
     // the skirt-top hooks ahead of and behind the turret, the skirt's panel joints, the fender lockers and the tow cable
     for (const z of [2.60, -1.60]) hull('hullDetail', box(0.06, 0.08, 0.22), side * 1.775, 1.50, z);
-    for (const z of [-2.62, -1.20, 0.10, 1.40, 2.70]) hull('hullDark', box(0.012, 0.50, 0.025), side * 1.749, 1.20, z);
+    for (const z of [-2.62, -1.20, 0.10, 1.40, 2.70]) hull('hullDark', box(0.012, 0.45, 0.025), side * 1.749, 1.175, z);
     for (const z of [2.20, 0.95, -0.35, -1.45, -2.55]) hull('hullDetail', cylY(0.12, 0.12, 0.05, P.q ? 20 : 12), side * 1.46, 1.735, z);
     KIT.towCable(P, [[1.66, 1.73, 2.95], [1.68, 1.735, 1.0], [1.68, 1.74, -1.0], [1.67, 1.75, -3.30]]
       .map(([x, y, z]) => [side * x * S, y * S, (z + DZ) * S] as [number, number, number]));
@@ -367,8 +367,9 @@ function buildRemoteStation(P: TankBuilderPort): void {
   const { box, cylX: cx, cylY: cy } = KIT;
   const base = [RWS_SEAT[0] * S, (RWS_SEAT[1] - PIVOT[1]) * S, (RWS_SEAT[2] - PIVOT[2]) * S] as const;
   const at = (dx: number, dy: number, dz: number): [number, number, number] => [base[0] + dx, base[1] + dy, base[2] + dz];
-  // every elevating part stays inside |x| 0.18 and 4 cm over the housing at the station's whole pitch (the cheeks stand
-  // at |x| 0.22-0.26): roof-station-sweep.mjs holds the moving stock 25 mm off the fixed
+  // every elevating part stays inside |x| 0.20 (the M2's right-hand feed reaches it) and 4 cm over the housing at the
+  // station's whole pitch; the cheeks stand at |x| 0.26-0.30 and the pins' tips at 0.24: roof-station-sweep.mjs holds
+  // the moving stock 25 mm off the fixed
   const pivot = at(0, 0.48, 0.02);
   // the gun: the fleet's Browning M2 construction, remote form (solenoid back plate, right-hand feed)
   const gun = new THREE.Group();
@@ -394,8 +395,8 @@ function buildRemoteStation(P: TankBuilderPort): void {
   P.add('turretDark', cy(0.31, 0.33, 0.05, P.q ? 32 : 16), ...at(0, 0.025, 0));
   P.add('turretDetail', box(0.50, 0.20, 0.48), ...at(0, 0.15, 0));
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.30, 0.26), ...at(side * 0.24, 0.40, 0.02));
-    P.add('turretDark', cx(0.03, 0.04, 10), ...at(side * 0.20, 0.48, 0.02));               // trunnion pins, cheek-borne
+    P.add('turretDetail', box(0.04, 0.30, 0.26), ...at(side * 0.28, 0.40, 0.02));
+    P.add('turretDark', cx(0.03, 0.03, 10), ...at(side * 0.255, 0.48, 0.02));              // trunnion pins, cheek-borne
   }
   station.mark('yaw');
   // elevating mass: the day/thermal sight head right of the gun and its window, the ready box outboard of the feed
