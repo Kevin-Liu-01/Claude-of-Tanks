@@ -4,9 +4,9 @@
 // first time something broke). Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 //
 // A solo battle on a pinned map (the dev server, desktop tier). After the reveal every program the renderer makes is
-// logged with the draw that made it; then the nearest structure 25-220 m off, framed by an external camera pose
-// (rig.setExternalPose), takes the player's HE rounds through the battle's destruction match
-// (game._destruction.shellWorldHit, the call a shell's world hit makes) until it breaks. The receipt holds that the
+// logged with the draw that made it; then the nearest structures 25-220 m off, each framed by an external camera pose
+// (rig.setExternalPose), take the player's HE rounds through the battle's destruction match
+// (game._destruction.shellWorldHit, the call a shell's world hit makes) until one breaks into its fracture. The receipt holds that the
 // break drew its fracture (its faces, rooms, body or heap, read after every hit: the draws were real) and that no
 // program was made for an FX draw after the strike.
 //   node tools/destruction-first-use.browser.selftest.mjs [--map=urban] [--spec=t72b3m_bulat_m] [--json=<out>]
@@ -86,10 +86,11 @@ try {
   });
   await sleep(4000); // the reveal's own settling (finalShadows' later batches) before the strike
   const quiet = await page.evaluate(() => window.__dfu.made.length);
-  // the nearest structure 25-220 m from the battle camera, framed by an external camera pose (the spawn view need not
-  // hold one: urban's did not), then struck until it breaks
-  report.target = await page.evaluate(() => {
-    const { world, camera, rig } = window.__DEBUG;
+  // the nearest structures 25-220 m from the battle camera, each framed by an external camera pose (the spawn view need
+  // not hold one: urban's did not) and struck with the player's HE until one breaks into its fracture (a small structure
+  // can shed only pieces, and a shaped charge need not hole masonry, as the first urban runs showed)
+  report.target = await page.evaluate(async () => {
+    const { game, world, camera, rig } = window.__DEBUG;
     const V = camera.position.constructor;
     const records = [...world.getColliders(), ...world.getObstacles()].filter((r) => r.structureIdx !== undefined && r.min && r.max);
     const byStructure = new Map();
@@ -98,29 +99,18 @@ try {
       if (!s) byStructure.set(r.structureIdx, { idx: r.structureIdx, record: r, min: [...r.min], max: [...r.max] });
       else for (let k = 0; k < 3; k++) { s.min[k] = Math.min(s.min[k], r.min[k]); s.max[k] = Math.max(s.max[k], r.max[k]); }
     }
-    let best = null;
-    for (const s of byStructure.values()) {
+    const from = camera.position.clone();
+    const candidates = [...byStructure.values()].map((s) => {
       const c = new V((s.min[0] + s.max[0]) / 2, (s.min[1] + s.max[1]) / 2, (s.min[2] + s.max[2]) / 2);
-      const d = Math.hypot(c.x - camera.position.x, c.z - camera.position.z);
-      if (d < 25 || d > 220) continue;
-      if (!best || d < best.d) best = { ...s, c, d };
-    }
-    if (!best) return { error: `no structure 25-220 m from the camera (${byStructure.size} structures, ${records.length} records)` };
-    const dx = best.c.x - camera.position.x, dz = best.c.z - camera.position.z, len = Math.hypot(dx, dz) || 1;
-    const standoff = Math.max(30, Math.max(best.max[0] - best.min[0], best.max[2] - best.min[2]) * 1.6);
-    rig.setExternalPose(new V(best.c.x - dx / len * standoff, best.max[1] + 12, best.c.z - dz / len * standoff), best.c.clone(), 60);
-    window.__dfuTarget = best;
-    return { structureIdx: best.idx, distanceM: Math.round(best.d), standoffM: Math.round(standoff), structures: byStructure.size };
-  });
-  assert.ok(!report.target.error, report.target.error);
-  await sleep(3000); // the framed view's own first draws (world programs, not FX) before the strike
-  report.target.shell = await page.evaluate(async () => {
-    const { game, camera } = window.__DEBUG, best = window.__dfuTarget;
+      return { ...s, c, d: Math.hypot(c.x - from.x, c.z - from.z) };
+    }).filter((s) => s.d >= 25 && s.d <= 220).sort((a, b) => a.d - b.d).slice(0, 5);
+    if (!candidates.length) return { error: `no structure 25-220 m from the camera (${byStructure.size} structures, ${records.length} records)` };
+    // a high-explosive round first (HE, HE-FRAG, HESH: the charge that holes a wall), a shaped charge only without one
     const shells = game.player?.spec?.gun?.shells ?? [];
-    const he = shells.find((s) => /^HE/i.test(String(s.type))) ?? shells.find((s) => /HEAT/i.test(String(s.type))) ?? shells[0];
-    const dx = best.c.x - camera.position.x, dz = best.c.z - camera.position.z, len = Math.hypot(dx, dz) || 1;
-    window.__dfu.struckAt = Math.round(performance.now() - window.__dfu.revealAt);
-    // what the break drew, at its most, read after every hit: its faces give way to the body and heap as it falls
+    const type = (s) => String(s.type ?? '');
+    const he = shells.find((s) => /^HE(?!AT)/i.test(type(s))) ?? shells.find((s) => /HESH/i.test(type(s)))
+      ?? shells.find((s) => /HEAT/i.test(type(s))) ?? shells[0];
+    // what a break drew, at its most, read after every hit: its faces give way to the body and heap as it falls
     const drawn = window.__dfu.drawn = { face: 0, room: 0, body: 0, heap: 0, pieces: 0 };
     const tally = () => {
       const now = { face: 0, room: 0, body: 0, heap: 0, pieces: 0 };
@@ -133,14 +123,30 @@ try {
       for (const k in now) drawn[k] = Math.max(drawn[k], now[k]);
     };
     window.__dfu.tally = tally;
-    for (let i = 0; i < 10; i++) {
-      game._destruction.shellWorldHit(he, best.record, best.c.x - dx / len * (best.max[0] - best.min[0]) * 0.3, best.c.y,
-        best.c.z - dz / len * (best.max[2] - best.min[2]) * 0.3, dx / len, dz / len);
-      await new Promise((done) => setTimeout(done, 350));
-      tally();
+    const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+    const tried = [];
+    for (const target of candidates) {
+      const dx = target.c.x - from.x, dz = target.c.z - from.z, len = Math.hypot(dx, dz) || 1;
+      const standoff = Math.max(30, Math.max(target.max[0] - target.min[0], target.max[2] - target.min[2]) * 1.6);
+      rig.setExternalPose(new V(target.c.x - dx / len * standoff, target.max[1] + 12, target.c.z - dz / len * standoff), target.c.clone(), 60);
+      await wait(3000); // the framed view's own first draws (world programs, not FX) before the strike
+      window.__dfu.struckAt ??= Math.round(performance.now() - window.__dfu.revealAt);
+      // the near wall, a storey up: where a round from the camera's side lands
+      const halfAlong = (Math.abs(dx / len) * (target.max[0] - target.min[0]) + Math.abs(dz / len) * (target.max[2] - target.min[2])) / 2;
+      const y = target.min[1] + Math.min(3, (target.max[1] - target.min[1]) / 2);
+      for (let i = 0; i < 10; i++) {
+        game._destruction.shellWorldHit(he, target.record, target.c.x - dx / len * halfAlong * 0.9, y, target.c.z - dz / len * halfAlong * 0.9,
+          dx / len, dz / len);
+        await wait(350);
+        tally();
+      }
+      const fractured = drawn.face + drawn.room + drawn.body + drawn.heap > 0;
+      tried.push({ structureIdx: target.idx, distanceM: Math.round(target.d), standoffM: Math.round(standoff), fractured });
+      if (fractured) break;
     }
-    return he?.type ?? null;
+    return { tried, structures: byStructure.size, shell: type(he) || null };
   });
+  assert.ok(!report.target.error, report.target.error);
   await sleep(8000);
   const after = await page.evaluate(() => {
     window.__dfu.tally();
@@ -155,7 +161,8 @@ try {
   report.fxBeforeStrike = after.made.filter((p) => isFx(p) && p.t < after.struckAt);
   const fxMade = after.made.filter((p) => isFx(p) && p.t >= after.struckAt);
   report.fxMade = fxMade;
-  console.log(`destruction-first-use: ${MAP} entry ${report.entryMs} ms; structure #${report.target.structureIdx} at ${report.target.distanceM} m (${report.target.shell}); `
+  const struck = report.target.tried.map((t) => `#${t.structureIdx} at ${t.distanceM} m${t.fractured ? ' (broke)' : ''}`).join(', ');
+  console.log(`destruction-first-use: ${MAP} entry ${report.entryMs} ms; struck ${struck} with ${report.target.shell}; `
     + `drawn ${JSON.stringify(after.drawn)}; ${after.made.length} programs made after the reveal, struck at +${after.struckAt} ms `
     + `(${fxMade.length} for FX after the strike, ${report.fxBeforeStrike.length} before it)`);
   for (const p of after.made) console.log(`  +${p.t} ms ${p.name}: ${p.drawer}`);
