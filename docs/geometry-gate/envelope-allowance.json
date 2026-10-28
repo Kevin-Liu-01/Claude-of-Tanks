@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "tool": "tools/envelope-census.mjs",
+  "tankIdSchema": 3,
+  "rule": {
+    "pastM": 0.05,
+    "thinM": 0.07,
+    "smallShare": 0.02
+  },
+  "about": "seed placeholder",
+  "rows": {}
+}
