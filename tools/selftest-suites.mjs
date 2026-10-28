@@ -135,6 +135,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
     // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
     'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-28 (release 262 CN, the Type 59 / T-55A and Longwei rebuilds): each gun stays inside its mantlet at every
+    // degree from full depression to full elevation
+    'src/vehicles/cnGunMantlet.selftest.mjs',
     // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
     // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
     'src/vehicles/qilinRearFill.selftest.mjs',
@@ -700,6 +703,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
     'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
+    // release 262: the Longwei concept's native profile fixture (its first-party concept route's test)
+    'src/vehicles/profiles/longwei.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',

@@ -98,7 +98,15 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // buildT44/buildType59; the CC prints stay measurement oracles here
   // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
   t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // 262 (owner: "make the type 59 be based on a type 55"): the Type 59 is built on the T-54/T-55 family construction
+  // measured from the owner's T-55A model (profiles/t54Family.ts), so it is scored against that oracle like the T-55A
+  // (fused export: whole views, dims and floaters); the LastTriarius Type 69 print, the 261 oracle, is retired.
+  type59: { source:'glb', glb:{ path:'/models/community-candidates/t55a_x_source.glb', fixedMount:true, componentMasks:false } },
+  // 262 (owner 2026-10-27): the owner-supplied T-55A (Alex.Ka., CC BY-NC-ND 4.0, LOCAL-ONLY), prepared to its vehicle
+  // meshes at one uniform scale by tools/source-x-oracle.mjs (docs/references/tanks/t55a.md). Its export fuses hull,
+  // turret and gun by material, so the whole nine-view silhouette, dims and floaters are the honest comparison.
+  t55a: { source:'glb', qualityBar:'exemplar', glb:{ path:'/models/community-candidates/t55a_x_source.glb',
+    fixedMount:true, componentMasks:false } },
   // RE-ONBOARD (§5.36, 2026-08-08): ahab bakes re-baked with the hull
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
   // These exports parent large fixed-hull regions under `Turret`; whole and
@@ -142,21 +150,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   leo2_improved: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb',
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false,
     trackComponentMasks:true } },
-  // Object_29 fuses fixed glacis/service pieces and rotating cheek/flank
-  // armour in one mesh.  It cannot supply an honest independent hull/turret
-  // mask without rewriting source vertices, so component scoring is disabled
-  // while whole-view, gun, track and yaw evidence remain mandatory.
-  ztz99_longwei: { source:'glb', qualityBar:'exemplar', glb:{
-    path:'/models/community-candidates/type_99a2_armored_warfare.glb',
-    turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true,
-    componentMasks:false,
-    // Object_17 is only the exposed tube; our articulated gun tree also
-    // owns the mechanically correct mantlet/tunnel.  An isolated comparison
-    // therefore penalizes the authored model for containing the missing
-    // source part.  Cannon length/root remain mandatory in all whole views.
-    gunComponentMasks:false,
-    turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
-  } },
+  // ZTZ-99 Longwei: the game's own ZTZ-99-lineage design (owner, 2026-10-28), docs/references/concepts/ztz99-longwei-20261028.json.
   // Owner directive (2026-09-02): VT-4A1 clones the ZTZ-99A2 hull but uses
   // an independent low integrated-chevron turret. Keep the A2 print as the
   // registered shared-chassis oracle; VT-specific turret construction is

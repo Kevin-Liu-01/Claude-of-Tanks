@@ -34,6 +34,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // 09903e47298549e7 -> f2e5b458815e4d65. The same 253 rename paints the prototypes' designations ("STC-1", "STC-2" for
 // "73", "90-A") on schema-1 type90 / type90a's Factory coats; with the old numbers each equals production's digest
 // (type90 49f13f4a7611302c -> cc5999a15cec54d1, type90a 4b4a154b8dbb9e0d -> ee30ce99e88984dd).
+// Re-pinned 2026-10-27 (release 262, the Type 59 on the T-54/T-55 family construction): the Type 59's resolved Factory
+// visual carries its measured 0.60 m track (spec.visual.trackWidthM, read by the track contact and track marks) for the
+// retired 0.55; scheme, colours, pattern and seed are unchanged. type59 306893e0db54f6ad -> c3e94da916bc0b93. Its
+// ZTZ-85-III variant keeps its own 0.55 m track (china.ts), so its row is production's.
 // Re-pinned 2026-10-27 (owner: the T-90 names, display only): one selection moved by its label alone, the tier X
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
@@ -63,9 +67,13 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
 // Release 262: the Christian II and its Danish tri-tone.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2'];
-assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,
-  'the same fleet, plus the tanks added since');
+// Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
+// obr. 1975's Soviet stock).
+const ADDED_IN_DONOR_COAT = { t55a: 't62_1975' };
+assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
+  + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
+for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
 const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');

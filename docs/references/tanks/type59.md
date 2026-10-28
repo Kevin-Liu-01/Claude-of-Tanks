@@ -1,4 +1,84 @@
-# Type 59 — reference packet (NEW BUILD, §5.45 no-builder queue → russia lane 2026-08-08)
+# Type 59 — reference packet
+
+## §262 historical rebuild (release 262, owner 2026-10-27) — CURRENT
+
+Owner, verbatim: "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,
+turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well".
+Builder: `src/vehicles/profiles/t54Family.ts` (`buildType59`; new geometry; the §5.304 r3 refit on the widened obr-1975
+chassis, its 0.855 rig scale, skirt and turret cassettes, glacis applique and oversized searchlight are retired). Owner,
+mid-lane: "make the type 59 be based on a type 55 which we should add to russia. match the geometries well" — the Type 59
+now shares the T-55A's construction, measured from the owner-supplied T-55A model at one uniform scale
+(docs/references/tanks/t55a.md), and keeps its T-54A ventilator dome, smaller searchlight, loader's Type 54 and PLA
+fittings. Where the model and the photogrammetry below differ (wheels 0.81 m at 0.84 m pitch vs 0.78/0.79; dome 2.54 m vs
+2.15 m; roof 1.42 vs 1.45; bore 1.74 vs 1.81), the model governs by the owner's order. Target configuration: the
+PLA's Type 59 (WZ-120, licensed T-54A) of the 1960s-70s with the later-model IR searchlight.
+
+### Sources
+| Key | Source | Used for |
+|---|---|---|
+| CZ-T54A | armedconflicts.com/T-54A-t37189 (Tank-21-1, *T-54A Technical Description*, ČSĽA 1959) | hull, width, height 2.40 w/o AA MG, clearance, track, gauge, contact |
+| GS-59spec | globalsecurity.org/military/world/china/type-59-specs.htm (Chinese spec table) | bore-axis height 1.738 m, gun range −5/+18, same hull figures |
+| WP-59, WP-T55, RU-T54 | Wikipedia (en: Type 59, T-54/T-55; ru: Т-54) | layout, gun, fender tanks, exhaust side, glacis angles 60°/55° |
+| FAS-T54 | man.fas.org/dod-101/sys/land/row/t54tank.htm | wheel gap, ring over wheel 3, rear drums, searchlight right of the gun |
+| Photo A | commons: `T-59_MBT_pic-020.JPG` (Alf van Beem, CC0), near-orthographic right side | wheel stations, turret length/height, hull roof, fender line (measured at the 6.04 m hull scale) |
+| Photo B | commons: `Type_59_tank_in_Military_Museum_of_the_Chinese_People's_Revolution_20180219.jpg` (Tyg728, CC BY-SA 4.0) | front three-quarter: canvas mantlet, splash board, headlights |
+| Photo C | commons: `Type_59_tank_-_above.jpg` (Max Smith, PD) | turret plan, hatch layout (commander left, loader + DShK right, vent ahead of the loader) |
+| Photo D | commons: `T-59_MBT_pic-015.JPG` (Alf van Beem, CC0) | rear drums, rear plate |
+| Photo E | commons: `Type_1959_Medium_Tank.jpg` (1959 official, PD) | the muzzle evacuator on the earliest Type 59 |
+
+Photogrammetry (Photo A at the 6.04 m hull scale, 121 px/m; the Type 69 print agrees on pitch within 2%): road wheels
+0.78 m across at a 0.79 m pitch, the first gap 1.05 m, hub span 3.42 m (ground contact 3.84 m extends ~0.21 m past each
+end wheel); sprocket hub 0.74 m behind wheel 5, 0.69 m up; idler hub 0.72 m ahead of wheel 1, 0.65 m up; turret casting
+2.56 m long, its centre 0.40 m ahead of wheel 3; hull roof 1.45 m; dome crown 2.16-2.19 m; fender top 1.12 m. A
+widely quoted 830 mm wheel diameter does not fit the 6.04 m hull in any photo (wheels nearly touch at D/p 0.98-0.99), so
+the photo scale governs. Turret width ≈2.15 m (top view, perspective-corrected; floor: 1.80 m ring + 160 mm walls).
+
+### Gap table (before = r3 refit on main 260; after = release 262)
+| Item | Source | Before | After |
+|---|---|---|---|
+| Hull length (body, nose to rear plate) | 6.04 m | ~5.67 m body (6.08 incl. drums) at 0.855 scale | 5.90 m nose to rear plate + 0.12 fender tips = 6.02 m; 6.51 m incl. rear drums |
+| Width over fenders | 3.27 m | 3.26 m (with 14 skirt panels) | 3.27 m (fenders ±1.635), no skirts |
+| Height to turret roof / cupola, w/o AA MG | 2.40 m | 2.615 m cupola crown, roof ~1.27 | dome crown 2.19 m, cupola 2.40 m, hull roof 1.45 m |
+| Track width / gauge | 0.58 m / 2.64 m | 0.489 m / 2.48 m | 0.60 m / 2.65 m |
+| Road wheels | 5, ~0.78-0.83 m, gap 1-2 | 5 × 0.72 m, gaps 0.99/0.84/0.87/0.87 | 5 × 0.81 m, gaps 1.14/0.84/0.84/0.84 (the T-55A model) |
+| Return rollers | none | none | none |
+| Turret width × length × height over roof | ~2.15 (photo) / 2.54 (T-55A model) × 2.6 × 0.78 m, cast dome | 2.76 × 2.96 × ~0.89 m, widened mushroom + cassettes | 2.54 × 2.61 × 0.78 m superellipse dome (the model) |
+| Turret ring position | over road wheel 3 | z +0.578 | z −0.08 (wheel 3 at −0.16) |
+| Mantlet | narrow slot with pleated canvas cover ~0.43 m wide | 0.62 × 0.50 canvas boot on a cast collar | 0.46 × 0.52 rounded canvas bag in the slot, root 0.40 m inside the casting |
+| Gun | 100 mm, L/53.5, bore axis 1.738 m, evacuator flush with the muzzle | evacuator at the muzzle third (3.34..3.86), axis 1.58 m | evacuator at the muzzle (0.74 m), axis 1.74 m, muzzle 5.42 m (2.42 m past the nose) |
+| Commander's cupola | vehicle left | x −0.605 (vehicle RIGHT: mirrored) | +X (vehicle left), TPK-1 housing, OU-3 IR spot |
+| Loader's hatch + Type 54 12.7 mm | vehicle right | +0.55 (vehicle LEFT: mirrored) | −X (vehicle right), ring mount, working station |
+| IR searchlight | later models, right of / above the gun, gun-linked | 0.41 m drum on the vehicle's LEFT | 0.30 m lamp high on the gun's right (−X), gun-linked |
+| Glacis | 60° upper (from vertical), 55° lower, transverse splash board | applique ×3, IR pod | 60°/55° plates, splash board, headlights right, tow hooks, bow MG port right |
+| Engine deck / exhaust | louvres; exhaust on the left fender | snorkel ridge; muffler on the vehicle's RIGHT | two louvre beds + rear grille; exhaust outlet on the left fender (+X) |
+| Fender stowage | right: 3 fuel + 1 oil tank; left: boxes, tools | 9-bin rails both sides | right (−X): 4 flat tanks + pipe; left (+X): 4 lidded boxes, spare links |
+| Rear | two 200 L drums on brackets, BDSh smoke canisters | drums (T-62 chassis) | 2 transverse drums on raked brackets, 2 BDSh canisters, tail lamps, tow hooks |
+
+Main's rulings (2026-10-27): the road wheel is the T-54/T-55 cast five-spoke "starfish" (`t54-starfish-spoke`) through
+one switch, `T54_STARFISH_WHEELS` in nationWheelSets.ts (on: the owner approved the historical exception on 2026-10-28, "Allow period wheels"; false returns the
+Type 59 to the Chinese ZTZ-100 standard and the T-55A to the Russian T-90 face). The gun takes the D-10T's own −5/+18
+(the donor T-62's −9/+20 was never sourced). The decor is curated (decorations.ts): the era default without the hanging
+bucket and without a second whip; the smoke banks stay because they carry the smoke consumable and the fleet has no
+engine exhaust smoke system (the T-55's TDA). Gameplay stats otherwise unchanged; spec dims are the published
+6.04 / 9.00 / 3.27 / 2.40.
+
+Main gun by yaw (measured, `tools/gun-depression-sweep.mjs --ids=type59`, shared by the T-55A, whose sweep gives the same
+floors): −4.2° dead ahead over the glacis; near level from 6° to 28°, where the canvas cover passes over the driver's
+hatch (on the real tank the gun over that hatch keeps it shut); −2.8° to −4° over the flanks; 2-5° above level over
+the rear drums from 158°. No mount conflict; clear at full elevation. The loader's DShK turns from 175° right to 25° left
+of ahead: past 25° left its sweep crosses the drone dock on the dome's left rear, past 85° the commander's cupola.
+
+Release 262 fix (owner: "why is the type 59 turret see through"): the cast dome's index buffer was wound inward, so the
+FrontSide turret showed the inside of its far wall; it is wound outward now, one tessellation at both qualities (the
+dock's support must read the same at each). The combat calibration did not change (only the turret source hash).
+
+Fairness (balance range, `runBalanceSeries`, six seeds × both range ends, against the shown-tier I MBT peers):
+before (main 260) mean 0.257, 5/12 pairs inside 0.2-0.8; after (the final build) mean 0.233, 6/12 inside. The new
+geometry moves the combat envelope only; stats and the 262 package are unchanged.
+
+---
+
+## Earlier history: the §5.45 new build (russia lane 2026-08-08), superseded by §262
 
 Exact vehicle: **Type 59 (WZ-120)** — the licensed T-54A: T-54A silhouette
 with the hemispherical dome turret, 100 mm Type 59 gun (D-10T2S line) with
@@ -320,3 +400,15 @@ scratchpad. ORCHESTRATOR NOTES: (1) icons for type59 not regenerated
 (orchestrator lane per §5.246); (2) the shared ledger.json working-tree
 diff interleaves sibling lanes' rows — type59's row update is this
 lane's; (3) delivered UNCOMMITTED-UNSTAGED per order.
+
+Blind-critic rounds (262, against the museum photographs and the owner's T-55A model): 5/10 → 6 → 6 → 6 → 6/10 PASS.
+Fixed along the way: the cast dome wound inside out (rendered see-through), track guards 6 cm lower with a turned-down
+lip, the starfish wheel as a dished disc with windows, the tube's conical root, the egg plan (front taper to the neck)
+and the oracle's pleated trumpet cover, the gunner's sight as a low round port. Open notes (follow-ups): sprocket teeth
+hidden under the track band (fleet sprocket code), loader's hatch / cupola spacing (the oracle's measured stations are
+kept), smaller fender boxes, the rear mudflap, Type 59 handrails.
+
+Track clip (262 release gate, strict exact audit): the upper hull's underside rose from 0.95 to the fender line (1.07),
+since the pads rode 2-3 cm into the 9 cm overhang over the wheels and both wraps. The tub meets the glacis where the upper
+hull ends (z 2.52), the front scoops run in to the glacis edge (±0.97) with a short corner plate, and the scoop's outer lip
+tapers 0.045 → 0.10 m so it clears the belt's outer edge over the idler. Band and pad cells: 108/0 + 15-17 → 0/0 + 0.

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "ownerDecision": {
+    "date": "2026-10-28",
+    "request": "also update/redesign the centurions and strv 81, vickers, leopard challenger 1 mk 2, longwei, type 59,  turrets and hullls as well based on proper historical referrences so they will no longer look so chungus as well (2026-10-27); longweii needs a completely new hhull too (2026-10-27)",
+    "ruling": "The owner, relayed by Claude of Tanks Main on 2026-10-28: the Longwei is an original design, so it is registered on the first-party concept route rather than scored against the ZTZ-99A2 Armored Warfare model.",
+    "scope": "ZTZ-99 Longwei only. Its variants are unchanged, and the ZTZ-99A2 and VT-4A1 keep their own comparison registrations; stats, tier and the pinned ring, trunnion and gun datums are unchanged."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "historicalReference": {
+    "path": "public/models/community-candidates/type_99a2_armored_warfare.glb",
+    "purpose": "ZTZ-99A2 silhouette and proportion guidance; the release 262 hull and arrowhead turret follow the published ZTZ-99/99A sources of docs/references/tanks/ztz99_longwei.md, not this game-asset print.",
+    "previousReceipt": "docs/geometry-gate/ztz99_longwei.json",
+    "previousGeoMin": 88.1,
+    "previousGatePassed": false,
+    "note": "Retain the failed historical receipt (88.1 against the 92 exemplar bar; the release 262 lane measured 88.3). This registration does not establish source-model parity or change any comparison threshold."
+  },
+  "designs": {
+    "ztz99_longwei": {
+      "id": "ztz99_longwei",
+      "test": "src/vehicles/profiles/longwei.selftest.mjs",
+      "ring": [
+        0,
+        1.57,
+        0.64
+      ],
+      "gunLocal": [
+        0,
+        0.3198,
+        0.74
+      ],
+      "barrelLengthM": 6.454,
+      "barrelRadiusM": 0.1013,
+      "pitchDeg": [
+        -7,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 7.6,
+      "hullWidthM": 3.7,
+      "widthM": 3.732,
+      "overallLengthM": 11.8107,
+      "tallestM": 3.6683,
+      "specDimensions": {
+        "hullLengthM": 7.6,
+        "overallLengthM": 11.8,
+        "widthM": 3.7,
+        "heightM": 3.16
+      },
+      "silhouette": "Original Chinese ZTZ-99-lineage game concept (release 262). A new 99A-pattern hull: a pointed nose where a 21.9 degree upper glacis meets a 52 degree lower glacis carrying a straight FY-5 grid and four appliqué boxes, sponsons to 1.70 m a side sloped behind the fender boxes, a 1.50 m roof and 1.78 m powerpack deck, an inclined rear plate with a slatted access grille, lamps, tow hooks and a stern rack with its bin, six road wheels behind eight segmented skirt panels scalloped over each wheel with one FY-5 course on the front three. An arrowhead turret of two welded wedges swept 37 degrees off square to the side modules, two large dual-reactive modules a face, a slim cast mantlet in a canvas boot, fanned smoke banks on the wedges' outer faces, the commander's panoramic sight and QJC-88 right of the gun, the gunner's sight and the LSDW pedestal on the left, two lidded bins, a 0.62 m rear basket and the GL-5-style protection suite."
+    }
+  }
+}

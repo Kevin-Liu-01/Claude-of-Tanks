@@ -96,6 +96,12 @@ const CURVES = {
   leo2a3: [],
   // 252: the K2B on the K2 gun front, its mantlet's lower corner trimmed to 0.24 m under the bore (profiles/korea.ts)
   k2b: [],
+  // 262 (cn-type59-longwei lane): the Type 59 and the new T-55A on the T-54/T-55 family construction (over the driver's
+  // periscopes and headlights ahead, the rear drums astern) and the Longwei on its new 99A-pattern hull, all swept with
+  // tools/gun-depression-sweep.mjs
+  type59: [],
+  t55a: [],
+  ztz99_longwei: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

@@ -232,6 +232,16 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'type59', { pen100: 520, pen1000: 475, pen2000: 430 });
   }
   {
+    // 262: the T-55A shares the Type 59's chassis and gun (profiles/t54Family.ts), so it takes the same package
+    const tank = spec(registry, 't55a');
+    Object.assign(tank, {
+      hp: 1700, enginePowerHp: 650, topSpeedKmh: 55, reverseSpeedKmh: 12,
+      hullTraverseDegS: 44, turretTraverseDegS: 40,
+    });
+    tank.gun.reloadS = 6.8;
+    primary(registry, 't55a', { pen100: 520, pen1000: 475, pen2000: 430 });
+  }
+  {
     const tank = spec(registry, 'amx30');
     Object.assign(tank, { hp: 1650, reverseSpeedKmh: 20 });
     Object.assign(tank.gun, { reloadS: 6.2, baseAccuracy: 0.29, aimTimeS: 1.7 });

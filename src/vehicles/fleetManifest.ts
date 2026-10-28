@@ -94,7 +94,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     't90a_2004', 't90_1992',
     't90ms_2011', 't90a_burlak_proto', 'pt91m', 't90sm_2013', 't90a_2006', 't90am', 't90m_proryv',
   ]),
-  russia: Object.freeze(['t62_1975', 't64bv1']),
+  russia: Object.freeze(['t55a', 't62_1975', 't64bv1']),
   t72: Object.freeze(['t72b3m_2022', 't72bu_1989']),
   t80: Object.freeze(['t80', 't80b', 't80bv', 't84']),
   ukraine: Object.freeze([

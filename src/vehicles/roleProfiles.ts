@@ -94,6 +94,7 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   leclerc_sxxi: { doctrine: 'flanker', viewM: 430, still: 0.223, moving: 0.163 },
   leclerc_s1: { doctrine: 'flanker', viewM: 405, still: 0.221, moving: 0.161 },
   type59: { doctrine: 'assault', viewM: 365, still: 0.194, moving: 0.134 },
+  t55a: { doctrine: 'assault', viewM: 365, still: 0.194, moving: 0.134 },
   ztz85_iii: { doctrine: 'assault', viewM: 380, still: 0.186, moving: 0.126 },
   ztz99_longwei: { doctrine: 'assault', viewM: 415, still: 0.175, moving: 0.115 },
   type96b: { doctrine: 'assault', viewM: 400, still: 0.175, moving: 0.115 },

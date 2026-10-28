@@ -5,6 +5,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   kv2: 'reduce the 152 mm derp profile friction while preserving its slow handling identity',
   t62_1975: 'raise the early Cold War baseline without erasing its handling limits',
   type59: 'bring the light Cold War MBT above the stale damage-output floor',
+  t55a: 'take the Type 59 package: the same T-54/T-55 chassis and 100 mm gun (262)',
   pt91m: 'bring the modern Tier VIII fire-control package up to its peers; 259: a thicker mantlet, pen, hull and cadence for same-tier fairness at IV',
   t90_1992: 'replace the stale Tier IX donor envelope used by the Tier X production tank',
   t90ms_2011: 'give the export demonstrator a distinct Tier X protection/firepower step',

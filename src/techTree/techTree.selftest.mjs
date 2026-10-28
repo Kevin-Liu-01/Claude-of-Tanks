@@ -147,5 +147,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // off the Chieftain Mk 10.
 // 2026-10-27 re-pin (262): the Danish Christian II drawn as a Nordic special at VIII in the Sweden tree (its special line
 // added; 'Denmark' joins the tree's nations).
+// 262: the T-55A joins Russia at I, stacked between the KV-2 and the T-62 obr. 1975.
 assert.equal(digest, 'MERGE263', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

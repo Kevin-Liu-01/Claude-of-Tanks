@@ -93,6 +93,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "strv121": {"turretPivot":[0,1.78,0.3],"gunPivot":[0,0.1974,1.15],"lengthM":4.58},
   "strv81": {"turretPivot":[0,1.78,0.35],"gunPivot":[0,0.1025,0.6],"lengthM":5.15,"radiusM":0.138},
   "t14_armata": {"turretPivot":[0,1.69,-0.22],"gunPivot":[0,0.361,1.22],"lengthM":4.643,"radiusM":0.1037},
+  "t55a": {"turretPivot":[0,1.42,-0.08],"gunPivot":[0,0.32,0.62],"lengthM":4.88},
   "t62_1975": {"turretPivot":[0,1.4804,0.676],"gunPivot":[0,0.2866,1.019],"lengthM":4.68,"radiusM":0.085},
   "t62mv1": {"turretPivot":[0,1.57,0.676],"gunPivot":[0,0.2167,1.3013],"lengthM":4.4999},
   "t72_rys": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2048,1.3481],"lengthM":4.5828,"radiusM":0.1093},
@@ -114,7 +115,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "t90sm_2013": {"turretPivot":[0,1.47,0.0945],"gunPivot":[0,0.3044,1.2285],"lengthM":5.2185},
   "type10_tk_x": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type10b": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
-  "type59": {"turretPivot":[0,1.2657,0.578],"gunPivot":[0,0.3134,0.8712],"lengthM":3.6697,"radiusM":0.1009},
+  "type59": {"turretPivot":[0,1.42,-0.08],"gunPivot":[0,0.32,0.62],"lengthM":4.88,"radiusM":0.0765},
   "type74": {"turretPivot":[0,1.42,0.5],"gunPivot":[0,0.18,1.15],"lengthM":3.91},
   "type90_kyumaru": {"turretPivot":[0,1.4,-0.2],"gunPivot":[0,0.286,1.5],"lengthM":4.6594},
   "type90a": {"turretPivot":[0,1.4,-0.2],"gunPivot":[0,0.286,1.5],"lengthM":4.6594},
@@ -127,4 +128,5 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "ua_t80bv": {"turretPivot":[0,1.44,-0.05],"gunPivot":[0,0.25,1.02],"lengthM":5.3},
   "vickers_mk1": {"turretPivot":[0,1.463,0.4399],"gunPivot":[0,0.4612,1.14],"lengthM":3.8855,"radiusM":0.1105},
   "ztz85_iii": {"turretPivot":[0,1.44,-0.1],"gunPivot":[0,0.26,1.1],"lengthM":4.03,"radiusM":0.098},
+  "ztz99_longwei": {"turretPivot":[0,1.57,0.64],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
 });

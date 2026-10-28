@@ -209,6 +209,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // T-62 keeps its own left-rear casting seat; the adjacent T-64 uses the
   // opposite cheek so the Soviet family does not repeat one decal template.
   t62_1975: anchor('turret', 'left', 0.48, 0.46, 0.23, 1),
+  t55a: anchor('turret', 'left', 0.45, 0.48, 0.23, 1),
   t64bv1: anchor('turret', 'right', 0.46, 0.48, 0.24, -1),
   t72b3m_2022: anchor('turret', 'left', 0.40, 0.50, 0.23, 1),
   t72bu_1989: anchor('turret', 'right', 0.43, 0.47, 0.24, -1),

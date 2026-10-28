@@ -200,7 +200,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
-    'carro45t', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'strv81', 'type59',
+    'carro45t', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'strv81', 't55a', 'type59',
   ]),
   heavy: Object.freeze([
     'kv2',
@@ -237,7 +237,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   breakthrough: Object.freeze([
     'jpz_e100', 'kv2', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c', 'merkava3d',
     'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'object148_proto', 'pt91a_twardy', 'pt91m',
-    't14_armata', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3_bastion_m', 't72b3_qilin',
+    't14_armata', 't55a', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3_bastion_m', 't72b3_qilin',
     't72b3_sich', 't72b3_zubr', 't72b3_zubr_ii', 't72b3m_2016', 't72b3m_2022', 't72b3m_bulat_m',
     't72b3m_hetman', 't72b3m_hetman_ii', 't72b3m_kunlun', 't72b3m_wilk', 't72b_1987', 't72bu', 't72bu_1989',
     't72m1_jaguar', 't80u_bars_m', 't80u_husarz', 't80u_yun', 't80u_zoria', 't90', 't90_1992', 't90a',
@@ -297,7 +297,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'm60a3', 'm6_linebacker', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
     'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'pt91a_twardy',
     'pt91m', 'puma_s1', 'sabra_mk2', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b', 'strv121', 'strv122',
-    'strv81', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022',
+    'strv81', 't55a', 't62_1975', 't62mv1', 't64bv1', 't64bv_donbas', 't72b3', 't72b3m_2016', 't72b3m_2022',
     't72b_1987', 't72bu', 't72bu_1989', 't72m1_jaguar', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk',
     't84', 't84bm_oplot_m', 't90', 't90_1992', 't90a', 't90a_2004', 't90a_2006', 't90a_vladimir', 't90am',
     't90m', 't90m_proryv', 't90ms_2011', 't90ms_tagil', 't90sm', 't90sm_2013', 'tos1a_tagil', 'type10', 'type100',

@@ -32,7 +32,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'm551_sheridan', 'm551a1_tts',
   ]),
   soviet_modern_mbt: Object.freeze([
-    't62_1975', 't64bv1',
+    't55a', 't62_1975', 't64bv1',
     ...NATIVE_VARIANT_FAMILIES.t72,
     ...NATIVE_VARIANT_FAMILIES.t80,
     ...NATIVE_VARIANT_FAMILIES.t90_1992,

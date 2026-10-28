@@ -336,15 +336,15 @@ const MBT70_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -10], [14, -10], [15, -9.7
 // oracle for the hull; release 233 rebuilt the vehicle as an original design on
 // that hull (profiles/longwei.ts, owner 2026-10-21).
 /**
- * Release 233: the Longwei's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz99_longwei, the
- * whole gun 26 mm off every hull mesh): the full 7 degrees except over the front quarters, where the raised glacis
- * shoulders hold it to about -4 degrees at 40-50 degrees of yaw, and over the raised engine deck from 135 degrees,
- * where it stays 0.5-3.5 degrees above level. Before the redesign the gun had no curve and passed through the deck.
+ * Release 262: the Longwei's main gun by turret yaw on its new 99A-pattern hull, measured (tools/gun-depression-sweep.mjs
+ * --ids=ztz99_longwei, the whole gun 26 mm off every hull mesh, no mount conflict, clear at full elevation): the full
+ * 7 degrees except over the front quarters, where the fender boxes and their lamps hold it to -3.1..-4.6 degrees at
+ * 21-33 degrees of yaw, and over the raised powerpack deck from 136 degrees, where it stays 0.4-2.9 degrees above level.
  */
-const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.6], [23, -5.9], [36, -4.4], [39, -4.1],
-  [44, -4.1], [46, -3.9], [48, -3.9], [49, -4], [50, -4.5], [52, -6.7], [53, -7], [132, -7], [133, -6.1], [135, -1.5],
-  [136, -0.1], [137, 0.5], [141, 0.8], [143, 0.8], [144, 2], [145, 2.8], [148, 3], [166, 3], [178, 3.5], [179, 3.4],
-  [180, 3.1]] as const);
+const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.1], [21, -4], [22, -3.4], [27, -3.1],
+  [30, -3.2], [31, -3.4], [32, -3.7], [33, -4.6], [34, -6.1], [35, -6.1], [42, -7], [132, -7], [133, -6.9], [136, -2.3],
+  [137, -0.9], [138, 0.4], [139, 0.8], [140, 0.9], [143, 1], [145, 2.6], [146, 2.8], [151, 2.9], [153, 2.9], [168, 2],
+  [175, 2.4], [180, 2.2]] as const);
 
 /**
  * Leopard 1A5 (262 proportion rebuild): the main gun's depression by turret yaw, measured with
@@ -541,7 +541,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
 
   ztz99_longwei: {
     id: 'ztz99_longwei', name: 'ZTZ-99 Longwei', nation: 'China', era: 'modern', role: 'mbt',
-    description: 'Original Chinese game concept: a terraced-front heavy PLA tank with a hard-kill protection suite on the Type 99A hull.',
+    description: 'Original Chinese game concept on the ZTZ-99A pattern: an arrowhead-front heavy PLA tank with a hard-kill protection suite.',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 12,
     hullTraverseDegS: 42,
@@ -557,27 +557,18 @@ export const MODERN2_SPECS: TankSpecRegistry = {
         shell('DTB-125 HE', 'HE', 125, 50, 50, 580, 900),
       ],
     },
-    // 2026-08-12 oracle re-measurement. The user-supplied Type 99A2 GLB is
-    // reference-only, but its physical envelope is the requested datum for
-    // this redesign: hull 7.76 m, muzzle-to-stern 11.66 m, width 3.70 m and
-    // 3.14 m to the broad panoramic/combat-station envelope (thin antenna
-    // whips are excluded). The prior 7.35/10.70/2.50 values described a
-    // different brochure datum and made an accurately measured build fail
-    // the dimensional gate for being accurate to the supplied model.
+    // Release 262 (owner 2026-10-27): the new hull is the ZTZ-99/99A's published 7.6 m with 3.7 m over the skirts
+    // (docs/references/tanks/ztz99_longwei.md §262); 11.80 m is the drawn stern-rack-to-muzzle span (the 6.454 m gun on
+    // the pinned ring datum). heightM keeps the broad panoramic/combat-station envelope; thin whips are excluded.
     dims: {
-      hullLengthM: 7.76, overallLengthM: 11.66, widthM: 3.7, heightM: 3.16,
-      // The fused source's 12%-thickness side-body trace is 7.079 m; its
-      // published/full 7.76 m hull envelope includes thin guards and the
-      // rear U-cable.  Keep gameplay on the full physical envelope while
-      // letting the silhouette gate compare like with like.
-      silhouetteHullLengthM: 7.08,
-      // P95 normalization only: release 233's mast panoramic sight tops out at
-      // 3.17 m (the retired VT-derived command stack reached 3.60 m). Thin whip
-      // tips remain excluded from this datum.
-      silhouetteHeightM: 3.17,
+      hullLengthM: 7.6, overallLengthM: 11.8, widthM: 3.7, heightM: 3.16,
+      // Release 262: the silhouette rows are the new build's measured body extents (the geometry gate's procedural
+      // trace): 7.16 m stern rack to nose, 11.70 m to the muzzle, 2.89 m over the roof stations (thin whips excluded).
+      silhouetteHullLengthM: 7.16, silhouetteOverallLengthM: 11.70,
+      silhouetteHeightM: 2.89,
     },
-    // Segmented combat envelope following the release-233 terraced turret on
-    // the measured Type 99A hull (profiles/type99Armor.ts longweiArmor).
+    // Segmented combat envelope following release 262's arrowhead turret and
+    // new 99A-pattern hull (profiles/type99Armor.ts longweiArmor).
     armor: createType99Armor('ztz99_longwei'),
     visual: {
       // PLA woodland digital splinter (tight micro-square scale)
