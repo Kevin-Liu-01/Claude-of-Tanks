@@ -36,6 +36,11 @@ body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:n
   width:var(--cot-control-floor);padding:0;justify-content:center;}
 body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-roster-search:not(:focus-within):has(input:placeholder-shown) input{
   flex:0 0 0;width:0;}
+/* the paint drawer's search, level with the chips beside it (showroom.css docks it at the desktop's small height) */
+body[data-cot-input='coarse'][data-cot-panels='persistent'] .cot-camos .cot-c-picker__search{height:var(--cot-control-floor);}
+/* Settings' tabs past a phone: a two-character label (zh) is 31 px across, so the box takes the floor and centres its
+   label (the underline stays the label's); a phone's tabs reach it by their own inset */
+body[data-cot-input='coarse']:not([data-cot-width='phone']) .cot-set-tab{min-width:var(--cot-control-floor);justify-content:center;}
 
 /* ---- a tablet held upright (an iPad, a Split View half wider than a phone): the phone's stack, set for its room ----
    The tank over its name, the band, the figures, the fleet and the battle card over the tab bar, as a phone stacks them;

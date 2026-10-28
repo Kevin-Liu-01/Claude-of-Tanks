@@ -2193,6 +2193,7 @@
   "camoPattern.openai": "OpenAI",
   "camoPattern.xai": "X",
   "camoPattern.gemini": "Gemini",
+  "camoPattern.gt": "General Translation",
   "camoPattern.mono": "单色",
   "camoPattern.carbon": "碳黑",
   "camoPattern.prism": "棱镜",
