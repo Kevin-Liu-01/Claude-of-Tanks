@@ -12638,14 +12638,17 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     [-wb, yb], [wb, yb], [wm, ym], [wr, yr], [-wr, yr], [-wm, ym],
   ];
   const castStations: readonly { z: number; ring: readonly (readonly [number, number])[] }[] = [
-    { z: -2.20, ring: castRing(0.62, 0.66, 0.34, 0.56, 0.62, 0.06) },
-    { z: -1.80, ring: castRing(0.88, 0.92, 0.36, 0.74, 0.73, 0.03) },
-    { z: -1.10, ring: castRing(1.08, 1.12, 0.36, 0.86, 0.78, 0.02) },
-    { z: -0.40, ring: castRing(1.15, 1.18, 0.35, 0.90, 0.79) },
-    { z: 0.20, ring: castRing(1.16, 1.19, 0.34, 0.90, 0.79) },
-    { z: 0.65, ring: castRing(1.06, 1.09, 0.33, 0.84, 0.78) },
-    { z: 0.95, ring: castRing(0.80, 0.83, 0.32, 0.66, 0.72) },
-    { z: 1.08, ring: castRing(0.64, 0.66, 0.32, 0.54, 0.67) },
+    // (owner 2026-10-27: "make the leeopard turret more angular instead of boxy": every station is the plates' chevron,
+    // its base set in under a 0.30 m ridge and its upper face leaning in to the roof, faceted, not smoothed; the bustle
+    // tapers and rakes to its rear plate and the front roof falls to the mantlet)
+    { z: -2.20, ring: castRing(0.50, 0.62, 0.30, 0.44, 0.58, 0.08) },
+    { z: -1.80, ring: castRing(0.76, 0.88, 0.30, 0.58, 0.70, 0.04) },
+    { z: -1.10, ring: castRing(0.96, 1.08, 0.30, 0.72, 0.78, 0.02) },
+    { z: -0.40, ring: castRing(1.00, 1.12, 0.30, 0.76, 0.79) },
+    { z: 0.20, ring: castRing(1.00, 1.12, 0.30, 0.76, 0.79) },
+    { z: 0.65, ring: castRing(0.92, 1.02, 0.30, 0.70, 0.77) },
+    { z: 0.95, ring: castRing(0.74, 0.84, 0.30, 0.58, 0.70) },
+    { z: 1.08, ring: castRing(0.62, 0.70, 0.30, 0.50, 0.64) },
   ];
   const castRoofY = 0.79;
   const mirror = (s: Side, p: Vec3Tuple): Vec3Tuple => [s * p[0], p[1], p[2]];
@@ -12658,40 +12661,54 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   };
   const buildLeo1A5ArticulatedProfileTurretStage0 = (): void => {
     P.add('turret', cylY(0.98, 1.04, 0.11, P.q ? 28 : 18), 0, -0.055, 0);
-    P.add('turret', sectionSolid(castStations, { smoothSideEdges: [1, 2, 4, 5] }));
+    P.add('turret', sectionSolid(castStations));
   };
   buildLeo1A5ArticulatedProfileTurretStage0();
   yield 'buildLeo1A5ArticulatedProfileTurretStage0';
 
-  // Blohm & Voss appliqué: the wedge plates either side of the mantlet that give the 1A5 its pointed front, and the
-  // side plates behind them. Each is a solid block rooted in the casting with its outer face standing off it, so the
-  // spaced plates read from every bearing without opening the hull envelope.
+  // Blohm & Voss appliqué (owner 2026-10-27: "much better sloping ... you make the chevron the wrong way"): the 1A5's
+  // spaced plates bend outward at mid-height, so every plate is a horizontal chevron in section, a lower face leaning
+  // out from the base to the 0.30 m ridge and an upper face leaning in from it to the roof edge. The wedge plates either
+  // side of the wide mask carry the ridge forward into the pointed front; the side plates run it back along the casting.
+  // Each is a solid rooted in the casting, so the plates read from every bearing without opening the hull envelope.
+  const chevronRidgeY = 0.30;
+  const sideChevron = (outerBottom: number, ridge: number, outerTop: number, innerTop: number, innerRidge: number,
+    innerBottom: number): readonly (readonly [number, number])[] => [
+    [innerBottom, 0.06], [outerBottom, 0.06], [ridge, chevronRidgeY], [outerTop, 0.74], [innerTop, 0.76],
+    [innerRidge, chevronRidgeY],
+  ];
+  const sidePlateStations = [
+    { z: -1.20, ring: sideChevron(1.18, 1.28, 0.98, 0.72, 1.00, 0.94) },
+    { z: -0.40, ring: sideChevron(1.22, 1.34, 1.02, 0.74, 1.06, 0.98) },
+    { z: 0.40, ring: sideChevron(1.22, 1.34, 1.02, 0.74, 1.02, 0.98) },
+  ];
+  const mirrorRing = (s: Side, ring: readonly (readonly [number, number])[]): readonly (readonly [number, number])[] =>
+    s > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
   const buildLeo1A5ArticulatedProfileTurretStage1 = (): void => {
     for (const s of [-1, 1] as const) {
-      const wedge = sideSlab(s,
-        [0.52, 0.06, 1.04], [0.58, 0.06, 1.38], [1.30, 0.08, 0.40], [1.04, 0.08, 0.40],
-        [0.52, 0.70, 0.99], [0.58, 0.71, 1.28], [1.28, 0.77, 0.40], [1.02, 0.79, 0.40]);
-      wedge.userData.primaryStockRole = 'leo1a5-bv-wedge';
-      P.add('turret', wedge);
-      const sidePlate = sideSlab(s,
-        [1.04, 0.08, 0.40], [1.31, 0.08, 0.40], [1.25, 0.08, -1.20], [1.00, 0.08, -1.20],
-        [1.00, 0.77, 0.40], [1.25, 0.75, 0.40], [1.19, 0.71, -1.20], [0.94, 0.72, -1.20]);
+      const wedgeLower = sideSlab(s,
+        [0.66, 0.06, 1.20], [0.72, 0.06, 1.28], [1.22, 0.06, 0.40], [0.98, 0.06, 0.40],
+        [0.66, chevronRidgeY, 1.24], [0.76, chevronRidgeY, 1.36], [1.34, chevronRidgeY, 0.40], [1.02, chevronRidgeY, 0.40]);
+      const wedgeUpper = sideSlab(s,
+        [0.66, chevronRidgeY, 1.24], [0.76, chevronRidgeY, 1.36], [1.34, chevronRidgeY, 0.40], [1.02, chevronRidgeY, 0.40],
+        [0.66, 0.74, 1.04], [0.70, 0.74, 1.12], [1.02, 0.74, 0.40], [0.74, 0.76, 0.40]);
+      for (const wedge of [wedgeLower, wedgeUpper]) {
+        wedge.userData.primaryStockRole = 'leo1a5-bv-wedge';
+        P.add('turret', wedge);
+      }
+      const sidePlate = sectionSolid(sidePlateStations.map(({ z, ring }) => ({ z, ring: mirrorRing(s, ring) })));
       sidePlate.userData.primaryStockRole = 'leo1a5-bv-side';
       P.add('turret', sidePlate);
-      // Bolt heads seated on the plates' outer faces at bolt-row height, and the dark joint where the wedge meets the
-      // side plate.
-      for (let k = 0; k < 4; k++) {
-        const t = (k + 0.5) / 4, boltY = 0.45;
-        const b = [0.58 + 0.72 * t, 0.06 + 0.02 * t, 1.38 - 0.98 * t], u = [0.58 + 0.70 * t, 0.71 + 0.06 * t, 1.28 - 0.88 * t];
-        const f = (boltY - b[1]) / (u[1] - b[1]);
-        P.addEquipment('turretDark', cylX(0.022, 0.018, 8), s * (b[0] + (u[0] - b[0]) * f + 0.806 * 0.004), boltY,
-          b[2] + (u[2] - b[2]) * f + 0.592 * 0.004, 0, s * -0.634, 0);
-        const sideX = 1.31 - 0.06 * t - 0.06 * (boltY - 0.08) / (0.67 - 0.04 * t);
-        P.addEquipment('turretDark', cylX(0.022, 0.018, 8), s * (sideX + 0.004), boltY, 0.40 - 1.60 * t);
+      // Bolt heads in a row just over the ridge, square to the side plate's leaning upper face.
+      const upperFace = new THREE.Vector2(0.44, 0.32).normalize(); // outward normal of the upper face, (x, y)
+      for (let k = 0; k < 5; k++) {
+        const z = 0.30 - k * 0.32, boltY = 0.38;
+        const faceX = 1.34 - (boltY - chevronRidgeY) / (0.74 - chevronRidgeY) * (1.34 - 1.02) - (z < -0.40 ? (-0.40 - z) * 0.075 : 0);
+        P.addEquipment('turretDark', cylX(0.022, 0.018, 8), s * (faceX + upperFace.x * 0.006), boltY + upperFace.y * 0.006, z,
+          0, 0, s * Math.atan2(upperFace.y, upperFace.x));
       }
-      P.add('turretDark', box(0.02, 0.64, 0.02), s * 1.293, 0.42, 0.40);
-      liftEye(P, 'turretDetail', s * 0.72, castRoofY + 0.01, 0.20, s * 0.45);
-      liftEye(P, 'turretDetail', s * 0.76, castRoofY, -1.10, s * 2.65);
+      liftEye(P, 'turretDetail', s * 0.64, castRoofY + 0.01, 0.20, s * 0.45);
+      liftEye(P, 'turretDetail', s * 0.62, castRoofY - 0.01, -1.10, s * 2.65);
     }
 
     // EMES 18: the tall armoured sight box on the right front roof, its twin windows behind armoured doors.
@@ -12707,15 +12724,15 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
 
     // Structural hatches/cupolas stay hittable. Sights, MG, launchers, antennae and stowage use equipment ownership
     // and never grow armor.
-    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), 0.52, castRoofY + 0.03, -0.62);
+    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), 0.48, castRoofY + 0.03, -0.62);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.52 + Math.sin(a) * 0.23, castRoofY + 0.0825, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
+      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.48 + Math.sin(a) * 0.23, castRoofY + 0.0825, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
     }
-    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), 0.52, castRoofY + 0.13, -0.62);
-    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), 0.52, castRoofY + 0.175, -0.62);
-    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.55, castRoofY + 0.0275, -0.46);
-    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.55, castRoofY + 0.0975, -0.46);
+    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), 0.48, castRoofY + 0.13, -0.62);
+    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), 0.48, castRoofY + 0.175, -0.62);
+    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.52, castRoofY + 0.0275, -0.46);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, castRoofY + 0.0975, -0.46);
     P.addEquipment('turret', box(0.16, 0.16, 0.18), 0.48, castRoofY + 0.08, -0.26);
     P.add('turretGlass', box(0.10, 0.075, 0.014), 0.48, castRoofY + 0.09, -0.165);
     for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
@@ -12735,11 +12752,11 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     }
     // Wegmann 76 mm smoke launchers: four per side on the casting behind the side plates.
     for (const s of [-1, 1] as const) {
-      P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 1.00, 0.45, -1.46, 0, 0, s * 0.25);
+      P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 0.90, 0.45, -1.46, 0, 0, s * 0.25);
       for (let k = 0; k < 8; k++) {
         const row = Math.floor(k / 4), col = k % 4;
         const y = 0.34 + row * 0.18, z = -1.30 - col * 0.11;
-        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 1.07, y, z);
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 0.97, y, z);
       }
     }
   };
@@ -12772,8 +12789,8 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
         rails: 3, fill: 0.82, seed: s > 0 ? 31 : 32, rotation: [0, s * Math.PI / 2, 0] });
       rack.position.set(s * 1.03, 0.31, -1.68);
       P.turretG.add(rack);
-      P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.79, castRoofY + 0.02, -1.42);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.79, castRoofY + 0.72, -1.42, 0, 0, s * 0.025);
+      P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.60, castRoofY - 0.04, -1.42);
+      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.60, castRoofY + 0.66, -1.42, 0, 0, s * 0.025);
     }
     stowage(P, 'turretCloth', rng, [
       [-0.56, 0.51, -2.54, 0.52, 0.32, 0.48], [0, 0.50, -2.55, 0.50, 0.31, 0.48],
@@ -12802,23 +12819,28 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       shieldedRoofMachineGun: true,
     };
 
-    P.decal('turret', 'crossgrey', null, 0.28, [1.235, 0.40, -0.40], Math.PI / 2, 0, 0.10);
-    P.decal('turret', 'crossgrey', null, 0.28, [-1.235, 0.40, -0.40], -Math.PI / 2, 0, -0.10);
-    P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [1.10, 0.52, -1.45], Math.PI / 2, 0, 0.14);
+    P.decal('turret', 'crossgrey', null, 0.28, [1.235, 0.45, -0.40], Math.PI / 2, 0, 0.60);
+    P.decal('turret', 'crossgrey', null, 0.28, [-1.235, 0.45, -0.40], -Math.PI / 2, 0, -0.60);
+    P.decal('turret', 'number', P.spec.visual.number || '123', 0.21, [0.81, 0.52, -1.50], Math.PI / 2, 0, 0.70);
   };
   buildLeo1A5ArticulatedProfileMarkingsStage1();
   yield 'buildLeo1A5ArticulatedProfileMarkingsStage1';
 
-  // Blohm & Voss armoured mantlet and the L7A3. The turret owns a flat receiver plate; the moving mask owns a
-  // matching rear pad and a faceted block, wider at its seat and sloped back over the top.
+  // Blohm & Voss armoured mantlet and the L7A3. The turret owns a flat receiver plate; the moving mask owns a matching
+  // rear pad and the armour block itself (owner 2026-10-27: "make a better chunkier mantlet that has the proper chevron
+  // shaping", then "you make the chevron the wrong way and the matnnlet needds to be wider"): a block as wide as the gap
+  // between the wedge plates, flat across the front, its chevron in profile like the plates around it: the brow
+  // slopes down and the chin up to a horizontal ridge band where the gun leaves.
   const trunnionY = 0.40;
-  const mantletReceiver = { width: 1.04, height: 0.60, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
+  const mantletReceiver = { width: 1.32, height: 0.62, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
   // (the rear pad stays inside the receiver and clears the deck at +20 degrees of elevation over the side bearings)
-  const mantletRearPad = { width: 1.00, height: 0.48, depth: 0.14, z: -0.22 };
-  const mantletMask = {
-    rearHalfWidth: 0.49, rearLow: -0.30, rearHigh: 0.33, rearZ: -0.16,
-    frontHalfWidth: 0.43, frontLow: -0.26, frontHigh: 0.25, frontZ: 0.36,
-  };
+  const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
+  // (its rear top stays under the turret's front roof at every legal pitch)
+  const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
+    ridgeHalfWidth: 0.58, ridgeLow: -0.13, ridgeHigh: 0.13, ridgeZ: 0.50 };
+  const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
+    [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
+  ];
   const buildLeo1A5ArticulatedProfileGunStage1 = (): void => {
     P.add('turret', new THREE.BoxGeometry(mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth),
       0, mantletReceiver.y, mantletReceiver.z);
@@ -12826,24 +12848,62 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.addGunExtra(new THREE.BoxGeometry(mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth),
       0, 0, mantletRearPad.z);
     const k = mantletMask;
-    P.addGunExtra(slab(
-      [-k.frontHalfWidth, k.frontLow, k.frontZ], [k.frontHalfWidth, k.frontLow, k.frontZ],
-      [k.rearHalfWidth, k.rearLow, k.rearZ], [-k.rearHalfWidth, k.rearLow, k.rearZ],
-      [-k.frontHalfWidth, k.frontHigh, k.frontZ], [k.frontHalfWidth, k.frontHigh, k.frontZ],
-      [k.rearHalfWidth, k.rearHigh, k.rearZ], [-k.rearHalfWidth, k.rearHigh, k.rearZ]));
-    // bolt rows on the mask face and the coax / sight ports
-    for (const x of [-0.30, -0.10, 0.10, 0.30]) P.addGunExtraDark(cylZ(0.018, 0.02, 8), x, 0.16, 0.355);
-    P.addGunExtra(cylZ(0.18, 0.30, P.q ? 20 : 14, 0.20), 0, 0, 0.38);
-    P.addGunExtraDark(cylZ(0.026, 0.10, 9), 0.30, 0.04, 0.36);
-    P.addGunExtraDark(cylZ(0.022, 0.095, 9), -0.30, 0.06, 0.36);
+    P.addGunExtra(sectionSolid([
+      { z: k.rearZ, ring: maskRing(k.halfWidth - 0.02, k.low + 0.02, k.rearHigh, 0.05) },
+      { z: k.bodyZ, ring: maskRing(k.halfWidth, k.low, k.high, 0.06) },
+      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.04) },
+    ]));
+    // The brow and chin faces' outward normals (y, z), for seating the bolts and the sight / coax ports square to them.
+    const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHigh).normalize();
+    const chin = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.ridgeLow - k.low).normalize();
+    const onBrow = (t: number, out: number): [number, number] => [
+      k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
+    const onChin = (t: number, out: number): [number, number] => [
+      k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
+    for (const x of [-0.46, -0.16, 0.16, 0.46]) {
+      for (const t of [0.22, 0.72]) P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), x, ...onBrow(t, 0.007));
+      P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), x, ...onChin(0.5, 0.007));
+    }
+    // the telescope's port on the left of the brow and the coaxial MG's on the right of the chin
+    P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
+    P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.32, ...onChin(0.55, 0.014));
+    // the collar around the tube where it leaves the ridge
+    P.addGunExtra(cylZ(0.14, 0.10, P.q ? 20 : 14, 0.16), 0, 0, k.ridgeZ + 0.04);
+    // The XSW-30-U infrared / white-light searchlight (owner 2026-10-27: "the big IR/white-light searchlight on the
+    // mantlet; add it"): a chamfered box over the gun on a U-yoke whose arms root in the mask's brow, so it pitches with
+    // the gun and stays put when the barrel recoils. Its lens throws the runtime's searchlight beam at night. At full
+    // elevation its rear clears the turret's front roof by about 8 cm.
+    const lamp = { halfWidth: 0.28, low: 0.37, high: 0.79, rearZ: 0.00, frontZ: 0.34, lensR: 0.17 };
+    const lampY = (lamp.low + lamp.high) / 2, lampZ = (lamp.rearZ + lamp.frontZ) / 2;
+    const browAt = (z: number): number => k.high - (k.high - k.ridgeHigh) * (z - k.bodyZ) / (k.ridgeZ - k.bodyZ);
+    const yokeFoot = browAt(lampZ) - 0.015;
+    P.add('gunMount', sectionSolid([
+      { z: lamp.rearZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
+      { z: lamp.frontZ, ring: maskRing(lamp.halfWidth, lamp.low, lamp.high, 0.04) },
+    ]), 0, 0, 0);
+    P.add('gunMountDark', cylZ(lamp.lensR + 0.025, 0.03, P.q ? 28 : 18), 0, lampY, lamp.frontZ + 0.012);
+    P.add('gunMountGlass', markVehicleNightLens(cylZ(lamp.lensR, 0.008, P.q ? 28 : 18), 'headlight', { searchlight: true }),
+      0, lampY, lamp.frontZ + 0.029);
+    P.add('gunMountDark', box(0.20, 0.12, 0.04), 0, lampY + 0.02, lamp.rearZ - 0.018);
+    for (const s of [-1, 1] as const) {
+      // yoke arm from the brow to the trunnion boss in the lamp's side, and the carry handle on its top
+      P.add('gunMount', box(0.04, lampY - yokeFoot, 0.10), s * (lamp.halfWidth + 0.05), (lampY + yokeFoot) / 2, lampZ);
+      P.add('gunMountDark', cylX(0.05, 0.07, 12), s * (lamp.halfWidth + 0.025), lampY, lampZ);
+      P.add('gunMountDark', box(0.02, 0.05, 0.02), s * 0.12, lamp.high + 0.02, lampZ);
+    }
+    P.add('gunMount', box(lamp.halfWidth * 2 + 0.14, 0.04, 0.10), 0, yokeFoot + 0.01, lampZ);
+    P.add('gunMountDark', box(0.26, 0.02, 0.02), 0, lamp.high + 0.045, lampZ);
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
     P.gunG.userData.leopard1A5MantletReceipt = {
       seated: true,
       blohmVossMask: true,
-      maskFrontHalfWidth: mantletMask.frontHalfWidth,
-      maskRearHalfWidth: mantletMask.rearHalfWidth,
-      maskFrontZ: mantletMask.frontZ,
+      profileChevron: true,
+      searchlight: 'XSW-30-U',
+      maskWidth: mantletMask.halfWidth * 2,
+      maskHeight: Number((mantletMask.high - mantletMask.low).toFixed(2)),
+      maskRidgeZ: mantletMask.ridgeZ,
+      maskDepth: Number((mantletMask.ridgeZ - mantletMask.rearZ).toFixed(2)),
       rearContactWidth: mantletRearPad.width,
       rearContactZ: mantletRearPad.z,
       receiverWidth: mantletReceiver.width,

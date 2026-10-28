@@ -82,7 +82,13 @@ const turretFinish = turretRig.userData.leopard1A5TurretFinishReceipt;
 assert.equal(turretFinish?.revision, 'leo1a5-262-cast-bv');
 assert.ok(turretFinish.castTurret && turretFinish.blohmVossWedge && turretFinish.blohmVossSidePlates);
 const turret = bounds(mesh('turret'));
-assert.ok(turret.max.x - turret.min.x <= 2.64, `the turret is no wider than the deck (${turret.max.x - turret.min.x})`);
+assert.ok(turret.max.x - turret.min.x <= 2.70, `the turret is no wider than its chevron ridges (${turret.max.x - turret.min.x})`);
+// Owner 2026-10-27 ("much better sloping ... the chevron the wrong way ... more angular instead of boxy"): the plates and
+// the casting are horizontal chevrons, the ridge 0.30 m over the turret floor with the faces leaning in above and below.
+const sideAt = (y) => new THREE.Raycaster(new THREE.Vector3(3, turretRig.position.y + y, turretRig.position.z - 0.40),
+  new THREE.Vector3(-1, 0, 0), 0, 3).intersectObject(mesh('turret'), false)[0]?.point.x;
+assert.ok(sideAt(0.30) > sideAt(0.10) + 0.05 && sideAt(0.30) > sideAt(0.60) + 0.10,
+  `the side plate bends outward at its ridge (${sideAt(0.10)}, ${sideAt(0.30)}, ${sideAt(0.60)})`);
 assert.ok(turret.max.z > turretRig.position.z + 1.30,
   'the B&V wedge plates stand ahead of the casting either side of the mantlet');
 for (const x of [-1.25, 1.25]) {
@@ -111,7 +117,8 @@ const mount = bounds(mesh('gunMount'));
 assert.ok(mount.min.z < turret.max.z && mount.max.z > turretRig.position.z + 1.08,
   'the armoured mask overlaps the turret face and projects forward without an air gap');
 const mantlet = gunRig.userData.leopard1A5MantletReceipt;
-assert.ok(mantlet?.blohmVossMask, 'the mantlet carries the B&V armoured mask');
+assert.ok(mantlet?.blohmVossMask && mantlet.profileChevron, 'the mantlet carries the B&V armoured mask, a chevron in profile');
+assert.ok(mantlet.maskWidth >= 1.2 && mantlet.maskDepth >= 0.6, `the mask is wide and deep (${mantlet.maskWidth} x ${mantlet.maskDepth})`);
 const receiver = new THREE.Box3(
   new THREE.Vector3(-mantlet.receiverWidth / 2, mantlet.receiverY - 0.30, mantlet.receiverZ - 0.08),
   new THREE.Vector3(mantlet.receiverWidth / 2, mantlet.receiverY + 0.30, mantlet.receiverZ + 0.08),

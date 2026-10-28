@@ -14,59 +14,59 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.28,
         "pos": [
-          1.2553941,
-          0.4019818,
-          -0.4002373
+          1.2371207,
+          0.4516602,
+          -0.4
         ],
         "quaternion": [
-          -0.0321849,
-          0.7202353,
-          0.0309362,
-          0.692292
+          -0.2186687,
+          0.6724463,
+          0.2186687,
+          0.6724463
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0005813
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.015
       },
       {
         "kind": "insignia",
         "parent": "turret",
         "size": 0.28,
         "pos": [
-          -1.2571697,
-          0.40216,
-          -0.4002239
+          -1.2371207,
+          0.4516602,
+          -0.4
         ],
         "quaternion": [
-          -0.0321504,
-          -0.7194641,
-          -0.030972,
-          0.6930934
+          -0.2186687,
+          -0.6724463,
+          -0.2186687,
+          0.6724463
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0005501
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.015
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.2112,
         "pos": [
-          -1.2806668,
-          0.3746348,
+          -1.2905726,
+          0.3781638,
           0.1606355
         ],
         "quaternion": [
-          -0.0321504,
-          -0.7194641,
-          -0.030972,
-          0.6930934
+          -0.2186687,
+          -0.6724463,
+          -0.2186687,
+          0.6724463
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "leo1a5",
