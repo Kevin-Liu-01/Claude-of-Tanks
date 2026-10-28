@@ -128,9 +128,10 @@ function domeNormal(t: number, h: number): THREE.Vector3 {
   return n;
 }
 
-/** The cast dome: an indexed shell of rings about the apex, closed by a base disc a little under the roof. */
-function castDome(q: boolean): THREE.BufferGeometry {
-  const M = q ? 48 : 28, K = q ? 14 : 8;
+/** The cast dome: an indexed shell of rings about the apex, closed by a base disc a little under the roof. One
+ * tessellation at both qualities: the drone dock stands on the dome, and its measured support must hold at each. */
+function castDome(): THREE.BufferGeometry {
+  const M = 48, K = 14;
   const heights: number[] = [-DOME.sink, 0];
   for (let k = 1; k < K; k++) heights.push(DOME.H * Math.sin((k / K) * Math.PI / 2));
   const positions: number[] = [];
@@ -149,13 +150,13 @@ function castDome(q: boolean): THREE.BufferGeometry {
   for (let r = 0; r < heights.length - 1; r++) {
     for (let j = 0; j < M; j++) {
       const a = at(r, j), b = at(r, j + 1), c = at(r + 1, j + 1), d = at(r + 1, j);
-      // outward winding: angles run from +Z toward +X (clockwise seen from above)
-      index.push(a, c, b, a, d, c);
+      // outward winding (angles run from +Z toward +X, clockwise seen from above): a -> b -> c faces out
+      index.push(a, b, c, a, c, d);
     }
   }
   const top = heights.length - 1;
-  for (let j = 0; j < M; j++) index.push(at(top, j), apex, at(top, j + 1));
-  for (let j = 0; j < M; j++) index.push(at(0, j), at(0, j + 1), base);
+  for (let j = 0; j < M; j++) index.push(at(top, j), at(top, j + 1), apex);
+  for (let j = 0; j < M; j++) index.push(at(0, j), base, at(0, j + 1));
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   // the bucket merge re-projects camouflage; the attribute set must match the other parts'
@@ -563,7 +564,7 @@ function addSearchlight(P: TankBuilderPort, v: T54Variant): void {
 function buildFamilyTurret(P: TankBuilderPort, v: T54Variant): void {
   P.turretG.position.set(...TURRET_PIVOT);
   P.gunG.position.set(...TRUNNION);
-  P.add('turret', castDome(P.q));
+  P.add('turret', castDome());
   addTurretRail(P, 0.30, 40 * D2R, 140 * D2R);
   addTurretRail(P, 0.30, -40 * D2R, -140 * D2R);
   addTurretRail(P, 0.34, 158 * D2R, 202 * D2R);

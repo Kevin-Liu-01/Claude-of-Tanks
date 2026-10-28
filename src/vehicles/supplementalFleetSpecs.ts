@@ -119,6 +119,18 @@ function make(
 // heightM uses the over-mounted-MG convention ONLY where the mesh actually
 // mounts one; every other row keeps the published roof datum. (The T-44 and
 // T-54 rows retired with the hidden fleet on 2026-09-23.)
+/**
+ * Release 262: the T-54/T-55 family's main gun by turret yaw (the Type 59 and the T-55A share hull and gun), measured
+ * (tools/gun-depression-sweep.mjs --ids=type59, the whole gun 26 mm off every hull mesh; no mount conflict, clear at
+ * full elevation): -4.2 degrees dead ahead over the glacis; near level from 6 to 28 degrees, where the canvas mantlet
+ * cover passes over the driver's hatch (on the real tank the gun over that hatch keeps it shut); -2.8 to -4 over the
+ * flanks; over the rear drums and their brackets from 158 degrees, 2-5 degrees above level.
+ */
+const T54_FAMILY_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -4.2], [3, -4.2], [4, -3.3], [6, -1.9], [7, -1.3], [10, -0.2],
+  [12, 0.4], [22, 0.5], [23, 0.5], [25, 0], [28, -1], [29, -1.5], [31, -2.9], [32, -4], [53, -3.9], [59, -3], [62, -2.8],
+  [101, -2.8], [106, -3.2], [108, -4], [111, -3.8], [116, -3.8], [157, -4.2], [158, -0.7], [159, 2.1], [160, 3.3],
+  [161, 3.7], [165, 3.7], [167, 4.8], [169, 4.9], [170, 4.9], [173, 3.8], [179, 3.9], [180, 3.2]] as const);
+
 const SPECS: FleetTankSpec[] = [
   make('t62_1975', 'type59', 'Type 59', 'China',
     // Release 262 (owner 2026-10-27, "based on proper historical referrences so they will no longer look so chungus"):
@@ -129,6 +141,7 @@ const SPECS: FleetTankSpec[] = [
     // silhouette* rows are the build's own measured envelope (the rear drums and the gun as drawn). The LastTriarius
     // Type 69 print remains the registered measurement oracle.
     { hp: 1650, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
+      gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
       gun: {
         caliberMm: 100, reloadS: 7.6,
         shells: requireFleetSpec('t62_1975').gun.shells.map((round, index) => ({
@@ -154,6 +167,7 @@ const SPECS: FleetTankSpec[] = [
   // dims are the published 6.04 m hull, 9.00 m gun forward (over the drums), 3.27 m width and 2.35 m to the roof.
   make('t62_1975', 't55a', 'T-55A', 'USSR/Russia',
     { hp: 1650, enginePowerHp: 580, weightTons: 36, topSpeedKmh: 50,
+      gunPitchByYawDeg: T54_FAMILY_GUN_PITCH_BY_YAW_DEG,
       gun: {
         caliberMm: 100, reloadS: 7.6,
         shells: requireFleetSpec('t62_1975').gun.shells.map((round, index) => ({
