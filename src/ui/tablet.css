@@ -89,6 +89,48 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-w
    they wear under a phone's bar; the iPad critic r2 read them see-through) */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-acts .cot-lt-act{min-height:var(--slot);
   background:var(--plate-fill);box-shadow:var(--ring-2);}
+/* (and every row of the band runs edge to edge: the slots share what their row leaves, the paint's four tiles theirs; the
+   critic g3 read 118-205 px between the consumables and the acts, and 410 px empty after the paint at 744 px. A tile keeps a
+   definite 44 px width as its basis: its canvas's own 300 px would set the paint's width and wrap it under the acts) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group:has(>:is(.cot-lt-loadout,.cot-lt-consumables)){
+  flex:1 1 auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables)>.cot-lt-group>:is(.cot-lt-loadout,.cot-lt-consumables,.cot-lt-paint){
+  align-self:stretch;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-garage .cot-lt-band:has(.cot-lt-consumables) :is(.cot-lt-loadout,.cot-lt-consumables) .eqslot{
+  flex:1 0 auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-lt-band:has(.cot-lt-consumables) .cot-lt-swatch:not(.cot-lt-paint-all){
+  flex:1 1 44px;width:44px;max-width:none;}
+/* (the chosen nation's wash is a tint: over the bright hangar floor it read grey, its count faint; it lies on the dark plate) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-country-chip.sel{
+  background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--surface-scene);}
+/* (a short window hides the figures' scales: each value stands under its own label, not at its column's far end beside the
+   next one's, 12 px from "Magazine reload" at 601x702) */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='short'],[data-cot-height='compact']) .cot-garage .cot-hrow .v{
+  justify-self:start;}
+/* Settings over the Garage upright: the sheet is solid (its plate's tone on the scene's), so the wordmark, the nations and
+   Deploy no longer read through its title and the gaps between its sections */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-set-panel{
+  background:linear-gradient(var(--surface-plate),var(--surface-plate)),var(--surface-scene);}
+/* the Service Record upright sits over the tab bar it opens from, as Deploy does, not across its labels */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-modal-root.cot-service-record{
+  padding-bottom:calc(var(--cot-tabbar-h,60px) + env(safe-area-inset-bottom,0px) + var(--s2));}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']) .cot-modal-root.cot-service-record .cot-modal{
+  max-height:calc(var(--cot-viewport-height,100dvh) - clamp(8px,2vh,24px) - var(--cot-tabbar-h,60px) - env(safe-area-inset-bottom,0px) - var(--s2));}
+/* Deploy upright with the height for it: the modes take their rows (three or four) and the details follow in the one
+   scrolling column, so no empty band under the modes (58-66 px at 834 and 1032) and no second scroller inside the first */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes{
+  height:auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes :is(.cot-mp__in,.cot-mp__cards){
+  height:auto;grid-template-rows:auto;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes .cot-c-picker{
+  max-height:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:not([data-cot-width='phone']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-garage .cot-deploy-modes .cot-c-picker__grid{
+  overflow:visible;-webkit-mask-image:none;mask-image:none;}
+/* the Tech Tree in a window between a phone and a tablet (a Split View half): the render narrows so the name, Select and the
+   two stat columns keep their room (at 601 px the 240 px render ran Select 22 px past the edge and the values over their
+   labels) */
+body[data-cot-width='compact'] .cot-tt{--tt-detail-art-w:160px;}
+body[data-cot-width='compact'] .cot-tt .tt-act .tt-select{min-width:0;}
 /* ---- the battle's touch layout on a tablet: the phone's HUD sizes (a 116 px map, the hull panel at .58, the dial at
    .78-.82) left a tablet's screen mostly empty and the map unreadable at arm's length. From a tablet's width, short and
    tight windows aside (a phone held wide keeps its seats), the map reads at 176 px, the hull panel at .82 and the dial at
