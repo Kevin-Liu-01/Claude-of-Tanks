@@ -656,6 +656,9 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
 
 const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
 
+/** A reader on the fleet chapter this long has its pictures warmed for a print, this many (a hero card is two) per idle turn. */
+const FLEET_WARM_AFTER_MS = 8000;
+const FLEET_WARM_BATCH = 12;
 /** The address parameters that carry the fleet grid's state (fleetGrid.ts): a link with any loads the grid's code at once. */
 const FLEET_PARAMS = ['nation', 'tier', 'era', 'class', 'role', 'q', 'view'];
 
@@ -694,10 +697,26 @@ function wireFleetGrid(root: HTMLElement): void {
   });
   root.addEventListener('load', onImage, true);
   root.addEventListener('error', onError, true);
-  // a print draws every tile (fleet.css): the presentation on screen loads all its pictures first, as none off screen has
-  addEventListener('beforeprint', () => {
-    for (const image of root.querySelectorAll<HTMLImageElement>(`[data-layer="${root.dataset.view ?? 'hero'}"] img[loading="lazy"]`)) image.loading = 'eager';
-  });
+  // A print draws every tile (fleet.css) but has only the pictures already loaded: Chrome lays it out at once, and loads
+  // that beforeprint starts land after it (canvas-ui's PDF probe: 57 of 443 in). So a reader who stays a while has the
+  // presentation on screen warmed a few tiles at a time in idle time (never all at once, nothing while the tab is hidden,
+  // nothing under data saving); beforeprint still asks for whatever is left.
+  const lazyOf = (): HTMLImageElement[] => [...root.querySelectorAll<HTMLImageElement>(`[data-layer="${root.dataset.view ?? 'hero'}"] img[loading="lazy"]`)];
+  const idle = (step: () => void): void => {
+    if ('requestIdleCallback' in window) requestIdleCallback(step, { timeout: 2000 });
+    else setTimeout(step, 200);
+  };
+  const warm = (): void => {
+    if (document.hidden) {
+      document.addEventListener('visibilitychange', warm, { once: true });
+      return;
+    }
+    const batch = lazyOf().slice(0, FLEET_WARM_BATCH);
+    for (const image of batch) image.loading = 'eager';
+    if (batch.length === FLEET_WARM_BATCH) idle(warm);
+  };
+  if (!stillDataSaver()) setTimeout(() => idle(warm), FLEET_WARM_AFTER_MS);
+  addEventListener('beforeprint', () => { for (const image of lazyOf()) image.loading = 'eager'; });
   for (const layer of root.querySelectorAll('.dm-fleet__layer')) settle(layer);
 
   const bar = root.querySelector<HTMLElement>('.dm-fleet__bar');

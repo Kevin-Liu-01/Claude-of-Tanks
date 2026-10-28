@@ -99,7 +99,7 @@
 }
 /* printed (the manual's print sheet turns the kit's tokens to paper and hides the chrome): the grid without its bar, four
    tiles across the A4 column, each tile whole and drawn (no skipped layout, no fade), in the presentation on screen.
-   topics.ts wireFleetGrid loads that presentation's pictures before the print, so none prints blank. */
+   topics.ts wireFleetGrid warms that presentation's pictures while the reader stays, so a print has them. */
 @layer overrides{
 @media print{
 .dm-fleet__bar,.dm-fleet__empty{display:none}
