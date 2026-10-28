@@ -19,10 +19,12 @@
 .dm-fleet[data-view=angle]{--dm-fleet-ar:calc(216 / 184)}
 .dm-fleet[data-view=side]{--dm-fleet-ar:2}
 
-/* ---- the bar: search, the five filters, the presentation and the count. A phone stacks it two across; a tablet three
-   across with the presentation beside the search; a wide grid sets the five filters in one row under them. */
+/* ---- the bar: search, the five filters, the presentation and the count. A phone stacks it two across, the nation across
+   both (a shared flag's name, Soviet Union / Russia, is the longest choice); a tablet three across with the presentation
+   beside the search; a wide grid sets the five filters in one row under them. Each filter's column is wide enough for its
+   longest choice on one line (the kit's trigger never wraps), the nation's widest. */
 .dm-fleet__bar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2) var(--s3);align-items:center;margin-top:var(--s4);
-  grid-template-areas:"search search" "views views" "nation tier" "era class" "role count"}
+  grid-template-areas:"search search" "views views" "nation nation" "tier era" "class role" "count count"}
 .dm-fleet__menus{display:contents}
 .dm-fleet__search{grid-area:search;min-width:0}
 .dm-fleet__search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
@@ -39,11 +41,11 @@
 .dm-fleet__views .cot-c-seg__opt{flex:1 1 0}
 .dm-fleet__count{grid-area:count;justify-self:start;margin:0;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);white-space:nowrap}
 @container fleet (width >= 640px){
-  .dm-fleet__bar{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"search search views" "nation tier era" "class role count"}
+  .dm-fleet__bar{grid-template-columns:1.3fr 1fr 1fr;grid-template-areas:"search views views" "nation tier era" "class role count"}
 }
 @container fleet (width >= 900px){
   /* the count reads as the search's result, beside its field */
-  .dm-fleet__bar{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"search search count views views" "nation tier era class role"}
+  .dm-fleet__bar{grid-template-columns:1.5fr 1fr 1fr 1fr 1.1fr;grid-template-areas:"search search count views views" "nation tier era class role"}
   .dm-fleet__count{padding-inline-start:var(--s1)}
   .dm-fleet__views{justify-self:end}
   .dm-fleet__views .cot-c-seg__opt{flex:none}

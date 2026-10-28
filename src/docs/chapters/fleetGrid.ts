@@ -124,8 +124,9 @@ export function fleetGridData(): FleetGridData {
     nation: codes.map((code) => ({ id: code, name: flagLabel(code, nations, t), count: count('nation', code), chip: nations.get(code)![0] })),
     tier: tiers.map((tier) => ({ id: String(tier), name: t('garage.card.tier', { tier: numeral(tier) }), count: count('tier', String(tier)) })),
     era: ERAS.filter(([era]) => count('era', era)).map(([era, key, glyph]) => ({ id: era, name: t(key), count: count('era', era), glyph })),
+    // a class by its short name (MBT, IFV, SPAA), as the tiles name it: a filter's trigger holds its choice on one line
     class: VEHICLE_CLASS_ORDER.filter((cls) => count('class', cls))
-      .map((cls) => ({ id: cls, name: vehicleFacetLabel(VEHICLE_CLASS_META[cls], t), count: count('class', cls), glyph: CLASS_ICONS[cls] })),
+      .map((cls) => ({ id: cls, name: vehicleFacetLabel(VEHICLE_CLASS_META[cls], t, { short: true }), count: count('class', cls), glyph: CLASS_ICONS[cls] })),
     role: VEHICLE_BATTLE_ROLE_ORDER.filter((role) => count('role', role))
       .map((role) => ({ id: role, name: vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[role], t), count: count('role', role), glyph: ROLE_ICONS[role] })),
   };

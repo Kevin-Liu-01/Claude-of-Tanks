@@ -111,7 +111,8 @@ export function mountFleetGrid(root: HTMLElement, pending: () => Element | null)
     const host = root.querySelector<HTMLElement>(`[data-fleet-facet="${facet.key}"]`);
     if (!host) continue;
     const items: PickerItem[] = facet.options.map((option) => ({
-      id: option.id || ALL, name: option.name, facts: option.id ? [String(option.count)] : undefined,
+      // no count beside a choice: the grid's own count says what shows (a trigger holds its choice alone, on one line)
+      id: option.id || ALL, name: option.name,
       ...(option.chip ? { chip: flagIconUrl(option.chip) } : option.glyph ? { glyph: option.glyph } : {}),
     }));
     menus.set(facet.key, createPickerMenu(host, {
