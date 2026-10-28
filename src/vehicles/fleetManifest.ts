@@ -78,7 +78,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   challenger: Object.freeze([
     'challenger1_mk1', 'challenger1_mk2', 'challenger1_granby', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto',
-    'challenger3',
+    'challenger3', 'challenger3_td', 'challenger3_td_rws',
   ]),
   leopard: Object.freeze([
     'leo2a2', 'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',

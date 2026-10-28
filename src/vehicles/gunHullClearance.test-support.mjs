@@ -423,3 +423,59 @@ export function turretGunPortProbe(id) {
     dispose: () => { twoSided.dispose(); tank.dispose(); },
   };
 }
+
+/** The clearance a gun keeps ahead of its turret's slot face from the turret's own fixed stock (262). */
+export const GUN_SLOT_KEEP_M = .015;
+/** The band ahead of the face left unmeasured: the mantlet passes through the face, so samples there only meet it. */
+const GUN_SLOT_FACE_BAND_M = .03;
+
+/**
+ * Release 262 (the Challenger 3 TD: a deep mantlet between two cheeks, profiles/challenger3Td.ts): a turret-borne gun
+ * measured against its own turret. Build `id` (seed 4242, high quality) and read the turret's slot receipt
+ * (rig_turret.userData.gunSlot: faceZ, the slot face in the turret frame). `measure(pitchDeg)` poses the whole gun (its
+ * fixed mount and the recoiling parts in battery and at 0.135 m) about its trunnion and returns the smallest distance of
+ * its samples more than 3 cm ahead of the slot face to every other visible mesh under rig_turret (cheeks, sights, dischargers, the
+ * turret's suit), `clearance`, the mesh in `part` and the sample in `at` (turret frame), and `ahead`, the samples it
+ * measured. A gun sample behind the face is inside the turret's embrasure. `withTurretMesh(mesh, fn)` adds a mesh to the
+ * turret's stock for a negative control. Dispose the probe when done.
+ */
+export function gunSlotProbe(id) {
+  const spec = getSpec(id);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+  tank.root.updateMatrixWorld(true);
+  const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
+  const slot = turret?.userData.gunSlot;
+  if (!turret || !gun || gun.parent !== turret || !slot) { tank.dispose(); throw new Error(`${id}: no turret gun slot receipt (rig_turret.userData.gunSlot)`); }
+  const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert();
+  const recoiling = new Set(); recoil?.traverse((o) => recoiling.add(o));
+  const gunMeshes = meshesUnder(gun), stock = meshesUnder(turret, [gun]);
+  const fixed = densePoints(meshTriangles(gunMeshes.filter((m) => !recoiling.has(m)), gInv).tri, .015);
+  const moving = densePoints(meshTriangles(gunMeshes.filter((m) => recoiling.has(m)), gInv).tri, .015);
+  const sources = [[fixed, 0], ...GUN_RECOIL_STROKES_M.map((back) => [moving, back])];
+  const P = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3();
+  const measureWith = (meshes, pitchDeg) => {
+    const soup = meshTriangles(meshes, tInv), grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 });
+    const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
+    P.compose(gun.position, q.setFromEuler(e.set(-pitchDeg * DEG, 0, 0)), gun.scale);
+    let clearance = Infinity, part = null, at = null, ahead = 0;
+    for (const [pts, back] of sources) for (let i = 0; i < pts.length; i += 3) {
+      v.set(pts[i], pts[i + 1], pts[i + 2] - back).applyMatrix4(P);
+      if (v.z <= slot.faceZ + GUN_SLOT_FACE_BAND_M) continue;
+      ahead++;
+      const d = grid.distance(v.x, v.y, v.z);
+      if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = v.toArray().map((c) => +c.toFixed(3)); }
+    }
+    return { pitchDeg, clearance, part, at, ahead };
+  };
+  let extra = [];
+  return {
+    id, spec, slot,
+    pitchesDeg: Array.from({ length: (spec.gunElevationDeg ?? 14) + (spec.gunDepressionDeg ?? 0) + 1 }, (_, k) => k - (spec.gunDepressionDeg ?? 0)),
+    measure: (pitchDeg) => measureWith([...stock, ...extra], pitchDeg),
+    withTurretMesh(mesh, fn) {
+      turret.add(mesh); mesh.updateMatrixWorld(true); extra = [mesh];
+      try { return fn(); } finally { extra = []; turret.remove(mesh); }
+    },
+    dispose: () => tank.dispose(),
+  };
+}

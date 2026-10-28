@@ -190,6 +190,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
     // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis
     'src/vehicles/oplotBMGun.selftest.mjs',
+    // 262: the Challenger 3 TD's deep mantlet and tube clear its two cheeks and every turret fitting through the gun's
+    // whole travel, in battery and at full recoil (a rod across the slot fails)
+    'src/vehicles/profiles/challenger3TdGun.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -294,6 +297,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/owner-kit-targets.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
+    // 262 (Main's ruling on the Challenger 3 TD): each oracle-blind fleet part is named, ruled and carried once
+    'tools/oracle-blind-parts.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',
     'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',

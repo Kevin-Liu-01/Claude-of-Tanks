@@ -51,11 +51,13 @@ const now = camoBaselineRows({ specs, policy, materials });
 assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 pattern ids');
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
 assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
-  'paint_bm_oplot_m', 'paint_bm_oplot_t'],
-  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint and the 262 Oplot paints append, after GT');
+  'paint_bm_oplot_m', 'paint_bm_oplot_t',
+  'paint_challenger3_td', 'paint_challenger3_td_rws'],
+  'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints and both Challenger 3 TD paints append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
-  'paint_bm_oplot_m', 'paint_bm_oplot_t']);
+  'paint_bm_oplot_m', 'paint_bm_oplot_t',
+  'paint_challenger3_td', 'paint_challenger3_td_rws']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -66,7 +68,8 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // The baseline names tanks by their tank id schema 1 spelling (2026-10-13, SSOT 2.19): each row is read through the
 // alias layer, so a renamed tank is held to its own production row.
 // Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
-// 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
+// 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT; release 262: the
+// Challenger 3 TD and its demonstrator three-tone, its field fit and that fit's coat).
 // Re-pinned 2026-10-27 (release 262, the owner's approved Oplot rename): two Signature selections moved by their labels
 // alone, as the 259 re-pin above: "T-84 Oplot" -> "Object 478DU2" (sig_t84 63f139a8fdd43aa6 -> e6795baf4ad95644) and
 // "T-84BM Oplot-M" -> "T-84U Oplot" (sig_ua_t84_oplot_m bc4eee8139a5254c -> c1c0216eb08254c8); presets, visuals and
@@ -77,7 +80,7 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // its stock Signature selection, AUTO and every other row are unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 // Release 262: the Christian II and its Danish tri-tone.
-const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t'];
+const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).

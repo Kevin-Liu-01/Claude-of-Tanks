@@ -128,7 +128,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // their entries). 70 -> 71 (262): the T-55A takes the Type 59's package.
 // 71 -> 75 (262): the four new true T-64s (t64Armor.ts): the T-64BV takes the Soviet fire-control floor, the T-64B1V
 // mod. 2022, the T-64BM1M and the PT-64 Tur the tier-IV same-tier footing beside the mod. 2017 (fleetBalancePass).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 75,
+// 75 -> 77 (262): the new Challenger 3 TD one step under its prototype, and its field fit (fleetBalancePass).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 77,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

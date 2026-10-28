@@ -98,7 +98,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Stepped steel plate and grooved paired tires measured from the Leclerc source (leclercXWheels.ts); XLR and S2 share the wheel.' }),
   amx40_proto: Object.freeze({ donor: 'amx40_proto', self: ['amx40'], pattern: 'scalloped-six', construction: 'amx40-pressed-face',
     note: 'Fleet scalloped disc behind the AMX-40 X pressed face (rim ring, six ribs and bolts) over an open tire annulus (amx40X.ts).' }),
-  challenger3_proto: Object.freeze({ donor: 'challenger3_proto', self: ['challenger3_proto', 'challenger3'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
+  challenger3_proto: Object.freeze({ donor: 'challenger3_proto', self: ['challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Hollow paired rubber-tyred halves with eight hub fasteners as insets (hollowRoadWheelStock.ts); the Challenger 2 and 3 share this construction and differ only in size.' }),
   challenger2e: Object.freeze({ donor: 'challenger2e', self: ['challenger2', 'challenger2e', 'fv4034', 'ua_challenger2'], pattern: 'pressed-eight', construction: 'challenger-hollow-paired',
     note: 'Same hollow paired construction as the Challenger 3; every other UK MBT hull draws it.' }),

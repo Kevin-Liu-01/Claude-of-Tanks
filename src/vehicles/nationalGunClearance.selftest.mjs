@@ -86,6 +86,8 @@ const CURVES = {
   merkava2b: [],
   merkava2d: [],
   ua_challenger2: [[177,177]],
+  challenger3_td: [], // 262: measured with the mantlet's lower edge 6 cm over the deck (no mount conflict)
+  challenger3_td_rws: [],
   leo2a5: [],
   leo2a6m: [],
   merkava3c: [],

@@ -125,6 +125,14 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Challenger 2 (Ukraine)', shortName: 'Challenger 2 UA',
     searchAliases: ['Ukrainian Challenger 2', 'Ukraine Challenger 2'],
   },
+  challenger3_td: {
+    displayName: 'Challenger 3 TD', shortName: 'Challenger 3 TD',
+    searchAliases: ['Challenger 3 Technology Demonstrator', 'Challenger 3 ATD', 'CR3 TD', 'RBSL demonstrator'],
+  },
+  challenger3_td_rws: {
+    displayName: 'Challenger 3 TD (RWS)', shortName: 'Challenger 3 TD RWS',
+    searchAliases: ['Challenger 3 TD remote weapon station', 'CR3 TD RWS', 'Challenger 3 TD field fit'],
+  },
   challenger3: {
     displayName: 'Challenger 3', shortName: 'Challenger 3',
     searchAliases: ['Challenger 3X', 'CR3X', 'Challenger 3 X'],

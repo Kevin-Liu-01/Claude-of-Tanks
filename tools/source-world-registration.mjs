@@ -62,6 +62,14 @@ export const AUTHORING_SOURCE_WORLD_FRAMES = Object.freeze({...withAssembledSour
     fused:true,turret:[-.000896347416,1.396470802105,.616221772969],
     gun:[-.014789345038,1.675227177967,1.697635206325],
   },
+  // Challenger 3 TD (release 262): "Challenger 3 TD MBT" (Jeyhun1985, CC-BY-4.0; raw sha256 3a4b3fbb…) prepared by
+  // tools/source-x-oracle.mjs (.qa-dev recipe challenger3_td_x: axes x y z, the family's installed 1.10, +0.2145 z: the
+  // fender span centred). The ring and trunnion are the packet's measured datums in that frame; the turret and gun
+  // owners are routed by island in the registry (the material groups carry the basket inside the ring).
+  challenger3_td: {
+    sha256:'6e3b3983f040319d9dd5c55fdcf850d438a6c0656ae46a62908f0c4baa387386',
+    turret:[0, 1.98, 0.7106], gun:[0, 2.2341, 1.9195],
+  },
   amx56: {
     sha256:'e1a3fa18589075da9fbe0bd19fb504ca1e3d579eae52b926c1d73a43e432e4f0',
     turret:[-.0162842395776,1.47698078437,.561125178827],

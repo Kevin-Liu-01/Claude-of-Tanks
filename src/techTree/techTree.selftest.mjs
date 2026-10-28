@@ -114,6 +114,7 @@ for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `
 for (const [base, upgrade] of upgrades) assert.ok(displayTier(upgrade) >= displayTier(base), `${upgrade} never shows below ${base}`);
 for (const [proto, production] of [['amx40_proto', 'amx40'], ['c1_ariete_proto_serie1', 'c1_ariete'],
   ['c1_ariete_preserie', 'c1_ariete'], ['c2_ariete_proto', 'c2_ariete'], ['challenger3_proto', 'challenger3'],
+  ['challenger3_td', 'challenger3'], ['challenger3_td_rws', 'challenger3'],
   ['cv90_mk4_concept', 'cv90_mk4'], ['leo2_revolution_proto', 'leo2_revolution'], ['leopard2_proto', 'leo2a2'],
   ['t90a_burlak_proto', 't90a_burlak'], ['ztz100_prototype', 'ztz100'], ['ztz20_prototype', 'ztz20'], ['t84', 't84bm_oplot_m']]) {
   assert.ok(displayTier(proto) <= displayTier(production), `${proto} never shows above ${production}`);
@@ -157,5 +158,6 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // the older pair renamed Object 478DU2 (VI) and T-84U Oplot (VI on its period 2000 ammunition, score 0.772), the T-84U
 // leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
 // the Oplot-M's connector clears it.
+// 262: the Challenger 3 TD in the UK special lane at VIII (with its prototype's tier), its RWS field fit as its twin.
 assert.equal(digest, 'MERGE263', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

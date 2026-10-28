@@ -19,6 +19,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   pl01_105: 'price the four-round 105 mm branch for Tier X sustained combat',
   m1a3: 'remove the next-generation autoloader, protection and missile ceiling',
   challenger3_proto: 'restore the base Challenger 3 firepower and mobility envelope',
+  challenger3_td: '262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)',
+  challenger3_td_rws: '262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)',
   challenger3: 'retain a measured protection and fire-control step over the base vehicle, inside the modern fire-control ceiling',
   // 2026-10-25: the IFVs relabelled modern fold into their modern Tier X peers (fleetBalancePass applyModernEraFold)
   kf41_lynx: 'fold the Raijū-donor cannon package into the modern IFV cadence and 35 mm penetration',

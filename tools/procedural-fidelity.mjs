@@ -87,6 +87,7 @@ try {
   // first-party vehicle has no comparison target, while a registered target
   // whose file is missing must still enter the loop and fail visibly.
   const registered = new Set(discovered);
+  const oracleBlindIds = new Set(await page.evaluate('window.__ORACLE_BLIND_IDS') ?? []);
   const candidates = requestedPartition?.comparisons || discovered;
   const ids = candidates.filter(id => registered.has(id));
   for (const id of candidates.filter(id => !registered.has(id))) {
@@ -101,7 +102,7 @@ try {
     const errorStart = browserErrors.length;
     let rawSourceComparison=null;
     try {
-      if(id==='k1a1' || OWNER_KIT_TARGETS[id]){
+      if(id==='k1a1' || OWNER_KIT_TARGETS[id] || oracleBlindIds.has(id)){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
