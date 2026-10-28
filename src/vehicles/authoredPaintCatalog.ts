@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 22 entries over 81 vehicles.
+// 27 entries over 88 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -31,6 +31,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_type10_dozer',
   'paint_type74',
   'paint_ua_t80u_modern',
+  'paint_ua_t84_oplot_m',
 ] as const);
 
 export type AuthoredPaintId = typeof AUTHORED_PAINT_IDS[number];
@@ -75,4 +76,5 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_type10_dozer',lead: 'type10_dozer',sourceTankIds: ['type10_dozer'],nation: 'Japan',label: 'JGSDF Digital Woodland',tags: ['jp','woodland','digital','signature'],visual: {scheme: 'digital',base: '#3e4b33',weather: '#545e43',patches: ['#1f271b','#5e7040','#735a3c'],camoScale: 0.4}},
   {id: 'paint_type74',lead: 'type74',sourceTankIds: ['type74'],nation: 'Japan',label: 'JGSDF Bands Woodland',tags: ['jp','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#44503a',weather: '#4e5a44',patches: ['#4d4133','#37432f'],camoScale: 0.6}},
   {id: 'paint_ua_t80u_modern',lead: 't80u_zoria',sourceTankIds: ['t80u_zoria','t72b3m_hetman','t72b3m_hetman_ii','t72b3_sich'],nation: 'Ukraine',label: 'Ukrainian Woodland',tags: ['ua','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#536243',weather: '#4a5c42',patches: ['#283829','#8b9260']}},
+  {id: 'paint_ua_t84_oplot_m',lead: 't84bm_oplot_m',sourceTankIds: ['t84bm_oplot_m'],nation: 'Ukraine',label: 'Ukrainian Three-Tone Woodland',tags: ['ua','woodland','organic','signature'],visual: {scheme: 'nato',base: '#4b5636',weather: '#5d6646',patches: ['#6b5537','#26281f'],camoScale: 0.48}},
 ]);

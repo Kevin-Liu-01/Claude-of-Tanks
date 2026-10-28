@@ -715,7 +715,7 @@ function ventilator(P: CastPort, T: TurretFrame, x: number, z: number, r: number
 
 /** Browning M2 HB on a working mount (world base). */
 function roofM2(P: CastPort, T: TurretFrame, x: number, z: number, baseY: number, opts: { barrel?: number; cls?: 'm2' | 'mag';
-  scale?: number; seed: number; ring?: false; elev?: number; ammo?: false }): void {
+  scale?: number; seed: number; ring?: false; elev?: number; ammo?: false; station?: string }): void {
   const L = tl(T);
   const mg = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', ammoSide: 1, barrelLength: opts.barrel ?? 0.65, elev: opts.elev ?? 0.03,
@@ -723,6 +723,9 @@ function roofM2(P: CastPort, T: TurretFrame, x: number, z: number, baseY: number
     ammo: opts.ammo,
   });
   mg.position.set(x, L.y(baseY), L.z(z));
+  // 263 (integrator, roofWeaponPolicy.selftest): a second station on one roof keeps its own name, which the auxiliary
+  // presentation finds it by (the M48A5's loader's M60D beside the commander's)
+  if (opts.station) mg.name = `${mg.name}_${opts.station}`;
   P.turretG.add(mg);
 }
 
@@ -1473,7 +1476,7 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
     const roof = seat.topAt(0.60, 0.23);
     P.add('turretDark', box(0.106, 0.04, 0.115), 0.60, L.y(roof + 0.01), L.z(0.23));
     P.add('turretDark', cylY(0.035, 0.045, 2.68 - roof, 10), 0.60, L.y((2.68 + roof) / 2), L.z(0.23));
-    roofM2(P, T, 0.60, 0.23, 2.67, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 486, ring: false, elev: 0, ammo: false });
+    roofM2(P, T, 0.60, 0.23, 2.67, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 486, ring: false, elev: 0, ammo: false, station: 'loader' });
     m60dGrips(P, L, 0.60, -0.109, 2.92);
     m60dSight(P, L, 0.60, -0.109, 2.92);
     P.add('turretDetail', box(0.09, 0.17, 0.27), 0.785, L.y(2.848), L.z(0.225), 0, Math.PI / 2, 0);

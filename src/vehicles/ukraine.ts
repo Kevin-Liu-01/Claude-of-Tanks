@@ -234,14 +234,14 @@ const UKRAINE_SPECS = {
     spec.gun.reloadS = 6.3;
     spec.gun.baseAccuracy = 0.31;
     spec.gun.aimTimeS = 1.8;
+    // 263 (integrator): every playable gun exposes one to three ammunition channels (ammunitionFlow.selftest, the HUD's
+    // three slots), and a guided channel on a gun tank is an auxiliary missile with a 2-3 s cadence. The lane's fourth
+    // round, the gun-fired Kombat ATGM (guided, 8 s), fits neither, so the pair carries the fleet's 125 mm Soviet-pattern
+    // set as the T-84, T-80UK and T-90M do: APFSDS, HEAT and HE as authored. A guided Kombat is owed to the Oplot lane.
     spec.gun.shells = [
       shell('BTA-4 APFSDS', 'APFSDS', 125, 840, 780, 545, 1780, { pen2000Mm: 710, count: 18 }),
       shell('3BK29M HEAT', 'HEAT', 125, 700, 700, 490, 905, { count: 10 }),
       shell('3OF26 HE-Frag', 'HE', 125, 50, 50, 600, 850, { count: 12 }),
-      shell('Kombat ATGM', 'HEAT', 125, 800, 800, 520, 350, {
-        pen2000Mm: 800, guided: true, guidanceTurnRateRadS: 0.62, reloadS: 8.0, count: 6, launcherTubes: 0,
-        soundProfile: 'arkan-launch',
-      }),
     ];
   }
 }

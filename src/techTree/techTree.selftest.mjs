@@ -159,5 +159,7 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // leading the line's row 0 to the Oplot-M, the T-80U Kursk a VI side branch; the M1A1 SA (Ukraine) moves to lane 1 so
 // the Oplot-M's connector clears it.
 // 262: the Challenger 3 TD in the UK special lane at VIII (with its prototype's tier), its RWS field fit as its twin.
-assert.equal(digest, 'MERGE263', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-28 re-cut (263, the merged release tree): every node above at once (the T-55A, the Challenger 1 Mk 1 and
+// Granby, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
+assert.equal(digest, 'e7d16bfed18294d9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
