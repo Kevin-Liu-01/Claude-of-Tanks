@@ -24,10 +24,12 @@ interface TopicDefinition {
   mediaAt?: readonly [number, number];
   /** Built from the game's own tables (src/docs/chapters): its sections come from richSections(), not `sections`. */
   rich?: boolean;
+  /** One section that takes the whole body (the fleet's grid): no "on this page" rail beside it. */
+  full?: boolean;
 }
 
 export const TOPIC_ORDER = [
-  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'fleet', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
@@ -82,6 +84,20 @@ export const topics: Record<string, TopicDefinition> = {
     sections: [],
     media: [],
     rich: true,
+  },
+  // Every playable tank in one grid, filtered and presented three ways (src/docs/chapters/fleetGrid.ts, src/docs/fleetGrid.ts).
+  fleet: {
+    label: t('docs.topic.fleet.label'),
+    title: t('docs.topic.fleet.title'),
+    pageTitle: t('metadata.docsFleet.title'),
+    lede: t('docs.topic.fleet.lede'),
+    hero: '/media/site50-r14/loops/s227-oasis-duel.webm',
+    icon: 'gallery',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+    full: true,
   },
   // Armour, angling and spotting, charted from the sim's own functions (src/docs/chapters/combat.ts).
   combat: {
@@ -331,7 +347,10 @@ function mediaFigure([src, caption]: TopicMedia): string {
  */
 export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; readonly phone?: true }>> = {
   's05-barn-advance': { r960: true, phone: true },
+  's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
+  's226-church-duel': { r960: true, phone: true },
+  's227-oasis-duel': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
 };
 
@@ -409,7 +428,7 @@ type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
 export const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
-  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio'] },
+  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'fleet', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio'] },
   { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'ai', 'filming'] },
 ];
 const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));
@@ -429,6 +448,7 @@ export const ZH_TITLE_PHRASES: Readonly<Record<TopicId, readonly string[]>> = {
   controls: ['全部按键', '与视角'],
   modes: ['全部', '作战方式'],
   tanks: ['车队', '与装备'],
+  fleet: ['全部战车，', '并排', '一览'],
   combat: ['炮弹', '如何', '造成', '伤害'],
   battlefields: ['全部', '战场'],
   multiplayer: ['组队', '作战'],
@@ -602,7 +622,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
   // the reader starts at the first section: it is the current one before the spy (mountTocSpy) sees a scroll
   const current = (index: number): string => (index === 0 ? ' aria-current="location"' : '');
-  const toc = (rich ? rich.map(({ id, title }, index) => `<a href="#${id}"${current(index)}>${title}</a>`)
+  const toc = topic.full ? '' : (rich ? rich.map(({ id, title }, index) => `<a href="#${id}"${current(index)}>${title}</a>`)
     : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"${current(index)}>${title}</a>`)).join('')
     + (reference ? `<a href="#reference">${t('docs.reference.vehicles.title')}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
@@ -622,14 +642,60 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span>${groupLabel(group.key)}</span></span>`
     + `<span class="dm-crumb__step"><i aria-hidden="true">${CRUMB}</i><span aria-current="page">${topic.label}</span></span></nav>`
     + `<h1>${titleMarkup(topic.title, ZH_TITLE_PHRASES[slug])}</h1></div></header>`
-    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
+    + `<div class="dm-body${topic.full ? ' dm-body--full' : ''}"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}">`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
-    + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
+    + `</article>${topic.full ? '' : `<aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside>`}</div>`
     + `<nav class="dm-pager" aria-label="${t('docs.topic.pagerAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
 }
 
 const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
+
+/** The address parameters that carry the fleet grid's state (fleetGrid.ts): a link with any loads the grid's code at once. */
+const FLEET_PARAMS = ['nation', 'tier', 'era', 'class', 'role', 'q', 'view'];
+
+/**
+ * The fleet chapter's grid before its code loads (src/docs/chapters/fleetGrid.ts prerenders it). A tile's picture fades in
+ * once it has decoded (its layer's data-ready; a picture that failed is ready too, so none stays hidden), over the tile's
+ * own tone. The filters' and presentations' code (fleetGrid.ts) loads at the first sign of use: a pointer over the bar, the
+ * focus in it, a touch, or a link that carries the grid's state. A control pressed before it has loaded is handed to it,
+ * which then opens that menu or chooses that presentation.
+ */
+function wireFleetGrid(root: HTMLElement): void {
+  root.classList.add('is-live');
+  const settle = (layer: Element | null): void => {
+    if (!layer || layer.hasAttribute('data-ready')) return;
+    const images = [...layer.querySelectorAll('img')];
+    if (!images.length || images.some((image) => !image.complete)) return;
+    void Promise.all(images.map((image) => image.decode().catch(() => undefined))).then(() => layer.setAttribute('data-ready', ''));
+  };
+  const onImage = (event: Event): void => {
+    if (event.target instanceof HTMLImageElement) settle(event.target.closest('.dm-fleet__layer'));
+  };
+  root.addEventListener('load', onImage, true);
+  root.addEventListener('error', onImage, true);
+  for (const layer of root.querySelectorAll('.dm-fleet__layer')) settle(layer);
+
+  const bar = root.querySelector<HTMLElement>('.dm-fleet__bar');
+  let pressed: Element | null = null;
+  let loading: Promise<void> | null = null;
+  let mounted = false;
+  const load = (): void => {
+    loading ??= import('./fleetGrid.ts').then(({ mountFleetGrid }) => { mounted = true; mountFleetGrid(root, () => pressed); });
+  };
+  const onEarlyPress = (event: Event): void => {
+    const control = event.target instanceof Element ? event.target.closest('button') : null;
+    if (mounted || !control) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pressed = control;
+    load();
+  };
+  for (const type of ['pointerover', 'focusin', 'touchstart'] as const) bar?.addEventListener(type, load, { once: true, passive: true });
+  root.addEventListener('click', onEarlyPress, true);
+  const params = new URLSearchParams(location.search);
+  if (FLEET_PARAMS.some((name) => params.has(name))) load();
+}
 
 /**
  * The chapter page's behaviour. A page the build prerendered (tools/docs-prerender.mjs: `data-prerendered` names the
@@ -673,6 +739,8 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   if (article && slug === 'filming') {
     void import('./filming.ts').then(({mountFilming}) => mountFilming(article));
   }
+  const fleet = article?.querySelector<HTMLElement>('[data-fleet]');
+  if (fleet) wireFleetGrid(fleet);
 
   // the narrow layout folds the shelf into one scrolling row that opens on the current chapter
   const shelf = root.querySelector<HTMLElement>('.dm-side');

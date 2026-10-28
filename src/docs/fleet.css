@@ -1,0 +1,92 @@
+/* The Field Manual's fleet chapter (src/docs/chapters/fleetGrid.ts prerenders it; topics.ts wireFleetGrid and
+   src/docs/fleetGrid.ts drive it): the chapter sheet, the kit's pickers (its filters are the kit's picker menu from the
+   first paint), the kit's figures (its empty state), then the grid's own rules. The page's one stylesheet.
+   Copyright © 2026 Kevin B. Liu. */
+@import url('./chapters.css');
+@import url('./docsPickers.css');
+@import url('../ui/components/figures.css');
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
+/* one section that takes the body's whole width: no "on this page" rail */
+.dm-body--full{grid-template-columns:minmax(0,1fr)}
+/* The grid is its own container: the bar and the columns follow its width (the shelf beside it or not), and a tile's
+   reserved size is computed from it. A tile is its picture at the presentation's aspect over a words block of fixed
+   height (two lines of name, the flag and class line), so a tile the browser has not laid out yet (content-visibility)
+   reserves exactly the size it will take, and nothing below it moves when it comes into view. */
+.dm-fleet{container:fleet/inline-size;--dm-fleet-gap:var(--s3);--dm-fleet-ar:1.6;--dm-fleet-name:calc(var(--fs-15) * 1.25);
+  --dm-fleet-meta:20px;--dm-fleet-words:calc(var(--s2) + 2 * var(--dm-fleet-name) + var(--s1) + var(--dm-fleet-meta) + var(--s3))}
+/* the angle render keeps the fleet's shared portrait framing (pickers.css .is-tank); the side render its own 2:1 */
+.dm-fleet[data-view=angle]{--dm-fleet-ar:calc(216 / 184)}
+.dm-fleet[data-view=side]{--dm-fleet-ar:2}
+
+/* ---- the bar: search, the five filters, the presentation and the count. A phone stacks it two across; a tablet three
+   across with the presentation beside the search; a wide grid sets the five filters in one row under them. */
+.dm-fleet__bar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2) var(--s3);align-items:center;margin-top:var(--s4);
+  grid-template-areas:"search search" "views views" "nation tier" "era class" "role count"}
+.dm-fleet__menus{display:contents}
+.dm-fleet__search{grid-area:search;min-width:0}
+.dm-fleet__search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-1);outline:none}
+.dm-fleet__search input::placeholder{color:var(--ink-3)}
+.dm-fleet__search input::-webkit-search-cancel-button{display:none}
+.dm-fleet__search .cot-i{flex:none;width:16px;height:16px;margin-inline-start:-2px}
+.dm-fleet__menu{min-width:0}
+.dm-fleet__menu[data-fleet-facet=nation]{grid-area:nation}
+.dm-fleet__menu[data-fleet-facet=tier]{grid-area:tier}
+.dm-fleet__menu[data-fleet-facet=era]{grid-area:era}
+.dm-fleet__menu[data-fleet-facet=class]{grid-area:class}
+.dm-fleet__menu[data-fleet-facet=role]{grid-area:role}
+.dm-fleet__views{grid-area:views;display:flex}
+.dm-fleet__views .cot-c-seg__opt{flex:1 1 0}
+.dm-fleet__count{grid-area:count;margin:0;font:500 max(var(--fs-floor-12),var(--fs-13))/1.3 var(--font-body);color:var(--ink-3);white-space:nowrap}
+@container fleet (width >= 640px){
+  .dm-fleet__bar{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"search search views" "nation tier era" "class role count"}
+}
+@container fleet (width >= 900px){
+  .dm-fleet__bar{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"search search count views views" "nation tier era class role"}
+  .dm-fleet__views{justify-self:end}
+  .dm-fleet__views .cot-c-seg__opt{flex:none}
+  .dm-fleet__count{justify-self:end}
+}
+/* a tall wide screen keeps the bar in reach while the grid scrolls: it stands under the site bar on the page's plate */
+@media (width >= 768px) and (height >= 700px){
+  .dm-fleet__bar{position:sticky;z-index:var(--z-lift);top:var(--shell-nav-h);margin-inline:calc(var(--s2) * -1);padding:var(--s2);background:var(--surface-page)}
+}
+@media (pointer:coarse){
+  .dm-fleet__search{height:var(--cot-control-floor,44px)}
+  .dm-fleet__views .cot-c-seg__opt{height:38px}
+}
+
+/* ---- the tiles: two across on a phone, up to seven on a 2560 screen, each about 190 px or wider */
+.dm-fleet__grid{margin-top:var(--s4)}
+.dm-fleet__list{--dm-fleet-cols:2;display:grid;grid-template-columns:repeat(var(--dm-fleet-cols),minmax(0,1fr));gap:var(--dm-fleet-gap);margin:0;padding:0;list-style:none}
+@container fleet (width >= 594px){.dm-fleet__list{--dm-fleet-cols:3}}
+@container fleet (width >= 796px){.dm-fleet__list{--dm-fleet-cols:4}}
+@container fleet (width >= 998px){.dm-fleet__list{--dm-fleet-cols:5}}
+@container fleet (width >= 1200px){.dm-fleet__list{--dm-fleet-cols:6}}
+@container fleet (width >= 1402px){.dm-fleet__list{--dm-fleet-cols:7}}
+.dm-fleet__tile{min-width:0;content-visibility:auto;
+  contain-intrinsic-size:0 calc((100cqi - (var(--dm-fleet-cols) - 1) * var(--dm-fleet-gap)) / var(--dm-fleet-cols) / var(--dm-fleet-ar) + var(--dm-fleet-words))}
+.dm-fleet__tile[hidden]{display:none}
+.dm-fleet__card{position:relative;display:flex;flex-direction:column;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);
+  color:inherit;text-decoration:none;transition:box-shadow var(--dur-fast) var(--ease-enter)}
+.dm-fleet__card:hover{box-shadow:var(--ring-3)}
+.dm-fleet__card:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+/* the picture's box holds the presentation's aspect and the scene's tone, the tile's placeholder until its picture has
+   decoded (data-ready, set by topics.ts), which then fades in over it */
+.dm-fleet__media{position:relative;display:block;flex:none;aspect-ratio:var(--dm-fleet-ar);overflow:hidden;background:var(--surface-scene)}
+.dm-fleet__layer{position:absolute;inset:0;display:block}
+.dm-fleet__media>.dm-hc{width:auto;aspect-ratio:auto}
+.dm-fleet:not([data-view=hero]) [data-layer=hero],.dm-fleet:not([data-view=angle]) [data-layer=angle],.dm-fleet:not([data-view=side]) [data-layer=side]{display:none}
+.dm-fleet.is-live .dm-fleet__layer{opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+.dm-fleet.is-live .dm-fleet__layer[data-ready]{opacity:1}
+.dm-fleet__angle img{position:absolute;left:-7.4%;top:-32.6%;width:118.5%;height:auto;max-width:none}
+.dm-fleet__side img{display:block;width:100%;height:100%;object-fit:contain}
+/* the tier chip every hero card wears (heroCardChips.ts, heroCard.css .cot-hc .hc-tier) stays in the picture's corner on
+   every presentation: the picture's box is a hero card host of its own */
+.dm-fleet__words{display:grid;grid-template-rows:1fr auto;gap:var(--s1);height:var(--dm-fleet-words);padding:var(--s2) var(--s3) var(--s3);box-sizing:border-box}
+.dm-fleet__name{align-self:start;font:600 var(--fs-15)/1.25 var(--font-display);color:var(--ink-1);overflow-wrap:break-word;text-wrap:pretty}
+.dm-fleet__meta{display:flex;align-items:center;gap:var(--s2);height:var(--dm-fleet-meta);min-width:0;font:400 max(var(--fs-floor-12),var(--fs-13))/1 var(--font-body);color:var(--ink-3);white-space:nowrap}
+.dm-fleet__meta .cot-c-flag{margin-inline:1px}
+.dm-fleet__empty{margin-top:var(--s4)}
+@media (prefers-reduced-motion:reduce){.dm-fleet__card,.dm-fleet.is-live .dm-fleet__layer{transition:none}}
+}
