@@ -12,10 +12,10 @@
       "concealers": 7940
     },
     "desert": {
-      "bytes": 1233926,
-      "sha256": "87f52dfbce8b1c886bddde7590c95f5eb390e89b2a3f084a3d4340b018cb7976",
-      "obstacles": 1760,
-      "colliders": 1830,
+      "bytes": 1234374,
+      "sha256": "a38efd11004640985e75fc96fe311b076b853477832716e19149c802ee9937f9",
+      "obstacles": 1761,
+      "colliders": 1831,
       "concealers": 1261
     },
     "winter": {
@@ -54,10 +54,10 @@
       "concealers": 1210
     },
     "railyard": {
-      "bytes": 1824285,
-      "sha256": "4695667e36e5b700be45bb0901f04e3615b570b63fa05d86b9356b3463c49f6b",
-      "obstacles": 3437,
-      "colliders": 4148,
+      "bytes": 1833840,
+      "sha256": "27dcc2c2bb309f2581a064a0d0a3ea57953907c8b4bceddf23a55c10b8fb0049",
+      "obstacles": 3446,
+      "colliders": 4159,
       "concealers": 1904
     },
     "frontier": {
@@ -173,8 +173,8 @@
       "concealers": 874
     },
     "whiteout": {
-      "bytes": 1529164,
-      "sha256": "b80f8bbae2a507cd9b4c04e5ed0e1e17cfd9a0c9851ffb2592ca361d6cdc36f2",
+      "bytes": 1529161,
+      "sha256": "b4c17213126867fc27bd4f2712aabccf37c7e34ec2f84c64c58d1e5fe0af141a",
       "obstacles": 1115,
       "colliders": 1408,
       "concealers": 0
@@ -288,10 +288,10 @@
         "concealers": 1210
       },
       "railyard": {
-        "bytes": 1889635,
-        "sha256": "684c12f43fefbe623b7fc0a26669cf5a45e38ffe3ffc5e1b0940233a4dc3e98a",
-        "obstacles": 3564,
-        "colliders": 4195,
+        "bytes": 1899225,
+        "sha256": "8b5f97f7ccfbb3878b2970cc902325991076234de453121ef5a8a1a6960b4d94",
+        "obstacles": 3573,
+        "colliders": 4206,
         "concealers": 1904
       },
       "frontier": {
@@ -407,8 +407,8 @@
         "concealers": 878
       },
       "whiteout": {
-        "bytes": 1704245,
-        "sha256": "48118ec64e566bfffa08ec5b07abb2c2919eebda2e04b13b2358f1e9530447a9",
+        "bytes": 1704242,
+        "sha256": "8e16a11f1788e6dd065c8ff875a5fb5bb21361d362d610a4a8bf504e918e3e23",
         "obstacles": 1255,
         "colliders": 1459,
         "concealers": 0

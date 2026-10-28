@@ -140,8 +140,11 @@ export default {
       // levels: the bed under each apron (a hardstand otherwise takes the nearest road's grade, the bank's)
       // each strip's length runs along its leg of the bed (a strip's local +Z is (sin yaw, cos yaw))
       { x: 0, z: 0, width: 64, length: 72, yawDeg: 106, level: -2.4, grade: 0, paint: WORN_YARD_PAINT },
-      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 29 m south, off the mesa's foot onto the bed, a 16 m bank
-      { x: -300, z: 84, width: 56, length: 64, yawDeg: 104, level: -7.8, grade: 0, bankM: 16, paint: WORN_YARD_PAINT },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 29 m south, off the mesa's foot onto the bed, a 15 m bank
+      // (2026-10-28, the world-reds lane; hardstandBanks since 241: the 241 sand sheet's trough, damped by the apron's
+      // road corridor past a 16 m bank, stood 1.4 m over the open bed and made a 0.62 wall at (-344, 108); 15 m keeps
+      // every band point 0.06 inside the law, 17 m only 0.03, and 18-20 m carry the wall out with the bank)
+      { x: -300, z: 84, width: 56, length: 64, yawDeg: 104, level: -7.8, grade: 0, bankM: 15, paint: WORN_YARD_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 20 m bank
       { x: 292, z: -112, width: 60, length: 64, yawDeg: 104, level: -0.5, grade: 0, bankM: 20, paint: WORN_YARD_PAINT },
     ],
