@@ -4105,7 +4105,9 @@ if ( uApOn > 0.5 && uApPaint > 0.5 && apBaked >= 0 ) {
     // the hull's rubber (mode 4) takes most of the way to a flat tone of its own darkness first: its grain maps showed
     // through the colour as speckle, and a lighter tone read pastel beside the painted steel (three blind rounds)
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.05 ), 0.85 * apFlat );
-    // the camo's hue gives way (its light and shade stay), so a zone reads its own colour, never olive or salmon
+    // (263) and the camo half its light and shade: its blotches read as zone borders through the colour (a blind critic)
+    diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.1 ), 0.5 * ( 1.0 - apFlat ) );
+    // the camo's hue gives way, so a zone reads its own colour, never olive or salmon
     diffuseColor.rgb = mix( diffuseColor.rgb, vec3( dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) ), 0.7 );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor, apMix );
     diffuseColor.rgb = mix( diffuseColor.rgb, apColor * 0.42, apLine * 0.8 );

@@ -89,7 +89,7 @@ function hullScene() {
   assert.equal(meshes.tyre.geometry.getAttribute('apZone'), undefined, 'an unpainted draw carries no panels');
   assert.ok([...meshes.twinA.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a geometry drawn twice keeps the per-point score');
   assert.equal(stats.shared, 1);
-  assert.ok(stats.baked > 0 && stats.bare > 0 && stats.clusters > 0 && stats.votes <= stats.triangles, 'the tally');
+  assert.ok(stats.baked > 0 && stats.bare > 0 && stats.clusters > 0 && stats.votes <= 3 * stats.triangles, 'the tally');
   // the bake is once a geometry: a second bake under the same armour leaves it as it is
   const again = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, armor);
   assert.equal(again.geometries, 0, 'a baked vehicle bakes nothing twice');
@@ -130,12 +130,16 @@ function hullScene() {
   turret.add(cheek);
   const face = new THREE.Mesh(box(0.3, 0.3, 0.05, -0.4, 0.2, 0.62), paint);
   turret.add(face);
+  // a mantlet's front on the gun, centred on the bore just past the barrel's start: the barrel covers a third of it
+  const mantlet = new THREE.Mesh(box(0.6, 0.4, 0.02, 0, 0, 0.86), paint);
+  gun.add(mantlet);
   root.updateMatrixWorld(true);
-  bakePaintPanels(root, template(turretZones, [[-0.85, -0.05, -0.85], [0.85, 0.85, 0.85]]), { hull, turret, gun }, {});
+  bakePaintPanels(root, template(turretZones, [[-0.85, -0.05, -0.85], [0.85, 0.85, 1.6]]), { hull, turret, gun }, {});
   assert.ok([...under.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a hull part under the turret\'s sweep is live');
   assert.ok([...barrel.geometry.getAttribute('apZone').array].every((v) => v === -1), 'the barrel is bare');
   assert.ok([...cheek.geometry.getAttribute('apZone').array].every((v) => v === 0), 'a turret part by the barrel is live');
   assert.deepEqual(faceValues(face.geometry, [0, 0, 1]), [hullZones.length + 1], 'a turret face clear of the barrel takes the turret\'s front');
+  assert.deepEqual(faceValues(mantlet.geometry, [0, 0, 1]), [hullZones.length + 1], 'a mantlet\'s front on the bore takes its zone, not bare');
 }
 
 // ---- the hook: a draw without panels reads 0; the vertex reads the attribute, the fragment the panel

@@ -105,7 +105,7 @@ const SLICE_TRIANGLES = 1500;
 
 const _unscale = new THREE.Matrix4();
 const _normalWorld = new THREE.Matrix3();
-const _b = new THREE.Vector3(), _c = new THREE.Vector3();
+const _b = new THREE.Vector3(), _c = new THREE.Vector3(), _world = new THREE.Vector3();
 const _centre = new THREE.Vector3(), _normal = new THREE.Vector3(), _p = new THREE.Vector3(), _t = new THREE.Vector3();
 const _g = new THREE.Vector3(), _n = new THREE.Vector3(), _box = new THREE.Vector3();
 
@@ -195,6 +195,8 @@ const WELD_NORMAL_DOT = 0.999;
 const FLAT_DOT = 0.9995;
 /** A curved cluster votes on at most this many of its triangles (an even stride). */
 const MAX_VOTES = 32;
+/** A flat cluster of at most this many triangles votes on three points a triangle; a larger one once at its centre. */
+const FLAT_SAMPLED = 8;
 
 /** A three-component attribute's values as a plain array (a copy when it is interleaved or normalized). */
 function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined): ArrayLike<number> | null {
@@ -372,12 +374,30 @@ export function* bakePaintPanelSteps(
         }
         touched.length = 0;
         let voted = 0;
-        if (total > 0 && flat) {
+        if (total > 0 && flat && end - start > FLAT_SAMPLED) {
           const slot = vote(template, split, pose, barrel, mode, owner, _centre.set(cx / total, cy / total, cz / total),
             _normal.set(normals[first * 3], normals[first * 3 + 1], normals[first * 3 + 2])) + 3;
           touched.push(slot);
           tally[slot] = voted = total;
           stats.votes++;
+        } else if (total > 0 && flat) {
+          // a small flat panel (a box's face, a mantlet's front) by its area: three points a triangle, halfway from its
+          // centre to each corner, so the barrel's bare cylinder takes the face only if it covers most of it
+          for (let k = start; k < end; k++) {
+            const t = order[k];
+            if (!(areas[t] > 0)) continue;
+            for (let c = 0; c < 3; c++) {
+              const v = corner(t, c) * 3;
+              _world.set(p[v], p[v + 1], p[v + 2]).applyMatrix4(mesh.matrixWorld);
+              _centre.set((centres[t * 3] + _world.x) / 2, (centres[t * 3 + 1] + _world.y) / 2, (centres[t * 3 + 2] + _world.z) / 2);
+              const slot = vote(template, split, pose, barrel, mode, owner, _centre,
+                _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2])) + 3;
+              if (tally[slot] === 0) touched.push(slot);
+              tally[slot] += areas[t] / 3;
+              stats.votes++;
+            }
+            voted += areas[t];
+          }
         } else if (total > 0) {
           const stride = Math.max(1, Math.ceil((end - start) / MAX_VOTES));
           for (let k = start; k < end; k += stride) { const t = order[k]; if (areas[t] > 0) { cast(t, areas[t]); voted += areas[t]; } }
@@ -400,7 +420,7 @@ export function* bakePaintPanelSteps(
           }
         }
         start = end;
-        if (spend(flat ? kept : Math.min(kept, MAX_VOTES) * 4)) { yield; sliceStarted = performance.now(); }
+        if (spend(flat ? kept * (kept > FLAT_SAMPLED ? 1 : 3) : Math.min(kept, MAX_VOTES) * 4)) { yield; sliceStarted = performance.now(); }
       }
     }
     // into the attribute the build seeded (tankFactoryCore seedArmorPaintPanels), else a new one
