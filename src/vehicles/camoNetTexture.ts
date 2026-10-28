@@ -165,7 +165,7 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       if (rng() < 0.04) continue;
       // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) in a mid olive
       // a step over the palette's: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips)
-      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.3;
+      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.6;
       wrap9((ox, oy) => {
         const path = (g: CanvasRenderingContext2D): void => {
           g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);

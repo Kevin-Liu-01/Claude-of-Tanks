@@ -446,8 +446,12 @@ export function paintGarnishBough(ctx: CanvasRenderingContext2D, S: number, rng:
     paintBroadleafBough(ctx, rng, sprig === 1 ? leaf : { ...leaf, len: [leaf.len[0] * sprig, leaf.len[1] * sprig],
       spacing: leaf.spacing * sprig, twigs: [fewer(leaf.twigs[0]), fewer(leaf.twigs[1])] });
   } else if (needle) {
+    // a sprig's card is brightened as a cover's tuft (addTufts' fitted tint): its needles are painted a step darker and
+    // its new growth olive, so the shoot reads as the conifer's own dark blue-green, not lime
+    const darker = (c: Hsl): Hsl => [c[0], c[1], c[2] * 0.8];
     paintNeedleBough(ctx, rng, sprig === 1 ? needle : { ...needle, len: [needle.len[0] * sprig, needle.len[1] * sprig],
-      step: needle.step * sprig, laterals: Math.max(3, fewer(needle.laterals)) }, sprig);
+      step: needle.step * sprig, laterals: Math.max(3, fewer(needle.laterals)), deep: darker(needle.deep), mid: darker(needle.mid),
+      light: darker(needle.light), fresh: [needle.fresh[0] + 24, needle.fresh[1] * 0.75, needle.fresh[2] * 0.72] }, sprig);
   } else if (tuft) paintTuftBough(ctx, rng, tuft);
   ctx.restore();
   return true;

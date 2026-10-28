@@ -168,9 +168,9 @@ export const GARNISH_STRIP_TILES = [2, 3] as const;
 export const GARNISH_STRIP_BASE_SRGB: readonly [number, number, number] = [200, 189, 160];
 
 const garnishAtlasCache = new Map<string, THREE.Texture | null>();
-/** A fitted cover's tuft against a field bough (ghillieSuit.ts addTufts 0.24 against addFieldTufts 0.6 of the leaf scale,
- * its lengths' spread taken in): its sprig is drawn this much larger on the tile, at its real leaf and needle size. */
-const COVER_SPRIG_SCALE = 2.2;
+/** A fitted cover's tuft against a field bough (ghillieSuit.ts addTufts 0.24 against addFieldTufts 0.6 of the leaf scale):
+ * its sprig is drawn this much larger on the tile, near its real needle size and keeping its frond's fishbone. */
+const COVER_SPRIG_SCALE = 1.7;
 
 /** Paint one tile of knotted burlap strips (stem seat at the tile's bottom centre, tips toward the top). */
 function paintStripTile(ctx: CanvasRenderingContext2D, S: number, rng: () => number): void {
@@ -319,11 +319,11 @@ export function* ghillieGarnishAtlasSteps(species: SprayKind, second?: SprayKind
       };
       const rng = seeded(kindSeed(`ghillie-strips:${species}`));
       for (const tile of GARNISH_STRIP_TILES) {
-        // a cover whose crew tucked the species in (`sprigs`): its second tuft tile is a short sprig of it, laid flat on
-        // the cover like its flaps (the cover's tufts are short flat cards: ghillieSuit.ts addTufts, wave 253)
+        // a cover whose crew tucked the species in (`sprigs`): its tufts are short sprigs of it, laid flat on the cover
+        // (the cover's tufts are short flat cards: ghillieSuit.ts addTufts, wave 253; its own fabric carries the flaps)
         inTile(tile, () => {
-          if (sprigs && flaps && tile === GARNISH_STRIP_TILES[1] && paintGarnishBough(ctx as CanvasRenderingContext2D, S,
-            seeded(kindSeed(`ghillie-sprig:${species}`)), species, COVER_SPRIG_SCALE)) return;
+          if (sprigs && flaps && paintGarnishBough(ctx as CanvasRenderingContext2D, S,
+            seeded(kindSeed(`ghillie-sprig:${species}:${tile}`)), species, COVER_SPRIG_SCALE)) return;
           if (flaps) paintFlapTile(ctx as CanvasRenderingContext2D, S, rng, FLAP_PALETTES[flaps]);
           else paintStripTile(ctx as CanvasRenderingContext2D, S, rng);
         });

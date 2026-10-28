@@ -156,7 +156,8 @@ export interface CutTextureShade {
    * not at all: one of up to `cell` texels (a mesh of the net) closes where the broad height over it reaches `fill[0]`
    * of full, a whole mesh by `fill[1]`, and a speck of a fifth of that anywhere. A closed gap takes `tone` (sRGB, the
    * hull in the garnish's shadow). A gap closed whole draws no edge of its own: a contour drawn through an open mesh
-   * stepped and fringed under the cut (the 263 critic's "dark stair-step fringes"). Absent: every gap stays open.
+   * stepped and fringed under the cut (the 263 critic's "dark stair-step fringes"). A `cell` of the whole image closes
+   * every gap (the fitted cover's cut-outs). Absent: every gap stays open.
    */
   readonly gaps?: { readonly tone: readonly [number, number, number]; readonly fill: readonly [number, number]; readonly cell: number };
 }

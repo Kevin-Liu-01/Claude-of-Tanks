@@ -2234,9 +2234,11 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Tex
         const S = NET_TEXTURE_PX;
         paintCutLeafCover(ctx, hctx, S, pal, seed);
         // (263, alphaCutTexture.ts) each flap shades the fabric round its foot and the fabric under the flaps darkens,
-        // so the cover reads in relief; straight alpha with its own mips keeps the cut-outs' edges free of black
+        // so the cover reads in relief; a flap cut right out leaves a dark pocket in the fabric under it, not a hole: a
+        // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
         const image = ctx.getImageData(0, 0, S, S);
-        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.72, occlusion: 2.6, radii: [3, 9] });
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.62, occlusion: 3.2,
+          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.38, pal.base[1] * 0.38, pal.base[2] * 0.36], fill: [0, 0], cell: S * S } });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
