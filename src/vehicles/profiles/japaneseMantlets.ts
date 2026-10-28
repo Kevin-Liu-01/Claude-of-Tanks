@@ -293,17 +293,18 @@ export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometr
   P.add('gunMountDark', cylZ(0.158, 0.02, seg), 0, 0, 0.56);
   P.add('gunMount', cylZ(0.11, 0.06, seg), 0, 0, 0.60);
   barrelSeal(P, 0.0775, 0.63, seg);
-  // the searchlight box on the mask's +x side: a cradle plate on the mask's face, the box (its foot at the bore, its top
-  // a little over the crown), its six lenses in a frame and the lid's seam
-  const lx = 0.445, ly = 0.226;
-  P.add('gunMount', box(0.30, 0.03, 0.16), lx - 0.10, -0.005, 0.40);                 // the cradle plate on the face
-  P.add('gunMount', box(0.56, 0.45, 0.30), lx, ly, 0.52);
-  P.add('gunMountDark', box(0.52, 0.41, 0.012), lx, ly, 0.672);
+  // the searchlight box beside the mask's +x edge, where the owner's model has it (263: 0.56 by 0.53 m, its centre 0.66
+  // m out and 0.18 m over the bore, its face 0.61 m ahead of the trunnion), carried on a cradle arm from the mask's face:
+  // its six lenses in a frame and the lid's seam
+  const lx = 0.66, ly = 0.175, lz = 0.467;
+  P.add('gunMount', box(0.20, 0.04, 0.18), 0.37, ly - 0.21, 0.40);                   // the cradle arm off the face
+  P.add('gunMount', box(0.56, 0.53, 0.28), lx, ly, lz);
+  P.add('gunMountDark', box(0.52, 0.49, 0.012), lx, ly, lz + 0.146);
   for (const c of [-1, 1]) for (const r of [-1, 0, 1]) {
-    P.add('gunMountGlass', markVehicleNightLens(box(0.21, 0.11, 0.012), 'headlight', { searchlight: true }), lx + c * 0.125, ly + r * 0.13, 0.68);
+    P.add('gunMountGlass', markVehicleNightLens(box(0.21, 0.12, 0.012), 'headlight', { searchlight: true }), lx + c * 0.125, ly + r * 0.145, lz + 0.154);
   }
-  P.add('gunMountDark', box(0.56, 0.012, 0.30), lx, ly + 0.175, 0.52);
-  for (const dx of [-0.16, 0.16]) P.add('gunMountDark', box(0.03, 0.02, 0.10), lx + dx, ly + 0.235, 0.50);
+  P.add('gunMountDark', box(0.56, 0.012, 0.28), lx, ly + 0.205, lz);
+  for (const dx of [-0.16, 0.16]) P.add('gunMountDark', box(0.03, 0.02, 0.10), lx + dx, ly + 0.275, lz - 0.02);
   publishFit(P, {
     shield: 'stb1-prototype-oval-mask', halfWidthM: seat.channelHalf, shieldHalfWidthM: seat.drumHalf,
     receiverR: seat.receiverR, drumR: seat.drumR, drumLow: seat.drumLow, stub: { r: seat.pinR },

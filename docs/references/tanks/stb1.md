@@ -96,7 +96,7 @@ than the model.
 | Turret | ring datum 1.59 at z +0.49; 18-station plan ±1.33, +1.49/−2.12; full belt at 0.08–0.27, sides rolling in above; crown flat at 0.71–0.72; bustle undercut from 0.6 of the plan at the foot | the same plan and ten rings (refined to 36 × 19); pivot (0, 1.60, 0.50), crown 2.31 |
 | Gun | bore 1.90 (0.29 over the ring), muzzle 4.11 ahead of the trunnion | trunnion (0, 0.29, 1.18) in the turret frame; tube 4.10 (STB-1), 3.91 (Type 74) |
 | Mask | an oval face about the bore across the turret front, ±0.55 wide, from the turret's foot nearly to its crown, a dark rim, a port either side of the bore | a 0.373 m drum in a 0.475 m channel and a domed oval face, its rim, two ports, a thick collar |
-| Searchlight | a six-lens box beside the mask at x +0.14..+0.73 in the render frame, its foot at the bore, its top level with the crown | the same side (x +0.165..+0.725), riding the gun |
+| Searchlight | a six-lens box beside the mask's +x edge, x +0.38..+0.94 in the render frame (263, re-read at the fixed registration; 262 read +0.14..+0.73), 1.80..2.33 high, its face at z 2.29 | 0.56 × 0.53 × 0.28 at (+0.66, bore +0.175), its face 0.61 ahead of the trunnion, riding the gun |
 
 Handedness (Main's 262 ruling: "put each kit item on the side the model shows", a per-tank placement, not a fleet
 x-flip): the model is in glTF chirality, and the first 262 build carried its kit over into the program frame
@@ -113,6 +113,29 @@ Height (Main's 262 ruling: the model's own proportions): **the sources' 2.25 m w
 model overrides.** At the model's proportions the crown stands at 2.31 m (ring datum 1.60, the 0.714 m shell) and the
 deck at 1.58. `dims.heightM` follows the Type 74's rule, the P95 combat height the geometry gate measures on the build:
 2.73 m, to the commander's station and its remote gun (the Type 74's is 2.83 m, to its cupola and M2).
+
+### Turret kit and engine deck (263, Main: "the kit where the model has it")
+
+The 262 kit stations were read off the model before its node-frame registration was fixed (the 115.63° yaw,
+`procedural-fidelity.html`), and that 25° skew stood every turret item inboard and aft and the engine deck 0.5 m aft.
+Re-read in the fixed frame (`~/cot-lanes/stb1-type74-evidence/hz/`: turret-frame height maps, cross-sections and
+overlays of the model's dense surface samples on the build's), turret frame (ring datum (0, 1.60, 0.50)) unless noted:
+
+| Item | Model (263) | Built |
+|------|-------------|-------|
+| Commander's station (−x) | an oval raised station 0.76 × 0.97 at its foot about (−0.39, −0.42), its crown 0.93 over the datum, 0.45 × 0.79 at the top | two oval tiers (0.38 × 0.49 and 0.31 × 0.45 half-axes at the foot), crown 0.92, vision blocks round the foot |
+| Commander's sight head | x −0.58..−0.29, z −0.28..−0.12, top 0.976 | 0.29 × 0.10 × 0.16 at (−0.435, top 0.98, −0.20) |
+| Remote AA gun | not on the model (sourced: STB-1 and STB-2) | on a bracket on the station's inboard flank, its body top 1.14 |
+| Loader's hatch (+x) | round, x +0.28..+0.78, z −0.73..−0.06 | (+0.53, −0.40), ring 0.27 |
+| Gunner's sight head (−x) / round vent (+x) | (−0.48, 0.44) / (+0.56, 0.21) | the same |
+| Four-pane boxes | a 0.78 × 0.41 × 0.14 slab on each shoulder, z −0.08..+0.70, its face at 45°, toed in 15° with the shell, two rows of two panes | the same, seated by the shell's flank 0.42 up |
+| Smoke dischargers | three 0.42 m tubes in a column on a bracket on each rear side, pointing (±0.42, 0.37, 0.83), the top tip at (±1.26, 0.77, −0.46), 0.155 m apart | the same (one `smokeBank` fitting per side, turned into the column) |
+| Whips | upright at (±0.99, −1.50), tips 1.55 over the datum | the same |
+| Rear roof vents / rear rail | one grille 0.9 across at z −1.65 / a rail 1.50 across 0.12 behind the bustle's face at 0.34–0.52 | two vents 0.44 wide at ±0.235, z −1.64 / the same |
+| Engine deck (hull frame) | a three-panel grille 0.90 wide at z −1.25..−2.57, narrow grilles at x ±0.80..1.00 from z −1.00 to −2.25, the sponson items from z −1.00 to −2.45 | the same, a hinged access plate ahead of the large grille at z −1.13 |
+
+Seen head-on and from the side beside the model, the turret now differs only by the sourced remote gun (its body 0.14–0.35 m
+over the model's station).
 
 Conflicts between the model and the sources, settled for the model (the owner's instruction):
 

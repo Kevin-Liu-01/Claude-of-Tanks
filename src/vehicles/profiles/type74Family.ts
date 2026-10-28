@@ -19,8 +19,9 @@
 //   - STB-1 (prototype, the model's own kit): the oval mask with its rim, two ports and six-lens searchlight box, a
 //     vertical rear plate over a raked lower plate, mesh-topped boxes on the rear sponsons and mesh-guarded silencers
 //     behind them, caged twin headlights and plain mudguards at the front corners, the raised octagonal driver's hatch,
-//     the commander's raised station with its remote gun, four-pane boxes on the turret's flanks, smoke dischargers on
-//     its rear sides and two mesh vents on its rear roof. Track: chevron single-pin.
+//     the commander's oval raised station with its sight head and remote gun, four-pane boxes lying on the turret's
+//     shoulders, three-tube smoke columns on its rear sides and two mesh vents on its rear roof, each where the model has
+//     it (263). Track: chevron single-pin.
 // Program frame (BUILD-STANDARD §A): +x is the vehicle's right, +z its front, metres; the turret frame's origin is the
 // ring datum at (0, 1.60, 0.50). The STB-1's handed kit stands on the side the owner's model shows it (Main's 262 ruling,
 // a per-tank placement, not a fleet flip): the model is in glTF chirality, so the commander's station, the gunner's
@@ -239,23 +240,25 @@ function addPrototypeHullKit(P: TankBuilderPort): void {
       P.add('hullGlass', box(0.11, 0.028, 0.012), px, roofY(pz) + 0.045, pz + 0.006, tilt, a, 0);
     }
   }
-  // ENGINE DECK: the large grille in its frame between two narrow ones, an access plate ahead of them
-  const grille = (x: number, w: number, panels: number) => {
-    const z0 = -2.02, z1 = -2.88, d = z0 - z1;
+  // ENGINE DECK, where the owner's model has it (263; the 262 stations were read before its yaw registration was fixed
+  // and stood 0.5 m aft): the large three-panel grille from z -1.25 to -2.57 between two long narrow ones running from
+  // the bustle's edge, a hinged access plate ahead of the large one
+  const grille = (x: number, w: number, z0: number, z1: number, panels: number) => {
+    const d = z0 - z1;
     P.add('hullDark', box(w - 0.04, 0.006, d - 0.04), x, DECK + 0.001, (z0 + z1) / 2);
     for (const dz of [-1, 1]) P.add('hull', box(w, 0.026, 0.04), x, DECK + 0.011, (z0 + z1) / 2 + dz * (d / 2 - 0.02));
     for (const dx of [-1, 1]) P.add('hull', box(0.04, 0.026, d - 0.08), x + dx * (w / 2 - 0.02), DECK + 0.011, (z0 + z1) / 2);
     for (let k = 1; k < panels; k++) P.add('hull', box(w - 0.08, 0.022, 0.03), x, DECK + 0.009, z0 - (d * k) / panels);
-    P.add('hullDetail', openRackGrid(w - 0.08, d - 0.08, 0.010, Math.round(w * 14), 12), x, DECK + 0.008, (z0 + z1) / 2);
+    P.add('hullDetail', openRackGrid(w - 0.08, d - 0.08, 0.010, Math.round(w * 14), Math.round(d * 14)), x, DECK + 0.008, (z0 + z1) / 2);
   };
-  grille(0, 0.84, 3);
-  for (const s of [-1, 1]) grille(s * 0.78, 0.20, 1);
-  P.add('hull', box(1.30, 0.016, 0.42), 0, DECK + 0.006, -1.72);
-  P.add('hullDark', box(1.30, 0.012, 0.02), 0, DECK + 0.006, -1.505);
+  grille(0, 0.90, -1.25, -2.57, 3);
+  for (const s of [-1, 1]) grille(s * 0.90, 0.20, -1.02, -2.24, 2);
+  P.add('hull', box(1.30, 0.016, 0.20), 0, DECK + 0.006, -1.13);
+  P.add('hullDark', box(1.30, 0.012, 0.02), 0, DECK + 0.006, -1.02);
   // the mesh-topped boxes standing on the rear sponsons, flush with the deck, and the silencers in mesh guards behind
   // them on the slopes, their outlets turned out
   for (const s of [-1, 1]) {
-    const x0 = DECK_EDGE, x1 = 1.53, z0 = -1.25, z1 = -2.55, top = DECK + 0.012;
+    const x0 = DECK_EDGE, x1 = 1.53, z0 = -1.02, z1 = -2.47, top = DECK + 0.012;
     // a wedge filling the space over the slope: its foot 2 cm into the plate, its top flush with the deck
     P.add('hull', sectionSolid([z1, z0].map((z) => {
       const right: SectionPoint[] = [[x0, slopeY(x0) - 0.02], [x1, slopeY(x1) - 0.02], [x1, top], [x0, top]];
@@ -361,6 +364,8 @@ function castTurretShell(P: TankBuilderPort, variant: Type74Variant): THREE.Buff
 interface ShellProbe {
   top(x: number, z: number): number;
   flank(side: number, y: number, z: number): number;
+  /** the bustle's rear face at (x, y): the shell's rearmost z there */
+  aft(x: number, y: number): number;
   dispose(): void;
 }
 
@@ -372,6 +377,7 @@ function shellProbe(shell: THREE.BufferGeometry): ShellProbe {
   return {
     top(x, z) { origin.set(x, 2, z); dir.set(0, -1, 0); return cast()?.y ?? CROWN; },
     flank(side, y, z) { origin.set(side * 3, y, z); dir.set(-side, 0, 0); return cast()?.x ?? side * 1.2; },
+    aft(x, y) { origin.set(x, y, -4); dir.set(0, 0, 1); return cast()?.z ?? -2.0; },
     dispose() { material.dispose(); },
   };
 }
@@ -440,78 +446,127 @@ function addProductionTurretKit(P: TankBuilderPort, at: ShellProbe): void {
   }
 }
 
+/** A geometry turned into the basis whose x, y and z axes are the given unit vectors (the frame its parts are drawn in) */
+function inBasis(geometry: THREE.BufferGeometry, x: THREE.Vector3, y: THREE.Vector3, z: THREE.Vector3): THREE.BufferGeometry {
+  return geometry.applyMatrix4(new THREE.Matrix4().makeBasis(x, y, z));
+}
+
+/** An elliptical tier of the commander's station: a cylinder stretched along z */
+function ovalTier(rTop: number, rBottom: number, h: number, zStretch: number): THREE.BufferGeometry {
+  return KIT.cylY(rTop, rBottom, h, 24).scale(1, 1, zStretch);
+}
+
 function addPrototypeTurretKit(P: TankBuilderPort, at: ShellProbe): void {
-  const { box, cylY, torus, periscope, openRackGrid } = KIT;
-  // the commander's raised station at -x (the model's side): a two-tier drum ringed with vision blocks, its sight box,
-  // the remote gun on its ring (VH.14: every drawn gun works)
+  const { box, cylY, cylZ, torus, periscope, openRackGrid } = KIT;
+  // 263 (Main: the STB-1's turret kit where the owner's model has it): every station below is measured on the model in
+  // the turret frame (docs/references/tanks/stb1.md "Turret kit"); the shell, mask and hull were already its own.
+  // The commander's raised station at -x: an oval two-tier station 0.76 by 0.97 m at its foot, its crown 0.23 m over the
+  // roof, its sight head at the front of the crown, vision blocks round the foot, and the remote AA gun (sourced: STB-1
+  // and STB-2; the model leaves it off) on a bracket on the station's inboard flank (VH.14: every drawn gun works).
   {
-    const x = -0.45, z = -0.55, y = at.top(x, z) - 0.02;
-    P.addCupola('turret', cylY(0.30, 0.33, 0.10, 20), x, y + 0.05, z);
-    P.addCupola('turret', cylY(0.25, 0.28, 0.08, 20), x, y + 0.14, z);
-    P.add('turretDark', torus(0.25, 0.014, 24), x, y + 0.18, z);
+    const x = -0.39, z = -0.45, y = at.top(x, z) - 0.02;
+    P.addCupola('turret', ovalTier(0.36, 0.38, 0.12, 1.28), x, y + 0.06, z);
+    P.addCupola('turret', ovalTier(0.25, 0.31, 0.12, 1.45), x, y + 0.18, z - 0.08);
+    P.add('turretDark', torus(0.20, 0.013, 24).scale(1, 1, 1.45), x, y + 0.24, z - 0.12);
     for (let i = 0; i < 8; i++) {
       const a = (i * Math.PI) / 4;
-      P.add('turretGlass', box(0.09, 0.05, 0.03), x + Math.sin(a) * 0.31, y + 0.075, z + Math.cos(a) * 0.31, 0, a, 0);
+      P.add('turretGlass', box(0.09, 0.05, 0.03), x + Math.sin(a) * 0.375, y + 0.07, z + Math.cos(a) * 0.48, 0, a, 0);
     }
-    P.addCupola('turret', box(0.30, 0.13, 0.22), x, y + 0.245, z + 0.04);
-    P.add('turretDark', box(0.22, 0.07, 0.022), x, y + 0.25, z + 0.155);
-    P.add('turretGlass', box(0.16, 0.045, 0.016), x, y + 0.25, z + 0.168);
+    const hz = -0.20, hy = y + 0.25;
+    P.addCupola('turret', box(0.29, 0.10, 0.16), -0.435, hy, hz);
+    P.add('turretDark', box(0.23, 0.055, 0.022), -0.435, hy + 0.005, hz + 0.08);
+    P.add('turretGlass', box(0.17, 0.035, 0.016), -0.435, hy + 0.005, hz + 0.093);
+    P.add('turretDetail', box(0.10, 0.05, 0.16), x + 0.36, y + 0.15, z - 0.10);
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.82, elev: 0.06,
-      shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110, working: true, ridingCradle: true });
-    mg.position.set(x + 0.20, y + 0.18, z - 0.06);
+      shield: false, ammo: true, seed: 1110, working: true, ridingCradle: true });
+    mg.position.set(x + 0.40, y + 0.17, z - 0.10);
     P.turretG.add(mg);
   }
-  // the loader's round hatch at +x, its ring, lid and hinge, a periscope ahead of it
+  // the loader's round hatch at +x, its ring, lid and hinge, a periscope at its inboard front corner
   {
-    const x = 0.45, z = -0.25, y = at.top(x, z) - 0.015;
+    const x = 0.53, z = -0.40, y = at.top(x, z) - 0.015;
     P.add('turret', cylY(0.25, 0.27, 0.06, 20), x, y + 0.03, z);
     P.add('turret', cylY(0.22, 0.22, 0.04, 20), x, y + 0.08, z);
     P.add('turretDark', torus(0.235, 0.012, 24), x, y + 0.06, z);
     P.add('turretDetail', box(0.06, 0.05, 0.16), x - 0.24, y + 0.08, z);
-    P.snapGroup('stb1-loader-periscope', () => periscope(P, 'turretDetail', x - 0.05, at.top(x - 0.05, 0.18) + 0.03, 0.18, -0.2), { reachM: 0.10, mode: 'down' });
+    P.snapGroup('stb1-loader-periscope', () => periscope(P, 'turretDetail', 0.24, at.top(0.24, -0.02) + 0.03, -0.02, -0.2), { reachM: 0.10, mode: 'down' });
   }
   // the gunner's square sight head forward at -x and the small round vent forward at +x
   {
-    const x = -0.40, z = 0.40, y = at.top(x, z);
+    const x = -0.48, z = 0.44, y = at.top(x, z);
     P.add('turret', box(0.20, 0.12, 0.20), x, y + 0.03, z);
     P.add('turretDark', box(0.16, 0.05, 0.02), x, y + 0.055, z + 0.10);
     P.add('turretGlass', box(0.12, 0.03, 0.012), x, y + 0.055, z + 0.112);
-    const vy = at.top(0.36, 0.25);
-    P.add('turret', cylY(0.09, 0.11, 0.07, 14), 0.36, vy + 0.015, 0.25);
-    P.add('turretDark', cylY(0.06, 0.06, 0.01, 14), 0.36, vy + 0.052, 0.25);
+    const vx = 0.56, vz = 0.21, vy = at.top(vx, vz);
+    P.add('turret', cylY(0.11, 0.13, 0.07, 14), vx, vy + 0.015, vz);
+    P.add('turretDark', cylY(0.075, 0.075, 0.01, 14), vx, vy + 0.052, vz);
   }
-  // the two mesh vents on the rear roof
+  // the two mesh vents side by side over the rear roof, 0.9 m across at z -1.65
   for (const s of [-1, 1]) {
-    const x = s * 0.27, z = -1.40, y = Math.min(at.top(x - 0.18, z), at.top(x + 0.18, z), at.top(x, z - 0.16), at.top(x, z + 0.16));
-    P.add('turret', box(0.42, 0.04, 0.36), x, y + 0.008, z);
-    P.add('turretDark', box(0.36, 0.006, 0.30), x, y + 0.029, z);
-    P.add('turretDetail', openRackGrid(0.36, 0.30, 0.008, 9, 8), x, y + 0.032, z);
+    const x = s * 0.235, z = -1.64, y = Math.min(at.top(x - 0.21, z), at.top(x + 0.21, z), at.top(x, z - 0.15), at.top(x, z + 0.15));
+    P.add('turret', box(0.44, 0.04, 0.30), x, y + 0.008, z);
+    P.add('turretDark', box(0.38, 0.006, 0.24), x, y + 0.029, z);
+    P.add('turretDetail', openRackGrid(0.38, 0.24, 0.008, 9, 7), x, y + 0.032, z);
   }
-  // the four-pane boxes on the flanks, the smoke dischargers on the rear sides, the antennas, the rear rail
+  // the four-pane boxes lying on the shoulders ahead of the ring, the smoke dischargers' columns behind them, the
+  // antennas at the rear corners
   for (const s of [-1, 1]) {
-    const y = 0.25, z = -0.22, roll = s * 0.30;
-    const nx = Math.cos(roll) * s, ny = Math.sin(Math.abs(roll)), ux = -Math.sin(roll), uy = Math.cos(roll);
-    const cx = at.flank(s, y, z) + s * 0.035;
-    P.addEquipment('turret', box(0.11, 0.29, 0.60), cx, y, z, 0, 0, roll);
-    for (const dy of [-0.068, 0.068]) for (const dz of [-0.14, 0.14]) {
-      P.add('turretDark', box(0.012, 0.11, 0.24), cx + nx * 0.056 + ux * dy, y + ny * 0.056 + uy * dy, z + dz, 0, 0, roll);
+    // a 0.78 m slab across the 46 degree shoulder from z -0.08 to 0.70, toed in with the shell's plan, its outer face two
+    // rows of two panes; seated by the shell's flank 0.42 m up at its ends
+    {
+      const z0 = -0.08, z1 = 0.70, ys = 0.42, roll = 0.80, half = 0.07;
+      const xa = at.flank(s, ys, z0 + 0.06), xb = at.flank(s, ys, z1 - 0.06);
+      const along = new THREE.Vector3(xb - xa, 0, z1 - z0 - 0.12).normalize();
+      const normal = new THREE.Vector3(s * Math.cos(roll), Math.sin(roll), 0);
+      normal.addScaledVector(along, -normal.dot(along)).normalize();
+      const across = new THREE.Vector3().crossVectors(along, normal);
+      const c = new THREE.Vector3((xa + xb) / 2, ys, (z0 + z1) / 2).addScaledVector(normal, half);
+      P.addEquipment('turret', inBasis(box(0.14, 0.41, 0.78), normal, across, along), c.x, c.y, c.z);
+      for (const du of [-0.10, 0.10]) for (const dv of [-0.18, 0.18]) {
+        const p = c.clone().addScaledVector(normal, half + 0.004).addScaledVector(across, du).addScaledVector(along, dv);
+        P.add('turretDark', inBasis(box(0.012, 0.15, 0.32), normal, across, along), p.x, p.y, p.z);
+      }
+      for (const dv of [-0.36, 0, 0.36]) {
+        const p = c.clone().addScaledVector(normal, half + 0.006).addScaledVector(along, dv);
+        P.add('turretDetail', inBasis(box(0.014, 0.41, 0.03), normal, across, along), p.x, p.y, p.z);
+      }
     }
-    const sz = -1.10, sy = 0.475;
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, splay: s * 0.95, pitch: -0.35, seed: 1120 + s });
-    smoke.position.set(at.flank(s, sy, sz) - s * 0.02, sy, sz);
-    P.turretG.add(smoke);
+    // three 0.42 m tubes in a column on a bracket, pointing forward, out and up, their tips about z -0.45 and 1.28 m out
+    {
+      const tube = new THREE.Vector3(s * 0.42, 0.37, 0.83).normalize();
+      const column = new THREE.Vector3(s * 0.13, -0.99, 0);
+      column.addScaledVector(tube, -column.dot(tube)).normalize();
+      const third = new THREE.Vector3().crossVectors(tube, column);
+      const mid = new THREE.Vector3(s * 1.215, 0.553, -0.59);
+      const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, r: 0.04, len: 0.42, splay: 0, pitch: 0, arc: 0,
+        spacing: 0.155, base: false, seed: 1120 + s });
+      smoke.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(column, third, tube));
+      smoke.position.copy(mid);
+      P.turretG.add(smoke);
+      const foot = mid.clone().addScaledVector(tube, -0.23);
+      P.add('turretDetail', inBasis(box(0.46, 0.10, 0.12), column, third, tube), foot.x, foot.y, foot.z);
+      const cuff = mid.clone().addScaledVector(tube, -0.12);
+      P.add('turretDetail', inBasis(box(0.44, 0.012, 0.03), column, third, tube), cuff.x, cuff.y, cuff.z);
+      P.add('turretDetail', inBasis(cylZ(0.012, 0.30, 8), column, third, tube), foot.x + s * 0.03, foot.y - 0.06, foot.z + 0.08);
+    }
+    // the whips stand upright 0.99 m out at z -1.50, their tips 1.55 m over the ring datum
     P.snapGroup(`stb1-whip-${s < 0 ? 'left' : 'right'}`, () => {
-      const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.98, rake: s * 0.05, seed: 1140 + s });
-      whip.position.set(s * 0.74, at.top(s * 0.74, -1.62) - 0.01, -1.62);
+      const wy = at.top(s * 0.99, -1.50) - 0.01;
+      const whip = FITTINGS.antennaWhip({ mats: P.mats, h: Math.max(0.70, 1.55 - wy - 0.12), rake: 0, seed: 1140 + s });
+      whip.position.set(s * 0.99, wy, -1.50);
       P.turretG.add(whip);
     }, { reachM: 0.10, mode: 'down' });
     KIT.liftEye(P, 'turretDetail', s * 0.95, at.top(s * 0.95, -1.15), -1.15, s * 0.4);
   }
-  // the rear rail round the bustle's face, its returns into the face
-  const zr = -2.30, rails = [0.27, 0.50] as const;
-  for (const y of rails) P.add('turretDetail', box(1.30, 0.025, 0.025), 0, y, zr);
-  for (const s of [-1, 1]) for (const y of rails) P.add('turretDetail', box(0.025, 0.025, 0.26), s * 0.64, y, zr + 0.12);
-  for (let k = 0; k <= 4; k++) P.add('turretDetail', box(0.022, rails[1] - rails[0], 0.022), -0.64 + k * 0.32, (rails[0] + rails[1]) / 2, zr);
+  // the rear rail 0.12 m behind the bustle's face, 1.50 m across, its returns into the face
+  const xr = 0.75, rails = [0.34, 0.52] as const;
+  const zr = Math.min(...rails.map((y) => at.aft(0, y))) - 0.12;
+  for (const y of rails) P.add('turretDetail', box(2 * xr, 0.025, 0.025), 0, y, zr);
+  for (const s of [-1, 1]) for (const y of rails) {
+    const zf = at.aft(s * xr, y) + 0.015;
+    P.add('turretDetail', box(0.025, 0.025, zf - zr), s * xr, y, (zr + zf) / 2);
+  }
+  for (let k = 0; k <= 4; k++) P.add('turretDetail', box(0.022, rails[1] - rails[0], 0.022), -xr + k * (xr / 2), (rails[0] + rails[1]) / 2, zr);
   P.decal('turret', 'number', 'STB-1', 0.18, [at.flank(-1, 0.15, -0.80) - 0.004, 0.15, -0.80], -Math.PI / 2, 0, -0.10);
 }
 
