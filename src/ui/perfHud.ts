@@ -280,11 +280,13 @@ const FACT_GROUPS: readonly FactGroup[] = [
    but for its controls: a battle press goes through it. (Its rows set close: with the QA actions it stood 846 px tall at
    1920x1080, over the minimap's title.) */
 const PERF_HUD_CSS = `
-#cot-perfhud{position:fixed;top:12px;right:12px;z-index:var(--z-menu);width:min(420px,calc(100vw - 24px));
-  max-height:calc(var(--cot-viewport-height,100dvh) - 24px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain;
-  color:var(--ink-1);background:var(--hud-plate-strong);pointer-events:none;scrollbar-width:thin}
+/* (a column: the head, the facts and the actions, the facts scrolling where the panel is capped; capped above the minimap
+   where the map stands under it, --ph-max: at 1920x1080 and below it covered the map's title and first row) */
+#cot-perfhud{position:fixed;top:12px;right:12px;z-index:var(--z-menu);display:flex;flex-direction:column;width:min(420px,calc(100vw - 24px));
+  max-height:min(var(--ph-max,100dvh),calc(var(--cot-viewport-height,100dvh) - 24px));box-sizing:border-box;overflow:hidden;
+  color:var(--ink-1);background:var(--hud-plate-strong);pointer-events:none}
 #cot-perfhud *{box-sizing:border-box}
-#cot-perfhud .ph-head{position:sticky;top:0;z-index:var(--z-lift);display:flex;align-items:center;gap:var(--s2);min-height:52px;
+#cot-perfhud .ph-head{flex:none;display:flex;align-items:center;gap:var(--s2);min-height:52px;
   padding:2px 2px 2px var(--s4);background:var(--hud-plate-strong);border-bottom:1px solid var(--line-2)}
 #cot-perfhud .ph-title{flex:1 1 auto;min-width:0;margin:0;font:700 var(--fs-14)/1.2 var(--font-ui);letter-spacing:var(--track-label-s);
   text-transform:uppercase;color:var(--ink-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -293,8 +295,12 @@ const PERF_HUD_CSS = `
 #cot-perfhud .ph-mobile-toggle{display:none}
 #cot-perfhud .ph-mobile-toggle svg{transition:transform var(--dur-fast) var(--cot-ease-out)}
 #cot-perfhud.mobile-expanded .ph-mobile-toggle svg{transform:rotate(180deg)}
-#cot-perfhud .ph-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:var(--s5);padding:var(--s1) var(--s4) var(--s3);
-  grid-template-areas:"frame render" "frame memory" "quality quality" "simulation world" "network world" "shadows shadows" "actions actions"}
+#cot-perfhud .ph-grid{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:var(--s5);padding:var(--s1) var(--s4) var(--s3);
+  grid-template-areas:"frame render" "frame memory" "quality quality" "simulation world" "network world" "shadows shadows"}
+/* (the facts take the pointer only while they scroll: elsewhere a press goes through the panel to the page under it,
+   the Garage's Deploy under a ?debug=1 panel at 1280x720, a battle's free cursor) */
+#cot-perfhud.ph-scrolls .ph-grid{pointer-events:auto}
 #cot-perfhud .ph-group{min-width:0;padding:var(--s2) 0 var(--s1);border-top:1px solid var(--line-1)}
 #cot-perfhud .ph-group[data-group=frame],#cot-perfhud .ph-group[data-group=render]{border-top:0}
 ${FACT_GROUPS.map(({ id }) => `#cot-perfhud .ph-group[data-group=${id}]{grid-area:${id}}`).join('\n')}
@@ -310,14 +316,15 @@ ${FACT_GROUPS.map(({ id }) => `#cot-perfhud .ph-group[data-group=${id}]{grid-are
   color:var(--ink-1);text-align:right;overflow-wrap:anywhere}
 #cot-perfhud.has-error .ph-group dd{color:var(--ink-3)}
 /* (the actions share the row by their words and wrap whole: a third of the panel each cut "Copy summary" at 1920) */
-#cot-perfhud .ph-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:var(--s2);padding-top:var(--s2);
-  border-top:1px solid var(--line-1);pointer-events:auto}
+#cot-perfhud .ph-actions{flex:none;display:flex;flex-wrap:wrap;gap:var(--s2);padding:var(--s2) var(--s4) var(--s3);
+  border-top:1px solid var(--line-2);pointer-events:auto}
 #cot-perfhud .ph-actions .cot-c-btn{flex:1 1 auto;padding-inline:var(--s3)}
 #cot-perfhud .ph-action-status{flex:1 0 100%;min-height:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-ui);
   color:var(--text-ok);text-align:right}
 #cot-perfhud .ph-action-status.error{color:var(--text-danger)}
 body[data-cot-width='phone'] #cot-perfhud .ph-grid{grid-template-areas:none}
-body[data-cot-width='phone'] #cot-perfhud :is(.ph-group,.ph-actions){grid-area:auto}
+body[data-cot-width='phone'] #cot-perfhud .ph-group{grid-area:auto}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) #cot-perfhud:not(.mobile-expanded) .ph-actions{display:none}
 @media (prefers-reduced-motion:reduce){#cot-perfhud .ph-mobile-toggle svg{transition:none}}
 `;
 
@@ -414,7 +421,7 @@ export function createPerfHud({
     actionStatus.setAttribute('role', 'status');
     actionStatus.className = 'ph-action-status';
     actions.appendChild(actionStatus);
-    grid.appendChild(actions);
+    el.appendChild(actions);
 
     const setStatus = (message: string, error = false): void => {
       actionStatus.textContent = message;
@@ -450,6 +457,33 @@ export function createPerfHud({
     });
   }
   document.body.appendChild(el);
+  // The panel stops above the minimap where the map stands under it on the right (--ph-max): measured in the map's
+  // resize callbacks, where layout is already done, and on a window resize; the map is looked for at the 4 Hz paint
+  // until it exists (it is the battle's)
+  const MAP_GAP = 8;
+  let watchedMap: Element | null = null;
+  const fitAboveMap = (): void => {
+    const map = watchedMap?.isConnected ? watchedMap.getBoundingClientRect() : null;
+    const top = el.getBoundingClientRect().top;
+    const room = map && map.height > 0 && map.left > window.innerWidth / 2 && map.top > top ? Math.max(200, Math.floor(map.top - MAP_GAP - top)) : 0;
+    const value = room ? `${room}px` : '';
+    if (el.style.getPropertyValue('--ph-max') === value) return;
+    if (value) el.style.setProperty('--ph-max', value); else el.style.removeProperty('--ph-max');
+  };
+  const mapResize = typeof ResizeObserver === 'function' ? new ResizeObserver(fitAboveMap) : null;
+  const findMap = (): void => {
+    if (!mapResize || (watchedMap?.isConnected ?? false)) return;
+    const map = typeof document.querySelector === 'function' ? document.querySelector('.cot-minimap') : null;
+    if (!map || map === watchedMap) return;
+    if (watchedMap) mapResize.unobserve(watchedMap);
+    watchedMap = map;
+    mapResize.observe(map);
+  };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', () => { if (watchedMap) fitAboveMap(); });
+  // whether the facts scroll, read in their own resize callbacks (the body's and each group's)
+  const fitScroll = (): void => { el.classList.toggle('ph-scrolls', grid.scrollHeight > grid.clientHeight + 1); };
+  const bodyResize = typeof ResizeObserver === 'function' ? new ResizeObserver(fitScroll) : null;
+  if (bodyResize) for (const part of [grid, ...grid.children]) bodyResize.observe(part);
   const close = (): void => {
     if (onClose) onClose();
     else { visible = false; applyVisibility(); }
@@ -492,7 +526,7 @@ export function createPerfHud({
   let captureHidden = false;
   const applyVisibility = () => {
     const painted = visible && !captureHidden;
-    el.style.display = painted ? 'block' : 'none';
+    el.style.display = painted ? '' : 'none';
     document.body.classList.toggle('cot-debug-hud', painted);
   };
   applyVisibility();
@@ -577,7 +611,7 @@ export function createPerfHud({
       lastDom = now;
       const s = stats();
       if (!s) return;
-      if (visible && !captureHidden) renderDashboard(s);
+      if (visible && !captureHidden) { findMap(); renderDashboard(s); }
     },
     toggle() { visible = !visible; applyVisibility(); },
     setVisible(next: boolean) { visible = next; applyVisibility(); },

@@ -174,7 +174,7 @@ try {
 
   // Switching visibility does not alter collection or ordinary paint cadence.
   hud.setCaptureHidden(false);
-  assert.equal(hud.el.style.display, 'block');
+  assert.equal(hud.el.style.display, '', 'shown, it takes its sheet\'s column');
   update(hud, 145000);
   assert.equal(paints, 1);
   assert.deepEqual(['calls', 'tris', 'programs'].map((id) => fact(hud.el, id)), ['2', '13', '2'], 'the completed frame\'s draws');
