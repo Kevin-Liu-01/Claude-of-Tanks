@@ -332,11 +332,14 @@ function buildTurret(P: TankBuilderPort): void {
 // Gun: the deep mantlet that fills the slot and pitches with the gun, the coax above-left of it, and the 120 mm L55A1.
 function buildMainGun(P: TankBuilderPort): void {
   const { gun } = owners(P);
-  const mantlet = sectionSolid(([[1.40, 1.81, 2.42], [1.72, 1.80, 2.42], [2.12, 1.85, 2.385], [2.30, 1.875, 2.22],
-    [2.40, 1.875, 2.17]] as const)
+  // the mantlet's lower edge stands 4 cm over the oracle's (1.80): there it rode 12-16 mm over the hull deck once the
+  // turret left the glacis trough, a standing mount conflict at yaw 6-48 (gun-depression-sweep); 1.84 still closes the
+  // slot under the turret floor (1.86 at the slot face) and clears the deck by 6 cm at level
+  const mantlet = sectionSolid(([[1.40, 1.85, 2.42], [1.72, 1.84, 2.42], [2.12, 1.89, 2.385], [2.30, 1.915, 2.22],
+    [2.40, 1.915, 2.17]] as const)
     .map(([z, bottom, top]) => ({ z, ring: [[-0.42, bottom], [0.42, bottom], [0.42, top], [-0.42, top]] as SectionPoint[] })));
   gun('gunMount', mantlet);
-  gun('gunMountDark', box(0.86, 0.04, 0.05), 0, 1.86, 2.39);
+  gun('gunMountDark', box(0.86, 0.04, 0.05), 0, 1.90, 2.39);
   // the boresight port on the raked face and the shroud strip over the root jacket ahead of the mantlet
   gun('gunMountDark', box(0.10, 0.02, 0.16), 0.12, 2.31, 2.22, 0.73, 0, 0);
   gun('gunMount', box(0.40, 0.05, 0.22), 0, 2.145, 2.50);

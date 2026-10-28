@@ -152,6 +152,14 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   5-30 cm in z at heights 0.6-1.1).
 - Receipt `challenger3TdGun.selftest.mjs` (gunSlotProbe): PASS on the TD; the 15.0 mm minimum it first read was its own
   face cutoff, moved to 3 cm (the mantlet passes through the face).
+- r5 (blind critic 1, 6.3/10): the mantlet's raked face and port, the slot cover and its hinge lugs, the shroud strip,
+  the gunner's sight seated, the cupola's D-plate and dome, fanned dischargers, decals and the bustle roof plate off,
+  fender lockers, tow cables, mudguard boxes, skirt joints and grilles on.
+- r6 (receipts): the ghillie fleet receipt found a rear right skirt drape 2.0 cm off the armour. Under the bustle's sweep
+  the suit ties its drapes low, and they hung plumb from the rear skirt rail's line (2.4 cm proud). The rail now stands
+  flush (3 mm proud). The first depression sweep (no suit) read a standing mount conflict at yaw 6-48: the mantlet's
+  lower edge (the oracle's 1.80) rode 12-16 mm over the hull deck once off the glacis trough, so no depression stop
+  could cure it. The edge now stands at 1.84 (6 cm over the deck at level, still under the turret floor at the slot).
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),
