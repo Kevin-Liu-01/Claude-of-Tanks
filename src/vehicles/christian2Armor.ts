@@ -35,7 +35,7 @@ export const CHRISTIAN2_TURRET = Object.freeze({
  */
 export const CHRISTIAN2_PROTECTION = Object.freeze({
   glacis: { ke: 420, ce: 640, phys: 460 }, lowerFront: { ke: 250, ce: 300 }, side: 80, rear: 45, roof: 40,
-  skirtFore: { ke: 60, ce: 220 }, skirtAft: 8, cheek: { ke: 760, ce: 1100, phys: 700 }, mantlet: { ke: 800, ce: 1000 },
+  skirtFore: { ke: 60, ce: 220 }, skirtAft: 8, cheek: { ke: 760, ce: 1100, phys: 700 }, mantlet: { ke: 850, ce: 1000 },
   turretSide: { ke: 300, ce: 420 }, bustleSide: { ke: 160, ce: 220 }, turretRear: 60, turretRoof: 40,
 });
 
@@ -74,7 +74,7 @@ export function christian2Armor(): ArmorEnvelope {
     boundingRadiusM: 6.1, // the muzzle 5.71 m ahead, 2.0 m up
     turretPivot: [Td.pivot[0], Td.pivot[1], Td.pivot[2]],
     gunPivot: [Td.gunLocal[0], Td.gunLocal[1], Td.gunLocal[2]],
-    gunBarrel: { lengthM: Td.barrelLengthM, radiusM: 0.1 }, // the thermal sleeve's 0.10 m
+    gunBarrel: { lengthM: Td.barrelLengthM, radiusM: 0.1025 }, // the thermal sleeve's radius (the rig census measures it)
     hullPlates: hull.hullPlates, turretPlates, modules, crew,
   };
 }

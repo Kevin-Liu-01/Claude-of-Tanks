@@ -42,7 +42,7 @@
         1.04
       ],
       "barrelLengthM": 4.29,
-      "barrelRadiusM": 0.1,
+      "barrelRadiusM": 0.1025,
       "pitchDeg": [
         -9,
         20
@@ -50,17 +50,17 @@
       "mainCaliberMm": 120,
       "weaponSystem": "conventional-cannon",
       "roofMachineGuns": 1,
-      "hullLengthM": 7.59,
+      "hullLengthM": 7.855,
       "widthM": 3.672,
-      "overallLengthM": 9.757,
+      "overallLengthM": 9.866,
       "tallestM": 3.866,
       "specDimensions": {
-        "hullLengthM": 7.59,
-        "overallLengthM": 9.757,
+        "hullLengthM": 7.855,
+        "overallLengthM": 9.866,
         "widthM": 3.672,
         "heightM": 2.47
       },
-      "silhouette": "A Leopard 2-pattern hull (7.25 m between its plates, 7.59 m over its fittings and stern box) on seven road wheels a side with four return rollers, heavy bolted skirt blocks forward and thin panels aft, carrying a long slab-sided turret in the Type 90 manner: two bolt-on frontal modules with chamfered outer corners framing a box mantlet, the gunner's armoured sight box on the right of the roof and the commander's panoramic head and vision-block cupola with a working 12.7 mm on the left, a stepped narrower bustle autoloader with blow-off panels, bins and a rear basket; a 120 mm L/44 with a thermal sleeve and evacuator; a permanent heavy field net with beech garnish over the turret, the decks and the skirts and three wraps on the tube. Roof 2.47 m, whips to 3.87 m."
+      "silhouette": "A Leopard 2-pattern hull (7.25 m between its plates, 7.855 m from the fenders' tips to the stern box) on seven road wheels a side with four return rollers, heavy bolted skirt blocks forward and thin panels aft, carrying a long slab-sided turret in the Type 90 manner: two bolt-on frontal modules with chamfered outer corners framing a box mantlet, the gunner's armoured sight box on the right of the roof and the commander's panoramic head and vision-block cupola with a working 12.7 mm on the left, a stepped narrower bustle autoloader with blow-off panels, bins and a rear basket; a 120 mm L/44 with a thermal sleeve and evacuator; a permanent heavy field net with beech garnish over the turret, the decks and the skirts and three wraps on the tube. Roof 2.47 m, whips to 3.87 m."
     }
   }
 }

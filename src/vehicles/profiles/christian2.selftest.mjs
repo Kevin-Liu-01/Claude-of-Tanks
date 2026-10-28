@@ -62,8 +62,9 @@ for (const quality of ['high', 'low']) {
     const hull = [];
     root.traverse((o) => { if (o.isMesh && !suit(o) && !under(o, 'rig_turret') && /^hull/.test(o.name)) hull.push(o); });
     const ray = new THREE.Raycaster();
-    for (const z of [-3.30, -2.90, -1.60, 0.20, 1.20, 2.10, 2.70, 3.10]) {
-      ray.set(new THREE.Vector3(0.30, 4, z), new THREE.Vector3(0, -1, 0));
+    // stations clear of the deck's fittings (the fan covers, louvres, ring race, hatch and splash board)
+    for (const [x, z] of [[1.10, -3.30], [1.10, -2.90], [0.30, -1.60], [1.20, 0.20], [1.20, 1.20], [0.30, 2.10], [0.30, 2.70], [0.30, 3.10]]) {
+      ray.set(new THREE.Vector3(x, 4, z), new THREE.Vector3(0, -1, 0));
       const hit = ray.intersectObjects(hull, false)[0];
       let want = H.deck[0][1];
       for (let i = 1; i < H.deck.length; i++) {

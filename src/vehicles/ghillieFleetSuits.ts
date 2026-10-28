@@ -369,7 +369,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   christian2: {
     id: 'christian2', seed: 2621, style: 'leafy', density: 2.4, leafScale: 0.96, boughShare: 0.5, foliageKind: 'beech',
     ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.93, hemFloorM: 0.85, clothClearsGunStops: true, cardsClearGunStops: true,
+    // 4 cm from the gun's stops: the clearance receipt also holds the recoiling parts 0.135 m back over the engine deck
+    fieldClearanceM: 0.04, maxHalfWidth: 1.93, hemFloorM: 0.85, clothClearsGunStops: true, cardsClearGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({
@@ -386,11 +387,15 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     hull: {
       top: [
         laid({ x0: -1.66, x1: 1.66, z0: -3.78, z1: -0.30, nx: 34, nz: 36, y: 1.82, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.66, x1: 1.66, z0: -0.30, z1: 3.40, nx: 34, nz: 38, y: 1.66, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+        // the glacis, a clear strip left ahead of the driver's periscopes
+        laid({ x0: -1.66, x1: 1.66, z0: -0.30, z1: 3.40, nx: 34, nz: 38, y: 1.66, holes: [rect(-0.80, -0.30, 2.30, 2.66)],
+          garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      // three long drapes a side from the sponson's wall: over the heavy fore blocks, amidships and aft over the panels
-      side: [...flanks(1.44, 3.16, 1.58, 0.66, 1.83, 41), ...flanks(-1.22, 1.38, 1.58, 0.62, 1.76, 47),
-        ...flanks(-3.56, -1.30, 1.58, 0.64, 1.76, 53)],
+      // three long overlapping drapes a side from the sponson's wall, their tops 13 cm under the deck's edge (the gun's
+      // low sweep over the sides at full depression stays clear of their garnish): over the heavy fore blocks, amidships
+      // and aft over the panels
+      side: [...flanks(1.36, 3.16, 1.50, 0.58, 1.86, 41), ...flanks(-1.40, 1.42, 1.50, 0.54, 1.78, 47),
+        ...flanks(-3.50, -1.10, 1.50, 0.56, 1.78, 53)],
     },
   },
   // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
