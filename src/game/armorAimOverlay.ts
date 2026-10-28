@@ -18,10 +18,9 @@
 
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
-import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
+import type { ArmorCollisionCell, ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
-import { armorSkinPanels } from './armorSkin.ts';
 import { zonePlates } from './armorZones.ts';
 import { ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
 
@@ -154,35 +153,39 @@ const distance = (a: readonly number[], b: readonly number[]): number => {
   return Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
 };
 
+/** A cell face as a sample candidate: its centroid, its area and its plate. */
+interface FaceSite { centroid: number[]; area: number; plate: unknown }
+
+/** The outward faces of a frame's cells (the slice caps two cells share are left out) as sample candidates. */
+function faceSites(cells: readonly ArmorCollisionCell[] | undefined): FaceSite[] {
+  const sites: FaceSite[] = [];
+  for (const cell of cells || []) {
+    for (const face of cell.faces) {
+      if (face.internal || face.indices.length < 3) continue;
+      const [a, b, c] = face.indices.map((index) => cell.vertices[index]);
+      const u = sub(b, a), v = sub(c, a);
+      const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
+      const area = Math.sqrt(cx * cx + cy * cy + cz * cz) / 2;
+      if (!(area > 1e-6)) continue;
+      sites.push({ centroid: [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3], area, plate: face.plate });
+    }
+  }
+  return sites;
+}
+
 /**
- * A zone's samples: the centroids of the largest pieces of the cells' skin (sim's armorSkin: the surface a shell meets
- * first) the authority gives its plate, spread (each the farthest from those taken), weighted by the area nearest
- * each; a plate no face takes is sampled at its outline's centre.
+ * A zone's samples: the centroids of the largest cell faces the authority gives its plate, spread (each the farthest
+ * from those taken), weighted by the area nearest each; a plate no face takes is sampled at its outline's centre. A face
+ * inside the cells' union (another slice in front of it) is a sample that sees other armour first: it counts only when
+ * none of the zone's is clear.
  */
 function zoneSamples(
-  skin: ReturnType<typeof armorSkinPanels>,
+  sites: readonly FaceSite[],
   plate: unknown,
   outline: readonly (readonly number[])[],
   turret: boolean,
 ): ZoneSamples {
-  const pieces: Array<{ centroid: number[]; area: number }> = [];
-  for (const panel of skin) {
-    if (panel.plate !== plate) continue;
-    for (const piece of panel.pieces) {
-      let area = 0;
-      const centroid = [0, 0, 0];
-      for (let i = 1; i + 1 < piece.length; i++) {
-        const u = sub(piece[i], piece[0]), v = sub(piece[i + 1], piece[0]);
-        const cx = u[1] * v[2] - u[2] * v[1], cy = u[2] * v[0] - u[0] * v[2], cz = u[0] * v[1] - u[1] * v[0];
-        const triangle = Math.sqrt(cx * cx + cy * cy + cz * cz) / 2;
-        area += triangle;
-        for (let axis = 0; axis < 3; axis++) centroid[axis] += triangle * (piece[0][axis] + piece[i][axis] + piece[i + 1][axis]) / 3;
-      }
-      if (!(area > 1e-6)) continue;
-      for (let axis = 0; axis < 3; axis++) centroid[axis] /= area;
-      pieces.push({ centroid, area });
-    }
-  }
+  const pieces = sites.filter((site) => site.plate === plate);
   if (!pieces.length) {
     const centre = [0, 0, 0];
     for (const point of outline) for (let axis = 0; axis < 3; axis++) centre[axis] += point[axis] / outline.length;
@@ -244,12 +247,12 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   } else {
     turretMin.set(1, 1, 1); turretMax.set(-1, -1, -1);
   }
-  const hullSkin = armorSkinPanels(armor.collisionShells?.hull);
-  const turretSkin = armorSkinPanels(turretCells);
+  const hullSites = faceSites(armor.collisionShells?.hull);
+  const turretSites = faceSites(turretCells);
   const samples = zones.map((zone, index) => {
     const onTurret = index >= hull.length;
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
-    return zoneSamples(onTurret ? turretSkin : hullSkin, zone.plate, outline, onTurret);
+    return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
   return { table, hullZones: hull.length, turretZones: turret.length, turretMin, turretMax, samples };
 }
