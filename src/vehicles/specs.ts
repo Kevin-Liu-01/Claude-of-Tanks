@@ -395,11 +395,8 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
 
   kv2: {
     id: 'kv2', name: 'KV-2', nation: 'USSR', era: 'ww2', role: 'heavy',
-    community: {
-      author: 'Comrade1280',
-      source: 'https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296',
-      license: 'CC-BY 4.0',
-    },
+    // 262: the Comrade1280 print credit is retired; the build follows historical references
+    // (docs/references/tanks/kv2.md keeps the print's provenance, docs/ATTRIBUTION.md its record)
     hp: 1250,
     enginePowerHp: 600, weightTons: 52, topSpeedKmh: 34, reverseSpeedKmh: 7,
     hullTraverseDegS: 20,
@@ -416,13 +413,15 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
         shell('G-530 semi-AP', 'AP', 152, 130, 114, 760, 436),
       ],
     },
-    dims: { hullLengthM: 6.95, overallLengthM: 6.95, widthM: 3.32, heightM: 3.25 },
-    // 230 gun-barrel alignment: the turret ring, trunnion and M-10T tube where profiles/soviet-heavy.ts seats them
-    // (rig_turret 0,1.67,0.32; rig_gun 0,0.91,0.68; mouth at 2.37, drawn tube 125 mm). The old placeholder frame put
-    // the combat turret 0.42 m aft and the barrel 0.43 m under the drawn one (tools/gun-barrel-align-census.mjs).
+    // 262 historical rebuild (docs/references/tanks/kv2.md): the KV-1 hull is 6.675 m (ru.wikipedia KV-1); 3.32 m over
+    // the tracks, 3.25 m to the turret roof. Overall 6.85 m with the muzzle 0.17 m past the bow: ru.wikipedia's KV-2 table
+    // gives 6.95, the five-view drawing and the museum photographs 0.1-0.2 m of muzzle past the nose.
+    dims: { hullLengthM: 6.675, overallLengthM: 6.85, widthM: 3.32, heightM: 3.25 },
+    // the ring at z 0.32 on the 1.67 seat; the M-10T trunnion 0.10 m behind the turret's front plate (turret-local 0,
+    // 1.00, 0.95 = world 0, 2.67, 1.27), the tube 2.20 m to the mouth, 0.11-0.13 m in radius (profiles/soviet-heavy.ts KV2)
     armor: communityArmor({
-      lenM: 6.95, widM: 3.32, hgtM: 3.25, turretPivot: [0, 1.67, 0.32],
-      gunPivot: [0, 0.91, 0.68], barrelLenM: 2.37, barrelRadM: 0.125,
+      lenM: 6.675, widM: 3.32, hgtM: 3.25, turretPivot: [0, 1.67, 0.32],
+      gunPivot: [0, 1.00, 0.95], barrelLenM: 2.20, barrelRadM: 0.12,
       frontMm: 75, sideMm: 75, rearMm: 60, roofMm: 30,
       tFrontMm: 75, tSideMm: 75, tRearMm: 75, mantletMm: 110,
     }),

@@ -499,7 +499,7 @@ single-mesh print models ship as fixed-gun TD-class vehicles.
 
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
-| KV-2 (`kv2`) | KV-2 heavy tank 1940 | Comrade1280 (https://sketchfab.com/comrade1280) | https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296 (via GitHub mirror Tsukimi125/Kaiser-Ray-Tracer, full bundle with original license.txt) | CC-BY 4.0 | `public/models/tanks/community/kv2-full-comrade1280.glb` (583k→150k tris, textures capped 2K/1K; named hull/turret/tracks/wheels nodes — turret yaw articulates) |
+| KV-2 (`kv2`) | KV-2 heavy tank 1940 | Comrade1280 (https://sketchfab.com/comrade1280) | https://sketchfab.com/3d-models/kv-2-heavy-tank-1940-ba8b84d78c0a42038cf2eaa4210ef296 (via GitHub mirror Tsukimi125/Kaiser-Ray-Tracer, full bundle with original license.txt) | CC-BY 4.0 | `public/models/tanks/community/kv2-full-comrade1280.glb` (583k→150k tris, textures capped 2K/1K; named hull/turret/tracks/wheels nodes — turret yaw articulates) History: the measurement oracle of the procedural `kv2` until release 261; since release 262 the KV-2 follows historical references (docs/references/tanks/kv2.md) and its spec carries no credit for this print, which remains a local comparison file only. |
 
 Wave-2 losing candidates (all other wave-2
 `public/models/community-candidates/` downloads) were deleted after judging.
@@ -712,7 +712,8 @@ bergman-derived siblings above.
   `npm run tank:assets` (tools/icons-page.html studio scene). The nine
   `m1a2_*` assets are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
-  community-vehicle icons (`strv103_*`, plus wave 2: `kv2_*` — the other wave
+  community-vehicle icons (`strv103_*`, plus wave 2: `kv2_*` until release 261 — since 262 they render the
+  history-built first-party KV-2 — the other wave
   1-3 community-study icons retired with their hulls on 2026-09-23 — plus user
   drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
   (QUARANTINE — see the section below), plus user drops wave 2 (recovered):

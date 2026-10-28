@@ -79,7 +79,7 @@
   "kf51_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5392de0c924370f9","gun":"969cbdc09b5b2bc8"}},
   "kf51_u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21a5d620e11605dc","gun":"c7ba016a6fdc51b5"}},
   "kurganets25": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6f20072aa5fe66fb","gun":"3f89ae065c2ed22d"}},
-  "kv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ca5046caa3ea194e","gun":"d85e7d47a8252d2e"}},
+  "kv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0af2fd90d38bbff1","gun":"30af178f72653641"}},
   "leclerc_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"149a1efe782aaf95","gun":"422f590d1df206cd"}},
   "leclerc_s2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b4a7a1b303010d70","gun":"4714d5530cffa2e6"}},
   "leclerc_sxxi": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f0e59330a8b4309f","gun":"31f28e9739014f86"}},
