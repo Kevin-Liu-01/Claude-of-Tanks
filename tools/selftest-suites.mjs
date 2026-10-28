@@ -466,6 +466,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/sovietChevronEraFleet.selftest.mjs',
     'src/vehicles/profiles/t84OplotTurret.selftest.mjs',
     'src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs',
+    'src/vehicles/profiles/t64Foundation.selftest.mjs',
+    'src/vehicles/profiles/t64GunClearance.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',

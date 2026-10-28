@@ -800,6 +800,9 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_dozer: 'paint_type10_dozer',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
+  // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
+  t64bm1m: 'sig_ua_t64bv',
+  t64b1v_2022: 'sig_ua_t64bv',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

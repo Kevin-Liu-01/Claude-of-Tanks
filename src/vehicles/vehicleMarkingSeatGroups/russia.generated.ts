@@ -196,5 +196,54 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "maximumSurfaceErrorM": 0.0028796
       }
     ]
+  },
+  "t64bv": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          1.0999354,
+          0.4845676,
+          -0.3975522
+        ],
+        "quaternion": [
+          -0.2331614,
+          0.7499911,
+          0.1837598,
+          0.591085
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64bv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0177485
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.22,
+        "pos": [
+          0.8635237,
+          0.4847909,
+          -0.8306084
+        ],
+        "quaternion": [
+          -0.3325501,
+          0.8129878,
+          0.1809608,
+          0.4423963
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "t64bv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0133395
+      }
+    ]
   }
 });

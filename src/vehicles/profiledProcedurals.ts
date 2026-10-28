@@ -117,6 +117,8 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   // remains in this Russia-order bridge.
   type59: CHINA_PROFILES.type59,
   t84: T80_PROFILES.t84,
+  // 262: the true-T-64 T-64BV (t64KontaktFamily.ts), appended so every earlier key keeps its place
+  t64bv: RUSSIA_RESIDUE_PROFILES.t64bv,
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {

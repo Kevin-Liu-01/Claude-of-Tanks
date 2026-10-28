@@ -2902,6 +2902,25 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
+  // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
+  // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
+  t64bm1m: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64bv: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64b1v_2022: () => [
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  pt64_tur: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },

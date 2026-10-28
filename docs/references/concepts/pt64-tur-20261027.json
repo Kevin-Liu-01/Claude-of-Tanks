@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-10-27",
+    "request": "lets create a polish t64 variannnt and add it too",
+    "scope": "One original Polish game concept, the PT-64 Tur, on the true T-64 base of release 262 (profiles/t64Foundation.ts). Poland never fielded the T-64; the Tur is a what-if T-64B1 through the PT-91 Twardy programme."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "dimensionToleranceFraction": 0.03,
+  "designs": {
+    "pt64_tur": {
+      "id": "pt64_tur",
+      "test": "src/vehicles/profiles/t64Foundation.selftest.mjs",
+      "ring": [
+        0,
+        1.4,
+        -0.1
+      ],
+      "gunLocal": [
+        0,
+        0.31300000000000017,
+        0.72
+      ],
+      "barrelLengthM": 5.2299999999999995,
+      "barrelRadiusM": 0.1,
+      "pitchDeg": [
+        -6,
+        14
+      ],
+      "mainCaliberMm": 125,
+      "weaponSystem": "conventional-cannon",
+      "roofMachineGuns": 1,
+      "hullLengthM": 6.54,
+      "hullWidthM": 3.55,
+      "widthM": 3.544,
+      "overallLengthM": 9.69,
+      "tallestM": 3.658,
+      "specDimensions": {
+        "hullLengthM": 6.54,
+        "overallLengthM": 9.225,
+        "widthM": 3.55,
+        "heightM": 2.17
+      },
+      "silhouette": "Polish game concept on the true T-64 hull, six-wheel running gear and cast turret: framed ERAWA-2 Krata grids on the glacis, two welded cheek boxes a side and the leading skirts, Tellur 2 x 12 smoke, Obra-3 heads, a Drawa-T thermal head, the remote 12.7 mm and a rear stowage box"
+    }
+  }
+}

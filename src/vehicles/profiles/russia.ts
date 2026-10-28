@@ -2,6 +2,7 @@ import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64BV1 } from './t64bvK1.ts';
+import { buildT64BV } from './t64KontaktFamily.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
 // Russia-modern family agent.
@@ -2416,6 +2417,7 @@ export const RUSSIA_PROFILES = {
   t55a: { build: buildT55A },
   t62_1975: { build: buildT62Obr1975 },
   t64bv1: { build: (P: TankBuilderPort) => buildT64BV1(P) },
+  t64bv: { build: (P: TankBuilderPort) => buildT64BV(P) },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.

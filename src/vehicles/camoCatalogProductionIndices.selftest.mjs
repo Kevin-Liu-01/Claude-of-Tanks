@@ -68,8 +68,9 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Release 262: the Christian II and its Danish tri-tone.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2'];
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
-// obr. 1975's Soviet stock).
-const ADDED_IN_DONOR_COAT = { t55a: 't62_1975' };
+// obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
+// 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
+const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

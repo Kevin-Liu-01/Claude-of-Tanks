@@ -94,13 +94,13 @@ export const FLEET_GROUP_IDS = Object.freeze({
     't90a_2004', 't90_1992',
     't90ms_2011', 't90a_burlak_proto', 'pt91m', 't90sm_2013', 't90a_2006', 't90am', 't90m_proryv',
   ]),
-  russia: Object.freeze(['t55a', 't62_1975', 't64bv1']),
+  russia: Object.freeze(['t55a', 't62_1975', 't64bv1', 't64bv']),
   t72: Object.freeze(['t72b3m_2022', 't72bu_1989']),
   t80: Object.freeze(['t80', 't80b', 't80bv', 't84']),
   ukraine: Object.freeze([
-    't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1',
+    't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'ua_m1a1', 't64bm1m', 't64b1v_2022',
   ]),
-  poland: Object.freeze(['t72m1_jaguar', 'pt91a_twardy', 'pl01', 'pl01_105']),
+  poland: Object.freeze(['t72m1_jaguar', 'pt91a_twardy', 'pl01', 'pl01_105', 'pt64_tur']),
   abramsSourceX: Object.freeze(['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams']),
   abrams: Object.freeze([
     'm1a1_abrams_hc', 'm1a1', 'm1a1ha', 'm1a1_abrams_sa', 'm1a1_abrams_aim',

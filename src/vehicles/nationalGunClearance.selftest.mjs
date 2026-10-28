@@ -102,6 +102,11 @@ const CURVES = {
   type59: [],
   t55a: [],
   ztz99_longwei: [],
+  // 262: the true T-64s on t64Foundation.ts (the measured curves in t64Armor.ts)
+  t64bm1m: [],
+  t64bv: [],
+  t64b1v_2022: [],
+  pt64_tur: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
