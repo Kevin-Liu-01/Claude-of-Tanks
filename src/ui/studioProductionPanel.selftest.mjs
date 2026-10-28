@@ -9,6 +9,7 @@ import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { notice } from './components/notice.ts';
 import { wireRovingKeys } from './components/components.ts';
 import { pickerText } from './pickerText.ts';
+import { tankThumbUrl } from './icons.ts';
 import { t } from './i18n.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -82,7 +83,8 @@ const createPickerMenu = (host, options) => {
   return menu;
 };
 const context = { document, window, Event, createPickerMenu, pickerText, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
-  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys };
+  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink, notice, uiIconSVG, wireRovingKeys,
+  tankThumbUrl };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;

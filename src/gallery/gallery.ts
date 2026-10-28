@@ -35,11 +35,12 @@ import {
 } from './surfaceMarkup.ts';
 import { flagIconUrl } from '../ui/flags.ts';
 import { flagIconCode } from '../ui/flagCodes.ts';
-import { iconUrl } from '../ui/icons.ts';
+import { iconUrl, tankThumbUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import { shellIconId } from '../ui/shellIcons.ts';
 import { emptyState, esc, scale20, scaleCells, statRow, tabs, wireRoving } from '../ui/components/components.ts';
 import { createPickerMenu, type PickerMenu } from '../ui/components/pickerMenu.ts';
+import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
 import { pickerText } from '../ui/pickerText.ts';
 import type { NoticeSeverity } from '../ui/components/notice.ts';
 import { flag, silhouette } from '../ui/components/identity.ts';
@@ -1008,7 +1009,16 @@ diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.h
 diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
 // a press shows the drawing at the window's size, named by its overlay's header; a press or Escape puts it back
 const diagramFigure = diagramImage.closest('figure')!;
+// the zoomed drawing is a modal transient surface (src/ui/components/surfaceStack.ts): opening it closes an open menu, a
+// press on it puts it back, and Escape is the stack's
+const diagramSurface: TransientSurface = {
+  id: 'gallery-drawing',
+  element: () => diagramFigure,
+  close: (reason) => { setDiagramZoom(false); if (reason === 'escape') diagramImage.focus({ preventScroll: true }); },
+  modal: true,
+};
 const setDiagramZoom = (on: boolean): void => {
+  if (on) openSurface(diagramSurface, diagramImage); else closeSurface(diagramSurface);
   diagramFigure.classList.toggle('is-zoomed', on);
   // the dossier's scroll fade is a mask, which masks a fixed descendant to the column too: it lifts while a drawing is
   // zoomed (the g13 critic: the zoom showed only through the dossier, its drawing under the stage)
@@ -1023,9 +1033,6 @@ diagramFigure.addEventListener('click', () => setDiagramZoom(!diagramFigure.clas
 diagramImage.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDiagramZoom(!diagramFigure.classList.contains('is-zoomed')); }
 });
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && diagramFigure.classList.contains('is-zoomed')) { event.stopPropagation(); setDiagramZoom(false); }
-}, true);
 function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
@@ -1191,7 +1198,7 @@ function populateRivals(): void {
   const items = [...records].sort((a, b) => (order.get(flagIconCode(a.nation)) ?? 99) - (order.get(flagIconCode(b.nation)) ?? 99)
     || a.displayName.localeCompare(b.displayName, getLocale())).map((record) => ({
     id: record.id, name: record.displayName, facts: [t('gallery.tier', { tier: record.tierNumeral }), nationName(record.nation)],
-    tags: [flagIconCode(record.nation)], media: { poster: iconUrl(record.id, 'side') },
+    tags: [flagIconCode(record.nation)], media: { poster: tankThumbUrl(record.id), tank: true },
   }));
   if (rivalMenu) { rivalMenu.setItems(items, rivalId); return; }
   rivalMenu = createPickerMenu($<HTMLElement>('#rivalMenu'), { id: 'gallery-rival', label: t('gallery.versus.rival'), items,
@@ -1200,15 +1207,20 @@ function populateRivals(): void {
 }
 /** The rival menu's room: the dossier's scrolling panel, or on a stacked page the window under the sticky site bar (the
  * g14 critic: at 1024 x 600 the menu climbed over the bar's language switch and Play button). */
-function rivalMenuBounds(): { top: number; bottom: number } {
+function rivalMenuBounds(): { top: number; bottom: number; left?: number; right?: number } {
   const bar = document.querySelector('.public-nav')?.getBoundingClientRect();
-  const top = Math.max(0, bar ? bar.bottom : 0);
+  // (under the bar's rule, which hangs 1 px below it: publicNav's .public-nav::after; the 261 critic's 1 px step)
+  const top = Math.max(0, bar ? bar.bottom + 1 : 0);
   const panel = document.querySelector<HTMLElement>('.dossier-scroll');
-  if (panel && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
-    const box = panel.getBoundingClientRect();
-    return { top: Math.max(top, box.top), bottom: Math.min(innerHeight, box.bottom) };
-  }
-  return { top, bottom: innerHeight };
+  if (!panel) return { top, bottom: innerHeight };
+  // with its sides: a dossier no wider than a column is spanned (pickerMenu.ts placeMenu), so no sliver of its text shows
+  // beside the menu (the 261 critics: the title sliced, "O" and "Ti" beside it, at 1024 and 900 where it does not scroll)
+  // (its inner box: inside its rule and its scrollbar)
+  const box = panel.getBoundingClientRect();
+  const left = box.left + panel.clientLeft, inTop = box.top + panel.clientTop;
+  const scrolls = /auto|scroll/.test(getComputedStyle(panel).overflowY);
+  return { top: scrolls ? Math.max(top, inTop) : top, bottom: scrolls ? Math.min(innerHeight, inTop + panel.clientHeight) : innerHeight,
+    left, right: left + panel.clientWidth };
 }
 /** The rival's side of the versus card (07-gallery .vsc .s): its flag and its silhouette facing the selection; the
  * picker above names it (the g10 critic read the name under the picker as the same name twice). */
