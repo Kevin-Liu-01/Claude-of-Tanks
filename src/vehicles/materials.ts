@@ -3912,14 +3912,15 @@ export const ARMOR_PAINT_ZONE_EDGES = 6;
 /**
  * How the armour paint colours a material: 0 not at all (the barrel's paint, running gear, glass, rubber, canvas,
  * wood), 1 the armour paint by its surface's way leaned on the cells' (plates), 2 fittings and the dark steel (grilles,
- * recesses, lights, a mantlet's dark casting) by where they sit — the cells' rounded box there — so a box or a rim
- * takes its place's zone, never one a face. The gun's barrel and the roof guns stand outside the cells: no zone.
+ * recesses, lights) by where they sit — the cells' rounded box there — so a box or a rim takes its place's zone, never
+ * one a face; 3 weapon steel the same, but only within the turret's cells or over its mantlet (a dark mantlet casting),
+ * so a roof gun stays as bare as the main gun's barrel.
  */
 function armorPaintMode(mat: THREE.Material): number {
   const role = mat.userData?.appearanceRole;
   if (role === 'armorPaint') return mat.name === 'cot:barrel-paint' ? 0 : 1;
   if (role === 'fittingPaint') return 2;
-  if (role === 'gunmetal') return 2;
+  if (role === 'gunmetal') return mat.name === 'cot:weapon-steel' ? 3 : 2;
   return 0;
 }
 
@@ -3981,11 +3982,13 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   int apFoot0 = apZoneN * ${ARMOR_PAINT_ZONE_TEXELS};
   // the turret's: inside its envelope, or over its mantlet's footprint (a gun shield standing ahead of the cells)
   bool apTurret = uApCounts.y > 0.5 && all( greaterThanEqual( apT, uApTurMin ) ) && all( lessThanEqual( apT, uApTurMax ) );
+  bool apOverFoot = false;
   for ( int f = 0; f < apFootN; f++ ) {
     vec4 apFa = texelFetch( uApZones, ivec2( apFoot0 + 2 * f, 0 ), 0 );
     vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
-    if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apTurret = true;
+    if ( int( apFa.w + 0.5 ) >= apHullN && all( greaterThanEqual( apT, apFa.xyz ) ) && all( lessThanEqual( apT, apFb ) ) ) apOverFoot = true;
   }
+  apTurret = apTurret || apOverFoot;
   mat4 apInv = apTurret ? uApTurInv : uApHullInv;
   vec3 apP = apTurret ? apT : ( uApHullInv * vec4( vApW, 1.0 ) ).xyz;
   vec3 apEye = ( apInv * vec4( cameraPosition, 1.0 ) ).xyz;
@@ -4000,13 +4003,14 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   vec3 apQ = ( apP - ( apTurret ? uApTurC : uApHullC ) ) / apH;
   vec3 apBox = apQ * apQ * apQ / apH;
   apBox = dot( apBox, apBox ) > 1e-12 ? normalize( apBox ) : vec3( 0.0, 1.0, 0.0 );
-  vec3 apLean = apN + 2.0 * apBox;
+  vec3 apLean = apN + 3.0 * apBox;
   apN = uApPaint > 1.5 || dot( apLean, apLean ) < 1e-6 ? apBox : normalize( apLean );
   // gear the armour does not cover takes no zone: the gun's barrel (a cylinder along the gun from just ahead of the
   // turret and its mantlet, in the gun's own frame, so at any elevation) and, outside the turret, what stands above
   // the hull's cells or past their ends (roof guns, antennas, tow gear)
   vec3 apG = ( uApGunInv * vec4( vApW, 1.0 ) ).xyz;
   bool apGear = uApGun.y > 0.0 && apG.z > uApGun.x && dot( apG.xy, apG.xy ) < uApGun.y * uApGun.y
+    || uApPaint > 2.5 && apTurret && !apOverFoot && any( greaterThan( abs( apT - uApTurC ), uApTurH + 0.05 ) )
     || !apTurret && uApHullH.y > 0.0
       && ( apP.y > uApHullC.y + uApHullH.y + 0.1 || abs( apP.z - uApHullC.z ) > uApHullH.z + 0.1 );
   int apFrom = apTurret ? apHullN : 0;

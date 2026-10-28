@@ -159,7 +159,7 @@ overlay.dispose();
   turretOverlay.prime(turretTarget);
   turretOverlay.update({ enabled: true, scoped: true, targets: [turretTarget], shellSpec, muzzle: new THREE.Vector3(8, 1, 6), nowMs: 0 });
   assert.deepEqual(turretTarget.uniforms.uApCounts.value.toArray(), [2, 2, 1], 'the paint reads the footprint');
-  assert.deepEqual(turretTarget.uniforms.uApGun.value.toArray().map((v) => +v.toFixed(6)), [1.05, 0.25], 'the barrel from 5 cm ahead of the turret');
+  assert.deepEqual(turretTarget.uniforms.uApGun.value.toArray().map((v) => +v.toFixed(6)), [1.05, 0.15], 'the barrel from 5 cm ahead of the turret, 15 cm about the gun');
   const muzzlePoint = new THREE.Vector3(8, 1, 2.5).applyMatrix4(turretTarget.uniforms.uApGunInv.value);
   assert.ok(muzzlePoint.distanceTo(new THREE.Vector3(0, 0, 2)) < 1e-9, 'a world point maps into the gun\'s frame');
   turretOverlay.dispose();

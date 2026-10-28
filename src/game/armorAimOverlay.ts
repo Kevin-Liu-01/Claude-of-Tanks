@@ -41,7 +41,7 @@ const ZONE_SAMPLES = 3;
 const TURRET_ENVELOPE_GROW_M = 0.25;
 const TURRET_ENVELOPE_FLOOR_M = 0.05;
 /** The bare barrel: a cylinder of this radius (m) along the gun, from this far (m) ahead of the turret and its mantlet. */
-const BARREL_RADIUS_M = 0.25;
+const BARREL_RADIUS_M = 0.15;
 const BARREL_CLEAR_M = 0.05;
 
 const LOW = new THREE.Color(0xe53d35);
