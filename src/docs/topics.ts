@@ -694,6 +694,10 @@ function wireFleetGrid(root: HTMLElement): void {
   });
   root.addEventListener('load', onImage, true);
   root.addEventListener('error', onError, true);
+  // a print draws every tile (fleet.css): the presentation on screen loads all its pictures first, as none off screen has
+  addEventListener('beforeprint', () => {
+    for (const image of root.querySelectorAll<HTMLImageElement>(`[data-layer="${root.dataset.view ?? 'hero'}"] img[loading="lazy"]`)) image.loading = 'eager';
+  });
   for (const layer of root.querySelectorAll('.dm-fleet__layer')) settle(layer);
 
   const bar = root.querySelector<HTMLElement>('.dm-fleet__bar');

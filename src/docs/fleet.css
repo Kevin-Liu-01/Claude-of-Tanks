@@ -97,3 +97,15 @@
 .dm-section .dm-fleet__empty p{margin:0;max-width:44ch;font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){.dm-fleet.is-live .dm-fleet__layer{transition:none}}
 }
+/* printed (the manual's print sheet turns the kit's tokens to paper and hides the chrome): the grid without its bar, four
+   tiles across the A4 column, each tile whole and drawn (no skipped layout, no fade), in the presentation on screen.
+   topics.ts wireFleetGrid loads that presentation's pictures before the print, so none prints blank. */
+@layer overrides{
+@media print{
+.dm-fleet__bar,.dm-fleet__empty{display:none}
+.dm-fleet__grid{margin-top:4mm}
+.dm-fleet__list{--dm-fleet-cols:4}
+.dm-fleet__tile{content-visibility:visible;break-inside:avoid}
+.dm-fleet.is-live .dm-fleet__layer{opacity:1;transition:none}
+}
+}
