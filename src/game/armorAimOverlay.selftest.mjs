@@ -100,6 +100,8 @@ assert.equal(target.uniforms.uApOn.value, 1, 'scope turns the paint on without a
 assert.equal(secondTarget.uniforms.uApOn.value, 1, 'scope paints every visible enemy');
 assert.equal(target.uniforms.uApZones.value, entry.texture, 'the paint reads this vehicle\'s table');
 assert.deepEqual(target.uniforms.uApCounts.value.toArray(), [2, 0, 0], 'two hull zones, no turret, no mantlet');
+assert.deepEqual([...target.uniforms.uApHullC.value.toArray(), ...target.uniforms.uApHullH.value.toArray()], [0, 1, 0, 1, 1, 1],
+  'the hull\'s cell bounds as a box: centre and half extents');
 // the frames: world → hull frame is the inverse of the hull's world matrix
 {
   const probe = new THREE.Vector3(4.5, 1, 0.5).applyMatrix4(secondTarget.uniforms.uApHullInv.value);
