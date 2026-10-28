@@ -22,6 +22,7 @@ import { stockCamoPatternIdFor,
 import type { CamoPatternId, CustomCamo } from './camoPolicy.ts';
 import { ALBEDO_SIZE, MAP_SIZE, createMaterialPainter } from './materialPainter.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { MANTLET_FORWARD_NZ, ZONE_FACING_MIN, ZONE_FACING_WEIGHT, ZONE_OUTSIDE_WEIGHT } from '../sim/armorZones.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import { catalogCamoArtId, fleetCamoArtId } from './catalogCamoPainter.ts';
 import type { MaterialBasePaintRequest, MaterialVisual, PlateFeatures } from './materialPainter.ts';
@@ -3937,9 +3938,9 @@ function armorPaintMode(mat: THREE.Material): number {
  * The scoped armour flashlight as paint (262; owner, 2026-10-27: "check how camos apply ... that camo changes colour
  * depending on where the tank part is"): every fragment of the vehicle's own armour paint takes the colour of the armour
  * zone it lies in — the authored plate (glacis, lower plate, cheek, mantlet, side, roof, rear) as combatAnatomy's
- * nearestPlate judges a cell face, per point: the plane it lies nearest, plus 0.75 m a metre outside the plate's outline
- * and 1.25 m for facing away (more than ~83° away: never), in the hull's or the turret's combat frame (the turret's where
- * the point is inside the turret's envelope). The score is linear between planes, so borders are straight. Only what is
+ * nearestPlate judges a cell face, per point (sim/armorZones.ts zoneAt, the score zone plates trace with), in the hull's
+ * or the turret's combat frame (the turret's where the point is inside the turret's envelope). The score is linear
+ * between planes, so borders are straight. Only what is
  * seen is painted: no shell over the cells, nothing hidden behind skirts or ERA. Zone borders draw as anti-aliased
  * lines where the two best scores meet.
  */
@@ -4032,13 +4033,14 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
   for ( int k = apFrom; k < apTo; k++ ) {
     vec4 apPl = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS}, 0 ), 0 );
     float apFacing = dot( apPl.xyz, apN );
-    if ( apFacing < 0.12 ) continue;
+    if ( apFacing < ${ZONE_FACING_MIN.toFixed(4)} ) continue;
     float apGapOut = 0.0;
     for ( int e = 1; e <= ${ARMOR_PAINT_ZONE_EDGES}; e++ ) {
       vec4 apEd = texelFetch( uApZones, ivec2( k * ${ARMOR_PAINT_ZONE_TEXELS} + e, 0 ), 0 );
       apGapOut += max( 0.0, dot( apEd.xyz, apP ) + apEd.w );
     }
-    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - 0.75 * apGapOut - 1.25 * ( 1.0 - apFacing );
+    float apScore = -abs( dot( apPl.xyz, apP ) + apPl.w ) - ${ZONE_OUTSIDE_WEIGHT.toFixed(4)} * apGapOut
+      - ${ZONE_FACING_WEIGHT.toFixed(4)} * ( 1.0 - apFacing );
     if ( apScore > apBest ) {
       apSecond = apBest;
       apSecondK = apBestK;
@@ -4049,7 +4051,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
       apSecondK = k;
     }
   }
-  // the mantlet's footprint first (Main's ruling, 262; game/armorZones.ts): a forward surface (n.z > 0.2) over a
+  // the mantlet's footprint first (Main's ruling, 262; sim/armorZones.ts zoneAt): a forward surface (n.z > 0.2) over a
   // mantlet or gun-notch plate's footprint is that plate's, whatever the score; its border is the box's. apFootIn is
   // how deep the point lies inside the footprint it lies deepest in (negative: how far outside the nearest)
   int apFootK = -1;
@@ -4060,7 +4062,7 @@ if ( uApOn > 0.5 && uApPaint > 0.5 ) {
     if ( apFk < apFrom || apFk >= apTo ) continue;
     vec3 apFb = texelFetch( uApZones, ivec2( apFoot0 + 2 * f + 1, 0 ), 0 ).xyz;
     vec3 apIn3 = min( apP - apFa.xyz, apFb - apP );
-    float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - 0.2 ) );
+    float apIn = min( min( apIn3.x, apIn3.y ), min( apIn3.z, apN.z - ${MANTLET_FORWARD_NZ.toFixed(4)} ) );
     if ( apIn > apFootIn ) { apFootIn = apIn; apFootK = apFk; }
   }
   bool apForced = apFootK >= 0 && apFootIn > 0.0;
