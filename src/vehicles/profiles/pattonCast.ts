@@ -362,8 +362,9 @@ interface PershingHullSpec {
   /** The fender's support brackets under its outer edge (z stations), where the reference shows them. */
   readonly fenderBrackets?: readonly number[];
   /** The engine-exhaust grille box over the rear plate's top (half-width, bottom, top, depth aft of the plate) with the
-   *  big towing eyes on its sides; the tail lights then stand outboard of it. */
-  readonly rearGrille?: readonly [number, number, number, number];
+   *  big towing eyes on its sides; the tail lights then stand outboard of it. A fifth value recesses its middle (the
+   *  centre bay's half-width, at half the depth). */
+  readonly rearGrille?: readonly [number, number, number, number, number?];
 }
 
 function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string, HullFrame> {
@@ -506,8 +507,8 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       P.add('hullDark', box(0.05, by - 0.08 - gy + 0.03, 0.05), side * bx, (by - 0.08 + gy) / 2, H.toe[0] - 0.08);
       // its brush guard: rods from the bracket over the lamp to a cross bar 0.2 m ahead of the nose, the middle one
       // splitting the guard's window
-      for (const dx of [-0.04, 0, 0.04]) bar(P, 'hullDark', [side * (bx + dx), by - 0.05, bz - 0.06], [side * (bx + dx), by + 0.04, 2.09], 0.01);
-      P.add('hullDark', box(0.10, 0.012, 0.012), side * bx, by + 0.04, 2.09);
+      for (const dx of [-0.04, 0, 0.04]) bar(P, 'hullDark', [side * (bx + dx), by - 0.05, bz - 0.06], [side * (bx + dx), by + 0.04, bz + 0.19], 0.01);
+      P.add('hullDark', box(0.10, 0.012, 0.012), side * bx, by + 0.04, bz + 0.19);
       continue;
     }
     const lz = H.toe[0] - 0.42, lx = side * 0.98;
@@ -531,25 +532,48 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
   yield 'pershingHullBow';
   // 7. Rear plate: tail lights, the towing pintle, the transmission doors.
   const grille = H.rearGrille;
+  // a grille box across the whole plate carries the tail lights on its face and leaves the eyes, the pintle and the
+  // doors on the plate under it
+  const wide = grille !== undefined && grille[0] > 0.80;
+  const lowY = (y: number): number => (wide && grille ? Math.min(y, grille[1] - 0.12) : y);
   if (grille) {
     // the grille box over the plate's top, its louvres facing aft, and the big towing eyes on lugs on its sides
-    const [gw, gy0, gy1, gd] = grille, gz = H.tailZ - gd;
-    P.add('hull', moldedBox(gw * 2, gy1 - gy0, gd + 0.03, 0.015, P.q ? 2 : 1, 0.008), 0, (gy0 + gy1) / 2, gz + (gd + 0.03) / 2);
-    for (let i = 0; i < 4; i++) P.add('hullDark', box(gw * 2 - 0.16, 0.014, 0.02), 0, gy0 + 0.06 + i * (gy1 - gy0 - 0.12) / 3, gz - 0.004);
-    for (const side of [-1, 1]) {
+    const [gw, gy0, gy1, gd, bay] = grille, gz = H.tailZ - gd;
+    if (bay) {
+      // the deep outer grille doors either side of the shallower centre bay
+      for (const side of [-1, 1]) {
+        P.add('hull', moldedBox(gw - bay, gy1 - gy0, gd + 0.03, 0.015, P.q ? 2 : 1, 0.008), side * (gw + bay) / 2, (gy0 + gy1) / 2,
+          gz + (gd + 0.03) / 2);
+      }
+      P.add('hull', moldedBox(bay * 2, gy1 - gy0, gd / 2 + 0.03, 0.015, P.q ? 2 : 1, 0.008), 0, (gy0 + gy1) / 2, gz + gd / 2 + (gd / 2 + 0.03) / 2);
+    } else {
+      P.add('hull', moldedBox(gw * 2, gy1 - gy0, gd + 0.03, 0.015, P.q ? 2 : 1, 0.008), 0, (gy0 + gy1) / 2, gz + (gd + 0.03) / 2);
+    }
+    // the louvres across each face: the doors' at their depth, the bay's at its own
+    const faces: (readonly [number, number, number])[] = bay
+      ? [[-(gw + bay) / 2, gw - bay - 0.08, gz], [(gw + bay) / 2, gw - bay - 0.08, gz], [0, bay * 2 - 0.08, gz + gd / 2]]
+      : [[0, gw * 2 - 0.16, gz]];
+    for (const [fx, fw, fz] of faces) {
+      for (let i = 0; i < 4; i++) P.add('hullDark', box(fw, 0.014, 0.02), fx, gy0 + 0.06 + i * (gy1 - gy0 - 0.12) / 3, fz - 0.004);
+    }
+    // (the narrow box's towing eyes; a box across the whole plate leaves them on the plate under it)
+    if (!wide) for (const side of [-1, 1]) {
       P.add('hullDetail', box(0.06, 0.11, 0.12), side * (gw + 0.03), (gy0 + gy1) / 2, gz + 0.03);
       P.add('hullDark', KIT.xform(KIT.torus(0.062, 0.018, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), side * (gw + 0.03),
         (gy0 + gy1) / 2 + 0.01, gz + 0.055);
     }
   }
   for (const side of [-1, 1]) {
-    KIT.headlight(P, side * (grille ? 0.82 : 0.72), H.tailTopY - 0.14, H.tailZ - 0.03, Math.PI, 0.045, false);
-    KIT.liftEye(P, 'hullDetail', side * 0.85, 1.10, H.tailZ - 0.02, Math.PI);
+    const lz = wide && grille ? H.tailZ - grille[3] - 0.01 : H.tailZ - 0.03;
+    // (beside a narrow grille box the light stands against its eye's lug, closing no pocket between them)
+    KIT.headlight(P, side * (grille && !wide ? grille[0] + 0.12 : 0.72), H.tailTopY - 0.14, lz, Math.PI, 0.045, false);
+    KIT.liftEye(P, 'hullDetail', side * 0.85, lowY(1.10), H.tailZ - 0.02, Math.PI);
   }
-  P.add('hullDetail', box(1.10, 0.38, 0.03), 0, (H.tailBotY + H.tailTopY) / 2, H.tailZ - 0.012);
+  const doorTop = wide && grille ? grille[1] : H.tailTopY;
+  P.add('hullDetail', box(1.10, Math.min(0.38, doorTop - H.tailBotY - 0.04), 0.03), 0, (H.tailBotY + doorTop) / 2, H.tailZ - 0.012);
   // the towing pintle high on the plate, clear of the departure angle
-  P.add('hullDark', box(0.14, 0.10, 0.08), 0, 1.02, H.tailZ - 0.03);
-  P.add('hullDark', cylX(0.035, 0.16, 8), 0, 1.02, H.tailZ - 0.05);
+  P.add('hullDark', box(0.14, 0.10, 0.08), 0, lowY(1.02), H.tailZ - 0.03);
+  P.add('hullDark', cylX(0.035, 0.16, 8), 0, lowY(1.02), H.tailZ - 0.05);
   yield 'pershingHullRear';
   pattonGear(P, H.xc, H.trackW, H.gear);
   // mud flaps at the fender ends
@@ -685,19 +709,21 @@ function frameSpan(T: TurretFrame, z: number): readonly [number, number] {
 }
 
 /** Commander's vision cupola: armoured ring with vision blocks, split hatch, seated on the roof (world x, z). */
-function visionCupola(P: CastPort, T: TurretFrame, x: number, z: number, r: number, h: number, blocks: number): number {
+function visionCupola(P: CastPort, T: TurretFrame, x: number, z: number, r: number, h: number, blocks: number, long = 1): number {
   const { cylY, box } = KIT;
   const L = tl(T);
   const base = frameTop(T, x, z) - 0.03;
-  P.add('turret', cylY(r, r * 1.08, h, P.q ? 24 : 14), x, L.y(base + h / 2), L.z(z));
-  P.add('turret', cylY(r * 0.94, r * 0.98, 0.05, P.q ? 24 : 14), x, L.y(base + h + 0.025), L.z(z));
+  // `long` stretches the ring fore and aft (an oval cupola)
+  const oval = (g: Geo): Geo => long === 1 ? g : KIT.xform(g, 0, 0, 0, 0, 0, 0, [1, 1, long]);
+  P.add('turret', oval(cylY(r, r * 1.08, h, P.q ? 24 : 14)), x, L.y(base + h / 2), L.z(z));
+  P.add('turret', oval(cylY(r * 0.94, r * 0.98, 0.05, P.q ? 24 : 14)), x, L.y(base + h + 0.025), L.z(z));
   P.add('turretDark', box(r * 1.7, 0.015, 0.03), x, L.y(base + h + 0.055), L.z(z));
   for (let k = 0; k < blocks; k++) {
     const a = (k / blocks) * Math.PI * 2;
-    const px = x + Math.sin(a) * r * 1.0, pz = z + Math.cos(a) * r * 1.0;
+    const px = x + Math.sin(a) * r * 1.0, pz = z + Math.cos(a) * r * long;
     P.add('turretDetail', box(0.10, 0.07, 0.05), px, L.y(base + h * 0.62), L.z(pz), 0, a, 0);
     P.add('turretGlass', box(0.075, 0.035, 0.012), x + Math.sin(a) * (r + 0.026), L.y(base + h * 0.62),
-      L.z(z + Math.cos(a) * (r + 0.026)), 0, a, 0);
+      L.z(z + Math.cos(a) * (r * long + 0.026)), 0, a, 0);
   }
   return base + h + 0.05;
 }
@@ -984,30 +1010,48 @@ export function* buildM46CastSteps(P: CastPort, finish: TrackFinish): TankProfil
 // ---------------------------------------------------------------------------------------------------------------------
 
 const M47_RING = { y: 1.62, z: -0.35 };
-// The T42-derived cast turret, read off the gate's reference model (docs/references/tanks/m47_patton.md): near-vertical
-// flanks 1.10 out to 2.30, a straight chamfer to the 0.60 m roof edge at 2.72, the long sloped nose to 1.10; the bustle
-// carries its stowage 0.73 wide back to -2.70.
+// The T42-derived cast turret, read off the gate's reference model (docs/references/tanks/m47_patton.md) in two lofts:
+// the upper turret, its wall standing 0.94 out up to 2.49 and breaking in to a crowned roof (2.70 at the 0.79 edge, 2.74
+// on the centreline), the long sloped nose to 1.10; and the wide lower band round the ring, 1.12 out at 1.92 and closing in
+// to the stowage ledge at 2.30. The bustle carries its stowage 0.73 wide back to its square tail at -2.74.
 const M47_TURRET: readonly CastStation[] = [
   { z: 0.84, bot: 1.70, top: 2.46, hw: 0.50, roof: 0.60, foot: 0.90, waist: 0.65, nUp: 1.2, nLo: 3 },
   { z: 0.70, bot: 1.63, top: 2.55, hw: 0.62, roof: 0.58, foot: 0.85, waist: 0.65, nUp: 1.2, nLo: 3 },
-  { z: 0.50, bot: 1.63, top: 2.63, hw: 0.82, roof: 0.73, foot: 0.92, waist: 0.65, nUp: 1.2, nLo: 4 },
-  { z: 0.30, bot: 1.63, top: 2.68, hw: 0.97, roof: 0.62, foot: 0.95, waist: 0.64, nUp: 1.2, nLo: 4 },
-  { z: 0.10, bot: 1.63, top: 2.71, hw: 1.06, roof: 0.57, foot: 0.97, waist: 0.62, nUp: 1.2, nLo: 4 },
-  { z: -0.20, bot: 1.63, top: 2.72, hw: 1.10, roof: 0.55, foot: 0.98, waist: 0.61, nUp: 1.2, nLo: 4 },
-  { z: -0.60, bot: 1.63, top: 2.72, hw: 1.10, roof: 0.55, foot: 0.97, waist: 0.61, nUp: 1.2, nLo: 4 },
-  { z: -0.90, bot: 1.63, top: 2.71, hw: 1.04, roof: 0.58, foot: 0.90, waist: 0.62, nUp: 1.2, nLo: 4 },
-  { z: -1.10, bot: 1.66, top: 2.69, hw: 0.97, roof: 0.62, foot: 0.80, waist: 0.62, nUp: 1.2, nLo: 4 },
-  { z: -1.34, bot: 1.80, top: 2.66, hw: 0.88, roof: 0.68, foot: 0.80, waist: 0.58, nUp: 1.2, nLo: 4 },
-  { z: -1.50, bot: 1.89, top: 2.64, hw: 0.84, roof: 0.71, foot: 0.85, waist: 0.55, nUp: 1.2, nLo: 4 },
+  { z: 0.50, bot: 1.63, top: 2.63, hw: 0.80, roof: 0.82, foot: 0.92, waist: 0.75, nUp: 1.5, nLo: 4, crown: 0.02 },
+  { z: 0.30, bot: 1.63, top: 2.67, hw: 0.79, roof: 0.86, foot: 0.95, waist: 0.78, nUp: 1.3, nLo: 4, crown: 0.03 },
+  { z: 0.10, bot: 1.63, top: 2.69, hw: 0.84, roof: 0.86, foot: 0.97, waist: 0.79, nUp: 1.3, nLo: 4, crown: 0.04 },
+  { z: -0.10, bot: 1.63, top: 2.70, hw: 0.89, roof: 0.85, foot: 0.98, waist: 0.80, nUp: 1.3, nLo: 4, crown: 0.04 },
+  { z: -0.35, bot: 1.63, top: 2.70, hw: 0.935, roof: 0.84, foot: 0.98, waist: 0.80, nUp: 1.3, nLo: 4, crown: 0.04 },
+  { z: -0.55, bot: 1.63, top: 2.70, hw: 0.94, roof: 0.84, foot: 0.97, waist: 0.80, nUp: 1.3, nLo: 4, crown: 0.04 },
+  { z: -0.75, bot: 1.63, top: 2.70, hw: 0.88, roof: 0.86, foot: 0.94, waist: 0.79, nUp: 1.3, nLo: 4, crown: 0.03 },
+  { z: -0.95, bot: 1.63, top: 2.69, hw: 0.79, roof: 0.88, foot: 0.90, waist: 0.77, nUp: 1.5, nLo: 4, crown: 0.02 },
+  { z: -1.15, bot: 1.67, top: 2.67, hw: 0.745, roof: 0.88, foot: 0.85, waist: 0.72, nUp: 2, nLo: 4, crown: 0.01 },
+  { z: -1.34, bot: 1.80, top: 2.65, hw: 0.70, roof: 0.88, foot: 0.85, waist: 0.65, nUp: 2.5, nLo: 4 },
+  { z: -1.50, bot: 1.89, top: 2.635, hw: 0.69, roof: 0.88, foot: 0.85, waist: 0.60, nUp: 2.5, nLo: 4 },
+];
+const M47_BAND: readonly CastStation[] = [
+  { z: 0.46, bot: 1.63, top: 2.16, hw: 0.86, roof: 0.85, foot: 0.95, waist: 0.50, nUp: 2.5, nLo: 4 },
+  { z: 0.40, bot: 1.63, top: 2.22, hw: 0.91, roof: 0.85, foot: 0.95, waist: 0.48, nUp: 2.5, nLo: 4 },
+  { z: 0.30, bot: 1.63, top: 2.28, hw: 0.96, roof: 0.86, foot: 0.95, waist: 0.47, nUp: 2.5, nLo: 4 },
+  { z: 0.10, bot: 1.63, top: 2.30, hw: 1.05, roof: 0.85, foot: 0.97, waist: 0.44, nUp: 2.5, nLo: 4 },
+  { z: -0.10, bot: 1.63, top: 2.30, hw: 1.10, roof: 0.86, foot: 0.98, waist: 0.43, nUp: 2.5, nLo: 4 },
+  { z: -0.30, bot: 1.63, top: 2.30, hw: 1.12, roof: 0.86, foot: 0.98, waist: 0.43, nUp: 2.5, nLo: 4 },
+  { z: -0.50, bot: 1.63, top: 2.30, hw: 1.11, roof: 0.86, foot: 0.98, waist: 0.43, nUp: 2.5, nLo: 4 },
+  { z: -0.70, bot: 1.63, top: 2.30, hw: 1.07, roof: 0.85, foot: 0.96, waist: 0.43, nUp: 2.5, nLo: 4 },
+  { z: -0.90, bot: 1.63, top: 2.30, hw: 0.98, roof: 0.84, foot: 0.92, waist: 0.45, nUp: 2.5, nLo: 4 },
+  { z: -1.10, bot: 1.66, top: 2.30, hw: 0.88, roof: 0.86, foot: 0.88, waist: 0.45, nUp: 2.5, nLo: 4 },
+  { z: -1.30, bot: 1.80, top: 2.30, hw: 0.81, roof: 0.88, foot: 0.85, waist: 0.40, nUp: 2.5, nLo: 4 },
+  { z: -1.42, bot: 1.88, top: 2.28, hw: 0.76, roof: 0.90, foot: 0.85, waist: 0.40, nUp: 2.5, nLo: 4 },
 ];
 const M47_BUSTLE: readonly CastStation[] = [
   { z: -1.30, bot: 1.85, top: 2.64, hw: 0.86, roof: 0.66, foot: 0.85, waist: 0.58, nUp: 1.4, nLo: 4 },
-  { z: -1.80, bot: 1.95, top: 2.61, hw: 0.76, roof: 0.66, foot: 0.90, waist: 0.55, nUp: 1.4, nLo: 4 },
-  { z: -2.10, bot: 1.95, top: 2.58, hw: 0.65, roof: 0.70, foot: 0.92, waist: 0.57, nUp: 1.4, nLo: 4 },
-  { z: -2.30, bot: 1.96, top: 2.57, hw: 0.73, roof: 0.78, foot: 0.84, waist: 0.57, nUp: 1.4, nLo: 5 },
-  { z: -2.50, bot: 1.96, top: 2.56, hw: 0.73, roof: 0.80, foot: 0.84, waist: 0.58, nUp: 1.4, nLo: 5 },
-  { z: -2.64, bot: 1.99, top: 2.54, hw: 0.70, roof: 0.78, foot: 0.84, waist: 0.58, nUp: 1.4, nLo: 5 },
-  { z: -2.70, bot: 2.03, top: 2.48, hw: 0.47, roof: 0.66, foot: 0.86, waist: 0.60, nUp: 1.4, nLo: 4 },
+  { z: -1.80, bot: 1.95, top: 2.625, hw: 0.76, roof: 0.66, foot: 0.90, waist: 0.55, nUp: 1.4, nLo: 4 },
+  { z: -2.10, bot: 1.95, top: 2.625, hw: 0.65, roof: 0.70, foot: 0.92, waist: 0.57, nUp: 1.4, nLo: 4 },
+  { z: -2.30, bot: 1.955, top: 2.625, hw: 0.73, roof: 0.78, foot: 0.84, waist: 0.57, nUp: 1.4, nLo: 5 },
+  { z: -2.50, bot: 1.955, top: 2.625, hw: 0.73, roof: 0.80, foot: 0.84, waist: 0.58, nUp: 1.4, nLo: 5 },
+  { z: -2.64, bot: 1.955, top: 2.62, hw: 0.70, roof: 0.80, foot: 0.84, waist: 0.58, nUp: 1.4, nLo: 5 },
+  { z: -2.70, bot: 1.955, top: 2.58, hw: 0.66, roof: 0.80, foot: 0.86, waist: 0.58, nUp: 1.4, nLo: 5 },
+  { z: -2.74, bot: 1.97, top: 2.54, hw: 0.62, roof: 0.78, foot: 0.86, waist: 0.60, nUp: 1.4, nLo: 4 },
 ];
 const M47_GUN: GunSpec = {
   trunnionZ: 0.55, axisY: 2.07, muzzleZ: 4.40, r0: 0.125, r1: 0.095,
@@ -1020,27 +1064,50 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
   const L = tl(T);
   P.turretG.position.set(0, T.ringY, T.ringZ);
   P.add('turret', castSolid(M47_TURRET, P.q, T.ringZ, T.ringY));
+  P.add('turret', castSolid(M47_BAND, P.q, T.ringZ, T.ringY));
   P.add('turret', castSolid(M47_BUSTLE, P.q, T.ringZ, T.ringY));
   // the basket under the ring (inside the ring's rim, so the seat leaves it)
   P.add('turretDark', cylY(0.69, 0.69, 0.64, P.q ? 24 : 12), 0, L.y(1.16), L.z(-0.33));
   yield 'm47TurretCasting';
-  // the M12 stereoscopic rangefinder's armoured end blisters on the cheeks with their ports, the stowage rail along the flanks
+  // the M12 stereoscopic rangefinder's armoured end blisters on the upper cheeks with their ports, the stowage rail along
+  // the band's ledge
   for (const side of [-1, 1]) {
-    const z = 0.10, y = 2.36;
+    const z = 0.20, y = 2.52;
     const x = side * castSideAt(M47_TURRET, y, z);
     P.add('turret', KIT.xform(sph(0.13, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [0.55, 0.75, 1.0]), x - side * 0.02, L.y(y), L.z(z));
     P.add('turretGlass', box(0.012, 0.07, 0.10), x + side * 0.054, L.y(y), L.z(z + 0.01));
     P.add('turretDark', cylX(0.06, 0.03, P.q ? 14 : 8), x + side * 0.038, L.y(y), L.z(z));
     const rail: number[][] = [];
-    for (let z0 = -1.15; z0 <= 0.22; z0 += 0.2741) rail.push([side * (castSideAt(M47_TURRET, 2.22, z0) + (side > 0 ? 0.035 : 0.015)), L.y(2.22), L.z(z0)]);
+    // (the right rail runs tighter to the band and further aft, as the reference has it)
+    const [z0, z1, off] = side > 0 ? [-1.15, 0.22, 0.025] : [-1.29, 0.22, 0.004];
+    for (let k = 0; k <= 5; k++) {
+      const z = z0 + (z1 - z0) * (k / 5);
+      rail.push([side * (castSideAt(M47_BAND, 1.92, z) + off), L.y(2.22), L.z(z)]);
+    }
     for (let i = 0; i + 1 < rail.length; i++) bar(P, 'turretDetail', rail[i], rail[i + 1], 0.016);
   }
   yield 'm47TurretRangefinder';
   // roof: the commander's cupola on the right with the M2, the loader's hatch on the left, gunner's periscope, vent
-  visionCupola(P, T, -0.46, -0.72, 0.40, 0.22, 8);
-  loaderHatch(P, T, 0.50, -0.60, 0.29);
+  // (the cupola an oval 0.72 by 0.96 m, its rear rim over the bustle's start)
+  visionCupola(P, T, -0.43, -0.78, 0.34, 0.25, 8, 1.40);
+  loaderHatch(P, T, 0.47, -0.60, 0.25);
   roofScope(P, T, -0.40, 0.18, 0, 0.09);
-  ventilator(P, T, 0, -2.11, 0.23);
+  // the small stowage box on the right flank's upper wall, under the cupola
+  {
+    const [bz0, bz1, by0, by1] = [-1.01, -0.56, 2.43, 2.50];
+    const x = castSideAt(M47_TURRET, (by0 + by1) / 2, (bz0 + bz1) / 2);
+    P.add('turretDetail', moldedBox(0.995 - x + 0.03, by1 - by0, bz1 - bz0, 0.01, P.q ? 2 : 1, 0.005), -(x - 0.03 + 0.995) / 2,
+      L.y((by0 + by1) / 2), L.z((bz0 + bz1) / 2));
+  }
+  // the bustle's ventilator under its wide, low armoured cover, the radio antenna's mount beside it on the right
+  {
+    const [vx, vz] = [-0.06, -2.04];
+    const vy = castTopAt(M47_BUSTLE, vx, vz);
+    P.add('turret', KIT.xform(cylY(1, 1.04, 0.07, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [0.33, 1, 0.23]), vx, L.y(vy + 0.025), L.z(vz));
+    P.add('turret', KIT.xform(sph(1, P.q ? 20 : 12, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [0.31, 0.06, 0.21]), vx, L.y(vy + 0.06), L.z(vz));
+    P.add('turretDark', moldedBox(0.16, 0.16, 0.20, 0.012, P.q ? 2 : 1, 0.006), -0.31, L.y(vy + 0.07), L.z(-1.88));
+    P.add('turretDark', cylY(0.045, 0.05, 0.03, 10), -0.31, L.y(vy + 0.165), L.z(-1.88));
+  }
   // the M2 on its post between the cupola and the centre line (the reference's: z -0.84 to 0.86, its top 3.39), the
   // ammunition chest on its left
   const postY = castTopAt(T.stations, 0, -0.73);
@@ -1050,7 +1117,8 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
   // the cradle off the cupola's ring that carries it
   P.add('turretDark', moldedBox(0.08, 0.50, 0.24, 0.012, P.q ? 2 : 1, 0.006), -0.18, L.y(3.13), L.z(-0.75));
   yield 'm47TurretRoof';
-  // the long bustle: the stowage basket on its tail, the side bins, eyes, whips, numbers
+  // the long bustle: the stowage rack's rib across its square tail, numbers
+  P.add('turretDetail', box(1.10, 0.045, 0.05), 0, L.y(2.06), L.z(-2.755));
   bustleNumbers(P, T, -2.05, 0.50, 0.22);
   yield 'm47TurretFittings';
   const G = M47_GUN;
@@ -1058,7 +1126,7 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
   // the narrow curved gun shield in the nose, its coax and sight ports
   // the rounded gun shield standing proud of the casting's nose (the casting ends at z 0.84, the shield's face at 1.10),
   // its bevelled foot at 1.81 clear of the hatch fittings at -10 and of the engine deck's grilles as it traverses
-  P.addGunExtra(rotorShield(0.55, 0.10, 0.70, -0.40, 0.60, P.q), 0, 0, 0);
+  P.addGunExtra(rotorShield(0.55, 0.10, 0.90, -0.40, 0.45, P.q), 0, 0, 0);
   P.addGunExtraDark(box(0.06, 0.06, 0.04), 0.26, 0.02, 0.48);
   P.addGunExtraDark(box(0.07, 0.07, 0.04), -0.27, 0.08, 0.47);
   P.addGunExtra(cylZ(0.15, 0.14, P.q ? 18 : 10), 0, 0, 0.58);
@@ -1068,7 +1136,7 @@ function* m47TurretSteps(P: CastPort): TankProfileBuild {
 }
 
 const M47_HULL_SPEC: PershingHullSpec = {
-  mark: 'm47', tailZ: -4.10, toe: [2.01, 1.00], knee: [0.92, 1.61], bellyFrontZ: 1.62, bellyRearZ: -3.25, bellyY: 0.47,
+  mark: 'm47', tailZ: -4.00, toe: [2.01, 1.00], knee: [0.92, 1.61], bellyFrontZ: 1.62, bellyRearZ: -3.25, bellyY: 0.47,
   deckY: 1.62, engineDeckY: 1.71, engineDeckZ: -1.20, tailTopY: 1.50, tailBotY: 0.70,
   sponsonHW: 1.45, sponsonY: 1.40, fenderHW: 1.756, fenderY: 1.40, trackW: 0.64, xc: 1.36,
   // the rear fender stays level over the sprocket, then turns down behind its wrap
@@ -1078,7 +1146,8 @@ const M47_HULL_SPEC: PershingHullSpec = {
   noseDepth: 0.04,
   fenderBoxH: 0.26, fenderBoxX: [1.45, 1.66], fenderBoxes: [[0.50, -0.40], [-0.45, -1.45], [-1.50, -2.90]],
   outerBox: [1.66, 1.75, 1.40, 1.58, -2.00, -1.80],
-  mufflers: false, bowLights: [0.72, 1.22, 1.92], frontFlap: false, bowEyesOnGlacis: true,
+  // the headlight groups high on the glacis by its edges; the rear plate under the engine grilles' overhang
+  mufflers: false, bowLights: [0.90, 1.44, 1.62], frontFlap: false, bowEyesOnGlacis: true, rearGrille: [0.94, 1.00, 1.50, 0.16, 0.56],
   sponsonFrontBox: [0.94, 1.30, 1.45, 1.63, 0.92, 1.18], fenderBrackets: [-0.45, 0, 0.43, 1.30],
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [0.92, -2.65], rollerN: 3, rollerY: 1.04, rollerSpan: [0.25, -2.15],
