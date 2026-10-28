@@ -234,6 +234,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   t84bm_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
+  // 262: the new true T-64s compare against the T-64 prints their siblings use (the 42manako T-64BV1 and T-64BV Donbas
+  // kitbash, local-only, CC-BY-NC); their builds follow published T-64 dimensions (docs/references/tanks/t64bm1m.md).
+  t64bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  t64b1v_2022: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   // 262: the 42manako T-64BM1M print (CC-BY-NC, local-only; sha256 c62063d8507a993c; docs/references/tanks/t64bm1m.md),
   // +X forward in its own frame. Its horseshoe, searchlight, smoke banks, rack and bustle stores are root-level nodes that
   // ride the turret; two stray two-triangle planes float 5.7 m up (gear1-optione002/003, recorded in the packet).

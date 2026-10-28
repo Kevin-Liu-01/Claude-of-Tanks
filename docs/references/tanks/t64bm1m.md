@@ -6,29 +6,34 @@ Template: [run packet](../../tank-generation/templates/run-packet.md). Route: "N
 ## Current status
 
 - Updated: 2026-10-27 (lane item/t64bm1m-262, release 262).
-- Owner request (2026-10-27, via Main, verbatim): "add these new tanks using our rigoorous tank generation workflow";
-  then "the t64 bm1m should be designed from scratchh as well and serve as inspiratin to properly update our t64s which
-  are not based onn t64s rn"; directly to this lane: "that true t64 build is bad and i dont wnat u tgo use it" (the
-  release-233 `profiles/t64bvX.ts`, a0711ff866: not used, no code, stations or wheel donor taken from it).
-- IDs and display names: `t64bm1m` T-64BM1M (new, Ukraine); `t64bv1` T-64BV1 (USSR/Russia) and `t64bv_donbas`
-  T-64BV mod. 2017 (Ukraine), rebuilt on the T-64 base. `t84` and `t84bm_oplot_m` belong to the Oplot lane (untouched).
-- Implementation status: base, BM1M and the BV pair built (`profiles/t64Foundation.ts`, `t64RunningGear.ts`,
-  `t64bm1m.ts`, `t64bvK1.ts`, `donbasFieldCover.ts`; frame `t64Armor.ts`). See the evidence matrix for receipts.
-- Qualification status: see the evidence matrix. Publication: lane branch only; Main integrates release 262.
+- Owner requests (2026-10-27): via Main, verbatim, "add these new tanks using our rigoorous tank generation workflow" and
+  "the t64 bm1m should be designed from scratchh as well and serve as inspiratin to properly update our t64s which are
+  not based onn t64s rn"; to this lane, on the release-233 `profiles/t64bvX.ts` (a0711ff866): "that true t64 build is bad
+  and i dont wnat u tgo use it" (not used: no code, stations or wheel donor); on a first flat raster of the rebuilt
+  T-64BV1: "what is this? this looks really bad"; then "i also liked our old t64s that are on main and deployed rn so
+  make these new tanks were making fully nnew tnaks".
+- Consequence: `t64bv1` (T-64BV1) and `t64bv_donbas` (T-64BV mod. 2017) stay exactly as on main (every file of theirs is
+  byte-identical to 7d045a7588). The true T-64s are three NEW tanks on one first-party base, named for real variants
+  (MilitaryLand, T-64 variants): `t64bm1m` T-64BM1M (Ukraine), `t64bv` T-64BV (USSR), `t64b1v_2022` T-64B1V mod. 2022
+  (Ukraine). `t84` and `t84bm_oplot_m` belong to the Oplot lane (untouched); `src/vehicles/ukraine.ts` is untouched too
+  (the three register in `src/vehicles/t64FamilySpecs.ts`).
+- Implementation: `profiles/t64Foundation.ts` (hull, cast turret, gun, cupola, sights), `t64RunningGear.ts`,
+  `t64bm1m.ts`, `t64KontaktFamily.ts`; frame `t64Armor.ts`. See the evidence matrix for receipts.
+- Publication: lane branch only; Main integrates release 262.
 - Worktree / branch / base: `.claude/worktrees/xenodochial-rubin-4eb6bf`, `item/t64bm1m-262`, origin/main 7d045a7588.
 
 ## Scope and preservation
 
-- Mode: independent X (`t64bm1m`) plus an explicit family rebuild of the two existing T-64 ids on its base.
+- Mode: independent X (`t64bm1m`) plus two new Kontakt-1 variants on its base.
 - Variant matrix:
 
 | ID | Configuration | Own deltas on the T-64 base | Source support |
 |---|---|---|---|
-| `t64bm1m` | T-64B1 with Nizh, 6TD-1, KT-12.7 (Kharkiv, 2014 Congo order / National Guard) | Nizh glacis (2 x 10), six-block Nizh horseshoe a side, Nizh crown tiles, five Nizh side screens a side, stowage bustle and rack, 902B 4 + 4 on both flanks, L-2G searchlight | 42manako print; Oryx 2021 photos; Army Recognition 2014; MilitaryLand |
-| `t64bv1` | T-64BV (Kontakt-1), Soviet | K-1 glacis courses, skirt row, two-tier horseshoe and roof row, blade, 902B on the left, L-2G, rear box with OPVT, sensor, rack and pack, two rear drums | Commons T-64B/BV photos; the 240 K-1 layout (owner 2026-10-22) |
-| `t64bv_donbas` | T-64BV mod. 2017 (Ukraine) | the same K-1 layout, no IR searchlight (MilitaryLand), 2017 night-sight box, bins and paired whips, rack and pack, Donbas field cover | VoidWanderer, "T-64BV mod 2017, Kyiv 2021, 16" (CC BY-SA 4.0); MilitaryLand |
+| `t64bm1m` | T-64B1 with Nizh, 6TD-1, KT-12.7 (Kharkiv, 2014 Congo order / National Guard) | Nizh glacis (2 x 10), five wedge Nizh blocks a side round the turret face, two rows of crown plates, five Nizh side screens a side, the open rear basket, 902B 4 + 4 on both flanks, L-2G searchlight | 42manako print; Oryx 2021; Army Recognition 2014; MilitaryLand |
+| `t64bv` | T-64BV (Soviet, T-64B line, Kontakt-1) | dense K-1 (five glacis courses, a 3 x 12 skirt grid a side, an upright collar and tilted tier round the turret, a roof row), blade, 902B on the left, L-2G, rear box with OPVT, sensor, rack and pack, two drums on the rear plate | Alan Wilson, "T-64BV - Patriot Museum, Kubinka" (CC BY-SA 2.0); 42manako T-64BV1 print |
+| `t64b1v_2022` | T-64B1V mod. 2022 (Ukraine): "updated radio, navigation and communication systems, identifiable by a gunner shield and slat armor" (MilitaryLand) | the same dense K-1, no IR light, the night-sight box, digital radio whips and satnav puck, a shielded NSVT, slat screens round the turret rear and the engine compartment | MilitaryLand; VoidWanderer, "T-64BV mod 2017, Kyiv 2021, 16" (CC BY-SA 4.0); the T-64BV Donbas print |
 
-- Explicitly excluded: T-84 / Oplot geometry (Oplot lane), the release-233 T-64 build, any T-72/T-80 builder.
+- Preserved: `t64bv1`, `t64bv_donbas` (main's T-72B3-study builds, their rows, icons, hero cards and receipts).
 
 ## Source and comparison contract
 
@@ -144,6 +149,21 @@ fire-control floor and the 259 tier-IV footing its sibling takes (mantlet x1.45,
 
 ## Round log
 
-- R1 (ca57b0c7ad): base, BM1M and the BV pair build in Node; first rasters read as a T-64.
+- R1 (ca57b0c7ad): base, BM1M and (then) the T-64BV pair build in Node; first rasters read as a T-64.
 - R2: bow mudguards take a turned-down lip; whips 1.55 m; drums behind the rear plate; fender boxes and racks moved out
   of the turret's swept volume.
+- Owner on the R2 raster of the rebuilt T-64BV1: "what is this? this looks really bad". Read against the Kubinka T-64BV
+  photograph: the Kontakt-1 was far too sparse, the bow mudguards were wire arcs, the hull side a slab.
+- Blind critic 1 (BM1M, R1/R2 rasters): hull and running gear read as a T-64; the turret did not (a "fluted lampshade"
+  of thin Nizh panels, a closed box bustle, a stalk-mounted NSVT, shelf boxes breaking the glacis line).
+- Owner: "make these new tanks were making fully nnew tnaks": the old pair restored; T-64BV and T-64B1V mod. 2022 become
+  new ids (1360e5b4f1). Dense Kontakt-1 per the photographs; BM1M wedge blocks and an open basket; deep mudguard flaps;
+  no shelf boxes ahead of the turret; the Utyos housing; a tapered mask.
+- Defect found and fixed: the eager tool factory (`profiledProcedurals.ts`) lists the Russia keys explicitly, so tools
+  built `t64bv` with its donor's (the old T-64BV1's) builder; the key is appended (its R3 rasters were the old tank).
+- Blind critic 2 (R3 rasters): BM1M 4-5/10 (turret weakest: the Nizh still a ring of separate tiles, the roof tiles
+  scattered, the basket a tall hoop, the smoke banks lost), T-64B1V mod. 2022 5-6/10 (glacis Kontakt-1 a waffle in the
+  centre, not the photographs' edge-to-edge shingle courses). R4/R5: the BM1M prow continuous and thick (five blocks edge
+  to edge, 0.36-0.46 m deep), the crown slab contiguous, the glacis slab full width (headlights to the bow mudguards),
+  the basket a low flat-bar box 0.40 m out, the 902B rows on the last block; the Kontakt-1 glacis in four stepped
+  shingle courses edge to edge with the last over the nose; the NSVT's housing encloses its column.

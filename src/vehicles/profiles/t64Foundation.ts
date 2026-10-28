@@ -103,11 +103,21 @@ export function t64RubberSkirt(P: TankBuilderPort, side: number, fromZ = -3.05, 
   for (let z = fromZ + .25; z < toZ; z += .92) P.addEquipment('hullDetail', box(.03, .07, .05), x - side * .012, H.deckY - .05, z);
 }
 
-function glacisFittings(P: TankBuilderPort): void {
+function glacisFittings(P: TankBuilderPort, headlights: 'glacis' | 'mudguard'): void {
   // The V splash board ahead of the driver's hatch, let into the plate along its foot.
   for (const side of [-1, 1]) P.addEquipment('hullDetail', box(.56, .12, .022), side * .25, t64GlacisY(1.92) + .055, 1.92, 0, side * .44, 0);
-  // headlight pairs on the glacis corners behind guard bars
-  for (const side of [-1, 1]) {
+  // headlight pairs behind guard bars: on the glacis corners, or (under a full-width Kontakt-1 package) on the bow
+  // mudguards' crown
+  if (headlights === 'mudguard') {
+    for (const side of [-1, 1]) {
+      const x = side * 1.36, z = 2.52, y = H.deckY - .01;
+      P.snapGroup('t64-headlight', () => {
+        P.addEquipment('hullDetail', box(.24, .05, .14), x, y + .025, z);
+        for (const dx of [-.06, .06]) P.addEquipment('hullDetail', markVehicleNightLens(cylZ(.045, .08, 18), 'headlight'), x + dx, y + .085, z + .03);
+        for (const dx of [-.10, .10]) P.addEquipment('hullDetail', beamBetween([x + dx, y + .03, z - .06], [x + dx, y + .15, z + .09], .007, 8));
+      }, { reachM: .06, mode: 'down' });
+    }
+  } else for (const side of [-1, 1]) {
     const x = side * .80, z = 2.42;
     P.snapGroup('t64-headlight', () => {
       P.addEquipment('hullDetail', box(.26, .05, .16), x, t64GlacisY(z) + .018, z, T64_GLACIS_RAKE, 0, 0);
@@ -191,14 +201,14 @@ function fenderStowage(P: TankBuilderPort): void {
 
 /** The whole hull: tub, fenders, running gear, deck, rear plate and shelves. */
 /** drums: two 200 L drums on the rear plate; log: the unditching log across it; mgShield: the gunner shield on the NSVT
- * (the T-64B1V mod. 2022). */
-export interface T64BaseOptions { drums?: boolean; log?: boolean; mgShield?: boolean }
+ * (the T-64B1V mod. 2022); headlights: on the glacis (default) or on the bow mudguards. */
+export interface T64BaseOptions { drums?: boolean; log?: boolean; mgShield?: boolean; headlights?: 'glacis' | 'mudguard' }
 export function buildT64Hull(P: TankBuilderPort, options: T64BaseOptions = {}): void {
   P.hullG.position.set(0, 0, 0);
   hullTub(P);
   for (const side of [-1, 1]) fenders(P, side);
   P.gear = buildT64RunningGear(P, KIT);
-  glacisFittings(P); driverStation(P); engineDeck(P); rearPlate(P, !!options.drums, options.log !== false); fenderStowage(P);
+  glacisFittings(P, options.headlights ?? 'glacis'); driverStation(P); engineDeck(P); rearPlate(P, !!options.drums, options.log !== false); fenderStowage(P);
 }
 
 // ---------------------------------------------------------------- turret (turret frame)
@@ -281,13 +291,13 @@ function commanderCupola(P: TankBuilderPort, shield: boolean): void {
   P.addModuleVisual('optics', 'turretGlass', box(.16, .06, .012), x + .02, roof + .135, z + .345);
   for (const a of [-1.0, -.45, .45, 1.0]) P.addEquipment('turretDark', box(.07, .045, .05), x + Math.sin(a) * .33, roof + .08, z + Math.cos(a) * .33, 0, a, 0);
   // the Utyos mount's cast housing on the cupola's rear arc: the drive box the gun's cradle turns on, its sight window
-  P.addEquipment('turretDetail', box(.34, .16, .30), x - .02, roof + .19, z - .14);
-  P.addEquipment('turretDetail', box(.26, .05, .24), x - .02, roof + .295, z - .14);
-  P.addModuleVisual('optics', 'turretGlass', box(.10, .05, .012), x + .10, roof + .21, z + .015);
+  P.addEquipment('turretDetail', box(.36, .30, .32), x - .02, roof + .25, z - .14);
+  P.addEquipment('turretDetail', box(.28, .04, .26), x - .02, roof + .42, z - .14);
+  P.addModuleVisual('optics', 'turretGlass', box(.10, .05, .012), x + .10, roof + .30, z + .025);
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1, ammo: true, shield,
     remoteControlled: true, ridingCradle: true, feed: 'left', datumBarrel: false, seed: 6464 });
   mg.name = 't64CommanderNsvt';
-  mg.position.set(x - .02, roof + .315, z - .14);
+  mg.position.set(x - .02, roof + .30, z - .14);
   P.turretG.add(mg);
 }
 

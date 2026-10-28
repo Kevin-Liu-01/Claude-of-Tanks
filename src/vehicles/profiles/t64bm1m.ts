@@ -29,62 +29,62 @@ export function t64CastRadius(phi: number, y: number): number {
 
 // ---------------------------------------------------------------- glacis
 function glacisNizh(P: TankBuilderPort): void {
-  // Two courses of ten cells (the print's 22 cells, the outermost pair dropped at the headlights), each 3 mm into the
-  // plate, between the splash board (z 2.02) and the nose bar.
+  // One continuous Nizh slab across the glacis: two courses of ten cells edge to edge between the bow mudguards (the
+  // print's 22 cells), 3 mm into the plate, from ahead of the splash board to the nose bar.
   const n = new THREE.Vector3(0, Math.cos(T64_GLACIS_RAKE), Math.sin(T64_GLACIS_RAKE)), th = .072;
   const rotation = new THREE.Matrix4().makeRotationX(T64_GLACIS_RAKE);
-  for (const [z, half] of [[2.27, 4.5], [2.73, 4.5]] as const) for (let i = 0; i < 10; i++) {
-    const x = (i - half) * .205;
-    if (Math.abs(x) > .64 && z < 2.5) continue;           // the headlight pairs stand on the upper course's corners
+  for (const z of [2.255, 2.715]) for (let i = 0; i < 10; i++) {
+    const x = (i - 4.5) * .207;
     const p = new THREE.Vector3(x, t64GlacisY(z), z).addScaledVector(n, th / 2 - .003);
     const basis = rotation.clone().setPosition(p);
     P.destructibleCluster(`glacis_era_${x < 0 ? 'R' : 'L'}`, () => {
-      P.addExternalArmor('hull', markEraHitFaces(P.q ? box(.195, th, .43) : new THREE.BoxGeometry(.195, th, .43), [0, 1, 0]).applyMatrix4(basis));
-      P.addExternalArmor('hull', markEraFurniture(box(.17, .010, .38)).translate(0, th / 2 + .004, 0).applyMatrix4(basis));
+      P.addExternalArmor('hull', markEraHitFaces(new THREE.BoxGeometry(.204, th, .505), [0, 1, 0]).applyMatrix4(basis));
+      P.addExternalArmor('hull', markEraFurniture(new THREE.BoxGeometry(.17, .008, .44)).translate(0, th / 2 + .004, 0).applyMatrix4(basis));
     });
   }
 }
 
 // ---------------------------------------------------------------- turret horseshoe
-// Five deep wedge blocks a side round the turret face (plan spans in degrees from straight ahead): each stands on the
-// casting from y 0.10, its outer face leaning back and its top falling outward and toward the gun, so the band reads in
-// profile as the print's low wedge (front top 0.30, flank top 0.52), not an upright wall.
-const BLOCK_BOTTOM = .10, BLOCKS = [[16, 31], [32, 47], [48, 63], [64, 79], [80, 96]] as const;
-const blockTop = (deg: number) => .30 + .22 * Math.min(1, Math.max(0, (deg - 16) / 80));
-const blockDepth = (deg: number) => .42 - .10 * Math.min(1, Math.max(0, (deg - 16) / 80));
+// Five deep wedge blocks a side, edge to edge round the turret face (plan spans in degrees from straight ahead), one
+// continuous prow standing 0.36-0.46 m off the casting: each stands from y 0.10, its outer face near upright, its top
+// falling 8 cm outward and lower toward the gun (front 0.34, flank 0.52), the print's low wedge in profile.
+const BLOCK_BOTTOM = .10, BLOCKS = [[14, 30], [30, 46], [46, 62], [62, 78], [78, 96]] as const;
+const blockTop = (deg: number) => .34 + .18 * Math.min(1, Math.max(0, (deg - 14) / 82));
+const blockDepth = (deg: number) => .46 - .10 * Math.min(1, Math.max(0, (deg - 14) / 82));
+const LEAN = .04, FALL = .08;
 function horseshoeBlock(P: TankBuilderPort, side: number, a0: number, a1: number): void {
   const deg = Math.PI / 180, corner = (a: number, r: number, y: number): V3 => [side * Math.sin(a * deg) * r, y, Math.cos(a * deg) * r];
   const pts: V3[] = [];
   for (const a of [a0, a1]) {
     const top = blockTop(a), rb = t64CastRadius(side * a * deg, BLOCK_BOTTOM), rt = t64CastRadius(side * a * deg, top);
     const outer = rb + blockDepth(a);
-    pts.push(corner(a, rb - .025, BLOCK_BOTTOM), corner(a, outer, BLOCK_BOTTOM), corner(a, rt - .025, top), corner(a, outer - .12, top - .06));
+    pts.push(corner(a, rb - .025, BLOCK_BOTTOM), corner(a, outer, BLOCK_BOTTOM), corner(a, rt - .025, top), corner(a, outer - LEAN, top - FALL));
   }
   const mid = (a0 + a1) / 2 * deg, outward: V3 = [side * Math.sin(mid), Math.sin(.26), Math.cos(mid)];
   const body = convexSlab(...pts);
   P.destructibleCluster(`turret_era_${side > 0 ? 'L' : 'R'}`, () => {
     P.addExternalArmor('turret', markEraHitFaces(body, outward, .55));
     // the lid's bolted rim on the outer face
-    const am = (a0 + a1) / 2, rb = t64CastRadius(side * am * deg, BLOCK_BOTTOM) + blockDepth(am), top = blockTop(am) - .06;
-    const c = corner(am, rb - .06 + .006, (BLOCK_BOTTOM + top) / 2);
+    const am = (a0 + a1) / 2, rb = t64CastRadius(side * am * deg, BLOCK_BOTTOM) + blockDepth(am), top = blockTop(am) - FALL;
+    const c = corner(am, rb - LEAN / 2 + .006, (BLOCK_BOTTOM + top) / 2);
     const lid = markEraFurniture(box((a1 - a0) * deg * rb * .80, (top - BLOCK_BOTTOM) * .78, .010));
-    lid.rotateX(-Math.atan2(.12, top - BLOCK_BOTTOM)).rotateY(side * am * deg).translate(...c);
+    lid.rotateX(-Math.atan2(LEAN, top - BLOCK_BOTTOM)).rotateY(side * am * deg).translate(...c);
     P.addExternalArmor('turret', lid);
   });
 }
 
 function roofNizh(P: TankBuilderPort): void {
-  // Two rows of thin flat Nizh plates on the crown ahead of the hatches, each laid to the roof's slope, clear of the sight
-  // head (x 0.33..0.59) and the cupola.
-  for (const z of [.12, .44]) for (const x of [-.86, -.56, -.26, .04, .86]) {
+  // One raised slab of thin Nizh plates on the crown ahead of the hatches: two rows of four edge to edge (and one beside
+  // the sight head on the left), each laid to the roof's slope, clear of the sight head (x 0.33..0.59) and the cupola.
+  for (const z of [.14, .405]) for (const x of [-.80, -.535, -.27, -.005, .80]) {
     const y = Math.max(...[-.12, .12].flatMap(dx => [-.12, .12].map(dz => t64DomeHeight(x + dx, z + dz) ?? -1)));
     if (y < 0) continue;
     const dzY = ((t64DomeHeight(x, z + .1) ?? y) - (t64DomeHeight(x, z - .1) ?? y)) / .2;
     const dxY = ((t64DomeHeight(x + .1, z) ?? y) - (t64DomeHeight(x - .1, z) ?? y)) / .2;
     const lay = (g: THREE.BufferGeometry) => g.rotateX(-Math.atan(dzY)).rotateZ(Math.atan(dxY));
     P.destructibleCluster('turret_roof_era', () => {
-      P.addExternalArmor('turret', markEraHitFaces(lay(new THREE.BoxGeometry(.27, .028, .27)), [0, 1, 0]), x, y + .006, z);
-      P.addExternalArmor('turret', markEraFurniture(lay(new THREE.BoxGeometry(.23, .006, .23))), x, y + .023, z);
+      P.addExternalArmor('turret', markEraHitFaces(lay(new THREE.BoxGeometry(.262, .034, .262)), [0, 1, 0]), x, y + .008, z);
+      P.addExternalArmor('turret', markEraFurniture(lay(new THREE.BoxGeometry(.23, .006, .23))), x, y + .028, z);
     });
   }
 }
@@ -105,60 +105,60 @@ function sideScreens(P: TankBuilderPort, side: number): void {
 }
 
 // ---------------------------------------------------------------- turret rear and flanks
-/** The open rail basket wrapped round the turret rear (the print's basket; MilitaryLand's in-service photograph): a
- * floor frame 0.30 m out from the casting at y 0.14, its top rail rising from 0.44 at the front ends to 0.60 astern,
+/** The open basket wrapped round the turret rear (the print's basket; MilitaryLand's in-service photograph): a low
+ * flat-bar box 0.40 m out from the casting, its floor at y 0.10 and its top bar at 0.34 (the ends) to 0.40 (astern),
  * upright bars between, welded brackets from the wall; packs, the OPVT tube and a tarp roll inside. */
 function rearBasket(P: TankBuilderPort): void {
-  const deg = Math.PI / 180, floor = .14, path: { a: number; out: V3; wall: V3; top: number }[] = [];
-  for (let d = 112; d <= 248.01; d += 8) {
+  const deg = Math.PI / 180, floor = .10, path: { a: number; out: V3; wall: V3; top: number }[] = [];
+  for (let d = 110; d <= 250.01; d += 10) {
     const a = d * deg, rw = t64CastRadius(a, floor), dir = [Math.sin(a), Math.cos(a)];
-    const top = .44 + .16 * (1 - Math.abs(d - 180) / 68);
-    path.push({ a, out: [dir[0] * (rw + .30), floor, dir[1] * (rw + .30)], wall: [dir[0] * (rw - .02), floor, dir[1] * (rw - .02)], top });
+    const top = .34 + .06 * (1 - Math.abs(d - 180) / 70);
+    path.push({ a, out: [dir[0] * (rw + .40), floor, dir[1] * (rw + .40)], wall: [dir[0] * (rw - .02), floor, dir[1] * (rw - .02)], top });
   }
+  const flatBar = (from: V3, to: V3, w: number, h: number) => {
+    const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to), d = b.clone().sub(a);
+    P.addEquipment('turretDetail', box(w, h, d.length()).rotateY(Math.atan2(d.x, d.z)), (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+  };
   for (let i = 0; i < path.length; i++) {
     const p = path[i], [ox, , oz] = p.out;
-    P.addEquipment('turretDetail', box(.026, p.top - floor, .026), ox, (p.top + floor) / 2, oz);
-    if (i % 2 === 0) P.addEquipment('turretDetail', beamBetween(p.wall, p.out, .014, 6));       // floor bar from the wall
+    P.addEquipment('turretDetail', box(.03, p.top - floor, .03).rotateY(p.a), ox, (p.top + floor) / 2, oz);
+    flatBar(p.wall, p.out, .045, .010);                                                   // floor slat from the wall
     if (i === 0) continue;
     const q = path[i - 1];
-    P.addEquipment('turretDetail', beamBetween(q.out, p.out, .014, 6));                            // floor rail
-    P.addEquipment('turretDetail', beamBetween([q.out[0], q.top, q.out[2]], [p.out[0], p.top, p.out[2]], .014, 6));  // top rail
-    P.addEquipment('turretDetail', beamBetween([q.out[0], (q.top + floor) / 2, q.out[2]], [p.out[0], (p.top + floor) / 2, p.out[2]], .010, 6));
+    flatBar(q.out, p.out, .010, .045);                                                    // floor rail
+    flatBar([q.out[0], q.top, q.out[2]], [p.out[0], p.top, p.out[2]], .010, .045);        // top bar
+    flatBar([q.out[0], (q.top + floor) / 2, q.out[2]], [p.out[0], (p.top + floor) / 2, p.out[2]], .008, .030);
   }
-  // the welded brackets carrying the frame, from the wall at the ends and astern
   for (const i of [0, Math.floor(path.length / 2), path.length - 1]) {
     const p = path[i];
     P.addEquipment('turretDetail', beamBetween([p.wall[0], floor + .14, p.wall[2]], [p.out[0], floor + .01, p.out[2]], .016, 6));
   }
-  strappedPack(P, 'turret', [-.55, floor + .14, -1.42], [.46, .26, .30]);
-  strappedPack(P, 'turret', [.58, floor + .13, -1.40], [.40, .24, .30]);
-  P.addEquipment('turretDetail', cylX(.11, 1.0, P.q ? 20 : 12), 0, floor + .12, -1.58);
-  for (const dx of [-.34, .34]) P.addEquipment('turretDark', torus(.114, .010, P.q ? 20 : 10, 4).rotateY(Math.PI / 2), dx, floor + .12, -1.58);
+  strappedPack(P, 'turret', [-.58, floor + .13, -1.48], [.48, .24, .32]);
+  strappedPack(P, 'turret', [.60, floor + .12, -1.46], [.42, .22, .32]);
+  P.addEquipment('turretDetail', cylX(.11, 1.0, P.q ? 20 : 12), 0, floor + .12, -1.66);
+  for (const dx of [-.34, .34]) P.addEquipment('turretDark', torus(.114, .010, P.q ? 20 : 10, 4).rotateY(Math.PI / 2), dx, floor + .12, -1.66);
 }
 
 function smokeBanks(P: TankBuilderPort): void {
-  // Two banks of four 902B tubes, one on each flank between the last block (96 deg) and the basket (112 deg), on a welded
-  // bracket into the wall, firing forward and out.
-  const a = 104 * Math.PI / 180, y = .36;
-  for (const side of [-1, 1]) {
-    const r = t64CastRadius(side * a, y), dir = new THREE.Vector3(side * Math.sin(a), 0, Math.cos(a));
-    const base = dir.clone().multiplyScalar(r + .07);
-    P.addEquipment('turretDetail', box(.14, .16, .30).rotateY(side * a), base.x, y - .02, base.z);
-    for (let i = 0; i < 4; i++) {
-      const along = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar((i - 1.5) * .075);
-      P.addEquipment('turretDark', markSmokeTube(blindTube(.041, .030, .25, .16, P.q ? 16 : 10), [0, 0, 1], true),
-        base.x + dir.x * .03 + along.x, y + .10 + (i % 2) * .045, base.z + dir.z * .03 + along.z, -.62, side * .42, 0);
-    }
+  // A row of four 902B tubes on each rear flank, on the last Nizh block's top (78-96 deg), firing forward, up and out.
+  const deg = Math.PI / 180;
+  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+    const a = (82 + i * 4.2) * deg, top = blockTop(a / deg) - FALL * .6;
+    const r = t64CastRadius(side * a, BLOCK_BOTTOM) + blockDepth(a / deg) * .55;
+    const x = side * Math.sin(a) * r, z = Math.cos(a) * r;
+    P.addEquipment('turretDetail', box(.10, .05, .10).rotateY(side * a), x, top + .010, z);
+    P.addEquipment('turretDark', markSmokeTube(blindTube(.041, .030, .25, .16, P.q ? 16 : 10), [0, 0, 1], true),
+      x, top + .07, z, -.62, side * .30, 0);
   }
 }
 
 export function buildT64BM1M(P: TankBuilderPort): void {
-  buildT64Base(P, { drums: false });
+  buildT64Base(P, { drums: false, headlights: 'mudguard' });
   for (const side of [-1, 1]) { t64RubberSkirt(P, side); sideScreens(P, side); }
   glacisNizh(P);
   for (const side of [-1, 1]) for (const [a0, a1] of BLOCKS) horseshoeBlock(P, side, a0, a1);
   roofNizh(P); rearBasket(P); smokeBanks(P);
-  t64SearchlightAt(P, -.62, .40, 1.66);
+  t64SearchlightAt(P, -.62, .42, 1.76);
   P.hullG.userData.familyRebuild = { base: 't64Foundation', revision: 1, variant: 'bm1m',
     features: ['nizh-glacis', 'nizh-horseshoe', 'nizh-roof', 'nizh-screens', 'rear-basket', 'smoke-flanks', 'l2g-searchlight'] };
 }

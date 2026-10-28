@@ -12,13 +12,12 @@
 // the glacis below the V splash board, a three-row grid over the leading two thirds of each skirt, a continuous collar of
 // upright containers round the turret face with a tilted tier on the shoulder above it, and a roof row ahead of the hatches.
 import * as THREE from 'three';
-import { KIT, FITTINGS } from './kit.ts';
+import { KIT } from './kit.ts';
 import { beamBetween, blindTube, type Point3 } from './measuredPrimitives.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { buildT64Base, t64RubberSkirt, t64DomeContains, t64DomeHeight, t64GlacisY, t64Searchlight, T64_GLACIS_RAKE, T64_HULL } from './t64Foundation.ts';
 import { attachedCage, supportedSensor, strappedPack } from './modernizationFittings.ts';
-import { mount } from './fittingMount.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, torus } = KIT;
@@ -35,15 +34,15 @@ function k1Brick(P: TankBuilderPort, owner: 'hull' | 'turret', sector: string, b
 
 // ---------------------------------------------------------------- hull (hull frame)
 function glacisEra(P: TankBuilderPort): void {
-  // Five courses of ten seated on the plate (3 mm into it), between the splash board and the nose bar; the courses beside
-  // the headlight pairs stop short of them.
-  const n = new THREE.Vector3(0, Math.cos(T64_GLACIS_RAKE), Math.sin(T64_GLACIS_RAKE)), th = .068;
-  const rotation = new THREE.Matrix4().makeRotationX(T64_GLACIS_RAKE);
-  for (const z of [2.07, 2.25, 2.43, 2.61, 2.79]) for (let i = 0; i < 10; i++) {
-    const x = (i - 4.5) * .195;
-    if (Math.abs(x) > .66 && z > 2.20 && z < 2.66) continue;
-    const p = new THREE.Vector3(x, t64GlacisY(z), z).addScaledVector(n, th / 2 - .003);
-    k1Brick(P, 'hull', `glacis_era_${x < 0 ? 'R' : 'L'}`, rotation.clone().setPosition(p), [.18, th, .19]);
+  // Four stepped courses of eight edge to edge between the bow mudguards, each container tilted 12 degrees off the plate
+  // like a shingle (its leading edge standing off it), the last course hanging over the nose bar.
+  const tilt = 12 * Math.PI / 180, th = .07, len = .26;
+  const n = new THREE.Vector3(0, Math.cos(T64_GLACIS_RAKE), Math.sin(T64_GLACIS_RAKE));
+  const rotation = new THREE.Matrix4().makeRotationX(T64_GLACIS_RAKE - tilt);
+  for (const z of [2.10, 2.34, 2.58, 2.84]) for (let i = 0; i < 8; i++) {
+    const x = (i - 3.5) * .252;
+    const p = new THREE.Vector3(x, t64GlacisY(z), z).addScaledVector(n, th / 2 + len / 2 * Math.sin(tilt) - .006);
+    k1Brick(P, 'hull', `glacis_era_${x < 0 ? 'R' : 'L'}`, rotation.clone().setPosition(p), [.244, th, len]);
   }
 }
 
@@ -175,13 +174,14 @@ function slatScreen(P: TankBuilderPort, owner: 'hull' | 'turret', from: Point3, 
 
 function mod2022Fittings(P: TankBuilderPort): void {
   rearBox(P);
-  // updated radio, navigation and communication (MilitaryLand): the digital radio's paired whips on bases either side of
-  // the rear box, the satellite-navigation puck on its mast, and the night sight's armoured box beside the gunner's hatch
+  // updated radio, navigation and communication (MilitaryLand): the digital radio's two sets in armoured boxes either
+  // side of the rear box (the crown's whips are theirs), the satellite-navigation puck on its mast, and the night sight's
+  // armoured box beside the gunner's hatch
   supportedSensor(P, [.40, .88, -.49], (t64DomeHeight(.40, -.49) ?? .76) - .006);
   for (const side of [-1, 1]) {
     const x = side * .74, z = -1.15, y = t64DomeHeight(x, z) ?? .55;
     P.addEquipment('turretDetail', box(.20, .12, .20), x, y + .05, z);
-    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.30, r: .010, seed: side > 0 ? 2022 : 2202 }), x, y + .11, z);
+    P.addEquipment('turretDark', box(.06, .03, .06), x, y + .125, z);
   }
   P.addEquipment('turretDetail', KIT.cylY(.012, .014, .22, 8), -.18, (t64DomeHeight(-.18, -1.02) ?? .62) + .11, -1.02);
   P.addEquipment('turretDark', KIT.cylY(.055, .055, .03, 14), -.18, (t64DomeHeight(-.18, -1.02) ?? .62) + .235, -1.02);
@@ -196,7 +196,7 @@ function mod2022Fittings(P: TankBuilderPort): void {
 
 /** The shared body: the T-64 base, the rubber skirts and the Kontakt-1 package. */
 function buildT64KontaktBody(P: TankBuilderPort, options: { searchlight: boolean; drums: boolean; log: boolean; mgShield: boolean }): void {
-  buildT64Base(P, { drums: options.drums, log: options.log, mgShield: options.mgShield });
+  buildT64Base(P, { drums: options.drums, log: options.log, mgShield: options.mgShield, headlights: 'mudguard' });
   for (const side of [-1, 1]) { t64RubberSkirt(P, side); skirtEra(P, side); }
   glacisEra(P); blade(P);
   turretEra(P, options.searchlight); smokeLeft(P);
