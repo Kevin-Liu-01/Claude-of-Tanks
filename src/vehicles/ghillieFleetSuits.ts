@@ -359,6 +359,32 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.55, 3.20, 1.46, 0.42, 1.75, 41, (side) => (side < 0 ? [cut(-3.60, -2.40, 1.00, 1.60)] : [])),
     },
   },
+  // Release 262, the Strv 121 (the owner, 2026-10-27: "our strv 121 should also get a ton [of netting and ghillie] btw to
+  // distinguishh it as swedish"): the Swedish Army's look, a Barracuda-style cut multispectral cover (ulcans strips)
+  // worked through with spruce boughs, heavier than the fleet's DENSE suits. The turret netted from the wedge's tip over
+  // the 122 roof armour and the bustle, round the hatches, the panorama and the loader's MG (the builder); drapes down the
+  // walls over the side plates forward of the slats and over the bustle; a drape off the rear basket; the engine deck,
+  // the deck edges under the turret's sweep and the glacis netted; four drapes a side over the cassettes. Its earlier
+  // disabled round-5 entry (ghillieSuit.ts) is retired.
+  strv121: {
+    id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.45, foliageKind: 'spruce',
+    light: 0x5f7148, dark: 0x2c3a28, netColor: 'rgba(36,50,30,0.82)', netTextureSeed: 1220,
+    fieldClearanceM: 0.03, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
+    garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
+    turret: {
+      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
+      side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19)],
+      face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.72, x1: 1.72, z0: -3.70, z1: -0.60, nx: 34, nz: 31, y: 1.86, garnishRiseM: 0.14, seed: 31 }),
+        laid({ x0: -1.72, x1: 1.72, z0: -0.60, z1: 3.85, nx: 34, nz: 45, y: 1.69, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
+      ],
+      // the cassettes' tops stand at 1.49: the drapes start just under them
+      side: skirts(-3.40, 3.50, 1.46, 0.48, 1.90, 41),
+    },
+  },
   // C2 Ariete: the roof netted round both hatches and their MGs, the commander's and gunner's sights, drapes down the
   // turret's rear walls behind the two discharger rows, a rear drape; the engine deck netted round its fan grille, the
   // glacis over its appliqué, four drapes a side over the skirts.

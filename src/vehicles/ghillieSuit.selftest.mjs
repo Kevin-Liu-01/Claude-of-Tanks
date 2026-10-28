@@ -16,8 +16,9 @@ const ids = [
 ];
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
-// net (ghillieFleetSuits.ts) and left this control list; the others stay net-free
-for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
+// net (ghillieFleetSuits.ts) and left this control list; the others stay net-free. Release 262 (the owner, 2026-10-27:
+// "our strv 121 should also get a ton btw to distinguishh it as swedish"): the Strv 121 wears a fleet suit and leaves it too
+for (const id of ['t90a_2004', 't84bm_oplot_m']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
