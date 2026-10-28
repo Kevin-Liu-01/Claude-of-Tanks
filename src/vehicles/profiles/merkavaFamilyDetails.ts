@@ -79,9 +79,12 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
         else P.addExternalArmor('hull', partGeometry(p, none, seg));
         break;
       case ROLE.lantern:
+        // the lamp's pieces (housing, guard, lens); the lens on each forward-facing, unrotated piece with a face to carry it
         P.add(onTurret ? 'turretDetail' : 'hullDetail', partGeometry(p, off, seg));
-        P.addEquipment(onTurret ? 'turretGlass' : 'hullGlass', markVehicleNightLens(
-          frontFace(p, off, 0.004, (w, h) => KIT.box(Math.max(0.04, w * 0.7), Math.max(0.03, h * 0.6), 0.008)), 'headlight'));
+        if (Math.abs(p[11]!) > 0.999 && sx * sy >= 0.004 && (onTurret || p[4]! > 0)) {
+          P.addEquipment(onTurret ? 'turretGlass' : 'hullGlass', markVehicleNightLens(
+            frontFace(p, off, 0.004, (w, h) => KIT.box(Math.max(0.04, w * 0.7), Math.max(0.03, h * 0.6), 0.008)), 'headlight'));
+        }
         break;
       case ROLE.smoke: {
         // the launcher block and its tubes, each with its own forward aperture

@@ -41,7 +41,9 @@ for(const id of ['c1_ariete','challenger1_mk3','chieftain5','strv122']) {
   assert.equal(usesSourceDimensionFrame(id,certified),true,'now source-authored with complete fused owner certificates');
   assert.equal(usesSourceDimensionFrame(id,{...certified,passed:false}),false);
 }
-for (const id of ['ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv']) {
+// (262: the Merkava family, measured on its owner-supplied sources)
+for (const id of ['ares_apc', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
+  'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b']) {
   assert.equal(usesSourceDimensionFrame(id, certified), true,
     `${id}: compare the supplied configuration with its fixed source ruler and complete equipment envelope`);
   assert.equal(usesSourceDimensionFrame(id, { ...certified, passed: false }), false,
