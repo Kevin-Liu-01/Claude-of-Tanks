@@ -24,6 +24,7 @@
 //   aps_charge (20 s armed)             the next guided missile or HEAT round from the front arc is intercepted
 //   ir_jammer (12 s)                    a missile steered at this tank flies unguided (the caller's guidance hook)
 
+import * as detMath from './detMath.ts';
 import { isPostwarVehicleEra } from './vehicleEras.ts';
 
 export type ConsumableId = 'repair' | 'repair_large' | 'track_links' | 'first_aid' | 'rations' | 'extinguisher'
@@ -423,12 +424,12 @@ export function apsIntercepts(
 ): boolean {
   if (!state || !consumableActive(state, 'aps_charge', timeS)) return false;
   if (!round.guided && round.type !== 'HEAT') return false;
-  const len = Math.hypot(travelX, travelZ);
+  const len = detMath.hypot(travelX, travelZ);
   if (!(len > 1e-6)) return false;
   // the round arrives from the direction opposite its travel; the hull's nose points along (sin yaw, cos yaw)
   const fromX = -travelX / len, fromZ = -travelZ / len;
-  const cos = fromX * Math.sin(hullYaw) + fromZ * Math.cos(hullYaw);
-  if (cos < Math.cos((APS_ARC_DEG / 2) * Math.PI / 180)) return false;
+  const cos = fromX * detMath.sin(hullYaw) + fromZ * detMath.cos(hullYaw);
+  if (cos < detMath.cos((APS_ARC_DEG / 2) * Math.PI / 180)) return false;
   state.until.aps_charge = 0;
   return true;
 }

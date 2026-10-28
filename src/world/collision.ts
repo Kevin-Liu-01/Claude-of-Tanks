@@ -992,7 +992,7 @@ export function createFootprintPointIndex(records: readonly CollisionRecord[], m
       return true;
     }
     if (part.kind === 'obb') {
-      const r = Math.hypot(Math.abs(part.hw) + maxMargin, Math.abs(part.hl) + maxMargin), own = Math.hypot(part.hw, part.hl);
+      const r = detMath.hypot(Math.abs(part.hw) + maxMargin, Math.abs(part.hl) + maxMargin), own = detMath.hypot(part.hw, part.hl);
       box[0] = part.cx - r; box[1] = part.cz - r; box[2] = part.cx + r; box[3] = part.cz + r;
       extent[0] = part.cx - own; extent[1] = part.cz - own; extent[2] = part.cx + own; extent[3] = part.cz + own; grow = Math.SQRT2;
       return true;

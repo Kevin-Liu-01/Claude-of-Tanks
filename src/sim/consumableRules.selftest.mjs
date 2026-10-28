@@ -26,9 +26,11 @@ for (const item of CONSUMABLE_CATALOG) {
   assert.ok(timing.cooldownS > 0 && (timing.charges === null || timing.charges >= 1), `${item.id}: a cooldown and charges`);
   if (item.durationS) assert.ok(timing.cooldownS >= item.durationS, `${item.id}: a timed item never overlaps itself`);
 }
-// Worker-safe: the rules read no game or vehicle module (the rooms Worker reaches the rulesets)
+// Worker-safe: the rules read no game or vehicle module (the rooms Worker reaches the rulesets); 264: the APS arc computes
+// on the dependency-free detMath (tools/det-math-lint.mjs: no native transcendental in the authority graph)
 const source = readFileSync(new URL('./consumableRules.ts', import.meta.url), 'utf8');
-assert.deepEqual([...source.matchAll(/from '([^']+)'/g)].map((m) => m[1]), ['./vehicleEras.ts'], 'imports only the era table');
+assert.deepEqual([...source.matchAll(/from '([^']+)'/g)].map((m) => m[1]), ['./detMath.ts', './vehicleEras.ts'],
+  'imports only detMath and the era table');
 
 // ---- gates
 const standard = rulesetConsumableGate(matchRulesetFor('standard'));
