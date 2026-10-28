@@ -62,7 +62,7 @@ function cheeks(P: TankBuilderPort): void {
 
 /** The mantlet in the slot, the coaxial MG3's port on its left, the 120 mm L/44 with its thermal sleeves. */
 function gunAssembly(P: TankBuilderPort): void {
-  const { box, cylZ } = KIT;
+  const { cylZ } = KIT;
   P.gunG.position.set(T.gunLocal[0], T.gunLocal[1], T.gunLocal[2]);
   P.addGunExtra(sectionSolid([
     { z: -0.10, ring: [[-0.33, -0.25], [0.33, -0.25], [0.33, 0.22], [-0.33, 0.22]] },

@@ -205,7 +205,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   service_ua_m2a3_bradley: 'UA Bradley Digital',
   sig_abramsx: 'AbramsX Prototype',
   sig_m551_sheridan: 'M551 Sheridan Field',
-  sig_leo2a4_otco: 'Leopard 2A2 OTCO',
+  sig_leo2a4_otco: 'Leopard 2A3',
   sig_mbt70: 'MBT-70 Flecktarn',
   sig_kf51b: 'KF51-U',
   sig_bmpt_t90: 'BMPT T-90 Digital',
@@ -797,6 +797,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_dozer: 'paint_type10_dozer',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
+  // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A2 OTCO
+  leo2a3_b4: 'sig_leo2a4_otco',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
