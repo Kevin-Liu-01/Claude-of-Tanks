@@ -32,10 +32,12 @@ function basketChecks(mesh, quality) {
     const plane=points.filter(p=>Math.abs(p.y-y)<.000005);
     assert.ok(plane.length>24,`${quality}: actual floor, bands and wall-boundary vertices remain`);
     const box=new THREE.Box3().setFromPoints(plane);
-    near(box.min.z,-.31457499,.000005,`${quality}: source elliptical basket rear edge`);
-    near(box.max.z,1.63689363,.000005,`${quality}: source elliptical basket forward edge`);
-    near(box.min.x,-.986,.000005,`${quality}: basket transverse radius unchanged`);
-    near(box.max.x,.986,.000005,`${quality}: basket transverse radius unchanged`);
+    // Release 240 (2d3e45ae6e): the carrier turns inside the hull's ring bore, its .986 m source wall in to .975 m on the
+    // same axial scale, so the ellipse's rear and forward edges come in with it (floor and centre unchanged).
+    near(box.min.z,-.30368955,.000005,`${quality}: source elliptical basket rear edge`);
+    near(box.max.z,1.62600816,.000005,`${quality}: source elliptical basket forward edge`);
+    near(box.min.x,-.975,.000005,`${quality}: basket transverse radius inside the ring bore`);
+    near(box.max.x,.975,.000005,`${quality}: basket transverse radius inside the ring bore`);
   }
   near(cast(mesh,[0,.5,.66115932],[0,1,0])?.point.y,.820291,.00002,'source basket floor height unchanged');
   near(cast(mesh,[1.2,1.25,.661],[ -1,0,0])?.point.x,-.28907,.015,
