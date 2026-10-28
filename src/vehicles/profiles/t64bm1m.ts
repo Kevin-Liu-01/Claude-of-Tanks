@@ -9,7 +9,6 @@
 // - the L-2G searchlight right of the gun, ahead of the first block.
 import * as THREE from 'three';
 import { KIT, convexSlab } from './kit.ts';
-import { sectionSolid } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
