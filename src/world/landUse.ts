@@ -168,7 +168,9 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   4: { sward: false, height: 0, keep: 0 },
   5: { sward: true, height: 0.24, keep: 0.55 },
   6: { sward: true, height: 1.6, keep: 0.7 },
-  7: { sward: true, height: 0.55, keep: 0.45 },
+  // (2026-10-28, the owner on Steinburg: grass tufts stood across the row crop's soil and leaf stripes) a row crop is its
+  // canopy over tilled furrows (the material draws both): no grass grows in its rows
+  7: { sward: false, height: 0, keep: 0 },
   8: { sward: false, height: 0, keep: 0 },
   9: { sward: true, height: 0.6, keep: 0.8 },
   10: { sward: true, height: 0.75, keep: 0.75 },
