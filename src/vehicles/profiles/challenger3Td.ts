@@ -323,7 +323,7 @@ function buildTurret(P: TankBuilderPort): void {
     for (const z of [-2.40, -1.60, -0.70, 0.20]) turret('turretDetail', cylX(0.04, 0.02, 10), side * 1.392, 2.18, z);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.53 - PIVOT[1]) * S, (0.70 - PIVOT[2]) * S);
     KIT.liftEye(P, 'turretDetail', side * 1.10 * S, (2.59 - PIVOT[1]) * S, (-2.70 - PIVOT[2]) * S);
-    const x = side > 0 ? 1.021 : -0.985;
+    const x = side > 0 ? 0.992 : -0.956;                    // the oracle's whip centres (its turret sits 1.8 cm left)
     turret('turretDetail', cylY(0.055, 0.065, 0.08, 10), x, 2.62, -2.25);
     turret('turretDark', cylY(0.008, 0.012, 2.74, 6), x, 4.03, -2.25);
   }

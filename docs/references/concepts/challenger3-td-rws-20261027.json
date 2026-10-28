@@ -32,16 +32,16 @@
       "mainCaliberMm": 120,
       "weaponSystem": "conventional-cannon",
       "roofMachineGuns": 1,
-      "hullLengthM": 8.9,
+      "hullLengthM": 9.23,
       "hullWidthM": 3.84,
       "widthM": 3.971,
       "overallLengthM": 13.165,
       "tallestM": 5.94,
       "specDimensions": {
-        "hullLengthM": 8.9,
-        "overallLengthM": 12.26,
+        "hullLengthM": 9.23,
+        "overallLengthM": 12.71,
         "widthM": 3.84,
-        "heightM": 3.03
+        "heightM": 3.6
       },
       "silhouette": "The Challenger 3 Technology Demonstrator's measured hull, two-cheek turret, deep mantlet and 120 mm L55A1 (challenger3_td, from the 2021 demonstrator) without its camouflage suit, carrying a first-party remote weapon station: a 12.7 mm M2 in a two-cheek cradle on a yawing turntable over the loader's side of the roof, with its own day/thermal sight head and ready box; side bins, a full-width bustle basket with packs, a rolled camouflage net, tarp, jerrycans, spare track links, tow cable, shackles, pioneer tools and rations. The station is owner-authored equipment: no Challenger 3 demonstrator was photographed with it."
     }
