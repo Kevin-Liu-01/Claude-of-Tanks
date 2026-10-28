@@ -79,12 +79,14 @@ function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
     wLo: [[-HULL_HALF_L, 1.07], [HULL_HALF_L, 1.07]],
     sponsonY: [[-HULL_HALF_L, 1.20], [HULL_HALF_L, 1.20]],
   });
-  // Fender ledges: one welded shelf a side from the stern to the bow, its top running down beside the glacis.
+  // Fender ledges: one welded shelf a side from the stern to the bow, its top running down beside the glacis. Over
+  // the idler its underside stays 5 cm above the track band's wrap (measured on the build; the strict track-clip
+  // audit found the old falling underside 12 cm inside the band).
   for (const s of [-1, 1]) {
     const ledge = (z: number, bottom: number, top: number) => ({ z: Z(z), ring: sided([[1.08, bottom], [1.80, bottom], [1.80, top], [1.08, top]], s) });
     P.add('hull', sectionSolid([
       ledge(-3.20, 1.20, 1.44), ledge(-3.05, 1.20, DECK_Y), ledge(2.30, 1.20, DECK_Y), ledge(2.70, 1.17, 1.41),
-      ledge(3.00, 1.08, 1.34), ledge(3.30, 0.96, 1.27), ledge(3.46, 0.91, 1.22),
+      ledge(3.00, 1.11, 1.34), ledge(3.30, 1.13, 1.27), ledge(3.46, 1.10, 1.22),
     ]));
   }
 
