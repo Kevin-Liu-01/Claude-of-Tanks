@@ -73,8 +73,16 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   assert.equal(isNetworkFailure(new TypeError('Failed to fetch'), true), true, 'a fetch the network refused');
   assert.equal(isNetworkFailure(new Error('World build failed'), true), false, 'a build failure keeps its reason');
   assert.equal(isNetworkFailure(new Error('World build failed'), false), true, 'any failure while offline is the network\'s');
+  assert.equal(isNetworkFailure(new TypeError('error loading dynamically imported module: https://x/assets/a-1b2c3d4e.js'), true), true, 'Firefox');
+  assert.equal(isNetworkFailure(new TypeError('Importing a module script failed.'), true), true, 'Safari');
+  assert.equal(isNetworkFailure(new Error('Unable to preload CSS for /assets/mediaArchive-k2j4h5g6.css'), true), true, "a chunk's CSS");
+  const built = new Error('World build failed');
+  built.stack = 'Error: World build failed\n    at buildWorld (https://cot.kevinliu.studio/assets/main-lgbo999x.js:1:2345)';
+  assert.equal(isNetworkFailure(built, true), false, 'a production stack names a hashed chunk whatever the error: only the message counts');
 }
 const presenterSource = await readFile(new URL('./garageReturnFailure.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(presenterSource, /from '\.\.\/app\/lazyImportRetry\.ts'/,
+  'the notice never imports the retry helper: as a third importer it split into a boot request of its own on the game page');
 assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,320}t\('battle\.entryFailed\.body', \{ reason \}\)/,
   'the solo notice is a second failure-only presenter over the same modal');
 

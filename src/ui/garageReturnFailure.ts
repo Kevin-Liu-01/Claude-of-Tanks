@@ -1,7 +1,6 @@
 import { t } from './i18n.ts';
 import { createModal, type ModalController } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { failedChunkUrl } from '../app/lazyImportRetry.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type FailureModal = Pick<ModalController, 'setTitle' | 'body' | 'open' | 'close'> & Partial<Pick<ModalController, 'footer'>>;
@@ -10,12 +9,17 @@ interface FailurePresenter {
   hide(): void;
 }
 
-/** A failure the network caused: a file that did not arrive, a fetch that failed, or a browser that is offline. */
+/**
+ * A failure the network caused: a file that did not arrive, a fetch that failed, or a browser that is offline. Only the
+ * message counts: a production stack names a hashed /assets/ chunk whatever the error (app/lazyImportRetry.ts reads the
+ * stack too, so it is not imported here; as a third importer it was a boot request of its own on the game page).
+ */
 export function isNetworkFailure(error: RuntimeValue, online: boolean = typeof navigator === 'undefined' || navigator.onLine !== false): boolean {
   if (!online) return true;
-  if (failedChunkUrl(error)) return true;
   const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  return /failed to fetch|networkerror|load failed|network request failed|err_internet_disconnected/i.test(message);
+  // a dynamic import Chrome or Firefox could not fetch, Safari's module failure, Vite's preload of a chunk's CSS
+  return /failed to fetch|networkerror|load failed|network request failed|err_internet_disconnected|dynamically imported module|importing a module script failed|unable to preload css/i
+    .test(message);
 }
 
 /** The reason text a failure carries, or the notice title when it carries none. */
