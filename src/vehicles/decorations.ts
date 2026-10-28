@@ -2724,19 +2724,47 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   // --- Modern ---
-  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) carry the photographed light
-  // load: packs in the turret's rear basket (the 2A2 and the OTCO a tarp on the engine deck too); the profile draws the
-  // radios' whips, so no decor antenna (a blind critic on the cited photos, 2026-10-28: "the roof is nearly clean")
+  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) go out loaded (the owner,
+  // 2026-10-28: "a lot of the equipment and decorations and stuff! add a lot on our tanks"): over the fleet's seven-piece
+  // field cargo, packs and rolls in the basket, a tow cable down the hull's side, tools and a long bin on the fenders,
+  // cans, rations and a tarp on the engine deck, shackles on the bow; the profile draws the radios' whips, so no decor
+  // antenna. The 2A3 OTCO the heaviest: its tall cage packed, both cables, a drape and drums on the stern.
   leo2a2: () => [
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretRear', { low: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
   ],
   leo2a3_b4: () => [
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['rearDeck', {}] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: 1, back: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.3, d: 0.4 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   leo2a3: () => [
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 5 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'jerry', p: 1, v: { n: 3 }, slot: ['rearDeck', { corner: -1, back: true }] },
+    { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
+    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.1, along: true }] },
+    { kit: 'bin', p: 1, v: { v: 'long', w: 0.9, h: 0.24, d: 0.34 }, slot: ['fender', { side: -1, zFrac: -0.25 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+    { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
+    { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
   ],
   leo2a4: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
@@ -2984,10 +3012,6 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // S-tank carries its own period kit at its own measured roof points, never the fleet's random cargo pools or the
   // casemate default (whose stowed travel lock and second recovery cable the profiles already carry).
   if (spec.id === 'strv103a' || spec.id === 'strv103b') return STRV103_DECOR[spec.id]();
-  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) carry only their curated
-  // light load (a blind critic on the cited Bundeswehr photos, 2026-10-28: the roof "nearly clean"); the fleet's
-  // seven-piece field cargo stood a case, a drum, tarps and a can rack over the bustle and the engine deck.
-  if (spec.id === 'leo2a2' || spec.id === 'leo2a3' || spec.id === 'leo2a3_b4') return TANK_MANIFESTS[spec.id](spec, rng);
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

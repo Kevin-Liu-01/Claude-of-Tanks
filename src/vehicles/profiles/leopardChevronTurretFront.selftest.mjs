@@ -494,15 +494,12 @@ const otco = createTank('leo2a3', null, {
   geometryReceipt: true,
   quality: 'high',
 });
+// (262: the OTCO is a fourth-batch 2A3 on the new Leopard construction, profiles/leopard2a3B4.ts, whose own receipt
+// holds its vertical-faced turret; here only that it never takes the A5 family's arrowhead)
 const otcoTurret = otco.root.getObjectByName('rig_turret');
-assert.ok(otcoTurret, 'Leopard 2A4 OTCO retains the canonical rotating turret rig');
+assert.ok(otcoTurret, 'Leopard 2A3 OTCO retains the canonical rotating turret rig');
 assert.equal(otcoTurret.userData.leopardChevronFrontReceipt, undefined,
-  'the earlier Leopard 2A4 is not falsely converted to A5-family arrowhead armor');
-const otcoReceipt = otcoTurret.userData.leopard2A4FrontReceipt;
-assert.ok(otcoReceipt, 'Leopard 2A4 OTCO publishes its distinct front-architecture receipt');
-assert.equal(otcoReceipt.architecture, 'welded-box-with-clipped-front-corners');
-assert.equal(otcoReceipt.arrowheadApplique, false);
-assert.equal(otcoReceipt.runtimeGeometry, 'first-party-procedural');
+  'the earlier Leopard 2A3 OTCO is not falsely converted to A5-family arrowhead armor');
 otco.dispose();
 
 console.log('Leopard turret-front chevron geometry selftest passed');

@@ -13,13 +13,13 @@
 //   round plate; the ammunition hatch still opens; the SEM 25/35 radios' tall antenna bases; pressed exhaust louvres.
 // - 2A3: the fourth batch (December 1984 - December 1985). The SEM 80/90 radios' short bases, the ammunition hatch welded
 //   shut, round-rod exhaust grilles; no crosswind sensor.
-// - OTCO: a fourth-batch 2A3 with the field-modification package: bolted spaced shrouds over the turret's sides, a
-//   deeper rear rack, a second radio pair.
+// - OTCO: a fourth-batch 2A3 with the field-modification package: a bolted rim round the turret's foot, spaced shrouds
+//   standing on it over the turret's sides, a tall barred cage off the bustle, a second radio pair in guard cages.
 // Photo-checked against the cited Bundeswehr Leopard 2s on the owner's sheets (a blind critic, 2026-10-28).
 //
 // Frames: hull metres on the hull (+Z forward, y up from the ground; the world's right of a +Z hull is -X); turret metres
 // from the ring's centre on the deck (world 0, 1.64, 0.37). The datums are leopard2a3B4Armor.ts's.
-import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { buildLeopard2Hull, mirrorRing } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -222,12 +222,15 @@ function flankEquipment(P: TankBuilderPort, v: EarlyLeopard2): void {
 /** The bustle's rear plate and the open basket hung off it (the OTCO's deeper, wider rack). */
 function rearBasket(P: TankBuilderPort, v: EarlyLeopard2): void {
   const { box } = KIT;
-  const z = T.rearZ, depth = v.otco ? 0.50 : 0.34, half = v.otco ? 1.04 : 0.87, back = z - depth, top = 0.66, low = 0.28;
-  for (const y of [low, (low + top) / 2, top]) P.add('turretDetail', box(half * 2, 0.035, 0.035), 0, y, back);
+  const z = T.rearZ, depth = v.otco ? 0.50 : 0.34, half = v.otco ? 1.04 : 0.87, back = z - depth, low = 0.28;
+  const top = v.otco ? 0.86 : 0.66, rails = v.otco ? [low, 0.47, 0.66, top] : [low, (low + top) / 2, top];
+  for (const y of rails) P.add('turretDetail', box(half * 2, 0.035, 0.035), 0, y, back);
   const bars = v.otco ? 10 : 8;
   for (let k = 0; k <= bars; k++) P.add('turretDetail', box(0.03, top - low, 0.03), -half + 0.01 + k * (2 * half - 0.02) / bars, (low + top) / 2, back);
   for (const sx of [-1, 1]) {
-    for (const y of [low, top]) P.add('turretDetail', box(0.035, 0.035, depth + 0.02), sx * half, y, z - depth / 2 + 0.01);
+    for (const y of v.otco ? rails : [low, top]) P.add('turretDetail', box(0.035, 0.035, depth + 0.02), sx * half, y, z - depth / 2 + 0.01);
+    // the OTCO's cage: its sides barred too
+    if (v.otco) for (const dz of [0.17, 0.34]) P.add('turretDetail', box(0.03, top - low, 0.03), sx * half, (low + top) / 2, z - dz);
   }
   P.add('turretDark', KIT.openRackGrid(half * 2 - 0.04, depth - 0.02, 0.016, 5, bars + 1), 0, low + 0.02, z - depth / 2);
   KIT.stowage(P, 'turretCloth', P.rng, v.otco
@@ -236,28 +239,55 @@ function rearBasket(P: TankBuilderPort, v: EarlyLeopard2): void {
 }
 
 /**
- * The OTCO's field modification: bolted shrouds standing 9 cm off each wall from the cheek's corner to the step (four
- * plates a side, their tops capped back to the wall), and a second radio pair at the bustle's front corners.
+ * The OTCO's field modification (the owner, 2026-10-28: "keep the rim thing around it that made it special (can redesign
+ * it tho) and the cages"): a bolted rim round the turret's foot from ahead of the cheeks, round the corners and along the
+ * walls and the bustle to its rear corners, four spaced shrouds a side standing on it from the cheek's corner to the step
+ * (capped back to the wall), and a second radio pair at the bustle's front corners in their guard cages.
  */
 function otcoPackage(P: TankBuilderPort, v: EarlyLeopard2): void {
   const { box, cylX, cylY } = KIT;
-  const out = T.halfWidthM + 0.09, z0 = T.cornerZ - 0.06, z1 = T.stepZ + 0.04, n = 4, L = (z0 - z1) / n;
+  // the rim: [z, inner x, outer x, inner z, outer z] stations, the inner edge on the turret's outline
+  const rim: Array<[number, number, number, number]> = [
+    [0.50, T.frontZ, 0.50, T.frontZ + 0.18], [T.frontHalfWidthM, T.frontZ, T.frontHalfWidthM + 0.10, T.frontZ + 0.18],
+    [T.halfWidthM, T.cornerZ, T.halfWidthM + 0.18, T.cornerZ + 0.07], [T.halfWidthM, T.stepZ, T.halfWidthM + 0.18, T.stepZ],
+    [T.bustleHalfWidthM, T.stepZ - 0.04, T.bustleHalfWidthM + 0.25, T.stepZ - 0.18],
+    [T.bustleHalfWidthM, -2.45, T.bustleHalfWidthM + 0.25, -2.55], [T.rearHalfWidthM, T.rearZ, T.rearHalfWidthM + 0.09, T.rearZ - 0.17],
+  ];
+  const lo = 0.16, hi = 0.27;
   for (const sx of [-1, 1]) {
+    for (let k = 0; k + 1 < rim.length; k++) {
+      const [ax, az, bx, bz] = rim[k], [cx, cz, dx, dz] = rim[k + 1];
+      const quad = (y: number) => [[sx * ax, y, az], [sx * bx, y, bz], [sx * dx, y, dz], [sx * cx, y, cz]];
+      P.add('turret', orientedSlab(...quad(lo), ...quad(hi)));
+    }
+    // the rim's bolts along its outer edge
+    for (let k = 1; k + 1 < rim.length; k++) {
+      const [, , bx, bz] = rim[k];
+      P.add('turretDetail', cylY(0.02, 0.02, 0.016, 8), sx * (bx - 0.05), hi + 0.008, bz - (k < 3 ? 0.03 : 0));
+    }
+    // the shrouds on the rim, leaning out 2 degrees
+    const out = T.halfWidthM + 0.11, z0 = T.cornerZ - 0.06, z1 = T.stepZ + 0.04, n = 4, L = (z0 - z1) / n;
     for (let k = 0; k < n; k++) {
       const zc = z0 - L * (k + 0.5);
-      P.add('turret', box(0.05, 0.60, L - 0.02), sx * out, 0.40, zc);
-      for (const y of [0.18, 0.62]) for (const dz of [-L / 2 + 0.08, L / 2 - 0.08]) {
+      P.add('turret', box(0.05, 0.45, L - 0.02), sx * out, hi + 0.225, zc, 0, 0, -sx * 0.035);
+      for (const y of [hi + 0.06, hi + 0.39]) for (const dz of [-L / 2 + 0.08, L / 2 - 0.08]) {
         P.add('turretDetail', cylX(0.018, 0.016, 8), sx * (out + 0.03), y, zc + dz);
       }
     }
-    // the cap from each shroud's top back to the wall, and its stand-off feet
-    P.add('turret', box(0.10, 0.03, z0 - z1), sx * (T.halfWidthM + 0.05), 0.715, (z0 + z1) / 2);
-    for (const z of [z0 - 0.15, (z0 + z1) / 2, z1 + 0.15]) P.add('turretDetail', box(0.08, 0.10, 0.10), sx * (T.halfWidthM + 0.04), 0.14, z);
-    // the second radio pair's bases and whips
-    P.add('turretDetail', cylY(0.035, 0.045, 0.06, 10), sx * 1.05, T.roofY + 0.03, -1.50);
+    P.add('turret', box(0.13, 0.03, z0 - z1), sx * (T.halfWidthM + 0.065), hi + 0.465, (z0 + z1) / 2);
+    // the second radio pair's bases and whips, each in a four-post guard cage
+    const ax = sx * 1.05, az = -1.50;
+    P.add('turretDetail', cylY(0.035, 0.045, 0.06, 10), ax, T.roofY + 0.03, az);
+    for (const [px, pz] of [[-0.14, -0.14], [0.14, -0.14], [0.14, 0.14], [-0.14, 0.14]]) {
+      P.add('turretDetail', box(0.022, 0.26, 0.022), ax + px, T.roofY + 0.13, az + pz);
+    }
+    for (const y of [T.roofY + 0.12, T.roofY + 0.25]) {
+      for (const dz of [-0.14, 0.14]) P.add('turretDetail', box(0.30, 0.02, 0.02), ax, y, az + dz);
+      for (const dx of [-0.14, 0.14]) P.add('turretDetail', box(0.02, 0.02, 0.30), ax + dx, y, az);
+    }
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: sx < 0 ? 0.78 : 0.66, r: 0.011, rake: sx * 0.038,
       seed: v.seed + 30 + (sx > 0 ? 1 : 0) });
-    whip.position.set(sx * 1.05, T.roofY + 0.05, -1.50);
+    whip.position.set(ax, T.roofY + 0.05, az);
     P.turretG.add(whip);
   }
 }
@@ -273,7 +303,7 @@ function turret(P: TankBuilderPort, v: EarlyLeopard2): void {
   flankEquipment(P, v);
   rearBasket(P, v);
   if (v.otco) otcoPackage(P, v);
-  const sideX = T.halfWidthM + (v.otco ? 0.117 : 0.002);
+  const sideX = T.halfWidthM + (v.otco ? 0.137 : 0.002);
   for (const side of [-1, 1]) P.decal('turret', 'number', null, 0.24, [side * sideX, 0.42, 0.40], side * Math.PI / 2);
 }
 
