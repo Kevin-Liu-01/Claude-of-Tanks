@@ -6,6 +6,8 @@
 @import url('../ui/heroCard.css');
 /* the armour and module drawings the combat chapter prerenders (src/docs/chapters/combat.ts: technicalDrawingMarkup) */
 @import url('../ui/technicalDrawing.css');
+/* the item badges' paper hues (tokens.json surface-badge-paper), for the print rules under the equipment and kits lists */
+@import url('../ui/tokens/surface-badge-paper.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 /* data-built chapters (src/docs/chapters): a table to pick from, cards with the game's stills, objective maps and rules */
@@ -148,6 +150,22 @@
 .dm-equip b{font:600 var(--fs-15)/1.25 var(--font-body);color:var(--ink-1)}
 .dm-equip span{font:400 max(var(--fs-floor-12),var(--fs-14))/1.45 var(--font-body);color:var(--ink-2)}
 .dm-equip small{justify-self:start;margin-top:2px;padding:2px 7px;border-radius:var(--r1);background:var(--chip-fill);font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-body);color:var(--ink-3)}
+/* printed, the page is paper: each badge's frame takes its category's paper hue and its glyph the paper ink, so the frames
+   hold 3:1 on white (the dark-surface hues fall to 1.5-2.5:1 there; badgeColours.selftest) */
+@media print{
+  :is([data-equipment-icon],[data-consumable-icon])[data-icon-category]>g{color:var(--badge-paper-ink)}
+  [data-equipment-icon][data-icon-category='firepower']>path{stroke:var(--badge-equip-firepower-paper);fill:var(--badge-equip-firepower-paper)}
+  [data-equipment-icon][data-icon-category='recon']>path{stroke:var(--badge-equip-recon-paper);fill:var(--badge-equip-recon-paper)}
+  [data-equipment-icon][data-icon-category='mobility']>path{stroke:var(--badge-equip-mobility-paper);fill:var(--badge-equip-mobility-paper)}
+  [data-equipment-icon][data-icon-category='protection']>path{stroke:var(--badge-equip-protection-paper);fill:var(--badge-equip-protection-paper)}
+  [data-equipment-icon][data-icon-category='survival']>path{stroke:var(--badge-equip-survival-paper);fill:var(--badge-equip-survival-paper)}
+  [data-consumable-icon][data-icon-category='repair']>path{stroke:var(--badge-cons-repair-paper);fill:var(--badge-cons-repair-paper)}
+  [data-consumable-icon][data-icon-category='crew']>path{stroke:var(--badge-cons-crew-paper);fill:var(--badge-cons-crew-paper)}
+  [data-consumable-icon][data-icon-category='fire']>path{stroke:var(--badge-cons-fire-paper);fill:var(--badge-cons-fire-paper)}
+  [data-consumable-icon][data-icon-category='mobility']>path{stroke:var(--badge-cons-mobility-paper);fill:var(--badge-cons-mobility-paper)}
+  [data-consumable-icon][data-icon-category='ammunition']>path{stroke:var(--badge-cons-ammunition-paper);fill:var(--badge-cons-ammunition-paper)}
+  [data-consumable-icon][data-icon-category='protection']>path{stroke:var(--badge-cons-protection-paper);fill:var(--badge-cons-protection-paper)}
+}
 .dm-chart{margin:var(--s4) 0}
 /* the chart scales as a picture, so where it is drawn under its size its furniture is drawn at the inverse of the drawn
    scale: --dm-chart-k is the chart's units per drawn pixel, never under 1 (topics.ts counterScaleCharts measures it), and
