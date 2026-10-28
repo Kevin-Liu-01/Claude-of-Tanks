@@ -627,7 +627,7 @@
   "href": "/docs/filming#topic-section-4",
   "title": "Motion search and previz",
   "chapter": "Filming the media",
-  "text": "The motion search staged all 50 site takes and all 165 fleet takes. For each take it tries road and open-ground routes, columns and fans of escorts, guns held on their own targets and lens moves by kind (a swoop, a lead reveal, an orbit that rises, a cable run, a weave, an overtake), and it scores every candidate for close-to-far range, climb, front angles, speed and flank swings. The winners are written to a tracked plan file. Previz draws each plan as a schematic camera's eye beside the map, with the lens's distance and height across the take. Choreography is judged here, in seconds per take, before a single frame is rendered."
+  "text": "The motion search staged all 50 site takes and all 166 fleet takes. For each take it tries road and open-ground routes, columns and fans of escorts, guns held on their own targets and lens moves by kind (a swoop, a lead reveal, an orbit that rises, a cable run, a weave, an overtake), and it scores every candidate for close-to-far range, climb, front angles, speed and flank swings. The winners are written to a tracked plan file. Previz draws each plan as a schematic camera's eye beside the map, with the lens's distance and height across the take. Choreography is judged here, in seconds per take, before a single frame is rendered."
  },
  {
   "href": "/docs/filming#topic-section-5",
