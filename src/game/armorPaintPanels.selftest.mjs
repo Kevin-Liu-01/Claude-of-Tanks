@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { installCanvasFixture } from '../vehicles/canvasFixture.test-support.mjs';
 
 const restoreCanvas = installCanvasFixture();
-const { bakePaintPanels, bakePaintPanelSteps, measurePanelDisagreement, panelBakeStats } = await import('./armorPaintPanels.ts');
+const { bakePaintPanels, bakePaintPanelSteps, measurePanels, panelBakeStats } = await import('./armorPaintPanels.ts');
 const { zoneAt, zonePlates } = await import('../sim/armorZones.ts');
 const { tagVehicleMaterial } = await import('../vehicles/appearanceAudit.ts');
 const { applyBurnHook, removeBurnHook, makeBurnUniforms } = await import('../vehicles/materials.ts');
@@ -118,9 +118,12 @@ function hullScene() {
   const facets = new THREE.Mesh(faceted, paint);
   hull.add(dome, casting, facets);
   root.updateMatrixWorld(true);
-  measurePanelDisagreement(true);
+  const samples = [];
+  measurePanels((sample) => samples.push(sample));
   const stats = bakePaintPanels(root, template(), { hull, turret: null, gun: null }, {});
-  measurePanelDisagreement(false);
+  measurePanels(null);
+  assert.ok(samples.length > 0 && samples.every((x) => x.area > 0 && x.panel) && samples.some((x) => x.panel !== x.point),
+    'the measure hands on each baked triangle, its panel\'s plate and the per-point paint\'s');
   const domeValues = new Set(dome.geometry.getAttribute('apZone').array);
   assert.ok(domeValues.size === 1 && [...domeValues][0] > 0, `a small dome across three zones takes one (${[...domeValues]})`);
   const facetValues = new Set(facets.geometry.getAttribute('apZone').array);

@@ -187,6 +187,10 @@ function vote(template: PanelTemplate, split: FrameZones, pose: PanelPose, barre
   return zone >= 0 ? zone + (turret ? hullN : 0) : VOTE_NONE;
 }
 
+function plateName(zone: ZonePlate | undefined): string {
+  return String((zone?.plate as { name?: string } | undefined)?.name ?? '');
+}
+
 function find(parent: Int32Array, v: number): number {
   while (parent[v] !== v) { parent[v] = parent[parent[v]]; v = parent[v]; }
   return v;
@@ -212,9 +216,24 @@ const PLURALITY = 0.4;
 /** Adjacent triangles whose faces turn more than ~30° apart lie on two sides of a crease. */
 const CREASE_DOT = 0.866;
 
-/** (lane tools) Also measure where a panel's zone and the per-point paint's disagree (bakedArea, disagreeArea). */
+/** A baked triangle as a lane measure reads it: its world centre and normal, its area, its part (the draw and its
+ * cluster), and the plate its panel shows and the plate the per-point paint would (null: bare or unpainted). */
+export interface PanelSample {
+  readonly x: number; readonly y: number; readonly z: number;
+  readonly nx: number; readonly ny: number; readonly nz: number;
+  readonly area: number;
+  readonly part: string;
+  readonly panel: string;
+  readonly point: string | null;
+}
+/** (lane tools) Also measure where a panel's zone and the per-point paint's disagree (bakedArea, disagreeArea), and hand
+ * each baked triangle to `sink`; null stops it. */
 let measureDisagreement = false;
-export function measurePanelDisagreement(on: boolean): void { measureDisagreement = on; }
+let panelSink: ((sample: PanelSample) => void) | null = null;
+export function measurePanels(sink: ((sample: PanelSample) => void) | null): void {
+  measureDisagreement = !!sink;
+  panelSink = sink;
+}
 
 /** A three-component attribute's values as a plain array (a copy when it is interleaved or normalized). */
 function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined): ArrayLike<number> | null {
@@ -586,6 +605,12 @@ export function* bakePaintPanelSteps(
           const zone = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
             _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2]), true);
           stats.bakedArea += areas[t];
+          panelSink?.({
+            x: centres[t * 3], y: centres[t * 3 + 1], z: centres[t * 3 + 2],
+            nx: normals[t * 3], ny: normals[t * 3 + 1], nz: normals[t * 3 + 2],
+            area: areas[t], part: `${mesh.name || mesh.parent?.name || 'mesh'}#${roots[t]}`,
+            panel: plateName(template.zones[value - 1]), point: zone >= 0 ? plateName(template.zones[zone]) : null,
+          });
           if (zone !== value - 1) {
             stats.disagreeArea += areas[t];
             if (zone < 0) stats.disagreeBare += areas[t];
