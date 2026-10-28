@@ -9,8 +9,8 @@ turrets and hullls as well based on proper historical referrences so they will n
 
 | ID | Packet | Source of shape | Result |
 |---|---|---|---|
-| `m46_patton` | [m46_patton.md](../../references/tanks/m46_patton.md) | Hunnicutt/AFV Database dimensions, Tancrémont and Bovington photographs, the Bergman print | new hull, Pershing turret, rotor shield, M3A1 |
-| `m47_patton` | [m47_patton.md](../../references/tanks/m47_patton.md) | TM 9-718A (1952), TM 9-2350-200-12 via Hunnicutt, Latrun and Brussels photographs, the Bergman print | new hull (60° glacis), T42 turret, M36 |
+| `m46_patton` | [m46_patton.md](../../references/tanks/m46_patton.md) | the gate's recovered reference model (width-normalised), checked against Hunnicutt/AFV Database dimensions and the Tancrémont and Bovington photographs | new hull, Pershing turret, rotor shield, M3A1, rebuilt to the reference's castings and running gear |
+| `m47_patton` | [m47_patton.md](../../references/tanks/m47_patton.md) | the gate's recovered reference model, checked against TM 9-718A (1952), TM 9-2350-200-12 via Hunnicutt and the Latrun and Brussels photographs | new hull (60° glacis), T42 turret, M36, rebuilt to the reference's castings and running gear |
 | `m48a5_patton` | [m48a5_patton.md](../../references/tanks/m48a5_patton.md) | the owner-supplied ater.studio M48A5 (source-world certified), Hunnicutt/AFV Database, US Army photographs | rebuilt to the owner's model: landmark hull and dome, thin gun shield, its equipment and spare road wheel |
 | `m60a1`, `m60a2`, `m60a3` | — | unchanged | byte-identical high/low builds (fleet geometry ledger `--check` PASS on the lane before any regeneration) |
 
@@ -35,6 +35,17 @@ at HIGH), the tank-generation rule of sparse measured landmarks rather than samp
 `patton.ts`, which now holds only the M60 family.
 
 ## Owner decisions and choices recorded here
+
+- The M46 and M47 follow the geometry gate's recovered reference models. The first release-262 builds were drawn from
+  the dimension tables and photographs alone and scored 0 and 8.6 against those references (main's slab builds had
+  91.2 and 91.0); the references themselves are faithful (the photographs agree with their turrets, shields, hulls and
+  running gear), and the "chungus" look came from the old builds' slabs and the August low-profile squash, not from
+  them. The new builds keep closed first-party castings. Where the references depart from the vehicle the build stops
+  short of them: the 90 mm tubes are drawn 0.25-0.19 m across, not the references' 0.31 m. Where a reference omits an
+  item (antennas, the lift eyes, the M46/M47 rear mufflers) the build omits it too.
+- `tools/gatesim.py` (lane evidence, not shipped) reproduces the geometry gate offline (same union cameras, 1024 masks,
+  96-column traces, curve score, legacy hull-span registration or fixed certified registration, stations and both
+  dimension rulers) to within about a point, so a fit can be iterated without the shared capture queue.
 
 - The M48A5 shape follows the owner's supplied model; it replaces the ATModeler print as the comparison oracle
   (`tools/procedural-fidelity.html`, `tools/visual-evaluator-page.html`, `tools/vehicleComparisonSources.mjs`).

@@ -36,6 +36,34 @@
 | Bow MG | yes | .30 cal M1919A4 ball mount, right bow | yes, right |
 | Mufflers | fender drums | longer mufflers on the rear fenders than the M46 | 0.83 m drums in the rear corners |
 
+### Rebuilt against the gate's reference model (2026-10-28)
+
+The first release-262 build followed the tables and photographs alone and scored 8.6 against the geometry gate's
+reference (the recovered GLB, width-normalised; main's slab build had scored 91.0). The reference is a sound M47 (the
+T42-derived turret's long flanks and chamfered shoulders, the bustle, the hull and running gear agree with the Latrun
+and Brussels photographs), so the castings and running gear now follow it, measured in the gate's frame; every part
+stays a first-party closed casting or fitting.
+
+| Item | First release-262 build | Rebuilt to the reference |
+|---|---|---|
+| Turret | floor 1.67, roof 2.76, 0.94-1.00 over the ring, a cone to the nose at 0.74 | floor 1.63, roof 2.72, 1.10 over the ring with near-vertical flanks to 2.30 and a straight chamfer to a 0.60 m roof edge, nose to 1.10 |
+| Bustle | to -2.67 with a basket behind it to -3.00 and side bins | casting to -2.70 carrying its stowage (0.73 wide at 2.1-2.4); no basket, no bins |
+| Basket | 0.92 m drum, flattened by the turret seat | 0.69 m drum down to 0.84 m |
+| Rangefinder | blisters standing off each cheek | ports flush in the cheeks; a stowage rail along each flank at 2.22 |
+| Gun shield | r 0.38, 0.64 wide, trunnion z 0.48 | r 0.52, 0.80 wide, trunnion z 0.55 |
+| M2 | on the cupola | on a post between the cupola and the centre line (z -0.84 to 0.81, top 3.39), chest on its left, cradle off the cupola |
+| Cupola | r 0.30 at (-0.52, -0.95) | r 0.40 at (-0.46, -0.72) |
+| Ventilator | left rear roof | on the bustle roof's centre line, r 0.23 |
+| Antennas, lift eyes | two whips, four eyes | none (the reference carries neither) |
+| Glacis | knee 1.28, toe 2.15 at 1.12 | knee 0.92 at 1.61, toe 2.01 at 1.00 (the reference's 60° plate), nose 0.04 deep |
+| Fenders | 1.56 with 0.22 boxes | 1.40 with 0.26 boxes to 1.66 along its length, sloping down at both ends; a box on the outer edge |
+| Mufflers | drums on the rear fenders | none (the reference has none) |
+| Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres |
+| Sprocket / idler | (-3.78, 0.92) / (1.78, 0.80) | (-3.65, 1.04) / (1.64, 0.88) |
+| Gun | r 0.112-0.075, M36 0.54 wide, muzzle 4.33 | r 0.125-0.095, M36 crossbar 0.68 and front block 0.49 (the reference's), muzzle 4.40 |
+| Headlights | on the glacis | big groups on brackets ahead of the nose, guards to z 2.09 |
+
+
 ## Historical record (release 260 and earlier)
 
 Exact vehicle: **90mm Gun Tank M47 Patton II** — M46 chassis with the new

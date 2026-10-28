@@ -21,8 +21,11 @@ import { properSurfaceCrossings, shellEdgeTopology } from '../../../tools/base-s
 /** Published figures (m) and the gear the sources give each mark. */
 const SOURCES = {
   m46_patton: { hullLength: 6.358, width: 3.513, turretWidth: [1.90, 2.10], castHeight: [0.84, 1.00], rollers: 5, tension: true, glacis: [44, 48] },
-  m47_patton: { hullLength: 6.358, width: 3.512, turretWidth: [1.90, 2.10], castHeight: [0.95, 1.15], rollers: 3, tension: true, glacis: [58, 62] },
-  m48a5_patton: { hullLength: 6.871, width: 3.632, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: false, glacis: [55, 65] },
+  // the T42 casting's width has no published figure: the gate's reference model measures 2.20 m over the flanks
+  m47_patton: { hullLength: 6.358, width: 3.512, turretWidth: [1.95, 2.25], castHeight: [0.95, 1.15], rollers: 3, tension: true, glacis: [58, 62] },
+  // the owner's model's envelope (3.721 m over the left fender bar and the tracks on its 2.953 m centres), the source
+  // ruler the gate measures it by
+  m48a5_patton: { hullLength: 6.871, width: 3.721, turretWidth: [2.40, 2.52], castHeight: [0.84, 0.94], rollers: 5, tension: false, glacis: [55, 65] },
 };
 const box = (o) => new THREE.Box3().setFromObject(o);
 const within = (v, [lo, hi]) => v >= lo && v <= hi;

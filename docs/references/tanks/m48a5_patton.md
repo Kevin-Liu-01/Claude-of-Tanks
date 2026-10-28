@@ -61,10 +61,24 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
   driver's deck 1.47-1.53; engine deck crown 1.85; turret yaw centre z 0.58 (the dome's floor circle, r 1.24); gun bore
   axis y 1.921 (the 258 fix's 2.10 was for the old 1.80 deck), gun pivot z 1.7616 (the certificate), muzzle z 5.827; road wheels r 0.33 at
   z 2.049, 1.262, 0.469, -0.309, -1.085, -1.959, y 0.41; return rollers r 0.18 at y 1.123, z 1.544 … -1.671; idler
-  z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.954 m centres (built on the published 2.921 m, 115 in, so the sprocket hubs stay inside the published 3.632 m width).
+  z 2.826 y 0.883 r 0.328; sprocket z -2.884 y 1.014 r 0.348; track 0.711 on 2.953 m centres (the model's; the gate measures
+  the hull against the certified model's own envelope, `tools/source-dimension-frame.mjs`, as for the other supplied
+  models).
+- Dimension ruler: `m48a5_patton` joins the source-only fixed frame in `tools/source-dimension-frame.mjs` (selftest line):
+  the supplied model's own height, length and width, plus its full physical envelope, replace the published roof height
+  and width the model departs from (3.157 m and 3.67 m against 3.06 m and 3.63 m).
 - Published versus source: AFV48 hull with fenders 6.871 m (model 6.93); fire height 78.8 in = 2.00 m (model 1.92).
 - Rejected source parts: none; the model's fused stowage (bags, boxes) is rebuilt as first-party primitives at its
   measured seats.
+- Fittings measured off the model (2026-10-28): whips at (0.71, -0.48) and (-0.31, -1.03) to 3.727 m (our seeded whip
+  bows its tip 2 cm, so the bases sit 1-1.5 cm inboard); the M60Ds at the true 1.10 m (scale 1.15), centred on the
+  model's z -0.22..1.11 span, level, tops 3.22 and 3.08, with spade grips; the ammunition boxes are their own (the
+  fitting's can is off); suspension-arm housings under the hull's edge 0.40 m ahead of each road wheel (x 0.88-1.10, y
+  0.36-0.55); the tow cable along the right fender boxes; the short bar on the left front fender (x -1.89..-1.28); lift
+  eyes on pads at the roof's front (top 2.64) and right rear (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);
+  rucksacks out to 1.50 (right) and 1.60 (left); the bustle rack floor at 1.99, load 2.03-2.43; the jerrycan leant
+  against the dome's right rear; the rear-plate box (x -0.42..0.20, to z -3.25); the driver's hatch at z 2.25 and three
+  periscopes at 2.455; no lamp hoops (the guard bar is the model's top at 1.51).
 
 ## Construction work order (landmark sheet)
 
@@ -116,7 +130,7 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
 | Proportions | PASS | lane WIP | `pattonCastProportions.selftest.mjs`: hull 6.932 x 3.694 m, casting 3.37 x 2.48 x 0.93, 5 rollers, glacis 63.4 | width 1.7 % over the published 3.632 (sprocket hubs) |
 | Gun rig parity | PASS | lane WIP | `gun-barrel-align-census --rigs --update`: turretPivot (0, 1.633, 0.58), gunPivot (0, 0.288, 0.934), length 4.313, r 0.0875; M46/M47 rows refreshed too | 0 mm |
 | Independent critic | ROUND 1 DONE | r15 | subagent over `cmp/r15/*` (side 7, top 7, front 5, rear 6, turret 6, hull 8, mantlet 7) | fixed in r16: air cleaners, staggered wheels, slim flank racks and rucksacks, MG stations and ammo boxes, shield foot/bow, lamp, brush guards, shackles; the "shallow turret" is the stale turret seat (anatomy regen) |
-| Registered geometry gate | QUEUED | | `geometry-gate.mjs --ids=m48a5_patton --check` via the capture queue | |
+| Registered geometry gate | 70.0 / 92 (certified frame, round 19); refit, re-queued (round 20) | lane WIP | `geometry-gate.mjs --ids=m48a5_patton` via the capture queue; offline copy `~/cot-lanes/patton-262-evidence/tools/gatesim.py` (same cameras, masks, traces, curve score, slab stations, source ruler; reproduces the real gate within about a point) | estimate after the refit: hull 93.5, whole 92.6, turret 94.5, stations 96.9, dims 95.3 |
 | Gun clearance / depression curve | NOT RUN (geometry changed) | | `gun-depression-sweep.mjs --ids=m48a5_patton`, `pattonGunClearance.selftest.mjs` | the 258 curve fails at yaw -161 on the new engine deck |
 | Anatomy fixpoint, fills, markings, seats, spare track, ledger | RUNNING | | ids-scoped chain | |
 | Release check, icons, hero cards, drawings | NOT RUN | | | |

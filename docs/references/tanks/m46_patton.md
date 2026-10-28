@@ -37,6 +37,36 @@
 | Mufflers | fender drums | rearward mufflers on the rear fenders | drums in the rear corners under the fenders, X end guards |
 | Bow MG | yes | .30 cal ball mount, right front | yes, right |
 
+### Rebuilt against the gate's reference model (2026-10-28)
+
+The first release-262 build followed the dimension tables and photographs alone and scored 0 against the geometry
+gate's reference (the recovered GLB above, scaled to the published 3.51 m width; main's slab build had scored 91.2). The
+reference is a sound M46 (turret, rotor shield, hull and running gear agree with the Tancrémont and Bovington
+photographs), so the castings and the running gear now follow it, measured in the gate's own frame, while every part
+stays a first-party closed casting or fitting (no slab stacks, no per-column pods).
+
+| Item | First release-262 build | Rebuilt to the reference |
+|---|---|---|
+| Turret | floor 1.69, roof 2.61, sides 1.00, short bustle to -2.08 | floor 1.63, roof 2.47 (front) to 2.59 (rear), 1.03-1.05 over the ring narrowing to 0.63 over the bustle, rounder shoulders |
+| Basket | 0.92 m drum, flattened by the turret seat (it lay outside the ring's rim) | 0.69 m drum down to 0.84 m, inside the rim |
+| Rotor shield | 1.02 wide, foot 1.85 | 1.46 wide, foot 1.76 |
+| M2 | on a post behind the cupola | on a pedestal right of the gun, z -0.45 to 1.24, top 3.17, its ammunition chest beside it |
+| Cupola | r 0.30 at (-0.52, -0.72) | r 0.36 at (-0.49, -0.79), top 2.80 |
+| Cheek stowage | none | three boxes stacked on the left cheek (x to 1.21) |
+| Bustle rack | to -2.42 | load to -2.14, side rails and corner posts to -2.36 |
+| Antennas, lift eyes | two whips, four eyes | none (the reference carries neither) |
+| Glacis | knee 1.55, toe 2.09 at 1.10 | knee 1.17 at 1.65, toe 1.72 at 0.92, nose 0.10 deep |
+| Fenders | 1.56 with 0.22 boxes | 1.40 (the reference's plate) with 0.25 boxes along its length and a square rear end plate |
+| Mufflers | drums on the rear fenders | none above the fenders (the reference has none) |
+| Track | 0.584 on 2.794 centres | 0.64 on 2.72 centres (the reference's 1.04-1.68 lane) |
+| Sprocket / idler | (-3.80, 0.88) / (1.70, 0.70) | (-3.86, 1.02) / (1.63, 0.88): the raised Pershing sprocket |
+| Gun | r 0.112-0.075 | r 0.125-0.095 (the reference's tube is 0.31 m across throughout; the real M3A1's is not, so ours stops short of it) |
+| Headlights | on the glacis | on brackets ahead of the nose with brush guards to z 2.09 |
+
+The gate's hull registration is the side silhouette's body span; the build's ends match the reference's (z -4.25 and
+2.01), so the turret is compared in place.
+
+
 ## Historical record (release 260 and earlier)
 
 Exact vehicle: **Medium Tank M46 Patton** — re-engined M26 with the
