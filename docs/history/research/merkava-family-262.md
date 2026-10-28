@@ -136,20 +136,20 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 | Gate | Status | Revision | Command / artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | 8da2eb3e18 | `source-x-oracle --inspect/--prepare`; `.qa-dev/merkava-262/intake/` | identity frame, hashes pinned, photo side check |
-| Registered silhouettes | PASS (rev 4) | 9d6206e4a2 | `procedural-fidelity --ids=<six> --check --board --neutral-board`; boards `shots/procedural-fidelity/boards/<id>-neutral.png` | 94.1 (2D) to 95.2 (3D Baz), every view at least 96 on the registered rubric; rev 6 re-run queued |
-| Geometry components / dimensions | FAIL (rev 4) | 9d6206e4a2 | `geometry-gate --ids=<six> --check` | whole curves 92.4-93.8 PASS; dims 0 (measured against the published figures: the six now use the source ruler, `source-dimension-frame.mjs`); floaters 0 on the 1B (one island at yaw 180); rev 6 re-run queued |
+| Registered silhouettes | PASS (rev 7) | 4e6cc8a00a | `procedural-fidelity --ids=<six> --check --board --neutral-board`; boards `shots/procedural-fidelity/boards/<id>-neutral.png` | 94.7 (3C) to 95.7 (3D Baz), every registered view at least 95 (rev 4: 94.1-95.2); re-run owed on 2b7b1d3875 |
+| Geometry components / dimensions | FAIL (rev 7) | 4e6cc8a00a | `geometry-gate --ids=<six> --check` | whole curves 93.2-94.1 PASS; dims on the source ruler 1B 97.6 and 3D 93.1 PASS, 2D 89.2, 2B 82.5, 4B 67.2, 3C 46.5 (every axis within 0.4-2.7 % but the 4B's height, -5 %; the 3C's length carried its old suit, re-seated since); floaters PASS but the 4B's (its suit drapes, re-seated at 2b7b1d3875); re-run owed |
 | Lane overlays against the supplied OBJs | DIAGNOSTIC | rev 3 | `overlay.py` (lane tool), side / top / front IoU | side 0.885-0.898, top 0.965-0.977, front 0.817-0.909 |
-| Independent critic / Gallery | FAIL (rev 4) | 9d6206e4a2 | blind critic subagents: the Mk 1B renders and overlays (rev 3+), the six registered clay boards (rev 4) | clay 2/10 (2D) to 5/10 (3C); articulation 3-6/10; findings worked in rev 5 and 6; re-review owed on rev 6 |
+| Independent critic / Gallery | FAIL (rev 7) | 4e6cc8a00a | blind critic subagents: the Mk 1B renders and overlays (rev 3+), the six registered clay boards (rev 4) | rev 4: clay 2-5/10; rev 7: clay 3-5/10, articulation 5-7/10, guns 3-4/10 — the lofted turret shells read soft (no flat hard-edged faces), noses, smoke dischargers, sleeve bands, perforated skirts and loaded baskets missing; the next geometry round |
 | Winding, closure, negative space | NOT RUN | | | |
 | Seats and yaw/pitch/recoil ownership | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` HIGH and LOW | |
-| Gun clearance and depression curves | NOT RUN | | `gun-depression-sweep --no-suit`, `merkavaFamilyGunClearance.selftest.mjs` | |
+| Gun clearance and depression curves | PASS | ca824ae646+ | `gun-depression-sweep --no-suit`; `merkavaFamilyGunClearance`, `nationalGunClearance` | 1B/2B full depression all round; 2D skip window 139-145 (source rear marker poles; owner decision) |
 | Gear motion / band and shoe | NOT RUN | | | |
 | Triangles / build cost | MEASURED | rev 3 | `.qa-dev/merkava-262/cost.mjs` | weak HIGH-LOW reduction (13 %) |
 | Live/spent/reset packages | PASS (receipt) | rev 3 | `merkavaFamily.selftest.mjs` | |
 | Original-model preservation | PASS | rev 3 | CPU fingerprints, four protected ids | identical |
-| Anatomy update / freshness | NOT RUN | | | |
-| Assets / centering | NOT RUN | | | |
-| Composed release / tests / typecheck | typecheck PASS | rev 3 | `tools/typecheck.mjs` | release NOT RUN |
+| Anatomy update / freshness | PASS (ids-scoped) | 2b7b1d3875 | `gen-combat-anatomy --ids=<six>` to its fixpoint, `--check` | sim floors accepted for the rebuild (sim-floors.json); the fleet-wide `tank:anatomy:update` NOT RUN |
+| Assets / centering | NOT RUN | | centering --update, genIcons, genDrawings, genHeroCards (queued in the capture lock) | |
+| Composed release / tests / typecheck | NOT RUN | | `tank:release:check -- --ids=<six> --gate` | typecheck PASS at rev 3 and on the final tree (see the lane report) |
 | Builds / attribution | NOT RUN | | | |
 
 ## Round log
@@ -177,4 +177,15 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   convex fits spanning separate pieces); barrels as the round tube (the Mk 1/2 "clamps" were side lugs); turret
   stations smoothed; lenses only on forward lamp pieces; the source dimension ruler. HIGH triangles 126k-135k (rev 4:
   101k-110k; the retired pile 110k-126k).
+- r7 (`ca824ae646`, `4e6cc8a00a`): the stale group boxes removed (rev 6 had kept each group's old box beside its pieces:
+  23-61 slabs a mark; the deck plate's stopped the guns at -1.4 to -3.2); sparse rims dropped; pieces owned by their
+  group; the record packed as integers (582 KB to 410 KB). HIGH triangles 116k-127k. Depression curves re-measured.
+  Regeneration chain (controls, rigs, anatomy, fills, markings, seats, spare, ledger, gun lines).
+- Critic, six clay boards (rev 7): clay 3-5/10, articulation 5-7/10, guns 3-4/10.
+- r7+ (`2b7b1d3875`): pale canvas on the stowage; the 3C and 4B suits re-seated on the new shapes (the 4B's turret drapes
+  had floated behind it).
+- Next round: the turret shells as flat hard-edged faces fitted to the source's armour faces (not lofted stations); the
+  noses (vertical lower plate, hooks, lamps, fender over the sprocket); smoke dischargers from the source's grenade
+  groups; sleeve bands as the source draws them; perforated skirts; loaded curved baskets; semantic roles from the
+  source's MTL textures (spare track, ammunition boxes, nets).
 
