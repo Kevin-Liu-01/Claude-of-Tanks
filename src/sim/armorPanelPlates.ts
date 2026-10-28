@@ -53,7 +53,7 @@ const sealed = new WeakMap<object, readonly ArmorCollisionCell[]>();
  * of a slice (within 45° of the axis, every corner within SEAM_REACH_M of a boundary it shares with another slice)
  * becomes the boundary's plane: the cell grows into the wedge (never past its own bound), and the two caps then
  * coincide, the inside of the armour.
- * Hull ends, structure cells and lateral bands are left as they are. Cached per cell list; the cells are copies.
+ * Hull ends, structure cells, lateral bands and cast stock (Chieftain Mk10's cells) are left as they are. Cached per cell list; the cells are copies.
  */
 export function sealSliceSeams(cells: readonly ArmorCollisionCell[]): readonly ArmorCollisionCell[] {
   const hit = sealed.get(cells);
@@ -61,8 +61,8 @@ export function sealSliceSeams(cells: readonly ArmorCollisionCell[]): readonly A
   const key = (z: number): number => Math.round(z * 1e4);
   const starts = new Set<number>(), ends = new Set<number>();
   const slices = (cell: ArmorCollisionCell): boolean => {
-    const extra = cell as ArmorCollisionCell & { structureKind?: unknown; lateralBand?: unknown };
-    return !extra.structureKind && !extra.lateralBand;
+    const extra = cell as ArmorCollisionCell & { structureKind?: unknown; lateralBand?: unknown; sourceStock?: unknown };
+    return !extra.structureKind && !extra.lateralBand && extra.sourceStock === undefined;
   };
   for (const cell of cells) if (slices(cell)) { starts.add(key(cell.min[2])); ends.add(key(cell.max[2])); }
   let changed = false;
