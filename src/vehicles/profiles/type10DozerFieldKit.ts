@@ -307,7 +307,8 @@ function seatLight(P: TankBuilderPort): void {
   turret(P, 'turretDark', box(.24, .02, .05), S.x, head - .085, S.z);                               // yoke foot
   turret(P, 'turretDetail', cylZ(.095, .17, seg), S.x, head, S.z + .01);                            // lamp body
   turret(P, 'turretDark', cylZ(.104, .03, seg), S.x, head, S.z + .10);                              // bezel
-  turret(P, 'turretGlass', markVehicleNightLens(cylZ(.082, .012, seg), 'headlight', { tint: 'warm' }), S.x, head, S.z + .109);
+  // the lens stands 4 mm proud of the bezel's face (264: flush at z 0.611 it z-fought the bezel, circularCapOverlap)
+  turret(P, 'turretGlass', markVehicleNightLens(cylZ(.082, .012, seg), 'headlight', { tint: 'warm' }), S.x, head, S.z + .113);
   turretBar(P, 'turretDark', [S.x, head + .095, S.z - .06], [S.x, head + .095, S.z + .08], .008); // handle
   reserveDecorVolume(P.turretG, [S.x - .25 - PIVOT[0], S.y - .03 - PIVOT[1], S.z - .25 - PIVOT[2]], [S.x + .25 - PIVOT[0], head + .14 - PIVOT[1], S.z + .25 - PIVOT[2]]);
 }
