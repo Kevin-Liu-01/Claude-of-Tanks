@@ -103,7 +103,7 @@ assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay h
   const painted = new Uint8Array(position.count);
   for (const sample of frame.samples) for (let index = sample.start; index < sample.end; index++) painted[frame.targets[index]]++;
   assert.ok(painted.every((count) => count === 1), 'every skin vertex takes exactly one panel sample');
-  assert.equal(secondEntry.frames[0].geometry.getAttribute('position'), position, 'vehicles of one spec share the shell');
+  assert.ok(secondEntry.frames[0].geometry.getAttribute('position') === position, 'vehicles of one spec share the shell');
   assert.notEqual(secondEntry.frames[0].color, frame.color, 'each vehicle paints its own colours');
 }
 

@@ -42,13 +42,13 @@ const tryOn = createGarageCamoTryOn({
 // a preview returns at once and paints on the next task
 tryOn.preview(root, 'desert');
 assert.deepEqual(painted, [], 'preview paints nothing in its own call');
-assert.equal(hull.map, camo);
+assert.ok(hull.map === camo);
 flush();
 assert.deepEqual(painted, ['desert'], 'one tile per worn albedo and selection');
-assert.notEqual(hull.map, camo, 'the hull wears the tile');
-assert.equal(hull.map, turret.map, 'every material on the albedo shares its tile');
-assert.equal(tyre.map, rubber, 'rubber stays rubber');
-assert.equal(bare.map, null);
+assert.ok(hull.map !== camo, 'the hull wears the tile');
+assert.ok(hull.map === turret.map, 'every material on the albedo shares its tile');
+assert.ok(tyre.map === rubber, 'rubber stays rubber');
+assert.ok(bare.map === null);
 assert.equal(hull.map.colorSpace, camo.colorSpace, 'the tile samples as the worn texture does');
 assert.equal(hull.map.wrapS, camo.wrapS);
 assert.equal(hull.map.channel, camo.channel);
@@ -70,8 +70,8 @@ assert.deepEqual(painted, [], 'a kept tile is reused');
 
 // leaving restores the worn maps with no paint
 tryOn.preview(root, null);
-assert.equal(hull.map, camo, 'leaving puts the worn paint back at once');
-assert.equal(turret.map, camo);
+assert.ok(hull.map === camo, 'leaving puts the worn paint back at once');
+assert.ok(turret.map === camo);
 assert.equal(tryOn.trying, null);
 
 // the tile cache stays bounded and keeps the tile on screen
@@ -87,18 +87,18 @@ tryOn.preview(root, null);
 tryOn.wear(root, 'tropical');
 flush();
 const wornTile = hull.map;
-assert.notEqual(wornTile, camo);
+assert.ok(wornTile !== camo);
 tryOn.preview(root, null);
 flush();
-assert.equal(hull.map, wornTile, 'the worn paint keeps its tile until the bake lands');
+assert.ok(hull.map === wornTile, 'the worn paint keeps its tile until the bake lands');
 tryOn.preview(root, 'night');
 flush();
-assert.notEqual(hull.map, wornTile, 'another paint can still be tried meanwhile');
+assert.ok(hull.map !== wornTile, 'another paint can still be tried meanwhile');
 tryOn.preview(root, null);
 flush();
-assert.equal(hull.map, wornTile, 'and leaving returns to the worn tile');
+assert.ok(hull.map === wornTile, 'and leaving returns to the worn tile');
 tryOn.settle('tropical');
-assert.equal(hull.map, camo, 'the bake landed: the worn texture is back');
+assert.ok(hull.map === camo, 'the bake landed: the worn texture is back');
 assert.equal(tryOn.trying, null);
 
 // another tank drops the hold and gives the old one back its maps
@@ -106,7 +106,7 @@ const other = new THREE.Group();
 tryOn.wear(root, 'digital');
 flush();
 tryOn.preview(other, null);
-assert.equal(hull.map, camo, 'switching tanks restores the old hero');
+assert.ok(hull.map === camo, 'switching tanks restores the old hero');
 assert.equal(tryOn.trying, null);
 
 console.log('garageCamoTryOn selftest: PASS');

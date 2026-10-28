@@ -46,7 +46,7 @@ import { digestTankRoot, ledgerBuildOptions } from '../../tools/fleet-geometry-d
   assert.equal(m.material.colorWrite, false);
   assert.ok(l instanceof THREE.LOD && l.levels.length === 2 && l.levels[0].object === l.children[0] && l.levels[1].distance === 40);
   assert.ok(r.userData.box instanceof THREE.Box3 && r.userData.box.max.z === 3);
-  assert.equal(r.userData.owner, m, 'a node reference resolves to the replica node');
+  assert.ok(r.userData.owner === m, 'a node reference resolves to the replica node');
   assert.ok(r.userData.list.get('a') instanceof THREE.Vector3);
   assert.ok(m.geometry.userData.pair instanceof THREE.Vector2 && m.geometry.userData.pair.y === 5);
   assert.equal(r.userData.hook, undefined);

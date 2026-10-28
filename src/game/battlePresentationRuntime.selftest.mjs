@@ -8,6 +8,7 @@ import {
   resetTankPresentationPose,
   sampleTankPresentationPose,
 } from './presentationPose.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function createEntity({
   id = 'tank',
@@ -368,7 +369,7 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  entity.combat.hp=100;entity.combat.maxHp=100;
  const {runtime,game,effects}=createHarness({tanks:[entity],phase:'garage',network:true});
  game.matchModeState={id:'infected',factions:[{id:entity.id,team:'bravo'}]};
- assert.deepEqual(runtime.prepareModeVisuals(),[root],'the warm is handed the root whose skin is new (to compile)');
+ assert.deepEqual(graphLabels(runtime.prepareModeVisuals()),graphLabels([root]),'the warm is handed the root whose skin is new (to compile)');
  assert.equal(mesh.material.name,'Infected surface highlight','network entry attaches mode shaders before activation/compile');
  assert.equal(game.phase,'garage','warm never activates gameplay');
  assert.equal(syncs.length,0,'warm never advances poses');

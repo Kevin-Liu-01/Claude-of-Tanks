@@ -218,8 +218,8 @@ const pairDents = (cx, deckY, cz, rimR) => ({
   centres[0].copy(planned.centres[0]); dirs[0].copy(planned.dirs[0]);
   const fBefore = fMesh.geometry, nBefore = nMesh.geometry;
   ring.show();
-  assert.notEqual(fMesh.geometry, fBefore, 'F is cut');
-  assert.notEqual(nMesh.geometry, nBefore, 'N, under the prism, takes F\'s corners on their edge (its own cut copy)');
+  assert.ok(fMesh.geometry !== fBefore, 'F is cut');
+  assert.ok(nMesh.geometry !== nBefore, 'N, under the prism, takes F\'s corners on their edge (its own cut copy)');
   const fCorners = cornerSet(fMesh.geometry), nCorners = cornerSet(nMesh.geometry);
   const zone = seat.rimR + 0.36;
   let shared = 0;
@@ -235,8 +235,8 @@ const pairDents = (cx, deckY, cz, rimR) => ({
   const result = seams([fMesh, nMesh], { centres, dirs }, isNew);
   assert.ok(result.worst < 1e-5, `two meshes, one seam, watertight (${result.checked} T-corners, worst ${result.worst} m)`);
   ring.hide();
-  assert.equal(fMesh.geometry, fBefore, 'the rematch puts F back');
-  assert.equal(nMesh.geometry, nBefore, 'and N');
+  assert.ok(fMesh.geometry === fBefore, 'the rematch puts F back');
+  assert.ok(nMesh.geometry === nBefore, 'and N');
   ring.dispose();
 }
 

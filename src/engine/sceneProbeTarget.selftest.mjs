@@ -62,14 +62,14 @@ function fixture(sample) {
   assert.ok(result.before > 6, 'a healthy frame still reads healthy through the copy');
   assert.equal(f.renders.length, 2, 'one scene draw and one copy draw for a healthy reading');
   const [draw, copy] = f.renders;
-  assert.equal(draw.scene, f.scene, 'the caller scene draws first');
+  assert.ok(draw.scene === f.scene, 'the caller scene draws first');
   assert.equal(draw.target.texture.type, THREE.HalfFloatType, 'in the production colour type');
   assert.equal(draw.target.samples, 4, 'with the production sample count');
   assert.ok(draw.target.depthTexture?.isDepthTexture, 'with a depth texture like the production target');
   assert.equal(draw.target.depthTexture.type, production.depthTexture.type, 'of the production depth type');
   assert.equal(draw.target.stencilBuffer, false);
   assert.deepEqual([draw.target.width, draw.target.height], [64, 36], 'at the probe size');
-  assert.notEqual(copy.scene, f.scene, 'the copy draws its own quad, not the scene');
+  assert.ok(copy.scene !== f.scene, 'the copy draws its own quad, not the scene');
   assert.equal(copy.target.texture.type, THREE.UnsignedByteType, 'into an RGBA8 target');
   assert.equal(copy.target.samples, 0);
   assert.deepEqual([copy.target.width, copy.target.height], [64, 36]);
