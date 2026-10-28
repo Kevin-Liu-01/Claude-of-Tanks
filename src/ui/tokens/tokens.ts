@@ -334,7 +334,6 @@ export const TOKENS = {
   'docs-banner-z': '2',
   'gallery-stage': 'radial-gradient(70% 60% at 50% 56%,#161b21 0,#0b0e11 70%)',
   'gallery-row-on': 'inset 0 0 0 1px #f0a030',
-  'gallery-layer-on': 'inset 0 -2px 0 #f0a030',
   'gallery-take-fade': 'linear-gradient(0deg,#0b0e11 0,oklch(from #0b0e11 l c h / .5) 30%,oklch(from #0b0e11 l c h / 0) 55%)',
   'gallery-callout-on': 'rgba(30,20,6,.95)',
   'gallery-dot-ring': '0 0 0 3px #0b0e11',

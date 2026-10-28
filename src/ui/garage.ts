@@ -48,7 +48,7 @@ import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconId, shellIconSVG } from './shellIcons.ts';
 import { shellTypeLabel } from './shellLabels.ts';
 import {
-  garageCrewRows, garageGalleryHref, garageModuleRows, garageStatGroup,
+  garageCrewRows, garageGalleryHref, garageGunArc, garageModuleRows, garageStatGroup, garageStatShare,
   garageTechnicalViews, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
@@ -1059,8 +1059,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // until it fits. Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it
   // belongs to. The fit runs in the frame's callback, before that frame paints, so a press (a station, a tank) reads no
   // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
-  // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the four denser steps
-  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 4']);
+  // 'roomy' first: a sparse station fills its column (one plate a row, larger figures) before the denser steps; 'bars'
+  // drops the scale bars before '4' drops a station's later plates (the r25 critic: Firepower at 1280 lost its Ammunition
+  // and Armament over 170 px of empty column, the step before overflowing by a few rows)
+  const READOUT_DENSITY = Object.freeze(['roomy', '0', '1', '1 2', '1 2 3', '1 2 3 bars', '1 2 3 bars 4']);
   const readoutDensities = new Map<string, number>();
   function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
@@ -1077,7 +1079,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (statsEl.scrollHeight > statsEl.clientHeight + 1) { statsEl.dataset.density = READOUT_DENSITY[density]; break; }
       density--;
     }
-    while (density < 5 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
+    while (density < READOUT_DENSITY.length - 1 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
     if (readoutDensities.size > 64) readoutDensities.clear();
     readoutDensities.set(key, density);
   }
@@ -1212,7 +1214,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the station's title stands on the Compare row, left of it (owner 10-26: "to the left of compare it should have a title")
     const picker = `<div class="cot-compare">${statSectionTitle('performance', t('garage.station.overview'), '', 'Performance', true)}` +
       (rival ? `<div class="cot-rival" data-rival-menu></div>` : '') +
-      `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare aria-pressed="${compareOn}">` +
+      // Compare turns the rival on; once on, the chip is Clear, an action, never a pressed state (the r25 critic: a pressed
+      // Clear wore the kit's selected state while the rival it compares with did not)
+      `<button type="button" class="cot-c-chip cot-compare-toggle" data-compare="${compareOn ? 'on' : 'off'}">` +
       `<span class="cot-c-chip__label">${compareOn ? t('garage.compare.clear') : t('garage.compare')}</span></button></div>`;
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
     return `<section class="cot-stat-section cot-overview-section cot-primary" data-stations="overview">${picker}<div class="cot-headline">` +
@@ -1271,6 +1275,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const nations = [...new Set(peers.map(countryCodeOf))];
     rivalMenu = createPickerMenu(rivalHost, {
       id: 'garage-rival', label: t('garage.rival.aria'), value: rival.id, layout: 'list', text: pickerText(), memory: 'rival', items,
+      // its room is the readout column, side to side and top to foot: no stat label shows beside it and it never covers
+      // the battle card (the r25 critic: "Da", "Re", "Hi" cut at its left edge; at 900 it ran past the column's edge); a
+      // column no wider than a panel is spanned to its foot (pickerMenu.ts placeMenu), so no readout row shows cut under it
+      bounds: () => {
+        const column = statsEl.getBoundingClientRect();
+        return column.width ? { top: column.top, bottom: column.bottom, left: column.left, right: column.right } : null;
+      },
       // a flag's chip names every nation under it, as the Gallery's versus list does ("Russia / Soviet Union")
       filters: nations.length > 1 ? nations.map((code) => ({ id: code,
         label: [...new Set(peers.filter((other) => countryCodeOf(other) === code).map((other) => tNation(other.nation)))].join(' / ') || code })) : undefined,
@@ -1344,7 +1355,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // the menu keeps under the top bar (the r21q critic: opened upward, it covered the brand and the destinations)
     bounds: () => {
       const bar = root.querySelector('.cot-gbar')?.getBoundingClientRect();
-      return bar && bar.height ? { top: bar.bottom + 8, bottom: window.innerHeight } : null;
+      // and above the band under the name, so its slots and acts never peek out beside it (the r25 critic at 1024 x 600)
+      const band = root.querySelector('.cot-lt-band')?.getBoundingClientRect();
+      const foot = band && band.height ? band.top - 8 : window.innerHeight;
+      return bar && bar.height ? { top: bar.bottom + 8, bottom: foot } : null;
     },
     onChoose: (item) => { emit('ui:click', {}); selectGarageVariant(item.id); },
   }) : null;
@@ -1722,7 +1736,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
 
   // The nations fade at the track's ends where more lies beyond them (has-more-left / -right), the vehicle strip's
-  // honest overflow contract; the wheel, a swipe and the arrow keys reach every one of them (no boxed arrows).
+  // honest overflow contract, and stand whole: a nation the edge or the end's count would cut hides, staying in the tab
+  // order, and the count over the fade ("+4", no box or arrow) says how many lie beyond and steps the track (the r25
+  // critic read the faded "1" of a cut flag as a clipped word, with nothing saying more followed). The wheel, a swipe and
+  // the arrow keys reach every one of them too.
+  const railSteps = ([-1, 1] as const).map((way) => {
+    const step = document.createElement('button');
+    step.type = 'button';
+    step.className = `cot-country-step num ${way < 0 ? 'is-back' : 'is-on'}`;
+    step.hidden = true;
+    step.addEventListener('click', () => {
+      emit('ui:click', {});
+      freeRail(chipsEl);
+      chipsEl.scrollBy({ left: way * chipsEl.clientWidth * 0.8, behavior: 'auto' });
+    });
+    countryRailEl.append(step);
+    return step;
+  });
   const syncCountryRailAffordances = () => {
     settleRailEnd(chipsEl);
     const { hasLeft, hasRight } = horizontalRailState(
@@ -1730,6 +1760,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     );
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
+    const [back, on] = railSteps;
+    back.hidden = !hasLeft;
+    on.hidden = !hasRight;
+    const box = chipsEl.getBoundingClientRect();
+    const lo = box.left + (hasLeft ? back.offsetWidth + 4 : 0);
+    const hi = box.right - (hasRight ? on.offsetWidth + 4 : 0);
+    let before = 0, after = 0;
+    for (const chip of chipsEl.children) {
+      const r = chip.getBoundingClientRect();
+      const cut = r.width > 0 && (r.left < lo - 0.5 || r.right > hi + 0.5);
+      chip.classList.toggle('is-cut', cut);
+      if (cut && r.right <= lo + 0.5) before += 1;
+      else if (cut) after += 1;
+    }
+    for (const [step, n, key] of [[back, before, 'garage.country.before'], [on, after, 'garage.country.after']] as const) {
+      const label = t(key, { count: n });
+      if (step.getAttribute('aria-label') === label) continue;
+      step.setAttribute('aria-label', label);
+      step.title = label;
+      step.textContent = `+${n}`;
+    }
   };
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
@@ -1845,7 +1896,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const fitCamoRows = (): void => {
     const cg = root.querySelector<HTMLElement>('.cot-camos .cot-c-picker__grid');
-    if (cg) holdGridHeight(cg, fitWholeRows);
+    // whole rows, as the equipment grid's (the r26 critic read the paint grid's 40 % peek, dimmed to a quarter, as a row
+    // cut by the screen at 900 to 1920): its drawn scrollbar says more lie below
+    if (cg) holdGridHeight(cg, (grid) => fitWholeRows(grid, false));
   };
   window.addEventListener('resize', fitCamoRows);
   window.addEventListener('resize', () => {
@@ -2255,7 +2308,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
-    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger, .cot-overview-more');
+    // the sheet's close shares the toggle: it shows only while the dossier is open (a kit restyle had dropped its trigger
+    // class on 10-25 and left the phone's X without a handler)
+    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger, .cot-overview-more, .cot-dossier-close');
     if (equipmentTrigger) {
       emit('ui:click', {});
       const closing = openGaragePanel() === 'equipment';
@@ -2475,22 +2530,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     return ranges;
   }
   const STAT_RANGES = buildStatRanges(); // tier/era -> {hp,speed,hpt,dmg,reload:[lo,hi]}
-  // min→0.14 stub, max→1.0 full; degenerate spans (single-vehicle group)
-  // park at a neutral 0.72 so the card never shows an all-stub column
+  // the bar's rule (garageStatShare, pinned by garageDossier.selftest): the stat's place in its tier and era's spread
   function statFrac(
     group: string,
     key: StatRangeKey,
     v: number | null | undefined,
     invert = false,
   ): number {
-    const r = STAT_RANGES.get(group);
-    if (!r || v == null || !isFinite(v)) return 0.6;
-    const [lo, hi] = r[key];
-    const span = hi - lo;
-    if (!(span > Math.max(1e-6, Math.abs(hi) * 0.02))) return 0.72;
-    let f = (v - lo) / span;
-    if (invert) f = 1 - f;
-    return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
+    return garageStatShare(STAT_RANGES.get(group)?.[key], v, invert);
   }
 
   // --- COUNTRY FILTER CHIPS -------------------------------------------------
@@ -3403,7 +3450,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), '', 'Armament')}` +
       `<div class="armor-grid">` +
       figurePlate('gun', t('garage.dossier.armament.gun'), `${spec.gun.caliberMm} mm`) +
-      figurePlate('scope', t('garage.dossier.armament.arc'), `&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;`) + `</div></section>` +
+      // the arc and, where the gun cannot come down to level over the rear (its fuel drums), the rear stop (the vehicles lane, 258)
+      figurePlate('scope', t('garage.dossier.armament.arc'), escapeHtmlAttribute(garageGunArc(spec))) + `</div></section>` +
       `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance', true)}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +

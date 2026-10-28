@@ -22,6 +22,11 @@
 @media (height < 720px){.cot-c-picker__filters{flex:1 1 0}.cot-c-picker__search{flex:0 1 160px}}
 .cot-c-picker__chips{display:flex;flex:1 1 auto;gap:var(--s2);min-width:0;overflow:hidden}
 .cot-c-picker__chips>[data-off]{visibility:hidden}
+/* a strip of whole chips (picker.ts wholeChips, the kit's picker rows, the Garage's nations, a sheet's facet rows): it stops
+   on chip starts, and a chip its edge would cut is hidden but focusable */
+.cot-c-whole{scroll-snap-type:x mandatory}
+.cot-c-whole>*{scroll-snap-align:start}
+.cot-c-whole>.is-cut{opacity:0;pointer-events:none}
 .cot-c-picker__chips-tail{flex:none}
 /* the bar is one height: the search, the chips and the more button stand 36 px (44 on touch) */
 .cot-c-picker__chips>.cot-c-chip{flex:none;height:36px}
@@ -67,6 +72,9 @@
 .cot-c-picker__opt[aria-selected=true]{background:var(--chip-fill-on);box-shadow:var(--ring-accent)}
 .cot-c-picker__opt[aria-disabled=true]{cursor:default;opacity:.5}
 .cot-c-picker__media{display:block;flex:none;aspect-ratio:16/9}
+/* a card menu whose room holds no whole row of 16:9 pictures crops them to 3:1, so a row stands whole with its names
+   (pickerMenu.ts place, squat) */
+.cot-c-menu__pop.is-squat .cot-c-picker__media{aspect-ratio:3/1}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
 .cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}

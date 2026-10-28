@@ -80,6 +80,28 @@ interface PickerController {
   dispose(): void;
 }
 
+/**
+ * A sideways strip of chips that shows only whole chips: one the strip's edge would cut is hidden (class is-cut) but stays
+ * in the tab order, so the focus scrolls it in, and the strip stops on chip starts (CSS .cot-c-whole). A surface keeps its
+ * own cue that more follow (a more button, a count). The r25 critic read "Surv", "ecent" and a flag's "1" at strip edges,
+ * under fades, as clipped words. Returns the disconnect; `onChange` hears the cut chips change.
+ */
+export function wholeChips(strip: HTMLElement, onChange?: () => void): () => void {
+  if (typeof IntersectionObserver !== 'function' || typeof MutationObserver !== 'function') return () => {};
+  strip.classList.add('cot-c-whole');
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) entry.target.classList.toggle('is-cut', entry.intersectionRatio < WHOLE_SHARE);
+    onChange?.();
+  }, { root: strip, threshold: [0, WHOLE_SHARE] });
+  const watch = (): void => { seen.disconnect(); for (const chip of strip.children) seen.observe(chip); };
+  const changes = new MutationObserver(watch);
+  watch();
+  changes.observe(strip, { childList: true });
+  return () => { seen.disconnect(); changes.disconnect(); };
+}
+/** The share of a chip that must show for it to count as whole (a subpixel edge does not cut it). */
+const WHOLE_SHARE = 0.98;
+
 /** Search and filters appear past this many items. */
 const SEARCH_FROM = 9;
 /** Recents kept per memory key. */
