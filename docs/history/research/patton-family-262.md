@@ -91,7 +91,8 @@ at HIGH), the tank-generation rule of sparse measured landmarks rather than samp
   fills): enclosed holes in the M46/M47 brush guards' windows ahead of the lamps, an M47 pocket between the track's end,
   the rear flap and the hull's corner, and an M48A5 pocket between each bow towing eye and the nose. A middle rod splits
   each guard's window, the M47's rear flaps hang under the fender's overhang only (x 1.33-1.70; across the whole track
-  they closed the pocket), and the M48A5's eyes and shackles sit 4 cm back on the nose's edge.
+  they closed the pocket), and a bracket plate runs from each M48A5 bow eye back into the nose (moving the eyes 4 cm back instead
+  closed the pocket but cost the real gate's side hull trace a point, 92.7 to 91.7).
   `~/cot-lanes/patton-262-evidence/tools/contigsim.py` (lane evidence: pixel-centre raster of the export, the same cells,
   phases and exterior flood) reads none on any of the three. The M46's hidden-gap ledger row (the old build's lamp gap)
   is pruned through `contig-phase-audit` and `contig-hidden-gaps --prune`.

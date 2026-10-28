@@ -82,7 +82,9 @@ pitched tube and a primitive dome (its gate packet read 59.6). Full research not
   eyes on pads at the roof's front (top 2.64) and rear, just left of the centre line (2.69); the searchlight housing 0.63 deep (z 1.83-2.45);
   rucksacks out to 1.50 (left) and 1.60 (right); the bustle rack floor at 1.99, load 2.03-2.43; the jerrycan leant
   against the dome's left rear; the rear-plate box (x -0.42..0.20, to z -3.25); the driver's hatch at z 2.25 and three
-  periscopes at 2.455; no lamp hoops (the guard bar is the model's top at 1.51).
+  periscopes at 2.455; the bow towing eyes and shackles at the model's z 3.24, each on a bracket plate back into the nose (in
+  plan the ring alone left a pocket against the casting's edge; moving the eyes 4 cm back instead cost the side hull
+  trace a point); no lamp hoops (the guard bar is the model's top at 1.51).
 
 ## Construction work order (landmark sheet)
 
