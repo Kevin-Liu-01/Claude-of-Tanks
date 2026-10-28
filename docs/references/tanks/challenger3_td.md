@@ -160,6 +160,19 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason).
   flush (3 mm proud). The first depression sweep (no suit) read a standing mount conflict at yaw 6-48: the mantlet's
   lower edge (the oracle's 1.80) rode 12-16 mm over the hull deck once off the glacis trough, so no depression stop
   could cure it. The edge now stands at 1.84 (6 cm over the deck at level, still under the turret floor at the slot).
+- r7 (blind critic 2 on Node renders: 7/10 against the oracle; each call checked against the oracle's depth maps before
+  acting): the mantlet now has the oracle's raked body (|x| 0.42, 2.41 to z 1.84, then 37 degrees down to 2.02 at 2.32)
+  and its nose over the jacket (|x| 0.18, 2.38 to z 2.12, down to 2.17 at 2.56); the hinge frame sits on its top edge
+  at the slot face (posts at x 0.46, z 1.60, 2.50 tops), where it was 0.6 m back on a slot cover the oracle does not
+  have; the visor strip is gone; the evacuator is 0.55 m (z 3.30-3.85), where it was a 0.82 m double cone; the cupola
+  lid is flat (2.94 over a 2.91 ring), not a dome. At the front, the mudguards carry their front lip (to 1.10), the
+  lamp blocks sit on the oracle's 1.54 band at z 3.2 (not boxes at 3.6), the forward skirt rail ends at 3.28 where the
+  skirt drops, and the tow cables follow the hull top down the glacis edge (they floated up to 0.2 m over it).
+- r8 (depression): `tools/gun-depression-sweep.mjs --no-suit` on the final mantlet: the full 10 degrees over the
+  glacis trough (yaw 0), 8-9 to yaw 25, 4.7-6.2 at yaws 26-49 over the front deck's edges, the full 10 at 72-107,
+  easing over the engine deck to +1.5 at 165-177 and +8.1 over the stern pole at 178-180; no mount conflict, nothing
+  blocked at elevation. Published on both ids (`CHALLENGER3_TD_GUN_PITCH_BY_YAW_DEG`); `nationalGunClearance`
+  holds them (the TD 24.91 mm with its suit at yaw 33, the field fit 26.31 mm).
 
 - r0 (2026-10-27): intake, identity, measurement. Lane tools (ignored, `.qa-dev/cr3td/`): `oracle-load.mjs`,
   `depthmaps.mjs` + `oracle-dm.mjs` + `dmq.mjs` (2 cm orthographic depth maps of the oracle and their tables),
