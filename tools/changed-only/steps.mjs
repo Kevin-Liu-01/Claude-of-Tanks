@@ -151,9 +151,11 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/genIcons.mjs': {
     // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
     // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
-    pin: '7d944ce5dd44bc5c',
+    // 264 re-pin: 253 (bfb7e709e2) hashes the technical diagrams' label sidecar it has just written (technicalLabelsRecord):
+    // its own output in outDir, like the images.
+    pin: '37576ee224e4fc6b',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest and images',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest, images and technical-label sidecars',
   },
   // 229: genIcons passes each published picture through the optional local master filter (owner attribution, 228).
   'tools/media-r5/master-filter.mjs': {
@@ -186,6 +188,18 @@ export const DECLARED_DYNAMIC = Object.freeze({
     pin: '1c72be85b54a8dbf',
     reads: [],
     note: 'spawns itself (--worker) for --jobs shards; the shards run this same closure',
+  },
+  // 264: the browser steps (centering, icons) launch through the guarded launcher (eee1c02179, 259) and queue on the
+  // machine's capture lock; neither reads a repository input.
+  'tools/browser-launch.mjs': {
+    pin: '87d9d82caf048471',
+    reads: [],
+    note: 'runs ps over the launched browser\'s process tree for its memory watchdog: process state, never a file a step keys',
+  },
+  'tools/capture-lock.mjs': {
+    pin: 'be03f207d16f52a7',
+    reads: [],
+    note: 'reads and writes the machine-wide /tmp/cot-shots.lock and queue (owner, tickets, logs) and runs ps on their holders: scheduling only, never what a step writes',
   },
   // World steps (WORLD_STEPS).
   'tools/capture-world-collision-manifests.mjs': {
@@ -222,6 +236,13 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // 230 (foliage-shadow-sites-228): map-probe-runtime's probe server loads this Vite plugin; the world steps import
     // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above).
     note: 'a Vite plugin: reads src/ui/i18nCatalog.<locale>.json only when a dev server serves virtual:cot-i18n-studio/<locale>; the chain runs no dev server',
+  },
+  // 264: battle-spikes-253 (85d330ad12, 254) reads a sourced texture's file back from the HTTP cache to decode it off the
+  // main thread; the world steps reach the module through the map graph.
+  'src/world/sourcedTextureCompositionClient.ts': {
+    pin: 'be3b9096d168902a',
+    reads: [],
+    note: 'browser only: fetches an <img> the page has already loaded (force-cache) to decode its bitmap; the Node world steps load no source image, and texture pixels never reach a wreck plan row or a collision shard',
   },
   'tools/wreck-bake-plan.mjs': {
     pin: '8fbacf8b8059103e',
