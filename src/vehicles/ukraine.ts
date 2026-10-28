@@ -104,16 +104,17 @@ const UKRAINE_SPECS = {
   bm_oplot_m: variant('bm_oplot_m', 't84', {
     name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#66704c', weather: '#77805a', patches: [],
     camoScale: 0.50,
-    // the build's measured extents (geometry-gate), kit included: the stern drums, the skirt Duplet course and the
-    // roof stations (the published 9.72 m / 3.78 m / 2.2 m are the bare tank's: bm_oplot_m.md)
-    dims: { hullLengthM: 7.32, overallLengthM: 10.49, widthM: 4.40, heightM: 2.97 },
+    // the build's measured extents (geometry-gate) without external stowage, as published dimensions are given: the
+    // stern drums excluded; the skirt Duplet course and the roof stations included (the published 9.72 m / 3.78 m /
+    // 2.2 m are the bare tank's: bm_oplot_m.md)
+    dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.40, heightM: 2.96 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
   bm_oplot_t: variant('bm_oplot_t', 't84', {
     name: 'T-84BM Oplot-T', number: '231', scheme: 'nato', base: '#b39466', weather: '#c3a578',
     patches: ['#7e4c37', '#5c4232', '#a17f58'], camoScale: 0.58,
-    dims: { hullLengthM: 7.32, overallLengthM: 10.49, widthM: 4.43, heightM: 2.97 },
+    dims: { hullLengthM: 7.17, overallLengthM: 10.28, widthM: 4.43, heightM: 2.97 },
     stats: { hp: 2750, enginePowerHp: 1200, weightTons: 51.5, topSpeedKmh: 70, reverseSpeedKmh: 30,
       turretTraverseDegS: 44 },
   }),
