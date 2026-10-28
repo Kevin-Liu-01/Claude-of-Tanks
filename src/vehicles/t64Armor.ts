@@ -24,7 +24,7 @@ export const T64_DATUMS = Object.freeze({
   trackWidthM: .54,
 } as const);
 
-export type T64Variant = 'bm1m' | 'bv1' | 'bv2017';
+export type T64Variant = 'bm1m' | 'bv' | 'b1v2022';
 
 const NIZH = { keReduction: .30, ceFlatMm: 600 } as const;
 const NIZH_SCREEN = { keReduction: .12, ceFlatMm: 420 } as const;

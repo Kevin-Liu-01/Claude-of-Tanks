@@ -2910,6 +2910,21 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
+  // 262: the true T-64s (t64Foundation.ts) draw their own 902B banks, whips, remote NSVT, racks and packs, so their decor
+  // is the soft stowage and cable alone (the default turreted draw doubled the smoke banks and added a third whip)
+  t64bm1m: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64bv: () => [
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 0.9 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
+  t64b1v_2022: () => [
+    { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.7 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.2 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
@@ -3711,7 +3726,7 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't72b_1987', 't72bu',
+  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
   't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
 ]);
 

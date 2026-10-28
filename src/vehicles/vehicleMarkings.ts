@@ -352,6 +352,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),
   t64bv_donbas: anchor('turret', 'right', 0.38, 0.47, 0.23, -1),
   t64bm1m: anchor('turret', 'right', 0.36, 0.42, 0.22, -1),
+  t64bv: anchor('turret', 'right', 0.38, 0.44, 0.22, -1),
+  t64b1v_2022: anchor('turret', 'right', 0.38, 0.44, 0.22, -1),
   ua_t80bv: anchor('hull', 'left', 0.42, 0.63, 0.24, 1),
   t80u_kursk: anchor('turret', 'left', 0.35, 0.46, 0.24, 1),
   t84bm_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),

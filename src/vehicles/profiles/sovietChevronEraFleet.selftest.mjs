@@ -10,9 +10,7 @@ import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 // shared two-row carrier, so they leave the carrier cases below and are held to their donor's reactive sectors.
 // 2026-10-22: the T-64BV1 is on the T-72B3 study under the Kontakt-1 layout (t64bvK1.ts: glacis courses, skirt
 // containers and turret horseshoe); its containers still fill exactly the B3 frame's six gameplay sectors.
-// 262: the T-64BV1 left the T-72B3 study for the true T-64 base (t64Foundation.ts; t64RunningGearTurretCenter.selftest.mjs
-// and fleetEraFinish.selftest.mjs hold its six Kontakt-1 sectors).
-const REBUILT = Object.freeze({ t72bu_1989: 't72bu', t80uk: 't80u' });
+const REBUILT = Object.freeze({ t72bu_1989: 't72bu', t80uk: 't80u', t64bv1: 't72b3' });
 const eraSectors = (id) => {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try { return [...(tank.root.userData.eraFinishReceipt?.sectors ?? [])].sort(); } finally { tank.dispose(); }

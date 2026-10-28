@@ -37,6 +37,7 @@ import './aresApcXSpecs.ts';
 import './classicFleetSpecs.ts';
 import './franceSpecs.ts';
 import './ukraine.ts';
+import './t64FamilySpecs.ts';
 import './china.ts';
 import './sweden.ts';
 import './poland.ts';

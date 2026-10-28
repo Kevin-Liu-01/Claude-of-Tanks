@@ -76,10 +76,10 @@ function fenders(P: TankBuilderPort, side: number): void {
   const strip: SectionPoint[] = [[H.fenderFrontZ, outerArc[0][1]], ...outerArc, ...innerArc.reverse(), [H.fenderFrontZ, innerArc[innerArc.length - 1][1]]];
   // stations run across the fender (local z = -x); the strip lies in (bow z, height)
   P.addMudguard('t64-bow-mudguard', 'hull', sectionSolid([-r, -l].map(s => ({ z: s, ring: ccw(strip) }))).rotateY(-Math.PI / 2));
-  // its turned-down outer lip, 0.10 m deep, following the roll (the flap's side face in profile)
+  // its turned-down outer side face, 0.22 m deep at the top of the roll and 0.12 m at the lip (the flap in profile)
   const lipOuter: SectionPoint[] = outerArc.map(([z, y]) => [z, y]), lipInner: SectionPoint[] = outerArc.map(([z, y], i) => {
-    const a = Math.PI / 2 * (1 - i / 10);
-    return [z - .10 * Math.cos(a), y - .10 * Math.sin(a)];
+    const a = Math.PI / 2 * (1 - i / 10), depth = .22 - .10 * i / 10;
+    return [z - depth * Math.cos(a), y - depth * Math.sin(a)];
   });
   const lip: SectionPoint[] = [...lipOuter, ...lipInner.reverse()];
   P.addMudguard('t64-bow-mudguard-lip', 'hull', sectionSolid([-outer - side * .006, -outer + side * .006].sort((a, b) => a - b)
@@ -179,17 +179,20 @@ function rearPlate(P: TankBuilderPort, drums: boolean, log: boolean): void {
 /** Fender stowage stands outside the turret's swept circle (the Nizh blocks reach r 1.75 at y 1.50, the rear racks
  * r 2.2 at y 1.55): nothing on the shelves between z -1.50 and 1.30 rises above them. */
 function fenderStowage(P: TankBuilderPort): void {
-  // Right shelf: the external fuel tanks; left shelf: the SPTA boxes; each pair of tanks on its two straps.
-  for (const [z0, z1] of [[-2.95, -2.30], [-2.22, -1.56], [1.34, 2.22]] as const) {
+  // Right shelf: the external fuel tanks; left shelf: the SPTA boxes; each pair of tanks on its two straps. Nothing on the
+  // shelves ahead of the turret: the long glacis line runs clear to the bow mudguards.
+  for (const [z0, z1] of [[-2.95, -2.30], [-2.22, -1.56]] as const) {
     P.addEquipment('hullDetail', box(.50, .21, z1 - z0), -1.36, H.deckY + .110, (z0 + z1) / 2);
     for (const z of [z0 + .10, z1 - .10]) P.addEquipment('hullDark', box(.52, .020, .030), -1.36, H.deckY + .219, z);
   }
-  for (const [z0, z1] of [[-2.95, -2.05], [-1.97, -1.56], [1.36, 2.20]] as const)
+  for (const [z0, z1] of [[-2.95, -2.05], [-1.97, -1.56]] as const)
     P.addEquipment('hullDetail', box(.50, .19, z1 - z0), 1.36, H.deckY + .100, (z0 + z1) / 2);
 }
 
 /** The whole hull: tub, fenders, running gear, deck, rear plate and shelves. */
-export interface T64BaseOptions { drums?: boolean; log?: boolean }
+/** drums: two 200 L drums on the rear plate; log: the unditching log across it; mgShield: the gunner shield on the NSVT
+ * (the T-64B1V mod. 2022). */
+export interface T64BaseOptions { drums?: boolean; log?: boolean; mgShield?: boolean }
 export function buildT64Hull(P: TankBuilderPort, options: T64BaseOptions = {}): void {
   P.hullG.position.set(0, 0, 0);
   hullTub(P);
@@ -250,7 +253,7 @@ function gunMountAndGun(P: TankBuilderPort): void {
   // the 2A46M-1 in its cast mask (gun frame: the trunnion, +Z along the bore)
   P.gunG.position.set(TRUNNION[0] - PIVOT[0], TRUNNION[1] - PIVOT[1], TRUNNION[2] - PIVOT[2]);
   const muzzle = T64_DATUMS.muzzleZ - TRUNNION[2];
-  P.add('gunMount', boxSections([[.02, .25, .20, -.24], [.36, .25, .20, -.24], [.48, .215, .17, -.18], [.595, .155, .12, -.105]]));
+  P.add('gunMount', boxSections([[.02, .25, .20, -.24], [.30, .245, .19, -.22], [.44, .20, .155, -.165], [.56, .145, .115, -.105], [.60, .125, .10, -.09]]));
   // coaxial PKT port to the right of the mask
   P.add('gunMount', cylZ(.030, .12, 12), -.20, -.06, .62);
   P.add('gunDark', cylZ(.012, .14, 10), -.20, -.06, .66);
@@ -268,7 +271,7 @@ function gunMountAndGun(P: TankBuilderPort): void {
   P.muzzleZ = muzzle;
 }
 
-function commanderCupola(P: TankBuilderPort): void {
+function commanderCupola(P: TankBuilderPort, shield: boolean): void {
   // The commander's rotating cupola on the right of the crown, its hatch, the TKN-3 sight and the remote 12.7 mm NSVT
   // ("Utyos": laid from inside with the hatch shut), the shared NSVT construction on the cupola's ring.
   const x = -.59, z = -.36, roof = t64DomeHeight(x, z) ?? .76;
@@ -277,10 +280,14 @@ function commanderCupola(P: TankBuilderPort): void {
   P.addModuleVisual('optics', 'turretDetail', box(.22, .13, .18), x + .02, roof + .12, z + .25);
   P.addModuleVisual('optics', 'turretGlass', box(.16, .06, .012), x + .02, roof + .135, z + .345);
   for (const a of [-1.0, -.45, .45, 1.0]) P.addEquipment('turretDark', box(.07, .045, .05), x + Math.sin(a) * .33, roof + .08, z + Math.cos(a) * .33, 0, a, 0);
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1, ammo: true, shield: false,
+  // the Utyos mount's cast housing on the cupola's rear arc: the drive box the gun's cradle turns on, its sight window
+  P.addEquipment('turretDetail', box(.34, .16, .30), x - .02, roof + .19, z - .14);
+  P.addEquipment('turretDetail', box(.26, .05, .24), x - .02, roof + .295, z - .14);
+  P.addModuleVisual('optics', 'turretGlass', box(.10, .05, .012), x + .10, roof + .21, z + .015);
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 1, ammo: true, shield,
     remoteControlled: true, ridingCradle: true, feed: 'left', datumBarrel: false, seed: 6464 });
   mg.name = 't64CommanderNsvt';
-  mg.position.set(x - .02, roof + .12, z - .12);
+  mg.position.set(x - .02, roof + .315, z - .14);
   P.turretG.add(mg);
 }
 
@@ -330,13 +337,13 @@ export function t64SearchlightAt(P: TankBuilderPort, x: number, y: number, z: nu
 
 /** The base turret on its ring: cast shell, gun and mask, the commander's and gunner's stations and the crown's
  * fittings. A variant adds its armour, smoke and stowage. */
-export function buildT64Turret(P: TankBuilderPort): void {
+export function buildT64Turret(P: TankBuilderPort, options: T64BaseOptions = {}): void {
   P.turretG.position.set(PIVOT[0], PIVOT[1], PIVOT[2]);
-  castTurret(P); gunMountAndGun(P); commanderCupola(P); gunnerStation(P); crownFittings(P);
+  castTurret(P); gunMountAndGun(P); commanderCupola(P, !!options.mgShield); gunnerStation(P); crownFittings(P);
 }
 
 export function buildT64Base(P: TankBuilderPort, options: T64BaseOptions = {}): void {
   buildT64Hull(P, options);
-  buildT64Turret(P);
+  buildT64Turret(P, options);
   P.topY = T64_DATUMS.structuralRoofM - PIVOT[1];
 }

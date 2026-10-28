@@ -152,6 +152,8 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   m60a3: { doctrine: 'flexible', viewM: 410, still: 0.187, moving: 0.127 },
   t64bv_donbas: { doctrine: 'assault', viewM: 385, still: 0.186, moving: 0.127 },
   t64bm1m: { doctrine: 'assault', viewM: 390, still: 0.184, moving: 0.126 },
+  t64bv: { doctrine: 'assault', viewM: 375, still: 0.188, moving: 0.128 },
+  t64b1v_2022: { doctrine: 'assault', viewM: 385, still: 0.186, moving: 0.127 },
   ua_t80bv: { doctrine: 'flanker', viewM: 395, still: 0.235, moving: 0.175 },
   t80u_kursk: { doctrine: 'flanker', viewM: 410, still: 0.234, moving: 0.174 },
   t84bm_oplot_m: { doctrine: 'flanker', viewM: 425, still: 0.229, moving: 0.169 },

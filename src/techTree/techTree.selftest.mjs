@@ -104,7 +104,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ['merkava3_baz', 'merkava3d'], ['merkava3d', 'merkava4'], ...after('merkava4', ['merkava4b', 'merkava4_trophy', 'merkava4_barak'])],
   other: [['chieftain3', 'chieftain5'], ['chieftain5', 'chieftain_mk9'], ['chieftain_mk9', 'chieftain_mk10'],
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
-    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['type90', 'type90a'],
+    ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
@@ -142,6 +142,7 @@ for (const file of sources) {
 const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('hex').slice(0, 16);
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
-// (FAMILY_UPGRADES above).
-assert.equal(digest, '14cae73ceb1ad491', `tree content changed: re-pin to ${digest} if deliberate`);
+// (FAMILY_UPGRADES above). 262: the new true T-64s, the T-64BM1M and the T-64B1V mod. 2022 at IV under the T-64BV mod. 2017
+// and the T-64BV at III beside the T-64BV1.
+assert.equal(digest, 'a93c375d9293d1be', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

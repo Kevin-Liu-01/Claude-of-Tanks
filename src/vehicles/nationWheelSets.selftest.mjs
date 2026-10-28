@@ -103,8 +103,10 @@ expect('t62_1975', 't90_1992'); expect('t80u', 't90am'); expect('t72b3m_2022', '
 expect('t90m', 't90am', 'donor'); expect('t14_armata', 'object148_proto', 'donor'); expect('object148_proto', 'object148_proto', 'donor');
 expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_tagil', 't90am');
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
-// 262 (owner 2026-10-27): the T-64s are true T-64s again (t64Foundation.ts) and draw the T-64 dual wheel natively
-for (const id of ['t64bm1m', 't64bv1', 't64bv_donbas']) expect(id, 't64bm1m', 'donor');
+// owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
+expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');
+// 262: the new true T-64s (t64Foundation.ts) draw the T-64 dual wheel natively
+for (const id of ['t64bm1m', 't64bv', 't64b1v_2022']) expect(id, 't64bm1m', 'donor');
 expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
 expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
 expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');

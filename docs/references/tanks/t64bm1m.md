@@ -122,6 +122,8 @@ Use PASS / FAIL / NOT RUN / BLOCKED / NOT APPLICABLE (reason). Filled as the lan
 | Geometry components / dimension score / 3% check | NOT RUN | | geometry-gate | |
 | Independent critic / actual Gallery | NOT RUN | | blind critics (Agent) | |
 | Winding, closure and intentional negative space | NOT RUN | | tank-sealed-check | |
+| Gun clearance over its own turret (tube ahead of the mask, -6/0/+14 deg, rod negative control) | PASS | WIP | `node src/vehicles/profiles/t64GunClearance.selftest.mjs` | 16.9-21.2 cm (BM1M 16.9 cm from the Nizh) |
+| Running gear / turret datum receipt | PASS | WIP | `node src/vehicles/profiles/t64RunningGearTurretCenter.selftest.mjs` | six wheels, four rollers a side, all three |
 | Physical seats and yaw/pitch/recoil ownership | NOT RUN | | | |
 | High/low gear motion / strict band+shoe / duplicates | NOT RUN | | track-clip-audit, track-duplicate-audit | |
 | Return rollers / track thickness / chassis closure | NOT RUN | | wheel-review | |
@@ -137,6 +139,8 @@ Capability score (RETIER-257 formula recomputed on this tree: 0.35 stats + 0.25 
 251 tier): T-64BM1M 0.548 (tier IV band 0.502-0.600, median 0.575); T-64BV1 0.476 (III); T-64BV mod. 2017 0.571 (IV).
 Proposed: T-64BM1M at IV beside the mod. 2017 (Ukraine tree, `soviet` line, parent `t64bv_donbas`), with the Soviet
 fire-control floor and the 259 tier-IV footing its sibling takes (mantlet x1.45, pen 780/709/639, 6.2 s).
+**Owner approval (2026-10-27, via Main): "wow great job. all apporoved."** T-64BV1 III, T-64BV mod. 2017 IV, T-64BM1M IV
+(parent `t64bv_donbas`, FAMILY_UPGRADES `t64bv1` -> `t64bm1m`).
 
 ## Round log
 
