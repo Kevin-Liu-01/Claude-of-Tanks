@@ -1460,8 +1460,9 @@ function* m48TurretSteps(P: CastPort): TankProfileBuild {
     P.add('turret', sph(0.10, P.q ? 16 : 10, P.q ? 10 : 6), x, L.y(2.425), L.z(0.37));
     P.add('turretGlass', cylX(0.05, 0.012, P.q ? 12 : 8), x + side * 0.098, L.y(2.425), L.z(0.37));
   }
-  { // the lifting eyes on their pads: the front one on the centre line, the rear one right of it (the model's 2.64, 2.69)
-    for (const [x, z, pad] of [[0, 1.19, 0.08], [0.10, -0.855, 0.06]] as const) {
+  { // the lifting eyes on their pads: the front one on the centre line, the rear one just left of it (the model's 2.64,
+    // 2.69), behind the mission dock's seat on the roof
+    for (const [x, z, pad] of [[0, 1.19, 0.08], [0.10, -1.08, 0.06]] as const) {
       const roof = seat.topAt(x, z);
       P.add('turretDetail', box(0.12, pad + 0.02, 0.16), x, L.y(roof + pad / 2), L.z(z));
       KIT.liftEye(P, 'turretDetail', x, L.y(roof + pad), L.z(z), Math.PI / 2);
