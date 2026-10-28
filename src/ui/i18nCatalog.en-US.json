@@ -68,6 +68,8 @@
   "boot.retry": "Retry loading",
   "battle.entryFailed.title": "The battle could not start",
   "battle.entryFailed.body": "{reason}. You are back in the Garage. Try again; if it repeats, reload the page.",
+  "battle.entryFailed.network": "The connection dropped while the battle loaded. You are back in the Garage; try again once it is back.",
+  "battle.entryFailed.retry": "Try again",
   "credits.body1": "I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration. Claude and Codex were development tools, not co-authors.",
   "credits.body2": "The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were built end to end in a sustained workflow of many Claude and Codex agents. Every selectable tank is original procedural model work by Kevin B. Liu.",
   "credits.links.github": "Kevin on GitHub",

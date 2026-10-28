@@ -1620,15 +1620,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (!kind) return;
       let pending = technicalLabelData.get(specId);
       if (!pending) {
+        // (a tank without labels is remembered; a request the network dropped is forgotten, so the next open asks again)
         pending = fetch(labels.technicalLabelsUrl(specId)).then((response) => (response.ok ? response.json() : null))
-          .then((json) => (json ? labels.parseTechnicalLabels(json, specId) : null)).catch(() => null);
+          .then((json) => (json ? labels.parseTechnicalLabels(json, specId) : null))
+          .catch(() => { technicalLabelData.delete(specId); return null; });
         technicalLabelData.set(specId, pending);
       }
       const data = await pending;
       if (!data || technicalLabelsFor !== key) return;
       technicalLabels = labels.mountTechnicalDiagramLabels(technicalModalPanel, data, kind, null,
         { header: false, image: technicalModalImage });
-    });
+    }).catch(() => { /* the labels are an overlay: the drawing stands without them, and the next open loads them again */ });
   }
   const openTechnicalViewer = (viewId: GarageTechnicalViewId, trigger: HTMLButtonElement): void => {
     closeGarageVariantMenu();
