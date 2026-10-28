@@ -2238,7 +2238,7 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Tex
         // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
         const image = ctx.getImageData(0, 0, S, S);
         shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.62, occlusion: 3.2,
-          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.38, pal.base[1] * 0.38, pal.base[2] * 0.36], fill: [0, 0], cell: S * S } });
+          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.62, pal.base[1] * 0.62, pal.base[2] * 0.58], fill: [0, 0], cell: S * S } });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
