@@ -28,7 +28,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   type10X: Object.freeze(['type10']),
   type90X: Object.freeze(['type90']),
   christian2: Object.freeze(['christian2']),
-  leopard2a3B4: Object.freeze(['leo2a3_b4']),
+  leopard2a3B4: Object.freeze(['leo2a3_b4', 'leo2a2', 'leo2a3']),
   amx40X: Object.freeze(['amx40']),
   arieteX: Object.freeze(['c1_ariete', 'c2_ariete']),
   strv122X: Object.freeze(['strv122']),
@@ -82,7 +82,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'challenger3',
   ]),
   leopard: Object.freeze([
-    'leo2a2', 'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',
+    'leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2_improved', 'leopard2_proto',
     'leo2_revolution_proto', 'leo2_revolution', 'kf51_evo', 'kf51_u', 'leo1a5', 'leo2a4m_can', 'leo2a4_otco',
     'leo2a6_ua',
   ]),
@@ -123,7 +123,6 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   korea: Object.freeze(['k2b']),
   japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_dozer']),
-  germany: Object.freeze(['leo2a3']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);
 

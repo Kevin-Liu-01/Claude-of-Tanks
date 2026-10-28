@@ -2724,15 +2724,19 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   // --- Modern ---
+  // 262: the early production Leopard 2s on the new construction (profiles/leopard2a3B4.ts) carry the photographed light
+  // load: packs in the turret's rear basket (the 2A2 and the OTCO a tarp on the engine deck too); the profile draws the
+  // radios' whips, so no decor antenna (a blind critic on the cited photos, 2026-10-28: "the roof is nearly clean")
   leo2a2: () => [
-    // The family profile owns the complete hull-and-turret ghillie suit.
-    // Keep normal stowage here, but do not layer the old rectangular side
-    // veils or tied rolls over its shaped, cut-out carrier meshes.
-    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: 1 }] },
+  ],
+  leo2a3_b4: () => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
+  ],
+  leo2a3: () => [
+    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.0 }, slot: ['rearDeck', { corner: -1 }] },
   ],
   leo2a4: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },

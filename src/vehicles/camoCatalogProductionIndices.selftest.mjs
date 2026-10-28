@@ -59,7 +59,7 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
 // Release 262: the Christian II and its Danish tri-tone.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2'];
-// release 262: the fourth batch's Leopard 2A3 wears the 2A2 OTCO's coat (it carries that build's paint and combat data)
+// release 262: the fourth batch's Leopard 2A3 wears the 2A3 OTCO's coat (it carries that build's paint and combat data)
 const ADDED_WEARING_PRODUCTION_PAINT = { leo2a3_b4: 'leo2a3' };
 assert.equal(Object.keys(now.tanks).length,
   Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length + Object.keys(ADDED_WEARING_PRODUCTION_PAINT).length,

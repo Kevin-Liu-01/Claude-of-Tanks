@@ -1,6 +1,6 @@
 // German Leopard derivative registration. Owner-supplied GLBs stay outside
 // the project and are used only for comparison; all playable geometry is
-// first-party procedural work in profiles/leopard.ts and profiles/germany.ts.
+// first-party procedural work in profiles/leopard.ts and profiles/leopard2a3B4.ts.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import { LEOPARD_IMPROVED_HULL_WIDTH_SCALE } from './profiles/leopardImprovedHull.ts';
@@ -109,8 +109,10 @@ function variant(
 
 const GERMANY_SPECS = {
   leo2a3: variant('leo2a3', 'leo2a2', {
-    // 262: shown as the 2A2 OTCO (tankLabels.ts); the fourth batch's 2A3 is leo2a3_b4
-    name: 'Leopard 2A2 OTCO', number: 'OTCO', scheme: 'stripes',
+    // 262: the 2A3 OTCO (the owner, 2026-10-28: one of "2 nnnew 2a3 variannts, one of which is the otco"), drawn on the
+    // release's new construction (profiles/leopard2a3B4.ts, re-enveloped in leopard2a3B4Specs.ts); the fourth batch's
+    // plain 2A3 is leo2a3_b4
+    name: 'Leopard 2A3 OTCO', number: 'OTCO', scheme: 'stripes',
     base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'],
     camoScale: 0.44,
     dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.90 },

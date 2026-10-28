@@ -1,9 +1,9 @@
-// The Leopard 2A3 of the fourth batch (release 262; profiles/leopard2a3B4.ts draws it, leopard2a3B4Specs.ts carries this
-// envelope): its turret datums and combat envelope, from one table; the hull is the release's Leopard 2-pattern hull
-// (leopard2HullDatums.ts). The turret is measured from the Christian II concept model's Leopard 2 turret (proportions
-// only): vertical faces, the gun slot between two cheek blocks, a stepped bustle. Protection is the 2A2's basic package
-// (the first four batches share it). Boot-light: plain data and the shared plate helpers, no geometry. Turret metres from
-// the ring's centre on the deck.
+// The early production Leopard 2s on the release-262 construction (profiles/leopard2a3B4.ts draws them: the 2A2, the
+// 2A3 of the fourth batch and the 2A3 OTCO; their specs carry this envelope): the turret datums and combat envelope, from
+// one table; the hull is the release's Leopard 2-pattern hull (leopard2HullDatums.ts). The turret is measured from the
+// Christian II concept model's Leopard 2 turret (proportions only): vertical faces, the gun slot between two cheek
+// blocks, a stepped bustle. Protection is the 2A2's basic package (the first four batches share it). Boot-light: plain
+// data and the shared plate helpers, no geometry. Turret metres from the ring's centre on the deck.
 import {
   plate, rearPlate as rr, rightSidePlate as sR, leftSidePlate as sL, roofPlate as rf,
   rightCheekPlate as chR, leftCheekPlate as chL, moduleBox as mbox, crewBox as cbox, type ArmorEnvelope,
@@ -27,11 +27,16 @@ export const LEO2A3B4_TURRET = Object.freeze({
   bustleHalfWidthM: 1.15,
   rearZ: -2.73,
   rearHalfWidthM: 0.86,
+  /** The mantlet's face in the gun's frame, 3 cm behind the cheeks' faces (its round boss stands proud of it). */
+  mantletFaceZ: 0.20,
   roofFrontY: 0.74,
   roofY: 0.83,
   floorY: 0.02,
   bustleFloorY: 0.21,
 });
+
+/** How much deeper the production Leopard 2's three heavy fore skirt blocks hang than the aft run (the photographed step). */
+export const EARLY_LEOPARD2_FORE_SKIRT_DROP_M = 0.16;
 
 /** The 2A2's basic package (RHAe mm), carried by the first four batches; the 2A3's spec trims stand. */
 export const LEO2A3B4_PROTECTION = Object.freeze({
@@ -43,13 +48,13 @@ export const LEO2A3B4_PROTECTION = Object.freeze({
 /** The combat envelope on the drawn hull and turret. */
 export function leo2a3B4Armor(): ArmorEnvelope {
   const Td = LEO2A3B4_TURRET, A = LEO2A3B4_PROTECTION;
-  const hull = leopard2HullArmor(A);
-  const hwT = Td.halfWidthM, gy = Td.gunLocal[1];
+  const hull = leopard2HullArmor(A, EARLY_LEOPARD2_FORE_SKIRT_DROP_M);
+  const hwT = Td.halfWidthM, gy = Td.gunLocal[1], mz = Td.gunLocal[2] + Td.mantletFaceZ;
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, Td.frontZ, hwT, Td.cornerZ, 0.03, Td.roofFrontY, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
     chL('turret_cheek_L', A.cheek.phys, Td.slotHalfWidthM, Td.frontZ, hwT, Td.cornerZ, 0.03, Td.roofFrontY, 0, 0, { keMm: A.cheek.ke, ceMm: A.cheek.ce }),
-    plate('mantlet', A.mantlet.ke, [-0.44, gy - 0.27, Td.gunLocal[2] + 0.31], [0.44, gy - 0.27, Td.gunLocal[2] + 0.31],
-      [-0.44, gy + 0.30, Td.gunLocal[2] + 0.31], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
+    plate('mantlet', A.mantlet.ke, [-0.44, gy - 0.27, mz], [0.44, gy - 0.27, mz],
+      [-0.44, gy + 0.30, mz], { keMm: A.mantlet.ke, ceMm: A.mantlet.ce, gunFollow: true }),
     sR('turret_side_R', A.turretSide.ke, hwT, Td.floorY, hwT, 0.76, Td.stepZ, Td.cornerZ, { ceMm: A.turretSide.ce }),
     sL('turret_side_L', A.turretSide.ke, hwT, Td.floorY, hwT, 0.76, Td.stepZ, Td.cornerZ, { ceMm: A.turretSide.ce }),
     sR('turret_bustle_side_R', A.bustleSide.ke, Td.bustleHalfWidthM, Td.bustleFloorY, Td.bustleHalfWidthM, 0.78, Td.rearZ + 0.28, Td.stepZ, { ceMm: A.bustleSide.ce }),

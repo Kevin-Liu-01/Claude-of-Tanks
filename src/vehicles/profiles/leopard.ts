@@ -15271,7 +15271,6 @@ export const LEOPARD_PROFILES = {
   // family map silently selected modern2.ts's early box prototype after the
   // source-backed wrapper was retired, erasing the authored hull, seven-wheel
   // course, pre-wedge turret and service geometry preserved above.
-  leo2a2: { build: buildLeo2A4 },
   leo2a4: { build: buildLeo2A6 },
   leo2a4_v: { build: buildLeo2A5 },
   leo2a4m: { build: buildLeo2A5A5NL },

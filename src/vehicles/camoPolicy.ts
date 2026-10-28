@@ -797,7 +797,7 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   type10_dozer: 'paint_type10_dozer',
   // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
   christian2: 'paint_christian2',
-  // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A2 OTCO
+  // 262: the fourth batch's Leopard 2A3 wears the 2A3's stripes signature with the 2A3 OTCO
   leo2a3_b4: 'sig_leo2a4_otco',
 });
 

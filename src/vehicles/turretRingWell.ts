@@ -97,10 +97,6 @@ const DENT_RAMP_S = 0.35;
 export const TURRET_RING_SIDE_CAPS: Readonly<Record<string, number>> = Object.freeze({
   mbt70: 0.93,
   object148_proto: 0.95,
-  // (245) the Leopard 2A2 and 2A3: their measured race (1.013 m) runs past the upper hull's sides, whose skin starts at
-  // 0.940 m within the cut's depth (243 points); the wreck's rim showed about 180 deeper px
-  leo2a2: 0.91,
-  leo2a3: 0.91,
 });
 
 /** The polygon the plate's rim and the hull's cut share: corner k at bearing 2πk/sides (x = sin, z = cos). */

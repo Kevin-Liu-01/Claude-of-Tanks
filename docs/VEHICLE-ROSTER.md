@@ -81,7 +81,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 71 | PROD | `leo1a5` | Leopard 1A5 | Germany | VII | Cold War | Production |
 | 72 | PROD | `leopard2_proto` | Leopard 2 Prototype | Germany | VIII | Cold War | Production |
 | 73 | PROD | `leo2a2` | Leopard 2A2 | Germany | VIII | Cold War | Production |
-| 74 | PROD | `leo2a3` | Leopard 2A2 OTCO | Germany | VIII | Modern | Production |
+| 74 | PROD | `leo2a3` | Leopard 2A3 OTCO | Germany | VIII | Modern | Production |
 | 75 | PROD | `leo2a4m_can` | Leopard 2A4M CAN | Germany | IX | Modern | Production |
 | 76 | PROD | `leo2a4_v` | Leopard 2A4 V | Germany | IX | Modern | Production |
 | 77 | PROD | `leo2a4m` | Leopard 2A4M | Germany | X | Modern | Production |

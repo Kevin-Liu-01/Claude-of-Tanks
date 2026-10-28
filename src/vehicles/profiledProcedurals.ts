@@ -49,7 +49,6 @@ import { CV90_PROFILES } from './profiles/cv90.ts';
 import { POLAND_PROFILES } from './profiles/poland.ts';
 import { KOREA_PROFILES } from './profiles/korea.ts';
 import { JAPAN_PROFILES } from './profiles/japan.ts';
-import { GERMANY_PROFILES } from './profiles/germany.ts';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.ts';
 import { SHERIDAN_PROFILES } from './profiles/sheridan.ts';
 import { PUMA_S1_PROFILES } from './profiles/pumaS1.ts';
@@ -193,7 +192,6 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...POLAND_PROFILES,
   ...KOREA_PROFILES,
   ...JAPAN_PROFILES,
-  ...GERMANY_PROFILES,
   ...AFV_FAMILY_PROFILES,
   ...SHERIDAN_PROFILES,
   ...PUMA_S1_PROFILES,

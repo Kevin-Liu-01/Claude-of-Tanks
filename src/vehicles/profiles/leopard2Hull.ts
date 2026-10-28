@@ -3,8 +3,9 @@
 // totally new tank generation"): the welded tub between the tracks, the sponsons over them, the upper glacis to the
 // nose, the engine deck; seven road wheels, the raised front idler, the rear sprocket and four return rollers a side;
 // three heavy bolted skirt blocks forward and six thin panels aft; the bow's lamps and tow eyes, the driver's hatch, the
-// stern's grilles and lights. The Christian II (christian2.ts) and the Leopard 2A3 of the fourth batch ride it; the
-// datums and the combat envelope on them are leopard2HullDatums.ts's.
+// stern's grilles and lights. The Christian II (christian2.ts) and the early production Leopard 2s (leopard2a3B4.ts: the
+// 2A2, the 2A3 of the fourth batch and the 2A3 OTCO) ride it; the datums and the combat envelope on them are
+// leopard2HullDatums.ts's.
 import { KIT } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -18,6 +19,10 @@ export interface Leopard2HullOptions {
   readonly flapName: string;
   /** The exhaust grilles at the engine deck's rear corners: pressed louvres, or round rods (the 2A3's fourth batch). */
   readonly exhaust: 'louvre' | 'rods';
+  /** How much deeper the three heavy fore blocks hang than the aft run (the production Leopard 2's step; default 0). */
+  readonly foreSkirtDropM?: number;
+  /** The forward fuel tanks' filler caps on the glacis's shoulders (the 2A2 upgrade and the third to fifth batches). */
+  readonly fuelFillers?: boolean;
 }
 
 /** Linear interpolation along a [z, y] station line, held past its ends. */
@@ -64,8 +69,9 @@ function hull(P: TankBuilderPort): void {
 function skirts(P: TankBuilderPort, o: Leopard2HullOptions): void {
   const { box } = KIT;
   for (const side of [-1, 1]) {
-    // the skirts hang 0.46 m from the sponson's floor: the upper hull's band stands bare above them
-    const top = H.skirtTopY, bottom = top - 0.46;
+    // the skirts hang 0.46 m from the sponson's floor (the fore blocks deeper by the vehicle's drop): the upper hull's
+    // band stands bare above them
+    const top = H.skirtTopY, bottom = top - 0.46 - (o.foreSkirtDropM ?? 0);
     const blocks: Array<[number, number]> = [[1.42, 2.02], [2.04, 2.64], [2.66, 3.16]];
     for (const [z0, z1] of blocks) {
       const lead = z1 > 3.0;
@@ -130,6 +136,12 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     P.add('hullDetail', box(0.346, 0.016, 0.016), px, py + 0.19, pz + 0.17);
     // the splash board's arm: from the apex ahead of the driver back and out across the glacis
     P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    // the forward fuel tank's filler cap on the glacis's shoulder, outboard of the headlight pod, its lever across it
+    if (o.fuelFillers) {
+      const fz = 2.62, fy = lineAt(H.deck, fz), tilt = glacisTilt(fz);
+      P.add('hullDetail', cylY(0.085, 0.09, 0.035, P.q ? 16 : 10), side * 1.42, fy + 0.012, fz, tilt, 0, 0);
+      P.add('hullDark', box(0.10, 0.012, 0.025), side * 1.42, fy + 0.034, fz, tilt, 0, 0);
+    }
   }
   // the driver's hatch (right front) on the glacis's slope, its periscopes ahead of it
   const hz = 2.06, hy = lineAt(H.deck, hz), tilt = glacisTilt(hz);
