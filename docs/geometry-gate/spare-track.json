@@ -3276,31 +3276,8 @@
    "hostSweep": []
   },
   "t84bm_oplot_m": {
-   "inputHash": "0540fbe0fc7d96b7",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildOplotHullSides@profiles/ukraine.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.87,
-      "gap": 0.123,
-      "air": 0.007,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.956,
-      "host": "hull<buildOplotHullSides@profiles/ukraine.ts:1355>"
-     }
-    }
-   ],
+   "inputHash": "d3ce600c79d55952",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

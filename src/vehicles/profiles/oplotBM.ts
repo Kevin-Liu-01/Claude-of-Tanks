@@ -18,6 +18,12 @@
 // 2014-2018, the air conditioner on the bustle and the auxiliary power unit on the left rear fender; it carries the
 // longer rear stowage basket, boarding steps off the left rear fender and its own skirt layout (Duplet on the three forward panels).
 //
+// The T-84U Oplot (t84bm_oplot_m, Object 478DU9, the 2000 serial tank; owner 2026-10-27: "make the now t84 u oploot look
+// a lot more like a prototype for the oplot M and T") is the same hull, running gear, welded turret and KBA-3 at its
+// earlier stage: Kontakt-5 on the glacis, the turret front and the forward skirt panels in place of the Duplet; the
+// commander's flat cupola with its TKN-5 sight and the cupola NSVT, no PNK-6 and no remote stations; smoke-grenade
+// tubes on the turret's front flanks; side stowage boxes and the OPVT snorkel across the bustle; no kit.
+//
 // Frames: hull metres with +Z forward and +X the tank's left, authored at 4.0 times the print and baked once to the
 // registered 4.10 (resizeAuthoredVehicle, OPLOT_BM_SCALE). The turret frame sits on the ring at
 // OPLOT_BM_AUTHORING.turret; the gun frame at OPLOT_BM_AUTHORING.gun inside it.
@@ -37,7 +43,7 @@ import { OPLOT_BM_AUTHORING, OPLOT_BM_ERA, OPLOT_BM_SCALE } from '../oplotFlankL
 import { resizeAuthoredVehicle } from './vehicleSize.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export type OplotBMVariant = 'm' | 't';
+export type OplotBMVariant = 'm' | 't' | 'u';
 type Ring = [number, number][];
 type Plan = [number, number][];
 
@@ -62,7 +68,7 @@ const DECK_Y = 1.46;
 const HULL_HALF_L = Z(3.54);
 const GLACIS_TOP_Z = Z(2.14);
 
-function buildHull(P: TankBuilderPort): void {
+function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
   loftHull(P, {
     deck: [[-HULL_HALF_L, 1.36], [Z(-3.44), 1.43], [Z(-3.20), DECK_Y], [GLACIS_TOP_Z, DECK_Y], [Z(3.48), 0.86], [HULL_HALF_L, 0.83]],
     belly: [[-HULL_HALF_L, 1.06], [Z(-3.42), 0.74], [Z(-3.18), 0.48], [Z(-2.95), 0.42], [Z(2.86), 0.42], [Z(3.22), 0.58], [HULL_HALF_L, 0.72]],
@@ -94,9 +100,26 @@ function buildHull(P: TankBuilderPort): void {
   P.add('hullDark', cylY(0.20, 0.20, 0.02, 24), 0, DECK_Y + 0.036, Z(1.95));
   for (const x of [-0.17, 0, 0.17]) KIT.periscope(P, 'hullDetail', x, 1.47, Z(2.20));
 
-  // Duplet on the glacis: three courses of four modules a side, nearly flush, seated by downward rays.
-  for (const z of [2.48, 2.88, 3.26]) for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
-    glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, 0.135 + i * 0.262), Z(z), [0.25, 0.075, Z(0.385)]);
+  // Duplet on the glacis: three courses of four modules a side, nearly flush, seated by downward rays. The T-84U carries
+  // the earlier Kontakt-5 panel: two courses of three thicker boxes a side.
+  if (variant === 'u') {
+    // each course under one bolted cover plate across the glacis, so it reads as the Kontakt-5 slab, not as tiles
+    const glacisY = (z: number): number => DECK_Y - (z - GLACIS_TOP_Z) * ((DECK_Y - 0.86) / (Z(3.48) - GLACIS_TOP_Z));
+    for (const z of [2.66, 3.12]) {
+      for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
+        glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, 0.18 + i * 0.335), Z(z), [0.32, 0.12, Z(0.44)]);
+      }
+      const z0 = Z(z) - Z(0.23), z1 = Z(z) + Z(0.23), lift = 0.12 / Math.cos(Math.atan((DECK_Y - 0.86) / (Z(3.48) - GLACIS_TOP_Z)));
+      const at = (x: number, zz: number, dy: number): [number, number, number] => [x, glacisY(zz) + lift + dy, zz];
+      // (inside the outer boxes' edge: the KBA-3 crosses the upper course just outboard of it at its -5 degree stop)
+      P.addEquipment('hullEquipment', orientedSlab(at(-0.95, z0, 0), at(0.95, z0, 0), at(0.95, z1, 0), at(-0.95, z1, 0),
+        at(-0.95, z0, 0.016), at(0.95, z0, 0.016), at(0.95, z1, 0.016), at(-0.95, z1, 0.016)));
+      for (const x of [-0.85, -0.34, 0.34, 0.85]) P.addEquipment('hullDark', cylY(0.018, 0.018, 0.012, 8), x, glacisY((z0 + z1) / 2) + lift + 0.02, (z0 + z1) / 2);
+    }
+  } else {
+    for (const z of [2.48, 2.88, 3.26]) for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+      glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, 0.135 + i * 0.262), Z(z), [0.25, 0.075, Z(0.385)]);
+    }
   }
   // Lower front plate: the self-entrenching blade stowed across the nose (the print's: its cutting edge 0.275 above the
   // ground at z 3.23, its top 0.86 at z 3.50, |x| 0.80; equipment, so the combat hull floor stays at the belly), on two
@@ -197,17 +220,19 @@ function buildSkirts(P: TankBuilderPort, variant: OplotBMVariant): void {
         [side(s, 2.052), bottomAt(pa), a], [side(s, 2.070), bottomAt(pa), a], [side(s, 2.070), bottomAt(pb), b], [side(s, 2.052), bottomAt(pb), b],
         [side(s, 2.052), 0.975, a], [side(s, 2.070), 0.975, a], [side(s, 2.070), 0.975, b], [side(s, 2.052), 0.975, b]), 0, 0, 0);
     }
-    // Duplet lids on the flared face: the Oplot-M full length, the Oplot-T on its three forward panels.
+    // Duplet lids on the flared face: the Oplot-M full length, the Oplot-T on its three forward panels; the T-84U's
+    // thicker Kontakt-5 boxes on its four forward panels.
     const sector = s > 0 ? OPLOT_BM_ERA.skirtL : OPLOT_BM_ERA.skirtR;
     const face = new THREE.Vector2(innerX + 0.06 - outerX, DECK_Y - (bottomY + 0.05));
     const tilt = Math.atan2(-face.x, face.y);
     for (let i = 0; i < 9; i++) {
       if (variant === 't' && i < 6) continue;
+      if (variant === 'u' && i < 5) continue;
       const z0 = -2.92 + i * (6.20 / 9), z1 = z0 + 6.20 / 9 - 0.03, z = Z((z0 + z1) / 2);
       const top = Math.min(DECK_Y, skirtTop(z1)) - 0.03, h = (top - (bottomY + 0.06)) / Math.cos(tilt);
       const yc = (top + bottomY + 0.06) / 2;
-      const xc = outerX - (yc - (bottomY + 0.05)) * (face.x / -face.y) + 0.016;
-      eraCassette(P, 'hull', sector, [side(s, xc), yc, z], [0.026, h, Z(z1 - z0)], [0, 0, side(s, tilt)]);
+      const k5 = variant === 'u', xc = outerX - (yc - (bottomY + 0.05)) * (face.x / -face.y) + (k5 ? 0.03 : 0.016);
+      eraCassette(P, 'hull', sector, [side(s, xc), yc, z], [k5 ? 0.055 : 0.026, h, Z(z1 - z0)], [0, 0, side(s, tilt)]);
     }
   }
 }
@@ -228,7 +253,7 @@ function eraBlock(P: TankBuilderPort, sector: string, geometry: THREE.BufferGeom
   P.destructibleCluster(sector, () => P.addExternalArmor('turret', markEraHitFaces(geometry, outward, 0.35)));
 }
 
-function buildTurretShell(P: TankBuilderPort): void {
+function buildTurretShell(P: TankBuilderPort, variant: OplotBMVariant): void {
   P.turretG.position.set(...OPLOT_BM_AUTHORING.turret);
   const body = (z: number, w: number, roof: number) => ({
     z, ring: [[-w, 0.0], [w, 0.0], [w, roof - 0.09], [w - 0.09, roof], [-w + 0.09, roof], [-w, roof - 0.09]] as Ring,
@@ -242,6 +267,10 @@ function buildTurretShell(P: TankBuilderPort): void {
   P.add('turretDark', cylY(0.92, 0.92, 0.60, 24), 0, -0.32, 0);
 
   for (const s of [-1, 1]) {
+    if (variant === 'u') {
+      buildT84UTurretSide(P, s);
+      continue;
+    }
     const front = s > 0 ? OPLOT_BM_ERA.turretL : OPLOT_BM_ERA.turretR;
     const flank = s > 0 ? OPLOT_BM_ERA.flankL : OPLOT_BM_ERA.flankR;
     // Cheek stacks: five columns a side, two courses, their fronts on the arrowhead's sweep.
@@ -291,6 +320,41 @@ function buildTurretShell(P: TankBuilderPort): void {
   for (const z of [-2.00, -1.62, -1.24]) P.add('turretDark', box(0.016, 0.06, 0.05), -1.44, 0.58, z);
 }
 
+/** The T-84U's Kontakt-5 front line: one course of boxes whose fronts sweep from z 1.62 inboard to the flank. */
+const k5Front = (x: number): number => 1.62 - Math.max(0, x - 0.90) * 0.85;
+
+/** One side of the T-84U turret: Kontakt-5 boxes round the welded front, lower than the Duplet stacks and single-course,
+ * their tops falling toward the nose; the 902B smoke-grenade tubes on the front flank; a stowage box forward of the bin. */
+function buildT84UTurretSide(P: TankBuilderPort, s: number): void {
+  const sector = s > 0 ? OPLOT_BM_ERA.turretL : OPLOT_BM_ERA.turretR;
+  const at = (x: number, y: number, z: number): [number, number, number] => [side(s, x), y, z];
+  const boxes: readonly [number, number, number][] = [[0.41, 0.70, 0.95], [0.72, 1.00, 0.95], [1.02, 1.27, 0.80],
+    [1.29, 1.50, 0.52]];
+  for (const [x0, x1, back] of boxes) {
+    const f0 = k5Front(x0), f1 = k5Front(x1);
+    const top = (z: number): number => 0.47 - Math.max(0, z - back) * (0.13 / 0.70);
+    const outward: [number, number, number] = x0 >= 1.0 ? [side(s, 0.6), 0, 0.8] : [0, 0, 1];
+    eraBlock(P, sector, orientedSlab(
+      at(x0, 0.03, back), at(x1, 0.03, back), at(x1, 0.03, f1), at(x0, 0.03, f0),
+      at(x0, top(back), back), at(x1, top(back), back), at(x1, top(f1), f1 - 0.04), at(x0, top(f0), f0 - 0.04)), outward);
+    // the box's bolted lid seam across its sloping top
+    const mz = (back + (f0 + f1) / 2) / 2;
+    P.add('turretDark', box(x1 - x0 - 0.04, 0.012, 0.03), side(s, (x0 + x1) / 2), top(mz) + 0.004, mz, Math.atan(0.13 / 0.70), 0, 0);
+  }
+  // 902B smoke-grenade tubes: four in a row on a bracket on the front flank, canted forward, up and out
+  P.add('turretDark', box(0.10, 0.04, 0.58), side(s, 1.39), 0.47, 0.20);
+  for (let i = 0; i < 4; i++) {
+    const z = -0.02 + i * 0.145;
+    P.add('turretDark', cylZ(0.046, 0.26, 16), side(s, 1.45), 0.56, z + 0.05, -0.55, side(s, 0.35), 0);
+    P.add('turretDetail', cylZ(0.033, 0.012, 14), side(s, 1.50), 0.63, z + 0.15, -0.55, side(s, 0.35), 0);
+  }
+  // side stowage box forward of the right bin (the left one runs longer), its lid and hasps
+  const z0 = s > 0 ? -1.20 : -0.95, z1 = -0.36;
+  P.addEquipment('turretEquipment', box(0.48, 0.36, z1 - z0), side(s, 1.22), 0.30, (z0 + z1) / 2);
+  P.addEquipment('turretEquipment', box(0.50, 0.018, z1 - z0 + 0.02), side(s, 1.22), 0.488, (z0 + z1) / 2);
+  for (const z of [z0 + 0.12, z1 - 0.12]) P.addEquipment('turretDark', box(0.016, 0.07, 0.04), side(s, 1.462), 0.42, z);
+}
+
 function buildMantlet(P: TankBuilderPort): void {
   // the throat frame between the stacks and the cast gun shield that pitches with the gun
   P.add('turret', box(0.84, 0.06, 0.50), 0, 0.535, 1.18);
@@ -302,21 +366,8 @@ function buildMantlet(P: TankBuilderPort): void {
   ]));
 }
 
-function buildRoof(P: TankBuilderPort): void {
-  // Commander's domed cupola (right, the print's 0.6 m dome standing 0.38 m over the roof) with its vision blocks round
-  // the base ring; the gunner's hatch (left).
-  P.addCupola('turret', cylY(0.30, 0.33, 0.10, 32), -0.62, ROOF_Y + 0.05, -0.42);
-  P.addHatch('turret', KIT.xform(new THREE.SphereGeometry(0.30, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.78, 1]),
-    -0.62, ROOF_Y + 0.10, -0.42);
-  P.add('turretDark', cylY(0.10, 0.12, 0.05, 20), -0.62, ROOF_Y + 0.335, -0.42);
-  for (let i = 0; i < 6; i++) {
-    const a = -1.1 + i * 0.44;
-    P.add('turretGlass', box(0.09, 0.05, 0.02), -0.62 + Math.sin(a) * 0.31, ROOF_Y + 0.075, -0.42 + Math.cos(a) * 0.31, -0.30, a, 0);
-  }
-  P.addHatch('turret', cylY(0.24, 0.25, 0.05, 28), 0.58, ROOF_Y + 0.025, -0.52);
-  KIT.periscope(P, 'turretDetail', 0.58, ROOF_Y + 0.02, -0.20);
-
-  // PNK-6 panoramic sight: pedestal, tapered tower and the twin-window head facing forward, ahead of the cupola.
+/** The PNK-6 panoramic sight: pedestal, tapered tower and the twin-window head facing forward, ahead of the cupola. */
+function buildPnk6(P: TankBuilderPort): void {
   P.add('turret', box(0.47, 0.14, 0.45), -0.645, ROOF_Y + 0.05, 0.33);
   P.addModuleVisual('optics', 'turretDetail', orientedSlab(
     [-0.86, ROOF_Y + 0.12, 0.13], [-0.43, ROOF_Y + 0.12, 0.13], [-0.43, ROOF_Y + 0.12, 0.55], [-0.86, ROOF_Y + 0.12, 0.55],
@@ -326,7 +377,36 @@ function buildRoof(P: TankBuilderPort): void {
     [-0.83, ROOF_Y + 0.75, 0.17], [-0.46, ROOF_Y + 0.75, 0.17], [-0.46, ROOF_Y + 0.75, 0.53], [-0.83, ROOF_Y + 0.75, 0.53]));
   for (const dx of [-0.09, 0.09]) P.addModuleVisual('optics', 'turretGlass', box(0.13, 0.17, 0.012), -0.645 + dx, ROOF_Y + 0.52, 0.548);
   P.add('turretDark', box(0.38, 0.03, 0.06), -0.645, ROOF_Y + 0.63, 0.57);
+}
 
+function buildRoof(P: TankBuilderPort, variant: OplotBMVariant): void {
+  // Commander's domed cupola (right, the print's 0.6 m dome standing 0.38 m over the roof) with its vision blocks round
+  // the base ring; the gunner's hatch (left). The T-84U's is the earlier flat cupola with its TKN-5 sight head forward.
+  if (variant === 'u') {
+    P.addCupola('turret', cylY(0.33, 0.35, 0.13, 32), -0.62, ROOF_Y + 0.065, -0.42);
+    P.addHatch('turret', cylY(0.25, 0.25, 0.04, 28), -0.62, ROOF_Y + 0.15, -0.46);
+    P.addModuleVisual('optics', 'turretDetail', box(0.24, 0.20, 0.18), -0.62, ROOF_Y + 0.23, -0.17);
+    P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.07, 0.012), -0.62, ROOF_Y + 0.25, -0.076);
+    P.add('turretDark', box(0.26, 0.02, 0.22), -0.62, ROOF_Y + 0.34, -0.18);
+    for (let i = 0; i < 6; i++) {
+      const a = -1.1 + i * 0.44 + Math.PI;
+      P.add('turretGlass', box(0.09, 0.05, 0.02), -0.62 + Math.sin(a) * 0.335, ROOF_Y + 0.09, -0.42 + Math.cos(a) * 0.335, 0.30, a, 0);
+    }
+  } else {
+    P.addCupola('turret', cylY(0.30, 0.33, 0.10, 32), -0.62, ROOF_Y + 0.05, -0.42);
+    P.addHatch('turret', KIT.xform(new THREE.SphereGeometry(0.30, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0, 0, 0, 0, 0, [1, 0.78, 1]),
+      -0.62, ROOF_Y + 0.10, -0.42);
+    P.add('turretDark', cylY(0.10, 0.12, 0.05, 20), -0.62, ROOF_Y + 0.335, -0.42);
+    for (let i = 0; i < 6; i++) {
+      const a = -1.1 + i * 0.44;
+      P.add('turretGlass', box(0.09, 0.05, 0.02), -0.62 + Math.sin(a) * 0.31, ROOF_Y + 0.075, -0.42 + Math.cos(a) * 0.31, -0.30, a, 0);
+    }
+  }
+  P.addHatch('turret', cylY(0.24, 0.25, 0.05, 28), 0.58, ROOF_Y + 0.025, -0.52);
+  KIT.periscope(P, 'turretDetail', 0.58, ROOF_Y + 0.02, -0.20);
+
+  // the PNK-6 ahead of the cupola (the Oplot-M and Oplot-T only)
+  if (variant !== 'u') buildPnk6(P);
   // Gunner's sight box on the left front of the roof, window forward, and its IR illuminator.
   P.add('turret', orientedSlab(
     [0.35, ROOF_Y - 0.08, 0.50], [0.65, ROOF_Y - 0.08, 0.50], [0.65, ROOF_Y - 0.08, 0.82], [0.35, ROOF_Y - 0.08, 0.82],
@@ -340,7 +420,8 @@ function buildRoof(P: TankBuilderPort): void {
   // Varta: the jammer heads forward of the stacks' outer corners on two bars each; laser-warning heads aft.
   for (const s of [-1, 1]) {
     // (the print's heads stand at |x| 1.05, centre 0.40, a hand's width ahead of the stacks)
-    const hx = side(s, 1.05), hy = 0.40, hz = eraFront(1.05) + 0.15;
+    // (the T-84U's stand on its Kontakt-5 fronts, lower)
+    const hx = side(s, 1.05), hy = variant === 'u' ? 0.30 : 0.40, hz = (variant === 'u' ? k5Front(1.05) + 0.12 : eraFront(1.05) + 0.15);
     for (const y of [hy - 0.08, hy + 0.08]) P.addEquipment('turretDark', box(0.035, 0.035, 0.16), hx, y, hz - 0.17);
     P.addEquipment('turretDetail', box(0.24, 0.24, 0.20), hx, hy, hz);
     P.addEquipment('turretDark', cylZ(0.092, 0.03, 24), hx, hy, hz + 0.11);
@@ -362,6 +443,16 @@ function buildRoof(P: TankBuilderPort): void {
 }
 
 function buildBustleStowage(P: TankBuilderPort, variant: OplotBMVariant): void {
+  if (variant === 'u') {
+    // the 2000 tank's earlier stowage: the OPVT deep-wading snorkel across the bustle's rear face on two brackets, end
+    // caps on, and a closed box beside the bustle on the left
+    P.addEquipment('turretDetail', cylX(0.11, 1.32, 20), -0.14, 0.44, -2.12);
+    for (const x of [-0.80, 0.52]) P.addEquipment('turretDark', cylX(0.116, 0.03, 20), x, 0.44, -2.12);
+    for (const x of [-0.50, 0.22]) P.addEquipment('turretDark', box(0.05, 0.16, 0.16), x, 0.44, -2.05);
+    P.addEquipment('turretEquipment', box(0.66, 0.36, 0.62), 0.78, 0.33, -1.62);
+    P.addEquipment('turretEquipment', box(0.68, 0.018, 0.64), 0.78, 0.518, -1.62);
+    return;
+  }
   // Left rear: the open rail basket beside the bustle, its rails at the bustle's roof height.
   const bx0 = 0.42, bx1 = 1.34, bz0 = -2.28, bz1 = -1.30, by = 0.66;
   for (const [x, z] of [[bx0, bz0], [bx1, bz0], [bx1, bz1]] as const) P.addEquipment('turretDetail', box(0.03, 0.30, 0.03), x, by - 0.14, z);
@@ -682,6 +773,37 @@ function buildOplotTKit(P: TankBuilderPort): void {
   sternDrums(P, DRUM_ISSUE_PAINTS[3], 26240);
 }
 
+/** The T-84U's commander's NSVT on its cupola (the standard mount: no remote stations at this stage), turning about the
+ * cupola's axis, the gun on the cupola's right. */
+function buildT84UCupolaGun(P: TankBuilderPort): THREE.Group {
+  // the trunnion stands high enough that the gun and its box pass over the TKN-5 head at every bearing
+  const cx = -0.62, cz = -0.42, pivotY = ROOF_Y + 0.60, gx = -0.86, pivotZ = -0.40, muzzleZ = pivotZ + 1.30;
+  const w = sourceMachineGun(P, [0, 0, 0], { name: 'oplotUNsvt', caliberMm: 12.7,
+    yaw: [cx, ROOF_Y, cz], pivot: [gx, pivotY, pivotZ], muzzle: [gx, pivotY, muzzleZ] });
+  // the yoke: a post on the cupola roof, a low cross-bar and two cheeks to the trunnions, all outside the gun's sweep
+  // from -0.18 to +0.75 rad (the receiver's rear swings down between the cheeks, over the bar)
+  w.stage('yaw');
+  w.add('turretDetail', box(0.08, pivotY - 0.22 - ROOF_Y - 0.12, 0.08), gx, (ROOF_Y + 0.13 + pivotY - 0.21) / 2, pivotZ);
+  w.add('turretDetail', box(0.225, 0.03, 0.06), gx, pivotY - 0.22, pivotZ);
+  for (const sx of [-1, 1]) {
+    w.add('turretDetail', box(0.025, 0.26, 0.10), gx + sx * 0.10, pivotY - 0.09, pivotZ);
+    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.125, pivotY, pivotZ);
+  }
+  w.stage('pitch');
+  // the receiver rides forward on its trunnion (0.23 m behind it, 0.27 ahead), so its rear clears the TKN-5 head at full
+  // elevation
+  w.add('turretDark', box(0.12, 0.13, 0.50), gx, pivotY, pivotZ + 0.02);
+  w.add('turretDark', box(0.11, 0.025, 0.32), gx, pivotY + 0.075, pivotZ);
+  const barrelL = muzzleZ - 0.07 - (pivotZ + 0.28);
+  w.add('turretDark', cylZ(0.017, barrelL, P.q ? 14 : 10, 0.02), gx, pivotY, pivotZ + 0.28 + barrelL / 2);
+  w.add('turretDark', cylZ(0.024, 0.10, P.q ? 14 : 10), gx, pivotY, muzzleZ - 0.05);
+  w.add('turretAmmo', box(0.12, 0.20, 0.30), gx - 0.19, pivotY - 0.03, pivotZ + 0.02);
+  w.add('turretDark', box(0.06, 0.03, 0.08), gx - 0.11, pivotY + 0.075, pivotZ + 0.02);
+  w.add('turretDetail', box(0.07, 0.08, 0.10), gx + 0.15, pivotY + 0.04, pivotZ + 0.10);
+  w.add('turretGlass', box(0.05, 0.04, 0.012), gx + 0.15, pivotY + 0.04, pivotZ + 0.156);
+  return w.finish();
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Gun
 
@@ -724,19 +846,25 @@ function buildThaiHullFittings(P: TankBuilderPort): void {
 }
 
 export function buildOplotBM(P: TankBuilderPort, variant: OplotBMVariant): void {
-  buildHull(P);
+  buildHull(P, variant);
   buildRunningGear(P);
   buildSkirts(P, variant);
   if (variant === 't') buildThaiHullFittings(P);
-  buildTurretShell(P);
+  buildTurretShell(P, variant);
   buildMantlet(P);
-  buildRoof(P);
+  buildRoof(P, variant);
   buildBustleStowage(P, variant);
-  if (variant === 'm') buildOplotMKit(P); else buildOplotTKit(P);
+  if (variant === 'm') buildOplotMKit(P);
+  else if (variant === 't') buildOplotTKit(P);
+  // the cupola NSVT clears -175..178 degrees; its depression held up right astern over the bustle
+  // (tools/roof-station-arcs.mjs, 2 degrees and 0.01 rad of margin)
+  else stationLimits(buildT84UCupolaGun(P), [-3.0194, 3.0718], [[-3.0194, 0.02], [-2.9671, 0.108], [-2.8798, 0.15],
+    [-2.7925, 0.18], [2.9671, 0.18], [3.0543, 0.094], [3.0718, 0.04]]);
   buildGun(P);
-  // tactical numbers on the smoke housings' outer faces, behind their tubes
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [1.603, 0.37, -0.86], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [-1.603, 0.37, -0.86], -Math.PI / 2);
+  // tactical numbers on the smoke housings' outer faces, behind their tubes (the T-84U's on its side stowage boxes)
+  const number = variant === 'u' ? [1.465, 0.30, -0.70] : [1.603, 0.37, -0.86];
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [number[0], number[1], number[2]], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.20, [-number[0], number[1], number[2]], -Math.PI / 2);
   P.topY = DECK_Y;
   // the registered comparison scale (print x 4.10): one uniform bake of the 4.0 authoring frame
   resizeAuthoredVehicle(P, OPLOT_BM_SCALE);

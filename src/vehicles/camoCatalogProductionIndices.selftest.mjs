@@ -63,6 +63,10 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // alone, as the 259 re-pin above: "T-84 Oplot" -> "Object 478DU2" (sig_t84 63f139a8fdd43aa6 -> e6795baf4ad95644) and
 // "T-84BM Oplot-M" -> "T-84U Oplot" (sig_ua_t84_oplot_m bc4eee8139a5254c -> c1c0216eb08254c8); presets, visuals and
 // every tank row are unchanged.
+// Re-pinned 2026-10-27 (release 262, owner via Main: "make the now t84 u oploot look a lot more like a prototype for the
+// oplot M and T"): the T-84U is rebuilt as the M/T's 2000 stage in the 2000 Ukrainian service finish (olive with brown
+// and black bands, nato). Exactly one row moved: ua_t84_oplot_m's Factory visual (04509d4067f37bf6 -> 6e0c6270ea20f696);
+// its stock Signature selection, AUTO and every other row are unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'bm_oplot_m', 'bm_oplot_t'];
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,

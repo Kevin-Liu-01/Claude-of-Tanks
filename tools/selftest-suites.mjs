@@ -710,7 +710,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
-    'src/vehicles/profiles/oplotFenderBridge.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
     'src/vehicles/profiles/strv103ATowRope.selftest.mjs',
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',

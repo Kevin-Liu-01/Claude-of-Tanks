@@ -4,8 +4,9 @@
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
-import { apfsdsPenetration, modernArmor, plate, reactivePlate, shell } from './specHelpers.ts';
+import { apfsdsPenetration, modernArmor, plate, shell } from './specHelpers.ts';
 import type { ArmorPlate } from './specHelpers.ts';
+import type { EraProtection } from '../sim/armor.ts';
 import { OPLOT_BM_ERA, OPLOT_BM_FRAME } from './oplotFlankLayout.ts';
 import { ukrainianAbramsCage } from './ukrainianDroneCage.ts';
 import {
@@ -91,13 +92,14 @@ const UKRAINE_SPECS = {
     armorFactor: 1.04,
   }),
   // Release 262 (owner 2026-10-27): this build is the T-84U Oplot, Object 478DU9 (tankLabels.ts); the id stays.
+  // the 2000 Ukrainian service finish: olive with brown and black disruptive bands
   t84bm_oplot_m: variant('t84bm_oplot_m', 't84', {
-    name: 'T-84U Oplot', number: 'OPLOT', base: '#42483a', weather: '#56594a',
-    patches: ['#2d3029', '#77705b', '#8a8068'], camoScale: 0.42,
-    dims: { heightM: 2.285, widthM: 3.775 },
+    name: 'T-84U Oplot', number: 'OPLOT', scheme: 'nato', base: '#4b5636', weather: '#5d6646',
+    patches: ['#6b5537', '#26281f'], camoScale: 0.48,
+    // the build's measured extents (the family hull, the Kontakt-5 skirt boxes, the cupola NSVT)
+    dims: { hullLengthM: 7.11, overallLengthM: 10.28, widthM: 4.38, heightM: 2.91 },
     stats: { hp: 2700, enginePowerHp: 1200, weightTons: 51.0, topSpeedKmh: 70,
       reverseSpeedKmh: 35, turretTraverseDegS: 44 },
-    armorFactor: 1.12,
   }),
   bm_oplot_m: variant('bm_oplot_m', 't84', {
     name: 'T-84BM Oplot-M', number: '121', scheme: 'solid', base: '#66704c', weather: '#77805a', patches: [],
@@ -122,22 +124,42 @@ const UKRAINE_SPECS = {
   }),
 } satisfies Record<string, FleetTankSpec>;
 
-// The T-84U Oplot (this id's build until release 262 was named the Oplot-M) keeps its own ammunition and cycle
-// rather than the inherited T-84 values.
+// The T-84U Oplot (Object 478DU9, the 2000 serial tank; release 262 rebuilds it in profiles/oplotBM.ts as the Oplot-M and
+// Oplot-T's predecessor, owner 2026-10-27) on the family's installed frame, at the period protection this row carried
+// (glacis 538 / 616, cheeks 616 / 672, mantlet 392 / 448, its 1.12 factor folded in), Kontakt-5 where the build carries
+// it: the glacis panel at the row's 0.24 / 500, the turret front and the forward skirt boxes at the fleet's Kontakt-5
+// (modern2.ts, 0.20 / 400). One seed plate per sector; the anatomy replaces each with the cassette lids.
 {
   const spec = UKRAINE_SPECS.t84bm_oplot_m;
-  // Owner-requested 10% larger chassis; the turret retains its local size.
-  const originalHullLength=spec.dims.hullLengthM;
-  spec.dims.hullLengthM*=1.10;spec.dims.widthM*=1.10;
-  spec.dims.overallLengthM+=originalHullLength*.05;spec.dims.heightM+=.142;
-  spec.armor.turretPivot=spec.armor.turretPivot.map(v=>v*1.10) as [number,number,number];
-  for(const plate of spec.armor.hullPlates)plate.verts=plate.verts.map(p=>p.map(v=>v*1.10) as [number,number,number]);
-
-  spec.armor.hullPlates.push(
-    reactivePlate('ua_t84_oplot_m_hull_era', 'front', {
-      keReduction: 0.24, ceFlatMm: 500,
-    }),
+  const KONTAKT5: EraProtection = Object.freeze({ keReduction: 0.20, ceFlatMm: 400 });
+  const KONTAKT5_GLACIS: EraProtection = Object.freeze({ keReduction: 0.24, ceFlatMm: 500 });
+  const era = (name: string, v0: [number, number, number], v1: [number, number, number], v3: [number, number, number],
+    protection: EraProtection): ArmorPlate => plate(name, 12, v0, v1, v3, { kind: 'era', era: { ...protection } });
+  const frame = modernArmor({
+    hl: 3.461, hw: 1.743, inW: 1.097, floor: 0.43, trkTop: 1.097, roofY: 1.497,
+    turretPivot: [...OPLOT_BM_FRAME.turret], gunPivot: [...OPLOT_BM_FRAME.gun],
+    barrelLenM: OPLOT_BM_FRAME.barrelM, barrelRadM: OPLOT_BM_FRAME.barrelR,
+    glacis: [500, 538, 616], lower: [100, 134, 134], side: [80, 90, 90], skirt: [8, 9, 9],
+    rear: 50, roof: 45, tw: 1.51, tFrontZ: 1.49, tRearZ: -2.03, tH: 0.707,
+    cheek: [650, 616, 672], tSide: [300, 336, 392], tRear: 56, tRoof: 50, mantlet: [350, 392, 448],
+  });
+  frame.hullPlates.push(
+    era(OPLOT_BM_ERA.glacis, [-1.13, 1.23, 3.03], [1.13, 1.23, 3.03], [-1.13, 1.455, 2.56], KONTAKT5_GLACIS),
+    era(OPLOT_BM_ERA.skirtL, [2.02, 1.00, 0.51], [2.02, 1.00, 2.93], [2.02, 1.455, 0.51], KONTAKT5),
+    era(OPLOT_BM_ERA.skirtR, [-2.02, 1.00, 2.93], [-2.02, 1.00, 0.51], [-2.02, 1.455, 2.93], KONTAKT5),
   );
+  frame.turretPlates.push(
+    era(OPLOT_BM_ERA.turretL, [0.42, 0.10, 1.66], [1.54, 0.10, 1.12], [0.42, 0.48, 1.66], KONTAKT5),
+    era(OPLOT_BM_ERA.turretR, [-1.54, 0.10, 1.12], [-0.42, 0.10, 1.66], [-1.54, 0.48, 1.12], KONTAKT5),
+  );
+  spec.armor = frame;
+  spec.visual.trackWidthM = 0.58;
+  spec.gunElevationDeg = 14;
+  spec.gunDepressionDeg = 5;
+  // the KBA-3's depression by turret yaw over this build (tools/gun-depression-sweep.mjs): the same family hull as the
+  // Oplot-M's, the same curve (oplotBMGun.selftest.mjs holds it)
+  spec.gunPitchByYawDeg = [[0, -5], [142, -5], [149, -3.6], [152, -3.6], [154, -3.9], [159, -4.7], [162, -3.5], [163, -3.2],
+    [168, -2.6], [171, -2.7], [176, -3.3], [180, -3.3]];
   spec.hp = 2800;
   spec.gun.reloadS = 6.3;
   spec.gun.baseAccuracy = 0.31;
