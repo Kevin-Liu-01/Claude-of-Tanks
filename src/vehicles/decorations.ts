@@ -1484,7 +1484,8 @@ export function fleetEquipmentNationStyle(nation = ''): FleetEquipmentNationStyl
   if (/Germany/i.test(nation)) return 'german';
   if (/France/i.test(nation)) return 'french';
   if (/Italy/i.test(nation)) return 'italian';
-  if (/Sweden/i.test(nation)) return 'nordic';
+  // release 262: the Danish Christian II wears the Nordic kit
+  if (/Sweden|Denmark/i.test(nation)) return 'nordic';
   if (/Poland/i.test(nation)) return 'polish';
   if (/Israel/i.test(nation)) return 'israeli';
   if (/China|Japan|South Korea/i.test(nation)) return 'east-asian';
