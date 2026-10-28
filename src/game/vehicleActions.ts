@@ -7,8 +7,10 @@
 // Each action has one display order, one default key and one glyph and name, so the same action sits on the same key and
 // in the same place on every tank. E used to mean the vehicle's one context-sensitive system: suspension on a
 // hydropneumatic hull, the ATGM on a launcher, the magazine reload on an autoloader. A launcher on a hydropneumatic hull
-// took its shell digit instead. Now suspension is E, the ATGM Q and the reload C wherever they exist. E still runs a
-// hull's own system where it has no suspension (a pad's LB has no other button), but nothing shows it as E.
+// took its shell digit instead. Now suspension is E, the ATGM Q and the reload C wherever they exist, one key each: the
+// keyboard's E is the suspension's alone (owner 2026-10-28: "why is atgm labeled Q? E does it for me"). A pad's LB, its
+// one system button, still runs a hull's own system where it has no suspension, and that tile names LB on a pad layout
+// (game/battleKeyCaps.ts).
 //
 // The battle HUD's controls row (hud.ts, vehicleControlOrder.ts), Settings › Controls (input.ts ACTION_DEFS, in this
 // order) and the Garage (vehicleActionsFor) read this table; input.ts takes its default keys from it. A dozer blade has

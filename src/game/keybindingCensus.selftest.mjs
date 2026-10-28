@@ -121,4 +121,55 @@ const garage = source('src/ui/garage.ts');
 assert.match(garage, /const openStudio = \(\) => \{\s+emit\('ui:click', \{\}\);\s+opts\.onStudio\?\.\(\);/,
   'the Garage\'s Studio button opens the Studio through its own open');
 
+// --- no hidden second key (Main 2026-10-28, from the owner's "why is atgm labeled Q? E does it for me"): on every kind of
+// hull each system answers only the keys the battle shows for it, the ATGM Q (and the digit of its own round, which the
+// tray names), the reload C, the suspension E. Every default key is pressed on each hull, its effects recorded.
+const { createPlayerBattleActions } = await import('./playerBattleActions.ts');
+const { createBus } = await import('./stateCore.ts');
+const { rulesetUnlimitedFor } = await import('../sim/matchRuleset.ts');
+const HULLS = { launcher: 'guided_missile', autoloader: 'magazine_reload', suspension: 'hydropneumatic_aim', plain: 'none' };
+const SYSTEM_OF = { guided_missile: 'atgm', magazine_reload: 'reload', hydropneumatic_aim: 'suspension', none: null };
+let pressed = 0;
+for (const [hull, kind] of Object.entries(HULLS)) {
+  const handlers = new Map();
+  const input = {
+    onAction(action, listener) {
+      if (!handlers.has(action)) handlers.set(action, new Set());
+      handlers.get(action).add(listener);
+      return () => handlers.get(action).delete(listener);
+    },
+  };
+  const effects = [];
+  const bus = createBus((event) => { if (event === 'ui:atgmToggle') effects.push('atgm'); });
+  const shell = (type, guided = false) => ({ name: type, type, guided, dmg: 1, pen100Mm: 1 });
+  const spec = { gun: { shells: [shell('APFSDS'), shell('HEAT', kind === 'guided_missile'), shell('HE')], autoloader: kind === 'magazine_reload' } };
+  const player = { id: 'p', spec, state: { overturned: false, grounded: true }, input: { shellSlot: 0 },
+    combat: { destroyed: false, shellSlot: 0, ammo: [9, 9, 9], ammoCapacity: [9, 9, 9], magazine: null, crew: {}, fire: {} },
+    specialAction: { kind, missileSlot: 1, previousShellSlot: 0, active: false } };
+  const base = {
+    selectShell(combat, slot) { combat.shellSlot = slot; if (kind === 'guided_missile' && slot === 1) effects.push('atgm'); return true; },
+    hasAmmunition: () => true, specialActionKind: () => kind, guidedMissileSlot: () => 1,
+    activateSpecialAction() { if (SYSTEM_OF[kind]) effects.push(SYSTEM_OF[kind]); return { ok: true, kind }; },
+    startMagazineReload() { effects.push('reload'); return true; }, magazineReloadDenialReason: () => null,
+    shellAmmunitionCapacity: () => 9, rulesetUnlimitedFor, hasConsumableRule: () => false, repairAllModules: () => [],
+  };
+  // (any other rule a key reaches answers nothing: only the three systems are recorded)
+  const rules = new Proxy(base, { get: (target, key) => (key in target ? target[key] : () => undefined) });
+  createPlayerBattleActions({ game: { phase: 'battle', timeS: 10, player }, bus, input, rules,
+    network: { isActive: () => false, queueConsumable() {}, queueAction() {} }, isSettingsOpen: () => false });
+  for (const [action, code] of [...Object.entries(DEFAULT_BINDINGS), ...Object.entries(DEFAULT_BINDINGS2)]) {
+    effects.length = 0;
+    player.combat.shellSlot = 0;
+    player.input.shellSlot = 0;
+    for (const listener of handlers.get(action) ?? []) listener(code);
+    const own = { atgm: ['atgm'], shell2: kind === 'guided_missile' ? ['atgm'] : [], reloadMagazine: ['reload'],
+      specialAction: kind === 'hydropneumatic_aim' ? ['suspension'] : [] }[action] ?? [];
+    for (const effect of effects) {
+      assert.ok(own.includes(effect), `${code} (${action}) runs the ${effect} on a ${hull} hull: a second key the battle does not show for it`);
+    }
+    pressed++;
+  }
+}
+assert.ok(pressed > 150, `${pressed} presses across the hulls`);
+
 console.log(`keybindingCensus.selftest: PASS (${byCode.size} input defaults, ${KEY_OWNERS.length} key owners, ${scanned} sources)`);

@@ -15,8 +15,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // concussion toggle (persisted with the gameplay settings; broadcast live over
 // the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
 // layer's localStorage stores. Also owns the pause veil, the fading controls-hint strip
-// a player's first battles show at the rollout, and the garage gear button, and broadcasts
-// 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
+// a player's first battles show at the rollout (its caps named again on a rebind), and the garage gear button. The
+// battle's key caps follow the bindings by themselves (game/battleKeyCaps.ts).
 // KILL-CAM aware: while a replay owns the screen ('killcam:begin'/'done' on
 // the bus) the panel never auto-opens, never veils, and closes itself — the
 // replay's ANY-KEY skip always wins (player death hands off to the death cam
@@ -817,21 +817,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const bindLabel = (id: ActionId): string =>
     input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
 
-  /** Broadcast current shell/consumable/map hotkey labels so the HUD tray and the map plate never
-   *  show a stale (or hardcoded) key. */
-  function emitBindings() {
-    emit('ui:bindingsChanged', {
-      shells: (['shell1', 'shell2', 'shell3'] as const).map(bindLabel),
-      consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
-      specialAction: bindLabel('specialAction'),
-      minimapZoom: bindLabel('minimapZoom'),
-      settingsMenu: bindLabel('settingsMenu'),
-    });
-  }
-
+  // (the battle's caps follow the bindings by themselves: game/battleKeyCaps.ts reads input.bindingsRevision)
   function bindingsMutated() {
     refreshChips();
-    emitBindings();
+    refreshHintCaps();
     emit('ui:click', {});
   }
 
@@ -892,6 +881,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   ): HTMLButtonElement {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
+    // (its action and slot, for the battle key caps' receipt: tools/battle-key-caps.browser.mjs rebinds through it)
+    chip.dataset.bind = `${def.id}:${slotKey}`;
     const labelText = actionName(def);
     chip.dataset.tip = slotKey === 'pad'
       ? `${labelText}, ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
@@ -2115,10 +2106,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const kbds = actionIds
       .map((action) => {
         const cap = bindLabel(action);
-        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}">${cap}</kbd>`;
+        return `<kbd class="cot-c-kbd${CJK_CAP.test(cap) ? ' cjk' : ''}" data-key-cap="${action}">${cap}</kbd>`;
       })
       .join('');
     return `<span class="hg" data-group="${id}"><span class="hk">${kbds}</span><span>${label}</span></span>`;
+  }
+  /** A rebind while the strip shows (mid-battle from the pause menu): its caps name the new keys. */
+  function refreshHintCaps(): void {
+    for (const kbd of hints.querySelectorAll<HTMLElement>('kbd[data-key-cap]')) {
+      const cap = bindLabel(kbd.dataset.keyCap as ActionId);
+      if (kbd.textContent !== cap) kbd.textContent = cap;
+      kbd.classList.toggle('cjk', CJK_CAP.test(cap));
+    }
   }
 
   // First-battle hints (247; owner 2026-10-25): a keyboard and mouse player's first HINT_BATTLES battles show the strip at
@@ -2212,10 +2211,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     showHints,
   };
 
-  // Let the HUD sync its hotkey labels to the persisted bindings at boot, and
-  // the audio graph its channel levels (the graph also reads cot.settings.v1
-  // directly at build time — this covers a graph that already exists).
-  emitBindings();
+  // Let the audio graph sync its channel levels (the graph also reads cot.settings.v1 directly at build time — this
+  // covers a graph that already exists).
   emitVolumes();
   emitPerfMeter(); // HUD net readout follows the persisted preference (default on)
   emitDirectionalHitValues(); // exact incoming values are persisted and default off

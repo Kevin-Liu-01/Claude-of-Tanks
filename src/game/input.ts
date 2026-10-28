@@ -184,6 +184,8 @@ export interface InputLayer {
   readonly actionDefs: typeof ACTION_DEFS;
   labelFor(code: string | null): string;
   padLabelFor(index: number | null): string;
+  /** Counts every change of a key or pad binding (the battle's key caps read it, battleKeyCaps.ts). */
+  bindingsRevision(): number;
   getState(): InputState;
   isDown(actionId: ActionId): boolean;
   onAction(actionId: ActionId, callback: ActionHandler): () => void;
@@ -647,7 +649,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
   let codeToAction = new Map<string, ActionId>(); // code -> actionId (both keyboard slots)
   let padButtonToAction = new Map<number, ActionId>(); // button index -> actionId
+  // (counted on every change of a key or pad binding: the battle's key caps are made again when it moves, battleKeyCaps.ts)
+  let bindingsRevision = 0;
   function rebuildLookup() {
+    bindingsRevision++;
     codeToAction = new Map<string, ActionId>();
     for (let s = 0; s < 2; s++) {
       for (const def of ACTION_DEFS) {
@@ -1135,6 +1140,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
     /** @param {?number} index @returns {string} display label for a pad button */
     padLabelFor: labelForPadButton,
+
+    bindingsRevision: () => bindingsRevision,
 
     /** Snapshot of every action's held state (cached object, no allocation).
      *  `fire` is press edge OR legitimate hold: a click buffers one shot; a
