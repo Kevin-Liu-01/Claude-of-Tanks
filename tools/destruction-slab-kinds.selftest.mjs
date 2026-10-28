@@ -73,6 +73,8 @@ if (!isMainThread) {
   const TALL = /^too tall/, OUTSIDE = /^outside/, OFF = /^off the walls/, FLOATING = /^floating/;
   const WORLD = /^world-/, FACE = /^fx-fracture-face-/, HEAP = /^fx-fracture-heap-/, ROOF = /^fx-collapse-roof-/, LANDMARK = /^fx-landmark-piece-/;
   const HANGING = /^hanging/, LOOSE = /^cut loose/, HEADS = /^on the wall heads/, ON_END = /^on end/;
+  // (2026-10-28, the world-reds lane: two entries left — the Glen Canyon switchyard is a yard open to the sky, no roof pass;
+  // a guyed mast's guys anchored on a drift's slope go slack with it, landmarks/damage.ts ANCHORED_M)
   const KNOWN = Object.freeze([
     // held storeys (DESTRUCTION.md §3.4): what stands with a storey the simulation holds over a destroyed one
     ['ruinspires #1', REMNANT, TALL, 15.0, "a held upper storey's joist end at the megatower's top, 2.5 m proud"],
@@ -80,7 +82,6 @@ if (!isMainThread) {
     // left the 29 other judged findings of rounds 1-3 flagging no more (the upright plates laid, remnants cut to the drawn
     // form, fallen objects' faces read as their sides, the launched slabs and the perched roof bodies gone)
     ['ruinspires #3', RIM, LOOSE, 2.2, "an arcology's breach rim 1.8 m up left by a hole beside it — open"],
-    ['skybridge #20', WORLD, LOOSE, 3.2, "the terrace tower's thin steel members 3 m up the roof pass leaves after its sections fell — open"],
     // round 4 (the on-end rule, the remnant cut and a fresh full run on d139fe6ee2): what the round leaves, named
     ['airfield #12', REMNANT, TALL, 3.8, "a ruin post's upper length on the hall's plan edge, 2.7 m over the ground where the slab check reads nothing drawn within 0.75 m (the enclosure reads the wall there) — open"],
     ['delta #11', REMNANT, HANGING, 1.2, "a 1 m steel remnant 1.1 m up held at one end in a late joiner's destroyed set (as delta #12) — open"],
@@ -89,7 +90,6 @@ if (!isMainThread) {
     ['foundry #0', REMNANT, TALL, 5.7, "the same steel remnant wall's edge 2.9 m over the ground at the plan's edge where the slab check reads nothing drawn (its foot on the downhill side) — open"],
     ['moon #11', WORLD, HANGING, 3.9, "the lunar mill's vane plates 17-19 m up in a late joiner's page at its collapse (live, none: the page's sweep leaves them) — open"],
     ['steppe #8', REMNANT, TALL, 1.9, "a container row's baked remnant 1 m tall, 1.2 m over the ground where nothing is drawn — open"],
-    ['whiteout #25', RUBBLE, ON_END, 23.8, "the guyed mast's two lowest guys left strung up to its fallen head's old height (two wires read as a plate) — open"],
   ]);
 
   // the destruction code's hash (each entry's import closure, as the selftest cache reads it) and the passed fingerprints
