@@ -930,6 +930,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-20: the Gallery anatomy layers draw the combat data exactly, all vehicles (traceTank rays, module parts,
     // crew head shapes, hit volumes, armor model untouched)
     'src/gallery/anatomyFidelity.selftest.mjs',
+    // 262: every forward turret face over a mantlet or gun-notch plate reads it (combatAnatomy.ts gunFacePlate)
+    'src/vehicles/gunFacePlates.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
