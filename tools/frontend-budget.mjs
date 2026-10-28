@@ -150,12 +150,34 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   the room guard and leave (integ groups engine/programReceipt.ts into programWarm's chunk: no boot request), the
   //   world slices and camera guard, the PL-01 gun fits, aps-flash-261 (lazy) and tier-fairness-261.
   // Over 260's release build: game +8,456 B (entry +2,692 B), cn +8,464 B, Gallery +4,864 B, home +759 B, docs +803 B, 404 +769 B.
-  game: { brotliBytes: 1103950, requests: 128, entryBrotliBytes: 246217 },
-  cn: { brotliBytes: 1146820, requests: 129, entryBrotliBytes: 246217 },
-  gallery: { brotliBytes: 681743, requests: 75 },
-  home: { brotliBytes: 27453, requests: 8 },
-  docs: { brotliBytes: 34348, requests: 12 },
-  notFound: { brotliBytes: 17590, requests: 7 },
+  // 2026-10-28 (integrator 262, re-pinned at the release build of 42d8b603fa; requests unchanged on every page: the one new
+  // game and cn boot request, app/lazyImportRetry.ts split out by loading-states-262's garageReturnFailure.ts as its third
+  // importer, is taken back by that lane's own 69a7e3d79c, cherry-picked). By chunk, game brotli over 261's release build:
+  // - main.css +977 B: "iPad tablet sizes" (ipad-ui-262 3c8adf97cb, tablet.css and techTree.css, about 60 %), "Garage
+  //   round D1-D18 from the iPad critics" (brand-ui-garage-redesign-245 1cca4edbdf, garage.css and showroom.css, about a
+  //   third), the lead's spanning menus and nation chips (interaction-picker-254 9d098a73e0, pickers.css), loading-states'
+  //   picture fades.
+  // - main.js (the entry) +1,184 B: "solo Worker default for quick battles" (solo-worker-warm-pacing-262 befcdbed54,
+  //   main.ts), the Garage round's garage.ts (+0.7 KB raw), mp-room-leave-262's cooperative optimizeGarageDressing,
+  //   loading-states' self-retrying battle entry.
+  // - i18n.js +335 B (every page): docs-home-262's Every tank topic, the kit's reveal primitive (loading-states-262 and
+  //   docs-home-262), the lead's surface stack; i18nCatalogEnUS +173 B: the heads' new strings; kitPicker +151 B: the
+  //   lead's spanning menus; testDriveLink +111 B: the kit's chips and segmented control (the lead, gallery-studio);
+  //   materials +98 B: the solo Worker's material keys; contextInfo +50 B (gallery-studio, lazy preload table);
+  //   battleLoad +13 B (loading-states' load card ARIA); botCallsigns +20 B (the sortie's callsigns from the page).
+  // - Gallery: gallery.js -488 B (the layers on the kit's segmented control) against the shared chunks above (+665 B).
+  // - home, docs, 404: i18n.js +335 B and publicNav +70 B on each (docs-home-262's quiet catches); home.css +259 B and
+  //   publicPages +180 B ("/home versus films" and the public loading states, media-home-versus-262 d390abce47 with
+  //   docs-home-262); docs.css +1,496 B and docs.js +131 B ("Every tank" fleet grid and canvas-ui's print stylesheet,
+  //   docs-print-261 f10680b6d0); notFound.js +47 B and notFound.css +26 B.
+  // Over 261's release build: game +2,944 B (entry +1,184 B), cn +3,136 B, Gallery +150 B, home +807 B, docs +2,225 B,
+  // 404 +477 B.
+  game: { brotliBytes: 1106894, requests: 128, entryBrotliBytes: 247401 },
+  cn: { brotliBytes: 1149956, requests: 129, entryBrotliBytes: 247401 },
+  gallery: { brotliBytes: 681893, requests: 75 },
+  home: { brotliBytes: 28260, requests: 8 },
+  docs: { brotliBytes: 36573, requests: 12 },
+  notFound: { brotliBytes: 18067, requests: 7 },
 });
 /** Byte noise between two builds of the same code (chunk hashes in import specifiers); requests have none. */
 const BUNDLE_SLACK = { brotliBytes: 160, entryBrotliBytes: 96, requests: 0 };
