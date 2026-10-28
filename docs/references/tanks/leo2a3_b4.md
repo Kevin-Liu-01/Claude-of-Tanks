@@ -45,4 +45,17 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
 
 ## Round log
 
-- R1 (2026-10-27): first build on the shared hull; blind critic pending.
+- R1 (2026-10-27): first build on the shared hull. Blind critic 1 FAIL: the last skirt panel hid the sprocket (fixed in
+  the shared hull: a fender strip over it); the bustle floor eased, whips plumb, the ammunition hatch a raised plate.
+- R2 (critic 2 FAIL): the EMES 15 set into the right cheek, a broad mantlet with the FERO Z18 port, the front roof raised, a
+  squat PERI; in the shared hull one exhaust band across the rear plate and a tubular stern rack for the stern box. Its
+  "turret front 0.4 m too far back" is the reference's net-wrapped mantlet (the oracle's cheek faces are at 1.66 m, ours
+  1.64 m).
+- R3 (critic 3 FAIL): the mantlet 8 cm proud under a brow closing the slot, a roof bevel over the cheeks, the EMES housing
+  with 20-degree sides and its window in front, two raised rows of dischargers, sloped bins, the PERI on the commander's
+  ring; in the shared hull crossed tow cables, rack stays, the sponsons closed to the rear plate, a hinge boss and larger
+  periscopes on the driver's hatch.
+- Checks on the final build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
+  curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
+  authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.
+  Capability score 0.511, as leo2a3's.
