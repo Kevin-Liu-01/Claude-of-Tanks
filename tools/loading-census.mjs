@@ -128,7 +128,8 @@ function judge(row, condition, t) {
     }
     if (t.broken.length) found.push({ rule: 'broken', why: t.broken.slice(0, 3).join(', ') });
   }
-  return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f, allowed: ALLOW.has(`${row.id}:${f.rule}`) }));
+  return found.map((f) => ({ row: row.id, lane: row.lane, owner: row.owner, condition, ...f,
+    allowed: ALLOW.has(`${row.id}:${f.rule}`) || Boolean(row.allow?.[f.rule]) }));
 }
 
 /** Presses a row's way in from the page at rest: each step in turn; a leading `?` presses one only when it shows, and

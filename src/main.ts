@@ -2473,6 +2473,8 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
 // facade makes this available in production without adding ordinary-player
 // transfer or per-frame work.
 input.onAction('perfHud', () => {
+  // in the Studio, F8 is its exit (studio.ts), so the press never toggles the diagnostics too
+  if (studio.active) return;
   const next = !perfHud.isVisible();
   input.setSetting('showDebugHud', next);
   perfHud.setVisible(next);
