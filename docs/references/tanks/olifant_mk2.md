@@ -23,14 +23,14 @@ at III beside the Centurions it came from (its same-tier duels: 0.60 at III, 0.0
 | Item | Source | Build |
 |---|---|---|
 | Hull length | 8.30 m (TE) vs 7.557 m (W) | the family hull: the profile photograph's hull length to deck height (4.43) matches the Centurion's (4.45) |
-| Turret | slab-sided box of modular composite armour round the Centurion turret; flat sides and roof, the front faces raked back to the gun, chamfered top edges, a long bustle overhanging the deck with its underside rising aft (TE; photos) | a box 2.90 m wide, 0.81 m high at the sides, 4.26 m over the bustle, roof 2.63 m up; two raked cheeks either side of the gun's slot with chamfered front tops; module joints, bolt heads and a round port on each side |
+| Turret | slab-sided box of modular composite armour round the Centurion turret; flat sides and roof, the front faces raked back to the gun, chamfered top edges, a long bustle overhanging the deck with its underside rising aft (TE; photos) | a box 2.90 m wide, 0.75 m high at the sides over a 10 cm undercut, 4.26 m over the bustle, roof 2.63 m up; two cheeks either side of the gun's slot, their flat vertical faces raked back in plan, the top front edge chamfered (owner 2026-10-28, with a head-on photograph: "front should be flat"); module joints, bolt heads and a round port on each side |
 | Commander's sight | a box head about 0.47 m long and 0.50 m high with chamfered vertical corners and a front window, on a post on the right half of the roof ahead of the commander's cupola, about 42% back from the front (photos) | as measured, on a 0.26 m post at 0.37 m behind the ring centre |
 | Remote gun | none in any source or photograph; the Mk 1B's 7.62 mm anti-aircraft gun (AT) | the loader's pintle 7.62 mm (fleet `mag` class); the owner's "remote control machine gun" is the sight head |
 | Smoke | two banks of four at the bustle's rear corners, raised forward (photos) | two rails of four tubes |
 | Mantlet | a narrow mantlet with a ribbed canvas bellows round the tube (photos) | a cast block in the slot and six-rib bellows |
 | Gun | GT-3B 105 mm (L7 pattern) with the thermal sleeve and fume extractor (TE) | the L7 with its sleeve |
 | Running gear | torsion bars from the Mk 1B, six evenly spaced road wheels (AT; profile) | six wheels 0.90 m apart on trailing arms, four return rollers behind the skirts |
-| Skirts | bolted armoured skirts the full length, a wedge fender over each idler (photos) | five 6 cm modules a side standing 8 cm over the bins, a belt along them, bolt heads; the fender's outer plate and top falling to its point at 3.85 m |
+| Skirts | bolted armoured skirts the full length, a wedge fender over each idler, a large flap hanging from each fender's point (photos) | five 6 cm modules a side standing 8 cm over the bins, a belt along them, bolt heads; the fender's outer plate and top falling to its point at 3.85 m; a 0.62 x 0.50 m flap under each point |
 | Glacis | add-on composite armour, armoured headlight boxes at the corners (photos) | a 10 cm bolted pack between the Mk 5's headlight boxes |
 | Exhausts | the diesel exhausts through the rear (photo laying smoke) | the Meteor's guard silencers omitted |
 | Coat | SANDF sand, green and brown (photos) | `paint_olifant_mk2` "SANDF Woodland Desert" |

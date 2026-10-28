@@ -340,18 +340,16 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
     return [x, y + nY * lift, z + nZ * lift];
   };
   if (m.kit === 'strv105') {
-    // one 9 cm housing of FFV cassettes over the upper glacis between the bins, its edges bevelled, a 4 x 3 grid of
-    // cassette seams and their bolts on its face (the Bovington Strv 104)
+    // the Strv 104's FFV slabs: two courses a side, long slabs angled in a V that converges on the centre line, each
+    // seated on the plate with its bolts (the Bovington Strv 104)
     P.destructibleCluster('strv105_glacis_era', () => {
-      const hw = 0.86, t0 = 0.05, t1 = 0.84, th = 0.09, bev = 0.05;
-      P.addExternalArmor('hull', slab(
-        onPlane(-hw, t0, 0), onPlane(hw, t0, 0), onPlane(hw, t1, 0), onPlane(-hw, t1, 0),
-        onPlane(-hw + bev, t0 + 0.03, th), onPlane(hw - bev, t0 + 0.03, th), onPlane(hw - bev, t1 - 0.05, th), onPlane(-hw + bev, t1 - 0.05, th)));
-      const len = (t1 - t0) * Math.hypot(NOSE_Z - GLACIS_TOP_Z, GLACIS_TOP_Y - NOSE_Y);
-      for (const t of [t0 + (t1 - t0) / 3, t0 + 2 * (t1 - t0) / 3]) faceBox(P, 'hull', 'dark', onPlane(0, t, th), across, up, out, 2 * hw - 0.12, 0.014, 0.008);
-      for (const x of [-0.43, 0, 0.43]) faceBox(P, 'hull', 'dark', onPlane(x, (t0 + t1) / 2 - 0.01, th), across, up, out, 0.014, len - 0.10, 0.008);
-      for (const x of [-0.70, -0.22, 0.22, 0.70]) {
-        for (const t of [t0 + 0.08, (t0 + t1) / 2, t1 - 0.12]) faceBox(P, 'hull', 'dark', onPlane(x, t, th), across, up, out, 0.035, 0.035, 0.02);
+      for (const s of [-1, 1]) {
+        const th = s * 0.40, a: V3 = [Math.cos(th), Math.sin(th) * up[1], Math.sin(th) * up[2]];
+        const b: V3 = [-Math.sin(th), Math.cos(th) * up[1], Math.cos(th) * up[2]];
+        for (const t of [0.26, 0.62]) {
+          faceBox(P, 'hull', 'era', onPlane(s * 0.43, t, 0), a, b, out, 0.74, 0.22, 0.07);
+          for (const k of [-1, 1]) faceBox(P, 'hull', 'dark', vAdd(onPlane(s * 0.43, t, 0.07), a, k * 0.28), a, b, out, 0.03, 0.03, 0.014);
+        }
       }
     });
   } else if (m.kit === 'aus') {
@@ -379,21 +377,19 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
       for (const bx of [-0.56, -0.20, 0.20, 0.56]) P.add('hullDark', cylY(0.026, 0.026, 0.02, 8), bx, by + nY * 0.11, bz + nZ * 0.11, pitch, 0, 0);
     }
   } else {
-    // the AVRE: two framed slabs beside the dozer ram's bracket on the centre line, inboard of the headlight boxes, each
-    // a 5 cm frame carrying two by three raised bricks and their bolts
+    // the AVRE: two continuous panels side by side over the upper glacis, beside the dozer ram's bracket on the centre
+    // line and inboard of the headlight boxes, following the plate with a lip over its top edge (the "Fosgene"
+    // photograph), their bolts in two rows
     P.destructibleCluster('centurion5_avre_glacis_era', () => {
       for (const s of [-1, 1]) {
-        const x0 = s * 0.12, x1 = s * 0.68, xm = (x0 + x1) / 2, t0 = 0.12, t1 = 0.84;
+        const t0 = 0.08, t1 = 0.88, xi = s * 0.10, xb = s * 0.66, xt = s * 0.74, th = 0.08;
         P.addExternalArmor('hull', slab(
-          onPlane(x0, t0, 0), onPlane(x1, t0, 0), onPlane(x1, t1, 0), onPlane(x0, t1, 0),
-          onPlane(x0 + s * 0.02, t0 + 0.02, 0.05), onPlane(x1 - s * 0.02, t0 + 0.02, 0.05), onPlane(x1 - s * 0.02, t1 - 0.02, 0.05), onPlane(x0 + s * 0.02, t1 - 0.02, 0.05)));
-        for (let r = 0; r < 3; r++) {
-          for (const dx of [-0.135, 0.135]) {
-            const t = t0 + (t1 - t0) * (r + 0.5) / 3;
-            faceBox(P, 'hull', 'era', onPlane(xm + dx, t, 0.08), across, up, out, 0.24, 0.21, 0.06);
-            faceBox(P, 'hull', 'dark', onPlane(xm + dx, t, 0.111), across, up, out, 0.03, 0.03, 0.012);
-          }
+          onPlane(xi, t0, 0), onPlane(xb, t0, 0), onPlane(xt, t1, 0), onPlane(xi, t1, 0),
+          onPlane(xi, t0 + 0.01, th), onPlane(xb, t0 + 0.01, th), onPlane(xt, t1 + 0.03, th), onPlane(xi, t1 + 0.03, th)));
+        for (const t of [0.25, 0.70]) {
+          for (const f of [0.2, 0.5, 0.8]) faceBox(P, 'hull', 'dark', onPlane(xi + (xb - xi) * f, t, th), across, up, out, 0.03, 0.03, 0.014);
         }
+        faceBox(P, 'hull', 'dark', onPlane((xi + xb) / 2, 0.48, th), across, up, out, Math.abs(xb - xi) - 0.06, 0.014, 0.008);
       }
     });
     const [rz, ry] = onGlacis(0.48);
@@ -405,7 +401,7 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
  * full-width curved mouldboard carried raised ahead of the nose on two push arms pinned to the nose plate's sides, lifted
  * by a ram from the glacis bracket; end cheeks, back ribs, the cutting edge and the top lip. Hull frame. */
 function buildDozer(P: TankBuilderPort): void {
-  const W = 1.69, y0 = 0.62, y1 = 1.57, zf = 4.08, bow = 0.12, th = 0.03;
+  const W = 1.69, y0 = 0.62, y1 = 1.57, zf = 4.08, bow = 0.20, th = 0.03;
   const faceZ = (y: number): number => zf - bow * Math.sin(Math.PI * (y - y0) / (y1 - y0));
   const N = 6;
   for (let i = 0; i < N; i++) {
@@ -505,6 +501,8 @@ function buildOlifantSkirts(P: TankBuilderPort): void {
     P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[S.outer - S.t, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [S.outer - S.t, topAt(z)]]) }))));
     P.add('hull', sectionSolid([S.joints[5], tip].map((z) => ({ z, ring: ring([[1.00, topAt(z) - 0.03], [S.outer - S.t, topAt(z) - 0.03], [S.outer - S.t, topAt(z)], [1.00, topAt(z)]]) }))));
     for (const fz of [3.15, 3.55]) P.add('hullDark', cylX(0.026, 0.02, 8), s * (S.outer + 0.010), (topAt(fz) + botAt(fz)) / 2, fz);
+    // the large flared flap hanging from the fender's point ahead of the track (the Armed Forces Day photograph)
+    P.hangMudguard('olifant-front-flap', 'hullRubber', xform(box(0.62, 0.50, 0.02), 0, 0, 0, -0.15, 0, 0), s * 1.36, 0.92, 3.80);
   }
 }
 
@@ -1001,16 +999,25 @@ function faceBricks(P: TankBuilderPort, face: FacePoint, cols: number, rows: num
  * the hatches; the prototype's thermal sight in its armoured box on the right shoulder over the housing, its round
  * window and shutter; the two 71 mm Lyran launchers on the right of the roof. The discharger blocks stand on the bins
  * behind. Ring frame. */
-const STRV105_CORNER: CornerPackage = { z0: 0.72, z1: 1.30, yb: 0.14, yt: 0.80, xBack: 1.54, xTip: 0.88, setback: 0.24 };
+const STRV105_CORNER: CornerPackage = { z0: 0.72, z1: 1.30, yb: 0.30, yt: 0.80, xBack: 1.50, xTip: 0.88, setback: 0.20 };
 
 function buildStrv105TurretKit(P: TankBuilderPort): void {
   const k = STRV105_CORNER;
   const wFace = Math.hypot(k.xBack - k.xTip, k.z1 - k.z0), hFace = Math.hypot(k.yt - k.yb, k.setback);
   for (const [side, s] of [['L', 1], ['R', -1]] as const) {
-    P.destructibleCluster(`strv105_turret_era_${side}`, () => cassetteSeams(P, cornerPackage(P, s, k), 3, 2, wFace, hFace));
+    // the housing carries a row of three thick boxes, each standing proud with its own sloped top (the critic's read
+    // of the Strv 104: separate boxes, not one slab)
+    P.destructibleCluster(`strv105_turret_era_${side}`, () => faceBricks(P, cornerPackage(P, s, k), 3, 1, wFace, hFace, 0.12));
   }
   P.destructibleCluster('strv105_turret_roof_era', () => {
-    for (const s of [-1, 1]) cassetteSeams(P, roofPackage(P, s * 0.14, s * 0.76, 0.60, 0.82), 2, 1, 0.58, 0.23);
+    for (const s of [-1, 1]) {
+      const face = roofPackage(P, s * 0.14, s * 0.76, 0.60, 0.82);
+      // the ribbed roof panels (the Skaraborg photograph)
+      for (let r = 0; r < 5; r++) {
+        const { p, a, b, n } = face((r + 0.5) / 5, 0.5);
+        faceBox(P, 'turret', 'era', p, a, b, n, 0.035, 0.20, 0.035);
+      }
+    }
   });
   // the thermal sight's armoured box on the right shoulder, its round window forward
   const tx = -0.96, ty = 0.98, tz = 0.82;
@@ -1028,10 +1035,10 @@ function buildStrv105TurretKit(P: TankBuilderPort): void {
 
 /** The AVRE's Gulf War armour (32 Armoured Engineer Regiment, 1991; the owner's reference; the owner, 2026-10-27: "much
  * better custom era and shaping and turret"): blocky brick packages on both front corners (a backing housing raked back
- * from the bins' fronts to the mantlet's edge, faced with four by three raised bricks), two courses of bricks along the
- * bins' outer faces, a bricked package on the roof's front; and its rear basket. The discharger blocks stand on the bins
+ * from the bins' fronts to the mantlet's edge, faced with two large flat panels sloped back about 45 deg), two courses of bricks along
+ * the bins' outer faces; and its rear basket (no roof armour: none of the photographs shows it). The discharger blocks stand on the bins
  * behind. Ring frame. */
-const AVRE_CORNER: CornerPackage = { z0: 0.72, z1: 1.28, yb: 0.14, yt: 0.76, xBack: 1.50, xTip: 0.90, setback: 0.12 };
+const AVRE_CORNER: CornerPackage = { z0: 0.72, z1: 1.28, yb: 0.18, yt: 0.78, xBack: 1.50, xTip: 0.90, setback: 0.55 };
 
 function buildAvreTurretKit(P: TankBuilderPort): void {
   const k = AVRE_CORNER;
@@ -1043,7 +1050,8 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
   };
   for (const [side, s] of [['L', 1], ['R', -1]] as const) {
     P.destructibleCluster(`centurion5_avre_turret_era_${side}`, () => {
-      faceBricks(P, cornerPackage(P, s, k), 4, 3, wFace, hFace);
+      // two large flat panels on a housing sloped back about 45 deg, flat-topped, with their bolts (the Gulf photographs)
+      cassetteSeams(P, cornerPackage(P, s, k), 2, 1, wFace, hFace);
       for (const [z0, z1, outF, outR] of faces[side]) {
         const n = Math.max(1, Math.floor((z1 - z0 - 0.04) / 0.29));
         for (let i = 0; i < n; i++) {
@@ -1057,9 +1065,6 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
       }
     });
   }
-  P.destructibleCluster('centurion5_avre_turret_roof_era', () => {
-    for (const s of [-1, 1]) faceBricks(P, roofPackage(P, s * 0.14, s * 0.76, 0.60, 0.82), 3, 1, 0.58, 0.23, 0.045);
-  });
   // the rear basket of the Duxford and Royal Engineers Museum AVREs, on arms from the bin's lower edge
   mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.80, d: 0.44, h: 0.42, fill: 0.5, rails: 3, seed: 5160 }),
     0, 0.30, -2.54);
@@ -1072,15 +1077,18 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
 /** The Australian Vietnam fit's mesh baskets (the 1st Armoured Regiment photographs): a deep basket round the bustle bin
  * on arms and one along the left rear bins; the tank's number rides on the rear basket. Ring frame. */
 function buildAusTurretBaskets(P: TankBuilderPort): void {
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.90, d: 0.50, h: 0.40, fill: 0.6, rails: 3, seed: 5112 }), 0, 0.30, -2.58);
+  // the rear basket's top rail level with the roof, across the full width, wrapping round both rear corners
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.96, d: 0.50, h: 0.58, fill: 0.6, rails: 4, seed: 5112 }), 0, 0.36, -2.58);
   for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.31, -2.42);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.52, -2.44);
+    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.46, d: 0.36, h: 0.58, fill: 0.5, rails: 4, seed: 5114 + (s > 0 ? 1 : 0) }),
+      s * 1.06, 0.36, -2.12, [0, Math.PI / 2, 0]);
+    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.37, -2.42);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.58, -2.44);
   }
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.70, d: 0.26, h: 0.34, fill: 0.5, rails: 3, seed: 5113 }), 1.62, 0.36, -1.02,
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.70, d: 0.30, h: 0.40, fill: 0.5, rails: 3, seed: 5113 }), 1.64, 0.36, -1.02,
     [0, Math.PI / 2, 0]);
   for (const bz of [-1.26, -0.78]) P.add('turretDark', box(0.16, 0.04, 0.04), 1.52, 0.40, bz);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.52, -2.84], Math.PI);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.62, -2.84], Math.PI);
 }
 
 /** The Olifant Mk 2's turret (LIW, from 2007; the Commons profile and the Armed Forces Day photographs): the Centurion
@@ -1088,12 +1096,19 @@ function buildAusTurretBaskets(P: TankBuilderPort): void {
  * chamfered, the two front faces raked back from the gun's slot to the sides, the bustle long and overhanging the engine
  * deck with its underside rising to the rear (side height 0.81 m, 4.26 m over the bustle, the roof 2.63 m up). Ring
  * frame. */
-const OLIFANT_TURRET = { hw: 1.45, bottom: 0.12, roof: 0.93, chamfer: 0.10, cheekZ: 0.95, faceZ: 1.10, noseZ: 1.50, noseTop: 0.20, slotHw: 0.45, rearZ: -2.84 } as const;
+const OLIFANT_TURRET = { hw: 1.45, bottom: 0.18, roof: 0.93, chamfer: 0.10, cheekZ: 0.95, faceZ: 1.10, noseZ: 1.42, chamferZ: 1.30, slotHw: 0.45, rearZ: -2.84 } as const;
+
+/** The roof over the cheeks: flat to the front faces' top edge, chamfered 12 cm down over its last 12 cm (the owner's
+ * head-on photograph, 2026-10-28: the front faces flat and vertical). */
+function olifantTop(z: number): number {
+  const T = OLIFANT_TURRET;
+  return T.roof - Math.max(0, z - T.chamferZ);
+}
 
 /** The plan's half-width: the sides to the cheeks' start, then the wedge raked in to the gun's slot at the nose. */
 function olifantHalfWidth(z: number): number {
   const T = OLIFANT_TURRET;
-  return z <= T.cheekZ ? T.hw : T.hw - (z - T.cheekZ) * (T.hw - T.slotHw - 0.05) / (T.noseZ - T.cheekZ);
+  return z <= T.cheekZ ? T.hw : T.hw - (z - T.cheekZ) * (T.hw - T.slotHw - 0.08) / (T.noseZ - T.cheekZ);
 }
 
 function olifantSection(z: number, bottom: number, roof: number, hw: number): SolidSection {
@@ -1106,25 +1121,24 @@ function buildOlifantTurret(P: TankBuilderPort): void {
   P.add('turret', sectionSolid([
     olifantSection(T.rearZ, 0.32, 0.86, 1.30),
     olifantSection(-2.74, 0.27, T.roof, T.hw),
-    olifantSection(-1.70, 0.13, T.roof, T.hw),
+    olifantSection(-1.70, 0.19, T.roof, T.hw),
     olifantSection(-1.60, T.bottom, T.roof, T.hw),
-    olifantSection(T.cheekZ, T.bottom, T.roof, T.hw),
-    olifantSection(T.faceZ, T.bottom, T.roof, olifantHalfWidth(T.faceZ)),
+    olifantSection(T.cheekZ, T.bottom, olifantTop(T.cheekZ), T.hw),
+    olifantSection(T.faceZ, T.bottom, olifantTop(T.faceZ), olifantHalfWidth(T.faceZ)),
   ]));
-  // the two cheeks either side of the gun's slot: raked back in plan from the sides to the slot and in elevation from the
-  // roof's front edge down to a low nose (owner 2026-10-27: "olifant needs more sloped turret front"), their outer top
-  // edge chamfered
+  // the two cheeks either side of the gun's slot: their flat vertical faces raked back in plan from the sides to the slot,
+  // the top front edge chamfered (owner 2026-10-28, with a head-on photograph: "front should be flat")
   for (const s of [-1, 1]) {
     const cheek = (z: number): SolidSection => {
-      const top = T.roof - (T.roof - T.noseTop) * (z - T.faceZ) / (T.noseZ - T.faceZ);
+      const top = olifantTop(z);
       const hw = olifantHalfWidth(z), c = Math.min(T.chamfer, hw - T.slotHw - 0.01, (top - T.bottom) / 3);
       const ring: SectionPoint[] = [[T.slotHw, T.bottom], [hw, T.bottom], [hw, top - c], [hw - c, top], [T.slotHw, top]];
       return { z, ring: s > 0 ? ring : ring.map(([x, y]) => [-x, y] as SectionPoint).reverse() };
     };
-    P.add('turret', sectionSolid([T.faceZ, 1.20, 1.30, 1.40, T.noseZ].map(cheek)));
+    P.add('turret', sectionSolid([T.faceZ, T.chamferZ, T.noseZ].map(cheek)));
   }
-  // ring collar on the race
-  P.add('turret', cylY(1.00, 1.03, 0.14, 48), 0, 0.05, 0.02);
+  // ring collar on the race, up to the box's floor (the undercut shows round it)
+  P.add('turret', cylY(1.00, 1.03, 0.20, 48), 0, 0.08, 0.02);
   P.add('turretDark', torus(1.015, 0.012, 48, 6), 0, 0.03, 0.02);
   // module joints, bolt heads and the round port on each side; the bustle's rear plate seams
   for (const s of [-1, 1]) {

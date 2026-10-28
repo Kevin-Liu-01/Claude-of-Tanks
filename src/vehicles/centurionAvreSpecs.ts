@@ -29,7 +29,6 @@ spec.armor.hullPlates.push(reactivePlate('centurion5_avre_glacis_era', 'front', 
 spec.armor.turretPlates.push(
   reactivePlate('centurion5_avre_turret_era_L', 'left', ROMOR),
   reactivePlate('centurion5_avre_turret_era_R', 'right', ROMOR),
-  reactivePlate('centurion5_avre_turret_roof_era', 'top', ROMOR),
 );
 // the L9A1: one 29 kg HESH round, slow to load by hand, a low arc
 spec.gun = {

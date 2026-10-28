@@ -23,8 +23,8 @@ prototype; its same-tier duels: 0.28 at III, 0.03 at IV). Implementation: DONE.
 
 | Item | Source | Build |
 |---|---|---|
-| Glacis armour | FFV cassettes in courses across the upper glacis (Bov104; kept on the prototype, Skaraborg) | three courses of four cassettes (`strv105_glacis_era`, a consumable plate the anatomy fits to the drawn courses); the glacis link brackets and lamps moved off it |
-| Turret armour | two cassette blocks on each front corner of the Strv 104 (Bov104); the prototype's photograph shows the right corner taken by the thermal sight | two blocks on the left front corner, one under the sight on the right (`strv105_turret_era_L`/`_R`), a course of four roof tiles along the roof's front edge (`strv105_turret_roof_era`); owner's reference followed over the contested photograph |
+| Glacis armour | FFV cassettes in courses across the upper glacis (Bov104; kept on the prototype, Skaraborg) | two courses a side of long slabs angled in a V converging on the centre line (`strv105_glacis_era`, a consumable plate the anatomy fits to the drawn slabs); the glacis link brackets and lamps moved off it |
+| Turret armour | two cassette blocks on each front corner of the Strv 104 (Bov104); the prototype's photograph shows the right corner taken by the thermal sight | a housing raked back in plan and elevation on each front corner carrying a row of three thick boxes (`strv105_turret_era_L`/`_R`), ribbed panels on a sloped housing along the roof's front edge (`strv105_turret_roof_era`); owner's reference followed over the contested photograph |
 | Thermal sight | the prototype's armoured box beside the gun on the right, a round window (SV105, Skaraborg) | a 0.30 x 0.28 x 0.36 m box on the right front corner, its round window, rim and shutter, on a bracket |
 | Mantlet | the laced canvas cover (Bov104, Skaraborg) | the Sho't Kal's canvas cover over the family mantlet |
 | Gun | L7 ("kan Strv 101") with the thermal sleeve and fume extractor (SV104; Skaraborg) | the L7 with its sleeve |
