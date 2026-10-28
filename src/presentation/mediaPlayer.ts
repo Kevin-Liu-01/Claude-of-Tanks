@@ -205,14 +205,26 @@ let downloader: Core | null = null;
 let handedOff = false;
 let lifecycleInstalled = false;
 
+/** How much of a frame is on screen (its visible area, CSS px²; 0 without a layout). */
+const shownArea = (core: Core): number => {
+  const rect = core.frame.getBoundingClientRect?.();
+  if (!rect || typeof innerWidth !== 'number' || typeof innerHeight !== 'number') return 0;
+  const across = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
+  const down = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0));
+  return across * down;
+};
+
 function claimSlot(core: Core): void {
   if (!playingNow.includes(core)) playingNow.push(core);
   while (playingNow.length > maxPlaying()) { // (the cap shrinks when a desktop window narrows to a phone layout)
-    const oldest = playingNow.shift();
-    if (!oldest) break;
-    oldest.crowded = true;
-    crowdedOut.add(oldest);
-    oldest.sync();
+    // the frame least on screen stands down, the oldest of equals: a section's lead picture keeps playing over a tile half
+    // below the fold (the /home r2 zh critic: the Head to head lead paused while two lower tiles played)
+    let out = playingNow[0];
+    for (const other of playingNow) if (shownArea(other) < shownArea(out)) out = other;
+    playingNow.splice(playingNow.indexOf(out), 1);
+    out.crowded = true;
+    crowdedOut.add(out);
+    out.sync();
   }
 }
 
