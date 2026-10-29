@@ -99,7 +99,7 @@ const FAMILY_UPGRADES = Object.freeze({
     ...after('t80u', ['t80u_kursk', 't80uk', 't84', 't80u_zoria', 't80u_husarz', 't80u_yun', 't80u_bars_m'])],
   t90: [['t72bu', 't90_1992'], ['t90_1992', 't90'], ['t90a_2004', 't90a'], ['t90a_2006', 't90a_vladimir'],
     ['t90ms_2011', 't90ms_tagil'], ['t90sm_2013', 't90sm'], ['t90am', 't90m']],
-  challenger: [['challenger1_mk1', 'challenger1_mk2'], ['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk2', 'challenger1_granby'], ['challenger1_mk3', 'challenger2'],
+  challenger: [['challenger1_mk1', 'challenger1_mk2'], ['challenger1_mk2', 'challenger1_mk3'], ['challenger1_mk2', 'challenger_x', 'challenger_x_sleek'], ['challenger1_mk3', 'challenger2'],
     ...after('challenger2', ['challenger2e', 'ua_challenger2', 'challenger3'])],
   leclerc: [['leclerc_s1', 'leclerc_s2'], ['leclerc_s2', 'leclerc_sxxi'], ['leclerc_sxxi', 'leclerc_xlr']],
   merkava: [['merkava1b', 'merkava2b'], ['merkava2b', 'merkava2d'], ['merkava2d', 'merkava3c'], ['merkava3c', 'merkava3_baz'],

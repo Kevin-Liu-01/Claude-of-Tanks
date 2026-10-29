@@ -10,6 +10,8 @@ export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.fre
   k21: .90, kf41_lynx: .90, type100: .90, lrmv_lynx: .90,
   borsuk: .90, ajax: .90, ares_apc: .90, griffin50mm: .90,
   griffin_viper: .90, challenger1_mk3: 1.10, upior: 1.10,
+  // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build take its installed size
+  challenger1_mk1: 1.10, challenger1_mk2: 1.10,
 });
 /** Additional longitudinal chassis change, before the uniform installed scale.
  * Turret-local armor, weapon stations and ring position retain their dimensions. */
