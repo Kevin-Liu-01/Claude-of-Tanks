@@ -209,6 +209,12 @@ export interface GhillieConfig {
    */
   cover?: { readonly palette: CoverPalette; readonly tufts?: number };
   /**
+   * (264) A fitted cover cut round each lens's housing and kept only off its pane, not slotted ahead of the pane nor kept
+   * out of the cloth's lens cones (the Strv 121's Barracuda cover on its 2A4 turret: the field net's slots took the
+   * front of its roof and its left wall's drape). Needs fieldClearanceM; unset rows keep the field net's lens rule.
+   */
+  coverCutsRoundLenses?: boolean;
+  /**
    * The garnish tucked into the net: a species spray atlas of the trees lane (src/world/treeSprayAtlas.ts) for
    * leafy suits, or a painted multispectral cut garnish. Defaults by style (leafy: oak; ulcans / nakidka: woodland).
    */
@@ -5727,10 +5733,10 @@ function* addGhillieOwner(
   // netting-proper: the vehicle's national markings stay readable through a field suit: its net is cut round each and its
   // garnish keeps out of their sight
   const markRays = isFieldNet(cfg) ? markingRaysOf(P, parent) : null;
-  const fittedCover = cfg.style !== 'leafy';
+  const paneCuts = cfg.style !== 'leafy' && cfg.coverCutsRoundLenses === true;
   const coverOk = clearance
     ? (p: readonly number[]): boolean => clearance.clothOk(owner, p)
-      && (fittedCover ? clearance.paneClear(owner, p) : clearance.lensClear(owner, p) || lying(p))
+      && (paneCuts ? clearance.paneClear(owner, p) : clearance.lensClear(owner, p) || lying(p))
       && (!markRays || !markRays.clothHides(p)) : undefined;
   const coverEdgesOk = clearance
     ? (a: readonly number[], b: readonly number[], c: readonly number[]): boolean => {
@@ -5769,7 +5775,7 @@ function* addGhillieOwner(
       // (r7; the critic r8 on the Strv 121: "the commander's sight dome is missing", its cover laid over the housing) a
       // fitted cover is cut round the lens's housing, a square COVER_LENS_HOUSING_M either side of the pane, every lens
       // (an upward one too); its bound edge carries garnish like any opening's
-      if (cfg.style !== 'leafy') {
+      if (cfg.style !== 'leafy' && cfg.coverCutsRoundLenses) {
         const r = COVER_LENS_HOUSING_M;
         slots.push([[cx - r, cz - r], [cx + r, cz - r], [cx + r, cz + r], [cx - r, cz + r]]);
         continue;
