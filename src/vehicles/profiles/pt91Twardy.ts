@@ -4,7 +4,7 @@
 // serial tanks: 394 tiles (108 on the turret, 118 on the hull, 84 on each side screen; Wikipedia, PT-91 Twardy), laid
 // edge to edge rather than in the Kontakt-1 grid with its gaps. Read off the photographs (Wikimedia Commons: PT91 MSPO15
 // DSC02773, POL PT91 Twardy, Polish PT-91 Twardy tank Saber Strike 18, PT-91 Twardy NTW 5 93 6): four courses of square
-// tiles shingled round the turret front from the gun to the flanks and two rows on the roof ahead of the hatches; four
+// tiles shingled round the turret front from the gun to the flanks and two rows on the roof ahead of the hatches; five
 // courses over the upper glacis and two either side of the driver on the plate behind it; three courses on the forward
 // half of each steel side screen; two 12-tube 81 mm grenade banks on sloped brackets on the turret flanks behind the
 // cheek tiles; the Drawa gunner's sight head ahead of the gunner's hatch; Drawa's crosswind sensor mast over the turret
@@ -49,9 +49,10 @@ function plateTile(P:TankBuilderPort,sector:string,x:number,z:number,y:number,ra
 }
 
 function glacisTiles(P:TankBuilderPort):void {
-  // Four courses of eight across the glacis, the corner tiles stopping short of the headlights.
+  // Five courses of eight across the glacis from its top edge down to the nose, the corner tiles stopping short of the
+  // headlights.
   const c=Math.cos(GLACIS_RAKE);
-  for(let row=0;row<4;row++){
+  for(let row=0;row<5;row++){
     const z=GLACIS_Z0+(TILE/2+.01)*c+row*(TILE+JOINT)*c;
     for(let i=0;i<8;i++){
       const x=(i-3.5)*(TILE+JOINT);
@@ -160,7 +161,10 @@ const COURSES:readonly(readonly[y:number,pitch:number,limit:number])[]=[[1.64,0,
 function turretTiles(P:TankBuilderPort):void {
   for(const [y,pitch,limit] of COURSES)for(const side of [-1,1]){
     for(const t of courseAngles(side,y,limit,TURRET_TILE)){
-      const p=castAt(side*t,y),tangent=castAt(side*(t+.02),y).sub(castAt(side*(t-.02),y)).normalize();
+      // the tile lies along the chord of its own footprint: the casting is faceted, and a short tangent taken across a
+      // facet edge turned the tile up to 40 degrees off the wall
+      const p=castAt(side*t,y),d=TURRET_TILE/2/Math.hypot(p.x,p.z-YAW[2]);
+      const tangent=castAt(side*(t+d),y).sub(castAt(side*(t-d),y)).normalize();
       const n=new THREE.Vector3().crossVectors(tangent,UP).multiplyScalar(side);
       if(n.x*p.x+n.z*(p.z-YAW[2])<0)n.negate();
       seat(P,p,n,[TURRET_TILE,TH,TURRET_TILE],pitch);

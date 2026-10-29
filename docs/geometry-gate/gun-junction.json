@@ -148,7 +148,7 @@
   "pt84_orzel": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9f9701c43bf8bece","gun":"6dba6b72055fca9a"}},
   "pt84_sokol": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"244f49677777e016","gun":"cae2d382d9fae739"}},
   "pt84_zbik": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"823c2b0362396040","gun":"0d6af448010cc72b"}},
-  "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"83ed2ebf1a6cbf00","gun":"f8e9c808d3012148"}},
+  "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"47bd6a3df54db7d0","gun":"f8e9c808d3012148"}},
   "pt91m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"79dc7e07f0a922aa","gun":"e0e5e81cf82dd4c5"}},
   "puma_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c982c1820cd1ebe7","gun":"bef90fd9efba6a66"}},
   "raiju_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5a91bb0a6c8cc0c7","gun":"4a33afb16d5e20cf"}},

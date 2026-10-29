@@ -15,14 +15,16 @@ side's steel anti-HEAT screen, which replaces the T-72's rubber skirt; 24 grenad
 PT-91 Twardy tank Saber Strike 18 and PT-91 Twardy NTW 5 93 6 for the layout:
 
 - Turret: square tiles (0.18 m) shingled in three courses round the cheeks and flanks, upright, then 21 and 45 degrees,
-  from the gun's clearance (|x| 0.40) back to the grenade bank; a field of tiles over the front half of the dome where it
-  lies within 40 degrees of level, clear of the gunner's sight, the cupola and the hatches. Each tile is seated on the
-  study's casting (`t72b3XCastingContains`), let 4 mm into it.
-- Glacis: four courses of eight 0.20 m tiles on the upper glacis plate, the corner tiles stopping short of the
-  headlights, and two courses of three either side of the driver on the plate behind it.
+  from the gun's clearance (|x| 0.40) back to the grenade bank, each laid along the chord of its own footprint on the
+  faceted casting; a field of tiles over the front half of the dome where it lies within 40 degrees of level, clear of
+  the gunner's sight, the cupola and the hatches. Each tile is seated on the study's casting
+  (`t72b3XCastingContains`), let 4 mm into it.
+- Glacis: five courses of eight 0.20 m tiles on the upper glacis plate from its top edge to the nose (Polish PT-91
+  Twardy tank Saber Strike 18), the corner tiles stopping short of the headlights, and two courses of three either side
+  of the driver on the plate behind it.
 - Side screens: a steel screen closing the study's open course between its fender edge and its lower skirt, on four
   hinges; three courses of tiles over its forward half (16 columns, from the bow panel back over the third road wheel),
-  the rear half bare.
+  the rear half bare (Twardy.JPG, Commons, 2007: the published 84 per screen does not match the serial tanks).
 - Two 12-tube 81 mm grenade banks, four rows of three on brackets sloping up toward the rear, on the turret flanks
   behind the cheek tiles; the tubes fan 22 degrees out and 40 up.
 - The Drawa gunner's sight head ahead of the gunner's hatch, its window under a hood; Drawa's crosswind sensor on its
