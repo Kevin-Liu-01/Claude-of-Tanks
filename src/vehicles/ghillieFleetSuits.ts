@@ -443,7 +443,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 0.85, nx: 40, nz: 50, y: 0.80, garnishRiseM: 0.16, seed: 11 }),
         laid({ x0: -1.45, x1: 1.45, z0: 0.85, z1: 2.45, nx: 36, nz: 20, yAt: (_x, z) => STRV121_WEDGE(z), garnishRiseM: 0.12, seed: 13 }),
       ],
-      side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19), ...wedgeCheeks(0.6, 2.2, 29)],
+      // (264) the walls' drapes longer, down over the side plates (the turret's hem floor bounds them)
+      side: [...flanks(-1.30, 0.55, 0.86, 0.62, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.56, 1.47, 19), ...wedgeCheeks(0.6, 2.2, 29)],
       face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
