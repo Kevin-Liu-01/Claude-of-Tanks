@@ -323,6 +323,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5_2: { displayName: 'Centurion Mk 5/2' },
+  cv9035dk: { displayName: 'CV9035 DK', searchAliases: ['CV9035DK', 'CV90 Denmark', 'Danish CV90', 'CV90 MkIII DK'] },
+  centurion5_2dk: { displayName: 'Centurion Mk 5/2 DK', searchAliases: ['Centurion DK', 'Danish Centurion', 'Centurion Mk V/2 DK', 'Centurion Mk 5/2 Denmark'] },
   carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
   c1_ariete_preserie: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
   c1_ariete_proto_serie1: { displayName: 'C1 Ariete Prototype (Serie 1)', shortName: 'C1 Prototype S1' },

@@ -201,7 +201,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   // First-generation postwar gun tanks designed as medium tanks (Patton M46/M47, Centurion, the T-54-derived
   // Type 59) and the Carro 45t study.
   medium: Object.freeze([
-    'carro45t', 'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton', 'strv81', 't55a', 'type59',
+    'carro45t', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'm46_patton', 'm47_patton', 'strv81', 't55a', 'type59',
   ]),
   heavy: Object.freeze([
     'kv2',
@@ -211,7 +211,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
   ]),
   // Autocannon-armed fighting vehicles, with the cavalry and reconnaissance types (M3A3 CFV, Ajax).
   ifv: Object.freeze([
-    'ajax', 'amx10p', 'amx10p_25', 'bmp2', 'bmp3', 'bmp3_rok', 'borsuk', 'bwp1', 'cv90', 'cv9040c', 'cv90_mk4',
+    'ajax', 'amx10p', 'amx10p_25', 'bmp2', 'bmp3', 'bmp3_rok', 'borsuk', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'hayate_ifv', 'k21', 'kf41_lynx',
     'kurganets25', 'lrmv_lynx', 'm2a2_bradley', 'm3a3_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'puma_s1',
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'type100', 'type89', 'ua_m2a3_bradley', 'upior', 'warrior_tes_h',
@@ -248,7 +248,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
     'ztz99a', 'ztz99a2',
   ]),
   frontline: Object.freeze([
-    'abramsx', 'centurion3', 'centurion5_2', 'kf51_evo', 'kf51_panther', 'kf51_u', 'leo2_improved',
+    'abramsx', 'centurion3', 'centurion5_2', 'centurion5_2dk', 'kf51_evo', 'kf51_panther', 'kf51_u', 'leo2_improved',
     'leo2_revolution', 'leo2_revolution_proto', 'leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco', 'leo2a4_v',
     'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6', 'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'm1a1',
     'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams',
@@ -276,7 +276,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
   support: Object.freeze([
-    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9040c', 'cv90_mk4',
+    'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_t90', 'bmpt_terminator2', 'bwp1', 'cv90', 'cv9035dk', 'cv9040c', 'cv90_mk4',
     'cv90_mk4_concept', 'dardo', 'fv510', 'fv510_milan', 'griffin50mm', 'griffin_viper', 'hayate_ifv',
     'kf41_lynx', 'kurganets25', 'm2a2_bradley', 'marder1a3', 'marder2', 'namer_ifv', 'object695', 'puma_s1',
     'raiju_ifv', 'spz_puma', 'spz_wotan', 'tos1a_tagil', 'type100', 'type89', 'ua_m2a3_bradley', 'upior',
@@ -288,8 +288,8 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
   service: Object.freeze([
     'aft10', 'ajax', 'amx10p', 'amx10p_25', 'amx30', 'amx30b', 'amx30b2', 'amx56', 'ares_apc', 'bm_oplot_m',
     'bm_oplot_t', 'bmp2', 'bmp3', 'bmp3_rok', 'bmpt_terminator2', 'borsuk', 'bwp1', 'c1_ariete', 'c2_ariete',
-    'centurion3', 'centurion5_2', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3',
-    'challenger2', 'challenger3', 'challenger_x', 'challenger_x_sleek', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9040c',
+    'centurion3', 'centurion5_2', 'centurion5_2dk', 'challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3',
+    'challenger2', 'challenger3', 'challenger_x', 'challenger_x_sleek', 'chieftain3', 'chieftain5', 'chieftain_mk10', 'chieftain_mk9', 'cv90', 'cv9035dk', 'cv9040c',
     'cv90_mk4', 'dardo', 'fv510', 'fv510_milan', 'hayate_ifv', 'k1a1', 'k1e1', 'k21', 'k2_black_panther', 'kf41_lynx',
     'kv2', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a3dk', 'leo1a5', 'leo1a5dk', 'leo1a5dk1', 'leo2_improved', 'leo2_revolution',
     'leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6',

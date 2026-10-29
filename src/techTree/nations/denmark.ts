@@ -30,6 +30,9 @@ export const DENMARK_TREE: NationTree = Object.freeze({
     node({ id: 'leo2a7dk', tier: 10, line: 'leopard', lane: 1, parents: ['leo2a5dk'], slot: 'line' }),
     // M41 DK-1 and Centurion: the reconnaissance squadrons' M41 DK-1
     node({ id: 'm41dk1', tier: 2, line: 'recce', lane: 0, parents: ['leo1a3dk'], slot: 'line' }),
+    node({ id: 'centurion5_2dk', tier: 3, line: 'recce', lane: 0, parents: ['m41dk1'], slot: 'line' }),
+    // CV9035 DK: the Royal Life Guards' and Guard Hussars' infantry fighting vehicle (2007)
+    node({ id: 'cv9035dk', tier: 5, line: 'cv90', lane: 0, parents: ['centurion5_2dk'], slot: 'line' }),
     // the Christian II, a Danish Army concept on the Type 90 X (release 262), the Danish special
     node({ id: 'christian2', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

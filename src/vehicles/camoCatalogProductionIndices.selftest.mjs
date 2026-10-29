@@ -55,12 +55,12 @@ assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 patter
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
 assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
-  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1'],
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1', 'paint_cv9035dk'],
   'only the M6 Linebacker paint, the release-233 Signatures, the Type 10 Kaitaku paint, the Christian II paint, the 262 Oplot paints, both Challenger 3 TD paints, the T-84U 2000 three-tone and the 265 Danish coats append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer', 'paint_christian2',
   'paint_bm_oplot_m', 'paint_bm_oplot_t',
-  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1']);
+  'paint_challenger3_td', 'paint_challenger3_td_rws', 'paint_ua_t84_oplot_m', 'paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1', 'paint_cv9035dk']);
 
 // Every production id, as a saved selection, paints the same scheme (label, preset recipe and the resolved visual on
 // ten reference hulls: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand).
@@ -83,12 +83,13 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // its stock Signature selection, AUTO and every other row are unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 // Release 262: the Christian II and its Danish tri-tone.
-// Release 265: the Danish 1A5 DK-1, 2A5 DK, 2A7 DK and M41 DK-1, each in its own coat.
+// Release 265: the Danish 1A5 DK-1, 2A5 DK, 2A7 DK, M41 DK-1 and CV9035 DK, each in its own coat.
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_oplot_t', 'challenger3_td', 'challenger3_td_rws',
-  'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'm41dk1'];
-// Release 265: the Leopard 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone sit within a shade of a named preset, so
+  'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'm41dk1', 'cv9035dk'];
+// Release 265: the Leopard 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the Centurion DK's 1980s three-tone sit
+// within a shade of a named preset, so
 // no authored paint of their own: Denmark has no national Factory coat, and they paint their spec's coat.
-const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk'];
+const ADDED_IN_SPEC_COAT = ['leo1a3dk', 'leo1a5dk', 'centurion5_2dk'];
 // Release 265: the US M41A3 and the JGSDF M41 wear their nations' Factory coats (the owner's 2026-10-22 rule for plain
 // coats), the Bundeswehr M41 the German national coat.
 const ADDED_IN_NATION_COAT = { m41a3: 'service_usa_desert', m41_jgsdf: 'service_type10', m41_bw: 'national_de' };

@@ -25,7 +25,7 @@ import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
-interface CvBuilderPort extends AdvancedIfvScalePort {
+export interface CvBuilderPort extends AdvancedIfvScalePort {
   readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material> & {
@@ -254,7 +254,7 @@ function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
   }
 }
 
-function buildCv90Turret(P: CvBuilderPort): void {
+function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   const { box, cylY, cylZ } = KIT;
   // Compact two-man CV9040 fighting compartment: upright crew walls,
   // a raked broad face and short squared bustle. It is not the Mk IV's
@@ -293,11 +293,13 @@ function buildCv90Turret(P: CvBuilderPort): void {
   }
   P.addGunExtraDark(cylZ(0.135, 0.48, 20), 0, 0, 0.41);
   addCv90ScaffoldedCradle(P);
-  KIT.buildGun(P, { len: 3.12, r: 0.064, sleeve: false, collar: true, baseR: 0.13 });
+  // (release 265: the Danish CV9035 DK's 35 mm Bushmaster III, longer and slimmer than the 40 mm, with its muzzle brake)
+  const gunLen = danish ? 3.42 : 3.12, gunR = danish ? 0.052 : 0.064;
+  KIT.buildGun(P, { len: gunLen, r: gunR, sleeve: false, collar: true, baseR: 0.13, ...(danish ? { brake: true } : {}) });
   P.addGunExtraDark(cylZ(0.018, 2.08, 12), 0.22, -0.035, 1.72);
   muzzleTipDot(P, 0.22, -0.035, 2.77, 0.011, { parent: 'gunG' });
-  muzzleBore(P, { len: 3.12, r: 0.064, seg: 18 });
-  P.muzzleZ = 3.12;
+  muzzleBore(P, { len: gunLen, r: gunR, seg: 18, ...(danish ? { brake: true } : {}) });
+  P.muzzleZ = gunLen;
   // Gunner sight, commander panorama and RWS are now seated on the new roof
   // stations instead of retaining coordinates from the superseded shell.
   P.addEquipment('turret', box(0.34, 0.31, 0.34), 0.48, 0.69, 0.51, 0, -0.08, 0);
@@ -313,7 +315,14 @@ function buildCv90Turret(P: CvBuilderPort): void {
   });
   rws.name = 'cv90K2bStyleRws';
   rws.userData.hostVariant = 'cv90';
-  mount(P, 'turret', rws, 0.50, 0.74, -0.91, [0, -0.04, 0]);
+  if (!danish) mount(P, 'turret', rws, 0.50, 0.74, -0.91, [0, -0.04, 0]);
+  else {
+    // the CV9035 DK's defensive aids suite: laser warning heads on the turret's four corners, wired to the dischargers
+    for (const [x, z] of [[-0.82, 0.70], [0.82, 0.70], [-0.80, -1.30], [0.80, -1.30]] as const) {
+      P.addEquipment('turretDark', cylY(0.07, 0.08, 0.10, 12), x, 0.79, z);
+      P.addEquipment('turretDark', KIT.sph(0.055, 10), x, 0.86, z);
+    }
+  }
   P.add('turret', cylY(0.20, 0.23, 0.10, 18), -0.47, 0.73, -0.50);
   P.addEquipment('turret', box(0.32, 0.27, 0.30), -0.47, 0.92, -0.50);
   P.addModuleVisual('optics', 'turretGlass', box(0.20, 0.13, 0.016),
@@ -330,7 +339,7 @@ function buildCv90Turret(P: CvBuilderPort): void {
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: height, r: 0.010, seed }),
       x, 0.73, -1.20);
   }
-  P.decal('turret', 'crossgrey', null, 0.22, [-1.135, 0.43, -0.72], -Math.PI / 2);
+  if (!danish) P.decal('turret', 'crossgrey', null, 0.22, [-1.135, 0.43, -0.72], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.70);
   if (P.geometryReceipt) {
     P.turretG.userData.cv90IndependentTurretReceipt = Object.freeze({
@@ -347,9 +356,9 @@ function buildCv90Turret(P: CvBuilderPort): void {
       host: 'cv90', architecture: 'rooted-hollow-trapezoid-40mm-diagonal-truss-v3',
       movingWithGun: true, surroundsMainBarrel: true, openFrontRear: true,
       rootJoinedToTurretFace: true, sideOnlyOpenings: true,
-      diagonalSidePortsPerSide: 3, mainGunCaliberMm: 40, barrelLengthM: 3.12,
+      diagonalSidePortsPerSide: 3, mainGunCaliberMm: danish ? 35 : 40, barrelLengthM: gunLen,
     });
-    P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
+    if (!danish) P.turretG.userData.cv90RoofRwsReceipt = Object.freeze({
       host: 'cv90', designFamily: rws.userData.designFamily,
       variant: rws.userData.stationVariant, mountLocal: Object.freeze([0.50, 0.74, -0.91]),
       scale: rws.userData.scale, sizeStandard: rws.userData.sizeStandard,
@@ -359,11 +368,12 @@ function buildCv90Turret(P: CvBuilderPort): void {
   }
 }
 
-function buildCv90(P: CvBuilderPort): void {
+/** The CV90 (release 265: `danish` builds the CV9035 DK, profiles/denmark.ts). */
+export function buildCv90(P: CvBuilderPort, kit: { readonly danish?: boolean } = {}): void {
   buildCv90Hull(P);
   buildCv90RunningGear(P);
-  buildCv90Turret(P);
-  P.decal('hull', 'roundel', null, 0.27, [-1.89, 1.35, -1.36], -Math.PI / 2);
+  buildCv90Turret(P, kit.danish);
+  if (!kit.danish) P.decal('hull', 'roundel', null, 0.27, [-1.89, 1.35, -1.36], -Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '9040', 0.22,
     [1.89, 1.16, 0.78], Math.PI / 2);
   if (P.geometryReceipt) {
@@ -758,6 +768,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
 }
 
 export const CV90_PROFILES = Object.freeze({
-  cv90: Object.freeze({ build: buildCv90 }),
+  // (the factory passes the profile record second; the Swedish row takes the default kit)
+  cv90: Object.freeze({ build: (P: CvBuilderPort) => buildCv90(P) }),
   cv90_mk4_concept: Object.freeze({ build: buildCv90Mkiv }),
 }) satisfies VehicleProfileRecord;

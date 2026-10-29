@@ -5,12 +5,14 @@
 // published Danish figure exists, as each comment says.
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
-import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import {
+  bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, scaleNonExternalArmor, stripSilhouetteDimensions,
+} from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const danishVariant = (id: string, donor: string, name: string, era: 'cold-war' | 'modern') => {
-  const spec = cloneFleetVariant(registries.tankSpecs, id, donor, { name, nation: 'Denmark', era });
+  const spec = cloneFleetVariant(registries.tankSpecs, id, donor, { name, nation: 'Denmark', era, role: registries.tankSpecs[donor].role });
   delete spec.balancePeerOf;
   delete spec.publicVisualFallback;
   delete spec.label;
@@ -110,5 +112,59 @@ leo2a7dk.visual = {
   camoScale: 0.55,
 };
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk'],
-  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk });
+// ------------------------------------------------------------------------------------------------- Centurion DK --
+// Pansermuseet (Centurion Mk V-2 DK data plate): 7.7 m hull, 9.75 m over the gun, 3.4 m over the side plates, 3.39 m, 51 t
+// loaded, the 650 hp Meteor Mk IVB, 34 km/h on roads, four crew, the 105 mm L7A1, 2x6 dischargers. The 1985 fire control
+// (laser rangefinder, gunner's thermal sight) lays faster and truer than the Mk 5/2's optical sights; rounds and mobility
+// at the Mk 5/2's fleet footing (the published 650 hp on 51 t sits at 0.55 of tier III's power-to-weight median, a severe
+// outlier the fleet balance receipt refuses).
+const centurion5_2dk = danishVariant('centurion5_2dk', 'centurion5_2', 'Centurion Mk 5/2 DK', 'cold-war');
+Object.assign(centurion5_2dk.dims, { hullLengthM: 7.7, overallLengthM: 9.75, widthM: 3.4, heightM: 3.39 });
+// (the clone is taken before the fleet passes run, so the Mk 5/2's tier footing is written here: fleetBalancePass's
+// hull, armour, cycle and round, and applyShownTierFloors's 880 hp)
+Object.assign(centurion5_2dk, {
+  weightTons: 51.0, hp: 1900, enginePowerHp: 880, topSpeedKmh: 48, reverseSpeedKmh: 15, hullTraverseDegS: 32, turretTraverseDegS: 30,
+});
+scaleNonExternalArmor(centurion5_2dk, 1.12);
+centurion5_2dk.gun = {
+  ...centurion5_2dk.gun,
+  reloadS: 6.6, aimTimeS: 1.75, baseAccuracy: 0.28,
+  shells: centurion5_2dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, pen100Mm: 570, pen1000Mm: 525, pen2000Mm: 480 } : shell),
+};
+centurion5_2dk.visual = {
+  ...centurion5_2dk.visual,
+  // the Danish Army's 1980s three-tone (the Oksbøl and Pansermuseet tanks): olive, black and an earth brown
+  scheme: 'nato', base: '#535c3c', weather: '#5e6747', patches: ['#1d211a', '#5f4c34'], marking: 'number', number: '32',
+  camoScale: 0.48,
+};
+
+// ------------------------------------------------------------------------------------------------- CV9035 DK --
+// armyvehicles.dk/cv9035.htm: 45 ordered (2007, DALO, BAE Systems Hägglunds), 6.87 m long, 3.19 m wide, 2.80 m, 31,750 kg,
+// the 755 hp Scania DI-16, 940 l and 500 km, three crew and seven dismounts, the 35/50 Bushmaster III with its ammunition
+// programmer, stabilised day/night sights for gunner and commander (hunter-killer), and a defensive aids suite whose
+// laser warning receivers cue the smoke dischargers. The 35 mm rounds and cycle sit at tier V's 35 mm footing (the KF41
+// Lynx's), a little under its damage so the group's median holds.
+const cv9035dk = danishVariant('cv9035dk', 'cv90', 'CV9035 DK', 'modern');
+Object.assign(cv9035dk.dims, { hullLengthM: 6.87, overallLengthM: 7.10, widthM: 3.19, heightM: 2.80 });
+Object.assign(cv9035dk, { weightTons: 31.75, enginePowerHp: 755 });
+{
+  const [sabot, he, second] = cv9035dk.gun.shells;
+  cv9035dk.gun = {
+    ...cv9035dk.gun,
+    caliberMm: 35, reloadS: 0.55, baseAccuracy: 0.24, aimTimeS: 0.95,
+    shells: [
+      { ...sabot, name: '35 mm APFSDS-T', caliberMm: 35, pen100Mm: 205, pen1000Mm: 188, pen2000Mm: 170, dmg: 115, velocityMps: 1440 },
+      { ...he, name: '35 mm programmable HE (ABM)', caliberMm: 35, pen100Mm: 20, pen1000Mm: 20, dmg: 118, velocityMps: 1050 },
+      { ...second, name: '35 mm FAPDS', caliberMm: 35, pen100Mm: 160, pen1000Mm: 145, pen2000Mm: 130, dmg: 105, velocityMps: 1385 },
+    ],
+  };
+}
+cv9035dk.visual = {
+  ...cv9035dk.visual,
+  // the Danish Army's three-tone on its CV90s: a lighter green ground, khaki and black
+  scheme: 'nato', base: '#5e6946', weather: '#6a7552', patches: ['#9a9370', '#26291f'], marking: 'number', number: '45',
+  camoScale: 0.52,
+};
+
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk', 'centurion5_2dk', 'cv9035dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk, centurion5_2dk, cv9035dk });

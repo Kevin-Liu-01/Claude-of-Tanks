@@ -52,7 +52,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'amx40_proto', 'leo1a5', 'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leopard2_proto', 'leo2a2', 'mbt70', 'm1a1', 'fv510',
     'm1a1ha', 'm60a1', 'merkava1b', 'merkava2b', 'merkava2d', 'fv510_milan',
     'amx30', 'amx30b2', 'm48a5_patton', 'm60a2', 'm60a3', 'vickers_mk1',
-    'centurion3', 'centurion5_2', 'm46_patton', 'm47_patton',
+    'centurion3', 'centurion5_2', 'centurion5_2dk', 'm46_patton', 'm47_patton',
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan', 'm41a3', 'm41_bw', 'm41_jgsdf', 'm41dk1',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
@@ -76,7 +76,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'leclerc_s1', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'm1a1_abrams_sa', 'm1a1_abrams_aim',
     'm1a1_abrams_fep', 'merkava3c', 'merkava3_baz', 'merkava4b', 't72m1_jaguar',
     'pt91a_twardy', 'k2b', 'bmp3_rok', 't64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
-    'm3a3_bradley', 'bmpt_t90', 'cv90',
+    'm3a3_bradley', 'bmpt_t90', 'cv90', 'cv9035dk',
     'ajax', 'aft10', 'k21', 'type96b', 'cv90105_tml', 'sabra_mk2',
     // 2026-10-25 (owner: "properly label next gen vs modern"): upgrades and new builds of in-service families are
     // modern however recent. The T-72B3 and T-80U national modernizations, the Challenger 3 (a rebuilt Challenger 2),

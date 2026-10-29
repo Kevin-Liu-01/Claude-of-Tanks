@@ -23,7 +23,8 @@ const m41 = (id: string, name: string, nation: string) => {
     role: 'light', hp: 1250, enginePowerHp: 500, weightTons: 23.5, topSpeedKmh: 72, reverseSpeedKmh: 20,
     hullTraverseDegS: 48, turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 19.75, gunDepressionDeg: 9.75,
   });
-  Object.assign(spec.dims, { hullLengthM: 5.82, overallLengthM: 8.21, widthM: 3.20, heightM: 2.73 });
+  // the supplied print's envelope at the published hull length (its 3.38 m over the tracks against the published 3.20)
+  Object.assign(spec.dims, { hullLengthM: 5.82, overallLengthM: 8.12, widthM: 3.38, heightM: 2.73 });
   const [sabot, heat, he] = spec.gun.shells;
   spec.gun = {
     ...spec.gun,
@@ -35,10 +36,10 @@ const m41 = (id: string, name: string, nation: string) => {
     ],
   };
   spec.armor = modernArmor({
-    hl: 2.91, hw: 1.56, inW: 0.98, floor: 0.44, trkTop: 1.02, roofY: 1.55,
-    turretPivot: [0, 1.57, 0.30], gunPivot: [0, 0.40, 1.02], barrelLenM: 3.98, barrelRadM: 0.062,
+    hl: 2.80, hw: 1.33, inW: 1.15, floor: 0.29, trkTop: 1.18, roofY: 1.44,
+    turretPivot: [0, 1.44, 0.20], gunPivot: [0, 0.315, 1.30], barrelLenM: 3.71, barrelRadM: 0.066,
     glacis: [25, 25, 25], lower: [32, 32, 32], side: [25, 25, 25], skirt: null, rear: 19, roof: 13,
-    tw: 1.13, tFrontZ: 1.06, tRearZ: -1.96, tH: 0.85,
+    tw: 1.13, tFrontZ: 1.50, tRearZ: -2.25, tH: 0.74,
     cheek: [25, 25, 25], tSide: [25, 25, 25], tRear: 25, tRoof: 13, mantlet: [38, 38, 38], loader: true,
   });
   return spec;

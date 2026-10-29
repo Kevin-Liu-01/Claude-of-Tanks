@@ -112,6 +112,8 @@ const FAMILY_UPGRADES = Object.freeze({
   denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
   // 265: the M41s (the Danish rebuild at II over the originals at I)
   m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
+  // 265: the Danish Centurion over its Mk 5/2, the CV9035 DK over the Swedish CV90 (CV9040)
+  denmarkB: [['centurion5_2', 'centurion5_2dk'], ['cv90', 'cv9035dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -170,5 +172,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-29 re-pin (265, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
 // Leopard line on through the 1A5 DK (I, the DK-1 its twin), the 2A5 DK (IX) and the 2A7 DK (X); the Christian II moves
 // out of the Sweden tree into Denmark's special lane, and Sweden's nations are Sweden's alone again.
-assert.equal(digest, '4074752114fe8915', `tree content changed: re-pin to ${digest} if deliberate`);
+// 265 (the same day, Main's rulings on the owner's M41 ask): Denmark's recce line (the M41 DK-1 at II off the 1A3 DK, the
+// Centurion Mk 5/2 DK at III) and CV90 line (the CV9035 DK at V); the M41A3 at I off the M46 (USA), the Bundeswehr M41 at I
+// off the Jagdpanzer E100 (Germany) and the JGSDF M41 at I off the STB-1 (Japan), each on an M41 line.
+assert.equal(digest, '6baeb7db192fc444', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

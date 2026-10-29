@@ -236,6 +236,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv121: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
   cv90: anchor('hull', 'left', 0.39, 0.60, 0.24, 1),
+  cv9035dk: anchor('hull', 'left', 0.39, 0.60, 0.20, 1),
   cv90_mk4_concept: anchor('hull', 'left', 0.36, 0.59, 0.23, 1),
   // Polish family deliberately uses three different, source-appropriate
   // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
@@ -371,6 +372,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  centurion5_2dk: anchor('turret', 'right', 0.42, 0.49, 0.20, -1),
   m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m47_patton: anchor('turret', 'right', 0.41, 0.49, 0.25, -1),
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),

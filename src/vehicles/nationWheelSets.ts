@@ -257,6 +257,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   m41_bw: { donor: 'm60a3', reason: '265: the Bundeswehr M41 keeps its US Patton-era wheel' },
   m41_jgsdf: { donor: 'm60a3', reason: '265: the JGSDF M41 keeps its US Patton-era wheel' },
   m41dk1: { donor: 'm60a3', reason: '265: the Danish M41 DK-1 keeps its US Patton-era wheel' },
+  centurion5_2dk: { donor: 'challenger2e', reason: '265: the Danish Centurion keeps its Mk 5/2 donor\'s UK wheel' },
   // owner 2026-10-25 ("update the type 74 and stb 1 tanks completely fullly, making these tanks no longer look really
   // outdated"): their five 0.70-0.74 m wheels stand fully exposed (no skirts), where the Type 90 forging's dish 120 mm
   // behind the rubber face read as an empty drum; the other Japanese standard (owner 2026-09-22: "japan uses the type
