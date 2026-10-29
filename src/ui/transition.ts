@@ -81,8 +81,10 @@ const CSS = `
 .cot-trans.quick.out{transition-duration:var(--dur-instant);}
 .cot-trans *{box-sizing:border-box;margin:0;padding:0;}
 .cot-trans .bg{position:absolute;inset:-2%;background-size:cover;
-  background-position:center;filter:saturate(.88) contrast(1.04);
-  transform:scale(1.02);transition:transform calc(var(--dur-stage) * 8) var(--cot-ease-soft);}
+  background-position:center;filter:saturate(.88) contrast(1.04);opacity:0;
+  transform:scale(1.02);transition:transform calc(var(--dur-stage) * 8) var(--cot-ease-soft),
+    opacity var(--dur-base) var(--cot-ease-out);}
+.cot-trans .bg.shown{opacity:1;}
 .cot-trans.lit .bg{transform:scale(1.07);}
 .cot-trans .scrim{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(5,8,11,.78) 0%,rgba(5,8,11,.46) 46%,rgba(5,8,11,.9) 100%);}
@@ -93,6 +95,11 @@ const CSS = `
   transition:transform var(--cot-motion-slow) var(--cot-ease-out),
     opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-trans.lit .core{transform:translateY(0);opacity:1;}
+/* the scrim is lightest at the centre, where the words stand: a soft pool of the scene colour under them keeps the
+   small amber kicker legible over snow, fire or light camouflage (its children stack above it in order) */
+.cot-trans .core::before{content:'';position:absolute;inset:-40px -120px;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in oklab,var(--surface-scene) 62%,transparent) 55%,transparent);}
+.cot-trans .core>*{position:relative;}
 .cot-trans .mark{width:46px;height:46px;object-fit:contain;
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.7));}
 .cot-trans .kick{margin-top:16px;font-family:${FONT_COND};font-size:11px;font-weight:700;
@@ -118,6 +125,7 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){
   .cot-trans .bg,.cot-trans .core{transform:none!important;}
 }
+.cot-trans-say{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 `;
 
 /** @returns {boolean} true when transitions must be invisible (probes). */
@@ -147,10 +155,21 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
  */
 export function createTransition(): TransitionScreen {
   ensureStyle('cot-trans-style', CSS, 'surfaces');
+  // The overlay is a picture over the screen, so assistive technology hears it from a status beside it: where the player
+  // is going, then each stage the meter shows. The status stays in the page while the overlay is off, because a live
+  // region that a display flip brings in announces nothing.
+  const say = document.createElement('div');
+  say.className = 'cot-trans-say';
+  say.setAttribute('role', 'status');
+  say.innerHTML = '<span class="h"></span> <span class="s"></span>';
+  document.body.appendChild(say);
+  const sayHeadEl = requiredElement<HTMLSpanElement>(say, '.h');
+  const sayStageEl = requiredElement<HTMLSpanElement>(say, '.s');
   const root = document.createElement('div');
   root.className = 'cot-trans';
+  root.setAttribute('aria-hidden', 'true');
   root.innerHTML =
-    `<div class="bg"></div><div class="scrim"></div><div class="vig"></div>` +
+    `<div class="bg lo"></div><div class="bg hi"></div><div class="scrim"></div><div class="vig"></div>` +
     `<div class="core">` +
     `<img class="mark" src="/brand/mark.svg" alt="" draggable="false">` +
     `<div class="kick"></div><div class="title"></div><div class="sub"></div>` +
@@ -160,7 +179,8 @@ export function createTransition(): TransitionScreen {
     `</div>`;
   document.body.appendChild(root);
 
-  const bgEl = requiredElement<HTMLDivElement>(root, '.bg');
+  const lowBg = requiredElement<HTMLDivElement>(root, '.bg.lo');
+  const highBg = requiredElement<HTMLDivElement>(root, '.bg.hi');
   const kickEl = requiredElement<HTMLDivElement>(root, '.kick');
   const titleEl = requiredElement<HTMLDivElement>(root, '.title');
   const subEl = requiredElement<HTMLDivElement>(root, '.sub');
@@ -175,6 +195,16 @@ export function createTransition(): TransitionScreen {
   let heldFadeToken: number | null = null;
   let warmAfterWork: string | null = null;
   let activeFadeOutMs = FADE_OUT_MS;
+  let meterOn = true;
+  // Two picture layers cross-fade. A picture lands on the layer that is out of view or covered, then fades in over the
+  // one in view (or the covering layer fades away), so a late decode never swaps the backdrop in a single frame.
+  const paint = (url: string, focal: string): void => {
+    const layer = lowBg.classList.contains('shown') && !highBg.classList.contains('shown') ? highBg : lowBg;
+    layer.style.backgroundImage = `url("${url}")`;
+    layer.style.backgroundPosition = focal;
+    layer.classList.add('shown');
+    if (layer === lowBg) highBg.classList.remove('shown');
+  };
   const api: TransitionScreen = {
     get visible() { return visible; },
     // `visible` flips false when fade-out begins. `active` remains true until
@@ -195,7 +225,10 @@ export function createTransition(): TransitionScreen {
       kickEl.textContent = o.kicker || 'Claude of Tanks';
       titleEl.textContent = o.title || '';
       subEl.textContent = o.sub || '';
-      meterEl.classList.toggle('off', o.progress === false);
+      sayHeadEl.textContent = [o.kicker, o.title, o.sub].filter((part): part is string => !!part)
+        .map((text) => t('transition.sentence', { text })).join(' ');
+      meterOn = o.progress !== false;
+      meterEl.classList.toggle('off', !meterOn);
       api.progress(0, t('transition.stage.loading'));
       const shot = o.hero
         ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, focal: 'center' }
@@ -204,20 +237,13 @@ export function createTransition(): TransitionScreen {
       const warmHero = isImagePreloaded(hero) || !isImagePreloaded(FEATURED_IMAGES[0])
         ? hero : FEATURED_IMAGES[0];
       const warmShot = FEATURED_SHOTS.find((entry) => entry.img === warmHero) || shot;
-      bgEl.style.backgroundPosition = warmShot.focal || 'center';
       preloadImage(warmHero, { priority: 'high' }).then((url) => {
-        if (url && visible && hideToken === token) {
-          bgEl.style.backgroundImage = `url("${url}")`;
-          bgEl.style.backgroundPosition = warmShot.focal || 'center';
-        }
+        if (url && visible && hideToken === token) paint(url, warmShot.focal || 'center');
       });
       // Decode the requested random frame off the fade-critical path, then
-      // swap only after decode has completed (CSS no longer blocks on it).
+      // cross-fade to it only after decode has completed (CSS no longer blocks on it).
       if (warmHero !== hero) preloadImage(hero, { priority: 'high' }).then((url) => {
-        if (url && visible && hideToken === token) {
-          bgEl.style.backgroundImage = `url("${url}")`;
-          bgEl.style.backgroundPosition = shot.focal || 'center';
-        }
+        if (url && visible && hideToken === token) paint(url, shot.focal || 'center');
       });
       // Keep the following curated capture warm for the next state change.
       const at = TRANSITION_SHOTS.findIndex((entry) => entry.img === hero);
@@ -241,7 +267,10 @@ export function createTransition(): TransitionScreen {
       const v = Math.max(0, Math.min(1, f));
       fillEl.style.transform = `scaleX(${v.toFixed(3)})`;
       pctEl.textContent = `${Math.round(v * 100)}%`;
-      if (label) stageEl.textContent = label;
+      if (label) {
+        stageEl.textContent = label;
+        sayStageEl.textContent = meterOn ? label : '';
+      }
     },
 
     /** Fade out and drop from layout. Resolves after the fade. */
@@ -254,7 +283,14 @@ export function createTransition(): TransitionScreen {
       root.classList.remove('lit');
       const fadeOutMs = activeFadeOutMs;
       await sleep(fadeOutMs + 40);
-      if (hideToken === token) root.classList.remove('on', 'out', 'quick');
+      if (hideToken === token) {
+        root.classList.remove('on', 'out', 'quick');
+        // the next screen starts dark and fades its own picture in; an empty status leaves no stale words to read
+        lowBg.classList.remove('shown');
+        highBg.classList.remove('shown');
+        sayHeadEl.textContent = '';
+        sayStageEl.textContent = '';
+      }
     },
 
     /**

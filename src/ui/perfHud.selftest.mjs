@@ -17,10 +17,12 @@ class Element {
       return force;
     },
   };
+  attributes = new Map();
+  listeners = new Map();
   constructor(tag) { this.tagName = tag.toUpperCase(); }
   appendChild(child) { this.children.push(child); return child; }
-  setAttribute() {}
-  addEventListener() {}
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
   querySelector(selector) {
     if (!this.selectors.has(selector)) this.selectors.set(selector, new Element('div'));
     return this.selectors.get(selector);
@@ -45,6 +47,18 @@ const frames = createPostFrameAccounting(drawRenderer, () => {
   drawRenderer.info.update(36, gl.TRIANGLES, 1);
   drawRenderer.info.update(3, gl.TRIANGLES, 1);
 });
+
+/** A fact row (the panel's dl rows, data-fact) and its value (its dd, the second child). */
+function factRow(root, id) {
+  const stack = [root];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.attributes?.get('data-fact') === id) return node;
+    stack.push(...(node.children ?? []));
+  }
+  throw new Error(`no fact row ${id}`);
+}
+const fact = (root, id) => factRow(root, id).children[1].textContent;
 
 function define(key, value) {
   Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
@@ -124,9 +138,8 @@ try {
   assert.equal(hud.stats().renderFrameSerial, null);
   hud.setVisible(true);
   update(hud, 132251);
-  const renderText = () => hud.el.querySelector('[data-grid]').children[1]
-    .querySelector('[data-value]').textContent;
-  assert.equal(renderText(), 'No completed post frame\n2 programs\n42 geo   17 tex');
+  assert.deepEqual(['calls', 'tris', 'programs', 'geometries', 'textures'].map((id) => fact(hud.el, id)), ['–', '–', '2', '42', '17'],
+    'no completed post frame: no draw figures, the renderer\'s own counts');
   hud.setVisible(false);
   frames.render(1 / 60);
   assert.equal(hud.stats().calls, 2);
@@ -161,10 +174,11 @@ try {
 
   // Switching visibility does not alter collection or ordinary paint cadence.
   hud.setCaptureHidden(false);
-  assert.equal(hud.el.style.display, 'block');
+  assert.equal(hud.el.style.display, '', 'shown, it takes its sheet\'s column');
   update(hud, 145000);
   assert.equal(paints, 1);
-  assert.equal(renderText(), 'Last frame #1 (all passes)\n2 calls   13 tri\n2 programs\n42 geo   17 tex');
+  assert.deepEqual(['calls', 'tris', 'programs'].map((id) => fact(hud.el, id)), ['2', '13', '2'], 'the completed frame\'s draws');
+  assert.equal(factRow(hud.el, 'rtt').hidden, true, 'a local battle\'s network figures stand down');
   update(hud, 145249);
   assert.equal(paints, 1);
   update(hud, 145250);
@@ -175,12 +189,25 @@ try {
   assert.equal(retained.length, 0, 'an empty callback can expire an old window without allocating');
   assert.equal(hud.el.style.display, 'none');
 
+  // the close: with an owner (main.ts turns the saved setting off), the owner's; without one, the panel hides itself
+  let closed = 0;
+  const owned = createPerfHud({ renderer, game, onClose: () => { closed++; } });
+  owned.setVisible(true);
+  owned.el.querySelector('.ph-close').listeners.get('click')();
+  assert.equal(closed, 1, 'the close button calls its owner');
+  assert.equal(owned.isVisible(), true, 'the owner hides it (through the facade)');
+  const alone = createPerfHud({ renderer, game });
+  alone.setVisible(true);
+  alone.el.querySelector('.ph-close').listeners.get('click')();
+  assert.equal(alone.isVisible(), false, 'with no owner the close hides the panel');
+  assert.equal(alone.el.style.display, 'none');
+
   define('PerformanceObserver', undefined);
   const unsupported = createPerfHud({ renderer, game });
   update(unsupported, 153000);
   assert.equal(unsupported.stats().worstStall, 0, 'unsupported engines preserve graceful behavior');
   assert.equal(unsupported.stats().calls, null, 'an absent provider never falls back to tail counters');
-  assert.equal(subscriptions, 1, 'visibility and updates never recreate observers');
+  assert.equal(subscriptions, 3, 'visibility and updates never recreate observers (one a panel)');
 } finally {
   for (const [key, descriptor] of prior) {
     if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -188,4 +215,4 @@ try {
   }
 }
 
-console.log('perfHud.selftest: PASS (no-update retention, exact boundary, quiet expiry, visibility, cadence, no timers)');
+console.log('perfHud.selftest: PASS (no-update retention, exact boundary, quiet expiry, visibility, cadence, no timers, fact rows, close)');

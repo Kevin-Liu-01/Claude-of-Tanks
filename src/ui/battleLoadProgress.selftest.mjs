@@ -232,6 +232,56 @@ try {
   assert.match(css, /\.cot-bl\.on \.fbar i b\{will-change:transform;/,
     'compositor hint is limited to the visible loader');
   assert.match(css, /prefers-reduced-motion:reduce[^\n]*\.cot-bl \.fbar i b\{transition-duration:1ms/);
+
+  // The mode chip on the cover's first frame names the chosen mode, for every mode and every campaign operation (its
+  // title), however the battlefield's description went, and the loading owner's show names it the same (the 262
+  // production check: "Random Battle · Standard" over the Proving Ground and the campaign until that show)
+  {
+    const { createSoloBattleEntryRuntime } = await import('../game/soloBattleEntryRuntime.ts');
+    const { createBattleEntryLifecycle } = await import('../game/battleEntryLifecycle.ts');
+    const { soloBattleLoadingModeLabel } = await import('../game/soloBattleLoadingRuntime.ts');
+    const { GAME_MODE_IDS } = await import('../sim/gameModeCatalog.ts');
+    const { CAMPAIGN_OPERATIONS } = await import('../game/campaignOperations.ts');
+    const descriptions = {
+      none: () => null,
+      throws: () => { throw new Error('no plan'); },
+      described: (_specId, mapId) => ({ mapId: mapId ?? 'random', mapName: 'Cinder Junction' }),
+    };
+    let firstFrame = null;
+    const entry = (describe) => createSoloBattleEntryRuntime({
+      lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {}, now: () => 0 }),
+      loading: { async begin() {} },
+      battleLoad: {
+        // the chip as the cover's first frame draws it (its seats are the sheets' receipt above)
+        showPending: (pending) => { screen.showPending(pending); firstFrame = selectors.get('.kicker').textContent; },
+        hide: async () => {},
+      },
+      audio: { loadingOn: () => {} }, enterGarage: () => {}, nextFrame: async () => {},
+      isVisibleSpecId: () => true, getSelectedSpecId: () => 'leo2_improved', getSelectedMapId: () => 'railyard',
+      reportError: () => {}, presentFailure: async () => {}, onFailure: () => {}, describePendingMap: describe,
+    });
+    const cases = [
+      ...GAME_MODE_IDS.map((gameMode) => ({ gameMode, campaignOperationId: null })),
+      ...CAMPAIGN_OPERATIONS.map((operation) => ({ gameMode: 'frontline_assault', campaignOperationId: operation.id })),
+    ];
+    let checked = 0;
+    for (const [how, describe] of Object.entries(descriptions)) {
+      const runtime = entry(describe);
+      for (const { gameMode, campaignOperationId } of cases) {
+        firstFrame = null;
+        await runtime.beginSelected({ specId: 'leo2_improved', mapId: 'railyard', gameMode, ...(campaignOperationId ? { campaignOperationId } : {}) });
+        const expected = soloBattleLoadingModeLabel(gameMode, campaignOperationId);
+        assert.equal(firstFrame, expected, `${campaignOperationId ?? gameMode} (description ${how}): the cover's first frame names the chosen mode`);
+        if (gameMode !== 'standard' || campaignOperationId) {
+          assert.notEqual(firstFrame, t('battleLoad.kicker'), `${campaignOperationId ?? gameMode}: not the placeholder's words`);
+        }
+        checked++;
+      }
+    }
+    assert.equal(checked, 3 * (GAME_MODE_IDS.length + CAMPAIGN_OPERATIONS.length));
+    assert.equal(soloBattleLoadingModeLabel('proving_ground'), t('playMenu.matchMode.proving_ground.label'));
+    assert.equal(soloBattleLoadingModeLabel('frontline_assault', 'iron_ridge'), t('campaign.op.iron_ridge.title'));
+  }
 } finally {
   if (priorDocument) Object.defineProperty(globalThis, 'document', priorDocument);
   else delete globalThis.document;
@@ -240,4 +290,4 @@ try {
   if (priorVideo) Object.defineProperty(globalThis, 'HTMLVideoElement', priorVideo);
   else delete globalThis.HTMLVideoElement;
 }
-console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging and the unchosen room map passed');
+console.log('battleLoadProgress.selftest: transform fill, dedup, accessibility, bounds, restaging, the unchosen room map and every mode\'s chip on the first frame passed');

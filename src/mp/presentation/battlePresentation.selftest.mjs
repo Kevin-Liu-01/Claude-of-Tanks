@@ -124,6 +124,23 @@ assert.equal(game.spotting.isSpotted('foe'), true);
 assert.equal(game.timeS, 12.5);
 assert.equal(game.preBattleS, 0);
 assert.equal(game.gameMode, 'standard');
+// the own tank's requested round is the player's (owner 2026-10-28: "why is atgm labeled Q? E does it for me"): a row
+// holding the authority's old round leaves a pick still on its way; the pick follows the authority when its slot moves
+{
+  const own = presentation.ownActor;
+  assert.equal(own.input.shellSlot, 0, 'the first row seats the authority\'s round');
+  own.input.shellSlot = 1; // Q or the 2 key: the ATGM's slot, sent with the next control sample
+  presentation.applyFrame(frame({ tick: 121 }));
+  assert.equal(own.input.shellSlot, 1, 'a row on the old round does not undo the pick on its way');
+  assert.equal(own.combat.shellSlot, 0, 'the tray shows the authority\'s round until it takes the pick');
+  presentation.applyFrame(frame({ tick: 122, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 1 }) } }));
+  assert.equal(own.input.shellSlot, 1);
+  assert.equal(own.combat.shellSlot, 1, 'the authority took it');
+  presentation.applyFrame(frame({ tick: 123, viewer: { ...frame().viewer, row: ownRow({ shellSlot: 2 }) } }));
+  assert.equal(own.input.shellSlot, 2, 'the authority\'s own switch (an empty round) becomes the pick');
+  presentation.applyFrame(frame({ tick: 124 }));
+  assert.equal(own.input.shellSlot, 0, 'and back');
+}
 const foe = presentation.actors.get('foe');
 assert.equal(foe.combat.hp, 1500);
 assert.equal(foe.combat.reload.t, 1.5);

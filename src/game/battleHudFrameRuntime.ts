@@ -9,6 +9,8 @@ import type {
 import type { GameState } from './stateCore.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
+import { SPECIAL_ACTION_KINDS, specialActionKind, type SpecialActionSpec } from '../sim/specialActionPolicy.ts';
+import { createBattleKeyCaps, type KeyCapInput, type PadSystem } from './battleKeyCaps.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import type {
   ConcealmentView,
@@ -38,10 +40,8 @@ interface KillcamView {
   spectate: { active: boolean; targetId: string | null };
 }
 
-interface InputView {
+interface InputView extends KeyCapInput {
   getSettings(): { armorAimOverlay?: boolean };
-  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'drone' | 'aerialVision' | 'supplyAmmo' | 'supplyHeal' | 'shell1' | 'shell2' | 'shell3' | 'rangeReset' | 'rangeMoving' | 'specialAction' | 'atgm' | 'reloadMagazine',slot?:0|1): string | null;
-  labelFor(code: string | null): string;
 }
 
 interface CameraRigView {
@@ -200,6 +200,13 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     auxiliaryKeyLabels: {smoke:'G',lights:'N',roofGun:'B',atgm:'Q'},
   };
 
+  // the battle's key caps (battleKeyCaps.ts): a pad's LB runs the hull's own system where it has no suspension
+  // (sim/specialActionPolicy.ts), so that system's tile names LB on a pad layout
+  const keyCaps = createBattleKeyCaps(input);
+  const padSystemOf = (spec: unknown): PadSystem => {
+    const kind = specialActionKind(spec as SpecialActionSpec | null | undefined);
+    return kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE ? 'atgm' : kind === SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD ? 'reloadMagazine' : null;
+  };
   const armorTargets: TEntity[] = [];
   const watchAimView = { sight: false, zoom: 1 };
   const spotFrame: BattleHudSpotFrame<TEntity> = {
@@ -265,18 +272,14 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
     frameInfo.timeLimitS = clockLimitS();
-    frameInfo.selfRightKeyLabel = input.labelFor(input.getBinding('selfRight',0) ?? input.getBinding('selfRight',1));
-    const keys = frameInfo.auxiliaryKeyLabels!;
-    for (const action of ['smoke','lights','roofGun'] as const) keys[action] = input.labelFor(input.getBinding(action,0) ?? input.getBinding(action,1));
-    keys.supplyAmmo=input.labelFor(input.getBinding('supplyAmmo',0)??input.getBinding('supplyAmmo',1));
-    keys.supplyHeal=input.labelFor(input.getBinding('supplyHeal',0)??input.getBinding('supplyHeal',1));
-    keys.aerialVision = input.labelFor(input.getBinding('aerialVision', 0) ?? input.getBinding('aerialVision', 1));
-    keys.drone = input.labelFor(input.getBinding('drone', 0) ?? input.getBinding('drone', 1));
-    for (const action of ['specialAction', 'atgm', 'reloadMagazine'] as const) keys[action] = input.labelFor(input.getBinding(action, 0) ?? input.getBinding(action, 1));
-    // the proving ground's range card names its two keys (v2 progression, 2026-10-17)
-    if (game.matchModeState?.range) {
-      keys.rangeReset = input.labelFor(input.getBinding('rangeReset', 0) ?? input.getBinding('rangeReset', 1));
-      keys.rangeMoving = input.labelFor(input.getBinding('rangeMoving', 0) ?? input.getBinding('rangeMoving', 1));
+    // every key cap from the live bindings (battleKeyCaps.ts), made again only when they or the layout change
+    const caps = keyCaps.read(padSystemOf(focus?.spec));
+    if (caps !== frameInfo.keyCaps) {
+      frameInfo.keyCaps = caps;
+      frameInfo.selfRightKeyLabel = caps.selfRight;
+      const keys = frameInfo.auxiliaryKeyLabels!;
+      for (const action of ['smoke', 'lights', 'roofGun', 'supplyAmmo', 'supplyHeal', 'aerialVision', 'drone', 'specialAction', 'atgm',
+        'reloadMagazine', 'rangeReset', 'rangeMoving'] as const) keys[action] = caps[action];
     }
     updateSpotting(focus);
   };

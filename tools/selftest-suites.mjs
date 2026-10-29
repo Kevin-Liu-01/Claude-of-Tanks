@@ -1275,6 +1275,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',
+    // owner 2026-10-28: every default key by the phases its owner is live in, no synthetic key events (the diagnostics' F8)
+    'src/game/keybindingCensus.selftest.mjs',
+    // owner 2026-10-28: every battle key cap is its action's live binding, keyboard and pad
+    'src/game/battleKeyCaps.selftest.mjs',
     'src/dev/mainDiagnosticsRuntime.selftest.mjs',
     'src/dev/debugBattleEntryRuntime.selftest.mjs',
     'src/dev/perfDiagnosticsAccess.selftest.mjs',

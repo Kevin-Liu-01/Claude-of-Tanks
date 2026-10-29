@@ -274,6 +274,9 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
+  /** Every key cap from the live bindings (game/battleKeyCaps.ts, by action id): the tray's shell digits and consumables,
+   *  the minimap's and the gear's read it (the controls row's come in auxiliaryKeyLabels). */
+  keyCaps?: Readonly<Record<string, string>>;
   auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile?:string;atgm?:string;reloadMagazine?:string;specialAction?:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
@@ -2967,6 +2970,9 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
   const auxiliaryButton=(action:'smoke'|'lights'|'roofGun')=>auxiliaryButtons.find(item=>item.action===action)!.button;
+  // (each cap names its action, for the battle key caps' receipt: tools/battle-key-caps.browser.mjs)
+  for (const [cap, action] of [[jumpKey, 'selfRight'], [specialKey, 'specialAction'], [missileKey, 'atgm'], [reloadKey, 'reloadMagazine'],
+    [droneKey, 'drone'], ...auxiliaryButtons.map(({ key, action: id }) => [key, id] as const)] as const) cap.dataset.keyCap = action;
   const vehicleControls={jump:jumpHint,suspension:specialButton,atgm:missileButton,reload:reloadButton,drone:droneButton,
     smoke:auxiliaryButton('smoke'),lights:auxiliaryButton('lights'),roofGun:auxiliaryButton('roofGun')};
   let controlsJumpMode:boolean|null=null;
@@ -8061,26 +8067,24 @@ export function initHud(bus: EventBus): HudRuntime {
   on('ui:directionalHitValues', (p) => {
     directionalHitValuesEnabled = !!(p && p.on);
   });
-  // Live hotkey labels — settings.ts broadcasts at boot and after every
-  // rebind/clear/reset, so the tray never lies about the player's keys.
-  on('ui:bindingsChanged', (p) => {
-    if (!p) return;
-    if (Array.isArray(p.shells)) {
-      for (let i = 0; i < 3 && i < p.shells.length; i++) {
-        const k = slotEls[i].querySelector('.key');
-        if (k) k.textContent = p.shells[i];
-      }
-    }
-    if (Array.isArray(p.consumables)) {
-      for (let i = 0; i < conEls.length && i < p.consumables.length; i++) {
-        const k = conEls[i].querySelector('.key');
-        if (k) k.textContent = p.consumables[i];
-      }
-    }
-    if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
-    if (typeof p.minimapZoom === 'string') mmKey.textContent = p.minimapZoom;
-    if (typeof p.settingsMenu === 'string') gearKey.textContent = p.settingsMenu;
-  });
+  // Live key caps (game/battleKeyCaps.ts, through the frame; owner 2026-10-28: "make sure to relabel if a person changes
+  // it in settings"): the tray's shell digits and consumables, the minimap's and the gear's, written when the caps change
+  // (a rebind, mid-battle from the pause menu too, or the layout turning pad or keyboard). The controls row's come in
+  // the frame's auxiliaryKeyLabels.
+  let shownKeyCaps: Readonly<Record<string, string>> | null = null;
+  function applyKeyCaps(caps: Readonly<Record<string, string>>): void {
+    if (caps === shownKeyCaps) return;
+    shownKeyCaps = caps;
+    const write = (key: Element | null | undefined, action: string): void => {
+      if (!(key instanceof HTMLElement)) return;
+      key.dataset.keyCap = action; // (for the battle key caps' receipt: tools/battle-key-caps.browser.mjs)
+      key.textContent = caps[action] ?? '';
+    };
+    for (let i = 0; i < 3 && i < slotEls.length; i++) write(slotEls[i].querySelector('.key'), `shell${i + 1}`);
+    for (let i = 0; i < 3 && i < conEls.length; i++) write(conEls[i].querySelector('.key'), `consumable${i + 1}`);
+    write(mmKey, 'minimapZoom');
+    write(gearKey, 'settingsMenu');
+  }
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
       showAlert(t(active
@@ -8622,20 +8626,21 @@ export function initHud(bus: EventBus): HudRuntime {
       lastOwnSide = side;
       titleSides();
     }
-    setText(jumpKey, frame.selfRightKeyLabel || 'F');
+    setText(jumpKey, frame.selfRightKeyLabel ?? 'F');
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
+    if(frame.keyCaps)applyKeyCaps(frame.keyCaps);
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)setText(item.key,frame.auxiliaryKeyLabels[item.action]);
-      setText(missileKey,frame.auxiliaryKeyLabels.atgm || 'Q');
-      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine || 'C');
-      setText(specialKey,frame.auxiliaryKeyLabels.specialAction || 'E');
-      setText(droneKey,frame.auxiliaryKeyLabels.drone || 'V');
+      setText(missileKey,frame.auxiliaryKeyLabels.atgm ?? 'Q');
+      setText(reloadKey,frame.auxiliaryKeyLabels.reloadMagazine ?? 'C');
+      setText(specialKey,frame.auxiliaryKeyLabels.specialAction ?? 'E');
+      setText(droneKey,frame.auxiliaryKeyLabels.drone ?? 'V');
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateRangeCard(frame);
     updateSpecialAction(frame.player || playerRef, frame.aim);
     const flier = frame.player || playerRef;
-    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
+    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone ?? 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision ?? 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
@@ -8665,7 +8670,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // the range from the muzzle along the bore (the shot's own flight distance), not the camera ray's
       laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.gunDistM ?? frame.aim?.distM ?? null,
       hullX: player?.state?.pos.x ?? null, hullZ: player?.state?.pos.z ?? null,
-      resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
+      resetKey: frame.auxiliaryKeyLabels?.rangeReset ?? 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving ?? 'Y',
     });
   }
 

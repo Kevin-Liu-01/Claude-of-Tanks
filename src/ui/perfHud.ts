@@ -3,9 +3,10 @@
 // module owns only presentation and bounded 4 Hz telemetry paint.
 
 import { ensureStyle } from './styleLayers.ts';
-import { FONT_COND } from './fonts.ts';
-import { uiIconSVG } from './uiIcons.ts';
+import { esc } from './components/escape.ts';
+import { openSurfaceIds } from './components/surfaceStack.ts';
 import { t as tr } from './i18n.ts';
+import { uiIconSVG } from './uiIcons.ts';
 import type { CompletedPostFrame } from '../engine/postFrameAccounting.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
@@ -132,57 +133,6 @@ interface PerformanceWithMemory extends Performance {
   memory?: BrowserPerformanceMemory;
 }
 
-const PERF_HUD_CSS = `
-#cot-perfhud{position:fixed;top:12px;right:12px;z-index:360;
-  width:min(386px,calc(100vw - 24px));max-height:calc(var(--cot-viewport-height,100dvh) - 24px);box-sizing:border-box;
-  overflow:auto;padding:0;font:11px/1.42 var(--font-mono);
-  color:#dce6ed;background:rgba(5,9,12,.96);
-  border:1px solid rgba(176,195,209,.3);border-top-color:rgba(240,176,74,.66);
-  box-shadow:0 18px 52px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.035);
-  text-shadow:0 1px 2px #000;pointer-events:none;}
-#cot-perfhud *{box-sizing:border-box}
-#cot-perfhud .ph-head{position:sticky;top:0;z-index:2;display:grid;
-  grid-template-columns:32px minmax(0,1fr) auto auto;align-items:center;min-height:48px;padding:7px 10px;
-  background:linear-gradient(180deg,#151e24,#091015);border-bottom:1px solid rgba(177,196,210,.22);}
-#cot-perfhud .ph-icon{width:28px;height:28px;display:grid;place-items:center;color:#f0b04a;
-  border:1px solid rgba(240,176,74,.3);background:rgba(240,160,48,.07)}
-#cot-perfhud .ph-icon svg{display:block;width:17px;height:17px}
-#cot-perfhud .ph-title{font-family:${FONT_COND};font-size:11px;font-weight:700;line-height:1;
-  letter-spacing:.18em;text-transform:uppercase;color:#f2f6f9}
-#cot-perfhud .ph-sub{margin-top:5px;font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.04em;text-transform:uppercase;color:#7e8e99}
-#cot-perfhud .ph-state{display:flex;align-items:center;gap:6px;font-family:${FONT_COND};font-size:11px;
-  font-weight:700;letter-spacing:.05em;color:#9ee0b0}
-#cot-perfhud .ph-state::before{content:"";width:6px;height:6px;background:#78d491;
-  box-shadow:0 0 8px rgba(120,212,145,.5)}
-#cot-perfhud .ph-mobile-toggle{display:none;width:44px;height:44px;margin:-5px -8px -5px 4px;
-  place-items:center;border:0;border-left:1px solid rgba(177,196,210,.2);background:transparent;
-  color:#ffd27a;cursor:pointer;pointer-events:auto}
-#cot-perfhud .ph-mobile-toggle::before{content:"";width:9px;height:9px;border-right:2px solid currentColor;
-  border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform var(--dur-fast) ease}
-#cot-perfhud.mobile-expanded .ph-mobile-toggle::before{transform:translateY(2px) rotate(225deg)}
-#cot-perfhud .ph-mobile-toggle:focus-visible{outline:2px solid #ffd27a;outline-offset:-3px}
-#cot-perfhud.has-error .ph-state{color:#ff9b91}#cot-perfhud.has-error .ph-state::before{background:#ef6157}
-#cot-perfhud [data-grid]{display:grid;grid-template-columns:1fr 1fr;gap:1px;padding:1px;
-  background:rgba(177,196,210,.1)}
-#cot-perfhud .ph-section{min-width:0;padding:9px 10px;background:rgba(8,13,17,.98)}
-#cot-perfhud .ph-section.wide{grid-column:1/-1}
-#cot-perfhud .ph-label{margin-bottom:5px;font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.05em;color:#8ca09e;text-transform:uppercase}
-#cot-perfhud .ph-value{white-space:pre-wrap;color:#d7e0e4}
-#cot-perfhud .ph-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
-  padding:8px;background:#080d11;pointer-events:auto}
-#cot-perfhud .ph-action{min-height:44px;padding:7px;border:1px solid rgba(240,176,74,.34);border-radius:2px;
-  background:linear-gradient(180deg,rgba(240,160,48,.12),rgba(240,160,48,.045));color:#ffd796;
-  font:700 11px/1 ${FONT_COND};letter-spacing:.04em;cursor:pointer;
-  transition:transform var(--dur-instant) ease-out}
-#cot-perfhud .ph-action:active{transform:scale(.97)}
-#cot-perfhud .ph-action:focus-visible{outline:2px solid #ffd27a;outline-offset:2px}
-#cot-perfhud .ph-action-status{grid-column:1/-1;min-height:14px;color:#8eaaa5;text-align:right}
-@media (hover:hover) and (pointer:fine){#cot-perfhud .ph-action:hover{border-color:rgba(240,176,74,.7);background:rgba(240,160,48,.17)}}
-@media (prefers-reduced-motion:reduce){#cot-perfhud .ph-action{transition:none}}
-`;
-
 /** Small, shareable report for issue comments; the full trace stays exportable. */
 export function buildQaSummary({
   traceStats,
@@ -207,140 +157,262 @@ function fmtCount(value: number | string | null | undefined): string {
 
 function fmtBytes(value: number | string | null | undefined): string {
   const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return '—';
+  if (!Number.isFinite(n) || n < 0) return MISSING;
   if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${n.toFixed(0)} B`;
 }
 
-function frameStatsText(stats: FrameStats): string {
-  const stall = stats.worstStall ? `${stats.worstStall.toFixed(0)} ms` : '—';
-  const simulation = stats.simPct >= 0 ? `${stats.simPct.toFixed(0)}%` : '—';
-  return `${stats.fps.toFixed(0)} fps   1% low ${stats.onePctLow.toFixed(0)}\n` +
-    `${stats.p50.toFixed(1)} / ${stats.p95.toFixed(1)} / ${stats.p99.toFixed(1)} ms\n` +
-    `stall ${stall}   sim ${simulation}`;
+/** The mark of a readout the telemetry does not carry. */
+const MISSING = '–';
+const shown = (value: number | string | boolean | null | undefined): string => (value == null || value === '' ? MISSING : String(value));
+const fixed = (value: number | string | null | undefined, digits = 0): string => {
+  const n = Number(value);
+  return value == null || value === '' || !Number.isFinite(n) ? MISSING : n.toFixed(digits);
+};
+const share = (part: number | string | null | undefined, whole: number | string | null | undefined): string => `${shown(part)} / ${shown(whole)}`;
+
+/** What a fact row reads: a frame's stats, the telemetry's parts and the game's phase. */
+interface FactSource {
+  s: FrameStats;
+  q: QualityTelemetry;
+  sim: SimulationTelemetry;
+  world: WorldTelemetry;
+  shadow: ShadowTelemetry;
+  network: NetworkTelemetry;
+  phase: string;
 }
 
-function renderStatsText(stats: FrameStats): string {
-  const draws = stats.renderFrameSerial === null ? 'No completed post frame' :
-    `Last frame #${stats.renderFrameSerial} (all passes)\n${stats.calls} calls   ${fmtCount(stats.tris)} tri`;
-  return `${draws}\n` +
-    `${stats.programs} programs\n${stats.geometries} geo   ${stats.textures} tex`;
+interface FactRow {
+  /** Its label's catalog key is perfHud.fact.<id>. */
+  readonly id: string;
+  /** Its value, or null where it says nothing (a local battle's network figures): the row stands down. */
+  readonly value: (f: FactSource) => string | null;
+  /** A value that runs long (the GPU's name, the cascades): the group's whole width. */
+  readonly long?: boolean;
 }
 
-function qualityText(quality: QualityTelemetry): string {
-  return `${quality.buffer || '—'} buffer  dpr ${quality.dpr ?? '—'}  scale ${quality.dynScale ?? '—'}\n` +
-    `${quality.preset || '—'} / ${quality.tier || '—'}   trim ${quality.perfTrim ?? '—'}   ${quality.gpu || 'GPU unavailable'}`;
+interface FactGroup {
+  /** Its heading's catalog key is perfHud.section.<id>; its grid area is its id. */
+  readonly id: string;
+  /** Its rows in two columns, across the panel. */
+  readonly wide?: boolean;
+  readonly rows: readonly FactRow[];
 }
 
-function simulationText(simulation: SimulationTelemetry, gamePhase: string): string {
-  return `${simulation.phase || gamePhase || '—'}   ${simulation.map || 'no map'}\n` +
-    `${Number(simulation.timeS || 0).toFixed(1)} s   tanks ${simulation.alive ?? '—'}/${simulation.tanks ?? '—'}   shells ${simulation.shells ?? '—'}`;
-}
+const ms = (value: number): string => tr('perfHud.v.ms', { n: value.toFixed(1) });
+const online = (network: NetworkTelemetry): boolean => network.connected != null;
 
-function worldText(world: WorldTelemetry): string {
-  return `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
-    `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
-    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake` +
-    (world.ambience ? `\nair ${world.ambience}` : '');
-}
-
-function cascadeText(cascades: readonly ShadowCascadeTelemetry[]): string {
-  if (!cascades.length) return 'cascade telemetry unavailable';
+function cascadesText(cascades: readonly ShadowCascadeTelemetry[] | undefined): string {
+  if (!cascades?.length) return tr('perfHud.v.na');
   return cascades.map((cascade, index) =>
-    `C${index} ${cascade.size ?? '—'}${cascade.allocated ? '✓' : '…'} r${Number(cascade.radius || 0).toFixed(2)}`,
-  ).join('   ');
+    `C${index} ${shown(cascade.size)}${cascade.allocated ? '' : '…'} r${fixed(cascade.radius, 0)}`).join('  ');
 }
 
-function shadowText(shadow: ShadowTelemetry): string {
-  const rescue = shadow.rescue ? ` · rescue ${shadow.rescue}` : '';
-  const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
-  return `${shadow.enabled ? 'ON' : 'OFF'}${rescue}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
-    cascadeText(cascades) +
-    `\n${shadow.casters ?? '—'} casters   ${shadow.receivers ?? '—'} receivers   shader errors ${shadow.shaderErrors ?? 0}`;
-}
+/** The readouts, grouped: frame, render, resolution, simulation, world, shadows, network, memory. */
+const FACT_GROUPS: readonly FactGroup[] = [
+  { id: 'frame', rows: [
+    { id: 'fps', value: ({ s }) => tr('perfHud.v.fps', { n: s.fps.toFixed(0) }) },
+    { id: 'low', value: ({ s }) => tr('perfHud.v.fps', { n: s.onePctLow.toFixed(0) }) },
+    { id: 'p50', value: ({ s }) => ms(s.p50) },
+    { id: 'p95', value: ({ s }) => ms(s.p95) },
+    { id: 'p99', value: ({ s }) => ms(s.p99) },
+    { id: 'stall', value: ({ s }) => (s.worstStall ? tr('perfHud.v.ms', { n: s.worstStall.toFixed(0) }) : tr('perfHud.v.none')) },
+    { id: 'sim', value: ({ s }) => (s.simPct >= 0 ? `${s.simPct.toFixed(0)}%` : MISSING) },
+  ] },
+  { id: 'render', rows: [
+    { id: 'calls', value: ({ s }) => (s.calls === null ? MISSING : String(s.calls)) },
+    { id: 'tris', value: ({ s }) => (s.tris === null ? MISSING : fmtCount(s.tris)) },
+    { id: 'programs', value: ({ s }) => String(s.programs) },
+  ] },
+  { id: 'memory', rows: [
+    { id: 'heap', value: ({ s }) => (s.heapMB >= 0 ? tr('perfHud.v.heap', { used: s.heapMB.toFixed(0), limit: s.heapLimitMB.toFixed(0) }) : tr('perfHud.v.na')) },
+    { id: 'geometries', value: ({ s }) => String(s.geometries) },
+    { id: 'textures', value: ({ s }) => String(s.textures) },
+  ] },
+  { id: 'quality', wide: true, rows: [
+    { id: 'buffer', value: ({ q }) => shown(q.buffer) },
+    { id: 'dpr', value: ({ q }) => shown(q.dpr) },
+    { id: 'scale', value: ({ q }) => shown(q.dynScale) },
+    { id: 'trim', value: ({ q }) => shown(q.perfTrim) },
+    { id: 'preset', value: ({ q }) => shown(q.preset) },
+    { id: 'tier', value: ({ q }) => shown(q.tier) },
+    { id: 'gpu', long: true, value: ({ q }) => q.gpu || tr('perfHud.v.na') },
+  ] },
+  { id: 'simulation', rows: [
+    { id: 'phase', value: ({ sim, phase }) => shown(sim.phase || phase) },
+    { id: 'map', value: ({ sim }) => sim.map || tr('perfHud.v.none') },
+    { id: 'time', value: ({ sim }) => tr('perfHud.v.seconds', { n: Number(sim.timeS || 0).toFixed(1) }) },
+    { id: 'tanks', value: ({ sim }) => share(sim.alive, sim.tanks) },
+    { id: 'shells', value: ({ sim }) => shown(sim.shells) },
+  ] },
+  { id: 'world', rows: [
+    { id: 'obstacles', value: ({ world }) => shown(world.obstacles) },
+    { id: 'colliders', value: ({ world }) => shown(world.colliders) },
+    { id: 'conceal', value: ({ world }) => shown(world.concealers) },
+    { id: 'destruct', value: ({ world }) => shown(world.destructibles) },
+    { id: 'wrecks', value: ({ world }) => shown(world.wrecks) },
+    { id: 'loose', value: ({ world }) => share(world.looseActive, world.looseTotal) },
+    { id: 'air', long: true, value: ({ world }) => world.ambience || null },
+  ] },
+  { id: 'network', rows: [
+    { id: 'link', value: ({ network }) => (!online(network) ? tr('perfHud.v.local')
+      : network.connected ? tr('perfHud.v.connected') : tr('perfHud.v.disconnected')) },
+    { id: 'rtt', value: ({ network }) => (online(network) ? tr('perfHud.v.ms', { n: fixed(network.rttMs) }) : null) },
+    { id: 'jitter', value: ({ network }) => (online(network) ? tr('perfHud.v.ms', { n: fixed(network.jitterMs) }) : null) },
+    { id: 'loss', value: ({ network }) => (online(network) ? `${fixed(network.lossPct ?? 0, 1)}%` : null) },
+    { id: 'buffered', value: ({ network }) => (online(network) ? fmtBytes(network.bufferedBytes) : null) },
+  ] },
+  { id: 'shadows', wide: true, rows: [
+    { id: 'shadows', value: ({ shadow }) => (!shadow.enabled ? tr('perfHud.v.off')
+      : shadow.rescue ? tr('perfHud.v.onRescue', { mode: shadow.rescue }) : tr('perfHud.v.on')) },
+    { id: 'far', value: ({ shadow }) => (shadow.maxFar == null ? MISSING : tr('perfHud.v.metres', { n: shadow.maxFar })) },
+    { id: 'throttle', value: ({ shadow }) => shown(shadow.throttle) },
+    { id: 'shaderErrors', value: ({ shadow }) => String(shadow.shaderErrors ?? 0) },
+    { id: 'casters', value: ({ shadow }) => shown(shadow.casters) },
+    { id: 'receivers', value: ({ shadow }) => shown(shadow.receivers) },
+    { id: 'cascades', long: true, value: ({ shadow }) => cascadesText(shadow.cascades) },
+  ] },
+];
 
-function networkText(network: NetworkTelemetry): string {
-  if (network.connected == null) return 'local / offline\nno transport overhead';
-  return `${network.connected ? 'connected' : 'disconnected'}   RTT ${Number(network.rttMs || 0).toFixed(0)} ms\n` +
-    `jitter ${Number(network.jitterMs || 0).toFixed(0)} ms   loss ${Number(network.lossPct || 0).toFixed(1)}%\n` +
-    `buffer ${fmtBytes(network.bufferedBytes)}`;
-}
-
-function memoryText(stats: FrameStats, memory: MemoryTelemetry, quality: QualityTelemetry): string {
-  const heap = stats.heapMB >= 0
-    ? `${stats.heapMB.toFixed(0)} / ${stats.heapLimitMB.toFixed(0)} MB JS`
-    : 'JS heap unavailable';
-  return `${heap}\n${memory.drawBuffer || quality.buffer || '—'} draw buffer`;
-}
+/* (owner 2026-10-28: "make it look better and have a exit button"): the kit's HUD plate, its type and tokens, the
+   readouts in fact rows by group, a close of the kit's own (48 px) and the QA actions as kit buttons. Pointer-transparent
+   but for its controls: a battle press goes through it. (Its rows set close: with the QA actions it stood 846 px tall at
+   1920x1080, over the minimap's title.) */
+const PERF_HUD_CSS = `
+/* (a column: the head, the facts and the actions, the facts scrolling where the panel is capped; capped above the minimap
+   where the map stands under it, --ph-max: at 1920x1080 and below it covered the map's title and first row) */
+#cot-perfhud{position:fixed;top:12px;right:12px;z-index:var(--z-menu);display:flex;flex-direction:column;width:min(420px,calc(100vw - 24px));
+  max-height:min(var(--ph-max,100dvh),calc(var(--cot-viewport-height,100dvh) - 24px));box-sizing:border-box;overflow:hidden;
+  color:var(--ink-1);background:var(--hud-plate-strong);pointer-events:none}
+#cot-perfhud *{box-sizing:border-box}
+#cot-perfhud .ph-head{flex:none;display:flex;align-items:center;gap:var(--s2);min-height:52px;
+  padding:2px 2px 2px var(--s4);background:var(--hud-plate-strong);border-bottom:1px solid var(--line-2)}
+#cot-perfhud .ph-title{flex:1 1 auto;min-width:0;margin:0;font:700 var(--fs-14)/1.2 var(--font-ui);letter-spacing:var(--track-label-s);
+  text-transform:uppercase;color:var(--ink-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cot-perfhud .ph-state{flex:none}
+#cot-perfhud .ph-head .cot-c-btn{flex:none;pointer-events:auto}
+#cot-perfhud .ph-mobile-toggle{display:none}
+#cot-perfhud .ph-mobile-toggle svg{transition:transform var(--dur-fast) var(--cot-ease-out)}
+#cot-perfhud.mobile-expanded .ph-mobile-toggle svg{transform:rotate(180deg)}
+#cot-perfhud .ph-grid{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:var(--s5);padding:var(--s1) var(--s4) var(--s3);
+  grid-template-areas:"frame render" "frame memory" "quality quality" "simulation world" "network world" "shadows shadows"}
+/* (the facts take the pointer only while they scroll: elsewhere a press goes through the panel to the page under it,
+   the Garage's Deploy under a ?debug=1 panel at 1280x720, a battle's free cursor) */
+#cot-perfhud.ph-scrolls .ph-grid{pointer-events:auto}
+#cot-perfhud .ph-group{min-width:0;padding:var(--s2) 0 var(--s1);border-top:1px solid var(--line-1)}
+#cot-perfhud .ph-group[data-group=frame],#cot-perfhud .ph-group[data-group=render]{border-top:0}
+${FACT_GROUPS.map(({ id }) => `#cot-perfhud .ph-group[data-group=${id}]{grid-area:${id}}`).join('\n')}
+#cot-perfhud .ph-cap{margin:0 0 2px;font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-ui);letter-spacing:var(--track-label-s);
+  text-transform:uppercase;color:var(--ink-3)}
+#cot-perfhud .ph-facts{margin:0;display:grid;grid-template-columns:minmax(0,1fr);column-gap:var(--s5)}
+#cot-perfhud .ph-group.wide .ph-facts{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+#cot-perfhud .ph-fact{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s2);min-width:0}
+#cot-perfhud .ph-fact[hidden]{display:none}
+#cot-perfhud .ph-fact.long{grid-column:1/-1}
+#cot-perfhud .ph-fact dt{flex:none;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-ui);color:var(--ink-2);white-space:nowrap}
+#cot-perfhud .ph-fact dd{min-width:0;margin:0;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-data);
+  color:var(--ink-1);text-align:right;overflow-wrap:anywhere}
+#cot-perfhud.has-error .ph-group dd{color:var(--ink-3)}
+/* (the actions share the row by their words and wrap whole: a third of the panel each cut "Copy summary" at 1920) */
+#cot-perfhud .ph-actions{flex:none;display:flex;flex-wrap:wrap;gap:var(--s2);padding:var(--s2) var(--s4) var(--s3);
+  border-top:1px solid var(--line-2);pointer-events:auto}
+#cot-perfhud .ph-actions .cot-c-btn{flex:1 1 auto;padding-inline:var(--s3)}
+#cot-perfhud .ph-action-status{flex:1 0 100%;min-height:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1.3 var(--font-ui);
+  color:var(--text-ok);text-align:right}
+#cot-perfhud .ph-action-status.error{color:var(--text-danger)}
+body[data-cot-width='phone'] #cot-perfhud .ph-grid{grid-template-areas:none}
+body[data-cot-width='phone'] #cot-perfhud .ph-group{grid-area:auto}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) #cot-perfhud:not(.mobile-expanded) .ph-actions{display:none}
+@media (prefers-reduced-motion:reduce){#cot-perfhud .ph-mobile-toggle svg{transition:none}}
+`;
 
 export function createPerfHud({
   renderer,
   game,
   trace = null,
   readRenderFrame,
+  onClose,
 }: {
   renderer: RendererDiagnostics;
   game: DebugGameState;
   trace?: PerfTracePort | null;
   readRenderFrame?: () => CompletedPostFrame | null;
+  /** The close (its button, Escape): main.ts turns the saved setting off with it. Without one the panel hides itself. */
+  onClose?: () => void;
 }) {
   ensureStyle('cot-perfhud-style', PERF_HUD_CSS, 'surfaces');
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
+  el.className = 'cot-c-plate cot-c-plate--hud';
   el.setAttribute('aria-label', tr('perfHud.ariaLabel'));
-  el.innerHTML = `
-    <header class="ph-head"><span class="ph-icon" aria-hidden="true">${uiIconSVG('graphics', 18)}</span>
-      <div><div class="ph-title">${tr('perfHud.title')}</div><div class="ph-sub">${tr('perfHud.sub')}</div></div>
-      <span class="ph-state" data-status>${tr('perfHud.state.live')}</span>
-      <button class="ph-mobile-toggle" type="button" aria-label="${tr('perfHud.expand')}" aria-expanded="false" aria-controls="cot-perfhud-grid"></button></header>
-    <div id="cot-perfhud-grid" data-grid></div>`;
-  const gridNode = el.querySelector<HTMLElement>('[data-grid]');
-  const statusNode = el.querySelector<HTMLElement>('[data-status]');
+  // (the phone's fold and the close are the kit's ghost icon buttons, 48 px, as the Garage's closes)
+  el.innerHTML = `<header class="ph-head"><h2 class="ph-title">${esc(tr('perfHud.title'))}</h2>`
+    + `<span class="cot-c-tag cot-c-tag--ok ph-state">${esc(tr('perfHud.state.live'))}</span>`
+    + `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost ph-mobile-toggle" data-ui-sound="toggle" aria-expanded="false" `
+    + `aria-controls="cot-perfhud-grid" aria-label="${esc(tr('perfHud.expand'))}">${uiIconSVG('chevronDown', 18)}</button>`
+    + `<button type="button" class="cot-c-btn cot-c-btn--icon cot-c-btn--ghost ph-close" data-ui-sound="back" `
+    + `aria-label="${esc(tr('perfHud.close'))}">${uiIconSVG('close', 18)}</button></header>`;
+  const statusNode = el.querySelector<HTMLElement>('.ph-state');
   const mobileToggle = el.querySelector<HTMLButtonElement>('.ph-mobile-toggle');
-  if (!gridNode || !statusNode || !mobileToggle) throw new Error('performance HUD template is incomplete');
-  const grid: HTMLElement = gridNode;
+  const closeButton = el.querySelector<HTMLButtonElement>('.ph-close');
+  if (!statusNode || !mobileToggle || !closeButton) throw new Error('performance HUD template is incomplete');
   const statusEl: HTMLElement = statusNode;
   mobileToggle.addEventListener('click', () => {
     const expanded = el.classList.toggle('mobile-expanded');
     mobileToggle.setAttribute('aria-expanded', String(expanded));
     mobileToggle.setAttribute('aria-label', expanded ? tr('perfHud.collapse') : tr('perfHud.expand'));
   });
-  const sectionEls = new Map<string, HTMLElement>();
-  const sectionValue = (id: string): HTMLElement => {
-    const value = sectionEls.get(id);
-    if (!value) throw new Error(`performance HUD section ${id} is unavailable`);
-    return value;
-  };
-  const makeSection = (id: string, title: string, wide = false): HTMLElement => {
+  const grid = document.createElement('div');
+  grid.id = 'cot-perfhud-grid';
+  grid.className = 'ph-grid';
+  grid.setAttribute('data-grid', '');
+  el.appendChild(grid);
+  // each row's value cell, written only when its text changes (the panel repaints at 4 Hz)
+  const factCells: { row: FactRow; fact: HTMLElement; value: HTMLElement }[] = [];
+  for (const group of FACT_GROUPS) {
     const section = document.createElement('section');
-    section.className = `ph-section${wide ? ' wide' : ''}`;
-    section.innerHTML = `<div class="ph-label">${title}</div><div class="ph-value" data-value></div>`;
+    section.className = `ph-group${group.wide ? ' wide' : ''}`;
+    section.setAttribute('data-group', group.id);
+    const heading = document.createElement('h3');
+    heading.className = 'ph-cap';
+    heading.textContent = tr(`perfHud.section.${group.id}`);
+    const list = document.createElement('dl');
+    list.className = 'ph-facts';
+    for (const row of group.rows) {
+      const fact = document.createElement('div');
+      fact.className = `ph-fact${row.long ? ' long' : ''}`;
+      fact.setAttribute('data-fact', row.id);
+      const label = document.createElement('dt');
+      label.textContent = tr(`perfHud.fact.${row.id}`);
+      const value = document.createElement('dd');
+      value.className = 'num';
+      value.textContent = MISSING;
+      fact.appendChild(label);
+      fact.appendChild(value);
+      list.appendChild(fact);
+      factCells.push({ row, fact, value });
+    }
+    section.appendChild(heading);
+    section.appendChild(list);
     grid.appendChild(section);
-    const value = section.querySelector<HTMLElement>('[data-value]');
-    if (!value) throw new Error(`performance HUD section ${id} is incomplete`);
-    sectionEls.set(id, value);
-    return value;
-  };
-  makeSection('frame', tr('perfHud.section.frame'));
-  makeSection('render', tr('perfHud.section.render'));
-  makeSection('quality', tr('perfHud.section.quality'), true);
-  makeSection('simulation', tr('perfHud.section.simulation'));
-  makeSection('world', tr('perfHud.section.world'));
-  makeSection('shadows', tr('perfHud.section.shadows'), true);
-  makeSection('network', tr('perfHud.section.network'));
-  makeSection('memory', tr('perfHud.section.memory'));
+  }
   if (trace?.enabled) {
     const actions = document.createElement('div');
     actions.className = 'ph-actions';
     const action = (label: string, title: string): HTMLButtonElement => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label;
-      button.title = title;
-      button.className = 'ph-action';
-      actions.appendChild(button);
-      return button;
+      const control = document.createElement('button');
+      control.type = 'button';
+      control.className = 'cot-c-btn cot-c-btn--36';
+      control.title = title;
+      control.setAttribute('data-ui-sound', 'press');
+      const text = document.createElement('span');
+      text.className = 'cot-c-btn__label';
+      text.textContent = label;
+      control.appendChild(text);
+      actions.appendChild(control);
+      return control;
     };
     const markButton = action(tr('perfHud.markIssue'), tr('perfHud.markIssueTitle'));
     const copyButton = action(tr('perfHud.copySummary'), tr('perfHud.copySummaryTitle'));
@@ -349,11 +421,11 @@ export function createPerfHud({
     actionStatus.setAttribute('role', 'status');
     actionStatus.className = 'ph-action-status';
     actions.appendChild(actionStatus);
-    grid.appendChild(actions);
+    el.appendChild(actions);
 
     const setStatus = (message: string, error = false): void => {
       actionStatus.textContent = message;
-      actionStatus.style.color = error ? '#ff9d7c' : '#8fe0bd';
+      actionStatus.classList.toggle('error', error);
       setTimeout(() => { if (actionStatus.textContent === message) actionStatus.textContent = ''; }, 3500);
     };
     markButton.addEventListener('click', () => {
@@ -385,6 +457,49 @@ export function createPerfHud({
     });
   }
   document.body.appendChild(el);
+  // The panel stops above the minimap where the map stands under it on the right (--ph-max): measured in the map's
+  // resize callbacks, where layout is already done, and on a window resize; the map is looked for at the 4 Hz paint
+  // until it exists (it is the battle's)
+  const MAP_GAP = 8;
+  let watchedMap: Element | null = null;
+  const fitAboveMap = (): void => {
+    const map = watchedMap?.isConnected ? watchedMap.getBoundingClientRect() : null;
+    const top = el.getBoundingClientRect().top;
+    const room = map && map.height > 0 && map.left > window.innerWidth / 2 && map.top > top ? Math.max(200, Math.floor(map.top - MAP_GAP - top)) : 0;
+    const value = room ? `${room}px` : '';
+    if (el.style.getPropertyValue('--ph-max') === value) return;
+    if (value) el.style.setProperty('--ph-max', value); else el.style.removeProperty('--ph-max');
+  };
+  const mapResize = typeof ResizeObserver === 'function' ? new ResizeObserver(fitAboveMap) : null;
+  const findMap = (): void => {
+    if (!mapResize || (watchedMap?.isConnected ?? false)) return;
+    const map = typeof document.querySelector === 'function' ? document.querySelector('.cot-minimap') : null;
+    if (!map || map === watchedMap) return;
+    if (watchedMap) mapResize.unobserve(watchedMap);
+    watchedMap = map;
+    mapResize.observe(map);
+  };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', () => { if (watchedMap) fitAboveMap(); });
+  // whether the facts scroll, read in their own resize callbacks (the body's and each group's)
+  const fitScroll = (): void => { el.classList.toggle('ph-scrolls', grid.scrollHeight > grid.clientHeight + 1); };
+  const bodyResize = typeof ResizeObserver === 'function' ? new ResizeObserver(fitScroll) : null;
+  if (bodyResize) for (const part of [grid, ...grid.children]) bodyResize.observe(part);
+  const close = (): void => {
+    if (onClose) onClose();
+    else { visible = false; applyVisibility(); }
+  };
+  closeButton.addEventListener('click', close);
+  // Escape closes the panel when no surface stands open over the page (the stack's own Escape, surfaceStack.ts, closes
+  // its top one first): a battle's Escape takes the panel down before it opens Settings, and never opens the panel
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || event.isComposing) return;
+      if (!visible || captureHidden || openSurfaceIds().length) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      close();
+    }, true);
+  }
 
   // Frame-time ring (240 frames ≈ 4 s @60), long-task observer (5 s window).
   const ring = new Float32Array(240);
@@ -411,7 +526,7 @@ export function createPerfHud({
   let captureHidden = false;
   const applyVisibility = () => {
     const painted = visible && !captureHidden;
-    el.style.display = painted ? 'block' : 'none';
+    el.style.display = painted ? '' : 'none';
     document.body.classList.toggle('cot-debug-hud', painted);
   };
   applyVisibility();
@@ -457,22 +572,20 @@ export function createPerfHud({
       }
       latestTelemetry = t;
     }
-    const q = t?.quality || {};
-    const sim = t?.simulation || {};
-    const world = t?.world || {};
-    const shadow = t?.shadows || {};
-    const network = t?.network || {};
-    const memory = t?.memory || {};
-    statusEl.textContent = t?.error ? tr('perfHud.state.error') : tr('perfHud.state.live');
-    el.classList.toggle('has-error', !!t?.error);
-    sectionValue('frame').textContent = frameStatsText(s);
-    sectionValue('render').textContent = renderStatsText(s);
-    sectionValue('quality').textContent = qualityText(q);
-    sectionValue('simulation').textContent = simulationText(sim, game.phase);
-    sectionValue('world').textContent = worldText(world);
-    sectionValue('shadows').textContent = shadowText(shadow);
-    sectionValue('network').textContent = networkText(network);
-    sectionValue('memory').textContent = memoryText(s, memory, q);
+    const failed = !!t?.error;
+    statusEl.textContent = failed ? tr('perfHud.state.error') : tr('perfHud.state.live');
+    statusEl.classList.toggle('cot-c-tag--ok', !failed);
+    statusEl.classList.toggle('cot-c-tag--danger', failed);
+    el.classList.toggle('has-error', failed);
+    const source: FactSource = {
+      s, q: t?.quality || {}, sim: t?.simulation || {}, world: t?.world || {}, shadow: t?.shadows || {},
+      network: t?.network || {}, phase: game.phase,
+    };
+    for (const cell of factCells) {
+      const text = cell.row.value(source);
+      if (cell.fact.hidden !== (text === null)) cell.fact.hidden = text === null;
+      if (text !== null && cell.value.textContent !== text) cell.value.textContent = text;
+    }
   }
 
   return {
@@ -498,7 +611,7 @@ export function createPerfHud({
       lastDom = now;
       const s = stats();
       if (!s) return;
-      if (visible && !captureHidden) renderDashboard(s);
+      if (visible && !captureHidden) { findMap(); renderDashboard(s); }
     },
     toggle() { visible = !visible; applyVisibility(); },
     setVisible(next: boolean) { visible = next; applyVisibility(); },

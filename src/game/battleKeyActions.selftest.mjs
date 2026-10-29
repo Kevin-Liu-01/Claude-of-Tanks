@@ -73,7 +73,8 @@ assert.match(sprite, /<symbol id="i-rocket"><path d="M12 2\.5/, 'the shared icon
 assert.equal(DEFAULT_BINDINGS.atgm, 'KeyQ', 'Q is the ATGM on every launcher');
 assert.match(input, /\{ id: 'atgm', label: 'systems\.atgm', group: 'settings\.group\.vehicle' \}/, 'the ATGM is a rebindable vehicle action');
 for (const [tile, action, fallback] of [['missileKey', 'atgm', 'Q'], ['reloadKey', 'reloadMagazine', 'C'], ['specialKey', 'specialAction', 'E']]) {
-  assert.match(hud, new RegExp(`setText\\(${tile},frame\\.auxiliaryKeyLabels\\.${action} \\|\\| '${fallback}'\\);`), `${tile} names the ${action} binding`);
+  // (?? keeps an empty pad cap empty: || set the keyboard's key over it, tools/battle-key-caps.browser.mjs)
+  assert.match(hud, new RegExp(`setText\\(${tile},frame\\.auxiliaryKeyLabels\\.${action} \\?\\? '${fallback}'\\);`), `${tile} names the ${action} binding`);
 }
 assert.doesNotMatch(read('./battleHudFrameRuntime.ts'), /keys\.missile =/, 'the ATGM no longer takes its shell slot\'s digit');
 console.log('battleKeyActions.selftest: T auto-aim and H armour overlay bindings, desktop auto-aim runtime, rocket jump keycap and touch button, and the row tiles\' table keys (Q ATGM, C reload, E suspension)');

@@ -260,8 +260,9 @@ export function typeTokenCss(options: TypeHeadOptions = {}): string {
   if (families.has('mono')) rules.push(".num{font-family:var(--font-mono)!important;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:'ss04'}");
   // Emphasis inside reading text keeps the body face instead of switching to the display voice.
   if (families.has('body')) rules.push(':where(p,li,dd,blockquote) :where(b,strong){font-family:var(--font-body)}');
-  // Running text wraps without orphans; zh-CN: no tracking on Chinese (the CJK tracking defect) and reading text
-  // opens up (the type rules). Case transforms stay: they never touch Chinese. Latin-only lockups inside a Chinese page
+  // Running text wraps without orphans; zh-CN: no tracking on Chinese (the CJK tracking defect; the game's indents that
+  // balanced it are reset in responsiveSurfaces.css, since no public page indents) and reading text opens up (the
+  // type rules). Case transforms stay: they never touch Chinese. Latin-only lockups inside a Chinese page
   // carry lang="en" and set their own tracking on that element.
   rules.push(':where(p,li,dd,figcaption,blockquote){text-wrap:pretty}', ':lang(zh-CN){letter-spacing:0!important}',
     ':lang(zh-CN) :where(p,li,dd){line-height:1.7}');

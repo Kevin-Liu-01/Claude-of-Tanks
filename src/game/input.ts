@@ -184,6 +184,8 @@ export interface InputLayer {
   readonly actionDefs: typeof ACTION_DEFS;
   labelFor(code: string | null): string;
   padLabelFor(index: number | null): string;
+  /** Counts every change of a key or pad binding (the battle's key caps read it, battleKeyCaps.ts). */
+  bindingsRevision(): number;
   getState(): InputState;
   isDown(actionId: ActionId): boolean;
   onAction(actionId: ActionId, callback: ActionHandler): () => void;
@@ -274,7 +276,9 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   zoomOut: 'WheelDown',
   minimapZoom: 'KeyM',
   shotLog: 'KeyL', // SHOT-INFO: toggle the shot-info / received-damage log
-  perfHud: 'F8', // FEEL r12: fps / frame-time / stall overlay
+  // FEEL r12: fps / frame-time / stall overlay. F9, a key nothing else takes: on F8 it toggled with the Studio's own key
+  // (studio.ts, studioAccess.ts) and its Garage button (owner 2026-10-28: "battle diagnostics randomly appears")
+  perfHud: 'F9',
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
   rangeReset: 'KeyR', // proving ground: every hull back on its mark
@@ -577,6 +581,11 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
         else if (value === null) maps[slot][definition.id] = null;
       }
     }
+    // A map saved under the diagnostics' old default (F8, the Studio's key) takes the new one; a key already taken
+    // in it leaves the diagnostics unbound (dedupeKeyboardMaps)
+    for (let slot = 0; slot < 2; slot++) {
+      if (maps[slot].perfHud === 'F8') maps[slot].perfHud = slot === 0 ? DEFAULT_BINDINGS.perfHud ?? null : null;
+    }
     // Newly introduced defaults must not steal an existing player's custom key.
     for (const action of ['smoke','lights','roofGun','atgm'] as const) {
       const primary=storedMaps[0];
@@ -640,7 +649,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
   let codeToAction = new Map<string, ActionId>(); // code -> actionId (both keyboard slots)
   let padButtonToAction = new Map<number, ActionId>(); // button index -> actionId
+  // (counted on every change of a key or pad binding: the battle's key caps are made again when it moves, battleKeyCaps.ts)
+  let bindingsRevision = 0;
   function rebuildLookup() {
+    bindingsRevision++;
     codeToAction = new Map<string, ActionId>();
     for (let s = 0; s < 2; s++) {
       for (const def of ACTION_DEFS) {
@@ -1128,6 +1140,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
     /** @param {?number} index @returns {string} display label for a pad button */
     padLabelFor: labelForPadButton,
+
+    bindingsRevision: () => bindingsRevision,
 
     /** Snapshot of every action's held state (cached object, no allocation).
      *  `fire` is press edge OR legitimate hold: a click buffers one shot; a

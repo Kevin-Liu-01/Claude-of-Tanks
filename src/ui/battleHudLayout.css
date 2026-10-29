@@ -233,6 +233,9 @@ body[data-cot-battle-layout]:not(.cot-touch-layout) .cot-vehicle-controls>button
 /* every HUD key cap is the kit's (components .cot-c-kbd): its ring, no border, the data face, at the battle's 11 px
    (gauntlet r3: three cap styles on one screen) */
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:0;border-radius:var(--control-radius);background:none;box-shadow:var(--ring-3);font:500 var(--battle-fs-fig-11)/1 var(--font-data);letter-spacing:0;color:var(--ink-2);}
+/* (a cap with no key stands down: on a pad layout smoke, lights and the roof gun have no button of their own, and their
+   tiles show none, game/battleKeyCaps.ts) */
+.cot-hud :is(.cot-vehicle-controls .sk,.cot-shell .key,.cot-con .key,.cot-c-kbd):empty{display:none}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
 /* (owner 2026-10-25: "in both desktop and mobile, the 'abilities' need to be represented better"): a mouse layout's
    abilities are the rack's own tiles over its slots, the slot's plate, its key cap in the slot number's corner, a count
