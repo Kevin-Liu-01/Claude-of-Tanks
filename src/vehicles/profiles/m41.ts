@@ -121,6 +121,7 @@ const TURRET: readonly CastStation[] = Object.freeze([
   { z: 0.00, bot: 0.0, top: 0.74, hw: 1.12, roof: 0.76, foot: 0.93, waist: 0.15, nUp: 3, nLo: 4 },
   { z: -0.60, bot: 0.0, top: 0.74, hw: 1.04, roof: 0.78, foot: 0.62, waist: 0.40, nUp: 3, nLo: 3 },
   { z: -1.10, bot: 0.0, top: 0.74, hw: 0.88, roof: 0.80, foot: 0.40, waist: 0.50, nUp: 3, nLo: 2.5 },
+  { z: -1.25, bot: 0.12, top: 0.74, hw: 0.84, roof: 0.81, foot: 0.70, waist: 0.45, nUp: 3, nLo: 3 },
   { z: -1.40, bot: 0.21, top: 0.74, hw: 0.80, roof: 0.82, foot: 0.85, waist: 0.40, nUp: 3, nLo: 4 },
   { z: -1.80, bot: 0.31, top: 0.73, hw: 0.70, roof: 0.84, foot: 0.90, waist: 0.40, nUp: 3, nLo: 4 },
   { z: -2.25, bot: 0.30, top: 0.70, hw: 0.66, roof: 0.84, foot: 0.90, waist: 0.40, nUp: 3, nLo: 4 },
