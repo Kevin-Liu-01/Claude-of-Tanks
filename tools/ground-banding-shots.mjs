@@ -34,6 +34,7 @@ import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from '.
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
 import { censusShotView } from './visual-census.mjs';
+import { grassSettled } from './frame-budget-probe.mjs';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 
 const TOOL = 'ground-banding-shots';
@@ -223,7 +224,11 @@ async function shootMap(entry, options, frames, reference) {
       ? await page.evaluate(chasePoseScript(stage.player.yaw))
       : await page.evaluate(externalPoseScript(fieldPose(pose.pt)));
     await sleep(1800);
-    const shots = {};
+    // (2026-10-29: a pasture's blades still streaming in at the shot left its bare sward on one side of a pair) the tall
+    // grass rings settle at the pose before any frame (tools/frame-budget-probe.mjs grassSettled)
+    const settled = await page.waitForFunction(grassSettled, { timeout: 45000, polling: 250 }).then(() => true, () => false);
+    await sleep(400);
+    const shots = { grassSettled: settled };
     for (const variant of options.variants) {
       const n = await page.evaluate(pageSetLandStrength, variant === 'noland' ? 0 : null);
       await sleep(700);
