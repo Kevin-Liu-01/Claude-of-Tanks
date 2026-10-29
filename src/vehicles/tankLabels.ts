@@ -174,6 +174,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
   // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
   christian2: { displayName: 'Christian II', searchAliases: ['Christian 2', 'Christian II MBT', 'Danish concept MBT'] },
+  // 265: the Danish Army line
+  leo1a3dk: { displayName: 'Leopard 1A3 DK', searchAliases: ['Leopard 1A3', 'Danish Leopard 1', 'Leopard 1 DK', 'Kampvogn Leopard 1'] },
+  leo1a5dk: { displayName: 'Leopard 1A5 DK', searchAliases: ['Leopard 1A5DK', 'Danish Leopard 1A5', 'Leopard 1 A5 DK'] },
+  leo1a5dk1: { displayName: 'Leopard 1A5 DK-1', searchAliases: ['Leopard 1A5DK1', 'Leopard 1A5 DK1', 'Bøllebank', 'Bollebank', 'UN Leopard', 'Danish Leopard Bosnia'] },
   type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
