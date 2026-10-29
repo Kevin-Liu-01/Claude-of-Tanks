@@ -51,6 +51,7 @@ export function createArmorAimOverlayAccess(
     preload,
     isReady: () => current !== null,
     prime: (target) => current?.prime(target) ?? null,
+    bakePanels: (target, pause) => current?.bakePanels(target, pause) ?? Promise.resolve(),
     warm: () => current?.warm() ?? (() => {}),
     update: (options) => { current?.update(options); },
     hide: () => { current?.hide(); },

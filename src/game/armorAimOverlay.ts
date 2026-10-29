@@ -22,7 +22,8 @@ import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
 import type { ArmorCollisionCell, ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
-import { zonePlates } from '../sim/armorZones.ts';
+import { zonePlates, type ZonePlate } from '../sim/armorZones.ts';
+import { bakePaintPanelSteps, panelBakeStats, type PanelBakeStats } from './armorPaintPanels.ts';
 import { ARMOR_PAINT_ZONE_EDGES, ARMOR_PAINT_ZONE_TEXELS } from '../vehicles/materials.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
@@ -107,6 +108,8 @@ interface ZoneSamples {
 /** A spec's paint: its zones' table (planes and outlines; colours left blank), the turret envelope, the samples. */
 interface PaintTemplate {
   readonly table: Float32Array;
+  /** The zones in table order (the hull's, then the turret's): the panel bake scores with them (armorPaintPanels.ts). */
+  readonly zones: readonly ZonePlate[];
   readonly hullZones: number;
   readonly turretZones: number;
   /** Mantlet footprints after the zones (a forward surface over one is its plate's). */
@@ -120,6 +123,7 @@ interface PaintTemplate {
   readonly turretHalf: THREE.Vector3;
   /** Gun-frame z where the bare barrel starts (just ahead of the turret's cells and its mantlet); NaN: no turret. */
   readonly barrelFrom: number;
+  readonly barrelRadius: number;
   readonly samples: ZoneSamples[];
 }
 
@@ -158,6 +162,8 @@ interface ArmorAimOverlayUpdateOptions {
 
 export interface ArmorAimOverlayRuntime {
   prime(target: ArmorOverlayTarget | null | undefined): ArmorOverlayEntry | null;
+  /** (263) Prime, then bake the vehicle's panels to the end, pausing between slices (the streamer's staging budget). */
+  bakePanels(target: ArmorOverlayTarget | null | undefined, pause: () => Promise<void>): Promise<void>;
   warm(): () => void;
   update(options: ArmorAimOverlayUpdateOptions): void;
   hide(): void;
@@ -246,6 +252,10 @@ function zoneSamples(
 
 /** One template per armour model (one per spec): every vehicle of a spec shares the zones, only its colours are its own. */
 const templates = new WeakMap<object, PaintTemplate | null>();
+/** (263) The vehicles whose panels are baked or baking (armorPaintPanels.ts), and what the bake found. */
+const panelBakes = new WeakMap<THREE.Object3D, PanelBakeStats>();
+/** A frame's share of an unfinished bake (one the streamer did not drive to its end). */
+const PANEL_BAKE_FRAME_MS = 1.5;
 
 function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
   const hull = zonePlates(armor.hullPlates);
@@ -304,8 +314,8 @@ function buildTemplate(armor: ArmorOverlayModel): PaintTemplate | null {
     const outline = ((zone.plate as { verts?: readonly (readonly number[])[] }).verts) || [];
     return zoneSamples(onTurret ? turretSites : hullSites, zone.plate, outline, onTurret);
   });
-  return { table, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre, turretCentre,
-    hullHalf, turretHalf, barrelFrom, samples };
+  return { table, zones, hullZones: hull.length, turretZones: turret.length, footprints, turretMin, turretMax, hullCentre,
+    turretCentre, hullHalf, turretHalf, barrelFrom, barrelRadius: BARREL_RADIUS_M, samples };
 }
 
 /** The world → combat-frame matrix of a rig group: its world matrix without its own scale (combat frames carry none). */
@@ -327,6 +337,8 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   const entries = new Map<string, ArmorOverlayEntry>();
   const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
+  /** Bakes under way, oldest first. */
+  const bakes: Array<{ root: THREE.Object3D; work: Generator<void, PanelBakeStats, void> }> = [];
 
   function prime(target: ArmorOverlayTarget | null | undefined): ArmorOverlayEntry | null {
     if (!target?.id || !target.visual?.root) return null;
@@ -356,7 +368,37 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       lastShellSpec: null,
     };
     entries.set(target.id, entry);
+    // (263) its panels, once a vehicle, in slices (bakePanels or the frames' share): copies of a spec share the geometry's
+    const root = target.visual.root;
+    if (!panelBakes.has(root)) {
+      const stats = panelBakeStats();
+      panelBakes.set(root, stats);
+      root.userData.armorPaintPanels = stats;
+      // the authority's pose for the spaced parts' inward rays (the streamer has synced the visual to the same state)
+      const authority = target.state ? { pose: tankPoseFromState(target.state) } : null;
+      bakes.push({ root, work: bakePaintPanelSteps(root, template, paint, armor, stats, authority) });
+    }
     return entry;
+  }
+
+  async function bakePanels(target: ArmorOverlayTarget | null | undefined, pause: () => Promise<void>): Promise<void> {
+    if (!prime(target) || !target?.visual) return;
+    const root = target.visual.root;
+    for (;;) {
+      const at = bakes.findIndex((bake) => bake.root === root);
+      if (at < 0) return;
+      if (bakes[at].work.next().done) { bakes.splice(at, 1); return; }
+      await pause();
+    }
+  }
+
+  /** The frame's share of the bakes still under way. */
+  function advanceBakes(): void {
+    if (!bakes.length) return;
+    const until = performance.now() + PANEL_BAKE_FRAME_MS;
+    while (bakes.length && performance.now() < until) {
+      if (bakes[0].work.next().done) bakes.shift();
+    }
   }
 
   // the paint rides the burn hook's programs (compiled with every battle vehicle's warm): nothing to expose here
@@ -549,6 +591,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     muzzle,
     nowMs,
   }: ArmorAimOverlayUpdateOptions): void {
+    advanceBakes();
     if (!enabled || !scoped) {
       hide();
       return;
@@ -571,11 +614,12 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     entries.clear();
     visibleEntries.length = 0;
     sampleCursor = 0;
+    bakes.length = 0;
   }
 
   function dispose(): void {
     clear();
   }
 
-  return { prime, warm, update, hide, clear, dispose };
+  return { prime, bakePanels, warm, update, hide, clear, dispose };
 }

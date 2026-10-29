@@ -935,6 +935,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
+    // 263: the armour paint by panel (a cluster's one zone; gear bare; the pose's parts live) and a battle build's draws
+    'src/game/armorPaintPanels.selftest.mjs',
     // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
     'src/game/armorSkin.selftest.mjs',
     // 262 phase 2 (off by default): zone plates — the paint's zone at a shell's entry, the slices' seams sealed
