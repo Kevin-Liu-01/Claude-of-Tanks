@@ -94,12 +94,12 @@ function armorM1A3(): ArmorEnvelope {
 
   return {
     boundingRadiusM: 7.65,
-    // 2026-10-28 (m1e3-264): the M1E3's own turret at the M1 ring station, its trunnion 0.36 m behind the family's and
-    // its 4.25 m gun reaching the same muzzle station (profiles/abrams.ts M1E3_TURRET). Geometry datums only; the combat
+    // 2026-10-28 (m1e3-264): the M1E3's own turret at the M1 ring station, its trunnion 0.56 m behind the family's and
+    // its 4.45 m gun reaching the same muzzle station (profiles/abrams.ts M1E3_TURRET). Geometry datums only; the combat
     // barrel follows the drawn gun.
     turretPivot: [0, 1.632, 0.35],
-    gunPivot: [0, 0.30, 1.20],
-    gunBarrel: { lengthM: 4.25, radiusM: 0.115 },
+    gunPivot: [0, 0.30, 1.00],
+    gunBarrel: { lengthM: 4.45, radiusM: 0.115 },
     hullPlates,
     turretPlates,
     modules: [

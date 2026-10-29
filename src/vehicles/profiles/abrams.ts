@@ -8050,18 +8050,19 @@ const M1E3_HULL: AbramsHullConfig = {
 // chamfer). Every face is a plane: M1E3_TURRET lists them.
 const M1E3_TURRET = {
   ring: [0, 1.57 + M1A1_ADDITIONAL_TURRET_LIFT_M, 0.35] as Vec3Tuple,
-  // the trunnion 0.36 m behind the family's, its 4.25 m gun reaching the same muzzle station
-  gun: [0, 0.30, 1.20] as Vec3Tuple,
-  gunLen: 4.25,
+  // the trunnion 0.56 m behind the family's (the demonstrator's turret face sits well back on the hull, after the blind
+  // critics; any further back and the depressed barrel meets the bow), its 4.45 m gun reaching the same muzzle station
+  gun: [0, 0.30, 1.00] as Vec3Tuple,
+  gunLen: 4.45,
   gunR: 0.095,
   floorY: M1A1_TURRET_FLOOR_Y,
   // the gun bay's walls; the cheeks' inner chin corner; plan and face rakes (run per metre)
   bayX: 0.42,
-  chin: [0.42, 0.08, 2.00] as Vec3Tuple,
+  chin: [0.42, 0.08, 1.60] as Vec3Tuple,
   planRake: 0.73,
   faceRake: 0.45,
   // the cheek underside rises from chinRiseZ to the chin
-  chinRiseZ: 0.95,
+  chinRiseZ: 0.55,
   // flank: the band leans in bandLean per metre to bandTopY, the chamfer reaches the roof at roofEdgeX
   bandX: 1.60,
   bandLean: 0.10,
@@ -8069,11 +8070,11 @@ const M1E3_TURRET = {
   roofY: 0.72,
   roofEdgeX: 1.24,
   // the cheek roofs fall cheekRoofFall per metre ahead of cheekRoofZ
-  cheekRoofZ: 0.35,
+  cheekRoofZ: -0.05,
   cheekRoofFall: 0.15,
   // the body's rear face (under the bustle's front), the rotor's recess face and its chamfer to the roof
   rearZ: -1.25,
-  recessZ: 0.86,
+  recessZ: 0.66,
   recessTopY: 0.50,
 } as const;
 const M1E3_BUSTLE_FRONT_Z = -1.20;
@@ -8389,7 +8390,7 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
   // The cheeks, mirrored, and the body between them behind the gun's rotor:
   // its recess face, chamfered up to the roof.
   for (const side of [-1, 1]) P.add('turret', m1e3PlateSolid(m1e3CheekPlanes(), side));
-  const recessFall = (t.roofY - t.recessTopY) / (t.recessZ - 0.55);
+  const recessFall = (t.roofY - t.recessTopY) / 0.31;
   P.add('turret', m1e3PlateSolid([
     [1, 0, 0, t.bayX], [-1, 0, 0, t.bayX], [0, 1, 0, t.roofY], [0, -1, 0, -t.floorY],
     [0, 0, 1, t.recessZ], [0, 0, -1, -t.rearZ],
@@ -8450,9 +8451,9 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
   // Lensed sensor boxes on each flank's chamfer behind the cheek shoulder,
   // windows forward (the demonstrator's photographs).
   for (const side of [-1, 1]) {
-    const x = m1e3WallX(0.46, 0.80) + 0.05;
-    P.addEquipment('turret', box(0.14, 0.15, 0.30), side * x, 0.46, 0.78);
-    P.addModuleVisual('optics', 'turretGlass', box(0.09, 0.09, 0.012), side * x, 0.47, 0.936);
+    const x = m1e3WallX(0.46, 0.40) + 0.05;
+    P.addEquipment('turret', box(0.14, 0.15, 0.30), side * x, 0.46, 0.38);
+    P.addModuleVisual('optics', 'turretGlass', box(0.09, 0.09, 0.012), side * x, 0.47, 0.536);
   }
 }
 
@@ -8468,8 +8469,8 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
 const M1E3_NOSE = [
   // [z, half width, top, bottom, corner chamfer]
   [-0.02, 0.385, 0.29, -0.29, 0.08],
-  [0.40, 0.355, 0.27, -0.25, 0.08],
-  [0.83, 0.275, 0.15, -0.16, 0.06],
+  [0.30, 0.355, 0.27, -0.25, 0.08],
+  [0.65, 0.275, 0.15, -0.16, 0.06],
 ] as const;
 
 function m1e3NoseAt(z: number): readonly [number, number, number] {
@@ -8485,17 +8486,17 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
     [-w + c, bottom], [w - c, bottom], [w, bottom + c], [w, top - c],
     [w - c, top], [-w + c, top], [-w, top - c], [-w, bottom + c],
   ] as [number, number][] }))));
-  const collarProfile = [[0.132, 0.78], [0.205, 0.78], [0.205, 1.04], [0.19, 1.10], [0.17, 1.14], [0.132, 1.14],
-    [0.132, 0.78]];
+  const collarProfile = [[0.132, 0.60], [0.205, 0.60], [0.205, 0.86], [0.19, 0.92], [0.17, 0.96], [0.132, 0.96],
+    [0.132, 0.60]];
   P.addGunExtra(new THREE.LatheGeometry(collarProfile.map(([r, z]) => new THREE.Vector2(r, z)), segments)
     .rotateX(Math.PI / 2));
-  P.addGunExtraDark(cylZ(0.032, 0.08, 10), -0.235, -0.10, 0.81);
+  P.addGunExtraDark(cylZ(0.032, 0.08, 10), -0.235, -0.10, 0.63);
   // The sensor head on the nose: an armoured box, its window forward.
-  const [, headTop] = m1e3NoseAt(0.50);
-  P.addGunExtra(box(0.22, 0.14, 0.30), 0.13, headTop + 0.03, 0.50);
-  P.addGunExtraDark(box(0.16, 0.07, 0.012), 0.13, headTop + 0.05, 0.654);
+  const [, headTop] = m1e3NoseAt(0.38);
+  P.addGunExtra(box(0.22, 0.14, 0.30), 0.13, headTop + 0.03, 0.38);
+  P.addGunExtraDark(box(0.16, 0.07, 0.012), 0.13, headTop + 0.05, 0.534);
   for (const side of [-1, 1]) {
-    for (const z of [0.12, 0.32, 0.52, 0.72]) {
+    for (const z of [0.10, 0.25, 0.40, 0.55]) {
       const [w] = m1e3NoseAt(z);
       P.addGunExtraDark(cylX(0.015, 0.010, 6), side * (w + 0.003), 0, z);
     }
@@ -8505,16 +8506,16 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
     P.addGunExtra(box(0.06, 0.025, 0.106), side * 0.24, top + 0.062, 0.18);
   }
   buildGun(P, { len: L, r: t.gunR, sleeve: false, collar: false, baseR: 0.13 });
-  for (const [z0, z1, r] of [[1.17, 1.50, 0.125], [1.53, 1.84, 0.121]] as const) {
+  for (const [z0, z1, r] of [[0.99, 1.30, 0.125], [1.74, 2.10, 0.121]] as const) {
     P.add('gun', cylZ(r, z1 - z0, seg), 0, 0, (z0 + z1) / 2);
     P.add('gun', torus(r * 1.01, 0.011, 20), 0, 0, z0, Math.PI / 2, 0, 0);
   }
-  P.add('gun', cylZ(0.172, 0.08, seg, 0.122), 0, 0, 1.90);
-  P.add('gun', cylZ(0.172, 0.28, seg), 0, 0, 2.08);
-  P.add('gun', cylZ(0.112, 0.08, seg, 0.172), 0, 0, 2.26);
+  P.add('gun', cylZ(0.172, 0.08, seg, 0.122), 0, 0, 1.34);
+  P.add('gun', cylZ(0.172, 0.28, seg), 0, 0, 1.52);
+  P.add('gun', cylZ(0.112, 0.08, seg, 0.172), 0, 0, 1.70);
   // the forward thermal sleeve runs to the reference sensor, banded where its sections meet
-  P.add('gun', cylZ(0.112, L - 0.40 - 2.30, seg), 0, 0, (2.30 + L - 0.40) / 2);
-  for (const z of [2.30, 2.92, 3.42]) P.add('gun', torus(0.113, 0.009, 18), 0, 0, z, Math.PI / 2, 0, 0);
+  P.add('gun', cylZ(0.112, L - 0.40 - 2.14, seg), 0, 0, (2.14 + L - 0.40) / 2);
+  for (const z of [2.14, 2.80, 3.40]) P.add('gun', torus(0.113, 0.009, 18), 0, 0, z, Math.PI / 2, 0, 0);
   P.add('gun', cylZ(0.112, 0.20, seg), 0, 0, L - 0.10);
   P.add('gun', box(0.05, 0.05, 0.10), 0, 0.125, L - 0.36);
   P.add('gun', box(0.085, 0.055, 0.075), 0, 0.15, L - 0.29);
@@ -8527,7 +8528,7 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
 // launcher pod on its arm. Every lens backs the optics module.
 function addM1E3RemoteWeaponStation(P: AbramsBuilderPort): void {
   // On a 0.30 m pedestal at the roof's front-left, as the demonstrator carries it (the photographs).
-  const x = 0.55, z = 0.12, base = m1e3RoofY(z) - 0.008, top = base + 0.30;
+  const x = 0.55, z = -0.28, base = m1e3RoofY(z) - 0.008, top = base + 0.30;
   P.addEquipment('turret', cylY(0.15, 0.19, 0.06, 18), x, base + 0.03, z);
   P.addEquipment('turret', cylY(0.11, 0.13, 0.30, 16), x, base + 0.15, z);
   for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
@@ -8569,20 +8570,19 @@ function addM1E3RemoteWeaponStation(P: AbramsBuilderPort): void {
 // and cable runs, four whips, the datalink mast, the met post, lifting eyes.
 function addM1E3TurretSensors(P: AbramsBuilderPort): void {
   const t = M1E3_TURRET, br = M1E3_BUSTLE_ROOF_Y, bz = (M1E3_BUSTLE_FRONT_Z + M1E3_BUSTLE_KNEE_Z) / 2;
-  const sightY = m1e3RoofY(0.98) + 0.10;
-  P.addEquipment('turret', box(0.40, 0.26, 0.48), -0.82, sightY, 0.98);
-  P.add('turretDark', box(0.32, 0.17, 0.02), -0.82, sightY + 0.02, 1.226);
-  P.addModuleVisual('optics', 'turretGlass', box(0.26, 0.11, 0.012), -0.82, sightY + 0.02, 1.238);
-  P.add('turretDark', box(0.02, 0.20, 0.26), t.bayX - 0.002, 0.24, 1.58);
-  P.addModuleVisual('optics', 'turretGlass', box(0.012, 0.15, 0.20), t.bayX - 0.010, 0.24, 1.58);
+  const sightY = m1e3RoofY(0.58) + 0.10;
+  P.addEquipment('turret', box(0.40, 0.26, 0.48), -0.82, sightY, 0.58);
+  P.add('turretDark', box(0.32, 0.17, 0.02), -0.82, sightY + 0.02, 0.826);
+  P.addModuleVisual('optics', 'turretGlass', box(0.26, 0.11, 0.012), -0.82, sightY + 0.02, 0.838);
+  P.add('turretDark', box(0.02, 0.20, 0.26), t.bayX - 0.002, 0.24, 1.18);
+  P.addModuleVisual('optics', 'turretGlass', box(0.012, 0.15, 0.20), t.bayX - 0.010, 0.24, 1.18);
   const citvY = m1e3RoofY(-0.55);
   P.addEquipment('turret', cylY(0.20, 0.22, 0.10, 16), -0.50, citvY + 0.04, -0.55);
   P.addModuleVisual('optics', 'turret', box(0.38, 0.28, 0.36), -0.50, citvY + 0.22, -0.55);
   P.addModuleVisual('optics', 'turretGlass', box(0.26, 0.12, 0.018), -0.50, citvY + 0.24, -0.361);
   for (const side of [-1, 1]) {
-    tejasSmokeCluster(P, side * 1.12, m1e3RoofY(0.86) - 0.02, 0.86, side);
     smokeBank(P, side * 1.18, br + 0.055, bz - 0.02, -side, 0.70);
-    for (const [z, y] of [[0.40, m1e3RoofY(0.40)], [-1.85, m1e3RoofY(-1.85)]] as const) {
+    for (const [z, y] of [[0.00, m1e3RoofY(0.00)], [-1.85, m1e3RoofY(-1.85)]] as const) {
       const yaw = side * (z < 0 ? 0.62 : 0.42), x = side * 1.02;
       P.addEquipment('turret', box(0.25, 0.26, 0.30), x, y + 0.12, z, 0, yaw, 0);
       P.addModuleVisual('optics', 'turretGlass', box(0.16, 0.15, 0.018),
@@ -8590,14 +8590,14 @@ function addM1E3TurretSensors(P: AbramsBuilderPort): void {
       P.addEquipment('turret', cylZ(0.075, 0.33, 10), x + side * 0.10, y + 0.29, z + (z < 0 ? -0.10 : 0.10),
         side * 0.12, yaw, 0);
     }
-    for (const [x, z, y] of [[1.10, 0.85, m1e3RoofY(0.85)], [1.18, M1E3_BUSTLE_KNEE_Z + 0.06, br]] as const) {
+    for (const [x, z, y] of [[1.10, 0.45, m1e3RoofY(0.45)], [1.18, M1E3_BUSTLE_KNEE_Z + 0.06, br]] as const) {
       P.addEquipment('turret', cylY(0.045, 0.075, 0.08, 12), side * x, y + 0.035, z);
       P.addModuleVisual('optics', 'turretGlass', cylY(0.040, 0.044, 0.035, 12), side * x, y + 0.092, z);
     }
     // Corner cameras where the cheeks meet the body, and recessed vision
     // windows along the flank (a dark recess, its glass and a hood).
-    P.addEquipment('turret', box(0.10, 0.10, 0.12), side * (m1e3WallX(0.45, 0.25) + 0.03), 0.45, 0.25);
-    P.addModuleVisual('optics', 'turretGlass', box(0.012, 0.06, 0.07), side * (m1e3WallX(0.45, 0.25) + 0.082), 0.45, 0.25);
+    P.addEquipment('turret', box(0.10, 0.10, 0.12), side * (m1e3WallX(0.45, -0.15) + 0.03), 0.45, -0.15);
+    P.addModuleVisual('optics', 'turretGlass', box(0.012, 0.06, 0.07), side * (m1e3WallX(0.45, -0.15) + 0.082), 0.45, -0.15);
     for (const z of [-0.40, -1.10]) {
       const y = 0.46, x = m1e3WallX(y, z), lean = side * m1e3ChamferLean();
       P.add('turretDark', box(0.024, 0.09, 0.22), side * (x + 0.002), y, z, 0, 0, lean);
@@ -8612,13 +8612,13 @@ function addM1E3TurretSensors(P: AbramsBuilderPort): void {
       P.turretG.add(whip);
       P.addEquipment('turret', cylY(0.055, 0.07, 0.10, 10), side * 1.18, y + 0.025, z);
     }
-    for (const [x, z] of [[1.05, 0.10], [0.60, -1.85]]) {
+    for (const [x, z] of [[1.05, -0.30], [0.60, -1.85]]) {
       const y = m1e3RoofY(z);
       P.addEquipment('turret', box(0.10, 0.025, 0.09), side * x, y + 0.0085, z);
       P.addEquipment('turretDetail', torus(0.032, 0.010, 10), side * x, y + 0.0345, z, Math.PI / 2);
     }
   }
-  P.add('turretDark', sweptTube([[0.55, m1e3RoofY(-0.10) + 0.02, -0.10], [0.85, m1e3RoofY(-0.60) + 0.03, -0.60],
+  P.add('turretDark', sweptTube([[0.55, m1e3RoofY(-0.50) + 0.02, -0.50], [0.85, m1e3RoofY(-0.75) + 0.03, -0.75],
     [1.05, m1e3RoofY(-0.95) + 0.05, -0.95]], 0.022, P.q ? 8 : 6), 0, 0, 0);
   P.add('turretDark', sweptTube([[-0.62, m1e3RoofY(-0.72) + 0.02, -0.72], [-0.92, m1e3RoofY(-0.88) + 0.02, -0.88],
     [-1.05, m1e3RoofY(-0.95) + 0.05, -0.95]], 0.020, P.q ? 8 : 6), 0, 0, 0);
@@ -8640,14 +8640,14 @@ function addM1E3TurretSensors(P: AbramsBuilderPort): void {
 // and a tarp roll strapped across the bustle roof. The basket floor stays
 // this stowage's (decor keeps out).
 function addM1E3TurretCageAndStowage(P: AbramsBuilderPort): void {
-  const cx = 1.72, zFront = 0.20, zr = M1E3_BUSTLE_REAR_Z, zb = zr - 0.28, floor = 0.30;
+  const cx = 1.72, zFront = -0.20, zr = M1E3_BUSTLE_REAR_Z, zb = zr - 0.28, floor = 0.30;
   const len = zFront - zb, mid = (zFront + zb) / 2, br = M1E3_BUSTLE_ROOF_Y;
   for (const side of [-1, 1]) {
     for (const y of [0.22, 0.46, 0.70]) P.addExternalArmor('turret', box(0.035, 0.035, len), side * cx, y, mid);
     for (let k = 0; k <= 8; k++) {
       P.addExternalArmor('turret', box(0.035, 0.52, 0.035), side * cx, 0.46, zFront - 0.02 - k * (len - 0.04) / 8);
     }
-    for (const z of [0.05, -0.80, -1.55, -2.45]) for (const y of [0.36, 0.66]) {
+    for (const z of [-0.35, -0.95, -1.55, -2.45]) for (const y of [0.36, 0.66]) {
       const wall = m1e3WallX(Math.max(y, z <= M1E3_BUSTLE_FRONT_Z ? M1E3_BUSTLE_FLOOR_Y : y), z);
       P.addExternalArmor('turret', box(cx - wall + 0.02, 0.03, 0.03), side * (cx + wall) / 2, y, z);
     }

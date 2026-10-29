@@ -68,7 +68,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "m1a1_abrams_hc": {"turretPivot":[0,1.632,0.35],"gunPivot":[-0.05,0.3094,1.56],"lengthM":3.89},
   "m1a1_abrams_sa": {"turretPivot":[0,1.632,0.35],"gunPivot":[-0.05,0.3094,1.56],"lengthM":3.89},
   "m1a1ha": {"turretPivot":[0,1.632,0.35],"gunPivot":[-0.05,0.3094,1.56],"lengthM":3.89},
-  "m1a3": {"turretPivot":[0,1.632,0.35],"gunPivot":[0,0.2954,1.2],"lengthM":4.25},
+  "m1a3": {"turretPivot":[0,1.632,0.35],"gunPivot":[0,0.296,1],"lengthM":4.45},
   "m2a2_bradley": {"turretPivot":[0,1.895,-0.45],"gunPivot":[-0.075,0.375,0.6],"lengthM":2.23},
   "m46_patton": {"turretPivot":[0,1.56,-0.29],"gunPivot":[0,0.3709,1.5],"lengthM":3.039,"radiusM":0.116},
   "m47_patton": {"turretPivot":[0,1.676,-0.318],"gunPivot":[0,0.2405,1.618],"lengthM":3.063,"radiusM":0.121},

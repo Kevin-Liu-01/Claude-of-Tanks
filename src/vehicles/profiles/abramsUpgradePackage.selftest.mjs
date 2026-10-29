@@ -18,7 +18,7 @@ function verifyM1E3Mantlet(tank) {
   const recoil = tank.root.getObjectByName('rig_recoil');
   assert.ok(mount.parent === gun, 'whole shield pitches without sliding with recoil');
   const position = mount.geometry.attributes.position;
-  const brow = new THREE.Vector3(.215, .15, .83);
+  const brow = new THREE.Vector3(.215, .15, .65);
   assert.ok(Array.from({length:position.count}, (_,i) => new THREE.Vector3().fromBufferAttribute(position,i))
     .some(point => point.distanceTo(brow)<1e-5), 'broad front shield belongs to gunMount, not just a hidden collar');
   const ray = new THREE.Raycaster();
@@ -164,7 +164,7 @@ for (const quality of ['high', 'low']) {
   }
   // Lifting eyes are seated on the body roof and on the bustle roof.
   for (const side of [-1, 1]) {
-    for (const [x, z, y0] of [[1.05,.10,.80],[.60,-1.85,.95]]) {
+    for (const [x, z, y0] of [[1.05,-.30,.80],[.60,-1.85,.95]]) {
       const plateTop = verticalHit(m1, ['turretEquipment'], side*x, y0, z, -1);
       const stock = verticalHit(m1, ['turret'], side*x, y0, z, -1);
       assert.ok(plateTop>stock && plateTop-stock<.026, `lifting-eye base is seated at ${side*x},${z}`);

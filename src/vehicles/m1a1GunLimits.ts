@@ -36,14 +36,13 @@ const UKRAINIAN: GunPitchByYawCurve = Object.freeze([
   [180,1],
 ]);
 
-// M1E3 (m1a3, rebuilt 2026-10-28 in m1e3-264 on the M1 hull loft, its own turret and a 4.25 m gun from a trunnion
-// 0.36 m further back): the front fender caps at 18-41 (-7.5), the engine deck from 129 and, over the rear shoulder
-// chests, up to +2.8 at 152-161 (tools/gun-depression-sweep.mjs, 26 mm, --no-suit, fitted with --envelope).
+// M1E3 (m1a3, rebuilt 2026-10-28 in m1e3-264 on the M1 hull loft, its own turret and a 4.45 m gun from a trunnion
+// 0.56 m further back): the front fender caps at 13-41 (-8 at 24), the engine deck from 127 and, over the rear shoulder
+// chests, up to +1.2 at 155 (tools/gun-depression-sweep.mjs, 26 mm, --no-suit, fitted with --envelope).
 const M1E3: GunPitchByYawCurve = Object.freeze([
-  [0,-10], [15,-10], [18,-8.1], [19,-7.6], [21,-7.5], [33,-7.7], [41,-9.6], [43,-10], [128,-10], [129,-9.6],
-  [130,-8], [133,-3], [134,-1.9], [135,-1.5], [138,-1], [139,-0.3], [140,0], [148,0.2], [149,1.4], [150,2.1],
-  [151,2.5], [152,2.7], [157,2.8], [159,2.8], [161,2.7], [162,2.5], [163,2.2], [164,1.4], [165,0], [178,0],
-  [179,-0.2], [180,-0.5],
+  [0,-10], [10,-10], [13,-9.6], [17,-9.5], [19,-8.3], [24,-8], [33,-8.5], [36,-9], [41,-10], [126,-10], [127,-9.3],
+  [130,-5], [131,-3.7], [132,-2.6], [135,-0.5], [136,0], [139,0], [140,-0.2], [142,-1.4], [147,-1.5], [148,-1],
+  [149,0.4], [150,0.9], [155,1.2], [161,1], [163,0.8], [164,0.2], [165,-1], [167,-0.8], [180,-0.8],
 ]);
 
 export const M1A1_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> = Object.freeze({
