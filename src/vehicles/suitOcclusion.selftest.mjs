@@ -48,6 +48,9 @@ const shadeAt = (mesh, x, z) => {
   }
   assert.ok(shadeAt(deck, -0.75, 0) > 0.6, `the deck under the net's middle is shaded (${shadeAt(deck, -0.75, 0).toFixed(2)})`);
   assert.equal(shadeAt(deck, 1.2, 0), 0, 'the deck well past the net\'s edge is not');
+  // (r6; the critic r5's "bare sponson strip darkened with no net over it") the deck within the kernel's reach of the
+  // net, but with no cloth over it, is not shaded either
+  assert.equal(shadeAt(deck, 0.2, 0), 0, 'the bare deck 20 cm past the net\'s edge is not shaded');
   const edge = shadeAt(deck, 0.05, 0), inside = shadeAt(deck, -0.3, 0);
   assert.ok(edge > 0 && edge < inside, `the shade falls off softly across the net's edge (${edge.toFixed(2)} < ${inside.toFixed(2)})`);
   assert.ok([...twinGeometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0), 'a geometry drawn twice keeps zeros');
@@ -73,6 +76,25 @@ const shadeAt = (mesh, x, z) => {
   drain(bakeSuitOcclusionSteps(root, []));
   assert.ok(shadeAt(deck, -0.75, 0) > 0.6, 'the plate under a fitted cover is shaded');
   assert.equal(shadeAt(deck, 0.2, 0), 0, 'and 20 cm past its edge it is not');
+}
+
+// (r6) a net's shade is its garnish's: where its map draws the cloth (the bunches) the plate under it is shaded deeper
+// than under the open cord, and the open cord's plate still takes some (the gate is the cloth's, not the garnish's)
+{
+  const root = new THREE.Group();
+  const deck = new THREE.Mesh(plate(1.5, 30, 1), paint);
+  const S = 64, data = new Uint8Array(S * S * 4);
+  // the map's left half drawn (alpha 255), its right half open cord (a drawn cord every fourth texel row and column)
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) data[(y * S + x) * 4 + 3] = x < S / 2 || x % 4 === 0 || y % 4 === 0 ? 255 : 0;
+  const map = new THREE.Texture({ data, width: S, height: S });
+  const netPaint = new THREE.MeshStandardMaterial({ map, alphaTest: 0.5 });
+  // one tile over the whole deck: u runs along x
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(3, 3, 30, 30).rotateX(-Math.PI / 2).translate(0, 1.02, 0), netPaint);
+  net.name = 'receipt_ghillie_hull_net';
+  root.add(deck, net);
+  drain(bakeSuitOcclusionSteps(root, []));
+  const bunch = shadeAt(deck, -0.75, 0), open = shadeAt(deck, 0.75, 0);
+  assert.ok(bunch > open && open > 0, `under the garnish deeper than under the open cord, which is still shaded (${bunch.toFixed(2)} > ${open.toFixed(2)})`);
 }
 
 // a build without a suit is untouched; every vehicle material defaults the attribute to 0

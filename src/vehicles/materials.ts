@@ -2481,12 +2481,16 @@ const GEAR_CAVITY_INDIRECT = 0.16;
  * readability floors, so the shade under a net is not lifted back; a draw without it reads the material's default, 0.
  */
 export const VEHICLE_SUIT_OCCLUSION_ATTRIBUTE = 'suitOcc';
-// (264 round 3; the critic r4: "weak at hero distance", "near-black blotches where the shade lands on dark paint") a
-// deeper shade, held at SUIT_SHADE_ALBEDO_FLOOR of the paint's own albedo (never more light than it had unshaded): a dark
-// coat under a net reads dark, in its own colour, not black
+// (264 round 3; the critic r4: "weak at hero distance") a deeper shade. (r6; the critic r5: "mesh cells on the front
+// hull read as near-black tiles", Main: "no cell under about 25% of its unshaded albedo") never below SUIT_SHADE_KEEP of
+// the light the paint had unshaded, and on dark paint (the texel's linear albedo under SUIT_SHADE_DARK_*) up to
+// SUIT_SHADE_KEEP_DARK of it: a dark coat under a net reads dark, in its own colour, not black
 const SUIT_SHADE_DIRECT = 0.8;
 const SUIT_SHADE_INDIRECT = 0.86;
-const SUIT_SHADE_ALBEDO_FLOOR = 0.3;
+const SUIT_SHADE_KEEP = 0.3;
+const SUIT_SHADE_KEEP_DARK = 0.45;
+const SUIT_SHADE_DARK_FROM = 0.025;
+const SUIT_SHADE_DARK_TO = 0.12;
 type SuitShadeDefaults = { defaultAttributeValues?: Record<string, number[]> };
 /**
  * Give a material that compiles vehicleAmbientFloorHook its suit-shade default (0: unoccluded), so a draw without the
@@ -2837,14 +2841,14 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	{
 `
     // (264) the camouflage suit over the armour takes its share of the light, after every lift above, down to a floor of
-    // the paint's own albedo
+    // the light the paint had unshaded (a larger share on dark paint)
     + `		vec3 vehSuitLit = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.directSpecular *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectDiffuse *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectSpecular *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
-		vec3 vehSuitFloor = min( material.diffuseColor * ${SUIT_SHADE_ALBEDO_FLOOR.toFixed(3)}, vehSuitLit ) * step( 0.004, vCotSuitShade );
-		reflectedLight.indirectDiffuse += max( vehSuitFloor - reflectedLight.directDiffuse - reflectedLight.indirectDiffuse, vec3( 0.0 ) );
+		float vehSuitKeep = mix( ${SUIT_SHADE_KEEP_DARK.toFixed(3)}, ${SUIT_SHADE_KEEP.toFixed(3)}, smoothstep( ${SUIT_SHADE_DARK_FROM.toFixed(3)}, ${SUIT_SHADE_DARK_TO.toFixed(3)}, dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ) ) );
+		reflectedLight.indirectDiffuse += max( vehSuitLit * vehSuitKeep - reflectedLight.directDiffuse - reflectedLight.indirectDiffuse, vec3( 0.0 ) );
 	}`,
   );
 }

@@ -29,6 +29,15 @@ const SUIT_OCCLUSION_RADIUS_M = 0.28;
 const SUIT_COVER_RADIUS_M = 0.08;
 const SUIT_BEHIND_M = 0.06;
 const SUIT_BEHIND_SHARE = 0.45;
+// (r6; the critic r5: "the bare sponson strip under the turret is darkened about 35% with no net over it", "the bare
+// turret-front plate is darkened evenly across the whole plate"; Main: "shade only on cloth-covered faces") The kernel
+// above sets how deep the shade is; a vertex takes it only where cloth lies over the vertex itself: the cloth within
+// SUIT_GATE_RADIUS_M across its normal and SUIT_GATE_REACH_M along it, its share of that footprint ramping the shade in
+// between SUIT_GATE_FROM and SUIT_GATE_TO (so the shade ends softly inside the hem, never on the plate beyond it).
+const SUIT_GATE_RADIUS_M = 0.09;
+const SUIT_GATE_REACH_M = 0.2;
+const SUIT_GATE_FROM = 0.2;
+const SUIT_GATE_TO = 0.7;
 /** A suit mesh (ghillieSuit.ts addMerged / the garnish: `<id>_ghillie_<owner>_net|leaves`). */
 const SUIT_MESH = /_ghillie_(?:hull|turret|gun)_(?:net|leaves)$/;
 /** The share of a cloth triangle's area that is cloth (the net's cut texture covers about this much of it). */
@@ -61,18 +70,41 @@ function familyOf(object: THREE.Object3D, turretGroups: ReadonlySet<THREE.Object
   return 'hull';
 }
 
+const smoothstep = (a: number, b: number, x: number): number => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 function isPlainMesh(object: THREE.Object3D): object is THREE.Mesh {
   const mesh = object as THREE.Mesh & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; isSkinnedMesh?: boolean };
   return mesh.isMesh === true && !mesh.isInstancedMesh && !mesh.isBatchedMesh && !mesh.isSkinnedMesh;
 }
+
+/** A net's cut map as the bake reads it: straight-alpha texels (alphaCutTexture.ts), its uv transform and cut. */
+interface DrawnMap { readonly data: ArrayLike<number>; readonly w: number; readonly h: number; readonly flipY: boolean;
+  readonly uv: THREE.Matrix3; readonly cut: number }
+/** The map a suit mesh's material cuts its cloth with, where its texels can be read (none in Node: no DOM, no texture). */
+function drawnMapOf(mesh: THREE.Mesh): DrawnMap | null {
+  const material = mesh.material as THREE.MeshStandardMaterial;
+  const map = Array.isArray(material) ? null : material?.map;
+  const image = map?.image as { data?: ArrayLike<number>; width?: number; height?: number } | undefined;
+  if (!map || !image?.data || !image.width || !image.height || !(material.alphaTest > 0)) return null;
+  map.updateMatrix();
+  return { data: image.data, w: image.width, h: image.height, flipY: map.flipY, uv: map.matrix.clone(), cut: material.alphaTest * 255 };
+}
+/** Barycentric points a net triangle's drawn share is read at (its centroid, and a ring between it and each corner). */
+const DRAWN_POINTS: ReadonlyArray<readonly [number, number, number]> = [[1 / 3, 1 / 3, 1 / 3],
+  [0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6], [0.45, 0.45, 0.1], [0.1, 0.45, 0.45], [0.45, 0.1, 0.45]];
 
 /** The suit's cloth as area-weighted triangle centroids on a hash grid (x, y, z, weight; root frame), per family. */
 function suitSamples(suits: readonly THREE.Mesh[], toRoot: THREE.Matrix4, turretGroups: ReadonlySet<THREE.Object3D>): Record<Family, Samples> {
   const cell = SUIT_OCCLUSION_RADIUS_M;
   const out: Record<Family, Samples> = { hull: { grid: new Map(), box: new THREE.Box3() }, turret: { grid: new Map(), box: new THREE.Box3() } };
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), m = new THREE.Matrix4(), o = new THREE.Vector3();
-  const voxels: Record<Family, Map<number, [number, number, number, number]>> = { hull: new Map(), turret: new Map() };
-  const coverVoxels: Record<Family, Map<number, [number, number, number, number]>> = { hull: new Map(), turret: new Map() };
+  // each voxel: its cloth's centroid (x, y, z summed by weight), the cloth's weight, and the drawn share's (below)
+  const voxels: Record<Family, Map<number, [number, number, number, number, number]>> = { hull: new Map(), turret: new Map() };
+  const coverVoxels: Record<Family, Map<number, [number, number, number, number, number]>> = { hull: new Map(), turret: new Map() };
+  const ta = new THREE.Vector2(), tb = new THREE.Vector2(), tc = new THREE.Vector2(), tp = new THREE.Vector2();
   for (const mesh of suits) {
     const family = familyOf(mesh, turretGroups);
     const position = mesh.geometry.getAttribute('position');
@@ -82,6 +114,11 @@ function suitSamples(suits: readonly THREE.Mesh[], toRoot: THREE.Matrix4, turret
     // a fitted cover's own cloth (ghillieSuit.ts marks it): its tight kernel
     const tight = mesh.userData.fittedCover === true;
     const store = tight ? coverVoxels[family] : voxels[family];
+    // (r6; the critic r5: "front-hull cells read as dark tiles in a regular grid") a net's shade is its garnish's: the
+    // share of each triangle its map draws (the bunches and strips over the open cord), where the map can be read; the
+    // gate (whether cloth lies over a vertex at all) still takes the whole triangle
+    const drawn = /_net$/.test(mesh.name) && !tight ? drawnMapOf(mesh) : null;
+    const uvs = drawn ? mesh.geometry.getAttribute('uv') as THREE.BufferAttribute | undefined : null;
     m.multiplyMatrices(toRoot, mesh.matrixWorld);
     for (let t = 0; t + 2 < count; t += 3) {
       const i0 = index ? index.getX(t) : t, i1 = index ? index.getX(t + 1) : t + 1, i2 = index ? index.getX(t + 2) : t + 2;
@@ -92,23 +129,39 @@ function suitSamples(suits: readonly THREE.Mesh[], toRoot: THREE.Matrix4, turret
       const area = 0.5 * Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
       if (!(area > 0)) continue;
       const x = (a.x + b.x + c.x) / 3, y = (a.y + b.y + c.y) / 3, z = (a.z + b.z + c.z) / 3, w = area * cover;
+      let share = cover;
+      if (drawn && uvs) {
+        ta.fromBufferAttribute(uvs, i0).applyMatrix3(drawn.uv);
+        tb.fromBufferAttribute(uvs, i1).applyMatrix3(drawn.uv);
+        tc.fromBufferAttribute(uvs, i2).applyMatrix3(drawn.uv);
+        let hits = 0;
+        for (const [ka, kb, kc] of DRAWN_POINTS) {
+          tp.set(ta.x * ka + tb.x * kb + tc.x * kc, ta.y * ka + tb.y * kb + tc.y * kc);
+          const u = tp.x - Math.floor(tp.x), v = tp.y - Math.floor(tp.y);
+          const px = Math.min(drawn.w - 1, Math.floor(u * drawn.w)), py = Math.min(drawn.h - 1, Math.floor((drawn.flipY ? 1 - v : v) * drawn.h));
+          if (drawn.data[(py * drawn.w + px) * 4 + 3] >= drawn.cut) hits++;
+        }
+        share = hits / DRAWN_POINTS.length;
+      }
       // gathered into a voxel of SUIT_SAMPLE_VOXEL_M (its weighted centroid): far fewer samples under the same kernel
       const vk = cellKey(Math.floor(x / SUIT_SAMPLE_VOXEL_M), Math.floor(y / SUIT_SAMPLE_VOXEL_M), Math.floor(z / SUIT_SAMPLE_VOXEL_M));
       let v = store.get(vk);
-      if (!v) store.set(vk, v = [0, 0, 0, 0]);
-      v[0] += x * w; v[1] += y * w; v[2] += z * w; v[3] += w;
+      if (!v) store.set(vk, v = [0, 0, 0, 0, 0]);
+      v[0] += x * w; v[1] += y * w; v[2] += z * w; v[3] += w; v[4] += area * share;
     }
   }
-  // each sample: x, y, z, its weight over its kernel's footprint (the kernel integrates to pi R^2 / 3), its R^2
+  // each sample: x, y, z, its drawn weight over its kernel's footprint (the kernel integrates to pi R^2 / 3), its R^2,
+  // and its cloth's weight over the gate's footprint (a cover's own kernel when that is tighter)
   for (const family of ['hull', 'turret'] as const) {
     const { grid, box } = out[family];
     for (const [store, r] of [[voxels[family], SUIT_OCCLUSION_RADIUS_M], [coverVoxels[family], SUIT_COVER_RADIUS_M]] as const) {
-      for (const [sx, sy, sz, w] of store.values()) {
+      for (const [sx, sy, sz, w, d] of store.values()) {
         const x = sx / w, y = sy / w, z = sz / w;
         const key = cellKey(Math.floor(x / cell), Math.floor(y / cell), Math.floor(z / cell));
         let list = grid.get(key);
         if (!list) grid.set(key, list = []);
-        list.push(x, y, z, w / (Math.PI * r * r / 3), r * r);
+        const g = Math.min(r, SUIT_GATE_RADIUS_M);
+        list.push(x, y, z, d / (Math.PI * r * r / 3), r * r, w / (Math.PI * g * g / 3), g * g);
         box.expandByPoint(o.set(x, y, z));
       }
     }
@@ -184,24 +237,27 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
       const x0 = Math.floor((Math.min(p.x, ex) - R) / R), x1 = Math.floor((Math.max(p.x, ex) + R) / R);
       const y0 = Math.floor((Math.min(p.y, ey) - R) / R), y1 = Math.floor((Math.max(p.y, ey) + R) / R);
       const z0 = Math.floor((Math.min(p.z, ez) - R) / R), z1 = Math.floor((Math.max(p.z, ez) + R) / R);
-      let acc = 0;
+      let acc = 0, gate = 0;
       for (let ix = x0; ix <= x1; ix++) for (let iy = y0; iy <= y1; iy++) for (let iz = z0; iz <= z1; iz++) {
         const list = grid.get(cellKey(ix, iy, iz));
         if (!list) continue;
-        for (let k = 0; k < list.length; k += 5) {
+        for (let k = 0; k < list.length; k += 7) {
           const vx = list[k] - p.x, vy = list[k + 1] - p.y, vz = list[k + 2] - p.z;
           const along = vx * n.x + vy * n.y + vz * n.z;
           if (along <= -SUIT_BEHIND_M || along > H) continue;
           const r2 = list[k + 4];
           const across = vx * vx + vy * vy + vz * vz - Math.max(0, along) * Math.max(0, along);
           if (across >= r2) continue;
+          // the cloth over the vertex itself (a centimetre behind its plane at most: a net laid on the plate's edge)
+          const g2 = list[k + 6];
+          if (across < g2 && along > -0.01 && along <= SUIT_GATE_REACH_M) gate += list[k + 5] * (1 - across / g2) ** 2;
           const q = 1 - across / r2;
           // cloth close over the surface shades it more than cloth at the reach's end; cloth just behind its plane, a share
           acc += list[k + 3] * q * q * (along > 0.002 ? 1 - 0.4 * along / H : SUIT_BEHIND_SHARE * (1 + along / SUIT_BEHIND_M));
         }
       }
-      if (acc <= 0) continue;
-      const amount = Math.min(1, acc / full);
+      if (acc <= 0 || gate <= 0) continue;
+      const amount = Math.min(1, acc / full) * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, gate / full);
       const byte = Math.round(amount * 255);
       if (!byte) continue;
       out[i] = byte;
