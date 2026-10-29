@@ -3165,6 +3165,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
   // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
+  // Release 262: the rebuilt PT-91 Twardy carries its own two 12-tube banks on its turret flanks (profiles/pt91Twardy.ts)
+  // and the T-84U Oplot its 902B tubes on the front flanks (profiles/oplotBM.ts): a decor pair on their cheeks would
+  // double them (on the T-84U it stood through the cheek casting: the accessory-contact census).
+  if (spec.id === 'pt91a_twardy' || spec.id === 't84bm_oplot_m') return manifest.filter(row => row.kit !== 'smoke');
   // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle

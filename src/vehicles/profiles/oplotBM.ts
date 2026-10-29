@@ -1178,20 +1178,22 @@ function buildT84UCupolaGun(P: TankBuilderPort): THREE.Group {
   w.stage('yaw');
   w.add('turretDetail', box(0.08, pivotY - 0.22 - ROOF_Y - 0.12, 0.08), gx, (ROOF_Y + 0.13 + pivotY - 0.21) / 2, pivotZ);
   w.add('turretDetail', box(0.225, 0.03, 0.06), gx, pivotY - 0.22, pivotZ);
+  // each cheek stands 1 mm over the cross-bar's top face (it had sunk 1.5 cm into the bar, and coincident faces read as
+  // crossing: the accessory-contact census, 262)
   for (const sx of [-1, 1]) {
-    w.add('turretDetail', box(0.025, 0.26, 0.10), gx + sx * 0.10, pivotY - 0.09, pivotZ);
-    w.add('turretDark', cylX(0.02, 0.03, 10), gx + sx * 0.125, pivotY, pivotZ);
+    w.add('turretDetail', box(0.025, 0.244, 0.10), gx + sx * 0.10, pivotY - 0.082, pivotZ);
+    // the trunnion stub, stopping 2 mm short of the ammunition box's inner face
+    w.add('turretDark', cylX(0.02, 0.016, 10), gx + sx * 0.12, pivotY, pivotZ);
   }
   w.stage('pitch');
   // the receiver rides forward on its trunnion (0.23 m behind it, 0.27 ahead), so its rear clears the TKN-5 head at full
   // elevation
   w.add('turretDark', box(0.12, 0.13, 0.50), gx, pivotY, pivotZ + 0.02);
-  w.add('turretDark', box(0.11, 0.025, 0.32), gx, pivotY + 0.075, pivotZ);
+  w.add('turretDark', box(0.11, 0.025, 0.32), gx, pivotY + 0.0785, pivotZ);   // the top cover, 1 mm over the receiver
   const barrelL = muzzleZ - 0.07 - (pivotZ + 0.28);
   w.add('turretDark', cylZ(0.017, barrelL, P.q ? 14 : 10, 0.02), gx, pivotY, pivotZ + 0.28 + barrelL / 2);
   w.add('turretDark', cylZ(0.024, 0.10, P.q ? 14 : 10), gx, pivotY, muzzleZ - 0.05);
   w.add('turretAmmo', box(0.12, 0.20, 0.30), gx - 0.19, pivotY - 0.03, pivotZ + 0.02);
-  w.add('turretDark', box(0.06, 0.03, 0.08), gx - 0.11, pivotY + 0.075, pivotZ + 0.02);
   w.add('turretDetail', box(0.07, 0.08, 0.10), gx + 0.15, pivotY + 0.04, pivotZ + 0.10);
   w.add('turretGlass', box(0.05, 0.04, 0.012), gx + 0.15, pivotY + 0.04, pivotZ + 0.156);
   return w.finish();

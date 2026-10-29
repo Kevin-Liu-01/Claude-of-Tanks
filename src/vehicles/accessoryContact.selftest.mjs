@@ -56,6 +56,9 @@ const KNOWN_FLOATING = Object.freeze({});
 const KNOWN_CLIPPING = Object.freeze({
   // the bank no wall seat backs, which keeps the old fan so its sockets hold: the T-72B3M's left (+X) bank
   t72b3m_2022: 1,
+  // 262, the PT-91 rebuilt on the T-72B3 study: one hung load's L-arm runs 5 mm through its own wall cleat, where the
+  // ledge seat meets the study's left stowage case on its inward-sloping lower wall (decorations.ts turret-side carriage)
+  pt91a_twardy: 1,
 });
 
 function accessoryKind(object) {
