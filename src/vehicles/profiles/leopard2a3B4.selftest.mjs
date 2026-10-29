@@ -12,7 +12,11 @@
 //     bare -9 degrees the gun meets the hull;
 //  5. the OTCO's rim, shrouds and caps are equipment, not armour (Main 2026-10-28: "Two tier IV tanks with identical
 //     combat data should be identical targets"): its turret anatomy (the box, the collision slabs, the ring's race, the
-//     crew seats and every turret plate) is the 2A3's; negative control: the kit is built, standing out past the 2A3's walls.
+//     crew seats and every turret plate) is the 2A3's; negative control: the kit is built, standing out past the 2A3's walls;
+//  6. the turret front (the owner, 2026-10-28: "the real leopards of these have cutouts in the front of turret for a window
+//     thing"): a frontal round through the EMES 15's notch meets the notch's own plate first, with the sight head's and
+//     the block's line-of-sight protection, not the cheek's; under the sill and at the mirror point on the left cheek it
+//     meets the cheek.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -21,7 +25,8 @@ import { COMBAT_ANATOMY_CALIBRATIONS } from '../combatAnatomyCalibrations.ts';
 import { tankTier } from '../tier.ts';
 import { tankDisplayName } from '../tankLabels.ts';
 import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
-import { LEO2A3B4_TURRET as T } from '../leopard2a3B4Armor.ts';
+import { LEO2A3B4_TURRET as T, LEO2A3B4_PROTECTION } from '../leopard2a3B4Armor.ts';
+import { tankPoseFromState, traceTank } from '../../sim/armor.ts';
 import { gunHullProbe, gunHullSweep, GUN_HULL_KEEP_M } from '../gunHullClearance.test-support.mjs';
 
 const DEG = Math.PI / 180;
@@ -82,8 +87,15 @@ const differs = (a, b, name) => assert.notDeepEqual(pick(built[a], (n) => n === 
 differs('leo2a2', 'leo2a3_b4', 'hullDetail');            // pressed louvres against the fourth batch's round rods
 differs('leo2a2', 'leo2a3_b4', 'turretDetail');          // the crosswind plate, the tall radio bases, the working hatch
 differs('leo2a3', 'leo2a3_b4', 'turretEquipment');       // the OTCO's rim, shrouds and caps
-assert.deepEqual(pick(built.leo2a3, (n) => n === 'turret'), pick(built.leo2a3_b4, (n) => n === 'turret'),
-  'the OTCO\'s armoured turret is the 2A3\'s');
+// (the authored parts: the turret seat lifts each underside by its own hull's swept tops, the OTCO's stern load among them)
+const turretParts = (id) => {
+  const tank = createTank(id, null, { ...options, quality: 'high' });
+  const rows = (tank.root.userData.combatGeometryParts || []).filter((p) => p.bucket === 'turret')
+    .map((p) => JSON.stringify([p.min, p.max])).sort();
+  tank.dispose();
+  return rows;
+};
+assert.deepEqual(turretParts('leo2a3'), turretParts('leo2a3_b4'), 'the OTCO\'s armoured turret is the 2A3\'s');
 assert.deepEqual(pick(built.leo2a3, (n) => n === 'hullDetail'), pick(built.leo2a3_b4, (n) => n === 'hullDetail'),
   'the OTCO is a fourth-batch hull');
 
@@ -121,11 +133,17 @@ const anatomy = (id) => {
   // the ring's anatomy (its race, deck, well and floor); its footR is a coverage receipt of every turret mesh over the
   // deck with no reader beyond capping the race, which the rim covers further out by design
   const { seat, deckY, rimR, skirt, floorY, wellR, skinR } = c.turretRing;
-  return { box: [c.turret.min, c.turret.max, c.turret.bodyRoofY], collision: c.turretCollision,
+  const cells = c.turretCollision.map(({ min, max, vertices, faces }) => ({ min, max, vertices, faces }));
+  return { box: [c.turret.min, c.turret.max, c.turret.bodyRoofY], collision: cells,
     ring: { seat, deckY, rimR, skirt, floorY, wellR, skinR }, seats: c.crewSeats, plates: getSpec(id).armor.turretPlates };
 };
 const otcoAnatomy = anatomy('leo2a3'), a3Anatomy = anatomy('leo2a3_b4');
-for (const key of Object.keys(a3Anatomy)) assert.deepEqual(otcoAnatomy[key], a3Anatomy[key], `the OTCO's turret ${key} is the 2A3's`);
+// to 2 mm: the seat lifts each turret's underside by its own hull's swept tops (the OTCO's stern load a few mm higher)
+const near = (a, b) => (Array.isArray(a) ? Array.isArray(b) && a.length === b.length && a.every((v, i) => near(v, b[i]))
+  : typeof a === 'number' ? typeof b === 'number' && Math.abs(a - b) <= 0.002
+    : a && typeof a === 'object' ? !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((k) => near(a[k], b[k]))
+      : a === b);
+for (const key of Object.keys(a3Anatomy)) assert.ok(near(otcoAnatomy[key], a3Anatomy[key]), `the OTCO's turret ${key} is the 2A3's`);
 {
   const tank = createTank('leo2a3', null, { ...options, quality: 'high' });
   try {
@@ -138,4 +156,24 @@ for (const key of Object.keys(a3Anatomy)) assert.deepEqual(otcoAnatomy[key], a3A
     tank.dispose();
   }
 }
-console.log('leopard2a3B4.selftest: the early Leopard 2s\' specs and tiers, the shared construction and its batches, the datums drawn, the guns clear of their hulls, the OTCO\'s kit outside its armour PASS');
+// 6. the turret front's weak spot
+const pose = tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
+const firstPlate = (id, x, yLocal) => {
+  const y = T.pivot[1] + yLocal;
+  const hit = traceTank(new THREE.Vector3(x, y, 30), new THREE.Vector3(x, y, -30), pose, getSpec(id).armor).find((h) => h.kind === 'plate');
+  return hit ?? null;
+};
+const notchX = -(T.sightInnerX + T.sightOuterX) / 2, notchY = (T.sightSillY + T.sightLintelY) / 2;
+for (const id of EARLY) {
+  const notch = firstPlate(id, notchX, notchY), plate = notch?.plate;
+  assert.equal(plate?.name, 'turret_front_sight_notch', `${id}: a frontal round through the sight's notch meets the notch (${plate?.name})`);
+  assert.equal(plate.moduleLink, 'optics', `${id}: and the sight behind it`);
+  const cheek = getSpec(id).armor.turretPlates.find((p) => p.name === 'turret_cheek_L');
+  const los = plate.keMm / Math.cos(notch.impactAngleDeg * Math.PI / 180);
+  const trim = cheek.keMm / LEO2A3B4_PROTECTION.cheek.ke;
+  assert.ok(Math.abs(los - LEO2A3B4_PROTECTION.sightNotch.ke * trim) < 12,
+    `${id}: the notch's line of sight is the sight head's and the block's (${los.toFixed(0)} mm KE against the cheek's ${cheek.keMm})`);
+  assert.equal(firstPlate(id, notchX, T.sightSillY - 0.15)?.plate.name, 'turret_cheek_L', `${id}: under the sill the cheek`);
+  assert.equal(firstPlate(id, -notchX, notchY)?.plate.name, 'turret_cheek_R', `${id}: the left cheek has no notch`);
+}
+console.log('leopard2a3B4.selftest: the early Leopard 2s\' specs and tiers, the shared construction and its batches, the datums drawn, the guns clear of their hulls, the OTCO\'s kit outside its armour, the sight notch the turret front\'s weak spot PASS');

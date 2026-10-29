@@ -23,6 +23,11 @@ export interface Leopard2HullOptions {
   readonly foreSkirtDropM?: number;
   /** The forward fuel tanks' filler caps on the glacis's shoulders (the 2A2 upgrade and the third to fifth batches). */
   readonly fuelFillers?: boolean;
+  /**
+   * The forward lifting eyes' station (hull z; default 1.30, on the roof's front corners). A turret whose cheeks reach over
+   * the driver's hatch sweeps that station, and sets its eyes forward on the upper glacis.
+   */
+  readonly forwardLiftEyeZ?: number;
 }
 
 /** Linear interpolation along a [z, y] station line, held past its ends. */
@@ -176,7 +181,8 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     } else {
       for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.40, 0.012, 0.035), ex, ey + 0.014, ez - 0.09 + k * 0.045, 0.35, 0, 0);
     }
-    for (const [lz, ly] of [[1.30, lineAt(H.deck, 1.30)], [-3.52, lineAt(H.deck, -3.52)]]) {
+    const eyeZ = o.forwardLiftEyeZ ?? 1.30;
+    for (const [lz, ly] of [[eyeZ, lineAt(H.deck, eyeZ)], [-3.52, lineAt(H.deck, -3.52)]]) {
       KIT.liftEye(P, 'hullDetail', side * 1.50, ly + 0.015, lz);
     }
     // the stern's corners: a tail-light cluster under the exhaust band's ends, a tow hook low

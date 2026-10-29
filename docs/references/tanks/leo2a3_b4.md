@@ -40,12 +40,13 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
 - Hull and running gear: `buildLeopard2Hull(P, { exhaust, foreSkirtDropM: 0.16, fuelFillers: true })`, the Christian II's
   construction with the production Leopard 2's deeper heavy fore skirt blocks (the photographed step) and the forward fuel
   tanks' filler caps; pressed louvre exhaust grilles on the 2A2, the fourth batch's round rods on the 2A3s.
-- Turret (turret metres from the ring at (0, 1.64, 0.37); the oracle's Leopard 2 turret plan): cheek blocks with vertical
-  faces at z 1.27 and chamfered outer corners back to the 1.27 m half-width walls at z 1.03, the gun slot 0.72 m wide, the
-  walls to the step at z -1.62, the bustle 1.15 m half-width to its rear plate at z -2.73 (0.86 m half-width), roof 0.66 at
-  the front rising to 0.83; the mantlet recessed 3 cm in the slot with a round boss on a bolted flange narrowing to the
-  sleeve, the coaxial MG3's port on the gun's left; the EMES 15 housing (right front) over its tall window in the cheek's
-  face, the PERI R17 and the commander's low ring with eight periscopes (right), the loader's hatch and MG3 (left), the
+- Turret (turret metres from the ring at (0, 1.64, 0.37)): the cheek blocks' faces at z 1.65 (hull z 2.02, over the
+  driver's hatch) across from the 0.95 m gun slot to 1.20 m off the bore, swept back 6 degrees outward, vertical to 0.60 m
+  and bevelled back to their tops, a short chamfer to the 1.27 m half-width walls (see "Turret front"), the walls to the
+  step at z -1.62, the bustle 1.15 m half-width to its rear plate at z -2.64 (hull z -2.27; 0.86 m half-width), roof 0.66
+  at the front rising to 0.83; the mantlet set 3 cm back in the slot with the coaxial MG3's port and the FERO Z18's
+  aperture, a round boss on a bolted flange narrowing to the sleeve;
+  the EMES 15 in its notch in the right cheek under its housing, the PERI R17 and the commander's low ring with eight periscopes (right), the loader's hatch and MG3 (left), the
   ammunition hatch on the left wall, two grab rails a side (none under the OTCO's shrouds), the eight dischargers a side
   in one block on a bracket at the bustle's rear corners, the radios' antenna bases, the rear basket; the L/44 with thermal sleeves and evacuator
   (trunnion (0, 0.36, 1.04), tube 4.29 m).
@@ -65,6 +66,51 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   in the basket, tow cables down the hull's sides, tools and bins on the fenders, cans, rations and tarps on the engine
   deck, shackles on the bow; the OTCO the heaviest (five packs in its cage, a drape, drums and a can rack on the stern,
   track links on a shroud).
+
+## Turret front (2026-10-28)
+
+The owner: "the real leopards of these have cutouts in the front of turret for a window thing. I'm guessing 1 is for
+coaxial machine gun but no idea on the other one (auxiliary gunner sight maybe ??) also note that the fronts of turret
+are sloped a little instead of being flat on. update these. research and build it out." Reference: the owner's Austrian
+2A4 (`~/cot-launch-state/streams/owner-shots/20261028-leopard2a4-turret-front-ref.webp`). The sources, measurements and
+confidence levels are in the lane's note `~/cot-lanes/christian2-262-evidence/turret-front-sources.md`. Most dimensions are
+photo estimates scaled from the 0.93 m mantlet (btvt/Militarysta, measured), the 635 mm track and the 3.70 m width; the
+pre-2A5 front is the same from 2A0 to 2A4 (en.wikipedia: the 2A5 moved the sight "to the turret roof as opposed to the
+cavity in the front armour in previous models").
+
+- The two round ports are the coaxial MG3's (vehicle left, 0.31 m off the bore, 0.16 m over it: a 68 mm hole in a raised
+  ring) and the FERO Z18 auxiliary sight's (vehicle right, 0.285 m off, at the bore: an 85 mm aperture in a 140 mm
+  collar 45 mm proud, its lens back in the bore, its cap hanging on a chain), both in the mantlet and pitching with the
+  gun. The 2A2's collar stands longer (about 0.12 m, an estimate: from the 2A3 the tube was shortened).
+- The "window thing" is the EMES 15 gunner's sight in a notch in the right cheek's top inboard corner, open to the front
+  and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.28 m tall under the sight
+  housing's front, about 0.22 m deep to the sight head; the head's thermal window outboard and its day and laser window
+  inboard; two armoured door leaves hinged at the walls, swung forward flat against them (open).
+- The slope (the owner, 2026-10-28: "i dont think its that they need to lean back is that if you look top down, the
+  chheeks are at a slight slope, like \ / but not extreme"; shown the two readings, the owner chose the outer ends set
+  back: "A built now is correct"): the faces vertical, swept back 6 degrees toward their outer ends in plan, running
+  nearly the turret's width (about 2.5 m), a short chamfer to the walls. No source publishes the plan angle
+  (en.wikipedia: "vertically faced"; the research note: up to 5 degrees not ruled out by the photos).
+- The face's place and its bevel (the 2A4 lane, 2026-10-28, Björn Huber's published 2A4 side drawing registered on this
+  hull by road-wheel pitch; R2's critic had read the same 0.4 m): the faces stand at hull z 2.02, over the driver's hatch,
+  0.38 m ahead of the earlier build's, the bustle's rear plate at hull z -2.27; the faces vertical to 0.60 m, then a bevel
+  back 0.22 m to the cheeks' flat tops (the photographed 2A4 fronts; the owner to that lane: "fronts of leo 2a4s are
+  sloped though"); the roof's front plates over them 70 mm (btvt).
+- The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.33 m over it, its vertical edges bevelled and its
+  top chamfered back under the brow, set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
+  2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
+  estimate), with the dark gun-port recess under it; the trunnion and the muzzle stay where they were.
+- The grab rails across both cheek faces at a third of their height, and a small block low on the right face (the
+  reference photos; the 2A4 lane's measures).
+- Anatomy, what a round meets: through the notch, the sight head and the 660 mm block behind the cavity (about 0.6 of the
+  cheek's line of sight under the sill; the 2A4 front's known weak spot), modelled as `turret_front_sight_notch` (linked
+  to the optics) on the face the collision shell meets: the notch has its own lateral band and these turrets'
+  cells are plate-fitted (`tools/gen-combat-anatomy.mjs` TURRET_LATERAL_CUTS; the 26-point support hull dropped the
+  sill's edge), so the shell closes over the notch from the sill to the housing's top, and the plate carries the
+  line-of-sight protection onto that slope. The mantlet's plate stands on the shell's slot face, where a round lands
+  (the mantlet rides the gun mount, outside the shell; authored at its own face it squeezed every turret plate back). The ports are smaller than any round but a long-rod
+  penetrator's and lie in the mantlet, so a round there meets the mantlet: they stay inside its plate. The 260 turret-front
+  trim (x0.9) takes the notch with the cheeks on the 2A3s.
 
 ## Round log
 
@@ -93,7 +139,13 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   of the equipment and decorations and stuff! add a lot on our tanks"): the fleet's field cargo plus curated loads. The
   old 2A2's ghillie suit, its receipts (leopard2A4Ghillie, leopard2A4GunSeat, leopard2A4SideSkirt) and the OTCO wrapper
   (profiles/germany.ts) retire; the anatomy's sim-floor moves for leo2a2 and leo2a3 recorded as intended.
-- Checks on the final build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
+- R6 (2026-10-28): Main's ruling on the OTCO's anatomy (its rim, shrouds and caps had widened every turret plate to the
+  rim's edge: strength 0.527 against the 2A3's 0.284 on identical combat data): the kit rides turretEquipment, the OTCO's
+  turret anatomy is the 2A3's (selftest §5), both 0.303. Then the owner's turret-front order (see "Turret front"): the
+  ports, the sight notch, the faces swept back in plan (a first 3-degree lean-back withdrawn on the owner's word), the
+  full-width bevelled front 0.38 m forward on the registered drawing, the bustle 9 cm shorter, the mantlet 3 cm back in
+  the slot, the rails at a third of the faces' height (the 2A4 lane's photographed 2A4s), on all three.
+- Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.
   Capability score 0.511, as leo2a3's.
