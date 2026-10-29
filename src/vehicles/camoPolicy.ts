@@ -128,8 +128,8 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
 /** Release 265: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white, the 2A5 DK's
- * three-tone of the 2010s and the 2A7 DK's olive under its Barracuda cover. */
-const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk'] as const);
+ * three-tone of the 2010s, the 2A7 DK's olive under its Barracuda cover and the M41 DK-1's late-1980s three-tone. */
+const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk', 'paint_m41dk1'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_263[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
@@ -823,11 +823,14 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
-  // release 265: the Danish line in its own coats (the 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone are near a
-  // named preset, so they paint their spec's coat as Factory)
+  // release 265: the Danish line in its own coats (the 1A3 DK's olive drab, the 1A5 DK's 1990s three-tone and the US,
+  // Bundeswehr and JGSDF M41s' plain coats are near a named preset, so they paint their spec's coat as Factory)
   leo1a5dk1: 'paint_leo1a5dk1',
   leo2a5dk: 'paint_leo2a5dk',
   leo2a7dk: 'paint_leo2a7dk',
+  m41dk1: 'paint_m41dk1',
+  // the Bundeswehr M41 in the German national coat (RAL 6014-pattern olive)
+  m41_bw: 'national_de',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

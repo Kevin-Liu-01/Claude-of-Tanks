@@ -295,6 +295,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   // 265: the Danish flag on the welded turret's flank, ahead of the tactical number
   leo1a3dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
+  m41dk1: anchor('turret', 'left', 0.62, 0.40, 0.18, 1),
+  m41a3: anchor('turret', 'left', 0.62, 0.40, 0.24, 1),
+  m41_bw: anchor('turret', 'left', 0.62, 0.40, 0.22, 1),
+  m41_jgsdf: anchor('turret', 'left', 0.62, 0.40, 0.20, 1),
   leo1a5dk: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leo1a5dk1: anchor('turret', 'left', 0.50, 0.40, 0.20, 1),
   leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),

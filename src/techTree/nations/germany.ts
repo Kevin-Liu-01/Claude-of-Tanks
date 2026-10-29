@@ -19,6 +19,7 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     { id: 'export', name: 'Export Leopard 2' },
     { id: 'rheinmetall', name: 'Revolution and Panther' },
     { id: 'marder', name: 'Marder, Puma and Lynx' },
+    { id: 'm41', name: 'M41' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -60,6 +61,8 @@ export const GERMANY_TREE: NationTree = Object.freeze({
     node({
       id: 'puma_s1', tier: 6, line: 'marder', lane: 7, parents: ['kf41_lynx'], slot: 'line', builds: ['spz_wotan'],
     }),
+    // M41: the Bundeswehr's armoured reconnaissance M41 (1956-66), release 265
+    node({ id: 'm41_bw', tier: 1, line: 'm41', lane: 0, parents: ['jpz_e100'], slot: 'line' }),
     // Special
     node({ id: 'leo2a4_otco', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

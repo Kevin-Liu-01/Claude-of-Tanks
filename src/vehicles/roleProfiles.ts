@@ -203,6 +203,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   upior: { doctrine: 'support', viewM: 465, still: 0.270, moving: 0.210 },
   bmpt_t90: { doctrine: 'armored-support', viewM: 415, still: 0.172, moving: 0.112 },
   m551_sheridan: { doctrine: 'scout', viewM: 480, still: 0.361, moving: 0.361 },
+  // 265: the Danish reconnaissance squadrons' M41 DK-1, its thermal sight seeing far for a light tank
+  m41dk1: { doctrine: 'scout', viewM: 470, still: 0.355, moving: 0.340 },
+  // the original M41s' optical sights see less far
+  m41a3: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_bw: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
+  m41_jgsdf: { doctrine: 'scout', viewM: 455, still: 0.358, moving: 0.345 },
   m551a1_tts: { doctrine: 'scout', viewM: 490, still: 0.355, moving: 0.355 },
   leo2a7v: { doctrine: 'flexible', viewM: 440, still: 0.174, moving: 0.114 },
   leo2a6m: { doctrine: 'flexible', viewM: 435, still: 0.176, moving: 0.116 },

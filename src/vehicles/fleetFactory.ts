@@ -129,6 +129,7 @@ const GROUP_LOADERS = Object.freeze({
   type90X: () => import('./profiles/type90X.ts').then((mod) => registerProfiles(mod.TYPE90_X_PROFILES)),
   christian2: () => import('./profiles/christian2.ts').then((mod) => registerProfiles(mod.CHRISTIAN2_PROFILES)),
   denmark: () => import('./profiles/denmark.ts').then((mod) => registerProfiles(mod.DENMARK_PROFILES)),
+  m41: () => import('./profiles/m41.ts').then((mod) => registerProfiles(mod.M41_PROFILES)),
   amx40X: () => import('./profiles/amx40X.ts').then((mod) => registerProfiles(mod.AMX40_X_PROFILES)),
   arieteX: () => import('./profiles/arieteX.ts').then((mod) => registerProfiles(mod.ARIETE_X_PROFILES)),
   strv122X: () => import('./profiles/strv122X.ts').then((mod) => registerProfiles(mod.STRV122_X_PROFILES)),

@@ -110,6 +110,8 @@ const FAMILY_UPGRADES = Object.freeze({
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
   // 265: the Danish Leopards
   denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
+  // 265: the M41s (the Danish rebuild at II over the originals at I)
+  m41: [['m41a3', 'm41dk1'], ['m41_bw', 'm41dk1'], ['m41_jgsdf', 'm41dk1']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);

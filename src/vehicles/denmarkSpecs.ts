@@ -77,6 +77,11 @@ leo1a5dk1.visual = {
 const leo2a5dk = danishVariant('leo2a5dk', 'leo2a5', 'Leopard 2A5 DK', 'modern');
 Object.assign(leo2a5dk.dims, { hullLengthM: 7.72, overallLengthM: 10.33, widthM: 3.80, heightM: 3.04 });
 Object.assign(leo2a5dk, { weightTons: 62.0 });
+// Denmark's 120 mm sabot is the DM53A1 (esut.de, May 2022: the Danish stock being brought to the DM73 standard)
+leo2a5dk.gun = {
+  ...leo2a5dk.gun,
+  shells: leo2a5dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, name: 'DM53A1 APFSDS' } : shell),
+};
 leo2a5dk.visual = {
   ...leo2a5dk.visual,
   // the Danish Army's three-tone of the 2010s (the Grafenwöhr photographs): olive, khaki sand and black
@@ -92,6 +97,12 @@ leo2a5dk.visual = {
 const leo2a7dk = danishVariant('leo2a7dk', 'leo2a7v', 'Leopard 2A7 DK', 'modern');
 Object.assign(leo2a7dk.dims, { hullLengthM: 7.72, overallLengthM: 11.00, widthM: 3.80, heightM: 3.05 });
 Object.assign(leo2a7dk, { weightTons: 68.0, topSpeedKmh: 60 });
+// the DM73 the Danish DM53A1s are being rebuilt to (esut.de, May 2022: the same penetrator, a stronger propellant), from
+// the L55A1 at the 2A7V's footing
+leo2a7dk.gun = {
+  ...leo2a7dk.gun,
+  shells: leo2a7dk.gun.shells.map((shell, i) => i === 0 ? { ...shell, name: 'DM73 APFSDS' } : shell),
+};
 leo2a7dk.visual = {
   ...leo2a7dk.visual,
   // Danish olive under the Barracuda cover

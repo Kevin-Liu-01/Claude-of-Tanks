@@ -17,6 +17,8 @@ export const DENMARK_TREE: NationTree = Object.freeze({
   name: 'Denmark',
   lines: Object.freeze([
     { id: 'leopard', name: 'Leopard 1 to Leopard 2A7 DK' },
+    { id: 'recce', name: 'M41 DK-1 and Centurion' },
+    { id: 'cv90', name: 'CV9035 DK' },
     { id: 'special', name: 'Special' },
   ].map((line) => Object.freeze(line))),
   nodes: Object.freeze([
@@ -26,6 +28,8 @@ export const DENMARK_TREE: NationTree = Object.freeze({
     node({ id: 'leo1a5dk', tier: 1, line: 'leopard', lane: 1, parents: ['leo1a3dk'], slot: 'line', builds: ['leo1a5dk1'] }),
     node({ id: 'leo2a5dk', tier: 9, line: 'leopard', lane: 1, parents: ['leo1a5dk'], slot: 'line' }),
     node({ id: 'leo2a7dk', tier: 10, line: 'leopard', lane: 1, parents: ['leo2a5dk'], slot: 'line' }),
+    // M41 DK-1 and Centurion: the reconnaissance squadrons' M41 DK-1
+    node({ id: 'm41dk1', tier: 2, line: 'recce', lane: 0, parents: ['leo1a3dk'], slot: 'line' }),
     // the Christian II, a Danish Army concept on the Type 90 X (release 262), the Danish special
     node({ id: 'christian2', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),

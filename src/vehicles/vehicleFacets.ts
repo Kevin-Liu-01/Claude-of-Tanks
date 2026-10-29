@@ -207,7 +207,7 @@ const CLASS_VEHICLE_IDS: Readonly<Record<VehicleClass, readonly string[]>> = Obj
     'kv2',
   ]),
   light: Object.freeze([
-    'bmp3m_dragun125', 'cv90105_tml', 'm551_sheridan', 'm551a1_tts', 'pl01', 'pl01_105',
+    'bmp3m_dragun125', 'cv90105_tml', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'pl01', 'pl01_105',
   ]),
   // Autocannon-armed fighting vehicles, with the cavalry and reconnaissance types (M3A3 CFV, Ajax).
   ifv: Object.freeze([
@@ -272,7 +272,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   ]),
   scout: Object.freeze([
     'ajax', 'amx10p', 'amx10p_25', 'ares_apc', 'bmp3m_dragun125', 'borsuk', 'cv90105_tml', 'k21', 'lrmv_lynx',
-    'm3a3_bradley', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker', 'pl01', 'pl01_105',
+    'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm551_sheridan', 'm551a1_tts', 'm6_linebacker', 'pl01', 'pl01_105',
   ]),
   // Doctrines support and armored-support, plus the TOS-1A (siege doctrine, rocket fire support).
   support: Object.freeze([
@@ -295,7 +295,7 @@ const STATUS_VEHICLE_IDS: Readonly<Record<VehicleDesignStatus, readonly string[]
     'leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco', 'leo2a4_v', 'leo2a4m', 'leo2a4m_can', 'leo2a5', 'leo2a5dk', 'leo2a5m', 'leo2a6',
     'leo2a6_ua', 'leo2a6m', 'leo2a7dk', 'leo2a7v', 'lrmv_lynx', 'm1a1', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_hc',
     'm1a1_abrams_sa', 'm1a1ha', 'm1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk',
-    'm2a2_bradley', 'm3a3_bradley', 'm46_patton', 'm47_patton', 'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1',
+    'm2a2_bradley', 'm3a3_bradley', 'm41_bw', 'm41_jgsdf', 'm41a3', 'm41dk1', 'm46_patton', 'm47_patton', 'm48a5_patton', 'm551_sheridan', 'm551a1_tts', 'm60a1',
     'm60a2', 'm60a3', 'm6_linebacker', 'marder1a3', 'merkava1b', 'merkava2b', 'merkava2d', 'merkava3_baz', 'merkava3c',
     'merkava3d', 'merkava4', 'merkava4_barak', 'merkava4_trophy', 'merkava4b', 'namer_ifv', 'pt91a_twardy', 'pt91m',
     'puma_s1', 'sabra_mk2', 'spz_puma', 'spz_wotan', 'strv103a', 'strv103b', 'strv121', 'strv122', 'strv81', 't55a',

@@ -75,6 +75,7 @@ import { TYPE10_X_PROFILES } from './profiles/type10X.ts';
 import { TYPE90_X_PROFILES } from './profiles/type90X.ts';
 import { CHRISTIAN2_PROFILES } from './profiles/christian2.ts';
 import { DENMARK_PROFILES } from './profiles/denmark.ts';
+import { M41_PROFILES } from './profiles/m41.ts';
 import { AMX40_X_PROFILES } from './profiles/amx40X.ts';
 import { ARIETE_X_PROFILES } from './profiles/arieteX.ts';
 import { STRV122_X_PROFILES } from './profiles/strv122X.ts';
@@ -157,6 +158,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...TYPE90_X_PROFILES,
   ...CHRISTIAN2_PROFILES,
   ...DENMARK_PROFILES,
+  ...M41_PROFILES,
   ...AMX40_X_PROFILES,
   ...ARIETE_X_PROFILES,
   ...STRV122_X_PROFILES,

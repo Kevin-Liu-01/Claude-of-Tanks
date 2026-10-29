@@ -17,6 +17,7 @@ export const USA_TREE: NationTree = Object.freeze({
     { id: 'patton', name: 'Patton' },
     { id: 'm1a1', name: 'Abrams M1A1' },
     { id: 'm1a2', name: 'Abrams M1A2' },
+    { id: 'm41', name: 'M41 Walker Bulldog' },
     { id: 'sheridan', name: 'Sheridan' },
     { id: 'bradley', name: 'Bradley' },
     { id: 'special', name: 'Special' },
@@ -42,6 +43,8 @@ export const USA_TREE: NationTree = Object.freeze({
     node({ id: 'abramsx', tier: 10, line: 'm1a2', lane: 7, parents: ['m1a2_abrams_sepv3'], slot: 'line' }),
     node({ id: 'm1a3', tier: 10, line: 'm1a2', lane: 0, parents: ['abramsx', 'm1a1_abrams_fep'], slot: 'line' }),
     // Sheridan
+    // release 265: the M41 Walker Bulldog, the M46 and M47's light-tank contemporary, a step from the root at I
+    node({ id: 'm41a3', tier: 1, line: 'm41', lane: 5, parents: ['m46_patton'], slot: 'line' }),
     node({ id: 'm551_sheridan', tier: 2, line: 'sheridan', lane: 1, parents: ['m48a5_patton'], slot: 'line' }),
     node({ id: 'm551a1_tts', tier: 4, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),
     node({ id: 'griffin_viper', tier: 3, line: 'sheridan', lane: 8, parents: ['m551_sheridan'], slot: 'line' }),
