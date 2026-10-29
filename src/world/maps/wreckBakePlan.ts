@@ -7,7 +7,7 @@ export const WRECK_BAKE_PLAN: Readonly<Record<string, WreckBakeRows>> = {
   airfield: [['t72b3', 2002, 1], ['t72b3', 2133, 0], ['t80bv', 2264, 1], ['bmp2', 2395, 0], ['t64bv_donbas', 2526, 0], ['t64bv_donbas', 2657, 1]],
   alpine: [],
   autumn: [],
-  badlands: [['challenger1_mk2', 2002, 1], ['m60a3', 2133, 1], ['chieftain3', 2264, 1], ['centurion5_2', 2395, 0], ['challenger1_mk2', 2526, 0]],
+  badlands: [['challenger1_mk2', 2002, 1], ['m60a3', 2133, 1], ['chieftain3', 2264, 1], ['centurion5_2', 2395, 0], ['challenger1_mk2', 2526, 0], ['m60a3', 2657, 0]],
   blackglass: [],
   caldera: [['type10_tk_x', 2002, 1], ['type90_kyumaru', 2133, 0], ['type74', 2264, 1], ['hayate_ifv', 2395, 1], ['hayate_ifv', 2526, 0], ['type90_kyumaru', 2657, 1], ['type74', 2788, 0]],
   cliffbridge: [['amx30b', 2002, 1], ['m48a5_patton', 2133, 0], ['m47_patton', 2264, 1], ['amx30b', 2395, 0]],
