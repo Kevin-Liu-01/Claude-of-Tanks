@@ -507,7 +507,7 @@ function addT90ACastPerimeterFlanges(P: T90BuilderPort): void {
   // opening abruptly inboard.  A single long trapezoid opened too early in
   // the outer raster station, so preserve the real knee as two joined
   // sections: a narrow cast tip, then the swept inner ledge.
-  P.add('turretEquipment', orientedSlab(
+  P.add('turret', orientedSlab(
     [-1.66, 0.00, 0.415], [-1.60, 0.05, 0.415], [-1.60, 0.05, 0.365], [-1.66, 0.00, 0.365],
     [-1.66, 0.04, 0.415], [-1.60, 0.38, 0.415], [-1.60, 0.38, 0.365], [-1.66, 0.04, 0.365],
   ));
@@ -1145,15 +1145,15 @@ function addT90ALegacyHull(P: T90BuilderPort, fenderLipHullSeat = true): void {
     // section blunt and hid the real low terminal plane.
     // (owner 2026-10-19, flaps sweep: the shoulders, lip and flap stood 50 mm outboard of the nose plate's outer face at
     // 1.01; the inner shoulder and the lip now start at 1.00, inside it)
-    P.add('hullFixedPaintedBodywork', box(0.29, 0.24, 0.10), s * 1.145, 0.90, 3.30);
-    P.add('hullFixedPaintedBodywork', box(0.34, 0.24, 0.10), s * 1.46, 0.90, 3.30);
-    P.add('hullFixedPaintedBodywork', box(0.63, 0.08, 0.095), s * 1.315, 0.85, 3.3975);
+    P.add('hull', box(0.29, 0.24, 0.10), s * 1.145, 0.90, 3.30);
+    P.add('hull', box(0.34, 0.24, 0.10), s * 1.46, 0.90, 3.30);
+    P.add('hull', box(0.63, 0.08, 0.095), s * 1.315, 0.85, 3.3975);
   }
   // rear rack side plates carry the -3.43/-3.40 tail columns (x 0.14..0.75)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.20, 0.30, 0.42), s * 0.24, 1.20, -3.19);
     P.add('hull', box(0.71, 0.26, 0.41), s * 0.685, 1.18, -3.145);
-    P.add('hullEquipment', box(0.71, 0.07, 0.09), s * 0.685, 1.28, -3.395);
+    P.add('hull', box(0.71, 0.07, 0.09), s * 0.685, 1.28, -3.395);
     // 2026-10-19 (owner float sweep): the tail plate stood 10 mm short of the rack bar beside it and the left upper
     // block met the lower one only along a corner line (16-21 mm in the census): the plate is 25 mm wider, and a
     // 30 mm fillet strip welds the two blocks.
@@ -1664,8 +1664,8 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // -1.70 (the -1.91 slab was an ONLY-PROC column) — box2 to world -1.59
   // plus a low 1.33..1.385 tail shelf to -1.707
   P.add('turret', box(1.86, 0.307, 0.10), 0, 0.1665, -1.88);  // T3A-b2: bottom 1.323w (ref -1.54/-1.432 col bottoms 1.344)
-  P.add('turretEquipment', box(1.70, 0.30, 0.075), 0, 0.17, -2.0);
-  for (const s2 of [-1, 1]) P.add('turretEquipment', box(0.46, 0.10, 0.14), s2 * 0.70, 0.03, -2.07);  // T3A/b3: rear -1.68w, x edge 0.93, bottom 1.315w (ref 1.344 — the -0.115 seat owned the rear-col bottoms)
+  P.add('turret', box(1.70, 0.30, 0.075), 0, 0.17, -2.0);
+  for (const s2 of [-1, 1]) P.add('turret', box(0.46, 0.10, 0.14), s2 * 0.70, 0.03, -2.07);  // T3A/b3: rear -1.68w, x edge 0.93, bottom 1.315w (ref 1.344 — the -0.115 seat owned the rear-col bottoms)
   // (T4A bustle rear extension TRIED and REVERTED: the ref's -1.766w plan
   // rear at |x| 0.7-1.04 has NO side-mask twin — side z -1.755w reads ref
   // NONE (the T3A "-1.755 ONLY-PROC col" law re-proven, err 9) and the
@@ -1674,13 +1674,13 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // Join the asymmetric right bustle run to the central bustle with real
   // overlap. The former 120 mm lateral air gap left every outboard bin
   // parented to the turret but visibly unsupported at oblique yaw.
-  P.add('turretEquipment', box(0.30, 0.07, 0.52), 1.05, 0.0375, -1.859);
+  P.add('turret', box(0.30, 0.07, 0.52), 1.05, 0.0375, -1.859);
   P.add('turret', box(0.27, 0.20, 0.55), 1.325, 0.115, -1.624);
-  P.add('turretEquipment', box(1.70, 0.055, 0.11), 0, 0.0225, -2.055);
+  P.add('turret', box(1.70, 0.055, 0.11), 0, 0.0225, -2.055);
   // A narrow casting tongue closes the final source profile station.  It
   // continues directly from the low bustle shelf; its one-pixel-height end
   // is real rear armor, not an isolated decoration or broad fake wall.
-  P.add('turretEquipment', box(0.04, 0.020, 0.14), -0.695, 0.025, -2.18);
+  P.add('turret', box(0.04, 0.020, 0.14), -0.695, 0.025, -2.18);
   P.add('turretDark', box(1.70, 0.24, 0.03), 0, 0.155, -1.99);
   for (const s of [-1, 1]) P.add('turretDetail', box(0.03, 0.05, 0.44), s * 0.92, 0.03, -1.79);  // T3A-b2/b5: rear -1.55w, x ±0.92 (the ±1.00 seat owned the ±1.008 plan window rear at -1.55)
   // Source-seated flank cassettes replace the old continuous U-shaped wall.

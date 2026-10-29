@@ -206,7 +206,7 @@
   "t90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0ea8498f5e35c60c","gun":"ad7f948f7c0c73a6"}},
   "t90_1992": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1e2b80e35ba6590c","gun":"64267ec5c9a386c2"}},
   "t90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2472399b24eef0ee","gun":"edc55e67606ef60e"}},
-  "t90a_2004": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c7b258b4dd65d38f","gun":"6c516d8892d71f18"}},
+  "t90a_2004": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2244e6f1ef561be2","gun":"6c516d8892d71f18"}},
   "t90a_2006": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"31a32300f6f19148","gun":"958e34e7ea67700a"}},
   "t90a_burlak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2ce8a7ab991700a3","gun":"114b0e61a3e938c8"}},
   "t90a_burlak_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"552936353d994d7e","gun":"2d2c00b04abb7d41"}},
