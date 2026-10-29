@@ -1427,8 +1427,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     if (panel.strictHoles && [[xs[i], zs[j]], [xs[i + 1], zs[j]], [xs[i + 1], zs[j + 1]], [xs[i], zs[j + 1]]]
       .some(([px, pz]) => insideAny(px, pz, holeSet))) continue;
     if (clipped(i, j)) continue;
+    // a net's perimeter cells tear here and there; a fitted cover is cut to its plate (r6; the critic r5 on the Strv
+    // 121: "stair-stepped hems", each torn cell a square notch in its edge)
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
-    if (edge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    if (edge && !support.fitted && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     tri(a, c, b); tri(a, d, c);
   }
@@ -1663,6 +1665,8 @@ interface CurtainSpec {
   readonly seed: number;
   /** Fold depth multiplier (a tied-down face drape folds little). */
   readonly foldK: number;
+  /** A fitted cover's hem, cut to its plate: no cell of its hem row tears out (r6: each a square notch, "stair-stepped"). */
+  readonly whole?: boolean;
 }
 
 function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number], flip: boolean): {
@@ -1805,7 +1809,7 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       const upMid = (sections[c].up[r] + sections[c].up[r + 1] + sections[c + 1].up[r] + sections[c + 1].up[r + 1]) / 4;
       if (spec.keep && !spec.keep((aA + aB) / 2, upMid, aA, aB)) continue;
       // the hem row tears here and there
-      if (r === rows - 1 && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
+      if (r === rows - 1 && !spec.whole && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
       const uv = (cc: number, rr: number, a: number): [number, number] => [a * uvk + uvOffset[0], vlen[cc][rr] * uvk + uvOffset[1]];
       const quad: Array<[Point3, [number, number]]> = [[A, uv(c, r, aA)], [B, uv(c + 1, r, aB)], [C, uv(c + 1, r + 1, aB)], [D, uv(c, r + 1, aA)]];
@@ -1960,7 +1964,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     return null;
   };
   const spec: CurtainSpec = {
-    a0: z0, a1: z1, seed: s, foldK: support.fitted ? 0.18 : 1, maxOut,
+    a0: z0, a1: z1, seed: s, foldK: support.fitted ? 0.18 : 1, whole: support.fitted, maxOut,
     hem,
     section(z, hemY) {
       if (!probe) return null;
@@ -2035,7 +2039,7 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
     return Math.max(y0 - scallop + jag, support.hull ? Math.min(y0, support.hemFloor) : y0 - 0.06, raised);
   };
   const spec: CurtainSpec = {
-    a0: x0, a1: x1, seed: s, foldK: tied ? 0.25 : 0.8, maxOut: Infinity,
+    a0: x0, a1: x1, seed: s, foldK: tied ? 0.25 : 0.8, whole: support.fitted, maxOut: Infinity,
     hem,
     section(x, hemY) {
       if (!probe) return null;
@@ -2173,10 +2177,10 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
     void pi;
   });
   // (r6; the critic r5 on the Strv 121: "the cover looks like a flat leaf print on the panels", "at hero distance it
-  // can't be told from the paint") an issued fabric hangs in broad folds between where it is tied: each a crest and a
-  // trough across the sheet, painted into the fabric (the light on a fold carries to hero range, where a bump slope does
-  // not) and into its height (its slope up close)
-  if (dense) {
+  // can't be told from the paint") the fabric hangs in broad folds between where it is tied: each a crest and a trough
+  // across the sheet, painted into the fabric (the light on a fold carries to hero range, where a bump slope does not)
+  // and into its height (its slope up close)
+  {
     for (let k = 0; k < 14; k++) {
       const fx = rng() * S, fy = rng() * S, a = rng() * Math.PI, half = S * (0.18 + rng() * 0.22), wide = S * (0.035 + rng() * 0.035);
       const ca = Math.cos(a), sa = Math.sin(a), bend = (rng() - 0.5) * half * 0.6;
@@ -2208,13 +2212,14 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
     return [image.data[i], image.data[i + 1], image.data[i + 2]];
   };
   ctx.lineCap = 'round';
-  // an issued fabric's leaves: close-packed, larger (r6: 4-7 cm, a Barracuda sheet's own cut, which reads at hero range),
-  // each cut in one of its tones and shaded by the fold it lies on
+  // an issued fabric's leaves: close-packed, larger (r6: 7-14 cm, a Barracuda sheet's own cut, which reads at hero
+  // range), each cut in one of its tones and shaded by the fold it lies on; a scheme cover's 5-10 cm (r6: at 2.5-6 cm
+  // its cuts read as a print at hero range), in the scheme's colour where they lie
   const tones = [pal.base, ...pal.patches];
-  const leaves = dense ? 3000 : 900;
+  const leaves = dense ? 3000 : 1300;
   for (let k = 0; k < leaves; k++) {
     const cx = rng() * S, cy = rng() * S;
-    const len = (dense ? 24 : 8) + rng() * (dense ? 22 : 11), wid = len * (0.32 + rng() * 0.2), ang = rng() * Math.PI * 2;
+    const len = (dense ? 24 : 16) + rng() * (dense ? 22 : 16), wid = len * (0.32 + rng() * 0.2), ang = rng() * Math.PI * 2;
     const fold = dense ? colorAt(cx, cy) : null;
     const tone = dense ? tones[Math.floor(rng() * tones.length)] : null;
     // the fold's light on an issued leaf: the sheet's painted shade there over its base tone
@@ -2257,17 +2262,12 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       ctx.strokeStyle = rgb(under.map((v) => v * 0.6), 0.6);
       ctx.stroke();
       leaf(hctx, ox, oy);
-      // an issued leaf stands its lift off the fold under it (r6); a scheme cover's off the flat sheet
-      if (dense) {
-        hctx.save();
-        hctx.globalCompositeOperation = 'lighter';
-        hctx.fillStyle = grey(30 + lift * 100);
-        hctx.fill();
-        hctx.restore();
-      } else {
-        hctx.fillStyle = grey(110 + lift * 120);
-        hctx.fill();
-      }
+      // a leaf stands its lift off the fold under it (r6)
+      hctx.save();
+      hctx.globalCompositeOperation = 'lighter';
+      hctx.fillStyle = grey(30 + lift * 100);
+      hctx.fill();
+      hctx.restore();
     });
   }
 }
