@@ -3011,10 +3011,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
   ];
   // Release 262 (the Challenger 1 rebuild's blind critics, against the reference photos: "the real deck is clean
-  // grilles"; the fleet cargo's roof cans, crates and bags read as clutter on the rebuilt turret and deck): the Mk 1, Mk 2
-  // and Granby carry their own bins, mesh basket, bustle bin and L8 banks, and the decor lays only a canvas roll across
-  // the rear deck (no smoke pair, whip, bow hooks, side links, IR light, bucket or cargo pools).
-  if (spec.id === 'challenger1_mk1' || spec.id === 'challenger1_mk2' || spec.id === 'challenger1_granby') return [
+  // grilles"; the fleet cargo's roof cans, crates and bags read as clutter on the rebuilt turret and deck): the fictional
+  // FV4030/5 and FV4030/6 carry their own bins, baskets, bustle bin and L8 banks, and the decor lays only a canvas roll
+  // across the rear deck (no smoke pair, whip, bow hooks, side links, IR light, bucket or cargo pools). The real Mk 1 and
+  // Mk 2 ride the Mk 3's supplied-file build and take its default draw.
+  if (spec.id === 'challenger_x' || spec.id === 'challenger_x_sleek') return [
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
   ];
   // 259 (owner on the Strv 103s: "make all its deocrations specialized and customized heheh for both a and b"): each
@@ -3933,11 +3934,10 @@ const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, n
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
   strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
   // round 4 (2026-10-07): the Challenger 1 roof guns' stations, so the decor's bedrolls never bury a pintle or its can.
-  // Release 262: the rebuilt turret's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
-  challenger1_mk2: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
-  challenger1_granby: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
-  // the Mk 1's sleek turret: its low cupola (right) and loader's hatch (left)
-  challenger1_mk1: [[-0.50, -0.45, 0.60], [0.50, -0.70, 0.52]],
+  // Release 262: the FV4030/5's commander's cupola (right) and loader's hatch (left) at rest, hull frame.
+  challenger_x: [[-0.50, -0.52, 0.62], [0.48, -0.78, 0.55]],
+  // the X Sleek's low cupola (right) and loader's hatch (left)
+  challenger_x_sleek: [[-0.50, -0.45, 0.60], [0.50, -0.70, 0.52]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */

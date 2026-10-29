@@ -1,11 +1,14 @@
-// Challenger 1 turret and L11A5 (release 262). The Chobham turret is a slab-sided box (2.56 m wide, 77 % of the hull)
-// with a long bustle and an arrowhead front (the drawing's plan, S1): full width to the 1.30 m station, then the cheeks
-// run in at about 37 degrees to the gun nose, whose plates carry the wedge to the slot at its apex; the roof falls
-// about 8 degrees over the front metre and the walls come down over the ring housing.
+// FV4030/5 turret and the Challenger 1's L11A5 (release 262; first built for the Challenger 1 Mk 2, then a fictional
+// tank of its own, owner 2026-10-28). The turret (round 5; the owner: "the old challengerr 1 mk 2 has the better turret
+// shape though, that is wider, very sloped, good things on side. combine ur new and the old") is main's wide wedge: a
+// slab-sided box 2.96 m wide with a long bustle, and ahead of the 0.60 m station two broad cheek plates falling 20
+// degrees off the roof to a low lip flush with the gun's face and away outward from the gun ridge, which runs level to
+// 1.40 m and then falls 19 degrees to the slot's nose plates; a mesh basket and a lidded bin run each flank to the
+// cheeks.
 // The L11A5 leaves through a slot in the nose behind a drum shield turning about the trunnion and a recessed canvas
 // boot; its thermal sleeve tapers to the muzzle, with the fume extractor at mid-length and the muzzle reference mirror.
-// Turret stowage follows the Bovington vehicle: the TOGS barbette on the right cheek's top behind the wedge, the long
-// mesh basket flush on the left wall, lidded bins behind both and the bustle bin hung across the back.
+// Turret stowage follows the Bovington vehicle: the TOGS barbette on the right cheek beside the gun, the right smoke bank
+// on its face, baskets and bins down both walls and the bustle bin hung across the back.
 import * as THREE from 'three';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
@@ -37,28 +40,55 @@ function turretRing(w: number, lo: number, hi: number): SectionPoint[] {
 
 // [z, half-width, underside, roof] in the vehicle frame
 type TurretStation = readonly [z: number, w: number, lo: number, hi: number];
-// (round 4, the drawing's plan and the Bovington front photo: the arrowhead front and walls down to 1.74 m, so only a
-// shadow gap shows over the ring housing; round 3 had held the full width to 1.85 m and stood the walls on the collar)
+// (round 5: main's width and wedge; round 4's arrowhead had narrowed the box to 2.56 m and pointed it from 1.30 m)
 const BODY: readonly TurretStation[] = [
-  [-1.70, 1.06, 1.84, 2.43], [-1.30, 1.20, 1.80, 2.48], [-.50, 1.28, 1.74, 2.48],
-  [1.00, 1.28, 1.74, 2.48], [1.30, 1.28, 1.74, 2.45], [2.06, .70, 1.72, 2.33],
+  [-1.70, 1.34, 1.84, 2.43], [-1.30, 1.48, 1.80, 2.48], [-.50, 1.48, 1.74, 2.48], [.60, 1.48, 1.74, 2.48],
 ];
-/** The gun nose ahead of the 2.06 station: two plates either side of the slot (half-width SLOT), carrying the wedge on
- *  to the slot at its apex, flat underneath over the chin. */
-const NOSE: readonly TurretStation[] = [[2.06, .70, 1.72, 2.33], [2.50, .40, 1.70, 2.24]];
+/** The gun ridge between the cheeks: level with the roof to 1.40 m, then falling 19 degrees to the nose plates. */
+const HOUSING: readonly TurretStation[] = [[.50, .70, 1.74, 2.48], [1.40, .70, 1.74, 2.48], [2.06, .70, 1.72, 2.25]];
+/** The gun nose ahead of the ridge, carrying its fall on to the slot's face. */
+const NOSE: readonly TurretStation[] = [[2.06, .70, 1.72, 2.25], [2.50, .40, 1.70, 2.08]];
+/** The cheek plates either side of the ridge, [z, inner x, outer x, underside]: their top runs from the ridge's edge,
+ *  falling with it, out to the wall, which falls 20 degrees from the 0.60 m station to the lip (main's V from the front). */
+const CHEEK_FROM = .60, FALL_OUT = Math.tan(20 * Math.PI / 180);
+const CHEEK: ReadonlyArray<readonly [z: number, xi: number, xo: number, lo: number]> = [
+  [.50, .60, 1.48, 1.74], [CHEEK_FROM, .60, 1.48, 1.74], [1.00, .60, 1.47, 1.74], [1.40, .60, 1.46, 1.74],
+  [1.73, .61, 1.45, 1.73], [2.06, .62, 1.44, 1.72],
+  // the lip flush with the nose plates' face, its inner edge on their taper (0.40 there)
+  [2.50, .38, 1.40, 1.70],
+];
+const cheekOuter = (z: number): number => 2.48 - Math.max(0, z - CHEEK_FROM) * FALL_OUT;
+/** The ridge's edge the cheek's top starts from: the housing wall, then the nose plate's taper to the lip. */
+const ridgeEdge = (z: number): number => z <= 2.06 ? .70 : .70 - (z - 2.06) * .30 / .44;
+const ridgeTop = (z: number): number => z <= 2.06 ? housingTop(z) : topAt(NOSE, z);
+/** The cheek's top at |x| between the ridge's edge and the wall (1.44 m). */
+function cheekTop(z: number, x = 1.44): number {
+  const e = ridgeEdge(z), t = Math.min(1, Math.max(0, (Math.abs(x) - e) / (1.44 - e)));
+  return ridgeTop(z) + (cheekOuter(z) - ridgeTop(z)) * t;
+}
 const SLOT = .25;
-/** The body's roof height at a station (linear between BODY stations), for fittings seated on the sloping roof. */
-function roofAt(z: number): number {
-  for (let i = 1; i < BODY.length; i++) {
-    const [z0, , , h0] = BODY[i - 1], [z1, , , h1] = BODY[i];
+/** The TOGS barbette's face (vehicle frame). */
+const TOGS_FRONT = 1.75;
+/** A station table's roof height at z (linear between stations), for fittings seated on a sloping roof. */
+function topAt(stations: readonly TurretStation[], z: number): number {
+  for (let i = 1; i < stations.length; i++) {
+    const [z0, , , h0] = stations[i - 1], [z1, , , h1] = stations[i];
     if (z <= z1) return h0 + (h1 - h0) * Math.max(0, (z - z0) / (z1 - z0));
   }
-  return BODY[BODY.length - 1][3];
+  return stations[stations.length - 1][3];
 }
+const roofAt = (z: number): number => topAt(BODY, z), housingTop = (z: number): number => topAt(HOUSING, z);
 
 function shell(P: TankBuilderPort): void {
   P.add('turret', local(sectionSolid(BODY.map(([z, w, lo, hi]) => ({ z, ring: turretRing(w, lo, hi) })), { sideQuadDiagonal: 'convex' })));
-  addChallenger1GunNose(P);
+  P.add('turret', local(sectionSolid(HOUSING.map(([z, w, lo, hi]) => ({ z, ring: turretRing(w, lo, hi) })), { sideQuadDiagonal: 'convex' })));
+  for (const side of [-1, 1]) {
+    P.add('turret', local(sectionSolid(CHEEK.map(([z, xi, xo, lo]) => ({ z, ring: sided([
+      [xi, lo], [xo - .03, lo], [xo, lo + .03], [xo, cheekOuter(z) - .03], [xo - .03, cheekOuter(z)], [ridgeEdge(z), ridgeTop(z)],
+      [xi, ridgeTop(z)],
+    ], side) })), { sideQuadDiagonal: 'convex' })));
+  }
+  addChallenger1GunNose(P, NOSE);
 }
 
 /** The gun nose ahead of the 2.06 m station (both plates either side of the slot), the slot's chin and the race
@@ -90,20 +120,48 @@ function bin(P: TankBuilderPort, x: number, y: number, z: number, w: number, h: 
   for (const dz of [-len * .32, len * .32]) eq(P, box(.024, .07, .05), x + side * (w / 2 + .010), y + h / 2 - .045, z + dz, 'turretDark');
 }
 
+/** A lidded flank bin on the wall ahead of the basket, its nose raked down onto the cheek, latched. */
+function flankBin(P: TankBuilderPort, side: number, z0: number, z1: number): void {
+  const xi = 1.44, xo = 1.66, lo = 1.88, hi = 2.30;
+  const ring = (top: number): SectionPoint[] => sided([[xi, lo], [xo - .02, lo], [xo, lo + .02], [xo, top], [xi, top]], side);
+  P.addEquipment('turretDetail', local(sectionSolid([
+    { z: z0, ring: ring(hi) }, { z: z1 - .40, ring: ring(hi) }, { z: z1, ring: ring(lo + .14) },
+  ])));
+  const x = side * (xi + xo) / 2, zc = (z0 + z1 - .40) / 2;
+  eq(P, box(xo - xi + .02, .022, z1 - z0 - .38), x, hi + .011, zc);
+  eq(P, cylX(.011, z1 - z0 - .46, 8).rotateY(Math.PI / 2), side * (xi + .02), hi + .018, zc, 'turretDark');
+  for (const t of [.18, .50, .82]) eq(P, box(.024, .07, .05), side * (xo + .010), hi - .045, z0 + (z1 - .40 - z0) * t, 'turretDark');
+}
+
+/** A grab handle on a wall: a bar on two stand-offs. */
+function grabHandle(P: TankBuilderPort, side: number, y: number, z: number): void {
+  const x0 = side * 1.47, x1 = side * 1.53;
+  for (const dz of [-.14, .14]) strut(P, [x0, y, z + dz], [x1, y, z + dz], .011);
+  strut(P, [x1, y, z - .15], [x1, y, z + .15], .011);
+}
+
 function stowage(P: TankBuilderPort): void {
-  // Flank bins: the right runs back from the barbette's foot, the left from the mesh basket; both to the bustle.
-  bin(P, -1.365, 2.12, -.65, .17, .52, 1.50, -1);
-  bin(P, 1.365, 2.12, -.86, .17, .52, 1.12, 1);
+  // Flank stowage: on the right a mesh basket behind a lidded bin, on the left a short bin behind the long basket; grab
+  // handles along both walls over them.
+  flankBin(P, -1, .10, 1.40);
+  bin(P, 1.56, 2.09, -.80, .22, .42, .90, 1);
+  // a strapped camouflage-net roll on the right bin's lid
+  eq(P, cylX(.085, .76, P.q ? 14 : 9).rotateY(Math.PI / 2), -1.55, 2.405, .50, 'turretCloth');
+  for (const z of [.27, .73]) eq(P, torus(.090, .012, P.q ? 14 : 8, 5).rotateX(Math.PI / 2), -1.55, 2.405, z, 'turretDark');
+  for (const side of [-1, 1]) for (const z of [-1.05, -.25, .35]) grabHandle(P, side, 2.40, z);
   // The bustle bin hung across the back at roof height on two hanger arms, lidded, with a jerrycan in a frame holder at
   // each end; nothing stands over the roof.
   const z0 = -1.69, z1 = -2.10, zc = (z0 + z1) / 2;
-  eq(P, box(1.84, .40, z0 - z1), 0, 2.19, zc);
-  eq(P, box(1.86, .022, z0 - z1 + .02), 0, 2.40, zc - .005);
-  eq(P, cylX(.011, 1.76, 8), 0, 2.41, z0 - .015, 'turretDark');
+  eq(P, box(2.04, .40, z0 - z1), 0, 2.19, zc);
+  eq(P, box(2.06, .022, z0 - z1 + .02), 0, 2.40, zc - .005);
+  eq(P, cylX(.011, 1.96, 8), 0, 2.41, z0 - .015, 'turretDark');
   for (const x of [-.62, 0, .62]) eq(P, box(.10, .07, .024), x, 2.33, z1 - .012, 'turretDark');
   for (const x of [-.70, .70]) strut(P, [x, 2.06, -1.66], [x, 1.98, z1 + .04], .022);
+  // a strapped bedroll across the lid
+  eq(P, cylX(.095, 1.30, P.q ? 14 : 9), 0, 2.51, zc - .02, 'turretCloth');
+  for (const x of [-.40, .40]) eq(P, torus(.100, .012, P.q ? 14 : 8, 5).rotateZ(Math.PI / 2), x, 2.51, zc - .02, 'turretDark');
   for (const side of [-1, 1]) {
-    const x = side * 1.01;
+    const x = side * 1.10;
     eq(P, box(.16, .44, .38), x, 2.17, zc, 'turretCloth');
     for (const y of [2.02, 2.34]) eq(P, box(.20, .02, z0 - z1 + .01), x, y, zc, 'turretDark');
     eq(P, box(.20, .46, .02), x, 2.18, z1 - .005, 'turretDark');
@@ -127,29 +185,37 @@ function basketBox(P: TankBuilderPort, [x0, x1]: readonly [number, number], [lo,
   eq(P, box(x1 - x0, .02, z1 - z0), (x0 + x1) / 2, lo - .01, (z0 + z1) / 2);
 }
 
-/** The long fine-mesh basket flush on the left wall from the bins to the wedge (1.45 m long, 0.18 m deep), on welded
- *  arms, the crew's kit showing through it. */
+/** The fine-mesh baskets on welded arms: the long one on the left wall from the bin to the cheek, the right one behind
+ *  the right bin; the crew's kit shows through them. */
 function meshBasket(P: TankBuilderPort): void {
-  const x0 = 1.29, x1 = 1.47, lo = 1.96, hi = 2.40, z0 = -.22, z1 = 1.23;
-  basketBox(P, [x0, x1], [lo, hi], [z0, z1], .06, .008);
-  for (const z of [z0 + .12, (z0 + z1) / 2, z1 - .12]) strut(P, [1.27, 1.93, z], [x1, lo - .015, z], .018);
-  eq(P, box(.13, .26, .90), 1.355, lo + .13, .40, 'turretCloth');
-  eq(P, box(.13, .18, .30), 1.355, lo + .09, -.02, 'turretCloth');
+  const x0 = 1.47, x1 = 1.67, lo = 1.90, hi = 2.30;
+  for (const [side, z0, z1] of [[1, -.30, 1.25], [-1, -1.20, .05]] as const) {
+    const [a, b] = side > 0 ? [x0, x1] : [-x1, -x0], xa = side * 1.44, xb = side * x1, xc = side * (x0 + x1) / 2;
+    basketBox(P, [a, b], [lo, hi], [z0, z1], .06, .008);
+    for (const z of [z0 + .12, (z0 + z1) / 2, z1 - .12]) strut(P, [xa, 1.87, z], [xb, lo - .015, z], .018);
+    // bedding along it and a kit bag at its back
+    eq(P, box(.15, .24, z1 - z0 - .65), xc, lo + .12, (z0 + z1) / 2 - .05, 'turretCloth');
+    eq(P, box(.15, .16, .30), xc, lo + .08, z0 + .20, 'turretCloth');
+  }
+  // a jerrycan standing at the front of the left basket
+  eq(P, box(.15, .32, .30), 1.57, lo + .16, 1.04, 'turretCloth');
+  eq(P, box(.07, .03, .05), 1.57, lo + .335, .98, 'turretDark');
 }
 
 function togsBarbette(P: TankBuilderPort): void {
-  // TOGS: the armoured thermal-sight barbette on the right cheek's top, set back behind the wedge (0.50 m wide, 0.95 m
-  // long, its top 0.24 m over the roof, its outer face over the wall), the armoured door on its inner front half and the
-  // right smoke bank on a bracket at its outer front corner (the Bovington front photo).
-  const xi = .80, xo = 1.30, rear = .20, front = 1.15, lo = 2.44, hi = 2.72, c = .05;
-  const ring: SectionPoint[] = sided([[xi, lo], [xo - c, lo], [xo, lo + c], [xo, hi - c], [xo - c, hi], [xi, hi]], -1);
-  P.add('turret', local(sectionSolid([rear, front].map((z) => ({ z, ring })))));
-  const dx = -.93, dy = 2.60;
+  // TOGS: the armoured thermal-sight barbette on the right cheek beside the gun (0.69 m wide, 1.05 m long, its top 0.24
+  // m over the roof, its foot following the cheek's fall, the front's top edge chamfered), the armoured door on the inner
+  // half of its face and the right smoke bank on the outer half.
+  const xi = .69, xo = 1.38, rear = .70, front = TOGS_FRONT, c = .05;
+  const ring = (lo: number, hi: number): SectionPoint[] => sided([[xi, lo], [xo - c, lo], [xo, lo + c], [xo, hi - c], [xo - c, hi], [xi, hi]], -1);
+  P.add('turret', local(sectionSolid([[rear, 2.72], [1.20, 2.72], [front - .12, 2.72], [front, 2.62]].map(([z, hi]) => ({
+    z, ring: ring(cheekOuter(z) - .04, hi) })))));
+  const dx = -.84, dy = 2.36;
   eq(P, box(.24, .20, .03), dx, dy, front + .012);
   eq(P, box(.18, .10, .012), dx, dy + .02, front + .03, 'turretDark');
   P.addModuleVisual('optics', 'turretGlass', box(.15, .07, .006), ...at(dx, dy + .02, front + .038));
   for (const ox of [-.10, .10]) eq(P, cylY(.014, .014, .16, 8), dx + ox, dy, front + .03, 'turretDark');
-  eq(P, box(.10, .05, .16), -(xi + xo) / 2, hi + .025, rear + .20);
+  eq(P, box(.10, .05, .16), -(xi + xo) / 2, 2.745, rear + .20);
 }
 
 function roofFittings(P: TankBuilderPort): void {
@@ -177,10 +243,16 @@ function roofFittings(P: TankBuilderPort): void {
   const lx = .48, lz = -.78;
   P.addHatch('turretDetail', cylY(.33, .34, .05, P.q ? 24 : 14), ...at(lx, roof + .025, lz));
   eq(P, torus(.33, .02, P.q ? 24 : 14, 6), lx, roof + .05, lz, 'turretDark');
-  // Gunner's sight head ahead of the commander, the loader's periscope, the NBC pack and the vents.
-  eq(P, box(.28, .17, .32), -.50, roof + .085, .78);
-  eq(P, box(.22, .09, .02), -.50, roof + .11, .945, 'turretDark');
-  P.addModuleVisual('optics', 'turretGlass', box(.18, .06, .008), ...at(-.50, roof + .11, .956));
+  // its hinge at the back, a handle and the periscope on the lid
+  eq(P, cylX(.03, .34, 10), lx, roof + .06, lz - .34, 'turretDark');
+  for (const dx of [-.12, .12]) eq(P, box(.04, .04, .14), lx + dx, roof + .06, lz - .26, 'turretDark');
+  strut(P, [lx - .08, roof + .10, lz + .14], [lx + .08, roof + .10, lz + .14], .011, 'turretDark');
+  for (const dx of [-.08, .08]) strut(P, [lx + dx, roof + .05, lz + .14], [lx + dx, roof + .10, lz + .14], .010, 'turretDark');
+  eq(P, box(.14, .06, .10), lx, roof + .08, lz - .05);
+  // Gunner's sight head on the gun housing ahead of the commander, the loader's periscope, the NBC pack and the vents.
+  eq(P, box(.26, .17, .32), -.50, roof + .06, .78);
+  eq(P, box(.22, .09, .02), -.50, roof + .10, .945, 'turretDark');
+  P.addModuleVisual('optics', 'turretGlass', box(.18, .06, .008), ...at(-.50, roof + .10, .956));
   eq(P, box(.16, .08, .16), .55, roof + .04, .30);
   eq(P, box(.12, .04, .01), .55, roof + .05, .385, 'turretGlass');
   eq(P, box(.56, .12, .44), .62, roof + .06, -1.50);
@@ -191,9 +263,10 @@ function roofFittings(P: TankBuilderPort): void {
     eq(P, cylY(.05, .06, .09, 12), x, roofAt(z) + .045, z);
     eq(P, cylY(.009, .012, 1.9, 6), x, roofAt(z) + 1.04, z, 'turretDark');
   }
-  // lifting eyes lying on the roof, which falls toward the nose and the bustle
-  for (const [x, z] of [[-.40, 1.45], [.98, .80], [-.98, -1.55], [.98, -1.55]] as const) {
-    eq(P, torus(.045, .014, 10, 6), x, roofAt(z) + .010, z, 'turretDark');
+  // lifting eyes lying on the housing, a cheek and the bustle roof
+  for (const [x, y, z] of [[-.40, housingTop(1.45), 1.45], [.98, cheekTop(.80, .98), .80], [-.98, roofAt(-1.55), -1.55],
+    [.98, roofAt(-1.55), -1.55]] as const) {
+    eq(P, torus(.045, .014, 10, 6), x, y + .010, z, 'turretDark');
   }
 }
 
@@ -210,9 +283,15 @@ export function challenger1SmokeBank(P: TankBuilderPort, bx: number, by: number,
 }
 
 function smoke(P: TankBuilderPort): void {
-  // The right bank at the barbette's outer front corner; the left on the left cheek, square to its 37-degree face.
-  challenger1SmokeBank(P, -1.10, 2.56, 1.24, -.30);
-  challenger1SmokeBank(P, 1.10, 2.16, 1.73, .92);
+  // The right bank on the barbette's face beside its door; the left low on the left cheek's front, on a bracket block
+  // whose foot follows the cheek's fall and its outward slope, its top level just over the cheek's highest point under
+  // it. Both fire forward and about 15 degrees out.
+  challenger1SmokeBank(P, -1.17, 2.42, TOGS_FRONT + .025, -.26);
+  const x = 1.08, z = 2.00, yaw = .26;
+  const under = [-.19, .19].flatMap((dx) => [-.10, .10].map((dz) => cheekTop(z + dz, x + dx)));
+  const top = Math.max(...under) + .01, foot = Math.min(...under) - .02;
+  eq(P, box(.38, top - foot, .20), x, (top + foot) / 2, z - .03, 'turretDetail', 0, yaw, 0);
+  challenger1SmokeBank(P, x, top + .13, z, yaw);
 }
 
 /** L11A5 120 mm rifled gun on its trunnion: drum shield, recessed canvas boot, a thermal sleeve tapering from 0.24 m to
@@ -256,7 +335,7 @@ export function addChallenger1HistoricTurret(P: TankBuilderPort, mark: Challenge
   roofFittings(P);
   smoke(P);
   addChallenger1Gun(P);
-  P.turretG.userData.challenger1Turret = Object.freeze({ mark, widthM: 2.56, roofY: 2.48, slotHalfWidthM: SLOT, noseZ: NOSE[NOSE.length - 1][0] });
+  P.turretG.userData.challenger1Turret = Object.freeze({ mark, widthM: 2.60, roofY: 2.48, slotHalfWidthM: SLOT, noseZ: NOSE[NOSE.length - 1][0] });
   // the gun-port receipt's face (turret frame): the nose plates' front, ahead of which the tube runs in the open
   P.turretG.userData.gunPort = Object.freeze({ faceZ: CHALLENGER1_PORT_FACE_Z - PZ, kind: 'slot' });
 }

@@ -489,13 +489,17 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   spec(registry, 't72b3_sich').gun.reloadS = 6.0;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
 
-  // 263 (Main's ruling, the balance lane's minimal three for 263's new balanceMatchups reds; FAIRNESS-263's other levers go
-  // to the owner): the rebuilt Challenger 1 marks' gun slot reads 624 mm, which every VIII round pierces (tier9-rifled-
-  // peers 0); x1.2 holds it. The C1 Ariete's ~730 mm gun face topped VI at 0.92 and shut out the XK2 on the move
+  // 263 (Main's ruling, the balance lane's minimal levers for 263's new balanceMatchups reds; FAIRNESS-263's other
+  // levers go to the owner): the C1 Ariete's ~730 mm gun face topped VI at 0.92 and shut out the XK2 on the move
   // (k2-tier9-mobile-peer 0); its gun and hull stay its serie-1 donor's (sourceXSecondWave), so its mantlet and turret
   // front take the trim.
-  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby']) mantlet(registry, id, 1.2);
   mantlet(registry, 'c1_ariete', 0.6);
   turretFront(registry, 'c1_ariete', 0.85);
+  // the FV4030/6's sleek turret read its gun face under every VIII round (tier9-rifled-peers' FV row 0.105): x1.4
+  // holds it (0.538). The Challenger 1 marks on the Mk 3's build sit in band unlevered (the Mk 2 v 2A4M CAN 0.625).
+  mantlet(registry, 'challenger_x_sleek', 1.4);
+  // the Challenger 1 Mk 1, Mk 2 and Mk 3 share the Mk 3's turret, whose sloped gun-face cells read the 624 mm slot and
+  // the 682 mm cheeks at ~1,020 mm effective (0.87-0.88, 8-9 of 34 in band); x0.7 brings the three to 0.55 (16 of 34)
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) turretFront(registry, id, 0.7);
 }
 
