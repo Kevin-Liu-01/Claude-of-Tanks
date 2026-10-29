@@ -254,7 +254,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   ztz85_iii: Object.freeze({ xM: 0.0002, zM: -0.163 }),
   ztz99_longwei: Object.freeze({ xM: 0.0006, zM: -0.0648 }),
   ztz99a: Object.freeze({ xM: 0.0005, zM: -0.4341 }),
-  ztz99a2: Object.freeze({ xM: 0.006, zM: -0.4393 }),
+  ztz99a2: Object.freeze({ xM: 0.0056, zM: -0.4392 }),
   ztz99a2_qinglong: Object.freeze({ xM: 0.0004, zM: -0.4368 }),
 });
 
@@ -504,7 +504,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   ztz85_iii: Object.freeze({ centerYM: 1.6298, topHalfM: 7.8915, sideHalfM: 3.9458 }),
   ztz99_longwei: Object.freeze({ centerYM: 2.186, topHalfM: 8.4678, sideHalfM: 4.2339 }),
   ztz99a: Object.freeze({ centerYM: 1.8304, topHalfM: 7.9886, sideHalfM: 3.9943 }),
-  ztz99a2: Object.freeze({ centerYM: 1.7855, topHalfM: 8.3151, sideHalfM: 4.1576 }),
+  ztz99a2: Object.freeze({ centerYM: 1.7855, topHalfM: 8.315, sideHalfM: 4.1575 }),
   ztz99a2_qinglong: Object.freeze({ centerYM: 1.9453, topHalfM: 8.609, sideHalfM: 4.3045 }),
 });
 
