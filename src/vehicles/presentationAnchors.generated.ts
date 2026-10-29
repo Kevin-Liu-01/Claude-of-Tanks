@@ -273,7 +273,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   c2_ariete: Object.freeze({ centerYM: 2.1958, topHalfM: 7.6486, sideHalfM: 3.8243 }),
   c2_ariete_proto: Object.freeze({ centerYM: 2.0166, topHalfM: 6.8283, sideHalfM: 3.4142 }),
   carro45t: Object.freeze({ centerYM: 2.0243, topHalfM: 7.7118, sideHalfM: 3.8559 }),
-  centurion3: Object.freeze({ centerYM: 2.4479, topHalfM: 6.5499, sideHalfM: 3.275 }),
+  centurion3: Object.freeze({ centerYM: 1.47, topHalfM: 6.5499, sideHalfM: 3.275 }),
   centurion5_2: Object.freeze({ centerYM: 1.8912, topHalfM: 6.5713, sideHalfM: 3.2856 }),
   challenger1_mk2: Object.freeze({ centerYM: 1.593, topHalfM: 7.7287, sideHalfM: 3.8644 }),
   challenger1_mk3: Object.freeze({ centerYM: 2.0055, topHalfM: 7.0802, sideHalfM: 3.5401 }),
