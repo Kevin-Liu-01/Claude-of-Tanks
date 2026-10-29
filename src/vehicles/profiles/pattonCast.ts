@@ -295,6 +295,8 @@ interface GearSpec {
   readonly sprocket: { readonly z: number; readonly y: number; readonly r: number; readonly axialScaleLeft?: number;
     readonly axialScaleRight?: number };
   readonly tension?: { readonly z: number; readonly y: number; readonly r: number };
+  /** The tension wheel rides inside the track's rising lower run: it stays out of the top run's path. */
+  readonly tensionInside?: boolean;
   readonly contactZF?: number;
   readonly contactZR?: number;
   readonly botY?: number;
@@ -327,7 +329,7 @@ function pattonGear(P: CastPort, xc: number, trackW: number, G: GearSpec): void 
   }
   KIT.buildRunningGear(P, {
     style: 'dished', wheelR: G.wheelR, wheelW, wheelY: G.wheelY, xc, wheelZs,
-    sprocket: G.sprocket, idler: G.idler, rollers: G.tension ? [...rollers, G.tension] : rollers, trackW,
+    sprocket: G.sprocket, idler: G.idler, rollers: G.tension && !G.tensionInside ? [...rollers, G.tension] : rollers, trackW,
     topY: G.rollerY + 0.04, paintedEnds: true, coveredTop: false, arms: true, sprocketTeeth: false,
     contactZF: G.contactZF, contactZR: G.contactZR, botY: G.botY,
     ...(G.wheelZsBySide ? { wheelZsLeftM: G.wheelZsBySide[0], wheelZsRightM: G.wheelZsBySide[1], fitStaggeredGroundRun: true } : {}),
@@ -620,7 +622,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       const [bx, by, bz] = H.bowLights;
       lights.position.set(side * bx, by, bz);
       P.hullG.add(lights);
-      P.add('hullDark', box(0.06, 0.06, bz - H.toe[0] + 0.06), side * bx, by - 0.08, (bz + H.toe[0] - 0.06) / 2);
+      // (the M47's lamps stand over the glacis, behind the nose: the arm runs forward to it, its length always positive,
+      // or the box turns inside out)
+      P.add('hullDark', box(0.06, 0.06, Math.abs(bz - H.toe[0] + 0.06)), side * bx, by - 0.08, (bz + H.toe[0] - 0.06) / 2);
       // the bracket's post down to the glacis
       const gy = deckAt(H.toe[0] - 0.08);
       P.add('hullDark', box(0.05, by - 0.08 - gy + 0.03, 0.05), side * bx, (by - 0.08 + gy) / 2, H.toe[0] - 0.08);
@@ -1124,7 +1128,7 @@ const M46_HULL_SPEC: PershingHullSpec = {
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [1.02, -2.68], rollerN: 5, rollerY: 1.04, rollerSpan: [0.55, -2.40],
     idler: { z: 1.63, y: 0.88, r: 0.30 }, sprocket: { z: -3.86, y: 1.02, r: 0.33, axialScaleLeft: 0.94, axialScaleRight: 0.94 },
-    tension: { z: -3.22, y: 0.50, r: 0.20 }, contactZF: 1.15, contactZR: -2.80,
+    tension: { z: -3.22, y: 0.513, r: 0.20 }, tensionInside: true, contactZF: 1.15, contactZR: -2.80,
   },
 };
 
@@ -1250,7 +1254,7 @@ const M47_HULL_SPEC: PershingHullSpec = {
   gear: {
     wheelR: 0.33, wheelY: 0.36, span: [0.92, -2.65], rollerN: 3, rollerY: 1.04, rollerSpan: [0.25, -2.15],
     idler: { z: 1.64, y: 0.88, r: 0.30 }, sprocket: { z: -3.65, y: 1.04, r: 0.30, axialScaleLeft: 0.94, axialScaleRight: 0.94 },
-    tension: { z: -3.25, y: 0.52, r: 0.20 }, contactZF: 1.15, contactZR: -2.85,
+    tension: { z: -3.25, y: 0.611, r: 0.20 }, tensionInside: true, contactZF: 1.15, contactZR: -2.85,
   },
 };
 
