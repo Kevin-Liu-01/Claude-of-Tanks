@@ -33,9 +33,10 @@ import { tankSeedId } from '../tankIdAliases.ts';
 
 const H = LEOPARD2_HULL, T = LEO2A4_TURRET;
 
-/** The deep modular skirts: hung outboard of the hull's own (its fore blocks' bolt heads stand to 1.836), 0.12 thick, to
- *  y 0.55; the fore course over the heavy blocks, the aft course to the sprocket, a fender strip over it. */
-const LEO2_IMPROVED_SKIRT = Object.freeze({ x0: 1.845, th: 0.12, foot: 0.55, top: 1.38, foreZ: [1.40, 3.16] as const,
+/** The deep modular skirts in place of the hull's own (its `skirts: 'none'`): 0.12 thick from x 1.70, 2 cm outside the
+ *  track band's outer edge (1.68), hung to y 0.55 from the sponson's floor; the fore course, the aft course to the
+ *  sprocket, a fender strip over it. */
+const LEO2_IMPROVED_SKIRT = Object.freeze({ x0: 1.70, th: 0.12, foot: 0.55, top: 1.38, foreZ: [1.40, 3.16] as const,
   aftZ: [-2.85, 1.40] as const, stripZ: -3.66 });
 const SK = LEO2_IMPROVED_SKIRT, SKX1 = SK.x0 + SK.th;
 
@@ -93,8 +94,8 @@ function skirtSegment(s: number, z0: number, z1: number, foot: number, lead: boo
 
 /**
  * The deep modular skirts, a side: the fore course (four segments, the leader cut back over the idler) with its foot's
- * flap strip, the aft course (ten segments) to the sprocket, the fender strip over the sprocket, the dark joints; spacers
- * to the hull's fore blocks and aft panels; over the fore course a cap onto the hanging rail.
+ * flap strip, the aft course (ten segments) to the sprocket, the fender strip over the sprocket, the dark joints; over
+ * the fore course a cap from the sponson's wall onto its top (aft, the cassette band carries the courses).
  */
 function deepSkirts(P: TankBuilderPort, s: number): void {
   const { box } = KIT;
@@ -114,27 +115,22 @@ function deepSkirts(P: TankBuilderPort, s: number): void {
   // the fender strip over the sprocket, the deep course's top band carried to the stern
   P.addExternalArmor('hull', box(SK.th, 0.14, SK.aftZ[0] - SK.stripZ - 0.012), xc, SK.top - 0.07, (SK.aftZ[0] + SK.stripZ) / 2 - 0.006);
   P.add('hullDark', box(SK.th + 0.002, 0.12, 0.014), xc, SK.top - 0.07, SK.aftZ[0]);
-  // spacers: to the fore blocks' faces between their bolt rows, to the aft panels' proud band, to the hull's fender strip
-  for (const z of [1.72, 2.34, 2.91]) P.add('hullDark', box(SK.x0 - HS.foreSkirtX + 0.006, 0.05, 0.06), s * (HS.foreSkirtX + SK.x0) / 2, 1.05, z);
-  for (const z of [-2.395, -1.552, -0.708, 0.135, 0.979]) {
-    P.add('hullDark', box(SK.x0 - HS.aftSkirtX + 0.006, 0.05, 0.06), s * (HS.aftSkirtX + SK.x0) / 2, 1.24, z);
-  }
-  P.add('hullDark', box(SK.x0 - HS.aftSkirtX + 0.006, 0.05, 0.06), s * (HS.aftSkirtX + SK.x0) / 2, 1.30, -3.25);
-  // the fore course's cap, from the sponson's wall over the hanging rail onto the course's top
+  // the fore course's cap, welded 1 cm into the sponson's wall over the 3 cm gap onto the course's top
   P.add('hullDetail', box(SKX1 + 0.01 - (HS.sponsonX - 0.01), 0.03, f1 - f0), s * (SKX1 + HS.sponsonX) / 2, SK.top + 0.015, (f0 + f1) / 2);
 }
 
 /**
- * The upper side cassette band, a side: nine cassettes in the skirts' plane over the aft course and the fender strip,
- * their end cassettes rolled; each with its seam and top strip; the shelf from the sponson's wall over them (its inner edge
- * welded into the wall), its hinge line and brackets.
+ * The upper side cassette band, a side: nine cassettes from the sponson's wall (2 mm into it) out to the skirts' plane,
+ * standing on the aft course and the fender strip, their end cassettes rolled; each with its seam and top strip; the
+ * shelf over them from the sponson's wall (its inner edge welded into the wall), its hinge line and brackets.
  */
 function sideCassettes(P: TankBuilderPort, s: number): void {
   const { box } = KIT;
-  const z0 = -3.62, z1 = SK.aftZ[1] - 0.02, n = 9, L = (z1 - z0) / n, y0 = SK.top - 0.002, y1 = 1.585, xc = s * (SK.x0 + SK.th / 2);
+  const z0 = -3.62, z1 = SK.aftZ[1] - 0.02, n = 9, L = (z1 - z0) / n, y0 = SK.top - 0.002, y1 = 1.585;
+  const inner = HS.sponsonX - 0.002, xc = s * (inner + SKX1) / 2;
   for (let i = 0; i < n; i++) {
     const z = z0 + L * (i + 0.5), d = L - 0.02, hgt = y1 - y0;
-    P.addExternalArmor('hull', box(SK.th, hgt, d), xc, (y0 + y1) / 2, z, 0, 0, s * (i === 0 ? -0.025 : i === n - 1 ? 0.025 : 0));
+    P.addExternalArmor('hull', box(SKX1 - inner, hgt, d), xc, (y0 + y1) / 2, z, 0, 0, s * (i === 0 ? -0.025 : i === n - 1 ? 0.025 : 0));
     P.add('hullDark', box(0.014, hgt * 0.82, 0.022), s * (SKX1 + 0.002), (y0 + y1) / 2, z + d / 2);
     P.add('hullDetail', box(0.018, 0.022, d * 0.76), s * (SKX1 + 0.002), y1 - 0.012, z);
   }
@@ -184,17 +180,18 @@ function frontMudguards(P: TankBuilderPort, s: number): void {
     (z) => mudguardY(z) - 0.025, (z) => mudguardY(z)));
   P.addEquipment('hull', box(0.08, 0.08, mz + 0.005 - 3.445), s * 0.98, 1.07, (mz + 0.005 + 3.445) / 2);
   P.add('hullDetail', box(SKX1 - lipX0 - 0.04, 0.022, 0.024), s * (SKX1 + lipX0) / 2, lipY0 + 0.002, mz + 0.035);
-  P.hangMudguard('leo2-improved-front-flap', 'hullRubber', box(0.86, 0.42, 0.024), s * 1.45, lipY0 - 0.22, mz + 0.025);
+  P.hangMudguard('leo2-improved-front-flap', 'hullRubber', box(SKX1 - 0.03 - 1.02, 0.42, 0.024), s * (SKX1 - 0.03 + 1.02) / 2,
+    lipY0 - 0.22, mz + 0.025);
 }
 
-/** The rear flaps beside the hull's own, a side: the rubber flap outboard under the skirts' plane, its hanger bar from the
+/** The rear flaps beside the hull's own, a side: the rubber flap under the skirts' plane, its hanger bar from the
  *  sponson's end and the bracket to the fender strip. */
 function rearFlaps(P: TankBuilderPort, s: number): void {
   const { box } = KIT;
   const z = -3.70;
-  P.add('hullDetail', box(SKX1 + 0.015 - (HS.sponsonX - 0.01), 0.035, 0.05), s * (SKX1 + 0.015 + HS.sponsonX - 0.01) / 2, 1.3875, z);
+  P.add('hullDetail', box(SKX1 + 0.005 - (HS.sponsonX - 0.01), 0.035, 0.05), s * (SKX1 + 0.005 + HS.sponsonX - 0.01) / 2, 1.3875, z);
   P.add('hullDetail', box(0.07, 0.06, 0.10), s * (SK.x0 + 0.06), 1.34, z + 0.035);
-  P.add('hullRubber', box(0.26, 0.42, 0.032), s * (SK.x0 - 0.015), 1.16, z);
+  P.add('hullRubber', box(SKX1 - HS.sponsonX + 0.005, 0.42, 0.032), s * (SKX1 + HS.sponsonX + 0.005) / 2, 1.16, z);
 }
 
 /**

@@ -22,7 +22,7 @@
 import { KIT, FITTINGS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { latheY } from '../accessoryPrimitives.ts';
-import { buildLeopard2Hull, mirrorRing } from './leopard2Hull.ts';
+import { buildLeopard2Hull } from './leopard2Hull.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import {

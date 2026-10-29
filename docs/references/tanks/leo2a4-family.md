@@ -10,10 +10,13 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   update and cleanup our old designs for leopard 2a4 otco, 2a4v, 2a4m, 2a4, 2a4m can, and leopard 2 improved off of thhast
   good hull and redesingn the turrets off of our leopard 2a6 and have them be the before variants basically. annd also
   carry over the unique additions and decorations annd eqquipment and props each of those have onto those new details."
-  Mid-lane (2026-10-28): "hmm fronts of leo 2a4s are sloped thoughh. check the real tanks".
+  Mid-lane (2026-10-28): "hmm fronts of leo 2a4s are sloped thoughh. check the real tanks"; "we can still have 2a4s that
+  use this squarish turret that doesnt look like 2a6, but it should be evenly split between the 2a4 squares vs 2a4 modern
+  upgraded variants that look like 2a6s" ("excellent approved"); "oh yeah this meanns we nnneed to update the strv 121 as
+  well".
 - IDs (rebuilt in place, names and combat data unchanged): `leo2a4` Leopard 2A4, `leo2a4_v` Leopard 2A4 V, `leo2a4m`
   Leopard 2A4M, `leo2a4m_can` Leopard 2A4M CAN, `leo2a4_otco` Leopard 2A4 OTCO, `leo2_improved` Leopard 2 Improved.
-- Implementation status: in progress. Hull and turret built; leo2a4's kit carried; the other five kits being authored.
+- Implementation status: in progress. Hull, both turret fronts and all seven kits built; regen chain and gates owed.
 - Qualification status: NOT RUN (anatomy chain, release gate, critics owed).
 - Publication: lane branch; Main integrates.
 
@@ -27,9 +30,11 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   `leopard2ImprovedKit.ts`, `leopard2A4Flw200.ts`), this packet; one registration line each in `fleetManifest.ts` (group
   `leopard2a4Family`), `fleetFactory.ts`, `profiledProcedurals.ts`, `fleetRegistration.ts`; the six rows leave
   `LEOPARD_PROFILES`.
-- Protected: `leo2a6_ua` (its own session; `buildLeo2A6M` stays), `strv121` (`buildLeo2A5` stays), the source-X studies
-  `leo2a5`, `leo2a5m`, `leo2a6`, `leo2a6m`, `leo2a7v` (their combat copies are taken before the re-envelope), the 262
-  family (`leo2a2`, `leo2a3`, `leo2a3_b4`, `christian2`) and `leopard2Hull.ts` until the 262 turret-front head lands.
+- Protected: `leo2a6_ua` (its own session; `buildLeo2A6M` stays), the source-X studies `leo2a5`, `leo2a5m`, `leo2a6`,
+  `leo2a6m`, `leo2a7v`, `strv122` (their combat copies are taken before the re-envelope), the 262 family (`leo2a2`,
+  `leo2a3`, `leo2a3_b4`, `christian2`). `leopard2Hull.ts` takes one option from this lane (`skirts: 'none'`, default
+  byte-identical) after the 262 turret-front head merged. The strv121 ghillie suit row belongs to the ghillie session,
+  re-seated on this geometry after it lands.
 - Combat data: every stat, gun and round, paint and every armour plate's protection (physical, KE, CE, kind, ERA, module
   link) stands under its own name; only where the plates stand moves (the 2A6/2A5 wedge and chevron layers become the
   spaced layer inside the 2A4 front block). Gun geometry: L/44 on leo2a4, leo2a4_v, leo2a4m, leo2a4m_can; L/55 on
@@ -73,3 +78,6 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 - R0 (2026-10-28): research, inventories (six files, ~250 carry-over rows), the turret derivation and registration by
   the Huber drawing; leo2a4's kit carried.
 - R1 (2026-10-28, the owner): the turret front rebuilt to the photographed sloped form.
+- R2 (2026-10-28, the owner): the even split, the 2A6 X's wedge front ported for the three upgrades; the five other kits
+  carried (inventories: nothing dropped without a reason); the CAN's and the Improved's own skirts on a skirtless hull,
+  inboard on the sponsons; the Strv 121 added; Main's fidelity ruling applied.

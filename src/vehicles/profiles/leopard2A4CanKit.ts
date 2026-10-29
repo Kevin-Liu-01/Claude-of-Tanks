@@ -10,7 +10,8 @@
 // glacis blocks, the belly plate); cages, rails, racks, bins, stowage, tools, lights, smoke, antennas and the station are
 // equipment or detail.
 //
-// Until leopard2Hull.ts can leave its own skirts off for this id, the CAN's side stack hangs outboard of them (SIDE).
+// The hull leaves its own skirts and their hanging rails off for this id (leopard2Hull.ts skirts: 'none'): the CAN's side
+// stack hangs from rails carried on the sponson's wall (SIDE).
 import * as THREE from 'three';
 import { KIT, FITTINGS, convexSlab } from './kit.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
@@ -29,20 +30,20 @@ const SIDES = [-1, 1] as const;
 // ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * The side stack, inboard to outboard (|x|). The hull's own fore blocks stand to 1.836 with their bolt heads and its aft
- * panels to 1.72, on hanging rails at y 1.36-1.38; the CAN's mounting rails lie on those rails, the fore module course
- * and the rear paneled course hang from them, the stand-off cassettes and the slat cage hang from the shelf over them.
- * With the hull's skirts left off, the whole stack moves inboard by `modIn - 1.70`.
+ * The side stack, inboard to outboard (|x|). The CAN's mounting rails stand off the sponson's wall on gussets; the fore
+ * module course and the rear paneled course hang from them just outside the track (its outer edge 1.68: their inner faces
+ * on the front mudguard's outer face, 4 cm of air), the stand-off cassettes and the slat cage hang from the shelf over them.
  */
 const SIDE = Object.freeze({
   wall: HS.sponsonX,                 // the sponson's outer wall
   railY0: 1.38, railY1: 1.402,       // the CAN's mounting rail plates
   shelfY1: 1.437,                    // the shelf (inboard lip and cage seat) on the rails
-  modIn: 1.845, modOut: 1.89,        // the fore module course (its proud cassettes to 1.90)
+  modIn: 1.72, modOut: 1.765,        // the fore module course (its proud tiles to 1.775)
   modY0: 0.88,
-  rearIn: 1.728, rearOut: 1.775,     // the rear paneled course
-  casIn: 1.90, casOut: 1.96,         // the stand-off cassettes
-  cageOut: 2.07,                     // the slat cage's rails
+  rearIn: 1.72, rearOut: 1.767,      // the rear paneled course
+  rearEndZ: 0.33,                    // where it meets the fore course
+  casIn: 1.78, casOut: 1.84,         // the stand-off cassettes (clear of the tiles' seam ticks)
+  cageOut: 1.95,                     // the slat cage's rails
   hemFoot: 0.55,                     // the rubber hems' foot
 });
 
@@ -109,7 +110,7 @@ function foreCourse(P: TankBuilderPort, s: number): void {
 /** The rear paneled course (six bays: a proud mounting band over a recessed panel and a rubber hem), outboard of the aft panels. */
 function rearCourse(P: TankBuilderPort, s: number): void {
   const { box } = KIT;
-  const z0 = -2.82, z1 = 1.40, n = 6, L = (z1 - z0) / n, band0 = 1.25, panel0 = 0.86;
+  const z0 = -2.82, z1 = SIDE.rearEndZ, n = 6, L = (z1 - z0) / n, band0 = 1.25, panel0 = 0.86;
   const x0 = SIDE.rearIn, x1 = SIDE.rearOut, xp = x0 + 0.035;
   for (let k = 0; k < n; k++) {
     const zc = z0 + L * (k + 0.5);
@@ -136,6 +137,8 @@ function sideArmour(P: TankBuilderPort, s: number): void {
   P.add('hullDetail', box(SIDE.modOut - w, rh, 3.16 - 0.36), s * (w + SIDE.modOut) / 2, ry, (0.36 + 3.16) / 2);
   P.add('hullDetail', box(SIDE.modOut - HS.mudguard.x1, rh, 3.60 - 3.16), s * (HS.mudguard.x1 + SIDE.modOut) / 2, ry, (3.16 + 3.60) / 2);
   P.add('hullDetail', box(SIDE.rearOut + 0.005 - w, rh, 0.36 + 2.85), s * (w + SIDE.rearOut + 0.005) / 2, ry, (0.36 - 2.85) / 2);
+  // the rails' gussets on the sponson's wall, under the plates, above the track
+  for (let k = 0; k < 13; k++) P.add('hullDetail', box(0.05, 0.05, 0.02), s * (w + 0.025), SIDE.railY0 - 0.025, -2.80 + k * 0.49);
   // the shelf: the inboard lip from the sponson to the cassettes' face, the cage's seat outboard of it
   const sh0 = SIDE.railY1, sh = SIDE.shelfY1 - sh0, cage0 = -2.95, cage1 = 1.30;
   P.add('hullDetail', box(SIDE.casOut - w, sh, 2.77 - cage0), s * (w + SIDE.casOut) / 2, sh0 + sh / 2, (cage0 + 2.77) / 2);
@@ -157,7 +160,7 @@ function sideArmour(P: TankBuilderPort, s: number): void {
     for (let row = 0; row < 4; row++) P.add('hullDetail', box(0.024, 0.028, l), s * ox, y0 + (y1 - y0) * row / 3, m);
     for (const z of [a, b]) P.add('hullDetail', box(0.028, SIDE.shelfY1 - 0.005 - (y0 - 0.03), 0.028), s * ox, (SIDE.shelfY1 - 0.005 + y0 - 0.03) / 2, z);
     for (const z of [a + l * 0.18, b - l * 0.18]) {
-      for (const y of [y0, y1]) P.add('hullDark', box(ox - SIDE.casOut + 0.04, 0.038, 0.040), s * (ox + SIDE.casOut) / 2, y, z);
+      for (const y of [y0, y1]) P.add('hullDark', box(ox - SIDE.casOut + 0.02, 0.038, 0.040), s * (ox + SIDE.casOut - 0.02) / 2, y, z);
     }
   }
 }
@@ -209,8 +212,8 @@ function glacisKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
     // a pin through each bow tow eye's lug
     P.add('hullDark', cylX(0.022, 0.16, 8), s * 0.70, 1.02, 3.40);
     // the width rods on the fore rail's nose
-    P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.87, SIDE.railY1 + 0.15, 3.52);
-    P.add('hullDetail', sph(0.016, 8), s * 1.87, SIDE.railY1 + 0.312, 3.52);
+    P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * (HS.mudguard.x1 + SIDE.modOut) / 2, SIDE.railY1 + 0.15, 3.52);
+    P.add('hullDetail', sph(0.016, 8), s * (HS.mudguard.x1 + SIDE.modOut) / 2, SIDE.railY1 + 0.312, 3.52);
     // the front mudflaps at the skirt line ahead of the idler, hinged into the short module's front
     P.hangMudguard('leo2a4m-can-front-flap', 'hullRubber', box(0.18, 0.36, 0.028), s * 1.79, 0.73, 3.66);
     P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.93, 3.66);
