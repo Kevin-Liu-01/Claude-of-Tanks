@@ -5813,6 +5813,8 @@ function* addGhillieOwner(
   const netMesh = addMerged(P, parent, netGeos, netMat, `${tankSeedId(cfg.id)}_ghillie_${owner}_net`);
   // 2026-10-23 (the owner on the M1A1 FEP's star: "Paint it on the drape"): the net carries the vehicle's markings
   if (netMesh && vehicleMarkingPaintsOnSuit(P.spec.id)) netMesh.userData.backsMarkingPaint = true;
+  // (264) a fitted cover lies on the plate: its shade on the armour round it is its cloth's own (suitOcclusion.ts)
+  if (netMesh && !leafy) netMesh.userData.fittedCover = true;
   if (netMesh && !netShared) suitMats.net = netMat;
   // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
   // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)

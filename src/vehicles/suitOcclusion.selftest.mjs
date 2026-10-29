@@ -62,6 +62,19 @@ const shadeAt = (mesh, x, z) => {
   assert.ok([...under.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0), 'a face turned away is not shaded');
 }
 
+// (round 3) a fitted cover's shade is its own cloth's: the plate 20 cm past its edge is untouched, where a net's reaches
+{
+  const root = new THREE.Group();
+  const deck = new THREE.Mesh(plate(1.5, 30, 1), paint);
+  const cover = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3, 15, 30).rotateX(-Math.PI / 2).translate(-0.75, 1.007, 0), paint);
+  cover.name = 'receipt_ghillie_hull_net';
+  cover.userData.fittedCover = true;
+  root.add(deck, cover);
+  drain(bakeSuitOcclusionSteps(root, []));
+  assert.ok(shadeAt(deck, -0.75, 0) > 0.6, 'the plate under a fitted cover is shaded');
+  assert.equal(shadeAt(deck, 0.2, 0), 0, 'and 20 cm past its edge it is not');
+}
+
 // a build without a suit is untouched; every vehicle material defaults the attribute to 0
 {
   const root = new THREE.Group();

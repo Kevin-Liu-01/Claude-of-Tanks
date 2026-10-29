@@ -163,9 +163,10 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
     const a = knot(i, j);
     for (const [di, dj] of [[1, 0], [0, 1]] as const) {
       if (rng() < 0.04) continue;
-      // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) in a mid olive
-      // a step over the palette's: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips)
-      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.6;
+      // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) a step over the
+      // palette's olive: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips); (264)
+      // lifted 1.25x, not 1.6x: with the hull under the net in its shade, a paler cord read as a grid over it
+      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.25;
       wrap9((ox, oy) => {
         const path = (g: CanvasRenderingContext2D): void => {
           g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
