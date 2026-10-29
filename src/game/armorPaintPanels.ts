@@ -132,7 +132,7 @@ const SLICE_TRIANGLES = 1500;
 
 const _unscale = new THREE.Matrix4();
 const _normalWorld = new THREE.Matrix3();
-const _b = new THREE.Vector3(), _c = new THREE.Vector3(), _world = new THREE.Vector3(), _from = new THREE.Vector3(), _dir = new THREE.Vector3();
+const _b = new THREE.Vector3(), _c = new THREE.Vector3(), _from = new THREE.Vector3(), _dir = new THREE.Vector3();
 const _centre = new THREE.Vector3(), _normal = new THREE.Vector3(), _p = new THREE.Vector3(), _t = new THREE.Vector3();
 const _g = new THREE.Vector3(), _n = new THREE.Vector3(), _box = new THREE.Vector3();
 
@@ -214,6 +214,16 @@ function plateName(zone: ZonePlate | undefined): string {
   return String((zone?.plate as { name?: string } | undefined)?.name ?? '');
 }
 
+/** Whether a frame-local point lies within CELL_SLACK_M of a convex cell's inside. */
+function insideCell(cell: ArmorCollisionCell, p: THREE.Vector3): boolean {
+  if (p.x < cell.min[0] - CELL_SLACK_M || p.y < cell.min[1] - CELL_SLACK_M || p.z < cell.min[2] - CELL_SLACK_M
+    || p.x > cell.max[0] + CELL_SLACK_M || p.y > cell.max[1] + CELL_SLACK_M || p.z > cell.max[2] + CELL_SLACK_M) return false;
+  for (const face of cell.faces) {
+    if (face.normal[0] * p.x + face.normal[1] * p.y + face.normal[2] * p.z + face.constant > CELL_SLACK_M) return false;
+  }
+  return true;
+}
+
 /** The face a segment (o + d·t, t in [0, 1]) enters a convex cell by, and where (sim/armor.ts intersectConvexCell). */
 let _entryFace: ArmorCollisionCell['faces'][number] | null = null;
 function enterCell(cell: ArmorCollisionCell, o: THREE.Vector3, d: THREE.Vector3): number {
@@ -277,6 +287,13 @@ const STANDOFF_RAY_COST = 12;
  * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
 const SMALL_PART_M2 = 0.5;
 const PLURALITY = 0.4;
+/** A large part (at least SMALL_PART_M2: a hull side, a glacis) needs this share to be baked whole, else it keeps the
+ * per-point border: one face two plates share (an upper and a lower side on one flat side) shows where they meet, as the
+ * authority's shell meets them (the 264 agreement census: panels lost the IFVs' flat sides). Its flat faces vote on up to
+ * LARGE_FLAT_POINTS points a triangle, spread by area. */
+const LARGE_MAJORITY = 0.85;
+const LARGE_FLAT_POINTS = 16;
+const LARGE_FLAT_POINT_M2 = 0.05;
 /** Adjacent triangles whose faces turn more than ~30° apart lie on two sides of a crease. */
 const CREASE_DOT = 0.866;
 
@@ -504,10 +521,8 @@ export function* bakePaintPanelSteps(
         if (!(length > 1e-9) || !authority) return -1;
         nx /= length; ny /= length; nz /= length;
         const local = _p.set(x, y, z).applyMatrix4(owner === 'hull' ? pose.hullInv : pose.turretInv);
-        for (const cell of owner === 'hull' ? cellsOf.hull : cellsOf.turret) {
-          if (local.x >= cell.min[0] - CELL_SLACK_M && local.y >= cell.min[1] - CELL_SLACK_M && local.z >= cell.min[2] - CELL_SLACK_M
-            && local.x <= cell.max[0] + CELL_SLACK_M && local.y <= cell.max[1] + CELL_SLACK_M && local.z <= cell.max[2] + CELL_SLACK_M) return -1;
-        }
+        // inside a cell (its convex faces, not its bounds: a slice's box spans the air beside a sloped side): no standoff
+        for (const cell of owner === 'hull' ? cellsOf.hull : cellsOf.turret) if (insideCell(cell, local)) return -1;
         const ln = _n.set(nx, ny, nz).transformDirection(owner === 'hull' ? pose.hullInv : pose.turretInv);
         const key = `${owner === 'hull' ? 'h' : 't'}${Math.round(local.x / STANDOFF_CELL_M)},${Math.round(local.y / STANDOFF_CELL_M)},${Math.round(local.z / STANDOFF_CELL_M)}`
           + `|${Math.round(ln.x * 2)},${Math.round(ln.y * 2)},${Math.round(ln.z * 2)}`;
@@ -620,7 +635,7 @@ export function* bakePaintPanelSteps(
           }
           // a piece is never baked bare here: a collar round the bore whose barrel share wins keeps the per-point score,
           // which leaves only the barrel's cylinder bare (the round-5 critic: the ZTZ-99A's collar untinted)
-          let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top >= 0 && top < 127 ? top + 1 : 0;
+          let value = voted > 0 && topArea >= (voted >= SMALL_PART_M2 ? LARGE_MAJORITY : PANEL_MAJORITY) * voted && top >= 0 && top < 127 ? top + 1 : 0;
           if (value === 0 && voted < SMALL_PART_M2 && top >= 0 && top < 127 && topArea >= PLURALITY * voted) value = top + 1;
           const kept = first[piece + 1] - first[piece];
           if (value !== 0) { if (parts > 1) stats.creaseParts++; else stats.wholeParts++; }
@@ -655,26 +670,38 @@ export function* bakePaintPanelSteps(
         }
         touched.length = 0;
         let voted = 0;
-        if (total > 0 && flat && end - start > FLAT_SAMPLED) {
+        const large = total >= SMALL_PART_M2;
+        if (total > 0 && flat && end - start > FLAT_SAMPLED && !large) {
           const slot = vote(template, split, pose, barrel, mode, owner, _centre.set(cx / total, cy / total, cz / total),
             _normal.set(normals[first * 3], normals[first * 3 + 1], normals[first * 3 + 2])) + 3;
           touched.push(slot);
           tally[slot] = voted = total;
           stats.votes++;
         } else if (total > 0 && flat) {
-          // a small flat panel (a box's face, a mantlet's front) by its area: three points a triangle, halfway from its
-          // centre to each corner, so the barrel's bare cylinder takes the face only if it covers most of it
-          for (let k = start; k < end; k++) {
+          // a flat panel by its area: a small one (a box's face, a mantlet's front) on three points a triangle, halfway
+          // from its centre to each corner, so the barrel's bare cylinder takes the face only if it covers most of it; a
+          // large one on up to LARGE_FLAT_POINTS points a triangle, so a border two plates draw across it shows
+          const stride = Math.max(1, Math.ceil((end - start) / MAX_VOTES));
+          for (let k = start; k < end; k += stride) {
             const t = order[k];
             if (!(areas[t] > 0)) continue;
-            for (let c = 0; c < 3; c++) {
-              const v = corner(t, c) * 3;
-              _world.set(p[v], p[v + 1], p[v + 2]).applyMatrix4(mesh.matrixWorld);
-              _centre.set((centres[t * 3] + _world.x) / 2, (centres[t * 3 + 1] + _world.y) / 2, (centres[t * 3 + 2] + _world.z) / 2);
+            const count = large ? Math.min(LARGE_FLAT_POINTS, Math.max(3, Math.ceil(areas[t] / LARGE_FLAT_POINT_M2))) : 3;
+            const i0 = corner(t, 0) * 3, i1 = corner(t, 1) * 3, i2 = corner(t, 2) * 3;
+            for (let c = 0; c < count; c++) {
+              // points of a fixed low-discrepancy pattern over the triangle (count 3: halfway to each corner)
+              let u: number, w: number;
+              if (count === 3) { u = c === 0 ? 2 / 3 : 1 / 6; w = c === 1 ? 2 / 3 : 1 / 6; } else {
+                u = (c + 0.5) / count; w = ((c * 0.618034) % 1);
+                if (u + w > 1) { u = 1 - u; w = 1 - w; }
+              }
+              const lx = p[i0] + (p[i1] - p[i0]) * u + (p[i2] - p[i0]) * w;
+              const ly = p[i0 + 1] + (p[i1 + 1] - p[i0 + 1]) * u + (p[i2 + 1] - p[i0 + 1]) * w;
+              const lz = p[i0 + 2] + (p[i1 + 2] - p[i0 + 2]) * u + (p[i2 + 2] - p[i0 + 2]) * w;
+              _centre.set(lx, ly, lz).applyMatrix4(mesh.matrixWorld);
               const slot = vote(template, split, pose, barrel, mode, owner, _centre,
                 _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2])) + 3;
               if (tally[slot] === 0) touched.push(slot);
-              tally[slot] += areas[t] / 3;
+              tally[slot] += areas[t] / count;
               stats.votes++;
             }
             voted += areas[t];
@@ -689,7 +716,7 @@ export function* bakePaintPanelSteps(
           if (area > topArea || (area === topArea && key > top)) { top = key; topArea = area; }
           tally[slot] = 0;
         }
-        let value = voted > 0 && topArea >= PANEL_MAJORITY * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
+        let value = voted > 0 && topArea >= (large ? LARGE_MAJORITY : PANEL_MAJORITY) * voted && top !== VOTE_LIVE && top !== VOTE_NONE && top < 127
           ? top === VOTE_BARE ? PANEL_BARE : top + 1 : 0;
         const kept = end - start;
         stats.clusters++;
@@ -731,18 +758,23 @@ export function* bakePaintPanelSteps(
       if (measureDisagreement) {
         for (let t = 0; t < triangles; t++) {
           const value = values[corner(t, 0)];
-          if (areas[t] > 0) stats.paintedArea += areas[t];
-          if (!(value > 0) || !(areas[t] > 0)) continue;
+          if (!(areas[t] > 0)) continue;
+          stats.paintedArea += areas[t];
           const zone = vote(template, split, pose, barrel, mode, owner, _centre.set(centres[t * 3], centres[t * 3 + 1], centres[t * 3 + 2]),
             _normal.set(normals[t * 3], normals[t * 3 + 1], normals[t * 3 + 2]), true);
-          stats.bakedArea += areas[t];
+          // every painted triangle, so both paints are scored on one population: the panel version shows its zone where
+          // it bakes one, the per-point zone where it keeps the score, nothing where it is bare
+          const shown = value > 0 ? value - 1 : value === 0 ? zone : -1;
           panelSink?.({
             x: centres[t * 3], y: centres[t * 3 + 1], z: centres[t * 3 + 2],
             nx: normals[t * 3], ny: normals[t * 3 + 1], nz: normals[t * 3 + 2],
             area: areas[t], part: `${mesh.name || mesh.parent?.name || 'mesh'}#${roots[t]}`,
-            panel: plateName(template.zones[value - 1]), point: zone >= 0 ? plateName(template.zones[zone]) : null,
-            panelTurret: value - 1 >= template.hullZones, pointTurret: zone >= template.hullZones,
+            panel: shown >= 0 ? plateName(template.zones[shown]) : '', point: zone >= 0 ? plateName(template.zones[zone]) : null,
+            panelTurret: shown >= template.hullZones, pointTurret: zone >= template.hullZones,
           });
+          if (spend(4)) { yield; sliceStarted = performance.now(); }
+          if (!(value > 0)) continue;
+          stats.bakedArea += areas[t];
           if (zone !== value - 1) {
             stats.disagreeArea += areas[t];
             if (zone < 0) stats.disagreeBare += areas[t];
