@@ -1541,7 +1541,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "865b63e2b7705a75",
+   "inputHash": "aa984767e0c1bd25",
    "runs": [
     {
      "index": 0,
@@ -2596,8 +2596,31 @@
    "hostSweep": []
   },
   "strv121": {
-   "inputHash": "665e0d0af7027835",
-   "runs": [],
+   "inputHash": "820f6096713d8dde",
+   "runs": [
+    {
+     "index": 0,
+     "site": "decor:tracks#21",
+     "source": "decor",
+     "frame": "turret",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.875,
+      "gap": 0.125,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.006,
+      "sweepM": 0,
+      "traverseM": 0,
+      "exposure": 0.955,
+      "host": "turret<turretShell@profiles/leopard2A4Turret.ts:73>"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },
