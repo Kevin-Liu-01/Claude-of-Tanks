@@ -206,7 +206,7 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'China', filler: 'unlisted_chinese_vehicle',
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a', 't72b3_qilin', 't72b3m_kunlun', 't80u_yun', 'type96b', 'type96_80_feng', 'type96_72m_lei', 'aft10', 'ztz20', 'ztz20_prototype', 'ztz100', 'type100', 'ztz100_prototype', 'type96_72_long', 'ztz99_longwei', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',

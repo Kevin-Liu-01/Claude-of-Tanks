@@ -29,7 +29,9 @@ try {
   }, 'KF51 complete rotating assembly publishes its forward seating datum');
   assert.equal(turretRig.position.z, 0.63,
     'KF51 turret rig moves 180 mm forward as one hierarchy');
-  assert.equal(TANK_SPECS.kf51_evo.armor.turretPivot[2], 0.70,
+  // The combat-rig row (gun-barrel-align 230, combatGunRigs.generated.ts) measures the moved rig itself: 0.63, not the
+  // 0.70 the pre-230 spec carried.
+  assert.equal(TANK_SPECS.kf51_evo.armor.turretPivot[2], 0.63,
     'KF51 authoritative turret frame follows the visible forward move');
 
   const lowerCollar = turretRig.userData.kf51LowerCollarReceipt;
@@ -291,7 +293,8 @@ try {
   }
 
   assert.deepEqual(hullRig.userData.kf51Finish, {
-    kf51HullTurretSeatBridge: 14,
+    // Five seam slabs a side on release 240's lowered deck line (moatDeck; seven on the old 1.73-1.79 staircase).
+    kf51HullTurretSeatBridge: 10,
     kf51GlacisShoulderBridge: 4,
     kf51DeckPaletteHardware: 3,
     kf51TurretLowerCollar: 2,
