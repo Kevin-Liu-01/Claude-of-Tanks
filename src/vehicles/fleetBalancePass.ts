@@ -438,12 +438,26 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  *   IV's Soviet-pattern mantlets eased and the Leopard 2A3's trim undone; VI's Soviet-pattern line and the C1's gun
  *   face; 262's VIII levers with the Challenger 1 marks and the K1A1; the new Tier X Oplots and ZTZ-20s. Armour levers
  *   only where a donor holds the gun and hull (sourceXSecondWave).
+ * - 264 (envelope honesty): the T-80, T-80B and T-80BV turrets lost their dust covers and cheek stowage as armour, so
+ *   the range meets their cast cheeks at their slope and the BV's mantlet flat; the three re-tuned to the honest faces.
  * Runs after the shown-tier floors, before the tactical role balance.
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
+  // Tier III (264, envelope honesty): the T-80's V-nose dust covers and cheek stowage no longer count as turret armour,
+  // so the range's rounds meet its cast cheeks at their slope (506 mm reads 853, past every III round). It went from
+  // III's weakest (0.17) to 0.68 and shut out the Leopard 2A2, the Leopard 2 prototype and the AMX-40. x0.7 over the
+  // turret front: 0.43, III 48 -> 50/78 in band
+  turretFront(registry, 't80', 0.7);
+
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
   // 262: the T-64BM1M and the T-64B1V mod. 2022 join the Soviet-pattern line at IV with the mod. 2017's footing
-  for (const id of ['pt91m', 't80b']) mantlet(registry, id, 1.45);
+  // 264 (envelope honesty): the T-80BV's cheek stowage no longer takes the range's rounds, which meet its mantlet flat
+  // (350 mm; every IV round passes); it takes the T-80B's footing, this x1.45 and 2,300 HP
+  for (const id of ['pt91m', 't80b', 't80bv']) mantlet(registry, id, 1.45);
+  // 264 (envelope honesty): with the T-80B's dust covers and cheek stowage out of its turret armour the range's rounds
+  // meet its cast cheeks at their slope (523 mm reads 884, past every IV round): 0.92 at IV, none of 13 pairs in band.
+  // x0.6 over the turret front, the x1.45 mantlet above included: 0.65, 12 of 13
+  turretFront(registry, 't80b', 0.6);
   // 263 (FAIRNESS-263): since the gun-face fix (combatAnatomy.ts gunFacePlate) the range's rounds meet the mantlet, so
   // the T-64 line's and the T-72M1's x1.45 stacked on it and topped IV; x1.2 holds their row (IV 73 -> 74/91 fair)
   for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) mantlet(registry, id, 1.2);
@@ -453,7 +467,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   }
   primary(registry, 'pt91m', { pen100: 790, pen1000: 730, pen2000: 647 });
   primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
-  for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
+  for (const id of ['pt91m', 't80b', 't80bv']) spec(registry, id).hp = 2300;
   spec(registry, 't80b').gun.aimTimeS = 1.85;
   for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
   cannonReload(registry, 't80b', 6.2);
@@ -469,7 +483,6 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
     spec(registry, id).hp = 2000;
   }
   cannonReload(registry, 't80bv', 7.4);
-  spec(registry, 't80bv').hp = 2100;
   cannonReload(registry, 'leo2a3', 6.4);
   // 263: 260's turret-front trim (x0.9) is undone, the 2A3's package reads true again; on the fixed gun face it was IV's
   // weakest (0.22). 2,400 HP, the Leopard 2's weight class at IV, lifts it to 0.37

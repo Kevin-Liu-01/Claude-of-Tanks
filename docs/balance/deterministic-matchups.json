@@ -2786,7 +2786,7 @@
     },
     {
       "id": "t80",
-      "revision": "make the base T-80 a mobile sidegrade instead of a strict T-80U downgrade",
+      "revision": "make the base T-80 a mobile sidegrade instead of a strict T-80U downgrade; 264: x0.7 over the turret front, the range meeting its cast cheeks at their slope once its dust covers and cheek stowage stopped counting as armour",
       "tier": 3,
       "era": "cold-war",
       "role": "mbt",
@@ -2814,13 +2814,13 @@
       },
       "armorCeilingsMm": {
         "hullKe": 442,
-        "turretKe": 506
+        "turretKe": 354
       },
       "guidedWeapons": []
     },
     {
       "id": "t80b",
-      "revision": "make the T-80B the mobile alternative to the protected T-80BV; 259: a thicker mantlet, pen, hull, aim and cadence for same-tier fairness at IV",
+      "revision": "make the T-80B the mobile alternative to the protected T-80BV; 259: a thicker mantlet, pen, hull, aim and cadence for same-tier fairness at IV; 264: x0.6 over the turret front, the range meeting its cast cheeks at their slope once its dust covers and cheek stowage stopped counting as armour",
       "tier": 4,
       "era": "cold-war",
       "role": "mbt",
@@ -2848,17 +2848,17 @@
       },
       "armorCeilingsMm": {
         "hullKe": 456,
-        "turretKe": 523
+        "turretKe": 314
       },
       "guidedWeapons": []
     },
     {
       "id": "t80bv",
-      "revision": "lift the fire control over the shown-tier MBT floor; 259: a slower cycle and less hull for same-tier fairness at IV",
+      "revision": "lift the fire control over the shown-tier MBT floor; 259: a slower cycle and less hull for same-tier fairness at IV; 264: the T-80B's x1.45 mantlet and 2,300 HP, the range meeting its mantlet flat once its cheek stowage stopped counting as armour",
       "tier": 4,
       "era": "cold-war",
       "role": "mbt",
-      "hp": 2100,
+      "hp": 2300,
       "powerWeight": 25.17,
       "speedKmh": [
         70,
