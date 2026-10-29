@@ -64,3 +64,23 @@
 - Existing cage helpers (`modernFieldCage`, `fieldRoofCage`, `attachedCage`) draw round-bar slat grilles; the photos show
   square wire mesh on angle frames and a tall roof cage, so the kit has its own box-bar mesh panel (12 triangles a bar,
   95 mm pitch at HIGH, 160 mm at LOW).
+- The cage's upper bays carry a dark camouflage net from the screens to the eaves, flanks and rear [A: the 2025 cage is
+  netted from its screens to its roof]; its front stays open for the sights and the gun, and stops behind the wedges as in
+  [A]. Chain fringes are drawn as links turned a quarter turn in turn at HIGH (rods at LOW); the bow curtain keeps its
+  length ([A] shows it hanging nearly to the ground).
+- A Kontakt-1 seat ray that passes the seam between two skirt plates lands on the hull side behind the track's top run:
+  no cassette is seated there (the strict track clip found the two the first build placed).
+
+## Visual review (blind critics, opus and sonnet, against the photos; the lower score counts)
+
+| view | before | wave 0 | wave 1 (shipped) |
+|---|---|---|---|
+| front | 3 | 6 | 6 |
+| side | 4 | 5 | 6 |
+| front three-quarter | 3-4 | 6 | 6 |
+| rear three-quarter | 3 | 5 | 6 |
+| top | 2-3 | 5 | 5 |
+
+Wave 0 routed the shared defects (open upper cage, rod-like chains) to the fix round; wave 1 scored the fix round's build.
+Residual, from both critics: the flat cage roof, chains that still read as rods at Gallery scale, the digital scheme
+(three-tone proposed to Main), low Kontakt-1 relief on the skirt.

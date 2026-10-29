@@ -84,7 +84,12 @@ for (const name of ['turretOpenLattice', 'turretOpenLatticeDark', 'hullOpenLatti
   assert.equal(mesh.userData.combatHitboxRole, 'nonArmor', `${name} is not armour`);
   assert.equal(mesh.userData.continuityRole, 'open-lattice', `${name} is open lattice`);
 }
-assert.equal(tank.root.getObjectByName('turretOpenLattice').parent, turret, 'the screens and cage turn with the turret');
+{
+  // compared by walking up, never with assert.equal on scene objects (a failure would inspect the whole scene graph)
+  let up = tank.root.getObjectByName('turretOpenLattice');
+  while (up && up !== turret) up = up.parent;
+  assert.ok(up === turret, 'the screens and cage turn with the turret');
+}
 
 // the kit's envelope is the vehicle's published one: 4.44 m wide over the hull boxes, 3.28 m over the cage's ridge
 {
