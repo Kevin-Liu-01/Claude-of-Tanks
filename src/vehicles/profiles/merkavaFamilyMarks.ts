@@ -7,7 +7,7 @@
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
 import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
-import type { MerkavaBasket, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
+import type { MerkavaBasket, MerkavaTarp, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -26,6 +26,8 @@ export interface MerkavaMark {
   readonly shell: readonly ShellSolid[];
   /** The add-on turret armour modules as measured solids, each in its side's removable package. */
   readonly modules: readonly TurretModule[];
+  /** The bustle tarps as measured heightfields (the 3C's, 2D's and 4B's covered baskets). */
+  readonly tarps: readonly MerkavaTarp[];
   /** The large source pieces fitted as measured solids (bigpieces.py), drawn by their detail roles. */
   readonly solidParts: readonly SolidPart[];
   /** The belly's add-on armour plate (the 2D and Baz) as measured; null where the source carries none. */
@@ -220,9 +222,28 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   };
 }
 
+/** A mark's tarps from their packed grids (millimetres; a top of 0 leaves its cell open, the depth runs top to hem). */
+function tarpsOf(r: object): MerkavaTarp[] {
+  const packed = (r as { readonly tarps?: readonly { readonly x0: number; readonly z0: number; readonly c: number; readonly nx: number;
+    readonly nz: number; readonly t: readonly number[]; readonly d: readonly number[] }[] }).tarps ?? [];
+  return packed.map((t) => ({
+    x0: t.x0 / 1000, z0: t.z0 / 1000, cell: t.c / 1000, nx: t.nx, nz: t.nz,
+    top: Float32Array.from(t.t, (v) => (v > 0 ? v / 1000 : Number.NaN)),
+    hem: Float32Array.from(t.t, (v, k) => (v > 0 ? (v - t.d[k]!) / 1000 : Number.NaN)),
+  }));
+}
+
+type PackedSolids = readonly { readonly z: readonly number[]; readonly r: readonly (readonly number[])[] }[];
+/** A module's plane-bounded runs (plateslab.py), where it carries them: each run's frame quaternion (ten-thousandths in
+ *  the source) and its solids. */
+function runsOf(m: object): ModuleRun[] | undefined {
+  const u = (m as { readonly u?: readonly { readonly q: readonly number[]; readonly s: PackedSolids }[] }).u;
+  return u?.map((run) => ({ q: [run.q[0]! / 1e4, run.q[1]! / 1e4, run.q[2]! / 1e4, run.q[3]! / 1e4] as const, solids: solidsOf(run.s) }));
+}
+
 /** Measured solids in metres (merkavaFamilySource.ts packs each solid's stations and its sections' x, y pairs in
  *  millimetres, every section after the first as its change from the one before). */
-function solidsOf(packed: readonly { readonly z: readonly number[]; readonly r: readonly (readonly number[])[] }[]): ShellSolid[] {
+function solidsOf(packed: PackedSolids): ShellSolid[] {
   return packed.map((g) => {
     let acc: number[] = [];
     const rings = g.r.map((flat, s) => {
@@ -259,7 +280,9 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
   return {
     id, hull, gear: gearOf(r), fender: fenderOf(r), belly: r.belly?.map((st) => st.map((v) => v / 1000) as unknown as BellyStation) ?? null,
     pivot, shell: solidsOf(r.turretShell),
-    modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s) })),
+    modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s),
+      runs: runsOf(m) })),
+    tarps: tarpsOf(r),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
       axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
     basket: basketOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),

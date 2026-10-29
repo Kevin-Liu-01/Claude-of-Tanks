@@ -76,6 +76,14 @@ export interface TurretModule {
   readonly side: 'R' | 'L';
   readonly axis: 0 | 2;
   readonly solids: readonly ShellSolid[];
+  /** Where the module was fitted as plane-bounded runs (each face one flat plate): those, in place of its solids. */
+  readonly runs?: readonly ModuleRun[] | undefined;
+}
+
+/** One run of a module: its solids cut along its own local z, and the quaternion turning that frame into the hull's. */
+export interface ModuleRun {
+  readonly q: readonly [x: number, y: number, z: number, w: number];
+  readonly solids: readonly ShellSolid[];
 }
 
 /** Measured solids in their owner's frame (offset subtracted): cut along z, or along x (fitted in the frame (-z, y, x),
@@ -89,9 +97,26 @@ function solidsGeometry(solids: readonly ShellSolid[], axis: 0 | 2, offset: read
   });
 }
 
-/** A module's solids in the turret frame. */
+const runQ = new THREE.Quaternion(), runP = new THREE.Vector3();
+/** The run's foremost point in the hull frame (its corners turned by its frame). */
+export function moduleRunFront(run: ModuleRun): number {
+  runQ.set(run.q[0], run.q[1], run.q[2], run.q[3]).normalize();
+  let front = -Infinity;
+  for (const solid of run.solids) {
+    solid.z.forEach((z, s) => { for (const [x, y] of solid.rings[s]!) front = Math.max(front, runP.set(x, y, z).applyQuaternion(runQ).z); });
+  }
+  return front;
+}
+/** A module's solids in the turret frame: its runs each turned from its own frame, else its solids. */
 function moduleGeometry(m: TurretModule, pivot: readonly [number, number, number]): THREE.BufferGeometry[] {
-  return solidsGeometry(m.solids, m.axis, pivot);
+  if (!m.runs) return solidsGeometry(m.solids, m.axis, pivot);
+  return m.runs.flatMap((run) => {
+    runQ.set(run.q[0], run.q[1], run.q[2], run.q[3]).normalize();
+    return run.solids.flatMap((solid) => {
+      const g = loftMeasuredSolid(solid.z.map((z, s) => ({ z, ring: solid.rings[s]! })));
+      return g ? [g.applyQuaternion(runQ).translate(-pivot[0], -pivot[1], -pivot[2])] : [];
+    });
+  });
 }
 
 /** A large source piece fitted as measured solids (bigpieces.py): its owner, its detail role, whether it stood in for a
@@ -129,6 +154,63 @@ export function buildMerkavaBasket(P: TankBuilderPort, basket: MerkavaBasket, pi
     e.setFromQuaternion(q);
     P.add('turretPaintedDetail', KIT.box(sx, sy, sz), cx, cy - py, cz - pz, e.x, e.y, e.z);
   }
+}
+
+/** A bustle tarp as measured (tarpfit.py, hull frame): its plan grid (the first cell's centre, the cell size, columns and
+ *  rows) and each cell's cloth top and hem, NaN where the cloth leaves the cell open. */
+export interface MerkavaTarp {
+  readonly x0: number;
+  readonly z0: number;
+  readonly cell: number;
+  readonly nx: number;
+  readonly nz: number;
+  readonly top: Float32Array;
+  readonly hem: Float32Array;
+}
+
+/** Draws a tarp in the turret frame as one draped canvas solid: its top through the cells' measured tops (a quad where
+ *  four neighbouring cells are covered), its skirt walls from the top's edge down to the hem, its underside under them;
+ *  vertex normals shared, so the cloth reads soft. */
+export function buildMerkavaTarp(P: TankBuilderPort, tarp: MerkavaTarp, pivot: readonly [number, number]): void {
+  const [py, pz] = pivot, { x0, z0, cell, nx, nz, top, hem } = tarp;
+  const positions: number[] = [], index: number[] = [];
+  const vt = new Int32Array(nx * nz).fill(-1), vb = new Int32Array(nx * nz).fill(-1);
+  for (let j = 0; j < nz; j++) {
+    for (let i = 0; i < nx; i++) {
+      const k = j * nx + i;
+      if (!Number.isFinite(top[k]!)) continue;
+      vt[k] = positions.length / 3; positions.push(x0 + i * cell, top[k]! - py, z0 + j * cell - pz);
+      vb[k] = positions.length / 3; positions.push(x0 + i * cell, hem[k]! - py, z0 + j * cell - pz);
+    }
+  }
+  // each top triangle's edges: an edge only one triangle uses is the cloth's rim (kept with its winding)
+  const rim = new Map<number, [number, number] | null>();
+  const edge = (a: number, b: number): void => {
+    const key = a < b ? a * nx * nz + b : b * nx * nz + a;
+    rim.set(key, rim.has(key) ? null : [a, b]);
+  };
+  for (let j = 0; j + 1 < nz; j++) {
+    for (let i = 0; i + 1 < nx; i++) {
+      const a = j * nx + i, b = a + 1, c = a + nx + 1, d = a + nx;
+      if (vt[a]! < 0 || vt[b]! < 0 || vt[c]! < 0 || vt[d]! < 0) continue;
+      index.push(vt[a]!, vt[d]!, vt[c]!, vt[a]!, vt[c]!, vt[b]!);
+      index.push(vb[a]!, vb[c]!, vb[d]!, vb[a]!, vb[b]!, vb[c]!);
+      edge(a, d); edge(d, c); edge(c, a); edge(a, c); edge(c, b); edge(b, a);
+    }
+  }
+  for (const e of rim.values()) {
+    if (!e) continue;
+    const [u, v] = e;
+    index.push(vt[v]!, vt[u]!, vb[u]!, vt[v]!, vb[u]!, vb[v]!);
+  }
+  if (!index.length) return;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  // the cloth's texture from above, its skirts' running down
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(positions.flatMap((v, i) => (i % 3 === 0 ? [v] : i % 3 === 2 ? [v - positions[i - 1]!] : [])), 2));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  P.add('turretCanvasPale', g);
 }
 
 /** The hull armour's bolt heads as measured (studfit.py: x, y, z and size, hull frame): a small cube each on its panel's

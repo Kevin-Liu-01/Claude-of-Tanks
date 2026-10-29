@@ -12,7 +12,7 @@ import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.t
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
 import { buildMerkavaBelly, buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
 import { buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
-import { buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds } from './merkavaFamilyDetails.ts';
+import { buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds, buildMerkavaTarp, moduleRunFront } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
 
 function isTankBuilderPort(value: object): value is TankBuilderPort {
@@ -49,11 +49,12 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   P.turretG.position.set(0, py, pz);
   // the gun's channel: the slot from its back wall to the nose, else (the Mk 4) from the shell's front to its modules' tips
   const shellFront = Math.max(...mark.shell.map((solid) => solid.z[solid.z.length - 1]!));
-  const moduleFront = Math.max(shellFront, ...mark.modules.filter((m) => m.axis === 2).flatMap((m) => m.solids.map((solid) => solid.z[solid.z.length - 1]!)));
+  const moduleFront = Math.max(shellFront, ...mark.modules.flatMap((m) => m.runs ? m.runs.map((run) => moduleRunFront(run)) : m.axis === 2 ? m.solids.map((solid) => solid.z[solid.z.length - 1]!) : []));
   const channel = mark.slot ? { z0: mark.slot.z0, z1: shellFront, halfWidth: mark.slot.halfWidth }
     : moduleFront > shellFront + 0.2 ? { z0: shellFront - 0.05, z1: moduleFront, halfWidth: 0.25 } : null;
   buildMerkavaTurretShell(P, mark.shell, mark.pivot, channel);
   if (mark.basket) buildMerkavaBasket(P, mark.basket, mark.pivot);
+  for (const tarp of mark.tarps) buildMerkavaTarp(P, tarp, mark.pivot);
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts);
   buildMerkavaStuds(P, mark.studs);
