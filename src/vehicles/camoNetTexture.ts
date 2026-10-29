@@ -254,7 +254,9 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   for (const [i, j] of order) {
     const k = knot(i, j);
     const d = density(k[0], k[1]) * stripDensity;
-    if (rng() > Math.pow(d, 2.2) * 1.05) continue;
+    // (r7; the critic r6: "a regular grid of dark tiles" where the paint under the net is black) more of the knots
+    // carry a bunch, so the open mesh is the bare net's between them, not a lattice through the garnish
+    if (rng() > Math.pow(d, 1.9) * 1.12) continue;
     const count = 2 + Math.floor(rng() * (1 + d * 3.5));
     const base = rng() < 0.8 ? patchTone(k[0], k[1]) : pickTone();
     const fan0 = rng() < 0.7 ? Math.PI / 2 + (rng() - 0.5) * 1.1 : rng() * Math.PI * 2;

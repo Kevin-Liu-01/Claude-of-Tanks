@@ -226,7 +226,10 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     const out = shade.array as Uint8Array;
     m.multiplyMatrices(toRoot, mesh.matrixWorld);
     nm.getNormalMatrix(m);
-    let touched = false;
+    // each vertex's shade and the share of its footprint the cloth covers; the cover a vertex takes is the least of
+    // every triangle it belongs to (below)
+    const amounts = new Float32Array(position.count), gates = new Float32Array(position.count);
+    let any = false;
     for (let i = 0; i < position.count; i++) {
       if (--budget <= 0) { budget = VERTICES_PER_STEP; yield* pause(); }
       p.fromBufferAttribute(position, i).applyMatrix4(m);
@@ -257,7 +260,29 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
         }
       }
       if (acc <= 0 || gate <= 0) continue;
-      const amount = Math.min(1, acc / full) * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, gate / full);
+      amounts[i] = Math.min(1, acc / full);
+      gates[i] = gate / full;
+      any = true;
+    }
+    if (!any) continue;
+    // (r7; the critic r6: "shade on the bare sponson ledge, which no suit covers", one 2.75 m triangle whose two far
+    // corners lay under the deck net and the drape's roll) a triangle is under the cloth only as far as its least
+    // covered corner, and a vertex takes the least of its triangles: a coarse panel the cloth reaches at a corner or two
+    // takes no shade across its bare span
+    const index = geometry.index;
+    const tris = index ? index.count : position.count;
+    const least = new Float32Array(position.count).fill(Infinity);
+    for (let t = 0; t + 2 < tris; t += 3) {
+      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+      const g = Math.min(gates[a], gates[b], gates[c]);
+      if (g < least[a]) least[a] = g;
+      if (g < least[b]) least[b] = g;
+      if (g < least[c]) least[c] = g;
+    }
+    let touched = false;
+    for (let i = 0; i < position.count; i++) {
+      if (!amounts[i]) continue;
+      const amount = amounts[i] * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, Number.isFinite(least[i]) ? least[i] : gates[i]);
       const byte = Math.round(amount * 255);
       if (!byte) continue;
       out[i] = byte;

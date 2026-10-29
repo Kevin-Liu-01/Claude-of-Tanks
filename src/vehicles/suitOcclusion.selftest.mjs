@@ -51,8 +51,10 @@ const shadeAt = (mesh, x, z) => {
   // (r6; the critic r5's "bare sponson strip darkened with no net over it") the deck within the kernel's reach of the
   // net, but with no cloth over it, is not shaded either
   assert.equal(shadeAt(deck, 0.2, 0), 0, 'the bare deck 20 cm past the net\'s edge is not shaded');
-  const edge = shadeAt(deck, 0.05, 0), inside = shadeAt(deck, -0.3, 0);
-  assert.ok(edge > 0 && edge < inside, `the shade falls off softly across the net's edge (${edge.toFixed(2)} < ${inside.toFixed(2)})`);
+  // (r7) the vertex on the net's edge belongs to triangles with a bare corner: the shade ends inside the edge, softly
+  const rim = shadeAt(deck, 0.0, 0), edge = shadeAt(deck, -0.1, 0), inside = shadeAt(deck, -0.5, 0);
+  assert.equal(rim, 0, 'the deck at the net\'s edge itself is not shaded');
+  assert.ok(edge > 0 && edge < inside, `the shade falls off softly inside the net's edge (${edge.toFixed(2)} < ${inside.toFixed(2)})`);
   assert.ok([...twinGeometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0), 'a geometry drawn twice keeps zeros');
   assert.ok([...roof.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0),
     'the turret reads only its own suit (none here): the hull net never shades it');
@@ -63,6 +65,25 @@ const shadeAt = (mesh, x, z) => {
   under.geometry.deleteAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE);
   drain(bakeSuitOcclusionSteps(root, [turret]));
   assert.ok([...under.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0), 'a face turned away is not shaded');
+}
+
+// (r7; the critic r6's "shade on the bare sponson ledge": one long triangle whose two far corners lay under cloth) a
+// coarse panel the cloth reaches at two corners takes no shade at all
+{
+  const root = new THREE.Group();
+  const ledge = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, 1, -1.4, 0.3, 1, 1.4, -0.5, 1, 1.4], 3));
+  ledge.computeVertexNormals();
+  if (ledge.getAttribute('normal').getY(0) < 0) ledge.setIndex([0, 2, 1]);
+  ledge.computeVertexNormals();
+  const panel = new THREE.Mesh(ledge, paint);
+  // cloth over the two corners at z +1.4 only
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.4, 12, 4).rotateX(-Math.PI / 2).translate(-0.1, 1.02, 1.4), paint);
+  net.name = 'receipt_ghillie_hull_net';
+  root.add(panel, net);
+  drain(bakeSuitOcclusionSteps(root, []));
+  assert.ok([...ledge.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0),
+    'a panel whose corner lies bare takes no shade across it');
 }
 
 // (round 3) a fitted cover's shade is its own cloth's: the plate 20 cm past its edge is untouched, where a net's reaches

@@ -2193,7 +2193,7 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       const fx = rng() * S, fy = rng() * S, a = rng() * Math.PI, half = S * (0.18 + rng() * 0.22), wide = S * (0.035 + rng() * 0.035);
       const ca = Math.cos(a), sa = Math.sin(a), bend = (rng() - 0.5) * half * 0.6;
       wrap9((ox, oy) => {
-        for (const [g, crest, trough] of [[ctx, 'rgba(255,255,240,0.11)', 'rgba(0,0,0,0.26)'], [hctx, 'rgba(140,140,140,0.5)', 'rgba(0,0,0,0.45)']] as const) {
+        for (const [g, crest, trough] of [[ctx, 'rgba(255,255,240,0.11)', 'rgba(0,0,0,0.17)'], [hctx, 'rgba(140,140,140,0.5)', 'rgba(0,0,0,0.45)']] as const) {
           // the crest and, a fold's width on, its trough: soft strokes along a bent line
           for (const [off, style] of [[0, crest], [wide * 1.1, trough]] as const) {
             g.save();
@@ -2259,7 +2259,9 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       ctx.save();
       ctx.translate(ca * 1.2 + sa * 0.8, sa * 1.2 - ca * 0.8);
       leaf(ctx, ox, oy, 0.6);
-      ctx.fillStyle = rgb(under.map((v) => v * 0.42), 0.85);
+      // (r7; the critic r6: "near-black inside the skirt covers", leaves "like stickers") the gap under a flap a dark step
+      // of the fabric, not black, and its cut edge a shade
+      ctx.fillStyle = rgb(under.map((v) => v * 0.58), 0.7);
       ctx.fill();
       ctx.restore();
       // the flap itself, a touch lighter where it turns up to the sky, its cut edge darker
@@ -2267,7 +2269,7 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       ctx.fillStyle = rgb(under.map((v) => v * (1.02 + lift * 0.08)));
       ctx.fill();
       ctx.lineWidth = 0.8;
-      ctx.strokeStyle = rgb(under.map((v) => v * 0.6), 0.6);
+      ctx.strokeStyle = rgb(under.map((v) => v * 0.74), 0.5);
       ctx.stroke();
       leaf(hctx, ox, oy);
       // a leaf stands its lift off the fold under it (r6)
@@ -2298,8 +2300,10 @@ function cutLeafCoverTextures(pal: CoverPalette, seed: number, dense = false): {
         // so the cover reads in relief; a flap cut right out leaves a dark pocket in the fabric under it, not a hole: a
         // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
         const image = ctx.getImageData(0, 0, S, S);
-        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.62, occlusion: 3.2,
-          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.62, pal.base[1] * 0.62, pal.base[2] * 0.58], fill: [0, 0], cell: S * S } });
+        // (r7) the fabric's shade floored at a dark step of its own base (the critic r6: "near-black cover interiors")
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.72, occlusion: 2.4,
+          radii: [3, 9], floor: 0.62 * (0.2126 * pal.base[0] + 0.7152 * pal.base[1] + 0.0722 * pal.base[2]),
+          gaps: { tone: [pal.base[0] * 0.74, pal.base[1] * 0.74, pal.base[2] * 0.7], fill: [0, 0], cell: S * S } });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
