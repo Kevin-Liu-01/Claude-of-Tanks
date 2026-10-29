@@ -61,7 +61,9 @@ function engineRoof(P:TankBuilderPort):void{
       caseBox(P,side*58.9,67.15,z,2.8,.55,2.4);
     });
     seat(()=>{
-      equipment(P,cylZ(m(.6),m(100),12),side*66.2,68.1,-147.0);
+      // the rail ends 2 in past its end posts (release 264, the Mk 1's and Mk 3's critics: it ran 15 in past the rear
+      // post, over the rear plate's corner, and 19 in past the front one)
+      equipment(P,cylZ(m(.6),m(70),12),side*66.2,68.1,-149.0);
       for(const z of [-182,-166,-140,-116])caseBox(P,side*66.2,66.8,z,1.4,2.8,2.4);
     });
     seat(()=>{
