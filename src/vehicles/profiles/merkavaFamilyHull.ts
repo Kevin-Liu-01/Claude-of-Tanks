@@ -159,7 +159,9 @@ function fender(spec: MerkavaHullSpec, side: 1 | -1, z0: number, z1: number): TH
 }
 
 /** A front fender box over the sprocket: its sloped top plate, front plate, outboard side plate (raked up to the top
- *  plate's back edge) and the inboard plate's upper band; 2 cm steel. */
+ *  plate's back edge) and the inboard plate's upper band; 2 cm steel. The outboard front corner is bent round in plan,
+ *  as the sources' boxes are (a quarter turn of up to 22 cm): the top plate's edge follows the bend, which is five
+ *  plates along its chords between the side plate and the front plate. */
 function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
   const t = 0.02, topAt = (z: number): number => f.top0 + (f.top1 - f.top0) * ((z - f.z0) / Math.max(1e-6, f.z1 - f.z0));
   const plate = (stations: readonly (readonly [z: number, x0: number, x1: number, y0: number, y1: number])[]): THREE.BufferGeometry =>
@@ -167,13 +169,25 @@ function fenderBox(f: MerkavaFender, side: 1 | -1): THREE.BufferGeometry[] {
       const ring: SectionPoint[] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
       return { z, ring: side > 0 ? ring : mirror(ring) };
     }));
-  return [
-    plate([[f.z0, f.xi, f.xo, f.top0 - t, f.top0], [f.z1, f.xi, f.xo, f.top1 - t, f.top1]]),
-    plate([[f.z1 - t, f.xi, f.xo, f.bottom, topAt(f.z1 - t) - t], [f.z1, f.xi, f.xo, f.bottom, f.top1 - t]]),
+  // the bend's radius and centre (cx, cz); the top plate's outboard edge at z
+  const r = Math.min(0.22, (f.xo - f.xi) * 0.35, (f.z1 - f.side0) * 0.8), cx = f.xo - r, cz = f.z1 - r;
+  const edge = (z: number): number => (z <= cz ? f.xo : cx + Math.sqrt(Math.max(0, r * r - (z - cz) ** 2)));
+  const topZs = [f.z0, cz, ...Array.from({ length: 6 }, (_, k) => cz + r * Math.sin(((k + 1) / 7) * Math.PI / 2)), f.z1];
+  const parts = [
+    plate(topZs.map((z) => [z, f.xi, edge(z), topAt(z) - t, topAt(z)] as const)),
+    plate([[f.z1 - t, f.xi, cx, f.bottom, topAt(f.z1 - t) - t], [f.z1, f.xi, cx, f.bottom, f.top1 - t]]),
     plate([[f.z0, f.xo - t, f.xo, f.top0 - 0.10, f.top0 - t], [f.side0, f.xo - t, f.xo, f.bottom, topAt(f.side0) - t],
-      [f.z1 - t, f.xo - t, f.xo, f.bottom, topAt(f.z1 - t) - t]]),
+      [cz, f.xo - t, f.xo, f.bottom, topAt(cz) - t]]),
     plate([[f.z0, f.xi, f.xi + t, f.top0 - 0.25, f.top0 - t], [f.z1 - t, f.xi, f.xi + t, Math.max(f.bottom, f.top1 - 0.25), topAt(f.z1 - t) - t]]),
   ];
+  for (let k = 0; k < 5; k++) {
+    const a0 = (k / 5) * Math.PI / 2, a1 = ((k + 1) / 5) * Math.PI / 2, am = (a0 + a1) / 2;
+    const x0 = cx + r * Math.cos(a0), z0 = cz + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), z1 = cz + r * Math.sin(a1);
+    const xm = (x0 + x1) / 2 - (t / 2) * Math.cos(am), zm = (z0 + z1) / 2 - (t / 2) * Math.sin(am);
+    const h = topAt(zm) - t - f.bottom, ry = Math.atan2(x1 - x0, z1 - z0);
+    parts.push(KIT.xform(KIT.box(t, h, Math.hypot(x1 - x0, z1 - z0) + 0.006), side * xm, f.bottom + h / 2, zm, 0, side * ry, 0));
+  }
+  return parts;
 }
 
 /** Hull body: the central loft, the two sponsons and the fenders over the track ends in 'hull'; the front fender boxes
