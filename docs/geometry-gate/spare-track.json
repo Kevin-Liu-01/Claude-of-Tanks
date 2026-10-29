@@ -2526,13 +2526,13 @@
    "hostSweep": []
   },
   "pt84_orzel": {
-   "inputHash": "970573bd0a2e6a33",
+   "inputHash": "3b644b411d5bacb4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "pt84_sokol": {
-   "inputHash": "de9c707b35eae1c4",
+   "inputHash": "149a5932364a6581",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

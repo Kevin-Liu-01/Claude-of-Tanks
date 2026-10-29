@@ -522,12 +522,12 @@
    "low": {"meshes":76,"vertices":244779,"triangles":82546,"digest":"20dfda51d02d9e3b","groups":{"hull":"05b3c333065e0ed6","turret":"13ae51693009cb6b","gun":"25d8ca3a46ecd701","runningGear":"007872fe06dd95f0","other":"e3b0c44298fc1c14"}}
   },
   "pt84_orzel": {
-   "high": {"meshes":73,"vertices":327689,"triangles":115768,"digest":"d81feca8ff58ad93","groups":{"hull":"f626719c63e9a2ab","turret":"9f9701c43bf8bece","gun":"6dba6b72055fca9a","runningGear":"7e310a52a8911a36","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":68,"vertices":223277,"triangles":75816,"digest":"f95e746c3ab16ba3","groups":{"hull":"77ee1b6d1ddf565c","turret":"b73b97cf236e8f96","gun":"b67dee21b2a8597a","runningGear":"c30b35d747ac3837","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":73,"vertices":327689,"triangles":115768,"digest":"80f34467c41f2a0b","groups":{"hull":"5370cf13ae678541","turret":"9f9701c43bf8bece","gun":"6dba6b72055fca9a","runningGear":"7e310a52a8911a36","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":68,"vertices":223277,"triangles":75816,"digest":"3537a831d2b163aa","groups":{"hull":"42707ab1fb3fb9eb","turret":"b73b97cf236e8f96","gun":"b67dee21b2a8597a","runningGear":"c30b35d747ac3837","other":"e3b0c44298fc1c14"}}
   },
   "pt84_sokol": {
-   "high": {"meshes":65,"vertices":310869,"triangles":110072,"digest":"19f7db7cd44a2861","groups":{"hull":"24a856f93071b5dd","turret":"244f49677777e016","gun":"cae2d382d9fae739","runningGear":"92557cd134068d61","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":60,"vertices":207729,"triangles":70568,"digest":"c56d2f1bd8086c55","groups":{"hull":"68904c2e944f032a","turret":"06511d319ae2b938","gun":"92af22b3e69248df","runningGear":"39bbcdaea7a51a3c","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":65,"vertices":310869,"triangles":110072,"digest":"88d55a2227cfa513","groups":{"hull":"cee92f2f50a7a495","turret":"244f49677777e016","gun":"cae2d382d9fae739","runningGear":"92557cd134068d61","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":60,"vertices":207729,"triangles":70568,"digest":"1524eb3518f004ac","groups":{"hull":"9145bfcb0b456789","turret":"06511d319ae2b938","gun":"92af22b3e69248df","runningGear":"39bbcdaea7a51a3c","other":"e3b0c44298fc1c14"}}
   },
   "pt84_zbik": {
    "high": {"meshes":74,"vertices":316760,"triangles":112125,"digest":"c53e4e8e412318a0","groups":{"hull":"ac4ab13db8010360","turret":"823c2b0362396040","gun":"0d6af448010cc72b","runningGear":"c6611d631acdd81c","other":"e3b0c44298fc1c14"}},

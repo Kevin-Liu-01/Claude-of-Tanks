@@ -201,7 +201,9 @@ function buildHull(P: TankBuilderPort, variant: OplotBMVariant): void {
       for (const r of cells) {
         const [ua, ub, va, vb] = r;
         if (fit.level === 2) eraSolid(P, 'hull', OPLOT_BM_ERA.glacis, krataPillow(at(s), r, PILLOW_BEVEL, PILLOW_BEVEL), normal);
-        else glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, (ua + ub) / 2), (va + vb) / 2, [ub - ua, KRATA_CASSETTE, vb - va]);
+        // level 1: each cassette stands 4 mm proud of its frame, so the field reads filled (the 262 blind critic read the
+        // cassettes 3.5 cm down inside the frames as empty cells)
+        else glacisEraCassette(P, OPLOT_BM_ERA.glacis, side(s, (ua + ub) / 2), (va + vb) / 2, [ub - ua, KRATA_CASSETTE + 0.04, vb - va]);
       }
       for (const r of bars) P.addEquipment('hullDark', krataSlab(at(s), r, -0.01, krataFrame(fit)));
     }
