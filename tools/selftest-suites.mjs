@@ -1200,6 +1200,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleAccess.selftest.mjs',
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
+    // 265: the core imports no driver code; a local battle never reaches src/mp or the room host (seeded violations caught)
+    'tools/driver-boundaries.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
     'src/vehicles/markingFilm.selftest.mjs',
@@ -1588,6 +1590,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
+    // 265 (the owner, 2026-10-29: one core, two drivers): the local step and the authority's leave the same world, byte for byte
+    'src/sim/driverStepParity.selftest.mjs',
     'src/sim/structureSupport.selftest.mjs',
     // 2026-10-10 (physics lane, owner: "the turret snaps into a pre-ordained resting position ... just let physics work"):
     // the game's own rigid bodies, and a dead hull's turret as one.
