@@ -856,7 +856,7 @@ function bustleNumbers(P: CastPort, T: TurretFrame, z: number, frac: number, sca
 
 /** What pattonCastProportions.selftest.mjs reads back from a build: the authored datums and the running gear's counts. */
 interface PattonCastReceipt {
-  readonly mark: 'm46' | 'm47' | 'm48a5' | 'm60a1' | 'm60a3';
+  readonly mark: 'm46' | 'm47' | 'm48a5' | 'm60a1' | 'm60a2' | 'm60a3';
   readonly ring: readonly [number, number];
   readonly trunnion: readonly [number, number];
   readonly muzzleZ: number;
@@ -1882,12 +1882,105 @@ function m60Mantlet(q: boolean | undefined): Geo {
   return g;
 }
 
-export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a3'): TankProfileBuild {
+// The M60A2 "Starship" (the owner's model, registered to the A1's frame by its turret ring: .qa-dev/m60-265/a2-recipe.json):
+// the A1's hull under its own low turret, a wide cast skirt round the ring under a narrow upper body that runs from the
+// launcher's mantlet to a wide bustle, the big commander's cupola on top.
+const M60A2_SKIRT: readonly CastStation[] = [
+  { z: 1.66, bot: 1.70, top: 2.06, hw: 0.72, roof: 0.45, foot: 0.92, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 1.50, bot: 1.70, top: 2.07, hw: 0.97, roof: 0.45, foot: 0.94, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 1.20, bot: 1.70, top: 2.08, hw: 1.17, roof: 0.48, foot: 0.95, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 0.90, bot: 1.70, top: 2.08, hw: 1.29, roof: 0.50, foot: 0.96, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 0.60, bot: 1.70, top: 2.08, hw: 1.33, roof: 0.50, foot: 0.96, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 0.30, bot: 1.70, top: 2.08, hw: 1.31, roof: 0.50, foot: 0.96, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: 0.00, bot: 1.70, top: 2.08, hw: 1.24, roof: 0.50, foot: 0.96, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: -0.30, bot: 1.70, top: 2.08, hw: 1.16, roof: 0.50, foot: 0.95, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: -0.60, bot: 1.72, top: 2.08, hw: 1.14, roof: 0.50, foot: 0.94, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+  { z: -0.78, bot: 1.76, top: 2.06, hw: 1.10, roof: 0.48, foot: 0.92, waist: 0.32, nUp: 2.0, nLo: 2.6 },
+];
+const M60A2_BODY: readonly CastStation[] = [
+  { z: 1.82, bot: 1.80, top: 2.48, hw: 0.60, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.03 },
+  { z: 1.66, bot: 1.80, top: 2.60, hw: 0.64, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.05 },
+  { z: 1.20, bot: 1.80, top: 2.60, hw: 0.70, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.05 },
+  { z: 0.60, bot: 1.80, top: 2.63, hw: 0.74, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.04 },
+  { z: 0.00, bot: 1.80, top: 2.64, hw: 0.76, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.04 },
+  { z: -0.50, bot: 1.80, top: 2.64, hw: 0.86, roof: 0.62, foot: 0.95, waist: 0.35, nUp: 2.2, nLo: 3, crown: 0.03 },
+  { z: -0.78, bot: 1.78, top: 2.62, hw: 1.22, roof: 0.70, foot: 0.92, waist: 0.40, nUp: 2.2, nLo: 3, crown: 0.02 },
+  { z: -1.42, bot: 1.86, top: 2.60, hw: 1.20, roof: 0.72, foot: 0.92, waist: 0.40, nUp: 2.2, nLo: 3, crown: 0.02 },
+  { z: -1.62, bot: 1.98, top: 2.56, hw: 0.92, roof: 0.72, foot: 0.90, waist: 0.40, nUp: 2.2, nLo: 3 },
+  { z: -1.80, bot: 2.04, top: 2.52, hw: 0.72, roof: 0.72, foot: 0.90, waist: 0.40, nUp: 2.2, nLo: 3 },
+];
+// the 152 mm M162 gun/launcher: its trunnion behind the mantlet block on the bore's 2.145 m axis, the plain tube 0.10 m
+// out to the muzzle at 3.74
+const M60A2_GUN: GunSpec = { trunnionZ: 1.80, axisY: 2.145, muzzleZ: 3.74, r0: 0.10, r1: 0.10, device: 'none' };
+
+function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
+  const { box, cylY, cylZ, sph, xform } = KIT;
+  const T: TurretFrame = { ringY: M60_RING.y, ringZ: M60_RING.z, stations: M60A2_BODY };
+  const L = tl(T);
+  P.turretG.position.set(0, T.ringY, T.ringZ);
+  P.add('turret', castSolid(M60A2_SKIRT, P.q, T.ringZ, T.ringY));
+  P.add('turret', castSolid(M60A2_BODY, P.q, T.ringZ, T.ringY));
+  // the boxes either side of the upper body, ahead of and behind the cupola (the model's 0.95-0.98 m)
+  for (const side of [-1, 1]) {
+    for (const [z0, z1] of [[0.70, 1.10], [-0.65, -0.25]] as const) {
+      P.add('turretDetail', moldedBox(0.30, 0.40, z1 - z0, 0.02, P.q ? 2 : 1, 0.01), side * 0.83, L.y(2.33), L.z((z0 + z1) / 2));
+    }
+  }
+  yield 'm60a2TurretCasting';
+  // the commander's cupola (the model's: 1.3 m across at (-0.07, -0.12), its body to 3.30): the ring of vision blocks,
+  // the tall body, the domed roof, the M85 in its mount on the front left of it; the loader's hatch ahead on the left
+  {
+    const [cx, cz] = [-0.07, -0.12];
+    const roof = frameTop(T, cx, cz);
+    P.add('turret', cylY(0.62, 0.64, 0.16, P.q ? 30 : 16), cx, L.y(roof + 0.06), L.z(cz));
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2;
+      P.add('turretGlass', box(0.12, 0.06, 0.012), cx + Math.sin(a) * 0.635, L.y(roof + 0.08), L.z(cz + Math.cos(a) * 0.635), 0, a, 0);
+    }
+    P.add('turret', cylY(0.55, 0.61, 0.34, P.q ? 30 : 16), cx, L.y(roof + 0.31), L.z(cz));
+    P.add('turret', xform(sph(0.55, P.q ? 22 : 12, P.q ? 10 : 6), 0, 0, 0, 0, 0, 0, [1, 0.30, 1]), cx, L.y(roof + 0.48), L.z(cz));
+    P.add('turretDark', cylY(0.30, 0.31, 0.04, P.q ? 22 : 12), cx - 0.05, L.y(roof + 0.63), L.z(cz - 0.12));
+    P.add('turret', moldedBox(0.26, 0.20, 0.40, 0.02, P.q ? 2 : 1, 0.01), cx - 0.55, L.y(roof + 0.36), L.z(cz + 0.32));
+    P.add('turretDark', box(0.10, 0.09, 0.28), cx - 0.55, L.y(roof + 0.36), L.z(cz + 0.58));
+    P.add('turretDark', cylZ(0.022, 0.75, 10), cx - 0.55, L.y(roof + 0.35), L.z(cz + 1.05));
+    P.add('turretDark', cylZ(0.032, 0.18, 10), cx - 0.55, L.y(roof + 0.35), L.z(cz + 0.74));
+  }
+  loaderHatch(P, T, 0.42, 0.62, 0.24);
+  roofScope(P, T, -0.42, 1.05, 0, 0.10);
+  yield 'm60a2TurretRoof';
+  // the AN/VSS-3 searchlight in its box on the turret's left front, on its arm from the body (the model's: 1.25 m out
+  // from the body's side to 1.56, 1.97-2.67 high, 0.82-1.64 along), its lens forward
+  P.add('turretDetail', box(0.50, 0.20, 0.32), 0.62, L.y(2.30), L.z(1.20));
+  P.add('turret', moldedBox(0.72, 0.70, 0.82, 0.04, P.q ? 2 : 1, 0.02), 1.20, L.y(2.32), L.z(1.23));
+  P.addModuleVisual('optics', 'turretGlass', cylZ(0.25, 0.02, P.q ? 22 : 12), 1.20, L.y(2.32), L.z(1.645));
+  // the bustle's rack and its load, the two whips (the model's: at (0.40, -1.05) to 4.75 m and (-0.50, -1.40) to
+  // 4.31 m), the numbers on its flanks
+  bustleBasket(P, T, -1.62, -1.98, 0.80, 2.20, 2.62, 611);
+  antennaWhips(P, T, [[0.40, -1.05]], 1.30, 612, { top: 4.75, rake: 0 });
+  antennaWhips(P, T, [[-0.50, -1.40]], 1.30, 613, { top: 4.31, rake: 0 });
+  bustleNumbers(P, T, -1.10, 0.55, 0.24);
+  yield 'm60a2TurretFittings';
+  // gun: the mantlet under its canvas cover (the model's 1.2 x 0.83 m, rounded, its front 0.54 m ahead of the
+  // trunnion), the launcher's collar, the sight's housing on its upper left
+  const G = M60A2_GUN;
+  P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
+  P.addGunExtra(xform(sph(0.62, P.q ? 24 : 12, P.q ? 14 : 8), 0, 0, 0, 0, 0, 0, [1, 0.68, 0.48]), 0, -0.005, 0.24);
+  P.addGunExtra(cylZ(0.16, 0.10, P.q ? 20 : 12), 0, 0, 0.58);
+  P.addGunExtra(box(0.12, 0.18, 0.60), 0.21, 0.17, 0.42);
+  P.addGunExtraDark(box(0.08, 0.10, 0.02), 0.21, 0.17, 0.725);
+  P.addGunExtraDark(box(0.08, 0.08, 0.04), -0.32, 0.05, 0.545);
+  pattonGun(P, G);
+  P.topY = L.y(3.30) + 0.12;
+  yield 'm60a2Gun';
+}
+
+export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3'): TankProfileBuild {
   yield* pershingHullSteps(P, M60_HULL_SPEC);
-  yield* m60TurretSteps(P, variant === 'a3');
-  const H = M60_HULL_SPEC, G = M60_GUN;
+  if (variant === 'a2') yield* m60a2TurretSteps(P);
+  else yield* m60TurretSteps(P, variant === 'a3');
+  const H = M60_HULL_SPEC, G = variant === 'a2' ? M60A2_GUN : M60_GUN;
   publishReceipt(P, {
-    mark: variant === 'a3' ? 'm60a3' : 'm60a1', ring: [M60_RING.y, M60_RING.z], trunnion: [G.axisY, G.trunnionZ],
+    mark: variant === 'a3' ? 'm60a3' : variant === 'a2' ? 'm60a2' : 'm60a1', ring: [M60_RING.y, M60_RING.z], trunnion: [G.axisY, G.trunnionZ],
     muzzleZ: G.muzzleZ, device: G.device, evacuator: [G.evac?.z0 ?? 0, G.evac?.z1 ?? 0], roadWheels: 6, wheelR: H.gear.wheelR,
     returnRollers: H.gear.rollerN, tensionWheel: false, trackW: H.trackW, trackCentres: H.xc * 2,
     glacisFromVerticalDeg: glacisDeg(H.toe, H.knee),

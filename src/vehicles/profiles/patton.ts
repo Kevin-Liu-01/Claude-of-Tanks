@@ -3266,19 +3266,10 @@ export const PATTON_PROFILES = {
   m46_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM46CastSteps(P, M46_M47_TRACK_FINISH)) },
   m47_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM47CastSteps(P, M46_M47_TRACK_FINISH)) },
   m48a5_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48A5CastSteps(P)) },
-  m60a2: {
-    // FIRST BUILD (r2): the triage 'easiest single win' — A1-family hull
-    // re-authored in this print's own extract frame + the Starship tower
-    // and stub 152 launcher. Containment from birth; §B3 via KIT.fittings.
-    // PUSH ROUND (2026-08-05): 80.3 -> 86.3 x2 (turret 91.2, stations 89.6)
-    // — raked mantlet mass, §B1 crest rake, plan arrowhead nose (hwL),
-    // width system on the ref's low boards. Ceiling MEASURED at ~87.5
-    // whole: bow-tip tube-overlap + crest height-cap + stern overall-cap
-    // (certified-cap candidates; mechanisms in the packet round section).
-    build: (P: PattonBuilderPort) => buildM60A2(P, {
-      hull: M60A2_HULL, fit: M60A2_FIT, sections: M60A2_SECTIONS, muzzle: 3.712,
-    }),
-  },
+  // release 265 (the owner, 2026-10-28: "be sure to update th estartship too"): the Starship rebuilt on the A1's hull
+  // off the owner's model (pattonCast.ts m60a2TurretSteps)
+  m60a2: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a2')) },
+
   // Release 265 (the owner, 2026-10-28: "rework ALL the m60s, their models proper are in my folders"): the M60A1 and
   // M60A3 are new measured castings at true size in pattonCast.ts (docs/references/tanks/m60a1.md, m60a3.md).
   m60a1: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a1')) },
