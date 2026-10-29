@@ -1303,6 +1303,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // the probes read that part of the scoot window apart (debugInfo escaping)
   let pocketEscapeUntilS = -1;
   let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
+  // the driver that opened the scoot window, for the probes (debugInfo scootKind, 263): the doctrine's shoot-and-scoot
+  // ('scoot', and its probe relocation 'probe'), a leg the gun needs ('arc' its arc limit, 'lane' a friendly in the line of
+  // fire, 'gun' a blocked gun lane) or the pocket escape ('escape')
+  let scootKind: 'scoot' | 'probe' | 'arc' | 'lane' | 'gun' | 'escape' = 'scoot';
   let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
   let relocations = 0;   // probe-visible shoot-and-scoot counter
   let prevReloadT = 0;   // reload-edge watch (a jump up = a shot left the gun)
@@ -2676,6 +2680,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return false;
   }
 
+  /** The committed passing path's parked ally stands too near this hull to turn beside it (see allyTooCloseToPivot). */
+  function parkedAllyTooCloseToPivot(): boolean {
+    if (!trafficDetourAllyId || !getAllies) return false;
+    const friends = getAllies();
+    for (let i = 0; i < friends.length; i++) {
+      if (friends[i]!.id === trafficDetourAllyId) return allyTooCloseToPivot(friends[i]!);
+    }
+    return false;
+  }
+
   function driveTrafficDetour(input: AiInput, timeS: number): void {
     if (timeS >= trafficDetourUntilS) return;
     const st = entity.state;
@@ -2689,6 +2703,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = clamp(error * 2.2, -1, 1);
     input.throttle = Math.abs(error) < .45 ? .65 : 0;
     input.brake = Math.abs(error) >= .45 && Math.abs(st.speed) > .5;
+    // a side that rolls its escapes (doctrine rollingEscapes) turns onto the leg under way, save beside a parked hull
+    // too near to turn by (263: the infected's pivots onto a passing leg stood them 2-3 s in a fight); the allied
+    // avoidance after it still brakes for that hull
+    if (input.throttle === 0 && doctrineOf().rollingEscapes && !parkedAllyTooCloseToPivot()) {
+      input.throttle = JOCKEY_DRIVE.rollThrottle;
+      input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
+      input.brake = false;
+    }
     // the pivot onto a leg turns the hull in place like faceYaw: only the legs themselves are drive intent, or the
     // low-speed watchdog reads a 2-3 s pivot as a wedge and reverses the hull out of its own passing path
     driveIntent = input.throttle > 0;
@@ -3289,6 +3311,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     scootPoint.z = bz;
     scootUntilS = nowS + 6;
     pocketEscapeUntilS = scootUntilS;
+    scootKind = 'escape';
     scootLine = 0;
     routeTimer = 0;
     return true;
@@ -5124,9 +5147,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     );
   }
 
-  function beginScoot(durationS: number, line = 0, arc = false): void {
+  function beginScoot(durationS: number, line = 0, arc = false, kind: typeof scootKind = arc ? 'arc' : 'scoot'): void {
     if (doctrineOf().rush) return; // the hunt owns a rusher's hull: no relocation leg is ever driven
     scootUntilS = nowS + durationS;
+    scootKind = kind;
     scootLine = line;
     arcScoot = arc;
     hasMoveTarget = false;
@@ -5229,7 +5253,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // every ram run short (see RAM_FINISH_MARGIN)
     probeMissT = probeMiss && target && losClear && !emptyRack ? probeMissT + dt : 0;
     if (probeMissT <= 6 || timeS < scootUntilS || !doctrineOf().scoot) return;
-    if (pickScoot()) beginScoot(10);
+    if (pickScoot()) beginScoot(10, 0, false, 'probe');
     probeMissT = 0;
   }
 
@@ -5782,7 +5806,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       friendlyLaneRetryS = timeS + FRIENDLY_LANE_RETRY_S;
       return;
     }
-    beginScoot(7);
+    beginScoot(7, 0, false, 'lane');
     friendlyBlockT = 0;
     friendlyLaneMoves++;
   }
@@ -5795,7 +5819,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Failed searches also require fresh blocked dwell before scanning again.
     gunLaneBlockedT = 0;
     if (!pickFlatCell()) return;
-    beginScoot(10);
+    beginScoot(10, 0, false, 'gun');
     settleUntilS = -1;
     gunLaneMoves++;
   }
@@ -6616,6 +6640,21 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         input.throttle = speed <= 3 && Math.abs(error) < .2 && terrainSafety.corridorSafe(entity, st.yaw, 8) ? .4 : 0;
         input.brake = speed > 3;
         input.steer = clamp(error * 2, -1, 1);
+        // a side that rolls its escapes (doctrine rollingEscapes) drives the escape turn round while the stop corridor
+        // ahead, read here every tick at the speed the hull has, is clear, and brakes the moment it is not (263: the
+        // infected stood in 12 % of their settled engaged samples, a third of them a pivot or a wait in this window with
+        // the escape direction's 8 m corridor no longer clear, and the low-speed watchdog's reverse after it)
+        if (doctrineOf().rollingEscapes) {
+          if (st.speed > -.5 && terrainSafety.corridorSafe(entity, st.yaw, 2 + speed * .35 + speed * speed / 4)) {
+            if (speed <= 3) {
+              input.throttle = Math.max(input.throttle, JOCKEY_DRIVE.rollThrottle);
+              input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
+            }
+          } else {
+            input.throttle = 0;
+            input.brake = speed > .5;
+          }
+        }
       }
     } else if (!entity.state.grounded) {
       terrainBlocked = false;
@@ -6950,6 +6989,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // (the probes' scooting window counts the pocket escape's leg as it always did; `escaping` names that part of it)
       scooting: nowS < scootUntilS,
       escaping: nowS < scootUntilS && nowS < pocketEscapeUntilS,
+      scootKind: nowS < scootUntilS ? scootKind : null,
       kiting: nowS < kiteUntilS,
       settling: nowS < settleUntilS,
       colliderStops,

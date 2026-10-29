@@ -128,7 +128,8 @@ assert.ok(infected.huntHonesty.unspottedShare <= 0.02, 'the infected hunt only w
 
 // Frontline Assault, seed 4 (Desert), 90 s: the first sector is fought for — its defenders stand on their line out of the
 // attack's reach and sight at the start, and nobody on either side falls back far or scoots
-assert.equal(front.frontline.placedNear, 0, 'no defender is placed within 300 m of an attacker');
+const lineGuardM = matchRulesetFor('frontline_assault').assault.lineGuard.minAttackM;
+assert.equal(front.frontline.placedNear, 0, `no defender is placed within the line guard's ${lineGuardM} m of an attacker`);
 assert.equal(front.frontline.placedSeen, 0, "no defender is placed in an attacker's terrain sight");
 assert.ok(front.frontline.sector1Kills > 0 || !(front.frontline.lines[0]?.atS < 45), `sector 1 is contested (kills ${front.frontline.sector1Kills}, taken at ${front.frontline.lines[0]?.atS ?? '—'} s)`);
 for (const side of ['alpha', 'bravo']) assert.equal(front[side].flags.scooting ?? 0, 0, `Frontline ${side}: no shoot-and-scoot`);
