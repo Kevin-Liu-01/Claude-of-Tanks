@@ -105,7 +105,9 @@ export const NET_ALPHA_CUT = 0.5;
  * (263) The broad height over a gap (alphaCutTexture.ts shadeFromHeight) where it begins to take the shade under the
  * garnish, and where it is fully shaded: thick bunches close over their own shadow, the bare net between stays open.
  */
-const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
+// (r6; the critic r5: "front-hull cells read as dark tiles in a regular grid") from a little thinner garnish, so the
+// open mesh is the bare net's between the bunches, not a lattice through them
+const NET_GAP_FILL: readonly [number, number] = [0.14, 0.3];
 /**
  * The shade the net's covered gaps show: the hull under the garnish, between the cord and the mid strip. (r6; the critic
  * r5: "a dark speckled fringe along the top edge of the hull-front drape", the net seen edge-on) a step lighter than the
