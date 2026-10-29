@@ -1659,9 +1659,10 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
     // boxes either side of the barrel at its height, their faces raked back, and a brow of four lying over the mantlet's
     // top like a roof sloping forward 30 degrees, flush with the cheeks' wall
     // (the boot painted over in the tank's sand like the rest of its canvas)
-    P.addGunExtra(cylZ(0.15, 0.35, P.q ? 20 : 12, 0.29), 0, 0, 0.215);
-    for (const [z, r] of [[0.08, 0.27], [0.15, 0.24], [0.22, 0.21], [0.29, 0.185], [0.36, 0.16]] as const) {
-      P.addGunExtra(xform(KIT.torus(r, 0.028, P.q ? 20 : 12), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, z);
+    // (its rear no wider than 0.19 m: the hull's ring face lies 0.29 m under the bore)
+    P.addGunExtra(cylZ(0.15, 0.32, P.q ? 20 : 12, 0.19), 0, 0, 0.22);
+    for (const [z, r] of [[0.10, 0.18], [0.17, 0.17], [0.24, 0.16], [0.31, 0.15]] as const) {
+      P.addGunExtra(xform(KIT.torus(r, 0.022, P.q ? 20 : 12), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, z);
     }
     for (const side of [-1, 1]) {
       for (const x of [0.30, 0.47]) P.addGunExtra(xform(box(0.16, 0.30, 0.12), 0, 0, 0, -0.30, 0, 0), side * x, 0.02, 0.18);
@@ -2230,13 +2231,13 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
 
 /** The GA2's cast gun shield (gun frame; the Munster and Dresden tanks): a squared block standing well ahead of the
  * turret's nose, 1.2 m across and 0.72 m tall with its bore in its upper half, its sides and lower edge rounded, its flat
- * face 0.63 m ahead of the trunnion, its back sunk into the casting, its lower front chamfered; its underside 0.30 m under
- * the bore, clear of the deck ahead of the ring and of the fender bins abeam. */
+ * face 0.63 m ahead of the trunnion, its back sunk into the casting, its lower front chamfered; its underside 0.24 m under
+ * the bore, over the hull's ring face (1.633 m, out to the turret's front edge) and clear of the deck ahead. */
 function ga2Mantlet(q: boolean | undefined): Geo {
   // z (along the bore), half-width, top and bottom over the bore, corner radius
   const rows: readonly (readonly [number, number, number, number, number])[] = [
-    [-0.02, 0.58, 0.40, -0.30, 0.14], [0.30, 0.60, 0.42, -0.30, 0.15], [0.48, 0.60, 0.42, -0.30, 0.15],
-    [0.58, 0.58, 0.41, -0.25, 0.13], [0.63, 0.55, 0.39, -0.21, 0.11],
+    [-0.02, 0.58, 0.40, -0.24, 0.14], [0.30, 0.60, 0.42, -0.24, 0.15], [0.48, 0.60, 0.42, -0.24, 0.15],
+    [0.58, 0.58, 0.41, -0.21, 0.13], [0.63, 0.55, 0.39, -0.18, 0.11],
   ];
   const n = q ? 5 : 3;
   const sections = rows.map(([z, w, t, b, r]) => {
