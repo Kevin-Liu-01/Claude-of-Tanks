@@ -96,8 +96,10 @@ export type Leopard2A4Gun = 'L44' | 'L55';
 
 /** The six vehicles on the construction, and the tube each draws (the spec envelope and the builder read this one table). */
 export const LEOPARD2A4_FAMILY_GUN = Object.freeze({
-  // the Leopard 2A4 draws the 2A4's L/44 (the build it replaces was a 2A6 with the L/55)
-  leo2a4: 'L44', leo2a4_v: 'L44', leo2a4m: 'L44', leo2a4m_can: 'L44', leo2a4_otco: 'L55', leo2_improved: 'L55',
+  // the Leopard 2A4 draws the 2A4's L/44 (the build it replaces was a 2A6 with the L/55); the OTCO and the Improved too
+  // (the owner via Main, 2026-10-29: the Dutch 2A4NL of the OTCo and KMW's KWS II trial tanks ran the L/44; their old
+  // builds' L/55 rode the 2A6M and 2A7V specs they were copied from)
+  leo2a4: 'L44', leo2a4_v: 'L44', leo2a4m: 'L44', leo2a4m_can: 'L44', leo2a4_otco: 'L44', leo2_improved: 'L44',
   // the owner, 2026-10-28: "oh yeah this meanns we nnneed to update the strv 121 as well" (the Swedish Leopard 2A4)
   strv121: 'L44',
 } as const satisfies Record<string, Leopard2A4Gun>);

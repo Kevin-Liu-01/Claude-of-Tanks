@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo2a4_otco": {
+      "name": "Leopard 2A4 OTCO",
+      "authority": "Main ruled on 2026-10-29 (DECISIONS.md, ~11:00) that the release-264 2A4-era Leopards, rebuilt on the release Leopard 2 hull with the 2A4 turret derived from our 2A6 X (owner 2026-10-28: \"update and cleanup our old designs ... and have them be the before variants basically\") and unregistered from their later-variant 3D oracles on 2026-10-28 (Main: \"where a rebuild's registered oracle shows a different (later) variant, unregister it\"), qualify the geometry stage by this per-id photographic packet plus a shaded blind photo-critic PASS (lane evidence ~/cot-lanes/leo2a4-family-264-evidence, critic rounds on the SwiftShader Gallery stills). Numerical 3D comparison remains unverified. The real OTCo tank is a Dutch Leopard 2A4NL of the Opleidings- en Trainingscommando under Saab Barracuda camouflage, with the L/44 (game sources only; no primary source found). The fleet's OTCO carries its old build's ERA and ISAF fit and its remote weapon station, and the L/44 with the L/44's round figures (the owner via Main, 2026-10-29; its old build drew the L/55 of the 2A6M spec it was copied from). The 2A6-look wedge front (owner 2026-10-28: the even split).",
+      "sources": [
+        "https://nl.wikipedia.org/wiki/Leopard_2",
+        "https://tanks-encyclopedia.com/modern/germany/leopard-2-kampfwertsteigerung",
+        "https://warthunder.com/en/news/9531-shop-development-pre-order-leopard-2-otco-en"
+      ],
+      "widthM": 3.866,
+      "overallLengthM": 11.306,
+      "tallestM": 3.5,
+      "envelopeBasis": "Width is as built, 3.87 m over its slat cage; the Dutch 2A4 is published at 3.75 m (nl.wikipedia). Length is the published 9.67 m gun forward of the Dutch 2A4 with the L/44 (nl.wikipedia; as built 9.70 m from the stern plate, which the fixture holds) plus the hull's stern rack as built (0.36 m). Tallest is the ball tips of its two rigid whips on the radios' bases as built (3.50 m); the Dutch 2A4 is published at 2.99 m (nl.wikipedia).",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/leopard2A4Family.selftest.mjs"
+    }
+  }
+}

@@ -39,7 +39,12 @@ interface FamilyEnvelope {
   readonly kitPlates?: Readonly<Record<string, KitPlate>>;
   /** Published dimensions that follow the vehicle's identity (the 2A4's L/44 gun-forward length). */
   readonly dims?: Partial<FleetTankSpec['dims']>;
+  /** The APFSDS round's penetration where the vehicle's gun differs from the record it was copied from. */
+  readonly apfsdsPenMm?: { readonly pen100Mm: number; readonly pen1000Mm: number; readonly pen2000Mm: number };
 }
+
+/** The 2A4's L/44 penetration record (leo2a4's DM53): the figures the L/44 vehicles of the family fire. */
+const L44_APFSDS_PEN_MM = Object.freeze({ pen100Mm: 855, pen1000Mm: 778, pen2000Mm: 700 });
 
 // The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm (the
 // Stridsvagn 121 --no-suit: its field suit is cut to these stops). The square turret's guns run free to the rear quarters,
@@ -85,7 +90,9 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
   } },
   // the CAN's cheek and side plates on its MEXAS-style appliqué faces, its one skirt plate a side on the stand-off
   // cassettes' faces (leopard2A4CanKit.ts: cheek wedges 0.45 m ahead of the faces at the slot, flank modules at wall + 0.21)
-  leo2a4m_can: { kitPlates: {
+  // Main ruling 2026-10-29: the DND's published 2.75 m (the old build's 2.62 was its p95 hatch-drum line, not a source);
+  // a combat change (tankBodyContacts and spotting read heightM). The length stays the DND's 9.96 m.
+  leo2a4m_can: { dims: { heightM: 2.75 }, kitPlates: {
     turret_cheek_R: { rig: 'turret', plate: chR('turret_cheek_R', 1, 0.475, 2.10, 1.387, 1.732, 0.12, 0.61) },
     turret_cheek_L: { rig: 'turret', plate: chL('turret_cheek_L', 1, 0.475, 2.10, 1.484, 1.692, 0.12, 0.61) },
     turret_side_R: { rig: 'turret', plate: sR('turret_side_R', 1, 1.387, 0.12, 1.387, 0.662, -1.10, 1.732) },
@@ -93,7 +100,9 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
     skirt_R: { rig: 'hull', plate: sR('skirt_R', 1, 1.84, 0.88, 1.84, 1.40, -2.83, 3.60) },
     skirt_L: { rig: 'hull', plate: sL('skirt_L', 1, 1.84, 0.88, 1.84, 1.40, -2.83, 3.60) },
   } },
-  leo2a4_otco: { kitPlates: {
+  // the L/44 (the owner via Main, 2026-10-29): the Dutch 2A4's published 9.67 m gun forward; its DM63 already fired the
+  // L/44's figures
+  leo2a4_otco: { dims: { overallLengthM: 9.67 }, kitPlates: {
     // the OTCO's 50 tiles in chevron courses round the splash board, back to z 2.13 on the left (leopard2A4OtcoKit.ts)
     a6m_upper_glacis_era: glacisField('a6m_upper_glacis_era', 1.31, 2.13, 3.39),
     // the cheek fields on the wedges' sloped tops, 7 courses x 8 stations a side as on the old OTCO (leopard2A4OtcoKit.ts)
@@ -102,10 +111,12 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
     a6m_turret_cheek_era_L: kitPlate('turret', 'a6m_turret_cheek_era_L', [-1.263, 0.427, 2.198], [-0.283, 0.444, 2.666],
       [-1.256, 0.729, 1.366], { kind: 'era' }),
   } },
+  strv121: {},
   // the Improved's plates where its kit builds them (leopard2ImprovedKit.ts): the glacis field between the pods ahead of
   // the periscopes, the layered cheek blocks 0.10 m out along the wedges' normals, the deep skirts' faces
-  strv121: {},
-  leo2_improved: { kitPlates: {
+  // the L/44 (the owner via Main, 2026-10-29): the KWS II TVM's published 9.97 m with the turret at 12 o'clock
+  // (tanks-encyclopedia); its DM63 from the 2A7V record's L/55 figures (891/811/730 mm) to the L/44's
+  leo2_improved: { dims: { overallLengthM: 9.97 }, apfsdsPenMm: L44_APFSDS_PEN_MM, kitPlates: {
     a7v_upper_glacis_era: glacisField('a7v_upper_glacis_era', 0.975, 2.47, 3.44),
     a7v_turret_cheek_layer_R: kitPlate('turret', 'a7v_turret_cheek_layer_R', [0.460, 0.21, 2.747], [1.202, 0.21, 2.289],
       [0.460, 0.42, 2.747], { kind: 'spaced' }),
@@ -130,6 +141,11 @@ export function applyLeopard2A4FamilyEnvelopes(specs: Readonly<Record<string, Fl
     stripSilhouetteDimensions(spec.dims);
     spec.gunPitchByYawDeg = GUN_PITCH_BY_YAW_DEG[id];
     if (e.dims) Object.assign(spec.dims, e.dims);
+    // the copied record's shells may be shared with its source vehicle: replace, never mutate
+    if (e.apfsdsPenMm) {
+      const pen = e.apfsdsPenMm;
+      spec.gun = { ...spec.gun, shells: spec.gun.shells.map((s) => (s.type === 'APFSDS' ? { ...s, ...pen } : s)) };
+    }
     spec.armor = leopard2A4FamilyArmor(id, spec.armor, {
       gun: LEOPARD2A4_FAMILY_GUN[id], front: LEOPARD2A4_FAMILY_FRONT[id], foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, kitPlates: e.kitPlates,
     });
