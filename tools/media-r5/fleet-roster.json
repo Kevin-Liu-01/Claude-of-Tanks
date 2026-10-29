@@ -4936,7 +4936,7 @@
    "t72b3m_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_hc",
    "service_t90m"
   ],
   "title": {
@@ -5010,7 +5010,7 @@
    "t72b3_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m1a1_abrams_fep",
    "service_t90m"
   ],
   "title": {
@@ -5407,7 +5407,7 @@
    "t62mv1_x"
   ],
   "paint": [
-   "service_usa_desert",
+   "sig_m60a3",
    "service_soviet_coldwar"
   ],
   "title": {
@@ -6005,6 +6005,42 @@
   "short": {
    "en": "T-90MS obr. 2011, Highland Reservoir",
    "zh": "T-90MS obr. 2011，高地水库"
+  }
+ },
+ {
+  "n": 253,
+  "id": "type10-dozer-mangrove",
+  "hero": "type10_dozer",
+  "nation": "Japan",
+  "era": "modern",
+  "map": "mangrove",
+  "time": "night",
+  "anchor": [
+   -9.7,
+   -9.7
+  ],
+  "heading": 204.4,
+  "template": 33,
+  "action": "night",
+  "lineup": [
+   "type10_dozer",
+   "raiju_ifv"
+  ],
+  "foes": [
+   "t80u_x",
+   "t90m_x"
+  ],
+  "paint": [
+   "paint_type10_dozer",
+   "service_t90m"
+  ],
+  "title": {
+   "en": "A Type 10 Kaitaku advances through Mangrove Reach at night",
+   "zh": "夜间，一辆 Type 10 Kaitaku 穿过红树林水道推进"
+  },
+  "short": {
+   "en": "Type 10 Kaitaku, Mangrove Reach",
+   "zh": "Type 10 Kaitaku，红树林水道"
   }
  }
 ]

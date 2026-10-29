@@ -600,7 +600,7 @@ export const PATHS = [
     script: async (page, i, run) => {
       await page.mouse.move(2, 2);
       const before = await page.evaluate(() => window.__CAMO_TRY_ON?.tries ?? 0);
-      await run('camo-try', () => target(page, '.cot-lt-paint [data-lt-paint]', 1 + (i % 3)),
+      await run('camo-try', () => target(page, '.cot-lt-paint .cot-c-picker__opt', 1 + (i % 3)),
         { action: (p) => p.hover('[data-click-target]'), done: `(window.__CAMO_TRY_ON?.tries ?? 0) > ${before}`, doneTimeoutMs: 15000 });
       const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastTryMs ?? -1);
       console.log(`    camo-try #${i} tile paint and swap ${ms.toFixed(1)} ms`);
@@ -609,7 +609,7 @@ export const PATHS = [
   { id: 'camo-wear', doc: 'game', reps: 6,
     script: async (page, i, run) => {
       const before = await page.evaluate(() => window.__CAMO_TRY_ON?.wears ?? 0);
-      await run('camo-wear', () => target(page, '.cot-lt-paint [data-lt-paint]', 1),
+      await run('camo-wear', () => target(page, '.cot-lt-paint .cot-c-picker__opt', 1),
         { done: `(window.__CAMO_TRY_ON?.wears ?? 0) > ${before}`, doneTimeoutMs: 60000 });
       const ms = await page.evaluate(() => window.__CAMO_TRY_ON?.lastWearMs ?? -1);
       console.log(`    camo-wear #${i} press to bake ${ms.toFixed(0)} ms`);
@@ -795,7 +795,7 @@ export const PATHS = [
         pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 1), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 4),
         pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 7),
         pressOn('#dossierTabs [role=tab][data-tab]', 1), pressOn('#dossierTabs [role=tab][data-tab]', 2), pressOn('#dossierTabs [role=tab][data-tab]', 0),
-        pressOn('[data-mode="armor"]'), pressOn('[data-mode="appearance"]'),
+        pressOn('.layers [data-value="armor"]'), pressOn('.layers [data-value="appearance"]'),
         pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 10), pressOn('#vehicleList .it[data-id]:not([aria-selected=true])', 13),
       ]);
     } },
@@ -909,7 +909,7 @@ export const PATHS = [
     press: (page, i) => target(page, '#dossierTabs [role=tab][data-tab]', i + 1),
     shown: `document.querySelector('[data-click-target]')?.getAttribute('aria-selected') === 'true'` },
   { id: 'gallery-mode', doc: 'gallery', reps: 6,
-    press: (page, i) => target(page, `[data-mode="${['armor', 'modules', 'crew', 'appearance'][i % 4]}"]`),
+    press: (page, i) => target(page, `.layers [data-value="${['armor', 'modules', 'crew', 'appearance'][i % 4]}"]`),
     // (lockdown-251) every read guarded: after a reload there is no target and no gallery, and an unguarded read threw
     // inside the page (a pageerror the census counted against the Gallery)
     done: `!!document.querySelector('[data-click-target]')
