@@ -54950,6 +54950,812 @@
             ]
           },
           {
+            "hitboxId": "H13",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                2.9184
+              ],
+              [
+                1.9932,
+                1.3291,
+                3.3296
+              ],
+              [
+                1.9932,
+                1.0689,
+                3.3296
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.9184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H14",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                2.3684
+              ],
+              [
+                1.9932,
+                0.9991,
+                2.7796
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.7796
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H15",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                2.3684
+              ],
+              [
+                1.9932,
+                1.3291,
+                2.7796
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.7796
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H16",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                1.8184
+              ],
+              [
+                1.9932,
+                0.9991,
+                2.2296
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.2296
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H17",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                1.8184
+              ],
+              [
+                1.9932,
+                1.3291,
+                2.2296
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.2296
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H18",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                1.2684
+              ],
+              [
+                1.9932,
+                0.9991,
+                1.6796
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.6796
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H19",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                1.2684
+              ],
+              [
+                1.9932,
+                1.3291,
+                1.6796
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.6796
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H20",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                0.7184
+              ],
+              [
+                1.9932,
+                0.9991,
+                1.1296
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.1296
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H21",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                0.7184
+              ],
+              [
+                1.9932,
+                1.3291,
+                1.1296
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.1296
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H22",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                0.1684
+              ],
+              [
+                1.9932,
+                0.9991,
+                0.5796
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.5796
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H23",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                0.1684
+              ],
+              [
+                1.9932,
+                1.3291,
+                0.5796
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.5796
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H24",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                -0.3816
+              ],
+              [
+                1.9932,
+                0.9991,
+                0.0296
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.0296
+              ],
+              [
+                1.9932,
+                0.7389,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H25",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                -0.3816
+              ],
+              [
+                1.9932,
+                1.3291,
+                0.0296
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.0296
+              ],
+              [
+                1.9932,
+                1.0689,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H26",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                2.9184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                3.3296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                3.3296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.9184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H27",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                2.3684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                2.7796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.7796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H28",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                2.3684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                2.7796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.7796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H29",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                1.8184
+              ],
+              [
+                -1.9932,
+                0.7389,
+                2.2296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.2296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H30",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                1.8184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                2.2296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.2296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H31",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                1.2684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                1.6796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.6796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H32",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                1.2684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                1.6796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.6796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H33",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                0.7184
+              ],
+              [
+                -1.9932,
+                0.7389,
+                1.1296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.1296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H34",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                0.7184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                1.1296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.1296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H35",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                0.1684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                0.5796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.5796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H36",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                0.1684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                0.5796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.5796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H37",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                -0.3816
+              ],
+              [
+                -1.9932,
+                0.7389,
+                0.0296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.0296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H38",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                -0.3816
+              ],
+              [
+                -1.9932,
+                1.0689,
+                0.0296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.0296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                -0.3816
+              ]
+            ]
+          },
+          {
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 560,
@@ -55163,6 +55969,502 @@
                 -1.6775,
                 0.946,
                 -2.728
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T08",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.4511,
+                0.4665,
+                2.1588
+              ],
+              [
+                0.4511,
+                0.3299,
+                2.2832
+              ],
+              [
+                0.5698,
+                0.3081,
+                2.2592
+              ],
+              [
+                0.5698,
+                0.4448,
+                2.1349
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T09",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.4471,
+                0.6612,
+                1.9792
+              ],
+              [
+                0.4471,
+                0.5245,
+                2.1035
+              ],
+              [
+                0.5671,
+                0.5064,
+                2.0836
+              ],
+              [
+                0.5671,
+                0.6431,
+                1.9593
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T10",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.6454,
+                0.4655,
+                2.0934
+              ],
+              [
+                0.6454,
+                0.3242,
+                2.2126
+              ],
+              [
+                0.7638,
+                0.3027,
+                2.1871
+              ],
+              [
+                0.7638,
+                0.444,
+                2.0679
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T11",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.6413,
+                0.6583,
+                1.9281
+              ],
+              [
+                0.6413,
+                0.5171,
+                2.0473
+              ],
+              [
+                0.7611,
+                0.4993,
+                2.0262
+              ],
+              [
+                0.7611,
+                0.6405,
+                1.907
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T12",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.8398,
+                0.4642,
+                2.0284
+              ],
+              [
+                0.8398,
+                0.3182,
+                2.1418
+              ],
+              [
+                0.9579,
+                0.2972,
+                2.1147
+              ],
+              [
+                0.9579,
+                0.4431,
+                2.0013
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T13",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.8354,
+                0.6552,
+                1.8774
+              ],
+              [
+                0.8354,
+                0.5093,
+                1.9908
+              ],
+              [
+                0.9551,
+                0.4919,
+                1.9684
+              ],
+              [
+                0.9551,
+                0.6378,
+                1.855
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T14",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.0341,
+                0.4626,
+                1.9639
+              ],
+              [
+                1.0341,
+                0.3118,
+                2.0707
+              ],
+              [
+                1.1519,
+                0.2913,
+                2.0418
+              ],
+              [
+                1.1519,
+                0.4422,
+                1.935
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T15",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.0296,
+                0.6519,
+                1.8272
+              ],
+              [
+                1.0296,
+                0.5011,
+                1.934
+              ],
+              [
+                1.1491,
+                0.4842,
+                1.9102
+              ],
+              [
+                1.1491,
+                0.635,
+                1.8034
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T16",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.5698,
+                0.4448,
+                2.1349
+              ],
+              [
+                -0.5698,
+                0.3081,
+                2.2592
+              ],
+              [
+                -0.4511,
+                0.3299,
+                2.2832
+              ],
+              [
+                -0.4511,
+                0.4665,
+                2.1588
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T17",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.5671,
+                0.6431,
+                1.9593
+              ],
+              [
+                -0.5671,
+                0.5064,
+                2.0836
+              ],
+              [
+                -0.4471,
+                0.5245,
+                2.1035
+              ],
+              [
+                -0.4471,
+                0.6612,
+                1.9792
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T18",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.7638,
+                0.444,
+                2.0679
+              ],
+              [
+                -0.7638,
+                0.3027,
+                2.1871
+              ],
+              [
+                -0.6454,
+                0.3242,
+                2.2126
+              ],
+              [
+                -0.6454,
+                0.4655,
+                2.0934
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T19",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.7611,
+                0.6405,
+                1.907
+              ],
+              [
+                -0.7611,
+                0.4993,
+                2.0262
+              ],
+              [
+                -0.6413,
+                0.5171,
+                2.0473
+              ],
+              [
+                -0.6413,
+                0.6583,
+                1.9281
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T20",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.9579,
+                0.4431,
+                2.0013
+              ],
+              [
+                -0.9579,
+                0.2972,
+                2.1147
+              ],
+              [
+                -0.8398,
+                0.3182,
+                2.1418
+              ],
+              [
+                -0.8398,
+                0.4642,
+                2.0284
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T21",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.9551,
+                0.6378,
+                1.855
+              ],
+              [
+                -0.9551,
+                0.4919,
+                1.9684
+              ],
+              [
+                -0.8354,
+                0.5093,
+                1.9908
+              ],
+              [
+                -0.8354,
+                0.6552,
+                1.8774
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T22",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.1519,
+                0.4422,
+                1.935
+              ],
+              [
+                -1.1519,
+                0.2913,
+                2.0418
+              ],
+              [
+                -1.0341,
+                0.3118,
+                2.0707
+              ],
+              [
+                -1.0341,
+                0.4626,
+                1.9639
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T23",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.1491,
+                0.635,
+                1.8034
+              ],
+              [
+                -1.1491,
+                0.4842,
+                1.9102
+              ],
+              [
+                -1.0296,
+                0.5011,
+                1.934
+              ],
+              [
+                -1.0296,
+                0.6519,
+                1.8272
               ]
             ]
           }
@@ -55510,7 +56812,7 @@
         ]
       },
       "geometryHash": "c04660f6",
-      "metadataHash": "f6832df0",
+      "metadataHash": "611d79a5",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": 0.0877
@@ -55619,8 +56921,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25282,
-          "sha256": "1eafbc3ce6a91bd8bee236ad4d332898f7202b52a8a3892a64874747b3b21d27"
+          "bytes": 26204,
+          "sha256": "536398ef71843c70df6a6f3888939d83764ebac4ec08e26172cb9c2ef1d3b116"
         },
         "modulesSide": {
           "file": "c1_ariete_proto_serie1_modules_side.webp",
@@ -55628,15 +56930,15 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 25460,
-          "sha256": "e00dc7df0f0415c8abba0e75cc4d3be0a6944a1aa8405ba7bb00d5910cf7af54"
+          "sha256": "aa452af075da383fb026604d6360dd6a2858293645164f99161e0e13a473e5f3"
         },
         "crewSide": {
           "file": "c1_ariete_proto_serie1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21862,
-          "sha256": "789352bd4b9a5be4b83befa8c447a6464751379440d2a85e26f22bc8720d21c2"
+          "bytes": 21874,
+          "sha256": "b6cd6f24b55e48acc73a4a5fe2f424ae9858b8deac6ae8d79bded989c5c8f8e3"
         },
         "markings": {
           "file": "c1_ariete_proto_serie1_markings.png",
@@ -55649,8 +56951,8 @@
         "technicalLabels": {
           "file": "c1_ariete_proto_serie1_technical.json",
           "mime": "application/json",
-          "bytes": 4086,
-          "sha256": "d38cf9b05c98c4f76908c5d154754172ed97e79072ffc65271a926b11e35c060"
+          "bytes": 4714,
+          "sha256": "70573edb6caa58415976204936509638704049471a1a448021b3a461d50ac22a"
         }
       }
     },
