@@ -16,7 +16,7 @@ import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { Leopard2A4KitContext } from './leopard2A4Kit.ts';
 import { turretRoofAt } from './leopard2A4VKit.ts';
-import { HULL_SURFACES as HS, TURRET_SURFACES as TS } from './leopard2A4KitParts.ts';
+import { HULL_SURFACES as HS, TURRET_SURFACES as TS, sternRackFloor } from './leopard2A4KitParts.ts';
 
 /**
  * The Swedish rear basket's datums (turret metres): its back 0.44 m behind the bustle's rear plate, its side sheets
@@ -106,6 +106,8 @@ function numbers(P: TankBuilderPort): void {
 export function addStrv121Kit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
   basketFrame(P);
   basketLoad(P, mulberry32(ctx.seed + 11));
+  // the hull's stern rack floored as on the 2A4 (empty, the standard check's contiguity read 54 cells, release 265's gate)
+  sternRackFloor(P);
   swedishRadios(P);
   roofKit(P);
   numbers(P);

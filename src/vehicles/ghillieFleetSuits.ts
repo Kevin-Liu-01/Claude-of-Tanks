@@ -419,8 +419,11 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
         laid({ x0: -1.72, x1: 1.72, z0: -3.70, z1: -0.60, nx: 34, nz: 31, y: 1.86, garnishRiseM: 0.14, seed: 31 }),
         laid({ x0: -1.72, x1: 1.72, z0: -0.60, z1: 3.85, nx: 34, nz: 45, y: 1.69, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
-      // the cassettes' tops stand at 1.49: the drapes start just under them
-      side: skirts(-3.40, 3.50, 1.46, 0.48, 1.90, 41),
+      // four drapes a side over the 2A4 skirts (release 265), their gaps over the skirts' two open seams (the aft run's
+      // rear end at z -2.82 and its step to the fore blocks at 1.40-1.42): a drape column over either seam was laid
+      // through it onto the road wheels' tops, inside the track's sweep (28 voxels, the strict track clip)
+      side: [...flanks(-3.40, -2.92, 1.46, 0.51, 1.90, 41), ...flanks(-2.76, -0.05, 1.46, 0.44, 1.90, 47),
+        ...flanks(0.15, 1.33, 1.46, 0.51, 1.90, 53), ...flanks(1.49, 3.50, 1.46, 0.44, 1.90, 59)],
     },
   },
   // C2 Ariete: the roof netted round both hatches and their MGs, the commander's and gunner's sights, drapes down the

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "strv121": {
+      "name": "Strv 121",
+      "authority": "Main ruled on 2026-10-29 (DECISIONS.md, ~11:00) that the 2A4-era Leopards rebuilt on the release Leopard 2 hull with the 2A4 turret derived from our 2A6 X qualify the geometry stage by a per-id photographic packet plus a shaded blind photo-critic PASS. The Strv 121 is the owner's addition to that rebuild (2026-10-28: \"oh yeah this meanns we nnneed to update the strv 121 as well\"), release 265 with the ghillie lane's re-seated field suit; its blind critic passed in round 3 (lane evidence ~/cot-lanes/strv121-265-evidence/stills3). Numerical 3D comparison remains unverified. The Strv 121 is one of 160 German Leopard 2A4s leased by Sweden in 1994 with Swedish radios, lights and camouflage.",
+      "sources": [
+        "https://www.ointres.se/strv_121_och_strv_122.htm",
+        "https://sv.wikipedia.org/wiki/Stridsvagn_122",
+        "https://ckosr.sk/data/att/114729_subor.pdf",
+        "https://tanks-encyclopedia.com/modern/germany/leopard-2-kampfwertsteigerung"
+      ],
+      "widthM": 3.8,
+      "overallLengthM": 10.056,
+      "tallestM": 3.465,
+      "envelopeBasis": "Width is as built, 3.80 m over the field suit's skirt drapes (3.79 m at low quality); the Strv 121 is published at 3.75 m (ointres.se, sv.wikipedia). Length is the published 9.67 m gun forward with the turret forward (ointres.se, sv.wikipedia; as built 9.70 m from the stern plate, which the family fixture holds) plus the hull's stern rack as built (0.36 m). Tallest is the tip of the longer of its two whip antennas as built (3.47 m); the published 2.79 m (\"takhöjd\", sv.wikipedia; unqualified at ointres.se) matches the Slovak MoD sheet's 2,790 mm to the PERI R 17.",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/leopard2A4Family.selftest.mjs"
+    }
+  }
+}
