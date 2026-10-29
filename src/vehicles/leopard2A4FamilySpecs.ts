@@ -16,6 +16,7 @@ import {
   type KitPlate, type Leopard2A4FamilyId,
 } from './leopard2A4FamilyArmor.ts';
 import { stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { rightCheekPlate as chR, leftCheekPlate as chL, rightSidePlate as sR, leftSidePlate as sL } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
 
@@ -55,7 +56,16 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
     a5nl_skirt_era_R: skirtCourse('a5nl_skirt_era_R', 1, 1.93),
     a5nl_skirt_era_L: skirtCourse('a5nl_skirt_era_L', -1, 1.93),
   } },
-  leo2a4m_can: {},
+  // the CAN's cheek and side plates on its MEXAS-style appliqué faces, its one skirt plate a side on the stand-off
+  // cassettes' faces (leopard2A4CanKit.ts: cheek wedges 0.45 m ahead of the faces at the slot, flank modules at wall + 0.21)
+  leo2a4m_can: { kitPlates: {
+    turret_cheek_R: { rig: 'turret', plate: chR('turret_cheek_R', 1, 0.475, 2.10, 1.387, 1.732, 0.12, 0.61) },
+    turret_cheek_L: { rig: 'turret', plate: chL('turret_cheek_L', 1, 0.475, 2.10, 1.484, 1.692, 0.12, 0.61) },
+    turret_side_R: { rig: 'turret', plate: sR('turret_side_R', 1, 1.387, 0.12, 1.387, 0.662, -1.10, 1.732) },
+    turret_side_L: { rig: 'turret', plate: sL('turret_side_L', 1, 1.484, 0.12, 1.484, 0.662, -1.10, 1.692) },
+    skirt_R: { rig: 'hull', plate: sR('skirt_R', 1, 1.96, 0.88, 1.96, 1.40, -2.83, 3.60) },
+    skirt_L: { rig: 'hull', plate: sL('skirt_L', 1, 1.96, 0.88, 1.96, 1.40, -2.83, 3.60) },
+  } },
   leo2a4_otco: { kitPlates: {
     a6m_upper_glacis_era: glacisField('a6m_upper_glacis_era', 0.98, 2.55, 3.30),
     a6m_turret_cheek_era_R: wedgeFace('a6m_turret_cheek_era_R', 1, 0.05, 'era'),

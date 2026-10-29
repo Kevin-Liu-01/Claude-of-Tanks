@@ -43,6 +43,8 @@ export interface Leopard2A4TurretOptions {
   /** The grab rails on the cheek faces and the walls (a variant whose appliqué covers them leaves them off). */
   readonly faceRails?: boolean;
   readonly wallRails?: boolean;
+  /** The lifting lug block low on the right cheek's face (an appliqué over the face leaves it off). */
+  readonly faceLug?: boolean;
   /** The radios' whips standing (default), or none (a kit lays its own: folded, raked or caged). */
   readonly whips?: boolean;
   /** The bins on the bustle's sides and the box on its rear plate. */
@@ -104,7 +106,7 @@ export const leopard2A4FaceZ = (absX: number): number =>
  * back to the walls. The right cheek is built in three strips round the EMES 15 window's pocket, which is cut through its
  * upper face and bevel back to the glass (a real opening, forward and upward). A brow closes the slot over the mantlet.
  */
-function frontBlock(P: TankBuilderPort): void {
+function frontBlock(P: TankBuilderPort, lug: boolean): void {
   const { box } = KIT;
   const floor = T.floorY, top = T.blockTopY, slot = T.slotHalfWidthM, e = T.emes, bev = 0.10;
   const lerp = THREE.MathUtils.lerp;
@@ -145,7 +147,7 @@ function frontBlock(P: TankBuilderPort): void {
       (top + floor) / 2 - 0.02, T.blockZ + 0.02);
   }
   // the lifting lug block low on the right cheek's face (photographed on the Austrian and Singaporean 2A4s)
-  P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, leopard2A4FaceZ(0.86) + 0.024, 0, Math.atan(Math.tan(T.faceSweepDeg * Math.PI / 180)), 0);
+  if (lug) P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, leopard2A4FaceZ(0.86) + 0.024, 0, Math.atan(Math.tan(T.faceSweepDeg * Math.PI / 180)), 0);
 }
 
 /**
@@ -364,7 +366,7 @@ export function buildLeopard2A4Turret(P: TankBuilderPort, o: Leopard2A4TurretOpt
   const wedge = o.front === 'wedge';
   if (wedge) buildLeopard2A6Front(P);
   else {
-    frontBlock(P);
+    frontBlock(P, o.faceLug !== false);
     emes15(P);
   }
   gunAssembly(P, o.gun, wedge);
