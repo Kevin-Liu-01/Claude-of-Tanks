@@ -220,6 +220,27 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   underside clears the deck its swing passes; the turret group's other welded pieces reaching outside the shell drawn
   as measured boxes (`turretfittings.py`: antenna mounts, lifting eyes, brackets and racks; the whips floated without
   them). Depression re-swept on the final geometry. Source record 537 KB (r7 410 KB).
+- r10-r13 (2026-10-28 evening, `d0cbcac67b` to `96e7a2a7f8`): the large pieces as flat-faced solids
+  (`bigpieces.py`; the 4B's whole hull mesh no longer among them) and honest armour buckets (the rear bins and the
+  gun channel's floor out of the primary 'turret'). The bustle baskets as measured bars and boxes (`basketfit.py`:
+  the Mk 1-2's five close rails round a rounded rear, the Mk 3's framed box), the turret's open frames as bars
+  (`framebars.py`: the Mk 1's basket side racks had read as solid walls); the sources hang no ball-and-chain curtain.
+  The 1B and 2B corrugated boots revolved on the gun's mount (`bootfit.py`), cut out of the static cover. The gun
+  masks from their own cast pieces (`gunmask2.py`: the old sections took in the M2's cradle, a block up to 0.85 m
+  tall where the cast mask is 0.4 m) with the over-gun cradle's posts and plates as measured boxes and a saddle under
+  the M2's receiver. Twin headlamps only across a wide housing (square, rimmed lenses), the 2D's round lamp and the
+  Mk 3's square-guarded lamps as their pieces. The skirt panels' bolt heads (`studfit.py`, HIGH only, on their
+  panels' track-guard owners). The front fender boxes bent round at the outboard front corner. The 2B, 2D, 3C and 4B
+  turret modules refit at a 2 cm crease tolerance (the 1 cm fit folded their flat plates). The 4B's sponson bin lids
+  ride the hull. The Baz's right cheek top plate dropped (read as an arrowhead over the gun by both critics).
+- Critics, clay pairs against the sources (two model-distinct blind critics, the lower score counts; overall):
+  r11 1B 4, 2B 5, 2D 5, 3C 5, Baz 5, 4B 5; r12 1B 6, 2B 5, 2D 5, 3C 6, Baz 4, 4B 5. Main's bar for release: every mark
+  at 6 or more and a blind A/B preferring the new build over main's on every mark; all six or none.
+- The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
+  sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
+  DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS
+  bearer the follow-up. `.qa-dev/merkava-262/dockless.mjs`: no flight, no launch, no error, no dock nodes on the 4B;
+  the 3C control launches from its dock.
 - Next round: the 2D's spaced side modules (the cut fills the gap behind the plate into a wedge); the skirts' bolt
   fields and the Mk 4's skirt rails and slatted front panel; the 4B's bolted lower front plates; the mantlet's canvas
   cover and corrugated boot; the cupolas as their faceted shapes; loaded baskets; semantic roles from the MTL textures;
