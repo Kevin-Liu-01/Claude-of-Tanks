@@ -6,55 +6,6 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
-  "strv121": {
-    "schemaVersion": 1,
-    "seats": [
-      {
-        "kind": "insignia",
-        "parent": "turret",
-        "size": 0.2,
-        "pos": [
-          1.1829,
-          0.27791,
-          -0.84685
-        ],
-        "quaternion": [
-          0,
-          0.7071068,
-          0,
-          0.7071068
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "strv121",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.1921125
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.2,
-        "pos": [
-          -1.2314163,
-          0.547309,
-          -0.9104058
-        ],
-        "quaternion": [
-          0,
-          -0.7447464,
-          0,
-          0.6673476
-        ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "strv121",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
-      }
-    ]
-  },
   "leo2a4m_can": {
     "schemaVersion": 1,
     "seats": [

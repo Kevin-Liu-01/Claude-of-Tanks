@@ -2780,14 +2780,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1, back: true }] },
   ],
-  // 264: the Stridsvagn 121 on the release construction. Its kit (profiles/leopard2A4Strv121Kit.ts) draws the radios'
-  // whips, the Swedish rear basket and its load, and the field suit dresses the hull, so the decor keeps the cans, tools
-  // and shackles (the fleet default hung four links on the turret wall, which no Strv 121 photograph shows)
-  strv121: () => [
-    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { corner: 1, back: true }] },
-    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'sledge'] }, slot: ['fender', { side: -1, zFrac: 0.1, along: true }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
-  ],
   xk2_black_panther: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.38, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
@@ -3212,6 +3204,19 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
   // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
   // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  // Release 264: the Leopard 2A4's kit (profiles/leopard2A4Kit.ts) loads its bustle rack (bundles, cans, the ammunition
+  // box, the tarp, the bin) below the roof as the photographed 2A4s carry it; the fleet cargo piled over it and stood a
+  // can frame on the rack's rear corner, leaning out over its edge (two blind critics: "looks like it is falling off").
+  // Its cargo keeps the deck and the fenders, off the turret (the release hull's hullRearRack slot resolves under the
+  // bustle too).
+  if (spec.id === 'leo2a4') {
+    const aloft = new Set(['hullRearRack', 'turretRear', 'turretRoof', 'turretSide']);
+    return manifest.flatMap((row) => {
+      if (row.kit !== 'cargo' || row.slot[0] !== 'fleetCargo' || !row.slot[1].routes) return [row];
+      const routes = row.slot[1].routes.filter(([slot]) => !aloft.has(slot));
+      return routes.length ? [{ ...row, slot: ['fleetCargo', { ...row.slot[1], routes }] }] : [];
+    });
+  }
   if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
     && row.slot[0] === 'fleetCargo' && row.slot[1].routes
     ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }

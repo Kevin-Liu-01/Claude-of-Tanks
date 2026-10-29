@@ -6,7 +6,8 @@
 // plates stand moves: onto the drawn hull and turret (leopard2A4FamilyArmor.ts), with each kit's own plates (ERA fields,
 // appliqué layers) seated on its drawn surfaces.
 //
-// The Stridsvagn 121 (the Swedish Leopard 2A4) joins them on the owner's word: its own combat data stands the same way.
+// The Stridsvagn 121 (the owner, 2026-10-28) waits for its field suit's re-seat on this construction (the ghillie lane):
+// its rebuild is on item/strv121-2a4-265 and ships with that row; this release keeps today's Strv 121 (Main).
 //
 // The re-envelope runs once, after every registration-time copy of these records (fleetRegistration.ts): the source-X
 // studies leo2a6 and strv122 (second wave), leo2a5, leo2a5m, leo2a6m and leo2a7v, and leo2a6_ua (cloned from leo2a4_otco
@@ -41,10 +42,10 @@ interface FamilyEnvelope {
   readonly dims?: Partial<FleetTankSpec['dims']>;
 }
 
-// The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm (the
-// Stridsvagn 121 --no-suit: its field suit is cut to these stops). The square turret's guns run free to the rear quarters,
-// where the engine deck and its stowage lift them; on the wedge turrets the 2A6 mantlet cover rides the 2A4's deeper
-// trunnion, and its underside holds the gun over the deck and the sponsons' stowage at the sides.
+// The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm. The
+// square turret's guns run free to the rear quarters, where the engine deck and its stowage lift them; on the wedge
+// turrets the 2A6 mantlet cover rides the 2A4's deeper trunnion, and its underside holds the gun over the deck and the
+// sponsons' stowage at the sides.
 const GUN_PITCH_BY_YAW_DEG: Readonly<Record<Leopard2A4FamilyId, NonNullable<FleetTankSpec['gunPitchByYawDeg']>>> = {
   leo2a4: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [138, -9], [143, -6.3], [147, -4.3],
     [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7], [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1],
@@ -70,9 +71,6 @@ const GUN_PITCH_BY_YAW_DEG: Readonly<Record<Leopard2A4FamilyId, NonNullable<Flee
     [90, -5.2], [95, -5], [108, -4.8], [116, -3.8], [118, -3.6], [119, -3.6], [120, -2.6], [138, -2.5], [148, -1.5],
     [151, -1.3], [152, 2.8], [153, 5.1], [154, 5.8], [159, 6.1], [161, 6.1], [163, 5.4], [164, 4.7], [165, 3.8],
     [166, 0.4], [173, 0.9], [180, 0.8]],
-  strv121: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [138, -9], [143, -6.3], [147, -4.3],
-    [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7], [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1],
-    [178, 0.9], [180, 0.4]],
 };
 
 const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.freeze({
@@ -104,7 +102,6 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
   } },
   // the Improved's plates where its kit builds them (leopard2ImprovedKit.ts): the glacis field between the pods ahead of
   // the periscopes, the layered cheek blocks 0.10 m out along the wedges' normals, the deep skirts' faces
-  strv121: {},
   leo2_improved: { kitPlates: {
     a7v_upper_glacis_era: glacisField('a7v_upper_glacis_era', 0.975, 2.47, 3.44),
     a7v_turret_cheek_layer_R: kitPlate('turret', 'a7v_turret_cheek_layer_R', [0.460, 0.21, 2.747], [1.202, 0.21, 2.289],

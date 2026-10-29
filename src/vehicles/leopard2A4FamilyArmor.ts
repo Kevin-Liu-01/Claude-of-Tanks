@@ -98,8 +98,6 @@ export type Leopard2A4Gun = 'L44' | 'L55';
 export const LEOPARD2A4_FAMILY_GUN = Object.freeze({
   // the Leopard 2A4 draws the 2A4's L/44 (the build it replaces was a 2A6 with the L/55)
   leo2a4: 'L44', leo2a4_v: 'L44', leo2a4m: 'L44', leo2a4m_can: 'L44', leo2a4_otco: 'L55', leo2_improved: 'L55',
-  // the owner, 2026-10-28: "oh yeah this meanns we nnneed to update the strv 121 as well" (the Swedish Leopard 2A4)
-  strv121: 'L44',
 } as const satisfies Record<string, Leopard2A4Gun>);
 export type Leopard2A4FamilyId = keyof typeof LEOPARD2A4_FAMILY_GUN;
 
@@ -112,8 +110,6 @@ export type Leopard2A4FamilyId = keyof typeof LEOPARD2A4_FAMILY_GUN;
  */
 export const LEOPARD2A4_FAMILY_FRONT = Object.freeze({
   leo2a4: 'block', leo2a4_v: 'block', leo2a4m_can: 'block', leo2a4m: 'wedge', leo2a4_otco: 'wedge', leo2_improved: 'wedge',
-  // the Stridsvagn 121 is the Swedish Army's Leopard 2A4 (1994): the square block
-  strv121: 'block',
 } as const satisfies Record<Leopard2A4FamilyId, 'block' | 'wedge'>);
 export const LEOPARD2A4_FAMILY_IDS = Object.freeze(Object.keys(LEOPARD2A4_FAMILY_GUN) as Leopard2A4FamilyId[]);
 

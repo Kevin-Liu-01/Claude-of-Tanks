@@ -3,18 +3,21 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 
-// (264: the 2A4, 2A4 V, 2A4M, 2A4 OTCO, Improved and Strv 121 left the A5/A6 arrowhead for the 2A4 turret's square block
-// or 2A6-look wedge, profiles/leopard2A4Family.ts; their front is checked at the end: only that it is no arrowhead)
+// (264: the 2A4, 2A4 V, 2A4M, 2A4 OTCO and Improved left the A5/A6 arrowhead for the 2A4 turret's square block or
+// 2A6-look wedge, profiles/leopard2A4Family.ts; their front is checked at the end: only that it is no arrowhead. The
+// Strv 121 keeps its A5 build this release.)
 const modernProfiles = new Map([
   ['leo2a6_ua', 'leopard-2a6m'],
+  ['strv121', 'leopard-2a5'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a6_ua',
+  'strv121', 'leo2a6_ua',
 ]);
 const compoundTerminalIds = new Set([
-  'leo2a6_ua',
+  'strv121', 'leo2a6_ua',
 ]);
 const compoundTerminalExpectations = new Map([
+  ['strv121', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
   ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
 ]);
 
@@ -166,11 +169,25 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(smokeReceipt.sides.every(({ mountX }) => Math.abs(mountX) >= 1.25),
       `${id} smoke banks sit externally on the turret side/chamfer`);
   }
-  if (id === 'leo2a6_ua') {
+  if (id === 'strv121') {
+    assert.equal(rootVertexOccurrences(tank.root, [0.2, 0.802, 1.73]), 0,
+      `${id} removes the structural plateau-tail roof tab`);
+    assert.equal(rootVertexOccurrences(tank.root, [0.205, 0.8039, 1.732]), 0,
+      `${id} removes the selected plateau-tail tone skin`);
+  }
+  if (id === 'leo2a6_ua' || id === 'strv121') {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
     assert.equal(receipt.separateUnderrideFront, false,
       `${id} does not retain a flat front behind the structural lower return`);
+  }
+  if (id === 'strv121') {
+    const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
+    assert.ok(covered.length >= 2, `${id} samples the complete owner-marked inner cheek span`);
+    assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
+      `${id} lower cheek covers the old z=1.91 underride face down to y=-0.066`);
+    assert.ok(covered.every((station) => station.lowerZ <= 1.91 + 1e-6),
+      `${id} lower cheek returns behind the old z=1.91 underride face`);
   }
   if (id === 'leo2a6_ua') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
@@ -338,7 +355,7 @@ for (const [id, expectedProfile] of modernProfiles) {
 
 // (264: the 2A4 family's turret, profiles/leopard2A4Family.ts, fronts the 2A4's square block or the 2A6-look wedge; here
 // only that none of them takes the A5 family's arrowhead)
-for (const id of ['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4_otco', 'leo2_improved', 'strv121']) {
+for (const id of ['leo2a4', 'leo2a4_v', 'leo2a4m', 'leo2a4_otco', 'leo2_improved']) {
   const rebuilt = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
