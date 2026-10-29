@@ -211,6 +211,17 @@ function bowArmor(P:TankBuilderPort):void{
   for(const rows of[upper,lower])P.addExternalArmor('hull',roofSheet(rows.map(([z,y])=>
     [p(0,0,z)[2],a,b,p(0,y,0)[1],p(0,y,0)[1]] as const),m(.9)));
   caseBox(P,0,49.8,80.25,68.2,1.0,1.4);
+  // Release 262 (the Mk 3's blind critic: "the nose ERA is a hollow, paper-thin shell ... background showing through"):
+  // a cheek plate on each side closes the wedge from the hull to the tip, under both sheets, so the array reads solid.
+  const lowerAt=(z:number)=>z<=88.7402?12.5197:z<=98?12.5197+(z-88.7402)*(22.2-12.5197)/(98-88.7402)
+    :22.2+(z-98)*(33.6220-22.2)/(108.6614-98);
+  const upperAt=(z:number)=>z<=94.7244?56.57+(z-80.63)*(47.7559-56.57)/(94.7244-80.63)
+    :47.7559+(z-94.7244)*(33.6220-47.7559)/(108.6614-94.7244);
+  for(const side of[-1,1])P.addExternalArmor('hull',sectionSolid([80.63,88.7402,94.7244,98,108.3].map((z)=>{
+    const ring=[[33.08,lowerAt(z)],[33.98,lowerAt(z)],[33.98,upperAt(z)],[33.08,upperAt(z)]]
+      .map(([x,y])=>[p(side*x,0,0)[0],p(0,y,0)[1]] as [number,number]);
+    if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
+  })));
   // 2026-10-19 (owner float sweep): the nose array (both sheets, rails and clamps) stood 64 mm clear of the hull, held
   // by nothing; four mounting brackets rise from the nose deck through the rear strip into the upper sheet's back edge
   for(const x of[-25,-5,5,25])caseBox(P,x,51.45,80.7,3.0,10.9,.8);

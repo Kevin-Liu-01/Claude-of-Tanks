@@ -144,27 +144,28 @@ function cupola(P:TankBuilderPort):void{
   const g=p(-21.1,103.6,-41.5);mg.position.set(g[0]-PX,g[1]-PY,g[2]-PZ);
   P.turretG.add(mg);
 }
-/** TOGS: the armoured thermal-sight barbette standing on the right cheek (FR wiki: "dans une boîte blindée sur le flanc
- *  droit de la tourelle"), its foot buried in the cheek's fall and its front's top edge chamfered. The Mk 1s were
+/** TOGS: the armoured thermal-sight barbette standing on the right cheek's outer corner (FR wiki: "dans une boîte blindée
+ *  sur le flanc droit de la tourelle"), its top 0.2 m over the roof, its foot buried in the cheek's fall and its front's
+ *  top edge chamfered; the right smoke bank stands inboard of and below it. The Mk 1s were
  *  delivered with it mostly empty, its port blanked (en Wikipedia, Haynes 2015 p. 110); the Mk 2 and Mk 3 carry the
  *  sight behind an armoured door hinged on the port's top edge, propped open. */
-const TOGS={inner:.56,outer:1.10,rear:1.18,front:1.92,top:2.00} as const;
+const TOGS={inner:.88,outer:1.24,rear:1.02,front:1.84,top:2.20} as const;
 function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
   const {inner,outer,rear,front,top}=TOGS,c=.04,lo=1.42;
   const ring=(hi:number):[number,number][]=>([[inner,lo],[outer-c,lo],[outer,lo+c],[outer,hi-c],[outer-c,hi],[inner,hi]] as
     const).map(([x,y]):[number,number]=>[-x,y]).reverse();
   P.add('turret',local(sectionSolid(([[rear,top],[1.55,top],[front-.07,top],[front,top-.07]] as const)
     .map(([z,hi]):SolidSection=>({z,ring:ring(hi)})))));
-  const dx=-.70,dy=1.78;
+  const dx=-1.06,dy=1.95;
   if(mark===1){
-    at(P,box(.27,.19,.02),dx,dy,front+.01);
-    for(const ox of[-.11,0,.11])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
+    at(P,box(.26,.19,.02),dx,dy,front+.01);
+    for(const ox of[-.10,0,.10])for(const oy of[-.075,.075])at(P,cylZ(.011,.012,8),dx+ox,dy+oy,front+.026,'turretDark');
   }else{
-    at(P,box(.27,.19,.03),dx,dy,front+.005,'turretDark');
+    at(P,box(.26,.19,.03),dx,dy,front+.005,'turretDark');
     lens(P,box(.19,.11,.006),dx,dy,front+.024);
     const a=55*Math.PI/180,h=.24,hy=dy+.10;
-    at(P,box(.28,.025,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
-    at(P,cylX(.016,.30,10),dx,hy,front+.02,'turretDark');
+    at(P,box(.27,.025,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
+    at(P,cylX(.016,.29,10),dx,hy,front+.02,'turretDark');
   }
 }
 function roof(P:TankBuilderPort):void{
@@ -198,13 +199,8 @@ function optics(P:TankBuilderPort):void{
   caseBox(P,-.6,90.05,15.5,2.55,4.72,5.3);
 }
 function smoke(P:TankBuilderPort):void{
-  // The right bank stands on the TOGS barbette's outboard face, the left on its cheek under the hood.
-  for(const [dx,dy]of [[-.098,.036],[0,.036],[.098,.036],[-.049,-.052],[.049,-.052]]){
-    at(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(-.10),
-      -.95+dx,1.80+dy,TOGS.front+.03);
-  }
-  at(P,box(.34,.14,.03),-.95,1.79,TOGS.front+.015);
-  for(const side of[1]){
+  // The right bank stands on the cheek inboard of and below the TOGS barbette, the left on its cheek under the hood.
+  for(const side of[-1,1]){
     for(const [dx,dy]of[[-4.3,1.6],[0,1.6],[4.3,1.6],[-2.15,-2.3],[2.15,-2.3]]){
       const x=side*33.1+dx,z=39.0-side*.36*dx;
       equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
