@@ -858,10 +858,10 @@
     "meshes": 42,
     "vertices": 340392,
     "triangles": 114268,
-    "digest": "84b2c9a47a48b25d",
+    "digest": "b84e861c83f88aa9",
     "groups": {
      "hull": "45535f0df8d157c0",
-     "turret": "9be699589cb79f33",
+     "turret": "c6af0c9d27cb2b01",
      "gun": "eef40ebe15d33bc7",
      "runningGear": "0b7e0cd071c17e9d",
      "other": "e3b0c44298fc1c14"
@@ -871,10 +871,10 @@
     "meshes": 40,
     "vertices": 293160,
     "triangles": 98396,
-    "digest": "7e367d37ac9e2c48",
+    "digest": "a3d955bd073523ee",
     "groups": {
      "hull": "306c14d3102e1122",
-     "turret": "91c77369c7b0d7c3",
+     "turret": "81e80cccc44f5cf0",
      "gun": "eef40ebe15d33bc7",
      "runningGear": "1205b2f168f3b531",
      "other": "e3b0c44298fc1c14"
@@ -886,10 +886,10 @@
     "meshes": 42,
     "vertices": 340425,
     "triangles": 114279,
-    "digest": "e5185e1417e01d3a",
+    "digest": "e58e325a771ced99",
     "groups": {
      "hull": "3e8ec60a5886d0cc",
-     "turret": "dc51fe2c77b5da99",
+     "turret": "f043c18d332ede5d",
      "gun": "4c593e94653da002",
      "runningGear": "c68389a3b6fd4b13",
      "other": "e3b0c44298fc1c14"
@@ -899,10 +899,10 @@
     "meshes": 40,
     "vertices": 293193,
     "triangles": 98407,
-    "digest": "3411a62343eb8cb7",
+    "digest": "796a93bcf86513b7",
     "groups": {
      "hull": "4f6cdf669db53df8",
-     "turret": "66dc92f7ef748873",
+     "turret": "5d3e603841e4bb10",
      "gun": "4c593e94653da002",
      "runningGear": "58844b8c36ca4cb5",
      "other": "e3b0c44298fc1c14"
@@ -914,10 +914,10 @@
     "meshes": 42,
     "vertices": 363336,
     "triangles": 121916,
-    "digest": "99aa6884d5b93e21",
+    "digest": "2d2f29eef30f428d",
     "groups": {
      "hull": "f0810d2d1d7019ec",
-     "turret": "4e03cb51a197d2c9",
+     "turret": "7b30dd96a288b6af",
      "gun": "6afcb65d1dd78d5a",
      "runningGear": "5e93b1bc90277f5e",
      "other": "e3b0c44298fc1c14"
@@ -927,10 +927,10 @@
     "meshes": 40,
     "vertices": 316104,
     "triangles": 106044,
-    "digest": "7b0f577017e8b95c",
+    "digest": "228985aab47007bb",
     "groups": {
      "hull": "ac25d77c9c6bd087",
-     "turret": "6651ed83d45b4379",
+     "turret": "9b34d4752ef43440",
      "gun": "6afcb65d1dd78d5a",
      "runningGear": "37367bfc38203bb0",
      "other": "e3b0c44298fc1c14"
@@ -2928,26 +2928,26 @@
   "m46_patton": {
    "high": {
     "meshes": 55,
-    "vertices": 252556,
-    "triangles": 85125,
-    "digest": "204d9e38fe997326",
+    "vertices": 252898,
+    "triangles": 85239,
+    "digest": "381ba23cea07d378",
     "groups": {
      "hull": "7c86dce9dc3c48f8",
      "turret": "9880e0d5950c6fd1",
-     "gun": "0fe3fde2173fad08",
+     "gun": "9eda1d2aca9da029",
      "runningGear": "77dc0b4425484f34",
      "other": "e3b0c44298fc1c14"
     }
    },
    "low": {
     "meshes": 53,
-    "vertices": 214546,
-    "triangles": 72327,
-    "digest": "299157312bd576fe",
+    "vertices": 214768,
+    "triangles": 72401,
+    "digest": "a3a01f9cb49e32b2",
     "groups": {
      "hull": "3678b7897fd7a864",
      "turret": "b269b94dd6c60d7a",
-     "gun": "56c3666292836895",
+     "gun": "47c846ee7ff5fafc",
      "runningGear": "82ecb6b9934a7f06",
      "other": "e3b0c44298fc1c14"
     }
@@ -6234,10 +6234,10 @@
     "meshes": 53,
     "vertices": 256138,
     "triangles": 86319,
-    "digest": "97799446612e7e81",
+    "digest": "5e987fe22d5f7bca",
     "groups": {
      "hull": "b93aa08cc9dc3291",
-     "turret": "d47979ba9a1957f9",
+     "turret": "676b5cc489087513",
      "gun": "88f5ede8b8d535a1",
      "runningGear": "9eef0d798c530d08",
      "other": "e3b0c44298fc1c14"
@@ -6247,10 +6247,10 @@
     "meshes": 50,
     "vertices": 206506,
     "triangles": 69647,
-    "digest": "b63d538c43463803",
+    "digest": "7e88c5f1e47efba7",
     "groups": {
      "hull": "33be39c4f67e51e3",
-     "turret": "ef64eaa0c685592c",
+     "turret": "7745f2c9f1f7354d",
      "gun": "18a27830814f33c3",
      "runningGear": "9b80b6b9227a985a",
      "other": "e3b0c44298fc1c14"
@@ -6570,10 +6570,10 @@
     "meshes": 49,
     "vertices": 315690,
     "triangles": 105938,
-    "digest": "1c8c19e83d116c1a",
+    "digest": "afa5e14e20b9eb70",
     "groups": {
      "hull": "f334aefc688d49d5",
-     "turret": "47d694c632b3ca24",
+     "turret": "1aecf6596e073dea",
      "gun": "ede582db845c0d6f",
      "runningGear": "41f13ab28430b661",
      "other": "e3b0c44298fc1c14"
@@ -6583,10 +6583,10 @@
     "meshes": 47,
     "vertices": 261018,
     "triangles": 87586,
-    "digest": "2c772076211d4488",
+    "digest": "b725d77af220693a",
     "groups": {
      "hull": "ea46c8dfaac54199",
-     "turret": "0964f4e4fdc77cb5",
+     "turret": "62383003e9fccb13",
      "gun": "18feb23737635445",
      "runningGear": "681568045affa06e",
      "other": "e3b0c44298fc1c14"
@@ -6598,10 +6598,10 @@
     "meshes": 48,
     "vertices": 272895,
     "triangles": 91673,
-    "digest": "b95dc65687a42f1d",
+    "digest": "5e44881d6748cc24",
     "groups": {
      "hull": "5a87a26aee492ffc",
-     "turret": "c6be798ab5934acf",
+     "turret": "d116b2377327899c",
      "gun": "9676f3bc1b5db60b",
      "runningGear": "3d2ba34e1a3fb9cf",
      "other": "e3b0c44298fc1c14"
@@ -6611,10 +6611,10 @@
     "meshes": 46,
     "vertices": 218943,
     "triangles": 73561,
-    "digest": "1dffe5adc9c3241e",
+    "digest": "39bf0c861fe70ff4",
     "groups": {
      "hull": "3e734e160a2a8ee2",
-     "turret": "8087332193ea5ece",
+     "turret": "b05f29bc9ff6110b",
      "gun": "efc80916ef3fc562",
      "runningGear": "de78cfdf27efa8ee",
      "other": "e3b0c44298fc1c14"
