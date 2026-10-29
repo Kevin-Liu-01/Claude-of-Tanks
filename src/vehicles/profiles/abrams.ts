@@ -8155,7 +8155,10 @@ function* addM1E3HullSteps(P: AbramsBuilderPort, g: AbramsHullConfig): TankProfi
 // full-height mid-step and return flanges, the rear shoulder roofs, corner
 // tongues and taillight guard plates behind the sprocket sweep, the rear-deck
 // grille pods and the belly rim. The skirt-plane wings, carrier tabs and the
-// outboard rear returns are the M1A2's skirt and are not.
+// outboard rear returns are the M1A2's skirt and are not. The M1E3's rear side
+// box and lamp drum wall in the taillight pocket between the shoulder and
+// guard plates, so a recessed lid closes it (open from above, it was an
+// enclosed contiguity hole).
 function addM1E3FamilyClosures(P: AbramsBuilderPort): void {
   for (const side of [-1, 1]) {
     m1e3SideSlab(P, 'hull', side,
@@ -8178,6 +8181,7 @@ function addM1E3FamilyClosures(P: AbramsBuilderPort): void {
     P.add('hullDetail', box(0.612, 0.020, 0.008), side * 1.376, 1.688, -3.622);
     P.add('hull', box(0.602, 0.325, 0.020), side * 1.389, 1.5325, -3.776);
     P.add('hullDetail', box(0.602, 0.022, 0.010), side * 1.389, 1.684, -3.781);
+    P.add('hull', box(0.677, 0.020, 0.168), side * 1.4035, 1.675, -3.702);
     P.add('hullDark', box(0.155, 0.085, 0.012), side * 1.36, 1.575, -3.792);
     P.add('hullDetail', box(0.052, 0.052, 0.008), side * (1.36 - 0.038), 1.573, -3.797);
     P.add('hullDetail', box(0.210, 0.020, 0.030), side * 1.36, 1.633, -3.7855);
