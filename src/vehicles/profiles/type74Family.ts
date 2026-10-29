@@ -323,15 +323,19 @@ const PLAN: [number, number][] = [...HALF_PLAN.map(([x, z]): [number, number] =>
   ...HALF_PLAN.slice(1, 9).reverse().map(([x, z]): [number, number] => [-x, z])];
 const mirror18 = (half: readonly number[]): number[] => [...half, ...half.slice(1, 9).reverse()];
 // insets about the plan's mean, measured from the model's turret at each height (turret frame, metres)
-// (the foot ring stays 2 cm into the deck; the rest at the model's own proportions)
+// (the foot ring stays 2 cm into the deck; the rest at the model's own proportions). 263: the three front stations
+// re-measured with the nose the gun leaves through counted as the turret's (it is the mask's face now): the model's nose
+// stands 10 cm further out on the bore line under the collar, 5 cm at 0.49 m out and 2.5 cm at 0.85 m, less toward the
+// crown. The ring 8 cm over the foot takes half that and the foot none, so at full depression the mask's chin keeps the
+// gun's 26 mm off the deck kit ahead (both per-yaw curves unchanged, tools/gun-depression-sweep.mjs)
 const RINGS: PolyMultiLoftRing[] = [
   { height: -0.02, inset: mirror18([0.88, 0.90, 0.97, 0.96, 0.94, 0.92, 0.89, 0.80, 0.58, 0.54]) },
-  { height: 0.078, inset: mirror18([0.96, 0.97, 1.00, 0.99, 0.98, 0.98, 0.95, 0.88, 0.66, 0.62]) },
-  { height: 0.175, inset: mirror18([1.00, 1.00, 0.99, 0.98, 0.98, 1.00, 0.99, 0.97, 0.85, 0.81]) },
-  { height: 0.272, inset: mirror18([1.00, 0.98, 0.95, 0.94, 0.94, 0.96, 0.96, 0.98, 0.99, 1.00]) },
-  { height: 0.370, inset: mirror18([0.98, 0.93, 0.90, 0.89, 0.87, 0.90, 0.91, 0.94, 0.98, 0.99]) },
-  { height: 0.467, inset: mirror18([0.89, 0.86, 0.85, 0.83, 0.81, 0.83, 0.84, 0.87, 0.94, 0.98]) },
-  { height: 0.564, inset: mirror18([0.72, 0.74, 0.77, 0.76, 0.76, 0.76, 0.78, 0.83, 0.91, 0.97]) },
+  { height: 0.078, inset: mirror18([0.98, 0.987, 1.011, 0.99, 0.98, 0.98, 0.95, 0.88, 0.66, 0.62]) },
+  { height: 0.175, inset: mirror18([1.064, 1.03, 1.007, 0.98, 0.98, 1.00, 0.99, 0.97, 0.85, 0.81]) },
+  { height: 0.272, inset: mirror18([1.04, 1.011, 0.967, 0.94, 0.94, 0.96, 0.96, 0.98, 0.99, 1.00]) },
+  { height: 0.370, inset: mirror18([1.01, 0.955, 0.917, 0.89, 0.87, 0.90, 0.91, 0.94, 0.98, 0.99]) },
+  { height: 0.467, inset: mirror18([0.92, 0.876, 0.864, 0.83, 0.81, 0.83, 0.84, 0.87, 0.94, 0.98]) },
+  { height: 0.564, inset: mirror18([0.745, 0.766, 0.786, 0.76, 0.76, 0.76, 0.78, 0.83, 0.91, 0.97]) },
   { height: 0.613, inset: mirror18([0.59, 0.63, 0.69, 0.71, 0.72, 0.73, 0.73, 0.81, 0.88, 0.95]) },
   { height: 0.661, inset: mirror18([0.41, 0.45, 0.53, 0.62, 0.67, 0.69, 0.69, 0.70, 0.72, 0.70]) },
   { height: 0.706, inset: mirror18([0.10, 0.18, 0.30, 0.42, 0.50, 0.55, 0.56, 0.56, 0.55, 0.52]), centerHeight: 0.714 },

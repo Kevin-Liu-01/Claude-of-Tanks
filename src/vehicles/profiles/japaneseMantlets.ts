@@ -279,26 +279,26 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
   barrelSeal(P, 0.0775, fz + 0.125, seg);
   // the searchlight on its cradle beside the gun base (left), clear of the mask's side: a deck plate run in from the
   // mask's left side, a web under it, the lamp house with chamfered rear corners, its framed six-pane glass, and the two
-  // bars to the collar
-  const lx = -0.80;
-  P.add('gunMount', box(0.58, 0.016, 0.40), -0.735, -0.042, 0.42);
-  P.add('gunMount', box(0.12, 0.045, 0.24), -0.50, -0.0705, 0.36);                  // the cradle's foot on the mask's side
-  P.add('gunMount', box(0.03, 0.035, 0.32), -0.99, -0.0665, 0.42);                   // the deck plate's outer rib
+  // bars to the collar; the whole cradle `lz` ahead of its 262 seat, as far as the fuller cheek beside it came out (263)
+  const lx = -0.80, lz = 0.04;
+  P.add('gunMount', box(0.58, 0.016, 0.40), -0.735, -0.042, 0.42 + lz);
+  P.add('gunMount', box(0.12, 0.045, 0.24), -0.50, -0.0705, 0.36 + lz);                  // the cradle's foot on the mask's side
+  P.add('gunMount', box(0.03, 0.035, 0.32), -0.99, -0.0665, 0.42 + lz);                   // the deck plate's outer rib
   P.add('gunMount', sectionSolid([
     { z: 0.25, ring: [[-0.17, -0.034], [0.17, -0.034], [0.19, -0.015], [0.19, 0.345], [0.17, 0.365], [-0.17, 0.365], [-0.19, 0.345], [-0.19, -0.015]] },
     { z: 0.31, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
     { z: 0.58, ring: [[-0.20, -0.034], [0.20, -0.034], [0.21, -0.020], [0.21, 0.350], [0.20, 0.365], [-0.20, 0.365], [-0.21, 0.350], [-0.21, -0.020]] },
-  ]), lx, 0, 0);
-  P.add('gunMount', box(0.45, 0.034, 0.036), lx, 0.36, 0.578);
-  P.add('gunMount', box(0.45, 0.034, 0.036), lx, -0.024, 0.578);
-  P.add('gunMount', box(0.036, 0.35, 0.036), lx - 0.207, 0.168, 0.578);
-  P.add('gunMount', box(0.036, 0.35, 0.036), lx + 0.207, 0.168, 0.578);
-  P.add('gunMountGlass', markVehicleNightLens(box(0.36, 0.33, 0.012), 'headlight', { searchlight: true }), lx, 0.168, 0.587);
-  P.add('gunMountDark', box(0.012, 0.31, 0.016), lx, 0.168, 0.595);
-  for (const dy of [-0.055, 0.055]) P.add('gunMountDark', box(0.34, 0.010, 0.016), lx, 0.168 + dy, 0.595);
-  P.add('gunMountDark', box(0.30, 0.016, 0.20), lx, 0.373, 0.41);                       // the lid's seam band
-  for (const dx of [-0.10, 0.10]) P.add('gunMountDark', box(0.022, 0.026, 0.12), lx + dx, 0.388, 0.41); // lid handles
-  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.47, 10), -0.365, y, Math.min(0.56, fz + 0.10));
+  ]), lx, 0, lz);
+  P.add('gunMount', box(0.45, 0.034, 0.036), lx, 0.36, 0.578 + lz);
+  P.add('gunMount', box(0.45, 0.034, 0.036), lx, -0.024, 0.578 + lz);
+  P.add('gunMount', box(0.036, 0.35, 0.036), lx - 0.207, 0.168, 0.578 + lz);
+  P.add('gunMount', box(0.036, 0.35, 0.036), lx + 0.207, 0.168, 0.578 + lz);
+  P.add('gunMountGlass', markVehicleNightLens(box(0.36, 0.33, 0.012), 'headlight', { searchlight: true }), lx, 0.168, 0.587 + lz);
+  P.add('gunMountDark', box(0.012, 0.31, 0.016), lx, 0.168, 0.595 + lz);
+  for (const dy of [-0.055, 0.055]) P.add('gunMountDark', box(0.34, 0.010, 0.016), lx, 0.168 + dy, 0.595 + lz);
+  P.add('gunMountDark', box(0.30, 0.016, 0.20), lx, 0.373, 0.41 + lz);                       // the lid's seam band
+  for (const dx of [-0.10, 0.10]) P.add('gunMountDark', box(0.022, 0.026, 0.12), lx + dx, 0.388, 0.41 + lz); // lid handles
+  for (const y of [-0.022, -0.068]) P.add('gunMountDark', cylX(0.011, 0.47, 10), -0.365, y, Math.min(0.56 + lz, fz + 0.10));
   // the turret's lifting eyes on its upper front edge either side of the mask
   for (const s of [-1, 1]) KIT.liftEye(P, 'turretDetail', s * 0.70, 0.52, 0.93, s * 0.25);
   publishFit(P, {

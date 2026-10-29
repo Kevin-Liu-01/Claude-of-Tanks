@@ -148,6 +148,16 @@ The mask's top runs on as a tongue under a lip of the crown (`type74.md`, "The g
 reads as the model's panel line rather than an open slot. Its two ports stand 0.10 m over the bore, so their bosses
 clear the groove at full elevation.
 
+The nose re-measured (263; the critics' "short, blunt nose"): the 262 shell's rings were measured with the model's
+mantlet left out, so its front stopped 0.31 m ahead of the trunnion at the bore. Measured with the nose counted as the
+turret's (it is the mask's face now; `~/cot-lanes/stb1-type74-evidence/hz/insets.py`, the model registered as the
+visual bar registers it), the model's front stands 10 cm further out on the bore line just under the collar. It stands
+5 cm further out 0.49 m to the side and 2.5 cm at 0.85 m, less toward the crown. The three front plan stations now take
+those insets at the rings from 0.175 m to 0.564 m over the ring datum. The face stands 0.375 m ahead of the trunnion at
+the bore, inside the model's 0.36–0.42 m. The ring 8 cm over the foot takes half the fill and the foot none: with the
+whole fill there, the mask's chin came within 25.5 mm of the deck kit at full depression, 7–15° to the left, and that
+arc's depression fell to -5.8°. Both per-yaw curves are unchanged. The Type 74 shares the shell.
+
 Conflicts between the model and the sources, settled for the model (the owner's instruction):
 
 - **Searchlight.** The model carries a six-lens searchlight box; ja.wikipedia records a passive night sight on STB-1 and

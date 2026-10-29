@@ -494,7 +494,11 @@ the seat is cut. The crown's full casting starts at 92°, where the tongue's top
 keep. The 5° keep gives 6 mm at the mask's corners, 7 cm off the axis. At rest the groove reads as a shallow step
 under the lip, about 11 mm deep, like the panel line round the owner's model's mask, and nothing of the turret's
 inside shows through at any pitch. japaneseMantlet.selftest.mjs: the gun keeps 4 mm from every turret part over the
-whole travel (worst 5.0 mm), and the mouth's 14,400 rays meet the mask everywhere.
+whole travel (worst 5.2 mm), and the mouth's 14,400 rays meet the mask everywhere.
+
+The shared shell's nose was re-measured on the owner's model (`stb1.md`, "The nose re-measured"); it now stands up to
+10 cm fuller on the bore line. The lamp's cradle stands 4 cm further forward than in 262, as far as the fuller cheek
+beside it came out.
 
 ## Hull (262 rebuild)
 
