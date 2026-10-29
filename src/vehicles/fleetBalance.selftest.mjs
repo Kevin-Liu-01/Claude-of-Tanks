@@ -135,9 +135,9 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 71 -> 75 (262): the four new true T-64s (t64Armor.ts): the T-64BV takes the Soviet fire-control floor, the T-64B1V
 // mod. 2022, the T-64BM1M and the PT-64 Tur the tier-IV same-tier footing beside the mod. 2017 (fleetBalancePass).
 // 75 -> 77 (262): the new Challenger 3 TD one step under its prototype, and its field fit (fleetBalancePass).
-// 77 -> 80 (263, FAIRNESS-263): the C1 Ariete's gun face and the Challenger 1 marks' gun slot for the balance receipts
-// the merged 263 fleet broke (applySameTierFairness; the Mk 2 extends its entry).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 80,
+// 77 -> 106 (263, FAIRNESS-263): same-tier fairness on the merged 263 fleet at I, VI, VIII and X (applySameTierFairness;
+// fourteen more extend their entries).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 106,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);
@@ -173,7 +173,8 @@ assert.deepEqual({
   accuracy: 0.263,
   aim: 1.76,
   alpha: 520,
-  penetration: [757, 689, 620],
+  // 263 (FAIRNESS-263): the Challenger 1 marks' 790 mm round at VIII
+  penetration: [790, 725, 660],
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
 assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
   'Challenger 1 uses its own late-Cold-War kinetic round instead of the Challenger 2 donor round');
@@ -336,8 +337,9 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), shownGroup(TANK_SPECS.strv103
   'garage normalizes the 103A against its Cold War peers of its shown tier');
 
 const japaneseMbtProgression = [
-  ['type90_kyumaru', 8, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
-  ['type90a', 8, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
+  // 263 (FAIRNESS-263): the Type 90 family's clip cycles 9 s (the Kyū-maru, 2,450 HP) and 8.5 s (the 90A) at VIII
+  ['type90_kyumaru', 8, 2450, 1550, 34, 52.8, 46.6, 30, 9, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90a', 8, 2400, 1500, 30, 50.6, 44.5, 34, 8.5, 3, 2.0, 510, 855, 700, 134, 672],
   ['type10_tk_x', 9, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
   ['type10b', 9, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
@@ -420,7 +422,8 @@ const pattonProgression = [
   // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
   ['m48a5_patton', 1, 2050, 50, 7, 450, 580, 535, 490],
   ['m60a1', 1, 2100, 52, 6.8, 440, 570, 530, 480],
-  ['m60a3', 1, 2200, 50, 6.4, 450, 610, 570, 520],
+  // 263 (FAIRNESS-263): the M60A3 takes the M60A1's 2,100 HP and a 6.8 s cycle at I; its firepower still leads the family
+  ['m60a3', 1, 2100, 50, 6.8, 450, 610, 570, 520],
 ];
 let previousPattonDpm = 0;
 for (const [id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000]
