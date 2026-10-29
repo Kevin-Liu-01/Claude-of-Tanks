@@ -83,9 +83,12 @@ cavity in the front armour in previous models").
   collar 45 mm proud, its lens back in the bore, its cap hanging on a chain), both in the mantlet and pitching with the
   gun. The 2A2's collar stands longer (about 0.12 m, an estimate: from the 2A3 the tube was shortened).
 - The "window thing" is the EMES 15 gunner's sight in a notch in the right cheek's top inboard corner, open to the front
-  and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.28 m tall under the sight
-  housing's front, about 0.22 m deep to the sight head; the head's thermal window outboard and its day and laser window
-  inboard; two armoured door leaves hinged at the walls, swung forward flat against them (open).
+  and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.33 m tall under the sight
+  housing's front, about 0.22 m deep to the sight head, roofed by the housing's bolted lip 16 cm out over it; the head's
+  thermal window outboard and its day and laser window inboard; two armoured door leaves hinged at the walls, swung
+  forward flat against them (open).
+- Over the mantlet (the owner's photo): the dark groove of its seal behind the mantlet's top, the rubber strip, and the
+  bolted cover standing 4 cm over the brow from the sight housing to the left cheek, 0.30 m deep.
 - The slope (the owner, 2026-10-28: "i dont think its that they need to lean back is that if you look top down, the
   chheeks are at a slight slope, like \ / but not extreme"; shown the two readings, the owner chose the outer ends set
   back: "A built now is correct"): the faces vertical, swept back 6 degrees toward their outer ends in plan, running
@@ -100,8 +103,8 @@ cavity in the front armour in previous models").
   top chamfered back under the brow, set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
   2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
   estimate), with the dark gun-port recess under it; the trunnion and the muzzle stay where they were.
-- The grab rails across both cheek faces at a third of their height, and a small block low on the right face (the
-  reference photos; the 2A4 lane's measures).
+- The grab rails across both cheek faces at a third of their height, and a rubber-faced pad 0.40 by 0.10 m on the right
+  face's foot under the notch (the reference photos; the 2A4 lane's measures).
 - Anatomy, what a round meets: through the notch, the sight head and the 660 mm block behind the cavity (about 0.6 of the
   cheek's line of sight under the sill; the 2A4 front's known weak spot), modelled as `turret_front_sight_notch` (linked
   to the optics) on the face the collision shell meets: the notch has its own lateral band and these turrets'
@@ -145,6 +148,12 @@ cavity in the front armour in previous models").
   ports, the sight notch, the faces swept back in plan (a first 3-degree lean-back withdrawn on the owner's word), the
   full-width bevelled front 0.38 m forward on the registered drawing, the bustle 9 cm shorter, the mantlet 3 cm back in
   the slot, the rails at a third of the faces' height (the 2A4 lane's photographed 2A4s), on all three.
+- R7 (2026-10-29, a blind critic of the geometry renders against the owner's photo, FAIL; each finding checked against
+  the photo at its own scale): the sight housing's lintel up 5 cm and its bolted lip out over the notch, the doors the
+  opening's height; the mantlet's seal groove, rubber strip and raised cover over the brow; the pad on the right face's
+  foot at the photo's 0.40 by 0.10 m; the FERO cap smaller, hanging toward the gun on a slanted chain. Two findings
+  stood against the photo: the right rail's height matches it at the cheek's own scale, and the 2A3's "ledge" is the
+  OTCO's rim (R5, the owner's).
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.

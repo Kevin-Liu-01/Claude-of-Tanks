@@ -40,12 +40,13 @@ export const LEO2A3B4_TURRET = Object.freeze({
    * The EMES 15's notch in the right cheek's top inboard corner, open to the front and the top through the bevel: its
    * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head; the head's
    * armoured housing on the cheek's top behind it, its foot sightLintelY, its top sightTopY. Measured from the cited photos
-   * (docs/references/tanks/leo2a3_b4.md, "Turret front").
+   * (docs/references/tanks/leo2a3_b4.md, "Turret front"); the lintel rose 5 cm after the photo critic (its face over the
+   * opening is a thin lip in the owner's photo, not a deep brow).
    */
   sightInnerX: 0.50,
   sightOuterX: 0.94,
   sightSillY: 0.42,
-  sightLintelY: 0.70,
+  sightLintelY: 0.75,
   sightTopY: 0.86,
   sightDepthM: 0.22,
   stepZ: -1.62,
