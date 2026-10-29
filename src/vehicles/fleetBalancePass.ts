@@ -498,5 +498,8 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the FV4030/6's sleek turret read its gun face under every VIII round (tier9-rifled-peers' FV row 0.105): x1.4
   // holds it (0.538). The Challenger 1 marks on the Mk 3's build sit in band unlevered (the Mk 2 v 2A4M CAN 0.625).
   mantlet(registry, 'challenger_x_sleek', 1.4);
+  // the Challenger 1 Mk 1, Mk 2 and Mk 3 share the Mk 3's turret, whose sloped gun-face cells read the 624 mm slot and
+  // the 682 mm cheeks at ~1,020 mm effective (0.87-0.88, 8-9 of 34 in band); x0.7 brings the three to 0.55 (16 of 34)
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) turretFront(registry, id, 0.7);
 }
 
