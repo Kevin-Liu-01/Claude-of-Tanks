@@ -18,7 +18,8 @@ import { tankSeedId } from '../tankIdAliases.ts';
 import { addLeopardFlw200, turretRoofY } from './leopard2A4Flw200.ts';
 import { leopard2A4FaceZ } from './leopard2A4Turret.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
+import { LEO2A4_CHEEK_FRONT, LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
+import { cheekCornerZ } from '../leopard2CheekFrontDatums.ts';
 import { HULL_SURFACES as HS, TURRET_SURFACES as TS, deckFrame, deckY } from './leopard2A4KitParts.ts';
 import { laidCable, type Leopard2A4KitContext } from './leopard2A4Kit.ts';
 
@@ -334,7 +335,8 @@ function wedgePiece(sx: number, a: number, b: number, y0: number, y1: number, ba
 
 /**
  * The MEXAS-style cheek wedges over the cheeks' faces: vertical fronts swept back 22 degrees from the gun slot to the
- * corners, on the faces (themselves swept 6 degrees), wrapping the corner cuts and running back along the walls, their
+ * corners, their backs on the faces (themselves swept 27 degrees, the shared cheek front; the fronts stand where they did
+ * on the 6-degree faces), wrapping the corner cuts and running back along the walls, their
  * tops the faces' top under the bevel. The right one leaves the EMES 15 notch open: under the notch only a sill as high as
  * the notch's own, so the sight sees forward and up over it. Seams part the fronts into tiles, bolted caps and a lifting
  * eye on the tops.
@@ -347,9 +349,10 @@ function cheekWedges(P: TankBuilderPort): void {
   const onFace = (ax: number): number => leopard2A4FaceZ(ax) + 0.002;
   for (const sx of SIDES) {
     const wall = wallOf(sx), edge = edgeOf(sx), out = wall + FLANK_OUT;
-    // the corner cut runs from the face's outer edge back to the wall at the corner station
+    // the chamfer runs from the face's outer edge back to the wall (the shared cheek front's corner)
+    const corner = cheekCornerZ(LEO2A4_CHEEK_FRONT, sx < 0 ? LEO2A4_CHEEK_FRONT.right : LEO2A4_CHEEK_FRONT.left);
     const onCut = (ax: number): number =>
-      THREE.MathUtils.lerp(leopard2A4FaceZ(edge), T.cornerZ, (ax - edge) / (wall - edge)) + 0.002;
+      THREE.MathUtils.lerp(leopard2A4FaceZ(edge), corner, (ax - edge) / (wall - edge)) + 0.002;
     const behindCorner = T.blockZ - 0.02;
     // [a, b, top] of each piece over the face, then the corner and the side
     const facePieces: ReadonlyArray<readonly [number, number, number]> = sx < 0
