@@ -264,8 +264,10 @@ const UKRAINE_SPECS = {
     spec.gunDepressionDeg = 5;
     spec.gunPitchByYawDeg = GUN_PITCH_BY_YAW_DEG[id];
     spec.gun.reloadS = 6.3;
-    spec.gun.baseAccuracy = 0.31;
-    spec.gun.aimTimeS = 1.8;
+    // the 1G46M gunner's sight and the PNK-6 panoramic hunter-killer: the tier X peers' fire control (the T-90M Proryv's
+    // Kalina class); the fleet's tier X MBT median (balanceAudit) reads them at 2.0, not under its floor of peers
+    spec.gun.baseAccuracy = 0.30;
+    spec.gun.aimTimeS = 1.63;
     spec.gun.shells = [
       shell('BTA-4 APFSDS', 'APFSDS', 125, 840, 780, 545, 1780, { pen2000Mm: 710, count: 18 }),
       shell('3BK29M HEAT', 'HEAT', 125, 700, 700, 490, 905, { count: 10 }),
@@ -342,8 +344,9 @@ const UKRAINE_SPECS = {
     spec.gunPitchByYawDeg = row.curve;
     spec.gun.caliberMm = 120;
     spec.gun.reloadS = row.reloadS;
-    spec.gun.baseAccuracy = 0.31;
-    spec.gun.aimTimeS = 1.8;
+    // the tier X pair carry the Oplot-M's hunter-killer fire control; the tier IX Sokół the T-84U's
+    spec.gun.baseAccuracy = id === 'pt84_sokol' ? 0.31 : 0.30;
+    spec.gun.aimTimeS = id === 'pt84_sokol' ? 1.8 : 1.63;
     const k279 = apfsdsPenetration(700);
     spec.gun.shells = [
       shell('K279 APFSDS', 'APFSDS', 120, k279[0], k279[1], 530, 1760, { pen2000Mm: k279[2], count: row.missile ? 18 : 22 }),

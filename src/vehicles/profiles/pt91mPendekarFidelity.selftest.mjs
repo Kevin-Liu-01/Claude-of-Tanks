@@ -15,10 +15,12 @@ import {createTankState} from '../../sim/movement.ts';
 const restore=installCanvasFixture();
 // The independent Twardy clones Pendekar's combat balance; since 262 it stands on the T-72B3 study (pt91Twardy.ts) and
 // takes the study's frame, track and protection planes, never the Pendekar's T-72BU spatial armor.
-const twardy=getSpec('pt91a_twardy'),study=getSpec('t72b3');
+// (Plates are then fitted to each build's own surfaces, so the check is the study's track and ERA sectors, not its verts.)
+const twardy=getSpec('pt91a_twardy'),study=getSpec('t72b3'),pendekar=getSpec('pt91m');
+const eraNames=s=>[...new Set([...s.armor.hullPlates,...s.armor.turretPlates].filter(p=>p.era).map(p=>p.name))].sort();
 assert.equal(twardy.visual.trackWidthM,study.visual.trackWidthM);
-assert.deepEqual(twardy.armor.hullPlates,study.armor.hullPlates);
-assert.deepEqual(twardy.armor.turretPlates,study.armor.turretPlates);
+assert.deepEqual(eraNames(twardy),eraNames(study));
+assert.notDeepEqual(twardy.armor.hullPlates,pendekar.armor.hullPlates);
 const near=(a,b,tol=1e-6,label='datum')=>assert.ok(Math.abs(a-b)<=tol,`${label}: ${a} vs ${b}`);
 function geometryBytes(root,names){const h=crypto.createHash('sha256');for(const name of names){const o=root.getObjectByName(name);assert.ok(o?.geometry,name);for(const key of['position','normal']){const a=o.geometry.attributes[key]?.array;if(a)h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));}const a=o.geometry.index?.array;if(a)h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));if(o.isInstancedMesh){const a=o.instanceMatrix.array;h.update(new Uint8Array(a.buffer,a.byteOffset,a.byteLength));}}return h.digest('hex');}
 function triangles(mesh){const p=mesh.geometry.attributes.position,idx=mesh.geometry.index,result=[];for(let i=0;i<(idx?.count??p.count);i+=3){const v=[0,1,2].map(k=>new T.Vector3().fromBufferAttribute(p,idx?idx.getX(i+k):i+k).applyMatrix4(mesh.matrixWorld));const t=new T.Triangle(...v);if(t.getArea()<1e-10)continue;result.push({t,b:new T.Box3().setFromPoints(v)});}return result;}

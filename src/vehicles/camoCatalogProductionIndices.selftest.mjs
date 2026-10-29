@@ -71,6 +71,11 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // oplot M and T"): the T-84U is rebuilt as the M/T's 2000 stage in the 2000 Ukrainian service finish (olive with brown
 // and black bands, nato). Exactly one row moved: ua_t84_oplot_m's Factory visual (04509d4067f37bf6 -> 6e0c6270ea20f696);
 // its stock Signature selection, AUTO and every other row are unchanged.
+// Re-pinned 2026-10-28 (release 262, owner: "update the twardy to be beter and based off an actual tnak"): the PT-91A
+// Twardy is rebuilt as the serial PT-91, and its Signature takes the Polish Army's green, sand and black (nato) in place
+// of the dark stripes. Exactly two rows moved: selection sig_pt91_twardy (915d912d3b53bba7 -> 340718aa1aa386b0) and tank
+// pt91_twardy's Factory visual (278844347910ac03 -> 3747fd7810affd87); its stock selection, AUTO and every other row are
+// unchanged.
 // release 262: the T-84BM Oplot-M and Oplot-T, each in its own stock paint appended after GT
 const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'bm_oplot_m', 'bm_oplot_t'];
 // Added since production in an existing coat (release 262: the PT-84 Orzeł in the Polish three-tone woodland, the Sokół
