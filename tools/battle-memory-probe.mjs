@@ -71,7 +71,7 @@ export function parseMemoryArgs(argv) {
 }
 
 /** The browser tree's resident set by process kind (MB): the browser, the renderers, the GPU process, the rest. */
-export function rssByKind(rootPid) {
+function rssByKind(rootPid) {
   const rows = execSync('ps -axo pid=,ppid=,rss=,command=', { encoding: 'utf8', maxBuffer: 1 << 26 }).trim().split('\n').map((line) => {
     const m = line.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/);
     return m ? { pid: Number(m[1]), ppid: Number(m[2]), kb: Number(m[3]), command: m[4] } : null;

@@ -11,25 +11,25 @@ import { parseAst } from 'rolldown/parseAst';
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 
 /** The shared core: the simulation, plus the bot brains and the kernels' loader that live beside their callers. */
-export const CORE_EXTRA_ROOTS = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/world/wasmWorldKernels.ts']);
+const CORE_EXTRA_ROOTS = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts', 'src/world/wasmWorldKernels.ts']);
 /** The core's modules outside src/sim that are core (the bots): nothing else under src/game is. */
-export const CORE_GAME_MODULES = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts']);
+const CORE_GAME_MODULES = Object.freeze(['src/game/ai.ts', 'src/game/botAbilities.ts']);
 /** Code the core never reaches: either driver's, the composition root, and the presentation around them. */
-export const CORE_FORBIDDEN = Object.freeze([
+const CORE_FORBIDDEN = Object.freeze([
   /^src\/mp\//, /^server\//, /^src\/main\.ts$/, /^src\/app\//, /^src\/entry\//, /^src\/presentation\//, /^src\/gallery\//,
   /^src\/docs\//, /^src\/dev\//, /^src\/audio\//, /^src\/fx\//, /^src\/techTree\//,
 ]);
 /** three.js's math, which the core may use: no scene graph, geometry, material, texture or renderer. */
-export const THREE_MATH = Object.freeze(new Set(['Vector2', 'Vector3', 'Vector4', 'Quaternion', 'Euler', 'Matrix3', 'Matrix4', 'Box2',
+const THREE_MATH = Object.freeze(new Set(['Vector2', 'Vector3', 'Vector4', 'Quaternion', 'Euler', 'Matrix3', 'Matrix4', 'Box2',
   'Box3', 'Sphere', 'Ray', 'Plane', 'Triangle', 'Line3', 'MathUtils', 'Spherical', 'Cylindrical']));
 /** Browser globals the core never names (a Node authority has none of them). */
-export const DOM_GLOBALS = Object.freeze(new Set(['document', 'window', 'navigator', 'location', 'localStorage', 'sessionStorage',
+const DOM_GLOBALS = Object.freeze(new Set(['document', 'window', 'navigator', 'location', 'localStorage', 'sessionStorage',
   'requestAnimationFrame', 'cancelAnimationFrame', 'HTMLElement', 'HTMLCanvasElement', 'HTMLImageElement', 'Image', 'OffscreenCanvas',
   'Worker', 'self', 'indexedDB', 'matchMedia', 'getComputedStyle', 'devicePixelRatio', 'innerWidth', 'innerHeight', 'WebGLRenderingContext',
   'WebGL2RenderingContext', 'createImageBitmap']));
 
 /** The local driver's owners: a local battle, the campaign, the Proving Ground, Watch, replays, the Jev opponent. */
-export const LOCAL_DRIVER_ENTRIES = Object.freeze([
+const LOCAL_DRIVER_ENTRIES = Object.freeze([
   'src/game/state.ts', 'src/game/soloBattleRuntime.ts', 'src/game/soloBattleAccess.ts', 'src/game/soloBattleEntryRuntime.ts',
   'src/game/soloBattleLoadingRuntime.ts', 'src/game/soloBattleLoadingAccess.ts', 'src/game/soloBattleStartRuntime.ts',
   'src/game/soloBattleStartAccess.ts', 'src/game/soloBattleDeploymentRuntime.ts', 'src/game/soloBattleDeploymentAccess.ts',
@@ -39,18 +39,18 @@ export const LOCAL_DRIVER_ENTRIES = Object.freeze([
   'src/game/jevCommander.ts', 'src/world/soloWorldKernels.ts',
 ]);
 /** The online driver's client stack, which a local battle never reaches by any edge. */
-export const ONLINE_CLIENT_STACK = /^src\/mp\/(?:match|presentation|transport|wire|session)\//;
+const ONLINE_CLIENT_STACK = /^src\/mp\/(?:match|presentation|transport|wire|session)\//;
 /** And the rest of the online driver (rooms, the host, the server's actor and room service), which it never reaches either. */
-export const ONLINE_DRIVER = /^(?:src\/mp\/|server\/match\/|server\/rooms\/)/;
+const ONLINE_DRIVER = /^(?:src\/mp\/|server\/match\/|server\/rooms\/)/;
 
 /** main.ts's local battle entries: they start a battle on the page and touch nothing of the online composition. */
-export const MAIN_LOCAL_ENTRIES = Object.freeze(['beginLocalBattleEntry', 'beginLocalBattle']);
+const MAIN_LOCAL_ENTRIES = Object.freeze(['beginLocalBattleEntry', 'beginLocalBattle']);
 /**
  * main.ts's top-level declarations that compose the online driver or a surface that offers it (the Play menu, a room
  * invite at startup): the only places it may name a src/mp module (a static import's binding or a lazy import) or a
  * module whose closure reaches the client stack. A new one is added here on purpose.
  */
-export const MAIN_ONLINE_DECLARATIONS = Object.freeze([
+const MAIN_ONLINE_DECLARATIONS = Object.freeze([
   'importMultiplayerV2Modules', 'loadMultiplayerV2Composition', 'loadMultiplayerLobby', 'multiplayerLobby', 'onlineMatch',
   'onlineMatchActive', 'onlinePump', 'multiplayerAppPorts', 'networkBattleIntentCover', 'beginMultiplayerV2Battle',
   'presentationScenePorts', 'loadPlayMenuModule', 'playSurface', 'startupIntent',
@@ -95,7 +95,7 @@ function analysisOf(source, file) {
 }
 
 /** One module's runtime edges: { specifier, kind: 'static' | 'lazy' | 'worker' }. */
-export function moduleEdges(source, file = 'module.ts') {
+function moduleEdges(source, file = 'module.ts') {
   return analysisOf(source, file).edges;
 }
 
@@ -129,7 +129,7 @@ export function checkoutReader(root = process.cwd(), overrides = {}) {
  * Every module reached from `entries` by any runtime edge: a Map from repo path to { from, kind } (null for an entry).
  * `extraEdges` (repo path -> [{ to, kind }]) adds edges a receipt seeds.
  */
-export function runtimeClosure(entries, { root = process.cwd(), read = checkoutReader(root), extraEdges = {}, edgesOut = false } = {}) {
+function runtimeClosure(entries, { root = process.cwd(), read = checkoutReader(root), extraEdges = {}, edgesOut = false } = {}) {
   const rootDir = resolve(root);
   const reached = new Map();
   const edgesByFile = new Map();
@@ -155,7 +155,7 @@ export function runtimeClosure(entries, { root = process.cwd(), read = checkoutR
 }
 
 /** The chain from an entry to `file` inside a closure, for failure messages. */
-export function closureChain(closure, file) {
+function closureChain(closure, file) {
   const chain = [];
   for (let current = file; current; current = closure.get(current)?.from ?? null) {
     const step = closure.get(current);
@@ -166,14 +166,14 @@ export function closureChain(closure, file) {
 }
 
 /** The core's roots: every module under src/sim (receipts and test support aside) and the extra roots. */
-export function coreRoots(root = process.cwd()) {
+function coreRoots(root = process.cwd()) {
   const listed = execFileSync('git', ['ls-files', 'src/sim'], { cwd: root, encoding: 'utf8' }).split('\n')
     .filter((file) => file.endsWith('.ts') && !/\.(?:selftest|test-support)\./.test(file));
   return [...listed, ...CORE_EXTRA_ROOTS];
 }
 
 /** What a module names that the core may not: three.js beyond its math, browser globals. */
-export function renderSideUses(source, file = 'module.ts') {
+function renderSideUses(source, file = 'module.ts') {
   return analysisOf(source, file).uses;
 }
 

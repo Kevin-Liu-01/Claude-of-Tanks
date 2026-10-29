@@ -88,6 +88,7 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 | `src/fx/` | [`src/fx/SKILL.md`](src/fx/SKILL.md) | Work on pooled particles, impacts, destruction effects, decals, and shared FX time. |
 | `src/gallery/` | [`src/gallery/SKILL.md`](src/gallery/SKILL.md) | Build and verify the public Tank Gallery, its technical dossiers, diagnostic overlays, and exact-surface markup review packets. |
 | `src/game/` | [`src/game/SKILL.md`](src/game/SKILL.md) | Work on battle integration, bots, input, garage dressing, progression, replays, and studio state. |
+| `src/mp/` | [`src/mp/SKILL.md`](src/mp/SKILL.md) | Work on the online driver - rooms, the binary wire, transports, the match client's prediction and interpolation, the browser host and the session owner. |
 | `src/presentation/` | [`src/presentation/SKILL.md`](src/presentation/SKILL.md) | Maintain lightweight public navigation, media loading, archive presentation, and public-site contracts. |
 | `src/sim/` | [`src/sim/SKILL.md`](src/sim/SKILL.md) | Work on deterministic movement, armor, ballistics, damage, and spotting simulation. |
 | `src/techTree/` | [`src/techTree/SKILL.md`](src/techTree/SKILL.md) | Maintain the read-only national tech trees the Garage draws - tree data, lineage, tiers as columns and the connector layout. |
