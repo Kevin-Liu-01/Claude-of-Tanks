@@ -3108,22 +3108,25 @@
       "panYM": 0.4,
       "bottomYM": 0,
       "hullMin": [
-        -1.655,
+        -1.07,
         0.4,
-        -3.03
+        -3
       ],
       "hullMax": [
-        1.649,
+        1.07,
         1.42,
-        3.05
+        2.998
       ],
       "turretMinY": 0.03,
       "accepted": {
-        "reason": "release 262, the T-54/T-55 family construction measured from the owner T-55A model at full size (roof 1.42, belly 0.40, fenders to 3.27 m, drums as equipment)",
+        "reason": "release 264, the Longwei family with face-fitted cheek cassettes and the Baihu floodlight, and envelope honesty (the Longwei and T-54 family fenders, skirts and stern rack out of the hull armour bucket)",
         "by": "kevinliu",
-        "date": "2026-10-27",
+        "date": "2026-10-28",
         "from": {
-          "turretFloorY": -0.03
+          "hullMinX": -1.655,
+          "hullMaxX": 1.649,
+          "hullTailZ": -3.03,
+          "hullBowZ": 3.05
         }
       }
     },
@@ -4360,22 +4363,25 @@
       "panYM": 0.4,
       "bottomYM": 0,
       "hullMin": [
-        -1.655,
+        -1.07,
         0.4,
-        -3.03
+        -3
       ],
       "hullMax": [
-        1.649,
+        1.07,
         1.42,
-        3.05
+        2.998
       ],
       "turretMinY": 0.03,
       "accepted": {
-        "reason": "release 262, the T-54/T-55 family construction measured from the owner T-55A model at full size (roof 1.42, belly 0.40, fenders to 3.27 m, drums as equipment)",
+        "reason": "release 264, the Longwei family with face-fitted cheek cassettes and the Baihu floodlight, and envelope honesty (the Longwei and T-54 family fenders, skirts and stern rack out of the hull armour bucket)",
         "by": "kevinliu",
-        "date": "2026-10-27",
+        "date": "2026-10-28",
         "from": {
-          "turretFloorY": 0.074
+          "hullMinX": -1.655,
+          "hullMaxX": 1.649,
+          "hullTailZ": -3.03,
+          "hullBowZ": 3.05
         }
       }
     },
@@ -4901,27 +4907,22 @@
       "panYM": 0.47,
       "bottomYM": 0,
       "hullMin": [
-        -1.857,
+        -1.7,
         0.47,
-        -3.96
+        -3.5
       ],
       "hullMax": [
-        1.857,
+        1.7,
         1.78,
         3.616
       ],
-      "turretMinY": -0.09,
+      "turretMinY": 0,
       "accepted": {
-        "reason": "release 262, the new Longwei hull on the ZTZ-99A pattern (pointed nose 0.92, belly 0.47, sponsons 1.70, stern rack to -3.96)",
+        "reason": "release 264, the Longwei turret seated after the rigs pass on the bodywork-and-skirt hull, its ring collar under the seated ring and the turret box floor at the ring plane",
         "by": "kevinliu",
-        "date": "2026-10-27",
+        "date": "2026-10-28",
         "from": {
-          "panYM": 0.385,
-          "hullFloorY": 0.385,
-          "hullMinX": -1.866,
-          "hullMaxX": 1.866,
-          "hullTailZ": -4.25,
-          "hullBowZ": 3.55
+          "turretFloorY": -0.09
         }
       }
     },
@@ -4968,6 +4969,98 @@
         "date": "2026-10-25",
         "from": {
           "hullRoofY": 1.72
+        }
+      }
+    },
+    "ztz99a2_qinglong": {
+      "panYM": 0.36,
+      "bottomYM": 0,
+      "hullMin": [
+        -1.855,
+        0.36,
+        -4.41
+      ],
+      "hullMax": [
+        1.855,
+        1.685,
+        3.55
+      ],
+      "turretMinY": -0.09,
+      "accepted": {
+        "reason": "release 264, the Longwei turret on the ZTZ-99A2 hull, its ring collar at local -0.09 as on the Longwei is the combat turret floor",
+        "by": "kevinliu",
+        "date": "2026-10-28",
+        "from": {
+          "turretFloorY": 0.04
+        }
+      }
+    },
+    "vt4a1_baihu": {
+      "panYM": 0.36,
+      "bottomYM": 0,
+      "hullMin": [
+        -1.855,
+        0.36,
+        -4.41
+      ],
+      "hullMax": [
+        1.855,
+        1.685,
+        3.55
+      ],
+      "turretMinY": -0.09,
+      "accepted": {
+        "reason": "release 264, the Longwei turret on the ZTZ-99A2 hull, its ring collar at local -0.09 as on the Longwei is the combat turret floor",
+        "by": "kevinliu",
+        "date": "2026-10-28",
+        "from": {
+          "turretFloorY": 0.04
+        }
+      }
+    },
+    "t72b3_zhuque": {
+      "panYM": 0.375,
+      "bottomYM": 0,
+      "hullMin": [
+        -1.7905,
+        0.397,
+        -3.3603
+      ],
+      "hullMax": [
+        1.8113,
+        1.4599,
+        3.518
+      ],
+      "turretMinY": -0.0077,
+      "accepted": {
+        "reason": "release 264, the Longwei family (fleet hulls under a modernized Longwei turret) and the ZTZ-99A2 hull's bow shoulder raised clear of the idler's track wrap",
+        "by": "kevinliu",
+        "date": "2026-10-28",
+        "from": {
+          "turretFloorY": -0.09
+        }
+      }
+    },
+    "t72b3m_xuanwu": {
+      "panYM": 0.375,
+      "bottomYM": 0,
+      "hullMin": [
+        -1.955,
+        0.4526,
+        -3.47
+      ],
+      "hullMax": [
+        1.955,
+        1.5295,
+        3.835
+      ],
+      "turretMinY": 0.0055,
+      "accepted": {
+        "reason": "release 264, the Longwei family (fleet hulls under a modernized Longwei turret) and the ZTZ-99A2 hull's bow shoulder raised clear of the idler's track wrap",
+        "by": "kevinliu",
+        "date": "2026-10-28",
+        "from": {
+          "turretFloorY": -0.09
         }
       }
     }

@@ -269,6 +269,22 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-99A2', shortName: 'ZTZ-99A2',
     searchAliases: ['Type 99A2', 'ZTZ 99A2'],
   },
+  ztz99a2_qinglong: {
+    displayName: 'ZTZ-99A2 Qinglong', shortName: 'Qinglong',
+    searchAliases: ['Qinglong', 'Azure Dragon', '青龙', 'Longwei turret on the ZTZ-99A2'],
+  },
+  vt4a1_baihu: {
+    displayName: 'VT-4A1 Baihu', shortName: 'Baihu',
+    searchAliases: ['Baihu', 'White Tiger', '白虎', 'Longwei turret on the VT-4A1'],
+  },
+  t72b3_zhuque: {
+    displayName: 'T-72B3 Zhuque', shortName: 'Zhuque',
+    searchAliases: ['Zhuque', 'Vermilion Bird', '朱雀', 'Longwei turret on the Qilin hull'],
+  },
+  t72b3m_xuanwu: {
+    displayName: 'T-72B3M Xuanwu', shortName: 'Xuanwu',
+    searchAliases: ['Xuanwu', 'Black Tortoise', '玄武', 'Longwei turret on the Kunlun hull'],
+  },
   ztz99a: {
     displayName: 'ZTZ-99A', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],

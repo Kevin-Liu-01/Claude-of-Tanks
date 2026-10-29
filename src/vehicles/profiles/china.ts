@@ -259,7 +259,12 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       [1.02, 1.36], [1.72, 1.18], [1.84, 2.70],
       [1.84, 3.48], [1.10, 3.48], [0.72, 3.32],
     ];
-    const shoulderLowerRight = [1.46, 1.42, 1.18, 0.98, 0.98, 0.96];
+    // release 264 (main-reds 261: 44 strict-clip band cells on every tank on this hull): the shoulder is one convex
+    // body, so its underside ran straight from the 1.18 m station to the bow's 0.96-0.98 m and sat 5-8 cm inside the
+    // track's wrap over the idler (z 2.7-3.2, its top 1.16). Its bow-side underside now stands at 1.24 m over the idler's
+    // station and 1.12-1.14 m at the bow, 2 cm or more clear of the wrap (raising the outer corners alone let the inner
+    // bow corner span the hull's underside across the track); the transverse guard still hangs to 0.98 m ahead of it.
+    const shoulderLowerRight = [1.46, 1.42, 1.24, 1.14, 1.14, 1.12];
     const shoulderUpperRight = [1.62, 1.60, 1.50, 1.40, 1.39, 1.14];
     const shoulderPlan = s > 0
       ? shoulderPlanRight
@@ -372,7 +377,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
-    louvre('hullDetail', box(2.50, 0.020, 0.026), -2.22 - i * 0.24, 0.006);        // release 240: 16 mm proud (was 26), under the turrets' sweep
+    // release 240: 16 mm proud (was 26), under the turrets' sweep; release 264 (main-reds 261): 18 mm deep at 7 mm, so its
+    // underside sits 2 mm into the deck (it sat 4 mm in) with the same 16 mm proud top
+    louvre('hullDetail', box(2.50, 0.018, 0.026), -2.22 - i * 0.24, 0.007);
   });
   // release 240: the two filler caps lie on the deck line (4 mm into it, 1 cm proud), under the turrets' sweep
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {

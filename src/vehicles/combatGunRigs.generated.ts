@@ -98,6 +98,8 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "t62_1975": {"turretPivot":[0,1.4804,0.676],"gunPivot":[0,0.2866,1.019],"lengthM":4.68,"radiusM":0.085},
   "t62mv1": {"turretPivot":[0,1.57,0.676],"gunPivot":[0,0.2167,1.3013],"lengthM":4.4999},
   "t72_rys": {"turretPivot":[0,1.61658,0.071869817],"gunPivot":[0,0.2048,1.3481],"lengthM":4.5828,"radiusM":0.1093},
+  "t72b3_zhuque": {"turretPivot":[0,1.497100315,0.065591405],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
+  "t72b3m_xuanwu": {"turretPivot":[0,1.549483974,0.11431465],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
   "t80": {"turretPivot":[0,1.45,0],"gunPivot":[-0.0015,0.231,0.6],"lengthM":5.67,"radiusM":0.128},
   "t80b": {"turretPivot":[0,1.45,0],"gunPivot":[0.0001,0.231,0.6],"lengthM":5.73,"radiusM":0.128},
   "t80bv": {"turretPivot":[0,1.45,0],"gunPivot":[-0.0026,0.181,0.6],"lengthM":5.22,"radiusM":0.128},
@@ -128,6 +130,8 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "ua_m2a3_bradley": {"turretPivot":[0,1.895,-0.45],"gunPivot":[-0.075,0.375,0.6],"lengthM":2.23},
   "ua_t80bv": {"turretPivot":[0,1.44,-0.05],"gunPivot":[0,0.25,1.02],"lengthM":5.3},
   "vickers_mk1": {"turretPivot":[0,1.463,0.4399],"gunPivot":[0,0.4612,0.57],"lengthM":4.4555,"radiusM":0.1254},
+  "vt4a1_baihu": {"turretPivot":[0,1.66,0.4],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
   "ztz85_iii": {"turretPivot":[0,1.45,0.05],"gunPivot":[0,0.32,0.96],"lengthM":6.195,"radiusM":0.0974},
   "ztz99_longwei": {"turretPivot":[0,1.57,0.64],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
+  "ztz99a2_qinglong": {"turretPivot":[0,1.66,0.4],"gunPivot":[0,0.3198,0.74],"lengthM":6.454,"radiusM":0.1013},
 });

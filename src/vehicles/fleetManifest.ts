@@ -2,7 +2,7 @@
 // It is deliberately plain data so asking which chunk owns a tank never
 // downloads or evaluates that chunk.
 export const FLEET_GROUP_IDS = Object.freeze({
-  nationalModernization: Object.freeze(["t72b3m_hetman_ii", "t72b3_zubr_ii", "t80u_zoria", "t72b3m_hetman", "t72b3_sich", "t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t80u_yun", "t72b3m_kunlun", "t72b3_qilin", "t80u_bars_m", "t72b3m_bulat_m", "t72b3_bastion_m"]),
+  nationalModernization: Object.freeze(["t72b3_zhuque", "t72b3m_xuanwu", "t72b3m_hetman_ii", "t72b3_zubr_ii", "t80u_zoria", "t72b3m_hetman", "t72b3_sich", "t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t80u_yun", "t72b3m_kunlun", "t72b3_qilin", "t80u_bars_m", "t72b3m_bulat_m", "t72b3_bastion_m"]),
   sinoSovietConcepts: Object.freeze(['type96_72_long','type96_80_feng','type96_72m_lei']),
   t72Rys: Object.freeze(['t72_rys']),
   m6Linebacker: Object.freeze(['m6_linebacker']),
@@ -62,7 +62,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   cv90MkivSourceX: Object.freeze(['cv90_mk4']),
   cv90105TmlSourceX: Object.freeze(['cv90105_tml']),
   sabraMk2SourceX: Object.freeze(['sabra_mk2']),
-  modern2: Object.freeze(['mbt70', 'object148_proto', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'object695']),
+  modern2: Object.freeze(['mbt70', 'object148_proto', 'ztz85_iii', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100', 'ztz100_prototype', 'ztz20', 'ztz20_prototype', 'object695', 'ztz99a2_qinglong', 'vt4a1_baihu']),
   franceCore: Object.freeze(['amx40_proto']),
   xk2: Object.freeze(['xk2_black_panther']),
   modern3Core: Object.freeze(['k1e1', 'type10_tk_x', 'm2a2_bradley', 'bmp2', 'hayate_ifv']),

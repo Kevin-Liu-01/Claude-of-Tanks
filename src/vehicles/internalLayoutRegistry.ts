@@ -544,7 +544,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   // release 263: the rebuilt ZTZ-85-III carries the 85-IIM's T-72-derived carousel autoloader and a crew of three
   // (docs/references/tanks/ztz85_iii.md §263), not the Type 59's manual loader
-  sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
+  sovietAz: ['type96b', 'ztz85_iii', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
   sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t'],
   bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
   ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
