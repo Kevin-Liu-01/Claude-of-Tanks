@@ -1609,15 +1609,17 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
     P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
     P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
   } else if (V.mark === 'm48a2ga2') {
-    // the GA2's larger cast mantlet (Tank Encyclopedia; the Munster and Dresden tanks): a rounded box standing ahead of the
-    // turret face, the gun through its collar, the coax and sight ports; the square IR/white-light searchlight on its
-    // short bracket on top at the left, its lens in line with the mantlet's front
+    // the GA2's larger cast gun shield (Tank Encyclopedia; the Munster and Dresden tanks): a bulbous casting ahead of the
+    // turret's nose, the gun through its collar and boot; the square IR/white-light searchlight on its bracket above it
     P.addGunExtra(ga2Mantlet(P.q), 0, 0, 0);
-    P.addGunExtra(cylZ(0.20, 0.12, P.q ? 24 : 12), 0, 0, 0.38);
-    for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.38, 0.10, 0.335);
-    P.addGunExtra(box(0.10, 0.14, 0.18), 0.30, 0.47, 0.10);
-    P.addGunExtra(moldedBox(0.60, 0.50, 0.58, 0.05, P.q ? 2 : 1, 0.02), 0.30, 0.79, 0.03);
-    P.addGunExtraDark(box(0.50, 0.40, 0.02), 0.30, 0.79, 0.325);
+    // the gun's collar on the shield's face and its rubber boot, the coax's and the sight's ports
+    P.addGunExtra(cylZ(0.19, 0.10, P.q ? 24 : 12), 0, 0, 0.31);
+    P.addGunExtraDark(cylZ(0.15, 0.12, P.q ? 20 : 12, 0.17), 0, 0, 0.42);
+    for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.36, 0.10, 0.25);
+    // the searchlight on its bracket clear of the shield's top, on the left
+    P.addGunExtra(box(0.10, 0.10, 0.18), 0.30, 0.55, 0.04);
+    P.addGunExtra(moldedBox(0.60, 0.50, 0.58, 0.05, P.q ? 2 : 1, 0.02), 0.30, 0.85, 0.05);
+    P.addGunExtraDark(box(0.50, 0.40, 0.02), 0.30, 0.85, 0.345);
   } else if (V.mark === 'm48super') {
     // the Super's flat armour plate over the mantlet, as tall as the turret armour and level with the cheeks' fronts (War
     // Thunder's model): the gun through its collar low in the middle, two small ports above it on the left
@@ -2122,23 +2124,35 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
   if (V.mark !== 'm48super') bustleNumbers(P, T, -0.95, 0.40, 0.24);
 }
 
-/** The GA2's larger cast mantlet (gun frame): a block 1.29 m wide, its face 0.64 m tall standing 0.32 m ahead of the
- * trunnion, its top sloping back up into the turret's nose; the edges rounded. */
+/** The GA2's larger cast gun shield (gun frame; the Munster and Dresden tanks): a bulbous casting 1.22 m wide standing
+ * 0.30 m ahead of the trunnion at its foot, its face leaning back 20 degrees and bowed 8 cm forward across its width,
+ * its top rolling back into the turret's nose; a solid 0.34 m deep (its back inside the casting). */
 function ga2Mantlet(q: boolean | undefined): Geo {
-  const shape = new THREE.Shape();
-  // side profile (z forward, y up)
-  shape.moveTo(-0.10, -0.30);
-  shape.lineTo(0.32, -0.30);
-  shape.lineTo(0.32, 0.34);
-  shape.lineTo(-0.10, 0.54);
-  shape.closePath();
-  const w = 1.29, b = 0.04;
-  const g = new THREE.ExtrudeGeometry(shape, { depth: w - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b * 0.8,
-    bevelSegments: q ? 3 : 1, curveSegments: 1 });
-  // extruded along +z: turn it across (x), the profile's forward staying +z
-  g.translate(0, 0, -(w - 2 * b) / 2);
-  g.rotateY(-Math.PI / 2);
-  g.computeVertexNormals();
+  // h (over the bore axis), half-width
+  const rows: readonly (readonly [number, number])[] = [
+    [-0.30, 0.40], [-0.27, 0.50], [-0.22, 0.56], [-0.14, 0.60], [-0.02, 0.61], [0.12, 0.61], [0.24, 0.59], [0.34, 0.54],
+    [0.42, 0.46], [0.48, 0.36], [0.52, 0.22],
+  ];
+  const t = 0.34, bow = 0.08;
+  const n = q ? 10 : 5;
+  const sections = rows.map(([h, w]) => {
+    const f = 0.30 - (h + 0.30) * 0.36;
+    const ring: SectionPoint[] = [];
+    for (let i = 0; i <= n; i++) {
+      const x = -w + (2 * w * i) / n;
+      ring.push([x, -(f + bow * (1 - (x / w) ** 2))]);
+    }
+    for (let i = n; i >= 0; i--) {
+      const x = -w + (2 * w * i) / n;
+      ring.push([x, -(f - t)]);
+    }
+    return { z: h, ring };
+  });
+  const m = sections[0].ring.length;
+  const smooth = Array.from({ length: m }, (_, i) => i).filter((i) => i !== n && i !== m - 1);
+  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth });
+  // loft axis (z) up, the ring's second axis back along the bore: (x, y, z) -> (x, z, -y)
+  g.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
   return g;
 }
 
