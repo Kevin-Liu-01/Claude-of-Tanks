@@ -62,8 +62,9 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
   }
   assert.match(source, /const \[min, max\] = CHASE_CAMERA_RANGES\[key\];/, 'each slider spans its setting\'s range (chaseFraming.ts)');
   assert.match(source, /segmented\(\{ label: shoulderLabel, className: 'cot-set-shoulder'/, 'the shoulder is the kit\'s segmented control');
-  assert.match(source, /button\(\{ label: t\('settings\.camera\.reset', \{ label \}\), icon: 'undo', iconOnly: true/,
-    'each row\'s reset is the kit\'s icon button, named for its row');
+  assert.match(source, /el\('button', 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--quiet cot-set-reset', host\);/,
+    'each row\'s reset is the kit\'s quiet icon button (by its classes: the factory stays off the Gallery\'s boot chunk)');
+  assert.match(source, /reset\.setAttribute\('aria-label', t\('settings\.camera\.reset', \{ label \}\)\);/, 'named for its row');
   assert.match(source, /input\.setSetting\(key, CHASE_CAMERA_DEFAULTS\[key\]\);/, 'a reset returns the setting to its default');
   assert.match(source, /range\.setAttribute\('aria-label', label\);/, 'a slider\'s range is named');
   for (const [key, en] of [['title', 'Camera'], ['height', 'Camera height'], ['distance', 'Camera distance'], ['shoulder', 'Camera shoulder'],

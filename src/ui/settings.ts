@@ -35,7 +35,7 @@ import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
-import { button, segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
 import {
   CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_SHOULDERS, type ChaseNumericSetting, type ChaseShoulder,
 } from '../engine/chaseFraming.ts';
@@ -1097,11 +1097,15 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     return { group, sync };
   }
 
-  /** A row's reset to the camera setting's default (the kit's icon button, named for its row). */
+  /** A row's reset to the camera setting's default: the kit's quiet icon button, by its classes as the panel's close is
+   *  (the kit's button() would pull its factory into a boot chunk the Gallery shares), named for its row. */
   function cameraReset(host: HTMLElement, label: string, key: ChaseNumericSetting | 'cameraShoulder', sync: () => void): void {
-    host.insertAdjacentHTML('beforeend', button({ label: t('settings.camera.reset', { label }), icon: 'undo', iconOnly: true,
-      variant: 'quiet', size: 36, className: 'cot-set-reset' }));
-    (host.lastElementChild as HTMLButtonElement).addEventListener('click', () => {
+    const reset = el('button', 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--quiet cot-set-reset', host);
+    reset.type = 'button';
+    reset.dataset.uiSound = 'press';
+    reset.setAttribute('aria-label', t('settings.camera.reset', { label }));
+    reset.innerHTML = uiIconSVG('undo', 18);
+    reset.addEventListener('click', () => {
       input.setSetting(key, CHASE_CAMERA_DEFAULTS[key]);
       sync();
       emit('ui:click', {});
