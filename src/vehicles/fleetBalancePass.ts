@@ -73,7 +73,8 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     });
     Object.assign(tank.gun, { reloadS: 21, baseAccuracy: 0.25, aimTimeS: 1.45 });
     Object.assign(tank.gun.autoloader!, { intraClipS: 2.5, fullReloadS: 21 });
-    primary(registry, 'm1a3', { damage: 570, pen100: 930, pen1000: 846, pen2000: 760 });
+    // Main 2026-10-29: the SEPv3's M829A4 on the demonstrator's 120 mm (was 570 / 930-846-760 on the 130 mm XM1301).
+    primary(registry, 'm1a3', { damage: 540, pen100: 916, pen1000: 833, pen2000: 750 });
     Object.assign(tank.gun.shells[1], {
       dmg: 600, pen100Mm: 950, pen1000Mm: 950, reloadS: 3, count: 4,
     });
