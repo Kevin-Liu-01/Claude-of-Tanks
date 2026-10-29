@@ -239,10 +239,12 @@ function assertM1A3RoadBeams(root, label) {
       const point = new THREE.Vector3().fromArray(lamp.position).applyMatrix4(owner.matrixWorld);
       const beam = new THREE.Vector3().fromArray(lamp.direction).transformDirection(owner.matrixWorld);
       const local = point.clone().applyMatrix4(ownerPose.clone().invert());
-      assert.ok(Math.abs(Math.abs(local.x) - .82) < 2e-6 && Math.abs(local.y - 1.1250758171081543) < 2e-6
-        && Math.abs(local.z - 4.0120950412750244) < 2e-6, `${label}: aperture seats on the closed front apron with its original height and lateral position`);
+      // 2026-10-28 (m1e3-264): the M1E3 rebuild seats the hull builder's aimed bow lamps on the M1 nose face at the
+      // demonstrator's corner light stations
+      assert.ok(Math.abs(Math.abs(local.x) - 1.05) < 2e-6 && Math.abs(local.y - 1.1950758015702356) < 2e-6
+        && Math.abs(local.z - 3.9170951540548913) < 2e-6, `${label}: aperture seats on the nose face at its corner light station`);
       const hit = new THREE.Ray(point, beam).intersectPlane(road, new THREE.Vector3());
-      assert.ok(hit && point.distanceTo(hit) > 14 && point.distanceTo(hit) < 14.2 && point.distanceTo(hit) < lamp.range,
+      assert.ok(hit && point.distanceTo(hit) > 14.9 && point.distanceTo(hit) < 15.1 && point.distanceTo(hit) < lamp.range,
         `${label}/pose${poseIndex}: center ray reaches the owner's road plane ahead, within the existing 42m range`);
       const actualSpot = spots.find(spot => spot.position.distanceTo(point) < 2e-6);
       assert.ok(actualSpot, `${label}: runtime still seats a pooled spot on this real aperture`);

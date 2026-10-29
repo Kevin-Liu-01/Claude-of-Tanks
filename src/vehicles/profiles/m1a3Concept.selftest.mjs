@@ -91,16 +91,16 @@ const turretRig = tank.root.getObjectByName('rig_turret');
 const gunRig = tank.root.getObjectByName('rig_gun');
 assert.ok(hullRig && turretRig && gunRig, 'M1E3 retains articulated hull/turret/gun ownership');
 assert.ok(gunRig.parent === turretRig, 'the gun articulates with the turret');
-assert.equal(turretRig.position.z, 0.55, 'the short uncrewed turret sits over the second road wheel');
+assert.equal(turretRig.position.z, 0.35, 'the M1 turret sits at the M1A1 family ring station');
 assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'), 'the roof weapon station is independently identifiable');
 
-// The demonstrator is clean: no field net, no slat or turret cage.
+// The owner's 2026-10-28 ruling: the M1A3's field kit stays on the M1E3 (net, field cage, cages, APS, whips, stowage).
 const names = [];
 tank.root.traverse((part) => names.push(part.name));
-assert.ok(!names.some((name) => /_ghillie_/.test(name)), 'no field net on the M1E3');
-assert.ok(!names.includes('turretOpenLattice'), 'no turret field cage on the M1E3');
+assert.ok(names.some((name) => /_ghillie_/.test(name)), 'the M1E3 wears the field net');
+assert.ok(tank.root.getObjectByName('turretExternalArmor'), 'the M1E3 carries its flank and basket slat cage');
+assert.ok(tank.root.getObjectByName('rig_hull').userData.rearFieldStowage, 'the stern rack carries the crew stowage');
 
-// Arrowhead cheeks: the leading edge low on the face (y 0.10) at the gun, a chin under it, the throat left open.
 const turretShell = tank.root.getObjectByName('turret');
 assert.ok(turretShell?.isMesh, 'M1E3 structural turret shell is independently inspectable');
 const turretPositions = turretShell.geometry.attributes.position;
@@ -111,24 +111,38 @@ const hasVertex = (x, y, z) => {
   }
   return false;
 };
+// The M1E3's own front: the cheeks' inner chin corner and the corner of the mantlet nose's rear section.
 for (const side of [-1, 1]) {
-  assert.ok(hasVertex(side * 0.37, 0.10, 1.50), `${side < 0 ? 'right' : 'left'} cheek leading edge at the gun`);
-  assert.ok(hasVertex(side * 0.37, -0.04, 1.40), `${side < 0 ? 'right' : 'left'} cheek chin undercut below the edge`);
+  assert.ok(hasVertex(side * 0.42, 0.08, 2.00), `${side < 0 ? 'right' : 'left'} cheek keeps its inner chin corner`);
 }
+const shield = tank.root.getObjectByName('gunMount').geometry.attributes.position;
+let shieldCorner = false;
+for (let i = 0; i < shield.count && !shieldCorner; i++) {
+  shieldCorner = Math.abs(shield.getX(i) - 0.305) < 1e-4 && Math.abs(shield.getY(i) - 0.29) < 1e-4 && Math.abs(shield.getZ(i) + 0.02) < 1e-4;
+}
+assert.ok(shieldCorner, 'the tapered octagonal nose, centred on the bore, is the mantlet');
 
 const receipt = turretRig.userData.m1e3DesignReceipt;
 assert.deepEqual(receipt, {
-  family: 'm1e3-demonstrator',
+  family: 'm1e3-demonstrator-field',
   hull: 'm1-tejas-loft',
-  turret: 'uncrewed-m1-cheek-with-autoloader-bustle',
+  turret: 'm1e3-faceted-front-with-riveted-autoloader-bustle',
+  mantlet: 'sepv3-tapered-nose-with-collar-and-sensor-head',
+  cheekModulesPerSide: 1,
   mainGunCaliberMm: 120,
-  gunLengthM: 4.40,
+  gunLengthM: 4.25,
   hullCrewHatches: 2,
   skirtPanelsPerSide: 6,
   roadWheelsPerSide: 7,
   rws: 'r400-class-with-launcher-pod',
-  turretRingZ: 0.55,
-  turretLengthM: 3.14,
+  turretRingZ: 0.35,
+  turretLengthM: 4.95,
+  hullCageRailsPerSide: 4,
+  turretCage: 'integrated-flank-and-basket',
+  smokeBanks: 4,
+  hardKillLauncherCount: 4,
+  whips: 4,
+  fieldNet: true,
 }, 'the visible M1E3 feature receipt remains complete');
 assert.ok(hullRig.userData.m1e3DesignReceipt === receipt, 'hull and turret publish one receipt');
 
