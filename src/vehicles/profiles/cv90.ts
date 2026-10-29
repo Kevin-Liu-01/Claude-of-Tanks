@@ -195,7 +195,7 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
     P.add('hull', KIT.box(0.25, 0.16, 5.98), side * 1.54, 1.66, -0.73);
     // The inner bridge overlaps the hull shoulder and the armor carrier, so
     // plan and front views no longer reveal sky between body and skirt.
-    P.add('hullFixedPaintedBodywork', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
+    P.add('hull', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
     for (let index = 0; index < 8; index++) {
       const z = 1.87 - index * 0.78;
       // Let adjacent doors share a narrow structural seam. The old 60 mm
@@ -513,7 +513,7 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
     ));
     P.addExternalArmor('hull', KIT.box(0.12, 1.11, 6.16), side * 1.86, 1.30, -0.72);
     P.addExternalArmor('hull', KIT.box(0.24, 0.20, 6.20), side * 1.65, 1.78, -0.70);
-    P.add('hullFixedPaintedBodywork', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
+    P.add('hull', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
     for (let index = 0; index < 8; index++) {
       const z = 2.02 - index * 0.80;
       // Chamfered add-on modules, distinct from the base CV90's thin doors.

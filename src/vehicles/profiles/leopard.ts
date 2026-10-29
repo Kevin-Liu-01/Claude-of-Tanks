@@ -8149,7 +8149,7 @@ function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
 function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
   const { box } = KIT;
   for (const side of [-1, 1] as const) {
-    P.add('hullFixedPaintedBodywork', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
+    P.add('hull', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
     // The side plate's inner face (|x| 1.73) stood 5.2 cm outside the shoe
     // face (1.678); ahead of the sponson rail's front slab (z 3.64) that open
     // slot reached the front lip (B2 contiguity hole, z 3.66-3.90). The inner
@@ -8158,7 +8158,7 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
     // inside the side plate's rounded edges (y 1.07-1.255, z 3.56-3.94): a
     // square corner below them closed one voxel row of the nose's own air.
     P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
-    P.add('hullFixedPaintedBodywork', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
+    P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
     // Owner 2026-10-19 (flaps sweep): the flap hung 49 mm behind and 60 mm under the bow plate (y 1.04-1.24, z 3.91-
     // 3.95); 56 mm forward and 70 mm up it runs 7 mm into the plate's back and 10 mm into its underside.
@@ -8450,7 +8450,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
     P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2055, 0.20, -0.555, 0, s * 0.043, 0);
-    P.add('turretEquipment', box(0.07, 0.28, 1.55), s * 1.152, 0.25, -1.79, 0, s * 0.024, 0); // stretched bin B follows long bustle
+    P.add('turret', box(0.07, 0.28, 1.55), s * 1.152, 0.25, -1.79, 0, s * 0.024, 0);     // stretched bin B follows long bustle
     P.add('turretDark', box(0.072, 0.006, 1.49), s * 1.152, 0.336, -1.79, 0, s * 0.024, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.1875, 0.19, -1.18, 0, s * 0.024, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -2.38, 0, s * 0.024, 0);
