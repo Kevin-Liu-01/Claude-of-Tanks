@@ -9,6 +9,9 @@ import {
   rightCheekPlate as chR, leftCheekPlate as chL, moduleBox as mbox, crewBox as cbox, type ArmorEnvelope,
 } from './specHelpers.ts';
 import { LEOPARD2_HULL, leopard2HullArmor } from './leopard2HullDatums.ts';
+import {
+  LEOPARD2_CHEEK_SWEEP_DEG, cheekCornerZ, cheekFaceZ as sharedCheekFaceZ, sightBackZ, type Leopard2CheekFront,
+} from './leopard2CheekFrontDatums.ts';
 
 /** The turret's datums (turret metres). */
 export const LEO2A3B4_TURRET = Object.freeze({
@@ -30,7 +33,7 @@ export const LEO2A3B4_TURRET = Object.freeze({
    * ends at cheekRootZ, behind the outer ends' bevelled tops, and the blocks stand in front of it.
    */
   frontZ: 1.65,
-  cheekSweepDeg: 27,
+  cheekSweepDeg: LEOPARD2_CHEEK_SWEEP_DEG,
   frontHalfWidthM: 1.20,
   slotHalfWidthM: 0.475,
   halfWidthM: 1.27,
@@ -71,18 +74,30 @@ export const LEO2A3B4_TURRET = Object.freeze({
   bustleFloorY: 0.21,
 });
 
+/** The cheek front's datums (leopard2CheekFrontDatums.ts, shared with the 2A4 family's turret): both sides alike. */
+export const LEO2A3B4_CHEEK_FRONT: Leopard2CheekFront = Object.freeze({
+  frontZ: LEO2A3B4_TURRET.frontZ, slotHalfWidthM: LEO2A3B4_TURRET.slotHalfWidthM, sweepDeg: LEO2A3B4_TURRET.cheekSweepDeg,
+  floorY: LEO2A3B4_TURRET.floorY, faceTopY: LEO2A3B4_TURRET.faceTopY, cheekTopY: LEO2A3B4_TURRET.cheekTopY,
+  cheekBevelM: LEO2A3B4_TURRET.cheekBevelM, rootZ: LEO2A3B4_TURRET.cheekRootZ, cornerChamferM: LEO2A3B4_TURRET.cornerChamferM,
+  right: Object.freeze({ faceHalfWidthM: LEO2A3B4_TURRET.frontHalfWidthM, wallHalfWidthM: LEO2A3B4_TURRET.halfWidthM }),
+  left: Object.freeze({ faceHalfWidthM: LEO2A3B4_TURRET.frontHalfWidthM, wallHalfWidthM: LEO2A3B4_TURRET.halfWidthM }),
+  sight: Object.freeze({
+    innerX: LEO2A3B4_TURRET.sightInnerX, outerX: LEO2A3B4_TURRET.sightOuterX, sillY: LEO2A3B4_TURRET.sightSillY,
+    lintelY: LEO2A3B4_TURRET.sightLintelY, topY: LEO2A3B4_TURRET.sightTopY, depthM: LEO2A3B4_TURRET.sightDepthM,
+    housingDepthM: 0.62,
+  }),
+});
+
 /** The vertical cheek face's z at |x| off the bore (turret metres): frontZ at the slot, swept back cheekSweepDeg outward. */
 export function cheekFaceZ(x: number): number {
-  const T = LEO2A3B4_TURRET;
-  return T.frontZ - Math.max(0, Math.abs(x) - T.slotHalfWidthM) * Math.tan(T.cheekSweepDeg * Math.PI / 180);
+  return sharedCheekFaceZ(LEO2A3B4_CHEEK_FRONT, x);
 }
 
 /** Where the chamfer meets the side wall (turret metres). */
-export const LEO2A3B4_CORNER_Z = cheekFaceZ(LEO2A3B4_TURRET.frontHalfWidthM) - LEO2A3B4_TURRET.cornerChamferM;
+export const LEO2A3B4_CORNER_Z = cheekCornerZ(LEO2A3B4_CHEEK_FRONT, LEO2A3B4_CHEEK_FRONT.right);
 
 /** The notch's back (the sight head's face) at the notch's centre: sightDepthM behind the face, parallel to it. */
-export const LEO2A3B4_SIGHT_BACK_Z = cheekFaceZ((LEO2A3B4_TURRET.sightInnerX + LEO2A3B4_TURRET.sightOuterX) / 2)
-  - LEO2A3B4_TURRET.sightDepthM;
+const LEO2A3B4_SIGHT_BACK_Z = sightBackZ(LEO2A3B4_CHEEK_FRONT);
 
 /** How much deeper the production Leopard 2's three heavy fore skirt blocks hang than the aft run (the photographed step). */
 export const EARLY_LEOPARD2_FORE_SKIRT_DROP_M = 0.16;
