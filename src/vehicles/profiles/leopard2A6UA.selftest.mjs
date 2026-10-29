@@ -18,8 +18,14 @@ assert.equal(spec.nation, 'Ukraine');
 assert.equal(spec.variantOf, 'leo2a4_otco', 'the combat donor is unchanged');
 assert.equal(tankTier(id), 9, 'Leopard 2A6 UA is a Tier IX playable (258: the owner\'s 2A6 anchor)');
 assert.equal(spec.role, 'mbt');
-assert.deepEqual([spec.hp, spec.gun.reloadS, spec.weightTons, spec.topSpeedKmh], [2850, 5.8, 72.4, 64],
-  'the combat values the rebuild kept');
+assert.deepEqual([spec.weightTons, spec.topSpeedKmh], [72.4, 64], 'the mobility the rebuild kept');
+// 264 balance (fleetBalancePass.ts, Main's ruling): the 2A6's main plates, HP and loader cadence, as the shell it is drawn on
+const a6 = getSpec('leo2a6');
+assert.deepEqual([spec.hp, spec.gun.reloadS], [a6.hp, a6.gun.reloadS], 'the 2A6\'s HP and cadence');
+for (const key of ['hullPlates', 'turretPlates']) for (const plate of spec.armor[key].filter((p) => p.kind === 'main')) {
+  const shell = a6.armor[key].find((p) => p.kind === 'main' && p.name === plate.name);
+  assert.deepEqual([plate.keMm, plate.ceMm], [shell.keMm, shell.ceMm], `${plate.name} is the 2A6's`);
+}
 assert.deepEqual({ ...spec.dims }, { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.44, heightM: 3.28 },
   'the dimensions spotting and contact read are unchanged; the kit is sized to them');
 const D = LEOPARD_A6_X_DATUMS.leo2a6;

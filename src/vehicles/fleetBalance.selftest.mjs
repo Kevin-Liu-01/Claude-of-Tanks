@@ -140,7 +140,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 79 -> 81 (263): the three Challenger 1 marks' turret front on the Mk 3's turret (the Mk 2's entry extended).
 // 81 -> 106 (263, FAIRNESS-263 merged by the 264 integrator): same-tier fairness on the merged 263 fleet at I, VI, VIII
 // and X (applySameTierFairness; fourteen more extend their entries), commit B's 263-build CR1 entries dropped for C1 + C2.
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 106,
+// 106 -> 107 (264, Main's ruling): the Leopard 2A6 UA on the 2A6's main plates, HP and cadence.
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 107,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

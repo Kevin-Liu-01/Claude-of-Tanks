@@ -112,6 +112,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   stb1: '1,850 HP and a 6.6 s cycle, a step over its Type 74 production tank\'s',
   type74: 'a 6.2 s cycle: the quickest at I',
   ztz85_iii: 'a 460-damage round: its 500 killed every tier-I peer in four hits',
+  // 2026-10-29 (264, Main's ruling)
+  leo2a6_ua: 'the 2A6\'s main plates, HP and cadence: drawn on the 2A6\'s shell with its 2A6M donor\'s 1.72x plates, it topped IX at 0.86',
 } as const);
 
 interface FleetBalanceOutlier {
