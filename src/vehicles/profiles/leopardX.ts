@@ -46,6 +46,10 @@ export const LEOPARD_X_DATUMS: Readonly<Record<string, Datum>> = Object.freeze({
     turretPivot: [0, 1.662, .661], trunnion: [.0238, 1.9979, 1.659], muzzleZ: 6.11 },
 });
 
+/** A national fit of a source-study Leopard (release 265): the Danish 2A5 DK and 2A7 DK (profiles/leopard2Dk.ts) drop
+ * the German build's PERI R17 head and remote 30 mm station for their own kit. */
+export interface LeopardXKit { readonly danish?: boolean }
+
 function begin(P: TankBuilderPort, d: Datum): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...d.turretPivot);
@@ -912,7 +916,7 @@ function a5ArrowheadWraps(P:TankBuilderPort,d:Datum): void {
   }
 }
 
-function a5Optics(P:TankBuilderPort,d:Datum): void {
+function a5Optics(P:TankBuilderPort,d:Datum,periHead=true): void {
   // The source EMES is a long shallow housing. A short tall substitute
   // incorrectly removes the forward roof silhouette and obscures its frame.
   const [px,py,pz]=d.turretPivot;
@@ -924,16 +928,17 @@ function a5Optics(P:TankBuilderPort,d:Datum): void {
   equip(P,d,'turretGlass',box(.364,.13,.010),-.707,2.438,1.962);
   equip(P,d,'turretDetail',box(.47,.020,.23),-.687,2.578,1.834);
   equip(P,d,'turretDetail',box(.023,.25,.21),-.49,2.45,2.025);
-  a5Panorama(P,d);
+  a5Panorama(P,d,periHead);
   equip(P,d,'turretDetail',box(.394,.114,.127),-.630,2.675,.562);
   equip(P,d,'turretDark',box(.344,.084,.015),-.630,2.681,.631);
   equip(P,d,'turretGlass',box(.301,.051,.009),-.630,2.681,.643);
 }
 
-function a5Panorama(P:TankBuilderPort,d:Datum): void {
+function a5Panorama(P:TankBuilderPort,d:Datum,head=true): void {
   // The .461 m round lower bearing stops at 2.799 m. The raised optical
   // head is only .273 m wide; a full-diameter top cap erases this step.
   equip(P,d,'turretDetail',cylY(.2304,.2304,.17186,32),-.27768,2.71286,-.37184);
+  if(!head) return;
   equip(P,d,'turretDetail',box(.2495,.2189,.2425),-.27822,2.9072,-.38895);
   for(const x of [-.4122,-.1432]) equip(P,d,'turretDetail',box(.004,.2005,.232),x,2.9133,-.4014);
   equip(P,d,'turretDetail',box(.273,.012,.252),-.2777,3.0106,-.391);
@@ -1158,7 +1163,7 @@ function a4Whip(P:TankBuilderPort,d:Datum,x:number,dy:number,dz:number): void {
 
 // A7V: separate authored tub, low broad asymmetric shell, deep actual EMES
 // recess, full-height modules, and the source's two rear tall masts.
-export function buildLeopard2A7VX(P: TankBuilderPort): void {
+export function buildLeopard2A7VX(P: TankBuilderPort, kit: LeopardXKit = {}): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const d = LEOPARD_X_DATUMS.leo2a7v;
@@ -1220,7 +1225,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   roofPlateEdges(P,d,2.77,1.72);
   hullDeckEdges(P,d,'a7v_upper_glacis_era');
   mainGun(P,d,.096,true);
-  addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
+  if(!kit.danish) addFieldRoofWeapon(P,[-.68,.882594,-1.10],30,'Leopard 2A7V remote 30 mm cannon',.54,.70);
 }
 
 // A6M CAN: clean low tub and compact central turret. The cage is genuine
@@ -1348,7 +1353,7 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
 // A5 web/horn stock hangs 14.03 mm inside the authored 38.9 mm band's inner face; on the 28 mm fleet band the same stock
 // sits (38.9 − 28) mm further in, so the roller seat and the inner lining follow it (2026-09-17).
 const A5_WEB_INSET_M = .01403 + (.0389 - .028);
-export function buildLeopard2A5X(P: TankBuilderPort): void {
+export function buildLeopard2A5X(P: TankBuilderPort, kit: LeopardXKit = {}): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   const d=LEOPARD_X_DATUMS.leo2a5;
@@ -1411,7 +1416,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
     P.add('turret',cylY(.37,.40,.049,32),x-d.turretPivot[0],2.543-d.turretPivot[1],z-d.turretPivot[2]);
     roofHatch(P,d,x,2.566,z);
   }
-  a5Optics(P,d);
+  a5Optics(P,d,!kit.danish);
   // 2026-10-07 (tank-accessories round 4): round 3's butt growth under the 1.92 stretch put the stock at -0.505 (source
   // -0.437). The gun moves 4.6 cm forward and the stretch drops to 1.795: stock -0.437, muzzle 0.820 again.
   mg(P,d,.954,2.612,-.115,false,1.795,1.077);
@@ -1424,12 +1429,13 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   hullDeckEdges(P,d);
   a5Gun(P,d);
   addLeopardA5XSourceDetails(P);
-  addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
+  if(!kit.danish) addFieldRoofWeapon(P,[-.65,.857,-1],30,'Leopard 2A5 remote 30 mm cannon',.43,.70);
 }
 
 export const LEOPARD_X_PROFILES = Object.freeze({
-  leo2a7v: { build: buildLeopard2A7VX },
+  // (the factory passes the profile record second; the German rows take the default kit)
+  leo2a7v: { build: (P: TankBuilderPort) => buildLeopard2A7VX(P) },
   leo2a6m: { build: buildLeopard2A6MX },
   leo2a5m: { build: buildLeopard2A4MX },
-  leo2a5: { build: buildLeopard2A5X },
+  leo2a5: { build: (P: TankBuilderPort) => buildLeopard2A5X(P) },
 });

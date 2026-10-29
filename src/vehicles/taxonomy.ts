@@ -64,7 +64,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     't90', 't90a_burlak', 't90ms_tagil',
     'k1a1',
     'leclerc_xlr', 'amx56', 't72b_1987', 't80u', 'chieftain_mk10', 't72b3', 'type10', 'type90',
-    'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'merkava4', 'merkava3d',
+    'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5', 'leo2a5dk', 'leo2a7dk', 'merkava4', 'merkava3d',
     'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
     'k2_black_panther', 't90a', 't90a_vladimir', 't90m', 't90sm',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams',

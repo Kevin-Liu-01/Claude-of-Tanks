@@ -73,7 +73,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ]),
   // 265: the Danish Army line
   denmark: Object.freeze([
-    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1',
+    'leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk',
   ]),
   suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'warrior_tes_h', 'ajax', 'ares_apc']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125', 'kurganets25', 'tos1a_tagil']),

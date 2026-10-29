@@ -694,6 +694,27 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
       side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
     },
   },
+  // Release 265, the Leopard 2A7 DK: the Danish Army's Barracuda mobile camouflage system (the Forsvaret fact sheet's
+  // "mobilt sløringssystem"; the Latvian live-fire photograph shows the tank under it from the glacis to the bustle,
+  // the gun's sleeve wrapped): a cut multispectral cover on the 2A7V's panels, without the boughs of the fleet's leafy
+  // suits, in the Danish greens.
+  leo2a7dk: {
+    id: 'leo2a7dk', seed: 2765, style: 'ulcans', density: 2.0, leafScale: 0.94, boughShare: 0.12,
+    light: 0x6a7a4c, dark: 0x34422b, netColor: 'rgba(48,62,38,0.86)', netTextureSeed: 2765,
+    fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 1.01,
+    turret: {
+      top: [laid({ x0: -1.63, x1: 1.63, z0: -3.35, z1: 2.35, nx: 41, nz: 71, y: 0.88, garnishRiseM: 0.12, seed: 11 })],
+      side: [...flanks(-1.04, 1.50, 0.92, 0.46, 1.60, 17), ...flanks(-3.20, -2.10, 0.92, 0.42, 1.80, 19)],
+      face: [face({ z: -3.36, x0: -1.30, x1: 1.30, y0: 0.45, y1: 0.86, nx: 26, ny: 6, seed: 23 })],
+    },
+    hull: {
+      top: [
+        laid({ x0: -1.80, x1: 1.80, z0: -3.60, z1: 0.52, nx: 36, nz: 41, y: 2.00, garnishRiseM: 0.10, seed: 31 }),
+        laid({ x0: -1.80, x1: 1.80, z0: 0.52, z1: 3.50, nx: 36, nz: 30, y: 1.95, garnishRiseM: 0.06, garnishDensity: 0.8, seed: 37 }),
+      ],
+      side: skirts(-3.50, 3.40, 1.62, 0.52, 1.95, 41, (side) => (side < 0 ? [cut(-2.70, -1.30, 1.00, 1.70)] : [])),
+    },
+  },
   // Leopard 2A5: the wedge roof netted round the PERI, the EMES head, the hatches and the roof gun, drapes down the walls
   // ahead of and behind the rear smoke banks, a rear drape; the engine deck netted short of the rear louvres, the front
   // deck, four drapes a side.

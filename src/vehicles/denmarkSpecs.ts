@@ -70,4 +70,34 @@ leo1a5dk1.visual = {
   scheme: 'mono', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
 };
 
-registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1'], { leo1a3dk, leo1a5dk, leo1a5dk1 });
+// ------------------------------------------------------------------------------------------------- Leopard 2 DK --
+// The Leopard 2A5 DK: 51 ex-German 2A4s converted under the 29 June 2000 contract (armyvehicles.dk/leopard2a5.htm):
+// improved hull composite and extra front armour beyond the German/Dutch A5, about 61 t (MLC 70) before the Helmand bar
+// armour of 2008; 1,500 hp, the 120 mm L44, four crew. Rounds at the 2A5's fleet footing.
+const leo2a5dk = danishVariant('leo2a5dk', 'leo2a5', 'Leopard 2A5 DK', 'modern');
+Object.assign(leo2a5dk.dims, { hullLengthM: 7.72, overallLengthM: 10.33, widthM: 3.80, heightM: 3.04 });
+Object.assign(leo2a5dk, { weightTons: 62.0 });
+leo2a5dk.visual = {
+  ...leo2a5dk.visual,
+  // the Danish Army's three-tone of the 2010s (the Grafenwöhr photographs): olive, khaki sand and black
+  scheme: 'nato', base: '#4e5a3b', weather: '#5b6646', patches: ['#8d8662', '#1e211b'], marking: 'number', number: '31',
+  camoScale: 0.55,
+};
+
+// The Leopard 2A7 DK: the 2A5 DKs rebuilt in 2019-22 (Forsvaret's fact sheet: 44 tanks for Jydske Dragonregiment in
+// Holstebro; about 68 t, up to 60 km/h, 1,500 hp, four crew; the 120 mm L55A1; new thermal sights, an auxiliary
+// generator, air conditioning for turret and hull, new CBRN protection, a driver's camera system, new stowage modules,
+// the mobile camouflage system and new protection against anti-tank rounds and IEDs; MLC 77). Rounds at the 2A7V's
+// fleet footing (the L55A1's programmable HE and its newer sabot).
+const leo2a7dk = danishVariant('leo2a7dk', 'leo2a7v', 'Leopard 2A7 DK', 'modern');
+Object.assign(leo2a7dk.dims, { hullLengthM: 7.72, overallLengthM: 11.00, widthM: 3.80, heightM: 3.05 });
+Object.assign(leo2a7dk, { weightTons: 68.0, topSpeedKmh: 60 });
+leo2a7dk.visual = {
+  ...leo2a7dk.visual,
+  // Danish olive under the Barracuda cover
+  scheme: 'nato', base: '#4b5639', weather: '#586345', patches: ['#2a3124', '#6c7550'], marking: 'number', number: '11',
+  camoScale: 0.55,
+};
+
+registerFleetSpecs(registries, ['leo1a3dk', 'leo1a5dk', 'leo1a5dk1', 'leo2a5dk', 'leo2a7dk'],
+  { leo1a3dk, leo1a5dk, leo1a5dk1, leo2a5dk, leo2a7dk });

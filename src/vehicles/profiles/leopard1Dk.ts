@@ -90,7 +90,7 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   for (const x of [-0.66, -0.45, -0.24]) P.addEquipment('hullDark', box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
   if (mark === 'a5dk1') {
     // the DK-1's GPS antenna on the hull roof beside the driver
-    P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), -0.95, hull.deckTopY(1.25) + 0.018, 1.25);
+    P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), 0.95, hull.deckTopY(1.25) + 0.018, 1.25);
   }
 }
 
@@ -154,53 +154,54 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
         P.addEquipment('turretDark', cylX(0.085, 0.03, P.q ? 20 : 14), s * (x + 0.10), W.rangefinderY, W.rangefinderZ);
       }
     }
-    // Commander's cupola (right) with its PERI R12 ahead of it, raised on the 1A5 DK to see over the EMES 18 housing.
-    P.addCupola('turret', cylY(0.27, 0.28, 0.07, P.q ? 20 : 14), 0.52, roof + 0.035, -0.32);
+    // Commander's cupola (right, -x: a +Z hull's right) with its PERI R12 ahead of it, raised on the 1A5 DK to see over
+    // the EMES 18 housing.
+    P.addCupola('turret', cylY(0.27, 0.28, 0.07, P.q ? 20 : 14), -0.52, roof + 0.035, -0.32);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.52 + Math.sin(a) * 0.24, roof + 0.095, -0.32 + Math.cos(a) * 0.24, 0, a, 0);
+      P.add('turretGlass', box(0.055, 0.045, 0.018), -0.52 + Math.sin(a) * 0.24, roof + 0.095, -0.32 + Math.cos(a) * 0.24, 0, a, 0);
     }
-    P.addCupola('turret', cylY(0.22, 0.23, 0.05, P.q ? 20 : 14), 0.52, roof + 0.145, -0.32);
-    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), 0.52, roof + 0.19, -0.32);
+    P.addCupola('turret', cylY(0.22, 0.23, 0.05, P.q ? 20 : 14), -0.52, roof + 0.145, -0.32);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, roof + 0.19, -0.32);
     const periH = mark === 'a3' ? 0.20 : 0.46;
-    P.addEquipment('turret', cylY(0.115, 0.13, periH, P.q ? 18 : 12), 0.50, roof + periH / 2, 0.12);
-    P.addEquipment('turret', box(0.24, 0.17, 0.20), 0.50, roof + periH + 0.085, 0.12);
-    P.add('turretGlass', box(0.15, 0.085, 0.014), 0.50, roof + periH + 0.09, 0.225);
-    // loader's hatch (left) and its periscope
-    P.addCupola('turret', cylY(0.24, 0.25, 0.055, P.q ? 20 : 14), -0.52, roof + 0.0275, -0.30);
-    P.addCupola('turret', xform(sph(0.21, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.22, 1]), -0.52, roof + 0.095, -0.30);
-    P.addEquipment('turret', box(0.15, 0.10, 0.17), -0.40, roof + 0.05, 0.12);
-    P.add('turretGlass', box(0.10, 0.06, 0.014), -0.40, roof + 0.06, 0.207);
+    P.addEquipment('turret', cylY(0.115, 0.13, periH, P.q ? 18 : 12), -0.50, roof + periH / 2, 0.12);
+    P.addEquipment('turret', box(0.24, 0.17, 0.20), -0.50, roof + periH + 0.085, 0.12);
+    P.add('turretGlass', box(0.15, 0.085, 0.014), -0.50, roof + periH + 0.09, 0.225);
+    // loader's hatch (left, +x) and its periscope
+    P.addCupola('turret', cylY(0.24, 0.25, 0.055, P.q ? 20 : 14), 0.52, roof + 0.0275, -0.30);
+    P.addCupola('turret', xform(sph(0.21, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.22, 1]), 0.52, roof + 0.095, -0.30);
+    P.addEquipment('turret', box(0.15, 0.10, 0.17), 0.40, roof + 0.05, 0.12);
+    P.add('turretGlass', box(0.10, 0.06, 0.014), 0.40, roof + 0.06, 0.207);
     // gunner's periscope in the brow
-    P.addEquipment('turret', box(0.16, 0.09, 0.14), 0.30, roof + 0.03, 0.78);
+    P.addEquipment('turret', box(0.16, 0.09, 0.14), -0.30, roof + 0.03, 0.78);
     if (mark !== 'a3') {
-      // EMES 18: the armoured thermal sight box on the right front roof, its two windows behind armoured doors (one
+      // EMES 18: the armoured thermal sight box on the right (-x) front roof, its two windows behind armoured doors (one
       // door hinged open on the Aalborg turret)
-      P.addEquipment('turret', box(0.48, 0.10, 0.46), 0.66, roof + 0.05, 0.56);
-      P.addEquipment('turret', box(0.52, 0.25, 0.48), 0.66, roof + 0.22, 0.56);
-      P.addEquipment('turret', box(0.56, 0.035, 0.52), 0.66, roof + 0.36, 0.56);
-      P.add('turretDark', box(0.40, 0.16, 0.025), 0.66, roof + 0.22, 0.81);
-      for (const x of [0.57, 0.75]) {
+      P.addEquipment('turret', box(0.48, 0.10, 0.46), -0.66, roof + 0.05, 0.56);
+      P.addEquipment('turret', box(0.52, 0.25, 0.48), -0.66, roof + 0.22, 0.56);
+      P.addEquipment('turret', box(0.56, 0.035, 0.52), -0.66, roof + 0.36, 0.56);
+      P.add('turretDark', box(0.40, 0.16, 0.025), -0.66, roof + 0.22, 0.81);
+      for (const x of [-0.57, -0.75]) {
         P.add('turretGlass', box(0.115, 0.105, 0.014), x, roof + 0.22, 0.826);
         P.addEquipment('turret', box(0.15, 0.14, 0.014), x, roof + 0.22, 0.842);
       }
       // the 1A5 DK's roof fast fittings for two rifles, behind the loader's hatch
-      for (const x of [-0.30, -0.12]) {
+      for (const x of [0.30, 0.12]) {
         P.addEquipment('turretDark', box(0.05, 0.03, 0.06), x, roof + 0.015, -0.78);
         P.addEquipment('turretDark', box(0.05, 0.03, 0.06), x, roof + 0.015, -1.38);
         P.addEquipment('turretDark', box(0.045, 0.06, 0.92), x, roof + 0.05, -1.08);
       }
     }
     // Loader's MG (the Danish MG 62, an MG3) on its ring mount.
-    P.addEquipment('turret', cylY(0.12, 0.14, 0.12, P.q ? 16 : 10), -0.52, roof + 0.06, -0.62);
-    P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.52, roof + 0.115, -0.62);
+    P.addEquipment('turret', cylY(0.12, 0.14, 0.12, P.q ? 16 : 10), 0.52, roof + 0.06, -0.62);
+    P.addEquipment('turret', box(0.24, 0.08, 0.20), 0.52, roof + 0.115, -0.62);
     const mg = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
       scale: 0.96, seed: 265, shield: false, ammo: true, working: true, ridingCradle: true,
     });
     mg.name = 'leo1DkLoaderMg62';
-    mg.position.set(-0.52, roof + 0.115, -0.62);
-    mg.rotation.y = 0.30;
+    mg.position.set(0.52, roof + 0.115, -0.62);
+    mg.rotation.y = -0.30;
     P.turretG.add(mg);
     // Wegmann 76 mm dischargers: two rows of four on a bracket high on each side, with a guard loop (Krigsmuseet).
     for (const s of [-1, 1] as const) {
@@ -300,7 +301,7 @@ function* buildLeo1DkSteps(P: TankBuilderPort, mark: Leo1DkMark): TankProfileBui
       k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
     const onChin = (t: number, out: number): [number, number] => [
       k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
-    // the telescope's port on the left of the brow, the coaxial MG's on the right of the chin
+    // the gunner's telescope port on the right of the brow (-x), the coaxial MG's on the left of the chin
     P.addGunExtraDark(xform(cylZ(0.05, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.26, ...onBrow(0.45, 0.012));
     P.addGunExtraDark(xform(cylZ(0.026, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.28, ...onChin(0.55, 0.014));
     P.addGunExtra(cylZ(0.13, 0.10, P.q ? 20 : 14, 0.15), 0, 0, k.ridgeZ + 0.04);
