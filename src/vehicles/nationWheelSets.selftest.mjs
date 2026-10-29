@@ -106,7 +106,7 @@ expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('ku
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');
 expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
-expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
+expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4', 'donor');
 expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');
 // tiger1, t95 and m26_pershing retired 2026-09-23 (owner: "no hidden tanks"); the two period hulls left keep their wheels.
 for (const id of ['kv2', 'jpz_e100']) {

@@ -1,0 +1,51 @@
+# leo2a6_ua — Leopard 2A6 UA, rebuilt on the source-measured 2A6 (264)
+
+## Current status
+
+- Updated: 2026-10-28 (leo2a6-ua-264 lane, branch `item/leo2a6-ua-264`, base `origin/main` cd5e206649).
+- Owner request, verbatim (2026-10-28): "thewn we need to update the leopard 2a6 UA to have all of its cages and guns and
+  stuff and more off of our new current actual leopard 2a6".
+- IDs: `leo2a6_ua` ("Leopard 2A6 UA", Ukraine, tactical number "UA 26", digital scheme). Base build: `leo2a6` (the
+  source-measured Leopard 2A6, `profiles/leopardA6X.ts`).
+- Implementation: `profiles/leopardA6Ua.ts` builds `buildLeopard2A6X` and adds the field kit; the id moved from the
+  `leopard` fleet group (the 2A6M/OTCO-rig build in `profiles/leopard.ts`, retired) to `leopardA6X`. Datums shared by the
+  kit, its net (`ghillieSuit.ts`) and its roof dock (`missionAttachmentReceiver.ts`) live in `leopardA6UaLayout.ts`.
+- Combat: unchanged (hp, mobility, gun, shells, reload, armour values, the six ERA sectors and their values, dims
+  7.72/10.97/4.44/3.28). The ring, trunnion and barrel follow the 2A6 rig (turret pivot [0, 2.148, 1.048], trunnion
+  [0, 1.971, 1.419], barrel 5.72 m from the trunnion). One working roof gun, 7.62 mm, as before (now the 2A6's own loader
+  MG3 instead of a bustle MAG).
+
+## Sources (every addition)
+
+- [A] 21st Separate Mechanized Brigade, photos by Oleksandr Bondar, 2025, published by the Ukrainian 10th Army Corps
+  (collected at deaidua.org/footage/index.php?id=25, files 68653f8e…, 68653fa9…, 68653fca…, 68653ffa…): a tall welded cage
+  over the turret under a camouflage net; welded square-mesh screens round the turret and along the front of the hull; a
+  mesh box over the bow corner with a chain curtain; two courses of Kontakt-1 on the rear skirts; a welded steel box at
+  the back; the barrel wrapped.
+- [B] the same page, turret close-ups uploaded 2024-11 (files 67251b…): angle-iron frames with square wire mesh standing
+  off the turret flanks round the smoke dischargers and round the bustle, a fringe of hanging chain on their bottom
+  rails, a mesh roof frame over them; three-tone NATO paint under the screens.
+- [C] Ukrainian Leopard 2 practice for turret-front and flank Kontakt-1 (Militarnyi 2023-09-10; Bulgarian Military
+  2023-04-07; ArmyInform / Ruslan Tarasov photos on Wikimedia Commons, 2025-01, all Leopard 2A4s). No 2A6 photo shows
+  turret ERA.
+- Unit and service history: militaryland.net (2A6s with the 47th Mechanized Brigade in 2023, the survivors with the 21st
+  Mechanized Brigade since 2024); Euromaidan Press 2025-07-05 (21st Brigade 2A6 at Pysarivka, Sumy oblast).
+- Markings: 10th Army Corps 2024 photos show the trident and unit insignia; no consistent white crosses on the 2A6.
+- Camouflage: every 2A6 photo shows the German three-tone NATO scheme (faded, mud-caked) or a near-uniform olive; none
+  shows a digital pattern. The digital signature is kept per the brief; a three-tone signature is proposed to Main.
+- Not seen on any 2A6 photo and so not added: jammers, extra machine guns or remote stations, logs, spare track, spare
+  road wheels, slat (bar) armour.
+
+## Decisions
+
+- Turret ERA [C]: the gameplay sectors `ua_turret_cheek_era_{L,R}` and `ua_turret_side_era_{L,R}` stay (combat unchanged),
+  drawn honestly as two Kontakt-1 courses on each wedge's outer face and on each flat flank. Proposed to Main: drop them.
+- Skirt ERA [A]: `ua_skirt_era_{L,R}` drawn where the photos show it, the rear 3.6 m of each skirt (a standing course of
+  21 under a lying course of 14). Its fitted faces now cover that stretch only.
+- The two roof remote stations of the old build were never working guns and no photo shows them: removed.
+- Drone screens (`armor.droneScreens`, gameplay drone interception) are not given to the cage: proposed to Main.
+- The kit is open lattice and equipment (`*OpenLattice*`, `*Detail`, `*Dark`, `*FittingPaint`, `*Cloth`): nothing enters
+  the primary armour buckets.
+- Existing cage helpers (`modernFieldCage`, `fieldRoofCage`, `attachedCage`) draw round-bar slat grilles; the photos show
+  square wire mesh on angle frames and a tall roof cage, so the kit has its own box-bar mesh panel (12 triangles a bar,
+  95 mm pitch at HIGH, 160 mm at LOW).
