@@ -6277,7 +6277,9 @@ void splatCompute() {
         float clodP = smoothstep(0.20, 0.70, n1);
         float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) * furrowNear * (0.35 + 0.65 * clodP) : 0.0;
         float landAmp = 0.5 + 0.5 * n2;
-        cropCol *= 1.0 + 0.14 * (n1h - 0.5) * (1.0 - smoothstep(0.03, 0.12, gFootM)) + 0.10 * (clodP - 0.5);
+        // (round 8, Delta's turned field "a flat, textureless single colour … plastic") its wet and dry ground in patches of
+        // metres to tens of metres (n2) under the clods
+        cropCol *= 1.0 + 0.14 * (n1h - 0.5) * (1.0 - smoothstep(0.03, 0.12, gFootM)) + 0.14 * (clodP - 0.5) + 0.14 * (n2 - 0.5);
         // (2026-10-28, the owner: "weird parallel lines on ground … on all maps") the lands were crisp square bands of ±9 %
         // from 40 m on (bandAA), and the turned fields carried ruled stripes at battle range. A land is the light on its
         // furrow slices turned one way or the other: a soft swell of tone, each land its own width by the tractor's line
@@ -6366,12 +6368,12 @@ void splatCompute() {
         // (gone by 12 cm), and the canopy's plants in clumps (n1, ~0.3–1.5 m) carry its texture at range
         float litAmp = 1.0 - smoothstep(0.03, 0.12, gFootM);
         float litR = mix(0.5, smoothstep(0.25, 0.80, n1h), litAmp), clumpR = smoothstep(0.30, 0.70, n1);
-        float lightR = (0.62 + 0.50 * moundR) * (0.80 + 0.40 * litR) * (0.75 + 0.50 * leafF) * (0.88 + 0.24 * clumpR);
-        // (round 6: the meadow photo's grain the crop's tone keeps through baseL smears into wavy streaks at a grazing
-        // range — the phone's frames, once no grass stood over it: the canopy takes the calibrated luminance from there)
-        float baseR = mix(baseL, 0.075, smoothstep(0.02, 0.08, gFootM));
-        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseR * bright * lightR
-          * mix(vec3(0.90, 0.95, 1.10), vec3(1.06, 1.03, 0.88), smoothstep(0.60, 1.10, lightR));
+        float lightR = (0.62 + 0.50 * moundR) * (0.86 + 0.28 * litR) * (0.75 + 0.50 * leafF) * (0.92 + 0.16 * clumpR);
+        // (round 8, the critics on the phone's row crop: "blue-green and yellow-green blotches like camo", "a cold, washed-out
+        // blue-grey" at range) the shade's hue a breath cooler than the lit leaves, not blue, and the canopy's tone at range
+        // the local sward's (round 6 took a calibrated one there for a streak that was a pasture's, not this field's)
+        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseL * bright * lightR
+          * mix(vec3(0.97, 0.99, 1.03), vec3(1.03, 1.01, 0.96), smoothstep(0.60, 1.10, lightR));
         cropCol = mix(leaf, soilF * 0.62, soilW);
         if (nrmOn) {
           float reliefW = inField * landW;
