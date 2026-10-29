@@ -253,7 +253,9 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   };
   for (const [i, j] of order) {
     const k = knot(i, j);
-    const d = density(k[0], k[1]) * stripDensity;
+    // (r7; the critic r9: "open net on the turret roof reads as a dark wire grid with no garnish") every stretch of the
+    // net carries a few bunches
+    const d = (0.2 + 0.8 * density(k[0], k[1])) * stripDensity;
     // (r7; the critic r6: "a regular grid of dark tiles" where the paint under the net is black) more of the knots
     // carry a bunch, so the open mesh is the bare net's between them, not a lattice through the garnish
     if (rng() > Math.pow(d, 1.9) * 1.12) continue;
@@ -305,7 +307,8 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
           gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2, speck: (S / NET_MESHES) ** 2 * 0.5 },
         });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
-        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true);
+        // (r7; the critic r9: "milky see-through overlap bands" where the net is seen edge-on) filtered at 8 samples
+        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true, 8);
         const bump = new THREE.CanvasTexture(height);
         bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
         bump.anisotropy = 4;

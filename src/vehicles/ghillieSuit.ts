@@ -1439,14 +1439,17 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     if (clipped(i, j)) continue;
     // a net's perimeter cells tear here and there; a fitted cover is cut to its plate (r6; the critic r5 on the Strv
     // 121: "stair-stepped hems", each torn cell a square notch in its edge)
+    // (r7; the critic r9 on the Christian II: "stair-stepped net edges on the bustle") a torn cell loses one of its two
+    // triangles, not both: the edge is torn on the diagonal, not notched square
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
-    if (edge && !support.fitted && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    const tear = edge && !support.fitted ? noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) : 1;
     // a fitted cover lies on its plates: a cell with a corner hung off its neighbours is not laid (r6: with no torn
     // cells the M1A1 FEP's deck cover showed cells past the deck's edge sagged 3 m down to the ground, which tears had
     // hidden)
     if (support.fitted && [j * NX + i, j * NX + i + 1, (j + 1) * NX + i, (j + 1) * NX + i + 1].some((k) => sagged[k] > FITTED_SAG_M)) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
-    tri(a, c, b); tri(a, d, c);
+    if (tear >= 0.115) tri(a, c, b);
+    if (tear < 0.115 || tear >= 0.23) tri(a, d, c);
   }
   dropIslands(positions, uvs, panel.minPieceTris ?? 8);
   const geometry = makeGeometry(positions, uvs);
@@ -1852,8 +1855,8 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       }
       const upMid = (sections[c].up[r] + sections[c].up[r + 1] + sections[c + 1].up[r] + sections[c + 1].up[r + 1]) / 4;
       if (spec.keep && !spec.keep((aA + aB) / 2, upMid, aA, aB)) continue;
-      // the hem row tears here and there
-      if (r === rows - 1 && !spec.whole && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
+      // the hem row tears here and there, on the diagonal (r7: a whole torn cell read as a square step in the hem)
+      const tear = r === rows - 1 && !spec.whole ? noise01(c + spec.seed, spec.seed + 7) : 1;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
       // (r7; the critic r6 on the Strv 121: "jagged triangular shards" at its cover's edges) a fitted cover's cell is a
       // hand or two across; one between a full column and a column whose section collapsed to a few centimetres (where
@@ -1862,7 +1865,8 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       const uv = (cc: number, rr: number, a: number): [number, number] => [a * uvk + uvOffset[0], vlen[cc][rr] * uvk + uvOffset[1]];
       const quad: Array<[Point3, [number, number]]> = [[A, uv(c, r, aA)], [B, uv(c + 1, r, aB)], [C, uv(c + 1, r + 1, aB)], [D, uv(c, r + 1, aA)]];
       const order = flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
-      for (const k of order) { const [p, q] = quad[k]; positions.push(p[0], p[1], p[2]); uvs.push(q[0], q[1]); }
+      const kept = tear < 0.085 ? order.slice(0, 3) : tear < 0.17 ? order.slice(3) : order;
+      for (const k of kept) { const [p, q] = quad[k]; positions.push(p[0], p[1], p[2]); uvs.push(q[0], q[1]); }
     }
   }
   for (let c = 0; c <= cols; c++) {
@@ -1961,6 +1965,53 @@ function freeHang(start: { out: number; up: number }, hemY: number): { pts: Arra
 
 /** Metres of bare run a mission dock keeps either side of it in a wing's drape. */
 const DOCK_CLEAR_M = 0.03;
+
+/** The widest gap along a side a fitted cover's drapes are joined across (the round-5 skirts() helper's 0.2 m). */
+const FITTED_JOIN_GAP_M = 0.25;
+/**
+ * (r7; the critic r6 to r9 on the Strv 121: "skirt covers are rectangular cut-outs", one apron a skirt plate) A fitted
+ * cover is one sheet down a side: drapes of the same side whose runs stand within FITTED_JOIN_GAP_M of each other (and
+ * carry no cut, shoulder or tied top of their own) are laid as one run, each stretch keeping its own lines and the gap
+ * between them taking the nearer stretch's. Rows draping a net keep their separate drapes.
+ */
+function joinedFittedRuns(panels: readonly SidePanel[]): SidePanel[] {
+  const plain = (p: SidePanel): boolean => !p.cuts?.length && !p.shoulder && !p.tiedTop && !p.boughsHangAt?.length;
+  const out: SidePanel[] = [];
+  for (const side of [-1, 1]) {
+    const runs = panels.filter((p) => p.side === side).sort((p, q) => Math.min(p.z0, p.z1) - Math.min(q.z0, q.z1));
+    let group: SidePanel[] = [];
+    const flush = (): void => {
+      if (group.length === 1) out.push(group[0]);
+      else if (group.length > 1) {
+        const parts = group.map((p) => ({ p, lo: Math.min(p.z0, p.z1), hi: Math.max(p.z0, p.z1) }));
+        const at = (z: number): SidePanel => {
+          let best = parts[0], d = Infinity;
+          for (const part of parts) {
+            const dz = z < part.lo ? part.lo - z : z > part.hi ? z - part.hi : 0;
+            if (dz < d) { d = dz; best = part; }
+          }
+          return best.p;
+        };
+        const first = group[0];
+        out.push({
+          side, z0: parts[0].lo, z1: parts[parts.length - 1].hi, ny: first.ny, seed: first.seed,
+          nz: group.reduce((sum, p) => sum + (p.nz ?? 0), 0) || undefined,
+          topAt: (z) => at(z).topAt(z), bottomAt: (z) => at(z).bottomAt(z), outAt: (z, t) => at(z).outAt(z, t),
+        });
+      }
+      group = [];
+    };
+    for (const p of runs) {
+      const last = group[group.length - 1];
+      if (last && plain(p) && plain(last) && Math.min(p.z0, p.z1) - Math.max(last.z0, last.z1) <= FITTED_JOIN_GAP_M) group.push(p);
+      else { flush(); group.push(p); }
+    }
+    flush();
+  }
+  // panels of no side (none today) as they were
+  for (const p of panels) if (p.side !== -1 && p.side !== 1) out.push(p);
+  return out;
+}
 
 function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, uvk: number,
   gunFloor: ((x: number, z: number) => number) | null = null, dock: THREE.Box3 | null = null): ClothSurface {
@@ -5840,7 +5891,7 @@ function* addGhillieOwner(
     yield;
   }
   const surfaces: ClothSurface[] = [...tops];
-  for (const panel of panels.side ?? []) {
+  for (const panel of support.fitted ? joinedFittedRuns(panels.side ?? []) : panels.side ?? []) {
     surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
     yield;
   }
