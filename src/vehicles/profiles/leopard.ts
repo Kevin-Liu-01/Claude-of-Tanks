@@ -8446,7 +8446,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // both ends embed (no floats); outer faces 1.2225 / 1.187 stay inside
   // the blister-cap width.
   for (const s of [-1, 1] as const) {
-    P.add('turretEquipment', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0); // bin A (z 0.05..-0.70)
+    P.add('turret', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0);   // bin A (z 0.05..-0.70)
     P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2055, 0.20, -0.555, 0, s * 0.043, 0);
@@ -9515,7 +9515,7 @@ function addKF51ClosedShoulderMudguards(
     labels.push(shoulderLabel);
     MUDGUARDS.add(P, {
       label: shoulderLabel,
-      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
+      bucket: 'hull',
       material: 'painted-steel',
       geometry: orientedSlab(
         ...order([[shoulder.innerX, shoulder.rearBottomY, shoulder.rearZ],
@@ -9532,7 +9532,7 @@ function addKF51ClosedShoulderMudguards(
     labels.push(webLabel);
     MUDGUARDS.add(P, {
       label: webLabel,
-      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
+      bucket: 'hull',
       material: 'painted-steel',
       geometry: orientedSlab(
         ...order([[web.innerX, web.rearBottomY, web.rearZ],
@@ -11797,12 +11797,12 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // outboard modules. Besides closing the structural load path, its upper
       // flange prevents the grille and panel joints from enclosing false open
       // cells in the top-down collision/contiguity silhouette.
-      P.add('hullFixedPaintedBodywork', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
+      P.add('hull', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
       // Stop before the high idler crown; the armored leading shoulder and
       // existing mudguard take over there without entering the animated shoe
       // sweep.
-      P.add('hullFixedPaintedBodywork', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
-      P.add('hullFixedPaintedBodywork', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
+      P.add('hull', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
+      P.add('hull', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
       // Recessed load-spreading carrier stays clear of the animated outer shoe
       // face, while overlapping both the fender underside and every module.
       P.add('hullDark', box(0.10, 1.53 - skirtHemY, z1 - z0 - 0.02), s * 1.765, (1.53 + skirtHemY) / 2, (z0 + z1) / 2);

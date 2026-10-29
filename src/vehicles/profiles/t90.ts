@@ -456,7 +456,7 @@ function addT90CastFlankCassettes(
     for (const [x, z, w0, h0, d0, cant] of stations) {
       const w = w0 * k, h = h0 * k, d = d0;
       const yaw = -side * cant;
-      P.add('turretEquipment', box(w, h, d), side * x * k, y, z, 0, yaw, 0);
+      P.add('turret', box(w, h, d), side * x * k, y, z, 0, yaw, 0);
       P.add('turretDark', box(0.016, h * 0.84, d * 0.84), side * (x + w0 * 0.52) * k, y, z, 0, yaw, 0);
       P.add('turretDark', box(w * 0.78, 0.016, d * 0.72), side * x * k, y + h * 0.52, z, 0, yaw, 0);
       if (raisedLeftRear && side < 0 && z < -1) {
@@ -483,7 +483,7 @@ function addT90AAsymmetricBustleBins(P: T90BuilderPort): void {
     [-1.82, 0.36, 0.27, -0.06],
   ]) {
     const x = 1.48;
-    P.add('turretEquipment', box(w, 0.28, d), side * x, 0.14, z, 0, -cant, 0);
+    P.add('turret', box(w, 0.28, d), side * x, 0.14, z, 0, -cant, 0);
     // Keep the face seam flush inside the bin's rotated outer plane.  The
     // former half-width seat swung its rear corner beyond the actual bin at
     // the maximum-width front station.
@@ -1612,7 +1612,7 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // certified 2.0 / 1.903 lines, now two real bins with lid seams).
   P.add('turret', box(0.34, 0.30, 0.62), 0.845, 0.51, -0.44);            // top 1.995w (ref 2.0 @ x 0.70..1.0)
   P.add('turretDark', box(0.30, 0.016, 0.56), 0.845, 0.667, -0.44);
-  P.add('turretEquipment', box(0.18, 0.24, 0.55), 1.08, 0.45, -0.42);
+  P.add('turret', box(0.18, 0.24, 0.55), 1.08, 0.45, -0.42);
   P.add('turretDark', box(0.15, 0.014, 0.49), 1.08, 0.578, -0.42);
   // pano r10c: TWO spikes with a 2.2 dip between (ref side 2.257 at
   // -0.57..-0.68, 2.2 at -0.784, 2.284 at -0.895 — one 0.4-deep tower put
@@ -1675,7 +1675,7 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // overlap. The former 120 mm lateral air gap left every outboard bin
   // parented to the turret but visibly unsupported at oblique yaw.
   P.add('turretEquipment', box(0.30, 0.07, 0.52), 1.05, 0.0375, -1.859);
-  P.add('turretEquipment', box(0.27, 0.20, 0.55), 1.325, 0.115, -1.624);
+  P.add('turret', box(0.27, 0.20, 0.55), 1.325, 0.115, -1.624);
   P.add('turretEquipment', box(1.70, 0.055, 0.11), 0, 0.0225, -2.055);
   // A narrow casting tongue closes the final source profile station.  It
   // continues directly from the low bustle shelf; its one-pixel-height end
@@ -7939,7 +7939,7 @@ function addT90BurlakShoulderFoundationNative2026(P: T90BuilderPort, {
     // Thin horizontal shoulder diamond: this is the broad plan-view plate
     // visible around the gun court, not a deep solid side wall.  Its rear
     // edge overlaps the core and its outboard tip overlaps the terminal leaf.
-    P.add('turretExternalArmor', polyTurret([
+    P.add('turret', polyTurret([
       [s * 0.28, 1.30], [s * 0.82, 1.30], [s * 1.84, 0.98],
       [s * 1.80, 0.84], [s * 1.46, 0.62], [s * 1.44, 0.05],
       [s * 0.42, 0.48],

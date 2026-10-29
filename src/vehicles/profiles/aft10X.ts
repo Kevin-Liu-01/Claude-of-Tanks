@@ -86,7 +86,7 @@ function addAftSkirtPanels(P: TankBuilderPort, side: number): void {
             { z, ring: [[-.012, low + .10], [.012, low + .10], [.012, 1.23], [-.012, 1.23]] },
             { z: z + .60, ring: [[-.012, low], [.012, low], [.012, 1.23], [-.012, 1.23]] },
         ]);
-        P.hangMudguard(`aft-side-${side}-${i}`, 'hullFixedPaintedBodywork', g, side * 1.635, 0, 0);
+        P.hangMudguard(`aft-side-${side}-${i}`, 'hull', g, side * 1.635, 0, 0);
         // 2026-10-19 (owner float sweep): the hanger clips stood 13-145 mm off the raked upper side; each is seated on it
         if (P.q)
             for (const y of [1.36, 1.80]) {

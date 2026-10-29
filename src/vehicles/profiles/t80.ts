@@ -659,7 +659,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // on the left cheek and five on the right, each on a planted shoe.
       for (const s of [-1, 1]) {
         const count = s < 0 ? 7 : 5;
-        P.add('turretEquipment', box(0.24, 0.24, s < 0 ? 0.58 : 0.46), s * 1.17, turretSeatY(0.42), 0.22, 0, 0, -s * 0.16);
+        P.add('turret', box(0.24, 0.24, s < 0 ? 0.58 : 0.46), s * 1.17, turretSeatY(0.42), 0.22, 0, 0, -s * 0.16);
         const smoke = FITTINGS.smokeBank({ mats: P.mats, count, r: 0.039, len: 0.25, pitch: -0.42, splay: 0.30, arc: 0.64, spacing: 0.080, seed: 50 + count });
         smoke.position.set(s * 1.18, turretSeatY(0.55), 0.24);
         smoke.rotation.y = s * 1.00;

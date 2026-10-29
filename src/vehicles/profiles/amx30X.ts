@@ -78,7 +78,7 @@ function hull(P: TankBuilderPort): void {
     P.addMudguard('amx30-x-side-fender', 'hull', sectionSolid([
       lip(-2.857, 1.02, 1.554, 1.238 + (.443 / 5.78) * .012), lip(2.48, 1.02, 1.554, 1.250),
     ]));
-    P.addMudguard('amx30-x-bow-fender', 'hullFixedPaintedBodywork', sectionSolid([
+    P.addMudguard('amx30-x-bow-fender', 'hull', sectionSolid([
       lip(2.44, .928, 1.555, 1.264), lip(2.91, .928, 1.555, 1.250),
       lip(3.19, .928, 1.555, 1.150), lip(3.288, .928, 1.555, 1.060),
     ]));

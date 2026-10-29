@@ -50,7 +50,7 @@ function addType96HullSides(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
         for (let i = 0; i < 6; i++) {
             const z = -2.80 + i * 1.03;
-            P.addMudguard(`type96-skirt-${side}-${i}`, 'hullExternalArmor', box(.028, .43, 1.00), side * 1.708, 1.235, z);
+            P.addMudguard(`type96-skirt-${side}-${i}`, 'hull', box(.028, .43, 1.00), side * 1.708, 1.235, z);
             equipment(P, 'hull', 'Detail', box(.39, .036, .93), side * 1.51, 1.49, z);
             if (P.q)
                 for (const dz of [-.41, .41])
@@ -155,7 +155,7 @@ function buildType96Hull(P: TankBuilderPort): void {
     ];
     for (const side of [-1, 1]) {
         const x0 = side < 0 ? -1.7100 : .9961, x1 = side < 0 ? -.9961 : 1.7100;
-        P.add('hullFixedPaintedBodywork', bowPrism(x0, x1, fender));
+        P.add('hull', bowPrism(x0, x1, fender));
     }
     addBowStock(P);
     addType96HullSides(P);

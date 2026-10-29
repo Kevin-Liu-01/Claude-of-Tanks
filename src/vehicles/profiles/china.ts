@@ -641,7 +641,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   ([-1, 1] as const).forEach((s) => {
     // a plate the falling bow leaves over air is seated on the hanger line under it (the fore two stood 2-5 cm over it)
     for (let i = 0; i < 12; i++) {
-      P.snapGroup('ztz99-fender-plate', () => P.add('hullFixedPaintedBodywork', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575), { reachM: 0.06 });
+      P.snapGroup('ztz99-fender-plate', () => P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575), { reachM: 0.06 });
     }
     // lower tub side strakes: the print's hull side wall hangs to ~0.34
     // at the sponson line while the centre belly stays at 0.46 — real

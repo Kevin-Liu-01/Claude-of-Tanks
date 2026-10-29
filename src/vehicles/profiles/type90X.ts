@@ -70,7 +70,7 @@ function shoulder(P:TankBuilderPort,side:number):void {
   })));
   // Source high shoulder ends at X1.6817. The separate lowered wing reaches
   // X1.7868; widening the high block would erase this full-length step.
-  P.add('hullFixedPaintedBodywork',sectionSolid([[-3.49,1.377,1.287],[3.563,1.377,1.287],
+  P.add('hull',sectionSolid([[-3.49,1.377,1.287],[3.563,1.377,1.287],
     [3.899422,1.251,1.15]].map(([z,top,bottom])=>{
     const ring:[number,number][]=[[1.674,bottom],[1.786824,bottom],[1.786824,top],[1.674,top]];
     return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};

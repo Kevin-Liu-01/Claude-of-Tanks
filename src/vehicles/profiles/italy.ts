@@ -623,19 +623,19 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       P.addEquipment('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.26, L(-2.556));         // s5322-B1 rack-end cap plates (inside the certified envelope)
       P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.26, L(-2.572));   // cap end faces (dark hardware read)
       for (const az of [-0.50, -1.44, -2.10]) {
-        P.addEquipment('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.27, L(az));          // rack arms overlap the shell/panel and the outer rail
+        P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.27, L(az));          // rack arms overlap the shell/panel and the outer rail
       }
       // Owner-marked panel re-seat. Its old inner face sat at |x|=1.40 while
       // the turret/bustle carrier is |x|≈1.13, leaving 27 cm of daylight. The
       // new 115 mm cassette overlaps that carrier by 15 mm and remains wholly
       // turret-local. An aft bridge returns the cantilever into the rear basket
       // frame, while the three rack arms tie its outer face to the rail.
-      P.addEquipment('turret', slab(
+      P.add('turret', slab(
         [s * 1.115, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-2.55)], [s * 1.115, 0.205, L(-2.55)],
         [s * 1.115, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-2.55)], [s * 1.115, 0.58, L(-2.55)]));
       P.add('turret', box(0.22, 0.16, 0.06), s * 1.14, 0.62, L(-2.03));         // rear basket-to-panel bridge; overlaps both structures
       // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
-      P.addEquipment('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
+      P.add('turret', box(0.17, 0.05, 0.66), s * 1.315, 0.475, L(-0.62));        // GALIX platform (ties bank to wall)
       P.add('turretDark', box(0.025, 0.19, 0.64), s * 1.352, 0.585, L(-0.62), 0, 0, s * 0.12); // s5322-B7 GALIX backing plate — tubes read against dark at yaw (ref plan band ±1.31-1.40 owns it)
       addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05,
         pitch: -0.40, slot: 'detail', seed: 30 + (s > 0 ? 1 : 0) }), s * 1.31, 0.56, L(-0.62));
@@ -1091,7 +1091,7 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
     for (const s of [-1, 1]) {
       P.add('hullDark', box(0.12, 0.07, 0.04), s * 1.15, 1.38, -3.395);          // taillights (seated on the -3.385 plate)
       P.add('hullDetail', torus(0.07, 0.014, 10), s * 0.62, 0.94, -3.36, Math.PI / 2, 0, 0); // tow eyes (bottom at the ref's 0.83 tail band)
-      P.add('hullFixedPaintedBodywork', box(0.045, 0.42, 0.60), s * 1.6925, 1.13, -2.95);            // final-drive outer caps OUTSIDE the shoe faces (1.583+0.08 radial pads; front cols ±1.66 read bottom 0.90)
+      P.add('hull', box(0.045, 0.42, 0.60), s * 1.6925, 1.13, -2.95);            // final-drive outer caps OUTSIDE the shoe faces (1.583+0.08 radial pads; front cols ±1.66 read bottom 0.90)
     }
     P.add('hull', box(0.36, 0.16, 0.10), 0, 1.38, -3.42);                        // convoy shield block (band-thin: the tail body edge stays pinned at -3.385)
     // ---- glacis + bow ((2.20,1.47)->(3.10,1.24)->nose 1.03@3.43; chin
@@ -1140,21 +1140,21 @@ function* buildCarro45TSteps(P: ItalyBuilderPort): TankProfileBuild {
           // owner 2026-10-19 (flaps sweep): every bay widens 15 mm inboard into the hull side the run stood 10 mm off; the
           // stern bay (k 0) also runs 17 mm forward into bay 1 across the 12 mm seam (past the hull's end it has no other seat)
           const bw = 0.285, bl = k === 0 ? 0.4646 : 0.4476, bc = k === 0 ? bz + 0.0085 : bz;
-          P.add('hullFixedPaintedBodywork', box(bw, 0.032, bl), s * (1.68 - bw / 2), fy, bc);         // toward the bow (gate tops 1.38-1.42 over the nose)
-          P.add('hullFixedPaintedBodywork', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
-          if (bz > -3.16 && bz < 2.88) P.add('hullFixedPaintedBodywork', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
+          P.add('hull', box(bw, 0.032, bl), s * (1.68 - bw / 2), fy, bc);         // toward the bow (gate tops 1.38-1.42 over the nose)
+          P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
+          if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
         }
-        P.add('hullFixedPaintedBodywork', box(0.045, 0.40, 0.40), s * 1.690, 1.15, 2.05);              // widthM strips, outer face ±1.7125 (pixel width 3.425 vs spec 3.43; guard;
-        P.add('hullFixedPaintedBodywork', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
+        P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, 2.05);              // widthM strips, outer face ±1.7125 (pixel width 3.425 vs spec 3.43; guard;
+        P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
         for (let k = 0; k < 7; k++) P.add('hullDark', box(0.034, 0.50, 0.016), s * 1.696, 1.19, 2.55 - k * 0.95); // apron seams
-        P.add('hullFixedPaintedBodywork', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
-        MUDGUARDS.add(P, { hang: true, bucket: 'hullFixedPaintedBodywork', // 264: the hanger is bodywork, not hull armour
+        P.add('hull', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-front-flap-${s}`, x: s * 1.695, y: 1.05, z: 3.31,
           thickness: 0.03, length: 0.06, height: 0.20, material: 'rubber',
           crown: 0.006, frontCut: 0.02,
         });                                                                        // front flap stubs outboard of the shoe lane
         P.add('hullDetail', box(0.04, 0.05, 0.24), s * 1.695, 1.145, 3.20);       // fender-to-flap hanger
-        MUDGUARDS.add(P, { hang: true, bucket: 'hullFixedPaintedBodywork', // 264: the hanger is bodywork, not hull armour
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-rear-flap-${s}`, x: s * 1.55, y: 1.02, z: -3.30,
           thickness: 0.03, length: 0.24, height: 0.28, material: 'rubber',
           rotation: [0, Math.PI / 2, 0], crown: 0.009, rearCut: 0.035,

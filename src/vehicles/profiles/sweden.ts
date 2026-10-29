@@ -315,11 +315,8 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     for (let i = 0; i < 5; i++) {
       // 2026-10-19 (owner float sweep): the left 3rd/4th plates stood 34/41 mm off the narrowing turret side; inset.
       const inset = side < 0 ? [0, 0, 0.037, 0.044, 0][i] : 0;
-      // bolt-on side armour (264: turretExternalArmor, outside the turret envelope), with plate()'s dark top cap
-      const x = side * (1.50 - inset), y = 0.42 + (i & 1) * 0.025, z = 0.08 - i * 0.43;
-      P.add('turretExternalArmor', box(0.13, 0.40, 0.36), x, y, z, 0, 0, side * 0.08);
-      P.add('turretDark', box(0.13 * 0.72, 0.016, Math.max(0.025, 0.36 * 0.08)),
-        x, y + 0.40 * 0.5 + 0.009, z + 0.36 * 0.24, 0, 0, side * 0.08);
+      plate(P, 'turret', side * (1.50 - inset), 0.42 + (i & 1) * 0.025,
+        0.08 - i * 0.43, 0.13, 0.40, 0.36, [0, 0, side * 0.08], true);
     }
     P.add('turret', slab(
       [side * 1.16, 0.10, -1.52], [side * 1.48, 0.10, -1.62],

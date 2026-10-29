@@ -224,7 +224,7 @@ function galixBank(
   const grow = top ? 0.15 + lift : 0;
   // `tail` lengthens the box aft along its own line (2026-10-19 owner float sweep: the left bank's sixth upper tube
   // overhung the box's rear end)
-  P.addEquipment('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift) + tail),
+  P.add('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift) + tail),
     x - side * 0.02 - side * Math.sin(0.55) * tail / 2, y - 0.04 + grow / 2, z + shift / 2 - Math.cos(0.55) * tail / 2,
     0, side * 0.55, 0);
   for (let r = top ? -1 : 0; r < rows; r++) for (let k = 0; k < (r < 0 ? top : n - (r ? 1 : 0)); k++) {
@@ -704,7 +704,7 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
     // carrying the GALIX banks, + tie-down horns on the lids (the ref plan's
     // +-1.60-1.63 dot columns at z_w ~-0.75) + under-lip contact shadow
     for (const s of [-1, 1]) {
-      P.addEquipment('turret', box(0.24, 0.36, 0.69), s * 1.41, 0.25, -0.20);             // shelf z_w -0.83..-0.14 (push round: the 0.84-deep shelf ran its plan rear to -0.97 over the ref's -0.833..-0.144 window)
+      P.add('turret', box(0.24, 0.36, 0.69), s * 1.41, 0.25, -0.20);             // shelf z_w -0.83..-0.14 (push round: the 0.84-deep shelf ran its plan rear to -0.97 over the ref's -0.833..-0.144 window)
       P.add('turretDark', box(0.25, 0.06, 0.61), s * 1.415, 0.40, -0.20);
       P.add('turretDark', box(0.26, 0.03, 0.63), s * 1.39, 0.055, -0.20);        // contact shadow under the shelf lip (SS-B2 attachment read)
       galixBank(P, s * 1.285, s < 0 ? 0.235 : 0.155, -0.16, s, 4, 1);           // source-width banks buried into the shelf shoulders

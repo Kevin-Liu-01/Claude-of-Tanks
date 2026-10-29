@@ -814,7 +814,7 @@ function addChieftainClosedShoulderMudguards(
     labels.push(webLabel);
     MUDGUARDS.add(P, {
       label: webLabel,
-      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
+      bucket: 'hull',
       material: 'painted-steel',
       geometry: slab(
         ...order([[1.735, 1.06, 2.88], [1.795, 1.06, 2.88], [1.795, 0.83, 3.76], [1.735, 0.83, 3.76]]),
@@ -3154,7 +3154,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     // otherwise enclose a 1-cell §B2 sky pocket at the shelf/guard slot ----
     for (const s of [-1, 1]) {
       for (const [zf, zr, xf, xr] of [[3.16, 2.92, 1.37, 1.47], [2.92, 2.66, 1.47, 1.47]]) {
-        P.add('hullFixedPaintedBodywork', sslab(s,
+        P.add('hull', sslab(s,
           [0.90, 1.285, zf], [xf, 1.285, zf], [xr, 1.285, zr], [0.90, 1.285, zr],
           [0.90, 1.335, zf], [xf, 1.335, zf], [xr, 1.335, zr], [0.90, 1.335, zr]));
       }
@@ -3172,7 +3172,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     for (const s of [-1, 1]) {
       for (let k = 0; k < 6; k++) {
         const z = 2.30 - 0.41 - k * 0.82;
-        P.add('hullExternalArmor', sslab(s,
+        P.add('hull', sslab(s,
           [1.438, 0.75, z + 0.39], [1.438, 1.91, z + 0.39],
           [1.438, 1.91, z - 0.39], [1.438, 0.75, z - 0.39],
           [1.497, 0.80, z + 0.35], [1.497, 1.84, z + 0.35],
@@ -3201,7 +3201,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       // Armoured lower drops bridge the module seams and produce the toothed
       // lower edge without intruding into a wheel face or linked shoe.
       for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
-        P.add('hullExternalArmor', sslab(s,
+        P.add('hull', sslab(s,
           [1.445, 0.66, zw + 0.11], [1.497, 0.66, zw + 0.11],
           [1.497, 0.66, zw - 0.11], [1.445, 0.66, zw - 0.11],
           [1.445, 0.88, zw + 0.24], [1.497, 0.88, zw + 0.24],
@@ -3221,7 +3221,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       // untouched (§B9).
       for (let k = 0; k < 12; k++) {
         const z0 = 2.30 - k * 0.41;
-        P.add('hullFixedPaintedBodywork', sslab(s,
+        P.add('hull', sslab(s,
           [1.14, 1.76, z0], [1.50, 1.76, z0],
           [1.50, 1.76, z0 - 0.41], [1.14, 1.76, z0 - 0.41],
           [1.14, 1.83, z0], [1.50, 1.83, z0],
@@ -3230,8 +3230,8 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
       P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
       // front mudguard steps over the sprocket wrap (crest ~1.04)
-      P.add('hullFixedPaintedBodywork', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
-      P.add('hullFixedPaintedBodywork', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
+      P.add('hull', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
+      P.add('hull', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
       // rear guard stub over the raised idler wrap
       P.add('hullFixedPaintedBodywork', box(0.048, 0.40, 0.34), s * 1.28, 1.14, -2.80);
       // The shortened native course leaves the real rear fender shoulder
@@ -3780,7 +3780,7 @@ function fv510MilanBuild(P: UKBuilderPort): void {
     // turret's rear corners, sweeping 2.0 m from its pivot, clear it.
     for (let k = 0; k < 6; k++) {
       const z = 1.95 - k * 0.77;
-      P.add('hullExternalArmor', box(0.036, 0.28, 0.61), s * 1.515, 1.45, z);
+      P.add('hull', box(0.036, 0.28, 0.61), s * 1.515, 1.45, z);
       P.add('hullDark', box(0.010, 0.026, 0.47), s * 1.536, 1.58, z);
       P.add('hullDetail', box(0.045, 0.050, 0.16), s * 1.535, 1.32, z);
     }
@@ -4706,12 +4706,11 @@ function* buildChieftainUpper2026Steps(
     }
     // NBC/bustle pack and a true open rear basket with diagonal/vertical
     // returns.  Every rail lands on the pack or tray; no line ends in air.
-    // 264 (envelope honesty): the pack is a bolted box behind the turret's armour, not armour: turretEquipment
-    P.add('turretEquipment', box(1.42, 0.42, 0.62), 0.02, 0.28, -1.72);
+    P.add('turret', box(1.42, 0.42, 0.62), 0.02, 0.28, -1.72);
     P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.47);
     P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.95);
-    P.add('turretEquipment', box(1.16, 0.035, 0.40), 0.02, 0.47, -1.72);
-    P.add('turretEquipment', box(1.46, 0.10, 0.42), 0, 0.14, -2.16);
+    P.add('turret', box(1.16, 0.035, 0.40), 0.02, 0.47, -1.72);
+    P.add('turret', box(1.46, 0.10, 0.42), 0, 0.14, -2.16);
     for (const y of [0.12, 0.52]) P.add('turretDetail', box(1.52, 0.035, 0.035), 0, y, -2.37);
     for (let k = 0; k < 6; k++) {
       const x = -0.70 + k * 0.28;
