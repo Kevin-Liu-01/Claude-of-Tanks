@@ -15,8 +15,8 @@
 // The ratchet: docs/geometry-gate/envelope-allowance.json lists every frame that has flagged parts with its count and
 // growth. A frame flagging more parts than its row, or growing more than 1 cm past it, fails (a new offender); a frame
 // flagging fewer fails until its row is lowered (the allowance only shrinks: `--write-allowance` lowers, never raises).
-// `--all --check` holds the fleet to it (assertEnvelopeShard runs one shard of it; the four fleet shards land as core
-// receipts in item/envelope-ratchet-265); tools/envelope-census.selftest.mjs holds the rules.
+// src/vehicles/envelopeCensus*.selftest.mjs hold the fleet to it in four shards; tools/envelope-census.selftest.mjs
+// holds the rules.
 //
 // Measured as the anatomy generator measures: the build it calibrates from ({ proceduralOnly, geometryReceipt } in
 // measurement mode, so the plates are the authored ones), its rigid rig frames, each part receipt in its owner rig.
