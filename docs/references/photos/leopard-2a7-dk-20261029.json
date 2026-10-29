@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo2a7dk": {
+      "name": "Leopard 2A7 DK",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): Leopard 2A7 DK at tier X, a photo-class first-party build with its Danish kit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://www.forsvaret.dk/globalassets/fko---forsvaret/dokumenter/oevrige/-kampvogn-leopard-2a7---faktaark--handout-presse-.pdf",
+        "https://www.edrmagazine.eu/?p=9681",
+        "https://commons.wikimedia.org/wiki/File:Danish_Leopard_2A7DK_Live_fire_Latvia.jpg",
+        "https://commons.wikimedia.org/wiki/File:Danish_Army_-_Scania_R650_and_Broshuis_8-axle_PL2_pendular_axle_semi_low_loaders_with_Leopard_2A7V_(cropped).png"
+      ],
+      "widthM": 4.167,
+      "overallLengthM": 10.967,
+      "tallestM": 5.577,
+      "envelopeBasis": "Width is the as-built X extent with the Barracuda cover's drapes (the published Leopard 2A7 is about 3.8 m over the skirts). Length is the as-built Z extent, the 2A7's 10.97 m with the L55A1 forward. Tallest is the curved whips' tips as built. The ribbed stowage modules follow the Danish Army's transporter photograph and the cover the Latvian live-fire photograph (Wikimedia Commons); the Forsvaret fact sheet lists both (\"nye opbevaringsmoduler\", \"mobilt sløringssystem\").",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}

@@ -186,6 +186,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // release 262: the Christian II (a fresh Danish concept on the release's Leopard 2-pattern hull): its own spec and stock
     // (none of the Type 90 X's), its datums drawn, its gun clear of its hull at its published stops, its concept datums
     'src/vehicles/profiles/christian2.selftest.mjs',
+    // release 265 (owner: "add a bunch more denmark tanks"): the Danish Leopards within their photo packets at both
+    // qualities, each mark's Danish kit, the Denmark tree on the 1A3 DK with the Christian II as its special, the country
+    'src/vehicles/profiles/denmark.selftest.mjs',
     'src/vehicles/ztz20GunClearance.selftest.mjs',
     // 262 (owner: the new T-84BM Oplot-M and Oplot-T): each KBA-3 keeps its hull clear over -5..+14 at every yaw, its
     // measured curve over the stern drums and the Thai APU, and the full -5 degrees over the glacis

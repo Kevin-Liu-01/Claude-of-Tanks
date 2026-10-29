@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "leo2a5dk": {
+      "name": "Leopard 2A5 DK",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): Leopard 2A5 DK at tier IX, a photo-class first-party build with its Danish kit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://armyvehicles.dk/leopard2a5.htm",
+        "https://www.armyvehicles.dk/leopard2a5desert.htm",
+        "https://commons.wikimedia.org/wiki/File:Royal_Danish_Army_at_JMTC,_Grafenwoehr_140704-A-BS310-229.jpg",
+        "https://commons.wikimedia.org/wiki/File:Danish_army_trains_on_7th_Army_Joint_Multinational_Training_Command%27s_Grafenwoehr_Training_Area,_Germany_140703-A-HE359-023.jpg",
+        "https://esut.de/2022/05/meldungen/34113/daenemark-vergibt-auftrag-zur-modernisierung-von-panzermunition/"
+      ],
+      "widthM": 3.82,
+      "overallLengthM": 10.128,
+      "tallestM": 4.117,
+      "envelopeBasis": "Width is the as-built X extent over the hull's rear bar-armour cages (the published Leopard 2A5 is 3.75 m over the skirts; the Helmand cages stand outboard of them). Length is the as-built Z extent: the 2A5's 9.97 m with the gun forward plus the stern cage 0.35 m off the louvres. Tallest is the whip tips as built. The bar armour and the drum commander's sight follow the US Army's Grafenwöhr photographs of 3-4 July 2014 (public domain, Wikimedia Commons).",
+      "caliberMm": 120,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}

@@ -6,11 +6,15 @@ import { KIT, orientedSlab, convexSlab } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
+type Vec2Tuple = readonly [number, number];
+
 export interface Leo1HullOptions {
   /** The German A5's grouser rack across the upper glacis. */
   readonly grouserRack?: boolean;
   /** The pioneer tools on the sloped upper sides (the Danish tanks carry stowage bins there). */
   readonly sideTools?: boolean;
+  /** The shovel and crowbar on the deck beside the turret ring (the Danish welded turret's gun sweeps that deck low). */
+  readonly deckTools?: boolean;
 }
 
 /** The hull datums a turret or national kit seats on. */
@@ -30,7 +34,7 @@ export interface Leo1HullDatums {
 }
 
 export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions = {}): Generator<string, Leo1HullDatums, void> {
-  const { grouserRack = true, sideTools = true } = options;
+  const { grouserRack = true, sideTools = true, deckTools = true } = options;
   const { box, cylY, cylZ, torus, sph, buildRunningGear, headlight, liftEye, towCable, shovelTool } = KIT;
   const slab = orientedSlab;
   // 262 proportion rebuild (owner 2026-10-27: "based on proper historical referrences so they will no longer look so
@@ -215,8 +219,10 @@ export function* buildLeo1HullSteps(P: TankBuilderPort, options: Leo1HullOptions
         }
       }
     }
-    shovelTool(P, -1.05, deckTopY(-0.25) + 0.015, -0.25);
-    P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, deckTopY(-0.48) + 0.015, -0.48);
+    if (deckTools) {
+      shovelTool(P, -1.05, deckTopY(-0.25) + 0.015, -0.25);
+      P.addEquipment('hull', box(0.030, 0.025, 0.86), 1.08, deckTopY(-0.48) + 0.015, -0.48);
+    }
 
     // Leopard engine deck: long intake fields, twin fan rings, transverse exhaust bank and rear louvres, all below the
     // rotating basket.
