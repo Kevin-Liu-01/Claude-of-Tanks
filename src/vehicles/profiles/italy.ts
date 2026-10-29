@@ -616,11 +616,11 @@ function* buildArieteMkSteps(P: ItalyBuilderPort, mark: ArieteMark): TankProfile
       // st1 topPct 11.2 — both reverted). Caps are authored as end PLATES
       // flush INSIDE the certified -2.58 rail envelope: capped-rail read,
       // zero new extreme, st1 slab untouched.
-      P.addEquipment('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.24, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
+      P.add('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.24, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
       for (const rz of [0.90, 0.30, -0.44, -1.10, -1.76, -2.42]) {               // end caps stay out of the st1 slab — prism law)
-        P.addEquipment('turret', box(0.045, 0.115, 0.06), s * 1.50, 0.2625, L(rz));      // stanchions tying the rail to the bay lip
+        P.add('turret', box(0.045, 0.115, 0.06), s * 1.50, 0.2625, L(rz));      // stanchions tying the rail to the bay lip
       }
-      P.addEquipment('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.26, L(-2.556));         // s5322-B1 rack-end cap plates (inside the certified envelope)
+      P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.26, L(-2.556));         // s5322-B1 rack-end cap plates (inside the certified envelope)
       P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.26, L(-2.572));   // cap end faces (dark hardware read)
       for (const az of [-0.50, -1.44, -2.10]) {
         P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.27, L(az));          // rack arms overlap the shell/panel and the outer rail
