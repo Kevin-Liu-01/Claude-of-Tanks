@@ -1,17 +1,17 @@
 // tools/ground-banding-shots.mjs — the ground at battle range, staged identically on every map (item 264, the owner
 // 2026-10-28: "weird parallel lines on ground (steinburg) … on all maps").
 //
-//   node tools/ground-banding-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v3] [--place=<key>]
+//   node tools/ground-banding-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v3]
 //        [--wait-hours=16]
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
 //               "variants": ["base", "noland"], "maps": ["urban", ...] }, ...]
 //
-// One process, one render-class ticket, one page at a time (tools/capture-lock.mjs): every (job, map) pair is booted on
-// its build and device and staged (its battlefield shot, __SHOTS.set, the pinned scene) while the ticket waits —
-// acquire's prepare, a warming ticket passed over, so the staging holds nobody up — then frozen; the hold is that pair's
-// shots alone (~20 s), and the page is closed. The next pair re-enters under the same ticket, its first place; the
-// pairs run map by map, each map's jobs together. At its poses:
+// One process, one render-class ticket at a fresh stamp (tools/capture-lock.mjs): the first (job, map) pair is booted on
+// its build and device and staged (its battlefield shot, __SHOTS.set, the pinned scene) while the ticket waits; inside
+// the hold every pair is booted, staged and shot in turn on one page, and between pairs checkpoint() gives the lock up
+// past the 20-minute cap when anyone waits, re-queueing at the back. The pairs run map by map, each map's jobs together.
+// At its poses:
 //   chase   — the battle's own chase rig (cameraRig snapArcade, the default 13 m orbit step) behind the staged hull,
 //             pitched a little down: the camera the owner's Steinburg frame was taken from;
 //   field-N — the same camera class (3.4 m over the ground, 12 m back) over the nearest worked field of the map's
@@ -46,7 +46,7 @@ const DEVICES = Object.freeze({
 const FIELD_GROUPS = Object.freeze([[7, 4], [5, 13, 12, 11, 6, 9]]);
 
 function parse(argv) {
-  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v3', place: null };
+  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v3' };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -56,7 +56,6 @@ function parse(argv) {
     else if (key === 'root') out.root = path.resolve(value);
     else if (key === 'wait-hours') out.waitHours = Number(value);
     else if (key === 'tag') out.tag = value;
-    else if (key === 'place') out.place = value;
     else throw new Error(`unknown flag --${key}`);
   }
   if (!out.out || !out.jobs) throw new Error('--out=<dir> and --jobs=<jobs.json> are required');
@@ -69,7 +68,6 @@ function parse(argv) {
     for (const v of job.variants) if (v !== 'base' && v !== 'noland') throw new Error(`${job.name}: unknown variant ${v}`);
     if (!existsSync(path.join(job.dist, 'index.html'))) throw new Error(`${job.dist} has no build: npm run build first`);
   }
-  out.place ??= `${TOOL}:${path.basename(out.out)}:${out.tag}`;
   return out;
 }
 
@@ -263,8 +261,14 @@ async function main(argv) {
   for (const dist of new Set(options.jobs.map((job) => job.dist))) {
     servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
   }
-  let browser = null, held = false, entry = null;
+  let browser = null, held = false, entry = null, session = null, pagesSinceLaunch = 0;
   const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
+  const openPair = async ({ job, mapId }) => {
+    browser ??= await launch();
+    pagesSinceLaunch++;
+    entry = await bootPage(browser, servers.get(job.dist).url, job.device);
+    await stageMap(entry, mapId);
+  };
   const close = async () => {
     if (held) lock.release();
     held = false;
@@ -274,76 +278,54 @@ async function main(argv) {
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
     process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
   }
-  let ticket = null, shot = 0, failed = 0, pagesSinceLaunch = 0;
+  let shot = 0, failed = 0;
   try {
-    for (const { job, mapId } of pairs) {
-      const queued = Date.now();
-      // (2026-10-29: the game's boot recovery reloads a page whose chunks stall under load, and a page re-staged inside
-      // the hold hung there 20 minutes. A page that lost its world is staged again outside the lock — the ticket given
-      // back and taken again — and a hold is capped at six minutes.)
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        let session = null;
-        try {
-          await lock.acquire(options.waitHours * 3600 * 1000, {
-            ticket, place: ticket ? null : options.place, lockClass: 'render',
-            prepare: async () => {
-              if (entry) await entry.page.close().catch(() => {});
-              browser ??= await launch();
-              pagesSinceLaunch++;
-              entry = await bootPage(browser, servers.get(job.dist).url, job.device);
-              await stageMap(entry, mapId);
-              session = await freezePage(entry.page);
-            },
-          });
-        } catch (error) {
-          // (a prepare that throws leaves the queue: the next attempt re-enters under the same ticket, at its stamp)
-          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} not staged: ${String(error?.message ?? error).slice(0, 200)}`);
-          ticket = lock.lastTicket ?? ticket;
-          if (entry) await entry.page.close().catch(() => {});
-          entry = null;
-          if (attempt === 3) failed++;
-          continue;
-        }
-        held = true;
-        ticket = lock.lastTicket;
-        const started = Date.now();
-        let outcome = 'failed';
-        try {
-          const shooting = (async () => {
-            await thawPage(entry.page, session);
-            const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-            if (live !== mapId) return 'restage';
-            const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
-            receipt.ms = Date.now() - started;
-            receipt.stagedMs = started - queued;
-            receipt.attempt = attempt;
-            job.manifest.maps[mapId] = receipt;
-            writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-            return 'shot';
-          })();
-          shooting.catch(() => {}); // (a hold past its cap closes the page under it)
-          outcome = await Promise.race([shooting, sleep(360_000).then(() => 'timeout')]);
-        } catch (error) {
-          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed in the hold: ${String(error?.message ?? error).slice(0, 200)}`);
-        } finally {
-          lock.release();
-          held = false;
-          if (outcome !== 'shot') { await entry.page.close().catch(() => {}); entry = null; }
-        }
-        if (outcome === 'shot') {
-          shot++;
-          const receipt = job.manifest.maps[mapId];
-          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after `
-            + `${(receipt.stagedMs / 60000).toFixed(1)} min staging and queueing (${Object.keys(receipt.poses).join(',')}); ${shot}/${pairs.length}`);
-          await entry.page.close().catch(() => {});
-          entry = null;
-          break;
-        }
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome} (attempt ${attempt}): staged again outside the lock`);
-        if (attempt === 3) failed++;
+    // one ticket at a fresh stamp (2026-10-29, Main: a ticket re-entering at its old stamp after every hold held the
+    // queue's head for hours): the first pair stages while it waits; inside the hold every pair is staged and shot in
+    // turn, and between pairs checkpoint() gives the lock up past the 20-minute cap when anyone waits, re-queueing at the
+    // back with a fresh stamp
+    await lock.acquire(options.waitHours * 3600 * 1000, {
+      lockClass: 'render',
+      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
+    });
+    held = true;
+    for (let i = 0; i < pairs.length; i++) {
+      const { job, mapId } = pairs[i];
+      const started = Date.now();
+      let outcome = 'failed';
+      try {
+        if (session) { await thawPage(entry.page, session); session = null; } else await openPair(pairs[i]);
+        const shooting = (async () => {
+          const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+          if (live !== mapId) await stageMap(entry, mapId);
+          const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
+          receipt.ms = Date.now() - started;
+          job.manifest.maps[mapId] = receipt;
+          writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+          return 'shot';
+        })();
+        shooting.catch(() => {}); // (a pair past its cap closes the page under it)
+        outcome = await Promise.race([shooting, sleep(600_000).then(() => 'timeout')]);
+      } catch (error) {
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed: ${String(error?.message ?? error).slice(0, 200)}`);
+      } finally {
+        if (entry) await entry.page.close().catch(() => {});
+        entry = null;
       }
-      // a fresh browser every eight pairs: nothing a closed page left behind accumulates
+      if (outcome === 'shot') {
+        shot++;
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} staged and shot in ${((Date.now() - started) / 1000).toFixed(1)} s; ${shot}/${pairs.length}`);
+      } else {
+        failed++;
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome}`);
+      }
+      // a fresh browser every eight pages: nothing a closed page left behind accumulates
       if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
+      if (i < pairs.length - 1) {
+        const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
+          beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
+        if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
+      }
     }
   } finally {
     await close();
