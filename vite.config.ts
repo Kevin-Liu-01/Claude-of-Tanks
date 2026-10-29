@@ -489,7 +489,9 @@ export default defineConfig({
             // 2026-10-28 (integrator 263): the Christian II's turret datums and envelope (christian2Armor.ts, christian2-262) and the
             // Leopard 2-pattern hull datums it reads are tables the specs (boot) and the lazy builder both import; on their own
             // they were one more game, cn and Gallery boot request.
-            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:christian2Armor|leopard2HullDatums|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-29 (integrator 264): the 2A6 UA's shell dimensions and dock seat (leopardA6UaLayout.ts, leo2a6-ua-264b), a
+            // table germany.ts (boot) and the mission receiver read; alone it was one more game, cn and Gallery boot request.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:christian2Armor|leopard2HullDatums|leopardA6UaLayout|marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
             // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
             // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more
