@@ -282,6 +282,9 @@ const STANDOFF_REACH_M = 1.5;
 const STANDOFF_CELL_M = 0.15;
 const STANDOFF_MIN_M2 = 0.002;
 const STANDOFF_RAY_COST = 12;
+/** A spaced solid at most this far across its triangles' centres (m: a pod, a drum, a box) is one part, its plate the one
+ * behind its largest face; a larger one (a merged side's whole assembly) answers face by face. */
+const SOLID_PART_M = 2;
 
 /** A cluster with no majority under this area (m²: a dome, a hatch, a lamp's casing) takes its plurality as one part;
  * a larger one (a welded hull or turret casting) is split at its creases and each piece votes again. */
@@ -333,6 +336,8 @@ function plain(attribute: THREE.BufferAttribute | THREE.InterleavedBufferAttribu
  * vertex per welded corner), and the triangles' corners. */
 interface Clusters {
   readonly parent: Int32Array;
+  /** Each triangle's solid (a union-find joined across every shared edge, creases too: a box with all its faces). */
+  readonly solid: Int32Array;
   readonly canon: Int32Array;
   readonly triangles: number;
   readonly corner: (t: number, k: number) => number;
@@ -351,8 +356,8 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, vo
   const count = position.count;
   const canon = new Int32Array(count);
   const triangles = Math.floor((index ? index.count : count) / 3);
-  const parent = new Int32Array(triangles);
-  for (let t = 0; t < triangles; t++) parent[t] = t;
+  const parent = new Int32Array(triangles), solid = new Int32Array(triangles);
+  for (let t = 0; t < triangles; t++) parent[t] = solid[t] = t;
   const corner = index ? (t: number, k: number) => index.getX(t * 3 + k) : (t: number, k: number) => t * 3 + k;
   const p = plain(position)!;
   // corners welded by position (0.2 mm)
@@ -384,6 +389,7 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, vo
       const key = a < b ? a * count + b : b * count + a;
       const other = edges.get(key);
       if (other === undefined) { edges.set(key, t); continue; }
+      union(solid, t, other);
       if (face[t * 3] * face[other * 3] + face[t * 3 + 1] * face[other * 3 + 1] + face[t * 3 + 2] * face[other * 3 + 2] >= CREASE_DOT) {
         union(parent, t, other);
       }
@@ -396,11 +402,11 @@ function* clusters(geometry: THREE.BufferGeometry): Generator<void, Clusters, vo
     for (let t = 0; t < triangles; t++) {
       for (let k = 0; k < 3; k++) {
         const v = corner(t, k);
-        if (owner[v] < 0) owner[v] = t; else union(parent, owner[v], t);
+        if (owner[v] < 0) owner[v] = t; else { union(parent, owner[v], t); union(solid, owner[v], t); }
       }
     }
   }
-  return { parent, canon, triangles, corner, indexed: !!index };
+  return { parent, solid, canon, triangles, corner, indexed: !!index };
 }
 
 /**
@@ -472,7 +478,7 @@ export function* bakePaintPanelSteps(
       const welding = clusters(geometry);
       let welded = welding.next();
       while (!welded.done) { yieldSlice(); yield; sliceStarted = performance.now(); welded = welding.next(); }
-      const { parent, canon, triangles, corner, indexed } = welded.value;
+      const { parent, solid, canon, triangles, corner, indexed } = welded.value;
       stats.triangles += triangles;
       const mode = armorPaintMode(mesh.material as THREE.Material);
       const owner = ownerOf(mesh, frames);
@@ -514,6 +520,35 @@ export function* bakePaintPanelSteps(
       for (let v = 0; v < triangles; v++) starts[v + 1] += starts[v];
       const order = new Int32Array(triangles), fill = starts.slice(0, triangles);
       for (let t = 0; t < triangles; t++) order[fill[roots[t]]++] = t;
+      // (264) each solid's largest face (its area-weighted centre and normal): a spaced solid takes the plate behind that
+      // face on all its faces, so a pod, a drum or a box stays one part (the round-9 critic: boxes split face by face)
+      const faceArea = new Float64Array(triangles), faceSum = new Float64Array(triangles * 6);
+      for (let t = 0; t < triangles; t++) {
+        const r = roots[t], a = areas[t];
+        faceArea[r] += a;
+        faceSum[r * 6] += centres[t * 3] * a; faceSum[r * 6 + 1] += centres[t * 3 + 1] * a; faceSum[r * 6 + 2] += centres[t * 3 + 2] * a;
+        faceSum[r * 6 + 3] += normals[t * 3] * a; faceSum[r * 6 + 4] += normals[t * 3 + 1] * a; faceSum[r * 6 + 5] += normals[t * 3 + 2] * a;
+      }
+      const solidBest = new Map<number, number>(), solidArea = new Map<number, number>();
+      const solidBox = new Map<number, Float64Array>();
+      for (let t = 0; t < triangles; t++) {
+        const s = find(solid, t);
+        let box = solidBox.get(s);
+        if (!box) solidBox.set(s, box = new Float64Array([Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]));
+        for (let axis = 0; axis < 3; axis++) {
+          const v = centres[t * 3 + axis];
+          if (v < box[axis]) box[axis] = v;
+          if (v > box[axis + 3]) box[axis + 3] = v;
+        }
+        if (roots[t] !== t) continue;
+        solidArea.set(s, (solidArea.get(s) ?? 0) + faceArea[t]);
+        const best = solidBest.get(s);
+        if (best === undefined || faceArea[t] > faceArea[best]) solidBest.set(s, t);
+      }
+      const compact = (s: number): boolean => {
+        const box = solidBox.get(s);
+        return !!box && Math.hypot(box[3] - box[0], box[4] - box[1], box[5] - box[2]) <= SOLID_PART_M;
+      };
       if (spend(triangles >> 3)) { yield; sliceStarted = performance.now(); }
       // the zone of the first main plate behind a part standing outside every cell of its frame, or -1
       const behindZone = (x: number, y: number, z: number, nx: number, ny: number, nz: number, area: number): number => {
@@ -724,13 +759,13 @@ export function* bakePaintPanelSteps(
         // takes the zone of the first main plate behind it, which the shell meets through it: one authority ray inward
         // along its normal. Gear the paint leaves bare stays bare; what rides the gun is the turret's armour already
         if (authority && value !== PANEL_BARE && top !== VOTE_LIVE && owner !== 'gun' && total > 0) {
-          let nx = 0, ny = 0, nz = 0;
-          for (let k = start; k < end; k++) {
-            const t = order[k], area = areas[t];
-            nx += normals[t * 3] * area; ny += normals[t * 3 + 1] * area; nz += normals[t * 3 + 2] * area;
+          const s = find(solid, cluster), whole = compact(s), best = whole ? solidBest.get(s) ?? cluster : cluster, a = faceArea[best];
+          if (a > 0) {
+            const f = best * 6;
+            const behind = behindZone(faceSum[f] / a, faceSum[f + 1] / a, faceSum[f + 2] / a, faceSum[f + 3], faceSum[f + 4], faceSum[f + 5],
+              whole ? solidArea.get(s) ?? a : a);
+            if (behind >= 0) { value = behind + 1; stats.standoff += kept; }
           }
-          const behind = behindZone(cx / total, cy / total, cz / total, nx, ny, nz, total);
-          if (behind >= 0) { value = behind + 1; stats.standoff += kept; }
         }
         if (value === 0 && voted > 0 && top !== VOTE_LIVE) {
           yield* resolveParts(start, end, total);
