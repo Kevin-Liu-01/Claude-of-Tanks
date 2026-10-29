@@ -38,6 +38,9 @@ import { resolveTankId } from './tankIdAliases.ts';
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
 // b46847ff7755abb9.
+// Re-pinned 2026-10-28 (release 262): one row moved. The Challenger 1 Mk 2 (schema-1 challenger1) rides the Mk 3's
+// build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 -> 24af537fcedf03bc.
+// Selections and every other row are unchanged.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -62,9 +65,13 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
 // 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
 const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
-assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,
-  'the same fleet, plus the tanks added since');
+// Added since production in a donor's coat: the tank's stock is its donor's (release 262: the Challenger 1 Mk 1, the
+// FV4030/5 and the FV4030/6 wear the Challenger 1 Mk 2's British stock).
+const ADDED_IN_DONOR_COAT = { challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2', challenger_x_sleek: 'challenger1_mk2' };
+assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
+  + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
+for (const [id, donor] of Object.entries(ADDED_IN_DONOR_COAT)) assert.equal(now.tanks[id]?.stock, now.tanks[donor]?.stock, `${id} wears ${donor}'s stock`);
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
 const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');

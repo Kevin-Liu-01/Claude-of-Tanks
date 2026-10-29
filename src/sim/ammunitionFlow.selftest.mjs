@@ -205,6 +205,8 @@ const laterChannelCounts = {
   t72b3m_hetman_ii: 3, t72b3_zubr_ii: 3,
   // (the Type 10 Kaitaku, 1cb19b32da/8295c63e03) the Type 10's own three rounds
   type10_dozer: 3,
+  // release 262: the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 carry the Challenger 1's three L11A5 rounds
+  challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
 };
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
@@ -254,8 +256,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
-// forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04) and the Type 10 Kaitaku's three.
-assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer, 560,
+// forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three and
+// release 262's Challenger 1 Mk 1, FV4030/5 and FV4030/6 (three each).
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.challenger1_mk1 - laterChannelCounts.challenger_x - laterChannelCounts.challenger_x_sleek, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
