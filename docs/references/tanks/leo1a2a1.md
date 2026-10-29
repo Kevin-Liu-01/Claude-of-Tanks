@@ -9,6 +9,8 @@ The owner's requests, verbatim and in order:
 - After the first build: "completely redesign this current leopard. nit needs to take a lot more innspo from thhat 1a2,
   from teh chevron mentlet thhat joins at a line, the turret thhat is a lot better annd not just a ttorus, the boxes, smoke
   canisters, tech etc"
+- After the 1A2 redesign: "no its bad make it based off the 1a5 more with a slightly rounded corners and the correct
+  mantlet (which the 1a5 should also have this kind of mantlet that ends in a line) then show me"
 
 The 262 Leopard 1A5 is unchanged. This is a separate vehicle:
 - **Hull and running gear:** the Leopard 1A5's as they stood at `0a3d073341`, before the 262 proportion rebuild. That
@@ -34,19 +36,29 @@ spellings. It is drawn on the Leopard 1A5's node as a build at tier I.
 | Wikipedia (en/de), Leopard 1 | — | 2.39 m to the roof; the TEM 2A optical rangefinder with heads either side of the turret; the 1A2's heavier casting; the A2A1's PERI R12; DM23 APFSDS (1979) |
 | World of Tanks Tankopedia, "Leopard 1" | — | The owner's look reference: the low cast turret, the cupola and loader's hatch, the basket |
 
-## Turret: reference against build
+## Turret, third build (current): the 1A5's lines, rounded
 
-| Feature | Munster 1A2A1 | Build (`profiles/leopard1A2A1.ts`) |
-|---|---|---|
-| Casting section | Undercut lower face out to a hard horizontal chine. A broad upper face leans in above it and rolls into a flat roof. No egg, no torus | Twelve stations. Each section runs foot → chine (hard edge) → slightly convex upper face → shoulder → roof 1.7 m across. The upper faces and roof are smoothed as one casting; the chine and lower faces stay hard |
-| Chine | The widest line, near a third of the height, runs from the mantlet round the cheeks and along the sides | 0.32–0.38 m over the ring, ±1.21 m at its widest |
-| Front | Upper and lower faces close on the chine either side of the mantlet: a chevron in profile ending in a line at the gun's height | The front stations converge on the chine, ending in a band 0.13 m deep at z 1.16, 0.38 m over the ring |
-| Mantlet | A broad cast block with rounded vertical corners. Its brow and chin meet at a horizontal line on the gun's axis | Gun-owned block 1.0 m wide and 0.62 m tall, corners rounded at 0.10 m. Brow and chin meet at a ridge ±0.035 m on the gun axis. TZF port on the brow at the gun's right, coaxial MG3 port on the chin at its left, collar at the ridge |
-| Rangefinder | TEM 2A end housings: short drums across the upper cheeks with domed caps, windows forward | Drums r 0.115 m at z 0.66, 0.52 m up, capped and rimmed, windows and hinged lids forward |
-| Smoke | A block of four Wegmann 76 mm tubes on a bracket at each front roof corner, laid forward and out | Mount block, bracket plate and back frame at each corner; four 0.30 m tubes laid 13° up and 13° out |
-| Roof | PERI R12 box on its pedestal on the right front. Commander's cupola behind it; loader's hatch and MG3 on the left; rotating beacon on a post; ventilator; two antenna bases | All present |
-| Flanks and bustle | Stowage bins on the rear flanks; a loaded basket round the tail | A closed bin with lid and latches on each rear flank over the chine. The basket is loaded with bags, a tarp roll, two jerrycans, an ammunition can and a tool box |
-| Appliqué | None (B&V plates are the 1A1A1's) | None |
+The owner turned down the 1A2 casting with its hard chine and asked for the 1A5's turret, slightly rounded, with the
+mantlet that ends in a line, the same mantlet the 1A5 now has. The turret takes the 262 Leopard 1A5's design:
+- **Core:** the chevron casting at the 1A5's stations. The base is set in under a ridge 0.30 m up, and the upper face
+  leans in to a roof at 0.79 m. The feet are lifted to clear the old deck.
+- **Side plates:** they run the ridge back to a tail that tapers into the core.
+- **Wedges:** they carry the ridge forward either side of the mask. Ahead of z 1.12 their faces close on the ridge, so
+  each wedge ends in its line.
+
+These are cast as one with no bolts. Every ridge and roof edge is rounded by two short smoothed segments, 3.5–5 cm along
+each face.
+
+The mantlet is the 1A5's wide chevron mask, 1.24 m wide. Its brow and chin meet in a horizontal line ±2 cm at the gun.
+The 1A5's own mask was changed the same way: its ridge band was 0.26 m deep.
+
+The kit:
+- the Munster 1A2A1's PERI R12, on its pedestal over the right front roof;
+- the commander's cupola, the loader's hatch and MG3, the beacon and the ventilator;
+- the 1A5's rear dischargers and flank racks, and its loaded basket.
+
+The first build (an egg-section casting with a bell mantlet) and the second (the 1A2 chine casting with rangefinder
+drums and front-corner dischargers) were both replaced before reaching main.
 
 **Deck clearance.** The casting's foot stands over the old hull's deck crown at every bearing. The trunnion stands 0.40 m
 over the ring, so the mantlet's underside clears the rising engine deck when the gun is laid over the rear.

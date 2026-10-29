@@ -1,12 +1,12 @@
 // Leopard 1A2A1 (release 263). Owner 2026-10-28: "keep ur new leopard variants and make one that uses the old hull and
-// has like a rounder 'unarmored' version that looks more like the world of tanks leopard 1", then "need it to look
-// accurate", then "completely redesign this current leopard. it needs to take a lot more inspo from that 1a2, from the
-// chevron mantlet that joins at a line, the turret that is a lot better and not just a torus, the boxes, smoke
-// canisters, tech etc". The hull and running gear are the Leopard 1A5's as they stood before the 262 proportion rebuild
-// (0a3d073341). The turret is the Panzermuseum Munster's Leopard 1A2A1: the bare 1A2 casting (no Blohm & Voss
-// appliqué), the chevron mantlet and the PERI R12 (Commons "Kampfpanzer Leopard 1 A2 A1.JPG", "Panzermuseum Munster
-// 2010 0705/0706.JPG", "Leopard 1 A2 A1 (27470540069).jpg", "Leopard 1 A2 A1 \"Rotland\" (51438927896).jpg";
-// docs/references/tanks/leo1a2a1.md). First-party procedural geometry: Kevin B. Liu (NOTICE.md).
+// has like a rounder 'unarmored' version that looks more like the world of tanks leopard 1"; then, on its turret, "it
+// needs to take a lot more inspo from that 1a2 ... the boxes, smoke canisters, tech etc"; then "make it based off the
+// 1a5 more with a slightly rounded corners and the correct mantlet (which the 1a5 should also have this kind of mantlet
+// that ends in a line)". The hull and running gear are the Leopard 1A5's as they stood before the 262 proportion rebuild
+// (0a3d073341). The turret takes the 262 Leopard 1A5's lines (its chevron casting, the wedges either side of the mask and
+// the side plates) as one casting with slightly rounded corners and no bolts, its chevron mask closing to a line at the
+// gun, with the Munster 1A2A1's PERI R12 (docs/references/tanks/leo1a2a1.md). First-party procedural geometry: Kevin B.
+// Liu (NOTICE.md).
 import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
@@ -14,53 +14,40 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, withBuildSteps, type TankProfileBuild } from '../tankBuildCooperation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-// One station of the cast turret: z, the chine's half-width and height, the foot and the roof, and how far the upper
-// face leans in per metre of rise. The section is the 1A2 casting's: an undercut lower face from the foot out to a hard
-// horizontal chine, then a broad upper face leaning in (slightly convex) and rolling over into a flat roof.
-interface CastStation { readonly z: number; readonly chineX: number; readonly footY: number; readonly chineY: number;
-  readonly roofY: number; readonly lean: number }
-const CAST_UPPER_BULGE = 0.055;
-const castRing = ({ chineX: wc, footY: yb, chineY: yc, roofY: yt, lean }: CastStation): readonly SectionPoint[] => {
-  const footX = wc - 0.75 * (yc - yb);
-  const rise = yt - 0.06 - yc;
-  const topX = wc - lean * rise;
-  // the upper face rises from the chine bulging outward (the cast cheek's swell) before it rolls over into the roof
-  const upper = (t: number): SectionPoint => [wc - lean * rise * t + CAST_UPPER_BULGE * Math.sin(Math.PI * t), yc + rise * t];
-  const right: readonly SectionPoint[] = [
-    [footX, yb], [wc, yc], upper(1 / 3), upper(2 / 3), [topX, yt - 0.06], [topX - 0.07, yt - 0.016], [topX - 0.19, yt],
-  ];
+/** A corner rounded by two short segments: the points `bevel` along each neighbouring edge and their midpoint pulled
+ * halfway back toward the corner, so the smoothed normals read as a small radius between two flat faces. */
+const roundCorner = (prev: SectionPoint, corner: SectionPoint, next: SectionPoint, bevel: number): SectionPoint[] => {
+  const along = (to: SectionPoint): SectionPoint => {
+    const dx = to[0] - corner[0], dy = to[1] - corner[1], len = Math.hypot(dx, dy);
+    const d = Math.min(bevel, len * 0.3);
+    return [corner[0] + dx / len * d, corner[1] + dy / len * d];
+  };
+  const a = along(prev), b = along(next);
+  return [a, [(a[0] + b[0]) / 4 + corner[0] / 2, (a[1] + b[1]) / 4 + corner[1] / 2], b];
+};
+/** The 1A5 casting's chevron section (base, ridge, roof edge), its ridge and roof edges rounded. 14 points. */
+const castChevronRing = (wb: number, yb: number, wm: number, ym: number, wr: number, yr: number): readonly SectionPoint[] => {
+  const base: SectionPoint = [wb, yb], ridge: SectionPoint = [wm, ym], roofEdge: SectionPoint = [wr, yr];
+  const right = [base, ...roundCorner(base, ridge, roofEdge, 0.05), ...roundCorner(ridge, roofEdge, [-wr, yr], 0.04)];
   const left = right.map(([x, y]) => [-x, y] as const).reverse();
   return [left.at(-1)!, ...right, ...left.slice(0, -1)];
 };
-// The upper faces, shoulders and roof are one continuous casting; the floor, the lower faces and so the chine stay hard.
-const CAST_SMOOTH_EDGES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-/** The ring's right side x at height y (the section is convex above the foot). */
-const castRingXAt = (ring: readonly SectionPoint[], y: number): number => {
-  const right = ring.slice(1, 8);
-  if (y <= right[0][1]) return right[0][0];
-  for (let i = 0; i < right.length - 1; i++) {
-    const [x0, y0] = right[i], [x1, y1] = right[i + 1];
-    if (y >= Math.min(y0, y1) && y <= Math.max(y0, y1) && y1 !== y0) return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
-  }
-  return right.at(-1)![0];
+// the two rounded corners on each side (edges 2-3 and 5-6, mirrored 8-9 and 11-12) read as one smooth radius
+const CAST_ROUND_EDGES = [2, 3, 5, 6, 8, 9, 11, 12];
+/** One side's plate or wedge section (x > 0), the 1A5 chevron: an inner face buried in the core, the lower face out to a
+ * rounded ridge 0.30 m up, the upper face in to a rounded top edge. 9 points; mirror for the left. */
+const plateChevronRing = (xi: number, xb: number, yb: number, xr: number, xt: number, yt: number): readonly SectionPoint[] => {
+  const ib: SectionPoint = [xi, yb], ob: SectionPoint = [xb, yb], ridge: SectionPoint = [xr, 0.30];
+  const top: SectionPoint = [xt, yt], it: SectionPoint = [xi, yt];
+  return [ib, ob, ...roundCorner(ob, ridge, top, 0.045), ...roundCorner(ridge, top, it, 0.035), it];
 };
-// The mantlet's section at one station: a rectangle with rounded vertical corners (radius r), viewed from ahead.
-const roundedRect = (hw: number, yb: number, yt: number, r: number, arc = 3): readonly SectionPoint[] => {
-  const pts: SectionPoint[] = [];
-  const corners: readonly (readonly [number, number, number])[] = [
-    [hw - r, yb + r, -Math.PI / 2], [hw - r, yt - r, 0], [-hw + r, yt - r, Math.PI / 2], [-hw + r, yb + r, Math.PI],
-  ];
-  for (const [cx, cy, a0] of corners) {
-    for (let k = 0; k < arc; k++) {
-      const a = a0 + (k / (arc - 1)) * (Math.PI / 2);
-      pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-    }
-  }
-  return pts;
-};
+const PLATE_ROUND_EDGES = [2, 3, 5, 6];
+const mirrorRing = (ring: readonly SectionPoint[]): readonly SectionPoint[] =>
+  ring.map(([x, y]) => [-x, y] as const).reverse();
+const mirrorEdges = (edges: readonly number[], count: number): number[] => edges.map((e) => count - 2 - e);
 
 function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
-  const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, towCable, stowage, jerryCan, tarpRoll, ammoCan,
     shovelTool, xform } = KIT;
   const slab = orientedSlab;
@@ -342,82 +329,92 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
 
 
   // ------------------------------------------------------- the cast turret --
-  // The Leopard 1A2 casting (Munster's 1A2A1). Every section is the 1A2's: an undercut lower face from the foot out to a
-  // hard horizontal chine (the widest line, 0.32-0.38 m over the ring, running from the mantlet round the cheeks and down
-  // the sides to the bustle), then a broad upper face leaning in and rolling over into a flat roof 1.7 m across. Ahead of
-  // the ring both faces close on the chine, so the front is a chevron in profile ending in a horizontal line at the gun's
-  // height either side of the mantlet. The ring sits on the deck at the source station (0.50 m ahead of the hull origin);
-  // the foot stands over the deck within its reach at every bearing (the deck rises from 1.69 m at the ring to 1.77 m
-  // 1.75 m behind it).
+  // The 262 Leopard 1A5's lines as one casting (owner 2026-10-28: "make it based off the 1a5 more with a slightly rounded
+  // corners"): the 1A5's chevron core (its base set in under a 0.30 m ridge, its upper face leaning in to the roof), the
+  // side plates running the ridge back along it and the wedges carrying it forward either side of the mask, each closing
+  // in front on the ridge line. The ridges and roof edges are rounded by a few centimetres; there are no bolts. The ring
+  // sits on the old hull's deck at the source station (0.50 m ahead of the hull origin); the deck rises from 1.69 m at the
+  // ring to 1.77 m 1.75 m behind it, so every foot stands over the deck within its reach at any bearing.
   const turretY = centerDeckTopY(0.50) + 0.016;
   P.turretG.position.set(0, turretY, 0.50);
-  const castRoofY = 0.81;
-  const castStations: readonly CastStation[] = [
-    { z: -2.20, chineX: 0.74, footY: 0.20, chineY: 0.36, roofY: 0.64, lean: 0.34 },
-    { z: -2.12, chineX: 0.86, footY: 0.15, chineY: 0.35, roofY: 0.71, lean: 0.34 },
-    { z: -1.88, chineX: 0.96, footY: 0.12, chineY: 0.34, roofY: 0.76, lean: 0.35 },
-    { z: -1.45, chineX: 1.06, footY: 0.10, chineY: 0.33, roofY: 0.79, lean: 0.36 },
-    { z: -0.96, chineX: 1.15, footY: 0.07, chineY: 0.32, roofY: castRoofY, lean: 0.36 },
-    { z: -0.40, chineX: 1.20, footY: 0.05, chineY: 0.32, roofY: castRoofY, lean: 0.36 },
-    { z: 0.10, chineX: 1.21, footY: 0.05, chineY: 0.33, roofY: castRoofY, lean: 0.37 },
-    { z: 0.50, chineX: 1.17, footY: 0.05, chineY: 0.34, roofY: 0.80, lean: 0.44 },
-    { z: 0.78, chineX: 1.09, footY: 0.06, chineY: 0.36, roofY: 0.76, lean: 0.62 },
-    { z: 0.98, chineX: 0.96, footY: 0.12, chineY: 0.37, roofY: 0.69, lean: 0.72 },
-    { z: 1.10, chineX: 0.82, footY: 0.22, chineY: 0.38, roofY: 0.58, lean: 0.85 },
-    { z: 1.16, chineX: 0.68, footY: 0.32, chineY: 0.38, roofY: 0.45, lean: 1.0 },
+  const castRoofY = 0.79;
+  const ridgeY = 0.30;
+  // [z, base half-width, ridge half-width, roof half-width, roof, foot]: the 1A5's stations, their feet lifted for the
+  // old deck
+  const coreRows: readonly (readonly [number, number, number, number, number, number])[] = [
+    [-2.20, 0.50, 0.62, 0.44, 0.58, 0.16],
+    [-1.80, 0.76, 0.88, 0.58, 0.70, 0.11],
+    [-1.10, 0.96, 1.08, 0.72, 0.78, 0.07],
+    [-0.40, 1.00, 1.12, 0.76, castRoofY, 0.05],
+    [0.20, 1.00, 1.12, 0.76, castRoofY, 0.05],
+    [0.65, 0.92, 1.02, 0.70, 0.77, 0.05],
+    [0.95, 0.74, 0.84, 0.58, 0.70, 0.08],
+    [1.08, 0.62, 0.70, 0.50, 0.64, 0.12],
   ];
-  const castSections: readonly SolidSection[] = castStations.map((st) => ({ z: st.z, ring: castRing(st) }));
-  /** The casting's station interpolated at z. */
-  const castAt = (z: number): CastStation => {
-    const i = Math.max(0, Math.min(castStations.length - 2, castStations.findIndex((s) => s.z > z) - 1));
-    const a = castStations[i], b = castStations[i + 1], t = THREE.MathUtils.clamp((z - a.z) / (b.z - a.z), 0, 1);
-    const mix = (k: 'chineX' | 'footY' | 'chineY' | 'roofY' | 'lean'): number => a[k] + (b[k] - a[k]) * t;
-    return { z, chineX: mix('chineX'), footY: mix('footY'), chineY: mix('chineY'), roofY: mix('roofY'), lean: mix('lean') };
+  const coreSections: readonly SolidSection[] = coreRows.map(([z, wb, wm, wr, yr, yb]) => ({
+    z, ring: castChevronRing(wb, yb, wm, ridgeY, wr, yr) }));
+  const coreRoofAt = (z: number): number => {
+    const i = Math.max(0, Math.min(coreRows.length - 2, coreRows.findIndex((r) => r[0] > z) - 1));
+    const a = coreRows[i], b = coreRows[i + 1], t = THREE.MathUtils.clamp((z - a[0]) / (b[0] - a[0]), 0, 1);
+    return a[4] + (b[4] - a[4]) * t;
   };
-  const castXAt = (z: number, y: number): number => castRingXAt(castRing(castAt(z)), y);
-  const castRoofAt = (z: number): number => castAt(z).roofY;
+  // The side plates' run ([z, inner, outer base, foot, ridge, top edge, top]): the 1A5's, from a short tail tapering into
+  // the core back to the wedges.
+  const sideRows: readonly (readonly [number, number, number, number, number, number, number])[] = [
+    [-1.34, 0.78, 1.02, 0.10, 1.10, 0.86, 0.70],
+    [-1.20, 0.92, 1.18, 0.08, 1.28, 0.98, 0.74],
+    [-0.40, 0.96, 1.22, 0.07, 1.34, 1.02, 0.75],
+    [0.40, 0.98, 1.22, 0.07, 1.34, 1.02, 0.75],
+  ];
+  // The wedges either side of the mask: the ridge runs from the side plates (±1.34 at z 0.40) to the tip beside the mask
+  // (±0.76 at z 1.36); ahead of z 1.12 the upper and lower faces close on the ridge, so each wedge ends in its line.
+  const wedgeRows: readonly (readonly [number, number, number, number, number, number, number])[] = [
+    [0.40, 0.98, 1.22, 0.07, 1.34, 1.02, 0.75],
+    [0.70, 0.86, 1.05, 0.08, 1.16, 0.89, 0.74],
+    [1.00, 0.74, 0.88, 0.08, 0.98, 0.75, 0.74],
+    [1.12, 0.69, 0.82, 0.08, 0.91, 0.71, 0.72],
+    [1.22, 0.66, 0.76, 0.11, 0.85, 0.69, 0.56],
+    [1.30, 0.65, 0.73, 0.19, 0.80, 0.68, 0.41],
+    [1.36, 0.66, 0.71, 0.27, 0.76, 0.67, 0.33],
+  ];
+  const plateSections = (rows: typeof sideRows, s: -1 | 1): SolidSection[] => rows.map(([z, xi, xb, yb, xr, xt, yt]) => {
+    const ring = plateChevronRing(xi, xb, yb, xr, xt, yt);
+    return { z, ring: s > 0 ? ring : mirrorRing(ring) };
+  });
+  const plateEdges = (s: -1 | 1): readonly number[] => (s > 0 ? PLATE_ROUND_EDGES : mirrorEdges(PLATE_ROUND_EDGES, 9));
   const buildLeo1A2A1TurretStage0 = (): void => {
     P.add('turret', cylY(0.98, 1.04, 0.165, P.q ? 28 : 18), 0, -0.0275, 0);
-    const casting = sectionSolid(castSections, { smoothSideEdges: CAST_SMOOTH_EDGES });
-    casting.userData.primaryStockRole = 'leo1a2a1-cast-turret';
-    P.add('turret', casting);
+    const core = sectionSolid(coreSections, { smoothSideEdges: CAST_ROUND_EDGES });
+    core.userData.primaryStockRole = 'leo1a2a1-cast-core';
+    P.add('turret', core);
+    for (const s of [-1, 1] as const) {
+      const side = sectionSolid(plateSections(sideRows, s), { smoothSideEdges: plateEdges(s) });
+      side.userData.primaryStockRole = 'leo1a2a1-cast-side';
+      P.add('turret', side);
+      const wedge = sectionSolid(plateSections(wedgeRows, s), { smoothSideEdges: plateEdges(s) });
+      wedge.userData.primaryStockRole = 'leo1a2a1-cast-wedge';
+      P.add('turret', wedge);
+    }
   };
   buildLeo1A2A1TurretStage0();
   yield 'buildLeo1A2A1TurretStage0';
 
-  const rangefinderWindows: [number, number, number][] = [];
   const buildLeo1A2A1TurretStage1 = (): void => {
     for (const s of [-1, 1] as const) {
-      // The TEM 2A rangefinder's end housings: a short armoured drum across each upper cheek, its domed cap outboard and
-      // its window looking forward from the drum's face under a hinged lid.
-      const rfZ = 0.66, rfY = 0.52, rfR = 0.115;
-      const rfX = castXAt(rfZ, rfY);
-      P.add('turret', cylX(rfR, 0.24, P.q ? 20 : 14), s * (rfX + 0.05), rfY, rfZ);
-      P.add('turret', xform(sph(1, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [0.05, rfR * 0.96, rfR * 0.96]), s * (rfX + 0.17), rfY, rfZ);
-      P.addEquipment('turretDark', torus(rfR * 0.98, 0.012, P.q ? 20 : 14), s * (rfX + 0.17), rfY, rfZ, 0, Math.PI / 2, 0);
-      P.add('turretDark', box(0.10, 0.075, 0.03), s * (rfX + 0.08), rfY, rfZ + rfR - 0.005);
-      P.add('turretGlass', box(0.08, 0.055, 0.012), s * (rfX + 0.08), rfY, rfZ + rfR + 0.012);
-      rangefinderWindows.push([s * (rfX + 0.08), rfY, rfZ + rfR + 0.02]);
-      P.addEquipment('turretDark', box(0.12, 0.018, 0.08), s * (rfX + 0.08), rfY + 0.06, rfZ + rfR - 0.01, -0.45, 0, 0);
-
-      // Wegmann 76 mm dischargers: a block of four on a bracket at each front roof corner, the tubes laid forward and out.
-      const dZ = 0.74, dTop = castRoofAt(dZ);
-      const shoulderX = castXAt(dZ, dTop - 0.06);
-      P.addEquipment('turret', box(0.18, 0.16, 0.24), s * (shoulderX - 0.04), dTop - 0.06, dZ);
-      P.addEquipment('turretDark', box(0.30, 0.025, 0.26), s * (shoulderX + 0.07), dTop + 0.02, dZ);
-      P.addEquipment('turretDark', box(0.26, 0.17, 0.035), s * (shoulderX + 0.07), dTop + 0.10, dZ - 0.11);
-      for (let k = 0; k < 4; k++) {
-        const col = k % 2, row = Math.floor(k / 2);
-        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.04, 0.36, P.q ? 12 : 8)), 0, 0, 0, -0.14, s * 0.17, 0),
-          s * (shoulderX + 0.02 + col * 0.10), dTop + 0.07 + row * 0.085, dZ - 0.10);
+      liftEye(P, 'turretDetail', s * 0.64, castRoofY + 0.01, 0.20, s * 0.45);
+      liftEye(P, 'turretDetail', s * 0.62, coreRoofAt(-1.10) - 0.01, -1.10, s * 2.65);
+      // Wegmann 76 mm dischargers: four per side on the casting behind the side plates, as on the 1A5
+      P.addEquipment('turret', box(0.08, 0.28, 0.42), s * 0.90, 0.45, -1.46, 0, 0, s * 0.25);
+      for (let k = 0; k < 8; k++) {
+        const row = Math.floor(k / 4), col = k % 4;
+        const y = 0.34 + row * 0.18, z = -1.30 - col * 0.11;
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.038, 0.21, P.q ? 12 : 8)), 0, 0, 0, -0.54, s * 0.16, 0), s * 0.97, y, z);
       }
-      liftEye(P, 'turretDetail', s * 0.66, castRoofAt(0.30) + 0.01, 0.30, s * 0.45);
-      liftEye(P, 'turretDetail', s * 0.62, castRoofAt(-1.40) + 0.01, -1.40, s * 2.65);
     }
 
     // PERI R12: the commander's stabilised periscope, a tall box on its pedestal over the right front roof, its window
-    // looking forward under a hood.
-    const periX = 0.46, periZ = 0.08, periBase = castRoofAt(periZ);
+    // looking forward under a hood (the Munster 1A2A1's).
+    const periX = 0.46, periZ = 0.24, periBase = coreRoofAt(periZ);
     P.addEquipment('turret', box(0.30, 0.12, 0.32), periX, periBase + 0.04, periZ);
     P.addEquipment('turret', cylY(0.11, 0.12, 0.08, P.q ? 16 : 10), periX, periBase + 0.13, periZ);
     P.addEquipment('turret', box(0.44, 0.30, 0.50), periX, periBase + 0.31, periZ);
@@ -427,166 +424,161 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
     P.addEquipment('turret', box(0.36, 0.022, 0.08), periX, periBase + 0.43, periZ + 0.28, 0.20, 0, 0);
     for (const dx of [-0.16, 0.16]) P.addEquipment('turretDark', box(0.022, 0.20, 0.022), periX + dx, periBase + 0.31, periZ - 0.26);
 
-    // The commander's cupola behind it (eight periscopes, a domed hatch); the loader's hatch, MG3 and beacon on the left.
-    const cmdX = 0.48, cmdZ = -0.56;
-    P.addCupola('turret', cylY(0.28, 0.30, 0.10, P.q ? 22 : 14), cmdX, castRoofY + 0.04, cmdZ);
+    // The commander's cupola behind it, the loader's hatch and MG3, the gunner's periscopes, the beacon and ventilator.
+    const cmdX = 0.48, cmdZ = -0.62;
+    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), cmdX, castRoofY + 0.03, cmdZ);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      P.add('turretGlass', box(0.06, 0.045, 0.018), cmdX + Math.sin(a) * 0.255, castRoofY + 0.10, cmdZ + Math.cos(a) * 0.255, 0, a, 0);
+      P.add('turretGlass', box(0.055, 0.045, 0.018), cmdX + Math.sin(a) * 0.23, castRoofY + 0.0825, cmdZ + Math.cos(a) * 0.23, 0, a, 0);
     }
-    P.addCupola('turret', cylY(0.23, 0.25, 0.05, P.q ? 22 : 14), cmdX, castRoofY + 0.145, cmdZ);
-    P.addCupola('turret', xform(sph(0.21, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.28, 1]), cmdX, castRoofY + 0.17, cmdZ);
-    P.addCupola('turret', cylY(0.25, 0.26, 0.05, P.q ? 20 : 14), -0.50, castRoofY + 0.025, -0.42);
-    P.addCupola('turret', cylY(0.22, 0.22, 0.03, P.q ? 20 : 14), -0.50, castRoofY + 0.065, -0.42);
-    for (const x of [-0.30, -0.12]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofAt(0.30) + 0.005, 0.30, -0.10, 0, 0);
+    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), cmdX, castRoofY + 0.13, cmdZ);
+    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), cmdX, castRoofY + 0.175, cmdZ);
+    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.52, castRoofY + 0.0275, -0.46);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, castRoofY + 0.0975, -0.46);
+    for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
     {
-      P.addEquipment('turret', cylY(0.12, 0.14, 0.12, P.q ? 16 : 10), -0.50, castRoofY + 0.06, -0.12);
+      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, castRoofY + 0.065, -0.30);
+      P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, castRoofY + 0.12, -0.30);
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the loader's working MG3
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
-        scale: 0.96, seed: 15, shield: false, ammo: true, working: true, ridingCradle: true,
+        scale: 0.96, seed: 15, shield: true, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = 'leo1LoaderMg3';
-      mg.position.set(-0.50, castRoofY + 0.12, -0.12);
-      mg.rotation.y = 0.30;
+      mg.position.set(-0.45, castRoofY + 0.12, -0.30);
+      mg.rotation.y = 0.34;
       P.turretG.add(mg);
     }
-    // the rotating beacon on its post, and the roof ventilator's mushroom cap
-    P.addEquipment('turretDark', cylY(0.05, 0.06, 0.03, 10), -0.22, castRoofY + 0.015, -0.92);
-    P.addEquipment('turretDark', cylY(0.014, 0.014, 0.20, 8), -0.22, castRoofY + 0.13, -0.92);
-    P.addEquipment('turretDark', cylY(0.045, 0.045, 0.03, 12), -0.22, castRoofY + 0.245, -0.92);
-    P.add('turretGlass', xform(sph(0.045, 12), 0, 0, 0, 0, 0, 0, [1, 1.3, 1]), -0.22, castRoofY + 0.29, -0.92);
-    P.addEquipment('turret', cylY(0.10, 0.11, 0.05, P.q ? 16 : 10), 0.10, castRoofAt(-1.20) + 0.02, -1.20);
-    P.addEquipment('turret', xform(sph(0.14, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1, 0.32, 1]), 0.10, castRoofAt(-1.20) + 0.05, -1.20);
-    for (const s of [-1, 1] as const) {
-      // antenna bases on the rear roof shoulders
-      P.addEquipment('turret', cylY(0.05, 0.06, 0.08, 10), s * 0.58, castRoofAt(-1.66) + 0.02, -1.66);
-      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.58, castRoofAt(-1.66) + 1.37, -1.66, 0, 0, s * 0.025);
-      // a closed stowage bin on each rear flank over the chine, standing on the casting's upper face
-      const binZ = -1.52, binY = 0.50;
-      const binInner = castXAt(binZ, binY + 0.15);
-      P.addEquipment('turret', box(0.20, 0.30, 0.62), s * (binInner + 0.08), binY, binZ);
-      P.addEquipment('turret', box(0.22, 0.02, 0.64), s * (binInner + 0.08), binY + 0.16, binZ);
-      P.addEquipment('turretDark', box(0.02, 0.05, 0.06), s * (binInner + 0.185), binY + 0.08, binZ + 0.20);
-      P.addEquipment('turretDark', box(0.02, 0.05, 0.06), s * (binInner + 0.185), binY + 0.08, binZ - 0.20);
-    }
+    const beaconRoof = coreRoofAt(-1.00);
+    P.addEquipment('turretDark', cylY(0.05, 0.06, 0.03, 10), -0.20, beaconRoof + 0.010, -1.00);
+    P.addEquipment('turretDark', cylY(0.014, 0.014, 0.20, 8), -0.20, beaconRoof + 0.125, -1.00);
+    P.addEquipment('turretDark', cylY(0.045, 0.045, 0.03, 12), -0.20, beaconRoof + 0.24, -1.00);
+    P.add('turretGlass', xform(sph(0.045, 12), 0, 0, 0, 0, 0, 0, [1, 1.3, 1]), -0.20, beaconRoof + 0.285, -1.00);
+    P.addEquipment('turret', cylY(0.10, 0.11, 0.05, P.q ? 16 : 10), 0.12, coreRoofAt(-1.25) + 0.02, -1.25);
+    P.addEquipment('turret', xform(sph(0.14, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1, 0.32, 1]), 0.12, coreRoofAt(-1.25) + 0.05, -1.25);
   };
   buildLeo1A2A1TurretStage1();
   yield 'buildLeo1A2A1TurretStage1';
 
-  // The stowage basket round the casting's tail, loaded.
-  const bustleWidth = 1.86;
-  const bustleFrontZ = -2.02;
-  const bustleRearZ = -2.74;
-  const bustleFloorY = 0.24;
-  const bustleTopY = 0.68;
+  // The 1A5's bustle basket on the casting's tail, loaded, and the stowage racks on its flanks.
+  const bustleWidth = 1.88;
+  const bustleFrontZ = -2.24;
+  const bustleRearZ = -2.84;
   const bustleCenterZ = (bustleFrontZ + bustleRearZ) / 2;
   const bustleDepth = bustleFrontZ - bustleRearZ;
+  const bustleFloorY = 0.31;
   const buildLeo1A2A1MarkingsStage1 = (): void => {
-    P.addEquipment('turret', box(1.36, 0.20, 0.22), 0, 0.38, -2.12);
-    P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, bustleTopY, bustleRearZ);
-    P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, bustleFloorY - 0.02, bustleRearZ);
-    P.addEquipment('turret', box(bustleWidth - 0.08, 0.025, bustleDepth), 0, bustleFloorY, bustleCenterZ);
-    P.addEquipment('turret', box(bustleWidth - 0.04, 0.030, 0.035), 0, (bustleFloorY + bustleTopY) / 2, bustleRearZ);
+    P.addEquipment('turret', box(1.60, 0.25, 0.20), 0, 0.44, -2.20);
+    P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, 0.78, bustleRearZ);
+    P.addEquipment('turret', box(bustleWidth, 0.040, 0.040), 0, 0.29, bustleRearZ);
+    P.addEquipment('turret', box(1.80, 0.025, bustleDepth), 0, bustleFloorY, bustleCenterZ);
+    P.addEquipment('turret', box(1.84, 0.035, 0.10), 0, 0.74, bustleFrontZ);
+    P.addEquipment('turret', box(1.82, 0.030, 0.035), 0, 0.53, bustleCenterZ);
     for (let k = 0; k < 7; k++) {
-      const x = -0.87 + k * (1.74 / 6);
-      P.addEquipment('turret', box(0.030, bustleTopY - bustleFloorY, 0.030), x, (bustleFloorY + bustleTopY) / 2, bustleRearZ);
-      P.addEquipment('turret', box(0.034, 0.034, bustleDepth - 0.03), x, bustleFloorY + 0.06, bustleCenterZ, -0.10, 0, 0);
+      const x = -0.86 + k * (1.72 / 6);
+      P.addEquipment('turret', box(0.030, 0.49, 0.030), x, 0.535, bustleRearZ);
+      P.addEquipment('turret', box(0.034, 0.034, bustleDepth - 0.03), x, 0.37, bustleCenterZ, -0.10, 0, 0);
     }
     for (const s of [-1, 1] as const) {
-      P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.93, bustleTopY, bustleCenterZ);
-      P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.93, bustleFloorY - 0.02, bustleCenterZ);
-      // brackets from the casting's tail out to the basket's front corners
-      for (const y of [bustleFloorY + 0.04, 0.50]) {
-        const inner = castXAt(bustleFrontZ, y) - 0.03;
-        P.addEquipment('turret', box(0.95 - inner, 0.035, 0.035), s * (inner + 0.95) / 2, y, bustleFrontZ);
-      }
-      P.addEquipment('turret', box(0.040, bustleTopY - bustleFloorY, 0.040), s * 0.93, (bustleFloorY + bustleTopY) / 2, bustleRearZ);
+      P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.78, bustleCenterZ);
+      P.addEquipment('turret', box(0.040, 0.040, bustleDepth + 0.04), s * 0.92, 0.29, bustleCenterZ);
+      P.addEquipment('turret', box(0.055, 0.055, bustleDepth + 0.02), s * 0.76, 0.47, bustleCenterZ, -0.50, 0, 0);
+      const rack = FITTINGS.stowageRack({ mats: P.mats, w: 0.64, d: 0.27, h: 0.26,
+        rails: 3, fill: 0.82, seed: s > 0 ? 31 : 32, rotation: [0, s * Math.PI / 2, 0] });
+      rack.position.set(s * 1.03, 0.31, -1.68);
+      P.turretG.add(rack);
+      P.addEquipment('turret', box(0.07, 0.08, 0.08), s * 0.60, coreRoofAt(-1.42) - 0.04, -1.42);
+      P.addEquipment('turret', cylY(0.014, 0.016, 2.62, 8), s * 0.60, coreRoofAt(-1.42) + 0.66, -1.42, 0, 0, s * 0.025);
     }
-    // the load: bags, a tarp roll, jerrycans, ammunition and tool boxes
     stowage(P, 'turretCloth', rng, [
-      [-0.56, bustleFloorY + 0.17, -2.40, 0.50, 0.30, 0.48], [0, bustleFloorY + 0.16, -2.42, 0.48, 0.29, 0.48],
-      [0.56, bustleFloorY + 0.17, -2.40, 0.46, 0.30, 0.46],
+      [-0.56, 0.51, -2.54, 0.52, 0.32, 0.48], [0, 0.50, -2.55, 0.50, 0.31, 0.48],
+      [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
     ]);
-    jerryCan(P, 'turretCloth', 0.70, bustleFloorY + 0.26, -2.58, 0.16);
-    jerryCan(P, 'turretCloth', 0.52, bustleFloorY + 0.26, -2.58, 0.16);
-    tarpRoll(P, 'turretCloth', -0.04, bustleTopY - 0.07, -2.34, 1.00, 0.09, true, P.q ? 12 : 8);
-    ammoCan(P, 'turretDark', -0.74, bustleFloorY + 0.14, -2.58, 0.12);
-    P.addEquipment('turretDark', box(0.34, 0.20, 0.22), -0.36, bustleFloorY + 0.11, -2.60);
-    P.addEquipment('turretDark', box(0.36, 0.02, 0.24), -0.36, bustleFloorY + 0.22, -2.60);
+    jerryCan(P, 'turretCloth', 0.68, 0.57, -2.65, 0.16);
+    tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8);
+    ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 
     P.turretG.userData.leopard1A2A1TurretFinishReceipt = {
-      revision: 'leo1a2a1-263-cast-1a2',
+      revision: 'leo1a2a1-263-1a5-lines',
       castTurret: true,
-      chineCasting: true,
-      blohmVossApplique: false,
-      castMaxHalfWidth: Math.max(...castStations.map((s) => s.chineX)),
+      leopard1A5Lines: true,
+      roundedCorners: true,
+      boltedPlates: false,
       castRoofY,
-      castFrontZ: castStations.at(-1)!.z,
-      castRearZ: castStations[0].z,
-      chineYRange: [Math.min(...castStations.map((s) => s.chineY)), Math.max(...castStations.map((s) => s.chineY))],
+      ridgeY,
+      ridgeHalfWidth: Math.max(...sideRows.map((r) => r[4])),
+      wedgeTipZ: wedgeRows.at(-1)![0],
       castFootOverDeckAtEveryBearing: true,
-      rangefinderWindows: rangefinderWindows.map((p) => p.map((c) => Number(c.toFixed(4)))),
-      frontCornerDischargers: 8,
-      periR12: [0.46, 0.08],
+      periR12: [0.46, 0.24],
+      rearDischargers: 8,
       connectedBustleBasket: true,
       bustleRearZ,
       bustleWidth,
       bustleFloorY,
     };
 
-    P.decal('turret', 'crossgrey', null, 0.28, [castXAt(-0.55, 0.55) + 0.004, 0.55, -0.55], Math.PI / 2, 0, 0.45);
-    P.decal('turret', 'crossgrey', null, 0.28, [-castXAt(-0.55, 0.55) - 0.004, 0.55, -0.55], -Math.PI / 2, 0, -0.45);
-    P.decal('turret', 'number', P.spec.visual.number || '211', 0.21, [castXAt(-1.05, 0.56) + 0.004, 0.56, -1.05], Math.PI / 2, 0, 0.45);
+    P.decal('turret', 'crossgrey', null, 0.28, [1.235, 0.45, -0.40], Math.PI / 2, 0, 0.60);
+    P.decal('turret', 'crossgrey', null, 0.28, [-1.235, 0.45, -0.40], -Math.PI / 2, 0, -0.60);
+    P.decal('turret', 'number', P.spec.visual.number || '211', 0.21, [0.81, 0.52, -1.50], Math.PI / 2, 0, 0.70);
   };
   buildLeo1A2A1MarkingsStage1();
   yield 'buildLeo1A2A1MarkingsStage1';
 
-  // The 1A2's cast mantlet and the L7A3: a broad block round the gun with rounded vertical corners, its upper face sloping
-  // down and its lower face up to meet at a horizontal line on the gun's axis (the chevron the casting's front repeats
-  // either side), owned by the gun so it pitches with it. The trunnion stands 0.40 m over the ring so the block's underside
-  // clears the old hull's rising engine deck (1.74-1.77 m at its radius) when the gun is laid over the rear.
+  // The mantlet and the L7A3: the 1A5's chevron mask, as wide as the gap between the wedges, its brow sloping down and its
+  // chin up until they meet in a horizontal line where the gun leaves (owner 2026-10-28: "the correct mantlet ... that
+  // ends in a line"). The turret owns a flat receiver plate; the moving mask owns a matching rear pad and the block. The
+  // trunnion stands 0.40 m over the ring; the mask's underside clears the old hull's rising engine deck (1.74-1.77 m at its
+  // radius) when the gun is laid over the rear.
   const trunnionY = 0.40;
-  const trunnionZ = 1.00;
-  const mantlet = { halfWidth: 0.50, rootZ: -0.08, bodyZ: 0.10, low: -0.30, high: 0.32, ridgeZ: 0.42, ridgeHalfWidth: 0.47,
-    ridgeHalf: 0.035 };
+  const trunnionZ = 1.15;
+  const mantletReceiver = { width: 1.32, height: 0.62, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
+  const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
+  const mantletMask = { halfWidth: 0.62, low: -0.30, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
+    ridgeHalfWidth: 0.58, ridgeLow: -0.02, ridgeHigh: 0.02, ridgeZ: 0.50 };
+  const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
+    [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
+  ];
   const buildLeo1A2A1GunStage1 = (): void => {
+    P.add('turret', new THREE.BoxGeometry(mantletReceiver.width, mantletReceiver.height, mantletReceiver.depth),
+      0, mantletReceiver.y, mantletReceiver.z);
     P.gunG.position.set(0, trunnionY, trunnionZ);
-    const k = mantlet;
-    const mid = (a: number, b: number, t: number): number => a + (b - a) * t;
+    P.addGunExtra(new THREE.BoxGeometry(mantletRearPad.width, mantletRearPad.height, mantletRearPad.depth),
+      0, 0, mantletRearPad.z);
+    const k = mantletMask;
+    // (the corners chamfered and their normals smoothed, so the block's vertical and horizontal edges read slightly round)
     P.addGunExtra(sectionSolid([
-      { z: k.rootZ, ring: roundedRect(k.halfWidth - 0.01, k.low + 0.01, k.high - 0.01, 0.10) },
-      { z: k.bodyZ, ring: roundedRect(k.halfWidth, k.low, k.high, 0.10) },
-      { z: mid(k.bodyZ, k.ridgeZ, 0.55), ring: roundedRect(mid(k.halfWidth, k.ridgeHalfWidth, 0.55),
-        mid(k.low, -k.ridgeHalf, 0.55), mid(k.high, k.ridgeHalf, 0.55), 0.08) },
-      { z: k.ridgeZ, ring: roundedRect(k.ridgeHalfWidth, -k.ridgeHalf, k.ridgeHalf, 0.03) },
-    ], { smoothSideEdges: [0, 1, 3, 4, 6, 7, 9, 10] }));
-    // The upper (brow) and lower (chin) faces' outward normals (y, z), for seating the ports square to them.
-    const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHalf).normalize();
-    const chin = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.ridgeHalf - k.low).normalize();
+      { z: k.rearZ, ring: maskRing(k.halfWidth - 0.02, k.low + 0.02, k.rearHigh, 0.05) },
+      { z: k.bodyZ, ring: maskRing(k.halfWidth, k.low, k.high, 0.06) },
+      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.015) },
+    ], { smoothSideEdges: [1, 3, 5, 7] }));
+    // The brow and chin faces' outward normals (y, z), for seating the bolts and the sight / coax ports square to them.
+    const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHigh).normalize();
+    const chin = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.ridgeLow - k.low).normalize();
     const onBrow = (t: number, out: number): [number, number] => [
-      mid(k.high, k.ridgeHalf, t) + brow.x * out, mid(k.bodyZ, k.ridgeZ, t) + brow.y * out];
+      k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
     const onChin = (t: number, out: number): [number, number] => [
-      mid(k.low, -k.ridgeHalf, t) - chin.x * out, mid(k.bodyZ, k.ridgeZ, t) + chin.y * out];
-    // the TZF telescope's port on the brow at the gun's right, the coaxial MG3's on the chin at its left
-    P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.45, 0.012));
-    P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.30, ...onChin(0.50, 0.014));
-    for (const x of [-0.40, 0.40]) {
-      P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), x, ...onBrow(0.30, 0.007));
-      P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), x, ...onChin(0.30, 0.007));
-    }
-    // the collar round the tube where it leaves the ridge
-    P.addGunExtra(cylZ(0.15, 0.12, P.q ? 20 : 14, 0.17), 0, 0, k.ridgeZ + 0.04);
+      k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
+    // the telescope's port on the left of the brow and the coaxial MG's on the right of the chin
+    P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
+    P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.32, ...onChin(0.55, 0.014));
+    // the collar around the tube where it leaves the line
+    P.addGunExtra(cylZ(0.14, 0.10, P.q ? 20 : 14, 0.16), 0, 0, k.ridgeZ + 0.04);
     buildGun(P, { len: 4.35, r: 0.064, sleeve: true, evac: 0.60, evacR: 1.78, collar: true, baseR: 0.14 });
     muzzleBore(P, { len: 4.35, r: 0.064 });
     P.gunG.userData.leopard1A2A1MantletReceipt = {
       seated: true,
       chevronProfile: true,
-      ridgeOnGunAxis: true,
-      mantletWidth: k.halfWidth * 2,
-      mantletHeight: Number((k.high - k.low).toFixed(2)),
-      ridgeZ: k.ridgeZ,
-      ridgeHalfHeight: k.ridgeHalf,
+      endsInLine: true,
+      maskWidth: k.halfWidth * 2,
+      maskHeight: Number((k.high - k.low).toFixed(2)),
+      maskRidgeZ: k.ridgeZ,
+      maskRidgeHalfHeight: k.ridgeHigh,
+      maskDepth: Number((k.ridgeZ - k.rearZ).toFixed(2)),
+      rearContactWidth: mantletRearPad.width,
+      rearContactZ: mantletRearPad.z,
+      receiverWidth: mantletReceiver.width,
+      receiverY: mantletReceiver.y,
+      receiverZ: mantletReceiver.z,
       trunnion: [0, trunnionY, trunnionZ],
       barrelRadius: 0.064,
     };

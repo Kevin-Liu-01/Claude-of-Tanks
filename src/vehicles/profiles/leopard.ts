@@ -12831,14 +12831,15 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
   // rear pad and the armour block itself (owner 2026-10-27: "make a better chunkier mantlet that has the proper chevron
   // shaping", then "you make the chevron the wrong way and the matnnlet needds to be wider"): a block as wide as the gap
   // between the wedge plates, flat across the front, its chevron in profile like the plates around it: the brow
-  // slopes down and the chin up to a horizontal ridge band where the gun leaves.
+  // slopes down and the chin up until they meet in a horizontal line where the gun leaves (owner 2026-10-28: "the correct
+  // mantlet ... this kind of mantlet that ends in a line"; the band was 0.26 m deep).
   const trunnionY = 0.40;
   const mantletReceiver = { width: 1.32, height: 0.62, depth: 0.16, y: trunnionY + 0.01, z: 0.99 };
   // (the rear pad stays inside the receiver and clears the deck at +20 degrees of elevation over the side bearings)
   const mantletRearPad = { width: 1.20, height: 0.48, depth: 0.14, z: -0.22 };
   // (its rear top stays under the turret's front roof at every legal pitch)
   const mantletMask = { halfWidth: 0.62, low: -0.32, high: 0.34, rearZ: -0.16, rearHigh: 0.24, bodyZ: 0.10,
-    ridgeHalfWidth: 0.58, ridgeLow: -0.13, ridgeHigh: 0.13, ridgeZ: 0.50 };
+    ridgeHalfWidth: 0.58, ridgeLow: -0.02, ridgeHigh: 0.02, ridgeZ: 0.50 };
   const maskRing = (w: number, yb: number, yt: number, c: number): readonly (readonly [number, number])[] => [
     [-w + c, yb], [w - c, yb], [w, yb + c], [w, yt - c], [w - c, yt], [-w + c, yt], [-w, yt - c], [-w, yb + c],
   ];
@@ -12852,7 +12853,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
     P.addGunExtra(sectionSolid([
       { z: k.rearZ, ring: maskRing(k.halfWidth - 0.02, k.low + 0.02, k.rearHigh, 0.05) },
       { z: k.bodyZ, ring: maskRing(k.halfWidth, k.low, k.high, 0.06) },
-      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.04) },
+      { z: k.ridgeZ, ring: maskRing(k.ridgeHalfWidth, k.ridgeLow, k.ridgeHigh, 0.015) },
     ]));
     // The brow and chin faces' outward normals (y, z), for seating the bolts and the sight / coax ports square to them.
     const brow = new THREE.Vector2(k.ridgeZ - k.bodyZ, k.high - k.ridgeHigh).normalize();
@@ -12904,6 +12905,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       maskWidth: mantletMask.halfWidth * 2,
       maskHeight: Number((mantletMask.high - mantletMask.low).toFixed(2)),
       maskRidgeZ: mantletMask.ridgeZ,
+      maskRidgeHalfHeight: mantletMask.ridgeHigh,
       maskDepth: Number((mantletMask.ridgeZ - mantletMask.rearZ).toFixed(2)),
       rearContactWidth: mantletRearPad.width,
       rearContactZ: mantletRearPad.z,

@@ -119,6 +119,8 @@ assert.ok(mount.min.z < turret.max.z && mount.max.z > turretRig.position.z + 1.0
 const mantlet = gunRig.userData.leopard1A5MantletReceipt;
 assert.ok(mantlet?.blohmVossMask && mantlet.profileChevron, 'the mantlet carries the B&V armoured mask, a chevron in profile');
 assert.ok(mantlet.maskWidth >= 1.2 && mantlet.maskDepth >= 0.6, `the mask is wide and deep (${mantlet.maskWidth} x ${mantlet.maskDepth})`);
+// (owner 2026-10-28: "this kind of mantlet that ends in a line") the brow and chin close to a line at the gun
+assert.ok(mantlet.maskRidgeHalfHeight <= 0.025, `the mask's brow and chin meet in a line (±${mantlet.maskRidgeHalfHeight})`);
 const receiver = new THREE.Box3(
   new THREE.Vector3(-mantlet.receiverWidth / 2, mantlet.receiverY - 0.30, mantlet.receiverZ - 0.08),
   new THREE.Vector3(mantlet.receiverWidth / 2, mantlet.receiverY + 0.30, mantlet.receiverZ + 0.08),

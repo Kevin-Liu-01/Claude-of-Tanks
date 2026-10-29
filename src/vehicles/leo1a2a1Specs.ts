@@ -1,9 +1,9 @@
 // The Leopard 1A2A1 (release 263; the owner, 2026-10-28: a Leopard 1 on the old hull "that looks more like the world of
-// tanks leopard 1", then "completely redesign this current leopard. it needs to take a lot more inspo from that 1a2"):
-// the Panzermuseum Munster's Leopard 1A2A1, the 1A2's heavier bare casting (no Blohm & Voss appliqué), the chevron
-// mantlet, the thermal sleeve and rubber skirts, and the A2A1's PERI R12. It keeps the Leopard 1A5's pre-262 hull and
-// running gear (profiles/leopard1A2A1.ts; docs/references/tanks/leo1a2a1.md) and clones the 1A5 (the L7A3, the hull's
-// armour) with the thinner bare casting and the period round.
+// tanks leopard 1", then "make it based off the 1a5 more with a slightly rounded corners and the correct mantlet"): the
+// 262 Leopard 1A5's turret lines cast as one with rounded corners and no bolts, its chevron mask closing to a line, the
+// thermal sleeve and rubber skirts, and the Munster 1A2A1's PERI R12. It keeps the Leopard 1A5's pre-262 hull and running
+// gear (profiles/leopard1A2A1.ts; docs/references/tanks/leo1a2a1.md) and clones the 1A5 (the L7A3, the hull's armour)
+// with the thinner turret armour and the period round.
 import './modern2Specs.generated.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
@@ -25,7 +25,7 @@ stripSilhouetteDimensions(spec.dims);
 // About 40 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.70 m over the PERI R12.
 Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.70 });
 Object.assign(spec, { weightTons: 40.0, hp: 1450 });
-// The bare casting: no spaced plates over the cheeks, sides or mantlet.
+// No spaced plates: the 1A5's lines are one casting here, so its turret armour is the casting's alone.
 for (const plate of spec.armor.turretPlates) {
   if (plate.kind === 'external') continue;
   plate.keMm = Math.round(plate.keMm * 0.8);

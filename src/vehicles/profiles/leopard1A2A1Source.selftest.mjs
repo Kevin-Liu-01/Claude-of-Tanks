@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { TANK_SPECS } from '../specs.ts';
 
-// Release 263 (owner 2026-10-28: a Leopard 1 on the old hull, then "completely redesign this current leopard. it needs to
-// take a lot more inspo from that 1a2, from the chevron mantlet that joins at a line, the turret that is a lot better and
-// not just a torus, the boxes, smoke canisters, tech etc"): the 1A5's pre-262 hull under the Munster Leopard 1A2A1's
-// bare casting, chevron mantlet and PERI R12; references in docs/references/tanks/leo1a2a1.md.
+// Release 263 (owner 2026-10-28: a Leopard 1 on the old hull; then "make it based off the 1a5 more with a slightly rounded
+// corners and the correct mantlet ... that ends in a line"): the 1A5's pre-262 hull under the 262 Leopard 1A5's turret
+// lines cast as one with rounded corners, the chevron mask closing to a line, and the Munster 1A2A1's PERI R12;
+// references in docs/references/tanks/leo1a2a1.md.
 const visual = createTank('leo1a2a1', null, {
   proceduralOnly: true,
   geometryReceipt: true,
@@ -48,34 +48,30 @@ assert.deepEqual(gear.wheelZs, [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92], 't
 assert.deepEqual(gear.idler, { z: 3.17, y: 0.79, r: 0.29 }, 'the old hull\'s lifted idler');
 assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.84, r: 0.30 }, 'the old hull\'s lifted sprocket');
 
-// The bare 1A2 casting: no appliqué; an undercut lower face out to a hard horizontal chine and a broad upper face leaning
-// in to a flat roof 0.81 m over the ring.
+// The 1A5's lines cast as one: the chevron core, side plates and wedges, their ridges and roof edges rounded, no bolts.
 const turretFinish = turretRig.userData.leopard1A2A1TurretFinishReceipt;
-assert.equal(turretFinish?.revision, 'leo1a2a1-263-cast-1a2');
-assert.ok(turretFinish.castTurret && turretFinish.chineCasting && turretFinish.blohmVossApplique === false);
+assert.equal(turretFinish?.revision, 'leo1a2a1-263-1a5-lines');
+assert.ok(turretFinish.castTurret && turretFinish.leopard1A5Lines && turretFinish.roundedCorners && turretFinish.boltedPlates === false);
 const turret = mesh('turret');
 const tBox = bounds(turret);
-near(tBox.max.y - turretRig.position.y, 0.81, 0.01, 'the casting\'s roof over the ring');
-assert.ok(tBox.max.x - tBox.min.x <= 2.70 && tBox.max.x - tBox.min.x >= 2.30,
-  `the casting and its rangefinder drums span a Leopard 1 turret (${tBox.max.x - tBox.min.x})`);
-const sideAt = (y, z = 0.10) => new THREE.Raycaster(new THREE.Vector3(3, turretRig.position.y + y, turretRig.position.z + z),
+near(tBox.max.y - turretRig.position.y, 0.79, 0.01, 'the casting\'s roof over the ring');
+assert.ok(tBox.max.x - tBox.min.x <= 2.72, `no wider than its ridges (${tBox.max.x - tBox.min.x})`);
+const sideAt = (y, z = -0.40) => new THREE.Raycaster(new THREE.Vector3(3, turretRig.position.y + y, turretRig.position.z + z),
   new THREE.Vector3(-1, 0, 0), 0, 3).intersectObject(turret, false)[0]?.point.x;
-// The chine: the side reaches furthest out at the chine. Below it the undercut falls away steeply; above it the cast cheek
-// rises nearly upright before rolling over, so the section breaks at a hard kink, not a rolled egg.
-const [chineLow, chineHigh] = turretFinish.chineYRange;
-const chineY = (chineLow + chineHigh) / 2;
-const atChine = sideAt(0.33), below = sideAt(0.20), above = sideAt(0.46);
-assert.ok([atChine, below, above].every(Number.isFinite), `the casting side is hit about the chine (${below}, ${atChine}, ${above})`);
-const lowerRun = (atChine - below) / 0.13, upperRun = (atChine - above) / 0.13;
-assert.ok(atChine >= above - 1e-6 && lowerRun > 0.6 && lowerRun - upperRun > 0.5,
-  `the side breaks at a hard chine ${chineY.toFixed(2)} m over the ring (${below}, ${atChine}, ${above})`);
-// The chevron front: either side of the mantlet the casting's upper and lower faces close on the chine's line, so a ray
-// from ahead meets the casting furthest forward at the chine's height and further back above and below it.
-const frontAt = (y, x = 0.62) => new THREE.Raycaster(new THREE.Vector3(x, turretRig.position.y + y, 6), new THREE.Vector3(0, 0, -1), 0, 6)
+// The 1A5's chevron along the side: the plate bends outward at its ridge 0.30 m up, the faces leaning in above and below.
+assert.ok(sideAt(0.30) > sideAt(0.10) + 0.05 && sideAt(0.30) > sideAt(0.60) + 0.10,
+  `the side bends outward at its ridge (${sideAt(0.10)}, ${sideAt(0.30)}, ${sideAt(0.60)})`);
+// Slightly rounded, not knife-edged: the ridge's very corner is cut back a little from the two faces' meeting point.
+const ridgeHalf = turretFinish.ridgeHalfWidth;
+assert.ok(sideAt(0.30) < ridgeHalf - 0.003 && sideAt(0.30) > ridgeHalf - 0.04,
+  `the ridge is rounded a few centimetres (${sideAt(0.30)} against a ${ridgeHalf} corner)`);
+// The wedges carry the ridge forward either side of the mask and close on it, so a ray from ahead meets each wedge
+// furthest forward at the ridge's height.
+const frontAt = (y, x = 0.80) => new THREE.Raycaster(new THREE.Vector3(x, turretRig.position.y + y, 6), new THREE.Vector3(0, 0, -1), 0, 6)
   .intersectObject(turret, false)[0]?.point.z;
-const front = { chine: frontAt(0.38), high: frontAt(0.64), low: frontAt(0.16) };
-assert.ok(front.chine > front.high + 0.12 && front.chine > front.low + 0.10,
-  `the casting's front is a chevron in profile ending in a line at the gun's height (${JSON.stringify(front)})`);
+const front = { ridge: frontAt(0.30), high: frontAt(0.62), low: frontAt(0.12) };
+assert.ok(front.ridge > front.high + 0.10 && front.ridge > front.low + 0.03,
+  `the wedge's front closes on its ridge line (${JSON.stringify(front)})`);
 // The casting stands over the old hull's deck crown at every bearing outside its ring bearing: the deck rises from
 // 1.694 m at the ring (0.50 m ahead of the origin) to 1.77 m 1.75 m behind it, so each turret point must stand over the
 // highest deck within its own radius.
@@ -89,35 +85,44 @@ for (let i = 0; i < pos.count; i++) {
   if (r >= 1.045) worstMargin = Math.min(worstMargin, turretRig.position.y + v.y - deckWithin(r));
 }
 assert.ok(worstMargin > 0.004, `the casting clears the deck crown at every bearing (worst margin ${worstMargin} m)`);
-// The TEM 2A rangefinder's two windows look forward from their drums on the upper cheeks.
-assert.equal(turretFinish.rangefinderWindows?.length, 2, 'two rangefinder windows');
-for (const [x, y, z] of turretFinish.rangefinderWindows) {
-  const from = new THREE.Vector3(x, y, z + 5).applyMatrix4(turretRig.matrixWorld);
-  const hit = new THREE.Raycaster(from, new THREE.Vector3(0, 0, -1), 0, 6).intersectObject(turretRig, true)[0];
-  assert.ok(hit && /Glass/.test(hit.object.name), `the ${x < 0 ? 'left' : 'right'} rangefinder window faces forward (${hit?.object.name})`);
-}
-// The kit: eight dischargers at the front corners, the PERI R12 standing over the right front roof, the loader's MG3.
-assert.equal(turretFinish.frontCornerDischargers, 8);
+// The kit: the PERI R12 standing over the right front roof, the 1A5's rear dischargers, the loader's MG3, two racks.
+assert.equal(turretFinish.rearDischargers, 8);
 const [periX, periZ] = turretFinish.periR12;
 const periTop = down(mesh('turretEquipment'), turretRig.position.x + periX, turretRig.position.z + periZ);
-assert.ok(periTop > turretRig.position.y + 0.81 + 0.40, `the PERI R12 head stands over the roof (${periTop})`);
+assert.ok(periTop > turretRig.position.y + 0.79 + 0.40, `the PERI R12 head stands over the roof (${periTop})`);
 let pintleMgs = 0;
+let stowageRacks = 0;
 turretRig.traverse((node) => {
   if (node.userData?.fittingRoot && node.userData.fitting === 'pintleMG') pintleMgs += 1;
+  if (node.userData?.fittingRoot && node.userData.fitting === 'stowageRack') stowageRacks += 1;
 });
 assert.equal(pintleMgs, 1, 'the loader\'s MG3 is the turret\'s one pintle gun');
+assert.equal(stowageRacks, 2, 'a stowage rack on each flank');
 
-// The chevron mantlet: owned by the gun, a block 1 m wide whose brow and chin meet at a horizontal line on the gun's axis.
-assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.40, 1.00)) < 1e-8, 'the trunnion station');
+// The mantlet (owner: "the correct mantlet ... that ends in a line"): owned by the gun, the 1A5's wide chevron mask whose
+// brow and chin meet in a horizontal line at the gun.
+assert.ok(gunRig.position.distanceTo(new THREE.Vector3(0, 0.40, 1.15)) < 1e-8, 'the trunnion station');
 const mantlet = gunRig.userData.leopard1A2A1MantletReceipt;
-assert.ok(mantlet?.seated && mantlet.chevronProfile && mantlet.ridgeOnGunAxis, 'the gun carries the chevron mantlet');
-assert.ok(mantlet.mantletWidth >= 0.95 && mantlet.ridgeHalfHeight <= 0.04,
-  `a broad mantlet closing on a line (${mantlet.mantletWidth} wide, ridge ±${mantlet.ridgeHalfHeight})`);
+assert.ok(mantlet?.seated && mantlet.chevronProfile && mantlet.endsInLine, 'the gun carries the chevron mask');
+assert.ok(mantlet.maskWidth >= 1.2 && mantlet.maskRidgeHalfHeight <= 0.025,
+  `a wide mask closing on a line (${mantlet.maskWidth} wide, ridge ±${mantlet.maskRidgeHalfHeight})`);
 const mount = mesh('gunMount');
-const mantletAt = (y) => new THREE.Raycaster(new THREE.Vector3(0.36, gunRig.getWorldPosition(new THREE.Vector3()).y + y, 6),
-  new THREE.Vector3(0, 0, -1), 0, 6).intersectObject(mount, false)[0]?.point.z;
-assert.ok(mantletAt(0) > mantletAt(0.22) + 0.15 && mantletAt(0) > mantletAt(-0.20) + 0.15,
-  `the mantlet's brow and chin fall back from its ridge (${mantletAt(0.22)}, ${mantletAt(0)}, ${mantletAt(-0.20)})`);
+const gunY = gunRig.getWorldPosition(new THREE.Vector3()).y;
+const maskAt = (y) => new THREE.Raycaster(new THREE.Vector3(0.40, gunY + y, 6), new THREE.Vector3(0, 0, -1), 0, 6)
+  .intersectObject(mount, false)[0]?.point.z;
+assert.ok(maskAt(0) > maskAt(0.24) + 0.15 && maskAt(0) > maskAt(-0.22) + 0.15,
+  `the brow and chin fall back from the line (${maskAt(0.24)}, ${maskAt(0)}, ${maskAt(-0.22)})`);
+const receiver = new THREE.Box3(
+  new THREE.Vector3(-mantlet.receiverWidth / 2, mantlet.receiverY - 0.30, mantlet.receiverZ - 0.08),
+  new THREE.Vector3(mantlet.receiverWidth / 2, mantlet.receiverY + 0.30, mantlet.receiverZ + 0.08),
+);
+for (const pitchDeg of [-9, 0, 20]) {
+  gunRig.rotation.x = -THREE.MathUtils.degToRad(pitchDeg);
+  const contact = new THREE.Vector3(0, 0, mantlet.rearContactZ).applyEuler(gunRig.rotation).add(gunRig.position);
+  assert.ok(receiver.containsPoint(contact), `the mask's rear pad stays inside the turret receiver at ${pitchDeg} degrees`);
+}
+gunRig.rotation.x = 0;
+visual.root.updateMatrixWorld(true);
 mesh('turretCupola');
 
-console.log('leopard1A2A1Source.selftest: old hull datums, the 1A2 chine casting and chevron front clear of the deck, rangefinder windows, PERI, chevron mantlet pass');
+console.log('leopard1A2A1Source.selftest: old hull datums, the 1A5 lines cast with rounded corners clear of the deck, PERI, a mask ending in a line pass');
