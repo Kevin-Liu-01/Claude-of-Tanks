@@ -66,9 +66,9 @@ assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
     'each row\'s reset is the kit\'s icon button, named for its row');
   assert.match(source, /input\.setSetting\(key, CHASE_CAMERA_DEFAULTS\[key\]\);/, 'a reset returns the setting to its default');
   assert.match(source, /range\.setAttribute\('aria-label', label\);/, 'a slider\'s range is named');
-  for (const [key, en] of [['title', 'Camera'], ['height', 'Camera height'], ['distance', 'Camera distance'], ['shoulder', 'Horizontal offset'],
-    ['framing', 'Vertical framing'], ['fov', 'Field of view'], ['shoulderLeft', 'Left shoulder'], ['shoulderCentre', 'Centered'],
-    ['shoulderRight', 'Right shoulder']]) assert.equal(t(`settings.camera.${key}`), en);
+  for (const [key, en] of [['title', 'Camera'], ['height', 'Camera height'], ['distance', 'Camera distance'], ['shoulder', 'Camera shoulder'],
+    ['framing', 'Vertical framing'], ['fov', 'Field of view'], ['shoulderLeft', 'Left'], ['shoulderCentre', 'Center'],
+    ['shoulderRight', 'Right']]) assert.equal(t(`settings.camera.${key}`), en);
   assert.equal(t('settings.camera.reset', { label: 'Field of view' }), 'Reset Field of view to default');
   const zh = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
   for (const key of ['title', 'height', 'distance', 'shoulder', 'shoulderLeft', 'shoulderCentre', 'shoulderRight', 'framing', 'fov',

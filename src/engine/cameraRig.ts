@@ -347,7 +347,8 @@ export function createCameraRig(
   let framedBands: ChaseBands | null | undefined;
   let framedAspect = 0;
   let framedSpec: CameraEntity['spec'] | null | undefined;
-  let framedHeight = NaN, framedDistance = NaN, framedFraming = NaN, framedFov = NaN;
+  let framedHeight: number | undefined, framedDistance: number | undefined;
+  let framedFraming: number | undefined, framedFov: number | undefined;
   let framedShoulder: unknown;
   let framedTank: ChaseTank = chaseTankFromDims(null);
   let publishedShift = 0;
@@ -508,8 +509,10 @@ export function createCameraRig(
    *  framed sight's rise. Cheap when nothing did (a few comparisons). */
   function refreshFraming(player: CameraEntity): void {
     const raw = deps.getChaseBands?.() ?? null;
-    // (bands measured for another window shape are stale until the HUD lays out again: the base pose meanwhile)
-    const bands = raw && Math.abs(raw.width / Math.max(1, raw.height) - camera.aspect) < 0.01 ? raw : null;
+    // (bands measured for another window shape are stale until the HUD lays out again: the framing in force holds; a
+    // phone's toolbar can leave the layout viewport a little shorter than the canvas, which the tolerance allows)
+    const bands = raw && Math.abs(raw.width / Math.max(1, raw.height) - camera.aspect) < 0.05 ? raw : null;
+    if (raw && !bands && framedSpec !== undefined) return;
     const settings = deps.getCameraSettings?.() ?? null;
     const spec = player.spec ?? null;
     if (bands === framedBands && camera.aspect === framedAspect && spec === framedSpec
@@ -518,8 +521,8 @@ export function createCameraRig(
       && settings?.cameraShoulder === framedShoulder) return;
     if (spec !== framedSpec || framedSpec === undefined) framedTank = framingTankFor(player);
     framedBands = bands; framedAspect = camera.aspect; framedSpec = spec;
-    framedHeight = settings?.cameraHeight ?? NaN; framedDistance = settings?.cameraDistance ?? NaN;
-    framedFraming = settings?.cameraFraming ?? NaN; framedFov = settings?.cameraFov ?? NaN;
+    framedHeight = settings?.cameraHeight; framedDistance = settings?.cameraDistance;
+    framedFraming = settings?.cameraFraming; framedFov = settings?.cameraFov;
     framedShoulder = settings?.cameraShoulder;
     framing = bands
       ? solveChaseFraming(bands.width, bands.height, bands, settings, framedTank)
