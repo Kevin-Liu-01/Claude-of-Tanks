@@ -211,10 +211,10 @@ const laterChannelCounts = {
   ztz20: 3, ztz20_prototype: 3,
   // 263 (integrator): the release's other new tanks, three rounds each (their lanes did not list them here)
   christian2: 3, bm_oplot_m: 3, bm_oplot_t: 3, t64bm1m: 3, t64bv: 3, t64b1v_2022: 3, pt64_tur: 3,
-  challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger1_granby: 3,
+  challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
 };
 const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
-  'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger1_granby'].reduce((n, id) => n + laterChannelCounts[id], 0);
+  'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;

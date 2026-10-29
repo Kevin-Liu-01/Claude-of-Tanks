@@ -98,8 +98,9 @@ function foreDeck(P:TankBuilderPort):void{
 function frontGuards(P:TankBuilderPort,side:number):void{
   // The actual end roof is a folded thin sheet, not a solid wheel-filling
   // ramp. Its separate lower curled return has open air behind its face.
+  // (painted bodywork, not the armour bucket: in 'hull' it carried the armour envelope 0.44 m past the glacis)
   const a=Math.min(side*37.05,side*67.87),b=Math.max(side*37.05,side*67.87);
-  P.addMudguard(`challenger1-supplied-front-roof-${side}`,'hull',roofSheet([
+  P.addMudguard(`challenger1-supplied-front-roof-${side}`,'hullFixedPaintedBodywork',roofSheet([
     [p(0,0,80.67)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,49.88,0)[1],p(0,49.88,0)[1]],
     [p(0,0,95.59)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,48.15,0)[1],p(0,48.15,0)[1]],
     [p(0,0,104.72)[2],p(a,0,0)[0],p(b,0,0)[0],p(0,side<0?40.51:43.98,0)[1],p(0,side<0?43.98:40.51,0)[1]],
@@ -118,7 +119,7 @@ function frontGuards(P:TankBuilderPort,side:number):void{
   // 2026-10-19 (owner float sweep): the horn stood 64 mm over the sponson top; it lies on it
   equipment(P,cylX(m(1.4),m(5.4),20),side*63.0,51.5,82.4);
 }
-function sideSkirts(P:TankBuilderPort,side:number):void{
+function sideSkirts(P:TankBuilderPort,side:number,granbyKit:boolean):void{
   // The installed source skirts, not the four misplaced centerline export
   // leftovers. Native handling of those separate leftovers awaits owner input.
   installedSkirt(P,side);
@@ -126,7 +127,7 @@ function sideSkirts(P:TankBuilderPort,side:number):void{
     33.444882,40.846456,70.629921]){
     caseBox(P,side*69.212597,50.925196,z,.629921,2.559055,3.188976);
   }
-  sideApplique(P,side);
+  if(granbyKit)sideApplique(P,side);
 }
 function installedSkirt(P:TankBuilderPort,side:number):void{
   // A thin, continuous source sheet rises over both end wheels. Its face is
@@ -179,14 +180,17 @@ function sideApplique(P:TankBuilderPort,side:number):void{
     caseBox(P,side*73.1,26.18,z,5.2,4.4,1.95);
   }
 }
-function drumsAndRear(P:TankBuilderPort):void{
+function drumsAndRear(P:TankBuilderPort,granbyKit:boolean):void{
   for(const side of [-1,1]){
     const x=side*32.6;
-    equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
-    for(const dx of [-9.5,9.5]){
-      equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
-      P.addEquipment('hullDetail',beamBetween(p(x+dx,45,-190),p(x+dx,42.2,-208),m(1.1)));
-      caseBox(P,x+dx,55.3,-214.2,2.0,10.1,3.0);
+    // the Op Granby fit's two jettisonable fuel drums, their bands, struts and cradle stops
+    if(granbyKit){
+      equipment(P,cylX(m(11.96),m(37.24),40),x,55.02,-202.1);
+      for(const dx of [-9.5,9.5]){
+        equipment(P,torus(m(12.03),m(.42),36,6).rotateZ(Math.PI/2),x+dx,55.02,-202.1);
+        P.addEquipment('hullDetail',beamBetween(p(x+dx,45,-190),p(x+dx,42.2,-208),m(1.1)));
+        caseBox(P,x+dx,55.3,-214.2,2.0,10.1,3.0);
+      }
     }
     caseBox(P,side*62.5,49.8,-189,15,1.7,8.7);
     equipment(P,cylZ(m(1.8),m(1.2),16),side*62.5,52.9,-189.1,'hullGlass');
@@ -213,9 +217,12 @@ function bowArmor(P:TankBuilderPort):void{
     for(const[y,z]of[[55.6,82.4],[34.6,107.2]])caseBox(P,x,y,z,2.1,1.0,1.8);
   }
 }
-export function addChallenger1SuppliedHull(P:TankBuilderPort):void{
+/** Release 262 (owner 2026-10-28: the Mk 3's build "is what it is actually like"): the supplied file is the Op Granby
+ *  fit; the plain Challenger 1 (the Mk 1 and Mk 2) leaves its side applique, nose array and rear drums off. */
+export interface Challenger1SuppliedHullOptions{readonly granbyKit?:boolean}
+export function addChallenger1SuppliedHull(P:TankBuilderPort,{granbyKit=true}:Challenger1SuppliedHullOptions={}):void{
   tub(P);for(const side of [-1,1])sponson(P,side);
   engineRoof(P);foreDeck(P);
-  for(const side of [-1,1]){frontGuards(P,side);sideSkirts(P,side);}
-  drumsAndRear(P);bowArmor(P);
+  for(const side of [-1,1]){frontGuards(P,side);sideSkirts(P,side,granbyKit);}
+  drumsAndRear(P,granbyKit);if(granbyKit)bowArmor(P);
 }

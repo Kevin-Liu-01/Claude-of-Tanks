@@ -42,6 +42,9 @@ import { resolveTankId } from './tankIdAliases.ts';
 // chevron's Signature "T-90M Proryv Digital" -> "T-90AM II Digital" (t90m_proryv is the T-90AM II). With the old label
 // it equals production's digest; preset, visuals and every tank row are unchanged. sig_t90m_proryv 01bb4984381e11db ->
 // b46847ff7755abb9.
+// Re-pinned 2026-10-28 (release 262): one row moved. The Challenger 1 Mk 2 (schema-1 challenger1) rides the Mk 3's
+// build and dimensions, so its Factory visual is the Mk 3's production one: 51ae4983503755f0 -> 24af537fcedf03bc.
+// Selections and every other row are unchanged.
 const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
@@ -84,10 +87,11 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer', 'christian2', 'bm_oplot_m', 'bm_
 // Added since production in a donor's coat: the tank's stock is its donor's (release 262: the T-55A wears the T-62
 // obr. 1975's Soviet stock; the true T-64s wear their kept siblings' coats, the T-64BV the T-64BV1's, the T-64B1V mod.
 // 2022 and the T-64BM1M the mod. 2017's Signature; the PT-64 Tur the Zubr's Polish three-tone).
-// 263 (integrator): the Challenger 1 Mk 1 and Granby wear the Mk 2's British service coat, the ZTZ-20 and its prototype
+// 263 (integrator): the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 wear the Mk 2's British service coat, the ZTZ-20 and its prototype
 // the ZTZ-100's Signature (vickers-cr1-262 and ztz20-262 did not list them here).
 const ADDED_IN_DONOR_COAT = { t55a: 't62_1975', t64bv: 't64bv1', t64b1v_2022: 't64bv_donbas', t64bm1m: 't64bv_donbas', pt64_tur: 't72b3_zubr',
-  challenger1_mk1: 'challenger1_mk2', challenger1_granby: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100' };
+  challenger1_mk1: 'challenger1_mk2', challenger_x: 'challenger1_mk2',
+  challenger_x_sleek: 'challenger1_mk2', ztz20: 'ztz100', ztz20_prototype: 'ztz100' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_DONOR_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

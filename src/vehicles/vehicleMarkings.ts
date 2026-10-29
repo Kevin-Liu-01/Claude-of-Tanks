@@ -248,9 +248,12 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // bustle, so seat its roundel on the broad right sponson ahead of the
   // builder-authored V1 designation.
   vickers_mk1: anchor('hull', 'right', 0.58, 0.58, 0.23, -1),
-  challenger1_mk1: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
-  challenger1_mk2: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
-  challenger1_granby: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  // release 262: the Mk 1 and Mk 2 on the Mk 3's supplied-file build take its anchor; the fictional X tanks keep the
+  // rebuilt turret's
+  challenger1_mk1: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger1_mk2: anchor('turret', 'left', .60, .40, .24, 1),
+  challenger_x: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  challenger_x_sleek: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
   fv4034: anchor('turret', 'left', 0.39, 0.45, 0.25, 1),
   challenger2: anchor('turret', 'right', 0.37, 0.44, 0.26, -1),
   challenger2e: anchor('turret', 'right', 0.35, 0.44, 0.24, -1),
