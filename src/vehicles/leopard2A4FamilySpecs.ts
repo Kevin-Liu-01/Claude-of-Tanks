@@ -71,10 +71,18 @@ const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.f
     a6m_turret_cheek_era_R: wedgeFace('a6m_turret_cheek_era_R', 1, 0.05, 'era'),
     a6m_turret_cheek_era_L: wedgeFace('a6m_turret_cheek_era_L', -1, 0.05, 'era'),
   } },
+  // the Improved's plates where its kit builds them (leopard2ImprovedKit.ts): the glacis field between the pods ahead of
+  // the periscopes, the layered cheek blocks 0.10 m out along the wedges' normals, the deep skirts' faces
   leo2_improved: { kitPlates: {
-    a7v_upper_glacis_era: glacisField('a7v_upper_glacis_era', 0.98, 2.55, 3.30),
-    a7v_turret_cheek_layer_R: wedgeFace('a7v_turret_cheek_layer_R', 1, 0.10, 'spaced'),
-    a7v_turret_cheek_layer_L: wedgeFace('a7v_turret_cheek_layer_L', -1, 0.10, 'spaced'),
+    a7v_upper_glacis_era: glacisField('a7v_upper_glacis_era', 0.975, 2.47, 3.44),
+    a7v_turret_cheek_layer_R: kitPlate('turret', 'a7v_turret_cheek_layer_R', [0.460, 0.21, 2.747], [1.202, 0.21, 2.289],
+      [0.460, 0.42, 2.747], { kind: 'spaced' }),
+    a7v_turret_cheek_layer_L: kitPlate('turret', 'a7v_turret_cheek_layer_L', [-1.289, 0.20, 2.292], [-0.418, 0.20, 2.750],
+      [-1.289, 0.38, 2.292], { kind: 'spaced' }),
+    skirt_heavy_R: { rig: 'hull', plate: sR('skirt_heavy_R', 1, 1.965, 0.55, 1.965, 1.38, 1.40, 3.16) },
+    skirt_heavy_L: { rig: 'hull', plate: sL('skirt_heavy_L', 1, 1.965, 0.55, 1.965, 1.38, 1.40, 3.16) },
+    skirt_rear_R: { rig: 'hull', plate: sR('skirt_rear_R', 1, 1.965, 0.55, 1.965, 1.38, -2.85, 1.40) },
+    skirt_rear_L: { rig: 'hull', plate: sL('skirt_rear_L', 1, 1.965, 0.55, 1.965, 1.38, -2.85, 1.40) },
   } },
 });
 

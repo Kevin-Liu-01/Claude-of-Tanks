@@ -42,7 +42,8 @@ const VARIANTS: Readonly<Record<Leopard2A4FamilyId, Leopard2A4Variant>> = Object
     turret: { loaderMG: false, faceRails: false, wallRails: false, sideBins: false, rearBox: false, whips: false,
       numberOffsetM: null } },
   leo2_improved: { flapName: 'leo2-improved-rear-flap', seed: 26450, kit: addLeo2ImprovedKit,
-    turret: { faceRails: false, wallRails: false, sideBins: false, rearBox: false, whips: false, numberOffsetM: null } },
+    turret: { loaderMG: { cls: 'mg3', name: 'leo2LoaderMg3' }, faceRails: false, wallRails: false, sideBins: false,
+      rearBox: false, whips: false, numberOffsetM: null } },
 });
 
 function leopard2A4(id: Leopard2A4FamilyId): (P: TankBuilderPort) => void {
