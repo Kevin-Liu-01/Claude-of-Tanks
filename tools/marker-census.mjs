@@ -7,7 +7,8 @@
 // in shape and colour, never colour alone (INTERACTION-REDESIGN bar line 6): the enemy's diamond, the ally's chevron.
 // Each carries a name line (owner 2026-10-27, "always have names their even if not (this is in proving ground) and make
 // the elemetns be adaptive"): the target plate is one block centred on its diamond, its bar the text block's width and
-// its points directly under the bar.
+// its points directly under the bar. Where a band seat slid the plate along its row (hud.ts targetPlateBand, the phones'
+// markers r20), its diamond stands off the centre by the offset the plate carries (--tgt-anch-dx), inside the plate.
 // Runs in the page: page.evaluate(markerProblems, staged), staged true where the state puts tanks of both sides in view
 // and one under the gun (the layout fixture's ?state=markers). The bars are decluttered (hud.ts updateHpBars): two that
 // would cross never both show.
@@ -57,7 +58,14 @@ export function markerProblems(staged) {
       const r = el.getBoundingClientRect();
       if (Math.abs(mid(r) - mid(box)) > 1) problems.push(`the target plate's ${what} stands ${(mid(r) - mid(box)).toFixed(1)} px off its centre`);
     };
-    off(anchor, 'diamond'); off(plate.querySelector('.pl'), 'name line'); off(plate.querySelector('.mt'), 'vehicle line');
+    // (the diamond at the centre, or at the offset a band seat gave it, and inside the plate either way)
+    const slid = parseFloat(getComputedStyle(plate).getPropertyValue('--tgt-anch-dx')) || 0;
+    if (anchor && shown(anchor)) {
+      const a = anchor.getBoundingClientRect();
+      if (Math.abs(mid(a) - mid(box) - slid) > 1) problems.push(`the target plate's diamond stands ${(mid(a) - mid(box)).toFixed(1)} px off its centre (its offset ${slid} px)`);
+      if (a.left < box.left - 0.5 || a.right > box.right + 0.5) problems.push('the target plate\'s diamond stands outside the plate');
+    }
+    off(plate.querySelector('.pl'), 'name line'); off(plate.querySelector('.mt'), 'vehicle line');
     const track = plate.querySelector('.tr'), points = plate.querySelector('.hp');
     if (track && shown(track)) {
       off(track, 'bar');
