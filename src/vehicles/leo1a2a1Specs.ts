@@ -24,6 +24,7 @@ spec.gunPitchByYawDeg = [[0, -9], [27, -9], [28, -8.9], [30, -8.9], [31, -9], [1
 stripSilhouetteDimensions(spec.dims);
 // About 40 t; 3.25 m over the tracks (3.37 m over the skirts); 2.39 m to the turret roof, 2.70 m over the PERI R12.
 Object.assign(spec.dims, { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.70 });
+// The fleet pass then gives it the 1A5's tier I HP and round damage (fleetBalancePass applyBuildFootings).
 Object.assign(spec, { weightTons: 40.0, hp: 1450 });
 // No spaced plates: the 1A5's lines are one casting here, so its turret armour is the casting's alone.
 for (const plate of spec.armor.turretPlates) {

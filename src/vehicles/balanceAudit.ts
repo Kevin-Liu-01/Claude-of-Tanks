@@ -22,6 +22,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   challenger3_td: '262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)',
   challenger3_td_rws: '262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)',
   challenger3: 'retain a measured protection and fire-control step over the base vehicle, inside the modern fire-control ceiling',
+  // 265: the Leopard 1A2A1 on the 1A5's node at I (fleetBalancePass applyBuildFootings)
+  leo1a2a1: 'the Leopard 1A5\'s tier I footing, its HP and round damage: the 1A5\'s spec with the DM23 round',
   // 2026-10-25: the IFVs relabelled modern fold into their modern Tier X peers (fleetBalancePass applyModernEraFold)
   kf41_lynx: 'fold the Raijū-donor cannon package into the modern IFV cadence and 35 mm penetration',
   cv90_mk4: 'fold the Raijū-donor cannon package into the modern IFV cadence',

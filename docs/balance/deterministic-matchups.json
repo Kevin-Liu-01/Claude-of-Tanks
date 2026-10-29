@@ -1099,6 +1099,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "leo1a2a1",
+      "revision": "the Leopard 1A5's tier I footing, its HP and round damage: the 1A5's spec with the DM23 round",
+      "tier": 1,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 1550,
+      "powerWeight": 20.75,
+      "speedKmh": [
+        65,
+        25
+      ],
+      "traverseDegS": [
+        44,
+        38.2
+      ],
+      "primary": {
+        "damage": 390,
+        "penetrationMm": [
+          404,
+          368,
+          331
+        ],
+        "reloadS": 5.5,
+        "sustainedDpm": 4254.55,
+        "accuracy": 0.306,
+        "aimTimeS": 1.8
+      },
+      "armorCeilingsMm": {
+        "hullKe": 70,
+        "turretKe": 96
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "leo2a3",
       "revision": "slow the cycle for same-tier fairness at IV; 260: a balance trim of the turret front (x0.9): no sourced period round defeats the basic package's turret front",
       "tier": 4,

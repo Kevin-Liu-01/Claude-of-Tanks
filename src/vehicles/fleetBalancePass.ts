@@ -386,6 +386,18 @@ function cannonReload(registry: TankSpecRegistry, id: string, reloadS: number): 
 }
 
 /**
+ * 265: a build drawn on another vehicle's tech-tree node takes that vehicle's tier footing after the same-tier pass. The
+ * Leopard 1A2A1, on the 1A5's node at I, is the 1A5's spec with the DM23 round; at I hits to kill decide, so it takes the
+ * 1A5's HP and round damage, whatever applySameTierFairness gives the 1A5. Runs after that pass and before the tactical
+ * role balance (fleetRegistration.ts).
+ */
+export function applyBuildFootings(registry: TankSpecRegistry): void {
+  const sibling = spec(registry, 'leo1a5');
+  spec(registry, 'leo1a2a1').hp = sibling.hp;
+  primary(registry, 'leo1a2a1', { damage: sibling.gun.shells[0].dmg });
+}
+
+/**
  * 2026-10-25 (owner: "properly label next gen vs modern"; taxonomy.ts): the IFVs relabelled modern leave the
  * next-generation envelope for their modern Tier X peers (balanceAudit.ts). The KF41 Lynx, the CV90 Mk IV and the Type 89
  * took the Raijū's next-generation cannon package by combat-donor synchronization: they keep its rounds at the modern
