@@ -143,5 +143,5 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 2026-10-26 re-pin (257): every tree re-tiered by capability and re-laid (RETIER-257.md), keeping the owner's anchors and
 // the Japan and Korea rulings. 258b: the Leopard 2A5M drawn on its 2A5's node at IX, the T-84 at VI with its T-80U
 // (FAMILY_UPGRADES above).
-assert.equal(digest, '14cae73ceb1ad491', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, '4119d4870c94c918', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

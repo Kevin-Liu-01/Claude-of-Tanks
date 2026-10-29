@@ -2014,6 +2014,24 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "m48_super": {
+   "inputHash": "56fd37dedd8bf3db",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m48a2ga2": {
+   "inputHash": "cda9fccf446e3e40",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "m48a3_patton": {
+   "inputHash": "c5965e1c72a8d8ce",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "m48a5_patton": {
    "inputHash": "e1d560787a04718a",
    "runs": [],
@@ -2076,6 +2094,12 @@
      }
     }
    ],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "magach3": {
+   "inputHash": "59a9911ba7d28fb1",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
