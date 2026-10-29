@@ -66,7 +66,7 @@ try{for(const quality of['high','low'])for(const camo of['factory','winter']){
   assert.deepEqual(after.emissions,before.emissions,'every raw geometry, method and pose is identical; only the eight declared finishes change');
   emissions+=after.emissions.length;
   const oldSheet=before.tank.root.getObjectByName('hullRubber');
-  assert.ok(oldSheet?.isMesh);assert.equal(oldSheet.material.name,'cot:tire-rubber');assert.ok(oldSheet.material.map === null);
+  assert.ok(oldSheet?.isMesh);assert.equal(oldSheet.material.name,'cot:hull-rubber');assert.equal(oldSheet.material.userData.appearanceRole,'hullRubber');assert.equal(oldSheet.material.userData.rubberSurface,true,'the old sheet is the textured rubber (230), not paint');
   const rig=after.tank.root.getObjectByName('rig_hull'),sheets=guards(after.tank);
   assert.deepEqual(decorationAdmission(after.tank.root.userData.__decorSummary),decorationAdmission(before.tank.root.userData.__decorSummary),'no decoration admission or rejection-kind change');
   for(const tank of[before.tank,after.tank])for(const era of tank.root.userData.eraClusterNames??[])tank.stripEra(era);

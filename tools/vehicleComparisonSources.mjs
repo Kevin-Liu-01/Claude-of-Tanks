@@ -25,10 +25,15 @@ export const VEHICLE_COMPARISON_SOURCES = Object.freeze({
     autoPivot: true,
     paintUntextured: true,
   }),
+  // release 262: the owner-supplied ater.studio M48A5, source-world certified (comparison only; its canonical bake by
+  // source-x-oracle, tools/source-world-registration.mjs; docs/references/tanks/m48a5_patton.md)
   m48a5_patton: Object.freeze({
-    path: '/models/tanks/community/m48a5_atmodeler.glb',
-    turretNode: '^Turret$',
+    path: '/models/community-candidates/m48a5_patton_x_source.glb',
+    turretNode: '^Object_12$',
+    gunNode: '^Object_16$',
     autoPivot: true,
+    pivot: [-0.001963, 1.638327, 0.577502],
+    gunPivot: [0, 1.9215, 1.761582],
     paintUntextured: true,
   }),
 });

@@ -77,7 +77,7 @@ assert.ok(covered.size >= 190, `fleet coverage ${covered.size}`);
 }
 // labels name a nation and a pattern, never a vehicle
 for (const entry of AUTHORED_PAINT_ENTRIES) {
-  assert.match(entry.label, /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|IDF|Ukrainian|Atlantean|Wehrmacht) /, entry.label);
+  assert.match(entry.label, /^(US Army|Bundeswehr|Russian|Soviet|British|French|PLA|Italian|JGSDF|Polish|ROK|Swedish|IDF|Ukrainian|Atlantean|Wehrmacht|Danish) /, entry.label);
   assert.ok(!/ (\w+) \1$/.test(entry.label), `${entry.id}: no repeated word (${entry.label})`);
 }
 console.log(`authoredPaintCatalog.selftest: ${AUTHORED_PAINT_ENTRIES.length} generated authored paints current, labelled, tagged and wired`);

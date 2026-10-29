@@ -9,7 +9,8 @@ import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 // source-triangle ratios. Removing an armor/hatch opt-in must fail coverage.
 const cases = {
   kurganets25: [['hull', 'min', 'x', -2.0145], ['hull', 'max', 'x', 2.0145]],
-  ztz100: [['hull', 'min', 'z', -3.838]],
+  // Release 262 family hull: the rear fender boxes end at z -3.80, so the caster stops 50 mm short of them.
+  ztz100: [['hull', 'min', 'z', -3.75]],
   // Restored Object_27 LEFT flange: source X=-2.1026399136 at Y1.76282.
   // Right authored armor stays +2.10; the 50 mm inset is asymmetric here.
   // Independent source/native proof: docs/history/research/stale-qa-witness-repair-20260918.md.
