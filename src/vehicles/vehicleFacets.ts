@@ -258,7 +258,7 @@ const ROLE_VEHICLE_IDS: Readonly<Record<VehicleBattleRole, readonly string[]>> =
   flanker: Object.freeze([
     'amx30', 'amx30b', 'amx30b2', 'amx40', 'amx40_proto', 'amx56', 'bm_oplot_m', 'bm_oplot_t', 'c1_ariete', 'c1_ariete_preserie',
     'c1_ariete_proto_serie1', 'c2_ariete', 'c2_ariete_proto', 'carro45t', 'k1a1', 'k1e1', 'k2_black_panther',
-    'k2b', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a2a1', 'leo1a5', 'leopard2_proto', 'mbt70',
+    'k2b', 'leclerc_s1', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_xlr', 'leo1a2a1', 'leo1a5', 'leopard2_proto', 'mbt70',
     'stb1', 't72_rys', 't80', 't80b', 't80bv', 't80u', 't80u_kursk', 't80uk', 't84', 't84bm_oplot_m', 'type10',
     'type10_tk_x', 'type10b', 'type74', 'type90', 'type90_kyumaru', 'type90a', 'type96_80_feng', 'ua_t80bv',
     'vickers_mk1', 'xk2_black_panther',
