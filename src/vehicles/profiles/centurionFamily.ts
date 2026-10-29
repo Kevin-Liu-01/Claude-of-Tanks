@@ -138,10 +138,11 @@ function buildHullBody(P: TankBuilderPort): void {
     [-1.47, ENGINE_DECK_Y, -3.36], [1.47, ENGINE_DECK_Y, -3.36], [1.47, 1.73, -3.70], [-1.47, 1.73, -3.70]));
 }
 
-function buildGuards(P: TankBuilderPort): void {
+function buildGuards(P: TankBuilderPort, bow = true): void {
   // The guards and the kits' bodywork (the dozer, the fuel tank, the grille boxes) are painted non-armour
   // (hullFixedPaintedBodywork, kept at every LOD), the skirts the track guards (hullTrackGuardL/R, where the hull numbers
-  // sit): the combat anatomy's hull box is the hull's own, not the guards' edge.
+  // sit): the combat anatomy's hull box is the hull's own, not the guards' edge. Without `bow` (the Olifant's hooded
+  // bow guards stand there) the raked front mudguards, their valances and flaps are left off.
   for (const s of [-1, 1]) {
     const inner = BODY_HALF - 0.01, mid = (inner + GUARD_HALF) / 2, w = GUARD_HALF - inner;
     // Running track guard, rear corner to the front guard (camouflaged bodywork).
@@ -151,19 +152,21 @@ function buildGuards(P: TankBuilderPort): void {
     P.addMudguard('centurion-front-guard', 'hullFixedPaintedBodywork', slab(
       [fx0, GUARD_Y - 0.015, 3.30], [fx1, GUARD_Y - 0.015, 3.30], [fx1, GUARD_Y - 0.015, 2.90], [fx0, GUARD_Y - 0.015, 2.90],
       [fx0, GUARD_Y + 0.015, 3.30], [fx1, GUARD_Y + 0.015, 3.30], [fx1, GUARD_Y + 0.015, 2.90], [fx0, GUARD_Y + 0.015, 2.90]));
-    P.addMudguard('centurion-front-mudguard', 'hullFixedPaintedBodywork', slab(
-      [fx0, 1.085, 3.78], [fx1, 1.085, 3.78], [fx1, GUARD_Y - 0.065, 3.30], [fx0, GUARD_Y - 0.065, 3.30],
-      [fx0, 1.165, 3.78], [fx1, 1.165, 3.78], [fx1, GUARD_Y + 0.015, 3.30], [fx0, GUARD_Y + 0.015, 3.30]));
     // Outboard valance down the front guard's outer edge (the guard is a closed box over the idler).
     const vx0 = s < 0 ? -GUARD_HALF : GUARD_HALF - 0.02, vx1 = s < 0 ? -(GUARD_HALF - 0.02) : GUARD_HALF;
     P.add('hullFixedPaintedBodywork', slab(
       [vx0, GUARD_Y - 0.28, 3.30], [vx1, GUARD_Y - 0.28, 3.30], [vx1, GUARD_Y - 0.28, 2.90], [vx0, GUARD_Y - 0.28, 2.90],
       [vx0, GUARD_Y, 3.30], [vx1, GUARD_Y, 3.30], [vx1, GUARD_Y, 2.90], [vx0, GUARD_Y, 2.90]));
-    P.add('hullFixedPaintedBodywork', slab(
-      [vx0, 1.085, 3.77], [vx1, 1.085, 3.77], [vx1, GUARD_Y - 0.28, 3.30], [vx0, GUARD_Y - 0.28, 3.30],
-      [vx0, 1.16, 3.77], [vx1, 1.16, 3.77], [vx1, GUARD_Y, 3.30], [vx0, GUARD_Y, 3.30]));
-    // Rubber mud flaps at the guard tips.
-    P.hangMudguard('centurion-front-flap', 'hullRubber', box(0.56, 0.22, 0.02), s * 1.30, 1.04, 3.77);
+    if (bow) {
+      P.addMudguard('centurion-front-mudguard', 'hullFixedPaintedBodywork', slab(
+        [fx0, 1.085, 3.78], [fx1, 1.085, 3.78], [fx1, GUARD_Y - 0.065, 3.30], [fx0, GUARD_Y - 0.065, 3.30],
+        [fx0, 1.165, 3.78], [fx1, 1.165, 3.78], [fx1, GUARD_Y + 0.015, 3.30], [fx0, GUARD_Y + 0.015, 3.30]));
+      P.add('hullFixedPaintedBodywork', slab(
+        [vx0, 1.085, 3.77], [vx1, 1.085, 3.77], [vx1, GUARD_Y - 0.28, 3.30], [vx0, GUARD_Y - 0.28, 3.30],
+        [vx0, 1.16, 3.77], [vx1, 1.16, 3.77], [vx1, GUARD_Y, 3.30], [vx0, GUARD_Y, 3.30]));
+      // Rubber mud flaps at the guard tips.
+      P.hangMudguard('centurion-front-flap', 'hullRubber', box(0.56, 0.22, 0.02), s * 1.30, 1.04, 3.77);
+    }
     P.hangMudguard('centurion-rear-flap', 'hullRubber', box(0.56, 0.30, 0.02), s * 1.30, 1.35, -3.69);
     // Rear guard returns down the hull corner (the guard's lip) so the rear run closes onto the rear plate.
     P.add('hullFixedPaintedBodywork', box(w, 0.20, 0.03), s * mid, GUARD_Y - 0.09, -3.70);
@@ -508,45 +511,61 @@ function buildAvreSkirtBolts(P: TankBuilderPort): void {
   }
 }
 
-/** The Olifant Mk 2's armoured skirts (the Commons profile and the Armed Forces Day photograph): five bolted modules a
- * side standing 8 cm above the bins, a belt along their middle, and a wedge fender over each idler whose top falls to
- * its point ahead of the guards; 3.43 m over the bolt heads (tanks-encyclopedia). */
-const OLIFANT_SKIRT = { outer: 1.69, t: 0.06, top: 1.78, bot: 0.80, joints: [-3.56, -2.24, -0.92, 0.40, 1.68, 2.95] } as const;
+/** The Olifant Mk 2's armoured skirts (the Commons profile, the Armed Forces Day and SANDF photographs): eight bolted
+ * modules a side, 0.81 m long, their tops 4 cm over the bins and their hems at 0.74 m, each hem's corners cut back so a
+ * V-notch 0.21 m deep opens at every joint (the critic, 2026-10-29: the straight hem read wrong); a belt along their
+ * middle, and a hooded bow guard over each idler whose top falls to its point ahead of the guards; 3.43 m over the bolt
+ * heads (tanks-encyclopedia). */
+const OLIFANT_SKIRT = { outer: 1.69, t: 0.06, top: 1.74, bot: 0.74, z0: -3.56, z1: 2.95, panels: 8, notch: 0.21, notchHalf: 0.15 } as const;
 
 function buildOlifantSkirts(P: TankBuilderPort): void {
   const S = OLIFANT_SKIRT;
+  const pitch = (S.z1 - S.z0) / S.panels;
+  // the hem rises over the sprocket along the rearmost 0.8 m
+  const hemAt = (z: number): number => (z < S.z0 + 0.81 ? S.bot + (1.20 - S.bot) * (S.z0 + 0.81 - z) / 0.81 : S.bot);
   for (const s of [-1, 1]) {
-    const x0 = s < 0 ? -S.outer : S.outer - S.t, x1 = s < 0 ? -(S.outer - S.t) : S.outer;
-    for (let k = 0; k < 5; k++) {
-      const za = S.joints[k] + 0.005, zb = S.joints[k + 1] - 0.005;
-      // the rear module's hem rises over the sprocket
-      const hemA = k === 0 ? 1.20 : S.bot, hemB = k === 0 ? 0.86 : S.bot;
-      P.add(s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', slab(
-        [x0, hemB, zb], [x1, hemB, zb], [x1, hemA, za], [x0, hemA, za],
-        [x0, S.top, zb], [x1, S.top, zb], [x1, S.top, za], [x0, S.top, za]));
-      for (const fz of [0.2, 0.8]) {
+    const ring = (pts: SectionPoint[]): SectionPoint[] => (s > 0 ? pts : pts.map(([x, y]) => [-x, y] as SectionPoint).reverse());
+    const so = S.outer - S.t;
+    const plate = (lo: number): SectionPoint[] => ring([[so, lo], [S.outer, lo], [S.outer, S.top], [so, S.top]]);
+    for (let k = 0; k < S.panels; k++) {
+      const za = S.z0 + k * pitch + 0.005, zb = S.z0 + (k + 1) * pitch - 0.005;
+      // every corner at a joint is cut back into its notch; the rear end (its hem risen over the sprocket) and the front
+      // end (running on into the bow guard) stay square
+      const rear = k > 0, front = k < S.panels - 1;
+      const zs = [za, ...(rear ? [za + S.notchHalf] : []), ...(front ? [zb - S.notchHalf] : []), zb];
+      const los = zs.map((z, i) => hemAt(z) + ((rear && i === 0) || (front && i === zs.length - 1) ? S.notch : 0));
+      P.add(s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', sectionSolid(zs.map((z, i) => ({ z, ring: plate(los[i]) }))));
+      // the joint bolts at three heights, clear of the notches
+      for (const fz of [0.10, 0.90]) {
         const z = za + (zb - za) * fz;
-        for (const y of [1.68, 1.30, 0.94]) {
-          if (y < (k === 0 ? 1.20 : 0.90) && fz < 0.5) continue;
+        for (const y of [1.62, 1.30, 1.04]) {
+          if (y < hemAt(z) + S.notch + 0.06) continue;
           P.add('hullDark', cylX(0.026, 0.02, 8), s * (S.outer + 0.010), y, z);
         }
       }
       P.add('hullDark', box(0.024, 0.06, 0.08), s * (S.outer + 0.012), S.top - 0.08, (za + zb) / 2);
     }
     // the belt along the modules and the flange over the bins' outer edge
-    P.add('hullDetail', box(0.024, 0.05, S.joints[5] - S.joints[0] - 0.40), s * (S.outer + 0.012), 1.48, (S.joints[0] + S.joints[5]) / 2 + 0.20);
+    P.add('hullDetail', box(0.024, 0.05, S.z1 - S.z0 - 0.40), s * (S.outer + 0.012), 1.46, (S.z0 + S.z1) / 2 + 0.20);
     const fx0 = s < 0 ? -S.outer : 1.635, fx1 = s < 0 ? -1.635 : S.outer;
-    P.add('hullFixedPaintedBodywork', box(fx1 - fx0, 0.025, S.joints[5] - S.joints[0]), (fx0 + fx1) / 2, S.top - 0.0125, (S.joints[0] + S.joints[5]) / 2);
+    P.add('hullFixedPaintedBodywork', box(fx1 - fx0, 0.025, S.z1 - S.z0), (fx0 + fx1) / 2, S.top - 0.0125, (S.z0 + S.z1) / 2);
     // the bow guard: a rigid armoured beak ahead of the track, its top level then falling at 45 deg and its underside
-    // rising at 40 deg to a point at mid-skirt height (the side and Armed Forces Day photographs; the critic, 2026-10-28:
-    // the blunt end and its rubber flaps read wrong)
+    // rising at 40 deg to a point at mid-skirt height (the side photograph); over the track a rounded hood drooping 0.3 m
+    // to its inner edge (the Armed Forces Day head-on view; the critics, 2026-10-28/29: the blunt end, its rubber flaps
+    // and the flat front read wrong)
     const tip = 3.85, topBreak = 3.30, botBreak = 3.34, tipY = 1.22;
     const topAt = (z: number): number => (z <= topBreak ? S.top : S.top + (tipY + 0.01 - S.top) * (z - topBreak) / (tip - topBreak));
     const botAt = (z: number): number => (z <= botBreak ? S.bot : S.bot + (tipY - 0.01 - S.bot) * (z - botBreak) / (tip - botBreak));
-    const ring = (pts: SectionPoint[]): SectionPoint[] => (s > 0 ? pts : pts.map(([x, y]) => [-x, y] as SectionPoint).reverse());
-    const beak = [S.joints[5], topBreak, botBreak, tip];
-    P.add('hullFixedPaintedBodywork', sectionSolid(beak.map((z) => ({ z, ring: ring([[S.outer - S.t, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [S.outer - S.t, topAt(z)]]) }))));
-    P.add('hullFixedPaintedBodywork', sectionSolid(beak.map((z) => ({ z, ring: ring([[1.00, topAt(z) - 0.03], [S.outer - S.t, topAt(z) - 0.03], [S.outer - S.t, topAt(z)], [1.00, topAt(z)]]) }))));
+    const beak = [S.z1, topBreak, botBreak, tip];
+    P.add('hullFixedPaintedBodywork', sectionSolid(beak.map((z) => ({ z, ring: ring([[so, botAt(z)], [S.outer, botAt(z)], [S.outer, topAt(z)], [so, topAt(z)]]) }))));
+    // the hood: a 3 cm shell whose top falls away to its inner edge on a quadratic droop
+    const hx = [0.96, 1.08, 1.22, 1.40, so];
+    P.add('hullFixedPaintedBodywork', sectionSolid(beak.map((z) => {
+      const t = topAt(z), drop = Math.min(0.30, (t - botAt(z)) * 0.6);
+      const up = (x: number): number => t - drop * ((so - x) / (so - hx[0])) ** 2;
+      const pts: SectionPoint[] = [...hx.map((x) => [x, up(x) - 0.03] as SectionPoint), ...[...hx].reverse().map((x) => [x, up(x)] as SectionPoint)];
+      return { z, ring: ring(pts) };
+    })));
     for (const fz of [3.15, 3.55]) P.add('hullDark', cylX(0.026, 0.02, 8), s * (S.outer + 0.010), (topAt(fz) + botAt(fz)) / 2, fz);
   }
 }
@@ -1185,6 +1204,11 @@ function buildOlifantTurret(P: TankBuilderPort): void {
   }
   // ring collar on the race, up to the box's floor (the undercut shows round it)
   P.add('turret', cylY(1.00, 1.03, 0.20, 48), 0, 0.08, 0.02);
+  // the turret body under the armour modules, 0.2 m in from their faces: the modules overhang it, and it shows as the
+  // dark band between the skirts' tops and the turret's lower edge (the side, SANDF and Armed Forces Day photographs;
+  // the critic, 2026-10-29: the box read as standing straight on the deck)
+  const under = (z: number, hw: number): SolidSection => ({ z, ring: [[-hw, 0.13], [hw, 0.13], [hw, T.bottom + 0.01], [-hw, T.bottom + 0.01]] });
+  P.add('turret', sectionSolid([under(-1.55, T.hw - 0.20), under(T.cheekZ, T.hw - 0.20), under(T.faceZ + 0.10, 0.80)]));
   P.add('turretDark', torus(1.015, 0.012, 48, 6), 0, 0.03, 0.02);
   // module joints, bolt heads and the round port on each side; the bustle's rear plate seams
   for (const s of [-1, 1]) {
@@ -1219,9 +1243,10 @@ function buildOlifantRoof(P: TankBuilderPort): void {
   P.addCupola('turret', cylY(0.36, 0.38, 0.10, 32), cx, roofY + 0.05, cz);
   KIT.cupola(P, 'turret', cx, roofY + 0.10, cz, 0.30, 0.12, 8);
   // the commander's sight
-  const sx = -0.55, sz = -0.37, headY = roofY + 0.30;
+  // (its head 0.68 m over the roof: the side and Armed Forces Day photographs; the critic, 2026-10-29: 0.9 m read tall)
+  const sx = -0.55, sz = -0.37, headY = roofY + 0.18;
   P.add('turret', cylY(0.16, 0.20, 0.06, 20), sx, roofY + 0.03, sz);
-  P.add('turretDark', cylY(0.085, 0.085, 0.26, 14), sx, roofY + 0.18, sz);
+  P.add('turretDark', cylY(0.085, 0.085, 0.14, 14), sx, roofY + 0.12, sz);
   const head = (z: number, hw: number): SolidSection => ({ z, ring: [[-hw, 0], [hw, 0], [hw, 0.50], [-hw, 0.50]] });
   P.addEquipment('turretDetail', sectionSolid([head(-0.235, 0.14), head(-0.175, 0.20), head(0.175, 0.20), head(0.235, 0.14)]), sx, headY, sz);
   P.add('turretGlass', box(0.24, 0.20, 0.012), sx, headY + 0.30, sz + 0.240);
@@ -1479,7 +1504,7 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
 export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): TankProfileBuild {
   const m = MARKS[mark];
   buildHullBody(P);
-  buildGuards(P);
+  buildGuards(P, m.kit !== 'olifant');
   yield 'centurionHullBody';
   buildGuardBins(P);
   if (m.kit === 'olifant') buildOlifantSkirts(P);
@@ -1546,7 +1571,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   // the hull numbers on the front side plates (the Olifant's between its armoured modules' bolts)
   // (the Australian tank's skirts are off: its number rides on the turret basket)
   if (m.kit !== 'aus') {
-    const [nx, ny, nz] = m.kit === 'olifant' ? [OLIFANT_SKIRT.outer + 0.004, 1.12, 1.05] : [1.68, 1.08, 1.40];
+    const [nx, ny, nz] = m.kit === 'olifant' ? [OLIFANT_SKIRT.outer + 0.004, 1.14, 0.92] : [1.68, 1.08, 1.40];
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [nx, ny, nz], Math.PI / 2);
     P.decal('hull', 'number', P.spec.visual.number || '', 0.30, [-nx, ny, nz], -Math.PI / 2);
   }
