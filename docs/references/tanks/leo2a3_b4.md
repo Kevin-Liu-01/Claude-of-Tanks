@@ -41,8 +41,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   construction with the production Leopard 2's deeper heavy fore skirt blocks (the photographed step) and the forward fuel
   tanks' filler caps; pressed louvre exhaust grilles on the 2A2, the fourth batch's round rods on the 2A3s.
 - Turret (turret metres from the ring at (0, 1.64, 0.37)): the cheek blocks' faces at z 1.65 (hull z 2.02, over the
-  driver's hatch) across from the 0.95 m gun slot to 1.20 m off the bore, swept back 6 degrees outward, vertical to 0.60 m
-  and bevelled back to their tops, a short chamfer to the 1.27 m half-width walls (see "Turret front"), the walls to the
+  driver's hatch) across from the 0.95 m gun slot to 1.20 m off the bore, swept back 27 degrees outward, vertical to 0.60
+  m and bevelled back to their tops, a short chamfer to the 1.27 m half-width walls (see "Turret front"), the walls to the
   step at z -1.62, the bustle 1.15 m half-width to its rear plate at z -2.64 (hull z -2.27; 0.86 m half-width), roof 0.66
   at the front rising to 0.83; the mantlet set 3 cm back in the slot with the coaxial MG3's port and the FERO Z18's
   aperture, a round boss on a bolted flange narrowing to the sleeve;
@@ -91,9 +91,14 @@ cavity in the front armour in previous models").
   bolted cover standing 4 cm over the brow from the sight housing to the left cheek, 0.30 m deep.
 - The slope (the owner, 2026-10-28: "i dont think its that they need to lean back is that if you look top down, the
   chheeks are at a slight slope, like \ / but not extreme"; shown the two readings, the owner chose the outer ends set
-  back: "A built now is correct"): the faces vertical, swept back 6 degrees toward their outer ends in plan, running
-  nearly the turret's width (about 2.5 m), a short chamfer to the walls. No source publishes the plan angle
-  (en.wikipedia: "vertically faced"; the research note: up to 5 degrees not ruled out by the photos).
+  back: "A built now is correct"; 2026-10-29, on the 6 degrees first built: "i think it nneeds to be a lot mroe than 6
+  degrees"): the faces vertical, swept back 27 degrees toward their outer ends in plan, running nearly the turret's
+  width (about 2.5 m), a short chamfer to the walls; the notch's back, the sight head and the housing's front parallel
+  to the face, the shell's front (cheekRootZ) back 15 cm to z 0.88 behind the outer ends' bevelled tops. No source
+  publishes the plan angle (en.wikipedia: "vertically faced" is the faces' rake, not their plan). Fitted to the owner's
+  photo: its two cheek faces' rails slope +0.02 and -0.37, the turret side's rail +0.52, and the faces stand 150 and 80
+  px wide; a camera and sweep fitted to all four give 31 degrees without perspective and 24 to 29 over the focal lengths
+  its vertical edges allow (6 degrees the worst fit). 27 is the middle.
 - The face's place and its bevel (the 2A4 lane, 2026-10-28, Björn Huber's published 2A4 side drawing registered on this
   hull by road-wheel pitch; R2's critic had read the same 0.4 m): the faces stand at hull z 2.02, over the driver's hatch,
   0.38 m ahead of the earlier build's, the bustle's rear plate at hull z -2.27; the faces vertical to 0.60 m, then a bevel
@@ -169,6 +174,10 @@ cavity in the front armour in previous models").
   boot from the bolted ring down onto the tube (the root stepped hard to the barrel), the FERO cap 1 cm farther from the
   root's cone. Left as built: the ribbed seal and the doors' hinges (small fittings), and the right cheek's angle (the
   critic's own reading: the older photos are flat-fronted).
+- R9 (2026-10-29, the owner on the turrets from above: "i think it nneeds to be a lot mroe than 6 degrees"): the cheek
+  sweep fitted to the owner's photo, 27 degrees ("The slope" above); the notch's back, the sight head, its lip and the
+  housing's front run parallel to the face (the flat back would have stood proud of the outer wall's bevel), the shell's
+  front back to z 0.88. The 2A4 lane's square fronts carry the same 6 degrees; the owner's words and the fit went to it.
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.

@@ -73,11 +73,11 @@ function turretShell(P: TankBuilderPort): void {
 }
 
 /**
- * The two cheek blocks in front of the shell (0.62 m deep to the faces over the driver's hatch): their faces straight across
- * from the gun slot to 1.20 m, swept back 6 degrees outward, vertical to 0.60 m and bevelled back to their flat tops, a
+ * The two cheek blocks in front of the shell (0.77 m deep to the faces over the driver's hatch): their faces straight across
+ * from the gun slot to 1.20 m, swept back 27 degrees outward, vertical to 0.60 m and bevelled back to their flat tops, a
  * short chamfer to the side walls; the right one cut by the EMES 15's notch in its top inboard corner (its floor the sill,
- * its walls the blocks either side, its back the sight head's face). Each piece is a convex hexahedron with one planar
- * face forward.
+ * its walls the blocks either side, its back the sight head's face, parallel to the cheek's face). Each piece is a convex
+ * hexahedron with one planar face forward.
  */
 function cheeks(P: TankBuilderPort): void {
   const { box } = KIT;
@@ -88,9 +88,10 @@ function cheeks(P: TankBuilderPort): void {
     const face = x <= fw ? cheekFaceZ(x) : fo + (corner - fo) * (x - fw) / (hw - fw);
     return face - Math.max(0, y - mid) / (top - mid) * T.cheekBevelM;
   };
-  // a piece over |x| in [xa, xb] and y in [ya, yb], from the shell back to its front (or to a flat front at z1)
-  const piece = (sx: number, xa: number, xb: number, ya: number, yb: number, z1: number | null = null): void => {
-    const z = (x: number, y: number): number => z1 ?? front(x, y);
+  // a piece over |x| in [xa, xb] and y in [ya, yb], from the shell back to its front (or to a vertical front parallel
+  // to the face, setback behind it)
+  const piece = (sx: number, xa: number, xb: number, ya: number, yb: number, setback: number | null = null): void => {
+    const z = (x: number, y: number): number => setback === null ? front(x, y) : cheekFaceZ(x) - setback;
     P.add('turret', convexSlab(
       [sx * xa, ya, root], [sx * xb, ya, root], [sx * xb, ya, z(xb, ya)], [sx * xa, ya, z(xa, ya)],
       [sx * xa, yb, root], [sx * xb, yb, root], [sx * xb, yb, z(xb, yb)], [sx * xa, yb, z(xa, yb)],
@@ -108,7 +109,7 @@ function cheeks(P: TankBuilderPort): void {
       piece(sx, xo, fw, ya, yb);
       piece(sx, fw, hw, ya, yb);
     }
-    piece(sx, xi, xo, sill, top, LEO2A3B4_SIGHT_BACK_Z);
+    piece(sx, xi, xo, sill, top, T.sightDepthM);
   }
   // the brow over the gun slot, closing it where the mantlet's chamfer meets it (no visor over the mantlet)
   const browFront = T.gunLocal[2] + T.mantletFaceZ - MANTLET_CHAMFER_RUN;
@@ -201,30 +202,43 @@ function gunAssembly(P: TankBuilderPort, v: EarlyLeopard2): void {
 }
 
 /**
- * The EMES 15 in its notch: the sight head's dark face at the notch's back with its thermal window outboard and its day
- * and laser window inboard; the two armoured door leaves swung forward flat against the notch's walls; the armoured
- * housing on the roof behind, its front the notch's lintel, its sides sloped 20 degrees, its bolted lip out over the notch.
+ * The EMES 15 in its notch: the sight head's dark face at the notch's back, parallel to the cheek's face, with its thermal
+ * window outboard and its day and laser window inboard; the two armoured door leaves swung forward flat against the
+ * notch's walls; the armoured housing on the roof behind, its front the notch's lintel on the same line, its sides sloped
+ * 20 degrees, its bolted lip out over the notch.
  */
 function emes15(P: TankBuilderPort): void {
   const { box, cylY } = KIT;
-  const xi = T.sightInnerX, xo = T.sightOuterX, sill = T.sightSillY, x = -(xi + xo) / 2, w = xo - xi;
-  const back = LEO2A3B4_SIGHT_BACK_Z, foot = T.sightLintelY, top = T.sightTopY, z1 = back, z0 = z1 - 0.62;
+  const xi = T.sightInnerX, xo = T.sightOuterX, sill = T.sightSillY, xc = (xi + xo) / 2, x = -xc, w = xo - xi;
+  const back = LEO2A3B4_SIGHT_BACK_Z, foot = T.sightLintelY, top = T.sightTopY, z0 = back - 0.62;
+  const sweep = T.cheekSweepDeg * Math.PI / 180, cs = Math.cos(sweep), sn = Math.sin(sweep);
+  // the notch's back line at |x| off the bore (the face's line sightDepthM behind it, carried on past the walls), and a
+  // point d out of it along the face toward the bore (t) and forward off it (d)
+  const backAt = (ax: number): number => T.frontZ - (ax - T.slotHalfWidthM) * Math.tan(sweep) - T.sightDepthM;
+  const onBack = (t: number, d: number): readonly [number, number] => [x + t * cs - d * sn, back + t * sn + d * cs];
   const half = w / 2 + 0.06, crown = half - (top - foot) * Math.tan(20 * Math.PI / 180);
-  const ring: SectionPoint[] = [[x - half, foot], [x + half, foot], [x + crown, top], [x - crown, top]];
-  P.add('turret', sectionSolid([{ z: z0, ring }, { z: z1, ring }]));
+  P.add('turret', convexSlab(
+    [x + half, foot, z0], [x - half, foot, z0], [x - half, foot, backAt(xc + half)], [x + half, foot, backAt(xc - half)],
+    [x + crown, top, z0], [x - crown, top, z0], [x - crown, top, backAt(xc + crown)], [x + crown, top, backAt(xc - crown)],
+  ));
   // the sight head's face across the notch's back, its two windows
   const hy = (sill + foot) / 2;
-  P.add('turretDark', box(w - 0.02, foot - sill - 0.01, 0.02), x, hy, back + 0.01);
-  for (const dx of [-0.10, 0.10]) P.add('turretGlass', box(0.17, 0.20, 0.012), x + dx, hy + 0.01, back + 0.024);
+  const [hx, hz] = onBack(0, 0.01);
+  P.add('turretDark', box((w - 0.02) / cs, foot - sill - 0.01, 0.02), hx, hy, hz, 0, -sweep, 0);
+  for (const t of [-0.10, 0.10]) {
+    const [gx, gz] = onBack(t, 0.024);
+    P.add('turretGlass', box(0.17, 0.20, 0.012), gx, hy + 0.01, gz, 0, -sweep, 0);
+  }
   // the hood's bolted lip roofing the notch, 16 cm out over it from the housing, from the inner wall to 14 cm past the
   // outer one (a thin edge over the opening in the owner's photo)
-  const lipX0 = -(xi + 0.02), lipX1 = -(xo + 0.14);
-  P.add('turretDetail', box(lipX0 - lipX1, 0.035, 0.16), (lipX0 + lipX1) / 2, foot + 0.0175, back + 0.08);
+  const lipIn = xi + 0.02, lipOut = xo + 0.14, [lx, lz] = onBack(xc - (lipIn + lipOut) / 2, 0.08);
+  P.add('turretDetail', box((lipOut - lipIn) / cs, 0.035, 0.16), lx, foot + 0.0175, lz, 0, -sweep, 0);
   // the door leaves, open against the walls, their hinges at the back
-  const doorH = foot - sill - 0.03, doorZ = back + 0.03 + 0.10;
-  for (const [wx, sx] of [[-xi, -1], [-xo, 1]] as const) {
-    P.add('turretDetail', box(0.025, doorH, 0.20), wx + sx * 0.0135, sill + 0.01 + doorH / 2, doorZ);
-    for (const dy of [-0.10, 0.10]) P.add('turretDark', cylY(0.012, 0.012, 0.05, 8), wx + sx * 0.02, sill + 0.01 + doorH / 2 + dy, back + 0.03);
+  const doorH = foot - sill - 0.03;
+  for (const [wx, sx] of [[xi, -1], [xo, 1]] as const) {
+    const wb = backAt(wx);
+    P.add('turretDetail', box(0.025, doorH, 0.20), -wx + sx * 0.0135, sill + 0.01 + doorH / 2, wb + 0.13);
+    for (const dy of [-0.10, 0.10]) P.add('turretDark', cylY(0.012, 0.012, 0.05, 8), -wx + sx * 0.02, sill + 0.01 + doorH / 2 + dy, wb + 0.03);
   }
 }
 
