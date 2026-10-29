@@ -164,8 +164,9 @@ function togsBarbette(P:TankBuilderPort,mark:Challenger1SuppliedMark):void{
     at(P,box(.26,.19,.03),dx,dy,front+.005,'turretDark');
     lens(P,box(.19,.11,.006),dx,dy,front+.024);
     const a=55*Math.PI/180,h=.24,hy=dy+.10;
-    at(P,box(.27,.025,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
-    at(P,cylX(.016,.29,10),dx,hy,front+.02,'turretDark');
+    // the door is armour plate, 45 mm (the Mk 2's critic: a thinner flap read edge-on as a stick)
+    at(P,box(.27,.045,h),dx,hy+Math.sin(a)*h/2,front+.02+Math.cos(a)*h/2,'turretDetail',-a);
+    at(P,cylX(.024,.29,10),dx,hy,front+.02,'turretDark');
   }
 }
 function roof(P:TankBuilderPort):void{
@@ -203,7 +204,10 @@ function smoke(P:TankBuilderPort):void{
   for(const side of[-1,1]){
     for(const [dx,dy]of[[-4.3,1.6],[0,1.6],[4.3,1.6],[-2.15,-2.3],[2.15,-2.3]]){
       const x=side*33.1+dx,z=39.0-side*.36*dx;
-      equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true).rotateX(-.17).rotateY(side*.35),x,70.3+dy,z);
+      // the L8 bank fans out and fires upward (release 262, the three marks' critics against the Bovington photos: the
+      // tubes lay level in a tight bundle): the upper row at 36 degrees, the lower at 26, the outer tubes splayed 12
+      equipment(P,markSmokeTube(blindTube(m(1.8),m(1.24),m(10.2),m(5.8),20),[0,0,1],true)
+        .rotateX(dy>0?-.62:-.45).rotateY(side*.35+dx*.05),x,70.3+dy,z);
     }
     equipment(P,box(m(15.8),m(6.2),m(2.0)).rotateY(side*.35),side*31.4,69.4,33.4);
   }
