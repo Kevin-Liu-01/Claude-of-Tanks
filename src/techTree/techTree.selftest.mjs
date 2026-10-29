@@ -165,5 +165,5 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // Granby's place.
 // 264 (integrator): the Longwei family joins China's special lane (Zhuque, Xuanwu and Baihu at VII, Qinglong at IX; Main's
 // approval 10-29) on the merged 263 tree.
-assert.equal(digest, '3539d930dd5850e6', `tree content changed: re-pin to ${digest} if deliberate`);
+assert.equal(digest, 'e7d16bfed18294d9', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);
