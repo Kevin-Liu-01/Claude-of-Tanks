@@ -417,7 +417,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.9096517571049638,
       0.9062451139404644
     ],
-    "signature": "4fa0cdca",
+    "signature": "840e085a",
     "geometryHash": "71a95e38f795d981fdc7cc11ed8da006093aa7ef0d7c18fb64478e85a880951a"
   },
   "c1_ariete_preserie": {
@@ -561,7 +561,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.9000000357627869,
       0.9000000357627833
     ],
-    "signature": "e3789e68",
+    "signature": "47390519",
     "geometryHash": "b6b01d7e1b7038dfce43a52c60bbf88c6ac64bf36037accd6af66129d07bc0e4"
   },
   "challenger1_mk1": {
@@ -579,7 +579,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.7114079695701676,
       0.7402079421043446
     ],
-    "signature": "ac15b2b9",
+    "signature": "bc635a72",
     "geometryHash": "89c9ee61e604edbedaa987e442e0c550c3af0e1383633ab283fde9aa777e05a4"
   },
   "challenger1_mk2": {
@@ -597,7 +597,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.881700049114233,
       0.8600526769189187
     ],
-    "signature": "c19eb6b4",
+    "signature": "8655728d",
     "geometryHash": "10fe2c0dba6058701334bb2e76015fbec93557a5ae2ef3bd76f6633cebcf596a"
   },
   "challenger1_mk3": {

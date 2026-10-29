@@ -552,7 +552,8 @@ function addKV2Turret(P: SovietHeavyBuilderPort): void {
     kv2Weld(P, 'turretDetail', [s * K.tHalfW, K.tFloor, K.cheekZ], [s * K.tHalfW, roofAt(K.cheekZ), K.cheekZ], 0.012);
     kv2Weld(P, 'turretDetail', [s * K.cheekHalfW, K.tFloor, K.tFront], [s * K.cheekHalfW, K.frontTopY, K.tFront], 0.012);
     kv2Weld(P, 'turretDetail', [s * (K.tHalfW - 0.004), K.tRoof - 0.004, K.tRear], [s * (K.tHalfW - 0.004), K.tRoof - 0.004, K.chamferZ]);
-    kv2Weld(P, 'turretDetail', [s * (K.tHalfW - 0.004), K.tRoof - 0.004, K.chamferZ], [s * (K.tHalfW - 0.004), roofAt(K.cheekZ) - 0.004, K.cheekZ]);
+    // 263 (fleetPassLow circularCapOverlap): no second bead from chamferZ back to cheekZ: the roof is flat there
+    // (roofAt(cheekZ) = tRoof), so it lay inside the roof-edge bead above and its end cap z-fought that bead's
     kv2Weld(P, 'turretDetail', [s * (K.tHalfW - 0.004), roofAt(K.cheekZ) - 0.004, K.cheekZ], [s * (K.cheekHalfW - 0.004), K.frontTopY - 0.004, K.tFront]);
     // the side plate's lower front stiffener (S4: the raised bar beside the cheek joint)
     P.add('turret', box(0.030, 0.52, 0.065), s * (K.tHalfW + 0.015), 0.80, 0.87);
