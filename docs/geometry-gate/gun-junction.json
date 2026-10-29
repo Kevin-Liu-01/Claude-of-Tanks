@@ -36,7 +36,7 @@
   "bmp3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2341528e6d7afa9","gun":"1a34390dcb570fc3"}},
   "bmp3_rok": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9eedc1ed5f9b41fd","gun":"eb341da9f3fa65c4"}},
   "bmp3m_dragun125": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bba088e0ecd44522","gun":"f303b85b5784645f"}},
-  "bmpt_t90": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"a52dcf76f1b677b1","gun":"3305478b97857a40"}},
+  "bmpt_t90": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"b98f2279a5252cd5","gun":"3305478b97857a40"}},
   "bmpt_terminator2": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"73a897b4e56f316a","gun":"5da7ffbf856442d7"}},
   "borsuk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6bab7917cd29c6af","gun":"602a66dc5453dd2f"}},
   "bwp1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"055aed5b4e5894f2","gun":"45a6f588efeaf2fb"}},
