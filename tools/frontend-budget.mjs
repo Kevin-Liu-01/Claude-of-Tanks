@@ -205,6 +205,10 @@ export const BUNDLE_BUDGETS = Object.freeze({
   //   ground-stripes-264 and the integration's fixes under 300 B together (rosterState, turretSeatPlane, markings, specs).
   // Over 263's release build (at e93c4a67dc): game +12,278 B (entry +2,172 B), cn +12,981 B, Gallery +7,516 B, home +317 B,
   // docs +335 B, 404 +288 B.
+  // 2026-10-29 (core-two-drivers-265, the owner's one core and two drivers; pins left for the integrator's release build):
+  //   main.ts's solo authority routing and the solo sim Worker's and the solo host's composition gone: game and cn -1,980 B,
+  //   entry -1,806 B, Gallery -134 B, docs -2 B (the lane's build against its base 4a6261fb00 on one node_modules); requests
+  //   unchanged.
   game: { brotliBytes: 1131758, requests: 128, entryBrotliBytes: 249631 },
   cn: { brotliBytes: 1175585, requests: 129, entryBrotliBytes: 249631 },
   gallery: { brotliBytes: 702024, requests: 75 },

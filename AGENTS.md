@@ -124,6 +124,10 @@ Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 - Simulation randomness is seeded/injected. Do not use wall-clock time or
   `Math.random()` in authoritative logic.
 - Keep simulation and network modules Node-runnable and free of DOM/WebGL.
+- One core, two drivers (the owner, 2026-10-29; docs/ARCHITECTURE.md §1.6): the shared core (`src/sim`, the bots, the
+  world's collision and kernels) imports no driver; a local battle (solo, campaign, Proving Ground, Watch, replays, Jev)
+  steps it on the page and never reaches `src/mp`; a room's authority runs the same step. Guards:
+  `tools/driver-boundaries.selftest.mjs`, `src/sim/driverStepParity.selftest.mjs`.
 - No per-frame allocation in established hot loops; reuse scratch state.
 - All playable tanks are first-party procedural runtime models. Source GLBs
   are comparison/authoring inputs, never a playable loading path.
