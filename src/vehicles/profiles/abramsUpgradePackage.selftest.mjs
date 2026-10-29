@@ -174,7 +174,7 @@ for (const quality of ['high', 'low']) {
   const sideProbe = new THREE.Mesh(m1.root.getObjectByName('turret').geometry,
     new THREE.MeshBasicMaterial({side: THREE.DoubleSide}));
   const sideRay = new THREE.Raycaster();
-  for (const side of [-1, 1]) for (const [z, minimum, ys] of [[0,.12,[.15,.60]],[-.60,.12,[.15,.60]],[-2.5,.05,[.40,.82]]]) {
+  for (const side of [-1, 1]) for (const [z, minimum, ys] of [[0,.12,[.15,.60]],[-.60,.12,[.15,.60]],[-2.5,.05,[.40,.74]]]) {
     const hits = ys.map(y => {
       sideRay.set(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0));
       const hit = sideRay.intersectObject(sideProbe)[0];

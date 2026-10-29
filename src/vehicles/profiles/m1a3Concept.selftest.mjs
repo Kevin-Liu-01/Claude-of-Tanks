@@ -130,7 +130,7 @@ assert.deepEqual(receipt, {
   mantlet: 'sepv3-tapered-nose-with-collar-and-sensor-head',
   cheekModulesPerSide: 1,
   mainGunCaliberMm: 120,
-  gunLengthM: 4.45,
+  gunLengthM: 4.95,
   hullCrewHatches: 2,
   skirtPanelsPerSide: 6,
   roadWheelsPerSide: 7,

@@ -8051,16 +8051,16 @@ const M1E3_HULL: AbramsHullConfig = {
 const M1E3_TURRET = {
   ring: [0, 1.57 + M1A1_ADDITIONAL_TURRET_LIFT_M, 0.35] as Vec3Tuple,
   // the trunnion 0.56 m behind the family's (the demonstrator's turret face sits well back on the hull, after the blind
-  // critics; any further back and the depressed barrel meets the bow), its 4.45 m gun reaching the same muzzle station
+  // critics; any further back and the depressed barrel meets the bow), its 4.95 m gun 2.4 m past the bow
   gun: [0, 0.30, 1.00] as Vec3Tuple,
-  gunLen: 4.45,
+  gunLen: 4.95,
   gunR: 0.095,
   floorY: M1A1_TURRET_FLOOR_Y,
   // the gun bay's walls; the cheeks' inner chin corner; plan and face rakes (run per metre)
   bayX: 0.42,
   chin: [0.42, 0.08, 1.60] as Vec3Tuple,
   planRake: 0.73,
-  faceRake: 0.45,
+  faceRake: 0.60,
   // the cheek underside rises from chinRiseZ to the chin
   chinRiseZ: 0.55,
   // flank: the band leans in bandLean per metre to bandTopY, the chamfer reaches the roof at roofEdgeX
@@ -8080,10 +8080,10 @@ const M1E3_TURRET = {
 const M1E3_BUSTLE_FRONT_Z = -1.20;
 const M1E3_BUSTLE_REAR_Z = -2.95;
 const M1E3_BUSTLE_FLOOR_Y = 0.22;
-const M1E3_BUSTLE_ROOF_Y = 0.86;
+const M1E3_BUSTLE_ROOF_Y = 0.76;
 const M1E3_BUSTLE_HALF_W = 1.50;
 // the side walls stand to shoulderY, then chamfer in 1/0.9 m per metre to the roof
-const M1E3_BUSTLE_SHOULDER_Y = 0.74;
+const M1E3_BUSTLE_SHOULDER_Y = 0.66;
 // the rear face stands to 0.70, then chamfers 45 degrees to the roof at the knee
 const M1E3_BUSTLE_KNEE_Z = M1E3_BUSTLE_REAR_Z + (M1E3_BUSTLE_ROOF_Y - 0.70);
 
@@ -8421,8 +8421,8 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
   P.add('turret', cylY(1.25, 1.25, bearingTop - bearingBottom, 48), 0, (bearingTop + bearingBottom) / 2, 0);
   P.turretG.userData.turretSeatKeepR = 1.27;
   // Autoloader bustle: a separate riveted box behind the body, its floor over
-  // the engine deck, its roof a step above the body's, its walls chamfered at
-  // the shoulders and its rear face at the roof.
+  // the engine deck, its roof just over the body's (one long low roof line),
+  // its walls chamfered at the shoulders and its rear face at the roof.
   const zf = M1E3_BUSTLE_FRONT_Z, zk = M1E3_BUSTLE_KNEE_Z, zr = M1E3_BUSTLE_REAR_Z;
   const bf = M1E3_BUSTLE_FLOOR_Y, br = M1E3_BUSTLE_ROOF_Y, bw = M1E3_BUSTLE_HALF_W, bs = M1E3_BUSTLE_SHOULDER_Y;
   const shoulder = Math.hypot(1, 0.9), knee = Math.SQRT2;
@@ -8515,7 +8515,7 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
   P.add('gun', cylZ(0.112, 0.08, seg, 0.172), 0, 0, 1.70);
   // the forward thermal sleeve runs to the reference sensor, banded where its sections meet
   P.add('gun', cylZ(0.112, L - 0.40 - 2.14, seg), 0, 0, (2.14 + L - 0.40) / 2);
-  for (const z of [2.14, 2.80, 3.40]) P.add('gun', torus(0.113, 0.009, 18), 0, 0, z, Math.PI / 2, 0, 0);
+  for (const z of [2.14, 2.80, 3.40, 4.00]) P.add('gun', torus(0.113, 0.009, 18), 0, 0, z, Math.PI / 2, 0, 0);
   P.add('gun', cylZ(0.112, 0.20, seg), 0, 0, L - 0.10);
   P.add('gun', box(0.05, 0.05, 0.10), 0, 0.125, L - 0.36);
   P.add('gun', box(0.085, 0.055, 0.075), 0, 0.15, L - 0.29);
