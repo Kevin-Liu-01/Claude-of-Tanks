@@ -173,3 +173,27 @@ export function leopard2A4WedgeFace(side: 1 | -1, u: number, v: number): { point
   const normal = new THREE.Vector3(side * -dz, 0, dx).normalize();
   return { point, normal, rotation: new THREE.Euler(0, Math.atan2(normal.x, normal.z), 0) };
 }
+
+/**
+ * A point on a wedge's sloped top (turret metres), its outward normal, and the rotation that turns a part's +Z along the
+ * normal with its +X across the wedge: `side` +1 is the left (+X) wedge; `u` runs from the tip (0) back to the side
+ * module's turn (1), `w` from the gun's slot (0) to the wedge's outer edge (1). The old OTCO laid its cheek ERA here.
+ */
+export function leopard2A4WedgeTop(side: 1 | -1, u: number, w: number): { point: THREE.Vector3; normal: THREE.Vector3;
+  rotation: THREE.Euler } {
+  const plan = cheekPlan(side);
+  const at = (uu: number, ww: number): THREE.Vector3 => {
+    const z = THREE.MathUtils.lerp(3.1452, plan.turn, uu);
+    const x = THREE.MathUtils.lerp(plan.inner + .004, plan.outerAt(z) - .004, ww);
+    return new THREE.Vector3(side * x, cheekRoof(side, side * x, z) - A6_Y, a6WarpZ(z));
+  };
+  const e = 1e-3, point = at(u, w);
+  const du = at(Math.min(1, u + e), w).sub(at(Math.max(0, u - e), w));
+  const dw = at(u, Math.min(1, w + e)).sub(at(u, Math.max(0, w - e)));
+  const normal = new THREE.Vector3().crossVectors(du, dw).normalize();
+  if (normal.y < 0) normal.negate();
+  const across = dw.clone().normalize().multiplyScalar(side);
+  const up = new THREE.Vector3().crossVectors(normal, across).normalize();
+  const basis = new THREE.Matrix4().makeBasis(across, up, normal);
+  return { point, normal, rotation: new THREE.Euler().setFromRotationMatrix(basis) };
+}
