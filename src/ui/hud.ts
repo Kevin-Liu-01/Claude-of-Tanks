@@ -37,6 +37,7 @@ import { consumableIconSVG } from './equipIcons.ts';
 import { createCanvasText, type CanvasText, type CanvasTextStyle } from './canvasText.ts';
 import { formatNumber, getLocale, t } from './i18n.ts';
 import { droneControl } from './droneControlState.ts';
+import { battleSightShift } from './battleSight.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
@@ -1952,7 +1953,7 @@ body.cot-spectating .cot-ret-text,body.cot-spectating .cot-ret,body.cot-spectati
 @keyframes cot-pb-chase{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
 @keyframes cot-pb-burst{to{transform:scale(1.35);opacity:0;}}
 /* The rules (matchRuleset.ts rulesetLines): one calm panel, values in the data voice. */
-.cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% + 84px);transform:translateX(-50%);
+.cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% - var(--hud-sight-shift,0px) + 84px);transform:translateX(-50%);
   transform-origin:50% 0;box-sizing:border-box;width:max-content;max-width:min(840px,calc(100vw - 32px));display:flex;
   flex-wrap:wrap;justify-content:center;gap:7px 20px;padding:10px 20px;border:1px solid var(--line-2);
   border-radius:var(--r1);background:var(--hud-plate);box-shadow:0 10px 30px oklch(from var(--surface-scene) l c h / .32);font:600 var(--battle-fs-13)/1.25 var(--font-ui);
@@ -3535,6 +3536,10 @@ export function initHud(bus: EventBus): HudRuntime {
     scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
+  // (battle-camera-264) and once responsiveLayout.ts has sized the root for the new window: read at the resize alone, a
+  // rotated phone's sight kept the old width (the aim point projected on the portrait centre in landscape, its reticle off
+  // where the shell goes) until the next resize
+  window.addEventListener('cot:layoutchange', resize);
   resize();
   root.style.display = 'none'; // starts hidden until setMode/update
 
@@ -4339,7 +4344,8 @@ export function initHud(bus: EventBus): HudRuntime {
     frame.forwardX = forwardX;
     frame.forwardZ = forwardZ;
     frame.centerX = w / 2;
-    frame.centerY = h / 2;
+    // (round the battle sight where the chase framing raises it, battleSight.ts; the scope's is the centre)
+    frame.centerY = mode === 'sniper' ? h / 2 : h / 2 - battleSightShift();
     frame.minDimension = Math.min(w, h);
     const drawnRadius = clampRetR(smoothRadPx);
     frame.radius = Math.min(

@@ -5,6 +5,7 @@ import {
 } from './mouseNoticePlan.ts';
 import { scratchCanvas } from './uiCanvas.ts';
 import { addPlateObstacle, addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { battleSightShift, onBattleSightShift, publishBattleBands, type BattleBandBox } from './battleSight.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, TOUCH_ONE_ROW, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
@@ -165,14 +166,31 @@ export const SCOPE_BAND_BELOW = 140;
  * tall phones lands it across the sight — the countdown, the rack and the struck empty round painted over its labels.
  * A row crossing the sight's band moves below the scope's band too when the lower cluster leaves room above `floor`,
  * else above the ring when it fits below `ceiling` (the map, the touch chrome), else it stays. A row already clear of
- * the sight keeps its place (a tablet's row sits under the battle furniture, where it always was).
+ * the sight keeps its place (a tablet's row sits under the battle furniture, where it always was). `sightY`: the battle
+ * sight's y where the chase framing raises it over the centre (battleSight.ts); the scope's band stays on `centerY`.
  */
-export function portraitSightClearTop(top: number, height: number, centerY: number, floor: number, ceiling: number): number {
-  if (top >= centerY + SIGHT_BAND_BELOW || top + height <= centerY - SIGHT_BAND_ABOVE) return top;
-  const below = centerY + SCOPE_BAND_BELOW;
+export function portraitSightClearTop(top: number, height: number, centerY: number, floor: number, ceiling: number,
+  sightY = centerY): number {
+  if (top >= sightY + SIGHT_BAND_BELOW || top + height <= sightY - SIGHT_BAND_ABOVE) return top;
+  const below = Math.max(centerY + SCOPE_BAND_BELOW, sightY + SIGHT_BAND_BELOW);
   if (below + height <= floor) return below;
-  const above = centerY - SIGHT_BAND_ABOVE - height;
+  const above = Math.min(centerY, sightY) - SIGHT_BAND_ABOVE - height;
   return above >= ceiling ? above : top;
+}
+
+/**
+ * The most the battle sight may rise over the centre (the chase framing's lens shift, battle-camera-264) before a portrait
+ * phone's systems row, seated off the sight by portraitSightClearTop, would stop moving over the ring and stay over the
+ * tank under the risen sight, or would find no place over it: the row at its own place `top`, `height` tall, the band
+ * over the sight ending at `ceiling` (the map, the touch chrome). A row under the band never moves for the sight.
+ */
+export function portraitSightRiseCap(top: number, height: number, centerY: number, ceiling: number): number {
+  if (top >= centerY + SIGHT_BAND_BELOW) return Infinity;
+  // (until the band reaches it a row over the sight stays; once it does, the row moves over the ring while the band
+  // still crosses it and its place there stays under the ceiling)
+  const untouched = centerY - SIGHT_BAND_ABOVE - (top + height);
+  const moved = Math.min(centerY + SIGHT_BAND_BELOW - top - 1, centerY - SIGHT_BAND_ABOVE - height - ceiling);
+  return Math.max(0, untouched, moved);
 }
 
 /** The touch warning chip wherever it shows: the reticle's mark under the sight (data-seat, hud.ts), or the kit's notice
@@ -192,6 +210,18 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
  *  spectator's bars, the network strip; and the kill feed's rows, which give way to the target plate (FEED_ROWS). */
 const PLATE_OBSTACLES = '.cot-watch:not([hidden]),.cot-spec,.cot-mp-status.battle';
 const FEED_ROWS = '.cot-kill-lane .cot-kf:not(.out)';
+/** The bottom chrome the chase framing keeps the player's hull and tracks over (battle-camera-264: engine/chaseFraming.ts,
+ *  through battleSight.ts): what never moves with the sight. A portrait touch layout seats its systems row off the sight
+ *  (portraitSightClearTop), so there the row (CHASE_FLOOR_SYSTEMS) counts only where it stands under the sight's band,
+ *  and the first battles' controls strip counts while it shows (publishBattleBandsNow). */
+const CHASE_FLOOR = '.cot-shell,.cot-con,.cot-shells,.cot-cons,.cot-dp,.cot-drive,.cot-minimap,.cot-touch.on .round,'
+  + '.cot-touch.on .joy,.cot-touch.on .quick,.cot-touch.on .fire,.cot-touch.on .autoaim,.cot-touch.on .scope';
+const CHASE_FLOOR_SYSTEMS = '.cot-vehicle-controls>button';
+/** The head band over the centre column the risen sight keeps its widest ring under (the score and objective, the team
+ *  strip; a portrait phone's touch chrome and map where they cross it). */
+const CHASE_CEILING = '.cot-top,.cot-mode-status.show,.cot-pips.show,.cot-touch.on .mobile-chrome,.cot-minimap';
+/** The column the head band is measured over, either side of the centre line. */
+const CHASE_CEILING_HALF = 60;
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
@@ -638,6 +668,40 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     settleSightFurniture();
   }
+  /** The HUD's bands for the chase framing (battle-camera-264, battleSight.ts): the bottom chrome that never moves with
+   *  the sight, the first battles' controls strip while it shows (its seat over the systems row: the chase glides down
+   *  once it goes), the head band over the centre column, and how far this layout lets the sight rise. */
+  function publishBattleBandsNow(width: number, height: number, touch: boolean,
+    hints: { width: number; x: number; bottom: number }, riseCap: number): void {
+    const floor: BattleBandBox[] = [];
+    const push = (box: { left: number; top: number; right: number; bottom: number } | null) => {
+      if (box) floor.push({ x0: Math.floor(box.left), y0: Math.floor(box.top), x1: Math.ceil(box.right), y1: Math.ceil(box.bottom) });
+    };
+    for (const node of document.querySelectorAll(CHASE_FLOOR)) push(shownBox(node));
+    // (a portrait phone's row by its place this pass: under the sight's band it is the floor's too)
+    const rowFloor = touch && width < height ? height / 2 - battleSightShift() + SIGHT_BAND_BELOW : -Infinity;
+    for (const node of document.querySelectorAll(CHASE_FLOOR_SYSTEMS)) {
+      const box = shownBox(node);
+      if (box && box.top >= rowFloor) push(box);
+    }
+    // (the strip by its seat, as wide as it may run: its own width changes as its groups are done; transient, the chase
+    // keeps its sight where it was and draws back over it)
+    const transient: BattleBandBox[] = [];
+    const plate = touch ? null : document.querySelector<HTMLElement>('.cot-hints.show');
+    if (plate?.getClientRects().length) {
+      const plateH = plate.getBoundingClientRect().height;
+      transient.push({ x0: Math.floor(hints.x - hints.width / 2), y0: Math.floor(hints.bottom - plateH),
+        x1: Math.ceil(hints.x + hints.width / 2), y1: Math.ceil(hints.bottom) });
+    }
+    let ceiling = 0;
+    for (const node of document.querySelectorAll(CHASE_CEILING)) {
+      const box = shownBox(node);
+      if (!box || box.top > height * 0.45 || box.right < width / 2 - CHASE_CEILING_HALF || box.left > width / 2 + CHASE_CEILING_HALF) continue;
+      ceiling = Math.max(ceiling, Math.ceil(box.bottom));
+    }
+    publishBattleBands({ width: Math.round(width), height: Math.round(height), touch, floor, ceiling,
+      ...(transient.length ? { transient } : {}), ...(riseCap < Infinity ? { riseCap: Math.max(0, Math.floor(riseCap)) } : {}) });
+  }
   // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
   let networkFullWidth = 0;
   /**
@@ -767,6 +831,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     laneKey(0, leftTop, leftBottom);
     laneKey(width - sideWidth, rightTop, rightBottom);
+    // the battle sight's rise (battleSight.ts: the chase framing's lens shift), after the lanes
+    const sightShift = battleSightShift();
+    nextKey.push(sightShift);
     const same = (key: readonly number[]) => {
       if (key.length !== nextKey.length) return false;
       for (let i = 0; i < key.length; i++) if (key[i] !== nextKey[i]) return false;
@@ -801,6 +868,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         // the compact card 250
         medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
         medalCompact: { w: Math.min(250, width - 24), h: 40 },
+        sightY: height / 2 - sightShift,
       };
       planned = planMouseNotices(input);
       if (boxesEnd > plain && planned.clearance < 2) {
@@ -895,6 +963,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
       // Watch's bar (its seat: refresh)
       observe('.cot-watch');
+      // (battle-camera-264) the first battles' controls strip: the chase framing clears it while it shows
+      observe('.cot-hints');
     }
     // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
@@ -1144,11 +1214,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && systemsTop < touchChrome.bottom + 8) systemsTop = touchChrome.bottom + 8;
     // The side lanes keep the floor the row's natural place gives them (a row moved below the sight lends them nothing).
     const laneSystemsTop = systemsTop;
+    // (battle-camera-264) the most the chase framing may raise the sight before this layout's own sight-led places give
+    let sightRiseCap = Infinity;
     if (touch && width < height && systemsHeight) {
       const floor = Math.min(read('.cot-drive')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
         read('.cot-touch.on .joy')?.top ?? height) - 8;
       const ceiling = Math.max(map?.bottom ?? 0, touchChrome?.bottom ?? 0, top) + 8;
-      const clearTop = portraitSightClearTop(systemsTop, systemsHeight, height / 2, floor, ceiling);
+      sightRiseCap = portraitSightRiseCap(systemsTop, systemsHeight, height / 2, ceiling);
+      const clearTop = portraitSightClearTop(systemsTop, systemsHeight, height / 2, floor, ceiling, height / 2 - battleSightShift());
       if (clearTop !== systemsTop) {
         systemsTop = clearTop;
         // Level with the ammo tray: the row sits left of it, whole, rather than scrolling under it; clear of it, on the
@@ -1536,8 +1609,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // gone where the column under the map stood empty, gauntlet r17)
     const flightSight = read('.cot-flight-hud:not([hidden]) .flight-sight');
     const spectating = document.body.classList.contains('cot-spectating');
+    const sightY = height / 2 - battleSightShift();
     const sight = flightSight ?? (touch && width < height && !spectating ? { left: width / 2 - SIGHT_BAND_ABOVE, right: width / 2 + SIGHT_BAND_ABOVE,
-      top: height / 2 - SIGHT_BAND_ABOVE, bottom: height / 2 + SIGHT_BAND_BELOW } : null);
+      top: sightY - SIGHT_BAND_ABOVE, bottom: sightY + SIGHT_BAND_BELOW } : null);
     const sightFloor = (anchor: number, crosses: boolean) =>
       sight && crosses && sight.bottom + 8 > anchor ? sight.top - 8 : Infinity;
     const leftReach = touch && width < height ? Math.max(sideWidth, wideFeed ? wideLeftFeed : besideColumn) : sideWidth;
@@ -1684,7 +1758,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertBox?.height ?? TOUCH_COMPACT_ALERT_LINES_H },
         countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop,
-        oneRow: width > height ? height <= 340 : width <= 340 });
+        oneRow: width > height ? height <= 340 : width <= 340, sightY: height / 2 - battleSightShift() });
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
       // (a three-line alert over the sight sent DETECTED under it onto the damage panel at 844x390, the layout receipt)
@@ -1873,6 +1947,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     yieldKillRibbon();
     seatScopeVision(width, height, touch);
     publishSightFurniture(touch);
+    publishBattleBandsNow(width, height, touch, hints, sightRiseCap);
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(refresh);
@@ -1885,6 +1960,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // plan input too)
   window.addEventListener('cot-hud-relayout', () => { planInputs = true; scanParts = true; });
   window.addEventListener('cot-hud-relayout', schedule);
+  // (battle-camera-264) the chase framing raised or lowered the battle sight: the notices replan around its new place
+  onBattleSightShift(() => { planInputs = true; schedule(); });
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
   // The HUD's faces arriving re-measure a side seat a fallback face set too tall (only then: a relayout the faces cause

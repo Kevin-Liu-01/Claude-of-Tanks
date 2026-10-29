@@ -221,6 +221,8 @@ export function createMainFrameRuntime({
   // hot-path: every frame in the Garage
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
     if (game.phase !== 'garage') { garageModePreview?.clear(); return true; }
+    // (battle-camera-264) the chase's lens shift never rides into the showroom's camera
+    rig.suspendFraming();
     networkSession.pump(dtSeconds, nowMs);
     garageFrameRequest.animate = showroom.moving || pedestal.switchPending || !!garageModePreview?.animated || !!garageModePreview?.pending;
     if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
@@ -230,6 +232,8 @@ export function createMainFrameRuntime({
     return !garageModePreview?.pending;
   };
 
+  /** The last live battle frame's camera was Watch's (a paused one keeps it: no chase preview over a watched battle). */
+  let watchOwnsCamera = false;
   // hot-path: every battle frame
   const updateCombatCamera = (
     frame: BattleFrameReceipt,
@@ -239,7 +243,13 @@ export function createMainFrameRuntime({
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
-      if (!watchFrame?.(dtSeconds)) rig.update(dtSeconds, cameraInput);
+      // (battle-camera-264) Watch's cameras own the frame: the chase's lens shift comes off
+      watchOwnsCamera = !!watchFrame?.(dtSeconds);
+      if (watchOwnsCamera) rig.suspendFraming();
+      else rig.update(dtSeconds, cameraInput);
+    } else if (frame.inBattle && frame.paused && !frame.killcamActive && !watchOwnsCamera) {
+      // a changed camera setting glides in behind the pause menu (battle-camera-264: the settings' live preview)
+      rig.previewFraming(dtSeconds);
     }
     if (frame.killcamActive) killcam.update(dtSeconds);
   };

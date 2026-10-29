@@ -36,6 +36,9 @@ import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { ensureFonts } from './fonts.ts';
 import { uiIconIds, uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { segmented, setRoving, wireRoving, wireRovingKeys } from './components/components.ts';
+import {
+  CHASE_CAMERA_DEFAULTS, CHASE_CAMERA_RANGES, CHASE_SHOULDERS, type ChaseNumericSetting, type ChaseShoulder,
+} from '../engine/chaseFraming.ts';
 import { createPickerMenu, type PickerMenu } from './components/pickerMenu.ts';
 import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
 import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
@@ -146,7 +149,8 @@ type NumericSettingKey =
   | 'volCombat'
   | 'volAmbience'
   | 'volUi'
-  | 'volVoice';
+  | 'volVoice'
+  | ChaseNumericSetting;
 type BooleanSettingKey =
   | 'invertY'
   | 'showPerfMeter'
@@ -400,6 +404,9 @@ const SETTINGS_CSS = `
 /* the unit sits inside its field's end (a multiplier's is empty), so every value field ends on the controls' edge */
 .cot-set-slider .unit{width:20px;margin-left:calc(-1 * (var(--s3) + 20px));pointer-events:none;text-align:start;
   font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+/* (battle-camera-264) the camera's rows end on their reset, the kit's icon button; the shoulder's segments sit beside it */
+.cot-set-reset{flex:none;}
+.cot-set-camera-seg{display:flex;align-items:center;gap:var(--s3);}
 /* the settings of two to five values (difficulty, right click, a phone's quality, language, On/Off) are the kit's segmented
    control (components.css .cot-c-seg); every inline control is 36 px tall. The sets of six (the desktop's quality, the
    colour presets) and the crew voice are the kit's picker menu, as wide as the crew field. */
@@ -994,7 +1001,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     min: number,
     max: number,
     o: SliderOptions = {},
-  ): void {
+  ): { row: HTMLDivElement; wrap: HTMLDivElement; sync(): void } {
     const toD = o.toDisp || ((value: number) => value);
     const fromD = o.fromDisp || ((value: number) => value);
     const digits = o.digits != null ? o.digits : 2;
@@ -1041,6 +1048,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       // judged without leaving the panel
       range.addEventListener('change', () => emit('ui:click', {}));
     }
+    return { row, wrap, sync };
   }
 
   /** settings_ui r2: plate group-card — a cluster (title + rows + notes) on
@@ -1081,6 +1089,57 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     return { group, sync };
   }
 
+  /** A row's reset to the camera setting's default: the kit's quiet icon button, by its classes as the panel's close is
+   *  (the kit's button() would pull its factory into a boot chunk the Gallery shares), named for its row. */
+  function cameraReset(host: HTMLElement, label: string, key: ChaseNumericSetting | 'cameraShoulder', sync: () => void): void {
+    const reset = el('button', 'cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--quiet cot-set-reset', host);
+    reset.type = 'button';
+    reset.dataset.uiSound = 'press';
+    reset.setAttribute('aria-label', t('settings.camera.reset', { label }));
+    reset.innerHTML = uiIconSVG('undo', 18);
+    reset.addEventListener('click', () => {
+      input.setSetting(key, CHASE_CAMERA_DEFAULTS[key]);
+      sync();
+      emit('ui:click', {});
+    });
+  }
+
+  /** battle-camera-264 (owner 2026-10-28: "be able to change and alter this camera angle as u like in settins"): the chase
+   *  camera over its framing (engine/chaseFraming.ts), each setting with its reset. A change applies at once: in battle the
+   *  camera glides to it behind this menu (cameraRig.previewFraming). */
+  function cameraCard(parent: HTMLElement): void {
+    const card = groupCard(parent, t('settings.camera.title'));
+    const slider = (label: string, key: ChaseNumericSetting, o: SliderOptions) => {
+      const [min, max] = CHASE_CAMERA_RANGES[key];
+      const made = sliderRow(card, label, key, min, max, o);
+      cameraReset(made.wrap, label, key, made.sync);
+    };
+    slider(t('settings.camera.height'), 'cameraHeight', {
+      step: '0.1', dispStep: '0.1', digits: 1, unit: t('settings.camera.unitMetres'),
+    });
+    slider(t('settings.camera.distance'), 'cameraDistance', {
+      step: '0.05', dispStep: '5', unit: '%', digits: 0, toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+    });
+    const shoulderLabel = t('settings.camera.shoulder');
+    const shoulderRow = el('div', 'cot-set-row', card);
+    settingLabel(shoulderRow, shoulderLabel, SETTINGS_OPTION_ICONS.cameraShoulder);
+    const shoulderNames: Readonly<Record<ChaseShoulder, string>> = {
+      left: t('settings.camera.shoulderLeft'), centre: t('settings.camera.shoulderCentre'), right: t('settings.camera.shoulderRight'),
+    };
+    const controls = el('div', 'cot-set-camera-seg', shoulderRow);
+    const shoulder = mountSeg(controls, segmented({ label: shoulderLabel, className: 'cot-set-shoulder', value: input.getSettings().cameraShoulder,
+      options: CHASE_SHOULDERS.map((side) => ({ value: side, label: shoulderNames[side] })) }),
+    () => input.getSettings().cameraShoulder, (side) => input.setSetting('cameraShoulder', side));
+    cameraReset(controls, shoulderLabel, 'cameraShoulder', () => shoulder.sync());
+    slider(t('settings.camera.framing'), 'cameraFraming', {
+      step: '0.01', dispStep: '1', unit: '%', digits: 0, toDisp: (v) => v * 100, fromDisp: (v) => v / 100,
+    });
+    slider(t('settings.camera.fov'), 'cameraFov', {
+      step: '1', dispStep: '1', digits: 0, unit: t('settings.camera.unitDegrees'),
+    });
+    el('div', 'cot-set-note', card).textContent = t('settings.camera.note');
+  }
+
   function renderGameplay() {
     body.textContent = '';
     const touchLayout = !!(input.isTouchLayout && input.isTouchLayout());
@@ -1096,6 +1155,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     onOffRow(aim, t('settings.camera.isometric'), 'isometricView');
     const isometricNote = el('div', 'cot-set-note', aim);
     isometricNote.textContent = t('settings.camera.isometricNote');
+    cameraCard(body);
 
 
     const battle = groupCard(body, t('settings.battle.title'));

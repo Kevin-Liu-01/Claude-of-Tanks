@@ -371,7 +371,14 @@ take `?pseudo=1` on the dev server (English +40 %, `i18nPseudo.ts`), and
 Battle overlay placement is owned by `battleHudLayout.ts` / `.css`: event-time
 lane measurements keep rosters, incoming alerts, chat, reports, minimap and
 driving controls apart. Do not restore independent fixed offsets in those
-components. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
+components. The battle sight's place is one datum, `battleSight.ts` (battle-camera-264):
+the chase framing's lens shift raises it over the centre, and every sight band (the notice
+planners' `sightY`, the countdown, `--hud-sight-shift` for the warning chip and the rules, a
+portrait phone's systems row) takes it from there; the scope's stays the screen centre. The
+layout publishes the bands the framing clears (`publishBattleBandsNow`: bottom chrome that
+never moves with the sight, the controls strip as transient, the head band, the rise its own
+sight-led places tolerate); re-record `tools/fixtures/hud-chase-bands.json` with
+`tools/hud-chase-bands.browser.mjs` when that chrome moves. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
 `tools/battle-hud-layout.browser.mjs`; see `docs/BATTLE-UI-QA.md` for coverage.
 <!-- agent-docs:fill:tasks -->
 Inspect the live rendered surface, locate event/callback ownership, change the

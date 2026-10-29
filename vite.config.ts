@@ -467,7 +467,11 @@ export default defineConfig({
             // 2026-10-26 (consumables-260): the DOM-free consumable rules and the Garage's loadout helpers (sim/consumableRules.ts,
             // game/consumableLoadout.ts) load at boot on exactly the game and cn (the Garage, the room selection) and in the lazy
             // HUD and battle; on their own they were one more boot request on both.
-            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/]minimapAssetUrl)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-28 (battle-camera-264): the chase framing (engine/chaseFraming.ts: the camera rig and the input settings at
+            // boot, the lazy Settings card) and the battle sight's datum (ui/battleSight.ts: the aim composition at boot, the lazy
+            // HUD) are DOM-free leaves the game and cn load at boot; on its own the framing was one more boot request on both,
+            // and the sight datum rode in a chunk the game and cn share with the Gallery's preload maps.
+            { name: 'vehicleActions', test: /[\\/]src[\\/](?:game[\\/](?:vehicleActions|consumableLoadout)|sim[\\/](?:spottingStats|equipmentRules|consumableRules)|ui[\\/](?:minimapAssetUrl|battleSight)|engine[\\/]chaseFraming)\.ts$/, includeDependenciesRecursively: false },
             // 2026-10-05 (media Studio): three's Pass base and the light-model family (atmosphere, cloudscapes, light
             // model core, haze law, ground bounce) stay the one chunk the game, map, terrain and urban kit share. The
             // Studio's cinema passes and horizon relight import members of it; without the group those split into a

@@ -4,6 +4,9 @@ import { vehicleActionDefaultKeys } from './vehicleActions.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { A11Y } from '../ui/accessibilityPreferences.ts';
+import {
+  CHASE_CAMERA_DEFAULTS, clampChaseSetting, isChaseShoulder, type ChaseNumericSetting, type ChaseShoulder,
+} from '../engine/chaseFraming.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -157,7 +160,17 @@ export interface InputSettings {
   crewVoice: CrewVoiceSetting;
   /** Muffle and ear-ringing after a close blast. */
   audioConcussion: boolean;
+  /** The chase camera (engine/chaseFraming.ts, Settings › Gameplay › Camera): metres over the framed pivot, a multiplier
+   *  on the framed default distance, the shoulder, the picture's rise as a share of the height, the vertical lens. */
+  cameraHeight: number;
+  cameraDistance: number;
+  cameraShoulder: ChaseShoulder;
+  cameraFraming: number;
+  cameraFov: number;
 }
+
+const CAMERA_NUMERIC_KEYS: readonly ChaseNumericSetting[] = ['cameraHeight', 'cameraDistance', 'cameraFraming', 'cameraFov'];
+const isCameraNumericKey = (key: string): key is ChaseNumericSetting => (CAMERA_NUMERIC_KEYS as readonly string[]).includes(key);
 
 type BindingMap = Record<ActionId, string | null>;
 type PadBindingMap = Record<ActionId, number | null>;
@@ -366,6 +379,8 @@ const DEFAULT_SETTINGS: InputSettings = {
   crewVoice: 'national',
   // Close-blast muffle + ringing; optional for players sensitive to tinnitus.
   audioConcussion: true,
+  // The chase camera over its framing solved from the HUD's bands (battle-camera-264): no offsets, 60 degrees.
+  ...CHASE_CAMERA_DEFAULTS,
 };
 
 const VOLUME_KEYS: readonly VolumeSettingKey[] = [
@@ -704,6 +719,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
+    for (const k of CAMERA_NUMERIC_KEYS) {
+      if (typeof storedSettings[k] === 'number') settings[k] = clampChaseSetting(k, storedSettings[k]);
+    }
+    if (isChaseShoulder(storedSettings.cameraShoulder)) settings.cameraShoulder = storedSettings.cameraShoulder;
   }
 
   // --- gameplay settings -------------------------------------------------------
@@ -1422,6 +1441,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       } else if (key === 'rmbMode') {
         if (typeof value === 'string' && isRmbMode(value)) settings.rmbMode = value;
       }
+      else if (key === 'cameraShoulder') {
+        if (isChaseShoulder(value)) settings.cameraShoulder = value;
+      }
+      else if (isCameraNumericKey(key)) settings[key] = clampChaseSetting(key, value);
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
       saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
     },

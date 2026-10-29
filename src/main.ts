@@ -1813,6 +1813,7 @@ const {
   worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
   getIsometricView: () => input.getSettings().isometricView,
+  getCameraSettings: () => input.getSettings(),
   prepareDestination: prepareCameraDestination,
 });
 const {

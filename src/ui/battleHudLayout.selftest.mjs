@@ -89,8 +89,10 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
   }
 }
 const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
-assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,600}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling\)/,
-  'the solver applies it to touch portraits, centred on the screen-centre sight');
+// (battle-camera-264) on the battle sight, the centre's unless the chase framing raises it (battleSight.ts); the scope's
+// band stays the centre's
+assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,900}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling, height \/ 2 - battleSightShift\(\)\)/,
+  'the solver applies it to touch portraits, on the battle sight');
 assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not

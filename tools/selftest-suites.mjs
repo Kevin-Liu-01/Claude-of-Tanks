@@ -913,6 +913,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
+    'src/engine/chaseFraming.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
@@ -2430,6 +2432,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
     'src/ui/touchNoticePlan.selftest.mjs',
+    // battle-camera-264: the risen battle sight (the chase framing's lens shift): its datum, the notices, the countdown and
+    // a portrait phone's systems row follow it; the scope stays centred
+    'src/ui/battleSight.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
