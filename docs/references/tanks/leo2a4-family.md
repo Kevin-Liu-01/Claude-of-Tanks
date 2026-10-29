@@ -149,7 +149,9 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   fleet's Kontakt-1 values (12 mm, 0.05 kinetic reduction, 280 mm against chemical energy), through the family envelope's
   addedPlates. Contiguity 0 at all phases, sealed holds (4 px), strict track clip 0/0+0/0, nationalGunClearance PASS,
   traverse as the base (the ring seat's -3 mm); blind critic PASS (notes: the camouflage runs across the containers; a
-  possible dark flap under each cheek, too blurred to place).
+  possible dark flap under each cheek, too blurred to place). Fairness (VIII round robin, 120 m, the balance range's
+  APFSDS duel): 0.751 before and after (6/29 in band): Kontakt-1's 0.05 kinetic reduction moves no pairing; its 280 mm
+  against chemical energy is for the balance session's HEAT and missile scenarios.
   - The Strv 121 (item/strv121-2a4-265): its stern rack floored; its track sweep (28 voxels) is the field suit's
     `strv122_ghillie_hull_net` at x ±1.68, y 1.16-1.22, and its netting px (2,243 against main's 2,806 row) moved with
     the re-seated suit: both routed to the ghillie lane (Main).
