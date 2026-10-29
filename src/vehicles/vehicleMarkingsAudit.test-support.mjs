@@ -47,9 +47,7 @@ export function createVehicleMarkingsAudit() {
     turret: new Set(['turret', 'turretPermanentMarkingSurface']),
   };
 
-  // the permanent hull armour opt-in is the vehicle's, as the seat solver and the paint film read it
-  // (vehicleMarkingSurfaces): an authored seat's anchor profile is 'authored-surface-seat', never the vehicle id
-  function markingSupportHit(mark, owner, id) {
+  function markingSupportHit(mark, owner) {
     owner.updateWorldMatrix(true, true);
     const position = mark.getWorldPosition(new THREE.Vector3());
     const normal = new THREE.Vector3(0, 0, 1)
@@ -66,7 +64,7 @@ export function createVehicleMarkingsAudit() {
       if (visible && object.isMesh && !object.isInstancedMesh
           && (armorNames[mark.userData.surfaceOwner].has(object.name)
             || (mark.userData.surfaceOwner === 'hull'
-              && vehicleMarkingIncludesPermanentHullArmor(id)
+              && vehicleMarkingIncludesPermanentHullArmor(mark.userData.markingAnchorProfile)
               && object.name === 'hullExternalArmor'))) {
         candidates.push(object);
       }
@@ -118,7 +116,7 @@ export function createVehicleMarkingsAudit() {
         assert(owner, `${id}/${mark.name}: owner rig exists`);
         assert.equal(mark.userData.surfaceSupported, true, `${id}/${mark.name}: surface seat solved`);
         assert.equal(mark.userData.supportGapM, SURFACE_MARKING_STYLE.surfaceLiftM, `${id}/${mark.name}: shared paint lift`);
-        assert(markingSupportHit(mark, owner, id),`${id}/${mark.name}: armor is physically present directly behind paint`);
+        assert(markingSupportHit(mark, owner), `${id}/${mark.name}: armor is physically present directly behind paint`);
         assert.equal(mark.userData.visibilitySamples, SURFACE_MARKING_STYLE.visibilitySampleCount, `${id}/${mark.name}: full visibility footprint sampled`);
         assert(mark.userData.visibilityClearSamples >= SURFACE_MARKING_STYLE.minimumClearSamples, `${id}/${mark.name}: paint is not clipped or hidden by vehicle geometry`);
         // the generated receipt's visibility, re-measured on this build: no part added since hides the paint
