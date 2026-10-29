@@ -6,7 +6,8 @@
 // its crown. 263 (owner: the mantlets "should be like 'shaped' by the turret shape instead of protruding out"): each
 // mask is now the turret's own nose: the wedge of the cast shell round the trunnion axis inside the channel
 // (castGunSeat.ts conformalMask), so its face is the turret's surface, flush with the cheeks and rolling back over the
-// top with the crown, pitching in a slot under the crown as wide as the elevation. Sources
+// top with the crown. Its top runs on as a tongue under a lip of the crown, so the gun's travel opens no slot over it:
+// at rest the groove reads as a shallow step under the lip, as the owner's model's panel line does. Sources
 // (docs/references/tanks/type74.md and stb1.md, "Mantlet" and "Owner model"):
 //   - Type 74: a large mask of Japan's own design under a laced canvas cover; the J1 telescope's capped port on
 //     the vehicle's right of the gun and the coaxial 7.62 mm's on its left, a cylindrical collar with a flared half-round
@@ -114,10 +115,17 @@ interface MaskSeatFit {
 }
 
 const DEG = Math.PI / 180;
-// The slot the mask pitches in: its top stands TOP_PSI round from straight ahead and the crown over it starts the
-// spec's 9 degrees of elevation and a 2 degree keep further round; its back stops the 6 degrees of depression and a 2
-// degree keep short of straight down, where the casting behind the axis begins.
-const TOP_PSI = 70 * DEG, ELEVATION = 9 * DEG, DEPRESSION = 6 * DEG, SLOT_KEEP = 2 * DEG;
+// The groove the mask pitches under (263, the critics' open slot over the mask): the crown's lip stands LIP_PSI round
+// from straight ahead. The mask's full face stops the spec's 9 degrees of elevation and a 5 degree keep short of it (6 mm
+// at the mask's corners, 7 cm off the axis), and from there its tongue, a band round the trunnion axis just under the
+// turret's skin, runs on under the lip by the 6 degrees of depression and a 2 degree keep. Over the tongue the lip is the crown's own skin, standing TONGUE_KEEP_M
+// off the tongue and at least LIP_M thick; the crown's full casting starts where the tongue's top reaches at full
+// elevation and a keep. The mask's back stops the depression and a 2 degree keep short of straight down, where the
+// casting behind the axis begins.
+const LIP_PSI = 70 * DEG, ELEVATION = 9 * DEG, DEPRESSION = 6 * DEG, SLOT_KEEP = 2 * DEG, TOP_KEEP = 5 * DEG;
+const MASK_TOP = LIP_PSI - ELEVATION - TOP_KEEP, TONGUE_TOP = LIP_PSI + DEPRESSION + SLOT_KEEP;
+const CROWN_PSI = TONGUE_TOP + ELEVATION + TOP_KEEP;
+const TONGUE_KEEP_M = 0.006, LIP_M = 0.005, TONGUE_M = 0.035;
 
 /** The mask's face (gun frame): its foremost z at (x, y), and its radius from the trunnion axis at x along `psi`. */
 interface MaskFace {
@@ -126,40 +134,84 @@ interface MaskFace {
   dispose(): void;
 }
 
-/** Cut the shell for its seat, add the fixed pieces, the mask and its trunnion pins, and return the mask's face. */
+/** A band round the trunnion axis (axis frame) across `xs`: at each x its outer face `outer(i, psi)` and its inner
+ * face `inner(i)` off the axis, from `from` to `to` radians in whole-degree steps. */
+function axisBand(xs: readonly number[], from: number, to: number, outer: (i: number, psi: number) => number,
+  inner: (i: number) => number): THREE.BufferGeometry {
+  const steps = Math.max(2, Math.round((to - from) / DEG));
+  const arc = Array.from({ length: steps + 1 }, (_, k) => from + ((to - from) * k) / steps);
+  return loftAlongX(xs.map((x, i) => ({
+    x,
+    ring: [
+      ...arc.map((a): [number, number] => { const r = outer(i, a); return [-r * Math.cos(a), r * Math.sin(a)]; }),
+      ...[...arc].reverse().map((a): [number, number] => { const r = inner(i); return [-r * Math.cos(a), r * Math.sin(a)]; }),
+    ],
+  })));
+}
+
+/** Cut the shell for its seat, add the fixed pieces, the mask, its tongue and its trunnion pins, and return the mask's
+ * face. */
 function seatShell(P: MantletBuilderPort, shell: THREE.BufferGeometry, fit: MaskSeatFit): MaskFace {
   const { y, z } = P.gunG.position;
+  // the skin's radius round the trunnion axis over the groove, read by rays on the whole shell before the seat cuts it:
+  // at each x across the channel the tongue runs the lip's keep and thickness under the skin's lowest there
+  const shellProbe = new THREE.Mesh(shell, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), dir = new THREE.Vector3();
+  const skin = (x: number, psi: number): number => {
+    ray.set(origin.set(x, y, z), dir.set(0, Math.sin(psi), Math.cos(psi)));
+    const hit = ray.intersectObject(shellProbe, false).find((h) => h.distance > 0.01);
+    if (!hit) throw new Error(`japaneseMantlets: no turret skin over the groove at x ${x.toFixed(3)}, ${(psi / DEG).toFixed(0)} deg`);
+    return hit.distance;
+  };
+  const xn = P.q ? 24 : 12, lipXs = Array.from({ length: xn + 1 }, (_, i) => -fit.channelHalf + (2 * fit.channelHalf * i) / xn);
+  const grooveArc = Array.from({ length: Math.round((CROWN_PSI - MASK_TOP) / DEG) + 1 }, (_, k) => MASK_TOP + k * DEG);
+  const skins = lipXs.map((x) => new Map(grooveArc.map((a) => [a, skin(x, a)])));
+  const tongueR = skins.map((m) => Math.min(...m.values()) - TONGUE_KEEP_M - LIP_M);
+  (shellProbe.material as THREE.Material).dispose();
   const seat: ConformalSeat = {
     halfWidth: fit.channelHalf, axisY: y, axisZ: z, radius: fit.receiverR, bands: P.q ? 24 : 12,
-    topPsi: TOP_PSI, crownPsi: TOP_PSI + ELEVATION + SLOT_KEEP, bottomPsi: -Math.PI / 2 + DEPRESSION + SLOT_KEEP, floorY: y - fit.maskLow,
+    topPsi: MASK_TOP, crownPsi: CROWN_PSI, bottomPsi: -Math.PI / 2 + DEPRESSION + SLOT_KEEP, floorY: y - fit.maskLow,
   };
   for (const piece of cutConformalSeat(shell, seat)) P.add('turret', piece);
+  // the lip: the crown's skin over the groove, its underside TONGUE_KEEP_M off the tongue
+  const skinAt = (i: number, a: number) => skins[i].get(grooveArc.reduce((b, c) => (Math.abs(c - a) < Math.abs(b - a) ? c : b)))!;
+  P.add('turret', axisBand(lipXs, LIP_PSI, CROWN_PSI, skinAt, (i) => tongueR[i] + TONGUE_KEEP_M).translate(0, y, z));
   const mask = conformalMask(shell, { ...seat, maskHalf: fit.maskHalf });
   shell.dispose();
   if (!mask) throw new Error('japaneseMantlets: the mask cuts nothing from the turret shell');
   mask.translate(0, -y, -z);
-  // the face, read by rays on the mask before it joins its bucket
-  const probe = new THREE.Mesh(mask.clone(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
-  const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), dir = new THREE.Vector3();
+  // the tongue across the mask's width (the lip's stations inside it and the mask's sides, its radius linear between
+  // them as the lip's is), from a degree inside the mask's top face on under the lip
+  const at = (x: number): number => {
+    const k = Math.min(xn - 1, Math.floor(((x + fit.channelHalf) / (2 * fit.channelHalf)) * xn));
+    const t = (x - lipXs[k]) / (lipXs[k + 1] - lipXs[k]);
+    return tongueR[k] + (tongueR[k + 1] - tongueR[k]) * t;
+  };
+  const tongueXs = [-fit.maskHalf, ...lipXs.filter((x) => Math.abs(x) < fit.maskHalf - 1e-4), fit.maskHalf];
+  const tongueRs = tongueXs.map(at);
+  const tongue = axisBand(tongueXs, MASK_TOP - DEG, TONGUE_TOP, (i) => tongueRs[i], (i) => Math.max(0.02, tongueRs[i] - TONGUE_M));
+  // the face, read by rays on the mask and its tongue before they join their bucket
+  const probes = [mask, tongue].map((g) => new THREE.Mesh(g.clone(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })));
   const zs = new Map<string, number>(), rs = new Map<string, number>();
   const face: MaskFace = {
     z(x, yy) {
       const key = `${x},${yy}`;
-      if (!zs.has(key)) { ray.set(origin.set(x, yy, 3), dir.set(0, 0, -1)); zs.set(key, ray.intersectObject(probe, false)[0]?.point.z ?? 0); }
+      if (!zs.has(key)) { ray.set(origin.set(x, yy, 3), dir.set(0, 0, -1)); zs.set(key, ray.intersectObjects(probes, false)[0]?.point.z ?? 0); }
       return zs.get(key)!;
     },
     radius(x, psi) {
       const key = `${x},${psi}`;
       if (!rs.has(key)) {
         ray.set(origin.set(x, 0, 0), dir.set(0, Math.sin(psi), Math.cos(psi)));
-        const hits = ray.intersectObject(probe, false);
+        const hits = ray.intersectObjects(probes, false);
         rs.set(key, hits.length ? hits[hits.length - 1].distance : 0);
       }
       return rs.get(key)!;
     },
-    dispose() { probe.geometry.dispose(); (probe.material as THREE.Material).dispose(); },
+    dispose() { for (const p of probes) { p.geometry.dispose(); (p.material as THREE.Material).dispose(); } },
   };
   P.add('gunMount', mask);
+  P.add('gunMount', tongue);
   const seg = P.q ? 24 : 12, pinLen = fit.channelHalf + 0.035 - fit.maskHalf;
   // painted like the mask: through the seam the pin reads as the mask's own trunnion, inside the wall's front edge
   for (const s of [-1, 1]) P.add('gunMount', KIT.cylX(fit.pinR, pinLen, seg), s * (fit.maskHalf + pinLen / 2 - 0.004), 0, 0);
@@ -186,7 +238,7 @@ function faceSheet(face: MaskFace, half: number, from: number, to: number, folds
 // Type 74 (production): the broad external mask
 // ---------------------------------------------------------------------------------------------------------------------
 const T74 = {
-  seat: { channelHalf: 0.515, maskHalf: 0.50, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
+  seat: { channelHalf: 0.515, maskHalf: 0.507, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
 };
 
 /**
@@ -198,9 +250,9 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
   const { box, cylX, cylZ } = KIT;
   const seg = P.q ? 40 : 18, { seat } = T74;
   const face = seatShell(P, shell, seat);
-  // the laced canvas cover over the mask's crown, from 35 degrees over the bore to the slot, gathered in seven folds,
+  // the laced canvas cover over the mask's crown, from 35 degrees over the bore to the groove, gathered in seven folds,
   // tied down by three straps across it, the lacing zig-zagging along its edges by the cheeks
-  const c0 = 35 * DEG, c1 = TOP_PSI - 1.5 * DEG, cm = (c0 + c1) / 2;
+  const c0 = 35 * DEG, c1 = MASK_TOP - 1.5 * DEG, cm = (c0 + c1) / 2;
   P.add('gunMountCanvasSkin', faceSheet(face, seat.maskHalf - 0.014, c0, c1, 7, 0.005, 0.008, !!P.q));
   for (const x of [-0.33, 0, 0.33]) {
     // each strap as long as most of the cover's arc where it lies, so its straight ends stay on the cover
@@ -208,12 +260,15 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
     P.add('gunMountDark', box(0.045, 0.014, len), x, r * Math.sin(cm), r * Math.cos(cm), Math.PI / 2 - cm, 0, 0);
   }
   for (const s of [-1, 1]) for (let k = 0; k < 6; k++) {
-    const a = c0 + ((c1 - c0) * (k + 0.5)) / 6, x = s * (seat.maskHalf - 0.075 + (k % 2) * 0.022), r = face.radius(x, a) + 0.017;
-    P.add('gunMountDark', box(0.01, 0.01, 0.05), x, r * Math.sin(a), r * Math.cos(a), Math.PI / 2 - a, (k % 2 ? 0.5 : -0.5), 0);
+    // each tie inside the cover's arc where it lies (the arc is short by the mask's narrow sides), clear of the groove
+    const x = s * (seat.maskHalf - 0.075 + (k % 2) * 0.022), half = 0.015 / (face.radius(x, cm) + 0.017);
+    const a = c0 + half + ((c1 - c0 - 2 * half) * k) / 5, r = face.radius(x, a) + 0.017;
+    P.add('gunMountDark', box(0.01, 0.01, 0.03), x, r * Math.sin(a), r * Math.cos(a), Math.PI / 2 - a, (k % 2 ? 0.5 : -0.5), 0);
   }
-  // the J1 telescope's port on the right and the coaxial 7.62 mm's on the left, both a little over the bore
-  facePort(P, face, 0.30, 0.113, 0.066, 'sight', P.q ? 20 : 12);
-  facePort(P, face, -0.33, 0.09, 0.054, 'coax', P.q ? 20 : 12);
+  // the J1 telescope's port on the right and the coaxial 7.62 mm's on the left, both a little over the bore, their
+  // bosses clear of the groove at full elevation
+  facePort(P, face, 0.30, 0.085, 0.066, 'sight', P.q ? 20 : 12);
+  facePort(P, face, -0.33, 0.075, 0.054, 'coax', P.q ? 20 : 12);
   // the collar the barrel leaves through, standing out of the face at the bore, the flared half-round hood over its top
   // and the seal round the barrel
   const fz = face.z(0, 0);
@@ -257,7 +312,7 @@ export function addType74Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeome
 // STB-1 (prototype): the owner's model's rounded oval mask
 // ---------------------------------------------------------------------------------------------------------------------
 const STB1 = {
-  seat: { channelHalf: 0.475, maskHalf: 0.46, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
+  seat: { channelHalf: 0.475, maskHalf: 0.467, receiverR: 0.15, maskLow: 0.254, pinR: 0.06 },
 };
 
 /**
@@ -269,9 +324,9 @@ export function addSTB1Mantlet(P: MantletBuilderPort, shell: THREE.BufferGeometr
   const seg = P.q ? 40 : 18, { seat } = STB1;
   const face = seatShell(P, shell, seat);
   // a port either side of the bore, a little over it: the telescope's at -x with the gunner's sight head, the coaxial
-  // gun's at +x
-  facePort(P, face, -0.245, 0.124, 0.06, 'sight', P.q ? 20 : 12);
-  facePort(P, face, 0.245, 0.124, 0.052, 'coax', P.q ? 20 : 12);
+  // gun's at +x, their bosses clear of the groove at full elevation
+  facePort(P, face, -0.245, 0.10, 0.06, 'sight', P.q ? 20 : 12);
+  facePort(P, face, 0.245, 0.10, 0.052, 'coax', P.q ? 20 : 12);
   // the short thick collar standing out of the face at the bore, its ring and the seal round the barrel
   const fz = face.z(0, 0);
   P.add('gunMount', cylZ(0.15, 0.18, seg), 0, 0, fz + 0.06);

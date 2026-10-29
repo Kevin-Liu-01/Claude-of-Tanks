@@ -477,12 +477,24 @@ Owner, 2026-10-28: "make the matnelts a lot better bc they should be like "shape
 protruding out". The 261/262 mask was a block in a slot across the turret front, standing 0.11 m proud of the nose and
 up to 1 m proud of it near the crown, where the cast nose rolls back. Both tanks' masks are now the turret's own nose
 (`castGunSeat.ts` `conformalMask` and `cutConformalSeat`): the wedge of the cast shell round the trunnion axis inside
-the channel, from 2° short of straight down (the 6° depression and a keep) to 70° over the bore, over a floor 0.254 m
-under it. Its face is the turret's surface, flush with the cheeks either side of 15 mm seams, and rolls back over the
-top with the crown. The crown stands over it from 81° round (the 9° elevation and a 2° keep), so the mask pitches in
-an 11° slot under the crown, round a 0.15 m receiver. The canvas cover lies on the mask's crown from 35° to the slot
-under three straps and its lacing. The ports stand out of the face along its normal, and the collar and hood out of
-the face at the bore. The lamp's cradle and bars meet the mask's left side and the collar.
+the channel, from 2° short of straight down (the 6° depression and a keep) to 56° over the bore, over a floor 0.254 m
+under it. Its face is the turret's surface, flush with the cheeks either side of 8 mm seams, and rolls back toward the
+crown, round a 0.15 m receiver. The canvas cover lies on the mask's crown from 35° to 54.5° under three straps and its
+lacing. The ports stand out of the face along its normal, low enough that their bosses clear the groove at full
+elevation, and the collar and hood stand out of the face at the bore. The lamp's cradle and bars meet the mask's left
+side and the collar.
+
+The groove over the mask (263, the blind critics' "dark gap" and "slot above the mask"): the first conformal mask
+pitched in an open 11° slot under the crown, a dark wedge down to the axis that widened to 17° at full depression.
+The crown now stands a lip over the mask from 70° round, and the mask's top runs on under it as a tongue: a band
+round the trunnion axis from the mask's top face to 78° (the 6° depression and a 2° keep past the lip). At each
+station across the channel, the tongue's radius is the skin's lowest over the groove, less a 6 mm keep and a 5 mm lip.
+The lip's underside stands that keep off the tongue at every pitch; its skin is the shell's own, read by rays before
+the seat is cut. The crown's full casting starts at 92°, where the tongue's top reaches at full elevation plus a 5°
+keep. The 5° keep gives 6 mm at the mask's corners, 7 cm off the axis. At rest the groove reads as a shallow step
+under the lip, about 11 mm deep, like the panel line round the owner's model's mask, and nothing of the turret's
+inside shows through at any pitch. japaneseMantlet.selftest.mjs: the gun keeps 4 mm from every turret part over the
+whole travel (worst 5.0 mm), and the mouth's 14,400 rays meet the mask everywhere.
 
 ## Hull (262 rebuild)
 

@@ -122,8 +122,9 @@ function axisPlane(yc: number, zc: number, psi: number, atLeast: boolean): CutPl
  * shell's own nose. The mask is the wedge of the shell round the trunnion axis (turret frame y `axisY`, z `axisZ`) from
  * `bottomPsi` to `topPsi` radians (from +Z toward +Y), within `halfWidth` of the gun's plane and over `floorY`; the
  * fixed casting keeps the shell from `crownPsi` over the top and round behind the axis to straight below it, outside a
- * receiver of `radius` round the axis. Between the two wedges the slot the mask pitches in: `crownPsi - topPsi` is the
- * gun's elevation and a keep, `bottomPsi + PI/2` its depression and a keep. */
+ * receiver of `radius` round the axis. Between the two wedges the room the mask pitches in: over its top the caller's
+ * groove (japaneseMantlets.ts: the mask's tongue under a lip of the crown), under it `bottomPsi + PI/2`, the depression
+ * and a keep. */
 export interface ConformalSeat {
   readonly halfWidth: number;
   readonly axisY: number;
