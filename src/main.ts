@@ -3741,7 +3741,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.
-  // A chunk that did not arrive cannot arrive again in this document (components/loadFailure.ts): the Battle button keeps
+  // A chunk that did not arrive is not asked for again in this document (components/loadFailure.ts): the Battle button keeps
   // the kit's error state, which needs no chunk (the notice below is one), and the notice offers Reload page, not a retry.
   presentFailure: (error, retry) => {
     const reload = isChunkFailure(error);
@@ -4365,7 +4365,7 @@ const studioAccess = createStudioAccess({
         });
         studioLightLive = runtime;
         return runtime;
-      }); // (a chunk that did not arrive cannot arrive again in this document: components/loadFailure.ts)
+      }); // (a chunk that did not arrive is not asked for again in this document: components/loadFailure.ts)
       const applied = await (await studioLightRuntime).apply(time, light);
       // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
       mapAmbience.setDensityOverride(1);
@@ -4405,7 +4405,7 @@ const studioAccess = createStudioAccess({
   onPending: (pending) => {
     for (const link of studioLinks()) link.toggleAttribute('aria-busy', pending);
   },
-  // a Studio whose code did not arrive cannot arrive in this document: its links keep the kit's error state, and their
+  // a Studio whose code did not arrive is not asked for again in this document: its links keep the kit's error state, and their
   // next press (or F8) reloads the page once online (components/loadFailure.ts)
   onEntryError: (error) => {
     console.error('[studio] lazy entry failed', error);

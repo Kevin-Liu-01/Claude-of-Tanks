@@ -2006,8 +2006,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const notifyLater = (options: ToastOptions): void => {
     void import('./components/notice.ts').then(({ notify }) => { notify(options); }, () => {});
   };
-  /** A surface whose chunks did not arrive cannot load them again in this document (components/loadFailure.ts: probed on
-   *  151 and 156). So the failure says so with Reload page, and its triggers keep the kit's error state, which needs no
+  /** A surface whose chunks did not arrive does not ask for them again in this document (components/loadFailure.ts: probed
+   *  on Chrome 151, which keeps the failure, and 156, which does not; a failed chunk stylesheet never applies in either).
+   *  So the failure says so with Reload page, and its triggers keep the kit's error state, which needs no
    *  chunk (the notice is one, and offline it cannot arrive either: the loading census 264); their next press reloads the
    *  page once it is online. */
   const reportLoadFailure = (id: string, text: string, triggers: readonly (HTMLElement | null)[]): void => {

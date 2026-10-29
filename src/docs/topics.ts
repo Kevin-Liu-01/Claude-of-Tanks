@@ -526,7 +526,7 @@ function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia)
 function mountSearchEntry(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>('.dm-search input');
   if (!input) return;
-  // a matching is asked for once, never while offline: one that did not arrive cannot arrive again in this document, so
+  // a matching is asked for once, never while offline: one that did not arrive is not asked for again in this document, so
   // the field keeps the kit's error state and its next press reloads the page once online
   const field = input.closest('.dm-search__field') ?? input.parentElement;
   const mount = (): void => importWhenOnline(() => import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input)), () => {
@@ -774,7 +774,7 @@ function wireFleetGrid(root: HTMLElement): void {
   let asked = false;
   let mounted = false;
   const load = (): void => {
-    // (asked once, never while offline: a module that did not arrive cannot arrive again in this document, so the bar
+    // (asked once, never while offline: a module that did not arrive is not asked for again in this document, so the bar
     // keeps the kit's error state and its next press reloads the page once online)
     if (asked) return;
     asked = true;
@@ -826,7 +826,7 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   counterScaleCharts(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
-  // A part is asked for once, never while offline: one whose module did not arrive cannot arrive again in this document,
+  // A part is asked for once, never while offline: one whose module did not arrive is not asked for again in this document,
   // and leaves the page as served (the banner's poster, the chapter's prerendered text).
   const whenOnline = (load: () => Promise<unknown>): void => importWhenOnline(load);
   if (heroVideos.length) {

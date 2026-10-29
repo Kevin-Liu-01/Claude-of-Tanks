@@ -98,7 +98,7 @@ function hydrateIcons(root: ParentNode): void {
     return ref.startsWith('#') && !document.getElementById(ref.slice(1));
   });
   if (!slots.length && !missing) return;
-  // (a set that did not arrive leaves the slots empty: its chunk cannot arrive again in this document)
+  // (a set that did not arrive leaves the slots empty: its chunk is not asked for again in this document)
   importWhenOnline(() => import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
     for (const slot of slots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 24);
   }));

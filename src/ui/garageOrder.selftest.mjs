@@ -473,9 +473,10 @@ assert.match(garageSource, /technicalModalImage\.src = iconUrl\([^;]+;[^]{0,120}
   'the drawing fades in through the kit\'s reveal');
 assert.match(garageSource, /addEventListener\('online', \(\) => \{[^]{0,200}?data-failed[^]{0,80}?technicalModalImage\.src = src/,
   'a drawing the network dropped loads again once it is back');
-// the loading census 264: a failed chunk cannot load again in this document (Chrome keeps a failed import and a failed
-// modulepreload), so the failure offers Reload page and its triggers keep a quiet error state that needs no chunk, their
-// next press reloading the page once it is online
+// the loading census 264: a failed chunk is not asked for again in this document (Chrome 151 keeps a failed import and
+// a failed modulepreload, 156 does not, and a failed chunk stylesheet never applies in either: components/loadFailure.ts),
+// so the failure offers Reload page and its triggers keep a quiet error state that needs no chunk, their next press
+// reloading the page once it is online
 assert.match(garageSource, /const reportLoadFailure = [^]{0,200}?markLoadFailed\(triggers, text\);[^]{0,400}?actions: \[\{ label: t\('loadFailed\.reload'\), primary: true, keep: true, run: \(\) => \{ if \(navigator\.onLine !== false\) location\.reload\(\); \} \}\]/,
   'a failed surface marks its triggers (the kit\'s markLoadFailed) and offers Reload page');
 assert.match(garageSource, /const reloadsForFailure = [^]{0,200}?if \(!pressFailed\(trigger\)\) return false;/,

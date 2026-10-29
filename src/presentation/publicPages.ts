@@ -40,7 +40,7 @@ const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(pla
   : 'publicPages.video.playAria', { label: videoName(video) });
 const videoTips = (playing: boolean): string => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip');
 if (pageVideos.length) {
-  // (a player that did not arrive leaves the posters: its chunk cannot arrive again in this document)
+  // (a player that did not arrive leaves the posters: its chunk is not asked for again in this document)
   importWhenOnline(() => Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
     media = module;
     module.mountMediaPlayers(pageVideos, videoLabels, videoTips);
@@ -52,7 +52,7 @@ void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(doc
 // The media archive is used by docs, not the landing page. Keep its manifest,
 // rendering code, and CSS out of the home critical path.
 if (document.querySelector('[data-media-archive]')) {
-  // (an archive whose module did not arrive keeps its served markup: its chunk cannot arrive again in this document)
+  // (an archive whose module did not arrive keeps its served markup: its chunk is not asked for again in this document)
   const mountArchives = (): void => importWhenOnline(() => Promise.all([
     import('./mediaArchive.css'),
     import('./mediaArchive.ts'),
@@ -81,7 +81,7 @@ for (const image of document.querySelectorAll<HTMLImageElement>('.home .hero > .
 
 // The landing's own behaviour (homePage.ts: the reel, the trailer's controls, the modes rail) loads with the landing
 // alone, so the manual, the Gallery and the other public pages carry neither its code nor its strings.
-// A landing whose module did not arrive keeps its served markup: its chunk cannot arrive again in this document, so the
+// A landing whose module did not arrive keeps its served markup: its chunk is not asked for again in this document, so the
 // trailer's button, the one opener it holds, keeps the kit's error state and its next press reloads the page once online.
 if (document.querySelector('[data-hero-reel]')) {
   importWhenOnline(() => import('./homePage.ts'), () => {

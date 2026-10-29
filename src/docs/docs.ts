@@ -16,7 +16,7 @@ revealStills(document.querySelectorAll<HTMLImageElement>('.docs-hero > img, .doc
 const searchHost = document.querySelector<HTMLElement>('[data-docs-search]');
 const searchInput = searchHost?.querySelector<HTMLInputElement>('input');
 if (searchHost && searchInput) {
-  // a matching is asked for once, never while offline: one that did not arrive cannot arrive again in this document, so
+  // a matching is asked for once, never while offline: one that did not arrive is not asked for again in this document, so
   // the field keeps the kit's error state and its next press reloads the page once online
   const field = searchInput.closest('label') ?? searchHost;
   const mountSearch = (): void => importWhenOnline(() => import('./docsSearch.ts')
@@ -38,9 +38,9 @@ if (searchHost && searchInput) {
 }
 
 /** The archive failed to load: the kit's error notice, static in the dialog (the top layer hides a page toast), shows
- *  with Reload page, and the dialog's button keeps the kit's error state: a chunk that did not arrive cannot arrive again
- *  in this document (components/loadFailure.ts), so either press reloads the page once online. Its markup ships with the
- *  page, so the notice needs no chunk of its own. */
+ *  with Reload page, and the dialog's button keeps the kit's error state: a chunk that did not arrive is not asked for
+ *  again in this document (components/loadFailure.ts), so either press reloads the page once online. Its markup ships
+ *  with the page, so the notice needs no chunk of its own. */
 function loadFailed(): void {
   markLoadFailed([archiveOpen], t('docs.archive.loadFailed'));
   const failed = archiveDialog?.querySelector<HTMLElement>('[data-archive-failed]');

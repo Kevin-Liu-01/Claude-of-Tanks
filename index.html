@@ -931,9 +931,9 @@
         } catch (_) { finish(false); }
       }
 
-      // After the reveal a failed chunk is its opener's to report, never to retry: a document cannot load a chunk again once
-      // it failed (src/ui/components/loadFailure.ts), so the opener's trigger keeps the kit's error state and its next press
-      // reloads the page once online (the Tech Tree, the Record, Settings and a battle's entry among them). This page never
+      // After the reveal a failed chunk is its opener's to report, never to retry: a browser may keep the failure (Chrome
+      // 151 does) and a chunk's failed stylesheet never applies again (src/ui/components/loadFailure.ts), so the opener's
+      // trigger keeps the kit's error state and its next press reloads the page once online (the Tech Tree, the Record, Settings and a battle's entry among them). This page never
       // reloads by itself: that would throw away the Garage, a room or a battle. Only a chunk this deployment no longer
       // serves (a newer deploy replaced the files; src/app/lazyImportRetry.ts 'missing') needs a fresh document, and the
       // player takes it from the reload action.

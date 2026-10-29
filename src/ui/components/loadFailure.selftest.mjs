@@ -1,5 +1,6 @@
 // No opener offers an in-page retry of a lazy chunk (loading states 264, Main's ruling on the garage lane's probe; the
-// kit's src/ui/components/loadFailure.ts). A document cannot load a chunk again once it failed (tools/offline-import-probe.mjs),
+// kit's src/ui/components/loadFailure.ts). A chunk that failed is never asked for again in its document (Chrome 151 keeps
+// the failure, Chrome 156 does not, a failed chunk stylesheet never applies in either: tools/offline-import-probe.mjs),
 // so a failed import's handler never runs the import again: not when the browser comes back online, not from the next
 // press or focus, not from a notice's Retry, and it never forgets the import's promise so that a later call asks again.
 // Its trigger keeps the kit's error state, and the next press reloads the page once online. Copyright © 2026 Kevin B. Liu.
@@ -249,6 +250,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   }
   if (process.argv.includes('--list')) console.log(offenders.join('\n') || '(none)');
-  assert.deepEqual(offenders, [], `an opener offers an in-page retry of a lazy chunk (the chunk cannot load again in this document: mark its trigger with markLoadFailed and let the next press reload, src/ui/components/loadFailure.ts):\n  ${offenders.join('\n  ')}`);
+  assert.deepEqual(offenders, [], `an opener offers an in-page retry of a lazy chunk (a failed chunk is not asked for again in its document: mark its trigger with markLoadFailed and let the next press reload, src/ui/components/loadFailure.ts):\n  ${offenders.join('\n  ')}`);
   console.log('loadFailure.selftest: no failed import runs again in its document (online, on a press, from a Retry, or by forgetting its promise)');
 }

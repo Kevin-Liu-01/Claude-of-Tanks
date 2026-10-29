@@ -1152,7 +1152,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36 cot-c-btn--secondary', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
-      // (a chunk that did not arrive cannot arrive again in this document: the press reloads the page once online)
+      // (a chunk that did not arrive is not asked for again in this document: the press reloads the page once online)
       if (pressFailed(editHud)) return;
       editHud.disabled = true;
       try {

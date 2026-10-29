@@ -94,7 +94,7 @@ export const hideGarageReturnFailure = (): void => showGarageReturnFailure.hide(
 export const showSoloEntryFailure = createGarageReturnFailurePresenter(
   () => createModal({ size: 'small', surface: 'battle-entry-failure' }),
   () => t('battle.entryFailed.title'),
-  // a file the network dropped says so quietly (no module URL in the player's face), a chunk that cannot arrive again
+  // a file the network dropped says so quietly (no module URL in the player's face), a chunk that did not arrive
   // asks for the page's reload; any other failure keeps its reason
   (reason, error) => (isChunkFailure(error) ? t('battle.entryFailed.reload')
     : isNetworkFailure(error) ? t('battle.entryFailed.network') : t('battle.entryFailed.body', { reason })),

@@ -38,7 +38,7 @@ addEventListener('online', () => {
 // page's LCP picture, never shares the pipe with a clip.
 const reelHero = document.querySelector<HTMLElement>('[data-hero-reel]');
 if (reelHero) {
-  // (a reel whose module did not arrive leaves the poster: its chunk cannot arrive again in this document)
+  // (a reel whose module did not arrive leaves the poster: its chunk is not asked for again in this document)
   const start = (): void => importWhenOnline(() => import('./heroReel.ts').then(({ mountHeroReel }) => mountHeroReel(reelHero,
     () => ({ pause: t('publicPages.reel.pauseAria'), play: t('publicPages.reel.playAria') }))));
   const idle = (): void => {

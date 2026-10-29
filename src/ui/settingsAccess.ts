@@ -66,7 +66,7 @@ const loadDefaultSettings = async (): Promise<SettingsModule> =>
  * Keep the exact settings trigger in the first garage frame while deferring
  * the large panel, bindings editor, graphics controls, and pause listeners
  * until direct settings or battle intent. A transfer that failed is forgotten (a panel that threw for another reason
- * may build next time), but a chunk that did not arrive cannot arrive again in this document: the gear keeps the kit's
+ * may build next time), but a chunk that did not arrive is not asked for again in this document: the gear keeps the kit's
  * error state, which needs no chunk, and its next press reloads the page once online (components/loadFailure.ts).
  */
 export function createSettingsAccess(

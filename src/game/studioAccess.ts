@@ -32,7 +32,7 @@ interface StudioAccessOptions {
   onEntryError?: (error: RuntimeValue) => void;
   /** While F8's (or the Studio link's) press waits for the Studio's code, before the entry's own cover takes over. */
   onPending?: (pending: boolean) => void;
-  /** (264) Whether the Studio's code did not arrive: a chunk cannot arrive again in this document, so the press reloads
+  /** (264) Whether the Studio's code did not arrive: a chunk is not asked for again in this document, so the press reloads
    *  the page once online instead of asking again (main.ts: the kit's pressFailed on the Studio links). */
   pressFailed?: () => boolean;
 }
@@ -53,7 +53,7 @@ const INACTIVE_STUDIO: StudioRuntime = Object.freeze({
 });
 
 /** Lazy boundary for Studio code, FX acquisition, and F8 ownership. A load that threw is forgotten; a chunk that did not
- *  arrive cannot arrive again in this document, and the press reloads the page instead (`pressFailed`). */
+ *  arrive is not asked for again in this document, and the press reloads the page instead (`pressFailed`). */
 export function createStudioAccess({
   loadModule,
   preloadFxModule,

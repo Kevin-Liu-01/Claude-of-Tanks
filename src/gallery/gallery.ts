@@ -370,7 +370,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     colorDamageOverlay();
     if (announce) announceLine(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
   }, () => {
-    // a module that did not arrive cannot arrive again in this document: the anatomy layers keep the kit's error state,
+    // a module that did not arrive is not asked for again in this document: the anatomy layers keep the kit's error state,
     // and their next press reloads the page once online
     settle();
     markLoadFailed(modeButtons.filter((button) => isAnatomyMode(button.dataset.value as GalleryMode)), t('gallery.anatomy.loadFailed'));

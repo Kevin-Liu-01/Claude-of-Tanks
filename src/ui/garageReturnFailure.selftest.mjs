@@ -65,7 +65,7 @@ assert.equal(formatted.textContent, 'The battle could not start. Back in the Gar
   assert.equal(footer.children.length, 1, 'a second failure reuses the one action');
   presenter(new Error('no retry here'));
   assert.equal(footer.children[0].hidden, true, 'a failure without a retry hides it');
-  // (264) a chunk that did not arrive cannot arrive again in this document: its action reloads the page once online
+  // (264) a chunk that did not arrive is not asked for again in this document: its action reloads the page once online
   const reloaded = [];
   globalThis.location = { reload: () => reloaded.push(true) };
   const online = (value) => Object.defineProperty(globalThis, 'navigator', { value: { onLine: value }, configurable: true, writable: true });
@@ -102,7 +102,7 @@ assert.doesNotMatch(presenterSource, /from '\.\.\/app\/lazyImportRetry\.ts'/,
 assert.match(presenterSource, /export const showSoloEntryFailure = createGarageReturnFailurePresenter\([\s\S]{0,200}t\('battle\.entryFailed\.title'\)[\s\S]{0,420}t\('battle\.entryFailed\.body', \{ reason \}\)/,
   'the solo notice is a second failure-only presenter over the same modal');
 assert.match(presenterSource, /isChunkFailure\(error\) \? t\('battle\.entryFailed\.reload'\)/,
-  'a chunk that cannot arrive again asks for the page\'s reload (components/loadFailure.ts)');
+  'a chunk that did not arrive asks for the page\'s reload (components/loadFailure.ts)');
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 assert.match(main, /presentFailure: \(error, retry\) => \{[\s\S]{0,160}return import\('\.\/ui\/garageReturnFailure\.ts'\)\.then\(\(\{ showSoloEntryFailure \}\) => showSoloEntryFailure\(error, reload \? null : retry\)\);/,

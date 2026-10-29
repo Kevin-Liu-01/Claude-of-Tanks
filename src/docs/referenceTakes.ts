@@ -34,7 +34,7 @@ async function showVehicleTake(record: HTMLElement): Promise<void> {
     record.append(figure.root);
     record.dataset.take = take.take;
   } catch (error) {
-    // a module that did not arrive cannot arrive again in this document: the record stays without its take (a catalog
+    // a module that did not arrive is not asked for again in this document: the record stays without its take (a catalog
     // that did not arrive is asked again with the next opening)
     if (isChunkFailure(error)) record.dataset.take = 'none';
     else delete record.dataset.take;
