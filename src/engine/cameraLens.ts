@@ -11,7 +11,7 @@
  * view-space (X, Y) and depth D along `fwd` lands at NDC `((X / D − shift.x) / tan.x, (Y / D − shift.y) / tan.y)`.
  * A centred lens has shift (0, 0) and the tangents three's fov and aspect give.
  */
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 /** Read the camera's frustum half-extent tangents and centre offset (both per unit depth) into `tan` and `shift`. */
 export function readCameraLens(camera: THREE.PerspectiveCamera, tan: THREE.Vector2, shift: THREE.Vector2): void {

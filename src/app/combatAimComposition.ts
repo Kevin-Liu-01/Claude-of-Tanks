@@ -15,6 +15,10 @@ import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { MainEntity, MainGameState } from './mainContracts.ts';
 import { battleBands, setBattleSightShift } from '../ui/battleSight.ts';
 
+/** (battle-camera-264) `?chaseFraming=0`: the chase camera as it stood before the framing (13 m back, 1.0 m over the
+ *  turret, no lens shift), for an A/B on one build; the camera settings still apply. */
+const CHASE_FRAMING = typeof location === 'undefined' || !/[?&]chaseFraming=0(&|$)/.test(location.search ?? '');
+
 type CombatRaycast = CameraRaycast & AimControllerDependencies['worldRaycast'];
 
 interface CombatAimCompositionOptions {
@@ -83,7 +87,7 @@ export function createCombatAimComposition({
     getIsometricView,
     prepareDestination,
     // (battle-camera-264) the chase framing clears the HUD's bands, and the HUD's sight bands follow its lens shift
-    getChaseBands: battleBands,
+    getChaseBands: CHASE_FRAMING ? battleBands : () => null,
     getCameraSettings,
     publishSightShift: setBattleSightShift,
   });
