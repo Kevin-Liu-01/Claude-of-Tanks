@@ -48,20 +48,23 @@ interface MarkDesign {
    * fuel tank, spare road wheels on the glacis, the infra-red searchlight on the mantlet, the .50 ranging gun, baskets). */
   readonly kit: 'none' | 'strv105' | 'olifant' | 'avre' | 'aus';
   /** The laced canvas cover over a narrower mantlet block, the cast cheeks showing either side of it (the Dutch Mk 5/2,
-   * the Sho't Kal, the Strv 104/105 and the Australian Mk 5/1 photographs). */
+   * the Sho't Kal, the Strv 104/105, the Australian Mk 5/1, the Bovington and Swiss Mk 3 and the Strv 81 photographs). */
   readonly cover: boolean;
+  /** The casting's nose stops 12 cm short of the long nose (CASTING_BARE): the Mk 3 and Strv 81 (their registered
+   * models' noses), the Mk 13 and the AVRE (their bare mantlets standing proud). */
+  readonly shortNose: boolean;
 }
 
 const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
-  mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false, late: false, kit: 'none', cover: false },
-  mk5_2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true },
-  strv81: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: true, idf: false, late: false, kit: 'none', cover: false },
-  shot_kal: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: true, late: false, kit: 'none', cover: true },
-  mk13: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: true, kit: 'none', cover: false },
-  strv105: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: true, idf: false, late: false, kit: 'strv105', cover: true },
-  olifant_mk2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'olifant', cover: false },
-  avre: { gunLen: 2.15, gun: '165', mk5: true, swedish: false, idf: false, late: false, kit: 'avre', cover: false },
-  mk5_1_aus: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'aus', cover: true },
+  mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: true },
+  mk5_2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: false },
+  strv81: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: true, idf: false, late: false, kit: 'none', cover: true, shortNose: true },
+  shot_kal: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: true, late: false, kit: 'none', cover: true, shortNose: false },
+  mk13: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: true, kit: 'none', cover: false, shortNose: true },
+  strv105: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: true, idf: false, late: false, kit: 'strv105', cover: true, shortNose: false },
+  olifant_mk2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'olifant', cover: false, shortNose: false },
+  avre: { gunLen: 2.15, gun: '165', mk5: true, swedish: false, idf: false, late: false, kit: 'avre', cover: false, shortNose: true },
+  mk5_1_aus: { gunLen: 4.97, gun: '20pdrB', mk5: true, swedish: false, idf: false, late: false, kit: 'aus', cover: true, shortNose: false },
 });
 
 // ---- hull datums (metres, hull frame) ----
@@ -805,7 +808,7 @@ const CASTING_BARE: readonly CastStation[] = [
   { z: 0.93, bottom: -0.012, roof: 0.65, low: 0.93, mid: 0.94, up: 0.87, edge: 0.74 },
   { z: 0.98, bottom: 0.03, roof: 0.55, low: 0.83, mid: 0.83, up: 0.77, edge: 0.68 },
 ];
-const castingOf = (m: MarkDesign): readonly CastStation[] => (m.cover ? CASTING : CASTING_BARE);
+const castingOf = (m: MarkDesign): readonly CastStation[] => (m.shortNose ? CASTING_BARE : CASTING);
 
 function castSection(st: CastStation): SolidSection {
   const yb = st.bottom, yr = st.roof;
@@ -949,13 +952,15 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
     [0, -0.05, 0]);
   }
   if (m.mk5 && !m.swedish && !m.idf && !m.late && m.kit === 'none') {
-    // the Delft Mk 5/2's searchlight: a box with its louvred front and mesh guard, on a bracket at the right front corner
-    const lx = -0.86, ly = roofY + 0.14, lz = 0.58;
-    P.add('turretDark', box(0.10, 0.14, 0.12), lx + 0.06, roofY - 0.01, lz - 0.02);
-    P.addEquipment('turretDetail', box(0.40, 0.30, 0.30), lx, ly + 0.06, lz);
-    P.add('turretGlass', box(0.32, 0.22, 0.012), lx, ly + 0.06, lz + 0.152);
-    for (let k = 0; k < 5; k++) P.add('turretDark', box(0.34, 0.010, 0.012), lx, ly - 0.05 + k * 0.055, lz + 0.162);
-    P.add('turretDark', box(0.42, 0.03, 0.03), lx, ly + 0.225, lz);
+    // the Delft Mk 5/2's searchlight: a tall box with its louvred front, standing on the left cheek just outboard of the
+    // mantlet's cover, its top level with the roof, on a bracket into the casting (the Dutch Mk 5/2 head-on photograph;
+    // the critics, 2026-10-29: the box on a stalk over the right front corner of the roof)
+    const lx = 0.89, ly = 0.75, lz = 1.20;
+    P.add('turretDark', box(0.12, 0.10, 0.24), lx, ly - 0.16, lz - 0.18);
+    P.addEquipment('turretDetail', box(0.34, 0.44, 0.30), lx, ly, lz);
+    P.add('turretGlass', box(0.26, 0.32, 0.012), lx, ly, lz + 0.152);
+    for (let k = 0; k < 6; k++) P.add('turretDark', box(0.28, 0.010, 0.012), lx, ly - 0.14 + k * 0.056, lz + 0.162);
+    P.add('turretDark', box(0.36, 0.03, 0.03), lx, ly + 0.225, lz);
   }
   // Loader's hatch on the left: a low round lid on its hinge block.
   P.addHatch('turret', cylY(0.30, 0.31, 0.045, 24), 0.48, roofY + 0.015, -0.48);
@@ -1141,20 +1146,20 @@ function buildAvreTurretKit(P: TankBuilderPort): void {
   }
 }
 
-/** The Australian Vietnam fit's mesh basket (the 1st Armoured Regiment photographs; the critic, 2026-10-28: one basket
- * hung off the turret, not a loaded rack): one U round the bustle - the rear run across the full width, a side run along
- * each side of the bustle - its top level with the roof, its floor well clear of the deck, two rails, the tank's number
- * on its rear face. Ring frame. */
+/** The Australian Vietnam fit's mesh basket (the 1st Armoured Regiment photographs; the critics: 2026-10-28, one basket
+ * hung off the turret, not a loaded rack; 2026-10-29, tank 1B's basket hugs the bustle 0.5 m deep with no bin behind
+ * it): one U round the bustle - the rear run on the casting's back between the side runs, a side run along each side of
+ * the bustle from the side bins' back ends - its top level with the roof, its floor well clear of the deck, two rails,
+ * the tank's number on its rear face. Ring frame. */
 function buildAusTurretBaskets(P: TankBuilderPort): void {
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 2.10, d: 0.55, h: 0.50, fill: 0.55, rails: 2, seed: 5112 }), 0, 0.40, -2.08);
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.76, d: 0.50, h: 0.50, fill: 0.55, rails: 2, seed: 5112 }), 0, 0.40, -1.73);
   for (const s of [-1, 1]) {
-    // the side runs flank the bustle and its bin from the side bins' back ends to the rear run
-    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.50, d: 0.32, h: 0.50, fill: 0.5, rails: 2, seed: 5114 + (s > 0 ? 1 : 0) }),
-      s * 1.05, 0.40, -1.555, [0, Math.PI / 2, 0]);
-    P.add('turretDark', box(0.05, 0.05, 0.36), s * 0.82, 0.41, -1.92);
-    P.add('turretDark', xform(box(0.04, 0.04, 0.44), 0, 0, 0, 0.75, 0, 0), s * 0.82, 0.62, -1.94);
+    mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 0.67, d: 0.32, h: 0.50, fill: 0.5, rails: 2, seed: 5114 + (s > 0 ? 1 : 0) }),
+      s * 1.05, 0.40, -1.645, [0, Math.PI / 2, 0]);
+    P.add('turretDark', box(0.05, 0.05, 0.12), s * 0.62, 0.41, -1.50);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.30), 0, 0, 0, 0.75, 0, 0), s * 0.62, 0.62, -1.56);
   }
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.66, -2.365], Math.PI);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [0, 0.66, -1.99], Math.PI);
 }
 
 /** The Olifant Mk 2's turret (LIW, from 2007; the Commons profile and the Armed Forces Day photographs): the Centurion
@@ -1410,7 +1415,7 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
   }
   // the canvas dust seal laced round the block's rim where it enters the casting (10 cm further out of the bare marks'
   // shorter nose)
-  const hw = 0.80 * span, sz = m.cover ? 0 : 0.10;
+  const hw = 0.80 * span, sz = m.shortNose ? 0.10 : 0;
   P.add('gunMountCloth', sectionSolid([block(0.12 + sz, hw + 0.035, 0.335, -0.245), block(0.22 + sz, hw + 0.03, 0.33, -0.24)],
     { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
   for (let k = 0; k < 9; k++) {
@@ -1533,7 +1538,8 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     buildTurretBins(P);
     // the Mk 13 carries an open mesh basket on the bustle where the earlier marks' box bin stood (the Bovington Mk 13)
     if (m.late) buildLateBustleBasket(P);
-    else buildBustleBin(P);
+    // (the Australian basket hangs on the bustle itself)
+    else if (m.kit !== 'aus') buildBustleBin(P);
   }
   if (m.idf) buildIdfTurretRacks(P);
   if (m.kit === 'strv105') buildStrv105TurretKit(P);
@@ -1550,7 +1556,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     if (m.kit === 'strv105' || m.kit === 'avre') buildSmokeDischargers(P, 0.36, 0.88);
     else if (m.mk5 && !m.swedish && !m.idf && m.kit === 'none') buildSmokeDischargers(P, 0.84, 0.50, 1.30);
     // (on the bare marks' shorter nose the blocks stand 12 cm further back, on the cheeks)
-    else buildSmokeDischargers(P, m.cover ? 1.00 : 0.88, 0.56, undefined, castingOf(m));
+    else buildSmokeDischargers(P, m.shortNose ? 0.88 : 1.00, 0.56, undefined, castingOf(m));
   }
   yield 'centurionTurretFittings';
   if (m.kit === 'olifant') buildOlifantMantlet(P);
