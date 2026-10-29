@@ -1537,6 +1537,9 @@ export function createBattlePresentation({
       ownState: () => own.state,
       others: () => collidableActors(own),
       mode: typeof game.gameMode === 'string' ? game.gameMode : null,
+      // a building the own ram brings down yields to the drawn hull as the authority's yields (destructionMirror.ts)
+      structureYields: (record, massTons, closingMps) => game.ruleset?.destruction?.structures === true
+        && destruction.yieldsToRam(record, massTons, closingMps),
     });
     return predictionWorldCache;
   }

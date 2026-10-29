@@ -181,6 +181,11 @@ export interface StructureDamage {
    */
   yieldTo(structure: StructureState, massTons: number, closingMps: number, speedMps: number,
     blow: StructureBlow): number | null;
+  /**
+   * Whether `yieldTo` would yield, without pricing the ram or queueing anything: a peer's prediction reads it on its own
+   * world (destructionMirror.ts yieldsToRam), so the hull it draws drives into a falling building as the authority's does.
+   */
+  wouldYield(structure: StructureState, massTons: number, closingMps: number): boolean;
   /** One fixed step: applies queued collapses (at most COLLAPSES_PER_TICK) and releases this tick's events. */
   step(): void;
   /** Moves the events released by `step` into `out` (oldest first) and returns how many. */
@@ -731,6 +736,12 @@ export function createStructureDamage(
         - ramStructurePoints(massTons, Math.max(0, priorClosingMps), structure.material);
       strikeSection(structure, points, blow, 0);
       damage(structure, points, blow);
+    },
+    wouldYield(structure, massTons, closingMps) {
+      if (!structure.collapsible) return false;
+      if (structure.stage >= 3 || structure.collapsePending) return true;
+      const points = ramStructurePoints(massTons, closingMps, structure.material) * damageScale;
+      return points > 0 && points >= structure.hp;
     },
     yieldTo(structure, massTons, closingMps, speedMps, blow) {
       if (!structure.collapsible) return null;
