@@ -171,7 +171,7 @@ function sideArmour(P: TankBuilderPort, s: number): void {
  * the horn on the left shoulder, brush guards over the headlights, pins through the bow's tow eyes, the width rods.
  */
 function glacisKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
-  const { box, cylX, cylY, cylZ, sph, xform } = KIT;
+  const { box, cylX, cylZ, sph, xform } = KIT;
   const blocks: ReadonlyArray<readonly [number, number, number]> = [
     // [x, z, extra height]: a row across the lower plate, two left of the board's apex, one each side behind the board's ends
     [-0.73, 3.23, 0.012], [-0.44, 3.23, 0], [-0.15, 3.23, 0], [0.15, 3.23, 0], [0.44, 3.23, 0.012], [0.73, 3.23, 0],
@@ -211,9 +211,12 @@ function glacisKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): void {
     for (const d of [-0.105, 0, 0.105]) P.add('hullDetail', box(0.016, 0.13, 0.016), px + d, by + 0.083, bz + 0.018, 0.28, 0, 0);
     // a pin through each bow tow eye's lug
     P.add('hullDark', cylX(0.022, 0.16, 8), s * 0.70, 1.02, 3.40);
-    // the width rods on the fore rail's nose
-    P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * (HS.mudguard.x1 + SIDE.modOut) / 2, SIDE.railY1 + 0.15, 3.52);
-    P.add('hullDetail', sph(0.016, 8), s * (HS.mudguard.x1 + SIDE.modOut) / 2, SIDE.railY1 + 0.312, 3.52);
+    // the width rods folded aft along the fore rail's top from their hinge blocks at its nose (the field posture: stood
+    // up on the CAN's high rail, they held the gun 7 degrees short of its depression over the front quarters)
+    const rx = s * (HS.mudguard.x1 + SIDE.modOut) / 2;
+    P.add('hullDetail', box(0.03, 0.026, 0.03), rx, SIDE.railY1 + 0.013, 3.565);
+    P.add('hullDetail', cylZ(0.008, 0.30, 6), rx, SIDE.railY1 + 0.008, 3.40);
+    P.add('hullDetail', sph(0.016, 8), rx, SIDE.railY1 + 0.016, 3.25);
     // the front mudflaps at the skirt line ahead of the idler, hinged into the short module's front
     P.hangMudguard('leo2a4m-can-front-flap', 'hullRubber', box(0.18, 0.36, 0.028), s * 1.79, 0.73, 3.66);
     P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.93, 3.66);

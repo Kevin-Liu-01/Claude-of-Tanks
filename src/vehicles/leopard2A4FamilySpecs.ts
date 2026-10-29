@@ -41,6 +41,41 @@ interface FamilyEnvelope {
   readonly dims?: Partial<FleetTankSpec['dims']>;
 }
 
+// The gun's depression by turret yaw on the construction, measured with tools/gun-depression-sweep.mjs at 26 mm (the
+// Stridsvagn 121 --no-suit: its field suit is cut to these stops). The square turret's guns run free to the rear quarters,
+// where the engine deck and its stowage lift them; on the wedge turrets the 2A6 mantlet cover rides the 2A4's deeper
+// trunnion, and its underside holds the gun over the deck and the sponsons' stowage at the sides.
+const GUN_PITCH_BY_YAW_DEG: Readonly<Record<Leopard2A4FamilyId, NonNullable<FleetTankSpec['gunPitchByYawDeg']>>> = {
+  leo2a4: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [138, -9], [143, -6.3], [147, -4.3],
+    [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7], [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1],
+    [178, 0.9], [180, 0.4]],
+  leo2a4_v: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [138, -9], [143, -6.3], [147, -4.3],
+    [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7], [156, 0.7], [157, 1.3], [158, 1.6], [159, 1.6], [160, 2.6],
+    [163, 3], [171, 3], [173, 2.9], [176, 2.2], [177, 2.4], [180, 2.4]],
+  leo2a4m: [[0, -9], [11, -9], [16, -8.4], [21, -8.4], [22, -7.8], [23, -7.5], [28, -7], [30, -7], [31, -7.3],
+    [32, -7.7], [34, -9], [37, -9], [47, -5.7], [48, -5.5], [61, -5.5], [68, -7.1], [76, -9], [102, -9], [113, -6],
+    [121, -4.3], [124, -3.7], [127, -3.5], [130, -3.4], [131, -2.8], [132, -2.3], [149, -1.5], [152, 0.5], [153, 0.7],
+    [156, 0.7], [157, 1.3], [158, 1.6], [159, 1.6], [160, 2.6], [163, 3], [171, 3], [173, 2.9], [176, 2.2],
+    [177, 2.4], [180, 2.4]],
+  leo2a4m_can: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -2.8], [27, -1.9], [28, -1.6], [30, -1.6], [31, -2],
+    [32, -3], [33, -9], [135, -9], [137, -3.9], [138, -3], [139, -2.6], [147, -0.5], [148, 0.2], [149, 0.7],
+    [153, 0.7], [154, 1.4], [156, 1.8], [159, 1.8], [165, 0.9], [166, 0.9], [167, 4.3], [168, 5.9], [170, 7.3],
+    [172, 7.9], [173, 8], [176, 8], [178, 7.5], [180, 6.2]],
+  leo2a4_otco: [[0, -9], [11, -9], [21, -7.8], [25, -6.9], [26, -6.2], [29, -6.1], [31, -6.7], [37, -6.7], [39, -6.8],
+    [40, -7.6], [44, -6.8], [47, -5.7], [48, -5.5], [56, -5.5], [59, -3.6], [63, -3.4], [72, -3.5], [89, -4.9],
+    [95, -4.2], [100, -4], [105, -4], [106, -3.6], [108, -3.2], [121, -1.8], [127, -1.4], [139, -1.4], [140, -1.5],
+    [143, -1.9], [149, -0.5], [150, -0.4], [155, -0.4], [156, 0.8], [157, 1.7], [158, 1.9], [160, 1.9], [161, 1.5],
+    [162, 0.6], [170, 0.5], [171, 0.8], [174, 0.9], [180, 0.8]],
+  leo2_improved: [[0, -9], [11, -9], [16, -8.4], [26, -8.4], [28, -8.5], [29, -9], [37, -9], [47, -5.7], [48, -5.5],
+    [53, -5.5], [54, -4.4], [56, -3.5], [59, -3.4], [69, -3.4], [72, -3.6], [74, -5.1], [87, -6.5], [88, -6.7],
+    [90, -5.2], [95, -5], [108, -4.8], [116, -3.8], [118, -3.6], [119, -3.6], [120, -2.6], [138, -2.5], [148, -1.5],
+    [151, -1.3], [152, 2.8], [153, 5.1], [154, 5.8], [159, 6.1], [161, 6.1], [163, 5.4], [164, 4.7], [165, 3.8],
+    [166, 0.4], [173, 0.9], [180, 0.8]],
+  strv121: [[0, -9], [20, -9], [21, -8.6], [24, -8.3], [26, -8.3], [28, -9], [138, -9], [143, -6.3], [147, -4.3],
+    [149, -2.2], [150, -0.9], [152, 0.5], [153, 0.7], [156, 0.7], [157, 1.3], [158, 1.6], [160, 1.6], [163, 1],
+    [178, 0.9], [180, 0.4]],
+};
+
 const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.freeze({
   // the Leopard 2A4's L/44 (the build it replaces drew a 2A6's L/55): 9.67 m gun forward
   leo2a4: { dims: { overallLengthM: 9.67 } },
@@ -94,6 +129,7 @@ export function applyLeopard2A4FamilyEnvelopes(specs: Readonly<Record<string, Fl
     if (!spec) throw new Error(`leopard2A4FamilySpecs: ${id} is not registered`);
     const e = ENVELOPES[id];
     stripSilhouetteDimensions(spec.dims);
+    spec.gunPitchByYawDeg = GUN_PITCH_BY_YAW_DEG[id];
     if (e.dims) Object.assign(spec.dims, e.dims);
     spec.armor = leopard2A4FamilyArmor(id, spec.armor, {
       gun: LEOPARD2A4_FAMILY_GUN[id], front: LEOPARD2A4_FAMILY_FRONT[id], foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, kitPlates: e.kitPlates,
