@@ -11,13 +11,14 @@ import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionAtta
 import { tankSeedId } from './tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
 
 const ids = [
-  't64bv_donbas', 'pt91a_twardy', 'm1a1_abrams_fep',
+  't64bv_donbas', 'm1a1_abrams_fep',
   'strv103a', 'strv103b', 't84', 'ua_m1a1', 'leo2a6_ua',
 ];
 
 // 2026-10-09 (owner: "add ... a ton more netting and camo leaves all over ... t90-AM"): the T-90AM carries a fleet field
-// net (ghillieFleetSuits.ts) and left this control list; the others stay net-free
-for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
+// net (ghillieFleetSuits.ts) and left this control list; the others stay net-free (262: the rebuilt PT-91 Twardy shows its
+// ERAWA tiles bare, as the serial tanks do)
+for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m', 'pt91a_twardy']) {
   const control = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -550,18 +551,5 @@ for (const [id, cfg] of Object.entries({ ...FLEET_GHILLIE_SUITS, ...POLISH_FIELD
   }
   tank.dispose();
 }
-
-const twardy = GHILLIE_SUIT_CONFIGS.pt91a_twardy;
-const twardyTop = twardy.turret.top[0];
-assert.ok(twardyTop.yAt(0, 0) > 0.82 && twardyTop.yAt(0, 0) < 0.86,
-  'Twardy net keeps a small suspended air layer over the dome crown');
-assert.ok(twardyTop.yAt(1.05, 0.45) < 0.74,
-  'Twardy net descends onto the ERAWA cheek instead of retaining a flat roof plane');
-assert.ok(twardyTop.yAt(0, -1.48) < 0.72,
-  'Twardy net seats onto the bustle roof instead of floating at crown height');
-assert.ok(twardy.turret.side[0].topAt(0.90) < twardy.turret.side[0].topAt(-0.40),
-  'Twardy side drape follows the falling front shoulder');
-assert.ok(twardy.turret.face[0].zAt(1.0, 0.42) < twardy.turret.face[0].zAt(0.35, 0.42),
-  'Twardy front drape follows the swept ERAWA wedge instead of one flat face');
 
 console.log('Shared physical-ghillie suit selftest passed');

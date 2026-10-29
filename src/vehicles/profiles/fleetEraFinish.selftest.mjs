@@ -30,6 +30,8 @@ const REBUILT_T64_ERA_SECTORS = Object.freeze([
 const REQUIRED_T64_ERA_SECTORS = Object.freeze({
   t64bv1: REBUILT_T64_ERA_SECTORS,
   t64bv_donbas: REBUILT_T64_ERA_SECTORS,
+  // 262: the PT-91 Twardy's ERAWA tiles on the same study
+  pt91a_twardy: REBUILT_T64_ERA_SECTORS,
 });
 
 const uvSpan = (mesh) => {

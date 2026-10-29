@@ -4,10 +4,10 @@ import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { boxUV, paintedSurfaceShade } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 
-type ReceiverId = 'pt91a_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria';
+type ReceiverId = 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
-  readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
+  readonly role: 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
     | 'bearer-plate' | 'bearer-flange' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset'
     | 'side-rail-clamp' | 'cage-post' | 'cage-tie';
   readonly size: Vec3;
@@ -27,8 +27,6 @@ interface ReceiverSeat {
  * The openings between the two beams remain empty; the native ray still has
  * to hit an actual upward triangle, never this rectangular search region. */
 export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> = {
-  pt91a_twardy: { x: -.72, z: -.28, topY: .885,
-    minX: -.895, maxX: -.545, minZ: -.426, maxZ: -.134 },
   leo2a6_ua: { x: -1.45, z: .46, topY: .985,
     minX: -1.625, maxX: -1.275, minZ: .314, maxZ: .606 },
   ua_m1a1: { x: -1.50, z: -1, topY: 1.535,
@@ -79,18 +77,7 @@ function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[], open =
 export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
   const seat = MISSION_RECEIVER_SEATS[id], parts: MissionReceiverPart[] = [];
   const feet = [seat.x - .108, seat.x + .108];
-  if (id === 'pt91a_twardy') {
-    // The cast dome changes by up to 5.2 mm with tessellation. Four finite
-    // welded feet penetrate both native surfaces, giving the removable dock
-    // one identical flat datum at either detail level. No broad armor slab.
-    const bottoms = [.671, .687, .750, .758];
-    let index = 0;
-    for (const x of [-.108, .108]) for (const z of [-.09, .09]) {
-      const bottom = bottoms[index++]!, top = .873;
-      parts.push({ role: 'roof-post', size: [.038, top - bottom, .045],
-        center: [seat.x + x, (bottom + top) / 2, seat.z + z] });
-    }
-  } else if (id === 'leo2a6_ua') {
+  if (id === 'leo2a6_ua') {
     // These two short sockets overlap the permanent 32 mm roof-basket rail
     // at x=-1.55, y=.91. They do not use camouflage or a loose crate as a foot.
     for (const z of [-.09, .09]) {

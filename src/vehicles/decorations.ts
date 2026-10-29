@@ -3711,7 +3711,7 @@ const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
  */
 const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
   // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
-  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
   't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
 ]);
 

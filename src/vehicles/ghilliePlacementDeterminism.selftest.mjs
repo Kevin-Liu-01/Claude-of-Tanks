@@ -13,7 +13,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SELF = fileURLToPath(import.meta.url);
-const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 'pt91a_twardy'];
+const TARGETS = ['m1a1_abrams_fep', 'leo2a6_ua', 't64bv_donbas'];
 // built first in the loaded child: suited and unsuited hulls of every family the fleet's suits sit on
 const OTHERS = ['ua_m1a1', 'leo2a2', 't90am', 'strv103b', 'm1a1_abrams_hc', 't84', 't84bm_oplot_m', 'strv121'];
 const BURNERS = 3;

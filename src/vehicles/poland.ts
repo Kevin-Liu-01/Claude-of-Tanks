@@ -4,7 +4,7 @@ import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
 // remain external visual and metric oracles; all playable geometry is the
 // first-party procedural work in profiles/poland.ts.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { ArmorEnvelope, ShellSpec, Vec3Tuple } from './specHelpers.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import {
@@ -111,28 +111,24 @@ const t72m1Jaguar = variant('t72m1_jaguar', 't72b_1987', {
   reloadS: 6.7, shellName: 'Pronit APFSDS', armorFactor: 1.06,
 });
 
-// Pendekar's owner-selected T-72BU rebuild must not transplant its spatial
-// armor into the independently authored Twardy. Preserve Twardy's original
-// t72b3 -> former Pendekar dimension fit before applying its own rig/rating.
-const twardyDonor = donorSpec(registries.tankSpecs, 't72b3');
-const twardyArmor = structuredClone(twardyDonor.armor);
-fitArmorToDims(twardyArmor, twardyDonor.dims,
-  { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.59, heightM: 2.19 });
+// 262 (owner 2026-10-28: "update the twardy to be beter and based off an actual tnak"): the serial PT-91 Twardy,
+// built on the T-72B3 study under its ERAWA tiles (profiles/pt91Twardy.ts). Its dims, rig, track and protection frame
+// are the study's (fleetRenewalSpecs.ts FLEET_RENEWAL_DONORS); the PT-91A's S-1000 (1,000 hp) stays its own, at the
+// published 45.9 t, in the Polish Army's green, sand and black.
 const pt91Twardy = variant('pt91a_twardy', 'pt91m', {
-  name: 'PT-91A Twardy', number: 'PT-91', scheme: 'stripes',
-  base: '#34453a', weather: '#4b5747', patches: ['#222b24', '#5b5843', '#77664a'],
+  name: 'PT-91A Twardy', number: 'PT-91', scheme: 'nato',
+  base: '#4b5a3c', weather: '#66694f', patches: ['#8a7653', '#202420'],
   camoScale: 0.46,
-  dims: { hullLengthM: 6.95, overallLengthM: 9.67, widthM: 3.59, heightM: 2.19 },
-  // Measured gun axis 1.70 m; the muzzle remains on the published 9.67 m
-  // overall line with the turret fixed to its authored ring.
-  turretPivot: [0, 1.38, 0.02], gunPivot: [0, 0.32, 0.50],
-  gunBarrel: { lengthM: 5.73, radiusM: 0.115 },
-  stats: { hp: 2250, enginePowerHp: 1000, weightTons: 47.5, topSpeedKmh: 60,
+  stats: { hp: 2250, enginePowerHp: 1000, weightTons: 45.9, topSpeedKmh: 60,
     reverseSpeedKmh: 20, turretTraverseDegS: 36, gunPitchDegS: 29 },
-  reloadS: 6.4, shellName: 'Pronit 125 APFSDS', armorFactor: 1.08,
-  armor: twardyArmor,
+  reloadS: 6.4, shellName: 'Pronit 125 APFSDS',
 });
-pt91Twardy.visual.trackWidthM = .50;
+// 262: the gun's depression by turret yaw over the rebuilt hull (tools/gun-depression-sweep.mjs, 26 mm): the full -6 over
+// the glacis tiles; the bow ends of the steel screens and their tiles hold the front quarters to -3.8 at 27-33 degrees;
+// behind, the study's engine deck and fittings as on the T-72B3.
+pt91Twardy.gunPitchByYawDeg = [[0, -6], [25, -6], [26, -5.5], [27, -4.1], [28, -3.8], [30, -3.8], [32, -4], [33, -4.2],
+  [40, -6], [139, -6], [147, -4.2], [150, -4.1], [153, -4.1], [158, -5.4], [159, -1.3], [160, 1.4], [161, 2.5], [162, 2.9],
+  [167, 3.6], [168, 4], [169, 4.2], [172, 4.2], [175, 3.6], [179, 3.1], [180, 2.8]];
 
 const pl01 = variant('pl01', 'xk2_black_panther', {
   name: 'PL-01', number: 'PL-01', scheme: 'digital',

@@ -145,6 +145,6 @@ function sosnaHousing(P:TankBuilderPort):void{
     {z:.8653,ring:[[x-.0167,1.9459],[x+.0167,1.9459],[x+.0167,2.0275],[x-.0167,2.0275]]},
   ]));
 }
-export function addT72B3Optics(P:TankBuilderPort):void{
-  commanderOptic(P);sosnaHousing(P);
+export function addT72B3Optics(P:TankBuilderPort,sosna=true):void{
+  commanderOptic(P);if(sosna)sosnaHousing(P);
 }
