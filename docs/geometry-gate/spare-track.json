@@ -724,25 +724,25 @@
    "hostSweep": []
   },
   "challenger2": {
-   "inputHash": "f1355e0adeca3d41",
+   "inputHash": "eb1337a61b87dda8",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger2e": {
-   "inputHash": "cc2b9c7ec82ef282",
+   "inputHash": "dbecf144186f6ca6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3": {
-   "inputHash": "f2ce8dd4178d9a2c",
+   "inputHash": "7942a0376816a792",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_proto": {
-   "inputHash": "4e9f64a9e4f9c5ac",
+   "inputHash": "b9c2757c99128e98",
    "runs": [
     {
      "index": 0,
@@ -755,14 +755,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.935,
-      "gap": 0.034,
-      "air": 0.031,
+      "support": 0.936,
+      "gap": 0.032,
+      "air": 0.032,
       "hidden": 0,
       "sunkMaxM": 0.009,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.91,
+      "exposure": 0.899,
       "host": "orphan:turret"
      }
     }
@@ -783,7 +783,7 @@
    "hostSweep": []
   },
   "chieftain3": {
-   "inputHash": "11f75a858ca954b5",
+   "inputHash": "ca47604623ee9232",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -801,7 +801,7 @@
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "5dd1367e9440b281",
+   "inputHash": "b88a1ac7c918fd95",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -849,13 +849,13 @@
    "hostSweep": []
   },
   "fv4034": {
-   "inputHash": "b3ad35c1bfb473f3",
+   "inputHash": "d3f5124cc9b2f9b0",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "fv510": {
-   "inputHash": "c0f6fe921364e30b",
+   "inputHash": "01ca5fc205514ffd",
    "runs": [
     {
      "index": 0,
@@ -886,7 +886,7 @@
    "hostSweep": []
   },
   "fv510_milan": {
-   "inputHash": "285cf2fd6ae27717",
+   "inputHash": "1704f74aa62e17c6",
    "runs": [
     {
      "index": 0,
@@ -3910,7 +3910,7 @@
    "hostSweep": []
   },
   "ua_challenger2": {
-   "inputHash": "c8089aeff4f8cb4f",
+   "inputHash": "4aa8aabbb8187bc3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
