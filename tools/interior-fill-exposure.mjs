@@ -48,23 +48,29 @@ export function fillExposure({ id, record, root }) {
   const own = tris.filter((t) => !/InteriorFill$/.test(meshes[t.mesh] || ''));
   const boundary = interiorFillBoundaryTriangles(id, own, meshes);
   const v = record.v, o = record.o;
-  // Anchor the lattice on the record's: voxelise puts its origin three voxels below the body's minimum, so a
-  // degenerate triangle (one sample, a body-less group that no column span counts) at a lattice point no higher
-  // than that minimum makes the origin congruent to the record's.
-  const min = [Infinity, Infinity, Infinity];
-  for (const t of boundary) {
-    if (DEFAULT_EXCLUDE.test(meshes[t.mesh] || 'mesh')) continue;
-    for (const [x, y, z] of [[t.ax, t.ay, t.az], [t.bx, t.by, t.bz], [t.cx, t.cy, t.cz]]) {
-      if (x < min[0]) min[0] = x; if (y < min[1]) min[1] = y; if (z < min[2]) min[2] = z;
+  const offLattice = (g) => g.origin.some((x, a) => { const s = (o[a] - x) / v; return Math.abs(s - Math.round(s)) > 1e-3; });
+  // The generator's own lattice first: voxelise puts its origin three voxels below the body's minimum, and the record
+  // keeps that origin to 6 decimals. While the minimum has not moved off the record's lattice this is exactly the grid
+  // a fresh generation measures, so a plate face lying on a lattice plane rasterises to the same side as it did there
+  // (re-anchoring on the rounded origin moved such faces into the fill: whole planes of false on-shell voxels).
+  let grid = voxelise(boundary, meshes, { voxel: v, exclude: DEFAULT_EXCLUDE });
+  if (offLattice(grid)) {
+    // The body's minimum moved off the lattice (the record is stale): anchor a lattice congruent to the record's with
+    // a degenerate triangle (one sample, a body-less group that no column span counts) at a lattice point no higher
+    // than that minimum.
+    const min = [Infinity, Infinity, Infinity];
+    for (const t of boundary) {
+      if (DEFAULT_EXCLUDE.test(meshes[t.mesh] || 'mesh')) continue;
+      for (const [x, y, z] of [[t.ax, t.ay, t.az], [t.bx, t.by, t.bz], [t.cx, t.cy, t.cz]]) {
+        if (x < min[0]) min[0] = x; if (y < min[1]) min[1] = y; if (z < min[2]) min[2] = z;
+      }
     }
+    const [ax, ay, az] = min.map((m, a) => { let p = o[a] + 3 * v + v * Math.floor((m - o[a] - 3 * v) / v); if (p > m) p -= v; return p; });
+    grid = voxelise([...boundary, { ax, ay, az, bx: ax, by: ay, bz: az, cx: ax, cy: ay, cz: az, mesh: meshes.length }],
+      [...meshes, 'latticeAnchor'], { voxel: v, exclude: DEFAULT_EXCLUDE });
+    if (offLattice(grid)) throw new Error(`${id}: lattice anchor missed the record's lattice`);
   }
-  const anchor = min.map((m, a) => { let p = o[a] + 3 * v + v * Math.floor((m - o[a] - 3 * v) / v); if (p > m) p -= v; return p; });
-  const anchorMesh = meshes.length;
-  const named = [...meshes, 'latticeAnchor'];
-  const [ax, ay, az] = anchor;
-  const grid = voxelise([...boundary, { ax, ay, az, bx: ax, by: ay, bz: az, cx: ax, cy: ay, cz: az, mesh: anchorMesh }], named, { voxel: v, exclude: DEFAULT_EXCLUDE });
   const shift = grid.origin.map((g, a) => (o[a] - g) / v);
-  for (const s of shift) if (Math.abs(s - Math.round(s)) > 1e-4) throw new Error(`${id}: lattice anchor missed the record's lattice (${shift})`);
   const [sx, sy, sz] = shift.map(Math.round);
   const { shell, nx, ny, nz } = grid;
   const { minY, maxY } = columnSpans(grid); // deepInterior's per-column hull/turret spans: where the generator fills
