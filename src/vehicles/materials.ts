@@ -2475,6 +2475,26 @@ const VEHICLE_GROUND_DARK = 0.66;
 // fifth of the direct light and a sixth of the sky, so it reads near-black behind the lit rim of its wall
 const GEAR_CAVITY_DIRECT = 0.2;
 const GEAR_CAVITY_INDIRECT = 0.16;
+/**
+ * (264, the ghillie render lane; Main's ruling on the critic's "no shadow under any laid net or drape") The share of a
+ * vertex's light a camouflage suit over it takes (suitOcclusion.ts bakes it; 0 everywhere else): its direct and its
+ * indirect light, at a full cover, keep 1 - these. Every vehicle program reads it (vehicleAmbientFloorHook), after the
+ * readability floors, so the shade under a net is not lifted back; a draw without it reads the material's default, 0.
+ */
+export const VEHICLE_SUIT_OCCLUSION_ATTRIBUTE = 'suitOcc';
+const SUIT_SHADE_DIRECT = 0.62;
+const SUIT_SHADE_INDIRECT = 0.72;
+type SuitShadeDefaults = { defaultAttributeValues?: Record<string, number[]> };
+/**
+ * Give a material that compiles vehicleAmbientFloorHook its suit-shade default (0: unoccluded), so a draw without the
+ * attribute never reads another program's generic value. Set where the material is made, before any later hook
+ * (applyBurnHook keeps and restores the defaults it finds).
+ */
+export function withSuitShadeDefault<T extends THREE.Material>(material: T): T {
+  const m = material as T & SuitShadeDefaults;
+  m.defaultAttributeValues = { ...(m.defaultAttributeValues ?? {}), [VEHICLE_SUIT_OCCLUSION_ATTRIBUTE]: [0] };
+  return material;
+}
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
@@ -2590,10 +2610,11 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
   shader.uniforms.uCotFieldDust = FIELD_DUST_UNIFORM;
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
-  // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves)
-  shader.vertexShader = `varying vec3 vCotFdPos;\n${shader.vertexShader}`.replace(
-    '#include <begin_vertex>', '#include <begin_vertex>\n\tvCotFdPos = transformed;');
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\nvarying float vCotSuitShade;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
+  // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves); (264) the
+  // suit's shade passes through with it
+  shader.vertexShader = `varying vec3 vCotFdPos;\nattribute float ${VEHICLE_SUIT_OCCLUSION_ATTRIBUTE};\nvarying float vCotSuitShade;\n${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', `#include <begin_vertex>\n\tvCotFdPos = transformed;\n\tvCotSuitShade = ${VEHICLE_SUIT_OCCLUSION_ATTRIBUTE};`);
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <emissivemap_fragment>',
     `#include <emissivemap_fragment>
@@ -2809,7 +2830,15 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		reflectedLight.indirectDiffuse *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
 		reflectedLight.indirectSpecular *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
 	}
-	#endif`,
+	#endif
+	{
+`
+    // (264) the camouflage suit over the armour takes its share of the light, after every lift above
+    + `		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.directSpecular *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.indirectDiffuse *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
+		reflectedLight.indirectSpecular *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
+	}`,
   );
 }
 
@@ -2895,6 +2924,7 @@ function vehicleMaterialSetup(
       : null,
     setup: <T extends THREE.Material>(material: T): T => {
       const hook = hookFor(material);
+      withSuitShadeDefault(material);
       if (cascaded && typeof engineCtx?.setupShadowMaterial === 'function') engineCtx.setupShadowMaterial(material, hook);
       else material.onBeforeCompile = hook;
       const registration = material.onBeforeCompile;

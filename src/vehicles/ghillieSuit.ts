@@ -6,16 +6,17 @@ import type { MaterialVisual } from './materialPainter.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 import {
   configureFoliageMaterial, FoliageCardBuffer, foliageCardPoints, GARNISH_BOUGH_TILES, GARNISH_STRIP_BASE_SRGB, GARNISH_STRIP_TILES,
-  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, type FoliageCard, type VehicleFoliageKind,
+  ghillieGarnishAtlasSteps, vehicleFoliageAtlas, volumeLitFoliage, type FoliageCard, type VehicleFoliageKind,
 } from './vehicleFoliage.ts';
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import {
-  FIELD_NET_PALETTES, garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette,
-  type SuitTheatre,
+  FIELD_NET_PALETTES, garnishedNetTextures, NET_ALPHA_CUT, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex,
+  type NetPalette, type SuitTheatre,
 } from './camoNetTexture.ts';
+import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
@@ -2109,7 +2110,7 @@ const srgbLin = (c: number): number => { const v = c / 255; return v <= 0.04045 
 
 /** Metres of cover per texture repeat (the paint's own patch scale). */
 const COVER_TILE_M = 1.6;
-const coverCache = new Map<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null>();
+const coverCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
 
 /** The cover's colours: the scheme's base and patches (sRGB), from the vehicle's active camouflage. */
 interface CoverPalette { readonly base: readonly [number, number, number]; readonly patches: ReadonlyArray<readonly [number, number, number]> }
@@ -2219,23 +2220,30 @@ function paintCutLeafCover(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
 }
 
 /** The fitted cover's fabric for a scheme (cached per palette and seed; null without a DOM). */
-function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+function cutLeafCoverTextures(pal: CoverPalette, seed: number): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
   const key = `${pal.base.join(',')}|${pal.patches.map((c) => c.join(',')).join('|')}|${seed}`;
   if (coverCache.has(key)) return coverCache.get(key)!;
-  let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
+  let out: { map: THREE.Texture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
     try {
       const canvas = document.createElement('canvas'), height = document.createElement('canvas');
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
-      const hctx = height.getContext('2d') as CanvasRenderingContext2D | null;
+      const hctx = height.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | null;
       if (ctx && hctx) {
-        paintCutLeafCover(ctx, hctx, NET_TEXTURE_PX, pal, seed);
-        const map = new THREE.CanvasTexture(canvas);
-        map.colorSpace = THREE.SRGBColorSpace;
+        const S = NET_TEXTURE_PX;
+        paintCutLeafCover(ctx, hctx, S, pal, seed);
+        // (263, alphaCutTexture.ts) each flap shades the fabric round its foot and the fabric under the flaps darkens,
+        // so the cover reads in relief; a flap cut right out leaves a dark pocket in the fabric under it, not a hole: a
+        // cover hung off a skirt showed the black void behind it through every cut-out (the critic's "black holes")
+        const image = ctx.getImageData(0, 0, S, S);
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, { cutoff: NET_ALPHA_CUT, lowShade: 0.62, occlusion: 3.2,
+          radii: [3, 9], gaps: { tone: [pal.base[0] * 0.62, pal.base[1] * 0.62, pal.base[2] * 0.58], fill: [0, 0], cell: S * S } });
+        floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
+        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieCover:${seed}`, true);
         const bump = new THREE.CanvasTexture(height);
-        for (const t of [map, bump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
-        map.name = `ghillieCover:${seed}`;
+        bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+        bump.anisotropy = 4;
         bump.name = `ghillieCoverHeight:${seed}`;
         out = { map, bump };
       }
@@ -2363,14 +2371,21 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
   // the sticks and boughs the crew pushed under a deck net stand out of their humps
   if (top && pal.boughs > 0) for (const t of (surface as TopCloth).tents ?? []) clumps.push({ u: t.x, v: t.z, size: 3 + Math.floor(t.h * 20), tent: true });
   const fitted = cfg.style !== 'leafy';
+  // (264; Main on the Strv 121's Barracuda-style cover, the owner's "a ton of netting and ghillie" on it) a fitted cover
+  // whose row asks for boughs (boughShare) carries its crew's cut boughs among its flaps, laid as low as the flaps lie
+  // (wave 253's reason stands: nothing stands off a cover as a shard); a cover whose row does not keeps its flaps alone,
+  // drawing nothing more from the stream
+  const coverBoughs = fitted && (cfg.boughShare ?? 0) > 0;
   for (const clump of clumps) {
     // a fitted cover's tufts are its own cut flaps lying on it (wave 253: "dark leaf shards stick straight out")
-    const bough = fitted ? false : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
+    const bough = fitted ? coverBoughs && !clump.tent && rng() < (cfg.boughShare ?? 0)
+      : clump.tent ? true : rng() < (cfg.boughShare ?? pal.boughs);
     if (!surface.sample(clump.u, clump.v)) continue;
     // the tuft's own colour: a strip bunch shares one cut cloth, a bough one cutting
     const tone = pickStripTone(pal, rng);
     const boughBase = clumpTint(cfg, rng);
-    const size = bough ? clump.size : Math.max(2, Math.min(5, clump.size));
+    // a cover's boughs come a few at a tuck, its flaps two to five
+    const size = bough ? (fitted ? Math.max(2, Math.min(4, clump.size)) : clump.size) : Math.max(2, Math.min(5, clump.size));
     const spin0 = rng() * Math.PI * 2;
     const fan = size <= 2 ? 0.5 + rng() * 0.4 : 1.0 + rng() * 0.9;
     const edgeInfo = top && surface.edge ? surface.edge(clump.u, clump.v) : null;
@@ -2380,11 +2395,12 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       // every draw of this card happens here, before any fit
       const jr = rng() * 0.05, ja = rng() * Math.PI * 2;
       const sway = share * fan + (rng() - 0.5) * 0.4;
-      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
+      const standOut = clump.tent ? 0.75 + rng() * 0.5 : bough && !fitted ? 0.32 + rng() * 0.5 : 0.06 + rng() * 0.2;
       const lenK = bough ? 0.7 + rng() * 0.75 : 0.75 + rng() * 0.6;
       const value = 0.82 + rng() * 0.3;
       const bend = bough ? 0.03 + rng() * 0.06 : 0.12 + rng() * 0.16;
-      const fold = bough ? 0.18 + rng() * 0.18 : 0.05 + rng() * 0.08;
+      // a cover's bough a shallow V (its edges a few centimetres up at most: it lies on the cover)
+      const fold = bough ? (fitted ? 0.08 : 0.18) + rng() * (fitted ? 0.1 : 0.18) : 0.05 + rng() * 0.08;
       const tileK = rng();
       const roll = (rng() - 0.5) * 0.6;
       const tile = bough ? GARNISH_BOUGH_TILES[tileK < 0.5 ? 0 : 1] : GARNISH_STRIP_TILES[tileK < 0.5 ? 0 : 1];
@@ -2394,9 +2410,9 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       let length = base * lenK;
       const width = length * (bough ? 0.6 : 0.62);
       // a fitted cover's flaps take its mid-tones (their atlas is painted dark: "dark clover decals", wave 253)
-      const tint: [number, number, number] = fitted ? [value * 1.32, value * 1.3, value * 1.22]
-        : bough ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
-          : stripTint(tone, value);
+      const tint: [number, number, number] = bough
+        ? [boughBase[0] * pal.boughTint[0] * value, boughBase[1] * pal.boughTint[1] * value, boughBase[2] * pal.boughTint[2] * value]
+        : fitted ? [value * 1.32, value * 1.3, value * 1.22] : stripTint(tone, value);
       const su = clump.u + Math.cos(ja) * jr, sv = clump.v + (top ? Math.sin(ja) * jr : Math.sin(ja) * jr * 0.4);
       if (!seatOk(su, sv)) continue;
       const seat = surface.sample(su, sv);
@@ -2414,7 +2430,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
         dir = norm3([nn[0] * nn[1], -1 + nn[1] * nn[1], nn[2] * nn[1]]);
         // a bough tucked under the top cord stands up past the roof line (it breaks the outline); others hang
         const hangs = (panel as unknown as SidePanel).boughsHangAt?.some(([z0, z1]) => clump.u >= z0 && clump.u <= z1);
-        if (bough && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
+        // (a cover's boughs all hang: none stands up past its top)
+        if (bough && !fitted && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
       }
       const side = norm3([nn[1] * dir[2] - nn[2] * dir[1], nn[2] * dir[0] - nn[0] * dir[2], nn[0] * dir[1] - nn[1] * dir[0]]);
       let placed: FoliageCard | null = null;
@@ -3356,9 +3373,10 @@ function makeNet(
       m.map = shared.map;
       m.bumpMap = shared.bump;
       // three's bump slope is the height change per screen pixel times bumpScale: kept near the cloth's own 0.5 so the
-      // cords and strips stand in relief up close without sparkling at range
-      m.bumpScale = leafy ? 0.7 : 0.6;
-      m.alphaTest = 0.5;
+      // cords and strips stand in relief up close without sparkling at range (263: 0.7 -> 0.55 on a garnished net, whose
+      // strips now rise along their length; the critic read glitter on the drape's strips)
+      m.bumpScale = leafy ? 0.55 : 0.6;
+      m.alphaTest = NET_ALPHA_CUT;
       m.transparent = false;
     }
   });
@@ -5519,6 +5537,26 @@ function buildTheatre(P: GhillieBuilderPort): SuitTheatre {
   return wheels?.color ? suitTheatreOf(wheels.color) : 'woodland';
 }
 
+/**
+ * A multispectral cover's garnish atlas: its cut flaps in the theatre's tones. (263) Where its row names a species and
+ * asks for boughs (the Strv 121's Barracuda-style cover with spruce: boughShare 0.45, foliageKind spruce), half its
+ * tufts are that species' sprigs: a fitted cover lays only its own short flat tufts (addTufts, wave 253: no bough card
+ * stands off a cover), so the row's spruce had never shown; the second tuft tile now carries it, laid as flat as a flap.
+ */
+function* coverGarnishAtlasSteps(cfg: GhillieConfig, theatre: SuitTheatre): Generator<void, THREE.Texture | null, void> {
+  const flaps = theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland';
+  const kind = cfg.foliageKind;
+  if (!kind || kind === 'garnish-woodland' || kind === 'garnish-arid') return vehicleFoliageAtlas(flaps);
+  return yield* ghillieGarnishAtlasSteps(kind, undefined, flaps, (cfg.boughShare ?? 0) > 0);
+}
+
+/** Run a stepped build at once. */
+function drainSteps<T>(steps: Generator<void, T, void>): T {
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
 function garnishSpecies(cfg: GhillieConfig): SprayKind {
   const kind = cfg.foliageKind ?? 'oak';
   return kind === 'garnish-woodland' || kind === 'garnish-arid' ? 'oak' : kind;
@@ -5801,9 +5839,9 @@ function* addGhillieOwner(
     // (boot-261) the garnish atlas paints in this build's steps the first time a species is asked for
     const atlas = leafy
       ? yield* (field ? ghillieGarnishAtlasSteps(...fieldSpecies(cfg, theatre)) : ghillieGarnishAtlasSteps(garnishSpecies(cfg)))
-      : vehicleFoliageAtlas(theatre === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+      : yield* coverGarnishAtlasSteps(cfg, theatre);
     const leavesShared = suitMats.leaves.has(atlas);
-    const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    const mat = leavesShared ? suitMats.leaves.get(atlas)! : volumeLitFoliage(makeCloth(P, (m) => configureFoliageMaterial(m, atlas)));
     if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
     mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
@@ -5826,7 +5864,7 @@ function* addGhillieOwner(
       followVehicleScheme(P.mats.wheels, mat, (vis) => {
         const t = theatreOfHex(vis.base);
         if (!leafy) {
-          mat.map = vehicleFoliageAtlas(t === 'desert' ? 'garnish-arid' : 'garnish-woodland');
+          mat.map = drainSteps(coverGarnishAtlasSteps(cfg, t));
           return;
         }
         const now = meanStrip(t, field);

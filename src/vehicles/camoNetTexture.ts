@@ -3,6 +3,7 @@
 // and the decor's rolled and draped nets (decorations.ts); three.js only, so the decor can use it without importing the
 // fleet.
 import * as THREE from 'three';
+import { floodClearTexels, shadeFromHeight, straightAlphaTexture } from './alphaCutTexture.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Theatre (round 5, 2026-10-08; wave 253: "the desert Abrams wears green nets, green leaves ... against sand paint";
@@ -96,7 +97,19 @@ export const FIELD_NET_PALETTES: Readonly<Record<SuitTheatre, NetPalette>> = Obj
 export const NET_TEXTURE_PX = 512;
 /** Metres of net per texture repeat (a leafy net): about 6 cm meshes, 3-6 cm strips. */
 export const NET_TILE_M = 1.25;
-const netCache = new Map<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null>();
+/** Meshes of the knotted cord net a texture side (about 6 cm each at NET_TILE_M). */
+const NET_MESHES = 20;
+/** The cut every net material tests (the suits' and the decor's). */
+export const NET_ALPHA_CUT = 0.5;
+/**
+ * (263) The broad height over a gap (alphaCutTexture.ts shadeFromHeight) where it begins to take the shade under the
+ * garnish, and where it is fully shaded: thick bunches close over their own shadow, the bare net between stays open.
+ */
+const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
+/** The shade the net's covered gaps show: the hull under the garnish, a dark step of the cord and the deep strip. */
+const gapToneOf = (pal: NetPalette): [number, number, number] =>
+  [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
+const netCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
 
 /** The painter's own seeded stream (mulberry32). */
 function garnishStreamOf(seed: number): () => number {
@@ -125,7 +138,7 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   };
   const densityField = field(4, 3), toneField = field(3, 3);
   const density = (x: number, y: number): number => THREE.MathUtils.clamp(0.36 + 0.9 * densityField(x, y), 0, 1);
-  const N = 20, cell = S / N;
+  const N = NET_MESHES, cell = S / N;
   const px: number[] = [], py: number[] = [];
   for (let i = 0; i < N; i++) { px.push(0.75 + rng() * 0.5); py.push(0.75 + rng() * 0.5); }
   const sx = px.reduce((a, b) => a + b, 0), sy = py.reduce((a, b) => a + b, 0);
@@ -150,7 +163,9 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
     const a = knot(i, j);
     for (const [di, dj] of [[1, 0], [0, 1]] as const) {
       if (rng() < 0.04) continue;
-      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = 1.2 + rng() * 0.6, shade = 0.85 + rng() * 0.3;
+      // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) in a mid olive
+      // a step over the palette's: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips)
+      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.6;
       wrap9((ox, oy) => {
         const path = (g: CanvasRenderingContext2D): void => {
           g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
@@ -193,25 +208,39 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       return [x - (dy / l) * hw * sgn, y + (dx / l) * hw * sgn];
     };
     const heightTone = 140 + rng() * 70;
+    const [ex, ey] = pts[steps];
     wrap9((ox, oy) => {
       ctx.beginPath();
       for (let t = 0; t <= steps; t++) { const [x, y] = edge(t, 1); if (t === 0) ctx.moveTo(x + ox, y + oy); else ctx.lineTo(x + ox, y + oy); }
-      const [ex, ey] = pts[steps];
       for (const [o, l] of tails) {
         ctx.lineTo(ex + nx * o + cx * l + ox, ey + ny * o + cy * l + oy);
         ctx.lineTo(ex + nx * (o - wid * 0.12) + ox, ey + ny * (o - wid * 0.12) + oy);
       }
       for (let t = steps; t >= 0; t--) { const [x, y] = edge(t, -1); ctx.lineTo(x + ox, y + oy); }
       ctx.closePath();
-      ctx.fillStyle = rgb(tone); ctx.fill();
-      ctx.lineWidth = 0.8; ctx.strokeStyle = rgb(tone.map((v) => v * 0.62), 0.45); ctx.stroke();
+      // (263) shaded down its length: dark where the bunch gathers at the knot, lit toward the free end that lies over
+      // the others, so a bunch reads as strips lying on strips (the height map's occlusion deepens it)
+      const lit = ctx.createLinearGradient(k[0] + ox, k[1] + oy, ex + ox, ey + oy);
+      lit.addColorStop(0, rgb(tone.map((v) => v * 0.66)));
+      lit.addColorStop(0.32, rgb(tone));
+      lit.addColorStop(1, rgb(tone.map((v) => Math.min(255, v * 1.12))));
+      ctx.fillStyle = lit; ctx.fill();
+      // its edge, over what it lies on only (source-atop: no dark rim under the cut for the filter to smear)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.lineWidth = 1.6; ctx.strokeStyle = rgb(tone.map((v) => v * 0.62), 0.45); ctx.stroke();
+      ctx.restore();
       // the ribbon's far half turns to the light
       ctx.beginPath();
       for (let t = 3; t <= steps; t++) { const [x, y] = edge(t, 0.45); if (t === 3) ctx.moveTo(x + ox, y + oy); else ctx.lineTo(x + ox, y + oy); }
       ctx.lineWidth = Math.max(1, wid * 0.22); ctx.strokeStyle = rgb(tone.map((v) => Math.min(255, v * 1.22)), 0.35); ctx.stroke();
       hctx.beginPath();
       for (let t = 0; t <= steps; t++) { const [x, y] = pts[t]; if (t === 0) hctx.moveTo(x + ox, y + oy); else hctx.lineTo(x + ox, y + oy); }
-      hctx.lineWidth = wid * 0.7; hctx.strokeStyle = grey(heightTone); hctx.stroke();
+      // the strip rises from the knot it is tied in toward its free end, which lies over its neighbours
+      const rise = hctx.createLinearGradient(k[0] + ox, k[1] + oy, ex + ox, ey + oy);
+      rise.addColorStop(0, grey(heightTone * 0.72));
+      rise.addColorStop(1, grey(heightTone));
+      hctx.lineWidth = wid * 0.7; hctx.strokeStyle = rise; hctx.stroke();
     });
   };
   for (const [i, j] of order) {
@@ -243,22 +272,31 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
  * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES). `stripDensity` scales the crew's garnish density
  * at every knot (1: the issue net, about 69 % of the tile cloth; lower: more open cord between the bunches).
  */
-export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false, stripDensity = 1): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false, stripDensity = 1): { map: THREE.Texture; bump: THREE.CanvasTexture } | null {
   const key = `${field ? 'field:' : ''}${theatre}:${seed}${stripDensity === 1 ? '' : `:strips${stripDensity}`}`;
   if (netCache.has(key)) return netCache.get(key)!;
-  let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
+  let out: { map: THREE.Texture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
     try {
       const canvas = document.createElement('canvas'), height = document.createElement('canvas');
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
-      const ctx = canvas.getContext('2d'), hctx = height.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true }), hctx = height.getContext('2d', { willReadFrequently: true });
       if (ctx && hctx) {
-        paintGarnishedNet(ctx, hctx, NET_TEXTURE_PX, (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], seed, stripDensity);
-        const map = new THREE.CanvasTexture(canvas);
-        map.colorSpace = THREE.SRGBColorSpace;
+        const S = NET_TEXTURE_PX, pal = (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre];
+        paintGarnishedNet(ctx, hctx, S, pal, seed, stripDensity);
+        // (263, alphaCutTexture.ts) the garnish shades what lies under it, the gaps under thick garnish take the hull's
+        // shade there, and the map keeps straight alpha with its own coverage mips: no black rim at any cut or range
+        const image = ctx.getImageData(0, 0, S, S);
+        shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, {
+          cutoff: NET_ALPHA_CUT, lowShade: 0.78, occlusion: 2.4, radii: [4, 12],
+          // a gap of up to a mesh of the net (NET_MESHES a side) closes whole under thick garnish
+          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2 },
+        });
+        floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
+        const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true);
         const bump = new THREE.CanvasTexture(height);
-        for (const t of [map, bump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
-        map.name = `ghillieNet:${key}`;
+        bump.wrapS = bump.wrapT = THREE.RepeatWrapping;
+        bump.anisotropy = 4;
         bump.name = `ghillieNetHeight:${key}`;
         out = { map, bump };
       }

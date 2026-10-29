@@ -1844,6 +1844,12 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13 (netting-proper; the owner: "aren't as ridiculously placed like peacock feathers"): field garnish lies on
     // its net (roof cards within 12 cm of it and their faces on its, no drape card standing up)
     'src/vehicles/ghillieGarnishLie.selftest.mjs',
+    // 263 (the GPU-still critic: "black specks and dark fringes", "the net reads flat"): the suits' cut textures keep
+    // straight alpha flooded with their cloth's colour, coverage mips, and the gaps under thick garnish shaded
+    'src/vehicles/alphaCutTexture.selftest.mjs',
+    // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
+    // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
+    'src/vehicles/suitOcclusion.selftest.mjs',
     // 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that still
     // reads its recorded count, and searches one that does not within 0.5 m of where it stood
     'src/vehicles/markingSeatStability.selftest.mjs',

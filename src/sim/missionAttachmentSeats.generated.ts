@@ -2616,7 +2616,7 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
       0.6478786330646393
     ],
     "signature": "2005417c",
-    "geometryHash": "82cac8ceb633380def55ec941142462d960a1a487b7239e38e7e46b32ab40919"
+    "geometryHash": "6fe45469475efecb9c3299e098e06557b8874f15cc5922bfac7a907a2bde0ed6"
   },
   "strv122": {
     "frame": "turret",
