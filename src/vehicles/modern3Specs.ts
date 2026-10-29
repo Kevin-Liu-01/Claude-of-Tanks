@@ -787,7 +787,8 @@ const MODERN3_SPECS = {
     // records the owner's exact ×1.10 gameplay enlargement; protection mm
     // stays unchanged while every spatial armor/anatomy coordinate scales.
     dims: { hullLengthM: 8.349, overallLengthM: 10.637, widthM: 3.96, heightM: 2.805 },
-    armor: scaleArmorFrame(modernArmor({
+    armor: (() => {
+      const armor = scaleArmorFrame(modernArmor({
       // geometric FRAME params re-seated on the arrafi-print measured build
       // (profiles/italy.ts buildArieteMk); every RHAe VALUE byte-identical.
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
@@ -798,7 +799,21 @@ const MODERN3_SPECS = {
       tw: 1.28, tFrontZ: 2.12, tRearZ: -2.40, tH: 0.86,
       cheek: [560, 620, 850], tSide: [320, 380, 560], tRear: 90, tRoof: 45,
       mantlet: [420, 500, 680], loader: true, bustleAmmo: true,
-    }), ARIETE_C1_C2_SCALE),
+      }), ARIETE_C1_C2_SCALE);
+      // Release 264 (fleetPassLow eraGameplayRegistration): the C1 prototype's drawn ERA since 252 (0c4468faa8: the C2's
+      // cheek cassettes, sixteen, and its 26 skirt cassettes, italy.ts c1EraReceipt) binds to gameplay zones, as the C2
+      // prototype's does: one depletable plate per side on the skirts and on the cheeks, fitted to the cassettes by the
+      // combat anatomy.
+      armor.hullPlates.push(
+        reactivePlate('ariete_c1_skirt_era_R', 'right'),
+        reactivePlate('ariete_c1_skirt_era_L', 'left'),
+      );
+      armor.turretPlates.push(
+        reactivePlate('ariete_c1_turret_era_R', 'right'),
+        reactivePlate('ariete_c1_turret_era_L', 'left'),
+      );
+      return armor;
+    })(),
     visual: {
       scheme: 'nato', base: '#4b563b', weather: '#5a6348',
       patches: ['#252b25', '#69513c'], marking: 'number', number: 'C1 32',

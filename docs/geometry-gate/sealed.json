@@ -2646,7 +2646,7 @@
    "openViews": 0,
    "insideOutPx": 65,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 5217,
+   "netSeeThroughPx": 5068,
    "tris": 146669,
    "frame": [
     0,
@@ -2663,6 +2663,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 6419
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "inherited from main 262 - the field net reads 5068 px with the screen slats closed or open (orphan-reds-264 A-B), so the drift predates this lane",
+     "by": "orphan-reds-264",
+     "date": "2026-10-28",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 5217
      }
     }
    ]

@@ -84517,8 +84517,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14430,
-          "sha256": "e6dad6f0a192c8759329e59020f509f4feb17ddc000b20018dea239ba52b47de"
+          "bytes": 14466,
+          "sha256": "b7a0e235ef49978f405eb0f6203aeaf85a70a8ca7af596461b78dd1dad1e0bc9"
         },
         "topSilhouette": {
           "file": "bmpt_t90_top_silhouette.png",
@@ -84541,24 +84541,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35110,
-          "sha256": "9a91a2574b7be1e9a014a55b00692853ad8b3d389b8c00782efe487b4cc18cd8"
+          "bytes": 35176,
+          "sha256": "38cbb8c5cdced85386cfa7909b5995e519a1558fd87783ec7f0a4f26b3ecfb7e"
         },
         "modulesSide": {
           "file": "bmpt_t90_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36830,
-          "sha256": "6b5182f76b472a9bd85a66010f4d5d13e7a8c55b4f8dac5e4a16aceaaa332b78"
+          "bytes": 36776,
+          "sha256": "a1c598aa50aed0fef6f0d6e6ee2b0645cdef0bb6905d1ffd0c392ad7efd91ab2"
         },
         "crewSide": {
           "file": "bmpt_t90_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33508,
-          "sha256": "0661db026eec19e50f476a76c99aa6e6d2f197adea7a594c89e6b4a3458729a2"
+          "bytes": 33552,
+          "sha256": "83080e36e80570f3041ba46f944eef99dd6cff4d129ed00bdb8f030d493e1eaa"
         },
         "markings": {
           "file": "bmpt_t90_markings.png",
@@ -99467,6 +99467,812 @@
             ]
           },
           {
+            "hitboxId": "H13",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                2.9184
+              ],
+              [
+                1.9932,
+                1.3291,
+                3.3296
+              ],
+              [
+                1.9932,
+                1.0689,
+                3.3296
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.9184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H14",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                2.3684
+              ],
+              [
+                1.9932,
+                0.9991,
+                2.7796
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.7796
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H15",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                2.3684
+              ],
+              [
+                1.9932,
+                1.3291,
+                2.7796
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.7796
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H16",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                1.8184
+              ],
+              [
+                1.9932,
+                0.9991,
+                2.2296
+              ],
+              [
+                1.9932,
+                0.7389,
+                2.2296
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H17",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                1.8184
+              ],
+              [
+                1.9932,
+                1.3291,
+                2.2296
+              ],
+              [
+                1.9932,
+                1.0689,
+                2.2296
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H18",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                1.2684
+              ],
+              [
+                1.9932,
+                0.9991,
+                1.6796
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.6796
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H19",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                1.2684
+              ],
+              [
+                1.9932,
+                1.3291,
+                1.6796
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.6796
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H20",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                0.7184
+              ],
+              [
+                1.9932,
+                0.9991,
+                1.1296
+              ],
+              [
+                1.9932,
+                0.7389,
+                1.1296
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H21",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                0.7184
+              ],
+              [
+                1.9932,
+                1.3291,
+                1.1296
+              ],
+              [
+                1.9932,
+                1.0689,
+                1.1296
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H22",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                0.1684
+              ],
+              [
+                1.9932,
+                0.9991,
+                0.5796
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.5796
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H23",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                0.1684
+              ],
+              [
+                1.9932,
+                1.3291,
+                0.5796
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.5796
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H24",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                0.9991,
+                -0.3816
+              ],
+              [
+                1.9932,
+                0.9991,
+                0.0296
+              ],
+              [
+                1.9932,
+                0.7389,
+                0.0296
+              ],
+              [
+                1.9932,
+                0.7389,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H25",
+            "name": "ariete_c1_skirt_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.9932,
+                1.3291,
+                -0.3816
+              ],
+              [
+                1.9932,
+                1.3291,
+                0.0296
+              ],
+              [
+                1.9932,
+                1.0689,
+                0.0296
+              ],
+              [
+                1.9932,
+                1.0689,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H26",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                2.9184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                3.3296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                3.3296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.9184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H27",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                2.3684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                2.7796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.7796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H28",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                2.3684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                2.7796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.7796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.3684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H29",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                1.8184
+              ],
+              [
+                -1.9932,
+                0.7389,
+                2.2296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                2.2296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H30",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                1.8184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                2.2296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                2.2296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.8184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H31",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                1.2684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                1.6796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.6796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H32",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                1.2684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                1.6796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.6796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.2684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H33",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                0.7184
+              ],
+              [
+                -1.9932,
+                0.7389,
+                1.1296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                1.1296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H34",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                0.7184
+              ],
+              [
+                -1.9932,
+                1.0689,
+                1.1296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                1.1296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.7184
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H35",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                0.1684
+              ],
+              [
+                -1.9932,
+                0.7389,
+                0.5796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.5796
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H36",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                0.1684
+              ],
+              [
+                -1.9932,
+                1.0689,
+                0.5796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.5796
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.1684
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H37",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                0.7389,
+                -0.3816
+              ],
+              [
+                -1.9932,
+                0.7389,
+                0.0296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                0.0296
+              ],
+              [
+                -1.9932,
+                0.9991,
+                -0.3816
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H38",
+            "name": "ariete_c1_skirt_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.9932,
+                1.0689,
+                -0.3816
+              ],
+              [
+                -1.9932,
+                1.0689,
+                0.0296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                0.0296
+              ],
+              [
+                -1.9932,
+                1.3291,
+                -0.3816
+              ]
+            ]
+          },
+          {
             "hitboxId": "T01",
             "name": "turret_cheek_R",
             "physicalMm": 560,
@@ -99680,6 +100486,502 @@
                 -1.6775,
                 0.946,
                 -2.728
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T08",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.4511,
+                0.4665,
+                2.1588
+              ],
+              [
+                0.4511,
+                0.3299,
+                2.2832
+              ],
+              [
+                0.5698,
+                0.3081,
+                2.2592
+              ],
+              [
+                0.5698,
+                0.4448,
+                2.1349
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T09",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.4471,
+                0.6612,
+                1.9792
+              ],
+              [
+                0.4471,
+                0.5245,
+                2.1035
+              ],
+              [
+                0.5671,
+                0.5064,
+                2.0836
+              ],
+              [
+                0.5671,
+                0.6431,
+                1.9593
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T10",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.6454,
+                0.4655,
+                2.0934
+              ],
+              [
+                0.6454,
+                0.3242,
+                2.2126
+              ],
+              [
+                0.7638,
+                0.3027,
+                2.1871
+              ],
+              [
+                0.7638,
+                0.444,
+                2.0679
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T11",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.6413,
+                0.6583,
+                1.9281
+              ],
+              [
+                0.6413,
+                0.5171,
+                2.0473
+              ],
+              [
+                0.7611,
+                0.4993,
+                2.0262
+              ],
+              [
+                0.7611,
+                0.6405,
+                1.907
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T12",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.8398,
+                0.4642,
+                2.0284
+              ],
+              [
+                0.8398,
+                0.3182,
+                2.1418
+              ],
+              [
+                0.9579,
+                0.2972,
+                2.1147
+              ],
+              [
+                0.9579,
+                0.4431,
+                2.0013
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T13",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.8354,
+                0.6552,
+                1.8774
+              ],
+              [
+                0.8354,
+                0.5093,
+                1.9908
+              ],
+              [
+                0.9551,
+                0.4919,
+                1.9684
+              ],
+              [
+                0.9551,
+                0.6378,
+                1.855
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T14",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.0341,
+                0.4626,
+                1.9639
+              ],
+              [
+                1.0341,
+                0.3118,
+                2.0707
+              ],
+              [
+                1.1519,
+                0.2913,
+                2.0418
+              ],
+              [
+                1.1519,
+                0.4422,
+                1.935
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T15",
+            "name": "ariete_c1_turret_era_R",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.0296,
+                0.6519,
+                1.8272
+              ],
+              [
+                1.0296,
+                0.5011,
+                1.934
+              ],
+              [
+                1.1491,
+                0.4842,
+                1.9102
+              ],
+              [
+                1.1491,
+                0.635,
+                1.8034
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T16",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.5698,
+                0.4448,
+                2.1349
+              ],
+              [
+                -0.5698,
+                0.3081,
+                2.2592
+              ],
+              [
+                -0.4511,
+                0.3299,
+                2.2832
+              ],
+              [
+                -0.4511,
+                0.4665,
+                2.1588
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T17",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.5671,
+                0.6431,
+                1.9593
+              ],
+              [
+                -0.5671,
+                0.5064,
+                2.0836
+              ],
+              [
+                -0.4471,
+                0.5245,
+                2.1035
+              ],
+              [
+                -0.4471,
+                0.6612,
+                1.9792
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T18",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.7638,
+                0.444,
+                2.0679
+              ],
+              [
+                -0.7638,
+                0.3027,
+                2.1871
+              ],
+              [
+                -0.6454,
+                0.3242,
+                2.2126
+              ],
+              [
+                -0.6454,
+                0.4655,
+                2.0934
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T19",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.7611,
+                0.6405,
+                1.907
+              ],
+              [
+                -0.7611,
+                0.4993,
+                2.0262
+              ],
+              [
+                -0.6413,
+                0.5171,
+                2.0473
+              ],
+              [
+                -0.6413,
+                0.6583,
+                1.9281
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T20",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.9579,
+                0.4431,
+                2.0013
+              ],
+              [
+                -0.9579,
+                0.2972,
+                2.1147
+              ],
+              [
+                -0.8398,
+                0.3182,
+                2.1418
+              ],
+              [
+                -0.8398,
+                0.4642,
+                2.0284
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T21",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.9551,
+                0.6378,
+                1.855
+              ],
+              [
+                -0.9551,
+                0.4919,
+                1.9684
+              ],
+              [
+                -0.8354,
+                0.5093,
+                1.9908
+              ],
+              [
+                -0.8354,
+                0.6552,
+                1.8774
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T22",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.1519,
+                0.4422,
+                1.935
+              ],
+              [
+                -1.1519,
+                0.2913,
+                2.0418
+              ],
+              [
+                -1.0341,
+                0.3118,
+                2.0707
+              ],
+              [
+                -1.0341,
+                0.4626,
+                1.9639
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T23",
+            "name": "ariete_c1_turret_era_L",
+            "physicalMm": 10,
+            "keMm": 10,
+            "ceMm": 10,
+            "kind": "era",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.1491,
+                0.635,
+                1.8034
+              ],
+              [
+                -1.1491,
+                0.4842,
+                1.9102
+              ],
+              [
+                -1.0296,
+                0.5011,
+                1.934
+              ],
+              [
+                -1.0296,
+                0.6519,
+                1.8272
               ]
             ]
           }
@@ -100027,7 +101329,7 @@
         ]
       },
       "geometryHash": "c04660f6",
-      "metadataHash": "f6832df0",
+      "metadataHash": "611d79a5",
       "presentationAnchor": {
         "xM": 0.0007,
         "zM": 0.0877
@@ -100055,7 +101357,7 @@
           "armorPaint": 13,
           "opticGlass": 2,
           "gunmetal": 14,
-          "hullRubber": 1,
+          "tireRubber": 1,
           "canvas": 2,
           "unclassified": 19,
           "gearShadow": 2,
@@ -100136,8 +101438,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25324,
-          "sha256": "18feccac21389ae7896dd260579e10b04bb288d7112e6cd84d9315bce9399a70"
+          "bytes": 26204,
+          "sha256": "536398ef71843c70df6a6f3888939d83764ebac4ec08e26172cb9c2ef1d3b116"
         },
         "modulesSide": {
           "file": "c1_ariete_proto_serie1_modules_side.webp",
@@ -100145,15 +101447,15 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 25460,
-          "sha256": "e00dc7df0f0415c8abba0e75cc4d3be0a6944a1aa8405ba7bb00d5910cf7af54"
+          "sha256": "aa452af075da383fb026604d6360dd6a2858293645164f99161e0e13a473e5f3"
         },
         "crewSide": {
           "file": "c1_ariete_proto_serie1_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21862,
-          "sha256": "789352bd4b9a5be4b83befa8c447a6464751379440d2a85e26f22bc8720d21c2"
+          "bytes": 21874,
+          "sha256": "b6cd6f24b55e48acc73a4a5fe2f424ae9858b8deac6ae8d79bded989c5c8f8e3"
         },
         "markings": {
           "file": "c1_ariete_proto_serie1_markings.png",
@@ -100166,8 +101468,8 @@
         "technicalLabels": {
           "file": "c1_ariete_proto_serie1_technical.json",
           "mime": "application/json",
-          "bytes": 4086,
-          "sha256": "d38cf9b05c98c4f76908c5d154754172ed97e79072ffc65271a926b11e35c060"
+          "bytes": 4714,
+          "sha256": "70573edb6caa58415976204936509638704049471a1a448021b3a461d50ac22a"
         }
       }
     },
@@ -256599,22 +257901,22 @@
               [
                 1.87,
                 0.55,
-                3.667
+                3.717
               ],
               [
                 1.87,
                 0.55,
-                -3.86
+                -3.605
               ],
               [
                 1.87,
                 1.15,
-                -3.86
+                -3.605
               ],
               [
                 1.87,
                 1.15,
-                3.667
+                3.717
               ]
             ]
           },
@@ -256630,22 +257932,22 @@
               [
                 -1.87,
                 0.55,
-                -3.86
+                -3.605
               ],
               [
                 -1.87,
                 0.55,
-                3.667
+                3.717
               ],
               [
                 -1.87,
                 1.15,
-                3.667
+                3.717
               ],
               [
                 -1.87,
                 1.15,
-                -3.86
+                -3.605
               ]
             ]
           },
@@ -257895,7 +259197,7 @@
         ]
       },
       "geometryHash": "9de46d5e",
-      "metadataHash": "d84cb5ae",
+      "metadataHash": "1843b6cc",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": 0.0323
@@ -257955,8 +259257,8 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20030,
-          "sha256": "74a707d490f53406d087371041dfad0d55fbf68fbfe6fcc82c14c857481a2e98"
+          "bytes": 20086,
+          "sha256": "c5754986c1e2dea1d0dc1fd8ea1b1df12362f83db58adfdf9145a2474eae9ef4"
         },
         "modulesSide": {
           "file": "leo2a5m_modules_side.webp",
@@ -258034,7 +259336,7 @@
           "file": "leo2a5m_technical.json",
           "mime": "application/json",
           "bytes": 4663,
-          "sha256": "812fe8605c7d7f4ce3180f050d16cced5f5da5e28c5cc08a2aeb0259e3a9d3d5"
+          "sha256": "34ce7ad7f115dea092ed1c0a887eb532b9bbfddef27da421afd30a51c4a6b1b3"
         }
       }
     },
@@ -1510451,7 +1511753,7 @@
           }
         ]
       },
-      "geometryHash": "c85d9dcb",
+      "geometryHash": "913ee4d7",
       "metadataHash": "7b072c0c",
       "presentationAnchor": {
         "xM": 0.0003,
@@ -1510513,39 +1511815,39 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32814,
-          "sha256": "553ff2bd9f9cddc7e2505336fa20cec72df7ba24dcfce1d7f90a3f353abaf8b9"
+          "bytes": 32862,
+          "sha256": "ea6e02cd4a16198af9f77b5efb558b6f73247cbf51cfcfeee078613be573920b"
         },
         "modulesSide": {
           "file": "t72b3m_hetman_ii_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28138,
-          "sha256": "7b287867547ce0475476eca71ead3e004ded016232fd1bd8f5e9d00634100836"
+          "bytes": 28158,
+          "sha256": "d05161233876eb5cc07c2746b580a45151090b7dd463f9c973ec01f42846c94c"
         },
         "crewSide": {
           "file": "t72b3m_hetman_ii_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24894,
-          "sha256": "7cca354c866dc0e13b84ef3d9dbeade4050387d378390e62e59e64d2a7239aa5"
+          "bytes": 24940,
+          "sha256": "1d3d2991069f66dfeba30db4fc89ca76e83d104151493e0809c7d59c1577d1ff"
         },
         "angle": {
           "file": "t72b3m_hetman_ii_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30384,
-          "sha256": "f622548d5b274232bae53c17a61bb6d6d3c9df4501d6c2907fa56484dde3830e",
+          "bytes": 30366,
+          "sha256": "1e58725e804c671c94e7e8c3c931ceffc5a910c1e88c28778e090269818b499d",
           "thumbnail": {
             "file": "thumbs/t72b3m_hetman_ii_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11540,
-            "sha256": "1397d58faac9b97984269c85f5dfa0a255d6e03892814aa444d7d27a990d4290"
+            "bytes": 11538,
+            "sha256": "64bb6f5aee21ac8a5e75173ba28bf2b08759522f7e3980d715fcee2d681b174c"
           }
         },
         "top": {
@@ -1510553,24 +1511855,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17620,
-          "sha256": "10c2433b383a59e08e3a13d39d3647907eb9c8e39649f9420d17db904d28c3b8"
+          "bytes": 17574,
+          "sha256": "fe51f8d6d64505d2b746cbfb9eccb3e5a6a572840baa9b68985f2c0dbe29d746"
         },
         "side": {
           "file": "t72b3m_hetman_ii_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11780,
-          "sha256": "4fbb40cc45cf297c054ce707d26f9b5b635ce49c725d99df4ff5afc0170e1e23"
+          "bytes": 11804,
+          "sha256": "20e59f33c5fb695002338754e7d8e9eaa2b2fe3bbad0b7e64923bbffbb17fa72"
         },
         "topSilhouette": {
           "file": "t72b3m_hetman_ii_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1756,
-          "sha256": "81a3ab6e954d052630c5f2d1c86cf90ee9c14e6824569cf0faafb7600c67762c"
+          "bytes": 1753,
+          "sha256": "6a049e2be79b916625f69e930f4963d35443ab98b906bf95382c125a384932e3"
         },
         "sideSilhouette": {
           "file": "t72b3m_hetman_ii_side_silhouette.png",
@@ -1911488,7 +1912790,7 @@
           }
         ]
       },
-      "geometryHash": "d58506fc",
+      "geometryHash": "68e60f27",
       "metadataHash": "cc749b50",
       "presentationAnchor": {
         "xM": 0.0012,
@@ -1911520,7 +1912822,7 @@
           "armorPaint": 14,
           "wood": 1,
           "canvas": 1,
-          "hullRubber": 1,
+          "tireRubber": 1,
           "unclassified": 15,
           "gearShadow": 3,
           "machineGun": 4
@@ -1911552,15 +1912854,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27536,
-          "sha256": "d54860630a5fb5b1b895022439d55bc8586445ae7fee8e464cece96ba8f16ed9",
+          "bytes": 27494,
+          "sha256": "4d1f0925adfaae663d09519ba67a72df8b2b2df509b8b8e90f884e31e218c8ad",
           "thumbnail": {
             "file": "thumbs/t90_1992_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11258,
-            "sha256": "3fb697ba1fbda6a3a6184549e1aa90426e56e96710922ac7954257c2ff7acb0c"
+            "bytes": 11282,
+            "sha256": "3bcf7a1dc300931b7be8d99878402fa579c5beaf595b12247573f6e9403f3049"
           }
         },
         "top": {
@@ -1911568,16 +1912870,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13228,
-          "sha256": "3be0a198b625224998bd80fdc07f39e6a283b4b35ec0eeb2f1c4b1293a92a97a"
+          "bytes": 13226,
+          "sha256": "3d6840973212ea9853de36d12e502b29cfec871542232af51ad12ef28f12c0a7"
         },
         "side": {
           "file": "t90_1992_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10474,
-          "sha256": "d22e87f334c1dcf2930397cabdce64136a1d205c6176ddff0e48db1f3c7c2124"
+          "bytes": 10458,
+          "sha256": "96af9096167e81956cbb2a79c13692fab54bbbec7fe8377723c34f291ced77e6"
         },
         "topSilhouette": {
           "file": "t90_1992_top_silhouette.png",
@@ -1911600,24 +1912902,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28230,
-          "sha256": "cf3b7d745ce8806a5e4211d7918037c7e051d7e387983baf197531df7691328f"
+          "bytes": 28210,
+          "sha256": "531c0ef2ecd160ca89ff9fa350a10179ae474932820e9b7a99aa8d4a5aba9ea7"
         },
         "modulesSide": {
           "file": "t90_1992_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24958,
-          "sha256": "4da94bdc5650726550693676ef7b00cf1744c837f4f2a75d991538fa7534ae71"
+          "bytes": 24990,
+          "sha256": "ec281e528ee1072ecafa2841c2aad59d6a467c17bd67c807e7e6c9537ee10587"
         },
         "crewSide": {
           "file": "t90_1992_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22482,
-          "sha256": "3cdac25c5ccc6dfe4e457bfb566c4ac73449e06f9f43ae2e07eea2d88f36d3fc"
+          "bytes": 22408,
+          "sha256": "9a1cd2ea3c8294681b49ec85f3da7269d12ba44764bfd72332ef934968b562d3"
         },
         "markings": {
           "file": "t90_1992_markings.png",
@@ -1929850,7 +1931152,7 @@
           }
         ]
       },
-      "geometryHash": "bae04321",
+      "geometryHash": "e2751a2d",
       "metadataHash": "a6001ffb",
       "presentationAnchor": {
         "xM": -0.0035,
@@ -1929914,15 +1931216,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26990,
-          "sha256": "c298b8f7479b153b9114ffbb4fbb9d05d2f2088d1af35f5f99f03ed31878bc26",
+          "bytes": 27026,
+          "sha256": "9551e2392703091040268b4abf7729a3fcf353ff31d15a33b46cb9d9d562cf26",
           "thumbnail": {
             "file": "thumbs/t90a_2004_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10720,
-            "sha256": "68d8f764ec85a84fb834752488d41d38ffbf01f83e75e361a83137e1995db383"
+            "bytes": 10704,
+            "sha256": "3f958d128eb88369119934db6253b2d1eba8ae4b4460c3b95861316a2c278126"
           }
         },
         "top": {
@@ -1929930,16 +1931232,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15470,
-          "sha256": "2e057c26bbb600dc9b1602791811edde0170aaaa6b7692fde224504ddd7b5f94"
+          "bytes": 15450,
+          "sha256": "05022cfe689770e153cd5bbd3a48830cae179b7965ac6c7daa1adc2a1a3d35c7"
         },
         "side": {
           "file": "t90a_2004_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11232,
-          "sha256": "2761ac596d85d2009fb00b23af4e40ea0af89ab6496db2786fd364f3a4056b02"
+          "bytes": 11250,
+          "sha256": "08cf104a19bb285976986c0489e4fd2384f636df34d974b5887af6f7b850ef2a"
         },
         "topSilhouette": {
           "file": "t90a_2004_top_silhouette.png",
@@ -1929954,32 +1931256,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4099,
-          "sha256": "4b45f9c44da98005e7b4d2c55089fdd308b5b08a6f5f0cdb3964b9b1429be0b6"
+          "bytes": 4097,
+          "sha256": "694a5ea65ae4f23952b31640635271d225118e4245e706fa8740311f134034a5"
         },
         "armorSide": {
           "file": "t90a_2004_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26880,
-          "sha256": "13ae225d7c7175d25bb9e7841cacbf44a2f175924b7b3d8676021d9c3b40be01"
+          "bytes": 26990,
+          "sha256": "adbb4e3295cd0ac4314366686743e0e14a00f71380881b2169c4ca5b3dc1dc49"
         },
         "modulesSide": {
           "file": "t90a_2004_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25688,
-          "sha256": "e8ba20b25380f29601c53ee30939dff683dc807bfb58c021ae16b1c50199f027"
+          "bytes": 25652,
+          "sha256": "ba422f3340432a925bcd218ec4516bbdf3c61473aa36dfc27a7917a0a5d7a182"
         },
         "crewSide": {
           "file": "t90a_2004_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23990,
-          "sha256": "20e0b2774ee317c3e86e7c362355e8e6837278703f3df0513f0b733022043b41"
+          "bytes": 24034,
+          "sha256": "eeaa0a2eb36a4ee3df01e287888099174f1d416ba50ef49f177e3075e87c117b"
         },
         "markings": {
           "file": "t90a_2004_markings.png",
@@ -1935021,7 +1936323,7 @@
           }
         ]
       },
-      "geometryHash": "5f30275f",
+      "geometryHash": "cd6fc7b9",
       "metadataHash": "f8d5a8b3",
       "presentationAnchor": {
         "xM": -0.0001,
@@ -1935083,15 +1936385,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27042,
-          "sha256": "eb6bc07d737559e4ca56b61be9bcb4ef30d60242dbcddca4e6b4fe4710c3a190",
+          "bytes": 27068,
+          "sha256": "7c2599ffbf4f1ebc1a3fbfb232d4213cdfcaaa2fb7e380f1c7f56abc69401cdc",
           "thumbnail": {
             "file": "thumbs/t90a_2006_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10882,
-            "sha256": "3695c9d1a5463e47eaea00a7bc3a036ee3d0bca6dc2ff1a715fd429d74981acb"
+            "bytes": 10878,
+            "sha256": "6c258545da0808cd05d698090e341d90e3a42a86fa8d5a2e7fdff788bcaeaa8c"
           }
         },
         "top": {
@@ -1935107,8 +1936409,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9306,
-          "sha256": "85bf787882e78994284adf3ee1dd19cea149bc78ee6309043b33aaea3495d3ea"
+          "bytes": 9280,
+          "sha256": "555c086e3152e423cae72502ed6f637efcc5deab6d3ed4c93a3001b0d0f49cd4"
         },
         "topSilhouette": {
           "file": "t90a_2006_top_silhouette.png",
@@ -1935123,32 +1936425,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3885,
-          "sha256": "0c0b1e0e9eaa85027867e93126ad24049ab15568139763fcf2a6d216ec459966"
+          "bytes": 3888,
+          "sha256": "3581090da4c913ae4d82e3ccdf4a945ff2b21b63d7049a62b1cef2b117218e1e"
         },
         "armorSide": {
           "file": "t90a_2006_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23892,
-          "sha256": "3fe7ef6bd2cde19e28ae146ed3d588674678c1a00828c74ae053ab027f69b6bb"
+          "bytes": 23974,
+          "sha256": "41424799fe116493157921af9641cfb2bda676816348cebaae645532ec5b8a77"
         },
         "modulesSide": {
           "file": "t90a_2006_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22476,
-          "sha256": "e7ac174a6714f9b8975991b564fbac4a99ac273dde80d78a4338378a4bfc4179"
+          "bytes": 22444,
+          "sha256": "b25e4e0baaca95faed078b44690331ca0012e2d4f4f95525128e16bbcecea47b"
         },
         "crewSide": {
           "file": "t90a_2006_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19354,
-          "sha256": "02f5dd61228676f47c6890ecea0f7762fcca866949d1b1909ad7f62e70747439"
+          "bytes": 19436,
+          "sha256": "5e966bafac719bc4bf1d247fb8a3bf367e0f61e1adcf6aa7fd621551e01b62f7"
         },
         "markings": {
           "file": "t90a_2006_markings.png",
@@ -1942512,7 +1943814,7 @@
           }
         ]
       },
-      "geometryHash": "7d8a904a",
+      "geometryHash": "f03e69ff",
       "metadataHash": "8c04bc76",
       "presentationAnchor": {
         "xM": 0.0011,
@@ -1942534,7 +1943836,7 @@
           "trackSteel": 1,
           "armorPaint": 13,
           "canvas": 1,
-          "hullRubber": 1,
+          "tireRubber": 1,
           "wood": 1,
           "wheelTire": 2,
           "wheelDish": 10,
@@ -1942576,15 +1943878,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30806,
-          "sha256": "bb73c6e1e006bd692971643b4ae11622132d2074bf2c13c73091a56f97ce0f56",
+          "bytes": 30830,
+          "sha256": "c676b559ed12566adb4e240ee4e115519d0f8ee407e24cda478e5357f0ba4d34",
           "thumbnail": {
             "file": "thumbs/t90a_burlak_proto_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12074,
-            "sha256": "f61bab99d2fda58f61d2bb79dbf9d2adfd725567e44e19f536ab923805e80488"
+            "bytes": 12070,
+            "sha256": "b71ac791e6bcdb424d0fc2e56c830a0c628c956beb20efe42c735c46b5ceec14"
           }
         },
         "top": {
@@ -1942600,8 +1943902,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12818,
-          "sha256": "e816d7e27ebf321b3863c382498a241bf84edbebe66d0b0e53d195a99fe7c7bc"
+          "bytes": 12872,
+          "sha256": "8cba5dd5f3c15348529ce1136859234a207e7f7a026004ce6d60e14e582a3934"
         },
         "topSilhouette": {
           "file": "t90a_burlak_proto_top_silhouette.png",
@@ -1942616,32 +1943918,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4646,
-          "sha256": "084bfb9d55cf524067de4aa72b1c95b9634ca73f3438222907ad0b6403236cb9"
+          "bytes": 4644,
+          "sha256": "bde56271bb9b7a3d31f7431384bcefbf1f3a0d83158d1bd661969ab96254333e"
         },
         "armorSide": {
           "file": "t90a_burlak_proto_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30450,
-          "sha256": "ef884d1df411dbc247e01e3d4684b19bc997fdb1106b773069418a16c2a84489"
+          "bytes": 30434,
+          "sha256": "ca795fdf567052489a63ef9e35bb10d69739dbc87704bcfa7be58edfc3e59d78"
         },
         "modulesSide": {
           "file": "t90a_burlak_proto_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29262,
-          "sha256": "deafe087e5ef0e20e09bb899426f434e8ca2f3dcb5c363ebe12c48f2d9042831"
+          "bytes": 29126,
+          "sha256": "6fd10d0b1871d9bcb81241c2cf4d58555acee82865b3137c1f33f4e6a81d19bd"
         },
         "crewSide": {
           "file": "t90a_burlak_proto_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26740,
-          "sha256": "a9b5a7aed9e6b411a62fd2afadb80d17202aee3927aaea7b9cd263b63ac0389e"
+          "bytes": 26704,
+          "sha256": "fe0a6489ba880662edbcad99a86874a78d6286f695bffe6edd0d486fc3dfc7e3"
         },
         "markings": {
           "file": "t90a_burlak_proto_markings.png",
@@ -1942655,7 +1943957,7 @@
           "file": "t90a_burlak_proto_technical.json",
           "mime": "application/json",
           "bytes": 5079,
-          "sha256": "782c40610c101fb9a58544f6e8a8cac9507070ccca703827443e6744a71330fe"
+          "sha256": "42fae88492cadfe19948ad4f390249e756ceb4d52af31d58299afad4b2f77d05"
         }
       }
     },
@@ -1955881,7 +1957183,7 @@
           }
         ]
       },
-      "geometryHash": "dddbd6a6",
+      "geometryHash": "a0eef786",
       "metadataHash": "7c72a5fb",
       "presentationAnchor": {
         "xM": 0.0046,
@@ -1955943,15 +1957245,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27174,
-          "sha256": "97463d863a4254a813960c823462ed048341a4e7f66ca4355cd684ea45ae12a0",
+          "bytes": 27162,
+          "sha256": "10a562641b3bcffa27768b181107ce9f00d437074d55e2e9a103c648ea486c3e",
           "thumbnail": {
             "file": "thumbs/t90am_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10356,
-            "sha256": "da1a666682b5f32c674bcc67f13e4534d626532c0df3a6941206a6d10a16a0df"
+            "bytes": 10366,
+            "sha256": "9f679090a78188a1c891c9ab288f00f9c07bb03d48f4524ff14a8b711112f588"
           }
         },
         "top": {
@@ -1955959,16 +1957261,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22316,
-          "sha256": "3adc20824a31b1205986089b110fd931cb6c2bf237172779e483d978c396946e"
+          "bytes": 22308,
+          "sha256": "e7a7da6936fa8ae6736af6d5b2853c348d5d92336307677ac1fc1db01138c213"
         },
         "side": {
           "file": "t90am_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12892,
-          "sha256": "3c218a78360592cf4fdcc32e1964c2ac8faf454bcef23b32eca7f97b2fbb5c5d"
+          "bytes": 12946,
+          "sha256": "a2318d6e2dae4f6c709a13e276ef4048f53cba106564bdd13322641ad37152ca"
         },
         "topSilhouette": {
           "file": "t90am_top_silhouette.png",
@@ -1955983,32 +1957285,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4471,
-          "sha256": "28f971bba348304b0d3026279eca3f9792952d10c76fa556e2a51b0cb787909e"
+          "bytes": 4470,
+          "sha256": "299febefa0db00ca51d67eb5584947365483d9d93d1d863edc5306219a48f3ae"
         },
         "armorSide": {
           "file": "t90am_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35200,
-          "sha256": "ced4a396be78fe8749db7086b02c044b0ef1921d5dfb0d0fec13f8f6220a5752"
+          "bytes": 35174,
+          "sha256": "8f04d60b812e0690e4e93c52ac329496ea447afdb8a0f50c134a01be82c68103"
         },
         "modulesSide": {
           "file": "t90am_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31640,
-          "sha256": "dfcc8a3138d5639fc048b84f768af1f01e18c4db8c1da8623dfab19ce41d06f3"
+          "bytes": 31584,
+          "sha256": "43cf8133a4673d2b1c5a46f232b30f6446074b2bcaaa138d5a8ff2e4bd6eef8e"
         },
         "crewSide": {
           "file": "t90am_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28744,
-          "sha256": "e48308c9de9a82232e740a53396c77494e6620a02004b411fcc315b2b5e73cda"
+          "bytes": 28722,
+          "sha256": "b8afd4a1a40e2228a9dcc39872bc888e92385029c033789b8c931315a76b79b4"
         },
         "markings": {
           "file": "t90am_markings.png",
@@ -1956022,7 +1957324,7 @@
           "file": "t90am_technical.json",
           "mime": "application/json",
           "bytes": 5345,
-          "sha256": "941e90947c3dcb58bb67f87e89bd7990e147538244692d3820abe4860496daff"
+          "sha256": "c13592b142340adbe28d1739a986065992de1c45ee016b35692c71a05b3433f8"
         }
       }
     },
@@ -1974201,7 +1975503,7 @@
           }
         ]
       },
-      "geometryHash": "664829d4",
+      "geometryHash": "16d68950",
       "metadataHash": "c9fd82a2",
       "presentationAnchor": {
         "xM": 0.0014,
@@ -1974263,15 +1975565,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26824,
-          "sha256": "8d3eacdf097431ecf0c8db054691eaf9d6fd66fa0fe84c5324a3fc59a240b0ee",
+          "bytes": 26806,
+          "sha256": "7f323f6a3fb4b9882c30c57b24aebdc8e7a659ac24fc5056579bc0acd5a539f8",
           "thumbnail": {
             "file": "thumbs/t90m_proryv_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 10510,
-            "sha256": "6526dc3f0c1c4d96bd5df9b6320304abaf0ed3460528728e4901c684818632f0"
+            "sha256": "199ea5744c6c048bceacd65e46e6533f9fee438e8fff9001369c990b38266736"
           }
         },
         "top": {
@@ -1974279,16 +1975581,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17060,
-          "sha256": "a73575f453e4becef9c27a4366d7aba78aecfcb89d9462dc6da373fdb21ed9b6"
+          "bytes": 17048,
+          "sha256": "a7c8c762e8cb6ecdfc801eca22ef09bbaf0fcb595d81391489997748fe591010"
         },
         "side": {
           "file": "t90m_proryv_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12300,
-          "sha256": "f560581453b3437081a466c9ccd1f5597205fc0556820a235ad4fa00c41853d8"
+          "bytes": 12292,
+          "sha256": "35ec3dc321aab0b628657735c6eca8b90acc1372af357229d2542ab691a0a223"
         },
         "topSilhouette": {
           "file": "t90m_proryv_top_silhouette.png",
@@ -1974303,32 +1975605,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4610,
-          "sha256": "bdb1db23b51a22399450bff3613b8e88e4a26bca43108d52442294e0bd8d434f"
+          "bytes": 4607,
+          "sha256": "23c11627779671f5548a86c665eb58889877fd5ff58a41a4a71b8e616f8042bd"
         },
         "armorSide": {
           "file": "t90m_proryv_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31744,
-          "sha256": "97916d881a7e9bef76f702a10bd7afa05d513640c1da232e46f3f2246397d8af"
+          "bytes": 31784,
+          "sha256": "11c911bf882e33c34b32c44a2bc2188ed007c589f0893b4ba5bca4b30995b783"
         },
         "modulesSide": {
           "file": "t90m_proryv_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28136,
-          "sha256": "54a30ef3626e55241bbdb65eed4843b69039ad4ab4f73cd8a8ed7ed4dcfdf22d"
+          "bytes": 28080,
+          "sha256": "3f0c0744367fe5f3403eafd739ef72d622174712d9c579d8c58be0118d685e01"
         },
         "crewSide": {
           "file": "t90m_proryv_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25190,
-          "sha256": "a8d79a986c38f5ce15964c24bc7108dc8cf4e372941d5e028f1f4064c38c4e5e"
+          "bytes": 25252,
+          "sha256": "fdcaacae162a86d2572906ccadf13855a8a2de30104633d2fdb68be76ec95018"
         },
         "markings": {
           "file": "t90m_proryv_markings.png",
@@ -1974342,7 +1975644,7 @@
           "file": "t90m_proryv_technical.json",
           "mime": "application/json",
           "bytes": 5356,
-          "sha256": "b7e25ccb048a95b5ad071ded3d3fc8481a180872155df3942eb840c9a4a1fd77"
+          "sha256": "e6755668fe3ceddd706f00d1055a163a7d0fdf63c0e759fe2d5cb127abf5b31a"
         }
       }
     },
@@ -2004957,7 +2006259,7 @@
           }
         ]
       },
-      "geometryHash": "ef960091",
+      "geometryHash": "e9ca1a5a",
       "metadataHash": "24d32b9d",
       "presentationAnchor": {
         "xM": 0.0014,
@@ -2004987,7 +2006289,7 @@
           "armorPaint": 12,
           "opticGlass": 3,
           "canvas": 1,
-          "hullRubber": 1,
+          "tireRubber": 1,
           "unclassified": 16,
           "gearShadow": 2,
           "fittingPaint": 1,
@@ -2005021,15 +2006323,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28332,
-          "sha256": "d49863d03f25ebb1c68c4ed6a646945fe456302899c7fa666b476b1ab2fd582c",
+          "bytes": 28282,
+          "sha256": "35dcccfa5c91cff3f8aa795f09dc564273d9d7436e95d216ab5950ed2ae0b034",
           "thumbnail": {
             "file": "thumbs/t90sm_2013_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11276,
-            "sha256": "5187c025a4fe3f18f59c8d5d43dac5399364d648bbb976a833f82087bd893530"
+            "bytes": 11270,
+            "sha256": "1fa0fc0e56d5b8722123d206f5b903376845785d36ad1c1ebe9cf7efd2658d85"
           }
         },
         "top": {
@@ -2005045,8 +2006347,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10322,
-          "sha256": "a562b2e4618b9ed9c78d0f40c02499a0009f975d336b3cad210b3052d5a64482"
+          "bytes": 10332,
+          "sha256": "f990903390ae71562b366d4497e5135b543eb2e6486fac03a3e05e84bff85c6f"
         },
         "topSilhouette": {
           "file": "t90sm_2013_top_silhouette.png",
@@ -2005069,24 +2006371,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24342,
-          "sha256": "445824b920716ccd68dd76d0d22dad70aa5163129c565993a04b3007bd9757f0"
+          "bytes": 24306,
+          "sha256": "7d8c45f26c905cb61f1c2908a4a92416e553fa506c8e4bc5f3726520c4a473be"
         },
         "modulesSide": {
           "file": "t90sm_2013_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24800,
-          "sha256": "8fc0f09963fa0db7c0f2e9191de4c98f07d716b404176772085882b204d8c849"
+          "bytes": 24818,
+          "sha256": "3c82dd482008ea46237a5cc2d018b5c7340dc4a218e862797c3067e1ce6f8f62"
         },
         "crewSide": {
           "file": "t90sm_2013_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22746,
-          "sha256": "cc9f7a62d74516e9c8ef0335662ca5a82f459b28efa4749a9df90c183a3ade4e"
+          "bytes": 22718,
+          "sha256": "81203045af139ce7e128518f5dd5a6ea6ac0066d8da227a59772005c0d842dd7"
         },
         "markings": {
           "file": "t90sm_2013_markings.png",
@@ -2005100,7 +2006402,7 @@
           "file": "t90sm_2013_technical.json",
           "mime": "application/json",
           "bytes": 4948,
-          "sha256": "b4bd20dd97652fc6bd73c6a6671649481128e257028759176af5b33dba626316"
+          "sha256": "ad343d1e3010adbf0d33ff3652d8e95b02e2f792df716df002f4f490871b95f4"
         }
       }
     },
@@ -2005492,7 +2006794,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "8cb3502f"
+            "surfaceFingerprint": "2b152fb0"
           },
           {
             "module": "missileRack",
@@ -2005509,7 +2006811,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "04a8dd41"
+            "surfaceFingerprint": "c945f9f7"
           },
           {
             "module": "missileRack",
@@ -2005526,7 +2006828,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "75df712d"
+            "surfaceFingerprint": "8bdb1bcb"
           },
           {
             "module": "missileRack",
@@ -2005543,7 +2006845,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "d74ba3f9"
+            "surfaceFingerprint": "870d80c4"
           },
           {
             "module": "missileRack",
@@ -2005560,7 +2006862,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "91a2ae1d"
+            "surfaceFingerprint": "56c42cdc"
           },
           {
             "module": "missileRack",
@@ -2005577,7 +2006879,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "868c90df"
+            "surfaceFingerprint": "d6f7f1a7"
           },
           {
             "module": "missileRack",
@@ -2005594,7 +2006896,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "e028130b"
+            "surfaceFingerprint": "83835355"
           },
           {
             "module": "missileRack",
@@ -2005611,7 +2006913,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "3ea1465d"
+            "surfaceFingerprint": "444b493c"
           },
           {
             "module": "missileRack",
@@ -2005628,7 +2006930,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "6a6613d9"
+            "surfaceFingerprint": "0b455109"
           },
           {
             "module": "missileRack",
@@ -2005645,7 +2006947,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "ff6f457f"
+            "surfaceFingerprint": "3f1e68f6"
           },
           {
             "module": "missileRack",
@@ -2005662,7 +2006964,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "94270fd3"
+            "surfaceFingerprint": "4824641a"
           },
           {
             "module": "missileRack",
@@ -2005679,7 +2006981,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "733a6c35"
+            "surfaceFingerprint": "0e9c578d"
           },
           {
             "module": "missileRack",
@@ -2005696,7 +2006998,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "90ad1f25"
+            "surfaceFingerprint": "2904000b"
           },
           {
             "module": "missileRack",
@@ -2005713,7 +2007015,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "792d38c1"
+            "surfaceFingerprint": "55fabaea"
           },
           {
             "module": "missileRack",
@@ -2005730,7 +2007032,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "6621b0e3"
+            "surfaceFingerprint": "148e69c4"
           },
           {
             "module": "missileRack",
@@ -2005747,7 +2007049,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "327bdf79"
+            "surfaceFingerprint": "f8f16623"
           },
           {
             "module": "missileRack",
@@ -2005764,7 +2007066,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "52e7fc65"
+            "surfaceFingerprint": "941fb294"
           },
           {
             "module": "missileRack",
@@ -2005781,7 +2007083,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "7f9af303"
+            "surfaceFingerprint": "f4ff1413"
           },
           {
             "module": "missileRack",
@@ -2005798,7 +2007100,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "a6db8a1f"
+            "surfaceFingerprint": "590179e3"
           },
           {
             "module": "missileRack",
@@ -2005815,7 +2007117,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "70f8d9cd"
+            "surfaceFingerprint": "3baa5d88"
           },
           {
             "module": "missileRack",
@@ -2005832,7 +2007134,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "14fc364d"
+            "surfaceFingerprint": "1d41f248"
           },
           {
             "module": "missileRack",
@@ -2005849,7 +2007151,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "146f30e3"
+            "surfaceFingerprint": "c91df867"
           },
           {
             "module": "missileRack",
@@ -2005866,7 +2007168,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "46cab321"
+            "surfaceFingerprint": "616631cd"
           },
           {
             "module": "missileRack",
@@ -2005883,7 +2007185,7 @@
               1.3
             ],
             "physicalMm": 20,
-            "surfaceFingerprint": "98b9c0f3"
+            "surfaceFingerprint": "70e76b44"
           },
           {
             "module": "missileRack",
@@ -2022793,8 +2024095,8 @@
           }
         ]
       },
-      "geometryHash": "5fb00745",
-      "metadataHash": "f155ec55",
+      "geometryHash": "176b471f",
+      "metadataHash": "7e06e61e",
       "presentationAnchor": {
         "xM": -0.0021,
         "zM": 0.0296
@@ -2022851,24 +2024153,24 @@
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 46084,
-          "sha256": "8e1f473e9759405a4dc6d45cdf296b4940c6d32238ece917b745f291485ac710"
+          "bytes": 46002,
+          "sha256": "5e022ab21b55291bb65bcefa1f7acd6f19e3526b4a402dccaced38628e61313e"
         },
         "modulesSide": {
           "file": "tos1a_tagil_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 43788,
-          "sha256": "f7466b355cb4648e504aaeba347a0dcae481e455083633ac7ec733f5b90f5c17"
+          "bytes": 43808,
+          "sha256": "44378a66a9f12ce793742865de6de7570bec51275fd0d9625b232875179aec5b"
         },
         "crewSide": {
           "file": "tos1a_tagil_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 36702,
-          "sha256": "21553e948f2235eb34587247be78f60aff92b9d32c6af60ece7810722b4c59b0"
+          "bytes": 36822,
+          "sha256": "67a94457b8193fea842587e824cbe09902330b34bab85045de7b1c36e07c2cf4"
         },
         "angle": {
           "file": "tos1a_tagil_angle.webp",
@@ -2022899,8 +2024201,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16950,
-          "sha256": "1793c38719112a0d578ab41af3c84a69eba9b61b1a3a2446617492b5b6b44d61"
+          "bytes": 16976,
+          "sha256": "aca3935c132ceedd3beeafafc9f16ac5fad251032e8e1f8898da8dc159ebb0a4"
         },
         "topSilhouette": {
           "file": "tos1a_tagil_top_silhouette.png",
@@ -2120426,18 +2121728,6 @@
               },
               {
                 "min": [
-                  -0.3878,
-                  1.1147,
-                  0.3925
-                ],
-                "max": [
-                  -0.2238,
-                  1.2787,
-                  0.4044
-                ]
-              },
-              {
-                "min": [
                   -0.5778,
                   0.8032,
                   0.3959
@@ -2120446,6 +2121736,18 @@
                   -0.4858,
                   0.8602,
                   0.4319
+                ]
+              },
+              {
+                "min": [
+                  -0.3878,
+                  1.1147,
+                  0.3965
+                ],
+                "max": [
+                  -0.2238,
+                  1.2787,
+                  0.4085
                 ]
               },
               {
@@ -2120631,17 +2121933,17 @@
           }
         ]
       },
-      "geometryHash": "2604ae7c",
-      "metadataHash": "1a4504e2",
+      "geometryHash": "76db1025",
+      "metadataHash": "dd9be2c9",
       "presentationAnchor": {
         "xM": 0.0017,
-        "zM": 0.2565
+        "zM": 0.256
       },
-      "presentationHash": "4bc748eb",
+      "presentationHash": "9f3b20dc",
       "presentationProjection": {
         "centerYM": 2.0395,
-        "topHalfM": 5.7483,
-        "sideHalfM": 2.8742
+        "topHalfM": 5.7489,
+        "sideHalfM": 2.8744
       },
       "appearance": {
         "version": 1,
@@ -2120652,14 +2121954,13 @@
           "wheelInset": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
-          "tireRubber": 1,
+          "tireRubber": 2,
           "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 27,
-          "hullRubber": 1,
           "gunmetal": 15,
           "opticGlass": 5,
           "fittingPaint": 5,
@@ -2120694,15 +2121995,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32434,
-          "sha256": "af4a23b705c3d445b6134314aedaa24a6b0cfa0e7dcb068f0825ff7e1b5cacb7",
+          "bytes": 32504,
+          "sha256": "35cac46a2eb5aa84f24ecee77d754ce2a0943df591e8f80168d4786a682d5b55",
           "thumbnail": {
             "file": "thumbs/type10_dozer_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12698,
-            "sha256": "3bd60147a11ede46f88cd28405edbbe0b990e3ab23a3edc0c97e17c79dff8555"
+            "bytes": 12706,
+            "sha256": "16a8f59c9d21469ac4bec4eee1f74c05d7981188b3cdc5fef309354b9e179d68"
           }
         },
         "top": {
@@ -2120710,56 +2122011,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18634,
-          "sha256": "a5322ccc1100782c4a803cdc99c9bc0fc61eb7f6d4f7a3fe7df79cb1aa4d885a"
+          "bytes": 18446,
+          "sha256": "d74f52c91d5ad7c8d196aaf929228a0143f34c5389191d2d96b323710f1827e0"
         },
         "side": {
           "file": "type10_dozer_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14422,
-          "sha256": "f6d15f12615153e47a98e5438cc715552beb0b33ca9a67687c9ecced6f6a7adb"
+          "bytes": 14382,
+          "sha256": "dd17cc2fc6ec01ab58e5ba977a0931a5f322e8aa4eb01a7c82aea9c42abe0574"
         },
         "topSilhouette": {
           "file": "type10_dozer_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1704,
-          "sha256": "4a503729ec3a08f10d3836ea320e1fad4b00ac8ea4cc855b337769ee92e50e55"
+          "bytes": 1703,
+          "sha256": "cabd8caacb2c535921eb29563738ba4cf69d8a542cfc321a55097b60844767fa"
         },
         "sideSilhouette": {
           "file": "type10_dozer_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 6117,
-          "sha256": "ed806b61e26be76a7ffd5f422d82a9541fea5e15535621996a2a9192b02b8a16"
+          "bytes": 6140,
+          "sha256": "0ecae1a4a728d34d959f1e122c7806e093fd8dff6dcc200f1453a6aac29f824a"
         },
         "armorSide": {
           "file": "type10_dozer_armor_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 42714,
-          "sha256": "cd7aeb2d84dc1214b33ecd944680bc7f20d31021b4433415a10f74bc61dfce27"
+          "bytes": 42626,
+          "sha256": "9eaecd117b024949b23694948985bfeb7c6bb4839ee429e4e2f474b98752b3a7"
         },
         "modulesSide": {
           "file": "type10_dozer_modules_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34148,
-          "sha256": "97ce00a6bfeea95a075f71c1e2c52a9b134ec7664e0e4304df7f422459751cf4"
+          "bytes": 34124,
+          "sha256": "581d17a6d59b64a6f6fc1bd96782722596c39a12e15cc92f9c31d8de9349d4f7"
         },
         "crewSide": {
           "file": "type10_dozer_crew_side.webp",
           "width": 1024,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31552,
-          "sha256": "f13d0443d898a1f8168da3ab5dc071d57356b6283313d458559ae313da4e4c46"
+          "bytes": 31604,
+          "sha256": "a61b153729ee57c6c45b57c8b444663dcf16f23236c5b51687f617962e4828b8"
         },
         "markings": {
           "file": "type10_dozer_markings.png",
@@ -2120772,8 +2122073,8 @@
         "technicalLabels": {
           "file": "type10_dozer_technical.json",
           "mime": "application/json",
-          "bytes": 5851,
-          "sha256": "9521ada0f5d40ef703b2f088f0d5e63d577dc6509e2913f52d4c75327fb300f5"
+          "bytes": 5849,
+          "sha256": "87410c2220c97e5c84cf8153d91bf12a8ff2c3ff835b41a037d2c033473a9620"
         }
       }
     },

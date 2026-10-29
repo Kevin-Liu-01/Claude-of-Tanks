@@ -534,6 +534,7 @@ async function checkTimingExclusion() {
   const lockAt = join(root, 'excl.lock');
   await take(timing, 't', order, { lockClass: 'timing' }).done;
   assert.equal(readToken(lockAt).lockClass, 'timing', 'owner.json shows the class');
+  // object3d-assert-ok: the lock token's JSON group field, not a three.js Group
   assert.equal(readToken(lockAt).group, undefined, 'a timing hold is no group');
   const r = take(render, 'r', order, { lockClass: 'render' });
   await settle(1_300);

@@ -751,6 +751,9 @@ export function drawNationalInsignia(
   ctx.restore();
 }
 
+/** The share of its bounds' width a tactical number may fill, outline included (drawTacticalNumber). */
+const TACTICAL_NUMBER_FILL = 0.94;
+
 export function drawTacticalNumber(
   ctx: CanvasRenderingContext2D,
   record: VehicleMarkingRecord,
@@ -760,8 +763,16 @@ export function drawTacticalNumber(
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const text = record.tacticalNumber;
-  const fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
+  let fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
   ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
+  // 264: the 1.75-per-character rule sizes digits; a letter code's bold capitals run wider (the Leopard 2A3's OTCO
+  // clipped at both ends of its 252 px designation decal), so a number that measures wider than its bounds, outline
+  // included, comes down to fit them. One that fits keeps its size.
+  const measured = ctx.measureText?.(text)?.width;
+  if (measured && measured + Math.max(2, fontSize * 0.08) > width * TACTICAL_NUMBER_FILL) {
+    fontSize *= width * TACTICAL_NUMBER_FILL / (measured + Math.max(2, fontSize * 0.08));
+    ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
+  }
   ctx.lineWidth = Math.max(2, fontSize * 0.08);
   ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
   ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;

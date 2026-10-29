@@ -154,8 +154,11 @@ try {
     assert.ok(a.trackLaneL >= 0.5, `${id}: the excluded lane air is reported (${a.trackLaneL} L), never hidden`);
     assert.ok(b.leakL >= 0.5 && b.watertight === false, `${id}: --no-lanes still reads the plain lane leak (${b.leakL} L)`);
     assert.ok(Math.abs(a.leakL + a.trackLaneL - b.leakL) <= 0.02, `${id}: leak ${a.leakL} + lane ${a.trackLaneL} = plain leak ${b.leakL}`);
-    assert.match(lanesOut, new RegExp(`^${id}: WATERTIGHT — 0 L reaches the deep interior \\(0 gaps\\); track lane ${a.trackLaneL} L excluded \\(2 lanes\\); enclosed`, 'm'));
-    assert.match(plainOut, new RegExp(`^${id}: LEAKING — ${b.leakL} L reaches the deep interior \\(\\d+ gaps?\\); track lanes not excluded \\(--no-lanes\\); enclosed`, 'm'));
+    // 264: a hull whose fills declare moving-part clearance cells reports that air apart, after the lanes (the E100 X's
+    // 0.98 L pocket since 241's round-B fills, ba9c89751c); it is never leak and never lane air
+    const moving = (r) => (r.movingClearanceL ? `; moving-part clearance ${r.movingClearanceL} L` : '');
+    assert.match(lanesOut, new RegExp(`^${id}: WATERTIGHT — 0 L reaches the deep interior \\(0 gaps\\); track lane ${a.trackLaneL} L excluded \\(2 lanes\\)${moving(a)}; enclosed`, 'm'));
+    assert.match(plainOut, new RegExp(`^${id}: LEAKING — ${b.leakL} L reaches the deep interior \\(\\d+ gaps?\\); track lanes not excluded \\(--no-lanes\\)${moving(b)}; enclosed`, 'm'));
     litres[id] = { lane: a.trackLaneL, plain: b.leakL };
   }
   // lane air as regenerated under the lane rule (d0cbb9fcd, 2026-09-21): E100 X 4.53 L, Leclerc classic X 0.80 L.
