@@ -273,6 +273,14 @@ anatomy to publish their exact external hit surfaces and module links. Keep
 inter-pod gaps open, retain native yaw/pitch ownership, and test direct/blast
 damage with one module roll per shot. Do not put a broad armor box over a rack. Structural cupolas use
 `P.addCupola()` (or an explicitly structural hull/turret add) and remain hittable.
+The primary `turret` and `hull` buckets are the armour envelope (264, envelope honesty): every authored plate, the ring,
+the collision slabs and the crew seats are fitted to their bounds, so nothing thin or small may stand past the plates in
+them. Frames, rails, racks, baskets and their floors, bins, chains, bolts and stowage ride `turretEquipment`/`hullEquipment`
+(the same paint), mudguards and fender skins `hullFixedPaintedBodywork`, armoured skirts and bolt-on modules
+`*ExternalArmor`. `tools/envelope-census.mjs --ids=… --sites` names any offender with its builder line;
+`--all --check` holds the fleet to the shrinking `docs/geometry-gate/envelope-allowance.json` (a frame that needs less
+than its row fails until `--write-allowance` lowers it; a real armour part the rule mis-flags keeps a row with its
+reason). It is hand-run until the four fleet shards land as core receipts (item/envelope-ratchet-265).
 
 Canonical running gear resolves deterministic mechanical families through
 `wheelPatterns.ts`, `trackPatterns.ts`, and `suspensionPatterns.ts`. Road-wheel

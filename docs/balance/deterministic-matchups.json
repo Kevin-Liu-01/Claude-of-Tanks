@@ -3876,15 +3876,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 34.46,
-      "averageAEndHp": 182.08,
-      "averageBEndHp": 402,
-      "averageADamage": 2164.67,
-      "averageBDamage": 2550.25
+      "aScore": 0.333,
+      "averageDurationS": 32.77,
+      "averageAEndHp": 140.67,
+      "averageBEndHp": 534.17,
+      "averageADamage": 1986.42,
+      "averageBDamage": 2652.33
     },
     {
       "id": "nextgen-abrams-peer",

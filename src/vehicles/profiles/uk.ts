@@ -3710,7 +3710,8 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     // 2026-10-19 (owner float sweep): the hull glass rides the same correction (the driver's periscope glasses stood
     // 456 mm over their lowered housings)
     P.scaleBuckets(
-      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth', 'hullGlass'],
+      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth', 'hullGlass',
+        'hullFixedPaintedBodywork', 'hullExternalArmor'],
       1, upperHullScaleY, 1,
     );
     P.offsetBuckets(

@@ -169,7 +169,7 @@ function hull(P: TankBuilderPort): void {
     hullStation(1.65,1.56,1.823,.40,.020),
     hullStation(3.12,1.43,1.345,.89,0),
   ]));
-  P.add('hull',box(2.53,.095,.40),0,1.235,3.31,.17);
+  P.add('hullFixedPaintedBodywork',box(2.53,.095,.40),0,1.235,3.31,.17);
   // Real corrugated add-on armor: one closed section per long plate, with
   // genuine angled ridges, separate from the open slat cage below it.
   for (const side of [-1, 1]) {

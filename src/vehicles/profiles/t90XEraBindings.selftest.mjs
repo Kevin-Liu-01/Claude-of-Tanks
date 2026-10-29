@@ -28,7 +28,7 @@ function appendVertices(mesh,transform,points) {
 function currentVGuardVertices(){
   const points=[],identity=new Matrix4();
   const port={addMudguard(label,bucket,original){
-    assert.equal(bucket,'hull','V source guard is the sole scoped replacement');
+    assert.equal(bucket,'hullFixedPaintedBodywork','V source guard is the sole scoped replacement (bodywork since 264)');
     const geometry=original.index?original.toNonIndexed():original;
     appendVertices({geometry},identity,points);
     geometry.dispose();if(geometry!==original)original.dispose();

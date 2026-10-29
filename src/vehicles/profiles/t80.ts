@@ -348,8 +348,8 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       P.addGunExtraDark(nonUniformXform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.295, 1]), 0, 0.015, 0.80);
       // §B3: V-nose dust cover keeps its certified masses + fold-crease
       // strips flush on the faces (canvas grammar, zero growth).
-      P.add('turret', box(0.30, 0.20, 0.14), 0, turretSeatY(0.24), 1.70);
-      P.add('turret', box(0.56, 0.26, 0.36), 0, turretSeatY(0.22), 1.44);
+      P.add('turretEquipment', box(0.30, 0.20, 0.14), 0, turretSeatY(0.24), 1.70);
+      P.add('turretEquipment', box(0.56, 0.26, 0.36), 0, turretSeatY(0.22), 1.44);
       P.add('turretDark', box(0.29, 0.02, 0.008), 0, turretSeatY(0.26), 1.766);
       P.add('turretDark', box(0.55, 0.02, 0.008), 0, turretSeatY(0.25), 1.616);
       // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
@@ -371,7 +371,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // tops read 1.905-2.015 where the old 2.00/2.16 pair sat +0.10)
       P.add('turret', box(1.30, 0.32, 0.50), 0, 0.34, 1.44);
       P.add('turret', box(0.90, 0.12, 0.24), 0, 0.545, 1.155);
-      P.add('turret', box(0.30, 0.40, 0.28), 0, 0.26, 1.84);
+      P.add('turretEquipment', box(0.30, 0.40, 0.28), 0, 0.26, 1.84);
       // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
       // flush-recessed in the hood face (z<=1.689 vs the 1.69 face).
       P.add('turretDark', KIT.xform(cylZ(0.022, 0.06, 8), 0, 0, 0), 0.30, 0.30, 1.658);
@@ -498,16 +498,18 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
     // the symmetric ±0.88 boxes printed -1.40 into the ±0.92..1.08 columns.
     // Main boxes narrow to -0.82..0.88 (BV keeps the guarded symmetric form);
     // the right corner box carries the deep -1.41 read only to x 1.005.
-    P.add('turret', box(v === 2 ? 1.76 : 1.70, 0.45, 0.31), v === 2 ? 0 : 0.03, roofY(0.50), -1.245);
+    // 264 (envelope honesty): the rear bin is stowage behind the dome's armour, not armour: it rides turretEquipment; the BV
+    // keeps its bin in turret, the drone dock's seat (missionAttachmentSeats) rests on its tail box
+    P.add(v === 2 ? 'turret' : 'turretEquipment', box(v === 2 ? 1.76 : 1.70, 0.45, 0.31), v === 2 ? 0 : 0.03, roofY(0.50), -1.245);
     if (v === 2) {
       P.add('turret', box(1.76, 0.32, 0.23), 0, roofY(0.57), -1.515);
     } else {
-      P.add('turret', box(0.125, 0.45, 0.31), 0.9425, roofY(0.50), -1.245);
+      P.add('turretEquipment', box(0.125, 0.45, 0.31), 0.9425, roofY(0.50), -1.245);
       // r27b: the compressed ref's rear-most bustle column is a THIN
       // 1.95..2.10 lip (the old 1.84..2.20 band read 0.09 both edges at the
       // -1.59 column); tail box pulled to -1.52 so the lip owns the column.
-      P.add('turret', box(1.70, 0.32, 0.16), 0.03, roofY(0.57), -1.44);
-      P.add('turret', box(1.60, 0.14, 0.06), 0.03, roofY(0.575), -1.58);
+      P.add('turretEquipment', box(1.70, 0.32, 0.16), 0.03, roofY(0.57), -1.44);
+      P.add('turretEquipment', box(1.60, 0.14, 0.06), 0.03, roofY(0.575), -1.58);
     }
   };
   buildT80LineTurretStage4();
@@ -523,7 +525,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
     for (const s of [-1, 1]) {
       P.add('turretDark', box(0.055, 0.055, 0.76), s * 1.00, roofY(0.47), -1.38, 0, s * 0.10, 0);
       P.add('turretDark', box(0.055, 0.28, 0.055), s * 1.00, roofY(0.37), -1.70);
-      P.add('turret', box(0.42, 0.20, s < 0 ? 0.38 : 0.48), s * 0.64, roofY(0.54), -1.47);
+      P.add('turretEquipment', box(0.42, 0.20, s < 0 ? 0.38 : 0.48), s * 0.64, roofY(0.54), -1.47);
       P.add('turretDark', box(0.055, 0.23, s < 0 ? 0.40 : 0.50), s * 0.64, roofY(0.54), -1.47);
     }
     if (v >= 1) {
@@ -538,13 +540,13 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // the cast shoulder.  Their backs overlap the existing side carrier;
       // the old low tiles disappeared inside the dome after the height pass.
       for (const s of [-1, 1]) for (let i = 0; i < 2; i++) {
-        P.add('turret', box(0.29, 0.22, 0.25), s * (1.18 + i * 0.08), turretSeatY(0.39 - i * 0.015), 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
+        P.add('turretEquipment', box(0.29, 0.22, 0.25), s * (1.18 + i * 0.08), turretSeatY(0.39 - i * 0.015), 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
         P.add('turretDark', box(0.22, 0.020, 0.19), s * (1.18 + i * 0.08), turretSeatY(0.510 - i * 0.015), 0.65 - i * 0.27, -0.15, s * (0.68 + i * 0.16), 0);
       }
       // T-80B 902A launchers sit in compact mirrored groups on broad cheek
       // shoes.  The BV below receives its distinct 7/5 layout instead.
       if (v === 1) for (const s of [-1, 1]) {
-        P.add('turret', box(0.22, 0.22, 0.44), s * 1.16, 0.40, 0.36, 0, 0, -s * 0.18);
+        P.add('turretEquipment', box(0.22, 0.22, 0.44), s * 1.16, 0.40, 0.36, 0, 0, -s * 0.18);
         const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040, len: 0.25, pitch: -0.42, splay: 0.28, arc: 0.48, spacing: 0.088, seed: 40 + s });
         smoke.position.set(s * 1.17, 0.50, 0.37);
         smoke.rotation.y = s * 0.96;
@@ -553,7 +555,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // bustle tail bin — r27: the compressed t80b ref's 2.0..2.18 band now
       // ends ~-1.61 (the r26 -1.68 seat read ONLY-PROC on the turret row and
       // 0.36 err on side_whole at the -1.67..-1.80 columns)
-      P.add('turret', box(0.30, 0.18, 0.09), -0.55, roofY(0.64), -1.575);
+      P.add('turretEquipment', box(0.30, 0.18, 0.09), -0.55, roofY(0.64), -1.575);
       // r27b: t80b keeps a 2.05..2.18 stowage row over z -0.80..-1.06 (its
       // -0.97 side column read the bare lathe 2.005 vs the ref's 2.185)
       P.add('turret', box(0.72, 0.13, 0.28), -0.35, roofY(0.665), -0.92);
@@ -566,7 +568,7 @@ function* buildT80LineSteps(P: T80BuilderPort, v: T80Variant): TankProfileBuild 
       // The early T-80 carries no continuous ERA chevron. One compact shoulder
       // return per side remains planted into the cast shell as applique/stowage.
       for (const s of [-1, 1]) {
-        P.add('turret', box(0.30, 0.22, 0.27), s * 1.22, 0.36, 0.55, -0.14, s * 0.72, 0);
+        P.add('turretEquipment', box(0.30, 0.22, 0.27), s * 1.22, 0.36, 0.55, -0.14, s * 0.72, 0);
         P.add('turretDark', box(0.23, 0.020, 0.21), s * 1.22, 0.480, 0.55, -0.14, s * 0.72, 0);
         const smoke = FITTINGS.smokeBank({ mats: P.mats, count: s < 0 ? 5 : 4, r: 0.038, len: 0.24, pitch: -0.40, splay: 0.27, arc: 0.52, spacing: 0.082, seed: 36 + s });
         smoke.position.set(s * 1.16, 0.50, 0.30);

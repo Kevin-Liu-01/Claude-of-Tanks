@@ -194,12 +194,12 @@ function hullBody(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
   // Rear fender boxes: the sponsons run on past the stern plate either side of the recessed louvre bay.
   for (const s of [-1, 1]) {
     const x0 = s * 0.97, x1 = s * 1.60, z0 = H.sternZ + 0.02, z1 = ZTZ20_DATUMS.sternFenderZ;
-    P.add('hull', part(orientedSlab(
+    P.add('hullFixedPaintedBodywork', part(orientedSlab(
       [x0, 0.97, z0], [x1, 0.97, z0], [x1, 1.12, z1], [x0, 1.12, z1],
       [x0, deckY, z0], [x1, deckY, z0], [x1, deckY, z1], [x0, deckY, z1],
     ), 'rear-fender-box'));
     // the fender lip runs back over the box to the stern
-    P.add('hull', part(orientedSlab(
+    P.add('hullFixedPaintedBodywork', part(orientedSlab(
       [s * 1.58, H.lipY, z0], [s * H.lipOuter, H.lipY, z0], [s * H.lipOuter, H.lipY, z1], [s * 1.58, H.lipY, z1],
       [s * 1.58, deckY, z0], [s * H.lipOuter, deckY - 0.03, z0], [s * H.lipOuter, deckY - 0.03, z1], [s * 1.58, deckY, z1],
     ), 'rear-fender-lip'));
@@ -319,7 +319,7 @@ function skirts(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     }
     // the step between the aft and forward planes, and the hangers onto the fender lip
     P.add('hull', part(box(H.skirtFwd - H.skirtAft + 0.02, H.skirtTop - H.skirtStep, 0.04), 'skirt-step'), s * ((H.skirtFwd + H.skirtAft) / 2 - 0.01), (H.skirtTop + H.skirtStep) / 2, H.skirtSplitZ);
-    P.add('hull', part(box(H.skirtAft - H.plate - H.lipOuter + 0.01, 0.05, H.skirtSplitZ + 3.80), 'skirt-hanger'), s * ((H.skirtAft - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (H.skirtSplitZ - 3.80) / 2);
+    P.add('hullEquipment', part(box(H.skirtAft - H.plate - H.lipOuter + 0.01, 0.05, H.skirtSplitZ + 3.80), 'skirt-hanger'), s * ((H.skirtAft - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (H.skirtSplitZ - 3.80) / 2);
     P.add('hull', part(box(H.skirtFwd - H.plate - H.lipOuter + 0.01, 0.05, H.glacisTopZ - H.skirtSplitZ), 'skirt-hanger'), s * ((H.skirtFwd - H.plate + H.lipOuter) / 2), H.skirtTop - 0.03, (H.glacisTopZ + H.skirtSplitZ) / 2);
     // front panel: angled in over the idler, its lower edge rising toward the bow
     const xo = s * H.skirtFwd, xi = s * (H.skirtFwd - H.plate);
@@ -752,7 +752,7 @@ function coaxHousing(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     return;
   }
   P.addEquipment('turret', part(box(0.13, 0.25, 0.62), 'coax-housing'), x, ty(1.785), tz(0.73));
-  P.add('turret', part(box(0.16, 0.02, 0.26), 'coax-housing-hood'), x, ty(1.915), tz(0.95), 0.10, 0, 0);
+  P.addEquipment('turret', part(box(0.16, 0.02, 0.26), 'coax-housing-hood'), x, ty(1.915), tz(0.95), 0.10, 0, 0);
   P.add('turretDark', part(box(0.10, 0.10, 0.012), 'coax-housing-face'), x, ty(1.81), tz(1.046));
   P.add('turretDark', part(cylZ(0.026, 0.10, P.q ? 12 : 8), 'coax-barrel-jacket'), x, ty(1.80), tz(1.09));
   P.add('turretDark', part(cylZ(0.016, 0.18, P.q ? 10 : 6), 'coax-barrel'), x, ty(1.80), tz(1.19));

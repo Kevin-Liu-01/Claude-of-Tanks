@@ -3369,7 +3369,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // Joined true-profile wing: the source line breaks upward at z 3.60.
       // That real knee also clears the raised idler wrap instead of letting a
       // single straight plate cut through the track (§B4).
-      P.add('hull', mslab1(s,
+      P.add('hullFixedPaintedBodywork', mslab1(s,
         [0.95, 1.00, 3.97], [1.62, 1.00, 3.97], [1.62, 0.95, 3.95], [0.95, 0.95, 3.95],
         [0.95, 1.24, 3.60], [1.62, 1.24, 3.60], [1.62, 1.19, 3.58], [0.95, 1.19, 3.58]));
       P.add('hull', mslab1(s,
@@ -3380,7 +3380,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // open slot under the sloped wing from z=3.58 back to the deck knee at
       // z=2.30.  Continue the same upper/lower planes to the physical fender
       // edge so the bow is a closed shell from every oblique view.
-      P.add('hull', mslab1(s,
+      P.add('hullFixedPaintedBodywork', mslab1(s,
         [1.60, 1.19, 3.58], [1.70, 1.19, 3.58], [1.70, 1.50, 2.30], [1.60, 1.50, 2.30],
         [1.60, 1.24, 3.60], [1.70, 1.24, 3.60], [1.70, 1.55, 2.32], [1.60, 1.55, 2.32]));
     }
@@ -3395,7 +3395,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // The source's final +4.07 m column is a 160 mm fender/datum lip, not a
       // full-height flap.  Keep its proven 1.34 m top and hull-length anchor,
       // but let the joined wing one station inboard own the structural span.
-      P.add('hull', box(0.08, 0.28, 0.03), s * 1.46, 1.20, 4.045);               // narrow P95 datum lip, just deep enough to remain a body-span column
+      P.add('hullFixedPaintedBodywork', box(0.08, 0.28, 0.03), s * 1.46, 1.20, 4.045); // narrow P95 datum lip, just deep enough to remain a body-span column
       P.add('hullDetail', box(0.04, 0.10, 0.80), s * 1.65, 1.02, 3.52);          // low fender edge carries the final bow station width
       P.add('hullDetail', box(0.09, 0.11, 0.09), s * 0.60, 0.56, 3.72);          // tow eyes
     }

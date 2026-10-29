@@ -556,7 +556,7 @@ function addKV2Turret(P: SovietHeavyBuilderPort): void {
     // (roofAt(cheekZ) = tRoof), so it lay inside the roof-edge bead above and its end cap z-fought that bead's
     kv2Weld(P, 'turretDetail', [s * (K.tHalfW - 0.004), roofAt(K.cheekZ) - 0.004, K.cheekZ], [s * (K.cheekHalfW - 0.004), K.frontTopY - 0.004, K.tFront]);
     // the side plate's lower front stiffener (S4: the raised bar beside the cheek joint)
-    P.add('turret', box(0.030, 0.52, 0.065), s * (K.tHalfW + 0.015), 0.80, 0.87);
+    P.add('turretEquipment', box(0.030, 0.52, 0.065), s * (K.tHalfW + 0.015), 0.80, 0.87);
   }
   kv2Weld(P, 'turretDetail', [-K.tHalfW, K.tRoof - 0.004, K.tRear + 0.004], [K.tHalfW, K.tRoof - 0.004, K.tRear + 0.004]);
   kv2Weld(P, 'turretDetail', [-K.tHalfW, roofAt(K.chamferZ), K.chamferZ], [K.tHalfW, roofAt(K.chamferZ), K.chamferZ]);
@@ -569,7 +569,7 @@ function addKV2Turret(P: SovietHeavyBuilderPort): void {
   // fills most of the plate between two raised bars)
   const reveal = 2 * Math.sqrt(K.drumR ** 2 - (K.tFront - K.trunnionZ) ** 2);
   P.add('turretDark', box(1.30, reveal, 0.012), 0, K.trunnionY, K.tFront + 0.004);
-  for (const s of [-1, 1]) P.add('turret', box(0.08, 0.86, 0.04), s * 0.74, 1.00, K.tFront + 0.02);
+  for (const s of [-1, 1]) P.add('turretEquipment', box(0.08, 0.86, 0.04), s * 0.74, 1.00, K.tFront + 0.02);
   // side plates: two grab handles a side, the pistol port and the vision slit over it (S4 turret close-up)
   for (const s of [-1, 1]) {
     const x = s * K.tHalfW;
@@ -601,7 +601,7 @@ function addKV2TurretRear(P: SovietHeavyBuilderPort): void {
   }
   for (const hy of [doorY - 0.25, doorY + 0.25]) {
     P.add('turretDetail', box(0.16, 0.14, 0.07), doorX - dw / 2 + 0.04, hy, zr - 0.060);                  // hinge blocks
-    P.add('turret', box(0.07, 0.14, 0.08), doorX - dw / 2 - 0.035, hy, zr - 0.040);                      // wall lugs
+    P.add('turretEquipment', box(0.07, 0.14, 0.08), doorX - dw / 2 - 0.035, hy, zr - 0.040);                      // wall lugs
     P.add('turretDark', cylY(0.020, 0.020, 0.20, 8), doorX - dw / 2 - 0.005, hy, zr - 0.075);            // pins
   }
   P.add('turretDetail', box(0.04, 0.16, 0.04), doorX + dw / 2 - 0.07, doorY, zr - 0.068);                  // handle

@@ -745,6 +745,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 2026-10-28 (264, envelope honesty; the 262 OTCO: its rim in the turret bucket made the 2A3's twin a 0.527-strength
+    // target against 0.303): the envelope census's rule, the shrinking docs/geometry-gate/envelope-allowance.json and a
+    // rail drawn into a real turret (tools/envelope-census.mjs; the four fleet shards follow in item/envelope-ratchet-265)
+    'tools/envelope-census.selftest.mjs',
     // 2026-10-25 (the coordinator's pinned-math ruling): the authority's deterministic math is the Rust jsmath bit for
     // bit, and its import graph calls no native transcendental (tools/det-math-lint.mjs)
     'src/sim/detMath.selftest.mjs',

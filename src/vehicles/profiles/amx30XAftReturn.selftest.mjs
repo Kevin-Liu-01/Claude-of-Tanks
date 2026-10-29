@@ -55,7 +55,7 @@ function air(objects) {
 for (const quality of ['high', 'low']) {
   const helper = [], guards = []; let targets = 0;
   for (const side of [-1, 1]) addAmx30XAftReturn({ addMudguard: (label, bucket, g) => {
-    assert.equal(label, 'amx30-x-aft-return'); assert.equal(bucket, 'hull');
+    assert.equal(label, 'amx30-x-aft-return'); assert.equal(bucket, 'hullFixedPaintedBodywork'); // 264: bodywork, not armour
     helper.push(new THREE.Mesh(g, new THREE.MeshBasicMaterial()));
   } }, side);
   const triangles = helper.reduce((n, m) => n + m.geometry.attributes.position.count / 3, 0);

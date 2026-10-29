@@ -5,7 +5,7 @@ import {TYPE10_X_DATUMS} from './type10X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
-const hit=(root,origin,direction,far=20)=>new THREE.Raycaster(origin,direction,0,far).intersectObject(root,true)[0];
+const hit=(root,origin,direction,far=20)=>new THREE.Raycaster(origin,direction,0,far).intersectObjects([root].flat(),true)[0];
 
 function envelopeAndOwnership(tank,quality) {
   const bounds=new THREE.Box3().setFromObject(tank.root);
@@ -34,7 +34,8 @@ function envelopeAndOwnership(tank,quality) {
 }
 
 function foldedGuard(tank,quality) {
-  const hull=tank.root.getObjectByName('hull');
+  // 264 (envelope honesty): the folded guards and valances are bodywork (hullFixedPaintedBodywork), outside the armour
+  const hull=['hull','hullFixedPaintedBodywork'].map((name)=>tank.root.getObjectByName(name)).filter(Boolean);
   // Source Object_4:92 triangle-plane measurements at raw X±1.1. X is
   // independently authored at the unchanged uniform-oracle metre scale.
   for(const side of [-1,1])for(const [z,roof,floor] of[

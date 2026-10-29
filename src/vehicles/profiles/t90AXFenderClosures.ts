@@ -15,7 +15,7 @@ export function addT90AXFrontGuard(P: TankBuilderPort, side: number): void {
   const sections = T90A_FRONT_GUARD_ROWS.map(([z,top,outer]): SolidSection => ({
     z, ring: mirror(side, [[1.097,top-.014],[outer,top-.014],[outer,top],[1.097,top]]),
   }));
-  P.addMudguard('t90a-x-bow','hull',sectionSolid(sections));
+  P.addMudguard('t90a-x-bow','hullFixedPaintedBodywork',sectionSolid(sections));
 }
 
 /** Closed bent sheet bridging the original upper shelf and skirt root.

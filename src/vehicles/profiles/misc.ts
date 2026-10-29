@@ -465,8 +465,8 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
     P.add('hull', box(1.66, 0.82, 0.06), 0, 1.03, -3.67);                        // rear plate CENTER x +-0.83 (y 0.62..1.44 — the ref -3.73..-3.85 bottoms read 0.629). push-2 NOTCH SPLIT: the ref rear at |x| 0.85-0.97 reads -3.53/-3.57 — a cutout between its center plate and exhaust pods; the full-width plate printed -3.76 there (0.16 err x2)
     // 2026-10-19 (owner float sweep): the outer courses (lamps, stubs) stood 24 mm behind the hull's tail; they run 4 mm into it.
     for (const s of [-1, 1]) P.add('hull', box(0.43, 0.82, 0.088), s * 1.205, 1.03, -3.656); // rear plate OUTER courses x 0.99-1.42
-    P.add('hull', box(0.40, 0.055, 0.21), 0, 1.415, -3.795);                     // thin tail lip 1.385..1.445 (z -3.69..-3.90) — CENTER-ONLY x +-0.30 (push round: the 2.70 lip printed plan rear -3.94 at every x where the ref rear is -3.65..-3.83; sides fall back to the -3.71 rear plate)
-    P.add('hull', box(0.36, 0.39, 0.19), 0, 1.355, -3.795);                       // release 231: top 1.55, under the rear basket's 1.576 sweep (was 1.57)                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
+    P.add('hullFixedPaintedBodywork', box(0.40, 0.055, 0.21), 0, 1.415, -3.795);                     // thin tail lip 1.385..1.445 (z -3.69..-3.90) — CENTER-ONLY x +-0.30 (push round: the 2.70 lip printed plan rear -3.94 at every x where the ref rear is -3.65..-3.83; sides fall back to the -3.71 rear plate)
+    P.addEquipment('hull', box(0.36, 0.39, 0.19), 0, 1.355, -3.795);                       // release 231: top 1.55, under the rear basket's 1.576 sweep (was 1.57)                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
     for (const s of [-1, 1]) {
       P.hangMudguard('c1-ariete-preserie-rear-flap', 'hullRubber', box(0.40, 0.25, 0.03), s * 1.30, 1.00, -3.62);         // rear flaps
       P.add('hullDark', box(0.14, 0.07, 0.035), s * 1.20, 1.36, -3.71);          // taillights
@@ -632,7 +632,7 @@ function* buildArieteSteps(P: MiscBuilderPort): TankProfileBuild {
         inset: [0.84, 0.84, 0.87, 0.90, 0.91, 0.92, 0.93, 0.93, 0.92, 0.91, 0.90, 0.87] },
     ]));
     P.add('turretDark', KIT.polyTurret(ARIETE_PLINTH_PLAN, 0.08, 1.02, 1.0), 0, -0.035, 0); // dark RING PLINTH at the base, dropped to the deck line 1.445 (ref front-zone bottoms 1.405 — SS-B2 contact-shadow device)
-    for (const s of [-1, 1]) P.add('turret', box(0.18, 0.26, 0.52), s * 1.15, 0.28, -1.90); // terminal shoulders overlap the integrated loft
+    for (const s of [-1, 1]) P.addEquipment('turret', box(0.18, 0.26, 0.52), s * 1.15, 0.28, -1.90); // terminal shoulders overlap the integrated loft
     P.add('turret', box(2.24, 0.10, 0.51), 0, 0.79, -0.185);                      // mid roof plate 2.32 x +-1.23 (push round: ref front-view roofline holds 2.31-2.35 out to +-1.23 — the 2.12 plate left the wall cant reading 2.16 there)
     P.add('turret', box(2.12, 0.05, 1.18), 0, 0.66, -1.31);                     // shallow roof course tied directly to the integrated aft loft
     P.add('turret', box(1.70, 0.055, 0.65), 0, 0.7225, -0.735);                  // hatch NOTCH plate 2.23 (z_w -0.56..-1.04)
@@ -996,7 +996,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
       // meets the fender at its forward edge, while its 1.19 m lowest underside
       // remains clear of the complete animated idler/shoe crown.  Both compact
       // knees stay hull-owned and outside/inside the live shoe lane respectively.
-      P.add('hull', slab(
+      P.add('hullFixedPaintedBodywork', slab(
         [s2 * 0.90, 1.285, 2.95], [s2 * 1.785, 1.285, 2.95], [s2 * 1.720, 1.190, 3.58], [s2 * 0.98, 1.190, 3.58],
         [s2 * 0.90, 1.340, 2.95], [s2 * 1.785, 1.340, 2.95], [s2 * 1.720, 1.245, 3.58], [s2 * 0.98, 1.245, 3.58]));
       P.add('hull', box(0.08, 0.18, 0.30), s2 * 0.90, 1.195, 3.10);             // inboard bow knee, buried into the narrow bow
@@ -1012,7 +1012,7 @@ function* buildLeclercSteps(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc
     // tip -> mudguard tips as that lip. Plan front 3.52 stays inside the
     // 3.54 front-body column; side/front silhouettes already owned by the
     // mudguard band at this y (interior fill).
-    P.add('hull', box(1.96, 0.06, 0.12), 0, 1.22, 3.46);
+    P.add('hullFixedPaintedBodywork', box(1.96, 0.06, 0.12), 0, 1.22, 3.46);
     // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
     // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
     // and 1.61 periscope heads printed +0.02..+0.035 on seven side cols;
@@ -2400,10 +2400,10 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
     [-0.90, 0.55, -2.88], [0.90, 0.55, -2.88], [0.90, 0.93, -3.73], [-0.90, 0.93, -3.73],
     [-0.90, 1.30, -2.88], [0.90, 1.30, -2.88], [0.90, 1.30, -3.73], [-0.90, 1.30, -3.73]));
   P.add('hull', box(2.86, 0.44, 0.07), 0, 1.21, -3.695);                       // wide rear plate course (bottom 0.99 clears the sprocket wrap)
-  P.add('hull', box(2.84, 0.034, 0.18), 0, 1.437, -3.75);                      // thin tail fender lip (band .03 — under the 12% cut; r5: rear -3.84 fills the ref's -3.875 side col [its 1.441-1.471 lip band] — the old -3.78 read REF-ONLY cover there)
+  P.add('hullFixedPaintedBodywork', box(2.84, 0.034, 0.18), 0, 1.437, -3.75);                      // thin tail fender lip (band .03 — under the 12% cut; r5: rear -3.84 fills the ref's -3.875 side col [its 1.441-1.471 lip band] — the old -3.78 read REF-ONLY cover there)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.145, 0.31, 0.13), s * 1.51, 1.295, -3.765);            // §A REAR ANCHOR: mudflap pods (ref plan -3.76 @ x 1.52-1.56; rear body col ~-3.80, overall ~9.79 with the 5.96 muzzle)
-    P.add('hull', box(0.07, 0.03, 0.115), s * 1.545, 1.435, -3.8275);          // r5 outer-pod top lip to -3.885 (band .03 non-body): the ref plan rear at x 1.48-1.60 reads -3.885 while x 1.36-1.48 reads -3.824 — a stepped pod rear
+    P.add('hullFixedPaintedBodywork', box(0.145, 0.31, 0.13), s * 1.51, 1.295, -3.765);            // §A REAR ANCHOR: mudflap pods (ref plan -3.76 @ x 1.52-1.56; rear body col ~-3.80, overall ~9.79 with the 5.96 muzzle)
+    P.add('hullFixedPaintedBodywork', box(0.07, 0.03, 0.115), s * 1.545, 1.435, -3.8275);          // r5 outer-pod top lip to -3.885 (band .03 non-body): the ref plan rear at x 1.48-1.60 reads -3.885 while x 1.36-1.48 reads -3.824 — a stepped pod rear
     MUDGUARDS.add(P, {
       label: `misc-native-rear-flap-${s}`, x: s * 1.28, y: 1.03, z: -3.71,
       thickness: 0.03, length: 0.40, height: 0.24, material: 'rubber',
@@ -2762,8 +2762,8 @@ function buildType90Turret(P: MiscBuilderPort): void {
     // ref topH 2.26/2.246 less the +0.016 pixel-center+box bias, measured).
     // Side rows never see them (under the 2.33 bustle-roof line); the old
     // single 2.26 shelf read i4 +3.9 / i5 +3.4 station points.
-    P.add('turret', box(xOut - xIn, 0.10, 0.413), s * xc2, 0.7935, -0.4935);   // front segment (z_w -0.487..-0.90, top 2.2435)
-    P.add('turret', box(xOut - xIn, 0.10, 0.396), s * xc2, 0.7795, -0.898);    // rear segment (z_w -0.90..-1.296, top 2.2295)
+    P.addEquipment('turret', box(xOut - xIn, 0.10, 0.413), s * xc2, 0.7935, -0.4935);   // front segment (z_w -0.487..-0.90, top 2.2435)
+    P.addEquipment('turret', box(xOut - xIn, 0.10, 0.396), s * xc2, 0.7795, -0.898);    // rear segment (z_w -0.90..-1.296, top 2.2295)
     P.add('turretDark', box(xOut - xIn - 0.02, 0.02, 0.57), s * xc2, 0.72, -0.79); // under-lip shadow
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.815, -0.55); // lid ribs (recessed: tops stay under the per-slab shelf lines)
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.80, -1.01);

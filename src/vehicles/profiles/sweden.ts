@@ -141,10 +141,8 @@ function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
     P.add('hullDark', box(0.10, 0.34, 0.12), side * 1.30, 1.60, 2.54);
     // Additional flank service/armor boxes overlap the intact upper hull and
     // stop well above the four-wheel smart course.
-    plate(P, 'hull', side * 1.70, 1.48, -0.62, 0.12, 0.42, 0.72,
-      [0, 0, side * 0.035], false);
-    plate(P, 'hull', side * 1.70, 1.48, -1.40, 0.12, 0.42, 0.66,
-      [0, 0, side * 0.035], false);
+    P.addEquipment('hull', box(0.12, 0.42, 0.72), side * 1.70, 1.48, -0.62, 0, 0, side * 0.035);
+    P.addEquipment('hull', box(0.12, 0.42, 0.66), side * 1.70, 1.48, -1.40, 0, 0, side * 0.035);
   }
 
   // Compact commander station, shielded Ksp 58 and optical crown echo the
