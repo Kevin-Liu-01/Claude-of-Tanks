@@ -100,6 +100,7 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   t90_1992: T90_PROFILES.t90_1992,
   t90ms_2011: T90_PROFILES.t90ms_2011,
   t90a_burlak_proto: T90_PROFILES.t90a_burlak_proto,
+  t55a: RUSSIA_RESIDUE_PROFILES.t55a,
   t62_1975: RUSSIA_RESIDUE_PROFILES.t62_1975,
   t64bv1: RUSSIA_RESIDUE_PROFILES.t64bv1,
   pt91m: T90_PROFILES.pt91m,
@@ -116,6 +117,8 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
   // remains in this Russia-order bridge.
   type59: CHINA_PROFILES.type59,
   t84: T80_PROFILES.t84,
+  // 262: the true-T-64 T-64BV (t64KontaktFamily.ts), appended so every earlier key keeps its place
+  t64bv: RUSSIA_RESIDUE_PROFILES.t64bv,
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {

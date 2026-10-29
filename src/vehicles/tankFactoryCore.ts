@@ -1150,6 +1150,33 @@ function applyRubberSurfaceUVs(root: THREE.Object3D): void {
   });
 }
 
+/**
+ * 262 (Main's ruling, 2026-10-28): the rubber the hull wears — skirts, flaps, mudguards, mats — draws in its own
+ * material (role hullRubber), so the scoped armour paint takes it by where it sits (materials.ts armorPaintMode) while
+ * the tyres stay bare. One clone per source rubber, after the appearance normaliser set its finish, so it reads as the
+ * tyres do; every static rubber draw off the running gear moves together, so the draws that merged still merge.
+ */
+function separateHullRubber(root: THREE.Object3D, disposables: Array<{ dispose(): void }>): void {
+  const clones = new Map<THREE.Material, THREE.Material>();
+  root.traverse((object) => {
+    if (!isVehicleMesh(object) || Array.isArray(object.material)) return;
+    const material = object.material;
+    if (material?.userData?.appearanceRole !== 'tireRubber') return;
+    for (let owner: THREE.Object3D | null = object; owner; owner = owner.parent) {
+      if (owner.userData?.runningGear || /^gear/.test(owner.name || '')) return;
+    }
+    let clone = clones.get(material);
+    if (!clone) {
+      clone = cloneVehicleMaterial(material);
+      clone.name = 'cot:hull-rubber';
+      clone.userData = { ...(material.userData || {}), appearanceRole: 'hullRubber' };
+      disposables.push(clone);
+      clones.set(material, clone);
+    }
+    object.material = clone;
+  });
+}
+
 function isolatedGearMaterial<M extends THREE.Material>(
   material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
 ): M {
@@ -1322,6 +1349,14 @@ export interface TankVisual {
   awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
+  /**
+   * The scoped armour paint's handles (262, game/armorAimOverlay.ts): the burn hook's uniforms (materials.ts uAp*: the
+   * paint rides the hook prewarmBurn installs) and the hull's and the turret's rig groups (their frames). Null when the
+   * visual draws nothing.
+   */
+  armorPaint(): {
+    uniforms: ReturnType<typeof makeBurnUniforms>; hull: THREE.Object3D; turret: THREE.Object3D | null; gun: THREE.Object3D | null;
+  } | null;
   /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
   releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
@@ -11498,6 +11533,10 @@ export function* createTankRuntimeSteps(
      * materials pre-compile. Idempotent (applyBurnHook self-guards); a
      * disarmed hook is exact-identity output (mix factors are 0).
      */
+    armorPaint() {
+      return geometryOnly ? null : { uniforms: burnU, hull: hullG, turret: turretG ?? null, gun: gunG ?? null };
+    },
+
     prewarmBurn() {
       if (destroyed) return [];
       root.traverse((o) => {
@@ -11521,7 +11560,7 @@ export function* createTankRuntimeSteps(
       return [...wreckFallbackWarmSources];
     },
 
-    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r7': the Garage's own programs were
+    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r8': the Garage's own programs were
     // linked without it, so the hero it adopts back from a battle drops the disarmed hooks (the next battle's prewarmBurn
     // puts them back) and its Garage paint compiles as its build did
     releaseBurnHooks() {
@@ -11824,6 +11863,7 @@ export function* createTankRuntimeSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    if (root.userData.usesSharedMaterialTextures) separateHullRubber(root, disposables);
     applyRubberSurfaceUVs(root);
     // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
     // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull

@@ -36,6 +36,7 @@ interface ChinaVariantOptions {
   weather: string;
   patches: string[];
   camoScale: number;
+  trackWidthM?: number;
   dims?: Partial<FleetDimensions>;
   stats?: ChinaStatOverrides;
   reloadS?: number;
@@ -67,6 +68,7 @@ function variant(
     marking: 'number',
     number: options.number,
     camoScale: options.camoScale,
+    ...(options.trackWidthM === undefined ? {} : { trackWidthM: options.trackWidthM }),
   };
   if (options.dims) {
     stripSilhouetteDimensions(spec.dims);
@@ -81,6 +83,8 @@ const CHINA_SPECS = {
   ztz85_iii: variant('ztz85_iii', 'type59', {
     name: 'ZTZ-85-III', number: '85-III', base: '#35483a', weather: '#4a5947',
     patches: ['#263229', '#59634c', '#736a4d'], camoScale: 0.50,
+    // its own 0.55 m track: release 262 put the Type 59 donor on the T-54's measured 0.60 m course
+    trackWidthM: 0.55,
     // Ground-up silhouette receipts include bow/stern fittings and the roof
     // weapon cluster; gameplay dimensions remain the published base values.
     dims: {

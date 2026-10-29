@@ -13,6 +13,7 @@ import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
+import { OWNER_KIT_TARGETS } from './owner-kit-targets.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -86,6 +87,7 @@ try {
   // first-party vehicle has no comparison target, while a registered target
   // whose file is missing must still enter the loop and fail visibly.
   const registered = new Set(discovered);
+  const oracleBlindIds = new Set(await page.evaluate('window.__ORACLE_BLIND_IDS') ?? []);
   const candidates = requestedPartition?.comparisons || discovered;
   const ids = candidates.filter(id => registered.has(id));
   for (const id of candidates.filter(id => !registered.has(id))) {
@@ -100,7 +102,7 @@ try {
     const errorStart = browserErrors.length;
     let rawSourceComparison=null;
     try {
-      if(id==='k1a1'){
+      if(id==='k1a1' || OWNER_KIT_TARGETS[id] || oracleBlindIds.has(id)){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
@@ -110,9 +112,11 @@ try {
         fs.writeFileSync(path.join(REPORT_DIR,`${id}.raw-source-fidelity.json`),`${JSON.stringify(rawSourceComparison,null,2)}\n`);
       }
       await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
+      // (262) after a raw-source pass the second page's modules wait behind the first page's teardown: 5 s timed out
+      // twice on the Oplot-M (whose raw-source board is heavy), so the source path gets 60 s like the page loads
       await page.waitForFunction(
         'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
-        { timeout:5000, polling:30 },
+        { timeout:60000, polling:30 },
       );
       const sourcePath = await page.evaluate('window.__FIDELITY_SOURCE_PATH');
       if (sourcePath?.startsWith('/')) {
