@@ -36,16 +36,28 @@ const UKRAINIAN: GunPitchByYawCurve = Object.freeze([
   [180,1],
 ]);
 
+// M1E3 (m1a3, rebuilt 2026-10-28 in m1e3-264 on the M1 hull loft, its own turret and a 4.25 m gun from a trunnion
+// 0.36 m further back): the front fender caps at 18-41 (-7.5), the engine deck from 129 and, over the rear shoulder
+// chests, up to +2.8 at 152-161 (tools/gun-depression-sweep.mjs, 26 mm, --no-suit, fitted with --envelope).
+const M1E3: GunPitchByYawCurve = Object.freeze([
+  [0,-10], [15,-10], [18,-8.1], [19,-7.6], [21,-7.5], [33,-7.7], [41,-9.6], [43,-10], [128,-10], [129,-9.9],
+  [131,-6.2], [133,-3.4], [134,-2.2], [135,-1.7], [136,-1.4], [138,-1], [139,-0.3], [140,0], [148,0.2], [149,1.4],
+  [150,2.1], [151,2.5], [152,2.7], [157,2.8], [159,2.8], [161,2.7], [162,2.5], [163,2.2], [164,1.4], [165,0], [178,0],
+  [179,-0.2], [180,-0.5],
+]);
+
 export const M1A1_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> = Object.freeze({
   m1a1: BARE, m1a1ha: BARE, m1a1_abrams_hc: BARE,
   m1a1_abrams_sa: URBAN, m1a1_abrams_aim: REAR_STOWAGE,
   m1a1_abrams_fep: NETTED, ua_m1a1: UKRAINIAN,
 });
+// The M1E3 rides the same apply step but is no M256-mount M1A1: tools/m1a1-fill-clearance.mjs reads only the table above.
+const M1_HULL_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> = Object.freeze({ m1a3: M1E3 });
 
 // Apply after derivative construction: the modern M1A2 models have their own
 // unrelated frame and must not inherit the legacy donor's mechanical stops.
 export function applyM1A1GunLimits(specs: TankSpecRegistry): void {
-  for (const [id, curve] of Object.entries(M1A1_GUN_PITCH_BY_YAW)) {
+  for (const [id, curve] of [...Object.entries(M1A1_GUN_PITCH_BY_YAW), ...Object.entries(M1_HULL_GUN_PITCH_BY_YAW)]) {
     const spec = specs[id];
     if (spec) spec.gunPitchByYawDeg = curve;
   }

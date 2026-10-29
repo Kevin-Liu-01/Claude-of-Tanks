@@ -686,7 +686,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // skirts and the flank cages.
   m1a3: {
     id: 'm1a3', seed: 1306, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    // m1e3-264 (nationalGunClearance.selftest): at 3 cm the cut left the front-deck leaves 1 mm under the bore
+    // evacuator at the measured front-quarter stops (m1a1GunLimits.ts)
+    fieldClearanceM: 0.06, maxHalfWidth: 2.36, hemFloorM: 0.8,
+    clothClearsGunStops: true, cardsClearGunStops: true,
     turret: {
       top: [laid({ x0: -1.75, x1: 1.75, z0: -2.98, z1: 2.05, nx: 44, nz: 63, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.90, 0.20, 0.78, 0.42, 1.82, 17),
@@ -694,8 +697,12 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     hull: {
       top: [
-        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.73, garnishRiseM: 0.14, seed: 31 }),
-        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.50, garnishRiseM: 0.12, seed: 37 }),
+        // the bore evacuator's path kept bare: over the engine deck where the gun lies level astern (164-180), and over
+        // the front shoulders at the front-quarter stops (18-41); the suit's swept-gun cut left cloth 21 mm under it
+        laid({ x0: -1.92, x1: 1.92, z0: -3.80, z1: 0.15, nx: 38, nz: 40, y: 1.73, garnishRiseM: 0.14, seed: 31,
+          holes: [rect(-1.05, 1.05, -3.25, -2.55)] }),
+        laid({ x0: -1.92, x1: 1.92, z0: 0.15, z1: 3.85, nx: 38, nz: 37, y: 1.50, garnishRiseM: 0.12, seed: 37,
+          holes: pair(0.80, 1.92, 2.50, 3.45) }),
       ],
       side: skirts(-3.70, 3.50, 1.44, 0.55, 2.06, 41),
     },
