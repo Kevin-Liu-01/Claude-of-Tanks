@@ -39,7 +39,9 @@ export function createZTZ85IIIArmor(): ArmorEnvelope {
   const turretPlates = [
     chR('turret_era_R', 15, 0.45, 1.30, 1.24, 0.40, 0.22, 0.54, 0.15, 0.03, era),
     chL('turret_era_L', 15, 0.45, 1.30, 1.24, 0.40, 0.22, 0.54, 0.15, 0.03, era),
-    fr('turret_slope_era', 15, 1.06, 0.55, 0.90, 0.64, 0.44, era),
+    // the two-brick pairs on each side of the front slope (seeds: the combat anatomy fits the bricks themselves)
+    par('turret_slope_era_R', 15, [0.66, 0.50, 0.79], [1.10, 0.50, 0.30], [0.65, 0.60, 0.41], era),
+    par('turret_slope_era_L', 15, [-1.10, 0.50, 0.30], [-0.66, 0.50, 0.79], [-1.09, 0.60, -0.08], era),
     chR('turret_cheek_R', 120, 0.42, 1.24, 1.19, 0.36, 0.05, 0.50, 0.15, 0.04, { keMm: 137, ceMm: 137 }),
     chL('turret_cheek_L', 120, 0.42, 1.24, 1.19, 0.36, 0.05, 0.50, 0.15, 0.04, { keMm: 137, ceMm: 137 }),
     // the long front slope from the brow (0.50 m) up to the roof (0.68 m)

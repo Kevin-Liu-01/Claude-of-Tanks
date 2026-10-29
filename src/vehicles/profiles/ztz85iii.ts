@@ -358,7 +358,8 @@ function faceBox(w: number, h: number, t: number, origin: THREE.Vector3, u: THRE
 }
 
 /** The 1995 package on the turret: a row of three bricks on each front face and a row of two on the front slope above
- * it, standing proud of the plate. */
+ * it, standing proud of the plate. The face rows bind to turret_era_L/R by side; the slope pairs are tagged with their
+ * own zones (the nearest-plate binding put every off-centre brick on the face zones, leaving the slope's unregistered). */
 function addTurretEra(P: TankBuilderPort): void {
   P.visualEraCluster('ztz85iii-turret-era', 'turret', () => {
     for (const side of [-1, 1] as const) {
@@ -367,9 +368,11 @@ function addTurretEra(P: TankBuilderPort): void {
         P.add('turretExternalArmor', faceBox(0.28, 0.22, ERA_BRICK.t, face.at(a, 0.50), face.u, face.v, face.n));
       }
       const slope = patch(side, BROW_PLAN, BROW_Y, ROOF_PLAN, ROOF_H);
-      for (const a of [0.50, 0.78]) {
-        P.add('turretExternalArmor', faceBox(0.24, 0.26, ERA_BRICK.t - 0.01, slope.at(a, 0.26), slope.u, slope.v, slope.n));
-      }
+      P.destructibleCluster(`turret_slope_era_${side < 0 ? 'L' : 'R'}`, () => {
+        for (const a of [0.50, 0.78]) {
+          P.add('turretExternalArmor', faceBox(0.24, 0.26, ERA_BRICK.t - 0.01, slope.at(a, 0.26), slope.u, slope.v, slope.n));
+        }
+      });
     }
   });
 }
@@ -497,8 +500,9 @@ function addGun(P: TankBuilderPort): void {
   const n = P.q ? 20 : 12;
   // the cast mount, its face 7 cm proud of the snout
   P.addGunExtra(box(0.50, 0.34, 0.38), 0, -0.01, 0.11);
-  // the short canvas cover from the mount's face onto the tube, about 0.4 m proud of the snout
-  const stations: [number, number, number][] = [[0.24, 0.44, 0.38], [0.38, 0.40, 0.35], [0.50, 0.32, 0.30], [0.62, 0.24, 0.24]];
+  // the short canvas cover from the mount's face onto the tube, about 0.4 m proud of the snout; its rear rim stays inside
+  // the mount's face (y -0.18..0.16) so no ring rises through the mount's top
+  const stations: [number, number, number][] = [[0.26, 0.46, 0.30], [0.38, 0.42, 0.31], [0.50, 0.34, 0.27], [0.62, 0.25, 0.25]];
   const round = (w: number, h: number): SectionPoint[] => Array.from({ length: n }, (_, i) => {
     const a = (i / n) * Math.PI * 2;
     return [Math.cos(a) * w / 2, Math.sin(a) * h / 2] as const;
@@ -508,12 +512,14 @@ function addGun(P: TankBuilderPort): void {
   for (const [z, w, h] of stations.slice(1, -1)) {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
-  P.addGunExtraDark(cylZ(0.118, 0.035, n), 0, 0, 0.605);
+  // the clamp band over the cover's mouth (wider than the cloth under it, its face closing the mouth round the tube)
+  P.addGunExtraDark(cylZ(0.137, 0.035, n), 0, 0, 0.612);
   P.addGunExtraDark(cylZ(0.024, 0.08, 10), -0.20, -0.06, 0.32);
   const ev = EVACUATOR;
   tubeGun(P, [
     // [z0, z1, front radius, rear radius] (cylZ puts its first radius at +Z)
-    [0.40, 1.70, 0.104, 0.112], [1.70, ev.z0 - 0.08, 0.099, 0.104],
+    // the tube runs back into the cast mount (its face at 0.30) under the canvas, so the pitching housing holds it
+    [0.24, 1.70, 0.104, 0.112], [1.70, ev.z0 - 0.08, 0.099, 0.104],
     [ev.z0 - 0.08, ev.z0, ev.r, 0.099], [ev.z0, ev.z1, ev.r, ev.r], [ev.z1, ev.z1 + 0.08, 0.098, ev.r],
     [ev.z1 + 0.08, MUZZLE_Z - 0.085, 0.094, 0.098], [MUZZLE_Z - 0.085, MUZZLE_Z, 0.090, 0.094],
   ], { rings: [[1.70, 0.110], [2.62, 0.106], [3.40, 0.105], [5.00, 0.100], [5.66, 0.098]], muzzle: MUZZLE_Z });

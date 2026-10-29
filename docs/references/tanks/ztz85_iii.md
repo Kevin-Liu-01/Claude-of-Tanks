@@ -37,7 +37,7 @@ The photographs and plates are local study material only (`~/cot-lanes/cn-262-re
 | Turret ERA | two rows a face (1995 package) | none | a row of three bricks on each front face and a row of two on the front slope above it |
 | Stowage | railed side baskets nearly the turret's height (horizontal rails on posts), rear basket, snorkel | twin bustle racks, slat baskets | five-rail baskets 0.48 m tall on the rear half of both walls and across the rear, rolls and the stowed snorkel; the fleet decor keeps off the roof and the turret sides and adds no second smoke kit, whip, lamp or drum |
 | Roof stations | a broad raised commander's cupola right with the 12.7 mm on a tall cradle and the IR lamp; a low hooded gunner's sight left; one antenna and the wind sensor; 2x2 smoke clusters at the cheek corners | cupola right, ISFCS box, radio mast | a 0.84 m cupola ring right with its day/night sight, IR searchlight and the 12.7 mm on a 0.24 m post; gunner's low hooded sight on the front slope and his hatch left; vent; wind sensor; one antenna; a 2x2 smoke cluster at each cheek corner, raised about 30 degrees |
-| Gun | 125 mm smoothbore, thermal sleeve, evacuator a little forward of mid-tube; a short canvas cover over the mount | 4.03 m tube | 6.195 m from the trunnion (bore axis 1.77 m), evacuator at 3.62-4.26, five sleeve clamps, the cast mount 7 cm proud and a 0.38 m canvas cover tapering 0.44 to 0.24 m |
+| Gun | 125 mm smoothbore, thermal sleeve, evacuator a little forward of mid-tube; a short canvas cover over the mount | 4.03 m tube | 6.195 m from the trunnion (bore axis 1.77 m), evacuator at 3.62-4.26, five sleeve clamps, the cast mount 7 cm proud and a 0.36 m canvas cover tapering 0.46 to 0.25 m under a clamp band |
 | Rear | drums on the rear plate | stern log experiments | two 200 L drums across the stern on brackets, lights, tow hooks |
 
 Combat envelope: the plates follow the new surfaces at the tier's former strengths (glacis 80, cheeks and mantlet 137,
@@ -49,6 +49,17 @@ build) mean 0.848, 3/11 pairs inside 0.2-0.8; after mean 0.894, 2/11. Stats unch
 steps at 12 games a pair. Both builds outclass tier I: the 1995 125 mm autoloaded tank sits beside the T-62 and the
 M48A5, so its placement (Main's and the owner's call) is the fairness lever, not its armour. Crew of three (driver front left, gunner left,
 commander right); the carousel under the turret.
+
+### Integrator reds on fa28861109 (264, Main 2026-10-29)
+- **ERA registration** (`eraGameplayRegistration`, fleetPassLow): the slope pairs were drawn in the turret's visual cluster
+  and bound by nearest plate after the L/R narrowing, so every brick went to `turret_era_L/R` and the single centred
+  `turret_slope_era` zone had no visual cassettes. The pairs are now tagged explicitly (`destructibleCluster`) with
+  their own `turret_slope_era_L/R` zones, one per side like the face rows.
+- **Gun articulation** (`gunArticulation`): the tube began at 0.40 m, 0.10 m ahead of the cast mount's face (the audit's
+  limit), so the pitching housing read as detached. The tube now runs back to 0.24 m inside the mount, under the cover.
+- Blind critic on the mount junction (Node raster frames, ~/cot-lanes/cn-262-refs/z85-work/mantlet-fix*): the canvas
+  cover's rear ring rose through the mount's top face and its mouth showed a dark slot round the tube. The cover's rear
+  rim now sits inside the mount face (0.46 x 0.30 m), and the clamp band (r 0.137 m) closes the mouth over the cloth.
 
 ## History: the §5.248 build (releases 248-262), retired by §263
 
