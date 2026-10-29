@@ -161,6 +161,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // 262: the Challenger 3 TD in the UK special lane at VIII (with its prototype's tier), its RWS field fit as its twin.
 // 2026-10-28 re-cut (263, the merged release tree): every node above at once (the T-55A, the Challenger 1 Mk 1, the
 // FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
+// 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
+// Granby's place.
 // 264 (integrator): the Longwei family joins China's special lane (Zhuque, Xuanwu and Baihu at VII, Qinglong at IX; Main's
 // approval 10-29) on the merged 263 tree.
 assert.equal(digest, '3539d930dd5850e6', `tree content changed: re-pin to ${digest} if deliberate`);
