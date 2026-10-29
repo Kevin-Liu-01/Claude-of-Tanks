@@ -18,7 +18,7 @@ function verifyM1E3Mantlet(tank) {
   const recoil = tank.root.getObjectByName('rig_recoil');
   assert.ok(mount.parent === gun, 'whole shield pitches without sliding with recoil');
   const position = mount.geometry.attributes.position;
-  const brow = new THREE.Vector3(.215, .15, .95);
+  const brow = new THREE.Vector3(.215, .15, .83);
   assert.ok(Array.from({length:position.count}, (_,i) => new THREE.Vector3().fromBufferAttribute(position,i))
     .some(point => point.distanceTo(brow)<1e-5), 'broad front shield belongs to gunMount, not just a hidden collar');
   const ray = new THREE.Raycaster();

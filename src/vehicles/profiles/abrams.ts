@@ -8059,7 +8059,7 @@ const M1E3_TURRET = {
   bayX: 0.42,
   chin: [0.42, 0.08, 2.00] as Vec3Tuple,
   planRake: 0.73,
-  faceRake: 0.70,
+  faceRake: 0.45,
   // the cheek underside rises from chinRiseZ to the chin
   chinRiseZ: 0.95,
   // flank: the band leans in bandLean per metre to bandTopY, the chamfer reaches the roof at roofEdgeX
@@ -8070,7 +8070,7 @@ const M1E3_TURRET = {
   roofEdgeX: 1.24,
   // the cheek roofs fall cheekRoofFall per metre ahead of cheekRoofZ
   cheekRoofZ: 0.35,
-  cheekRoofFall: 0.24,
+  cheekRoofFall: 0.15,
   // the body's rear face (under the bustle's front), the rotor's recess face and its chamfer to the roof
   rearZ: -1.25,
   recessZ: 0.86,
@@ -8297,7 +8297,8 @@ function addM1E3HullFieldKit(P: AbramsBuilderPort): void {
     for (const g of chest.paint) P.addEquipment('hull', g, side * 1.40, 1.700, -2.86, 0, Math.PI / 2, 0);
     for (const g of chest.dark) P.addEquipment('hullDark', g, side * 1.40, 1.700, -2.86, 0, Math.PI / 2, 0);
   }
-  addRearFieldStowage(P);
+  // the M1 stern rack without the unditching log (blind critics read its overhanging beam as a loose pipe)
+  addRearFieldStowage(P, false, false);
 }
 
 // The armour's roof at z (turret frame): the bustle's, the body's, and the
@@ -8400,7 +8401,7 @@ function addM1E3TurretShell(P: AbramsBuilderPort): void {
   const [cx, cy, cz] = t.chin;
   const faceN = new THREE.Vector3(t.planRake, t.faceRake, 1).normalize();
   const faceAt = (x: number, y: number): Vec3Tuple => [x, y, cz - t.planRake * (x - cx) - t.faceRake * (y - cy)];
-  const plate: Vec3Tuple[] = [[0.50, 0.15], [1.48, 0.0], [1.40, 0.42], [0.50, 0.33]]
+  const plate: Vec3Tuple[] = [[0.50, 0.15], [1.48, 0.0], [1.36, 0.48], [0.50, 0.42]]
     .map(([x, y]) => faceAt(x, y));
   for (const side of [-1, 1]) {
     const lift = (q: Vec3Tuple, d: number): Vec3Tuple => [q[0] + faceN.x * d, q[1] + faceN.y * d, q[2] + faceN.z * d];
@@ -8468,7 +8469,7 @@ const M1E3_NOSE = [
   // [z, half width, top, bottom, corner chamfer]
   [-0.02, 0.385, 0.29, -0.29, 0.08],
   [0.40, 0.355, 0.27, -0.25, 0.08],
-  [0.95, 0.275, 0.15, -0.16, 0.06],
+  [0.83, 0.275, 0.15, -0.16, 0.06],
 ] as const;
 
 function m1e3NoseAt(z: number): readonly [number, number, number] {
@@ -8484,17 +8485,17 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
     [-w + c, bottom], [w - c, bottom], [w, bottom + c], [w, top - c],
     [w - c, top], [-w + c, top], [-w, top - c], [-w, bottom + c],
   ] as [number, number][] }))));
-  const collarProfile = [[0.132, 0.90], [0.205, 0.90], [0.205, 1.16], [0.19, 1.22], [0.17, 1.26], [0.132, 1.26],
-    [0.132, 0.90]];
+  const collarProfile = [[0.132, 0.78], [0.205, 0.78], [0.205, 1.04], [0.19, 1.10], [0.17, 1.14], [0.132, 1.14],
+    [0.132, 0.78]];
   P.addGunExtra(new THREE.LatheGeometry(collarProfile.map(([r, z]) => new THREE.Vector2(r, z)), segments)
     .rotateX(Math.PI / 2));
-  P.addGunExtraDark(cylZ(0.032, 0.08, 10), -0.235, -0.10, 0.93);
+  P.addGunExtraDark(cylZ(0.032, 0.08, 10), -0.235, -0.10, 0.81);
   // The sensor head on the nose: an armoured box, its window forward.
-  const [, headTop] = m1e3NoseAt(0.58);
-  P.addGunExtra(box(0.22, 0.14, 0.30), 0.13, headTop + 0.03, 0.58);
-  P.addGunExtraDark(box(0.16, 0.07, 0.012), 0.13, headTop + 0.05, 0.734);
+  const [, headTop] = m1e3NoseAt(0.50);
+  P.addGunExtra(box(0.22, 0.14, 0.30), 0.13, headTop + 0.03, 0.50);
+  P.addGunExtraDark(box(0.16, 0.07, 0.012), 0.13, headTop + 0.05, 0.654);
   for (const side of [-1, 1]) {
-    for (const z of [0.12, 0.34, 0.56, 0.78]) {
+    for (const z of [0.12, 0.32, 0.52, 0.72]) {
       const [w] = m1e3NoseAt(z);
       P.addGunExtraDark(cylX(0.015, 0.010, 6), side * (w + 0.003), 0, z);
     }
@@ -8504,7 +8505,7 @@ function addM1E3Gun(P: AbramsBuilderPort): void {
     P.addGunExtra(box(0.06, 0.025, 0.106), side * 0.24, top + 0.062, 0.18);
   }
   buildGun(P, { len: L, r: t.gunR, sleeve: false, collar: false, baseR: 0.13 });
-  for (const [z0, z1, r] of [[1.29, 1.55, 0.125], [1.58, 1.84, 0.121]] as const) {
+  for (const [z0, z1, r] of [[1.17, 1.50, 0.125], [1.53, 1.84, 0.121]] as const) {
     P.add('gun', cylZ(r, z1 - z0, seg), 0, 0, (z0 + z1) / 2);
     P.add('gun', torus(r * 1.01, 0.011, 20), 0, 0, z0, Math.PI / 2, 0, 0);
   }
