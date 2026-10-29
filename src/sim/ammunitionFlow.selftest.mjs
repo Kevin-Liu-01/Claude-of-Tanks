@@ -5,6 +5,7 @@ import { SECOND_WAVE_X_IDS } from '../vehicles/sourceXSecondWaveSpecs.ts';
 import { ABRAMS_SOURCE_X_IDS } from '../vehicles/abramsSourceXSpecs.ts';
 import { SUPPLIED_SOURCE_IDS } from '../vehicles/suppliedSourceFleetSpecs.ts';
 import { NATIONAL_MODERNIZATION_IDS } from '../vehicles/nationalModernizationConfig.ts';
+import { LONGWEI_FAMILY } from '../vehicles/longweiFamilyConfig.ts';
 import {
   firstAvailableAmmunitionSlot,
   hasAmmunition,
@@ -207,7 +208,13 @@ const laterChannelCounts = {
   type10_dozer: 3,
   // (release 262 CN) the new T-55A's D-10T2S rounds
   t55a: 3,
+  // (release 264 CN) the Longwei-family concepts, each firing its host's three rounds
+  ztz99a2_qinglong: 3, vt4a1_baihu: 3, t72b3_zhuque: 3, t72b3m_xuanwu: 3,
 };
+for (const m of LONGWEI_FAMILY) {
+  assert.deepEqual(TANK_SPECS[m.id].gun.shells, TANK_SPECS[m.host].gun.shells,
+    `${m.id}: the concept keeps its host's (${m.host}) ammunition, no invented rounds`);
+}
 const ifvBatchChannels = [...ifvBatchIds].reduce((n, id) => n + laterChannelCounts[id], 0);
 assert.equal(ifvBatchChannels, 16, 'the six 2026-09-25 IFV additions carry sixteen channels');
 const frenchIfvChannels = laterChannelCounts.amx10p + laterChannelCounts.amx10p_25;
@@ -258,7 +265,8 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
 // forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three and
 // the T-55A's three (release 262).
-assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a, 560,
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a
+  - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0), 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
