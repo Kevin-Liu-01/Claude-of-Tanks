@@ -804,7 +804,9 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     add(new THREE.BoxGeometry(0.08, 0.10, 0.20), gx + 0.105, gy + 0.03, sz - 0.08);
     add(new THREE.TorusGeometry(0.05, 0.014, 6, P.q ? 12 : 8, Math.PI), gx + 0.0525, gy + 0.045, sz - 0.08); // its open ends inside the box and the tray
   }
-  add(cylZ(0.022, 0.92, n), gx, gy, sz + 0.70);
+  // 263 (fleetPassLow circularCapOverlap): the barrel ends 2 cm inside the flash hider, so their front caps no longer
+  // share the hider's face (sz + 1.16) and z-fight
+  add(cylZ(0.022, 0.90, n), gx, gy, sz + 0.69);
   add(cylZ(0.032, 0.10, n), gx, gy, sz + 1.11);
   const geometry = mergeAll(pieces);
   const mesh = new THREE.Mesh(geometry, P.mats.dark);
