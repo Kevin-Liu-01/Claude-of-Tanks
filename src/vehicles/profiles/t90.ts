@@ -7953,7 +7953,7 @@ function addT90BurlakShoulderFoundationNative2026(P: T90BuilderPort, {
         [1.43, 0.33, 0.78, 0.62, -0.14, 0.44, 0.35, 0.12],
         [1.72, 0.37, 0.92, 0.28, -0.08, 0.34, 0.10, 0.11],
       ]) {
-        P.add('turretExternalArmor', KIT.xform(box(w, h, d), 0, 0, -0.045), s * x, y, z, roll, -s * yaw, 0);
+        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.045), s * x, y, z, roll, -s * yaw, 0); // 264: armour cassettes stay turret until turretExternalArmor carries spaced plates
         P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.72), 0, h * 0.52, 0.030), s * x, y, z, roll, -s * yaw, 0);
       }
     }
