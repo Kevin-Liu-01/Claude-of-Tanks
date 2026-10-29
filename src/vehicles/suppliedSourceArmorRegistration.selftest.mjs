@@ -46,12 +46,21 @@ const withoutOwnStructures = (id, owner, plates) => {
     `${id}/${owner}: calibrated structure plate ${name} is installed once`);
   return plates.filter(p => !own.includes(p.name));
 };
+// Release 264 (main-reds 261): the Type 96B builds its armour from its own frame (suppliedSourceFleetSpecs.ts,
+// createType99Armor('type96b_frame')), which the Longwei's release-233 and 262 redesigns no longer share (the 262 hull adds
+// sponson fronts, the arrowhead turret a brow, upper cheeks and middle sides): its permanent protection is the frame's.
+const {createType99Armor}=await import('./profiles/type99Armor.ts');
+const PERMANENT_FRAME = { type96b: () => createType99Armor('type96b_frame') };
 for (const {id, spec, donor} of cases) {
+  const frame = PERMANENT_FRAME[id]?.();
   for (const owner of owners) {
-    const permanent = withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]).filter(p => p.kind !== 'era');
+    const permanent = (frame ? frame[`${owner}Plates`] : withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]))
+      .filter(p => p.kind !== 'era');
     const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]);
-    assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
-      permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
+    // Release 264 (main-reds 261): compared as a set. The Type 96B copies the redesigned Longwei's armour, whose builder
+    // drops the frame's skirts and appends its own (release 233), so the same plates arrive in another order.
+    const row = p => JSON.stringify([p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]);
+    assert.deepEqual(current.map(row).sort(), permanent.map(row).sort(),
       `${id}/${owner}: permanent donor protection retained apart from each vehicle's own calibrated roof structures`);
   }
 }

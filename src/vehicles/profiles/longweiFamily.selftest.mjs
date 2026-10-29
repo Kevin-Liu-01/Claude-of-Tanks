@@ -25,7 +25,8 @@ function build(id, quality) {
 const longwei = build('ztz99_longwei', 'high');
 const reference = longwei.root.getObjectByName('rig_turret').userData.longweiTurretReceipt;
 assert.equal(reference.architecture, 'longwei-arrowhead-r262', 'the Longwei keeps its own kit');
-assert.deepEqual(reference.kit, { faceEra: 'pair', sideEra: false, roofGun: 'pintle', protection: 'gl5', bustle: 'bins', bustleCage: false });
+assert.deepEqual(reference.kit, { faceEra: 'pair', sideEra: false, roofGun: 'pintle', protection: 'gl5', bustle: 'bins', bustleCage: false,
+  floodlight: false });
 longwei.dispose();
 
 for (const m of LONGWEI_FAMILY) {
@@ -44,15 +45,17 @@ for (const m of LONGWEI_FAMILY) {
       // the kit and its ring
       assert.equal(receipt.architecture, m.kit.revision);
       assert.deepEqual(receipt.kit, { faceEra: m.kit.faceEra, sideEra: m.kit.sideEra, roofGun: m.kit.roofGun,
-        protection: m.kit.protection, bustle: m.kit.bustle, bustleCage: m.kit.bustleCage }, `${m.id}: its own kit`);
+        protection: m.kit.protection, bustle: m.kit.bustle, bustleCage: m.kit.bustleCage, floodlight: m.kit.floodlight },
+        `${m.id}: its own kit`);
+      // the floodlight on the gun mount when the kit carries one
+      assert.equal(Boolean(tank.root.getObjectByName('rig_gun')?.userData.gunFloodlight), m.kit.floodlight, `${m.id}: floodlight`);
       turretRig.position.toArray().forEach((v, i) => near(v, m.kit.pivot[i], `${m.id} ${quality} ring[${i}]`, 1e-6));
       // the host's hull, unchanged
       const hull = box(tank.root.getObjectByName('hull')), hostHull = box(host.root.getObjectByName('hull'));
       [...hull.min.toArray(), ...hull.max.toArray()].forEach((v, i) =>
         near(v, [...hostHull.min.toArray(), ...hostHull.max.toArray()][i], `${m.id} ${quality} hull bound ${i}`));
       // the kit's roof gun
-      const gun = m.kit.roofGun === 'pintle' ? 'fitting_browningDerived_qjc88'
-        : m.kit.roofGun === 'rws' ? 'Longwei remote 12.7 mm station' : 'Longwei remote 30 mm cannon';
+      const gun = m.kit.roofGun === 'pintle' ? 'fitting_browningDerived_qjc88' : 'Longwei remote 12.7 mm station';
       assert.ok(turretRig.getObjectByName(gun), `${m.id}: its ${m.kit.roofGun} roof gun`);
       // its protection: radar faces and launchers with the hard-kill suite, none without it
       assert.equal(receipt.radarFaces, m.kit.protection.startsWith('gl5') ? 4 : 0, `${m.id}: radar faces`);

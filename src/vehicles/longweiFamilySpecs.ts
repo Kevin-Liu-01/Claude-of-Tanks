@@ -46,12 +46,19 @@ export function synchronizeLongweiFamilyMetadata(): void {
         leftSidePlate('turret_side_era_L', 15, 1.60, 0.23, 1.60, 0.65, -0.97, -0.03, era),
         rightSidePlate('turret_side_era_R', 15, 1.60, 0.23, 1.60, 0.65, -0.97, -0.03, era));
     }
+    // a heavier kit's uprated turret (its main plates only: reactive, spaced and external plates keep their ratings)
+    if (m.turretArmorFactor) for (const plate of s.armor.turretPlates) if (plate.kind === 'main') {
+      plate.keMm = Math.round(plate.keMm * m.turretArmorFactor);
+      plate.ceMm = Math.round(plate.ceMm * m.turretArmorFactor);
+    }
     s.armor.turretPivot = [...m.kit.pivot];
     s.armor.gunPivot = [...turret.armor.gunPivot];
     s.armor.gunBarrel = { ...turret.armor.gunBarrel };
     s.armor.boundingRadiusM = Math.max(host.armor.boundingRadiusM, turret.armor.boundingRadiusM);
-    // the Longwei's 125 mm and fire control, its turret drives and gun range
-    s.gun = structuredClone(turret.gun);
+    // a modernized turret keeps its host's fire control and ammunition (concept capability packages are game balance:
+    // every host fires a 125 mm, and the Longwei's own tier-VI package left the T-72 pair at a 0.25 fairness mean at
+    // their hosts' tier); the Longwei's turret drives and gun range
+    s.gun = structuredClone(host.gun);
     s.turretTraverseDegS = turret.turretTraverseDegS;
     s.gunPitchDegS = turret.gunPitchDegS;
     s.gunElevationDeg = turret.gunElevationDeg;
@@ -64,11 +71,13 @@ export function synchronizeLongweiFamilyMetadata(): void {
     s.hullTraverseDegS = host.hullTraverseDegS;
     s.terrainResistance = structuredClone(host.terrainResistance);
     s.hp = Math.max(host.hp, turret.hp);
-    // the host's measured gun stops belonged to its own turret; this one's are measured on the concept (published later)
+    // the host's measured gun stops belonged to its own turret; this one's are measured on the concept
     delete s.gunPitchByYawDeg;
+    if (m.gunPitchByYawDeg) s.gunPitchByYawDeg = m.gunPitchByYawDeg.map(([yaw, pitch]) => [yaw, pitch] as const);
     s.dims = {
       ...host.dims,
       overallLengthM: host.dims.hullLengthM / 2 + m.kit.pivot[2] + s.armor.gunPivot[2] + s.armor.gunBarrel.lengthM,
+      ...(m.listedHeightM ? { heightM: m.listedHeightM } : {}),
     };
     stripSilhouetteDimensions(s.dims);
     s.visual = { ...host.visual, number: m.number };

@@ -540,8 +540,9 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#8c7f5e', weather: '#a39572', patches: ['#5e5240', '#b8a983', '#6d6a4f'], camoScale: 0.42 }),
   preset('sig_t72b3_zhuque', 't72b3_zhuque', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#5b5a3f', weather: '#6c6a4c', patches: ['#7a4f36', '#333a2b', '#8d8360'], camoScale: 0.44 }),
+  // (critic round 1: the darker coat lost the side modules' shape)
   preset('sig_t72b3m_xuanwu', 't72b3m_xuanwu', signatureTags('cn', 'woodland', 'digital'),
-    { scheme: 'digital', base: '#2f3833', weather: '#414b44', patches: ['#1b211e', '#4d5a4b', '#5f5a45'], camoScale: 0.42 }),
+    { scheme: 'digital', base: '#3a4540', weather: '#4c5850', patches: ['#222a26', '#5a675a', '#6c6650'], camoScale: 0.42 }),
   // Broad olive/sage digital fields with subdued earth and charcoal accents.
   // Six-centimetre cells stay readable on armor without the fine grey speckle.
   preset('sig_type100', 'type100', signatureTags('cn', 'woodland', 'digital'),

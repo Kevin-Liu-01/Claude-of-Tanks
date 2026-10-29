@@ -77,9 +77,15 @@ for (const id of ['ztz99_longwei', 'ztz99a', 'ztz99a2', 'vt4a1']) {
   const calibration = combatAnatomyCalibration(id);
   const ring = spec.armor.modules.find((box) => box.module === 'turretRing');
   const ringCenterY = (ring.min[1] + ring.max[1]) / 2;
-  const visibleTurretBaseY = spec.armor.turretPivot[1] + calibration.turret.min[1];
-  assert(Math.abs(ringCenterY - visibleTurretBaseY) < 1e-8,
-    `${id}: ring follows the measured turret underside`);
+  // release 240 (combatAnatomy.ts alignTurretRing): the ring volume centres on the drawn ring's deck (the anatomy's
+  // turretRing receipt) where the generator publishes one, else at the measured turret underside on the pivot's axis.
+  // Release 264 (main-reds 261): this receipt still held every ring to the turret underside, red on all four since the
+  // 240 regen published their rings.
+  const drawn = calibration.turretRing;
+  const expectedRingY = drawn && Number.isFinite(drawn.deckY) ? drawn.deckY
+    : spec.armor.turretPivot[1] + calibration.turret.min[1];
+  assert(Math.abs(ringCenterY - expectedRingY) < 1e-8,
+    `${id}: ring follows the drawn ring's deck (or the measured turret underside without one)`);
   assert(spec.armor.turretPivot[1] >= calibration.hull.min[1]
     && spec.armor.turretPivot[1] <= calibration.hull.max[1],
   `${id}: calibrated turret seat remains inside the measured hull`);

@@ -46,7 +46,7 @@ export const CHINA_TREE: NationTree = Object.freeze({
     // release 264 (owner 2026-10-28): the Longwei family, fleet hulls under a modernized Longwei turret
     node({ id: 't72b3_zhuque', tier: 7, line: 'special', lane: 3, parents: [], slot: 'special' }),
     node({ id: 't72b3m_xuanwu', tier: 7, line: 'special', lane: 4, parents: [], slot: 'special' }),
-    node({ id: 'vt4a1_baihu', tier: 8, line: 'special', lane: 0, parents: [], slot: 'special' }),
+    node({ id: 'vt4a1_baihu', tier: 7, line: 'special', lane: 5, parents: [], slot: 'special' }),
     node({ id: 'ztz99a2_qinglong', tier: 9, line: 'special', lane: 0, parents: [], slot: 'special' }),
   ]),
 });

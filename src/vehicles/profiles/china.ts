@@ -776,7 +776,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
-    louvre('hullDetail', box(2.50, 0.020, 0.026), -2.22 - i * 0.24, 0.006);        // release 240: 16 mm proud (was 26), under the turrets' sweep
+    // release 240: 16 mm proud (was 26), under the turrets' sweep; release 264 (main-reds 261): 18 mm deep at 7 mm, so its
+    // underside sits 2 mm into the deck (it sat 4 mm in) with the same 16 mm proud top
+    louvre('hullDetail', box(2.50, 0.018, 0.026), -2.22 - i * 0.24, 0.007);
   });
   // release 240: the two filler caps lie on the deck line (4 mm into it, 1 cm proud), under the turrets' sweep
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
