@@ -10,8 +10,9 @@
 - Implementation: `profiles/leopardA6Ua.ts` builds `buildLeopard2A6X` and adds the field kit; the id moved from the
   `leopard` fleet group (the 2A6M/OTCO-rig build in `profiles/leopard.ts`, retired) to `leopardA6X`. Datums shared by the
   kit, its net (`ghillieSuit.ts`) and its roof dock (`missionAttachmentReceiver.ts`) live in `leopardA6UaLayout.ts`.
-- Combat: unchanged (hp, mobility, gun, shells, reload, armour values, the six ERA sectors and their values, dims
-  7.72/10.97/4.44/3.28). The ring, trunnion and barrel follow the 2A6 rig (turret pivot [0, 2.148, 1.048], trunnion
+- Combat: mobility, gun, shells, the six ERA sectors and their values and dims 7.72/10.97/4.44/3.28 unchanged; since the
+  264 balance lever (Main's ruling, fleetBalancePass.ts) its main plates, HP and cadence are the 2A6's, and since 264b
+  the 2A6M donor's spaced wedge pair is gone (see Decisions). The ring, trunnion and barrel follow the 2A6 rig (turret pivot [0, 2.148, 1.048], trunnion
   [0, 1.971, 1.419], barrel 5.72 m from the trunnion). One working roof gun, 7.62 mm, as before (now the 2A6's own loader
   MG3 instead of a bustle MAG).
 
@@ -70,6 +71,10 @@
   length ([A] shows it hanging nearly to the ground).
 - A Kontakt-1 seat ray that passes the seam between two skirt plates lands on the hull side behind the track's top run:
   no cassette is seated there (the strict track clip found the two the first build placed).
+- 264b (Main's armour-truth audit, 2026-10-29): the 2A6M donor's one-piece spaced wedge pair (`turret_wedge_R/L`,
+  296/1,010 mm) stood at the 2A6M turret's height (0.08-0.90 m over the ring, the 2A6 roof at 0.196 m), out of the
+  frontal range's path but in flank and top fire's. The 2A6's main cells own its wedges (leo2a6 carries no wedge pair),
+  so the UA drops it: its turret is the 2A6's main cells under its own Kontakt-1.
 
 ## Visual review (blind critics, opus and sonnet, against the photos; the lower score counts)
 
