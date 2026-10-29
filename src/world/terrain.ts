@@ -6357,7 +6357,10 @@ void splatCompute() {
         float litAmp = 1.0 - smoothstep(0.03, 0.12, gFootM);
         float litR = mix(0.5, smoothstep(0.25, 0.80, n1h), litAmp), clumpR = smoothstep(0.30, 0.70, n1);
         float lightR = (0.62 + 0.50 * moundR) * (0.80 + 0.40 * litR) * (0.75 + 0.50 * leafF) * (0.88 + 0.24 * clumpR);
-        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseL * bright * lightR
+        // (round 6: the meadow photo's grain the crop's tone keeps through baseL smears into wavy streaks at a grazing
+        // range — the phone's frames, once no grass stood over it: the canopy takes the calibrated luminance from there)
+        float baseR = mix(baseL, 0.075, smoothstep(0.02, 0.08, gFootM));
+        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseR * bright * lightR
           * mix(vec3(0.90, 0.95, 1.10), vec3(1.06, 1.03, 0.88), smoothstep(0.60, 1.10, lightR));
         cropCol = mix(leaf, soilF * 0.62, soilW);
         if (nrmOn) {
