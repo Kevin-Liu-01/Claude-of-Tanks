@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FITTINGS, KIT } from './kit.ts';
 import { MG_CLASSES, addPintleBarrel, addPintleReceiver, createPintleLayout } from '../machineGunGeometry.ts';
+import { faceBoxUV } from '../factoryGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point = readonly [number, number, number];
@@ -41,7 +42,26 @@ export function libraryRoofMg(P: TankBuilderPort, o: LibraryRoofMgOptions): { st
   mg.userData.commandedElevationRad = 0;
   station.add(mg);
   P.turretG.add(station);
+  paintInTurretFrame(P, station);
   return { station, mg };
+}
+
+/**
+ * The mount's painted parts (shield, cradle, bearing) take the turret's camouflage where they stand; the gun keeps its
+ * gunmetal. fitAssemble projects a fitting's camo from the fitting's own origin, so a small mount sampled the atlas's
+ * first patch whatever the scheme (Main 2026-10-28: pale tan on the T-80U, T-80UK, T-72B3 and T-72M1 sheets). They
+ * are projected again in the turret's frame at the camo repeat, as the turret's own bucket is (faceBoxUV).
+ */
+function paintInTurretFrame(P: TankBuilderPort, station: THREE.Group): void {
+  P.turretG.updateMatrixWorld(true);
+  const toTurret = new THREE.Matrix4().copy(P.turretG.matrixWorld).invert();
+  station.traverse((o) => {
+    if (!(o instanceof THREE.Mesh) || o.userData.camoProjection !== 'continuous-fitting-box-uv') return;
+    const placed = (o.geometry as THREE.BufferGeometry).clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toTurret, o.matrixWorld));
+    faceBoxUV(placed, Number(o.userData.camoUvScale));
+    (o.geometry as THREE.BufferGeometry).setAttribute('uv', placed.getAttribute('uv'));
+    placed.dispose();
+  });
 }
 
 type StationSlot = 'turretDark' | 'turretDetail' | 'turretGlass' | 'turretAmmo';
