@@ -298,7 +298,6 @@ function buildGlacisAndNose(P: TankBuilderPort, m: MarkDesign): void {
     P.add('hullDetail', box(0.12, 0.16, 0.14), s * 0.56, NOSE_Y - 0.10, NOSE_Z - 0.02);
     P.add('hullDark', xform(torus(0.06, 0.018, 10, 6), 0, 0, 0, 0, 0, Math.PI / 2), s * 0.56, NOSE_Y - 0.19, NOSE_Z + 0.03);
   }
-  if (m.kit === 'avre') buildFascineCradle(P, onGlacis, glacisPitch);
   if (m.kit !== 'none') { buildGlacisKit(P, m, onGlacis, glacisPitch); return; }
   // Glacis stowage: the Mk 3's two link positions; the Mk 5's bin to the left of centre with links; the Strv 81B's
   // link brackets in place of the bin (Svenska Wikipedia, Strv 81B; the KATF 1960 catalogue via the War Thunder forum).
@@ -419,84 +418,77 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
   }
 }
 
-/** The AVRE's dozer (the FV4019 Centurion dozer blade, T.B. Pearson; the Duxford and "Fosgene" photographs; the critic,
- * 2026-10-28: the flat slab read wrong): a vertical box beam across the top, the mouldboard under it leaning forward so
- * the cutting edge stands 0.43 m ahead of the beam, deep trapezoid end plates, back ribs, carried raised ahead of the
- * nose on two push arms pinned to the nose plate's sides and lifted by a ram from the glacis bracket. Hull frame. */
+/** The AVRE's dozer (the FV4019 Centurion dozer blade, T.B. Pearson; the Duxford, "Fosgene", 02 BA 33 and 11 BA 46
+ * photographs; the critics, 2026-10-28: the flat slab read wrong; 2026-10-29: a flat plate leaning back, no push arms):
+ * a concave mouldboard the full blade height, its cutting edge 0.20 m ahead of its top and its top curled 0.12 m forward
+ * into a lip, a box beam across its back under the lip, shallow end plates, deep back ribs and a cross beam; carried
+ * ahead of the nose on two inner push arms pinned to the nose plate's sides and two outer arms from the end plates back
+ * to the front idlers' hubs, lifted by a ram from the glacis bracket. (The Gulf War fit carries no fascine cradle: the
+ * Fosgene photograph.) Hull frame. */
 function buildDozer(P: TankBuilderPort): void {
-  const W = 1.69, y0 = 0.60, yb = 1.30, y1 = 1.60, zb = 3.70, lean = 0.43, th = 0.03;
-  const faceZ = (y: number): number => (y >= yb ? zb : zb + lean * (yb - y) / (yb - y0) + 0.05 * Math.sin(Math.PI * (yb - y) / (yb - y0)));
-  // the top box beam
-  P.add('hullFixedPaintedBodywork', box(2 * W, y1 - yb, 0.16), 0, (yb + y1) / 2, zb - 0.08);
-  P.add('hullDark', box(2 * W, 0.012, 0.012), 0, yb + 0.006, zb + 0.004);
-  // the mouldboard, in five courses
-  const N = 5;
+  const W = 1.69, y0 = 0.60, y1 = 1.60, zb = 3.93, cut = 0.20, depth = 0.18, lip = 0.12, th = 0.03;
+  const faceZ = (y: number): number => {
+    const t = Math.min(1, Math.max(0, (y - y0) / (y1 - y0)));
+    return zb + cut * (1 - t) - depth * Math.sin(Math.PI * t) + lip * Math.max(0, (t - 0.82) / 0.18) ** 2;
+  };
+  // the mouldboard, in eight courses following its curve
+  const N = 8;
   for (let i = 0; i < N; i++) {
-    const ya = y0 + (yb - y0) * i / N, yc = y0 + (yb - y0) * (i + 1) / N, za = faceZ(ya), zc = faceZ(yc);
+    const ya = y0 + (y1 - y0) * i / N, yc = y0 + (y1 - y0) * (i + 1) / N, za = faceZ(ya), zc = faceZ(yc);
     P.add('hullFixedPaintedBodywork', slab(
       [-W, ya, za], [W, ya, za], [W, ya, za - th], [-W, ya, za - th],
       [-W, yc, zc], [W, yc, zc], [W, yc, zc - th], [-W, yc, zc - th]));
   }
-  // the cutting edge
-  P.add('hullDark', box(2 * W, 0.07, 0.10), 0, y0 + 0.02, faceZ(y0) - 0.03);
-  // end plates: 0.70 m deep at the edge, 0.30 m at the beam
+  // the cutting edge, standing proud of the face
+  P.add('hullDark', box(2 * W, 0.07, 0.10), 0, y0 + 0.02, faceZ(y0) - 0.02);
+  // the box beam behind the lip
+  const yBeam = y1 - 0.16;
+  P.add('hullFixedPaintedBodywork', box(2 * W - 0.06, 0.16, 0.16), 0, yBeam, faceZ(yBeam) - th - 0.08);
+  P.add('hullDark', box(2 * W, 0.012, 0.012), 0, y1 - 0.004, faceZ(y1) - 0.01);
+  // end plates: 0.45 m deep at the edge, 0.25 m at the top, their fronts following the face
   for (const s of [-1, 1]) {
-    const x0 = s < 0 ? -W : W - 0.03, x1 = s < 0 ? -(W - 0.03) : W, zf0 = faceZ(y0);
-    P.add('hullFixedPaintedBodywork', slab(
-      [x0, y0, zf0], [x1, y0, zf0], [x1, y0, zf0 - 0.70], [x0, y0, zf0 - 0.70],
-      [x0, y1, zb], [x1, y1, zb], [x1, y1, zb - 0.30], [x0, y1, zb - 0.30]));
+    const x0 = s < 0 ? -W : W - 0.03, x1 = s < 0 ? -(W - 0.03) : W;
+    const ys = [y0, y0 + 0.25, y0 + 0.5, y0 + 0.75, y1];
+    for (let k = 0; k < ys.length - 1; k++) {
+      const ya = ys[k]!, yc = ys[k + 1]!, da = 0.45 - 0.20 * (ya - y0) / (y1 - y0), dc = 0.45 - 0.20 * (yc - y0) / (y1 - y0);
+      P.add('hullFixedPaintedBodywork', slab(
+        [x0, ya, faceZ(ya)], [x1, ya, faceZ(ya)], [x1, ya, faceZ(ya) - da], [x0, ya, faceZ(ya) - da],
+        [x0, yc, faceZ(yc)], [x1, yc, faceZ(yc)], [x1, yc, faceZ(yc) - dc], [x0, yc, faceZ(yc) - dc]));
+    }
   }
-  // vertical ribs on the mouldboard's back, following its lean
+  // deep vertical ribs on the mouldboard's back, following its curve
   for (const rx of [-1.40, -0.84, -0.28, 0.28, 0.84, 1.40]) {
-    const ym = (y0 + yb) / 2;
-    for (const [ya, yc] of [[y0 + 0.04, ym], [ym, yb - 0.02]] as const) {
+    for (let k = 0; k < 4; k++) {
+      const ya = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * k / 4, yc = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * (k + 1) / 4;
       const za = faceZ(ya) - th, zc = faceZ(yc) - th;
       P.add('hullDetail', slab(
-        [rx - 0.02, ya, za], [rx + 0.02, ya, za], [rx + 0.02, ya, za - 0.12], [rx - 0.02, ya, za - 0.12],
-        [rx - 0.02, yc, zc], [rx + 0.02, yc, zc], [rx + 0.02, yc, zc - 0.12], [rx - 0.02, yc, zc - 0.12]));
+        [rx - 0.02, ya, za], [rx + 0.02, ya, za], [rx + 0.02, ya, za - 0.16], [rx - 0.02, ya, za - 0.16],
+        [rx - 0.02, yc, zc], [rx + 0.02, yc, zc], [rx + 0.02, yc, zc - 0.16], [rx - 0.02, yc, zc - 0.16]));
     }
   }
   // a cross beam along the back at mid height, carrying the arms' lugs
-  P.add('hullDetail', box(2 * W - 0.10, 0.12, 0.10), 0, 0.90, faceZ(0.90) - th - 0.08);
-  // push arms from their pins on the nose plate's sides, rising to the beam
+  P.add('hullDetail', box(2 * W - 0.10, 0.12, 0.10), 0, 0.90, faceZ(0.90) - th - 0.10);
+  // inner push arms from their pins on the nose plate's sides, rising to the cross beam
   for (const s of [-1, 1]) {
-    const a: [number, number] = [0.75, 3.20], b: [number, number] = [0.88, faceZ(0.88) - th - 0.13];
+    const a: [number, number] = [0.75, 3.20], b: [number, number] = [0.88, faceZ(0.88) - th - 0.15];
     const len = Math.hypot(b[1] - a[1], b[0] - a[0]), ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
     P.add('hullDetail', xform(box(0.08, 0.12, len), 0, 0, 0, -ang, 0, 0), s * 0.95, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
     P.add('hullDark', box(0.12, 0.20, 0.18), s * 0.94, 0.74, 3.20);
     P.add('hullDark', cylX(0.045, 0.16, 12), s * 0.95, 0.75, 3.20);
   }
-  // the lifting ram: its cylinder from the glacis bracket to the top beam's back
-  const r0: [number, number] = [1.42, 3.20], r1: [number, number] = [1.42, zb - 0.18];
+  // outer push arms from the end plates' lower backs to pivots on the front idlers' hubs
+  for (const s of [-1, 1]) {
+    const a: [number, number] = [0.96, 3.27], b: [number, number] = [0.82, faceZ(0.82) - 0.40];
+    const len = Math.hypot(b[1] - a[1], b[0] - a[0]), ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
+    P.add('hullDetail', xform(box(0.07, 0.14, len), 0, 0, 0, -ang, 0, 0), s * (W - 0.05), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    P.add('hullDark', cylX(0.07, 0.10, 14), s * (W - 0.05), a[0], a[1]);
+  }
+  // the lifting ram: its cylinder from the glacis bracket to the beam's back
+  const r0: [number, number] = [1.42, 3.20], r1: [number, number] = [yBeam, faceZ(yBeam) - th - 0.18];
   const rl = Math.hypot(r1[1] - r0[1], r1[0] - r0[0]), ra = Math.atan2(r1[0] - r0[0], r1[1] - r0[1]);
   P.add('hullDark', xform(cylZ(0.065, rl * 0.6, 14), 0, 0, -rl * 0.2, -ra, 0, 0), 0, (r0[0] + r1[0]) / 2, (r0[1] + r1[1]) / 2);
   P.add('hullDetail', xform(cylZ(0.032, rl * 0.5, 10), 0, 0, rl * 0.25, -ra, 0, 0), 0, (r0[0] + r1[0]) / 2, (r0[1] + r1[1]) / 2);
-  P.add('hullDark', box(0.14, 0.12, 0.12), 0, 1.42, r1[1] + 0.02);
-}
-
-/** The AVRE's fascine cradle (the FV4003 photographs: tubular arms hinged at the nose, lying back along the glacis,
- * tied by cross tubes; the critic, 2026-10-28: it was missing). Four arms resting on the glacis panels, clear of the
- * ram's bracket and the front bins, ending on the plate (upturned tips stood in the muzzle's path over the bow
- * quarters). Hull frame. */
-function buildFascineCradle(P: TankBuilderPort, onGlacis: (t: number) => [number, number], pitch: number): void {
-  const nY = Math.cos(pitch), nZ = Math.sin(pitch), lift = 0.12, r = 0.040;
-  const at = (t: number, extra = 0): V3 => { const [z, y] = onGlacis(t); return [0, y + nY * (lift + extra), z + nZ * (lift + extra)]; };
-  const tube = (a: V3, b: V3, rr: number): void => {
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    P.add('hullDetail', xform(cylZ(rr, len, 10), 0, 0, 0, Math.atan2(-(b[1] - a[1]), b[2] - a[2]), 0, 0),
-      (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-  };
-  for (const x of [-0.86, -0.40, 0.40, 0.86]) {
-    const h = at(0.02), mid = at(0.55), end = at(0.90);
-    for (const [a, b] of [[h, mid], [mid, end]] as const) tube([x, a[1], a[2]], [x, b[1], b[2]], r);
-    // its hinge lug on the nose plate
-    P.add('hullDark', box(0.10, 0.10, 0.10), x, h[1] - 0.08, h[2] + 0.03);
-  }
-  // the cross tubes, broken over the ram on the centre line
-  for (const t of [0.30, 0.78]) {
-    const c = at(t);
-    for (const s of [-1, 1]) P.add('hullDetail', cylX(r * 0.85, 0.70, 10), s * 0.55, c[1], c[2]);
-  }
+  P.add('hullDark', box(0.14, 0.12, 0.12), 0, yBeam, r1[1] + 0.02);
 }
 
 /** The AVRE's skirts carry the Gulf War's bolted plates: rows of bolt heads over the three side plates. */
@@ -1283,23 +1275,44 @@ function buildOlifantRoof(P: TankBuilderPort): void {
   });
 }
 
-/** The Olifant's mantlet in the slot between the cheeks: a narrow cast block, its coaxial gun's port, and the ribbed
- * canvas bellows round the tube (the Armed Forces Day photograph). Gun frame. */
+/** The Olifant's mantlet in the slot between the cheeks: a narrow cast block, ahead of it a boxy armoured housing
+ * standing proud of the turret's flat face with the coaxial gun's port on its front, and the ribbed canvas bellows round
+ * the tube on the housing's face (the side, SANDF and Armed Forces Day photographs; the critics, 2026-10-29: the boot
+ * sat flush on the face). Gun frame. */
 function buildOlifantMantlet(P: TankBuilderPort): void {
-  // the squarish cast block standing 0.3 m out of the slot, its coaxial port, and the boot: eight ribs of one diameter,
-  // 0.5 m long (the Armed Forces Day photograph; the critic, 2026-10-28: the tapered boot read as a smooth cone)
+  // the cast block in the slot
   P.add('gunMount', box(0.62, 0.46, 0.42), 0, 0, 0.58);
-  P.add('gunMount', box(0.54, 0.40, 0.04), 0, 0, 0.80);
-  P.add('gunMount', cylZ(0.055, 0.08, 12, 0.07), 0.22, 0.10, 0.82);
-  P.add('gunMountDark', cylZ(0.018, 0.16, 8), 0.22, 0.10, 0.90);
+  // the housing: 0.45 m long, 0.55 m tall, 0.60 m wide, its front edges chamfered, a seam and bolt heads round its face
+  P.add('gunMount', sectionSolid([0.79, 1.16, 1.22].map((z, i) => {
+    const hw = i === 2 ? 0.26 : 0.30, hh = i === 2 ? 0.235 : 0.275;
+    return { z, ring: [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]] as SectionPoint[] };
+  })));
+  P.add('gunMountDark', box(0.62, 0.012, 0.012), 0, 0.281, 1.00);
+  for (const bx of [-0.20, 0, 0.20]) for (const by of [-0.20, 0.20]) P.add('gunMountDark', cylZ(0.018, 0.016, 8), bx, by, 1.228);
+  // the coaxial gun's port on the housing's face, left of the tube
+  P.add('gunMount', cylZ(0.050, 0.06, 12, 0.062), 0.20, 0.12, 1.25);
+  P.add('gunMountDark', cylZ(0.018, 0.16, 8), 0.20, 0.12, 1.34);
+  // the boot: eight ribs of one diameter, 0.5 m long, on the housing's face (the 2026-10-28 critic: a tapered boot read
+  // as a smooth cone)
   for (let i = 0; i < 8; i++) {
-    P.add('gunMountCloth', cylZ(i % 2 ? 0.172 : 0.195, 0.062, 18), 0, 0, 0.851 + i * 0.062);
+    P.add('gunMountCloth', cylZ(i % 2 ? 0.172 : 0.195, 0.062, 18), 0, 0, 1.253 + i * 0.062);
   }
-  P.add('gunMountDark', cylZ(0.13, 0.03, 18), 0, 0, 1.36);
+  P.add('gunMountDark', cylZ(0.13, 0.03, 18), 0, 0, 1.76);
 }
 
-/** The Sho't's IDF racks: an open basket round the bustle bin and a jerrycan cage at the turret's right rear. */
+/** The Sho't's IDF racks: an open basket round the bustle bin, a stowage box on the bustle's left rear corner and a
+ * jerrycan cage on its right, both flush with the side bins' faces, so the turret keeps its width to the back in plan
+ * (the Latrun Alef's rear: the box and the basket span the turret; the critic, 2026-10-29: the turret read egg-shaped
+ * with the basket wider than its tail). */
 function buildIdfTurretRacks(P: TankBuilderPort): void {
+  // the left rear corner box, behind the side bins' back ends: the side bins' course and height, its inner face in the
+  // casting, chamfered lid, hasps
+  const bz0 = -1.30, bz1 = -1.80, BOT = 0.30, TOP = 0.74;
+  P.add('turretDetail', slab(
+    [0.76, BOT, bz0], [1.44, BOT, bz0], [1.42, BOT, bz1], [0.76, BOT, bz1],
+    [0.76, TOP, bz0], [1.38, TOP, bz0], [1.36, TOP, bz1], [0.76, TOP, bz1]));
+  P.add('turretDark', box(0.012, 0.012, bz0 - bz1 - 0.08), 1.37, TOP + 0.002, (bz0 + bz1) / 2);
+  for (const f of [0.25, 0.75]) P.add('turretDark', box(0.02, 0.06, 0.05), 1.442, TOP - 0.10, bz0 + (bz1 - bz0) * f);
   // the full-width basket hung on the bustle, its top under the roof edge, its floor well clear of the AVDS deck (the
   // Latrun Sho't Kal Alef's rear, the Litani photograph; the critic, 2026-10-28: the shallow rack read as a deck cage)
   mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.90, d: 0.60, h: 0.44, fill: 0.6, rails: 2, seed: 9730 }),
@@ -1312,7 +1325,7 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
   // the drone dock's two bars over the basket's left half (missionAttachmentReceiver.ts): the roof guns sweep the roof
   addMissionAttachmentReceiver(P, 'shot_kal');
   // jerrycan cage: a welded bar frame on two brackets off the casting
-  const cx = -1.08, cz = -1.50, w = 0.30, d = 0.52, h = 0.52, y0 = 0.33;
+  const cx = -1.26, cz = -1.56, w = 0.30, d = 0.50, h = 0.52, y0 = 0.33;
   for (const [dx, dz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
     P.add('turretDark', box(0.025, h, 0.025), cx + dx * w / 2, y0 + h / 2, cz + dz * d / 2);
   }
@@ -1322,8 +1335,8 @@ function buildIdfTurretRacks(P: TankBuilderPort): void {
   }
   P.add('turretDark', box(w, 0.012, d), cx, y0 + 0.004, cz);
   for (const bz of [-0.16, 0.16]) {
-    P.add('turretDark', box(0.32, 0.06, 0.06), cx + 0.21, y0 + 0.06, cz + bz);
-    P.add('turretDark', box(0.06, 0.24, 0.06), cx + 0.15, y0 + 0.17, cz + bz);
+    P.add('turretDark', box(0.44, 0.06, 0.06), cx + 0.30, y0 + 0.06, cz + bz);
+    P.add('turretDark', box(0.06, 0.24, 0.06), cx + 0.18, y0 + 0.17, cz + bz);
   }
   mount(P, 'turret', FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 9740 }), cx, y0 + 0.02, cz, [0, Math.PI / 2, 0]);
 }
@@ -1424,21 +1437,39 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
   }
   if (m.cover) {
     // the green canvas cover over the block, sagging between its lacing points, its sleeve strapped to the barrel (the
-    // Sho't Kal's; the Dutch Mk 5/2, the Strv 104 and 105 and the Australian photographs show the same laced cover)
+    // Sho't Kal's; the Dutch Mk 5/2, the Strv 104 and 105 and the Australian photographs show the same laced cover). The
+    // Dutch Mk 5/2's is stretched flat across a riveted rectangular frame (the head-on photograph; the critic,
+    // 2026-10-29: the rounded cover read as a dome).
+    const framed = m.kit === 'none' && m.mk5 && !m.swedish && !m.idf && !m.late;
     const drape = (z: number, hw: number, top: number, bot: number, sag: number): SolidSection => {
-      const ring: SectionPoint[] = [];
+      const ring: SectionPoint[] = [], p = framed ? 0.18 : 0.45;
       for (let k = 0; k < 16; k++) {
         const a = -Math.PI / 2 + (k / 16) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
-        const r = Math.pow(Math.abs(c), 0.45) * Math.sign(c), q = Math.pow(Math.abs(sn), 0.45) * Math.sign(sn);
+        const r = Math.pow(Math.abs(c), p) * Math.sign(c), q = Math.pow(Math.abs(sn), p) * Math.sign(sn);
         ring.push([r * hw, (sn > 0 ? q * top : q * bot) - (Math.abs(c) < 0.6 && sn < 0 ? sag : 0)]);
       }
       return { z, ring };
     };
     const hc = hw + 0.05;
-    P.add('gunMountCloth', sectionSolid([
+    P.add('gunMountCloth', sectionSolid(framed ? [
+      drape(0.24, hc, 0.35, 0.235, 0.0), drape(0.42, hc, 0.34, 0.235, 0.015), drape(0.56, hc - 0.01, 0.335, 0.232, 0.01),
+      drape(0.60, hc - 0.03, 0.32, 0.222, 0.0),
+    ] : [
       drape(0.24, hc, 0.35, 0.235, 0.0), drape(0.42, hc, 0.34, 0.235, 0.02), drape(0.53, hc - 0.02, 0.33, 0.23, 0.03),
       drape(0.60, hc - 0.07, 0.30, 0.215, 0.02), drape(0.65, 0.48, 0.24, 0.19, 0.0), drape(0.70, 0.22, 0.17, 0.16, 0.0),
     ], { centeredSideQuads: true, smoothSideEdges: [...Array(16).keys()] }));
+    if (framed) {
+      // the riveted steel frame round the cover's face, and the cover's short collar round the tube
+      const fw = hc + 0.02, ft = 0.355, fb = 0.21, fz = 0.585;
+      P.add('gunMountDark', box(2 * fw, 0.045, 0.05), 0, ft, fz);
+      P.add('gunMountDark', box(2 * fw, 0.045, 0.05), 0, -fb, fz);
+      for (const s of [-1, 1]) P.add('gunMountDark', box(0.045, ft + fb, 0.05), s * fw, (ft - fb) / 2, fz);
+      for (let k = 0; k < 9; k++) {
+        const x = -fw + 0.06 + k * (2 * fw - 0.12) / 8;
+        for (const y of [ft, -fb]) P.add('gunMountDark', cylZ(0.014, 0.012, 6), x, y, fz + 0.03);
+      }
+      P.add('gunMountCloth', cylZ(0.13, 0.12, 16, 0.15), 0, 0, 0.66);
+    }
     for (const [fz, fy, fw] of [[0.57, 0.20, 1.10], [0.61, 0.04, 1.14], [0.58, -0.12, 1.04]] as const) {
       P.add('gunMountCloth', xform(cylX(0.020, fw, 8), 0, 0, 0), 0, fy, fz);
     }
@@ -1473,7 +1504,7 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
   const len = m.gunLen;
   if (m.gun === 'l7') {
     // 105 mm L7: the concentric bore evacuator a little behind mid-barrel, a plain muzzle
-    KIT.buildGun(P, { len, r: 0.074, evac: m.kit === 'olifant' ? 0.34 : 0.45, evacR: 1.55, baseR: 0.15, collar: false, sleeve: m.late || m.kit === 'strv105' || m.kit === 'olifant' });
+    KIT.buildGun(P, { len, r: 0.074, evac: m.kit === 'olifant' ? 0.42 : 0.45, evacR: 1.55, baseR: 0.15, collar: false, sleeve: m.late || m.kit === 'strv105' || m.kit === 'olifant' });
     muzzleBore(P, { len, r: 0.074 });
   } else if (m.gun === '165') {
     // 165 mm L9A1 demolition gun: a short, fat piece - a thin root out of the mantlet's boss, the bore evacuator's fat

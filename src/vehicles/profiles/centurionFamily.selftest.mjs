@@ -101,8 +101,8 @@ for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion
     } else if (SLEEVED.has(id)) {
       // the sleeve clads the tube 52-82 % along: measure it against the bare tube between it and the muzzle
       const bare = Math.min(...r.slice(35, 39).filter((x) => x > 0)), clad = Math.min(...r.slice(22, 32).filter((x) => x > 0));
-      // (the Olifant's GT-3B carries its evacuator just ahead of the boot, 28-40 % along)
-      const [e0, e1] = id === 'olifant_mk2' ? [0.28, 0.40] : [0.40, 0.50];
+      // (the Olifant's GT-3B carries its evacuator just ahead of the boot on its mantlet housing, 36-48 % along)
+      const [e0, e1] = id === 'olifant_mk2' ? [0.36, 0.48] : [0.40, 0.50];
       assert.ok(bulge(e0, e1) > bare * 1.35 && clad > bare * 1.12, `${id}: the L7A2's evacuator and thermal sleeve`);
     } else {
       assert.ok(bulge(0.40, 0.50) > tube * 1.35 && bulge(0.62, 0.85) < tube * 1.25, `${id}: the L7's bore evacuator 40-50 % along`);
