@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "ztz85_iii": {
+      "name": "ZTZ-85-III",
+      "authority": "Main approved photographic qualification of the ground-up ZTZ-85-III (release 263, owner 2026-10-28: \"yeah going to need a totally new ztz 85 III\") on 2026-10-28 as option (a), for the release after 263, and the owner started it the same day. Its registered print (ztz85iii_manako.glb) is a fused, low-confidence conversion about 9% too tall and is retired as a comparison. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://tank-afv.com/coldwar/China/type-85-mbt.php",
+        "https://en.wikipedia.org/wiki/Type_80/88_main_battle_tank",
+        "https://forum.warthunder.com/t/ztz-85-iii-the-85s-last-hurrah/104271"
+      ],
+      "widthM": 3.372,
+      "overallLengthM": 10.91,
+      "tallestM": 3.26,
+      "envelopeBasis": "Width is the published 3.372 m over the fenders; the 85-III prototype ran without skirts. Length is the published 10.369 m gun forward from the stern plate, plus the two 200 L drums carried across the stern plate (the photographs show them; their 0.54 m depth is as built, not published). Tallest is the tip of the one whip antenna on the turret's rear (the photographs show one), as built rather than published. The published height is 2.29 m to the cupola, which the fixture holds. docs/references/tanks/ztz85_iii.md §263 records the sources and photographs.",
+      "caliberMm": 125,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/ztz85iii.selftest.mjs"
+    }
+  }
+}

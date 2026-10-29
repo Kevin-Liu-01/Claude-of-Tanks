@@ -157,6 +157,8 @@ const CHINA_SPECS = {
   const spec = CHINA_SPECS.ztz85_iii;
   spec.gunPitchByYawDeg = ZTZ85III_GUN_PITCH_BY_YAW_DEG;
   spec.hp = 2100;
+  // 265 (the photo packet's 125 mm): the gun itself, not only its rounds; the Type 59's 100 mm rode the variant to here
+  spec.gun.caliberMm = 125;
   spec.gun.reloadS = 6.8;
   spec.gun.baseAccuracy = 0.33;
   spec.gun.aimTimeS = 2.0;
