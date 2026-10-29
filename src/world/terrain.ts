@@ -6280,13 +6280,18 @@ void splatCompute() {
         // (round 8, Delta's turned field "a flat, textureless single colour … plastic") its wet and dry ground in patches of
         // metres to tens of metres (n2) under the clods
         cropCol *= 1.0 + 0.14 * (n1h - 0.5) * (1.0 - smoothstep(0.03, 0.12, gFootM)) + 0.14 * (clodP - 0.5) + 0.14 * (n2 - 0.5);
+        // (round 9, the critics on round 8: Foundry's coal-dark field "a flat dark fill", Delta's "plastic") the clods' dry
+        // tops pale and grey a little over the damp soil — in patches (n1, a metre), their crumbs near the tank (n1h) — so
+        // a turned field keeps an irregular grain at every range and none of it is ruled
+        float crustP = smoothstep(0.55, 0.85, n1) * 0.55 + smoothstep(0.50, 0.80, n1h) * 0.45 * (1.0 - smoothstep(0.03, 0.12, gFootM));
+        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.35) * 1.55, 0.55 * crustP);
         // (2026-10-28, the owner: "weird parallel lines on ground … on all maps") the lands were crisp square bands of ±9 %
         // from 40 m on (bandAA), and the turned fields carried ruled stripes at battle range. A land is the light on its
         // furrow slices turned one way or the other: a soft swell of tone, each land its own width by the tractor's line
         // (±11 % across the field), a few percent at the chase camera and a little more from the ridge
         float landPh = acrossP * 1.963 + jit * 3.0 + 0.75 * sin(acrossP * 0.29 + jit * 4.1);
         rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir) * furrowNear
-          + sin(landPh) * 0.035 * landAmp * stripeAA(3.2 * kP, acrossDir)
+          + sin(landPh) * 0.02 * landAmp * stripeAA(3.2 * kP, acrossDir)
           + sin(acrossP * 0.483 + jit * 6.0) * 0.03 * stripeAA(13.0 * kP, acrossDir);
         rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.40 * smoothstep(0.05, 0.20, gFootM) : 0.0);
         // (wave 46, Verdant's establishing foreground: "a blurred, brush-stroke smear of dark brown soil … if the streaks
@@ -6308,7 +6313,7 @@ void splatCompute() {
         // (wave 86, Verdant's establishing view: "a smeared, streaky charcoal texture with no clods or furrow relief") past
         // the furrows' own reach the plough keeps its relief: the lands' low crowns, each 3.2 m land a gentle ridge lit and
         // shaded with the sun (2026-10-06, the cost trim: wave 88's clods — a near read of the noise — are gone again)
-        if (nrmOn && uLandTier > 0.5) n.xy += acrossDir * sin(landPh) * 0.03 * landAmp * stripeAA(3.2 * kP, acrossDir) * soilHere;
+        if (nrmOn && uLandTier > 0.5) n.xy += acrossDir * sin(landPh) * 0.015 * landAmp * stripeAA(3.2 * kP, acrossDir) * soilHere;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
         // (wave 88: "a pale sandy grey-beige, which is neither Prokhorovka's black chernozem nor Hesse's brown loam")
