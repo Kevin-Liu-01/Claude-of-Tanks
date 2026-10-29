@@ -52,6 +52,7 @@ type MaterialPaletteKey = Exclude<
 
 const ROLE_MATERIAL_KEYS: Readonly<Record<string, MaterialPaletteKey>> = {
   tireRubber: 'rubber',
+  hullRubber: 'rubber',
   trackSteel: 'trackLink',
   trackBand: 'trackLink',
   armorPaint: 'hull',

@@ -3470,13 +3470,6 @@ const strv103bHullY = (_x: number, z: number): number => profileY([
   [-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63],
   [2.61, 1.53], [3.22, 1.55],
 ], z);
-const strv122HullY = (_x: number, z: number): number => {
-  const armorY = z < 1.45 ? 1.76 : 1.76 - (z - 1.45) * 0.12;
-  // The Swedish cover is tied to a shallow support frame above the bow.
-  // This clearance keeps the front drape outside the live 2A5-family shoe
-  // wrap while still following the glacis angle.
-  return armorY + 0.15;
-};
 // The rebuilt Oplot keeps the donor fenders and a new welded turret. Cloth
 // follows those surfaces; hatches, MG, sights and the pitching gun stay open.
 const t84HullY = (_x: number, z: number): number => profileY([
@@ -3723,32 +3716,6 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         topAt: (z) => strv103bHullY(0, z) - 0.02,
         bottomAt: (z) => 0.98 + Math.sin(z * 2.5) * 0.04,
         outAt: (_z, t) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
-    },
-  },
-  strv121: {
-    id: 'strv121', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
-    disabled: true,
-    light: 0x657845, dark: 0x31422d, netColor: 'rgba(39,53,31,0.80)',
-    hull: {
-      top: [{ x0: -1.72, x1: 1.72, z0: -3.62, z1: 3.70, nx: 26, nz: 54,
-        yAt: strv122HullY,
-        outline: [[-1.36, -3.62], [1.36, -3.62], [1.72, -3.10], [1.72, 2.68], [1.10, 3.70], [-1.10, 3.70], [-1.72, 2.68], [-1.72, -3.10]],
-        holes: [rect(-1.47, 1.47, -2.35, 1.42), rect(-0.24, 0.24, 1.04, 1.72)], seed: 101 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.10, z1: 3.05, nz: 42, ny: 8,
-        topAt: (z) => strv122HullY(0, z), bottomAt: (z) => 1.54 + Math.sin(z * 2.4) * 0.025,
-        outAt: (_z, t) => 1.91 + (1 - t) * 0.035, seed: 109 + side })),
-    },
-    turret: {
-      top: [{ x0: -1.48, x1: 1.48, z0: -3.12, z1: 1.42, nx: 24, nz: 38,
-        yAt: () => 1.08,
-        outline: [[-1.08, -3.12], [1.08, -3.12], [1.48, -2.10], [1.42, 0.55], [0.90, 1.42], [-0.90, 1.42], [-1.42, 0.55], [-1.48, -2.10]],
-        holes: [rect(-1.10, -0.38, -0.72, 0.10), rect(0.14, 0.88, -0.65, 0.12), rect(-0.36, 0.36, 0.62, 1.50)], seed: 117 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.02, z1: 0.92, nz: 32, ny: 8,
-        topAt: () => 1.02, bottomAt: (z) => 0.10 + Math.sin(z * 3.1) * 0.024,
-        outAt: (z, t) => (z < -1.65 ? 1.38 : 1.70) + (1 - t) * 0.030, seed: 125 + side })),
-      face: [{ z: 1.55, x0: -1.38, x1: 1.38, y0: 0.02, y1: 0.92, nx: 20, ny: 9,
-        outline: [[-1.02, 0.02], [1.02, 0.02], [1.38, 0.40], [0.96, 0.92], [-0.96, 0.92], [-1.38, 0.40]],
-        holes: [rect(-0.50, 0.50, -0.04, 0.82)], seed: 133 }],
     },
   },
   t84: {
