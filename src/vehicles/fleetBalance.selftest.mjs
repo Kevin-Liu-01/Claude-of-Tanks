@@ -176,8 +176,8 @@ assert.deepEqual({
   accuracy: 0.263,
   aim: 1.76,
   alpha: 520,
-  // 263 (FAIRNESS-263): the Challenger 1 marks' 790 mm round at VIII
-  penetration: [790, 725, 660],
+  // 263: the marks keep the L26A1's 757 mm round (commit B's 790 mm round dropped for C1 + C2, Main 10-29)
+  penetration: [757, 689, 620],
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
 assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
   'Challenger 1 uses its own late-Cold-War kinetic round instead of the Challenger 2 donor round');
