@@ -128,7 +128,7 @@
    "hostSweep": []
   },
   "amx40_proto": {
-   "inputHash": "09157cae92d96af6",
+   "inputHash": "a26d9a5c7f121fb2",
    "runs": [
     {
      "index": 0,
@@ -3123,7 +3123,7 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "4dd086ec7b459533",
+   "inputHash": "eff45f4368c2a53e",
    "runs": [
     {
      "index": 0,
@@ -3154,7 +3154,7 @@
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "ce6a7ca233d0de45",
+   "inputHash": "06f338593d839b25",
    "runs": [
     {
      "index": 0,
@@ -3185,7 +3185,7 @@
    "hostSweep": []
   },
   "t80bv": {
-   "inputHash": "5ae649b794bf6a7e",
+   "inputHash": "aed1575b8c1e5bf5",
    "runs": [
     {
      "index": 0,
@@ -3365,7 +3365,7 @@
    "hostSweep": []
   },
   "t90a_2006": {
-   "inputHash": "8c6a609470be876a",
+   "inputHash": "aa08d703a786b4c5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3755,7 +3755,7 @@
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "bc902905cd6b5e56",
+   "inputHash": "bc1cf13bb065aca8",
    "runs": [
     {
      "index": 0,
