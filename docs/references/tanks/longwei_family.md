@@ -42,7 +42,7 @@ bolt row), from |x| 0.36 by the throat to 1.47, 5 cm inside the outer corner, so
 rows take fixed shares of each column's height, and the columns' widths follow the face's height (`cheekFaceColumns`):
 narrow by the throat, broad at the corner. The tiled kits take as many columns as make each tile square
 (`squareColumnCount`). Each of the four wears its own pattern: the Zhuque the Longwei's two modules, the Qinglong two rows
-of square FY-5 tiles, the Baihu two V-ridged chevrons (16 degrees off each half, the ridge capped at 9 cm), the Xuanwu
+of square FY-5 tiles, the Baihu two V-ridged chevrons (24 degrees off each half, the ridge capped at 12 cm), the Xuanwu
 one row of square blocks. The Longwei keeps its two modules, now face-fitted too.
 
 The Baihu's floodlight (`addLongweiFloodlight` on `gunFloodlight.ts`, the fleet's gun-floodlight pattern): a 0.34 m
@@ -112,6 +112,25 @@ meteorological mast's bare cross bar as a stray post (a sensor head and vane). T
 fix and showed its hull numbers gone; they stand on its skirt band again (`vehicleMarkingIncludesPermanentHullArmor`).
 Not this lane's geometry, left as they are: the ZTZ-99A2 hull's rear drums, black rear skirt panels and glacis fins, the
 Qilin hull's rear drum cradle, the fleet's mission dress on the bustle roof.
+
+### Blind critic rounds 3-5 and the final verdicts
+
+Round 3 (the square tiles, the yoke, the trimmed screen): Longwei PASS (7-8; its markings back on the skirt band),
+Qinglong PASS (8), Baihu PASS (7-8); Zhuque FAIL (kit readability 6: its two big modules merged into the Red Earth coat,
+its bustle boxes read as plain walls), Xuanwu FAIL (its cheek row a near-black band on the Night Digital coat, a decor tarp
+roll over its smoke banks). The Zhuque and Xuanwu take `blockCamo`: each cheek block and bustle box its own patch of the
+camouflage (userData.camoUvOffset, the Sabra Mk 2 cheek covers' precedent), so a busy or dark coat no longer runs straight
+across them. Round 4: Zhuque PASS (7-8), Xuanwu FAIL (build quality 6: the decor tarp roll in the smoke banks and the decor
+smoke pair standing above the roofline as a comb). The Longwei's own decor rule (no decor smoke pair, no tarp or net roll on
+a turret side: `decorations.ts`, release 262) now covers every family member; all four had drawn both rows. Final round
+on the decor-ruled builds: Qinglong PASS (7-8), Zhuque PASS (7), Xuanwu PASS (7-8); Baihu FAIL (kit readability 6: its
+chevrons read as flat slabs), its ridge now 24 degrees off each half (12 cm at most) with `blockCamo`, then Baihu PASS
+(7-8). Every member's last verdict is on its shipped geometry.
+
+Left as they are, named by the critics and not this lane's geometry: the ZTZ-99A2 hull's rear drums, black rear skirt
+panels and glacis fins; the Qilin hull's rear drum cradle; the fleet's mission dress on the bustle roof; the camouflage's
+staircase shear on sloped faces (the reference Longwei shows it: the shared face-box projection); the GL-5-style radar
+housings reading like sight heads (the Longwei's own suite, unchanged since 262).
 
 ## The ZTZ-99A2 hull's bow shoulder (main-reds 261)
 

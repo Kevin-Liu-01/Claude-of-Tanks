@@ -640,8 +640,9 @@ function addCheekWedges(P: TankBuilderPort, kit: LongweiTurretKit): void {
       layout.rows.forEach((share, row) => {
         const f0 = f + (row > 0 ? gapShare / 2 : 0), f1 = f + share - (row < layout.rows.length - 1 ? gapShare / 2 : 0);
         f += share;
-        // critic round 1: a 9-degree ridge read as flat slabs; the chevron's ridge stands 16 degrees off each half
-        const ridge = layout.ridge ? Math.min(0.09, ((a1 - a0) * FACE_ALONG / 2) * Math.tan(16 * D2R)) : 0;
+        // critic round 1: a 9-degree ridge read as flat slabs; round 4: at 16 degrees (9 cm at most) the V was lost at
+        // hero distance; the chevron's ridge stands 24 degrees off each half, 12 cm at most
+        const ridge = layout.ridge ? Math.min(0.12, ((a1 - a0) * FACE_ALONG / 2) * Math.tan(24 * D2R)) : 0;
         faceCassette(P, sector, sign, a0, a1, f0, f1, thick, ridge, kit.blockCamo);
       });
     }

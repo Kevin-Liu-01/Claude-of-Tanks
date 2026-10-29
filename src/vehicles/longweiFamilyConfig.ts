@@ -54,7 +54,7 @@ export const LONGWEI_FAMILY: readonly LongweiFamilyMember[] = Object.freeze([
     id: 'vt4a1_baihu', name: 'VT-4A1 Baihu', host: 'vt4a1', number: '941',
     // owner 2026-10-28: "add a big floodlight on thhe baihu"
     kit: Object.freeze({ revision: 'longwei-baihu-r264', pivot: ZTZ99A2_HULL_RING, faceEra: 'chevron', sideEra: true,
-      roofGun: 'pintle', protection: 'lwr', bustle: 'bins', bustleCage: true, floodlight: true, blockCamo: false }),
+      roofGun: 'pintle', protection: 'lwr', bustle: 'bins', bustleCage: true, floodlight: true, blockCamo: true }),
     summary: 'the VT-4A1 hull under an export Longwei turret: V-ridged chevron cassettes on the arrowhead faces and cassettes on the side modules, a big searchlight right of the gun, laser-warning receivers in place of the hard-kill suite, the QJC-88 on its pintle and a slat screen round the bustle',
     listedHeightM: 3.014,
     gunPitchByYawDeg: ZTZ99A2_HULL_GUN_STOPS,
