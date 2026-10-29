@@ -273,51 +273,69 @@ async function main(argv) {
   try {
     for (const { job, mapId } of pairs) {
       const queued = Date.now();
-      let session = null;
-      try {
-        await lock.acquire(options.waitHours * 3600 * 1000, {
-          ticket, place: ticket ? null : options.place, lockClass: 'render',
-          prepare: async () => {
-            browser ??= await launch();
-            pagesSinceLaunch++;
-            entry = await bootPage(browser, servers.get(job.dist).url, job.device);
-            await stageMap(entry, mapId);
-            session = await freezePage(entry.page);
-          },
-        });
-      } catch (error) {
-        // (a prepare that throws leaves the queue: the next pair re-enters under the same ticket, at its stamp)
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} not staged: ${String(error?.message ?? error).slice(0, 200)}`);
-        failed++;
-        ticket = lock.lastTicket ?? ticket;
-        if (entry) await entry.page.close().catch(() => {});
-        entry = null;
-        continue;
-      }
-      held = true;
-      ticket = lock.lastTicket;
-      const started = Date.now();
-      try {
-        await thawPage(entry.page, session);
-        // (a page that lost its world while frozen is staged again, inside the hold)
-        const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-        if (live !== mapId) await stageMap(entry, mapId);
-        const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
-        receipt.ms = Date.now() - started;
-        receipt.stagedMs = started - queued;
-        job.manifest.maps[mapId] = receipt;
-        writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
-        shot++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after `
-          + `${(receipt.stagedMs / 60000).toFixed(1)} min staging and queueing (${Object.keys(receipt.poses).join(',')}); ${shot}/${pairs.length}`);
-      } catch (error) {
-        failed++;
-        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed in the hold: ${String(error?.message ?? error).slice(0, 200)}`);
-      } finally {
-        lock.release();
-        held = false;
-        await entry.page.close().catch(() => {});
-        entry = null;
+      // (2026-10-29: the game's boot recovery reloads a page whose chunks stall under load, and a page re-staged inside
+      // the hold hung there 20 minutes. A page that lost its world is staged again outside the lock — the ticket given
+      // back and taken again — and a hold is capped at four minutes.)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        let session = null;
+        try {
+          await lock.acquire(options.waitHours * 3600 * 1000, {
+            ticket, place: ticket ? null : options.place, lockClass: 'render',
+            prepare: async () => {
+              if (entry) await entry.page.close().catch(() => {});
+              browser ??= await launch();
+              pagesSinceLaunch++;
+              entry = await bootPage(browser, servers.get(job.dist).url, job.device);
+              await stageMap(entry, mapId);
+              session = await freezePage(entry.page);
+            },
+          });
+        } catch (error) {
+          // (a prepare that throws leaves the queue: the next attempt re-enters under the same ticket, at its stamp)
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} not staged: ${String(error?.message ?? error).slice(0, 200)}`);
+          ticket = lock.lastTicket ?? ticket;
+          if (entry) await entry.page.close().catch(() => {});
+          entry = null;
+          if (attempt === 3) failed++;
+          continue;
+        }
+        held = true;
+        ticket = lock.lastTicket;
+        const started = Date.now();
+        let outcome = 'failed';
+        try {
+          const shooting = (async () => {
+            await thawPage(entry.page, session);
+            const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+            if (live !== mapId) return 'restage';
+            const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
+            receipt.ms = Date.now() - started;
+            receipt.stagedMs = started - queued;
+            receipt.attempt = attempt;
+            job.manifest.maps[mapId] = receipt;
+            writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+            return 'shot';
+          })();
+          shooting.catch(() => {}); // (a hold past its cap closes the page under it)
+          outcome = await Promise.race([shooting, sleep(240_000).then(() => 'timeout')]);
+        } catch (error) {
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed in the hold: ${String(error?.message ?? error).slice(0, 200)}`);
+        } finally {
+          lock.release();
+          held = false;
+          if (outcome !== 'shot') { await entry.page.close().catch(() => {}); entry = null; }
+        }
+        if (outcome === 'shot') {
+          shot++;
+          const receipt = job.manifest.maps[mapId];
+          console.log(`[${label}] ${stamp()} ${job.name} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after `
+            + `${(receipt.stagedMs / 60000).toFixed(1)} min staging and queueing (${Object.keys(receipt.poses).join(',')}); ${shot}/${pairs.length}`);
+          await entry.page.close().catch(() => {});
+          entry = null;
+          break;
+        }
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} ${outcome} (attempt ${attempt}): staged again outside the lock`);
+        if (attempt === 3) failed++;
       }
       // a fresh browser every eight pairs: nothing a closed page left behind accumulates
       if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }

@@ -6351,8 +6351,12 @@ void splatCompute() {
         float moundR = mix(0.5, crownR, rowNear) * mix(0.55, plantR, plantVis);
         float leafN = uLandTier > 0.5 && gFootM < 0.04 ? nz(uv, 0.45, vec2(0.17, 0.43)).r : 0.5;
         float leafF = mix(0.5, smoothstep(0.30, 0.70, leafN), 1.0 - smoothstep(0.015, 0.04, gFootM));
-        float litR = smoothstep(0.25, 0.80, n1h);
-        float lightR = (0.62 + 0.50 * moundR) * (0.80 + 0.40 * litR) * (0.75 + 0.50 * leafF);
+        // (round 5, the phone's frames: past ~20 m the decimetre leaves, squashed by the view, read as wavy streaks — a
+        // rippled water — once no grass stood over them) the leaves' contrast and relief go with the pixel's footprint
+        // (gone by 12 cm), and the canopy's plants in clumps (n1, ~0.3–1.5 m) carry its texture at range
+        float litAmp = 1.0 - smoothstep(0.03, 0.12, gFootM);
+        float litR = mix(0.5, smoothstep(0.25, 0.80, n1h), litAmp), clumpR = smoothstep(0.30, 0.70, n1);
+        float lightR = (0.62 + 0.50 * moundR) * (0.80 + 0.40 * litR) * (0.75 + 0.50 * leafF) * (0.88 + 0.24 * clumpR);
         vec3 leaf = vec3(0.560, 1.150, 0.420) * baseL * bright * lightR
           * mix(vec3(0.90, 0.95, 1.10), vec3(1.06, 1.03, 0.88), smoothstep(0.60, 1.10, lightR));
         cropCol = mix(leaf, soilF * 0.62, soilW);
