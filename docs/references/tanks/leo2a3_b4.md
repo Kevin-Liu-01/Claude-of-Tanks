@@ -41,8 +41,8 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a3-b4-2
   construction with the production Leopard 2's deeper heavy fore skirt blocks (the photographed step) and the forward fuel
   tanks' filler caps; pressed louvre exhaust grilles on the 2A2, the fourth batch's round rods on the 2A3s.
 - Turret (turret metres from the ring at (0, 1.64, 0.37)): the cheek blocks' faces at z 1.65 (hull z 2.02, over the
-  driver's hatch) across from the 0.95 m gun slot to 1.20 m off the bore, swept back 6 degrees outward, vertical to 0.60 m
-  and bevelled back to their tops, a short chamfer to the 1.27 m half-width walls (see "Turret front"), the walls to the
+  driver's hatch) across from the 0.95 m gun slot to 1.20 m off the bore, swept back 27 degrees outward, vertical to 0.60
+  m and bevelled back to their tops, a short chamfer to the 1.27 m half-width walls (see "Turret front"), the walls to the
   step at z -1.62, the bustle 1.15 m half-width to its rear plate at z -2.64 (hull z -2.27; 0.86 m half-width), roof 0.66
   at the front rising to 0.83; the mantlet set 3 cm back in the slot with the coaxial MG3's port and the FERO Z18's
   aperture, a round boss on a bolted flange narrowing to the sleeve;
@@ -83,25 +83,36 @@ cavity in the front armour in previous models").
   collar 45 mm proud, its lens back in the bore, its cap hanging on a chain), both in the mantlet and pitching with the
   gun. The 2A2's collar stands longer (about 0.12 m, an estimate: from the 2A3 the tube was shortened).
 - The "window thing" is the EMES 15 gunner's sight in a notch in the right cheek's top inboard corner, open to the front
-  and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.28 m tall under the sight
-  housing's front, about 0.22 m deep to the sight head; the head's thermal window outboard and its day and laser window
-  inboard; two armoured door leaves hinged at the walls, swung forward flat against them (open).
+  and the top: walls 0.50 and 0.94 m right of the bore, sill 6 cm over the bore, the opening 0.33 m tall under the sight
+  housing's front, about 0.22 m deep to the sight head, roofed by the housing's bolted lip 16 cm out over it; the head's
+  thermal window outboard and its day and laser window inboard; two armoured door leaves hinged at the walls, swung
+  forward flat against them (open).
+- Over the mantlet (the owner's photo): the dark groove of its seal behind the mantlet's top, the rubber strip, and the
+  bolted cover standing 4 cm over the brow from the sight housing to the left cheek, 0.30 m deep.
 - The slope (the owner, 2026-10-28: "i dont think its that they need to lean back is that if you look top down, the
   chheeks are at a slight slope, like \ / but not extreme"; shown the two readings, the owner chose the outer ends set
-  back: "A built now is correct"): the faces vertical, swept back 6 degrees toward their outer ends in plan, running
-  nearly the turret's width (about 2.5 m), a short chamfer to the walls. No source publishes the plan angle
-  (en.wikipedia: "vertically faced"; the research note: up to 5 degrees not ruled out by the photos).
+  back: "A built now is correct"; 2026-10-29, on the 6 degrees first built: "i think it nneeds to be a lot mroe than 6
+  degrees"): the faces vertical, swept back 27 degrees toward their outer ends in plan, running nearly the turret's
+  width (about 2.5 m), a short chamfer to the walls; the notch's back, the sight head and the housing's front parallel
+  to the face, the shell's front (cheekRootZ) back 15 cm to z 0.88 behind the outer ends' bevelled tops. No source
+  publishes the plan angle (en.wikipedia: "vertically faced" is the faces' rake, not their plan). Fitted to the owner's
+  photo: its two cheek faces' rails slope +0.02 and -0.37, the turret side's rail +0.52, and the faces stand 150 and 80
+  px wide; a camera and sweep fitted to all four give 31 degrees without perspective and 24 to 29 over the focal lengths
+  its vertical edges allow (6 degrees the worst fit). 27 is the middle.
 - The face's place and its bevel (the 2A4 lane, 2026-10-28, Björn Huber's published 2A4 side drawing registered on this
   hull by road-wheel pitch; R2's critic had read the same 0.4 m): the faces stand at hull z 2.02, over the driver's hatch,
   0.38 m ahead of the earlier build's, the bustle's rear plate at hull z -2.27; the faces vertical to 0.60 m, then a bevel
   back 0.22 m to the cheeks' flat tops (the photographed 2A4 fronts; the owner to that lane: "fronts of leo 2a4s are
   sloped though"); the roof's front plates over them 70 mm (btvt).
-- The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.33 m over it, its vertical edges bevelled and its
-  top chamfered back under the brow, set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
-  2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
+- The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.23 m over it at its face, its vertical edges
+  bevelled 3 cm and its top one chamfer 0.22 m back up to the brow, where the seal runs (a thick lifting eye standing
+  off it as an arch and two bolt heads on it; the gun's root one cone from the face, 0.47 m across, to the sleeve's
+  bolted ring 0.26 m out, then a canvas boot down onto the tube: the owner's photo), set 3 cm back in the slot (R4's
+  photo critic and the 2A4 lane's four photographed 2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
   estimate), with the dark gun-port recess under it; the trunnion and the muzzle stay where they were.
-- The grab rails across both cheek faces at a third of their height, and a small block low on the right face (the
-  reference photos; the 2A4 lane's measures).
+- The grab rails, round bars on standoff brackets across both cheek faces, the right one under the notch's sill (0.30 m)
+  and the left one higher (0.37 m); a rubber-faced pad 0.40 by 0.10 m on the right face's foot under the notch; a shallow
+  bolted panel on the left cheek's bevel (the owner's photo; the 2A4 lane's measures).
 - Anatomy, what a round meets: through the notch, the sight head and the 660 mm block behind the cavity (about 0.6 of the
   cheek's line of sight under the sill; the 2A4 front's known weak spot), modelled as `turret_front_sight_notch` (linked
   to the optics) on the face the collision shell meets: the notch has its own lateral band and these turrets'
@@ -145,6 +156,28 @@ cavity in the front armour in previous models").
   ports, the sight notch, the faces swept back in plan (a first 3-degree lean-back withdrawn on the owner's word), the
   full-width bevelled front 0.38 m forward on the registered drawing, the bustle 9 cm shorter, the mantlet 3 cm back in
   the slot, the rails at a third of the faces' height (the 2A4 lane's photographed 2A4s), on all three.
+- R7 (2026-10-29, a blind critic of the geometry renders against the owner's photo, FAIL; each finding checked against
+  the photo at its own scale): the sight housing's lintel up 5 cm and its bolted lip out over the notch, the doors the
+  opening's height; the mantlet's seal groove, rubber strip and raised cover over the brow; the pad on the right face's
+  foot at the photo's 0.40 by 0.10 m; the FERO cap smaller, hanging toward the gun on a slanted chain. Two findings
+  stood against the photo: the right rail's height matches it at the cheek's own scale, and the 2A3's "ledge" is the
+  OTCO's rim (R5, the owner's). Critic round 2 FAIL on the mantlet (its top ran under a brow standing out like a
+  visor): the top one chamfer up to the brow, the eye and bolts on it, the gun's root one cone, the left rail 7 cm
+  higher than the right (the photo's close-up). Round 3 PASS; from its minor list, the sight's panes equal, the lip out
+  past the outer wall, round rails on brackets, the panel on the left cheek's bevel, and a lug no photo shows removed.
+  Left as built: wider cheeks and the notch 8 cm farther from the slot (both would move the armour; the cheek-to-mantlet
+  ratio was read across parts at different distances from the camera), a rounded seal cover.
+- R8 (2026-10-29, a blind critic of the textured renders at the photo's camera against the owner's photo and the strip):
+  PASS on the 2A3 and the OTCO. Its one 2A2 finding, the FERO collar standing about three times as far out, stands as
+  built: the 2A2 kept the long Z18 tube and the 2A3 shortened it (Panzerbaer, de.wikipedia; the photo is a 2A4). From
+  its minor list: the mantlet's eye a thick arch standing off the chamfer (it read as a thin ring lying on it), a canvas
+  boot from the bolted ring down onto the tube (the root stepped hard to the barrel), the FERO cap 1 cm farther from the
+  root's cone. Left as built: the ribbed seal and the doors' hinges (small fittings), and the right cheek's angle (the
+  critic's own reading: the older photos are flat-fronted).
+- R9 (2026-10-29, the owner on the turrets from above: "i think it nneeds to be a lot mroe than 6 degrees"): the cheek
+  sweep fitted to the owner's photo, 27 degrees ("The slope" above); the notch's back, the sight head, its lip and the
+  housing's front run parallel to the face (the flat back would have stood proud of the outer wall's bevel), the shell's
+  front back to z 0.88. The 2A4 lane's square fronts carry the same 6 degrees; the owner's words and the fit went to it.
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.

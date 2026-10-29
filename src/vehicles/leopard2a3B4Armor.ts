@@ -21,31 +21,35 @@ export const LEO2A3B4_TURRET = Object.freeze({
    * The cheek blocks: their faces at the gun slot frontZ (hull z 2.02, over the driver's hatch: Björn Huber's 2A4 side
    * drawing registered by road-wheel pitch, the 2A4 lane 2026-10-28), straight across to 1.20 m off the bore and swept
    * back cheekSweepDeg toward the outer ends (the owner, 2026-10-28: "if you look top down, the chheeks are at a slight
-   * slope, like \ / but not extreme"; shown both readings: "A built now is correct", the outer ends set back), a short
+   * slope, like \ / but not extreme"; shown both readings: "A built now is correct", the outer ends set back; 2026-10-29,
+   * on the 6 degrees first built: "i think it nneeds to be a lot mroe than 6 degrees"). 27 degrees is fitted to the
+   * owner's photo: its two cheek faces' rails (slopes +0.02 and -0.37), the turret side's rail (+0.52) and their faces'
+   * widths (150 and 80 px) give 24 to 31 degrees over the focal lengths its vertical edges allow, 6 the worst fit. A short
    * chamfer to the side walls; the faces vertical to faceTopY, then a bevel back cheekBevelM to the flat tops at cheekTopY
    * (the photographed 2A4 fronts; the owner via the 2A4 lane: "fronts of leo 2a4s are sloped though"); the welded shell
-   * ends at cheekRootZ and the blocks stand in front of it.
+   * ends at cheekRootZ, behind the outer ends' bevelled tops, and the blocks stand in front of it.
    */
   frontZ: 1.65,
-  cheekSweepDeg: 6,
+  cheekSweepDeg: 27,
   frontHalfWidthM: 1.20,
   slotHalfWidthM: 0.475,
   halfWidthM: 1.27,
-  cheekRootZ: 1.03,
+  cheekRootZ: 0.88,
   cornerChamferM: 0.10,
   faceTopY: 0.60,
   cheekTopY: 0.775,
   cheekBevelM: 0.22,
   /**
    * The EMES 15's notch in the right cheek's top inboard corner, open to the front and the top through the bevel: its
-   * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head; the head's
-   * armoured housing on the cheek's top behind it, its foot sightLintelY, its top sightTopY. Measured from the cited photos
-   * (docs/references/tanks/leo2a3_b4.md, "Turret front").
+   * walls 0.50 and 0.94 m right of the bore, its sill 6 cm over the bore, sightDepthM deep to the sight head (its back
+   * parallel to the cheek's face); the head's armoured housing on the cheek's top behind it, its foot sightLintelY, its top
+   * sightTopY. Measured from the cited photos (docs/references/tanks/leo2a3_b4.md, "Turret front"); the lintel rose 5 cm
+   * after the photo critic (its face over the opening is a thin lip in the owner's photo, not a deep brow).
    */
   sightInnerX: 0.50,
   sightOuterX: 0.94,
   sightSillY: 0.42,
-  sightLintelY: 0.70,
+  sightLintelY: 0.75,
   sightTopY: 0.86,
   sightDepthM: 0.22,
   stepZ: -1.62,
@@ -76,7 +80,7 @@ export function cheekFaceZ(x: number): number {
 /** Where the chamfer meets the side wall (turret metres). */
 export const LEO2A3B4_CORNER_Z = cheekFaceZ(LEO2A3B4_TURRET.frontHalfWidthM) - LEO2A3B4_TURRET.cornerChamferM;
 
-/** The notch's back (the sight head's face): sightDepthM behind the face at the notch's centre. */
+/** The notch's back (the sight head's face) at the notch's centre: sightDepthM behind the face, parallel to it. */
 export const LEO2A3B4_SIGHT_BACK_Z = cheekFaceZ((LEO2A3B4_TURRET.sightInnerX + LEO2A3B4_TURRET.sightOuterX) / 2)
   - LEO2A3B4_TURRET.sightDepthM;
 
@@ -118,8 +122,11 @@ export function leo2a3B4Armor(): ArmorEnvelope {
   const sill = Td.sightSillY, back = LEO2A3B4_SIGHT_BACK_Z;
   const fso = cheekFaceZ(Td.sightOuterX), fsi = cheekFaceZ(Td.sightInnerX), fs = (fso + fsi) / 2;
   const rise = Td.sightTopY - sill, run = fs - back;
-  const slope = rise / Math.hypot(rise, run), notch = A.sightNotch;
   const ny = Td.roofY, nz = fso - run * (ny - sill) / rise;
+  // the plate's obliquity to a frontal round, its rise back and the cheek's sweep together (the cosine of its normal on
+  // the bore's axis), so the round's line of sight through it is the sight head's protection
+  const ux = Td.sightOuterX - Td.sightInnerX, uz = fsi - fso, wy = ny - sill, wz = nz - fso;
+  const slope = Math.abs(ux * wy) / Math.hypot(uz * wy, ux * wz, ux * wy), notch = A.sightNotch;
   const mhw = Td.mantletHalfWidthM;
   const turretPlates = [
     chR('turret_cheek_R', A.cheek.phys, Td.slotHalfWidthM, fi, Td.frontHalfWidthM, fo, y0, yf, 0, 0, cheek),
