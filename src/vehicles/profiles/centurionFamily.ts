@@ -1529,8 +1529,12 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
     P.add('gun', cylZ(0.080, 0.06, seg, 0.128), 0, 0, ez + 0.23);
     muzzleBore(P, { len, r: 0.068 });
   } else {
-    // 20-pdr Type A: no fume extractor, the muzzle counterweight
+    // 20-pdr Type A: no fume extractor, the muzzle counterweight; its thicker breech-end jacket runs 1.2 m out of the
+    // mantlet's cover and steps down to the chase (the Bovington and Swiss Mk 3; the critic, 2026-10-29: an even thin
+    // tube)
     KIT.buildGun(P, { len, r: 0.068, evac: null, baseR: 0.14, collar: false, tubeInset: 0.40 });
+    P.add('gun', cylZ(0.098, 1.12, P.q ? 28 : 12), 0, 0, 1.26);
+    P.add('gun', cylZ(0.070, 0.12, P.q ? 28 : 12, 0.098), 0, 0, 1.88);
     P.add('gun', cylZ(0.098, 0.34, P.q ? 28 : 12, 0.090), 0, 0, len - 0.21);
     P.add('gun', cylZ(0.090, 0.06, P.q ? 28 : 12, 0.072), 0, 0, len - 0.41);
     P.add('gun', cylZ(0.094, 0.04, P.q ? 28 : 12, 0.098), 0, 0, len - 0.02);
