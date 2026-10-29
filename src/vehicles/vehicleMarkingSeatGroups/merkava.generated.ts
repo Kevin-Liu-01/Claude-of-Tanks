@@ -12,46 +12,46 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "insignia",
         "parent": "turret",
-        "size": 0.25,
+        "size": 0.22,
         "pos": [
-          -1.1332294,
-          0.5639516,
-          -1.4553677
+          -1.0847546,
+          0.2980316,
+          -1.2318287
         ],
         "quaternion": [
-          -0.0365654,
-          -0.7039566,
-          -0.0367935,
-          0.7083462
+          0,
+          -0.8077056,
+          0,
+          0.5895861
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava1b",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0107522
+        "visibilityClearSamples": 8,
+        "visibilityRatio": 0.8888889,
+        "maximumSurfaceErrorM": 0.0786734
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.2320609,
-          0.4101677,
-          -0.1447281
+          -1.1625043,
+          0.4101946,
+          -0.5874886
         ],
         "quaternion": [
-          -0.268842,
-          -0.6894556,
-          -0.2443457,
-          0.626634
+          -0.0015868,
+          -0.707723,
+          -0.001584,
+          0.7064864
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava1b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0075217
+        "maximumSurfaceErrorM": 0.0000699
       }
     ]
   },
@@ -63,44 +63,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.243571,
-          0.2159413,
-          -0.6821022
+          1.1054158,
+          0.266447,
+          -0.6821228
         ],
         "quaternion": [
-          -0.0353599,
-          0.7324814,
-          0.0327819,
-          0.6790773
+          -0.0026983,
+          0.7083128,
+          0.0026891,
+          0.7058885
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava2b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 8,
         "visibilityRatio": 0.8888889,
-        "maximumSurfaceErrorM": null
+        "maximumSurfaceErrorM": 0.0344103
       },
       {
         "kind": "designation",
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          1.1300436,
+          0.8814573,
           0.4653431,
-          -1.793446
+          -1.6285315
         ],
         "quaternion": [
-          -0.2382225,
-          0.7305838,
-          0.1983798,
-          0.6083936
+          0,
+          0.7922294,
+          0,
+          0.6102234
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava2b",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0128987
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   },
@@ -112,44 +112,44 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "turret",
         "size": 0.25,
         "pos": [
-          -1.6124269,
-          0.4296219,
-          0.1581544
+          -0.5503313,
+          0.6005004,
+          1.1237456
         ],
         "quaternion": [
-          -0.2907448,
-          -0.6203083,
-          -0.3091706,
-          0.65962
+          -0.0033589,
+          -0.6617017,
+          -0.0038058,
+          0.74975
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava2d",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0032543
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.4178586
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.2,
+        "size": 0.25,
         "pos": [
-          -1.4869703,
-          0.5125038,
-          -0.1726948
+          -0.4898645,
+          0.5338434,
+          1.5822697
         ],
         "quaternion": [
-          0.3867878,
-          0.7706949,
-          0.2271382,
-          -0.4525846
+          -0.0072616,
+          -0.7059048,
+          -0.0072856,
+          0.7082321
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "merkava2d",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.1114093
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": 0.3022183
       }
     ]
   },
@@ -176,7 +176,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0002
       },
       {
         "kind": "designation",
@@ -198,7 +198,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0002
       }
     ]
   },
@@ -210,9 +210,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.25,
         "pos": [
-          -1.9552,
+          -1.955,
           1.1702374,
-          -1.1832383
+          -1.5476883
         ],
         "quaternion": [
           0,
@@ -247,7 +247,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0002
       }
     ]
   },
@@ -256,47 +256,47 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
-        "parent": "turret",
+        "parent": "hull",
         "size": 0.24,
         "pos": [
-          1.3736222,
-          0.6355398,
-          -1.650506
+          1.9969,
+          1.07262,
+          -0.8413199
         ],
         "quaternion": [
-          0.072215,
-          0.838816,
-          -0.0462842,
-          0.5376156
+          0,
+          0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
-        "anchorProfile": "merkava4b",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 7,
-        "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.0043377
-      },
-      {
-        "kind": "designation",
-        "parent": "turret",
-        "size": 0.24,
-        "pos": [
-          1.6200218,
-          0.51626,
-          -1.0414724
-        ],
-        "quaternion": [
-          0.3071287,
-          0.7821137,
-          -0.1981802,
-          0.5046729
-        ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hullTrackGuardL",
         "anchorProfile": "merkava4b",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.015309
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          1.9969,
+          1.07262,
+          -1.6977799
+        ],
+        "quaternion": [
+          0,
+          0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hullTrackGuardL",
+        "anchorProfile": "merkava4b",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0025001
       }
     ]
   }
