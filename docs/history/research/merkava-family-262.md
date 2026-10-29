@@ -9,14 +9,15 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 
 ## Current status
 
-- Updated: 2026-10-28.
+- Updated: 2026-10-29.
 - Owner request: "we'll also need to redesign and clean up the merkava mk 1b, 2b, 2d, baz, mk 3c, and mk 4b, completely
   new with all oldness removed and we will need their gun assemblies back and beautiful" (2026-10-27). Superseding
   instruction, the same day, with the supplied Mk 1B, 2B, 2D, 3B, 3C, 3D and 4B models: "these look bad and need much
   more detail and geometry annd need to match the geometry of these"; then "make sure to use oru proper tank generation
   workfloow". Next round (2026-10-28): "rebuild the turret shells as flat hard-edged faces fitted to the source's armour
   faces, fix the noses (vertical lower plate, hooks, lamps, fender over the sprocket), add smoke dischargers, sleeve
-  bands and perforated skirts" (round log r8).
+  bands and perforated skirts" (round log r8). 2026-10-29, after the in-game look: "tbh ours look really good already
+  ... i think theyre don ehonestly anmy more detail would be too much and trroo many triangles" — geometry closed (r18).
 - IDs: `merkava1b` (Merkava Mk 1B), `merkava2b` (Mk 2B), `merkava2d` (Mk 2D), `merkava3c` (Mk 3C), `merkava3_baz`
   (Mk 3D Baz; seed id `merkava3d`), `merkava4b` (Mk 4B).
 - Implementation status: implemented (family builder over the supplied sources' measured records), iterating.
@@ -26,7 +27,9 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
 - Worktree / branch / baseline: `.claude/worktrees/sharp-montalcini-d9c09e`, `item/merkava-family-262`, base
   `b93941ce9d` (origin/main at lane start).
 - Candidate: the latest `item/merkava-family-262` commit; gate runs record their own commit.
-- Next action: the composed release check for the six ids after the regeneration chain.
+- Next action: for the next release, merge origin/main, then the ids-scoped regeneration chain, gun-depression
+  sweeps, assets and hero cards (the gallery still shows main's hero art), build and the gated release check; no more
+  geometry.
 - Blocking choices / known failures: see "Owner decisions" and the evidence matrix.
 
 ## Scope and preservation
@@ -244,6 +247,20 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   folded plates (neither the 1 cm nor the 2 cm crease fit gives one flat plate per face), the bustles open where the
   sources' tarps cover them (the 3C, 2D and 4B), the lamps (round lenses in guards), the 105 mm evacuator's bands,
   the 1B/2B mask cover, the 4B's skirt rails and cupola.
+- r16-r18 (2026-10-29, the next release): the turret modules rebuilt as their faces' own plates (lane tool
+  `platefit.py`: each source face of 15 cm2 or more traced, simplified to 3 mm, its corners onto the creases its
+  neighbours' planes share, extruded 3 cm inward; the 2B, 2D, 3C and 4B), after two dead ends kept as tools: plane-snapped
+  sections (`planesnap.py`; the creases slide between stations, the folds stay) and plane-bounded slabs along per-piece
+  directions with mitres (`plateslab.py`; flat on the 2D's boxes, stair-stepped on the 4B's turning wedges). The
+  3C/2D/4B bustle tarps as measured heightfields with their skirts (`tarpfit.py`, one soft canvas solid; the section fit
+  had broken them into slivers, so the baskets read open); the 4B's commander's sight a drum (`roundfit.py`); open-mouthed
+  discharger tubes (critics: "Lego bricks"); the 1B/2B rolled tarps as rolls about axes read off views of the groups
+  (`rollfit.py`); the M64 evacuator without the 3 mm-step beads (bands under 12 mm join a neighbour, stepped runs become
+  cones). Critics r17 (lower of two): 1B 5, 2B 5, 2D 6, 3C 6, Baz 6, 4B 6 (the 1B's frames unchanged since r15); blind
+  A/B r5 and mirror: the new build on all six, confidence 5. In-game stills (Tank Gallery, the game renderer):
+  `~/cot-lanes/merkava-family-262/ingame-r18/merkava-family-ingame.png`. Triangles at HIGH (export receipt):
+  160-182k a mark against main's 110-122k (x1.46 over the family; the SEPv2 X runs 229k). The owner closed the geometry
+  on the in-game look; the remaining critic notes (lamps, lower nose shackles, the 1B shell's creases) stay open.
 - The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
   sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
   DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS
