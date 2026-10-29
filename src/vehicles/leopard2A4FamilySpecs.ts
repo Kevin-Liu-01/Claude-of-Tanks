@@ -37,10 +37,10 @@ const wedgeFace = (name: string, sx: 1 | -1, standM: number, kind: string): KitP
   return sx > 0 ? kitPlate('turret', name, p0, p1, p3, { kind }) : kitPlate('turret', name, p1, p0, [p1[0], 0.56, p1[2] - 0.10], { kind });
 };
 
-/** A cassette course on a skirt's outer face, the length of the run. */
+/** A cassette course on a skirt's carrier, the length of the run, at the cassettes' centre plane (leopard2A4A5nlKit.ts). */
 const skirtCourse = (name: string, sx: 1 | -1, x: number): KitPlate => sx > 0
-  ? kitPlate('hull', name, [x, 0.80, 3.10], [x, 0.80, -3.20], [x, 1.42, 3.10], { kind: 'era' })
-  : kitPlate('hull', name, [-x, 0.80, -3.20], [-x, 0.80, 3.10], [-x, 1.42, -3.20], { kind: 'era' });
+  ? kitPlate('hull', name, [x, 0.797, 3.171], [x, 0.797, -3.161], [x, 1.373, 3.171], { kind: 'era' })
+  : kitPlate('hull', name, [-x, 0.797, -3.161], [-x, 0.797, 3.171], [-x, 1.373, -3.161], { kind: 'era' });
 
 interface FamilyEnvelope {
   readonly kitPlates?: Readonly<Record<string, KitPlate>>;

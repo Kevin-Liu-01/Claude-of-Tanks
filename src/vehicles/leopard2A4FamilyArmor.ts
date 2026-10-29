@@ -148,7 +148,7 @@ export interface Leopard2A4EnvelopeOptions {
  * no surface for, and the kit does not seat, throws.
  */
 export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leopard2A4EnvelopeOptions): ArmorEnvelope {
-  const T = LEO2A4_TURRET, H = LEOPARD2_HULL;
+  const T = LEO2A4_TURRET;
   const plates = new Map<string, ArmorPlate>();
   for (const p of [...legacy.hullPlates, ...legacy.turretPlates]) if (!plates.has(p.name)) plates.set(p.name, p);
   const used = new Set<string>();
