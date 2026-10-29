@@ -4,12 +4,12 @@
 // than 0.35 deg shallower than the need, linear between them): the handbook's -10 deg ahead and abeam, shallower over
 // the driver's hatch and periscopes and the front guard bins, and over the engine deck astern - the Sho't Kal's
 // AVDS-1790 hump holds its gun about level there and the Strv 81B's rear stowage box 2.3 deg up; the Strv 105's lamps
-// on its front bins hold it at -3.5 deg over the bow quarters; the Olifant's gun, at mid-height in its box turret, keeps
-// -10 deg ahead and abeam and -7.6 over the bow quarters; the AVRE's fascine cradle and its 165 mm's fat drum hold it at
-// -4.9 deg ahead, -3.4 over the bow quarters and -1.5 astern; the Australian Mk 5/1's lamps on its front bins' faces at
-// -5 deg over the bow quarters (re-measured on the critics' round, 2026-10-28). No mount conflicts and no blocks at
-// +20 deg on any of the nine.
-// profiles/centurionGunClearance.selftest.mjs holds the barrel (25 mm) and the mount (20 mm) to these stops.
+// on its front bins hold it at -3.5 deg over the bow quarters; the Olifant's gun, at mid-height in its box turret,
+// keeps -10 deg ahead and abeam and -7.6 over the bow quarters; the AVRE's dozer gear on the bow and its 165 mm's fat
+// drum hold it at -4.9 deg ahead, -3.4 over the bow quarters and -1.5 astern; the Australian Mk 5/1's lamps on its
+// front bins' faces at -5 deg over the bow quarters (re-measured on the critics' rounds, 2026-10-28 and 10-29). No
+// mount conflicts and no blocks at +20 deg on any of the nine. profiles/centurionGunClearance.selftest.mjs holds the
+// barrel (25 mm) and the mount (20 mm) to these stops.
 import type { GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import type { TankSpecRegistry } from './specContracts.ts';
 
@@ -22,10 +22,10 @@ const CENTURION_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> =
     [176, -2.9], [179, -2.9], [180, -3.2]],
   // depression 10, elevation 20; mountConflicts []
   centurion5_2: [
-    [0, -10], [1, -9.2], [2, -8.5], [3, -8.3], [11, -7.9], [19, -7.7], [20, -7.2], [22, -6.9], [32, -6.4], [34, -6.4],
-    [37, -6.9], [39, -7.4], [41, -8.4], [43, -8.2], [45, -8.2], [50, -9.7], [51, -9.5], [55, -9.5], [59, -10],
-    [123, -10], [130, -8.7], [133, -8.7], [135, -7.5], [141, -5.5], [142, -5.2], [148, -4.3], [157, -3.4],
-    [158, -3.2], [171, -3], [175, -3.2], [176, -2.7], [179, -2.7], [180, -3]],
+    [0, -10], [1, -9.2], [2, -8.5], [3, -8.3], [13, -7.7], [19, -7.7], [20, -7.2], [22, -6.9], [32, -6.4], [34, -6.4],
+    [37, -6.9], [39, -7.4], [41, -8.4], [43, -8.2], [45, -8.2], [50, -9.6], [52, -9.3], [55, -9.4], [59, -10],
+    [122, -10], [130, -8.6], [133, -8.6], [135, -7.4], [141, -5.5], [142, -5.2], [148, -4.3], [158, -3], [168, -2.9],
+    [172, -2.9], [175, -3], [176, -2.5], [179, -2.5], [180, -2.9]],
   // depression 10, elevation 20; mountConflicts []
   strv81: [
     [0, -10], [1, -10], [7, -8.5], [11, -8.1], [17, -8.1], [18, -8.2], [19, -7.3], [20, -6.9], [21, -6.6],
