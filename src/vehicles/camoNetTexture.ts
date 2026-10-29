@@ -106,9 +106,13 @@ export const NET_ALPHA_CUT = 0.5;
  * garnish, and where it is fully shaded: thick bunches close over their own shadow, the bare net between stays open.
  */
 const NET_GAP_FILL: readonly [number, number] = [0.2, 0.36];
-/** The shade the net's covered gaps show: the hull under the garnish, a dark step of the cord and the deep strip. */
+/**
+ * The shade the net's covered gaps show: the hull under the garnish, between the cord and the mid strip. (r6; the critic
+ * r5: "a dark speckled fringe along the top edge of the hull-front drape", the net seen edge-on) a step lighter than the
+ * deep strip's dark: a closed gap read as a black speck wherever the net turns away.
+ */
 const gapToneOf = (pal: NetPalette): [number, number, number] =>
-  [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[1][0][i]) * 0.5 * 0.85) as [number, number, number];
+  [0, 1, 2].map((i) => (pal.cord[i] + pal.strips[2][0][i]) * 0.5 * 0.95) as [number, number, number];
 const netCache = new Map<string, { map: THREE.Texture; bump: THREE.CanvasTexture } | null>();
 
 /** The painter's own seeded stream (mulberry32). */
@@ -165,8 +169,9 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
       if (rng() < 0.04) continue;
       // (263) a cord 1.6-2.4 texels (2-3 mm thick, never thinner than a texel's footprint at hero range) a step over the
       // palette's olive: the 1.2 px near-black cord broke into black dashes with range ("black cracks", drips); (264)
-      // lifted 1.25x, not 1.6x: with the hull under the net in its shade, a paler cord read as a grid over it
-      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.25;
+      // lifted 1.25x, not 1.6x: with the hull under the net in its shade, a paler cord read as a grid over it; (r6) 1.4x:
+      // at 1.25x, over the hull's shade, it read as "a dark wire grid", at 1.6x "olive cord" on mid paint
+      const b = knot(i + di, j + dj), sag = (rng() - 0.3) * 2.5, w = (1.2 + rng() * 0.6) * 1.35, shade = (0.85 + rng() * 0.3) * 1.4;
       wrap9((ox, oy) => {
         const path = (g: CanvasRenderingContext2D): void => {
           g.beginPath(); g.moveTo(a[0] + ox, a[1] + oy);
@@ -289,7 +294,7 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
         // shade there, and the map keeps straight alpha with its own coverage mips: no black rim at any cut or range
         const image = ctx.getImageData(0, 0, S, S);
         shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, {
-          cutoff: NET_ALPHA_CUT, lowShade: 0.78, occlusion: 2.4, radii: [4, 12],
+          cutoff: NET_ALPHA_CUT, lowShade: 0.8, occlusion: 2, radii: [4, 12],
           // a gap of up to a mesh of the net (NET_MESHES a side) closes whole under thick garnish
           gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2 },
         });
