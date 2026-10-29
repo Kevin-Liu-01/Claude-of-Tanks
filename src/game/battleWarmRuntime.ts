@@ -22,7 +22,6 @@ import {
   captureNewProgramUniformSteps,
   ProgramUniformPreparationError,
   snapshotRendererPrograms,
-  warmNewRendererProgramUniforms,
   type ForwardProgramCompileTiming,
   type ForwardProgramWarmOwner,
 } from '../engine/programWarm.ts';
@@ -264,8 +263,6 @@ interface WreckWarmOptions {
   camera: Camera;
   compilePrograms(root: Object3D): void;
   warmRender(): void;
-  /** In a revealed battle (a solo room's streamed seats): no fallback probe, whose warm render draws the scene. */
-  live?: boolean;
 }
 
 type WreckWarmMesh = Object3D & {
@@ -509,7 +506,6 @@ export async function warmNetworkWrecks({
   camera,
   compilePrograms,
   warmRender,
-  live = false,
 }: WreckWarmOptions): Promise<void> {
   signal?.throwIfAborted();
   const generation = warmGeneration;
@@ -541,7 +537,7 @@ export async function warmNetworkWrecks({
   }
 
   if (!valid()) return;
-  if (fallbackProbes.size && !live) {
+  if (fallbackProbes.size) {
     warmWreckFallbackProbe({
       candidates: [...fallbackProbes.values()],
       scene,
@@ -553,34 +549,6 @@ export async function warmNetworkWrecks({
   if (!valid()) return;
   await yieldForFrameBudget(true);
   valid();
-}
-
-/**
- * A solo room's other vehicles, taken in under the cover after the viewer's warms (mp/session/browserComposition.ts
- * streamSoloRoster): their forward programs compiled and their uniforms warmed in 12 ms slices. A link still running
- * when its window closes waits at its first draw. Their wreck states follow unawaited, with no scene render (`live`):
- * the reveal does not wait on them, and a first kill is seconds into the battle.
- */
-export async function warmStreamedVehicles(options: WreckWarmOptions): Promise<RuntimeValue> {
-  const { signal, renderer, compilePrograms } = options;
-  const roster = [...options.entities];
-  const baseline = snapshotRendererPrograms(renderer);
-  const yieldForBudget = createFrameBudgetYielder(12);
-  for (const entity of roster) {
-    const root = entity.visual?.root;
-    if (root) compilePrograms(root);
-    await yieldForBudget();
-    signal?.throwIfAborted();
-  }
-  let uniforms: RuntimeValue;
-  try {
-    uniforms = await warmNewRendererProgramUniforms(renderer, baseline, yieldForBudget, undefined, { signal });
-  } catch (error) {
-    if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
-    uniforms = { unfinished: error.preparation.reason, pending: error.preparation.pending ?? null };
-  }
-  void warmNetworkWrecks({ ...options, entities: roster, live: true }).catch(() => { /* a wreck warms at its first use */ });
-  return uniforms;
 }
 
 interface BattleFxPort {

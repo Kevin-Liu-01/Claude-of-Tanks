@@ -5,7 +5,8 @@
 // an entry failure, a lost match link, the room closing mid-battle, an explicit
 // leave and the match-start timeout.
 import assert from 'node:assert/strict';
-import { createBrowserComposition, createControlSampler } from './browserComposition.ts';
+import { createBrowserComposition } from './browserComposition.ts';
+import { createControlSampler } from '../presentation/controlSampler.ts';
 import { MULTIPLAYER_V2_SESSION } from './playMenuAdapter.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
 import { ACTION_BITS, CLOSE_REASON, PROTOCOL_VERSION, TEAM, VERDICT } from '../wire/index.ts';

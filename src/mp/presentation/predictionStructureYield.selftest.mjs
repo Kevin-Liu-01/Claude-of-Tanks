@@ -1,16 +1,19 @@
 // A building the own ram brings down yields to the drawn hull as it yields to the authority's (item/ram-yield-prediction-264,
-// 2026-10-29). Since 261 a standard solo battle runs on the solo sim Worker: the authority lets a hull that rams a house
-// down drive on through it while it falls (structureDamage.ts yieldTo: collapsePending for its 2-3 s cascade), but the
-// page's prediction held every structure until its records were crushed at the final 'collapsed' event, so each
+// 2026-10-29). The authority lets a hull that rams a house down drive on through it while it falls (structureDamage.ts
+// yieldTo: collapsePending for its 2-3 s cascade), but the client's prediction held every structure until its records were
+// crushed at the final 'collapsed' event, so each
 // reconciliation shoved the drawn hull out of the house's box and hard-snapped it back (the owner on the 263+264 preview:
-// "it would just slingshot me away"; 262 alike: up to 9.4 m, 7 hard snaps). Here:
+// "it would just slingshot me away", a solo battle then played through the match client; 262 alike: up to 9.4 m, 7 hard
+// snaps). A solo battle is a local battle again (one core, two drivers): the prediction is the online driver's, and a room
+// keeps this coverage. Here:
 //   1. StructureDamage.wouldYield answers as yieldTo decides, pricing nothing;
 //   2. the destruction mirror prices a ram on the map's house walls, as the authority builds them, and marks a structure
 //      the authority took to nothing (a live stage event at integrity 0) as going down;
 //   3. the prediction world lets the hull through a structure that yields, on the authority's closing speed, and holds
 //      at one that does not; the battle presentation wires it to the mirror;
-//   4. in process, the Worker's core and the page's session (the real wire, client, mirror and prediction world) on
-//      Verdant's house #2: the T-84U Oplot rams it down, and the drawn hull follows the authority's through the fall.
+//   4. in process, a room's match actor and a seat's match client over the loopback pair (the real wire, client, mirror
+//      and prediction world) on Verdant's house #2: the T-84U Oplot rams it down, and the drawn hull follows the
+//      authority's through the fall.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Vector3 } from 'three';
@@ -25,8 +28,12 @@ import { tankContactRect } from '../../sim/tankContactShape.ts';
 import { getMapConfig } from '../../world/maps/index.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
-import { createSoloSimCore } from '../../game/soloSimCore.ts';
-import { createSoloSimSession } from '../../game/soloSimSession.ts';
+import { createMatchActor } from '../../../server/match/matchActor.ts';
+import { hostRulesetFor } from '../host/hostRuleset.ts';
+import { MatchClient } from '../match/matchClient.ts';
+import { createLoopbackPair } from '../transport/loopbackTransport.ts';
+import { MESSAGE_TYPE, decodeMessage } from '../wire/index.ts';
+import { bindMatchPresentation } from './adapter.ts';
 
 const watchdog = setTimeout(() => { console.error('predictionStructureYield.selftest: stuck'); process.exit(1); }, 240_000);
 watchdog.unref();
@@ -149,12 +156,6 @@ function pageWorld() {
     for (let i = timers.length - 1; i >= 0; i--) if (timers[i].dead) timers.splice(i, 1);
     now = target;
   };
-  const listeners = { page: new Set(), sim: new Set() };
-  const end = (self, other) => ({
-    post(message) { schedule(() => { for (const l of listeners[other]) l(message); }, 0); },
-    onMessage(l) { listeners[self].add(l); return () => listeners[self].delete(l); },
-    close() { listeners[self].clear(); },
-  });
   const authorityWorld = createDedicatedWorldCollision(MAP);
   const world = pageWorld();
   const mirror = createDestructionMirror(world, null);
@@ -187,22 +188,53 @@ function pageWorld() {
   };
   const controls = () => ({ throttle: driving ? 1 : 0, steer: 0, brake: !driving, fire: false, aimLocked: true, aimYaw: 0, aimPitch: 0,
     aimDistance: 200, shellSlot: 0, actionPresses: 0 });
-  const core = createSoloSimCore({ port: end('sim', 'page'), buildWorld: async () => authorityWorld, now: () => now, schedule });
-  const session = createSoloSimSession({
-    port: end('page', 'sim'), clientBuild: 'predictionStructureYield.selftest', clock: () => now,
-    boot: { seed: 31, mapId: MAP, mode: 'standard', manifestBase: null, simKernelsUrl: null, countdownS: 0.2, seats: [
-      { playerId: 'player', name: 'Probe', team: 'alpha', specId: 't84bm_oplot_m', isPlayer: true },
-      { playerId: 'enemy', name: 'Far', team: 'bravo', specId: 't90am', isPlayer: false, difficulty: 'easy' },
-    ] },
-    presentation: { adapter, controls, prediction },
+  // the room's host: the match actor on the battlefield's collision, one human seat and a far bot, as the browser host's
+  // core boots it (matchHostCore.ts: hostRulesetFor)
+  const actor = createMatchActor({
+    roomId: 'ram-yield', mapId: MAP, mode: 'standard', seed: 31, countdownS: 0.2, world: authorityWorld, now: () => now, schedule,
+    ruleset: hostRulesetFor('standard', null, null),
+    seats: [{ seat: 0, playerId: 'player', name: 'Probe', team: 'alpha', specId: 't84bm_oplot_m' }],
+    bots: [{ playerId: 'enemy', name: 'Far', team: 'bravo', specId: 't90am', difficulty: 'easy' }],
   });
+  // the seat's client over the loopback pair, its server end the actor's link (the HELLO attaches the seat)
+  const pair = createLoopbackPair({ clock: () => now, connectDelayMs: 0 });
+  pair.server.open();
+  let messageListener = null, closeListener = null, attached = false;
+  const link = {
+    label: 'player',
+    get bufferedAmount() { return pair.server.bufferedBytes; },
+    get closed() { return pair.server.state === 'closed'; },
+    send(bytes) { if (!pair.server.send(bytes)) throw new Error('loopback refused'); pair.pump(now); },
+    close(_reason, detail = '') { pair.server.close('server', detail); },
+    onMessage(listener) { messageListener = listener; },
+    onClose(listener) { closeListener = listener; },
+  };
+  pair.server.onFrame((bytes) => {
+    if (attached) { messageListener?.(bytes); return; }
+    const decoded = decodeMessage(bytes);
+    assert.ok(decoded.ok && decoded.message.type === MESSAGE_TYPE.HELLO, 'the seat says hello first');
+    attached = actor.attach(link, decoded.message, { v: 1, roomId: actor.roomId, seat: 0, playerId: 'player', name: 'Probe', team: 'alpha',
+      specId: 't84bm_oplot_m', iat: 0, exp: 1 });
+  });
+  pair.server.onState((change) => { if (change.state === 'closed') closeListener?.(); });
+  const client = new MatchClient({ transport: pair.client, token: 'issued-elsewhere', clock: () => now,
+    clientBuild: 'predictionStructureYield.selftest', controls, prediction });
+  const unbind = bindMatchPresentation(client, adapter);
+  client.onWelcome(() => client.enablePrediction(prediction));
+  client.connect();
   const frameMs = 1000 / 60;
-  const frame = async () => { advance(now + frameMs); session.update(now, frameMs / 1000); await new Promise((r) => setImmediate(r)); };
-  for (let guard = 0; !core.actor && guard < 2000; guard++) await frame();
-  assert.ok(core.actor, 'the Worker\'s core runs');
-  session.releaseCountdown();
+  const frame = async () => {
+    advance(now + frameMs);
+    pair.pump(now);
+    client.update(now, frameMs / 1000);
+    // (the frame's inputs cross at once, ahead of the actor's next tick, as a link with no latency carries them)
+    pair.pump(now);
+    await new Promise((r) => setImmediate(r));
+  };
+  for (let guard = 0; !client.welcome && guard < 2000; guard++) await frame();
+  assert.ok(attached && client.welcome, 'the seat is welcomed');
   for (let i = 0; i < 90; i++) await frame();
-  const match = core.actor.authority;
+  const match = actor.authority;
   const player = match.entityById.get('player'), enemy = match.entityById.get('enemy');
   const park = () => {
     enemy.state.pos.x = 440; enemy.state.pos.z = 440; enemy.state.speed = 0;
@@ -215,7 +247,7 @@ function pageWorld() {
   resetTankVerticalState(s, authorityWorld.heightField.getHeightAt(start.x, start.z) + 0.05, 0, true);
   if (s._sup) s._sup.x = NaN;
   for (let i = 0; i < 90; i++) { park(); await frame(); }
-  const before = session.client.stats().prediction;
+  const before = client.stats().prediction;
   driving = true;
   let maxGap = 0, maxBack = 0, peak = -Infinity;
   for (let i = 0; i < 8 * 60; i++) {
@@ -226,9 +258,10 @@ function pageWorld() {
     peak = Math.max(peak, viewerState.pos.x);
     maxBack = Math.max(maxBack, peak - viewerState.pos.x);
   }
-  const after = session.client.stats().prediction;
-  session.dispose?.();
-  core.dispose();
+  const after = client.stats().prediction;
+  unbind();
+  client.dispose();
+  actor.stop();
   const houseMaxX = Math.max(...authorityWorld.getObstacles().filter((r) => r.structureIdx === HOUSE).map((r) => r.max[0]));
   assert.ok(s.pos.x > houseMaxX, `the authority's hull rammed through the house (x ${s.pos.x.toFixed(1)} past ${houseMaxX.toFixed(1)})`);
   assert.equal(after.hardSnaps - before.hardSnaps, 0, 'no hard snap through the ram and the fall (262: 7)');

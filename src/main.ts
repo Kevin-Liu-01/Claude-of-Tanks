@@ -138,7 +138,7 @@ import {
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_CATALOG_PATTERN_IDS, getCamoSelection, setCamoSelection,
-  getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection, STORED_CAMO_SELECTION,
+  getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked, paintCamoTryOn,
   clearCamoOverrides, warmWreckTextures,
   prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
@@ -226,7 +226,7 @@ import type { DriveTestControllerOptions } from './dev/driveTestController.ts';
 import { createPerfDiagnosticsAccess } from './dev/perfDiagnosticsAccess.ts';
 import { createLazyAudio } from './audio/lazyAudio.ts';
 import { createListenerPoseRuntime } from './audio/listenerPoseRuntime.ts';
-import { createInput, getStoredDifficulty } from './game/input.ts';
+import { createInput } from './game/input.ts';
 import { createArmorAimOverlayAccess } from './game/armorAimOverlayAccess.ts';
 import { createBattleWarmAccess } from './game/battleWarmAccess.ts';
 import { createBattleModuleAccess } from './game/battleModuleAccess.ts';
@@ -253,9 +253,8 @@ import { clearMatchSession, createBus, createGameState, watchRevealsAll } from '
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { readBrainSettings, readTeamArrangement } from './game/teamArrangement.ts';
-import { deathsAreFinal, matchRulesetFor, roomSizeRulesFor, terrainVariantFor } from './sim/matchRuleset.ts';
-import { BATTLE_MODE_IDS, normalizeGameMode } from './sim/gameModeCatalog.ts';
+import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { normalizeGameMode } from './sim/gameModeCatalog.ts';
 import { teamNationsFlags } from './sim/teamNations.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -277,7 +276,7 @@ import { describeError, getEntryTelemetry, installEntryErrorTelemetry } from './
 import {
   bootCapabilityScreen, browserCapabilityHost, capabilitySummary, haltRefusedRenderer, runBootCapabilityGate,
 } from './engine/capabilityGate.ts';
-import { battleLoadModeLabel, createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts';
+import { createBattleLoadScreen, primeMapLqipWhenIdle } from './ui/battleLoad.ts';
 import { createEndOverlayRuntime } from './ui/endOverlayRuntime.ts';
 import { createStartupIntent } from './game/startupIntent.ts';
 import { createSelectedVehicleSelection } from './game/selectedVehicleSelection.ts';
@@ -884,7 +883,7 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
     await loadMissionAttachmentVisual();
     const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
-      auxiliaryEntities: () => networkMatchActive() ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
+      auxiliaryEntities: () => onlineMatchActive() ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
       auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
         : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
@@ -1019,7 +1018,7 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     game,
     getWorld: currentWorld,
     getNetworkTelemetry: () => {
-      const v2 = multiplayerV2.current;
+      const v2 = onlineMatch.current;
       return v2?.active ? { connected: v2.inMatch, rttMs: v2.networkStatus.rttMs ?? undefined } : null;
     },
     resolvePresetName,
@@ -1208,16 +1207,8 @@ const battleIntent = createBattleIntentRuntime({
   preloadArmorOverlay: () => armorAimOverlay.preload(),
   preloadBattleHud: () => ensureBattleHud(),
   preloadTouchControls: () => ensureTouchControls(),
-  // the quick battle's authority (soloAuthorityFor): by default (261) the solo sim Worker, whose chunk and battlefield the
-  // intent prepares; under ?soloAuthority=host a local host, through the network composition (mp/session/soloHostEntry.ts),
-  // whose host thread it prepares; on the page (?soloAuthority=page, the mobile tier) the page's own solo alone
-  preloadSoloBattle: () => {
-    const { authority } = soloAuthorityFor('standard');
-    if (authority === 'host') return Promise.all([preloadSoloBattleRuntime(), multiplayerV2.preload(), prepareSoloHost()]);
-    // (the solo sim Worker's chunk, and a Worker building the selected battlefield ahead of the press)
-    if (authority === 'worker') return Promise.all([preloadSoloBattleRuntime(), soloSim.preload(), prepareSoloSimWorker()]);
-    return preloadSoloBattleRuntime();
-  },
+  // a quick battle is a local battle: the page's own simulation (beginLocalBattleEntry)
+  preloadSoloBattle: () => preloadSoloBattleRuntime(),
   preloadBattleClient: () => preloadBattleClientRuntime(),
   preloadKillcam: () => preloadKillcamModule(),
   ensureFxRuntime,
@@ -1474,7 +1465,7 @@ const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lo
     // composition, the battle client, the visuals, the missing roster builders and the fixed map warm.
     preloader: {
       getGamePhase: () => game.phase,
-      preloadPresentation: () => multiplayerV2.preload(),
+      preloadPresentation: () => onlineMatch.preload(),
       preloadVisuals: () => battleVisualStreamerAccess.preload(),
       preloadBattleModules: () => preloadBattleClientRuntime(),
       ensureTankBuilders,
@@ -1485,20 +1476,16 @@ const loadMultiplayerLobby = (): Promise<LobbyIntent> => import('./mp/session/lo
   });
   return multiplayerLobby;
 });
-const multiplayerV2 = createCompositionAccess(loadMultiplayerV2Composition);
+const onlineMatch = createCompositionAccess(loadMultiplayerV2Composition);
 // Plan step 11 (2026-10-13): a hosting tab that closes, reloads or navigates away hands its match on at once instead of
 // leaving its peers to the room's socket lease (the command leaves on the room socket inside the event).
-window.addEventListener('pagehide', () => { multiplayerV2.current?.handOffHosting('pagehide'); });
-// A free sortie on the solo sim Worker (RUST-ENGINE-DECISION §7; soloAuthorityFor): its own lazy chunk, loaded by the
-// Battle intent and the sortie alone.
-const soloSim = createCompositionAccess(loadSoloSimBattle);
-/** A network match owns the battle frame: a round loading or live, or a sortie on the solo sim Worker. */
-const networkMatchActive = (): boolean => !!multiplayerV2.current?.active || !!soloSim.current?.active;
-/** The one network pump every phase shares. */
-const networkPump = {
+window.addEventListener('pagehide', () => { onlineMatch.current?.handOffHosting('pagehide'); });
+/** An online match owns the battle frame: a room's round loading or live (a local battle never does). */
+const onlineMatchActive = (): boolean => !!onlineMatch.current?.active;
+/** The online match's pump, which every phase shares. */
+const onlinePump = {
   pump(dtSeconds: number, nowMs: number): void {
-    multiplayerV2.current?.pump(dtSeconds, nowMs);
-    soloSim.current?.pump(dtSeconds, nowMs);
+    onlineMatch.current?.pump(dtSeconds, nowMs);
   },
 };
 const { loadPlayMenuModule } = createBattleModuleAccess();
@@ -1533,7 +1520,7 @@ const playSurface = createPlaySurfaceRuntime({
   }),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),
-  startSolo: (request) => beginSoloBattle(request),
+  startSolo: (request) => beginLocalBattle(request),
   preloadCommon: [
     ensureBattleHud,
     preloadFxModule,
@@ -1543,7 +1530,7 @@ const playSurface = createPlaySurfaceRuntime({
     () => preloadKillcamModule(),
   ],
   preloadNetworkPresentation: () => Promise.all([
-    multiplayerV2.preload(),
+    onlineMatch.preload(),
     preloadBattleClientRuntime(),
   ]),
 });
@@ -1604,7 +1591,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     multiplayerLobby?.syncSelection();
   },
   onBattle: (specId, mapId, options) => (
-    beginBattleEntry(specId, mapId, options)
+    beginLocalBattleEntry(specId, mapId, options)
   ), // loading screen owns entry
   onPlayRequest: (request) => playSurface.open(request).catch((error) => {
     console.error('[play-menu] failed to open', error);
@@ -1914,7 +1901,7 @@ createCombatFeedbackRuntime({
   game,
   rig,
   getFx: () => fxRuntimeAccess.current,
-  hasNetworkMatch: networkMatchActive,
+  hasNetworkMatch: onlineMatchActive,
   shotRecoilScale,
   setDestroyedEventSink,
   trimGarageTanks: (capacity: number) => pedestal.trim(capacity),
@@ -1997,7 +1984,7 @@ const nightLighting = createNightLightingAccess({
   getWorldRoot: () => currentWorld()?.group ?? null,
   // A network round publishes its complete actor registry here, including hidden
   // actors; game.tanks alone is only the currently visible network roster.
-  getEntities: () => networkMatchActive() ? game.tankById.values() : game.tanks,
+  getEntities: () => onlineMatchActive() ? game.tankById.values() : game.tanks,
   getCameraPosition: () => camera.position,
   // (the looks lane, 228) a town's lamps light the street the camera looks down
   getCameraForward: () => camera.getWorldDirection(_nightCameraForward),
@@ -2368,9 +2355,9 @@ playerBattleActions = createPlayerBattleActions({
   input,
   isSettingsOpen: () => settings.isOpen(),
   network: {
-    isActive: networkMatchActive,
-    queueConsumable: (slot) => { multiplayerV2.current?.queueConsumable(slot); soloSim.current?.queueConsumable(slot); },
-    queueAction: (action) => { multiplayerV2.current?.queueAction(action); soloSim.current?.queueAction(action); },
+    isActive: onlineMatchActive,
+    queueConsumable: (slot) => { onlineMatch.current?.queueConsumable(slot); },
+    queueAction: (action) => { onlineMatch.current?.queueAction(action); },
   },
   rules: {
     selectShell: battleClientAccess.selectShell,
@@ -2401,7 +2388,7 @@ const battlePresentation = createBattlePresentationRuntime({
   battleClient: battleClientAccess,
   getFx: () => fxRuntimeAccess.current,
   getWorld: currentWorld,
-  isNetworkMatchActive: networkMatchActive,
+  isNetworkMatchActive: onlineMatchActive,
   getPedestalVisual: () => pedestal.current,
   isCinematicActive: () => rig.cinematicActive,
 });
@@ -2484,9 +2471,9 @@ input.onAction('perfHud', () => {
 // Multiplayer v2 status surface (src/ui/multiplayerStatus.ts): F3 expands the network strip; F4 arms the
 // leave and a second press confirms it. Outside a v2 battle the leave key opens the settings overlay,
 // whose LEAVE BATTLE row is the same exit for every other battle.
-input.onAction('networkPanel', () => { multiplayerV2.current?.toggleStatusPanel(); });
+input.onAction('networkPanel', () => { onlineMatch.current?.toggleStatusPanel(); });
 input.onAction('leaveBattle', () => {
-  const v2 = multiplayerV2.current;
+  const v2 = onlineMatch.current;
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
   if (battlePhase.canLeaveBattle() || garageAwaitingHandoff()) settings.open();
 });
@@ -2550,7 +2537,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
     if (typeof window !== 'undefined') window.__BATTLE_REVEAL = receipt;
     // The first presented battle frame is the successful end of every entry path.
     entryTelemetry.send({
-      kind: 'entry_result', mode: multiplayerV2.current?.active ? 'network' : 'solo', outcome: 'ok',
+      kind: 'entry_result', mode: onlineMatch.current?.active ? 'network' : 'solo', outcome: 'ok',
       ms: receipt.waitMs, ...(receipt.slow ? { code: `slow_${receipt.slow}` } : {}),
     });
   },
@@ -2558,7 +2545,7 @@ const battleEntryLifecycle = createBattleEntryLifecycle({
   // beacon, not a failed entry; the lifecycle extends once and then waits.
   onSlowReveal: ({ phase, waitedMs, budgetMs }) => entryTelemetry.send({
     kind: 'slow_reveal', stage: 'primeReveal', code: phase, ms: waitedMs,
-    mode: multiplayerV2.current?.active ? 'network' : 'solo', timings: { budgetMs },
+    mode: onlineMatch.current?.active ? 'network' : 'solo', timings: { budgetMs },
   }),
 });
 const networkBattleIntentCover = createIntentCover({
@@ -2769,10 +2756,10 @@ function resolveFxSubject(id: string) {
  * import is retryable, which is essential for first-visit clients on unstable mobile connections.
  */
 function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolean> {
-  const current = multiplayerV2.current;
+  const current = onlineMatch.current;
   if (current) return current.beginRoom(request);
   networkBattleIntentCover.show(request);
-  return multiplayerV2.preload()
+  return onlineMatch.preload()
     .then((runtime) => runtime.beginRoom(request))
     .catch(async (error) => {
       await networkBattleIntentCover.releaseAfterFailure();
@@ -2872,48 +2859,6 @@ function presentationScenePorts(): BrowserCompositionPorts['scene'] {
     clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
     onVisualReady: (actor) => { nightLighting.appendEntity(actor); battlePresentation.prepareModeEnergy(actor); },
   };
-}
-
-/**
- * A free sortie's battle on the solo sim Worker (src/game/soloSimBattleRuntime.ts; RUST-ENGINE-DECISION §7 step 5): the
- * app's load, warm and activation ports, the network presentation's prebuild and obstacle identities, and the Worker's
- * port. No room, session, status strip or multiplayer telemetry.
- */
-function loadSoloSimBattle() {
-  return Promise.all([
-    import('./game/soloSimBattleRuntime.ts'),
-    import('./game/soloSimBrowserPort.ts'),
-    import('./mp/session/activationRuntime.ts'),
-    import('./mp/presentation/battlePresentation.ts'),
-    import('./mp/host/worldCollision.ts'),
-  ]).then(([{ createSoloSimBattleRuntime }, { openSoloSimWorker, SOLO_SIM_WORLD }, { createActivationRuntime }, { prebuildRosterVisuals }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }]) => {
-    const options = multiplayerAppPorts();
-    const activation = createActivationRuntime(options.activation);
-    const runtime = createSoloSimBattleRuntime({
-      lifecycle: battleEntryLifecycle,
-      load: {
-        ...options.load,
-        loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }),
-        prebuildRoster: (seats, signal) => prebuildRosterVisuals(seats, { engineCtx, anisotropy: engineCtx.anisotropy ?? 4, signal }),
-        recordTrace: (trace) => { (window as { __SOLO_SIM_LOAD?: unknown }).__SOLO_SIM_LOAD = trace; },
-      },
-      roster: options.roster,
-      scene: presentationScenePorts(),
-      warm: options.warm,
-      presentation: { activate: activation.activate, ...options.presentation },
-      openWorker: ({ mapId, mode }) => openSoloSimWorker(mapId, mode),
-      world: SOLO_SIM_WORLD,
-      visibility: {
-        hidden: () => document.hidden,
-        onChange(listener) {
-          document.addEventListener('visibilitychange', listener);
-          return () => document.removeEventListener('visibilitychange', listener);
-        },
-      },
-    });
-    if (diagnosticsRequested) (window as { __SOLO_SIM?: unknown }).__SOLO_SIM = runtime;
-    return runtime;
-  });
 }
 
 /** The roster as the warm owners read it: the composition's actors (the shape of a solo TankEntity). */
@@ -3038,7 +2983,6 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           }),
           wrecks: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmNetworkWrecks(vehicleWarm(bridge, signal)),
           // (a solo room's other seats, under the cover after the viewer's warms)
-          streamedVehicles: (bridge: MultiplayerWarmView, signal?: AbortSignal) => battleWarm.warmStreamedVehicles(vehicleWarm(bridge, signal)),
           playerPanelPrograms: (bridge: MultiplayerWarmView, viewerId: string) => {
             kickPanelMaskPrograms(bridge.entities.get(viewerId)?.visual?.root);
           },
@@ -3052,7 +2996,6 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           },
           openingEffects: async (
             fx: ReturnType<typeof requireFxRuntime>, bridge: MultiplayerWarmView, signal?: AbortSignal,
-            options?: { pacing?: 'gpu' | 'covered' },
           ) => {
             const timing: ForwardProgramCompileTiming & {
               openingRenderMs?: number; openingPasses?: CoveredComposerWarmTiming['passes'];
@@ -3068,17 +3011,9 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             // them resident (textureUploadStaging.ts: the materials' maps and the compiled programs' sampler uniforms)
             // (the room A/B: a large upload behind a GPU process fallen behind waited for it in the call, 0.3-1.7 s) each
             // large texture and each cohort draw first lets the GPU finish what was issued before it (gpuCatchUp.ts)
-            // (262, the merged solo sim Worker's 7v7 entry: this pacing took its combat warm from 0.2-1.1 s to 8.3-9.2 s on a
-            // loaded machine) the Worker's sortie paces as the page's solo deployment warm does: no staging, no wait, and the
-            // page's covered yield between batches, a task and a painted frame at most every 32 ms (a frame after each of the
-            // 110 batches still held it at 7.8 s, 57 ms frames at load 800)
-            const gpuPaced = options?.pacing !== 'covered';
             const forwardYield = createFrameBudgetYielder(8);
-            const batchYield = gpuPaced ? forwardYield : createOpaqueLoadingYielder(12, 32);
             const catchUp = { gl: renderer.getContext(), waitFrame: () => forwardYield(true) };
-            const textureStaging = gpuPaced
-              ? await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp })
-              : null;
+            const textureStaging = await stageTextureUploads(renderer, [scene], createFrameBudgetYielder(8), { signal, catchUp });
             const forwardBatches: number[] = [];
             let catchUpFrames = 0;
             // (the room A/B: the stall moved into the cohorts' own bufferData, behind the first-draw pipelines of the draws
@@ -3091,12 +3026,12 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               worldGroup: currentWorld()?.group,
               playerRoot: game.player?.visual?.root,
               warmRender,
-              preUpload: gpuPaced,
+              preUpload: true,
             })) {
               (batch.phase === 'upload' ? uploadBatches : forwardBatches).push(batch.ms);
               signal?.throwIfAborted();
-              if (batch.phase !== 'upload') await batchYield(true);
-              if (gpuPaced) catchUpFrames += await waitForGpuCatchUp(catchUp);
+              if (batch.phase !== 'upload') await forwardYield(true);
+              catchUpFrames += await waitForGpuCatchUp(catchUp);
             }
             const deploymentForward = { batches: forwardBatches.length, maxMs: Math.max(0, ...forwardBatches),
               totalMs: forwardBatches.reduce((sum, ms) => sum + ms, 0), catchUpFrames,
@@ -3134,7 +3069,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 });
               },
             });
-            return { ...timing, pacing: gpuPaced ? 'gpu' : 'covered', textureStaging, deploymentForward };
+            return { ...timing, textureStaging, deploymentForward };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {
@@ -3331,163 +3266,17 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
 }
 
 /**
- * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7). A solo game against bots never creates a multiplayer
- * session (the owner, 2026-10-26, release 256), and it runs locally, on the page's own simulation: no match client, no
- * prediction against an authority, no interpolation buffer (the owner, 2026-10-29: "everything is now delayed laggy as if it
- * was using the multiplayer architecture"; release 261's solo sim Worker default, DECISIONS 2026-10-27, is reverted).
- * `?soloAuthority=worker` puts any versus mode on the solo sim Worker (src/game/soloSimBattleRuntime.ts), and
- * `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis; `?soloAuthority=page` names the default.
+ * A local battle (solo quick battle, campaign, Proving Ground, Watch, the Jev opponent): the local driver. The shared core
+ * steps on the page (game/state.ts simStep), with input, the fixed step and the render in one frame. No match client,
+ * prediction, interpolation, input-delay buffer, loopback, room or wire message: nothing from src/mp (the owner,
+ * 2026-10-29: "rubberbanding on a LOCAL game"; RUST-ENGINE-DECISION §7 step 5, the solo sim Worker, is retired;
+ * docs/ARCHITECTURE.md "One core, two drivers", tools/driver-boundaries.selftest.mjs).
  */
-const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|worker|page)\b/.exec(location.search)?.[1] ?? null;
-function soloAuthorityFor(
-  gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
-): { authority: 'host' | 'worker' | 'page'; reason: string } {
-  const mode = normalizeGameMode(gameMode ?? 'standard');
-  const page = (reason: string) => ({ authority: 'page' as const, reason });
-  if (SOLO_AUTHORITY_PARAM === 'page') return page('opt_out');
-  if (campaign) return page('campaign');
-  if (watch) return page('watch');
-  if (!(BATTLE_MODE_IDS as readonly string[]).includes(mode) || roomSizeRulesFor(mode).sides !== 'versus') return page('mode');
-  // (a battle Jev commands asks Jev each turn over the network: the page's own controller holds it)
-  if (readBrainSettings().opponent === 'jev') return page('jev');
-  if (typeof Worker !== 'function') return page('no_worker');
-  if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
-  if (SOLO_AUTHORITY_PARAM === 'worker') return { authority: 'worker', reason: 'forced' };
-  return page('local');
-}
-
-/** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
-function noteSoloAuthority({ authority, reason }: { authority: 'host' | 'worker' | 'page'; reason: string }): void {
-  entryTelemetry.send({ kind: 'solo_authority', code: authority, reason });
-}
-
-let soloHostPrepared = false;
-/** The Battle intent's host thread for a free sortie on a local host (the battlefield selected in the Garage). */
-function prepareSoloHost(): Promise<void> {
-  soloHostPrepared = true;
-  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.prepareSoloHost({
-    specId: garage.getSelected(), mapId: garage.getSelectedMap(), gameMode: 'standard' }));
-}
-/** A battle the page simulates lets the intent's prepared host thread (and its second world) go. */
-function releasePreparedSoloHost(): void {
-  if (!soloHostPrepared) return;
-  soloHostPrepared = false;
-  void import('./mp/session/soloHostEntry.ts').then((entry) => entry.releasePreparedSoloHost()).catch(() => {});
-}
-
-/** Who runs the next solo entry's battle once its cover is up: the page's own simulation, or the solo sim Worker. */
-type SoloEntryAuthority = 'page' | 'worker';
-let soloEntryAuthority: SoloEntryAuthority = 'page';
-let soloSimPrepared = false;
-function routeSoloEntry(authority: SoloEntryAuthority): void {
-  soloEntryAuthority = authority;
-  if (authority === 'page' && soloSimPrepared) {
-    // a battle the page simulates lets the hover's Worker (and its battlefield) go
-    soloSimPrepared = false;
-    void import('./game/soloSimBrowserPort.ts').then((port) => port.releasePreparedSoloSim()).catch(() => {});
-  }
-}
-/** The Battle hover's Worker for a free sortie (the battlefield the press will consume, the roster it will seat). */
-function prepareSoloSimWorker(): Promise<void> {
-  const specId = garage.getSelected();
-  const mapId = battleIntent.peekMap(specId, garage.getSelectedMap() || worldRuntime.pendingMapId);
-  const specIds = planBattleSeats(game, specId, { gameMode: 'standard' })?.seats.map((seat) => seat.specId) ?? [specId];
-  soloSimPrepared = true;
-  return import('./game/soloSimBrowserPort.ts').then((port) => port.prepareSoloSim(mapId, 'standard', specIds));
-}
-/** The solo entry's loading owner: solo's own (the page's simulation) or, for a sortie on the Worker, the Worker's battle. */
-const soloEntryLoading = {
-  begin(specId: string, mapId: string | null = null, options: SoloBattleLoadingStartOptions | undefined = undefined): Promise<void> {
-    const authority = soloEntryAuthority;
-    soloEntryAuthority = 'page';
-    return authority === 'worker' ? beginSoloSimSortie(specId, mapId, options) : soloBattleLoading.begin(specId, mapId, options);
-  },
-};
-/**
- * A free sortie on the solo sim Worker, under the press's cover (soloBattleEntryRuntime): the seats the cover drew
- * (rosterState.planBattleSeats, this battle's ordinal), the card's both teams from them, then the Worker's battle. A Worker
- * that cannot start hands the battle to the page's own loading under the same cover.
- */
-async function beginSoloSimSortie(specId: string, mapId: string | null, options: SoloBattleLoadingStartOptions | undefined): Promise<void> {
-  soloSimPrepared = false;
-  const mode = normalizeGameMode(options?.gameMode ?? 'standard');
-  const randomRoster = options?.randomRoster ?? true;
-  const [runtime, { soloSimSortieSeats }] = await Promise.all([soloSim.preload(), import('./game/soloSimSortie.ts')]);
-  const resolved = battleIntent.consumeMap(specId, mapId || worldRuntime.pendingMapId);
-  const arrangement = readTeamArrangement(mode);
-  const plan = planBattleSeats(game, specId, { randomRoster, gameMode: mode, arrangement });
-  if (!plan) throw new Error('The battle could not be planned.');
-  // the card: both teams from the plan, every seat named, as the page's loading owner draws them
-  const allies = rosterPresentation.battleRows(plan.seats, 'player');
-  const enemies = rosterPresentation.battleRows(plan.seats, 'enemy');
-  const sides = { allies: allies.length, enemies: enemies.length };
-  battleLoad.show({
-    mapName: getLocalizedMapName(resolved) || resolved, thumb: battleBackdrop(resolved), biome: resolved,
-    mode: battleLoadModeLabel(mode), modeId: mode, allies, enemies, seats: sides,
-  });
-  battleLoad.rosters(allies, enemies, teamNationsFlags(plan.teamNations), sides);
-  const camoPlan = soloRosterPlan(mode, null, randomRoster);
-  const { seats, camo } = soloSimSortieSeats(plan.seats, {
-    ruleset: matchRulesetFor(mode, null, arrangement),
-    difficulty: getStoredDifficulty(),
-    playerName: '',
-    // (the stored paint, custom paint included, as the page's own battle paints its tanks: it never leaves the page)
-    playerCamo: STORED_CAMO_SELECTION,
-    playerEquipment: loadSelectedEquipment(specId, getSpec(specId)),
-    autoCamoSpecIds: planBattleCamoOverrides(game, specId, resolved, randomRoster, camoPlan.nations, camoPlan.slots, camoPlan.formationLead, camoPlan.national),
-    selectionFor: () => STORED_CAMO_SELECTION,
-    callsigns: rosterPresentation.seatCallsigns(plan.seats),
-  });
-  // the battle's ordinal is spent as setupBattle spends it: the next sortie plans the next roster
-  game.battleCount++;
-  try {
-    await runtime.begin({
-      specId, mapId: resolved, mode, seed: crypto.getRandomValues(new Uint32Array(1))[0]!, seats, arrangement,
-      countdownS: MIN_VISIBLE_PRE_BATTLE_S, camoFor: (playerId) => camo.get(playerId) ?? 'factory',
-    });
-  } catch (error) {
-    if ((error as { soloSimStage?: string } | null)?.soloSimStage !== 'boot') throw error;
-    console.warn('[solo sim] the Worker could not start; the page simulates this battle', error);
-    noteSoloAuthority({ authority: 'page', reason: 'fallback' });
-    game.battleCount--;
-    return soloBattleLoading.begin(specId, resolved, options);
-  }
-}
-
-/** A free sortie on a local host; a room that cannot start hands the battle to `page`, the page's own entry. */
-function beginSoloOnHost(specId: string | null | undefined, mapId: string | null | undefined, gameMode: string, page: () => Promise<unknown>) {
-  soloHostPrepared = false;
-  const chosen = specId ?? garage.getSelected();
-  return import('./mp/session/soloHostEntry.ts').then((entry) => entry.beginSoloOnLocalHost({
-    specId: chosen, mapId: mapId ?? garage.getSelectedMap(), gameMode,
-    equipment: loadSelectedEquipment(chosen, getSpec(chosen)),
-    consumables: loadConsumables(chosen, consumableSpecFor(getSpec(chosen))), camo: getMultiplayerCamoSelection(chosen),
-  }, beginMultiplayerV2Battle, () => {
-    noteSoloAuthority({ authority: 'page', reason: 'fallback' });
-    return page();
-  }));
-}
-function beginBattleEntry(
+function beginLocalBattleEntry(
   specId: string,
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
-  const authority = soloAuthorityFor(options?.gameMode, { campaign: !!options?.campaignOperationId, watch: options?.watch === true });
-  noteSoloAuthority(authority);
-  if (authority.authority === 'host') {
-    return beginSoloOnHost(specId, mapId, normalizeGameMode(options?.gameMode ?? 'standard'), () => beginPageBattleEntry(specId, mapId, options));
-  }
-  return beginPageBattleEntry(specId, mapId, options, authority.authority === 'worker' ? 'worker' : 'page');
-}
-
-function beginPageBattleEntry(
-  specId: string,
-  mapId: string | null = null,
-  options: SoloBattleLoadingStartOptions | undefined = undefined,
-  authority: SoloEntryAuthority = 'page',
-) {
-  releasePreparedSoloHost();
-  routeSoloEntry(authority);
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
@@ -3497,39 +3286,14 @@ function beginPageBattleEntry(
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
-/**
- * Keep bot play on the original in-page simulation path. Multiplayer's
- * authority, snapshot bridge, prediction, WebRTC, and signaling modules are
- * intentionally absent here: loading them for a local battle duplicated work
- * without adding any useful authority boundary.
- */
-async function beginSoloBattle({
+/** A local battle in the selected vehicle: the Play menu's solo start and the campaign ladder's operations. */
+function beginLocalBattle({
   specId,
   mapId,
   randomRoster = true,
   gameMode = 'standard',
   campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
-  // (soloAuthorityFor) the solo sim Worker for a quick battle's standard rules, a local host under ?soloAuthority=host,
-  // else the page's own simulation
-  const authority = soloAuthorityFor(gameMode, { campaign: !!campaignOperationId });
-  noteSoloAuthority(authority);
-  if (authority.authority === 'host') {
-    return beginSoloOnHost(specId, mapId, normalizeGameMode(gameMode),
-      () => beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId }));
-  }
-  return beginPageSoloBattle({ specId, mapId, randomRoster, gameMode, campaignOperationId }, authority.authority === 'worker' ? 'worker' : 'page');
-}
-
-function beginPageSoloBattle({
-  specId,
-  mapId,
-  randomRoster = true,
-  gameMode = 'standard',
-  campaignOperationId = null,
-}: SoloBattleEntryRequest = {}, authority: SoloEntryAuthority = 'page') {
-  releasePreparedSoloHost();
-  routeSoloEntry(authority);
   pendingTerrainVariant = terrainVariantFor(gameMode);
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
@@ -3602,9 +3366,9 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     resetHudFrame: () => battleHudFrame.reset(),
   },
   network: {
-    shouldPreserveRoom: () => multiplayerV2.current?.shouldPreserveRoom() ?? false,
-    disposePresentation: () => { multiplayerV2.current?.disposePresentation(); soloSim.current?.disposePresentation(); },
-    closeMatch: (reason: string) => { multiplayerV2.current?.closeMatch(reason); soloSim.current?.disposePresentation(); },
+    shouldPreserveRoom: () => onlineMatch.current?.shouldPreserveRoom() ?? false,
+    disposePresentation: () => { onlineMatch.current?.disposePresentation(); },
+    closeMatch: (reason: string) => { onlineMatch.current?.closeMatch(reason); },
   },
   warm: {
     invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
@@ -3690,7 +3454,7 @@ const loadBattleEndGarageWarm = (): void => {
       bus,
       prepare: () => garageReturn.prepare(),
       isEligible: () => game.phase === 'battle' && game.result !== null && !shotMode && !studio.active
-        && !multiplayerV2.current?.active && !multiplayerV2.current?.room && !battleEntryLifecycle.pending
+        && !onlineMatch.current?.active && !onlineMatch.current?.room && !battleEntryLifecycle.pending
         && !garageReturn.transitioning && !graphicsContextLost,
       renderFrame: () => {
         if (graphicsContextLost) return null;
@@ -3709,7 +3473,7 @@ const loadBattleEndGarageWarm = (): void => {
 bus.on('ui:battleStart', loadBattleEndGarageWarm);
 bus.on('phase:change', loadBattleEndGarageWarm);
 const leaveBattleToGarage = (): Promise<void> => {
-  const v2 = multiplayerV2.current;
+  const v2 = onlineMatch.current;
   if (v2?.active && battleEntryLifecycle.pending) {
     // A round still loading: leaving the room ends the entry under its own covered restore.
     v2.leaveRoom('explicit_leave');
@@ -3719,7 +3483,7 @@ const leaveBattleToGarage = (): Promise<void> => {
 };
 const soloBattleEntry = createSoloBattleEntryRuntime({
   lifecycle: battleEntryLifecycle,
-  loading: soloEntryLoading,
+  loading: soloBattleLoading,
   battleLoad,
   audio,
   enterGarage,
@@ -3763,7 +3527,7 @@ const battleAgainAction = createBattleAgainAction({
   loadFailure: () => import('./ui/garageReturnFailure.ts'),
   getPhase: () => game.phase,
   getEntryGeneration: () => sceneWatchdogEntryGeneration,
-  getRoom: () => multiplayerV2.current?.room ?? null,
+  getRoom: () => onlineMatch.current?.room ?? null,
   reportError: (message, error) => console.error(message, error),
 });
 bus.on('ui:battleAgain', () => { void battleAgainAction.run(); });
@@ -3802,7 +3566,7 @@ bus.on('ui:campaignNext', (payload) => {
   const mapId = typeof request?.mapId === 'string' ? request.mapId : null;
   if (!operationId || !mapId) return;
   void battleAgainAction.run(() => {
-    void beginSoloBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
+    void beginLocalBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
     return true;
   });
 });
@@ -3825,7 +3589,7 @@ const battleHudFrame = createBattleHudFrameRuntime({
   getHud: currentHud,
   getDamagePanel: currentDamagePanel,
   // A v2 round's measured round trip feeds the HUD's ping cell from the status model (no per-frame copy).
-  pingMs: () => { const v2 = multiplayerV2.current; return v2?.active ? v2.networkStatus.rttMs : null; },
+  pingMs: () => { const v2 = onlineMatch.current; return v2?.active ? v2.networkStatus.rttMs : null; },
   // Watch mode: the ridden tank's HUD, read-only; flying, every tank and the drone on the map
   watch: {
     focus: () => watchOwner.current?.hudView.focus() ?? null,
@@ -3911,7 +3675,7 @@ const worldFramePresentation = {
         const field = wakeWorld.heightField;
         wakeSources.length = 0;
         groundSources.length = 0;
-        const entities = networkMatchActive() ? game.tankById.values() : game.tanks;
+        const entities = onlineMatchActive() ? game.tankById.values() : game.tanks;
         for (const ent of entities) {
           const st = ent?.state; const p = st?.pos;
           if (!p) continue;
@@ -3963,10 +3727,8 @@ const battleFrame = createBattleFrameRuntime({
   killcam,
   input: playerFrameInput,
   network: {
-    isActive: networkMatchActive,
-    pump: networkPump.pump,
-    // a solo battle on a local host or the solo sim Worker holds its authority as the page's solo simulation holds
-    setHeld: (held: boolean) => { multiplayerV2.current?.setPaused(held); soloSim.current?.setPaused(held); },
+    isActive: onlineMatchActive,
+    pump: onlinePump.pump,
   },
   countdown: {
     isWarmPending: () => battleWarmPending,
@@ -4041,7 +3803,7 @@ const mainFrame = createMainFrameRuntime({
     },
   },
   garageOverlay: { frame: () => garage.frameHotspots(camera, pedestal.switchPending ? null : pedestal.current?.root ?? null) },
-  networkSession: networkPump,
+  networkSession: onlinePump,
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
@@ -4088,8 +3850,8 @@ const mainFrame = createMainFrameRuntime({
 const frameLoop = createFrameLoopScheduler({
   tick: mainFrame.tick,
   isBootComplete: () => bootComplete,
-  hasBackgroundWork: networkMatchActive,
-  backgroundTick: (nowMs) => { multiplayerV2.current?.pumpBackground(nowMs); },
+  hasBackgroundWork: onlineMatchActive,
+  backgroundTick: (nowMs) => { onlineMatch.current?.pumpBackground(nowMs); },
   // The authoritative simulation is fixed at 60 Hz. Presenting the complete
   // post/shadow pipeline above that rate only doubles GPU work on 120 Hz /
   // ProMotion displays without creating additional simulation states.
@@ -4557,12 +4319,9 @@ if (diagnosticsRequested) {
           next.config.minimap, { ...minimapSnapCtx(), requireTextured: true });
         return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
-      // the debug entries keep the page's own simulation (its fast-forward, forced fire and full roster the probes read)
-      // unless ?soloAuthority=host asks for the free sortie's local host
-      beginBattleEntry: (specId: string, mapId: string | null = null, options?: SoloBattleLoadingStartOptions) => (
-        SOLO_AUTHORITY_PARAM === 'host' ? beginBattleEntry(specId, mapId, options) : beginPageBattleEntry(specId, mapId, options)),
-      beginSoloBattle: (request?: SoloBattleEntryRequest) => (
-        SOLO_AUTHORITY_PARAM === 'host' ? beginSoloBattle(request) : beginPageSoloBattle(request)),
+      // (the probes' names) a local battle, the page's own simulation
+      beginBattleEntry: beginLocalBattleEntry,
+      beginSoloBattle: beginLocalBattle,
       beginNetworkBattle: beginMultiplayerV2Battle,
       enterGarage,
       leaveBattleToGarage,
@@ -4574,7 +4333,7 @@ if (diagnosticsRequested) {
         currentHud()?.forceHitMark(!!bounced);
       },
       getDamagePanel: currentDamagePanel,
-      getNetworkDiagnostics: () => multiplayerV2.current?.stats() ?? null,
+      getNetworkDiagnostics: () => onlineMatch.current?.stats() ?? null,
       collectTelemetry: () => perfHud.collectTelemetry(),
       sampleShadowContribution: () => perfHud.sampleShadowContribution(),
     } satisfies DebugSurfaceDependencies,

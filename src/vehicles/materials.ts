@@ -527,7 +527,7 @@ function textureSeedFor(key: string): number {
 }
 
 function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
-  if (selection == null || selection === STORED_CAMO_SELECTION) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
+  if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
   const patternId = resolveMultiplayerCamoPattern(specId, selection);
   return { key: `${specId}::${patternId}`, patternId, fixed: true };
 }
@@ -1313,13 +1313,6 @@ export function setCustomCamoSelection<Value>(specId: string, value: Value): Cus
   } catch (_) { /* private mode */ }
   return next;
 }
-
-/**
- * A battle seat that wears its vehicle's stored paint, custom paint included, as the page's own battle paints its tanks: a
- * sortie on the solo sim Worker names it for its seats (game/soloSimSortie.ts). A network seat's paint is a built-in id
- * every peer can draw (getMultiplayerCamoSelection); this one never leaves the page.
- */
-export const STORED_CAMO_SELECTION = '@stored';
 
 /** Public lobby/ranked selection; custom local paint degrades to Factory. */
 export function getMultiplayerCamoSelection(specId: string): CamoPatternId {

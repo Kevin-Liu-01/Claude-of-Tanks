@@ -18,7 +18,6 @@
 //
 //   node tools/battle-memory-probe.mjs [--scenarios=urban:zone_control] [--size=14] [--battles=3] [--seconds=30]
 //        [--root=.] [--port=5398] [--out=<dir>] [--retained] [--leak-check] [--retainers] [--gate] [--viewport=1920x1080] [--preset=high]
-//        [--authority=host] (255: the battles on a local host, ?soloAuthority=host; the debug entry keeps the page's otherwise)
 import { launchGuardedBrowser } from './browser-launch.mjs';
 import path from 'node:path';
 import os from 'node:os';
@@ -38,7 +37,7 @@ const log = (message) => console.log(`[${TOOL} ${new Date().toISOString().slice(
 
 export function parseMemoryArgs(argv) {
   const o = { scenarios: ['urban:zone_control'], size: 14, battles: 3, seconds: 30, root: process.cwd(), port: 5398, out: null,
-    retained: false, census: false, dump: false, walk: false, leakCheck: false, retainers: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m', authority: 'page' };
+    retained: false, census: false, dump: false, walk: false, leakCheck: false, retainers: false, sequence: null, gate: false, viewport: '1920x1080', preset: 'high', spec: 't90m' };
   for (const arg of argv) {
     const flag = arg.replace(/^--/, ''), at = flag.indexOf('=');
     const key = at < 0 ? flag : flag.slice(0, at), value = at < 0 ? '1' : flag.slice(at + 1);
@@ -62,8 +61,6 @@ export function parseMemoryArgs(argv) {
       case 'viewport': o.viewport = value; break;
       case 'preset': o.preset = value; break;
       case 'spec': o.spec = value; break;
-      // (255) who runs the battles' authority: the page's own simulation (the default for the debug entry) or a local host
-      case 'authority': o.authority = value === 'host' ? 'host' : 'page'; break;
       default: throw new Error(`${TOOL}: unknown flag --${key}`);
     }
   }
@@ -294,7 +291,7 @@ async function probeScenario(options, scenario) {
     page.on('pageerror', (error) => errors.push(String(error?.message ?? error).slice(0, 300)));
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await page.evaluateOnNewDocument(installCensusObservers, { preset: options.preset, allies, enemies });
-    await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop${options.authority === 'host' ? '&soloAuthority=host' : ''}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+    await page.goto(`http://127.0.0.1:${options.port}/?nosplash=1&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 180000 });
     await page.waitForFunction('window.__GAME_READY === true', { timeout: 300000 });
     await page.evaluate(() => { const P = window.__DEBUG.post; P.setAdaptiveSuspended?.(true); P.pinDynScale?.(1); });
     const catalog = await page.evaluate(() => window.__DEBUG.game.allTanks.map((e) => e.specId));
