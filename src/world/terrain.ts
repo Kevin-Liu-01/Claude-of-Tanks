@@ -6275,7 +6275,10 @@ void splatCompute() {
         // field's wet and dry (n2), High and Medium only; past the furrows the field is its soil in clods
         float furrowNear = 1.0 - smoothstep(0.010, 0.025, gFootM);
         float clodP = smoothstep(0.20, 0.70, n1);
-        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) * furrowNear * (0.35 + 0.65 * clodP) : 0.0;
+        // (round 10, Cliffbridge's near field on rounds 8 and 9: "pale streaks … continuous, parallel, across the whole width")
+        // the furrows stand only in patches (n1) and crumble along their run into clods (n1h): a turned field's lines break
+        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) * furrowNear * smoothstep(0.30, 0.65, n1)
+          * (0.45 + 0.55 * smoothstep(0.30, 0.70, n1h)) : 0.0;
         float landAmp = 0.5 + 0.5 * n2;
         // (round 8, Delta's turned field "a flat, textureless single colour … plastic") its wet and dry ground in patches of
         // metres to tens of metres (n2) under the clods
@@ -6285,6 +6288,9 @@ void splatCompute() {
         // a turned field keeps an irregular grain at every range and none of it is ruled
         float crustP = smoothstep(0.55, 0.85, n1) * 0.55 + smoothstep(0.50, 0.80, n1h) * 0.45 * (1.0 - smoothstep(0.03, 0.12, gFootM));
         cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.35) * 1.55, 0.55 * crustP);
+        // (round 10, Foundry's turned field ~0.01 linear, "an unlit void") no turned earth darker than black earth's own
+        // albedo (LAND_CROP_ALBEDO's plough, 0.03–0.05), its patches kept
+        cropCol = max(cropCol, vec3(0.034, 0.029, 0.024) * bright * (0.85 + 0.30 * clodP));
         // (2026-10-28, the owner: "weird parallel lines on ground … on all maps") the lands were crisp square bands of ±9 %
         // from 40 m on (bandAA), and the turned fields carried ruled stripes at battle range. A land is the light on its
         // furrow slices turned one way or the other: a soft swell of tone, each land its own width by the tractor's line
@@ -6308,7 +6314,7 @@ void splatCompute() {
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere);
         if (nrmOn && furrowVis > 0.0) {
           float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
-          n.xy += acrossDir * ridge * 0.12 * furrowVis * soilHere;
+          n.xy += acrossDir * ridge * 0.09 * furrowVis * soilHere;
         }
         // (wave 86, Verdant's establishing view: "a smeared, streaky charcoal texture with no clods or furrow relief") past
         // the furrows' own reach the plough keeps its relief: the lands' low crowns, each 3.2 m land a gentle ridge lit and
