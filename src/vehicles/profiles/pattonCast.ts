@@ -1531,7 +1531,7 @@ function* m48HullSteps(P: CastPort, V: M48Variant): Generator<string, HullFrame>
 /** The bustle rack: a band round the dome's tail at its floor, posts and three rails (world). The dome outline at y is
  * found along rays from (0, zc), so the rack follows the casting. */
 function bustleRing(P: CastPort, T: TurretFrame, seat: CastSeat, a0: number, a1: number, zc: number, y: number,
-  rails: readonly number[], out: number): void {
+  rails: readonly number[], out: number, mesh = 0): void {
   const { box } = KIT;
   const L = tl(T);
   const n = P.q ? 14 : 8;
@@ -1556,6 +1556,17 @@ function bustleRing(P: CastPort, T: TurretFrame, seat: CastSeat, a0: number, a1:
     if (i % 2) return;
     P.add('turretDetail', box(0.03, top - y + 0.02, 0.03), x, L.y((top + y) / 2), L.z(z));
   });
+  // (the IDF basket's mesh: wires every `mesh` metres along each panel)
+  if (mesh > 0) {
+    for (let i = 0; i < n; i++) {
+      const [x0, z0] = outline[i], [x1, z1] = outline[i + 1];
+      const len = Math.hypot(x1 - x0, z1 - z0), m = Math.max(1, Math.round(len / mesh));
+      for (let k = 1; k < m; k++) {
+        const t = k / m;
+        P.add('turretOpenLattice', box(0.012, top - y, 0.012), x0 + (x1 - x0) * t, L.y((top + y) / 2), L.z(z0 + (z1 - z0) * t));
+      }
+    }
+  }
 }
 
 function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
@@ -1916,14 +1927,21 @@ function domeFrontZ(seat: CastSeat, ax: number, y: number): number {
 function magachTurretEra(P: CastPort, seat: CastSeat): void {
   const up = new THREE.Vector3(0, 1, 0);
   const at = (x: number, y: number, z: number): [number, number, number] => [x, y - M48_RING.y, z - M48_RING.z];
-  const flankBox = (side: number, z: number): void => {
-    const y0 = 1.80, y1 = 2.44;
+  // a flank tile: its own box with a gap to the next, its top a little lower than the one ahead, its rear edge turned out
+  // 15 degrees (a sawtooth in plan)
+  const flankBox = (side: number, z: number, k: number): void => {
+    const y0 = 1.80, y1 = 2.44 - 0.03 * k;
     let ax = 0;
     for (let y = y0; y <= y1 + 1e-9; y += 0.032) ax = Math.max(ax, seat.sideAt(y, z));
     const [, n0] = domeFlank(seat, side, 1.95, z);
-    const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, side * 0.20);
+    const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, side * 0.26);
     const n = plan.multiplyScalar(Math.cos(0.10)).add(new THREE.Vector3(0, -Math.sin(0.10), 0)).normalize();
-    eraBox(P, 'turret', new THREE.Vector3(side * (ax + 0.07), (y0 + y1) / 2, z), n, up, 0.34, y1 - y0, 0.12, 0, 0);
+    eraBox(P, 'turret', new THREE.Vector3(side * (ax + 0.08), (y0 + y1) / 2, z), n, up, 0.26, y1 - y0, 0.10, 0, 0);
+  };
+  // the short upper course laid on the shoulder over the flank tiles, each square to the casting
+  const shoulderBox = (side: number, z: number): void => {
+    const [c, n] = domeFlank(seat, side, 2.40, z);
+    eraBox(P, 'turret', c, n, new THREE.Vector3(0, 0, 1), 0.28, 0.30, 0.08, 0, 0.03);
   };
   const brackets = (side: number, z: number): void => {
     for (const y of [1.92, 2.30]) {
@@ -1945,23 +1963,26 @@ function magachTurretEra(P: CastPort, seat: CastSeat): void {
       if (run < next) continue;
       const plan = new THREE.Vector3(side * (z0 - z1), 0, x1 - x0).normalize();
       if (plan.x * side < 0) plan.negate();
+      plan.applyAxisAngle(up, -side * 0.44);
       const n = plan.multiplyScalar(Math.cos(0.12)).add(new THREE.Vector3(0, Math.sin(0.12), 0)).normalize();
-      eraBox(P, 'turret', new THREE.Vector3(side * x1, y, z1), n, up, 0.30, 0.22, 0.12, 0, 0.02);
+      eraBox(P, 'turret', new THREE.Vector3(side * x1, y, z1), n, up, 0.30, 0.22, 0.12, 0, 0.04);
       next += 0.31; count--;
     }
   };
   const roofBox = (side: number, x: number): void => {
     let z = 1.60;
     while (z > 0.40 && seat.topAt(x, z) < 2.40) z -= 0.02;
-    const n = new THREE.Vector3(0, Math.cos(0.35), Math.sin(0.35));
-    eraBox(P, 'turret', new THREE.Vector3(side * x, seat.topAt(x, z), z), n, new THREE.Vector3(1, 0, 0), 0.30, 0.26, 0.10, 0, 0.03);
+    const e = 0.02, t = (xx: number, zz: number): number => seat.topAt(xx, zz);
+    const n = new THREE.Vector3(-side * (t(x + e, z) - t(x - e, z)) / (2 * e), 1, -(t(x, z + e) - t(x, z - e)) / (2 * e)).normalize();
+    eraBox(P, 'turret', new THREE.Vector3(side * x, t(x, z), z), n, new THREE.Vector3(1, 0, 0), 0.35, 0.25, 0.08, 0, 0.03);
   };
   for (const side of [1, -1]) {
-    for (let k = 0; k < 8; k++) brackets(side, 0.95 - k * 0.27);
+    for (let k = 0; k < 7; k++) brackets(side, 0.95 - k * 0.29);
     P.destructibleCluster(`magach3_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
-      for (let k = 0; k < 8; k++) flankBox(side, 0.95 - k * 0.27);
+      for (let k = 0; k < 7; k++) flankBox(side, 0.95 - k * 0.29, k);
+      for (const z of [0.70, 0.40, 0.10, -0.20, -0.50]) shoulderBox(side, z);
       for (const y of [1.98, 2.22]) cheekCourse(side, y, 5);
-      for (const x of [0.18, 0.50, 0.82]) roofBox(side, x);
+      for (const x of [0.20, 0.50, 0.80]) roofBox(side, x);
     });
   }
 }
@@ -2136,7 +2157,7 @@ function m48MarkBustle(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Varian
   const L = tl(T);
   // (the racks start behind the flanks, inside the turret's outline seen from the front; the Magach's runs behind its
   // Blazer wall, and the Super's armour wraps the tail)
-  if (V.mark === 'magach3') bustleRing(P, T, seat, Math.PI * 0.74, Math.PI * 1.26, -0.20, 1.99, [2.15, 2.30, 2.45, 2.60], 0.06);
+  if (V.mark === 'magach3') bustleRing(P, T, seat, Math.PI * 0.70, Math.PI * 1.30, -0.20, 1.99, [2.12, 2.26, 2.40, 2.54], 0.10, 0.09);
   else if (V.mark !== 'm48super' && V.mark !== 'm48a2ga2') {
     bustleRing(P, T, seat, Math.PI * 0.70, Math.PI * 1.30, -0.20, 1.99, [2.15, 2.29, 2.43], 0.02);
   }
