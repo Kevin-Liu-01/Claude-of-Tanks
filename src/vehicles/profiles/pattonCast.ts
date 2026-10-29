@@ -682,8 +682,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       // (the M60's exhaust grille: fourteen stacked fins raked 30 degrees)
       const fins = H.mark === 'm60' ? 14 : 4;
       for (let i = 0; i < fins; i++) {
-        P.add('hullDark', box(fw, 0.014, H.mark === 'm60' ? 0.05 : 0.02), fx, gy0 + 0.03 + i * (gy1 - gy0 - 0.06) / (fins - 1), fz - 0.004,
-          H.mark === 'm60' ? 0.52 : 0, 0, 0);
+        // (the M46/M47's four louvres keep their 264 stations)
+        const fy = H.mark === 'm60' ? gy0 + 0.03 + i * (gy1 - gy0 - 0.06) / (fins - 1) : gy0 + 0.06 + i * (gy1 - gy0 - 0.12) / 3;
+        P.add('hullDark', box(fw, 0.014, H.mark === 'm60' ? 0.05 : 0.02), fx, fy, fz - 0.004, H.mark === 'm60' ? 0.52 : 0, 0, 0);
       }
     }
     // (the narrow box's towing eyes; a box across the whole plate leaves them on the plate under it)
