@@ -7,7 +7,8 @@
 // docs/references/tanks/<id>.md. Hull frame: ground y = 0, +Z the nose, +X the vehicle's left.
 import { lineAt, type BellyStation, type MerkavaFender, type MerkavaGearSpec, type MerkavaHullSpec } from './merkavaFamilyHull.ts';
 import type { ShellSolid, TurretSlot } from './merkavaFamilyTurret.ts';
-import type { MerkavaBasket, MerkavaTarp, ModulePlate, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
+import type { BasketLoadItem } from './merkavaFamilyBasket.ts';
+import type { MerkavaBasket, ModulePlate, ModuleRun, SolidPart, TurretModule } from './merkavaFamilyDetails.ts';
 import type { SectionPoint } from './sectionSolid.ts';
 import type { MeasuredBox, MerkavaGunSpec, MerkavaOverGun, RevolveStation } from './merkavaFamilyGun.ts';
 import { MERKAVA_SOURCE, type SourcePart } from './merkavaFamilySource.ts';
@@ -26,8 +27,6 @@ export interface MerkavaMark {
   readonly shell: readonly ShellSolid[];
   /** The add-on turret armour modules as measured solids, each in its side's removable package. */
   readonly modules: readonly TurretModule[];
-  /** The bustle tarps as measured heightfields (the 3C's, 2D's and 4B's covered baskets). */
-  readonly tarps: readonly MerkavaTarp[];
   /** The large source pieces fitted as measured solids (bigpieces.py), drawn by their detail roles. */
   readonly solidParts: readonly SolidPart[];
   /** The belly's add-on armour plate (the 2D and Baz) as measured; null where the source carries none. */
@@ -40,6 +39,8 @@ export interface MerkavaMark {
   readonly studs: readonly (readonly number[])[];
   /** The bustle basket as measured (hull frame); null where the source has none behind the shell. */
   readonly basket: MerkavaBasket | null;
+  /** The basket's load: the fleet's field stowage packed on its floor (basketpack.py, hull frame). */
+  readonly load: readonly BasketLoadItem[];
   /** Roof machine guns as measured (hull frame): the mount's x, foot y and z, and the gun's span along z. */
   readonly roofGuns: readonly (readonly [x: number, foot: number, z: number, z0: number, z1: number])[];
   /** Whip antennas as measured: x, foot y, z, height (on the turret, or on the hull where the foot is under the deck). */
@@ -222,21 +223,10 @@ function gunOf(r: SourceRecord, pivot: readonly [number, number], trunnionBack: 
   };
 }
 
-/** A mark's tarps from their packed grids (millimetres; a top of 0 leaves its cell open, the depth runs top to hem). */
-function tarpsOf(r: object): MerkavaTarp[] {
-  const packed = (r as { readonly tarps?: readonly { readonly x0: number; readonly z0: number; readonly c: number; readonly nx: number;
-    readonly nz: number; readonly t: readonly number[]; readonly d: readonly number[] }[] }).tarps ?? [];
-  return packed.map((t) => ({
-    x0: t.x0 / 1000, z0: t.z0 / 1000, cell: t.c / 1000, nx: t.nx, nz: t.nz,
-    top: Float32Array.from(t.t, (v) => (v > 0 ? v / 1000 : Number.NaN)),
-    hem: Float32Array.from(t.t, (v, k) => (v > 0 ? (v - t.d[k]!) / 1000 : Number.NaN)),
-  }));
-}
-
-/** A module's face plates (platefit.py), where it carries them: millimetres, the frame in ten-thousandths. */
-function platesOf(m: object): ModulePlate[] | undefined {
-  const p = (m as { readonly p?: readonly { readonly o: readonly number[]; readonly q: readonly number[]; readonly t: number;
-    readonly v: readonly number[]; readonly h: readonly (readonly number[])[] }[] }).p;
+type PackedPlates = readonly { readonly o: readonly number[]; readonly q: readonly number[]; readonly t: number;
+  readonly v: readonly number[]; readonly h: readonly (readonly number[])[] }[];
+/** Face plates (platefit.py, basketplates.py) from their packing: millimetres, the frame in ten-thousandths. */
+function platesOf(p: PackedPlates | undefined): ModulePlate[] | undefined {
   const pts = (flat: readonly number[]): SectionPoint[] => Array.from({ length: flat.length / 2 }, (_, i): SectionPoint => [flat[2 * i]! / 1000, flat[2 * i + 1]! / 1000]);
   return p?.map((pl) => ({
     o: [pl.o[0]! / 1000, pl.o[1]! / 1000, pl.o[2]! / 1000] as const, q: [pl.q[0]! / 1e4, pl.q[1]! / 1e4, pl.q[2]! / 1e4, pl.q[3]! / 1e4] as const,
@@ -278,11 +268,23 @@ const decodePart = (p: SourcePart): SourcePart =>
   p.map((v, i) => (i === 0 || i === 1 || i === 12 || i === 13 ? v : v / (i >= 14 ? 10000 : 1000)));
 
 /** The measured basket in metres (bars' ends in thousandths, radii in ten-thousandths; boxes' quaternions in
- *  ten-thousandths). */
+ *  ten-thousandths; its floor and panels as face plates). */
 function basketOf(r: SourceRecord): MerkavaBasket | null {
-  const bk = r.basket as unknown as { readonly b: Rows; readonly p: Rows } | null;
+  const bk = r.basket as unknown as { readonly b: Rows; readonly p: Rows; readonly f?: PackedPlates } | null;
   return bk ? { bars: bk.b.map((v) => v.map((n, i) => n / (i === 6 ? 10000 : 1000))),
-    boxes: bk.p.map((v) => v.map((n, i) => n / (i >= 6 ? 10000 : 1000))) } : null;
+    boxes: bk.p.map((v) => v.map((n, i) => n / (i >= 6 ? 10000 : 1000))), plates: platesOf(bk.f) ?? [] } : null;
+}
+
+const LOAD_KINDS = ['chest', 'ammo', 'cans', 'ammol'] as const;
+/** The basket's load in metres: each piece's kind (0 chest, 1 ammunition cans, 2 jerrycans, 3 ammunition cans end to
+ *  end), its centre in thousandths, its yaw and the floor's normal in ten-thousandths, a chest's size in thousandths or
+ *  a row's count. */
+function loadOf(r: object): BasketLoadItem[] {
+  const rows = ((r as { readonly load?: Rows }).load ?? []) as Rows;
+  return rows.map((v): BasketLoadItem => {
+    const at = [v[1]! / 1000, v[2]! / 1000, v[3]! / 1000, v[4]! / 1e4, v[5]! / 1e4, v[6]! / 1e4] as const;
+    return v[0] === 0 ? ['chest', ...at, v[7]! / 1000, v[8]! / 1000, v[9]! / 1000] : [LOAD_KINDS[v[0]!] as 'ammo' | 'ammol' | 'cans', ...at, v[7]!];
+  });
 }
 
 function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): MerkavaMark {
@@ -292,11 +294,10 @@ function mark(id: MerkavaMarkId, hull: MerkavaHullSpec, trunnionBack: number): M
     id, hull, gear: gearOf(r), fender: fenderOf(r), belly: r.belly?.map((st) => st.map((v) => v / 1000) as unknown as BellyStation) ?? null,
     pivot, shell: solidsOf(r.turretShell),
     modules: r.modules.map((m) => ({ side: m.side === 1 ? 'R' as const : 'L' as const, axis: m.axis === 0 ? 0 as const : 2 as const, solids: solidsOf(m.s),
-      runs: runsOf(m), plates: platesOf(m) })),
-    tarps: tarpsOf(r),
+      runs: runsOf(m), plates: platesOf((m as { readonly p?: PackedPlates }).p) })),
     solidParts: r.solidParts.map((p) => ({ owner: p.o === 1 ? 1 as const : 0 as const, role: p.r, loft: p.k === 4,
       axis: p.a === 0 ? 0 as const : 2 as const, solids: solidsOf(p.s) })), slot: r.slot, parts: src.parts.map(decodePart), gun: gunOf(r, pivot, trunnionBack, OVER_GUN[id], hull),
-    basket: basketOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
+    basket: basketOf(r), load: loadOf(r), studs: ((r.studs ?? []) as unknown as Rows).map((v) => v.map((n) => n / 1000)),
     roofGuns: r.mgs.map(([x, foot, z, z0, z1]) => [x, foot, z, z0, z1] as const),
     antennas: r.antennas.map(([x, foot, z, h]) => [x, foot, z, h] as const),
   };

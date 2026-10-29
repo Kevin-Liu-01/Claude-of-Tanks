@@ -14,7 +14,6 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import type { SourcePart } from './merkavaFamilySource.ts';
 import { loftMeasuredSolid, type ShellSolid } from './merkavaFamilyTurret.ts';
-import { revolveZ } from './merkavaFamilyGun.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 /** Detail roles as the source fit names them (merkavaFamilySource.ts SourcePart role). */
@@ -59,15 +58,6 @@ function openTubeGeometry(r: number, len: number, seg: number): THREE.BufferGeom
   return KIT.mergeAll([wall, inner, rim, floor, breech]);
 }
 
-/** A rolled tarp about its axis (0 x, 1 y, 2 z) across its measured box: the roll, and at each end its coil's layers
- *  as steps standing proud of one another. */
-function rollGeometry(axis: number, sx: number, sy: number, sz: number, seg: number): THREE.BufferGeometry {
-  const len = [sx, sy, sz][axis]!, r = ([sx, sy, sz].filter((_, k) => k !== axis).reduce((a, b) => a + b, 0)) / 4, h = len / 2 - 0.02, d = 0.01;
-  const g = revolveZ([[-h - 2 * d, 0], [-h - 2 * d, r * 0.36], [-h - d, r * 0.36], [-h - d, r * 0.7], [-h, r * 0.7], [-h, r],
-    [h, r], [h, r * 0.7], [h + d, r * 0.7], [h + d, r * 0.36], [h + 2 * d, r * 0.36], [h + 2 * d, 0]], seg);
-  return axis === 0 ? g.rotateY(Math.PI / 2) : axis === 1 ? g.rotateX(-Math.PI / 2) : g;
-}
-
 /** The part's geometry in its own frame (centred, axis-aligned), oriented and placed in the owner's frame. */
 function partGeometry(p: SourcePart, offset: readonly [number, number, number], seg: number): THREE.BufferGeometry {
   const [kind, , cx, cy, cz, sx, sy, sz, qx, qy, qz, qw] = p as readonly number[] as [number, number, number, number,
@@ -79,8 +69,7 @@ function partGeometry(p: SourcePart, offset: readonly [number, number, number], 
     try { g = loftGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
   } else if (kind === 5) {
     try { g = plateGeometry(p); } catch { g = KIT.box(sx, sy, sz); }
-  } else if (kind === 7) g = rollGeometry(p[13]!, sx, sy, sz, seg);
-  else g = KIT.box(sx, sy, sz);
+  } else g = KIT.box(sx, sy, sz);
   q.set(qx, qy, qz, qw).normalize();
   e.setFromQuaternion(q);
   return KIT.xform(g, cx - offset[0], cy - offset[1], cz - offset[2], e.x, e.y, e.z);
@@ -193,13 +182,19 @@ export interface SolidPart {
 export interface MerkavaBasket {
   readonly bars: readonly (readonly number[])[];
   readonly boxes: readonly (readonly number[])[];
+  /** The floor and sheet panels the sources weld into the turret shell, as face plates (basketplates.py). */
+  readonly plates: readonly ModulePlate[];
 }
 
 const UP = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
 /** Draws the measured basket in the turret frame: each bar a six-sided member between its ends, each box-like piece its
- *  oriented box. The sources hang no ball-and-chain curtain under it. */
+ *  oriented box, its floor and panels their face plates. The sources hang no ball-and-chain curtain under it. */
 export function buildMerkavaBasket(P: TankBuilderPort, basket: MerkavaBasket, pivot: readonly [number, number]): void {
   const [py, pz] = pivot;
+  for (const plate of basket.plates) {
+    const g = facePlateGeometry(plate, [0, py, pz]);
+    if (g) P.add('turretPaintedDetail', g);
+  }
   for (const [x0, y0, z0, x1, y1, z1, r] of basket.bars as readonly (readonly [number, number, number, number, number, number, number])[]) {
     const len = Math.hypot(x1 - x0, y1 - y0, z1 - z0);
     if (len < 0.005) continue;
@@ -213,63 +208,6 @@ export function buildMerkavaBasket(P: TankBuilderPort, basket: MerkavaBasket, pi
     e.setFromQuaternion(q);
     P.add('turretPaintedDetail', KIT.box(sx, sy, sz), cx, cy - py, cz - pz, e.x, e.y, e.z);
   }
-}
-
-/** A bustle tarp as measured (tarpfit.py, hull frame): its plan grid (the first cell's centre, the cell size, columns and
- *  rows) and each cell's cloth top and hem, NaN where the cloth leaves the cell open. */
-export interface MerkavaTarp {
-  readonly x0: number;
-  readonly z0: number;
-  readonly cell: number;
-  readonly nx: number;
-  readonly nz: number;
-  readonly top: Float32Array;
-  readonly hem: Float32Array;
-}
-
-/** Draws a tarp in the turret frame as one draped canvas solid: its top through the cells' measured tops (a quad where
- *  four neighbouring cells are covered), its skirt walls from the top's edge down to the hem, its underside under them;
- *  vertex normals shared, so the cloth reads soft. */
-export function buildMerkavaTarp(P: TankBuilderPort, tarp: MerkavaTarp, pivot: readonly [number, number]): void {
-  const [py, pz] = pivot, { x0, z0, cell, nx, nz, top, hem } = tarp;
-  const positions: number[] = [], index: number[] = [];
-  const vt = new Int32Array(nx * nz).fill(-1), vb = new Int32Array(nx * nz).fill(-1);
-  for (let j = 0; j < nz; j++) {
-    for (let i = 0; i < nx; i++) {
-      const k = j * nx + i;
-      if (!Number.isFinite(top[k]!)) continue;
-      vt[k] = positions.length / 3; positions.push(x0 + i * cell, top[k]! - py, z0 + j * cell - pz);
-      vb[k] = positions.length / 3; positions.push(x0 + i * cell, hem[k]! - py, z0 + j * cell - pz);
-    }
-  }
-  // each top triangle's edges: an edge only one triangle uses is the cloth's rim (kept with its winding)
-  const rim = new Map<number, [number, number] | null>();
-  const edge = (a: number, b: number): void => {
-    const key = a < b ? a * nx * nz + b : b * nx * nz + a;
-    rim.set(key, rim.has(key) ? null : [a, b]);
-  };
-  for (let j = 0; j + 1 < nz; j++) {
-    for (let i = 0; i + 1 < nx; i++) {
-      const a = j * nx + i, b = a + 1, c = a + nx + 1, d = a + nx;
-      if (vt[a]! < 0 || vt[b]! < 0 || vt[c]! < 0 || vt[d]! < 0) continue;
-      index.push(vt[a]!, vt[d]!, vt[c]!, vt[a]!, vt[c]!, vt[b]!);
-      index.push(vb[a]!, vb[c]!, vb[d]!, vb[a]!, vb[b]!, vb[c]!);
-      edge(a, d); edge(d, c); edge(c, a); edge(a, c); edge(c, b); edge(b, a);
-    }
-  }
-  for (const e of rim.values()) {
-    if (!e) continue;
-    const [u, v] = e;
-    index.push(vt[v]!, vt[u]!, vb[u]!, vt[v]!, vb[u]!, vb[v]!);
-  }
-  if (!index.length) return;
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  // the cloth's texture from above, its skirts' running down
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(positions.flatMap((v, i) => (i % 3 === 0 ? [v] : i % 3 === 2 ? [v - positions[i - 1]!] : [])), 2));
-  g.setIndex(index);
-  g.computeVertexNormals();
-  P.add('turretCanvasPale', g);
 }
 
 /** The hull armour's bolt heads as measured (studfit.py: x, y, z and size, hull frame): a small cube each on its panel's
@@ -340,9 +278,9 @@ export function buildMerkavaSourceDetails(P: TankBuilderPort, parts: readonly So
           frontFace(p, off, 0.003, (w, h) => KIT.box(Math.max(0.03, w * 0.7), Math.max(0.02, h * 0.35), 0.008)));
         break;
       case ROLE.stowage:
-        // the Merkava's pale kit (FSP-06): the large irregular pieces (bags, tarps, rolls: lofts) in pale canvas, the
+        // the Merkava's pale kit (FSP-06): the large irregular pieces (bags: lofts) in pale canvas, the
         // boxes and cans in fitting paint
-        P.add(p[0] === 4 || p[0] === 7 ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'),
+        P.add(p[0] === 4 ? (onTurret ? 'turretCanvasPale' : 'hullCanvasPale') : (onTurret ? 'turretPaintedDetail' : 'hullPaintedDetail'),
           partGeometry(p, off, seg));
         break;
       default:

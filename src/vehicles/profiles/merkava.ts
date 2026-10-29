@@ -12,8 +12,9 @@ import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.t
 import { MERKAVA_MARKS, type MerkavaMark, type MerkavaMarkId } from './merkavaFamilyMarks.ts';
 import { buildMerkavaBelly, buildMerkavaHullBody, buildMerkavaNose, buildMerkavaRunningGear, buildMerkavaStern } from './merkavaFamilyHull.ts';
 import { buildMerkavaRoofWeapons, buildMerkavaTurretShell, turretFlankAt, turretShellTop } from './merkavaFamilyTurret.ts';
-import { buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds, buildMerkavaTarp, modulePlateFront, moduleRunFront } from './merkavaFamilyDetails.ts';
+import { buildMerkavaBasket, buildMerkavaSourceDetails, buildMerkavaStuds, modulePlateFront, moduleRunFront } from './merkavaFamilyDetails.ts';
 import { addMerkavaGun } from './merkavaFamilyGun.ts';
+import { buildMerkavaBasketLoad } from './merkavaFamilyBasket.ts';
 
 function isTankBuilderPort(value: object): value is TankBuilderPort {
   return 'spec' in value && 'hullG' in value && 'turretG' in value && 'gunG' in value && 'mats' in value
@@ -54,8 +55,10 @@ function* buildMerkavaFamilySteps(builder: object): TankProfileBuild {
   const channel = mark.slot ? { z0: mark.slot.z0, z1: shellFront, halfWidth: mark.slot.halfWidth }
     : moduleFront > shellFront + 0.2 ? { z0: shellFront - 0.05, z1: moduleFront, halfWidth: 0.25 } : null;
   buildMerkavaTurretShell(P, mark.shell, mark.pivot, channel);
-  if (mark.basket) buildMerkavaBasket(P, mark.basket, mark.pivot);
-  for (const tarp of mark.tarps) buildMerkavaTarp(P, tarp, mark.pivot);
+  if (mark.basket) {
+    buildMerkavaBasket(P, mark.basket, mark.pivot);
+    buildMerkavaBasketLoad(P, mark.load, mark.basket, mark.pivot);
+  }
   yield 'merkavaTurretShell';
   buildMerkavaSourceDetails(P, mark.parts, [0, py, pz], mark.modules, mark.solidParts);
   buildMerkavaStuds(P, mark.studs);

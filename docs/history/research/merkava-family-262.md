@@ -17,7 +17,8 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   workfloow". Next round (2026-10-28): "rebuild the turret shells as flat hard-edged faces fitted to the source's armour
   faces, fix the noses (vertical lower plate, hooks, lamps, fender over the sprocket), add smoke dischargers, sleeve
   bands and perforated skirts" (round log r8). 2026-10-29, after the in-game look: "tbh ours look really good already
-  ... i think theyre don ehonestly anmy more detail would be too much and trroo many triangles" — geometry closed (r18).
+  ... i think theyre don ehonestly anmy more detail would be too much and trroo many triangles" — geometry closed (r18);
+  then "fix the bustles and replace the stuff in them with our actual decorations annd stuff tho" (r19).
 - IDs: `merkava1b` (Merkava Mk 1B), `merkava2b` (Mk 2B), `merkava2d` (Mk 2D), `merkava3c` (Mk 3C), `merkava3_baz`
   (Mk 3D Baz; seed id `merkava3d`), `merkava4b` (Mk 4B).
 - Implementation status: implemented (family builder over the supplied sources' measured records), iterating.
@@ -261,6 +262,20 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   `~/cot-lanes/merkava-family-262/ingame-r18/merkava-family-ingame.png`. Triangles at HIGH (export receipt):
   160-182k a mark against main's 110-122k (x1.46 over the family; the SEPv2 X runs 229k). The owner closed the geometry
   on the in-game look; the remaining critic notes (lamps, lower nose shackles, the 1B shell's creases) stay open.
+- r19 (2026-10-29, the owner: "fix the bustles and replace the stuff in them with our actual decorations annd stuff
+  tho"): the baskets' source load gone — every stowage group lying wholly in the basket and the tarp over it, and the
+  plain add-on-armour boxes laid on its floor (the 2B's four tilted boxes, the 2D's, the 3C's and Baz's spare boxes; the
+  fitted turret modules stay; `basketclear.py`); the rolls and tarps with it (no kind-7 part or tarp remains, so their
+  code left the builder). The basket floor the sources weld into the turret shell drawn at last, as its own face plates
+  (`basketplates.py`: the shell's upward faces within 4 cm of the floor inside the rails, the floor wrapping forward
+  round the turret's rear corners; the Mk 1 and Mk 3 floors fall 3-7 degrees to the rear rail); before, the family drew
+  rails over the deck. The load is the fleet's own field stowage as the Barak's and the Abrams' baskets carry it
+  (owner 2026-10-14): welded steel chests (`fieldChest.ts`), M2A1 ammunition cans and pressed 20 L jerrycans in IDF issue
+  drab, packed on a 1 cm plan grid of each build's free floor (`basketpack.py`: 1 cm clear of the rails, braces and the
+  turret's wall, snug to them, the rear first; the largest crew chest that fits each bay; each mark its own order), a
+  second layer of cans on the chests' lids, the pieces lying with the floor; the basket's volume reserved from the decor
+  (`merkavaFamilyBasket.ts`). Loads: 1B 6 pieces, 2B 4, 2D 6, 3C 7, Baz 5, 4B 5. In-game stills:
+  `~/cot-lanes/merkava-family-262/ingame-r25/merkava-bustles-ingame.png`. Triangles at HIGH: 158-178k.
 - The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
   sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
   DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS
@@ -268,7 +283,7 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   the 3C control launches from its dock.
 - Next round: the 2D's spaced side modules (the cut fills the gap behind the plate into a wedge); the skirts' bolt
   fields and the Mk 4's skirt rails and slatted front panel; the 4B's bolted lower front plates; the mantlet's canvas
-  cover and corrugated boot; the cupolas as their faceted shapes; loaded baskets; semantic roles from the MTL textures;
+  cover and corrugated boot; the cupolas as their faceted shapes; semantic roles from the MTL textures;
   the shell's welded rear stowage bins and the 4B's gun-channel floor out of the primary 'turret' bucket (the armour
   envelope census, 2026-10-28: the rebuilt 'turret' runs 4.6-4.8 m, the 4B's 5.1 m).
 

@@ -10,6 +10,8 @@
 //    12.7 mm over the gun where the source mounts one, the barrel itself recoiling (rig_recoil);
 //  - registers the spec's two removable turret packages over the source's add-on turret armour; stripping both leaves the
 //    cast shell (the permanent backing) whole, and a reset restores them;
+//  - carries its bustle basket's measured floor with the fleet's chests and cans on it inside its rails, the basket's
+//    volume reserved from the decor;
 //  - publishes the family receipt (merkavaFamilyReceipt).
 // It replaces the old pile's fit receipts (merkava1bFit, merkava2Fit, merkava3Fit, merkavaGunCradle, merkavaRunningGear,
 // merkavaEraFinish, merkava4bGeometry), which pinned the retired oracle-fit geometry.
@@ -121,10 +123,22 @@ for (const id of Object.keys(GUN)) {
       assert.equal(shell.geometry.attributes.position.count, shellVerts, `${at}: the shell stays whole under spent packages`);
       assert.ok(shell.geometry.boundingBox.equals(shellBox), `${at}: the shell's extent is unchanged by spent packages`);
       assert.equal(visual.resetEra(), true, `${at}: the packages reset`);
+
+      // the bustle basket (the owner 2026-10-29: "fix the bustles and replace the stuff in them with our actual
+      // decorations"): its measured floor, the fleet's chests and cans on it inside its rails, the decor kept out of it
+      assert.ok(mark.basket?.plates.length, `${at}: the basket's measured floor`);
+      assert.ok(mark.load.length >= 4 && mark.load.some((piece) => piece[0] === 'chest'),
+        `${at}: the basket carries chests and cans (${mark.load.length} pieces)`);
+      const bars = mark.basket.bars, xs = bars.flatMap((b) => [b[0], b[3]]), bz = bars.flatMap((b) => [b[2], b[5]]);
+      for (const [kind, x, , z] of mark.load) {
+        assert.ok(x > Math.min(...xs) && x < Math.max(...xs) && z > Math.min(...bz) && z < Math.max(...bz),
+          `${at}: the ${kind} at ${x.toFixed(2)}, ${z.toFixed(2)} stands inside the basket's rails`);
+      }
+      assert.ok((turret.userData.decorReservedBoxes ?? []).length, `${at}: the basket's volume is reserved from the decor`);
     } finally {
       visual.dispose?.();
     }
   }
 }
 console.log('merkavaFamily.selftest: six marks at HIGH and LOW — wheels at the source stations, guns to the source muzzle '
-  + 'on rig_gun, removable turret packages over a permanent shell PASS');
+  + 'on rig_gun, removable turret packages over a permanent shell, the field stowage in the basket PASS');
