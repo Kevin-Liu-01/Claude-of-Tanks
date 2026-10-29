@@ -2,7 +2,7 @@
 // 2026-10-28: "weird parallel lines on ground (steinburg) … on all maps").
 //
 //   node tools/ground-banding-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v3]
-//        [--wait-hours=16]
+//        [--wait-hours=16] [--band=1 (a coordinator's priority-band grant only)]
 //
 // jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
 //               "variants": ["base", "noland"], "maps": ["urban", ...] }, ...]
@@ -25,11 +25,11 @@
 // (a run resumes). (2026-10-28, at load ~450 with 50 GB compressed: three map pages in one browser passed the guard's
 // 10 GB tree cap; staging inside a hold outran puppeteer's protocol timeout; three runs staging at once drew 0.4 fps.)
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
-import { createCaptureLock } from './capture-lock.mjs';
+import { CAPTURE_QUEUE_DIR, createCaptureLock, ticketAt } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
@@ -46,7 +46,7 @@ const DEVICES = Object.freeze({
 const FIELD_GROUPS = Object.freeze([[7, 4], [5, 13, 12, 11, 6, 9]]);
 
 function parse(argv) {
-  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v3' };
+  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v3', band: false };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -56,6 +56,7 @@ function parse(argv) {
     else if (key === 'root') out.root = path.resolve(value);
     else if (key === 'wait-hours') out.waitHours = Number(value);
     else if (key === 'tag') out.tag = value;
+    else if (key === 'band') out.band = value !== '0';
     else throw new Error(`unknown flag --${key}`);
   }
   if (!out.out || !out.jobs) throw new Error('--out=<dir> and --jobs=<jobs.json> are required');
@@ -241,6 +242,21 @@ async function shootMap(entry, options, frames, reference) {
   return receipt;
 }
 
+// The priority band (docs/DEVELOPMENT.md, the coordinator's grant for a named deadline): band stamps run from
+// 1791397983200; a granted ticket takes one past the highest live band stamp, so the band's earlier tickets go first.
+const BAND_BASE = 1791397983200;
+const BAND_AGE_MS = 24 * 3600 * 1000;
+function nextBandStamp(queueDir = CAPTURE_QUEUE_DIR) {
+  let top = BAND_BASE;
+  for (const name of readdirSync(queueDir)) {
+    const m = /^(\d{15})-\d{12}-(\d+)\.[tw]$/.exec(name);
+    if (!m || Number(m[2]) === process.pid) continue;
+    const stamp = Number(m[1]);
+    if (Date.now() - stamp > BAND_AGE_MS) top = Math.max(top, stamp);
+  }
+  return top + 1;
+}
+
 async function main(argv) {
   const options = parse(argv);
   for (const job of options.jobs) {
@@ -284,11 +300,14 @@ async function main(argv) {
     // queue's head for hours): the first pair stages while it waits; inside the hold every pair is staged and shot in
     // turn, and between pairs checkpoint() gives the lock up past the 20-minute cap when anyone waits, re-queueing at the
     // back with a fresh stamp
-    await lock.acquire(options.waitHours * 3600 * 1000, {
-      lockClass: 'render',
-      prepare: async () => { await openPair(pairs[0]); session = await freezePage(entry.page); },
+    // (--band, the coordinator's grant, 2026-10-29: one ticket in the priority band; past the 20-minute cap with anyone
+    // waiting it gives the lock up and re-enters the band one past its highest live stamp, staging its next pair there)
+    const take = (prepare) => lock.acquire(options.waitHours * 3600 * 1000, {
+      lockClass: 'render', prepare, ...(options.band ? { ticket: ticketAt(nextBandStamp()) } : {}),
     });
+    await take(async () => { await openPair(pairs[0]); session = await freezePage(entry.page); });
     held = true;
+    let heldSince = Date.now();
     for (let i = 0; i < pairs.length; i++) {
       const { job, mapId } = pairs[i];
       const started = Date.now();
@@ -321,7 +340,17 @@ async function main(argv) {
       }
       // a fresh browser every eight pages: nothing a closed page left behind accumulates
       if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
-      if (i < pairs.length - 1) {
+      if (i < pairs.length - 1 && options.band) {
+        if (Date.now() - heldSince >= 20 * 60_000 && lock.waiting() > 0) {
+          lock.release();
+          held = false;
+          const queued = Date.now();
+          await take(async () => { await openPair(pairs[i + 1]); session = await freezePage(entry.page); });
+          held = true;
+          heldSince = Date.now();
+          console.log(`[${label}] ${stamp()} yielded at the cap; held again in the band after ${((Date.now() - queued) / 60000).toFixed(1)} min`);
+        }
+      } else if (i < pairs.length - 1) {
         const cp = await lock.checkpoint({ timeoutMs: options.waitHours * 3600 * 1000,
           beforeYield: async () => { held = false; }, afterResume: async () => { held = true; } });
         if (cp.yielded) console.log(`[${label}] ${stamp()} yielded at the cap, held again after ${(cp.waitedMs / 60000).toFixed(1)} min at the back`);
