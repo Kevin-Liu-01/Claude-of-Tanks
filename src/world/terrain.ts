@@ -485,8 +485,9 @@ interface SplatConfig {
    * are white limestone gravel). */
   soilTint?: ColorTriple;
   /** Ground lane (wave 83): a turned field's tone over the darkened soil (default 1) — a loam's plough a mid brown
-   * (Frontier 1.3), a chernozem's the near-black of its soil (1). */
-  ploughLift?: number;
+   * (Frontier 1.3), a chernozem's the near-black of its soil (1). A triple lifts each channel (264b: Ironworks' brownfield
+   * plots, turned over the works' dark red-brown dirt layer, a coal-dusted loam's brown, not black or maroon). */
+  ploughLift?: number | ColorTriple;
   marshGloss?: number;
   microAmp?: number;
   strata?: number;
@@ -4538,12 +4539,13 @@ vec4 maskAt(vec2 uv) {
 uniform vec4 uMeanG, uMeanD, uMeanR, uMeanM;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform vec3 uSoilTint; // ground lane (wave 79): the land's soil where the dirt layer is drawn as soil (SplatConfig soilTint)
-uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift)
+uniform vec3 uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift, per channel)
 uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the boundary's half-width m, -); x < -1e8 = one formation
 uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminance (rgb) and the share it takes (w)
 uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uCliffStrata; // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata)
+uniform vec4 uDbgA; // TEMP 264b knobs
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
@@ -4889,6 +4891,35 @@ vec2 sandWaves(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, ve
       float s2 = sin(d * k.y + h1 * 6.2832 + warp * 0.4);
       slopeV += w * (s1 * amp.x + s2 * amp.y) * wt;
       tone += s1 * wt;
+    }
+  }
+  return slopeV;
+}
+// (264b, Main's flags from 264's blind critics: the Desert's and Mars's chase frames, "regular parallel ripple stripes")
+// sandWaves' cells drew every crest of a 22 m cell straight, at one spacing and one strength — a ruled sheet at the chase
+// camera. The ripples' own trains: each cell its own spacing (±12 %); the crests bend with the caller's phase field (ph,
+// metres: a crest wanders half a spacing along its run) and stand sharp over broad troughs (a second harmonic); the
+// caller fades them in patches, so crests end and begin again. The megaripples take a breath of the bend.
+vec2 sandRipples(vec2 p, vec2 w0, float cellM, float swing, vec2 ph, vec2 k, vec2 amp) {
+  vec2 g = p / cellM - 0.5;
+  vec2 c0 = floor(g);
+  vec2 f = g - c0;
+  vec2 bl = f * f * (3.0 - 2.0 * f);
+  vec2 slopeV = vec2(0.0);
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < 2; i++) {
+      vec2 c = c0 + vec2(float(i), float(j));
+      float h1 = fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
+      float h2 = fract(sin(dot(c, vec2(269.5, 183.3))) * 43758.5453);
+      float ang = (h1 - 0.5) * 2.0 * swing;
+      float ca = cos(ang), sa = sin(ang);
+      vec2 w = vec2(w0.x * ca - w0.y * sa, w0.x * sa + w0.y * ca);
+      float d = dot(p - (c + 0.5) * cellM, w);
+      float wt = (i == 0 ? 1.0 - bl.x : bl.x) * (j == 0 ? 1.0 - bl.y : bl.y);
+      float a1 = d * k.x * (0.88 + 0.24 * fract(h2 * 7.13 + h1 * 3.1)) + h2 * 6.2832 + ph.x;
+      float s1 = sin(a1) - 0.35 * sin(2.0 * a1);
+      float s2 = sin(d * k.y + h1 * 6.2832 + ph.y);
+      slopeV += w * (s1 * amp.x + s2 * amp.y) * wt;
     }
   }
   return slopeV;
@@ -6983,12 +7014,14 @@ void splatCompute() {
     // the dapple is a field in plan: on a slope seen at a grazing angle its 1–5 m spots foreshorten into long bands
     // across the face, lit and shaded by a low sun — a ladder of terraces. On a slope the relief fades as the view
     // grazes it (flat ground keeps all of it)
-    float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), smoothstep(0.01, 0.08, slope));
+    float vegSward = meadowG * dapField * (1.0 - step(0.5, uReduxD.y));
+    float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), max(smoothstep(0.01, 0.08, slope), uDbgA.y * vegSward));
     // ground lane (2026-10-05, local contrast, step 2 (b''): the dapple at twice its map's scale was the second ground
     // term, +11 % on Verdant's establishing view): a vegetated map's sward carries more of it — its tussocks' and hollows'
     // roll — where a field (dapField) and an arid or snow map (the leopard spots under a low sun) keep their own
-    float swardGain = 1.0 + MID_SWARD_GAIN * meadowG * dapField * (1.0 - step(0.5, uReduxD.y));
-    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardGain * (1.0 - fMs) * midGraze;
+    float swardGain = 1.0 + MID_SWARD_GAIN * vegSward;
+    float swardRelief = mix(1.0, uDbgA.x, vegSward);
+    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardRelief * (1.0 - fMs) * midGraze;
     float midN2 = nz(uv, 0.0089, vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
                  + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * swardGain * (1.0 - fMs) * dapField;
@@ -7288,8 +7321,14 @@ void splatCompute() {
     // their trains; a green map's dune band keeps a trace of them
     if (uReduxD.y < 0.5) { nearRip *= 0.25; megaRip *= 0.4; }
     if (rw * max(nearRip, megaRip) > 0.0005) {
-      float rTone;
-      vec2 rSlope = sandWaves(uv, wind0, 22.0, 0.6, sinuosity, vec2(16.5, 0.55), vec2(nearRip, megaRip), rTone);
+      // (264b) the crests bend along their run (n1h, 2–5 m, and the ripples' own read, 1–4 m: a crest wanders up to half
+      // a spacing within a few metres) and stand in patches — strong and faint stretches of 10–20 m (n1), and within them
+      // crests that end and begin again every metre or two (the ripples' own read). The noise texture's channels hold
+      // 4–9 (R) and 2–5 (G) cycles a tile and sit within about ±0.12 of their middle: the windows below are that narrow
+      vec4 ripN = nz(uv, 0.11, vec2(0.37, 0.71));
+      nearRip *= (0.35 + 0.65 * smoothstep(0.40, 0.60, n1)) * (0.2 + 0.8 * smoothstep(0.42, 0.58, ripN.r));
+      vec2 ripPh = vec2(sinuosity + (n1h - 0.5) * 22.0 + (ripN.g - 0.5) * 9.0, sinuosity * 0.4 + (n1h - 0.5) * 2.0);
+      vec2 rSlope = sandRipples(uv, wind0, 22.0, 0.6, ripPh, vec2(16.5, 0.55), vec2(nearRip, megaRip));
       rSlope *= rw;
       float rLen = length(rSlope);
       if (rLen > 0.12) rSlope *= 0.12 / rLen;
@@ -8430,7 +8469,8 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTintC = { value: new THREE.Vector3(...tintC) };
     shader.uniforms.uRoadTint = { value: new THREE.Vector3(...roadTint) };
     shader.uniforms.uSoilTint = { value: new THREE.Vector3(...(S.soilTint ?? [1, 1, 1])) };
-    shader.uniforms.uPloughLift = { value: S.ploughLift ?? 1 };
+    const ploughLift = S.ploughLift ?? 1;
+    shader.uniforms.uPloughLift = { value: typeof ploughLift === 'number' ? new THREE.Vector3(ploughLift, ploughLift, ploughLift) : new THREE.Vector3(...ploughLift) };
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uRoadPuddle = { value: S.roadPuddles ?? 1 }; // ground lane: the ruts' puddles and their mud (1 = every vegetated map's today)
@@ -8530,6 +8570,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
+    shader.uniforms.uDbgA = { value: new THREE.Vector4(0.4, 1, 0, 0) }; // TEMP 264b
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground

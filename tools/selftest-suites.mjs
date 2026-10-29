@@ -1235,6 +1235,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadSurfaceShader.selftest.mjs',
     'src/world/terrainWetLayer.selftest.mjs',
     'src/world/groundContrastStep2.selftest.mjs',
+    'src/world/groundTrainIrregularity.selftest.mjs', // 264b: the sand trains' irregularity, a turned field's lift per channel
     'src/world/snowRockSlope.selftest.mjs',
     'src/world/roadPuddleGloss.selftest.mjs',
     'src/world/snowFaces.selftest.mjs',
