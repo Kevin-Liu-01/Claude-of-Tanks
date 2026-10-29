@@ -12049,7 +12049,16 @@ export function* createTankRuntimeSteps(
     if (batchStatic) detachEmptyLodSentinels(root);
     // (264) a suit's shade on the armour under it, on every build that wears one (suitOcclusion.ts): after the shadow
     // batch took its sources and every merge, before byte-identical sharing compares the draws that carry it
-    if (!geometryOnly) root.userData.suitOcclusion = yield* bakeSuitOcclusionSteps(root, [turretG, gunG, recoilG]);
+    // (264 integrator) the bake's wall-clock time rides apart from its structural stats (suitOcclusionMs, a measured time
+    // the identity receipts leave out: battleEraReceipt ROOT_EXCLUSIONS, deferred-assembly-receipt TIMING)
+    if (!geometryOnly) {
+      const baked = yield* bakeSuitOcclusionSteps(root, [turretG, gunG, recoilG]);
+      if (baked) {
+        const { bakeMs, ...suitOcclusion } = baked;
+        root.userData.suitOcclusion = suitOcclusion;
+        root.userData.suitOcclusionMs = bakeMs;
+      } else root.userData.suitOcclusion = null;
+    }
     const tailShadowBatchFinishedAt = performance.now() - tailWait.ms;
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
     // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
