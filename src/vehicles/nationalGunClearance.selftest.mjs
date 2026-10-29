@@ -72,7 +72,6 @@ const CURVES = {
   strv81: [[2,34],[124,150]],
   challenger_x: [],
   challenger_x_sleek: [],
-  vickers_mk1: [],
   fv4034: [],
   challenger2: [],
   challenger2e: [[177,177]],

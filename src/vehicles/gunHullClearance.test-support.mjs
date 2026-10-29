@@ -339,10 +339,10 @@ export function fixedGunHullProbe(id, { decor = true } = {}) {
 export const TURRET_GUN_PORT_KEEP_M = .01;
 
 /**
- * 262 (owner on the Challenger 1 and Vickers Mk 1 rebuilds: "based on proper historical referrences"): a turret gun
- * leaving its turret through a port, measured in the turret's frame over its whole published pitch range. The builder
- * publishes rig_turret.userData.gunPort ({ faceZ, kind }: the turret-frame z of the port's face: the Challenger's nose
- * plates either side of its gun slot, the Vickers turret front plate under its mantlet). Build `id` (seed 4242, high
+ * 262 (owner on the Challenger 1 rebuild: "based on proper historical referrences"): a turret gun leaving its turret
+ * through a port, measured in the turret's frame over its whole published pitch range. The builder publishes
+ * rig_turret.userData.gunPort ({ faceZ, kind }: the turret-frame z of the port's face: the FV4030/5 and FV4030/6 nose
+ * plates either side of their gun slot). Build `id` (seed 4242, high
  * quality, decorations off: they never ride the gun) and pose rig_gun at a pitch. `measure(pitchDeg)` returns, over the
  * recoiling tube at both recoil strokes: `clearance`, its smallest distance 1.5 cm and more ahead of the face to every
  * turret mesh (the gun's own parts excepted; `part` names the nearest, `at` the sample); `exposed`, the tube samples
