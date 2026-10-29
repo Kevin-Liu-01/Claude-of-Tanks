@@ -552,6 +552,10 @@ function addMantletCover(P: TankBuilderPort): void {
     P.add('gunMountCloth', KIT.xform(cylZ(0.5, 0.03, n), 0, 0, 0, 0, 0, 0, [w + 0.014, h + 0.014, 1]), 0, 0, z);
   }
   P.addGunExtraDark(cylZ(0.110, 0.035, n), 0, 0, 1.135);
+  // 263 (fleetPassLow gunArticulation: the pitching gunMount bucket carries the mantlet's steel): the gun cradle's
+  // sleeve round the tube's root, inside the canvas bag (z 0.12-0.32, r 0.12 inside the bag's 0.24), past the tube's
+  // rear cap at 0.30 so no two caps share a plane
+  P.add('gunMount', cylZ(0.12, 0.20, n), 0, 0, 0.22);
   // the coaxial 7.62 mm's port in the cover, right of the gun
   P.addGunExtraDark(cylZ(0.022, 0.08, 10), -0.17, -0.03, 0.66);
 }

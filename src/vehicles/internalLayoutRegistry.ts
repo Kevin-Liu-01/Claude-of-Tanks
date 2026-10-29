@@ -62,6 +62,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/ztz100_x.md',
     kind: 'owner-supplied-source-study',
   }),
+  ownerZtz20Family: Object.freeze({
+    title: 'Owner-authored ZTZ-20 family (ZTZ-20, pre-production ZTZ-100, ZTZ-100 Prototype testbed), 2026-10-27',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/ztz20-family-20261027.json',
+    kind: 'owner-authored-concept',
+  }),
   ownerMissileConcepts: Object.freeze({
     title: 'Owner-authored ZTZ-100 Prototype and Object 695 missile turret designs, 2026-09-19',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/missile-turrets-20260919.json',
@@ -423,7 +428,8 @@ const LAYOUTS = Object.freeze({
   ), systems: systems({ engine: { placement: 'rear', form: 'hybridDieselPowerpack' }, ammoRack: { placement: 'turret', form: 'blowOffBustleRack' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   // 244: the ZTZ-100's measured turret stands on a floor under 10 cm across and carries the gun and its bustle
   // autoloader only, so its three crew ride side by side in the hull front (the AbramsX arrangement), not in the turret.
-  ztz100HullCapsule: { confidence: 'platform-inferred', sources: ['ztz100SourceStudy'], crew: crew(
+  // 262: the ZTZ-20 family keeps the capsule; the production ZTZ-20 and the pre-production ZTZ-100 share the turret floor.
+  ztz100HullCapsule: { confidence: 'platform-inferred', sources: ['ztz100SourceStudy', 'ownerZtz20Family'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   m1a3: { confidence: 'owner-directed', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
@@ -523,7 +529,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   westernManualHullAmmo: ['sabra_mk2', 'chieftain5', 'amx40', 'chieftain_mk10', 'k1a1', 'amx30b', 'strv81', 'chieftain3', 'chieftain_mk9', 'k1e1', 'stb1', 'type74', 'amx40_proto', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48a5_patton', 'vickers_mk1', 'centurion3', 'centurion5_2', 'm60a3'],
   starship: ['m60a2'],
   arieteManual: ['c2_ariete', 'c1_ariete', 'c1_ariete_preserie', 'c1_ariete_proto_serie1', 'c2_ariete_proto'],
-  westernTwoPart: ['challenger1_mk3', 'challenger1_mk2', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3'],
+  westernTwoPart: ['challenger1_mk1', 'challenger1_mk3', 'challenger1_mk2', 'challenger_x', 'challenger_x_sleek', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger3_proto', 'challenger3', 'challenger3_td', 'challenger3_td_rws'],
   leopard: ['strv122', 'leo2a6', 'leo1a5', 'leopard2_proto', 'leo2a2', 'leo2a3', 'leo2a4m_can', 'leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_revolution_proto', 'leo2_revolution', 'leo2_improved', 'strv121', 'leo2a6_ua', 'leo2a7v', 'leo2a6m', 'leo2a5m', 'leo2a5'],
   abrams: ['m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1ha', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'ua_m1a1',
     'm1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'],
@@ -537,9 +543,9 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptAzHybrid: ['type96_72_long','type96_72m_lei','t62mv1','t64bv_donbas'],
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   sovietAz: ['type96b', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 'ztz99a2_qinglong', 'vt4a1_baihu', 't72b3_zhuque', 't72b3m_xuanwu', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
-  sovietMz: ['t80u', 't64bv1', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m'],
-  bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
-  ztz100HullCapsule: ['ztz100'],
+  sovietMz: ['t80u', 't64bv1', 't64bv', 't64b1v_2022', 't64bm1m', 'pt64_tur', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m', 'bm_oplot_m', 'bm_oplot_t'],
+  bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'christian2', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
+  ztz100HullCapsule: ['ztz100', 'ztz20', 'ztz20_prototype'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],

@@ -29,6 +29,7 @@ const CURVES = {
   type96_72_long: [],
   type96_80_feng: [],
   type96_72m_lei: [],
+  strv121: [[140, 162]], // release 262: the mount over the engine deck's front quarters (the sweep's mountConflicts)
   m1a1: [],
   m1a1ha: [],
   m1a1_abrams_hc: [],
@@ -46,6 +47,8 @@ const CURVES = {
   t72_rys: [],
   // 2026-10-26: the M48A5's trunnion at 2.10 under its compact shield; its measured curve (supplementalFleetSpecs.ts)
   m48a5_patton: [],
+  // 262: the Leopard 1A5 proportion rebuild (deck 1.58, cast B&V turret); its measured curve (modern2.ts)
+  leo1a5: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
@@ -70,7 +73,8 @@ const CURVES = {
   t90m_proryv: [],
   t90a_burlak_proto: [],
   strv81: [[2,34],[124,150]],
-  challenger1_mk2: [[140,140]],
+  challenger_x: [],
+  challenger_x_sleek: [],
   fv4034: [],
   challenger2: [],
   challenger2e: [[177,177]],
@@ -80,6 +84,8 @@ const CURVES = {
   merkava2b: [],
   merkava2d: [],
   ua_challenger2: [[177,177]],
+  challenger3_td: [], // 262: measured with the mantlet's lower edge 6 cm over the deck (no mount conflict)
+  challenger3_td_rws: [],
   leo2a5: [],
   leo2a6m: [],
   merkava3c: [],
@@ -96,6 +102,11 @@ const CURVES = {
   type59: [],
   t55a: [],
   ztz99_longwei: [],
+  // 262: the true T-64s on t64Foundation.ts (the measured curves in t64Armor.ts)
+  t64bm1m: [],
+  t64bv: [],
+  t64b1v_2022: [],
+  pt64_tur: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

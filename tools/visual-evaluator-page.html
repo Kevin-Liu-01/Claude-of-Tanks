@@ -37,6 +37,7 @@ import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-refe
 import { SOURCE_WORLD_FRAMES } from '/tools/source-world-registration.mjs';
 import { comparisonCameras } from '/tools/source-comparison-cameras.mjs';
 import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
+import { OPLOT_BM_X_REFERENCE_OVERRIDES } from '/tools/oplot-bm-x-reference-overrides.ts';
 
 const out = document.getElementById('out');
 const say = (t) => { out.textContent = t; };
@@ -61,10 +62,10 @@ const SKEW_MIN = 0.15;            // min |skew| for a meaningful flip read
 // CRITIC_REFERENCE_OVERRIDES (graduates have no MODEL_SOURCE; the recovered
 // GLBs stay measurement oracles). Page-local injection; never ships.
 const CRITIC_REFERENCE_OVERRIDES = {
-  ztz100: SECOND_WAVE_X_REFERENCE_OVERRIDES.ztz100,
   c1_ariete: SECOND_WAVE_X_REFERENCE_OVERRIDES.c1_ariete,
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...ARES_APC_X_REFERENCE_OVERRIDES,
+  ...OPLOT_BM_X_REFERENCE_OVERRIDES,
   // c1_ariete_preserie (misc quarantine oracle — mirrors procedural-fidelity.html verbatim)
   c1_ariete_preserie: { source:'glb', glb:{ path:'/models/tanks/community/ariete-dustymojito.glb',
     turretNode:'^Turret$', autoPivot:true } },
@@ -73,9 +74,8 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
   // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
   centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  // m48a5_patton §5.45 build flip (patton lane 2026-08-08): render = buildM48
-  // procedural; the CC-BY print stays the measurement reference here.
-  m48a5_patton: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // release 262: the owner's M48A5, source-world certified (second-wave-x-reference-overrides.ts)
+  m48a5_patton: SECOND_WAVE_X_REFERENCE_OVERRIDES.m48a5_patton,
   // t44/type59 §5.45 build flips (russia lane 2026-08-08): renders =
   // buildT44/buildType59 procedurals; the CC prints stay the measurement
   // references here (userdrops7 glb() helper expansion, verbatim).
@@ -149,7 +149,8 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // this fused evaluator print remains the shared-chassis comparison layer.
   vt4a1: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz85_iii: { source:'glb', glb:{ path:'/models/community-candidates/ztz85iii_manako.glb', fixedMount:true, componentMasks:false } },
-  t84bm_oplot_m: { source:'glb', glb:{ path:'/models/community-candidates/oplot_m_manako.glb', turretNode:'^TUR$', yawOffset:Math.PI, autoPivot:true, turretFollowers:'^(?:TUR[ _]ARMOR|TUR[ _]POKLOP|default017|default042|default076)$', gunComponentMasks:false } },
+  // t84bm_oplot_m (release 262): rebuilt as the Oplot-M/T family's 2000 stage on the certified bm_oplot_m base (owner
+  // 2026-10-27); oplot_m_manako.glb is an Oplot-M print, so the T-84U is a declared derivative, as the Oplot-T is.
   t80u_kursk: { source:'glb', glb:{ path:'/models/community-candidates/t80u_kursk_manako.glb', fixedMount:true, yawOffset:1.5707963267948966, componentMasks:false } },
   t64bv_donbas: { source:'glb', glb:{ path:'/models/community-candidates/t64bv_donbass_manako.glb', turretNode:'^default279$', gunNode:'^default280$', gunFollowers:'^default$', autoPivot:true, turretFollowers:'^(?:default(?:001|002|007|008|009|010|011|012|013|014|015|016|017|018|019|020|021|022|023|024|025|026|027|028|029|030|031|032|033|036|039|042|045|048|051|054|057|058|059|060|061|062|063|065|066|067|070|071|074|076|077|082|084|085|087|088|236|244|245|247|249|252|253|254|255|256|260|261|262|275|276|281|282)|(?:Cube|Cylinder|Vert)(?:\\.?\\d{3})?)$' } },
   ua_t80bv: { source:'glb', glb:{ path:'/models/community-candidates/t80bv_ua_manako.glb', turretNode:'^bashnya$', yawOffset:Math.PI, autoPivot:true, gunComponentMasks:false } },
@@ -233,6 +234,14 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // fidelity harness row.
   challenger3_proto: { source:'glb', glb:{ path:'/models/tanks/community/challenger_3.glb',
     turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true, yawOffset:-Math.PI/2 } },
+  // release 262: the Challenger 3 TD oracle (Jeyhun1985, CC-BY-4.0, measurement only); mirrors the fidelity row
+  challenger3_td: { source:'glb', glb:{ path:'/models/community-candidates/challenger3_td_x_source.glb',
+    turretNode:'^Object_26$', turretFollowers:'^Object_(?:19|22|23)$', gunNode:'^Object_6$', gunFollowers:'^Object_3$',
+    autoPivot:true, pivot:[0, 1.98, 0.7106], gunPivot:[0, 2.2341, 1.9195],
+    componentSubsets:[
+      { node:'^Object_(?:24|25)$', owner:'turret', worldMinY:1.892, excludeRemainderFromHull:true },
+      { node:'^Object_20$', owner:'gun', worldMinY:1.892, excludeRemainderFromHull:true },
+    ] } },
   leo2a4: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
     turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },
   kf51_evo: { source:'glb', glb:{ path:'/models/tanks/kf51_grip420.glb',

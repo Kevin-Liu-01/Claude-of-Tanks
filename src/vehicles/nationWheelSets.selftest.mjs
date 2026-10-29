@@ -81,7 +81,7 @@ expect('m1a3', 'm1a1_abrams_hc'); expect('abramsx', 'm1a1_abrams_hc'); // m1a2_l
 expect('m1a1_abrams_hc', 'm1a1_abrams_hc', 'donor'); expect('ua_m1a1', 'm1a1_abrams_hc', 'donor');
 expect('m551_sheridan', 'm551a1_tts'); expect('ua_m2a3_bradley', 'm551a1_tts');
 expect('griffin_viper', 'm1a1_abrams_hc'); expect('griffin50mm', 'm1a1_abrams_hc'); // round 40 axial fit: paired ASCOD wheels, not the single Sheridan rim
-expect('type59', T54_STARFISH_WHEELS ? 'type59' : 'ztz100'); expect('ztz100_prototype', 'ztz100'); expect('aft10', 'type100');
+expect('type59', T54_STARFISH_WHEELS ? 'type59' : 'ztz100'); expect('ztz100_prototype', 'ztz100', 'donor'); expect('ztz20', 'ztz100', 'donor'); expect('ztz20_prototype', 'ztz100', 'donor'); expect('aft10', 'type100');
 expect('merkava1b', 'merkava4b'); expect('merkava4_barak', 'merkava4b'); expect('namer_ifv', 'namer_ifv', 'donor');
 expect('strv81', 'strv121'); expect('strv103b', 'strv121'); expect('strv121', 'strv121'); expect('cv90', 'cv90_mk4');
 expect('k1e1', 'k1e1'); expect('k2b', 'xk2_black_panther', 'donor'); expect('bmp3_rok', 'bmp3m_dragun125'); // round 40: the Korean BMP-3 keeps the BMP-3 wheel
@@ -105,6 +105,8 @@ expect('bmpt_terminator2', 't90am'); expect('bmpt_t90', 't90am'); expect('tos1a_
 expect('bmp3', 'bmp3m_dragun125'); expect('bmp2', 'bmp3m_dragun125'); expect('kurganets25', 'bmp3m_dragun125'); expect('object695', 'bmp3m_dragun125');
 // owner 2026-10-22: both T-64BVs are on the T-72B3 study (t64bvK1.ts) and draw the Russian older T-series wheel
 expect('t64bv1', 't90_1992'); expect('t64bv_donbas', 't90_1992');
+// 262: the new true T-64s (t64Foundation.ts) draw the T-64 dual wheel natively
+for (const id of ['t64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur']) expect(id, 't64bm1m', 'donor');
 expect('t84', 't90_1992'); expect('t80u_kursk', 't90_1992');
 expect('kf51_u', 'kf51_evo', 'donor'); expect('leo2a2', 'leo2a4'); expect('leo2a4', 'leo2a4'); expect('mbt70', 'leo2a4'); expect('leo2a6_ua', 'leo2a4');
 expect('spz_puma', 'kf41_lynx'); expect('marder1a3', 'kf41_lynx'); expect('leo2a6', 'leo2a4', 'donor');

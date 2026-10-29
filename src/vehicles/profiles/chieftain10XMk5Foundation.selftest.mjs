@@ -121,6 +121,15 @@ function geometryOnlyParity(renderedRows, optimizedRows) {
   assert.equal(rows.length, renderedRows.length, 'material mode cannot remove scene nodes');
   for (const [i, row] of rows.entries()) {
     const expected = renderedRows[i];
+    // 263 (orphan-reds-264, turretSeatRace addSeatCollar): the turret ring collar takes the painted shade (colour, in both
+    // consumers) and the shell's camouflage face projection, a uv the geometry-only shell carries none of to copy
+    if (row.geometry && row.name === 'turretSeatCollar') {
+      assert.equal(row.geometry.attributes.uv, undefined, 'the geometry-only collar carries no camouflage projection');
+      assert.ok(expected.geometry.attributes.uv, 'the rendered collar takes the shell\'s camouflage projection');
+      row.geometry.attributes = Object.fromEntries(Object.entries({ ...row.geometry.attributes, uv: expected.geometry.attributes.uv })
+        .sort(([a], [b]) => a.localeCompare(b)));
+      continue;
+    }
     if (!row.geometry || !PAINT_BAKED_BUCKETS.has(row.name)) continue;
     assert.equal(row.path, expected.path); assert.equal(row.name, expected.name);
     const attrs = row.geometry.attributes, full = expected.geometry.attributes;

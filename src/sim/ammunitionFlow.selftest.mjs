@@ -208,9 +208,16 @@ const laterChannelCounts = {
   type10_dozer: 3,
   // (release 262 CN) the new T-55A's D-10T2S rounds
   t55a: 3,
-  // (release 264 CN) the Longwei-family concepts, each firing its host's three rounds
+  // 262: the ZTZ-20's and the ZTZ-20 Prototype's three 105 mm rounds
+  ztz20: 3, ztz20_prototype: 3,
+  // 263 (integrator): the release's other new tanks, three rounds each (their lanes did not list them here)
+  christian2: 3, bm_oplot_m: 3, bm_oplot_t: 3, t64bm1m: 3, t64bv: 3, t64b1v_2022: 3, pt64_tur: 3,
+  challenger3_td: 3, challenger3_td_rws: 3, challenger1_mk1: 3, challenger_x: 3, challenger_x_sleek: 3,
+  // (release 265 CN) the Longwei-family concepts, each firing its host's three rounds
   ztz99a2_qinglong: 3, vt4a1_baihu: 3, t72b3_zhuque: 3, t72b3m_xuanwu: 3,
 };
+const release263Channels = ['christian2', 'bm_oplot_m', 'bm_oplot_t', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
+  'challenger3_td', 'challenger3_td_rws', 'challenger1_mk1', 'challenger_x', 'challenger_x_sleek'].reduce((n, id) => n + laterChannelCounts[id], 0);
 for (const m of LONGWEI_FAMILY) {
   assert.deepEqual(TANK_SPECS[m.id].gun.shells, TANK_SPECS[m.host].gun.shells,
     `${m.id}: the concept keeps its host's (${m.host}) ammunition, no invented rounds`);
@@ -263,9 +270,9 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two, the renewal concepts' twelve and the fourteen national concepts'
-// forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three and
-// the T-55A's three (release 262).
-assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a
+// forty-two are also additions, as are the M6 Linebacker's three (main, 2026-10-04), the Type 10 Kaitaku's three,
+// the T-55A's three (release 262) and the ZTZ-20's and ZTZ-20 Prototype's three each (release 262), and the Longwei family's three each (release 265).
+assert.equal(authoredShellChannels - laterChannelCounts.c2_ariete - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker - laterChannelCounts.type10_dozer - laterChannelCounts.t55a - laterChannelCounts.ztz20 - laterChannelCounts.ztz20_prototype - release263Channels
   - LONGWEI_FAMILY.reduce((n, m) => n + laterChannelCounts[m.id], 0), 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,

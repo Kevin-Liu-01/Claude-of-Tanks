@@ -20,7 +20,7 @@ import { buildLongwei, buildLongweiTurret } from './longwei.ts';
 import { LONGWEI_FAMILY } from '../longweiFamilyConfig.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { TYPE100_PROFILES } from './type100.ts';
-import { ZTZ100_X_PROFILES } from './ztz100X.ts';
+import { ZTZ20_PROFILES } from './ztz20.ts';
 import { ZTZ100_PROTOTYPE_PROFILES } from './ztz100Prototype.ts';
 import { steppedBuilder, type TankProfileBuild } from '../tankBuildCooperation.ts';
 
@@ -531,6 +531,6 @@ export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   ztz99_longwei: Object.freeze({ build: buildLongwei }),
   ...LONGWEI_FAMILY_99_PROFILES,
   ...TYPE100_PROFILES,
-  ...ZTZ100_X_PROFILES,
+  ...ZTZ20_PROFILES,
   ...ZTZ100_PROTOTYPE_PROFILES,
 }) satisfies VehicleProfileRecord;

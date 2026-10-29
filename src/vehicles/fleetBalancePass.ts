@@ -86,6 +86,16 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     primary(registry, 'challenger3_proto', { pen100: 880, pen1000: 810, pen2000: 730 });
   }
   {
+    // release 262: the 2021 demonstrator a step under the prototype: DM63A1 for DM73, the Challenger 2's 1,200 hp; its
+    // field fit shares the package (its remote M2 is its own auxiliary weapon, a tonne heavier and a shade slower)
+    for (const id of ['challenger3_td', 'challenger3_td_rws']) {
+      const tank = spec(registry, id);
+      Object.assign(tank, { hp: 2550, topSpeedKmh: id === 'challenger3_td' ? 59 : 58, reverseSpeedKmh: 22 });
+      Object.assign(tank.gun, { reloadS: 6.1, baseAccuracy: 0.245, aimTimeS: 1.65 });
+      primary(registry, id, { pen100: 850, pen1000: 780, pen2000: 700 });
+    }
+  }
+  {
     const tank = spec(registry, 'challenger3');
     Object.assign(tank, { hp: 2780, topSpeedKmh: 60, reverseSpeedKmh: 24 });
     // 2026-10-25: aim 1.5 -> 1.65 s, inside the modern Tier X fire-control ceiling, still a step over the prototype
@@ -358,7 +368,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   // Shared Soviet-derived fire-control floor. These retain looser handling
   // than Western peers without falling outside the complete tier envelope.
   for (const id of [
-    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas',
+    'pt91a_twardy', 'pt91m', 't64bv1', 't72b3m_2022', 't72m1_jaguar', 't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur',
   ]) {
     Object.assign(spec(registry, id).gun, { baseAccuracy: 0.33, aimTimeS: 2 });
   }
@@ -428,8 +438,9 @@ export function applyShownTierFloors(registry: TankSpecRegistry): void {
  */
 export function applySameTierFairness(registry: TankSpecRegistry): void {
   // Tier IV: the Soviet-pattern 125 mm line against the Chieftain, the FV4034 and the C1 pre-series
-  for (const id of ['t64bv_donbas', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) {
+  // 262: the T-64BM1M and the T-64B1V mod. 2022 join the Soviet-pattern line at IV with the mod. 2017's footing
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar', 'pt91m', 't80b']) mantlet(registry, id, 1.45);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) {
     primary(registry, id, { pen100: 780, pen1000: 709, pen2000: 639 });
     spec(registry, id).hp = 2150;
   }
@@ -437,7 +448,7 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   primary(registry, 't80b', { pen100: 760, pen1000: 691, pen2000: 622 });
   for (const id of ['pt91m', 't80b']) spec(registry, id).hp = 2300;
   spec(registry, 't80b').gun.aimTimeS = 1.85;
-  for (const id of ['t64bv_donbas', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
+  for (const id of ['t64bv_donbas', 't64bm1m', 't64b1v_2022', 'pt64_tur', 't72m1_jaguar']) cannonReload(registry, id, 6.2);
   cannonReload(registry, 't80b', 6.2);
   cannonReload(registry, 'pt91m', 6.0);
   // the FV4034's turret compensation (TURRET_FRONT_COMPENSATION) was set against the 251 tier-8 median round
@@ -477,5 +488,18 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the gun's cadence only: its rounds stay the T-90SM's (ammunitionFlow) and carry none of their own
   spec(registry, 't72b3_sich').gun.reloadS = 6.0;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
+
+  // 263 (Main's ruling, the balance lane's minimal levers for 263's new balanceMatchups reds; FAIRNESS-263's other
+  // levers go to the owner): the C1 Ariete's ~730 mm gun face topped VI at 0.92 and shut out the XK2 on the move
+  // (k2-tier9-mobile-peer 0); its gun and hull stay its serie-1 donor's (sourceXSecondWave), so its mantlet and turret
+  // front take the trim.
+  mantlet(registry, 'c1_ariete', 0.6);
+  turretFront(registry, 'c1_ariete', 0.85);
+  // the FV4030/6's sleek turret read its gun face under every VIII round (tier9-rifled-peers' FV row 0.105): x1.4
+  // holds it (0.538). The Challenger 1 marks on the Mk 3's build sit in band unlevered (the Mk 2 v 2A4M CAN 0.625).
+  mantlet(registry, 'challenger_x_sleek', 1.4);
+  // the Challenger 1 Mk 1, Mk 2 and Mk 3 share the Mk 3's turret, whose sloped gun-face cells read the 624 mm slot and
+  // the 682 mm cheeks at ~1,020 mm effective (0.87-0.88, 8-9 of 34 in band); x0.7 brings the three to 0.55 (16 of 34)
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_mk3']) turretFront(registry, id, 0.7);
 }
 

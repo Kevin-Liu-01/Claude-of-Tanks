@@ -440,7 +440,7 @@ const NATION_FULL_LABEL: Readonly<Record<string, string>> = {
   USA: 'United States', Germany: 'Germany', USSR: 'Soviet Union', Russia: 'Russia',
   'USSR/Russia': 'Russia', Sweden: 'Sweden', Community: 'Community', UK: 'United Kingdom',
   France: 'France', Israel: 'Israel', China: 'China', 'South Korea': 'South Korea',
-  Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine',
+  Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine', Denmark: 'Denmark',
 };
 function nationFullLabel(nation: string): string {
   return NATION_FULL_LABEL[nation] || nation;
@@ -458,7 +458,7 @@ const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
   ['UK', 3], ['France', 4], ['China', 5], ['Italy', 6], ['Japan', 7],
-  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Community', 11],
+  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Denmark', 10], ['Community', 11],
   ['Israel', 12], ['Ukraine', 13],
 ]);
 function catalogCompare(a: GarageTankSpec, b: GarageTankSpec): number {

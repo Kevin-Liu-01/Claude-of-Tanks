@@ -119,12 +119,20 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  */
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
 /** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
- * digital came with that tank (2026-10-21). */
-const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
-type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
+ * digital came with that tank (2026-10-21), the Christian II's Danish tri-tone with it (release 262). */
+const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint_christian2'] as const);
+/** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
+ * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
+// 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
+// it appends after GT too and no saved index moves.
+const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
+  'paint_ua_t84_oplot_m'] as const);
+type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -140,12 +148,12 @@ const RELEASE_233_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_233_SIGNATURE_
   sig_m1a1_abrams_fep: 'M1A1 FEP USMC Woodland',
   sig_m60a3: 'M60A3 MERDC Woodland',
 });
-/** Release 264 (owner 2026-10-28): the Longwei family's own Signatures, each in its symbol's colour. Appended after every
+/** Release 265 (owner 2026-10-28; lane 264): the Longwei family's own Signatures, each in its symbol's colour. Appended after every
  * earlier id, so no serialized index moves. */
-const RELEASE_264_SIGNATURE_IDS = Object.freeze([
+const RELEASE_265_SIGNATURE_IDS = Object.freeze([
   'sig_ztz99a2_qinglong', 'sig_vt4a1_baihu', 'sig_t72b3_zhuque', 'sig_t72b3m_xuanwu',
 ] as const);
-const RELEASE_264_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_264_SIGNATURE_IDS[number], string>> = Object.freeze({
+const RELEASE_265_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_265_SIGNATURE_IDS[number], string>> = Object.freeze({
   sig_ztz99a2_qinglong: 'Qinglong Azure Digital',
   sig_vt4a1_baihu: 'Baihu Desert Digital',
   sig_t72b3_zhuque: 'Zhuque Red Earth',
@@ -161,7 +169,8 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...AUTHORED_PAINT_IDS_AFTER_GT,
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
-  ...RELEASE_264_SIGNATURE_IDS,
+  ...AUTHORED_PAINT_IDS_AFTER_262,
+  ...RELEASE_265_SIGNATURE_IDS,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -272,12 +281,12 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_merkava4_trophy: 'Merkava 4M Trophy Sinai Bands',
   sig_merkava4_barak: 'Merkava 4M Barak Sinai Digital',
   sig_namer_ifv: 'Namer Sinai Field',
-  sig_t84: 'T-84 Oplot',
+  sig_t84: 'Object 478DU2',
   sig_ua_challenger2: 'UA Challenger 2',
   sig_ua_t64bv: 'T-64BV mod. 2017',
   sig_ua_t80bv: 'UA T-80BV',
   sig_ua_t80u_kursk: 'T-80U Kursk',
-  sig_ua_t84_oplot_m: 'T-84BM Oplot-M',
+  sig_ua_t84_oplot_m: 'T-84U Oplot',
   sig_ua_m1a1: 'M1A1 SA Ukraine',
   sig_leo2a6_ua: 'Leopard 2A6 UA',
 });
@@ -295,7 +304,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   ...NATIONAL_CAMO_PATTERN_LABEL,
   ...Object.fromEntries(AUTHORED_PAINT_ENTRIES.map((entry) => [entry.id, entry.label])),
   ...RELEASE_233_SIGNATURE_LABEL,
-  ...RELEASE_264_SIGNATURE_LABEL,
+  ...RELEASE_265_SIGNATURE_LABEL,
 } as Record<CamoPatternId, string>);
 
 /**
@@ -817,8 +826,22 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m48a5_patton: 'summer',
   m2a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
+  // 262: the production ZTZ-20 wears its family's PLA digital woodland
+  ztz20: 'sig_ztz100_x',
+  ztz20_prototype: 'sig_ztz100_x',
   // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
   type10_dozer: 'paint_type10_dozer',
+  // release 262: the Christian II wears its own Danish tri-tone, its own catalog paint
+  christian2: 'paint_christian2',
+  // 262: the T-64BM1M wears its T-64 sibling's Ukrainian digital woodland (the National Guard's machines, in service photos)
+  t64bm1m: 'sig_ua_t64bv',
+  t64b1v_2022: 'sig_ua_t64bv',
+  // release 262: the new Oplots' own stock coats (the owner's references: a plain Ukrainian olive, the Thai desert)
+  bm_oplot_m: 'paint_bm_oplot_m',
+  bm_oplot_t: 'paint_bm_oplot_t',
+  // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
+  challenger3_td: 'paint_challenger3_td',
+  challenger3_td_rws: 'paint_challenger3_td_rws',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

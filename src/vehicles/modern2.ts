@@ -346,6 +346,15 @@ const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.1
   [137, -0.9], [138, 0.4], [139, 0.8], [140, 0.9], [143, 1], [145, 2.6], [146, 2.8], [151, 2.9], [153, 2.9], [168, 2],
   [175, 2.4], [180, 2.2]] as const);
 
+/**
+ * Leopard 1A5 (262 proportion rebuild): the main gun's depression by turret yaw, measured with
+ * tools/gun-depression-sweep.mjs (the whole gun 26 mm off every hull mesh). The full 9 degrees to 154 degrees of yaw;
+ * over the stern the engine deck's exhaust bank and the rear fuel cans hold it to about -1.6 degrees at 167-172.
+ */
+const LEO1A5_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -9], [154, -9], [156, -7.2], [158, -5.9], [160, -4.7], [161, -4.6],
+  [162, -4.6], [163, -3.7], [165, -2.5], [166, -2], [167, -1.8], [172, -1.6], [173, -2], [176, -3.6], [177, -4.4],
+  [180, -4.4]] as const);
+
 export const MODERN2_SPECS: TankSpecRegistry = {
   leo2a2: {
     id: 'leo2a2', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
@@ -576,6 +585,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     hullTraverseDegS: 40,
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.4 }, pivotStyle: 'neutral',
     turretTraverseDegS: 36, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 9,
+    gunPitchByYawDeg: LEO1A5_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 105, reloadS: 5.5, baseAccuracy: 0.30, aimTimeS: 1.8,
       bloom: BLOOM_MODERN,

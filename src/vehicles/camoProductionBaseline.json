@@ -463,12 +463,12 @@
   "sig_merkava4_trophy": "0a01bb64c5619400",
   "sig_merkava4_barak": "d2aa1bbd991eaba9",
   "sig_namer_ifv": "940278e68a8f45a7",
-  "sig_t84": "63f139a8fdd43aa6",
+  "sig_t84": "e6795baf4ad95644",
   "sig_ua_challenger2": "ecdb9b5db9981c35",
   "sig_ua_t64bv": "f2e5b458815e4d65",
   "sig_ua_t80bv": "cd5370cd253c5b5e",
   "sig_ua_t80u_kursk": "40871f6a63ae5edf",
-  "sig_ua_t84_oplot_m": "bc4eee8139a5254c",
+  "sig_ua_t84_oplot_m": "c1c0216eb08254c8",
   "sig_ua_m1a1": "80d444ecc96222d7",
   "sig_leo2a6_ua": "9742c37d1b599561",
   "mono": "5b04af1a03107eea",
@@ -753,7 +753,7 @@
   "challenger1": {
    "selection": "factory",
    "stock": "service_challenger_3",
-   "factory": "51ae4983503755f0",
+   "factory": "24af537fcedf03bc",
    "auto": "summer chocchip washworn urban autumn summer chocchip urban urbanblock summer summer summer"
   },
   "fv4034": {
@@ -1317,7 +1317,7 @@
   "ua_t84_oplot_m": {
    "selection": "factory",
    "stock": "sig_ua_t84_oplot_m",
-   "factory": "04509d4067f37bf6",
+   "factory": "6e0c6270ea20f696",
    "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm desert berlin urbanblock flecktarn tigerstripe tigerstripe"
   },
   "ua_m1a1": {

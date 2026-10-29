@@ -1,7 +1,7 @@
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 
 export const FLEET_BALANCE_REVISION = Object.freeze({
-  challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile',
+  challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x0.7 turret front with the Mk 1 and Mk 3 on the Mk 3\'s turret',
   kv2: 'reduce the 152 mm derp profile friction while preserving its slow handling identity',
   t62_1975: 'raise the early Cold War baseline without erasing its handling limits',
   type59: 'bring the light Cold War MBT above the stale damage-output floor',
@@ -19,6 +19,8 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   pl01_105: 'price the four-round 105 mm branch for Tier X sustained combat',
   m1a3: 'remove the next-generation autoloader, protection and missile ceiling',
   challenger3_proto: 'restore the base Challenger 3 firepower and mobility envelope',
+  challenger3_td: '262: the new Challenger 3 TD one step under the prototype (DM63A1, the Challenger 2 automotive set)',
+  challenger3_td_rws: '262: the Challenger 3 TD field fit shares the TD package (its remote M2 is an auxiliary weapon)',
   challenger3: 'retain a measured protection and fire-control step over the base vehicle, inside the modern fire-control ceiling',
   // 2026-10-25: the IFVs relabelled modern fold into their modern Tier X peers (fleetBalancePass applyModernEraFold)
   kf41_lynx: 'fold the Raijū-donor cannon package into the modern IFV cadence and 35 mm penetration',
@@ -75,6 +77,15 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t64bv1: 'modernize the Tier VIII fire-control floor without erasing Soviet handling',
   t72b3m_2022: 'modernize the Tier IX fire-control floor without erasing Soviet handling',
   t64bv_donbas: 'modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling; 259: a thicker mantlet, pen, hull and cadence for same-tier fairness at IV',
+  t64bm1m: 'the Nizh T-64B1 at IV (capability 0.548): the Soviet fire-control floor and its mod. 2017 sibling\'s 259 tier-IV footing (mantlet, pen, 6.2 s cycle)',
+  t64bv: 'the true-T-64 T-64BV: the T-64BV1\'s record and the Soviet fire-control floor',
+  t64b1v_2022: 'the true-T-64 T-64B1V mod. 2022 at IV: the mod. 2017\'s record, fire-control floor and 259 tier-IV footing',
+  pt64_tur: 'the Polish what-if PT-64 Tur at IV on the true T-64: the mod. 2017\'s record, ERAWA-2, fire-control floor and 259 tier-IV footing',
+  // 2026-10-28 (263, Main's ruling: the balance lane's minimal levers for the merged tree's new balanceMatchups reds)
+  challenger1_mk1: 'a x0.7 turret front with the Mk 2 and Mk 3: the Mk 3\'s sloped gun-face cells read ~1,020 mm',
+  challenger1_mk3: 'a x0.7 turret front with the Mk 1 and Mk 2: its sloped gun-face cells read ~1,020 mm',
+  challenger_x_sleek: 'a x1.4 gun slot: the Challenger 1\'s upright 624 mm slot was pierced by every VIII round',
+  c1_ariete: 'a x0.6 mantlet and x0.85 turret front: its ~730 mm gun face topped VI and shut out the XK2 on the move',
 } as const);
 
 interface FleetBalanceOutlier {

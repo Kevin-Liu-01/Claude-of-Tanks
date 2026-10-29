@@ -40,6 +40,7 @@ export const RUSSIA_TREE: NationTree = Object.freeze({
     // T-64 and T-80
     node({ id: 't64bv1', tier: 3, line: 't80', lane: 2, parents: ['t62_1975'], slot: 'line' }),
     node({ id: 't80', tier: 3, line: 't80', lane: 7, parents: ['t64bv1'], slot: 'line' }),
+    node({ id: 't64bv', tier: 3, line: 't80', lane: 8, parents: ['t62_1975'], slot: 'line' }),
     node({ id: 't80bv', tier: 4, line: 't80', lane: 6, parents: ['t80'], slot: 'line' }),
     // T-80 variants
     node({ id: 't80b', tier: 4, line: 't80_side', lane: 7, parents: ['t80'], slot: 'line' }),
