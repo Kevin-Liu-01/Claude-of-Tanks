@@ -2491,6 +2491,10 @@ const SUIT_SHADE_KEEP = 0.3;
 const SUIT_SHADE_KEEP_DARK = 0.45;
 const SUIT_SHADE_DARK_FROM = 0.025;
 const SUIT_SHADE_DARK_TO = 0.12;
+// (r6; the GPU twin of the Christian II's front hull, its suit shade on and off: 129 near-black pixels against 13) nor
+// below this much diffuse light (luminance, linear, before exposure): AgX shows it as a dark olive (sRGB 28); under it
+// its toe falls to black (0.008: sRGB 13). Paint already darker (black paint in the turret's shadow) keeps its own.
+const SUIT_SHADE_LIGHT_FLOOR = 0.016;
 type SuitShadeDefaults = { defaultAttributeValues?: Record<string, number[]> };
 /**
  * Give a material that compiles vehicleAmbientFloorHook its suit-shade default (0: unoccluded), so a draw without the
@@ -2841,14 +2845,16 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	{
 `
     // (264) the camouflage suit over the armour takes its share of the light, after every lift above, down to a floor of
-    // the light the paint had unshaded (a larger share on dark paint)
+    // the light the paint had unshaded (a larger share on dark paint), and never below SUIT_SHADE_LIGHT_FLOOR
     + `		vec3 vehSuitLit = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.directSpecular *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectDiffuse *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectSpecular *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
 		float vehSuitKeep = mix( ${SUIT_SHADE_KEEP_DARK.toFixed(3)}, ${SUIT_SHADE_KEEP.toFixed(3)}, smoothstep( ${SUIT_SHADE_DARK_FROM.toFixed(3)}, ${SUIT_SHADE_DARK_TO.toFixed(3)}, dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ) ) );
-		reflectedLight.indirectDiffuse += max( vehSuitLit * vehSuitKeep - reflectedLight.directDiffuse - reflectedLight.indirectDiffuse, vec3( 0.0 ) );
+		float vehSuitL = dot( vehSuitLit, vec3( 0.2126, 0.7152, 0.0722 ) );
+		float vehSuitFloorL = min( vehSuitL, max( vehSuitL * vehSuitKeep, ${SUIT_SHADE_LIGHT_FLOOR.toFixed(4)} ) );
+		reflectedLight.indirectDiffuse += max( vehSuitLit * ( vehSuitFloorL / max( vehSuitL, 1e-6 ) ) - reflectedLight.directDiffuse - reflectedLight.indirectDiffuse, vec3( 0.0 ) );
 	}`,
   );
 }
