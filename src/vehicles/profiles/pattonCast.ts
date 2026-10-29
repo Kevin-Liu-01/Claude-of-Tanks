@@ -503,7 +503,9 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
       const [bx, by, bz] = H.bowLights;
       lights.position.set(side * bx, by, bz);
       P.hullG.add(lights);
-      P.add('hullDark', box(0.06, 0.06, bz - H.toe[0] + 0.06), side * bx, by - 0.08, (bz + H.toe[0] - 0.06) / 2);
+      // (the M47's lamps stand over the glacis, behind the nose: the arm runs forward to it, its length always positive,
+      // or the box turns inside out)
+      P.add('hullDark', box(0.06, 0.06, Math.abs(bz - H.toe[0] + 0.06)), side * bx, by - 0.08, (bz + H.toe[0] - 0.06) / 2);
       // the bracket's post down to the glacis
       const gy = deckAt(H.toe[0] - 0.08);
       P.add('hullDark', box(0.05, by - 0.08 - gy + 0.03, 0.05), side * bx, (by - 0.08 + gy) / 2, H.toe[0] - 0.08);
