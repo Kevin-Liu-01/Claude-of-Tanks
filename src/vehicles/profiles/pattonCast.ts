@@ -490,11 +490,14 @@ function* pershingHullSteps(P: CastPort, H: PershingHullSpec): Generator<string,
     // the fender's outer lip
     P.add('hullDetail', box(0.025, 0.07, lip1 - lip0), side * (fx1 - 0.012), H.fenderY - 0.045, (lip0 + lip1) / 2);
     if (H.mark === 'm60') {
-      // the M60's (the owner's model): the lip runs on deeper down the fender's slope over the idler to its nose, so
-      // the front fender reads as a solid sloped plate
+      // the M60's (the owner's model): the lip runs on deeper down the fender's slope to 6 cm past the idler, so the
+      // front fender reads as a solid sloped plate over it
+      const lipEnd = H.gear.idler.z + H.gear.idler.r + 0.06;
       for (let k = 0; k + 1 < line.length; k++) {
-        const [[z0, y0], [z1, y1]] = [line[k], line[k + 1]];
-        if (z0 < lip1 - 1e-6) continue;
+        const [z0, y0] = line[k];
+        if (z0 < lip1 - 1e-6 || z0 >= lipEnd) continue;
+        const t = Math.min(1, (lipEnd - z0) / (line[k + 1][0] - z0));
+        const [z1, y1] = [z0 + (line[k + 1][0] - z0) * t, y0 + (line[k + 1][1] - y0) * t];
         const len = Math.hypot(z1 - z0, y1 - y0);
         P.add('hullDetail', box(0.025, 0.14, len + 0.02), side * (fx1 - 0.012), (y0 + y1) / 2 - 0.08, (z0 + z1) / 2, Math.atan2(y0 - y1, z1 - z0), 0, 0);
       }
@@ -1907,8 +1910,9 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
       if (Math.cos(a) > 0.8) continue;
       P.add('turretGlass', box(0.13, 0.06, 0.02), cx + Math.sin(a) * 0.645, L.y(b0 + 0.22), L.z(cz + Math.cos(a) * 0.645 * 1.05), 0.33, a, 0);
     }
+    P.add('turret', cylY(0.32, 0.32, 0.065, P.q ? 32 : 16), cx + 0.02, L.y(b0 + 0.40), L.z(cz - 0.04));
     P.add('turret', KIT.lathe([[0.001, 0], [0.29, 0], [0.285, 0.02], [0.265, 0.032], [0.001, 0.036]], P.q ? 32 : 16),
-      cx + 0.02, L.y(b0 + 0.37), L.z(cz - 0.04));
+      cx + 0.02, L.y(b0 + 0.43), L.z(cz - 0.04));
     P.add('turretDetail', box(0.34, 0.05, 0.07), cx + 0.02, L.y(b0 + 0.38), L.z(cz - 0.47));
     P.add('turret', moldedBox(0.30, 0.18, 0.20, 0.03, P.q ? 2 : 1, 0.01), cx + 0.12, L.y(b0 + 0.44), L.z(cz + 0.36));
     P.addModuleVisual('optics', 'turretGlass', box(0.22, 0.07, 0.012), cx + 0.12, L.y(b0 + 0.45), L.z(cz + 0.465));
