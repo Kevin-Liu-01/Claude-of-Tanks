@@ -4,10 +4,40 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Scene Studio's Sequence library cards: each built-in sequence's frame, rendered by the engine with the Studio chrome hidden (src/game/studioProduction.ts presets).",
+ "description": "The Scene Studio's sequence stills: each Director sequence's frame, rendered by the engine with the Studio chrome hidden (src/game/studioProduction.ts presets), a 640 x 400 card and a 1280 x 800 preview for the template browser.",
  "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
- "count": 3,
+ "count": 42,
  "items": [
+  {
+   "id": "sequence-alpine-village-1280",
+   "preset": "alpine-village",
+   "src": "/media/studio-r1/sequence-alpine-village-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 134976,
+   "sha256": "e6083b015c1fa87daa14d3fabb0e50582a56b9bb58c0f0565a171eb5e5d7393c",
+   "shows": "The Alpine village sequence's frame: Alpine at day."
+  },
+  {
+   "id": "sequence-alpine-village-640",
+   "preset": "alpine-village",
+   "src": "/media/studio-r1/sequence-alpine-village-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 36410,
+   "sha256": "4517cebc2c1c5ea880dbb683fa6c8937a36b025ff42fb0ea27aef20d73161e56",
+   "shows": "The Alpine village sequence's frame: Alpine at day."
+  },
+  {
+   "id": "sequence-coast-recon-1280",
+   "preset": "coast-recon",
+   "src": "/media/studio-r1/sequence-coast-recon-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 112832,
+   "sha256": "08c5364b32d975b138902289800f126906c3c2693caec905a12e926783ee09ea",
+   "shows": "The Coastal reconnaissance sequence's frame: Coastal at day."
+  },
   {
    "id": "sequence-coast-recon-640",
    "preset": "coast-recon",
@@ -17,6 +47,36 @@
    "bytes": 40478,
    "sha256": "50d32b192235257ab64faeb83c46e55406000c0972424fa20c77c7195903ceef",
    "shows": "The Coast Recon sequence's frame at 4.0 s of 8: the coast by day."
+  },
+  {
+   "id": "sequence-dawn-patrol-1280",
+   "preset": "dawn-patrol",
+   "src": "/media/studio-r1/sequence-dawn-patrol-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 147268,
+   "sha256": "53ea216d8b59775f54cf4b4580a5ccbe97f9158212934d49617e207d74918692",
+   "shows": "The Dawn patrol sequence's frame: Frontier at dawn."
+  },
+  {
+   "id": "sequence-dawn-patrol-640",
+   "preset": "dawn-patrol",
+   "src": "/media/studio-r1/sequence-dawn-patrol-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 43124,
+   "sha256": "ac9349a32420308ec7a278bd5c948a0242a142b300babfa7790a08b9da5eda92",
+   "shows": "The Dawn patrol sequence's frame: Frontier at dawn."
+  },
+  {
+   "id": "sequence-desert-crossfire-1280",
+   "preset": "desert-crossfire",
+   "src": "/media/studio-r1/sequence-desert-crossfire-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 114970,
+   "sha256": "a55f230ea23c8213f3336867e2e0a6a485654ff0e4a72a3a7602c98ba5c726d1",
+   "shows": "The Desert crossfire sequence's frame: Desert at sunset."
   },
   {
    "id": "sequence-desert-crossfire-640",
@@ -29,6 +89,256 @@
    "shows": "The Desert Crossfire sequence's frame at 2.0 s of 8: the desert at sunset."
   },
   {
+   "id": "sequence-fields-assault-1280",
+   "preset": "fields-assault",
+   "src": "/media/studio-r1/sequence-fields-assault-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 208056,
+   "sha256": "a85f469322bdb7531802c2763be9b794a72e98020b81bf939d716613adcad4c1",
+   "shows": "The Fields assault sequence's frame: Verdant at day."
+  },
+  {
+   "id": "sequence-fields-assault-640",
+   "preset": "fields-assault",
+   "src": "/media/studio-r1/sequence-fields-assault-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 58492,
+   "sha256": "d002341f0f8425fc60feb0eb1b274df7093f4d3b9f73d08d345f3119a28caaaf",
+   "shows": "The Fields assault sequence's frame: Verdant at day."
+  },
+  {
+   "id": "sequence-fjord-road-1280",
+   "preset": "fjord-road",
+   "src": "/media/studio-r1/sequence-fjord-road-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 60682,
+   "sha256": "875cf814218e026af3625f4edcecfeea69af69b7636c57cb435313d7342b64a5",
+   "shows": "The Fjord road sequence's frame: Fjord at day."
+  },
+  {
+   "id": "sequence-fjord-road-640",
+   "preset": "fjord-road",
+   "src": "/media/studio-r1/sequence-fjord-road-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 19718,
+   "sha256": "dd086b62e8f6bba80c7c634e33d1b91bd8d011338c92890da917bd61666d6769",
+   "shows": "The Fjord road sequence's frame: Fjord at day."
+  },
+  {
+   "id": "sequence-furnace-night-1280",
+   "preset": "furnace-night",
+   "src": "/media/studio-r1/sequence-furnace-night-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 79320,
+   "sha256": "7be1c537da18989f9319bc680acfef017e1bab3196c766550dea8960ffa77898",
+   "shows": "The Furnace night sequence's frame: Foundry at night."
+  },
+  {
+   "id": "sequence-furnace-night-640",
+   "preset": "furnace-night",
+   "src": "/media/studio-r1/sequence-furnace-night-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 28816,
+   "sha256": "934ef7fd67ed45f3d900603abc7ac66d563b1a32095d82bc329b6a76962f89cf",
+   "shows": "The Furnace night sequence's frame: Foundry at night."
+  },
+  {
+   "id": "sequence-golden-advance-1280",
+   "preset": "golden-advance",
+   "src": "/media/studio-r1/sequence-golden-advance-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 141682,
+   "sha256": "877bc60da865e14fa9e9b7fc9866ed786ab5f40fc1b72fae73809cd468a41020",
+   "shows": "The Golden-hour advance sequence's frame: Verdant at golden."
+  },
+  {
+   "id": "sequence-golden-advance-640",
+   "preset": "golden-advance",
+   "src": "/media/studio-r1/sequence-golden-advance-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 44896,
+   "sha256": "f14cd6ccb4b40d648aa93d7e4d70d0ed116e429c4950fb60d85c0e26ac09c4ff",
+   "shows": "The Golden-hour advance sequence's frame: Verdant at golden."
+  },
+  {
+   "id": "sequence-harbor-golden-1280",
+   "preset": "harbor-golden",
+   "src": "/media/studio-r1/sequence-harbor-golden-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 91912,
+   "sha256": "652975d380dfdf5c7c8e397c5141be9fd2a82e93ce420342d284ed38248c5607",
+   "shows": "The Harbor at golden hour sequence's frame: Fjord at golden."
+  },
+  {
+   "id": "sequence-harbor-golden-640",
+   "preset": "harbor-golden",
+   "src": "/media/studio-r1/sequence-harbor-golden-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 25542,
+   "sha256": "ec62946f1380d2eeaadab80014cc1bf4fa65f695fffb11769ed92c14c76a6dee",
+   "shows": "The Harbor at golden hour sequence's frame: Fjord at golden."
+  },
+  {
+   "id": "sequence-lakeside-duel-1280",
+   "preset": "lakeside-duel",
+   "src": "/media/studio-r1/sequence-lakeside-duel-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 105230,
+   "sha256": "f1facc58bce88d04d8ea965096018f2276b792ad1c335588c07a09036aaa2ce5",
+   "shows": "The Lakeside duel sequence's frame: Alpine at day."
+  },
+  {
+   "id": "sequence-lakeside-duel-640",
+   "preset": "lakeside-duel",
+   "src": "/media/studio-r1/sequence-lakeside-duel-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 32146,
+   "sha256": "00c5864d1ec5d5cf82af9e6ba1686ef0ec16217786a6050806d7f651514090c3",
+   "shows": "The Lakeside duel sequence's frame: Alpine at day."
+  },
+  {
+   "id": "sequence-night-knockout-1280",
+   "preset": "night-knockout",
+   "src": "/media/studio-r1/sequence-night-knockout-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 95672,
+   "sha256": "b69958bc7cf84f80accbf8971105afc1f39e51d62d96442cc07d332215ece25b",
+   "shows": "The Night knockout sequence's frame: Winter at night."
+  },
+  {
+   "id": "sequence-night-knockout-640",
+   "preset": "night-knockout",
+   "src": "/media/studio-r1/sequence-night-knockout-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 34468,
+   "sha256": "9827cd2f5629016a4f2aebc1f0c295532eb81f633572eed109eb6fb1d2d56016",
+   "shows": "The Night knockout sequence's frame: Winter at night."
+  },
+  {
+   "id": "sequence-oasis-sunset-1280",
+   "preset": "oasis-sunset",
+   "src": "/media/studio-r1/sequence-oasis-sunset-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 168508,
+   "sha256": "b9e319f8e6edd14e8b8223bebfa5c2b6682af04065aab6d70cd9cc0e4dd1093f",
+   "shows": "The Oasis sunset sequence's frame: Oasis at sunset."
+  },
+  {
+   "id": "sequence-oasis-sunset-640",
+   "preset": "oasis-sunset",
+   "src": "/media/studio-r1/sequence-oasis-sunset-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 47058,
+   "sha256": "453ba90a6392331ddc33c4d923bc76b9a7d5aa481823fb15851b90db803ccc18",
+   "shows": "The Oasis sunset sequence's frame: Oasis at sunset."
+  },
+  {
+   "id": "sequence-orchard-column-1280",
+   "preset": "orchard-column",
+   "src": "/media/studio-r1/sequence-orchard-column-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 172222,
+   "sha256": "945045b13668517898fa01c2b83375eff9d7acbf9afd3ac879ab7bd5dc9f18c3",
+   "shows": "The Orchard column sequence's frame: Orchard at day."
+  },
+  {
+   "id": "sequence-orchard-column-640",
+   "preset": "orchard-column",
+   "src": "/media/studio-r1/sequence-orchard-column-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 50964,
+   "sha256": "bd9bed36f603c75d4419992f393c193837e8203ccd2b57900838fe621c18e2d9",
+   "shows": "The Orchard column sequence's frame: Orchard at day."
+  },
+  {
+   "id": "sequence-railyard-salvo-1280",
+   "preset": "railyard-salvo",
+   "src": "/media/studio-r1/sequence-railyard-salvo-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 155966,
+   "sha256": "07333ba263183b40e7c2472db8a2ae9850b8b90b790b53c09175db33c2c0d84a",
+   "shows": "The Railyard salvo sequence's frame: Railyard at golden."
+  },
+  {
+   "id": "sequence-railyard-salvo-640",
+   "preset": "railyard-salvo",
+   "src": "/media/studio-r1/sequence-railyard-salvo-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 43110,
+   "sha256": "b390a3a6961b67f1a43f76d271a64da8ad4f9d4688b760d1d8ac92d91441a2e8",
+   "shows": "The Railyard salvo sequence's frame: Railyard at golden."
+  },
+  {
+   "id": "sequence-reservoir-dusk-1280",
+   "preset": "reservoir-dusk",
+   "src": "/media/studio-r1/sequence-reservoir-dusk-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 172688,
+   "sha256": "4ea2ca41ba695a47c12472222f423bef91bfc5a64442d99050e461c93854076f",
+   "shows": "The Reservoir at blue hour sequence's frame: Reservoir at dusk."
+  },
+  {
+   "id": "sequence-reservoir-dusk-640",
+   "preset": "reservoir-dusk",
+   "src": "/media/studio-r1/sequence-reservoir-dusk-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 34176,
+   "sha256": "fe45a8f28474e3f15657a355df39361a8ec340d8448b657c014528be8635e2cf",
+   "shows": "The Reservoir at blue hour sequence's frame: Reservoir at dusk."
+  },
+  {
+   "id": "sequence-river-village-1280",
+   "preset": "river-village",
+   "src": "/media/studio-r1/sequence-river-village-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 133088,
+   "sha256": "76e2a069534530afe372650691d72f67071438477f1931b6556e64838695e90d",
+   "shows": "The River village sequence's frame: Delta at morning."
+  },
+  {
+   "id": "sequence-river-village-640",
+   "preset": "river-village",
+   "src": "/media/studio-r1/sequence-river-village-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 38154,
+   "sha256": "2156978849e3714ace6eed913f632e786c720d6ed3ef1e9e75dd7b482f9908b3",
+   "shows": "The River village sequence's frame: Delta at morning."
+  },
+  {
+   "id": "sequence-steel-pursuit-1280",
+   "preset": "steel-pursuit",
+   "src": "/media/studio-r1/sequence-steel-pursuit-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 181052,
+   "sha256": "45950f34b85c634424421fcabade1b0d5ea91f1f224dd8821e29040697571088",
+   "shows": "The Steel pursuit sequence's frame: Verdant at day."
+  },
+  {
    "id": "sequence-steel-pursuit-640",
    "preset": "steel-pursuit",
    "src": "/media/studio-r1/sequence-steel-pursuit-640.webp",
@@ -37,6 +347,86 @@
    "bytes": 67464,
    "sha256": "583e77cbc873114d6bc154596b846ffd6c8ebcd1be7024717a5f509792959a26",
    "shows": "The Steel Pursuit sequence's frame at 4.0 s of 8: Verdant Fields by day."
+  },
+  {
+   "id": "sequence-sunset-sprint-1280",
+   "preset": "sunset-sprint",
+   "src": "/media/studio-r1/sequence-sunset-sprint-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 110648,
+   "sha256": "3c4c5b86b826acb5266076f75556ed74c7da02fac5f986d27c9de0894a8f8f9f",
+   "shows": "The Sunset sprint sequence's frame: Frontier at sunset."
+  },
+  {
+   "id": "sequence-sunset-sprint-640",
+   "preset": "sunset-sprint",
+   "src": "/media/studio-r1/sequence-sunset-sprint-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 33310,
+   "sha256": "6abe931c8f69a65a3c39b43bb520b57e5aef97643a88bed26a20cf5c1867a9ec",
+   "shows": "The Sunset sprint sequence's frame: Frontier at sunset."
+  },
+  {
+   "id": "sequence-temple-road-1280",
+   "preset": "temple-road",
+   "src": "/media/studio-r1/sequence-temple-road-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 80572,
+   "sha256": "01a75459ac6d7ea4daafa2920c22dfe9710b1dd44d229bd87deeac01cb0d1399",
+   "shows": "The Temple road sequence's frame: Monsoon at morning."
+  },
+  {
+   "id": "sequence-temple-road-640",
+   "preset": "temple-road",
+   "src": "/media/studio-r1/sequence-temple-road-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 27298,
+   "sha256": "4b217ee7bbb724845116311bb1b49cabe9b00e06511fda915237e62c41698f92",
+   "shows": "The Temple road sequence's frame: Monsoon at morning."
+  },
+  {
+   "id": "sequence-walking-barrage-1280",
+   "preset": "walking-barrage",
+   "src": "/media/studio-r1/sequence-walking-barrage-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 147272,
+   "sha256": "abb82eff0bc460955f09d5084a47f22d0bd0c39ee454b9cc388fbb41e6b601dc",
+   "shows": "The Walking barrage sequence's frame: Verdant at night."
+  },
+  {
+   "id": "sequence-walking-barrage-640",
+   "preset": "walking-barrage",
+   "src": "/media/studio-r1/sequence-walking-barrage-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 39646,
+   "sha256": "20117a57109b119989101a2649c1d839ce546fba207f65af808f3688f1812470",
+   "shows": "The Walking barrage sequence's frame: Verdant at night."
+  },
+  {
+   "id": "sequence-winter-column-1280",
+   "preset": "winter-column",
+   "src": "/media/studio-r1/sequence-winter-column-1280.webp",
+   "width": 1280,
+   "height": 800,
+   "bytes": 158980,
+   "sha256": "9ac2afd7b66f20cdbc99db7f5ba83286cc6fe2c8ebbf608d6fc71901548a4aea",
+   "shows": "The Winter column sequence's frame: Winter at morning."
+  },
+  {
+   "id": "sequence-winter-column-640",
+   "preset": "winter-column",
+   "src": "/media/studio-r1/sequence-winter-column-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 53778,
+   "sha256": "fb025a7a9e6d2b4645b14c9c75ed1dc282b5cf11023044d82e27249daca6fc88",
+   "shows": "The Winter column sequence's frame: Winter at morning."
   }
  ]
 }

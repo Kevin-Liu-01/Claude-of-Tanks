@@ -48,7 +48,9 @@ export function loadHeroManifest(): Promise<HeroManifest | null> {
   manifestRequest ||= fetch(`${BASE}${HERO_MANIFEST_FILE}`)
     .then((response) => (response.ok ? response.json() : null))
     .then((value: unknown) => (isManifest(value) ? value : null))
-    .catch(() => null);
+    // (a request the network dropped is forgotten, so the next surface asks again; a manifest that came back unusable stays
+    // the answer for the session)
+    .catch(() => { manifestRequest = null; return null; });
   return manifestRequest;
 }
 
@@ -106,6 +108,15 @@ export function decorateHeroCard(card: HTMLElement, specId: string, manifest: He
   const flag = layerPicture(heroFlagFiles(row.flag), flagRow, 'hc-flag', options.flagSizes, !!options.priority);
   const tank = layerPicture(heroTankFiles(specId), row, 'hc-tank', options.tankSizes, !!options.priority);
   const tankImg = tank.querySelector('img');
+  // the flag fades in once it has loaded, as the tank does (the loading census 262: the flag layer popped in at full
+  // opacity); data-pending is the decorated card's own, so a card prerendered whole (the docs' fleet) shows its flag at once
+  const flagImg = flag.querySelector('img');
+  if (flagImg) {
+    flagImg.setAttribute('data-pending', '');
+    const settle = (): void => flagImg.removeAttribute('data-pending');
+    flagImg.addEventListener('load', settle, { once: true });
+    flagImg.addEventListener('error', settle, { once: true });
+  }
   if (tankImg) {
     // placeTank's per-vehicle inputs; the per-kind shares and the name band come from the card's CSS, whose
     // core centre is written for the policy's gun side: a gun on the other side (a turretless mount keeps it

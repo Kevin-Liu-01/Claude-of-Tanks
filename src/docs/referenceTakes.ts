@@ -9,6 +9,7 @@
  * lacks shows nothing, and a closed record's loop stops with its figure off screen.
  */
 import { t } from '../ui/i18n.ts';
+import { isChunkFailure } from '../ui/components/loadFailure.ts';
 
 let fleetTakes: Promise<typeof import('../ui/fleetTakes.ts')> | null = null;
 
@@ -32,9 +33,11 @@ async function showVehicleTake(record: HTMLElement): Promise<void> {
     figure.show(take);
     record.append(figure.root);
     record.dataset.take = take.take;
-  } catch {
-    fleetTakes = null;
-    delete record.dataset.take; // the next opening tries again
+  } catch (error) {
+    // a module that did not arrive is not asked for again in this document: the record stays without its take (a catalog
+    // that did not arrive is asked again with the next opening)
+    if (isChunkFailure(error)) record.dataset.take = 'none';
+    else delete record.dataset.take;
   }
 }
 

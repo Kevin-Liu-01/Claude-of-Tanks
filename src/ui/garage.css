@@ -36,6 +36,9 @@
 @media (hover:hover) and (pointer:fine){
   .cot-header-nav .nv:hover{color:var(--ink-1);background:var(--surface-hover);}
 }
+/* the Studio link holds its pressed look while the Studio's code loads (main.ts onPending; the loading census 262: F8 and the
+   link gave no sign until the entry's cover) */
+:is(.cot-header-nav .nv,.cot-mobile-nav-menu button)[aria-busy='true']{color:var(--ink-1);background:var(--surface-hover);cursor:progress;}
 .cot-header-nav .nv.on{color:var(--ink-1);cursor:default;
   background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--btn-secondary-fill);}
 .cot-header-nav .nv .cot-c-kbd{margin-left:var(--s1);}
@@ -411,11 +414,16 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-
 .cot-technical-viewer-tab[aria-selected='true']{color:var(--ink-1);border-color:var(--accent);
   background:var(--accent-wash);box-shadow:inset 0 -2px 0 var(--accent);}
 .cot-technical-viewer-tab:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--focus-ring);}
-.cot-technical-viewer-figure{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--s2);margin:0;}
+.cot-technical-viewer-figure{--tv-max-h:calc(88vh - 250px);position:relative;display:flex;flex-direction:column;align-items:center;
+  gap:var(--s2);margin:0;}
 /* the drawing is its own plate (its raster carries its ground): shrink-wrapped, never letterboxed inside a second plate
-   (the r18 critic: a lighter inset rectangle with seams down both sides) */
-.cot-technical-viewer-figure img{display:block;width:auto;max-width:100%;height:auto;max-height:calc(88vh - 250px);aspect-ratio:2/1;
-  object-fit:contain;border-radius:var(--r1);box-shadow:var(--ring-1);}
+   (the r18 critic: a lighter inset rectangle with seams down both sides). Its box is the drawing's 2:1 from the first
+   paint, the widest that fits under --tv-max-h (the loading census 262: an auto width collapsed it until the file came, and
+   the dialog jumped, CLS 0.35); the tone under it stands while the drawing loads, and stays if it never arrives */
+.cot-technical-viewer-figure img{position:relative;display:block;width:min(100%,calc(var(--tv-max-h) * 2));max-width:100%;height:auto;
+  max-height:var(--tv-max-h);aspect-ratio:2/1;object-fit:contain;border-radius:var(--r1);box-shadow:var(--ring-1);}
+.cot-technical-viewer-figure::before{content:'';position:absolute;top:0;left:50%;translate:-50% 0;width:min(100%,calc(var(--tv-max-h) * 2));
+  aspect-ratio:2/1;border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1);pointer-events:none;}
 .cot-module-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
 .cot-module-chip{min-width:0;height:30px;display:flex;align-items:center;gap:7px;padding:0 7px;
   color:var(--ink-2);background:var(--scrim);border:1px solid var(--line-1);
@@ -1323,7 +1331,10 @@ body[data-cot-width='phone'] .cot-card{width:102px;--hc-pad:5px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:max(var(--fs-floor-11),var(--fs-11))}
-body[data-cot-width='phone'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 245px)}
+body[data-cot-width='phone'] .cot-technical-viewer-figure{--tv-max-h:calc(var(--cot-viewport-height,100dvh) - 245px)}
+/* a phone's drawing sheet stands at its full height from the press: the labels' key lands in flow under the drawing, and a
+   sheet sized to its content rose by the key's height as it arrived (the loading census 264, CLS 0.45) */
+body[data-cot-width='phone'] .cot-modal.cot-technical-viewer{height:calc(var(--cot-viewport-height,100dvh) - 16px)}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage{
   --cot-roster-height:62px;--cot-country-height:38px;
 }
@@ -1576,7 +1587,7 @@ body[data-cot-input='coarse'] :is(.cot-custom-tool,.cot-technical-viewer-tab){mi
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-figure img{max-height:min(220px,35dvh)}
 /* A short viewport must scroll a useful diagram, never collapse its image. */
 /* a touch screen's drawing takes the height the dialog leaves it (a 390 px tall landscape cut its hull and legend off) */
-body[data-cot-input='coarse'] .cot-technical-viewer-figure img{max-height:calc(var(--cot-viewport-height,100dvh) - 190px)}
+body[data-cot-input='coarse'] .cot-technical-viewer-figure{--tv-max-h:calc(var(--cot-viewport-height,100dvh) - 190px)}
 
 /* The expanded dossier is a complete reading view, not the compact preview. */
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{padding-left:var(--s6)}

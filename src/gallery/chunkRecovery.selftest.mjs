@@ -11,6 +11,7 @@ assert.ok(html.indexOf('// GALLERY CHUNK RECOVERY') < html.indexOf('<script type
 function createHarness({
   href = 'https://game.test/gallery',
   storageBlocked = false,
+  onLine = true,
 } = {}) {
   const listeners = new Map();
   const timers = [];
@@ -47,6 +48,7 @@ function createHarness({
     },
     URL,
     Date,
+    navigator: { onLine },
   };
   runInNewContext(match[1], context);
   return {
@@ -115,4 +117,13 @@ assert.equal(vercel.headers?.find(({ source }) => /assets/.test(String(source)))
 assert.equal(vercel.headers.filter(({ headers }) => headers?.some(({ value }) => /immutable|max-age=[1-9]\d{3,}/.test(String(value)))).length, 0,
   'no path may be declared immutable or long-lived by vercel.json');
 
+// offline, a reload would trade the page for the browser's error page: the quiet retry stands, and the reload waits for
+// the network (the loading census 262)
+const offline = createHarness({ onLine: false });
+offline.listeners.get('vite:preloadError')?.({});
+assert.equal(offline.timers.length, 0, 'an offline module failure must not reload the page');
+assert.equal(offline.appended[0]?.id, 'gallery-runtime-retry', 'an offline module failure shows the manual retry at once');
+assert.equal(typeof offline.listeners.get('online'), 'function', 'an offline module failure waits for the network');
+
 console.log('gallery chunkRecovery.selftest: stale deployment hashes self-heal without clearing cookies; no cacheable-404 header rule');
+

@@ -4,6 +4,7 @@ import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { markLoadFailed, pressFailed } from './components/loadFailure.ts';
 import type {
   SettingsOptions as SettingsPanelOptions,
   SettingsRuntime,
@@ -64,7 +65,9 @@ const loadDefaultSettings = async (): Promise<SettingsModule> =>
 /**
  * Keep the exact settings trigger in the first garage frame while deferring
  * the large panel, bindings editor, graphics controls, and pause listeners
- * until direct settings or battle intent. Failed transfers remain retryable.
+ * until direct settings or battle intent. A transfer that failed is forgotten (a panel that threw for another reason
+ * may build next time), but a chunk that did not arrive is not asked for again in this document: the gear keeps the kit's
+ * error state, which needs no chunk, and its next press reloads the page once online (components/loadFailure.ts).
  */
 export function createSettingsAccess(
   options: SettingsOptions,
@@ -105,11 +108,12 @@ export function createSettingsAccess(
   };
 
   const open = () => {
-    if (!canOpen()) return;
+    if (pressFailed(gear) || !canOpen()) return;
     void preload().then((runtime) => {
       if (canOpen() && !runtime.isOpen()) runtime.open();
     }).catch((error: RuntimeValue) => {
       console.error('[settings] failed to load', error);
+      markLoadFailed([gear]);
     });
   };
 

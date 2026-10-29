@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { closeSurface, openSurface, type TransientSurface } from '../ui/components/surfaceStack.ts';
+import { importWhenOnline } from '../ui/components/loadFailure.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -97,10 +98,10 @@ function hydrateIcons(root: ParentNode): void {
     return ref.startsWith('#') && !document.getElementById(ref.slice(1));
   });
   if (!slots.length && !missing) return;
-  // (a set that did not arrive leaves the slots empty, and fills them once the browser is back online)
-  void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
+  // (a set that did not arrive leaves the slots empty: its chunk is not asked for again in this document)
+  importWhenOnline(() => import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
     for (const slot of slots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 24);
-  }).catch(() => addEventListener('online', () => hydrateIcons(root), { once: true }));
+  }));
 }
 
 hydrateIcons(document);
@@ -125,8 +126,9 @@ window.setTimeout(() => {
   else mountStars();
 }, 2400);
 
-// the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load
-const behaviours = (): void => void import('../ui/components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours())
-  .catch(() => addEventListener('online', behaviours, { once: true }));
+// the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load (and
+// once: a page without them works)
+const behaviours = (): void => importWhenOnline(() => import('../ui/components/pageBehaviours.ts')
+  .then(({ installPageBehaviours }) => installPageBehaviours()));
 if ('requestIdleCallback' in window) requestIdleCallback(behaviours, { timeout: 1500 });
 else setTimeout(behaviours, 300);

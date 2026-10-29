@@ -4,6 +4,7 @@ import { mountBattleReels } from './battleReels.ts';
 import { mountDocsIcons } from './docsIcons.ts';
 import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { revealStills } from '../presentation/revealStills.ts';
+import { markLoadFailed, pressFailed, importWhenOnline } from '../ui/components/loadFailure.ts';
 
 mountDocsIcons();
 // the banner and the chapter cards' pictures fade in once decoded over their boxes' tone (a failed one keeps the tone). The
@@ -15,11 +16,14 @@ revealStills(document.querySelectorAll<HTMLImageElement>('.docs-hero > img, .doc
 const searchHost = document.querySelector<HTMLElement>('[data-docs-search]');
 const searchInput = searchHost?.querySelector<HTMLInputElement>('input');
 if (searchHost && searchInput) {
-  // a matching that did not arrive (the link dropped) loads again with the field's next focus
-  const mountSearch = (): void => {
-    void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(searchHost, searchInput))
-      .catch(() => searchInput.addEventListener('focus', mountSearch, { once: true }));
-  };
+  // a matching is asked for once, never while offline: one that did not arrive is not asked for again in this document, so
+  // the field keeps the kit's error state and its next press reloads the page once online
+  const field = searchInput.closest('label') ?? searchHost;
+  const mountSearch = (): void => importWhenOnline(() => import('./docsSearch.ts')
+    .then(({ mountDocsSearch }) => mountDocsSearch(searchHost, searchInput)), () => {
+    markLoadFailed([field]);
+    field.addEventListener('pointerdown', () => pressFailed(field));
+  });
   searchInput.addEventListener('focus', mountSearch, { once: true });
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
@@ -34,16 +38,15 @@ if (searchHost && searchInput) {
 }
 
 /** The archive failed to load: the kit's error notice, static in the dialog (the top layer hides a page toast), shows
- *  with a Retry that runs the same load again. Its markup ships with the page, so the notice needs no chunk of its own
- *  (a load that failed would likely fail that one too). */
-function loadFailed(retry: () => Promise<unknown>): void {
+ *  with Reload page, and the dialog's button keeps the kit's error state: a chunk that did not arrive is not asked for
+ *  again in this document (components/loadFailure.ts), so either press reloads the page once online. Its markup ships
+ *  with the page, so the notice needs no chunk of its own. */
+function loadFailed(): void {
+  markLoadFailed([archiveOpen], t('docs.archive.loadFailed'));
   const failed = archiveDialog?.querySelector<HTMLElement>('[data-archive-failed]');
   if (!failed) return;
   failed.hidden = false;
-  failed.querySelector('button')?.addEventListener('click', () => {
-    failed.hidden = true;
-    void retry().catch(() => loadFailed(retry));
-  }, { once: true });
+  failed.querySelector('button')?.addEventListener('click', () => pressFailed(archiveOpen));
 }
 
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');
@@ -84,7 +87,7 @@ function mountArchiveMotionInfo(): Promise<unknown> {
       }));
     });
   });
-  return archiveMotionPromise.catch((error: RuntimeValue) => { archiveMotionPromise = null; throw error; });
+  return archiveMotionPromise;
 }
 
 /** The archive's wall (its sheet loads with its module: nothing on the page's first paint waits for it). */
@@ -95,16 +98,16 @@ function mountArchiveBody(): Promise<unknown> {
       document.querySelector('#docsArchiveBody'),
       { mode: 'wall', limit: 330, filters: false, takeTitle },
     ));
-  return archiveMountPromise.catch((error: RuntimeValue) => { archiveMountPromise = null; throw error; });
+  return archiveMountPromise;
 }
 const loadArchive = (): Promise<unknown> => Promise.all([mountArchiveBody(), mountArchiveMotionInfo()]);
 
 archiveOpen?.addEventListener('click', () => {
-  if (!archiveDialog) return;
+  if (!archiveDialog || pressFailed(archiveOpen)) return;
   // The dialog's loops play under the site's one policy (publicPages.ts mounts them through mediaPlayer.ts): once the
   // dialog shows them, two at most, one transfer at a time, never under reduced motion or data saving.
   archiveDialog.showModal();
-  void loadArchive().catch(() => loadFailed(loadArchive));
+  void loadArchive().catch(loadFailed);
 });
 archiveClose?.addEventListener('click', () => archiveDialog?.close());
 // on the page's surface stack while open (Escape is the stack's)

@@ -229,10 +229,8 @@ export function createCombatWarmComposition({
   let deferredRuntime: DeferredCombatWarmRuntime | null = null;
   let deferredModule: Promise<typeof import('../game/deferredCombatWarmRuntime.ts')> | null = null;
   const loadDeferred = () => {
-    deferredModule ??= import('../game/deferredCombatWarmRuntime.ts').catch((error: unknown) => {
-      deferredModule = null;
-      throw error;
-    });
+    // (a chunk that did not arrive is not asked for again in this document, so its failure stands: components/loadFailure.ts)
+    deferredModule ??= import('../game/deferredCombatWarmRuntime.ts');
     return deferredModule;
   };
   {

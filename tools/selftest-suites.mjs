@@ -955,6 +955,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
     'src/ui/loadingSurfaceRegistry.selftest.mjs',
     'src/ui/components/reveal.selftest.mjs',
+    'src/ui/components/loadFailure.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',

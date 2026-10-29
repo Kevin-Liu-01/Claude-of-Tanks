@@ -6,6 +6,7 @@ import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture
 import type { RichSection } from './chapters/types.ts';
 import { keepDesignations, keepPhrases } from './designations.ts';
 import { revealStills } from '../presentation/revealStills.ts';
+import { importWhenOnline, markLoadFailed, pressFailed } from '../ui/components/loadFailure.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -525,11 +526,13 @@ function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia)
 function mountSearchEntry(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>('.dm-search input');
   if (!input) return;
-  // a matching that did not arrive (the link dropped) loads again with the field's next focus
-  const mount = (): void => {
-    void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input))
-      .catch(() => input.addEventListener('focus', mount, { once: true }));
-  };
+  // a matching is asked for once, never while offline: one that did not arrive is not asked for again in this document, so
+  // the field keeps the kit's error state and its next press reloads the page once online
+  const field = input.closest('.dm-search__field') ?? input.parentElement;
+  const mount = (): void => importWhenOnline(() => import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input)), () => {
+    markLoadFailed([field]);
+    field?.addEventListener('pointerdown', () => pressFailed(field));
+  });
   input.addEventListener('focus', mount, { once: true });
   document.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey || !input.offsetParent) return;
@@ -768,18 +771,22 @@ function wireFleetGrid(root: HTMLElement): void {
 
   const bar = root.querySelector<HTMLElement>('.dm-fleet__bar');
   let pressed: Element | null = null;
-  let loading: Promise<void> | null = null;
+  let asked = false;
   let mounted = false;
   const load = (): void => {
-    // (a module that did not arrive loads again with the next intent)
-    loading ??= import('./fleetGrid.ts').then(({ mountFleetGrid }) => { mounted = true; mountFleetGrid(root, () => pressed); })
-      .catch(() => { loading = null; });
+    // (asked once, never while offline: a module that did not arrive is not asked for again in this document, so the bar
+    // keeps the kit's error state and its next press reloads the page once online)
+    if (asked) return;
+    asked = true;
+    importWhenOnline(() => import('./fleetGrid.ts').then(({ mountFleetGrid }) => { mounted = true; mountFleetGrid(root, () => pressed); }),
+      () => markLoadFailed([bar]));
   };
   const onEarlyPress = (event: Event): void => {
     const control = event.target instanceof Element ? event.target.closest('button') : null;
     if (mounted || !control) return;
     event.preventDefault();
     event.stopPropagation();
+    if (pressFailed(bar)) return;
     pressed = control;
     load();
   };
@@ -819,11 +826,9 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   counterScaleCharts(root);
   mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
-  // A part whose module did not arrive (the link dropped) leaves the page as served (the banner's poster, the chapter's
-  // prerendered text) and loads again once the browser is back online.
-  const whenOnline = (load: () => Promise<unknown>): void => {
-    void load().catch(() => addEventListener('online', () => whenOnline(load), { once: true }));
-  };
+  // A part is asked for once, never while offline: one whose module did not arrive is not asked for again in this document,
+  // and leaves the page as served (the banner's poster, the chapter's prerendered text).
+  const whenOnline = (load: () => Promise<unknown>): void => importWhenOnline(load);
   if (heroVideos.length) {
     whenOnline(() => Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
       (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' }),

@@ -28,10 +28,20 @@ button{cursor:pointer}
 /* focus is the kit ring's own ink (--focus-ink), never the accent, which is the one selected state's (the lead's 10-26 ruling) */
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus-ink);outline-offset:2px}
 [hidden]{display:none!important}
-/* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway */
-html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:hidden;
+/* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway. The
+   browse pane stands from the first paint (its search and facet rows are static, tools/gallery-shell.mjs) with skeleton rows
+   in its list, and the dossier's skeleton holds its place (the loading census 262: the list first painted 9.5 s after the
+   page on Fast 3G, the shell blank till then) */
+html:not(.gallery-ready) :is(.dossier-scroll,.views,.tools){visibility:hidden;
   animation:gallery-reveal var(--dur-instant) var(--gallery-reveal-after) forwards}
 @keyframes gallery-reveal{to{visibility:visible}}
+.dossier-skel{position:absolute;inset:0;z-index:var(--z-lift);display:flex;flex-direction:column;gap:var(--s3);padding:0 var(--s4) var(--s4);
+  overflow:hidden;pointer-events:none;animation:gallery-unskel var(--dur-instant) var(--gallery-reveal-after) forwards}
+.dossier-skel>.cot-c-skel{flex:none;height:44px}
+.dossier-skel>.dossier-skel__take{aspect-ratio:16/9;height:auto;margin:0 calc(-1 * var(--s4));border-radius:0}
+.dossier-skel>.dossier-skel__tabs{height:36px}
+html.gallery-ready .dossier-skel{display:none}
+@keyframes gallery-unskel{to{visibility:hidden}}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-i{flex:none}
 
@@ -105,6 +115,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam{flex:1;min-height:0;display:flex;flex-direction:column;gap:2px;margin:0 -12px;padding:0 var(--s3) var(--s4);overflow-y:auto;
   overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .fam__group{display:flex;flex-direction:column;gap:2px}
+.fam__skel{display:block;flex:none;height:48px}
 /* the list rests on a row's start (or a group head's), so its top row is never half under the sort bar wherever a scroll,
    a wheel or the chosen tank's reveal leaves it (the 261 critic: "Leopard 2A4" sliced at 1440 and 1280) */
 .fam{scroll-snap-type:y mandatory}
@@ -214,6 +225,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
   gap:var(--s4);background:var(--scrim);transition:opacity var(--dur-screen) var(--ease-exit),visibility var(--dur-screen)}
 .loading-state.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .loading-state__sil.cot-c-sil{width:min(46%,420px);height:auto;aspect-ratio:3/1;color:var(--ink-4)}
+/* before the script names the vehicle, its silhouette's place is a skeleton (the census 262: on a phone the viewer stood
+   bare for 18.7 s) */
+.loading-state__sil[data-skeleton]{-webkit-mask:none;mask:none;background:var(--fill-soft);border-radius:var(--r1)}
 .loading-state__bar{position:relative;width:min(46%,420px);height:2px;overflow:hidden;background:var(--fill-scale)}
 .loading-state__bar::after{content:'';position:absolute;inset:0 auto 0 0;width:30%;background:var(--accent);
   animation:gallery-scan calc(var(--dur-stage) * 2) var(--ease-move) infinite}
@@ -221,7 +235,7 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 @media (prefers-reduced-motion:reduce){.loading-state__bar::after{width:100%;animation:none;opacity:.4}}
 
 /* --------------------------------------------------------------------------------------------- the dossier (.dossier) */
-.dossier{grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface-page);border-left:1px solid var(--line-1)}
+.dossier{position:relative;grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface-page);border-left:1px solid var(--line-1)}
 /* its gutter stands whether a tab overflows or not: a scrollbar that came with a long tab narrowed the 16:9 film by its own
    width and lifted the name and the tabs 6 px (the g15 critic, Stats against the other tabs at 1920) */
 .dossier-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;
@@ -244,6 +258,9 @@ html[lang^='zh'] .fam:not([data-layout=grid]) .it__name{font-size:max(14px,var(-
 .take-media{position:absolute;inset:0;isolation:isolate;--hc-band:52px;--hc-share:0.62;--hc-hshare:0.74;--hc-cxr:0.5}
 .take-media.cot-hc{background:radial-gradient(ellipse 70% 70% at 50% 55%,var(--surface-hover),var(--surface-raised) 72%)}
 .take-media .fleet-take-video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+/* the still fades in over the film's ground once decoded (components/reveal.ts on its box; the census 262: it popped in at
+   10.4 s), and a still the network dropped leaves the ground */
+.take-still-box{position:absolute;inset:0}
 .take-still{position:absolute;left:50%;bottom:48px;display:block;width:auto;height:72%;transform:translateX(-50%)}
 .take-media.cot-hc .take-still,.take-media.has-take :is(.hc-flag,.hc-tank,.take-still){visibility:hidden}
 .take-media::after{content:'';position:absolute;inset:0;pointer-events:none;background:var(--gallery-take-fade)}
