@@ -15,6 +15,15 @@
   [0, 1.971, 1.419], barrel 5.72 m from the trunnion). One working roof gun, 7.62 mm, as before (now the 2A6's own loader
   MG3 instead of a bustle MAG).
 
+- Owner follow-up, same day, verbatim: "lets add a ton of extra era and cages and ghillie on the actual tank parts
+  themselves". Done inside the same rules: 166 Kontakt-1 cassettes (the old build had 144), all in the six existing ERA
+  sectors at their values (skirts 52 a side over their whole length, turret flanks 15 a side in three courses, the
+  wedges 20 and 12 including rows over their tops, outboard of the EMES and its view); a mesh screen over the upper glacis
+  and nose plate (kept 25 mm under the gun's 9-degree sweep); the field net moved to the fleet field-net format
+  (ghillieFleetSuits.ts) and laid on the turret roof, the cage roof, down the bustle, on the front deck and down the rear
+  hull walls, with the builder's turret, gun, smoke and lens clearances. No screen can lie on the engine deck: the 2A6's
+  tube, level and turned aft, passes 9 mm over its own fan rings.
+
 ## Sources (every addition)
 
 - [A] 21st Separate Mechanized Brigade, photos by Oleksandr Bondar, 2025, published by the Ukrainian 10th Army Corps
@@ -40,8 +49,14 @@
 
 - Turret ERA [C]: the gameplay sectors `ua_turret_cheek_era_{L,R}` and `ua_turret_side_era_{L,R}` stay (combat unchanged),
   drawn honestly as two Kontakt-1 courses on each wedge's outer face and on each flat flank. Proposed to Main: drop them.
-- Skirt ERA [A]: `ua_skirt_era_{L,R}` drawn where the photos show it, the rear 3.6 m of each skirt (a standing course of
-  21 under a lying course of 14). Its fitted faces now cover that stretch only.
+- Skirt ERA [A]: `ua_skirt_era_{L,R}` — the photos show the rear half; the owner's follow-up extends both courses the
+  skirts' whole length behind the hull's mesh boxes (a standing course of 34 under a lying course of 18 a side, round the
+  boxes' brackets). Each cassette carries its own fitted hit face (the anatomy's eraPlates).
+- Sector names follow the fleet's x sign (+x 'R'): eraSurfaceFrame.ts keeps only that side's points when it fits a
+  sector's faces.
+- Hull kit heights: the mesh boxes step down toward the bow (1.42, 1.405, 1.34, 1.29 m; the bow box 1.275 m) to stay
+  25 mm under the main gun's swept underside at its 9-degree stop (leopardA6UaGunFloorY, with 25 mm for the turret
+  seat): the gun-to-kit probe measures 47.7 mm at its nearest.
 - The two roof remote stations of the old build were never working guns and no photo shows them: removed.
 - Drone screens (`armor.droneScreens`, gameplay drone interception) are not given to the cage: proposed to Main.
 - The kit is open lattice and equipment (`*OpenLattice*`, `*Detail`, `*Dark`, `*FittingPaint`, `*Cloth`): nothing enters
