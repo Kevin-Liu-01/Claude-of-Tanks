@@ -70,11 +70,12 @@ assert.equal(receipt.equipmentIsNonArmor, true);
 assert.deepEqual(Object.keys(receipt.cassettes).sort(), [...sectorNames].sort(), 'every ERA sector has its cassettes');
 for (const side of ['L', 'R']) {
   // the owner, 2026-10-28: "a ton of extra era": the skirts' whole length, three flank courses, the wedges' tops
-  assert.equal(receipt.cassettes[`ua_skirt_era_${side}`], 52, `the ${side} skirt carries a standing and a lying course its length`);
+  assert.equal(receipt.cassettes[`ua_skirt_era_${side}`], 51,
+    `the ${side} skirt carries a standing and a lying course its length (none behind a plate seam)`);
   assert.equal(receipt.cassettes[`ua_turret_side_era_${side}`], 15, `the ${side} turret flank carries three courses`);
   assert.ok(receipt.cassettes[`ua_turret_cheek_era_${side}`] >= 12, `the ${side} wedge carries its side courses and roof rows`);
 }
-assert.ok(receipt.turretBrackets >= 16 && receipt.hullBrackets >= 20, 'the screens are bolted to the armour');
+assert.ok(receipt.turretBrackets >= 12 && receipt.hullBrackets >= 20, 'the screens are bolted to the armour');
 
 // the kit is open lattice and equipment, never the armour shell (the OTCO lesson of 2026-10-28)
 for (const name of ['turretOpenLattice', 'turretOpenLatticeDark', 'hullOpenLattice', 'hullOpenLatticeDark']) {

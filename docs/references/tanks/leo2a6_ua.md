@@ -16,8 +16,8 @@
   MG3 instead of a bustle MAG).
 
 - Owner follow-up, same day, verbatim: "lets add a ton of extra era and cages and ghillie on the actual tank parts
-  themselves". Done inside the same rules: 166 Kontakt-1 cassettes (the old build had 144), all in the six existing ERA
-  sectors at their values (skirts 52 a side over their whole length, turret flanks 15 a side in three courses, the
+  themselves". Done inside the same rules: 164 Kontakt-1 cassettes (the old build had 144), all in the six existing ERA
+  sectors at their values (skirts 51 a side over their whole length, turret flanks 15 a side in three courses, the
   wedges 20 and 12 including rows over their tops, outboard of the EMES and its view); a mesh screen over the upper glacis
   and nose plate (kept 25 mm under the gun's 9-degree sweep); the field net moved to the fleet field-net format
   (ghillieFleetSuits.ts) and laid on the turret roof, the cage roof, down the bustle, on the front deck and down the rear
@@ -50,7 +50,7 @@
 - Turret ERA [C]: the gameplay sectors `ua_turret_cheek_era_{L,R}` and `ua_turret_side_era_{L,R}` stay (combat unchanged),
   drawn honestly as two Kontakt-1 courses on each wedge's outer face and on each flat flank. Proposed to Main: drop them.
 - Skirt ERA [A]: `ua_skirt_era_{L,R}` — the photos show the rear half; the owner's follow-up extends both courses the
-  skirts' whole length behind the hull's mesh boxes (a standing course of 34 under a lying course of 18 a side, round the
+  skirts' whole length behind the hull's mesh boxes (a standing course of 33 under a lying course of 18 a side, round the
   boxes' brackets). Each cassette carries its own fitted hit face (the anatomy's eraPlates).
 - Sector names follow the fleet's x sign (+x 'R'): eraSurfaceFrame.ts keeps only that side's points when it fits a
   sector's faces.

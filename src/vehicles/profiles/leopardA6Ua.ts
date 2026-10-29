@@ -78,6 +78,23 @@ class Kit {
     for (let i = 1; i < nu; i++) if (!near(opts.skipU, i / nu * lu)) this.bar(owner, 'lattice', at(i / nu, 0), at(i / nu, 1), wire);
     for (let j = 1; j < nv; j++) if (!near(opts.skipV, j / nv * lv)) this.bar(owner, 'lattice', at(0, j / nv), at(1, j / nv), wire);
   }
+  /** A dark camouflage net tied over a cage bay [A]: square cords across o, o+u, o+u+v, o+v, no frame of its own. */
+  net(owner: Owner, o: Point, u: Point, v: Point): void {
+    const pitch = this.fine ? .12 : .18, cord = this.fine ? .014 : .02;
+    const at = (s: number, t: number): Point => [o[0] + u[0] * s + v[0] * t, o[1] + u[1] * s + v[1] * t, o[2] + u[2] * s + v[2] * t];
+    const nu = Math.max(1, Math.round(Math.hypot(...u) / pitch)), nv = Math.max(1, Math.round(Math.hypot(...v) / pitch));
+    for (let i = 1; i < nu; i++) this.bar(owner, 'chain', at(i / nu, 0), at(i / nu, 1), cord);
+    for (let j = 1; j < nv; j++) this.bar(owner, 'chain', at(0, j / nv), at(1, j / nv), cord);
+  }
+  /** One strand of chain from a down to b: links turned a quarter turn each in turn at HIGH, a single rod at LOW. */
+  strand(owner: Owner, a: Point, b: Point): void {
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), n = Math.round(length / .06);
+    if (!this.fine || n < 2) { this.bar(owner, 'chain', a, b, .011, .006); return; }
+    for (let k = 0; k < n; k++) {
+      const p = (t: number): Point => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      this.bar(owner, 'chain', p(k / n), p(Math.min(1, (k + 1.2) / n)), k % 2 ? .007 : .022, k % 2 ? .022 : .007);
+    }
+  }
   /** A fringe of hanging chain under a rail from a to b [A][B]: each strand its own drop, pitch and sway, a few missing. */
   chains(owner: Owner, a: Point, b: Point, bottomY: number, seed: number): void {
     const span = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(3, Math.round(span / (this.fine ? .075 : .13)));
@@ -91,7 +108,7 @@ class Kit {
       const t = Math.min(1, Math.max(0, (i + jit(i, 2) * .4) / n));
       const x = a[0] + (b[0] - a[0]) * t, z = a[2] + (b[2] - a[2]) * t, top = a[1] + (b[1] - a[1]) * t - .012;
       const drop = (top - bottomY) * (.78 + (jit(i, 3) + .5) * .22), sway = jit(i, 4) * .05;
-      this.bar(owner, 'chain', [x, top, z], [x + sway * .4, top - drop, z + sway], .011, .006);
+      this.strand(owner, [x, top, z], [x + sway * .4, top - drop, z + sway]);
     }
   }
 }
@@ -168,6 +185,11 @@ function turretCage(kit: Kit, P: TankBuilderPort): number {
       brackets++;
     }
     kit.chains('turret', [-X + .04, y0, zr], [X - .04, y0, zr], K.chainBottomY, 37);
+    // the camouflage net tied round the cage above the screens [A: the 2025 cage is netted from the screens to its roof],
+    // just outboard of the posts and braces; the front stays open for the sights and the gun
+    const netY = y1 + .02, netH = K.eaveY - netY;
+    for (const side of [-1, 1]) kit.net('turret', [side * (X + .03), netY, zr], [0, 0, zf - zr], [0, netH, 0]);
+    kit.net('turret', [-X, netY, zr - .03], [2 * X, 0, 0], [0, netH, 0]);
     // the pitched roof: eave and ridge rails, a bow at every post station and at the front edge, square mesh between
     // them; the rear bay's wires step round the two whip antennas where they pass through it
     for (const x of [-X, 0, X]) kit.bar('turret', 'lattice', [x, leopardA6UaRoofY(x), zr], [x, leopardA6UaRoofY(x), K.roofFrontZ], .04);
@@ -304,6 +326,8 @@ function kontakt(P: TankBuilderPort): Record<string, number> {
           : probe.hit([side * 4, row.y! - lift[1], z - lift[2]], [-side, 0, 0]);
         if (roof && (!hit?.face || hit.face.normal.y < .55)) continue;
         if (!hit?.face) throw new Error(`leo2a6_ua/${sector}: no armour face at y ${row.y} z ${z}`);
+        // a ray through the seam between two skirt plates lands on the hull side behind the track's top run: no cassette
+        if (owner === 'hull' && !roof && Math.abs(hit.point.x) < 1.6) continue;
         const n = hit.face.normal.clone();
         if (roof) { if (n.y < 0) n.negate(); } else {
           if (n.x * side < 0) n.negate();
