@@ -1968,7 +1968,7 @@
       "reload": 6.8,
       "aim": 1.92,
       "view": 380,
-      "smoke": 20,
+      "smoke": 8,
       "lights": true,
       "roofGun": true,
       "missile": false,

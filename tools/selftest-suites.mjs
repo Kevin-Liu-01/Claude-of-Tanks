@@ -1134,7 +1134,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m60FamilyAttachments.selftest.mjs',
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
-    'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    'src/vehicles/profiles/ztz85iii.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)

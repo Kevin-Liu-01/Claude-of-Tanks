@@ -3676,15 +3676,51 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 266,
+   "insideOutPx": 342,
    "seeThroughPx": 0,
    "netSeeThroughPx": 0,
-   "tris": 94326,
+   "tris": 99510,
    "frame": [
     0,
-    2.45,
-    0.5,
-    5.6
+    1.65,
+    1.75,
+    6.1
+   ],
+   "accepts": [
+    {
+     "kind": "reframe",
+     "reason": "release 263 ground-up rebuild, the 125 mm reaches 1.5 m further forward and the turret is a compact welded hexagon",
+     "by": "kevinliu",
+     "date": "2026-10-28",
+     "from": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 0,
+      "frame": [
+       0,
+       2.45,
+       0.5,
+       5.6
+      ]
+     },
+     "to": [
+      0,
+      1.65,
+      1.75,
+      6.1
+     ],
+     "oldFrameCensus": {
+      "sealed": true,
+      "openPx": 0,
+      "openViews": 0,
+      "openViewNames": [],
+      "seeThroughPx": 0,
+      "seeThroughViews": 0,
+      "netSeeThroughPx": 0
+     }
+    }
    ]
   },
   "ztz99_longwei": {

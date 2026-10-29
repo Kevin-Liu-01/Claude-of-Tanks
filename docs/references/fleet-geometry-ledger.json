@@ -6455,28 +6455,28 @@
   },
   "ztz85_iii": {
    "high": {
-    "meshes": 66,
-    "vertices": 272662,
-    "triangles": 95739,
-    "digest": "e3bc60f3ece3e2df",
+    "meshes": 63,
+    "vertices": 282175,
+    "triangles": 98910,
+    "digest": "bdfa48de903bb139",
     "groups": {
-     "hull": "61b6c8215d53df4f",
-     "turret": "6168fdae3bbf4bae",
-     "gun": "ae87c3d93ebc2325",
-     "runningGear": "09de72551809c5ca",
+     "hull": "cdb79bbf2c7de593",
+     "turret": "2692848700193d77",
+     "gun": "dc17131956f3dcec",
+     "runningGear": "30d6fd4b3ff56ca2",
      "other": "e3b0c44298fc1c14"
     }
    },
    "low": {
-    "meshes": 63,
-    "vertices": 201502,
-    "triangles": 69763,
-    "digest": "57d2235a54078f88",
+    "meshes": 60,
+    "vertices": 205807,
+    "triangles": 71198,
+    "digest": "965aef0464afd47a",
     "groups": {
-     "hull": "b0ba3f0e279e41ce",
-     "turret": "3b30230445f85f25",
-     "gun": "4beee444dee4311c",
-     "runningGear": "9d8e67250d0937fc",
+     "hull": "5d7eec5a9f7c89c9",
+     "turret": "f2d1df59ddc41584",
+     "gun": "127e6edff23dfbe3",
+     "runningGear": "92845a7324532e35",
      "other": "e3b0c44298fc1c14"
     }
    }

@@ -4296,21 +4296,21 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
   },
   "ztz85_iii": {
     "frame": "turret",
-    "x": -0.354,
-    "y": 0.8329309877057104,
-    "z": -0.9282487309644676,
+    "x": 0.9760000000000002,
+    "y": 0.7250000071525574,
+    "z": -0.6698896551724136,
     "width": 0.34,
     "depth": 0.32,
     "footX": 0.108,
     "footZ": 0.09,
     "supportY": [
-      0.7765010992796029,
-      0.7827542086651071,
-      0.7834410716687508,
-      0.7879309877057104
+      0.6800000071525574,
+      0.6800000071525574,
+      0.6800000071525538,
+      0.6800000071525574
     ],
-    "signature": "b263c79c",
-    "geometryHash": "63f3f5bb3f44648129292ea83e8607a7a2093d9a1400d4dc28ebc0652340da09"
+    "signature": "bbd29da9",
+    "geometryHash": "fdc7da602f0ff773f65564a8f122ce46d3d7da1518e2d7c985cd32dc19fc26a0"
   },
   "ztz99_longwei": {
     "frame": "turret",

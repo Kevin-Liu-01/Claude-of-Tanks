@@ -1863,6 +1863,7 @@
     "tools/worldBuildIndependence.selftest.mjs": 270000,
     "tools/worldColliderAudit.selftest.mjs": 1000,
     "tools/wreck-build-profile.selftest.mjs": 3000,
-    "tools/wreck-paint-bench.selftest.mjs": 1000
+    "tools/wreck-paint-bench.selftest.mjs": 1000,
+    "src/vehicles/profiles/ztz85iii.selftest.mjs": 11000
   }
 }
