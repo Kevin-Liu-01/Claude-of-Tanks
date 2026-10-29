@@ -24,8 +24,9 @@ interface Leopard2A4Variant {
   /** The rear mudguard flaps' articulation name (one per vehicle). */
   readonly flapName: string;
   readonly seed: number;
-  /** Hull parts its kit replaces (the CAN's and the Improved's own skirts). */
-  readonly hull?: { readonly skirts?: 'none' };
+  /** Hull parts its kit replaces (the CAN's and the Improved's own skirts) or its field suit covers (the Strv 121's
+   *  splash board). */
+  readonly hull?: { readonly skirts?: 'none'; readonly splashBoard?: false };
   /** What its turret leaves off or swaps (its kit brings the replacement). */
   readonly turret: Omit<Leopard2A4TurretOptions, 'gun' | 'front' | 'seed'>;
   readonly kit: (P: TankBuilderPort, ctx: Leopard2A4KitContext) => void;
@@ -47,7 +48,7 @@ const VARIANTS: Readonly<Record<Leopard2A4FamilyId, Leopard2A4Variant>> = Object
   leo2_improved: { flapName: 'leo2-improved-rear-flap', seed: 26450, kit: addLeo2ImprovedKit, hull: { skirts: 'none' },
     turret: { loaderMG: { cls: 'mg3', name: 'leo2LoaderMg3' }, faceRails: false, wallRails: false, sideBins: false,
       rearBox: false, whips: false, numberOffsetM: null } },
-  strv121: { flapName: 'strv121-rear-flap', seed: 26460, kit: addStrv121Kit,
+  strv121: { flapName: 'strv121-rear-flap', seed: 26460, kit: addStrv121Kit, hull: { splashBoard: false },
     turret: { loaderMG: { cls: 'mag58', name: 'strv121LoaderKsp58' }, rearBox: false, whips: false, numberOffsetM: null } },
 });
 

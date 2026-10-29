@@ -34,6 +34,13 @@ export interface Leopard2HullOptions {
    * the Leopard 2 Improved's deep modular skirts); the front mudguard and the rear flap stay.
    */
   readonly skirts?: 'standard' | 'none';
+  /**
+   * The splash board's two arms on the glacis ahead of the driver (default true). A vehicle whose field suit nets the
+   * glacis leaves it off: the Strv 121's net covers one arm and clears the driver's periscopes, and the bare other arm
+   * read as a loose plank lying askew (two blind critics, release 265); the photographed Strv 121s show the glacis
+   * under the net.
+   */
+  readonly splashBoard?: boolean;
 }
 
 /** Linear interpolation along a [z, y] station line, held past its ends. */
@@ -154,7 +161,9 @@ function hullFittings(P: TankBuilderPort, o: Leopard2HullOptions): void {
     for (const gx of [-0.165, 0.165]) P.add('hullDetail', box(0.016, 0.20, 0.30), px + gx, py + 0.09, pz + 0.03);
     P.add('hullDetail', box(0.346, 0.016, 0.016), px, py + 0.19, pz + 0.17);
     // the splash board's arm: from the apex ahead of the driver back and out across the glacis
-    P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    if (o.splashBoard !== false) {
+      P.add('hullDetail', box(0.88, 0.14, 0.05), side * 0.38, lineAt(H.deck, 2.78) + 0.065, 2.78, glacisTilt(2.78), side * 0.54, 0);
+    }
     // the forward fuel tank's filler cap on the glacis's shoulder, outboard of the headlight pod, its lever across it
     if (o.fuelFillers) {
       const fz = 2.62, fy = lineAt(H.deck, fz), tilt = glacisTilt(fz);
