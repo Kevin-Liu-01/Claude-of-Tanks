@@ -1606,32 +1606,49 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
   }
   if (vss1) {
     P.addGunExtra(moldedBox(0.58, 0.44, 0.63, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, GUN_Z0 + 0.621);
-    P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
-    P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
+    if (V.mark === 'm48a3') {
+      // the A3's light under its canvas cover (the Vietnam photographs), its drawstring band; the canvas round the shield
+      P.add('gunMountCloth', moldedBox(0.64, 0.50, 0.36, 0.09, P.q ? 3 : 2, 0.03), 0, 0.39, GUN_Z0 + 0.79);
+      P.add('gunMountCloth', moldedBox(0.66, 0.52, 0.05, 0.04, 1, 0.01), 0, 0.39, GUN_Z0 + 0.63);
+      P.add('gunMountCloth', moldedBox(1.12, 0.82, 0.16, 0.07, P.q ? 2 : 1, 0.03), 0, 0.13, -0.15, -0.436, 0, 0);
+    } else {
+      P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
+      P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
+    }
     P.addGunExtraDark(xform(KIT.torus(0.065, 0.012, P.q ? 14 : 8), 0, 0, 0, 0, Math.PI / 2, 0), 0, 0.43, GUN_Z0 + 0.40);
   } else if (V.mark === 'm48a2ga2') {
-    // the GA2's larger cast gun shield (Tank Encyclopedia; the Munster and Dresden tanks): a bulbous casting ahead of the
-    // turret's nose, the gun through its collar and boot; the square IR/white-light searchlight on its bracket above it
+    // the GA2's larger cast gun shield (Tank Encyclopedia; the Munster and Dresden tanks): a squared block ahead of the
+    // turret's nose, the gun through its collar high in its face; the square IR/white-light searchlight on its bracket
+    // over the block's top left, its cover closed
     P.addGunExtra(ga2Mantlet(P.q), 0, 0, 0);
-    // the gun's collar on the shield's face and its rubber boot, the coax's and the sight's ports
-    P.addGunExtra(cylZ(0.19, 0.10, P.q ? 24 : 12), 0, 0, 0.31);
-    P.addGunExtraDark(cylZ(0.15, 0.12, P.q ? 20 : 12, 0.17), 0, 0, 0.42);
-    for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.36, 0.10, 0.25);
-    // the searchlight on its bracket clear of the shield's top, on the left
-    P.addGunExtra(box(0.10, 0.10, 0.18), 0.30, 0.55, 0.04);
-    P.addGunExtra(moldedBox(0.60, 0.50, 0.58, 0.05, P.q ? 2 : 1, 0.02), 0.30, 0.85, 0.05);
-    P.addGunExtraDark(box(0.50, 0.40, 0.02), 0.30, 0.85, 0.345);
+    // the gun's collar on the block's face and its rubber boot, the coax's and the sight's ports
+    P.addGunExtra(cylZ(0.20, 0.10, P.q ? 24 : 12), 0, 0, 0.67);
+    P.addGunExtraDark(cylZ(0.15, 0.10, P.q ? 20 : 12, 0.17), 0, 0, 0.76);
+    for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.38, 0.12, 0.64);
+    P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.41, 0.40);
+    P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.71, 0.40);
+    P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.71, 0.665);
+    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.71, 0.675);
+    for (const side of [-1, 1]) {
+      for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.71 + dy, 0.40);
+    }
   } else if (V.mark === 'm48super') {
     // the Super's flat armour plate over the mantlet, as tall as the turret armour and level with the cheeks' fronts (War
     // Thunder's model): the gun through its collar low in the middle, two small ports above it on the left
-    P.addGunExtra(box(1.06, 0.82, 0.20), 0, 0.19, 0.18);
+    P.addGunExtra(box(1.06, 0.92, 0.20), 0, 0.24, 0.18);
     P.addGunExtra(cylZ(0.18, 0.10, P.q ? 24 : 12), 0, 0, 0.33);
-    for (const dx of [0.22, 0.36]) P.addGunExtraDark(box(0.08, 0.10, 0.02), dx, 0.40, 0.285);
+    // the sight's window over the gun on the left, in its raised frame
+    P.addGunExtra(box(0.34, 0.18, 0.04), 0.29, 0.44, 0.30);
+    P.addGunExtraDark(box(0.25, 0.10, 0.012), 0.29, 0.44, 0.322);
   } else if (V.mark === 'magach3') {
     // the Magach's mantlet under its Blazer (the Sultan Yacoub tank): the canvas boot round the gun's root, two flat
     // boxes either side of the barrel at its height, their faces raked back, and a brow of four lying over the mantlet's
     // top like a roof sloping forward 30 degrees, flush with the cheeks' wall
-    P.addGunExtra(cylZ(0.20, 0.30, P.q ? 20 : 12, 0.15), 0, 0, 0.22);
+    // (the boot painted over in the tank's sand like the rest of its canvas)
+    P.addGunExtra(cylZ(0.24, 0.40, P.q ? 20 : 12, 0.17), 0, 0, 0.24);
+    for (const [z, r] of [[0.10, 0.20], [0.22, 0.23], [0.34, 0.245]] as const) {
+      P.addGunExtra(xform(KIT.torus(r, 0.03, P.q ? 20 : 12), 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, z);
+    }
     for (const side of [-1, 1]) {
       for (const x of [0.30, 0.47]) P.addGunExtra(xform(box(0.16, 0.30, 0.12), 0, 0, 0, -0.30, 0, 0), side * x, 0.02, 0.18);
     }
@@ -1891,26 +1908,49 @@ function domeFrontZ(seat: CastSeat, ax: number, y: number): number {
   return (lo + hi) / 2;
 }
 
-/** The Magach 3's Blazer on the turret (the Sultan Yacoub tank, 1982: Latrun and Kubinka photographs): a near-upright
- * wall of uniform flat boxes from the ring to the roof's edge, round each cheek from the mantlet's edge and along each
- * flank to the bustle, standing on the casting's widest bulge and leaning in 10 degrees; each side one consumable cluster
- * (the mantlet's own boxes ride the gun, m48TurretSteps). */
+/** The Magach 3's Blazer on the turret (the Sultan Yacoub tank, 1982: Latrun and Kubinka photographs): along each flank
+ * eight tall boxes on brackets standing off the casting's widest bulge, their tops leaning out and each turned so its front
+ * edge laps outboard of the next; on each cheek a stack of three rows of two boxes turned 40 degrees out from the bore; a
+ * row lying along the roof's front edge. Each side one consumable cluster (the mantlet's own boxes ride the gun,
+ * m48TurretSteps); the brackets stay on the casting. */
 function magachTurretEra(P: CastPort, seat: CastSeat): void {
-  const y0 = 1.82, y1 = 2.47, lean = 0.17;
   const up = new THREE.Vector3(0, 1, 0);
-  // the box's back on the casting's widest point over its height, its face turned by the flank's plan normal
-  const wallBox = (side: number, z: number, w: number, d: number): void => {
+  const at = (x: number, y: number, z: number): [number, number, number] => [x, y - M48_RING.y, z - M48_RING.z];
+  const flankBox = (side: number, z: number): void => {
+    const y0 = 1.80, y1 = 2.44;
     let ax = 0;
-    for (let y = y0; y <= y1 + 1e-9; y += 0.0325) ax = Math.max(ax, seat.sideAt(y, z));
+    for (let y = y0; y <= y1 + 1e-9; y += 0.032) ax = Math.max(ax, seat.sideAt(y, z));
     const [, n0] = domeFlank(seat, side, 1.95, z);
-    const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize();
-    const n = plan.multiplyScalar(Math.cos(lean)).add(new THREE.Vector3(0, Math.sin(lean), 0));
-    eraBox(P, 'turret', new THREE.Vector3(side * ax, (y0 + y1) / 2, z), n, up, w, y1 - y0, d, 0, 0.01);
+    const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, side * 0.20);
+    const n = plan.multiplyScalar(Math.cos(0.10)).add(new THREE.Vector3(0, -Math.sin(0.10), 0)).normalize();
+    eraBox(P, 'turret', new THREE.Vector3(side * (ax + 0.07), (y0 + y1) / 2, z), n, up, 0.34, y1 - y0, 0.12, 0, 0);
+  };
+  const brackets = (side: number, z: number): void => {
+    for (const y of [1.92, 2.30]) {
+      let ax = 0;
+      for (let yy = 1.80; yy <= 2.44 + 1e-9; yy += 0.032) ax = Math.max(ax, seat.sideAt(yy, z));
+      const sx = seat.sideAt(y, z) - 0.02, ex = ax + 0.07 + (y - 2.12) * 0.10;
+      P.add('turretDetail', KIT.box(ex - sx, 0.04, 0.05), ...at(side * (sx + ex) / 2, y, z));
+    }
+  };
+  const cheekBox = (side: number, ax: number, y: number): void => {
+    const z = domeFrontZ(seat, ax, y);
+    const plan = new THREE.Vector3(side * Math.sin(0.70), 0, Math.cos(0.70));
+    const n = plan.multiplyScalar(Math.cos(0.15)).add(new THREE.Vector3(0, Math.sin(0.15), 0)).normalize();
+    eraBox(P, 'turret', new THREE.Vector3(side * ax, y, z), n, up, 0.30, 0.20, 0.14, 0, 0.03);
+  };
+  const roofBox = (side: number, x: number): void => {
+    let z = 1.60;
+    while (z > 0.40 && seat.topAt(x, z) < 2.40) z -= 0.02;
+    const n = new THREE.Vector3(0, Math.cos(0.85), Math.sin(0.85));
+    eraBox(P, 'turret', new THREE.Vector3(side * x, seat.topAt(x, z), z), n, new THREE.Vector3(1, 0, 0), 0.28, 0.24, 0.10, 0, 0.03);
   };
   for (const side of [1, -1]) {
+    for (let k = 0; k < 8; k++) brackets(side, 0.95 - k * 0.27);
     P.destructibleCluster(`magach3_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
-      for (const ax of [0.70, 0.90, 1.06]) wallBox(side, domeFrontZ(seat, ax, 1.95), 0.22, 0.13);
-      for (let k = 0; k < 8; k++) wallBox(side, 0.92 - k * 0.27, 0.25, 0.10);
+      for (let k = 0; k < 8; k++) flankBox(side, 0.95 - k * 0.27);
+      for (const y of [1.90, 2.12, 2.34]) for (const ax of [0.74, 1.00]) cheekBox(side, ax, y);
+      for (const x of [0.50, 0.76]) roofBox(side, x);
     });
   }
 }
@@ -1931,12 +1971,12 @@ function magachGlacisEra(P: CastPort, deckY: (x: number, z: number) => number): 
     for (let i = 0; i < 7; i++) {
       const x = -0.531 + i * 0.177;
       const [c] = at(x, 2.84);
-      eraBox(P, 'hull', c, slope, fwd, 0.165, 0.60, 0.08);
+      eraBox(P, 'hull', c, slope, fwd, 0.165, 0.60, 0.12, 0.22);
     }
     for (let i = 0; i < 9; i++) {
       const x = -0.68 + i * 0.17;
       const [c, n] = at(x, 3.20 - 0.10 * (x / 0.68) ** 2);
-      eraBox(P, 'hull', c, n, new THREE.Vector3(0, 1, 0), 0.155, 0.22, 0.08);
+      eraBox(P, 'hull', c, n, new THREE.Vector3(0, 1, 0), 0.155, 0.22, 0.12);
     }
     for (const x of [-0.42, 0.42]) {
       const [c, n] = at(x, 2.20);
@@ -1954,11 +1994,11 @@ function magachGlacisEra(P: CastPort, deckY: (x: number, z: number) => number): 
 function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
   const { box } = KIT;
   const L = tl(T);
-  const yb = 1.70, yt = 2.56, h = yt - yb;
-  // the faces lean in: a point at height y draws in toward the ring's axis by up to 8 % at the top
+  const yb = 1.70, yt = 2.66, h = yt - yb;
+  // the faces lean in: a point at height y draws in toward the ring's axis by up to 15 % at the top
   const lean = (x: number, y: number, z: number): [number, number] => {
     const t = Math.min(1, Math.max(0, (y - yb) / h));
-    return [x * (1 - 0.08 * t), T.ringZ + (z - T.ringZ) * (1 - 0.05 * t)];
+    return [x * (1 - 0.15 * t), T.ringZ + (z - T.ringZ) * (1 - 0.08 * t)];
   };
   const outer: readonly (readonly [number, number])[] = [[0.56, 2.04], [1.06, 1.52], [1.36, 1.05], [1.38, 0.0], [1.33, -0.85],
     [1.14, -1.18], [0.70, -1.56], [0, -1.66]];
@@ -1995,19 +2035,25 @@ function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
       const n = new THREE.Vector3(side * (z0 - z1), 0, x1 - x0).normalize();
       if (n.x * side * (x0 + x1) + n.z * (z0 + z1 - 2 * T.ringZ) < 0) n.negate();
       const e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n));
-      const count = Math.max(1, Math.round(len / 0.5));
+      const count = Math.max(1, Math.round(len / 0.25));
       for (let k = 0; k < count; k++) {
         const t = (k + 0.5) / count;
-        for (const y of [yb + 0.12, yt - 0.14]) {
+        for (const y of [yb + 0.10, yt - 0.10]) {
           const [bx, bz] = lean(side * (x0 + (x1 - x0) * t), y, z0 + (z1 - z0) * t);
-          P.add('turretDark', KIT.cylY(0.032, 0.032, 0.02, 10), bx + n.x * 0.01, y - T.ringY, bz + n.z * 0.01 - T.ringZ, e.x, e.y, e.z);
+          P.add('turretDark', KIT.cylY(0.024, 0.024, 0.02, 10), bx + n.x * 0.01, y - T.ringY, bz + n.z * 0.01 - T.ringZ, e.x, e.y, e.z);
         }
       }
+      // the seam where the next plate meets this one
+      if (i > 0) {
+        const [sx0, sz0] = lean(side * x0, yb + 0.02, z0), [sx1, sz1] = lean(side * x0, yt - 0.02, z0);
+        bar(P, 'turretDark', [sx0, L.y(yb + 0.02), L.z(sz0)], [sx1, L.y(yt - 0.02), L.z(sz1)], 0.012);
+      }
       if (i === 0) {
-        // the rangefinder's port near the cheek's top outer corner
-        const t = 0.80, ry = Math.atan2(n.x, n.z), y = yt - 0.24;
+        // the rangefinder's window near the cheek's top outer corner, in its raised frame
+        const t = 0.75, ry = Math.atan2(n.x, n.z), y = yt - 0.22;
         const [px, pz] = lean(side * (x0 + (x1 - x0) * t), y, z0 + (z1 - z0) * t);
-        P.add('turretDark', box(0.15, 0.30, 0.03), px + n.x * 0.006, L.y(y), L.z(pz) + n.z * 0.006, 0, ry, 0);
+        P.add('turretDetail', box(0.34, 0.18, 0.04), px + n.x * 0.01, L.y(y), L.z(pz) + n.z * 0.01, 0, ry, 0);
+        P.add('turretDark', box(0.25, 0.10, 0.012), px + n.x * 0.033, L.y(y), L.z(pz) + n.z * 0.033, 0, ry, 0);
       }
     }
     // the flank handrail on its three standoffs
@@ -2033,12 +2079,12 @@ function m48SuperArmour(P: CastPort, T: TurretFrame, seat: CastSeat): void {
  * the front raked up to the fender's nose; a flange closes the gap to the fender's lip. */
 function m48SuperSkirts(P: CastPort): void {
   const shape = new THREE.Shape();
-  const top = 1.50, notch = 0.86, lobe = 0.75, z0 = 2.55, z1 = -2.80;
+  const top = 1.50, notch = 0.74, lobe = 0.56, z0 = 2.55, z1 = -2.80;
   shape.moveTo(z1, top);
   shape.lineTo(z0, top);
   const zf = z0 - 0.26;
   shape.lineTo(zf, notch);
-  const n = 4, pitch = (zf - z1) / n, steps = P.q ? 8 : 4;
+  const n = 6, pitch = (zf - z1) / n, steps = P.q ? 8 : 4;
   for (let k = 0; k < n; k++) {
     // each lobe a parabola through the notches, its lowest point the lobe's (the last ends at the rear edge)
     for (let i = 1; i <= steps; i++) {
@@ -2100,10 +2146,12 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
   }
   if (V.mark === 'm48a2ga2') {
     for (const side of [-1, 1]) {
-      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.04, len: 0.30, pitch: -0.78, splay: side * 0.62,
-        arc: 0.4, spacing: 0.11, seed: side > 0 ? 495 : 496 });
-      bank.position.set(side * (seat.sideAt(2.02, 1.00) + 0.06), L.y(2.02), L.z(1.00));
+      const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.05, len: 0.34, pitch: -0.78, splay: side * 0.62,
+        arc: 0.4, spacing: 0.12, seed: side > 0 ? 495 : 496 });
+      const bx = side * (seat.sideAt(2.06, 1.00) + 0.10);
+      bank.position.set(bx, L.y(2.08), L.z(1.00));
       P.turretG.add(bank);
+      P.add('turretDetail', moldedBox(0.08, 0.10, 0.52, 0.01, 1, 0.005), bx - side * 0.03, L.y(1.99), L.z(1.00));
     }
   }
   if (V.mark === 'm48super') {
@@ -2125,37 +2173,29 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
   if (V.mark !== 'm48super') bustleNumbers(P, T, -0.95, 0.40, 0.24);
 }
 
-/** The GA2's larger cast gun shield (gun frame; the Munster and Dresden tanks): a bulbous casting 1.22 m wide standing
- * 0.30 m ahead of the trunnion at its foot, its face leaning back 20 degrees and bowed 8 cm forward across its width,
- * its top rolling back into the turret's nose; a solid 0.30 m deep (its back inside the casting). Its foot stays 0.17 m
- * under the bore, clear of the turret race's collar at full elevation (the gun-depression sweep's whole-gun floor). */
+/** The GA2's cast gun shield (gun frame; the Munster and Dresden tanks): a squared block standing well ahead of the
+ * turret's nose, 1.2 m across and 0.80 m tall with its bore in the upper half, its sides and lower edge rounded, its flat
+ * face 0.63 m ahead of the trunnion, its back sunk into the casting. */
 function ga2Mantlet(q: boolean | undefined): Geo {
-  // h (over the bore axis), half-width
-  const rows: readonly (readonly [number, number])[] = [
-    [-0.17, 0.44], [-0.14, 0.52], [-0.08, 0.58], [0.02, 0.61], [0.12, 0.61], [0.24, 0.59], [0.34, 0.54], [0.42, 0.46],
-    [0.48, 0.36], [0.52, 0.22],
+  // z (along the bore), half-width, half-height, corner radius; the section's centre 4 cm under the bore
+  const rows: readonly (readonly [number, number, number, number])[] = [
+    [0.10, 0.58, 0.38, 0.14], [0.30, 0.60, 0.40, 0.15], [0.52, 0.60, 0.40, 0.15], [0.60, 0.57, 0.375, 0.13],
+    [0.63, 0.54, 0.35, 0.11],
   ];
-  const t = 0.30, bow = 0.08;
-  const n = q ? 10 : 5;
-  const sections = rows.map(([h, w]) => {
-    const f = 0.30 - (h + 0.17) * 0.36;
+  const n = q ? 5 : 3;
+  const sections = rows.map(([z, w, h, r]) => {
     const ring: SectionPoint[] = [];
-    for (let i = 0; i <= n; i++) {
-      const x = -w + (2 * w * i) / n;
-      ring.push([x, -(f + bow * (1 - (x / w) ** 2))]);
+    // a rounded rectangle, counter-clockwise from the right side's middle
+    for (const [cx, cy, a0] of [[w - r, h - r, 0], [-(w - r), h - r, Math.PI / 2], [-(w - r), -(h - r), Math.PI],
+      [w - r, -(h - r), Math.PI * 1.5]] as const) {
+      for (let i = 0; i <= n; i++) {
+        const a = a0 + (Math.PI / 2) * (i / n);
+        ring.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r - 0.04]);
+      }
     }
-    for (let i = n; i >= 0; i--) {
-      const x = -w + (2 * w * i) / n;
-      ring.push([x, -(f - t)]);
-    }
-    return { z: h, ring };
+    return { z, ring };
   });
-  const m = sections[0].ring.length;
-  const smooth = Array.from({ length: m }, (_, i) => i).filter((i) => i !== n && i !== m - 1);
-  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth });
-  // loft axis (z) up, the ring's second axis back along the bore: (x, y, z) -> (x, z, -y)
-  g.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-  return g;
+  return sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: sections[0].ring.map((_, i) => i) });
 }
 
 /** The A5's gun shield (gun frame): a cast plate 6.5 cm thick lofted up its height, its face leaning back from 0.415 m
@@ -2253,13 +2293,13 @@ function m48M41(P: CastPort): void {
   };
   tube(0.095, 0.088, 0.51, 1.00);
   tube(0.084, 0.077, 1.00, 2.62);
-  tube(0.077, 0.108, 2.62, 2.68);
-  tube(0.108, 0.108, 2.68, 3.48);
-  tube(0.108, 0.094, 3.48, 3.53);
+  tube(0.077, 0.118, 2.62, 2.68);
+  tube(0.118, 0.118, 2.68, 3.48);
+  tube(0.118, 0.094, 3.48, 3.53);
   tube(0.094, 0.094, 3.53, 3.58);
   // the deflector: a cross tube on the bore, its ends open
-  P.add('gun', cylX(0.12, 0.52, seg), 0, 0, GUN_Z0 + 3.68);
-  for (const side of [-1, 1]) P.add('gunDark', cylX(0.095, 0.012, seg), side * 0.256, 0, GUN_Z0 + 3.68);
+  P.add('gun', cylX(0.13, 0.60, seg), 0, 0, GUN_Z0 + 3.665);
+  for (const side of [-1, 1]) P.add('gunDark', cylX(0.105, 0.012, seg), side * 0.296, 0, GUN_Z0 + 3.665);
   // its forward mouth round the bore
   tube(0.082, 0.082, 3.70, len);
   muzzleBore(P, { z: GUN_Z0 + len + 0.004, r: 0.058 });
