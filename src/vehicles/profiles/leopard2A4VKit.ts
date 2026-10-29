@@ -263,8 +263,8 @@ export function addLeo2A4VKit(P: TankBuilderPort, ctx: Leopard2A4KitContext): vo
   if (ctx.id !== 'leo2a4m') sponsonLinks(P);
   bustleKit(P, mulberry32(ctx.seed + 11));
   roofKit(P);
-  // the crosses on the walls, under the grab rails and ahead of the smoke rows
-  for (const sx of [-1, 1]) {
+  // the crosses on the walls, under the grab rails and ahead of the smoke rows (the Kontakt-1 courses cover them on leo2a4_v)
+  if (ctx.id !== 'leo2a4_v') for (const sx of [-1, 1]) {
     const x = (sx < 0 ? TS.wallRight : TS.wallLeft) + 0.002;
     P.decal('turret', 'crossgrey', null, 0.30, [sx * x, 0.265, 0.15], sx * Math.PI / 2);
   }

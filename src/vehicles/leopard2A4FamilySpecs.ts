@@ -19,6 +19,7 @@ import {
   type KitPlate, type Leopard2A4FamilyId,
 } from './leopard2A4FamilyArmor.ts';
 import { stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { LEO2A4V_KONTAKT1_PLATES } from './leopard2A4Kontakt1.ts';
 import { rightCheekPlate as chR, leftCheekPlate as chL, rightSidePlate as sR, leftSidePlate as sL } from './specHelpers.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
@@ -40,6 +41,8 @@ interface FamilyEnvelope {
   readonly kitPlates?: Readonly<Record<string, KitPlate>>;
   /** Published dimensions that follow the vehicle's identity (the 2A4's L/44 gun-forward length). */
   readonly dims?: Partial<FleetTankSpec['dims']>;
+  /** Plates the vehicle's kit adds with their own protection (a combat addition). */
+  readonly addedPlates?: Readonly<Record<string, KitPlate>>;
   /** The APFSDS round's penetration where the vehicle's gun differs from the record it was copied from. */
   readonly apfsdsPenMm?: { readonly pen100Mm: number; readonly pen1000Mm: number; readonly pen2000Mm: number };
 }
@@ -81,7 +84,9 @@ const GUN_PITCH_BY_YAW_DEG: Readonly<Record<Leopard2A4FamilyId, NonNullable<Flee
 const ENVELOPES: Readonly<Record<Leopard2A4FamilyId, FamilyEnvelope>> = Object.freeze({
   // the Leopard 2A4's L/44 (the build it replaces drew a 2A6's L/55): 9.67 m gun forward
   leo2a4: { dims: { overallLengthM: 9.67 } },
-  leo2a4_v: {},
+  // the Ukrainian-service 2A4 under Kontakt-1 (the owner via Main, 2026-10-29): its containers' ERA plates, a combat
+  // addition (leopard2A4Kontakt1.ts)
+  leo2a4_v: { addedPlates: LEO2A4V_KONTAKT1_PLATES },
   leo2a4m: { kitPlates: {
     a5nl_skirt_era_R: skirtCourse('a5nl_skirt_era_R', 1, 1.93),
     a5nl_skirt_era_L: skirtCourse('a5nl_skirt_era_L', -1, 1.93),
@@ -145,6 +150,7 @@ export function applyLeopard2A4FamilyEnvelopes(specs: Readonly<Record<string, Fl
     }
     spec.armor = leopard2A4FamilyArmor(id, spec.armor, {
       gun: LEOPARD2A4_FAMILY_GUN[id], front: LEOPARD2A4_FAMILY_FRONT[id], foreSkirtDropM: EARLY_LEOPARD2_FORE_SKIRT_DROP_M, kitPlates: e.kitPlates,
+      addedPlates: e.addedPlates,
     });
   }
 }

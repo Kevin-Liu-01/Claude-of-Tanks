@@ -9,6 +9,8 @@ import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
 import { LEOPARD2_HULL } from '../leopard2HullDatums.ts';
 import { LEOPARD2A4_FAMILY_FRONT, LEOPARD2A4_FAMILY_GUN } from '../leopard2A4FamilyArmor.ts';
+import { KONTAKT1_ERA, LEO2A4V_KONTAKT1 } from '../leopard2A4Kontakt1.ts';
+import { getSpec } from '../specs.ts';
 
 /** Each id's front and gun, written out so a change to the shared tables fails here (the packets read these). */
 const EXPECTED = [
@@ -66,5 +68,19 @@ for (const [id, expected] of EXPECTED) {
       tank.dispose();
     }
   }
+}
+// leo2a4_v, the Ukrainian-service 2A4 under Kontakt-1 (release 265; the owner via Main, 2026-10-29): every course's ERA
+// plate in its record with the Kontakt-1 values, on the cheeks, the walls and the fore skirts; the glacis bare
+{
+  const plates = [...getSpec('leo2a4_v').armor.hullPlates, ...getSpec('leo2a4_v').armor.turretPlates];
+  for (const course of LEO2A4V_KONTAKT1) {
+    const p = plates.find((q) => q.name === course.name);
+    assert.ok(p, `leo2a4_v carries ${course.name}`);
+    assert.equal(p.kind, 'era', `${course.name} is ERA`);
+    assert.deepEqual(p.era, { ...KONTAKT1_ERA }, `${course.name} carries the Kontakt-1 values`);
+  }
+  const bricks = LEO2A4V_KONTAKT1.reduce((n, c) => n + c.seats.length, 0);
+  assert.equal(bricks, 102, 'leo2a4_v: 102 containers (the service photographs\' courses)');
+  assert.ok(!plates.some((q) => q.kind === 'era' && /glacis/.test(q.name)), 'leo2a4_v: the glacis stays bare');
 }
 console.log('leopard2A4Family: six ids, both qualities: the owner\'s split, the guns, the ring and the roof');

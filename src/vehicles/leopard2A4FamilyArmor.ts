@@ -140,6 +140,8 @@ export interface Leopard2A4EnvelopeOptions {
   readonly foreSkirtDropM: number;
   /** Plates the vehicle's kit seats on drawn surfaces of its own (ERA fields, appliqué layers), keyed by name. */
   readonly kitPlates?: Readonly<Record<string, KitPlate>>;
+  /** Plates a kit adds that the vehicle's record never carried, with their own protection (leo2a4_v's Kontakt-1). */
+  readonly addedPlates?: Readonly<Record<string, KitPlate>>;
 }
 
 /**
@@ -269,6 +271,11 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     const v = take(name);
     if (!v) throw new Error(`leopard2A4FamilyArmor: ${id}'s kit seats ${name}, which its record does not carry`);
     (kit.rig === 'hull' ? hullPlates : turretPlates).push(carry(kit.plate, name, v));
+  }
+  // plates the record never carried, with their own protection (a combat addition, named in the vehicle's envelope)
+  for (const [name, kit] of Object.entries(o.addedPlates ?? {})) {
+    if (plates.has(name)) throw new Error(`leopard2A4FamilyArmor: ${id}'s added plate ${name} is already in its record`);
+    (kit.rig === 'hull' ? hullPlates : turretPlates).push(kit.plate);
   }
   const leftover = [...plates.keys()].filter((name) => !used.has(name) && !/_hatch_\d+_/.test(name));
   if (leftover.length) throw new Error(`leopard2A4FamilyArmor: ${id}'s ${leftover.join(', ')} found no surface`);

@@ -139,6 +139,17 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
 - R5 (2026-10-29, the owner's rulings via Main): leo2a4m is labelled a concept (vehicleFacets.ts); leo2a4_otco and
   leo2_improved take the L/44 (its geometry and round figures; their gun stops re-measured); leo2a4m_can's heightM is the
   DND's 2.75 m; leo2a4_v becomes the Ukrainian-service 2A4 under Kontakt-1 on its own head (item/leo2a4v-era-265).
+- R6 (2026-10-29, item/leo2a4v-era-265): leo2a4_v under Kontakt-1 from the service photographs (TWZ; armyrecognition.com
+  after the Praise The Steph video, 2023-07-01; lane evidence ~/cot-lanes/leo2a4v-era-265-evidence/refs): 102 4S20
+  containers (leopard2A4Kontakt1.ts, one course table for the containers and the plates; profiles/leopard2A4Kontakt1Kit.ts
+  lays them as ERA fields): 6 on the left cheek's face and 3 up its bevel, 5 on the right cheek's round the EMES 15 notch,
+  20 down each wall ahead of the smoke rows (clear of the welded ammunition hatch), 24 on each fore skirt block; the
+  glacis and the mantlet bare as photographed; the faces' and the walls' grab rails and the wall crosses come off under
+  them. COMBAT ADDITION: seven ERA plates (k1_turret_face_R/L, k1_turret_bevel_R, k1_turret_wall_R/L, k1_skirt_R/L) with the
+  fleet's Kontakt-1 values (12 mm, 0.05 kinetic reduction, 280 mm against chemical energy), through the family envelope's
+  addedPlates. Contiguity 0 at all phases, sealed holds (4 px), strict track clip 0/0+0/0, nationalGunClearance PASS,
+  traverse as the base (the ring seat's -3 mm); blind critic PASS (notes: the camouflage runs across the containers; a
+  possible dark flap under each cheek, too blurred to place).
   - The Strv 121 (item/strv121-2a4-265): its stern rack floored; its track sweep (28 voxels) is the field suit's
     `strv122_ghillie_hull_net` at x ±1.68, y 1.16-1.22, and its netting px (2,243 against main's 2,806 row) moved with
     the re-seated suit: both routed to the ghillie lane (Main).

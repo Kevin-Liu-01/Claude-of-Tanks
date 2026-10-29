@@ -9,6 +9,7 @@ import { buildLeopard2Hull } from './leopard2Hull.ts';
 import { buildLeopard2A4Turret, type Leopard2A4TurretOptions } from './leopard2A4Turret.ts';
 import { addLeo2A4Kit, type Leopard2A4KitContext } from './leopard2A4Kit.ts';
 import { addLeo2A4VKit } from './leopard2A4VKit.ts';
+import { addLeo2A4Kontakt1 } from './leopard2A4Kontakt1Kit.ts';
 import { addLeo2A4MKit } from './leopard2A4A5nlKit.ts';
 import { addLeo2A4MCanKit } from './leopard2A4CanKit.ts';
 import { addLeo2A4OtcoKit } from './leopard2A4OtcoKit.ts';
@@ -33,8 +34,11 @@ interface Leopard2A4Variant {
 const VARIANTS: Readonly<Record<Leopard2A4FamilyId, Leopard2A4Variant>> = Object.freeze({
   leo2a4: { flapName: 'leo2a4-rear-flap', seed: 26400, kit: addLeo2A4Kit,
     turret: { whips: false, rearBox: false, numberOffsetM: null } },
-  leo2a4_v: { flapName: 'leo2a4v-rear-flap', seed: 26410, kit: addLeo2A4VKit,
-    turret: { loaderMG: { cls: 'mag58', name: 'leo2a4vLoaderMag' }, rearBox: false, numberOffsetM: null } },
+  // the Ukrainian-service 2A4 under Kontakt-1 (the owner via Main, 2026-10-29): the containers cover the faces' and the
+  // walls' grab rails
+  leo2a4_v: { flapName: 'leo2a4v-rear-flap', seed: 26410, kit: (P, ctx) => { addLeo2A4VKit(P, ctx); addLeo2A4Kontakt1(P); },
+    turret: { loaderMG: { cls: 'mag58', name: 'leo2a4vLoaderMag' }, faceRails: false, wallRails: false, rearBox: false,
+      numberOffsetM: null } },
   leo2a4m: { flapName: 'leo2a4m-rear-flap', seed: 26420, kit: (P, ctx) => { addLeo2A4VKit(P, ctx); addLeo2A4MKit(P, ctx); },
     turret: { loaderMG: { cls: 'mag58', name: 'leo2a4mRemoteMag', remote: true }, rearBox: false, numberOffsetM: null } },
   leo2a4m_can: { flapName: 'leo2a4m-can-rear-flap', seed: 26430, kit: addLeo2A4MCanKit, hull: { skirts: 'none' },
