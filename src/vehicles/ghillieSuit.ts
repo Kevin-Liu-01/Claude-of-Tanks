@@ -1677,6 +1677,16 @@ interface CurtainSpec {
   readonly whole?: boolean;
 }
 
+/** A cell drawn out past FITTED_CELL_MAX_M along an edge, or more than FITTED_CELL_ASPECT times longer than wide. */
+function sliverCell(A: Point3, B: Point3, C: Point3, D: Point3): boolean {
+  const d = (p: Point3, q: Point3): number => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  const e = [d(A, B), d(B, C), d(C, D), d(D, A)];
+  const long = Math.max(...e), short = Math.min(...e);
+  return long > FITTED_CELL_MAX_M || long > FITTED_CELL_ASPECT * Math.max(short, 0.005);
+}
+const FITTED_CELL_MAX_M = 0.8;
+const FITTED_CELL_ASPECT = 10;
+
 function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number], flip: boolean): {
   geometry: THREE.BufferGeometry; columns: Array<{ a: number; pts: Point3[]; normals: Point3[]; t: number[] }>;
 } {
@@ -1819,6 +1829,10 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       // the hem row tears here and there
       if (r === rows - 1 && !spec.whole && noise01(c + spec.seed, spec.seed + 7) < 0.17) continue;
       const A = vertex[c][r], B = vertex[c + 1][r], C = vertex[c + 1][r + 1], D = vertex[c][r + 1];
+      // (r7; the critic r6 on the Strv 121: "jagged triangular shards" at its cover's edges) a fitted cover's cell is a
+      // hand or two across; one between a full column and a column whose section collapsed to a few centimetres (where
+      // its wall ends) fans into a sliver, and is not laid: the cover ends at its last full column
+      if (spec.whole && sliverCell(A, B, C, D)) continue;
       const uv = (cc: number, rr: number, a: number): [number, number] => [a * uvk + uvOffset[0], vlen[cc][rr] * uvk + uvOffset[1]];
       const quad: Array<[Point3, [number, number]]> = [[A, uv(c, r, aA)], [B, uv(c + 1, r, aB)], [C, uv(c + 1, r + 1, aB)], [D, uv(c, r + 1, aA)]];
       const order = flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
