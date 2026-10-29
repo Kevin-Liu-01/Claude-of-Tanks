@@ -15,7 +15,7 @@ for (const key of docsIconKeys()) {
 
 const placeholders = [...docs.matchAll(/data-doc-icon="([^"]+)"/g)].map((match) => match[1]);
 // the index is the chapter map: every chapter's card and each shelf's heading lead with an icon
-const iconCards = [...docs.matchAll(/<a (?:class="[^"]*" )?href="\/docs\/[a-z]+"><span class="docs-chapter-media">[^]*?data-doc-icon=/g)].length;
+const iconCards = [...docs.matchAll(/<a (?:class="[^"]*" )?href="\/docs\/[a-z]+"><span class="docs-chapter-media" data-reveal[^>]*>[^]*?data-doc-icon=/g)].length;
 assert.equal(iconCards, TOPIC_ORDER.length, 'every chapter card on the index carries its icon');
 assert.equal((docs.match(/<h2 id="shelf-[a-z]+"><span data-doc-icon=/g) ?? []).length, 2, 'both shelves lead with an icon');
 assert.ok(placeholders.length >= TOPIC_ORDER.length + 2, 'Docs landing page uses icon wayfinding throughout the page');
@@ -24,7 +24,7 @@ for (const key of placeholders) {
 }
 
 // each chapter card on the index is a picture with its icon plate, one per chapter
-const cards = [...docs.matchAll(/<a href="\/docs\/([a-z]+)"><span class="docs-chapter-media">/g)].map((match) => match[1]);
+const cards = [...docs.matchAll(/<a href="\/docs\/([a-z]+)"><span class="docs-chapter-media" data-reveal[^>]*>/g)].map((match) => match[1]);
 assert.ok(cards.length >= 13 && new Set(cards).size === cards.length && cards.every((slug) => TOPIC_ORDER.includes(slug)),
   `all focused field manuals have a visual icon plate (${cards.join(', ')})`);
 assert.equal((docs.match(/<dt><span data-doc-icon=/g) || []).length, 4,

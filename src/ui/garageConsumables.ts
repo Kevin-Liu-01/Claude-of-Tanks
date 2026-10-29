@@ -10,10 +10,13 @@
 // battle tray name the same items. The battle reads the same save at spawn.
 
 import { createPicker, type PickerItem, type PickerText } from './components/picker.ts';
+import { closeSurface, openSurface, type TransientSurface } from './components/surfaceStack.ts';
+import { consumableIconSVG } from './equipIcons.ts';
+import { badgeCards } from './garageEquipmentPicker.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import {
-  CONSUMABLE_ICONS, CONSUMABLE_LOADOUT_EVENT, CONSUMABLE_SLOTS, consumableCategoryKey, consumableEffectKey, consumableLockKey,
+  CONSUMABLE_LOADOUT_EVENT, CONSUMABLE_SLOTS, consumableCategoryKey, consumableEffectKey, consumableLockKey,
   consumableNameKey, consumablePickerGroups, consumableShortKey, consumableSpecFor, consumableSlotsView, fitConsumable,
   isConsumableId, loadConsumables, saveConsumables, type ConsumableId,
 } from '../game/consumableLoadout.ts';
@@ -29,6 +32,9 @@ interface GarageConsumablesOptions {
   /** The room or a test drive holds the tank fixed. */
   readonly locked: () => boolean;
   readonly text: () => PickerText;
+  /** Fit the open picker's grid to its sheet (garage.ts: a phone's sheet fills its room with whole rows, as the
+   *  equipment's does). */
+  readonly fitGrid?: (grid: HTMLElement) => void;
   emit(name: string, payload: object): void;
 }
 
@@ -70,6 +76,8 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
   const titleEl = panel.querySelector<HTMLElement>('.ph .t')!;
   const pickerHost = panel.querySelector<HTMLElement>('.cot-cs-picker')!;
   const readoutEl = panel.querySelector<HTMLElement>('.cot-cspreview')!;
+  // each card is its item's badge over its short name and what it does, as the equipment picker's (badgeCards)
+  const cards = badgeCards(pickerHost, (id) => consumableIconSVG(id, 38));
   let picker: ReturnType<typeof createPicker> | null = null;
   let openSlot = -1;
   let pendingSlot = -1;
@@ -113,7 +121,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     if (!id) { readoutEl.replaceChildren(); return; }
     const view = consumableSlotsView([id])[0]!;
     const facts = shown.get(id);
-    const uses = view.charges == null ? '∞' : t('garage.consumable.uses', { n: String(view.charges) });
+    const uses = view.charges == null ? t('garage.consumable.unlimited') : t('garage.consumable.uses', { n: String(view.charges) });
     const eyebrow = document.createElement('span');
     eyebrow.className = 'eyebrow';
     eyebrow.textContent = [facts ? t(consumableCategoryKey(facts.category)) : '',
@@ -143,7 +151,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
         const facts = [t(consumableEffectKey(item.id))];
         if (fittedSlot >= 0 && fittedSlot !== openSlot) facts.push(t('garage.equipment.tag.slot', { slot: fittedSlot + 1 }));
         out.push({
-          id: item.id, name: t(consumableShortKey(item.id)), facts, glyph: CONSUMABLE_ICONS[item.id], tags: [group.category.id],
+          id: item.id, name: t(consumableShortKey(item.id)), facts, tags: [group.category.id],
           ...(lock ? { disabled: t(consumableLockKey(lock)) } : {}),
         });
       }
@@ -173,6 +181,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
     pendingSlot = -1;
     const current = items();
     if (!current.length) return;
+    openSurface(surface, host.querySelector(`.csslot[data-slot="${slot}"]`));
     openSlot = slot;
     titleEl.textContent = t('garage.equipment.tag.slot', { slot: slot + 1 });
     picker?.dispose();
@@ -189,36 +198,40 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
       onPreview: (item) => readout(item && isConsumableId(item.id) ? item.id : current[slot] ?? null),
       onChoose: (item) => choose(item.id),
     });
+    cards.hydrate();
     readout(current[slot] ?? null);
     panel.classList.add('open');
     root.classList.add('picker-open');
     for (const el of host.querySelectorAll<HTMLElement>('.csslot')) el.classList.toggle('open', Number(el.dataset.slot) === slot);
     // the persistent panel's title sits over the picker's bar, which starts after it (showroom.css --eq-title-w, as the
     // equipment picker measures its own)
-    requestAnimationFrame(() => panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`));
+    requestAnimationFrame(() => {
+      panel.style.setProperty('--eq-title-w', `${Math.ceil(titleEl.getBoundingClientRect().width)}px`);
+      const grid = pickerHost.querySelector<HTMLElement>('.cot-c-picker__grid');
+      if (grid) options.fitGrid?.(grid);
+    });
     picker.focus();
-    document.addEventListener('keydown', onKeydown);
-    document.addEventListener('mousedown', onOutside, true);
   }
 
-  function close(): void {
+  /** Close; the focus goes back to the slot unless another surface took it (`restoreFocus` false). */
+  function close({ restoreFocus = true } = {}): void {
     if (openSlot < 0) return;
+    closeSurface(surface);
     const slot = openSlot;
     openSlot = -1;
     panel.classList.remove('open');
     root.classList.remove('picker-open');
     for (const el of host.querySelectorAll<HTMLElement>('.csslot')) el.classList.remove('open');
-    document.removeEventListener('keydown', onKeydown);
-    document.removeEventListener('mousedown', onOutside, true);
-    host.querySelector<HTMLElement>(`.csslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
+    if (restoreFocus) host.querySelector<HTMLElement>(`.csslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
-  function onKeydown(event: KeyboardEvent): void {
-    if (event.code === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
-  }
-  function onOutside(event: MouseEvent): void {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!panel.contains(target) && !target?.closest('.csslot')) close();
-  }
+  // a transient surface (components/surfaceStack.ts): opening it closes the equipment's picker or a menu as it enters, and
+  // Escape and a press outside it and its slots are the stack's
+  const surface: TransientSurface = {
+    id: 'garage-consumables',
+    element: () => panel,
+    owns: (node) => host.contains(node),
+    close: (reason) => close({ restoreFocus: reason === 'escape' }),
+  };
 
   function render(): void {
     const vehicle = options.vehicle();
@@ -228,7 +241,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
       // the equipment slot's primitive (one control, one selected state: .open), styled with the band (showroom.css)
       `<button type="button" class="eqslot csslot" data-slot="${view.slot}" data-item="${view.itemId}" ` +
       `aria-label="${escapeAttr(`${t('garage.consumableSlot', { n: String(view.slot + 1) })}: ${tip(view.itemId)}`)}" ` +
-      `data-tip="${escapeAttr(slotTip(view.itemId, n))}">${uiIconSVG(view.iconId, 22)}` +
+      `data-tip="${escapeAttr(slotTip(view.itemId, n))}">${consumableIconSVG(view.itemId, 26)}` +
       `<span class="sl">${escapeAttr(t(view.shortKey))}</span>` +
       // the kit's chevron, as a fitted equipment slot ends (gallery-studio's .chev rule in showroom.css styles both groups)
       `<span class="chev" aria-hidden="true">${uiIconSVG('chevronDown', 12)}</span></button>`).join('');
@@ -256,7 +269,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
 
   return {
     render,
-    close,
+    close: () => close(),
     dispose() {
       pendingSlot = -1;
       close();
@@ -264,6 +277,7 @@ export function createGarageConsumables(options: GarageConsumablesOptions): Gara
       band.removeEventListener('pointerover', warm);
       band.removeEventListener('focusin', warm);
       panel.removeEventListener('click', onPanelClick);
+      cards.dispose();
       picker?.dispose();
       panel.remove();
     },

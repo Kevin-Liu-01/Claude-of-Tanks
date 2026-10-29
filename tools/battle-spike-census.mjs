@@ -33,7 +33,8 @@
 // simulation is then the same tick for tick on every run of a build (a fresh profile, a pinned roster), the workload a
 // before/after pair must share. The AC-130 cannot be watched (its gunship is the human's alone) and keeps the player.
 //
-// One browser at a time (--js-flags heap cap; the run aborts a battle past 6 GB of browser RSS), the capture FIFO held
+// One browser at a time (--js-flags heap cap; the browser guard fails a battle whose renderer passes 6 GB or whose
+// browser tree passes BATTLE_TREE_CAP_MB, and the census goes on to the next), the capture FIFO held
 // for the whole run (tools/capture-lock.mjs), the dist served by `vite preview`. Each battle writes
 // <out>/<map>-<mode>-<size>v<size>-<pass>.json (the analysis, the roster, the load), and beside it the recorder's
 // readout (.frames.json.gz) and the main thread's trace events (.trace.json.gz), so --reanalyze=<out> can re-run the
@@ -65,7 +66,12 @@ const SYNC_MARK = 'cot-spike-census-sync';
 const TRACE_CATEGORIES = Object.freeze(['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing']);
 /** Chrome's trace buffer for a battle (KB): it holds the battle; the stream is read event by event, never whole. */
 const TRACE_BUFFER_KB = 600 * 1024;
-const RSS_ABORT_KB = 6 * 1024 * 1024;
+/**
+ * (2026-10-27) The browser tree's cap for a battle (MB; COT_BROWSER_TREE_CAP_MB overrides): the guard's 10 GB default
+ * killed a 7v7 Steinburg census at 10.09 GB with its renderer at 2.9 GB, the rest the GPU process's targets and textures
+ * (a footprint the old 6 GB RSS rule here never read). The renderer's 6 GB cap stays the runaway guard.
+ */
+const BATTLE_TREE_CAP_MB = 16384;
 /**
  * A scenario's whole run (a fresh browser, its cold and warm battles) at most. A browser the RSS watchdog closed left a
  * page call that never settled, and the census held the capture FIFO for 91 minutes with no browser (2026-10-25): every
@@ -420,7 +426,7 @@ export function filterTraceEvents(events) {
  * view camera (the far merge's 30 m and the far LOD's 180 m) and its part (two levels under the root); with the distinct
  * materials and programs drawn, all and on tanks. Run in the page (no closures).
  */
-async function pageDrawAttribution(frames) {
+export async function pageDrawAttribution(frames) {
   const D = window.__DEBUG, R = D.renderer, scene = D.scene, camera = D.camera;
   const roots = new Map();
   for (const tank of D.game.tanks) if (tank.visual?.root) roots.set(tank.visual.root, tank);
@@ -437,9 +443,26 @@ async function pageDrawAttribution(frames) {
   const props = R.properties;
   const orig = R.renderBufferDirect;
   const at = { x: 0, y: 0, z: 0 };
+  // (battle-spikes-253) shadow draws by cascade (the shadow camera's light), the static cache's phase (a rebuild's static
+  // layer, the dynamic layer over a copy, or an ordinary render) and owner (world, tank, other)
+  const cascadeOf = new Map((D.lighting?.csm?.lights ?? []).map((light, index) => [light.shadow.camera, index]));
+  const cascades = {}, dynamicWorld = {}, fxCascades = {};
   R.renderBufferDirect = function (cam, sc, geometry, material, object) {
     const pass = cam?.isOrthographicCamera ? 'shadow' : 'main';
     passes[pass] = (passes[pass] ?? 0) + 1;
+    if (pass === 'shadow') {
+      let top = object;
+      while (top.parent && top.parent !== scene) top = top.parent;
+      const owner = ownerOf(object) ? 'tank' : /^world/.test(top.name || '') ? 'world' : 'other';
+      const phase = D.lighting?.staticCacheFrame?.drawPhase || 'full';
+      const key = `c${cascadeOf.get(cam) ?? '?'}|${phase}|${owner}`;
+      cascades[key] = (cascades[key] ?? 0) + 1;
+      // the world's draws the cache leaves to the dynamic layer, by what drew (its name, else its parent's), indices dropped
+      if (phase === 'dynamic' && owner === 'world') {
+        const name = `${(object.name || `${object.parent?.name || '?'}>${object.type}`).replace(/[-_]?\d+$/, '')}${object.isInstancedMesh ? '[I]' : ''}`;
+        dynamicWorld[name] = (dynamicWorld[name] ?? 0) + 1;
+      }
+    }
     materials.add(material);
     const program = props?.get?.(material)?.currentProgram;
     if (program) programs.add(program);
@@ -464,6 +487,8 @@ async function pageDrawAttribution(frames) {
       if (top !== object && (top.name === 'fx' || top.userData?.fxRoot)) {
         const kind = `${(object.name || object.type).replace(/[-_]?\d+$/, '')}|${pass}`;
         fxKinds[kind] = (fxKinds[kind] ?? 0) + 1;
+        // and its shadow draws by cascade (a flying body's reach profile keeps it out of the cascades it cannot reach)
+        if (pass === 'shadow') { const ck = `${kind}|c${cascadeOf.get(cam) ?? '?'}`; fxCascades[ck] = (fxCascades[ck] ?? 0) + 1; }
       }
     }
     return orig.apply(this, arguments);
@@ -496,9 +521,12 @@ async function pageDrawAttribution(frames) {
     const band = k.split('|')[0];
     return [k, Math.round(v / frames / Math.max(1, tanksIn[band] ?? 1) * 100) / 100];
   }).sort((a, b) => b[1] - a[1]).slice(0, 60);
-  return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])), tanksIn, perTank,
+  return { frames, passes: Object.fromEntries(Object.entries(passes).map(([k, v]) => [k, per(v)])),
+    shadowCascades: Object.fromEntries(Object.entries(cascades).sort().map(([k, v]) => [k, per(v)])),
+    dynamicWorld: Object.entries(dynamicWorld).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30), tanksIn, perTank,
     rows: bandRows.slice(0, 40), topParts, materials: materials.size, programs: programs.size,
     fxKinds: Object.entries(fxKinds).map(([k, v]) => [k, per(v)]).sort((a, b) => b[1] - a[1]).slice(0, 30),
+    fxCascades: Object.fromEntries(Object.entries(fxCascades).sort().map(([k, v]) => [k, per(v)])),
     tankMaterials: tankMaterials.size, tankPrograms: tankPrograms.size, shadowCache: cache };
 }
 
@@ -557,6 +585,8 @@ const keyOf = (scenario, size, pass, label = '') => `${label ? `${label}--` : ''
 
 // the browser playing now: a stopped census (SIGTERM, SIGINT) closes it before it exits, leaving no orphan Chrome
 let activeBrowser = null;
+// a guard trip (exit: false) released the capture FIFO with the browser: the next battle takes its place again
+let guardReleasedLocks = false;
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.once(signal, () => {
     const closing = activeBrowser ? activeBrowser.close().catch(() => {}) : Promise.resolve();
@@ -585,22 +615,29 @@ async function playScenario(options, side, scenario, size, done, abort) {
   const [mapId, gameMode] = scenario.split(':');
   const [width, height] = options.viewport.split('x').map(Number);
   const allies = size - 1, enemies = size;
-  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
-    args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] });
-  activeBrowser = browser;
   let aborted = null;
+  // (2026-10-27) the guard is the one memory rule: a trip kills this browser and fails this battle only (exit: false)
+  const browser = await launchGuardedBrowser(puppeteer, { headless: 'new', protocolTimeout: 900000,
+    args: [...MAP_PROBE_BROWSER_ARGS, '--enable-precise-memory-info', `--window-size=${width},${height}`, '--js-flags=--max-old-space-size=3072'] },
+  {
+    label: `battle-spike-census ${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}`,
+    treeCapMb: Number(process.env.COT_BROWSER_TREE_CAP_MB) || BATTLE_TREE_CAP_MB,
+    exit: false,
+    onTrip: (report) => {
+      guardReleasedLocks = true;
+      if (aborted) return;
+      aborted = `browser guard: ${report.why}`;
+      log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
+      abort(aborted);
+    },
+  });
+  activeBrowser = browser;
   const pid = browser.process()?.pid;
   // the browser tree's resident set (the GPU process's Metal memory included on a Mac): its peak a battle, recorded
   const rss = { peakKb: 0 };
   const watchdog = setInterval(() => {
     const kb = pid ? treeRssKb(pid) : 0;
     rss.peakKb = Math.max(rss.peakKb, kb);
-    if (kb > RSS_ABORT_KB && !aborted) {
-      aborted = `browser RSS ${(kb / 1048576).toFixed(1)} GB past 6 GB`;
-      log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size}: ${aborted}: aborting`);
-      abort(aborted);
-      browser.close().catch(() => {});
-    }
   }, 5000);
   watchdog.unref();
   try {
@@ -658,7 +695,7 @@ async function playScenario(options, side, scenario, size, done, abort) {
       const da = record.drawAttribution;
       if (da && !da.error) log(`${key}: tanks by band ${JSON.stringify(da.tanksIn)}, a tank's draws ${JSON.stringify(da.perTank)}; passes `
         + `${JSON.stringify(da.passes)}; materials ${da.materials} (tanks ${da.tankMaterials}), programs ${da.programs} (tanks ${da.tankPrograms}); `
-        + `shadow cache ${JSON.stringify(da.shadowCache)}`);
+        + `shadow cache ${JSON.stringify(da.shadowCache)}; shadow draws by cascade|phase|owner ${JSON.stringify(da.shadowCascades)}; the world's dynamic-layer draws ${JSON.stringify(da.dynamicWorld)}`);
       const dc = record.domCensus;
       if (dc && !dc.error) log(`${key}: DOM reads ${dc.callsPerFrame} a frame, ${dc.perFrameMs.median} ms (p90 ${dc.perFrameMs.p90}, max ${dc.perFrameMs.max}); `
         + `${dc.sites.slice(0, 6).map(([site, calls, ms]) => `${site} ${calls}x ${ms} ms`).join('; ')}`);
@@ -854,7 +891,7 @@ export async function runCensus(options) {
   for (const side of options.roots) {
     if (!existsSync(path.join(side.root, 'dist', 'index.html'))) throw new Error(`${side.root} has no dist (npm run build)`);
   }
-  const locks = await acquireProbeLocks({ log });
+  let locks = await acquireProbeLocks({ log });
   const refresh = setInterval(() => locks.refresh(), 30000);
   refresh.unref();
   // a chunk with a budget stops hard 30 minutes past it, whatever is pending: the FIFO is the other lanes' too
@@ -879,6 +916,11 @@ export async function runCensus(options) {
           try { await runScenario(options, side, scenario, size, done); } catch (error) {
             failures.push({ scenario, size, label: side.label, error: String(error?.message ?? error).slice(0, 2600) });
             log(`${side.label ? `${side.label} ` : ''}${scenario} ${size}v${size} FAILED: ${String(error?.message ?? error).slice(0, 1500)}`);
+          }
+          if (guardReleasedLocks) {
+            guardReleasedLocks = false;
+            log('the browser guard released the capture FIFO: queueing again');
+            locks = await acquireProbeLocks({ log });
           }
         }
       }

@@ -149,6 +149,13 @@ const pl01 = variant('pl01', 'xk2_black_panther', {
   autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 15.0 },
   shellName: 'DM63A1 APFSDS', armorFactor: 1.10,
 });
+// 261 (the owner's PL-01 gun fits, 2026-10-27): the gun's depression by turret yaw, measured over its own hull
+// (tools/gun-depression-sweep.mjs, 26 mm; pl01GunHousing.selftest.mjs). Over the glacis it keeps its full -10. The tall
+// skirt shoulders hold the front quarters to about -5 and the engine deck the rear to about -4.2; until 261 the gun ran
+// into both at its bare -10. The 120's onset at yaw 9-10 is ramped at 2 deg per degree of yaw (the low stop is a clamp).
+pl01.gunPitchByYawDeg = [[0, -10], [8.4, -10], [10, -6.9], [11, -5.8], [12, -5.1], [23, -4.7], [29, -4.7], [30, -4.9],
+  [31, -5.8], [33, -8], [34, -8], [41, -9.2], [44, -10], [117, -10], [128, -9.2], [131, -8], [141, -5], [146, -4.2],
+  [155, -4.3], [180, -5.2]];
 Object.assign(pl01.gun.shells[0], {
   pen100Mm: 891, pen1000Mm: 830, pen2000Mm: 730, dmg: 550,
 });
@@ -186,6 +193,10 @@ pl01_105.gun = {
   ] satisfies ShellSpec[],
 };
 pl01_105.armor.gunBarrel.radiusM = 0.086;
+// its own fit's curve (the shield and sleeve sweep lower ahead than the 120's shroud; same hull)
+pl01_105.gunPitchByYawDeg = [[0, -10], [3, -10], [5, -9.7], [12, -9.6], [14, -6.6], [15, -6.5], [25, -5.9], [27, -5.9],
+  [28, -6.2], [30, -9], [32, -9], [35, -10], [119, -10], [125, -7.9], [126, -7.6], [133, -7], [140, -6.7], [142, -5.8],
+  [145, -4.8], [146, -4.7], [157, -4.7], [167, -5.4], [168, -5.1], [169, -5], [180, -5]];
 pl01_105.visual = { ...pl01_105.visual, number: 'PL-105' };
 
 applyEscortFieldKitArmor(pl01_105,ESCORT_FIELD_KITS.pl01_105);

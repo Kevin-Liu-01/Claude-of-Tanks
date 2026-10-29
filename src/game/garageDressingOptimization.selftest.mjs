@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { optimizeGarageDressing } from './garageDressingOptimization.ts';
+import { optimizeGarageDressing, optimizeGarageDressingSteps } from './garageDressingOptimization.ts';
 
 const root = new THREE.Group();
 const nested = new THREE.Group();
@@ -248,4 +248,63 @@ displayMaterial.dispose();
     'the same casters keep their shadow as by getWorldScale');
 }
 
-console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass');
+// (2026-10-27, the room-stalls lane) the optimization as steps does the one pass's work in the same order: the same
+// receipt and the same scene graph as optimizeGarageDressing, yielding between the freeze runs, the prop passes and
+// each display merge batch
+{
+  const build = () => {
+    const workshop = new THREE.Group();
+    const filler = new THREE.Group();
+    for (let i = 0; i < 900; i++) filler.add(new THREE.Group());
+    workshop.add(filler);
+    const shared = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+    const propMaterial = new THREE.MeshStandardMaterial();
+    for (const x of [-3, 3]) {
+      const prop = new THREE.Mesh(shared, propMaterial);
+      prop.position.set(x, 0, 0);
+      prop.castShadow = true;
+      workshop.add(prop);
+    }
+    const display = new THREE.Group();
+    display.userData.sourceVehicleId = 'display_steps';
+    display.position.set(5, 0, 1);
+    for (const [index, color] of [0x335566, 0x664433].entries()) {
+      const displayMaterial = new THREE.MeshStandardMaterial({ color });
+      for (const z of [-1, 1]) {
+        const part = new THREE.Mesh(new THREE.BoxGeometry(0.4 + index * 0.1, 0.5, 0.6), displayMaterial);
+        part.position.set(index, 0.25, z);
+        display.add(part);
+      }
+    }
+    workshop.add(display);
+    return { workshop, display };
+  };
+  const signature = (root) => {
+    const rows = [];
+    root.updateWorldMatrix(true, true);
+    root.traverse((object) => {
+      const geometry = object.geometry;
+      rows.push([object.name, object.type, object.castShadow, object.matrixAutoUpdate,
+        geometry ? Array.from(geometry.getAttribute('position').array) : null,
+        Array.from(object.matrixWorld.elements)]);
+    });
+    return JSON.stringify(rows);
+  };
+  const once = build();
+  const expected = optimizeGarageDressing(once.workshop, { staticDisplayOwners: [once.display] });
+  assert.ok(expected.displayMergeBatches >= 2 && expected.objectsFrozen > 900, JSON.stringify(expected));
+  const stepped = build();
+  const steps = optimizeGarageDressingSteps(stepped.workshop, { staticDisplayOwners: [stepped.display] });
+  let yields = 0;
+  let result;
+  for (;;) {
+    const step = steps.next();
+    if (step.done) { result = step.value; break; }
+    yields += 1;
+  }
+  assert.ok(yields >= 6, `the pass yields between its pieces (${yields})`);
+  assert.deepEqual(result, expected, 'the same receipt');
+  assert.equal(signature(stepped.workshop), signature(once.workshop), 'the same scene graph, vertices and transforms');
+}
+
+console.log('garageDressingOptimization.selftest: static transforms and proxy-safe shadow budget pass; the optimization as steps matches the one pass');

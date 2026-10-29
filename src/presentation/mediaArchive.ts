@@ -4,7 +4,9 @@ import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
 import { icon } from '../ui/icons/icon.ts';
 import { setRoving, tabs, wireRoving } from '../ui/components/components.ts';
+import { dialogSurface } from '../ui/components/surfaceStack.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
+import { revealStills } from './revealStills.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
 /** The manifest's feature names in filter order. */
@@ -78,6 +80,8 @@ function loadPresentationManifest(): Promise<PresentationManifest> {
       return { shots: [...(fresh?.shots ?? []), ...base.shots.filter(shot =>
         shot.kind !== 'battlefield' || !refreshedMaps.has(shot.map))] };
     });
+    // a failed fetch is not kept: the next mount (a Retry, a return online) asks again
+    manifestPromise.catch(() => { manifestPromise = undefined; });
   }
   return manifestPromise;
 }
@@ -87,6 +91,7 @@ function ensureLightbox(): HTMLDialogElement {
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.className = 'media-lightbox';
+  dialogSurface(dialog, 'media-archive');
   dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="${t('mediaArchive.lightbox.closeAria')}">${icon('close', { size: 20 })}</button></figcaption></figure>`;
   const closeButton = dialog.querySelector<HTMLButtonElement>('button');
   if (!closeButton) throw new Error('media lightbox close control is unavailable');
@@ -165,7 +170,12 @@ export async function mountMediaArchive(
   const [manifest, recipes] = await Promise.all([
     loadPresentationManifest(),
     loadCaptureRecipes().catch(() => ({ media: {}, recipes: {} })),
-  ]);
+  ]).catch((error: RuntimeValue) => {
+    // the archive that never arrived is not mounted: a Retry mounts it again (the loading census: the mark set before
+    // this wait and the kept failed manifest left the docs archive's Retry with nothing to do)
+    delete root.dataset.mediaMounted;
+    throw error;
+  });
   const allowedKinds = options.kinds?.length ? new Set(options.kinds.map(normalize)) : null;
   const source = manifest.shots.filter((shot) => !allowedKinds || allowedKinds.has(normalize(shot.kind)));
   const limit = typeof options.limit === 'number' && Number.isFinite(options.limit)
@@ -197,6 +207,8 @@ export async function mountMediaArchive(
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
       shotCard(shot, index, recipeForMedia(recipes, shot.src), options.takeTitle)));
+    // each card's still fades in once decoded; one the link dropped keeps the card's tone and loads again online
+    revealStills(grid.querySelectorAll<HTMLImageElement>('.media-archive-card-open > img'));
     count.value = t('mediaArchive.count', {
       shown: String(visible.length).padStart(2, '0'),
       total: String(filtered.length).padStart(2, '0'),

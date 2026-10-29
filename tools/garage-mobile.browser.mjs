@@ -71,7 +71,7 @@ try{
    await tap('.cot-camo-picker .cot-c-picker__opt[data-id="custom"]');await box('.cot-modal-root.is-open .cot-modal');
    for(const button of await page.locator('.cot-modal-root.is-open button:not([disabled])').all())await reach(button);
    for(const input of await page.locator('.cot-custom-color input,.cot-custom-repeat input,.cot-custom-check').all())await reach(input);
-   await tap('[data-custom-brush-type=round]');await tap('.cot-custom-draw');
+   await tap('.cot-custom-brushes [data-value=round]');await tap('.cot-custom-draw');
    await tap('.cot-modal-root.is-open .cot-modal__footer .cot-c-btn--primary');
    assert.ok(await page.evaluate(()=>window.__MOBILE_SURFACES.customPaint.get(window.__MOBILE_SURFACES.garage.getSelected())?.strokes.length>0),'touch drawing applies to the selected tank');
    await page.screenshot({path:resolve(out,`${name}-custom-camo.png`)});await closeModal();await tap('.cot-drawer-close');

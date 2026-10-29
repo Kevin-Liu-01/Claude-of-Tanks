@@ -87,7 +87,7 @@ function usedImages(input: SourcedCompositionInput): SourcedCompositionImages {
  * entries belong to this service; returned buffers belong to the caller. */
 export function createSourcedCompositionClient(
   ports: SourcedCompositionClientPorts,
-  { timeoutMs = 5_000, idleMs = 5_000, maxPending = 8 } = {},
+  { timeoutMs = 15_000, idleMs = 5_000, maxPending = 8 } = {},
 ): SourcedCompositionClient {
   if (![timeoutMs, idleMs, maxPending].every(value => Number.isFinite(value) && value > 0)
       || !Number.isInteger(maxPending)) throw new Error('Invalid sourced composition limits');
@@ -249,6 +249,10 @@ export function createSourcedCompositionClient(
       if (!active) {
         if (!queue.length) { idle(); return; }
         active = queue.shift()!;
+        // (260, the rooms census: a map's sets queue behind the one serial worker, and on a loaded machine the last
+        // timed out while it waited its turn — the client then failed for the session and every later set composed on
+        // the main thread) a job's deadline runs from its turn, not from its request
+        active.cancelTimer = ports.schedule(fail, timeoutMs);
       }
       if (!acquireWorker()) { fail(); return; }
       if (ready && !active.preparing) void prepare(active).catch(fail);
@@ -313,8 +317,6 @@ export function createSourcedCompositionClient(
     };
     const result = attach(job, signal);
     if (job.finished) return result;
-    try { job.cancelTimer = ports.schedule(fail, timeoutMs); }
-    catch { settle(job, null); fail(); return result; }
     pending.set(job.key, job); queue.push(job); advance();
     return result;
   }
@@ -345,7 +347,7 @@ function browserWorker(): SourcedCompositionWorkerPort {
  * (31–75 ms a 1K JPEG on a 4x phone; nav-perf's Garage census: 233 ms over three tasks) and a Blob off it (≤ 4 ms), with
  * the same pixels. The file comes from the HTTP cache the element filled; any failure takes the element as before.
  */
-async function sourceFileBitmap(image: HTMLImageElement): Promise<ImageBitmap> {
+export async function sourceFileBitmap(image: HTMLImageElement): Promise<ImageBitmap> {
   try {
     const response = await fetch(image.currentSrc || image.src, { cache: 'force-cache' });
     if (response.ok) return await createImageBitmap(await response.blob());

@@ -109,7 +109,9 @@ assert.match(navCss, /\.public-nav::after\{content:'';position:absolute;inset:10
   'the bar\'s rule hangs under it');
 assert.match(shellSource, /class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu"/,
   'the phone menu trigger is static markup');
-assert.match(navSource, /event\.code !== 'Escape'/, 'the menu sheet closes with Escape');
+// the sheet is a transient surface: Escape and a press outside it are the surface stack's (components/surfaceStack.ts)
+assert.match(navSource, /id: 'public-nav-menu',[\s\S]*?close: \(reason\) => set\(false, reason === 'escape'\)/, 'the menu sheet closes with Escape, its focus back on the trigger');
+assert.match(navSource, /if \(open\) openSurface\(surface, trigger\); else closeSurface\(surface\);/, 'the menu sheet stands on the surface stack');
 assert.match(navSource, /setLocale\(locale\)/, 'the language links persist the choice through the canonical i18n owner');
 assert.match(shellSource, /\/brand\/partners\/general-translation\.png/, 'the footer credits General Translation with its packaged mark');
 assert.ok(existsSync(join(ROOT, 'public/brand/mark.svg')), 'the Bracket Chevron mark ships for the public pages');
@@ -167,13 +169,19 @@ assert.match(notFoundHtml, /<script type="module" src="\/src\/presentation\/notF
   'the 404 keeps its own runtime (it imports the shell\'s)');
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
-assert.match(gameHtml, /\.cot-boot-links\s*\{[^}]*display: flex; gap: 4px;/,
-  'boot utility controls are one row of quiet buttons in the foot (the 2026-10-26 boot redesign)');
+assert.match(gameHtml, /:is\(\.cot-boot-links, \.cot-boot-nav\)\s*\{[^}]*display: flex; gap: 4px;/,
+  'boot utility controls are one row of quiet buttons in the foot, and the site pages one at the head (the 2026-10-26 boot redesign)');
 assert.match(gameHtml,
-  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 12px;/,
+  /:is\(\.cot-boot-links, \.cot-boot-nav\) > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 12px;/,
   'boot utility controls must keep balanced content-driven horizontal padding');
-assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
+assert.doesNotMatch(gameHtml, /\.cot-boot-(?:links|nav)\) > \.cot-boot-link\s*\{[^}]*width: 132px;/,
   'boot utility controls must not return to the fixed width that cramped GitHub');
+// the boot screen's way out (owner 2026-10-27): the site's pages as plain same-tab anchors in the splash's controls
+const bootNav = /<!--cot:bootnav-->([\s\S]*?)<!--\/cot:bootnav-->/.exec(gameHtml)?.[1] ?? '';
+assert.deepEqual([...bootNav.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]), ['/home', '/gallery', '/docs'],
+  'the boot screen links home, the Tank Gallery and the Field Manual');
+assert.match(bootNav, /^<nav class="cot-boot-nav" data-cot-boot-control /, 'the boot links are splash controls, never an entry gesture');
+assert.doesNotMatch(bootNav, /\starget=|<script|<use\b|\son[a-z]+=/, 'plain same-tab anchors with their glyphs inline');
 const gameRepositoryLinks = [...gameHtml.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/Claude-of-Tanks"[^>]*>([\s\S]*?)<\/a>/g)];
 assert.equal(gameRepositoryLinks.length, 2, 'loading and credits screens must retain both repository controls');
 for (const [, contents] of gameRepositoryLinks) {

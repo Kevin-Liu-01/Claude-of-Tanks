@@ -55,6 +55,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
     'src/fx/hullBurstEarth.selftest.mjs',
+    // 2026-10-27 (261, premiere-battle on live 259): the APS interception's flash, fragments and grey-white puff
+    'src/fx/apsIntercept.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
     'src/fx/thermalGroundAndEmbers.selftest.mjs',
     // (orange-rings-230) the crater marks lit as the ground they lie on (Steinburg's glowing rings)
@@ -702,6 +704,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type10TrackReseat.selftest.mjs',
     'src/vehicles/profiles/pl01GunGlacisCrows.selftest.mjs',
     'src/vehicles/profiles/pl01FieldTurret.selftest.mjs',
+    // release 261: both PL-01 gun fits stay in their turret-face housings and clear their hulls at every pitch
+    'src/vehicles/profiles/pl01GunHousing.selftest.mjs',
     'src/vehicles/profiles/uaT80Modernization.selftest.mjs',
     'src/vehicles/profiles/oplotFenderBridge.selftest.mjs',
     'src/vehicles/profiles/strv103TowRope.selftest.mjs',
@@ -912,6 +916,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/camoPicker.selftest.mjs',
     'src/ui/garageEquipmentPicker.selftest.mjs',
     'src/ui/components/pickerMenu.selftest.mjs',
+    // 2026-10-27 (owner: "the old surface needs to go away while new one comes in"): one transient surface per level, and
+    // every surface the source opens registered with its owner and its place
+    'src/ui/components/surfaceStack.selftest.mjs',
+    'src/ui/transientSurfaceRegistry.selftest.mjs',
+    // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
+    // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
+    'src/ui/loadingSurfaceRegistry.selftest.mjs',
+    'src/ui/components/reveal.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -960,6 +972,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
+    'src/game/soloSimSession.selftest.mjs', // the solo sim Worker: the planned seats, the held count, the pause, no MP structure
+    'src/game/soloSimBattleRuntime.selftest.mjs', // a sortie's battle on the Worker: covered entry, reveal, held count, hold, boot failure, no MP structure
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -983,6 +997,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
+    // 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page breaks
+    'src/docs/docsPrint.selftest.mjs',
     'src/docs/chapters/controls.selftest.mjs',
     'src/docs/chapters/chapters.selftest.mjs',
     'src/docs/filming.selftest.mjs',
@@ -1021,6 +1037,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/tokens/modeColours.selftest.mjs',
     // item 259 (owner: "color code settings so its easier"): one CVD-checked colour per Settings category, glyphs and rules only
     'src/ui/tokens/settingsColours.selftest.mjs',
+    // 261 (owner: consumables "represented uniquely but as cool-y as eqquipment"): the item badge's category hues, one
+    // token group, consumables CVD-checked against equipment, Settings, teams and ink
+    'src/ui/tokens/badgeColours.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
@@ -1342,6 +1361,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cascadePoseHold.selftest.mjs', // 2026-10-13 (the perf stream): held cascade poses let the static cache reuse while driving
     'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
+    'src/engine/programReceipt.selftest.mjs', // 2026-10-27 (the room-stalls lane): programs linked past a warm, as a receipt
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
     'src/engine/postLazySmaa.selftest.mjs', // 2026-10-13 (the perf stream): SMAA as its own chunk, out of the game entry
@@ -1975,6 +1995,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/worldMaterialsBeforeCompile.selftest.mjs', // battle-spikes-253: both entries patch the world before compiling it
     'src/game/simStepRetention.selftest.mjs', // battle-spikes-253: simStep stores no closure that keeps a battle's world
     'src/engine/gpuCatchUp.selftest.mjs', // battle-spikes-253: link polls ask only once the GPU caught up to their last poll
+    'src/engine/nearVehicleShadowMerge.selftest.mjs', // battle-spikes-253: the near hulls' opaque detail cast through merged casters
     'src/engine/textureUploadStaging.selftest.mjs', // room-stalls-258: a scene's texture uploads one at a time under a frame budget before its draws
     'src/world/simulationProgramWarm.selftest.mjs', // battle-spikes-253: the GPU simulations' programs linked under the cover
     'src/world/propsMaterialGeometry.selftest.mjs',
@@ -2489,6 +2510,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
     // guard heals the owner's signature (a camera without layer 0) within half a second
     'tools/black-world.browser.selftest.mjs',
+    // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
+    'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
