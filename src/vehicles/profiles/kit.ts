@@ -1203,10 +1203,7 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
   // supplied the generic hullDetail bucket.
   const material = options.material ?? (options.bucket === 'hullRubber' ? 'rubber'
     : options.bucket === 'hullWood' ? 'wood-stained' : 'painted-steel');
-  // 264 (envelope honesty): a caller may name hullFixedPaintedBodywork for a painted guard (the same paint, kept at every
-  // LOD, no armour role); the guard and its hanger then stay out of the hull bucket, the combat armour envelope
-  const paintedBucket = options.bucket === 'hullFixedPaintedBodywork' ? 'hullFixedPaintedBodywork' : 'hull';
-  const bucket = material === 'painted-steel' ? paintedBucket
+  const bucket = material === 'painted-steel' ? 'hull'
     : material === 'wood-stained' ? 'hullWood' : 'hullRubber';
   const rotation = options.rotation ?? [0, 0, 0];
   const geometry = options.geometry ?? shapedMudguardGeometry(options);
@@ -1234,7 +1231,7 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
   const attachedSupport = options.support ?? !options.geometry;
   if (attachedSupport) {
     const supportY = options.y + height / 2 - Math.max(0.012, height * 0.035);
-    P.add(paintedBucket, KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
+    P.add('hull', KIT.box(thickness * 1.45, Math.max(0.035, height * 0.08), length * 0.94),
       options.x, supportY, options.z, rotation[0], rotation[1], rotation[2]);
   }
 

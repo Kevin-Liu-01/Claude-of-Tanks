@@ -722,7 +722,6 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // upper glacis and skirt read as one connected armored shoulder.
   ([-1, 1] as const).forEach((s) => {
     MUDGUARDS.add(P, {
-      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
       label: `ztz99a2-front-mudguard-${s < 0 ? 'left' : 'right'}`,
       x: s * 1.47, y: 1.19, z: 3.46,
       thickness: 0.055, length: 0.74, height: 0.42,
@@ -737,11 +736,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // critic fix 1: bay bottoms raised 0.44 -> 0.62 so ~half the wheel run
   // reads side-on (the print's own proportion).
   ([-1, 1] as const).forEach((s) => {
-    P.add('hullEquipment', box(0.06, 0.16, 6.60), s * 1.79, 1.48, -0.20);
+    P.add('hull', box(0.06, 0.16, 6.60), s * 1.79, 1.48, -0.20);
     for (let i = 0; i < 6; i++) {
       const z = 2.42 - i * 1.02;
       const rigid = i < 4;
-      P.add(rigid ? 'hullExternalArmor' : 'hullRubber',
+      P.add(rigid ? 'hull' : 'hullRubber',
         box(0.045, 0.78, 0.96), s * 1.828, 1.01, z);
       P.add('hullDark', box(0.05, 0.06, 0.90), s * 1.829, 1.43, z);
       if (rigid) {
@@ -806,7 +805,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // hull structure and must travel with the hull when another vehicle uses
   // this exact chassis, rather than being coupled to the A2 turret package.
   ([-1, 1] as const).forEach((side) => {
-    P.add('hullEquipment', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
+    P.add('hull', box(0.30, 0.025, 0.42), side * 0.81, 1.38, -4.20);
   });
   P.hullG.userData.ztz99a2HullIntegrationReceipt = Object.freeze({
     architecture: 'ztz99a2-production-chassis-r3',

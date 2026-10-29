@@ -164,12 +164,12 @@
     "ua_m2a3_bradley": { "turret": [7,0.243,"deferred to 265 (item/envelope-ratchet-265): its moves keep the 263 buckets until the turret ring receipt and the marking seats read the drawn hull, not the primary bucket"], "hull": [34,0.121,"armour: the bow corner shelf caps and bow face tabs carry the measured bow body, the hull's real outline"] },
     "ua_t80bv": { "turret": [4,0], "hull": [2,0] },
     "udes03": { "hull": [4,0] },
-    "vt4a1": { "turret": [2,0], "hull": [26,0.015,"armour: the deliberate width-anchor studs (russia.ts widthAnchor) hold the half-width 1 cm past the shoulder"] },
+    "vt4a1": { "turret": [2,0], "hull": [42,0.357,"deferred to 265 (item/envelope-ratchet-265): the shared ZTZ99A2 hull's moves broke the mudguard texture-family law (a painted guard sits in hull) and narrowed the side armour enough to open an interior ray to the commander, so the three ids keep the 263 buckets"] },
     "xk2_black_panther": { "turret": [41,0], "hull": [7,0.11,"deferred to 265 (item/envelope-ratchet-265): its moves keep the 263 buckets until the turret ring receipt and the marking seats read the drawn hull, not the primary bucket"] },
     "ztz100_prototype": { "turret": [1,0.875,"armour: the concept turret's armoured platter both launcher pods ride on; the authored plates cover only its 1.23 m spine (plate data, not a bucket)"] },
     "ztz85_iii": { "hull": [76,0.152,"owed: item/ztz85-iii-263, the ground-up rebuild"] },
     "ztz99_longwei": { "hull": [27,0.46,"owed: item/cn-longwei-family-264 (envelope honesty on the Longwei and T-54 family hulls)"] },
-    "ztz99a": { "hull": [26,0.015,"armour: the deliberate width-anchor studs (russia.ts widthAnchor) hold the half-width 1 cm past the shoulder"] },
-    "ztz99a2": { "hull": [26,0.015,"armour: the deliberate width-anchor studs (russia.ts widthAnchor) hold the half-width 1 cm past the shoulder"] }
+    "ztz99a": { "hull": [42,0.357,"deferred to 265 (item/envelope-ratchet-265): the shared ZTZ99A2 hull's moves broke the mudguard texture-family law (a painted guard sits in hull) and narrowed the side armour enough to open an interior ray to the commander, so the three ids keep the 263 buckets"] },
+    "ztz99a2": { "hull": [42,0.357,"deferred to 265 (item/envelope-ratchet-265): the shared ZTZ99A2 hull's moves broke the mudguard texture-family law (a painted guard sits in hull) and narrowed the side armour enough to open an interior ray to the commander, so the three ids keep the 263 buckets"] }
   }
 }
