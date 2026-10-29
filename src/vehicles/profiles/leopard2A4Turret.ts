@@ -166,10 +166,12 @@ function gunAssembly(P: TankBuilderPort, gun: Leopard2A4Gun, wedge: boolean): vo
     muzzleBore(P, { len, r: T.barrelRadiusM });
     return;
   }
-  // the plate's section (gun frame): a vertical face to 0.20 over the bore, the bevel back to 0.30
-  const ring = (front: number): SectionPoint[] => [[-hw, -0.23], [hw, -0.23], [hw, front], [-hw, front]];
+  // the plate's section (gun frame): a vertical face to 0.20 over the bore, the bevel back to 0.30; the body's underside
+  // rises toward its back inside the slot, so at full elevation it keeps clear of the hull's ring
+  const ring = (front: number, low = -0.23): SectionPoint[] => [[-hw, low], [hw, low], [hw, front], [-hw, front]];
   P.addGunExtra(sectionSolid([
-    { z: -0.30, ring: ring(0.30) },
+    { z: -0.30, ring: ring(0.30, -0.14) },
+    { z: -0.12, ring: ring(0.30) },
     { z: face - 0.12, ring: ring(0.30) },
     { z: face, ring: ring(0.20) },
   ]), 0, 0, 0);

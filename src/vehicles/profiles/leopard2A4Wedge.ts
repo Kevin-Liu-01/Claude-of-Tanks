@@ -129,7 +129,10 @@ function commanderSights(P: TankBuilderPort): void {
  * frame (the 2A6 X's trunnion is the 2A4 turret's).
  */
 function mantletCover(P: TankBuilderPort): void {
-  const stations = [[1.076785, 1.71535, 2.32568], [1.170095, 1.71535, 2.37004], [1.707855, 1.71535, 2.37004],
+  // the cover's underside rises toward its back inside the turret (the 2A6 X's runs level to z 1.08), so at full
+  // elevation it keeps clear of the hull's ring on the 2A4's deeper trunnion
+  const stations = [[1.076785, 1.815, 2.32568], [1.170095, 1.785, 2.37004], [1.33, 1.71535, 2.37004],
+    [1.707855, 1.71535, 2.37004],
     [1.740935, 1.71535, 2.35304], [1.776495, 1.71535, 2.37004], [2.448, 1.71535, 2.32709], [2.478895, 1.72866, 2.32512],
     [2.70, 1.824, 2.22513], [3.146975, 1.983, 2.02298]];
   P.add('gunMount', a6(wall(stations.map(([z, floor, roof]) => [z, -.191385, .251975, floor, roof] as Row)), true));
