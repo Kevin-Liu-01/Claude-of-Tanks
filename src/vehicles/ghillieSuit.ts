@@ -3499,23 +3499,6 @@ const sepv3TurretRoofEdge = (z: number): number => profileY([[-3.35, 1.05], [-2.
 /** The Leopard 2A4 turret roof net's outer edge (LEO2A4_TURRET_ROOF_OUTLINE), for the flank drapes' roll-over. */
 const leo2A4TurretRoofEdge = (z: number): number => profileY([[-2.28, 0.91], [-1.58, 0.99], [-0.72, 1.06], [0.69, 1.09]], z);
 
-// Leopard 2A6 UA roof carriers. The original blanket used a single y=.98
-// roof, leaving visible daylight over the 2A6M wedge; these profiles follow the
-// authored roof tiers (round 5: the cheek nets are gone, so their ruled-face
-// profile went with them). Values are turret-local metres.
-const leo2A6UAFrontRoofY = (x: number, z: number): number => {
-  const armorY = profileY([
-    [0.46, 0.655], [0.72, 0.620], [1.20, 0.535], [1.68, 0.425], [2.18, 0.430],
-  ], z);
-  return armorY - Math.max(0, Math.abs(x) - 0.92) * 0.035 + 0.026;
-};
-const leo2A6UAMidRoofY = (x: number, z: number): number => {
-  const armorY = z < -0.96 ? 0.78 : 0.75;
-  return armorY - Math.max(0, Math.abs(x) - 0.72) * 0.055 + 0.026;
-};
-const leo2A6UARearRoofY = (_x: number, z: number): number => profileY([
-  [-3.34, 0.62], [-3.02, 0.64], [-2.30, 0.66], [-1.58, 0.78],
-], z) + 0.026;
 // Leopard 2A4 full-vehicle suit (2026-10-05: moved from its private copy in profiles/leopard.ts onto this shared
 // builder — the authored A4 cut-net carriers below are its outlines, openings and drapes unchanged; the garnish is
 // the shared spray cards). The hull blanket floats 5-7 cm above the deck and follows the glacis to the beak; the
@@ -3866,98 +3849,6 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)], seed: 245 }],
       // owner 2026-09-15 (evening): the net walls that hung on the cage's sides and front read as
       // grey panels covering the cage; only the roof drape remains (the cage bars stay visible).
-    },
-  },
-  leo2a6_ua: {
-    // Round 5 (2026-10-08; the coordinator after wave 269, fleet B2, 2/10 on the hero, gear and mantlet views: "a
-    // box-shaped shell of bristling leaf shards encloses the turret and runs down the full gun barrel, like a hedgehog /
-    // hedge sculpture", "flat, unshaded, single-sided leaf polygons floating in the air, cutting through the cage bars",
-    // "fish scales" on the hull flanks; the ruling: replace the approach, not tune it). One net thrown over the turret
-    // roof out to the basket rails, sagging off them and falling 30-40 cm over the flank and bustle cages with a ragged
-    // hem; the cheeks, the front cage and the lower flanks bare. The engine deck and glacis nets fall over the hull's
-    // corners as short swags tied along the skirt cage's top rail; the skirts and running gear bare between them. Two
-    // short bound wraps on the barrel (the sleeve root and one band), the bore and muzzle clear. The garnish is bunches
-    // tied at points along the hems, low, with few boughs; the drone dock and both weapon stations keep their columns.
-    id: 'leo2a6_ua', seed: 2606, style: 'leafy', density: 0.42, leafScale: 0.9, boughShare: 0.1,
-    light: 0x747b50, dark: 0x34452f, netColor: 'rgba(38,53,32,0.86)',
-    hull: {
-      top: [
-        { x0: -1.86, x1: 1.86, z0: -3.54, z1: -1.28, nx: 30, nz: 24,
-          yAt: (x, z) => 1.91 + Math.cos(x * 1.7 + z) * 0.016,
-          outline: [[-1.42, -3.54], [1.42, -3.54], [1.86, -3.12], [1.86, -1.28], [-1.86, -1.28], [-1.86, -3.12]],
-          holes: [rect(-1.18, -0.35, -3.18, -2.08), rect(0.35, 1.18, -3.18, -2.08)], seed: 271, tents: [], garnishRiseM: 0.09 },
-        { x0: -1.88, x1: 1.88, z0: 1.24, z1: 3.18, nx: 30, nz: 22,
-          yAt: (x, z) => 1.77 - Math.max(0, z - 2.08) * 0.30 + Math.cos(x * 2.0) * 0.012,
-          outline: [[-1.88, 1.24], [1.88, 1.24], [1.84, 2.66], [1.18, 3.18], [-1.18, 3.18], [-1.84, 2.66]],
-          holes: [rect(0.35, 0.92, 1.25, 1.75)], seed: 277, tents: [], garnishRiseM: 0.07, garnishDensity: 0.6 },
-      ],
-      // the deck nets' corners: short swags over the skirt cage's top rail, the bays between them bare
-      side: [-1, 1].flatMap((side) => [
-        { side, z0: -3.30, z1: -1.70, topAt: () => 1.78, bottomAt: (z: number) => 1.30 + Math.sin(z * 3.1) * 0.035,
-          outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 283 + side },
-        { side, z0: 1.42, z1: 2.92, topAt: (z: number) => z > 2.08 ? 1.76 - (z - 2.08) * 0.28 : 1.78,
-          bottomAt: (z: number) => 1.32 + Math.sin(z * 2.7) * 0.035, outAt: (_z: number, t: number) => 2.25 + (1 - t) * 0.03, seed: 287 + side },
-      ]),
-    },
-    turret: {
-      top: [
-        // the bustle, out to the basket rails
-        { x0: -1.62, x1: 1.62, z0: -3.40, z1: -1.54, nx: 30, nz: 18,
-          yAt: leo2A6UARearRoofY,
-          outline: [[-1.10, -3.40], [1.10, -3.40], [1.62, -2.96], [1.62, -1.54], [-1.62, -1.54], [-1.62, -2.96]],
-          holes: [rect(-1.17, -0.46, -2.24, -1.30)], seed: 299, tents: [], garnishRiseM: 0.1 },
-        // the main roof between the hatches, sights and the forward station, out to the basket rails; the drone dock
-        // on the right rail stays open
-        { x0: -1.62, x1: 1.62, z0: -1.58, z1: 0.66, nx: 30, nz: 22,
-          yAt: leo2A6UAMidRoofY,
-          outline: [[-1.62, -1.58], [1.62, -1.58], [1.62, 0.66], [-1.62, 0.66]],
-          holes: [rect(-0.94, -0.34, -0.92, -0.22), rect(0.30, 0.94, -0.98, -0.08),
-            rect(0.32, 0.96, 0.02, 0.52), rect(0.74, 1.10, -1.56, -1.04), rect(-1.70, -1.20, 0.24, 0.70)],
-          seed: 303, tents: [], garnishRiseM: 0.1 },
-        // the crowns over the cheeks: a lip of net, no garnish standing on the front of the arrowhead
-        ...[-1, 1].map<TopPanel>((side) => ({
-          x0: side < 0 ? -1.30 : 0.22, x1: side < 0 ? -0.22 : 1.30,
-          z0: 0.46, z1: 1.30, nx: 13, nz: 10,
-          yAt: leo2A6UAFrontRoofY,
-          outline: side < 0
-            ? [[-1.02, 0.46], [-0.28, 0.46], [-0.24, 1.30], [-1.18, 1.30]]
-            : [[0.28, 0.46], [1.02, 0.46], [1.18, 1.30], [0.24, 1.30]],
-          holes: side > 0 ? [rect(0.36, 0.96, 0.46, 0.82)] : [],
-          seed: 311 + side, tents: [], garnishRiseM: 0.06, garnishDensity: 0.5,
-        })),
-      ],
-      // over the basket rails and the flank cage's top rail, 30-40 cm down its outside; the right flank stops short of
-      // the drone dock. 2026-10-08 (the lane lead, merging main's 6763d7cc0): the owner's modern field cage stands its
-      // three side panels 0.19 m off each flank (turret-local z -2.77 to 0.09, top rail 0.82 m), and a drape hung down
-      // them rests on their bars and sags through between them (83 crossings). The owner's rule for cages ("the cage bars
-      // stay visible", 2026-09-15): the flank drapes keep to the bustle corner and the right front, and over the panels'
-      // run the roof net ends at the basket rails.
-      // 2026-10-09 (launch RC; ghillieSuit.selftest, "suit pieces touch nothing within 15 mm"): the bustle corners carry
-      // no flank drape. Between the rear cage's corner post (z -3.57) and the flank cage's last post (z -2.85) there is no
-      // rail, and the bustle wall stands 0.6 m inboard (x 1.05 to 1.26). The armour probe found nothing to hold the
-      // corner drapes, so all but their last station hung on the authored line, a curtain in the air at x 1.87 that was
-      // held only by its end column rolled over the flank cage's post, 2.0 cm off it. The roof net and the rear face net
-      // still cover the bustle.
-      side: [-1, 1].flatMap((side) => ((side > 0 ? [[0.17, 1.05]] : []) as [number, number][]).map(([z0, z1]) => ({
-        side, z0, z1,
-        topAt: () => 0.93, bottomAt: (z: number) => 0.50 + Math.sin(z * 3.4) * 0.035,
-        outAt: (_z: number, t: number) => 1.87 + (1 - t) * 0.03, seed: 307 + side + (z0 > 0 ? 4 : 0) }))),
-      // over the bustle's rear cage
-      face: [{ z: -3.62, x0: -1.50, x1: 1.50, y0: 0.52, y1: 0.95, nx: 20, ny: 5, seed: 317,
-        outline: [[-1.50, 0.52], [1.50, 0.52], [1.50, 0.95], [-1.50, 0.95]] }],
-    },
-    // two short bound wraps on the tube (radius about 0.10 m): over the sleeve root behind the mantlet and one band
-    gun: {
-      top: [
-        { x0: -0.13, x1: 0.13, z0: 0.62, z1: 1.30, nx: 6, nz: 9, yAt: () => 0.115, seed: 331, tents: [],
-          garnishRiseM: 0.05, garnishDensity: 4 },
-        { x0: -0.13, x1: 0.13, z0: 2.70, z1: 3.06, nx: 6, nz: 5, yAt: () => 0.12, seed: 333, tents: [],
-          garnishRiseM: 0.04, garnishDensity: 4 },
-      ],
-      side: [-1, 1].flatMap((side) => [
-        { side, z0: 0.64, z1: 1.28, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 337 + side },
-        { side, z0: 2.72, z1: 3.04, topAt: () => 0.10, bottomAt: () => -0.05, outAt: () => 0.12, seed: 341 + side },
-      ]),
     },
   },
 } satisfies Readonly<Record<string, GhillieConfig>>);

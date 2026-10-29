@@ -1705,31 +1705,8 @@
    "hostSweep": []
   },
   "leo2a6_ua": {
-   "inputHash": "3968274920fe2e27",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildLeo2A6MHullStage1@profiles/leopard.ts",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.993,
-      "gap": 0.007,
-      "air": 0,
-      "hidden": 0.078,
-      "sunkMaxM": 0.021,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.888,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1605>"
-     }
-    }
-   ],
+   "inputHash": "d0ec29f034076fd1",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },

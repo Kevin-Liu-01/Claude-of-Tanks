@@ -3104,7 +3104,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // fittings already define its silhouette. Keep only one paired fuel-can
   // cradle from the generic loose-cargo layer; chairs, coolers, cases, bags,
   // tools and duplicate roof equipment would clutter or snag on the cage.
-  if (spec.id === 'ua_m1a1') {
+  // 264: the Leopard 2A6 UA's turret screens, roof cage and hull mesh boxes (profiles/leopardA6Ua.ts) likewise.
+  if (spec.id === 'ua_m1a1' || spec.id === 'leo2a6_ua') {
     return [{
       kit: 'cargo', p: 1,
       v: cargoVariant('twin-can-cradle'),
