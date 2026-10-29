@@ -6321,22 +6321,42 @@ void splatCompute() {
         // canopy, its rows a soft shade broken plant by plant, and the furrows open looking steeply down or along the
         // rows. Every field its own pitch, cover and phase; the rows filtered by the pixel's own box (stripeAA), their
         // mean past it
+        // (round 3, the desktop chase frames of round 2: a canopy of one tone read as a mown lawn, the farmland gone) the
+        // canopy is its plants: a mound across each row (its crown lit, its flanks shaded down to the furrow) broken into
+        // plants ~0.4 m apart along it, each its own size; its leaves a deep shade between lit tops (n1h, a decimetre;
+        // a near read of the noise at leaf size within a 4 cm footprint); a potato leaf's darker, bluer green than a
+        // meadow's; and its relief the plants' own, not the sward's blades. The plants and the rows fade to their means
+        // by the pixel's footprint along and across the row, so nothing ruled is left at range — a darker, rougher field
         vec2 acrossDir = vec2(-rowDir.y, rowDir.x);
         float pitchR = 0.75 * (0.88 + 0.24 * fract(jit * 5.77 + 0.29));
-        float rowF = abs(fract((across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / pitchR + jit * 9.7) - 0.5) * 2.0; // 0 the furrow, 1 the crown
+        float acrossR = (across + 0.55 * sin(across * 0.17 + jit * 6.2832)) / pitchR + jit * 9.7;
+        float rowF = abs(fract(acrossR) - 0.5) * 2.0; // 0 the furrow, 1 the crown
         vec3 eyeR = cameraPosition - wp;
         float soilR = max(0.0, 0.18 + 0.14 * jit2 - 0.45 / pitchR * abs(dot(eyeR.xz, acrossDir)) / max(eyeR.y, 0.05));
         float rowVis = uLandTier > 0.5 ? stripeAA(pitchR, acrossDir) : 0.0;
         float rowAA = (abs(dot(gDwX, acrossDir)) + abs(dot(gDwY, acrossDir))) / pitchR;
         float soilW = mix(soilR, 1.0 - smoothstep(soilR - rowAA, soilR + rowAA, rowF), rowVis);
-        // (round 2, the phone's chase frame: a closed canopy of one tone read as a smooth green carpet) its plants are clumps
-        // of leaves (n1, ~0.3–1.5 m) with shaded gaps between them and their top leaves catching the light (n1h, a
-        // decimetre) — the material's own reads, a mean of one, so the field reads as foliage at every range
-        float clumpR = smoothstep(0.30, 0.70, n1), litR = smoothstep(0.25, 0.80, n1h);
-        vec3 leaf = vec3(0.667, 1.400, 0.400) * baseL * bright * (0.79 + 0.22 * clumpR + 0.20 * litR)
-          * mix(vec3(0.94, 0.97, 1.06), vec3(1.05, 1.02, 0.90), litR);
-        float shadeR = 0.08 * mix(1.0 / 3.0, (1.0 - rowF) * (1.0 - rowF), rowVis) * (1.4 - 0.8 * clumpR);
-        cropCol = mix(leaf * (1.0 - shadeR), soilF * 0.62, soilW);
+        float rowI = floor(acrossR + 0.5);
+        float alongR = dot(wp.xz, rowDir) / 0.40 + fract(rowI * 0.618) * 7.0;
+        float plantVis = rowVis * stripeAA(0.40, rowDir);
+        vec2 plantH = plantVis > 0.0 ? cellHash2(vec2(rowI, floor(alongR)) + vec2(jit * 53.0, 11.0)) : vec2(0.5);
+        float plantQ = fract(alongR) - 0.5;
+        float crownR = rowF * rowF * (3.0 - 2.0 * rowF);
+        float plantR = (0.55 + 0.45 * plantH.x) * (1.0 - 1.6 * plantQ * plantQ);
+        float moundR = mix(0.5, crownR, rowVis) * mix(0.67, plantR, plantVis);
+        float leafN = uLandTier > 0.5 && gFootM < 0.04 ? nz(uv, 0.45, vec2(0.17, 0.43)).r : 0.5;
+        float leafF = mix(0.5, smoothstep(0.30, 0.70, leafN), 1.0 - smoothstep(0.015, 0.04, gFootM));
+        float litR = smoothstep(0.25, 0.80, n1h);
+        float lightR = (0.62 + 0.50 * moundR) * (0.80 + 0.40 * litR) * (0.75 + 0.50 * leafF);
+        vec3 leaf = vec3(0.560, 1.150, 0.420) * baseL * bright * lightR
+          * mix(vec3(0.90, 0.95, 1.10), vec3(1.06, 1.03, 0.88), smoothstep(0.60, 1.10, lightR));
+        cropCol = mix(leaf, soilF * 0.62, soilW);
+        if (nrmOn) {
+          float reliefW = inField * landW;
+          n.xy = mix(n.xy, vec2(0.5), 0.75 * reliefW);
+          n.xy += (acrossDir * sin(acrossR * 6.2832) * 0.12 * rowVis + rowDir * sin(alongR * 6.2832) * 0.10 * plantVis
+            + (vec2(litR, leafF) - 0.5) * 0.30) * reliefW;
+        }
         rows = sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
       } else if (crop < 8.5) {
         // a flooded paddy: muddy water over the soil, the young rice a faint green haze in it (the roughness stage
@@ -6558,8 +6578,7 @@ void splatCompute() {
       // (wave 274, Verdant's slope: a young crop's "bald, flat olive ground" between its tufts) a young green crop is a
       // short leafy sward: its ground keeps the sward's own blade, tussock and turf relief (a pasture's and a hay meadow's
       // do); its meadow patches, worn lips and sheet stay down with every sown field's (gCropW)
-      // (2026-10-28) a row crop's closed canopy is a leafy mass too: its ground keeps the same relief
-      gCropReliefW = (crop > 2.5 && crop < 3.5) || (crop > 6.5 && crop < 7.5) ? 0.0 : gCropW;
+      gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
         ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;

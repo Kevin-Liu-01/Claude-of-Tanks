@@ -177,9 +177,7 @@ for (const id of groundReduxProfileIds()) {
     && tg.includes('? swardNoise(x, z, 0.9, 0x2b3c) < 1 - smoothstep(-1.6, 2.6, _field.edgeM - _field.marginM + (swardNoise(x, z, 5.0, 0x3d4e) - 0.5) * 3.0)'),
     'the tall grass reads the gate and the margin the same way');
   const terr = terrainSourceText();
-  // (2026-10-28, item 264: a row crop's closed canopy keeps it too)
-  assert.ok(terr.includes('gCropReliefW = (crop > 2.5 && crop < 3.5) || (crop > 6.5 && crop < 7.5) ? 0.0 : gCropW;'),
-    'a young green crop and a row crop\'s canopy keep the sward\'s relief');
+  assert.ok(terr.includes('gCropReliefW = (crop > 2.5 && crop < 3.5) ? 0.0 : gCropW;'), 'a young green crop keeps the sward\'s relief');
 }
 
 console.log(`swardTerrain: the field gate across its band (the field's share ${shares} from the flat up the slope), the margin across `

@@ -4,9 +4,9 @@
 //   node tools/ground-banding-shots.mjs --out=<dir> [--maps=a,b] [--dist=<built dist>] [--root=<checkout>]
 //        [--device=desktop|phone] [--variants=base,noland] [--poses-from=<manifest.json | run dir>] [--tag=<t>]
 //
-// One render-class ticket a run (tools/capture-hold.mjs runWarmHold): while it waits one page boots and stages the first
-// map's battlefield shot (__SHOTS.set, the pinned scene); inside the hold every map is staged in turn on that page and
-// shot at its poses:
+// One page and one render-class ticket a run (tools/capture-lock.mjs): each map is staged on the page while the ticket
+// waits (acquire's prepare; its battlefield shot, __SHOTS.set, the pinned scene), and the hold is its shots alone — at
+// its poses:
 //   chase   — the battle's own chase rig (cameraRig snapArcade, the default 13 m orbit step) behind the staged hull,
 //             pitched a little down: the camera the owner's Steinburg frame was taken from;
 //   field-N — the same camera class (3.4 m over the ground, 12 m back) over the nearest worked field of the map's
@@ -19,11 +19,12 @@
 // before and an after are posed on the same ground.
 // Frames land in <out>/frames/<map>-<pose>-<variant>.png; every map's receipt in <out>/manifest[-<tag>].json (a run
 // resumes; a tag per process lets several batches queue at once, each its own ticket, into one directory).
-import { launchGuardedBrowser } from './browser-launch.mjs';
+import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { runWarmHold, startViteChild } from './capture-hold.mjs';
+import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
+import { createCaptureLock } from './capture-lock.mjs';
 import { isMainModule, mapProbeLaunchOptions, resolveGroundPose, sleep } from './map-probe-runtime.mjs';
 import { settleMapTextures } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE, configurePinnedScene } from './pinned-scene-acquisition.mjs';
@@ -250,47 +251,57 @@ async function main(argv) {
   const reference = options.posesFrom ? readReference(options.posesFrom) : null;
   const todo = (options.maps ?? [...MAP_IDS]).filter((id) => !manifest.maps[id]);
   if (!todo.length) { console.log(`[${TOOL}] every requested map is already in ${manifestFile}`); return 0; }
-  // One page, the maps staged one after another inside the hold (2026-10-28: three 1080p map pages in one browser
-  // passed the guard's 10 GB tree cap), a checkpoint between maps: past the 20-minute cap with tickets waiting the
-  // page is frozen, the lock given up and the run re-queued, and it goes on once the lock is held again.
-  await runWarmHold({
-    label: `${TOOL} ${options.device} ${path.basename(options.out)} (${todo.length} maps)`,
-    place: `${TOOL}:${path.basename(options.out)}:${options.device}:${options.tag ?? ''}`,
-    waitHours: options.waitHours,
-    lockClass: 'render',
-    holdMinutes: 240,
-    warm: async () => {
-      const server = await startViteChild({ root: options.root, mode: 'preview', outDir: options.dist });
-      const d = DEVICES[options.device];
-      const browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: d.width, height: d.height, protocolTimeout: 900000 }), timeout: 180000 });
-      const close = async () => { await browser.close(); await server.close(); };
-      try {
-        const entry = await bootPage(browser, server.url, options.device);
-        await stageMap(entry, todo[0]);
-        console.log(`[${TOOL}] ${stamp()} ${todo[0]} staged`);
-        return { pages: [entry.page], entry, close };
-      } catch (error) {
-        await close();
-        throw error;
-      }
-    },
-    shoot: async ({ entry, signal, checkpoint }) => {
-      for (let i = 0; i < todo.length; i++) {
-        const mapId = todo[i];
-        if (signal.aborted) { console.log(`[${TOOL}] ${stamp()} hold limit before ${mapId}`); break; }
-        const started = Date.now();
-        // (a page frozen past the queue's health check is reloaded: its world is gone, so the live map decides)
-        const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-        if (live !== mapId) { await stageMap(entry, mapId); console.log(`[${TOOL}] ${stamp()} ${mapId} staged`); }
-        const receipt = await shootMap({ ...entry, mapId }, options, frames, reference?.maps?.[mapId] ?? null);
-        receipt.ms = Date.now() - started;
-        manifest.maps[mapId] = receipt;
-        writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
-        console.log(`[${TOOL}] ${stamp()} ${mapId} done in ${(receipt.ms / 1000).toFixed(1)} s (${Object.keys(receipt.poses).join(',')})`);
-        if (i < todo.length - 1) await checkpoint();
-      }
-    },
-  });
+  // One page and one render-class ticket for the run. Each map is staged while the ticket waits (acquire's `prepare`:
+  // a warming ticket is passed over, so the staging holds nobody up), the page is frozen until the lock is held, and
+  // the hold is that map's shots alone (~20 s); the next map re-enters under the same ticket, its first place.
+  // (2026-10-28: three 1080p map pages in one browser passed the guard's 10 GB tree cap; staging inside a hold took
+  // past puppeteer's 15-minute protocol timeout at load 400 and held a render slot all the while.)
+  const label = `${TOOL} ${options.device} ${path.basename(options.out)}`;
+  setBrowserGuardContext({ hold: label });
+  const lock = createCaptureLock();
+  const server = await startViteChild({ root: options.root, mode: 'preview', outDir: options.dist });
+  const d = DEVICES[options.device];
+  const browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: d.width, height: d.height, protocolTimeout: 2700000 }), timeout: 180000 });
+  let held = false;
+  const close = async () => { if (held) lock.release(); held = false; await browser.close().catch(() => {}); await server.close(); };
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+    process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
+  }
+  try {
+    const entry = await bootPage(browser, server.url, options.device);
+    let ticket = null, session = null;
+    for (const mapId of todo) {
+      const queued = Date.now();
+      await lock.acquire(options.waitHours * 3600 * 1000, {
+        ticket, place: ticket ? null : `${TOOL}:${path.basename(options.out)}:${options.device}:${options.tag ?? ''}`,
+        lockClass: 'render',
+        prepare: async () => {
+          if (session) { await thawPage(entry.page, session); session = null; }
+          await stageMap(entry, mapId);
+          session = await freezePage(entry.page);
+        },
+      });
+      held = true;
+      ticket = lock.lastTicket;
+      const started = Date.now();
+      if (session) { await thawPage(entry.page, session); session = null; }
+      // (a page that lost its world while frozen is staged again, inside the hold)
+      const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+      if (live !== mapId) await stageMap(entry, mapId);
+      const receipt = await shootMap({ ...entry, mapId }, options, frames, reference?.maps?.[mapId] ?? null);
+      receipt.ms = Date.now() - started;
+      receipt.queuedMs = started - queued;
+      session = await freezePage(entry.page);
+      lock.release();
+      held = false;
+      manifest.maps[mapId] = receipt;
+      writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+      console.log(`[${label}] ${stamp()} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after ${(receipt.queuedMs / 60000).toFixed(1)} min `
+        + `staging and queueing (${Object.keys(receipt.poses).join(',')})`);
+    }
+  } finally {
+    await close();
+  }
   const missing = todo.filter((id) => !manifest.maps[id]);
   if (missing.length) { console.log(`[${TOOL}] not shot (rerun to resume): ${missing.join(',')}`); return 1; }
   return 0;

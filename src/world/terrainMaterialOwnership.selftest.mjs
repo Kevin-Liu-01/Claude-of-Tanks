@@ -263,8 +263,9 @@ function checkLandUseCut(text) {
   // noise, Medium up, on a karst pasture only)
   // (2026-10-10, the Ironworks landing, round 4: a works' slag lot's relief, two octaves of the noise, High, near
   // (a 0.2 m footprint, where tileVis(0.8) ends), on a works' ground only)
-  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', 'nz', 'nz', 'nz', 'nz', 'nz', ...Array(8).fill('nzq'), 'textureLod'],
-    'the block reads seven noise fields, the canopy\'s two near reads, the hardstanding\'s three, the stones\' one, the slag\'s relief two, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (2026-10-28, item 264: a row crop's leaves, one read at leaf size, Medium and High, within a 4 cm footprint)
+  assert.deepEqual(reads, ['groundSamp', ...Array(8).fill('nz'), ...Array(8).fill('nzq'), 'textureLod'],
+    'the block reads seven noise fields, the canopy\'s two near reads, the row crop\'s leaves, the hardstanding\'s three, the stones\' one, the slag\'s relief two, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     // (2026-10-06, the urban fast path: a town's lots read neither the rows' bend nor the edge zone)
@@ -283,6 +284,7 @@ function checkLandUseCut(text) {
     ['float crackH = uLandTier > 1.5 && (!hFast || crackV > 0.004) ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(', 'nz(uv, 0.9, vec2(0.71, 0.29))'],
     ['float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, ', 'nzq(uv, 0.17, vec2(0.37, 0.83))'],
     ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
+    ['float leafN = uLandTier > 0.5 && gFootM < 0.04 ? ', 'nz(uv, 0.45, vec2(0.17, 0.43))'],
     ['if (nrmOn && uLandE.w > 1.5 && uLandTier > 1.5 && gFootM < 0.2) { vec2 tr = ', 'nz(uv, 0.53, vec2(0.37, 0.19))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   // (the far field: the plough's slice relief weighs furrowVis, exactly zero once a furrow is under two pixels — skipped there)
