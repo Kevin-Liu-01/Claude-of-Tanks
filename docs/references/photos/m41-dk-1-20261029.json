@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "m41dk1": {
+      "name": "M41 DK-1",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): M41 DK-1 at tier II, a photo-class first-party build on the M41 family's shared build with its Danish rebuild kit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://armyvehicles.dk/m41dk1.htm",
+        "https://www.pansermuseet.dk/",
+        "https://commons.wikimedia.org/wiki/File:M_41_DK-1_Walker_Bulldog_Light_Tank_in_Aalborg_Forsvars-_og_Garnisonsmuseum,_pic1.JPG",
+        "https://commons.wikimedia.org/wiki/File:M_41_DK-1_Walker_Bulldog_Light_Tank_in_Aalborg_Forsvars-_og_Garnisonsmuseum,_pic3.JPG",
+        "https://commons.wikimedia.org/wiki/File:Cummings_Engine_company_465_HP_Diesel_for_a_M41_DK-1_Walker_Bulldog_in_Aalborg_Forsvars-_og_Garnisonsmuseum,_pic1.JPG"
+      ],
+      "widthM": 3.506,
+      "overallLengthM": 8.174,
+      "tallestM": 4.21,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the shared M41 build, scaled once on the M41A3's registered print (SIpriv's \"Low poly M41Walker Bulldog\", CC-BY-4.0, measurement-only; the hull on the published 5.82 m): published 5.81 m hull, 8.21 m over the gun, 3.19 m wide, 2.72 m high (Jane's via Wikipedia). The envelope holds the fender stowage, the mirrors and the antenna whip. The late-1980s DK-1 rebuild (Cummins VTA-903T 465 hp, 25 t) adds the Leopard-pattern side skirts, the thermal sight and laser rangefinder box over the gun on its right, the canvas mantlet cover, Wegmann dischargers, mesh baskets on the turret sides and rear and the glacis spare track inside the same envelope, as the Aalborg museum tank shows.",
+      "caliberMm": 76,
+      "launcherTubes": 0,
+      "roofMachineGuns": 1,
+      "crew": 4,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/m41.selftest.mjs"
+    }
+  }
+}

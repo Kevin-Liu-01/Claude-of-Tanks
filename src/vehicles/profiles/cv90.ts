@@ -319,8 +319,8 @@ function buildCv90Turret(P: CvBuilderPort, danish = false): void {
   else {
     // the CV9035 DK's defensive aids suite: laser warning heads on the turret's four corners, wired to the dischargers
     for (const [x, z] of [[-0.82, 0.70], [0.82, 0.70], [-0.80, -1.30], [0.80, -1.30]] as const) {
-      P.addEquipment('turretDark', cylY(0.07, 0.08, 0.10, 12), x, 0.79, z);
-      P.addEquipment('turretDark', KIT.sph(0.055, 10), x, 0.86, z);
+      P.add('turretDark', cylY(0.07, 0.08, 0.10, 12), x, 0.79, z);
+      P.add('turretDark', KIT.sph(0.055, 10), x, 0.86, z);
     }
   }
   P.add('turret', cylY(0.20, 0.23, 0.10, 18), -0.47, 0.73, -0.50);

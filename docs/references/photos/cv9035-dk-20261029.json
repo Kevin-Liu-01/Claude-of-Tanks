@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "tankIdSchema": 3,
+  "comparisonPurpose": "photographic-reference",
+  "numerical3DComparison": "unverified",
+  "dimensionToleranceFraction": 0.03,
+  "targets": {
+    "cv9035dk": {
+      "name": "CV9035 DK",
+      "authority": "Main ruled the Denmark line on 2026-10-29 (about 12:50, DECISIONS) on the owner's request the same day (\"add a bunch more denmark tanks\"): CV9035 DK at tier V (the in-service vehicle, not the MkIIIC on order), the CV90 family's build with the 35 mm Bushmaster III and the Danish fit; no registered 3D comparison exists for this configuration. Numerical 3D comparison remains unverified.",
+      "sources": [
+        "https://armyvehicles.dk/cv9035.htm",
+        "https://commons.wikimedia.org/wiki/File:Danish_CV90_75.117.jpg"
+      ],
+      "widthM": 3.474,
+      "overallLengthM": 7.308,
+      "tallestM": 3.077,
+      "envelopeBasis": "Width, length and tallest are the as-built envelope of the CV90 build with the Danish turret fit: the longer 35 mm Bushmaster III with its muzzle brake, laser-warning heads in place of the roof weapon station (the Danish vehicles carry none), and the Danish coat, as the Holstebro photograph of 75.117 (2024, CC0) shows.",
+      "caliberMm": 35,
+      "launcherTubes": 0,
+      "roofMachineGuns": 0,
+      "crew": 3,
+      "unmannedTurret": false,
+      "test": "src/vehicles/profiles/denmark.selftest.mjs"
+    }
+  }
+}
