@@ -90,10 +90,12 @@ export function createMudguardFenderSeatingAudit() {
           `${id}: rear mudguards are lowered to the skirt/fender line`);
       }
 
+      // (262: the 2A2 and the 2A3 OTCO left leopard.ts's hull for the shared Leopard 2-pattern hull,
+      // profiles/leopard2Hull.ts, beside the 2A3 and the Christian II: its front mudguard over the idler is one closed
+      // section solid per side, not this receipt's raked flange and terminal web)
       const expectedClosedShoulders = [
         'chieftain3', 'chieftain_mk9', 't90ms_2011',
         'kf51_evo', 'kf51_u',
-        'leo2a2', 'leo2a3',
         'leo2a4', 'leo2a4_otco', 'leo2a6_ua',
       ];
       for (const id of expectedClosedShoulders) {
@@ -125,7 +127,7 @@ export function createMudguardFenderSeatingAudit() {
           't90ms_2011: terminal guard follows a decisive forward/downward slope');
       }
 
-      for (const id of ['leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']) {
+      for (const id of ['leo2a4', 'leo2a4_otco', 'leo2a6_ua']) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: shoulder flange must merge into the glacis`);
