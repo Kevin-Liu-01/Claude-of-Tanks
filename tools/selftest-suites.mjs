@@ -1854,6 +1854,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
     // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
     'src/vehicles/suitOcclusion.selftest.mjs',
+    // 265 (the 264b preview, the owner: "the shadow issues were on all tanks"): every draw whose program reads the suit's
+    // shade carries its own attribute (three's generic value is shared by every program), near, far, copied and in the
+    // Garage; its control finds a plain, an instanced and a batched draw without it
+    'src/vehicles/suitShadeReads.selftest.mjs',
     // 2026-10-14 (netting-225; the coordinator's seat-stability ruling): a marking re-solve keeps every seat that still
     // reads its recorded count, and searches one that does not within 0.5 m of where it stood
     'src/vehicles/markingSeatStability.selftest.mjs',
