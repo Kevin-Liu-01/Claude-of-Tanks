@@ -1,7 +1,7 @@
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 
 export const FLEET_BALANCE_REVISION = Object.freeze({
-  challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile',
+  challenger1_mk2: 'promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x1.2 gun slot, the rebuilt 624 mm slot pierced by every VIII round',
   kv2: 'reduce the 152 mm derp profile friction while preserving its slow handling identity',
   t62_1975: 'raise the early Cold War baseline without erasing its handling limits',
   type59: 'bring the light Cold War MBT above the stale damage-output floor',
@@ -81,6 +81,10 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   t64bv: 'the true-T-64 T-64BV: the T-64BV1\'s record and the Soviet fire-control floor',
   t64b1v_2022: 'the true-T-64 T-64B1V mod. 2022 at IV: the mod. 2017\'s record, fire-control floor and 259 tier-IV footing',
   pt64_tur: 'the Polish what-if PT-64 Tur at IV on the true T-64: the mod. 2017\'s record, ERAWA-2, fire-control floor and 259 tier-IV footing',
+  // 2026-10-28 (263, FAIRNESS-263): the three balance receipts the merged 263 fleet broke (fleetBalancePass applySameTierFairness)
+  c1_ariete: 'a x0.6 mantlet and x0.85 turret front: its ~730 mm gun face topped VI and shut out the XK2 on the move',
+  challenger1_mk1: 'a x1.2 gun slot with the Mk 2: the rebuilt 624 mm slot was pierced by every VIII round',
+  challenger1_granby: 'a x1.2 gun slot with the Mk 2: the rebuilt 624 mm slot was pierced by every VIII round',
 } as const);
 
 interface FleetBalanceOutlier {

@@ -488,5 +488,13 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // the gun's cadence only: its rounds stay the T-90SM's (ammunitionFlow) and carry none of their own
   spec(registry, 't72b3_sich').gun.reloadS = 6.0;
   for (const id of ['t80u_husarz', 't72b3m_wilk']) spec(registry, id).hp = 2650;
+
+  // 263 (FAIRNESS-263; the three balance receipts the merged 263 fleet broke). Tier VI: the C1 Ariete topped VI (0.92)
+  // and shut out the XK2 on the move: its gun face read ~730 mm against the XK2's ~470. Its gun and hull stay its
+  // serie-1 donor's (sourceXSecondWave), so its mantlet and turret front take the trim.
+  mantlet(registry, 'c1_ariete', 0.6);
+  turretFront(registry, 'c1_ariete', 0.85);
+  // Tier VIII: the rebuilt Challenger 1 marks' gun slot reads 624 mm, which every VIII round pierces (0.08-0.14)
+  for (const id of ['challenger1_mk1', 'challenger1_mk2', 'challenger1_granby']) mantlet(registry, id, 1.2);
 }
 
