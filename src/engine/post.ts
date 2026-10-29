@@ -86,6 +86,7 @@ import { SceneAAPass, SceneAerialPass, sizeDepthWithTarget } from './sceneSource
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
+import { readCameraLens } from './cameraLens.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
 import {
   CONTACT_SHADOW_GLSL, CONTACT_SHADOW_RANGE_M, createContactShadowUniforms, updateContactShadowUniforms,
@@ -1027,6 +1028,8 @@ const AerialShader = {
     uCamUp: { value: new THREE.Vector3(0, 1, 0) },
     uCamFwd: { value: new THREE.Vector3(0, 0, -1) },
     uTan: { value: new THREE.Vector2(1, 1) },
+    // (battle-camera-264) the frustum centre's offset per unit depth: the chase framing's lens shift (cameraLens.ts)
+    uTanShift: { value: new THREE.Vector2(0, 0) },
     uCamPos: { value: new THREE.Vector3() },
     // 2026-10-01: world y of the haze layer's base (the ground under the camera; setGroundHeightSource)
     uHazeDatum: { value: 0 },
@@ -1089,6 +1092,7 @@ const AerialShader = {
     uniform vec3 uCamUp;
     uniform vec3 uCamFwd;
     uniform vec2 uTan;
+    uniform vec2 uTanShift;
     uniform vec3 uCamPos;
     uniform float uHazeDatum;
     uniform vec4 uHazeLaw;
@@ -1176,8 +1180,8 @@ const AerialShader = {
         float viewZ = ( uNear * uFar ) / ( ( uFar - uNear ) * depth - uFar );
         // world-space view ray for this pixel (directional scatter tint)
         vec3 ray = normalize( uCamFwd
-          + uCamRight * ( vUv.x * 2.0 - 1.0 ) * uTan.x
-          + uCamUp * ( vUv.y * 2.0 - 1.0 ) * uTan.y );
+          + uCamRight * ( ( vUv.x * 2.0 - 1.0 ) * uTan.x + uTanShift.x )
+          + uCamUp * ( ( vUv.y * 2.0 - 1.0 ) * uTan.y + uTanShift.y ) );
         float sunAmt = pow( max( dot( ray, uSunDir ), 0.0 ), ${AERIAL_SUN_POW.toFixed(1)} );
         vec3 hazeCol;
         bool hazeLaw = uAtmo > 0.5 && uHazeLaw.x > 0.0;
@@ -3135,8 +3139,9 @@ export function createPost(
     FOG_LAYER.x = elements[13] - datum;
     FOG_LAYER.y = datum;
     FOG_LAYER.w = FOG_LAYER.x > FOG_LAYER_MIN_M ? lightTune('FOG_LAYER', 1) : 0;
-    const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
-    aerial.uniforms.uTan.value.set(halfFovTangent * camera.aspect, halfFovTangent);
+    // (battle-camera-264) the tangents and the lens shift from the projection itself: a ray rebuilt from the fov alone
+    // missed the chase framing's off-axis lens, and the contact shadows marched from the wrong place under the hull
+    readCameraLens(camera, aerial.uniforms.uTan.value, aerial.uniforms.uTanShift.value);
     const sunDirection = scene.userData.sunDirWorld;
     if (sunDirection) aerial.uniforms.uSunDir.value.copy(sunDirection).normalize();
   }
