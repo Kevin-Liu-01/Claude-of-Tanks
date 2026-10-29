@@ -455,11 +455,47 @@ function nearAny(x: number, z: number, set: PolySet, margin: number): boolean {
   return false;
 }
 
+/** The sharpest bend a cloth's shading is smoothed across (a fold turned back further keeps its crease). */
+const CLOTH_SMOOTH_COS = Math.cos(100 * Math.PI / 180);
+
 function makeGeometry(positions: number[], uvs: number[]): THREE.BufferGeometry {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.computeVertexNormals();
+  // (r7; the GPU critic r11: "pale see-through bands with hard straight edges along the drape tops", each row of a
+  // drape's roll shaded flat) the cloth is shaded smooth: each corner takes the area-weighted normals of every face that
+  // meets at its point and bends less than CLOTH_SMOOTH_COS from its own
+  const normal = geo.getAttribute('normal') as THREE.BufferAttribute;
+  const faces = new Map<string, number[]>();
+  const keyAt = (i: number): string => `${Math.round(positions[i * 3] * 1e4)},${Math.round(positions[i * 3 + 1] * 1e4)},${Math.round(positions[i * 3 + 2] * 1e4)}`;
+  const area = new Float64Array(positions.length / 9);
+  for (let t = 0; t < area.length; t++) {
+    const o = t * 9;
+    const ux = positions[o + 3] - positions[o], uy = positions[o + 4] - positions[o + 1], uz = positions[o + 5] - positions[o + 2];
+    const vx = positions[o + 6] - positions[o], vy = positions[o + 7] - positions[o + 1], vz = positions[o + 8] - positions[o + 2];
+    area[t] = 0.5 * Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+    for (let k = 0; k < 3; k++) {
+      const key = keyAt(t * 3 + k);
+      let list = faces.get(key);
+      if (!list) faces.set(key, list = []);
+      list.push(t);
+    }
+  }
+  const out = new Float32Array(normal.count * 3);
+  for (let i = 0; i < normal.count; i++) {
+    const own = Math.floor(i / 3), ox = normal.getX(i), oy = normal.getY(i), oz = normal.getZ(i);
+    let x = 0, y = 0, z = 0;
+    for (const t of faces.get(keyAt(i)) ?? [own]) {
+      const fx = normal.getX(t * 3), fy = normal.getY(t * 3), fz = normal.getZ(t * 3);
+      if (fx * ox + fy * oy + fz * oz < CLOTH_SMOOTH_COS) continue;
+      x += fx * area[t]; y += fy * area[t]; z += fz * area[t];
+    }
+    const l = Math.hypot(x, y, z);
+    if (l > 1e-12) { out[i * 3] = x / l; out[i * 3 + 1] = y / l; out[i * 3 + 2] = z / l; }
+    else { out[i * 3] = ox; out[i * 3 + 1] = oy; out[i * 3 + 2] = oz; }
+  }
+  geo.setAttribute('normal', new THREE.BufferAttribute(out, 3));
   return geo;
 }
 
@@ -2065,8 +2101,10 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       if (!probe) return null;
       const start = roofEdge(z);
       const yFrom = start ? start.up : topAt(z) + 0.05;
-      if (support.fitted) return fittedSection((yy) => probe.side(yy, z, side), start, yFrom, hemY);
-      const sec = curtainSection((yy) => probe.side(yy, z, side), (o) => support.roof(side * o, z) ?? (() => {
+      // (r7; the critic r11 on the Strv 121: "hard black slots between the aprons", a fitted drape's columns under the
+      // turret's sweep cut whole) a fitted cover is tied lower on its wall there too, as a net is (below)
+      const fitted = support.fitted ? fittedSection((yy) => probe.side(yy, z, side), start, yFrom, hemY) : null;
+      const sec = support.fitted ? fitted : curtainSection((yy) => probe.side(yy, z, side), (o) => support.roof(side * o, z) ?? (() => {
         const r = probe.topNear(side * o, z, 0.03);
         return r === null ? null : r + DRAPE_GAP_M;
       })(), start, yFrom, hemY, support.clothOk ? FIELD_HANG_GAP_M : HANG_GAP_M,
@@ -2075,7 +2113,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
       (o) => (rollMeetsLid(support.lids, side * o, side * o, z, z) ? null : probe.top(side * o, z)));
       // the netting lane: under a roof net's edge with no wall outboard to lie on (a turret's sides sloping in under
       // its roof), the cloth falls free from that edge
-      const free = !sec && start && support.clothOk && !panel.tiedTop ? freeHang(start, hemY) : null;
+      const free = !sec && start && support.clothOk && !panel.tiedTop && !support.fitted ? freeHang(start, hemY) : null;
       const hung = panel.tiedTop && sec ? sectionBelow(sec, topAt(z)) : sec ?? free;
       // the netting lane: a hull drape whose roll over the deck's edge lies in the turret's sweep (or in another of the
       // vehicle's clearances) is tied lower on its wall instead, from the highest height its cloth keeps every clearance
