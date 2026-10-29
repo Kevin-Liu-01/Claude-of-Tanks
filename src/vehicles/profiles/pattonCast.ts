@@ -2231,13 +2231,14 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
 
 /** The GA2's cast gun shield (gun frame; the Munster and Dresden tanks): a squared block standing well ahead of the
  * turret's nose, 1.2 m across and 0.72 m tall with its bore in its upper half, its sides and lower edge rounded, its flat
- * face 0.63 m ahead of the trunnion, its back sunk into the casting, its lower front chamfered; its underside 0.24 m under
- * the bore, over the hull's ring face (1.633 m, out to the turret's front edge) and clear of the deck ahead. */
+ * face 0.63 m ahead of the trunnion, its back sunk into the casting; its underside 0.24 m under the bore at the turret
+ * (over the hull's ring face, 1.633 m, out to the turret's front edge), rising 10 degrees to its face so it clears the
+ * engine deck's rise (1.64 to 1.75 m) with the gun over the rear. */
 function ga2Mantlet(q: boolean | undefined): Geo {
   // z (along the bore), half-width, top and bottom over the bore, corner radius
   const rows: readonly (readonly [number, number, number, number, number])[] = [
-    [-0.02, 0.58, 0.40, -0.24, 0.14], [0.30, 0.60, 0.42, -0.24, 0.15], [0.48, 0.60, 0.42, -0.24, 0.15],
-    [0.58, 0.58, 0.41, -0.21, 0.13], [0.63, 0.55, 0.39, -0.18, 0.11],
+    [-0.02, 0.58, 0.40, -0.24, 0.14], [0.30, 0.60, 0.42, -0.22, 0.15], [0.48, 0.60, 0.42, -0.19, 0.15],
+    [0.58, 0.58, 0.41, -0.16, 0.13], [0.63, 0.55, 0.39, -0.13, 0.11],
   ];
   const n = q ? 5 : 3;
   const sections = rows.map(([z, w, t, b, r]) => {
