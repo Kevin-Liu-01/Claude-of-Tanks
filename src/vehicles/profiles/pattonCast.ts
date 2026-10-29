@@ -1607,10 +1607,10 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
   if (vss1) {
     P.addGunExtra(moldedBox(0.58, 0.44, 0.63, 0.07, P.q ? 2 : 1, 0.03), 0, 0.39, GUN_Z0 + 0.621);
     if (V.mark === 'm48a3') {
-      // the A3's light under its canvas cover (the Vietnam photographs), its drawstring band; the canvas round the shield
+      // the A3's light under its canvas cover (the Vietnam photographs), its drawstring band; the cast shield left bare
+      // like the Kubinka tank's
       P.add('gunMountCloth', moldedBox(0.64, 0.50, 0.36, 0.09, P.q ? 3 : 2, 0.03), 0, 0.39, GUN_Z0 + 0.79);
       P.add('gunMountCloth', moldedBox(0.66, 0.52, 0.05, 0.04, 1, 0.01), 0, 0.39, GUN_Z0 + 0.63);
-      P.add('gunMountCloth', moldedBox(1.12, 0.82, 0.16, 0.07, P.q ? 2 : 1, 0.03), 0, 0.13, -0.15, -0.436, 0, 0);
     } else {
       P.addGunExtraDark(box(0.46, 0.32, 0.02), 0, 0.39, GUN_Z0 + 0.935);
       P.addGunExtra(xform(sph(0.10, P.q ? 18 : 10, P.q ? 12 : 6), 0, 0, 0, 0, 0, 0, [1, 1, 0.45]), 0, 0.41, GUN_Z0 + 0.89);
@@ -1625,12 +1625,12 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
     P.addGunExtra(cylZ(0.20, 0.10, P.q ? 24 : 12), 0, 0, 0.67);
     P.addGunExtraDark(cylZ(0.15, 0.10, P.q ? 20 : 12, 0.17), 0, 0, 0.76);
     for (const side of [-1, 1]) P.addGunExtraDark(cylZ(side > 0 ? 0.045 : 0.06, 0.03, P.q ? 12 : 8), side * 0.38, 0.12, 0.64);
-    P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.41, 0.40);
-    P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.71, 0.40);
-    P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.71, 0.665);
-    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.71, 0.675);
+    P.addGunExtra(box(0.12, 0.10, 0.22), 0.32, 0.47, 0.40);
+    P.addGunExtra(moldedBox(0.56, 0.50, 0.52, 0.05, P.q ? 2 : 1, 0.02), 0.32, 0.77, 0.40);
+    P.addGunExtraDark(box(0.52, 0.46, 0.012), 0.32, 0.77, 0.665);
+    P.addGunExtra(moldedBox(0.48, 0.42, 0.04, 0.02, 1, 0.01), 0.32, 0.77, 0.675);
     for (const side of [-1, 1]) {
-      for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.71 + dy, 0.40);
+      for (const dy of [-0.14, 0, 0.14]) P.addGunExtra(box(0.025, 0.03, 0.44), 0.32 + side * 0.29, 0.77 + dy, 0.40);
     }
   } else if (V.mark === 'm48super') {
     // the Super's flat armour plate over the mantlet, as tall as the turret armour and level with the cheeks' fronts (War
@@ -2205,23 +2205,25 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
 }
 
 /** The GA2's cast gun shield (gun frame; the Munster and Dresden tanks): a squared block standing well ahead of the
- * turret's nose, 1.2 m across and 0.80 m tall with its bore in the upper half, its sides and lower edge rounded, its flat
- * face 0.63 m ahead of the trunnion, its back sunk into the casting. */
+ * turret's nose, 1.2 m across and 0.72 m tall with its bore in its upper half, its sides and lower edge rounded, its flat
+ * face 0.63 m ahead of the trunnion, its back sunk into the casting, its lower front chamfered; its underside 0.30 m under
+ * the bore, clear of the deck ahead of the ring and of the fender bins abeam. */
 function ga2Mantlet(q: boolean | undefined): Geo {
-  // z (along the bore), half-width, half-height, corner radius; the section's centre 4 cm under the bore
-  const rows: readonly (readonly [number, number, number, number])[] = [
-    [-0.02, 0.58, 0.38, 0.14], [0.30, 0.60, 0.40, 0.15], [0.52, 0.60, 0.40, 0.15], [0.60, 0.57, 0.375, 0.13],
-    [0.63, 0.54, 0.35, 0.11],
+  // z (along the bore), half-width, top and bottom over the bore, corner radius
+  const rows: readonly (readonly [number, number, number, number, number])[] = [
+    [-0.02, 0.58, 0.40, -0.30, 0.14], [0.30, 0.60, 0.42, -0.30, 0.15], [0.48, 0.60, 0.42, -0.30, 0.15],
+    [0.58, 0.58, 0.41, -0.25, 0.13], [0.63, 0.55, 0.39, -0.21, 0.11],
   ];
   const n = q ? 5 : 3;
-  const sections = rows.map(([z, w, h, r]) => {
+  const sections = rows.map(([z, w, t, b, r]) => {
     const ring: SectionPoint[] = [];
+    const h = (t - b) / 2, cy0 = (t + b) / 2;
     // a rounded rectangle, counter-clockwise from the right side's middle
     for (const [cx, cy, a0] of [[w - r, h - r, 0], [-(w - r), h - r, Math.PI / 2], [-(w - r), -(h - r), Math.PI],
       [w - r, -(h - r), Math.PI * 1.5]] as const) {
       for (let i = 0; i <= n; i++) {
         const a = a0 + (Math.PI / 2) * (i / n);
-        ring.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r - 0.04]);
+        ring.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r + cy0]);
       }
     }
     return { z, ring };
