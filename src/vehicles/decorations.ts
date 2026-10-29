@@ -2679,19 +2679,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // exhaust smoke system (the T-55's TDA) to take it over.
   type59: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
   t55a: (spec, rng) => defaultManifest(spec, rng).filter((row) => row.kit !== 'bucket' && row.kit !== 'antenna'),
-  // Release 263: the rebuilt Centurion Mk 3 and Strv 81 carry their own dischargers, whips and roof guns
-  // (profiles/centurionFamily.ts); their decor is soft stowage only. The Mk 3 a tarpaulin and packs, the Strv 81B the
-  // bundled camouflage nets of its 1950s photographs.
-  centurion3: () => [
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
-  ],
-  strv81: () => [
-    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
-    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
-  ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
     // The native M60 builder owns one compact open-lattice bustle envelope

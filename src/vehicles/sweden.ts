@@ -276,8 +276,7 @@ const SWEDEN_SPECS = {
     name: 'Strv 81', number: '81', scheme: 'woodland',
     base: '#39483b', weather: '#4f5948', patches: ['#263129', '#62634a', '#74664c'],
     camoScale: 0.55,
-    // release 263: the Strv 81's Mk 3/5 hull is 7.55 m (Svenska Wikipedia); 7.82 m is the later marks' longer deck
-    dims: { hullLengthM: 7.56, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
+    dims: { hullLengthM: 7.82, overallLengthM: 9.85, widthM: 3.39, heightM: 3.01 },
     stats: { hp: 1450, enginePowerHp: 650, weightTons: 51.8, topSpeedKmh: 35,
       reverseSpeedKmh: 12, turretTraverseDegS: 24, gunPitchDegS: 20 },
     reloadS: 7.1, armorFactor: 1.05,

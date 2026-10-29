@@ -527,32 +527,25 @@
       }
     },
     "centurion3": {
-      "panYM": 0.51,
+      "panYM": 0.53,
       "bottomYM": 0,
       "hullMin": [
-        -1.5,
-        0.51,
-        -3.72
+        -1.667,
+        0.53,
+        -3.69
       ],
       "hullMax": [
-        1.5,
-        1.72,
-        3.62
+        1.667,
+        1.75,
+        3.945
       ],
-      "turretMinY": 0.023,
+      "turretMinY": -0.051,
       "accepted": {
-        "reason": "release 263 the Centurion Mk 3 and Strv 81 rebuilt from history",
+        "reason": "release 240 turret seat screens, hulls and turrets cleared under the turrets' sweep (decks, kit, seat limits, CV90 turret lifts)",
         "by": "kevinliu",
-        "date": "2026-10-28",
+        "date": "2026-10-24",
         "from": {
-          "panYM": 0.53,
-          "hullFloorY": 0.53,
-          "hullRoofY": 1.75,
-          "hullMinX": -1.667,
-          "hullMaxX": 1.667,
-          "hullTailZ": -3.69,
-          "hullBowZ": 3.945,
-          "turretFloorY": -0.051
+          "turretFloorY": -0.29
         }
       }
     },
@@ -3052,32 +3045,25 @@
       "turretMinY": -0.033
     },
     "strv81": {
-      "panYM": 0.51,
+      "panYM": 0.53,
       "bottomYM": 0,
       "hullMin": [
-        -1.5,
-        0.51,
-        -3.72
+        -1.7013,
+        0.53,
+        -3.69
       ],
       "hullMax": [
-        1.5,
-        1.72,
-        3.62
+        1.7013,
+        1.75,
+        3.945
       ],
-      "turretMinY": 0.023,
+      "turretMinY": -0.051,
       "accepted": {
-        "reason": "release 263 the Centurion Mk 3 and Strv 81 rebuilt from history",
+        "reason": "245: its first ring receipt seats the turret, which trims the parts hanging inside the hull (turretDark 0.913 m, turret 0.238 m) to the ring plane; the lowest turret parts are the stage 5 side plates; pose unchanged, CPU renders show it on its deck",
         "by": "kevinliu",
-        "date": "2026-10-28",
+        "date": "2026-10-24",
         "from": {
-          "panYM": 0.53,
-          "hullFloorY": 0.53,
-          "hullRoofY": 1.75,
-          "hullMinX": -1.7013,
-          "hullMaxX": 1.7013,
-          "hullTailZ": -3.69,
-          "hullBowZ": 3.945,
-          "turretFloorY": -0.051
+          "turretFloorY": -0.2378
         }
       }
     },
