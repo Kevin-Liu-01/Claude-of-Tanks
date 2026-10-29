@@ -73,14 +73,16 @@
 
 ## Visual review (blind critics, opus and sonnet, against the photos; the lower score counts)
 
-| view | before | wave 0 | wave 1 (shipped) |
-|---|---|---|---|
-| front | 3 | 6 | 6 |
-| side | 4 | 5 | 6 |
-| front three-quarter | 3-4 | 6 | 6 |
-| rear three-quarter | 3 | 5 | 6 |
-| top | 2-3 | 5 | 5 |
+| view | before | wave 0 (soft) | wave 1 (soft, fix round) | wave 2 (GPU, shipped) |
+|---|---|---|---|---|
+| front | 3 | 6 | 6 | 7 |
+| side | 3-4 | 5 | 6 | 6 |
+| front three-quarter | 3-4 | 6 | 6 | 6 |
+| rear three-quarter | 3 | 5 | 6 | 6 |
+| top | 2-3 | 5 | 5 | 5 |
+| Garage | 4 | - | - | 6 |
+| battle chase | - | - | - | 6 |
 
-Wave 0 routed the shared defects (open upper cage, rod-like chains) to the fix round; wave 1 scored the fix round's build.
-Residual, from both critics: the flat cage roof, chains that still read as rods at Gallery scale, the digital scheme
-(three-tone proposed to Main), low Kontakt-1 relief on the skirt.
+Wave 0 routed the shared defects (open upper cage, rod-like chains) to the fix round; waves 1 and 2 scored the fix round's
+build. Residual, from both critics: the flat cage roof and its bright leaf net, chains that still read as rods at Gallery
+scale, clean road wheels, the digital scheme (three-tone proposed to Main), low Kontakt-1 relief on the skirt.
