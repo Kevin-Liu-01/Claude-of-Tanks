@@ -2,8 +2,8 @@
 // What a document can load again after the network drops and comes back (the loading states 264, Main's ruling on the
 // garage lane's finding): a failed import(), a failed modulepreload and a failed stylesheet link, each tried again once
 // online in the same document, then after a reload. Copyright © 2026 Kevin B. Liu.
-// Run: node tools/offline-import-probe.mjs [--out=/absolute/report.json]
-// A capture-lock render ticket (no timing is measured); the browser is the installed Chrome.
+// Run: node tools/offline-import-probe.mjs [--chrome=/path/to/chrome] [--out=/absolute/report.json]
+// A capture-lock render ticket (no timing is measured); the browser is the installed Chrome unless --chrome names one.
 import { createServer } from 'node:http';
 import { writeFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
@@ -35,7 +35,8 @@ let browser;
 try {
   await lock.acquire(45 * 60_000, { lockClass: 'render' });
   browser = await launchGuardedBrowser(puppeteer, nativeBrowserLaunchOptions({ headless: 'new',
-    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args: ['--disable-gpu'] }),
+    executablePath: process.argv.find((arg) => arg.startsWith('--chrome='))?.slice(9)
+      ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', args: ['--disable-gpu'] }),
   { label: 'offline-import-probe' });
   report.chrome = await browser.version();
   const page = await browser.newPage();
