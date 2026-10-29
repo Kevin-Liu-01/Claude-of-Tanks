@@ -6,13 +6,14 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { eraField, type CassetteSeat } from './leopard2A4KitParts.ts';
 import { LEO2A4_TURRET } from '../leopard2A4FamilyArmor.ts';
 import {
-  KONTAKT1_BRICK as B, LEO2A4V_KONTAKT1, SKIRT_FACE_X, bevelTopZAt, faceZAt, wallX, type Kontakt1Course,
+  FACE_SWEEP, KONTAKT1_BRICK as B, LEO2A4V_KONTAKT1, SKIRT_FACE_X, bevelNormal, bevelTopZAt, faceZAt, wallX,
+  type Kontakt1Course,
 } from '../leopard2A4Kontakt1.ts';
 
 const T = LEO2A4_TURRET;
 /** The eraCluster's base cassette (tankFactoryCore eraCluster): a seat's scale is over these. */
 const ERA_BASE = [0.28, 0.13, 0.07] as const;
-const TAN_SWEEP = Math.tan(T.faceSweepDeg * Math.PI / 180);
+const TAN_SWEEP = Math.tan(FACE_SWEEP);
 const v3 = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 
 /** A container w x h centred on a surface point with outward normal n and in-plane x axis ax, bolted `lift` off it. */
@@ -34,9 +35,9 @@ function courseSeats(c: Kontakt1Course): CassetteSeat[] {
       case 'face':
         return seat(v3(s * u, v, faceZAt(u)), v3(s, 0, -TAN_SWEEP), v3(s * TAN_SWEEP, 0, 1), w, h);
       case 'bevel': {
-        // the bevel's middle at |x|, from the faces' top (0.61) up to the block's top (0.74), 40 degrees off the level
+        // the bevel's middle at |x|, from the faces' top (0.61) up to the block's top (0.74), across it the face's line
         const at = v3(s * u, (T.faceTopY + T.blockTopY) / 2, (faceZAt(u) + bevelTopZAt(u)) / 2);
-        return seat(at, v3(s, 0, 0), v3(0, Math.cos(40 * Math.PI / 180), Math.sin(40 * Math.PI / 180)), w, h);
+        return seat(at, v3(s, 0, -TAN_SWEEP), v3(...bevelNormal(s)), w, h);
       }
       case 'wall':
         return seat(v3(s * wallX(s), v, u), v3(0, 0, 1), v3(s, 0, 0), w, h);

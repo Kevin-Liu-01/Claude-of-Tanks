@@ -5,9 +5,10 @@
 // heavy fore skirt blocks; the glacis and the mantlet stay bare. One table of courses drives both the containers the kit
 // lays (profiles/leopard2A4Kontakt1Kit.ts) and the ERA plates the record carries (leopard2A4FamilySpecs.ts).
 import type { ArmorPlate } from './specHelpers.ts';
-import { LEO2A4_TURRET, kitPlate, type KitPlate } from './leopard2A4FamilyArmor.ts';
+import { LEO2A4_CHEEK_FRONT, LEO2A4_TURRET, kitPlate, type KitPlate } from './leopard2A4FamilyArmor.ts';
+import { cheekFaceZ } from './leopard2CheekFrontDatums.ts';
 
-const T = LEO2A4_TURRET;
+const T = LEO2A4_TURRET, F = LEO2A4_CHEEK_FRONT;
 
 /** The 4S20 container: 251.9 x 131.9 x 70 mm, bolted 10 mm off its plate (the Ukrainian M1A1's, abramsSourceXUkraineEraArmor). */
 export const KONTAKT1_BRICK = Object.freeze({ long: 0.252, short: 0.132, t: 0.070, lift: 0.010 });
@@ -16,12 +17,12 @@ export const KONTAKT1_BRICK = Object.freeze({ long: 0.252, short: 0.132, t: 0.07
  *  Kontakt-1 values, as on the Ukrainian M1A1 and the T-72B3 / T-80BV). */
 export const KONTAKT1_ERA = Object.freeze({ keReduction: 0.05, ceFlatMm: 280 });
 
-const TAN_SWEEP = Math.tan(T.faceSweepDeg * Math.PI / 180);
-/** The cheek faces' z at |x| (swept back from the slot's edge; leopard2A4Turret.ts). */
-export const faceZAt = (absX: number): number => T.faceZ - TAN_SWEEP * Math.max(0, absX - T.slotHalfWidthM);
-/** The bevel's upper edge at |x| (the sweep eases from the faces to nothing at the corner cut's station). */
-export const bevelTopZAt = (absX: number): number =>
-  T.bevelZ - ((T.bevelZ - T.cornerZ) / (T.faceZ - T.cornerZ)) * TAN_SWEEP * Math.max(0, absX - T.slotHalfWidthM);
+/** The cheek faces' z at |x| (the shared 27-degree cheek front, leopard2CheekFrontDatums.ts). */
+export const faceZAt = (absX: number): number => cheekFaceZ(F, absX);
+/** The bevel's upper edge at |x|: the bevel runs back parallel to the face. */
+export const bevelTopZAt = (absX: number): number => faceZAt(absX) - F.cheekBevelM;
+/** The faces' sweep in plan (radians). */
+export const FACE_SWEEP = F.sweepDeg * Math.PI / 180;
 
 /** Where a course lies: a cheek's vertical face, its bevel, a turret wall, or a fore skirt block's face. */
 export type Kontakt1Surface = 'face' | 'bevel' | 'wall' | 'skirt';
@@ -45,8 +46,9 @@ const grid = (us: readonly number[], vs: readonly number[]): Array<readonly [num
 const FACE_COLS = [0.571, 0.713, 0.855] as const;
 /** The face's rows: upright containers from 8 cm over the floor to under the faces' top (0.61). */
 const FACE_ROWS = [0.206, 0.468] as const;
-/** The walls' columns from the corner cut back to clear the loader's welded ammunition hatch (z -0.64..-0.20). */
-const WALL_COLS = [1.24, 0.97, 0.70, 0.43, 0.16] as const;
+/** The walls' columns from the chamfers (where they meet the walls: right 1.23, left 1.28) back to clear the loader's welded
+ *  ammunition hatch (z -0.64..-0.20). */
+const WALL_COLS = [1.08, 0.81, 0.54, 0.27, 0.00] as const;
 const WALL_ROWS = [0.16, 0.305, 0.45, 0.595] as const;
 /** The fore skirt blocks' face (x 1.818, z 1.42-3.16, y 0.74-1.36): six columns, four rows. */
 export const SKIRT_FACE_X = 1.818;
@@ -70,6 +72,16 @@ export const LEO2A4V_KONTAKT1: readonly Kontakt1Course[] = Object.freeze([
 /** The wall's half-width ahead of the bustle (the 2A6 X's core walls: wider right of the gun). */
 export const wallX = (sx: number): number => (sx > 0 ? T.wallLeftM : T.wallRightM);
 
+/** The bevel's outward unit normal on side s: across it the face's line (s, 0, -tan sweep), down it from the block's top
+ *  to the faces' top (0, faceTopY - blockTopY, bevel). */
+export function bevelNormal(s: number): readonly [number, number, number] {
+  const a = [s, 0, -Math.tan(FACE_SWEEP)], d = [0, T.faceTopY - T.blockTopY, F.cheekBevelM];
+  let n = [a[1] * d[2] - a[2] * d[1], a[2] * d[0] - a[0] * d[2], a[0] * d[1] - a[1] * d[0]];
+  if (n[1] < 0) n = n.map((v) => -v);
+  const l = Math.hypot(n[0], n[1], n[2]);
+  return [n[0] / l, n[1] / l, n[2] / l];
+}
+
 /** A course's ERA plate: a quad over its containers' outer faces, carrying the Kontakt-1 values (a combat addition). */
 function coursePlate(c: Kontakt1Course): KitPlate {
   const B = KONTAKT1_BRICK, out = B.lift + B.t;
@@ -85,10 +97,11 @@ function coursePlate(c: Kontakt1Course): KitPlate {
       ? kitPlate('turret', c.name, [u0, v0, za], [u1, v0, zb], [u0, v1, za], { kind: 'era' })
       : kitPlate('turret', c.name, [-u1, v0, zb], [-u0, v0, za], [-u1, v1, zb], { kind: 'era' });
   } else if (c.surface === 'bevel') {
-    // the 40-degree bevel's outward normal is (0, cos 40, sin 40): the plate on its containers' outer faces
+    // the bevel's outward normal (the face's line up the 40-degree bevel, swept with it): the plate on its containers' faces
+    const n = bevelNormal(s);
     const p = (x: number, onFace: boolean): readonly [number, number, number] => onFace
-      ? [s * x, T.faceTopY + out * 0.766, faceZAt(x) + out * 0.643]
-      : [s * x, T.blockTopY + out * 0.766, bevelTopZAt(x) + out * 0.643];
+      ? [s * x + n[0] * out, T.faceTopY + n[1] * out, faceZAt(x) + n[2] * out]
+      : [s * x + n[0] * out, T.blockTopY + n[1] * out, bevelTopZAt(x) + n[2] * out];
     kp = s > 0 ? kitPlate('turret', c.name, p(u0, true), p(u1, true), p(u0, false), { kind: 'era' })
       : kitPlate('turret', c.name, p(u1, true), p(u0, true), p(u1, false), { kind: 'era' });
   } else {
