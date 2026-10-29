@@ -206,12 +206,13 @@ export const BUNDLE_BUDGETS = Object.freeze({
   // Over 263's release build (at e93c4a67dc): game +12,278 B (entry +2,172 B), cn +12,981 B, Gallery +7,516 B, home +317 B,
   // docs +335 B, 404 +288 B.
   // 2026-10-29 (integrator 264c: B 8f37dee995 plus the owner's preview fixes; requests unchanged): game, cn and Gallery
-  // re-pinned at 264c's build of 490b3e0c60 (Node 24.22.1). Over B's build: game and cn +565 B (entry +100 B), Gallery
+  // re-pinned at 264c's build of 490b3e0c60 (Node 24.22.1), game and cn at the release (preview) build of afcffcd358, the
+  // larger (the entry's commit stamp: +170 B brotli). Over B's local build: game and cn +565 B (entry +100 B), Gallery
   // +281 B, by lane: battle-camera-264-lens 067f28f029 (engine/cameraLens.ts in the vehicleActions boot group, the aerial
   // and contact rays' lens shift, the cascade refit on a lens change, ?chaseFraming=0), shadow-bake-fixes-264 5f8189f900
   // (the armour panels' on-demand bake) and solo-local-feel-264 ab5efb500d (the page sim by default, SOLO_WORKER_MODES gone).
-  game: { brotliBytes: 1132316, requests: 128, entryBrotliBytes: 249724 },
-  cn: { brotliBytes: 1176143, requests: 129, entryBrotliBytes: 249724 },
+  game: { brotliBytes: 1132486, requests: 128, entryBrotliBytes: 249894 },
+  cn: { brotliBytes: 1176313, requests: 129, entryBrotliBytes: 249894 },
   gallery: { brotliBytes: 702305, requests: 75 },
   home: { brotliBytes: 28617, requests: 8 },
   docs: { brotliBytes: 36911, requests: 12 },
