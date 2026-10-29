@@ -300,7 +300,9 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
         shadeFromHeight(image.data, hctx.getImageData(0, 0, S, S).data, S, {
           cutoff: NET_ALPHA_CUT, lowShade: 0.8, occlusion: 2, radii: [4, 12], floor: 34,
           // a gap of up to a mesh of the net (NET_MESHES a side) closes whole under thick garnish
-          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2, speck: (S / NET_MESHES) ** 2 * 0.25 },
+          // (r7; the critic r8: "hard-edged flat dark cells") a closed gap up to half a mesh takes its strips' colour a
+          // step darker, not one flat tone
+          gaps: { tone: gapToneOf(pal), fill: NET_GAP_FILL, cell: (S / NET_MESHES) ** 2, speck: (S / NET_MESHES) ** 2 * 0.5 },
         });
         floodClearTexels(image.data, S, { floor: Math.round(NET_ALPHA_CUT * 255) });
         const map = straightAlphaTexture(image, NET_ALPHA_CUT, `ghillieNet:${key}`, true);

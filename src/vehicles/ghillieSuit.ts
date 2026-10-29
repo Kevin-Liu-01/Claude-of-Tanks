@@ -4576,9 +4576,10 @@ const FIELD_LENS_BELOW_TAN = Math.tan(10 * Math.PI / 180);
 /** How far ahead of a sideways- or forward-looking lens a roof net is slotted open (m); a fleet field net's (fix round). */
 const LENS_SLOT_M = 0.8;
 const FIELD_LENS_SLOT_M = 0.4;
-/** (264; the Strv 121's Barracuda cover on its 2A4 turret) a fitted cover is cut round each pane, not slotted ahead of it:
- * the field net's slots took the whole front of the roof round the periscope ring, and the drapes under it with it. */
-const COVER_LENS_SLOT_M = 0.12;
+/** (264; the Strv 121's Barracuda cover on its 2A4 turret) a fitted cover is cut round each lens's housing, not slotted
+ * ahead of it: the field net's slots took the whole front of the roof round the periscope ring, and the drapes under it
+ * with it. Half the side of the square cut round each. */
+const COVER_LENS_HOUSING_M = 0.18;
 /** Half the side of an open cradle's receiving column the suit keeps clear (m; the receipt rays 2.5 cm round each station). */
 const CRADLE_KEEP_M = 0.08;
 /** How far a smoke discharger's grenade line is kept clear (m), and its half-width at the mouth (m). */
@@ -5765,13 +5766,21 @@ function* addGhillieOwner(
     clearance?.offerLenses(owner, lenses);
     for (let i = 0; i < lenses.length; i += 6) {
       const [cx, , cz, nx, ny, nz] = lenses.subarray(i, i + 6);
+      // (r7; the critic r8 on the Strv 121: "the commander's sight dome is missing", its cover laid over the housing) a
+      // fitted cover is cut round the lens's housing, a square COVER_LENS_HOUSING_M either side of the pane, every lens
+      // (an upward one too); its bound edge carries garnish like any opening's
+      if (cfg.style !== 'leafy') {
+        const r = COVER_LENS_HOUSING_M;
+        slots.push([[cx - r, cz - r], [cx + r, cz - r], [cx + r, cz + r], [cx - r, cz + r]]);
+        continue;
+      }
       const h = Math.hypot(nx, nz);
       if (Math.abs(ny) > 0.75 || h < 1e-6) continue;
       // both ways along the pane's axis (a periscope block's housing can read from either face)
       for (const dir of [1, -1]) {
         // the fix round ("roof coverage ... with clear holes for sights"): a field net is slotted just past the pane, the
         // cloth beyond lies on the plate under the view (its lens rule) and the garnish keeps the view itself clear
-        const L = cfg.style !== 'leafy' ? COVER_LENS_SLOT_M : isFieldNet(cfg) ? FIELD_LENS_SLOT_M : LENS_SLOT_M;
+        const L = isFieldNet(cfg) ? FIELD_LENS_SLOT_M : LENS_SLOT_M;
         const fx = dir * nx / h, fz = dir * nz / h, w0 = 0.1, w1 = 0.1 + L * 0.4;
         slots.push([[cx - fz * w0, cz + fx * w0], [cx + fz * w0, cz - fx * w0],
           [cx + fx * L + fz * w1, cz + fz * L - fx * w1], [cx + fx * L - fz * w1, cz + fz * L + fx * w1]]);

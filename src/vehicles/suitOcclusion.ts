@@ -298,7 +298,9 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     // span. A small one keeps its corners' own (the shade between them is the cloth's).
     const index = geometry.index;
     const tris = index ? index.count : position.count;
-    const least = new Float32Array(position.count).fill(Infinity);
+    // the cap at each corner position (a non-indexed geometry's coincident corners take one: no step along a seam)
+    const least = new Map<string, number>();
+    const at = (i: number): string => `${Math.round(position.getX(i) * 1e4)},${Math.round(position.getY(i) * 1e4)},${Math.round(position.getZ(i) * 1e4)}`;
     for (let t = 0; t + 2 < tris; t += 3) {
       const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
       if (!gates[a] && !gates[b] && !gates[c]) continue;
@@ -324,14 +326,12 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
         }
         g = mean / TRIANGLE_MIDDLES.length;
       }
-      if (g < least[a]) least[a] = g;
-      if (g < least[b]) least[b] = g;
-      if (g < least[c]) least[c] = g;
+      for (const v of [a, b, c]) { const k = at(v), was = least.get(k); if (was === undefined || g < was) least.set(k, g); }
     }
     let touched = false;
     for (let i = 0; i < position.count; i++) {
       if (!amounts[i]) continue;
-      const amount = amounts[i] * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, Math.min(least[i], gates[i]));
+      const amount = amounts[i] * smoothstep(SUIT_GATE_FROM, SUIT_GATE_TO, least.size ? Math.min(least.get(at(i)) ?? Infinity, gates[i]) : gates[i]);
       const byte = Math.round(amount * 255);
       if (!byte) continue;
       out[i] = byte;

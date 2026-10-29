@@ -160,6 +160,32 @@ const shadeAt = (mesh, x, z) => {
   assert.ok([0, 1, 2].every((i) => shade.getX(i) > 0.5), `the netted panel keeps its shade (${[0, 1, 2].map((i) => shade.getX(i).toFixed(2)).join(", ")})`);
 }
 
+// (r7, the critic r8: "a hard diagonal step along a triangle seam") a non-indexed panel's coincident corners take one
+// shade: each large triangle caps its corners, and a corner two of them share takes the lesser cap
+{
+  const root = new THREE.Group();
+  const quad = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([
+    -1.2, 1, -1.2, -1.2, 1, 1.2, 1.2, 1, 1.2, -1.2, 1, -1.2, 1.2, 1, 1.2, 1.2, 1, -1.2], 3));
+  quad.computeVertexNormals();
+  if (quad.getAttribute('normal').getY(0) < 0) {
+    const a = quad.getAttribute('position').array; for (let t = 0; t < 2; t++) for (let q = 0; q < 3; q++) { const tmp = a[t * 9 + 3 + q]; a[t * 9 + 3 + q] = a[t * 9 + 6 + q]; a[t * 9 + 6 + q] = tmp; }
+    quad.computeVertexNormals();
+  }
+  const panel = new THREE.Mesh(quad, paint);
+  // a net over the -x half and a strip along the +x edge: one triangle's middles mostly covered, the other's bare
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 2.6, 14, 26).rotateX(-Math.PI / 2).translate(-0.6, 1.02, 0), paint);
+  net.name = 'receipt_ghillie_hull_net';
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 2.6, 3, 26).rotateX(-Math.PI / 2).translate(1.15, 1.02, 0), paint);
+  strip.name = 'receipt2_ghillie_hull_net';
+  root.add(panel, net, strip);
+  drain(bakeSuitOcclusionSteps(root, []));
+  const pos = quad.getAttribute('position'), shade = quad.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE);
+  for (let i = 0; i < pos.count; i++) for (let j = i + 1; j < pos.count; j++) {
+    if (Math.hypot(pos.getX(i) - pos.getX(j), pos.getZ(i) - pos.getZ(j)) > 1e-6) continue;
+    assert.equal(shade.getX(i), shade.getX(j), `coincident corners at ${pos.getX(i)},${pos.getZ(i)} take one shade`);
+  }
+}
+
 // a build without a suit is untouched; every vehicle material defaults the attribute to 0
 {
   const root = new THREE.Group();
