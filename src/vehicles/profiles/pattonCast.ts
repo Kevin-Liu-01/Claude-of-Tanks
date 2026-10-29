@@ -1834,21 +1834,52 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
   }
   bustleNumbers(P, T, -1.30, 0.55, 0.24);
   yield 'm60TurretFittings';
-  // gun: the M60's mantlet on the trunnion (a rotor face 0.96 out, 0.76 wide, from 1.74 to 2.52), the A1's AN/VSS-1
-  // searchlight on top of it
+  // gun: the M60's cast mantlet on the trunnion (the owner's model's: a block 1.04 m wide from 1.74 to 2.52, its face 0.3
+  // to 0.5 m ahead of the trunnion, bulging at mid-height and set back over the top; the gun's sleeve 0.43 m further out),
+  // the coax's and the telescope's ports; the A1's AN/VSS-1 searchlight on top of it
   const G = M60_GUN;
   P.gunG.position.set(0, G.axisY - T.ringY, G.trunnionZ - T.ringZ);
-  P.addGunExtra(rotorShield(0.96, 0.15, 0.76, -0.385, 0.453, P.q), 0, 0, 0);
-  P.addGunExtra(cylZ(0.16, 0.20, P.q ? 18 : 10), 0, 0, 1.00);
-  P.addGunExtraDark(box(0.08, 0.08, 0.04), 0.30, 0.05, 0.965);
-  P.addGunExtraDark(box(0.09, 0.09, 0.04), -0.32, 0.12, 0.955);
+  P.addGunExtra(m60Mantlet(P.q), 0, 0, 0);
+  P.addGunExtra(cylZ(0.14, 0.43, P.q ? 20 : 12), 0, 0, 0.745);
+  P.addGunExtra(cylZ(0.16, 0.05, P.q ? 20 : 12), 0, 0, 0.555);
+  P.addGunExtraDark(box(0.08, 0.08, 0.04), 0.30, 0.05, 0.545);
+  P.addGunExtraDark(box(0.09, 0.09, 0.04), -0.32, 0.12, 0.545);
   if (!a3) {
-    P.addGunExtra(moldedBox(0.62, 0.42, 0.80, 0.03, P.q ? 2 : 1, 0.015), 0, 0.47, 0.62);
-    P.add('gunMountGlass', cylZ(0.17, 0.02, P.q ? 20 : 12), 0, 0.47, 1.025);
+    P.addGunExtra(moldedBox(0.64, 0.49, 0.89, 0.03, P.q ? 2 : 1, 0.015), 0, 0.435, 0.625);
+    P.add('gunMountGlass', cylZ(0.18, 0.02, P.q ? 20 : 12), 0, 0.435, 1.075);
   }
   pattonGun(P, a3 ? { ...G, r0: 0.118, r1: 0.096 } : G);
   P.topY = L.y(3.12) + 0.12;
   yield 'm60Gun';
+}
+
+/** The M60's cast mantlet (gun frame), read off the owner's M60A1 model in stations of height over the bore: the block
+ * 1.04 m wide from its back inside the turret (0.32 behind the trunnion) to its face, which stands 0.28 m ahead at the
+ * foot, bulges to 0.53 m from just under the bore to 0.18 over it and steps back to 0.33 m over the top; the face rounds
+ * 8 cm back at its vertical edges. */
+function m60Mantlet(q: boolean | undefined): Geo {
+  // h, half-width, face
+  const rows: readonly (readonly [number, number, number])[] = [
+    [-0.36, 0.49, 0.28], [-0.30, 0.51, 0.38], [-0.24, 0.52, 0.50], [-0.18, 0.52, 0.53], [0.00, 0.52, 0.53],
+    [0.18, 0.52, 0.53], [0.22, 0.52, 0.48], [0.26, 0.52, 0.33], [0.34, 0.51, 0.34], [0.42, 0.49, 0.33],
+  ];
+  const back = -0.32, bow = 0.08;
+  const n = q ? 10 : 5;
+  const sections = rows.map(([h, w, f]) => {
+    const ring: SectionPoint[] = [];
+    for (let i = 0; i <= n; i++) {
+      const x = -w + (2 * w * i) / n;
+      ring.push([x, -(f - bow * (x / w) ** 4)]);
+    }
+    for (let i = n; i >= 0; i--) ring.push([-w + (2 * w * i) / n, -back]);
+    return { z: h, ring };
+  });
+  const m = sections[0].ring.length;
+  const smooth = Array.from({ length: m }, (_, i) => i).filter((i) => i !== n && i !== m - 1);
+  const g = sectionSolid(sections, { centeredSideQuads: true, smoothSideEdges: smooth });
+  // loft axis (z) up, the ring's second axis back along the bore: (x, y, z) -> (x, z, -y)
+  g.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+  return g;
 }
 
 export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a3'): TankProfileBuild {
