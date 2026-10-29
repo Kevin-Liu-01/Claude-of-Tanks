@@ -37,8 +37,9 @@ export interface SuitOcclusionStats {
   /** Vertices the suit shades at all, and their mean amount. */
   readonly shaded: number;
   readonly meanShade: number;
-  /** The bake's own time (its slices, the waits between them excluded), ms. */
-  readonly ms: number;
+  /** The bake's own time (its slices, the waits between them excluded), ms. Named as a timing (…Ms) so a build's identity
+   *  receipts leave it out (tools/deferred-assembly-receipt.mjs TIMING). */
+  readonly bakeMs: number;
 }
 
 type Family = 'hull' | 'turret';
@@ -195,5 +196,5 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     if (touched) shade.needsUpdate = true;
   }
   ms += performance.now() - slice;
-  return { draws: seeded.size, vertices, bytes, shaded, meanShade: shaded ? sum / shaded : 0, ms: Math.round(ms) };
+  return { draws: seeded.size, vertices, bytes, shaded, meanShade: shaded ? sum / shaded : 0, bakeMs: Math.round(ms) };
 }
