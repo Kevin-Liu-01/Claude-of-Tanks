@@ -56,7 +56,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "leclerc_sxxi": {"turretPivot":[0,1.6,-0.1],"gunPivot":[0,0.2684,0.5],"lengthM":5.89,"radiusM":0.138},
   "leclerc_xlr": {"turretPivot":[-0.00215336,1.40294995,0.72122934],"gunPivot":[0.021,0.4762,1.2777],"lengthM":4.2401,"radiusM":0.14},
   "leo1a5": {"turretPivot":[0,1.55,0.5],"gunPivot":[0,0.47,1.15],"lengthM":4.35},
-  "leo2_improved": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.33,1.42],"lengthM":5.34},
+  "leo2_improved": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.33,1.42],"lengthM":4.1},
   "leo2_revolution": {"turretPivot":[0,1.537,0.4774],"gunPivot":[0.012,0.319,1.1226],"lengthM":4.51},
   "leo2a2": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.36,1.04],"lengthM":4.29,"radiusM":0.1025},
   "leo2a3": {"turretPivot":[0,1.64,0.37],"gunPivot":[0,0.36,1.04],"lengthM":4.29,"radiusM":0.1025},

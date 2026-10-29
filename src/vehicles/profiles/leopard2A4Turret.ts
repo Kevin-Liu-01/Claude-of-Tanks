@@ -20,10 +20,11 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
-import { mirrorRing } from './leopard2Hull.ts';
 import { buildLeopard2A6Front } from './leopard2A4Wedge.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { LEO2A4_TURRET, leopard2A4BarrelM, type Leopard2A4Gun } from '../leopard2A4FamilyArmor.ts';
+import { LEO2A4_CHEEK_FRONT, LEO2A4_TURRET, leopard2A4BarrelM, type Leopard2A4Gun } from '../leopard2A4FamilyArmor.ts';
+import { cheekFaceZ } from '../leopard2CheekFrontDatums.ts';
+import { addLeopard2CheekBlocks, addLeopard2Emes15 } from './leopard2CheekFront.ts';
 
 const T = LEO2A4_TURRET;
 type Point = readonly [number, number, number];
@@ -67,7 +68,7 @@ function shellRing(right: number, left: number, bottom: number, roof: number, fo
  * The welded shell from the bustle's rear plate to the front block's seam: the 2A6 X's measured stations (right wall,
  * left wall, floor, roof), the bustle's chamfered rear corners closing to the rear plate.
  */
-function turretShell(P: TankBuilderPort): void {
+function turretShell(P: TankBuilderPort, wedge: boolean): void {
   const s = (z: number, right: number, left: number, floor: number, roof: number): SolidSection =>
     ({ z, ring: shellRing(right, left, floor, roof) });
   P.add('turret', sectionSolid([
@@ -78,76 +79,40 @@ function turretShell(P: TankBuilderPort): void {
     s(-0.4664, T.wallRightM, T.wallLeftM, 0.146, T.roofY),
     s(0.2587, T.wallRightM, T.wallLeftM, T.floorY, T.roofY),
     s(0.3715, T.wallRightM, T.wallLeftM, T.floorY, 0.7904),
-    s(T.blockZ, T.wallRightM, T.wallLeftM, T.floorY, 0.739),
+    // the 2A6 look's wedges stand on the 2A6 X's seam; the square block's swept cheeks in front of a shorter shell, its
+    // front behind their outer ends' bevelled tops (leopard2CheekFrontDatums.ts)
+    wedge ? s(T.blockZ, T.wallRightM, T.wallLeftM, T.floorY, 0.739)
+      : s(LEO2A4_CHEEK_FRONT.rootZ, T.wallRightM, T.wallLeftM, T.floorY, LEO2A4_CHEEK_FRONT.cheekTopY + 0.005),
   ], { sideQuadDiagonal: 'convex' }));
 }
 
-/** Sweep the cheek faces back in plan (the slight arrowhead): from the slot's edge toward their outer ends, easing to
- *  nothing at the corner cut's station so the block's sides stay on the walls. */
-function sweepFace(g: THREE.BufferGeometry): THREE.BufferGeometry {
-  const pos = g.getAttribute('position'), k = Math.tan(T.faceSweepDeg * Math.PI / 180);
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    const f = THREE.MathUtils.clamp((z - T.cornerZ) / (T.faceZ - T.cornerZ), 0, 1);
-    if (f > 0) pos.setZ(i, z - f * k * Math.max(0, Math.abs(x) - T.slotHalfWidthM));
-  }
-  pos.needsUpdate = true;
-  g.computeVertexNormals();
-  return g;
-}
-
-/** The faces' z at |x| (swept back from the slot's edge). */
-export const leopard2A4FaceZ = (absX: number): number =>
-  T.faceZ - Math.tan(T.faceSweepDeg * Math.PI / 180) * Math.max(0, absX - T.slotHalfWidthM);
+/** The faces' z at |x| (swept back from the slot's edge: the shared cheek front's line). */
+export const leopard2A4FaceZ = (absX: number): number => cheekFaceZ(LEO2A4_CHEEK_FRONT, absX);
 
 /**
- * The front armour block: two cheek blocks from the 2A6 X's seam to the faces. Each cheek's top runs level to the bevel,
- * slopes 40 degrees forward and down to its vertical face, and its outer top edge is bevelled too; the outer corners are cut
- * back to the walls. The right cheek is built in three strips round the EMES 15 window's pocket, which is cut through its
- * upper face and bevel back to the glass (a real opening, forward and upward). A brow closes the slot over the mantlet.
+ * The front armour block: the two swept cheek blocks in front of the shell and the EMES 15's notch cut through the right
+ * one (leopard2CheekFront.ts, shared with the 262 early Leopards); the brow closing the slot over the mantlet, its top the
+ * cheeks' (level, then the bevel); the welded joints; the lifting lug low on the right face (photographed on the Austrian
+ * and Singaporean 2A4s).
  */
 function frontBlock(P: TankBuilderPort, lug: boolean): void {
   const { box } = KIT;
-  const floor = T.floorY, top = T.blockTopY, slot = T.slotHalfWidthM, e = T.emes, bev = 0.10;
-  const lerp = THREE.MathUtils.lerp;
-  /** The cheek's top at z: level to the bevel, then down to the faces' top. */
+  const F = LEO2A4_CHEEK_FRONT, floor = T.floorY, top = T.blockTopY, slot = T.slotHalfWidthM;
+  const sweep = F.sweepDeg * Math.PI / 180, lerp = THREE.MathUtils.lerp;
+  addLeopard2CheekBlocks(P, F);
+  /** The cheeks' top at the slot's edge: level to the bevel, then down to the faces' top. */
   const topAt = (z: number): number => z <= T.bevelZ ? top : lerp(top, T.faceTopY, (z - T.bevelZ) / (T.faceZ - T.bevelZ));
-  /** A strip of a cheek between |x| a and b (b outward) from z0 to z1; `outer` gives its outer edge's |x| at z (the corner
-   *  cut) and bevels that edge's top, `head` caps its height. */
-  const strip = (side: number, a: number, b: number, z0: number, z1: number, y0: number,
-    o: { outer?: (z: number) => number; head?: number } = {}): THREE.BufferGeometry => {
-    const zs = [z0, T.cornerZ, T.bevelZ, z1].filter((z, i, all) => z >= z0 && z <= z1 && all.indexOf(z) === i)
-      .sort((p, q) => p - q);
-    return sweepFace(sectionSolid(zs.map((z): SolidSection => {
-      const out = o.outer ? o.outer(z) : b, h = Math.min(topAt(z), o.head ?? Infinity), cut = o.outer ? Math.min(bev, h - y0 - 0.02) : 0;
-      const r: SectionPoint[] = o.outer ? [[-out, y0], [-a, y0], [-a, h], [-out + cut, h], [-out, h - cut]]
-        : [[-out, y0], [-a, y0], [-a, h], [-out, h]];
-      return { z, ring: side < 0 ? r : mirrorRing(r) };
-    })));
-  };
-  const cornerCut = (wall: number, edge: number) => (z: number): number =>
-    z <= T.cornerZ ? wall : lerp(wall, edge, (z - T.cornerZ) / (T.faceZ - T.cornerZ));
-  const ex0 = -e.x - e.halfW, ex1 = -e.x + e.halfW;                 // the pocket's column, |x|
-  // right cheek (-X): inboard of the pocket, the pocket's column (under it to the face; over its back to the glass),
-  // outboard with the corner cut
-  P.add('turret', strip(-1, slot, ex0, T.blockZ, T.faceZ, floor));
-  P.add('turret', strip(-1, ex0, ex1, T.blockZ, T.faceZ, floor, { head: e.y0 }));
-  P.add('turret', strip(-1, ex0, ex1, T.blockZ, e.pocketZ, e.y0));
-  P.add('turret', strip(-1, ex1, T.wallRightM, T.blockZ, T.faceZ, floor, { outer: cornerCut(T.wallRightM, T.faceRightM) }));
-  // left cheek (+X), one block
-  P.add('turret', strip(1, slot, T.wallLeftM, T.blockZ, T.faceZ, floor, { outer: cornerCut(T.wallLeftM, T.faceLeftM) }));
-  // the brow over the slot, its top the cheeks' (level, then the bevel), its underside clear of the mantlet at full
-  // elevation, ending 4 cm behind the faces
+  // the brow over the slot, its underside clear of the mantlet at full elevation, ending 4 cm behind the faces
   const brow = (z: number, under: number): SolidSection => ({ z, ring: [[-slot, under], [slot, under], [slot, topAt(z)], [-slot, topAt(z)]] });
-  P.add('turret', sectionSolid([brow(T.blockZ, 0.69), brow(T.bevelZ, 0.69), brow(T.faceZ - 0.04, 0.60)]));
+  P.add('turret', sectionSolid([brow(F.rootZ - 0.02, 0.69), brow(T.bevelZ, 0.69), brow(T.faceZ - 0.04, 0.60)]));
   // the welded joints: the faces with the slot's walls, the block's seam with the shell, each side
   for (const sx of [-1, 1]) {
     P.addEquipment('turretDark', box(0.012, T.faceTopY - floor - 0.04, 0.012), sx * (slot + 0.006), (T.faceTopY + floor) / 2, T.faceZ - 0.006);
     P.addEquipment('turretDark', box(0.014, top - floor - 0.06, 0.014), sx * ((sx < 0 ? T.wallRightM : T.wallLeftM) + 0.003),
-      (top + floor) / 2 - 0.02, T.blockZ + 0.02);
+      (top + floor) / 2 - 0.02, F.rootZ + 0.02);
   }
-  // the lifting lug block low on the right cheek's face (photographed on the Austrian and Singaporean 2A4s)
-  if (lug) P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, leopard2A4FaceZ(0.86) + 0.024, 0, Math.atan(Math.tan(T.faceSweepDeg * Math.PI / 180)), 0);
+  // the lug lies on the right face, turned with its sweep
+  if (lug) P.addEquipment('turretDetail', box(0.30, 0.09, 0.05), -0.86, floor + 0.10, leopard2A4FaceZ(0.86) + 0.024, 0, -sweep, 0);
 }
 
 /**
@@ -188,22 +153,6 @@ function gunAssembly(P: TankBuilderPort, gun: Leopard2A4Gun, wedge: boolean): vo
   muzzleBore(P, { len, r: T.barrelRadiusM });
 }
 
-/**
- * The EMES 15: the sight head's face at the back of the notch in the right cheek, its frame, and the two armoured door
- * leaves folded back against the notch's walls.
- */
-function emes15(P: TankBuilderPort): void {
-  const { box } = KIT;
-  const e = T.emes, wy = (e.y0 + e.y1) / 2;
-  P.addEquipment('turretGlass', box(e.halfW * 2 - 0.16, e.y1 - e.y0 - 0.12, 0.008), e.x, wy - 0.02, e.pocketZ + 0.006);
-  P.addEquipment('turretDark', box(e.halfW * 2 - 0.10, 0.025, 0.02), e.x, e.y1 - 0.07, e.pocketZ + 0.012);
-  P.addEquipment('turretDark', box(e.halfW * 2 - 0.10, 0.02, 0.03), e.x, e.y0 + 0.012, e.pocketZ + 0.016);
-  for (const sx of [-1, 1]) {
-    // a leaf hinged at the notch's mouth, folded back flat against the side wall
-    const x = e.x + sx * (e.halfW - 0.012), z1 = leopard2A4FaceZ(Math.abs(x)) - 0.01;
-    P.addEquipment('turretDetail', box(0.02, e.y1 - e.y0 - 0.06, z1 - e.pocketZ - 0.03), x, wy, (z1 + e.pocketZ + 0.03) / 2);
-  }
-}
 
 /**
  * The roof: the commander's ring (the 2A6 X's) with eight periscopes and its hatch, the PERI R17 ahead of it on its
@@ -374,12 +323,12 @@ function bustleStowage(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
 export function buildLeopard2A4Turret(P: TankBuilderPort, o: Leopard2A4TurretOptions): void {
   P.turretG.position.set(T.pivot[0], T.pivot[1], T.pivot[2]);
   P.add('turret', KIT.cylY(1.00, 1.00, 0.03, P.q ? 48 : 24), 0, 0.013, 0);                       // ring guard
-  turretShell(P);
   const wedge = o.front === 'wedge';
+  turretShell(P, wedge);
   if (wedge) buildLeopard2A6Front(P);
   else {
     frontBlock(P, o.faceLug !== false);
-    emes15(P);
+    addLeopard2Emes15(P, LEO2A4_CHEEK_FRONT);
   }
   gunAssembly(P, o.gun, wedge);
   roofFittings(P, o);
