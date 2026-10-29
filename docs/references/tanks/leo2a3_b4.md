@@ -99,12 +99,15 @@ cavity in the front armour in previous models").
   0.38 m ahead of the earlier build's, the bustle's rear plate at hull z -2.27; the faces vertical to 0.60 m, then a bevel
   back 0.22 m to the cheeks' flat tops (the photographed 2A4 fronts; the owner to that lane: "fronts of leo 2a4s are
   sloped though"); the roof's front plates over them 70 mm (btvt).
-- The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.33 m over it, its vertical edges bevelled and its
-  top chamfered back under the brow, set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
+- The mantlet: 0.93 m wide (btvt, measured), 0.20 m under the bore to 0.23 m over it at its face, its vertical edges
+  bevelled 3 cm and its top one chamfer 0.22 m back up to the brow, where the seal runs (a lifting eye and two bolt heads
+  on it; the gun's root one cone from the face, 0.47 m across, to the sleeve's bolted ring 0.26 m out: the owner's
+  photo), set 3 cm back in the slot (R4's photo critic and the 2A4 lane's four photographed
   2A4s, the Croatian, Singapore, Slovak and Austrian, agree; the research note's 15 cm proud was a low-confidence
   estimate), with the dark gun-port recess under it; the trunnion and the muzzle stay where they were.
-- The grab rails across both cheek faces at a third of their height, and a rubber-faced pad 0.40 by 0.10 m on the right
-  face's foot under the notch (the reference photos; the 2A4 lane's measures).
+- The grab rails, round bars on standoff brackets across both cheek faces, the right one under the notch's sill (0.30 m)
+  and the left one higher (0.37 m); a rubber-faced pad 0.40 by 0.10 m on the right face's foot under the notch; a shallow
+  bolted panel on the left cheek's bevel (the owner's photo; the 2A4 lane's measures).
 - Anatomy, what a round meets: through the notch, the sight head and the 660 mm block behind the cavity (about 0.6 of the
   cheek's line of sight under the sill; the 2A4 front's known weak spot), modelled as `turret_front_sight_notch` (linked
   to the optics) on the face the collision shell meets: the notch has its own lateral band and these turrets'
@@ -153,7 +156,12 @@ cavity in the front armour in previous models").
   opening's height; the mantlet's seal groove, rubber strip and raised cover over the brow; the pad on the right face's
   foot at the photo's 0.40 by 0.10 m; the FERO cap smaller, hanging toward the gun on a slanted chain. Two findings
   stood against the photo: the right rail's height matches it at the cheek's own scale, and the 2A3's "ledge" is the
-  OTCO's rim (R5, the owner's).
+  OTCO's rim (R5, the owner's). Critic round 2 FAIL on the mantlet (its top ran under a brow standing out like a
+  visor): the top one chamfer up to the brow, the eye and bolts on it, the gun's root one cone, the left rail 7 cm
+  higher than the right (the photo's close-up). Round 3 PASS; from its minor list, the sight's panes equal, the lip out
+  past the outer wall, round rails on brackets, the panel on the left cheek's bevel, and a lug no photo shows removed.
+  Left as built: wider cheeks and the notch 8 cm farther from the slot (both would move the armour; the cheek-to-mantlet
+  ratio was read across parts at different distances from the camera), a rounded seal cover.
 - Checks on the R5 build: ids-scoped chain PASS; leopard2a3B4.selftest PASS (worst gun clearance 26.3 mm at yaw -168;
   curve as measured, identical across the three sweeps); techTree, fleetBalance, camoPolicy, camoCatalogProductionIndices,
   authoredPaintCatalog, vehicleFacets, nationIndex, garageOrder, tankIdBoundaries, nationWheelSets PASS; typecheck clean.
