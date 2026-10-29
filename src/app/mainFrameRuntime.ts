@@ -178,12 +178,19 @@ export function createMainFrameRuntime({
   const garageFrameRequest: GarageFrameRequest = { animate: false };
   let lastMs = -1;
   let lastFov = camera.fov;
+  // (battle-camera-264) the off-axis terms of the projection the cascades were fitted to: the chase framing's lens shift
+  // (cameraRig.ts applyLens, cameraLens.ts) moves the frustum without a fov change, and CSM's slices are the projection's
+  // unprojection at its last fit
+  let lastLensX = camera.projectionMatrix.elements[8];
+  let lastLensY = camera.projectionMatrix.elements[9];
   let lastCinematicActive = false;
   let lastRenderedPhase = game.phase;
   let viewportChanged = false;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
+    lastLensX = camera.projectionMatrix.elements[8];
+    lastLensY = camera.projectionMatrix.elements[9];
   };
 
   // hot-path: every frame (the scoped fog)
@@ -299,9 +306,12 @@ export function createMainFrameRuntime({
       && lastRenderedPhase !== 'garage'
       && typeof trace?.mark === 'function';
     const frameStartedAt = profileGarageReturn ? performance.now() : 0;
-    if (camera.fov !== lastFov) {
+    const projection = camera.projectionMatrix.elements;
+    if (camera.fov !== lastFov || projection[8] !== lastLensX || projection[9] !== lastLensY) {
       lighting.updateFov();
       lastFov = camera.fov;
+      lastLensX = projection[8];
+      lastLensY = projection[9];
     }
     const garageShadowsDirty = game.phase === 'garage'
       && (viewportChanged || showroom.moving || pedestal.switchPending || isGaragePresentationDirty());

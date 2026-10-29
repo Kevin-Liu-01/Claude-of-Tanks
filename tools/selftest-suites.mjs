@@ -888,6 +888,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cameraRig.selftest.mjs',
     // battle-camera-264: the chase framing solved from the HUD's bands (every supported layout clear of the bottom band)
     'src/engine/chaseFraming.selftest.mjs',
+    // battle-camera-264: the lens shift in every rebuilt view ray (aerial, contact, clouds) and the near trees' cull
+    'src/engine/cameraLens.selftest.mjs',
     'src/engine/showroomLateParts.selftest.mjs',
     // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
     'src/engine/watchCamera.selftest.mjs',
