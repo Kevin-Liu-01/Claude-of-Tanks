@@ -3332,17 +3332,13 @@ function plannedCardTeams(specId: string, request: { randomRoster: boolean; game
 
 /**
  * Who runs a solo battle's authority (RUST-ENGINE-DECISION §7). A solo game against bots never creates a multiplayer
- * session (the owner, 2026-10-26, release 256). Since release 261 (the owner's "yes", DECISIONS 2026-10-27) a free sortie
- * in a mode whose parity the solo sim Worker has passed (SOLO_WORKER_MODES) runs on that Worker
- * (src/game/soloSimBattleRuntime.ts: no room, session or multiplayer UI), and a Worker that cannot boot hands the battle to
- * the page under the same cover. The campaign, a watched battle, the practice and co-op modes, the other versus modes until
- * each passes its own parity check, a battle Jev commands, the mobile tier and a browser without Workers stay on the page.
- * `?soloAuthority=page` keeps every battle on the page (diagnosis, rollback); `?soloAuthority=worker` puts any versus mode on
- * the Worker, and `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis.
+ * session (the owner, 2026-10-26, release 256), and it runs locally, on the page's own simulation: no match client, no
+ * prediction against an authority, no interpolation buffer (the owner, 2026-10-29: "everything is now delayed laggy as if it
+ * was using the multiplayer architecture"; release 261's solo sim Worker default, DECISIONS 2026-10-27, is reverted).
+ * `?soloAuthority=worker` puts any versus mode on the solo sim Worker (src/game/soloSimBattleRuntime.ts), and
+ * `?soloAuthority=host` on a local host (mp/session/soloHostEntry.ts), for diagnosis; `?soloAuthority=page` names the default.
  */
 const SOLO_AUTHORITY_PARAM = /[?&]soloAuthority=(host|worker|page)\b/.exec(location.search)?.[1] ?? null;
-/** The modes a solo battle runs on the solo sim Worker by default: the quick battle's standard rules (phase 4's gates). */
-const SOLO_WORKER_MODES: ReadonlySet<string> = new Set(['standard']);
 function soloAuthorityFor(
   gameMode: string | null | undefined, { campaign = false, watch = false }: { campaign?: boolean; watch?: boolean } = {},
 ): { authority: 'host' | 'worker' | 'page'; reason: string } {
@@ -3357,9 +3353,7 @@ function soloAuthorityFor(
   if (typeof Worker !== 'function') return page('no_worker');
   if (SOLO_AUTHORITY_PARAM === 'host') return { authority: 'host', reason: 'forced' };
   if (SOLO_AUTHORITY_PARAM === 'worker') return { authority: 'worker', reason: 'forced' };
-  if (!SOLO_WORKER_MODES.has(mode)) return page('parity');
-  if (getDeviceTier() === 'mobile') return page('mobile');
-  return { authority: 'worker', reason: 'default' };
+  return page('local');
 }
 
 /** A battle's authority, once an entry: the session note `solo:<authority>:<reason>` on its entry record. */
