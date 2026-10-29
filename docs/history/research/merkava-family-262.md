@@ -234,8 +234,16 @@ tables live in each mark's packet: [Mk 1B](../../references/tanks/merkava1b.md),
   turret modules refit at a 2 cm crease tolerance (the 1 cm fit folded their flat plates). The 4B's sponson bin lids
   ride the hull. The Baz's right cheek top plate dropped (read as an arrowhead over the gun by both critics).
 - Critics, clay pairs against the sources (two model-distinct blind critics, the lower score counts; overall):
-  r11 1B 4, 2B 5, 2D 5, 3C 5, Baz 5, 4B 5; r12 1B 6, 2B 5, 2D 5, 3C 6, Baz 4, 4B 5. Main's bar for release: every mark
-  at 6 or more and a blind A/B preferring the new build over main's on every mark; all six or none.
+  r11 1B 4, 2B 5, 2D 5, 3C 5, Baz 5, 4B 5; r12 1B 6, 2B 5, 2D 5, 3C 6, Baz 4, 4B 5; r13 1B 6, 2B 6, 2D 6, 3C 6, Baz 5,
+  4B 4; r14 1B 5, 2B 6, 2D 5, 3C 6, Baz 6, 4B 5 (the 1B and 2D frames identical to r13's: the critics move a point on
+  the same frames); r15 1B 6, 2B 6, 2D 5, 3C 6, Baz 6, 4B 4. Main's bar for release: every mark at 6 or more and a
+  blind A/B preferring the new build over main's on every mark; all six or none. The blind A/B (the source as
+  reference, the two builds in a seeded order and its mirror, one judge per order, both models) preferred the new
+  build on all six marks in every wave (r2, r3, r4), confidence 4-5. Release 263/264: not ready (2D 5, 4B 4); the
+  branch goes to the next release. The open defects both critics agree on: the 4B's and 2D's cheek modules read as
+  folded plates (neither the 1 cm nor the 2 cm crease fit gives one flat plate per face), the bustles open where the
+  sources' tarps cover them (the 3C, 2D and 4B), the lamps (round lenses in guards), the 105 mm evacuator's bands,
+  the 1B/2B mask cover, the 4B's skirt rails and cupola.
 - The 4B's drone dock: its measured roof is its removable armour modules (never dock support) and the roof MAGs'
   sweeps; no seat in the full grid search. Main's ruling: a sealed exemption (`src/sim/droneDockRules.ts`
   DRONE_DOCK_EXEMPT; in the drone mode the 4B gets no flight, no dock drawn, no seat record), a MISSION_RECEIVER_SEATS
