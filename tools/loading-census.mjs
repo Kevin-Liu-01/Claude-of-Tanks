@@ -98,7 +98,7 @@ function plan() {
 }
 
 /** The documents whose first view is a page's own shell (the game's and the Studio's is the boot screen). */
-const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'gallery', '404']);
+const SITE_PAGES = new Set(['home', 'docs', 'docs-topic', 'docs-fleet', 'gallery', '404']);
 
 /** The findings one row's timeline holds, under one condition. */
 function judge(row, condition, t) {
@@ -317,8 +317,9 @@ try {
           { label: `loading-census-${pageName}-${layout}` });
         for (const condition of CONDITIONS) {
           const rowsHere = rows.filter((r) => condition === 'slow' || r.offline !== false);
-          // the page at rest: its row's rest, or its first row's box
-          const rest = rows.find((r) => r.rest)?.rest ?? rows[0].box;
+          // the page at rest: its row's rest (read from every row of the page, so an --only run of in-app rows still finds
+          // the Garage's), or its first row's box
+          const rest = Object.values(LOADING_SURFACES).find((r) => r.page === pageName && r.rest)?.rest ?? rows[0].box;
           // a page that cannot run records why and the census goes on: one run reports every page
           if (rowsHere.length) {
             try { report.results.push(...await pageRun(browser, server.origin, pageName, rowsHere, layout, condition, rest)); } catch (error) {

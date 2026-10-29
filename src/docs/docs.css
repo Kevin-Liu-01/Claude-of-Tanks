@@ -11,9 +11,6 @@
 /* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
 @layer base{a{color:inherit}button{font:inherit;color:inherit}}
 @layer surfaces{
-/* a still under the kit's reveal from the served markup ([data-reveal] on its box: a chapter card, a hero card, a fleet
-   tile's layer) waits over its box's tone for the page's script to mark it decoded; without scripting it shows as it loads */
-@media (scripting:none){[data-reveal]>:is(img,video,picture){opacity:1}}
 /* the shelf grows with its own type (--docs-side-w): its padding (16 px) and a link's (36 px) around fourteen ems of the
    labels' size, so no label wraps at any width where none wraps at 1280 */
 :root{color-scheme:dark;--docs-banner-h1:clamp(var(--fs-44),3.9vw,var(--fs-60));--docs-h1:clamp(var(--fs-44),5.1vw,var(--fs-76));--docs-h2:clamp(var(--fs-28),3.4vw,var(--fs-52));--docs-fluid-1:clamp(var(--fs-18),1.9vw,var(--fs-24));--docs-fluid-2:clamp(var(--fs-20),2.2vw,var(--fs-28));--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-mono);--docs-side-w:calc(var(--shell-gutter) + 52px + max(var(--fs-floor-12),var(--fs-14)) * 14);--docs-toc-w:260px;--docs-gutter:var(--shell-gutter);--bg:var(--surface-page);--panel:var(--surface-raised);--panel2:var(--surface-menu);--ink:var(--ink-1);--copy:var(--ink-2);--muted:var(--ink-3);--dim:var(--ink-4);--line:var(--line-1);--line2:var(--line-2);--amber:var(--accent);--amber2:var(--accent-hi);--cyan:var(--text-info);--green:var(--text-ok);--red:var(--text-danger);--font:var(--font-ui);--mono:var(--font-mono)}

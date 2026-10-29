@@ -136,6 +136,13 @@
   };
   // a skeleton, or a revealed box still on its tone (src/ui/components/reveal.ts)
   const SKELETON = '[data-skeleton],[class*="skeleton"],[class*="shimmer"],[class*="placeholder"],.cot-c-skel,[data-reveal]:not([data-ready])';
+  // a skeleton a sheet draws on an empty box: its tiles cut from its tone by a gradient mask (the /docs takes' box below
+  // 1100 px). An icon's mask is a url and a scrim's gradient is a background, so neither counts.
+  const drawnSkeleton = (el) => {
+    if (el.childElementCount || el.textContent?.trim() || el.getBoundingClientRect().height < 48) return false;
+    const css = getComputedStyle(el);
+    return /gradient/.test(css.maskImage || css.webkitMaskImage || '');
+  };
   const BUSY = '[aria-busy="true"]';
   const STATUS = '[role="status"],[role="progressbar"],[role="alert"],[aria-live="polite"],[aria-live="assertive"],output';
   // a control that runs the load again, or a notice that names the network (a stat called "Reload" is neither)
@@ -148,7 +155,7 @@
     for (const el of box.querySelectorAll('*')) {
       if (out.skeleton && out.media && out.text && out.spinner) break;
       if (!visible(el)) continue;
-      if (el.matches(SKELETON)) out.skeleton = true;
+      if (!out.skeleton && (el.matches(SKELETON) || drawnSkeleton(el))) out.skeleton = true;
       if (el instanceof HTMLVideoElement && el.poster) out.poster = true;
       if ((el instanceof HTMLImageElement && el.complete && el.naturalWidth > 0) || el instanceof HTMLCanvasElement
         || (el instanceof HTMLVideoElement && el.readyState >= 2)) out.media = true;
