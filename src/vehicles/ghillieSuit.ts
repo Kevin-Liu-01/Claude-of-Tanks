@@ -940,6 +940,8 @@ const FLANK_REACH_M = 0.45;
 const TIED_REACH_M = 0.2;
 /** A fitted cover's loft over its plate (the fabric and its cut flaps). */
 const FITTED_GAP_M = 0.007;
+/** The most a fitted cover's laid point may hang below the neighbour holding it before its cells are left out. */
+const FITTED_SAG_M = 0.03;
 /** A draped net's loft over the armour it rests on (its cords and knots lie on the plate; the garnish stands on it). */
 const DRAPE_GAP_M = 0.011;
 /** Sag of a draped net away from what holds it up: metres per square metre of distance (about 9 cm at 40 cm: a
@@ -1201,6 +1203,8 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   // no armour lies under the point)
   const hung = new Float64Array(NX * NZ);
   const tents: Array<{ x: number; z: number; h: number; r: number }> = [];
+  // how far a seated point hangs below the neighbour that holds it (0 where armour holds it)
+  const sagged = new Float64Array(NX * NZ);
   if (seated) {
     // a seated cell with nothing under it takes its nearest supported neighbour's height
     for (let k = 0; k < y.length; k++) if (!supported[k]) {
@@ -1209,7 +1213,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       for (let kk = 0; kk < y.length; kk++) {
         if (!supported[kk]) continue;
         const d = Math.hypot(xs[kk % NX] - xs[i], zs[Math.floor(kk / NX)] - zs[j]);
-        if (d < bestD) { bestD = d; base[k] = base[kk] - SAG_K * d * d; }
+        if (d < bestD) { bestD = d; base[k] = base[kk] - SAG_K * d * d; sagged[k] = SAG_K * d * d; }
       }
     }
     for (let k = 0; k < y.length; k++) {
@@ -1431,6 +1435,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     // 121: "stair-stepped hems", each torn cell a square notch in its edge)
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
     if (edge && !support.fitted && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
+    // a fitted cover lies on its plates: a cell with a corner hung off its neighbours is not laid (r6: with no torn
+    // cells the M1A1 FEP's deck cover showed cells past the deck's edge sagged 3 m down to the ground, which tears had
+    // hidden)
+    if (support.fitted && [j * NX + i, j * NX + i + 1, (j + 1) * NX + i, (j + 1) * NX + i + 1].some((k) => sagged[k] > FITTED_SAG_M)) continue;
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     tri(a, c, b); tri(a, d, c);
   }
