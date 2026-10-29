@@ -70,9 +70,10 @@ function glacisTiles(P:TankBuilderPort):void {
 function sideScreen(P:TankBuilderPort,side:number):void {
   // The steel anti-HEAT screen closes the B3 study's open course between its fender edge (y 1.444) and its lower skirt
   // (top 1.128, outer face x -1.779 / 1.791), hung on four hinges; three courses of tiles cover its forward half from
-  // the bow panel back over the third road wheel, the rear half left bare steel.
+  // the bow panel back over the third road wheel, the rear half left bare steel. The screen is external armour, not
+  // hull: the hull mesh stays the T-72B3 donor's (fleetRenewal.selftest).
   const face=side<0?1.779:1.791;
-  P.add('hull',box(.020,.316,6.10),side*(face-.010),1.286,.20);
+  P.addExternalArmor('hull',box(.020,.316,6.10),side*(face-.010),1.286,.20);
   for(const z of [-2.30,-.70,.90,2.50])P.addEquipment('hullDetail',box(.030,.05,.12),side*(face+.005),1.42,z);
   const x=side*(face+TH/2-.003),h=(1.425-.725-2*JOINT)/3;
   const rotation=new THREE.Matrix4().makeRotationZ(-side*Math.PI/2);

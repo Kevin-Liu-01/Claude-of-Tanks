@@ -124,9 +124,10 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 /** Release 262: the T-84BM Oplot-M's Ukrainian olive and the Oplot-T's Thai three-tone desert came with those tanks,
  * the Challenger 3 TD's three-tone and its field fit's coat with those tanks. */
 // 263: the rebuilt T-84U Oplot's 2000 Ukrainian three-tone is a distinct authored paint (gen-authored-paint-catalog), so
-// it appends after GT too and no saved index moves.
+// it appends after GT too and no saved index moves. So do the PT-84 Sokół's digital and the Żbik's three-tone urban, their
+// Factory coats (their stock stays the PL-01's digital and the urban block).
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
-  'paint_ua_t84_oplot_m'] as const);
+  'paint_ua_t84_oplot_m', 'paint_pt84_sokol', 'paint_pt84_zbik'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
   | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
