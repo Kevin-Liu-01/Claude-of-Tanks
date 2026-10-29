@@ -23,7 +23,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f4bd5327d4ab1cb5",
+    "turret": "766be1e21d7da4e4",
     "gun": "26f2e7c2806dc3cb"
    }
   },
@@ -32,7 +32,7 @@
    "kind": "none",
    "mouths": 0,
    "geometry": {
-    "turret": "2a5508f10ab6bd82",
+    "turret": "c2cdc3ab49d13fca",
     "gun": "f354f19edcb8ea66"
    }
   },
@@ -41,7 +41,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "9f8424ac1bf3da6c",
+    "turret": "c2a0918620f1920b",
     "gun": "faac6065d8f30e11"
    }
   },
@@ -50,7 +50,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "37854d2b8828b06c",
+    "turret": "f9b6accf77f4a133",
     "gun": "67d168ef28eb674c"
    }
   },
@@ -59,7 +59,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2007488d49c8da23",
+    "turret": "b8c751aa4f05ad93",
     "gun": "9a2327d882978916"
    }
   },
@@ -68,7 +68,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "217c08ae3225ef9b",
+    "turret": "241d2b24eff22e6b",
     "gun": "deac2eef7088824b"
    }
   },
@@ -77,7 +77,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "7482e6152e71f724",
+    "turret": "cc3ddb698720268a",
     "gun": "669460de6fdf4739"
    }
   },
@@ -86,7 +86,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "ea1c9f9b73f2b9ba",
+    "turret": "731bd08a9560119a",
     "gun": "194f8c74a7eb4a02"
    }
   },
@@ -95,7 +95,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "52338b9f40fc6d2b",
+    "turret": "14112130643ee1b0",
     "gun": "3c0b2c3e0eaf0f2f"
    }
   },
@@ -104,7 +104,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6d0063f8cb6f534b",
+    "turret": "ccdd1ba1353801ce",
     "gun": "bb973008b0ec5041"
    }
   },
@@ -113,7 +113,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f35163c52e9cd369",
+    "turret": "6a83bdc2f39dbc7f",
     "gun": "a21c3573246a650f"
    }
   },
@@ -149,7 +149,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5074e1fdc95274e8",
+    "turret": "fdf72bcf38eed847",
     "gun": "b21d836e1f459b29"
    }
   },
@@ -158,7 +158,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c2341528e6d7afa9",
+    "turret": "eee65ef42dc2b9d2",
     "gun": "1a34390dcb570fc3"
    }
   },
@@ -167,7 +167,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "9eedc1ed5f9b41fd",
+    "turret": "3a30c20a477596c6",
     "gun": "eb341da9f3fa65c4"
    }
   },
@@ -176,7 +176,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c82604f9e85d2f25",
+    "turret": "1782b1b22efd624d",
     "gun": "f303b85b5784645f"
    }
   },
@@ -185,7 +185,7 @@
    "kind": "turret",
    "mouths": 2,
    "geometry": {
-    "turret": "b98f2279a5252cd5",
+    "turret": "a52dcf76f1b677b1",
     "gun": "3305478b97857a40"
    }
   },
@@ -203,7 +203,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6bab7917cd29c6af",
+    "turret": "40d1a82013f93873",
     "gun": "602a66dc5453dd2f"
    }
   },
@@ -212,7 +212,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "055aed5b4e5894f2",
+    "turret": "9cdd88b3f2a0ecca",
     "gun": "45a6f588efeaf2fb"
    }
   },
@@ -221,7 +221,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6fe95dfd89f376be",
+    "turret": "0c5c82220c62efb2",
     "gun": "a57e7c5b23acfa47"
    }
   },
@@ -230,7 +230,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "cb00dc341d18d424",
+    "turret": "d1d607d32da0dcae",
     "gun": "93d3db365e5a524c"
    }
   },
@@ -239,7 +239,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d540c4a9d0b4ac54",
+    "turret": "19e0c97cc0e4ccac",
     "gun": "736d6509a3ca5ead"
    }
   },
@@ -248,7 +248,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a16e15c5b63fa6d3",
+    "turret": "108450f4949b20d8",
     "gun": "6b58c4e859432e62"
    }
   },
@@ -257,7 +257,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e1a3884574b04549",
+    "turret": "816564b4241a3de6",
     "gun": "fe1f979f643a680b"
    }
   },
@@ -266,7 +266,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "51ec53ba82de8742",
+    "turret": "451022714280d1d0",
     "gun": "df7dbf62a7a9e2bf"
    }
   },
@@ -275,7 +275,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f7dac42fee2b3edf",
+    "turret": "03780f6f47298770",
     "gun": "d5c9e96fc4a79ed8"
    }
   },
@@ -284,7 +284,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2cf997e06f82aaf5",
+    "turret": "11b0ee6d77a5a23a",
     "gun": "c367cc423390da0e"
    }
   },
@@ -329,7 +329,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "789b05f915883f6a",
+    "turret": "ad1db6dcfeb0d857",
     "gun": "301eb6610dc6ad6a"
    }
   },
@@ -338,7 +338,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "8ce8157c648c458d",
+    "turret": "5336eef63239ca31",
     "gun": "925607bc45a3e16e"
    }
   },
@@ -347,7 +347,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e6ff25c01c6cd085",
+    "turret": "615063af4b40fa4b",
     "gun": "097cf074f9df4531"
    }
   },
@@ -356,7 +356,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0d7aa0ac394aee9a",
+    "turret": "0d8ffd57ba702d9d",
     "gun": "60c581e216e962c9"
    }
   },
@@ -383,7 +383,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "bdd3e1a34fc0a3e8",
+    "turret": "b93d24a550b526e0",
     "gun": "3a9a3f385b66c8a8"
    }
   },
@@ -392,7 +392,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "302ec75e45255e53",
+    "turret": "1ccf4a1a3169c934",
     "gun": "b1535e564074f8e3"
    }
   },
@@ -401,7 +401,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c98fd77a742b833c",
+    "turret": "80662e6dd7d61590",
     "gun": "3f68eb9128176147"
    }
   },
@@ -410,7 +410,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "abfaa19389d55002",
+    "turret": "89f2edad5b49d348",
     "gun": "8d1e597a90e0fe9d"
    }
   },
@@ -428,7 +428,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "019383d5cb29e655",
+    "turret": "c9c817fc9197dbfa",
     "gun": "0fc9fd77fe8cc681"
    }
   },
@@ -437,7 +437,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "3a04c184b755b291",
+    "turret": "fe4c377b96959ba9",
     "gun": "c78e4ddc90605565"
    }
   },
@@ -446,7 +446,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "fb478e303747836c",
+    "turret": "faf1e6cf729adb42",
     "gun": "194289542e0810c0"
    }
   },
@@ -455,7 +455,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "31e34e9def3dfc73",
+    "turret": "1ffcd5b3549f9b8a",
     "gun": "b74203f4043013ba"
    }
   },
@@ -464,7 +464,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "689b956a44e721a7",
+    "turret": "b2d987cf46c0f5f5",
     "gun": "c41a9e7c36f5eba7"
    }
   },
@@ -473,7 +473,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "03b00f88c2910383",
+    "turret": "d88dfa911649d927",
     "gun": "ff9d88beec97d0a0"
    }
   },
@@ -482,7 +482,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f02875ffde0fc36d",
+    "turret": "704f70df7fc58dda",
     "gun": "7e5badefa4489d1c"
    }
   },
@@ -491,7 +491,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b2829869f50166e4",
+    "turret": "53e4aa36267e9a92",
     "gun": "1c6f8d2b3620e725"
    }
   },
@@ -500,7 +500,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "8692c7ffc7ba22a3",
+    "turret": "b3b3b6112394d152",
     "gun": "30cc9c17bd9d7a42"
    }
   },
@@ -509,7 +509,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d8578532e8747a37",
+    "turret": "ee9a574eaf1fcad4",
     "gun": "ad2484adf1370892"
    }
   },
@@ -518,7 +518,7 @@
    "kind": "none",
    "mouths": 0,
    "geometry": {
-    "turret": "0fa24d34d9189248",
+    "turret": "1c8bd73cd37b4fc1",
     "gun": "59a67db4b0f59708"
    }
   },
@@ -527,7 +527,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "74a188a3759889af",
+    "turret": "a02e86540a4b9b87",
     "gun": "ded333a46f6ff563"
    }
   },
@@ -545,7 +545,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "3f6e4a17e6bd254c",
+    "turret": "dc114b7739cb0edf",
     "gun": "1969a332c744d7ee"
    }
   },
@@ -554,7 +554,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "13fe702b11c0c827",
+    "turret": "cd862578a0635e0b",
     "gun": "f87f812fa07e1625"
    }
   },
@@ -563,7 +563,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4b9b2cb5ed92d683",
+    "turret": "57bb2a6fb96925ae",
     "gun": "a22fc474db7fb783"
    }
   },
@@ -572,7 +572,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f21cd082e1979147",
+    "turret": "5bd6a663cc4e764d",
     "gun": "a4599132f5db8197"
    }
   },
@@ -581,7 +581,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5976cd156af9ef6d",
+    "turret": "6ee9e5e6b94cd4be",
     "gun": "aa118c17e2454475"
    }
   },
@@ -590,7 +590,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "43311f4a54abd68c",
+    "turret": "4c5521cbd3502edc",
     "gun": "49ba9c9013b72e2c"
    }
   },
@@ -626,7 +626,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6f20072aa5fe66fb",
+    "turret": "d250a50dcc2130f2",
     "gun": "3f89ae065c2ed22d"
    }
   },
@@ -671,7 +671,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0414bc46ca508311",
+    "turret": "b760b958e1460a2e",
     "gun": "feaf409009663183"
    }
   },
@@ -689,7 +689,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "93e43a1e27325e47",
+    "turret": "b0d4743ff346b8a5",
     "gun": "174ff3c32785806a"
    }
   },
@@ -698,7 +698,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "bba236f8966c5f06",
+    "turret": "780129b89561f835",
     "gun": "2dca5d3698c26f32"
    }
   },
@@ -707,7 +707,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "107c268bf768b8b5",
+    "turret": "fa2d97b87b52c87d",
     "gun": "f7780404f86c5e4d"
    }
   },
@@ -716,7 +716,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "99400802e5fe5f5d",
+    "turret": "4eb45875e6e78db2",
     "gun": "cb55d61a21e3e3fb"
    }
   },
@@ -725,7 +725,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "80bb17fa937ac342",
+    "turret": "efc918961d4aa568",
     "gun": "f1eac239d7e95795"
    }
   },
@@ -734,7 +734,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "24451b25abd45b47",
+    "turret": "354397cbc8d94ee5",
     "gun": "d2ad441914fa1207"
    }
   },
@@ -743,7 +743,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "78205048fa64c3b4",
+    "turret": "142e2e67157cb308",
     "gun": "e67ea65bf35d63eb"
    }
   },
@@ -752,7 +752,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4d385652a8497e67",
+    "turret": "9df5e707cf0074ed",
     "gun": "196b21eeece32945"
    }
   },
@@ -761,7 +761,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "befe22622b5dc533",
+    "turret": "e87b4233b716c963",
     "gun": "1bc1238064bb1412"
    }
   },
@@ -770,7 +770,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e96cd58ba8f578c2",
+    "turret": "aa17b6a31abf63e8",
     "gun": "cc75355441259369"
    }
   },
@@ -779,7 +779,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "24712c62236130aa",
+    "turret": "e6a816c46651b242",
     "gun": "5690d0ba49cd2094"
    }
   },
@@ -788,7 +788,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "cffea1f6886dee10",
+    "turret": "e7b8f0c251d9cf12",
     "gun": "095969821480d137"
    }
   },
@@ -797,7 +797,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f6e411b297785287",
+    "turret": "2c6e599eec2da6f6",
     "gun": "a2abe8ae7dbe365a"
    }
   },
@@ -806,7 +806,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6159f0c21ebd8d2b",
+    "turret": "8be758db912dbb87",
     "gun": "ca90da6e191b6fea"
    }
   },
@@ -815,7 +815,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "26723f122c02ff5b",
+    "turret": "3887d51581148625",
     "gun": "220e56ed7b16516d"
    }
   },
@@ -824,7 +824,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a2720865375595ff",
+    "turret": "d3530cece8bd07f6",
     "gun": "6cdb19826899c78d"
    }
   },
@@ -833,7 +833,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "88cecdcd8cd285db",
+    "turret": "f7d45454d451063f",
     "gun": "232aa3c500b3e9d7"
    }
   },
@@ -842,7 +842,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0f52fd5368a3bf23",
+    "turret": "78adce3b44d3ca1e",
     "gun": "b50fcfb4e9e573ac"
    }
   },
@@ -851,7 +851,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2bbf61c0059e3cd0",
+    "turret": "3353e8eebf7e9670",
     "gun": "b6b70118aaa96050"
    }
   },
@@ -860,7 +860,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e714c1112d96ea4f",
+    "turret": "5e12509e25ee3723",
     "gun": "61f80e58684a6b5c"
    }
   },
@@ -869,7 +869,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f81d936eef91313d",
+    "turret": "706030ad1c25184e",
     "gun": "f04d49e8052503a5"
    }
   },
@@ -878,7 +878,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "86193e7873041032",
+    "turret": "eae2254395b98154",
     "gun": "81b4e5050beff788"
    }
   },
@@ -887,7 +887,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f3a5e16d40e520b7",
+    "turret": "25c6b437a45477fd",
     "gun": "d2a1aab795aef0a0"
    }
   },
@@ -896,7 +896,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6dfdd5a7f6f26c31",
+    "turret": "0ed8e8e7bf6056bd",
     "gun": "f1cb6ce787c77ed8"
    }
   },
@@ -905,7 +905,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f2dde51090eec4b4",
+    "turret": "429cf7d974b2eee2",
     "gun": "9f64474740acaeff"
    }
   },
@@ -914,7 +914,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "39080c40e2bd4f46",
+    "turret": "023f80154a044a9b",
     "gun": "109e061ee0f81f71"
    }
   },
@@ -923,7 +923,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2ae998f043567157",
+    "turret": "ffd0edebbafd7694",
     "gun": "0e6ed51a166560a4"
    }
   },
@@ -932,7 +932,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "73d636bd669e7f6c",
+    "turret": "b8dbac7549b6e15a",
     "gun": "e0262515a0616178"
    }
   },
@@ -941,7 +941,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2d78e6bc7b37934a",
+    "turret": "0a571f9fcba62e7e",
     "gun": "f7d60d667171b8d8"
    }
   },
@@ -950,7 +950,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2dc19353c7c7a673",
+    "turret": "bd8f1bfd74b5a2db",
     "gun": "87297eaa151f8ea0"
    }
   },
@@ -959,7 +959,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e86c61303199d292",
+    "turret": "d53c2e1b6833cc3f",
     "gun": "a4b16e6a4faa500e"
    }
   },
@@ -995,7 +995,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e4b66b0125684239",
+    "turret": "eca9ceef550f944f",
     "gun": "091ededd51848d5e"
    }
   },
@@ -1004,7 +1004,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a15a7710cb0ffb3c",
+    "turret": "483fe64714bb5073",
     "gun": "62069a7c34948111"
    }
   },
@@ -1013,7 +1013,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "703bf592c278c385",
+    "turret": "92f5d9c41de41445",
     "gun": "b1808ca267c75e69"
    }
   },
@@ -1022,7 +1022,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "1515e636fc9d122d",
+    "turret": "afce7ec568754de1",
     "gun": "10adf7f2474df0a3"
    }
   },
@@ -1031,7 +1031,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "8576a84269d44a93",
+    "turret": "5a03cb28229873c5",
     "gun": "7087cde3637e8250"
    }
   },
@@ -1040,7 +1040,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b107cefe82d68cc7",
+    "turret": "191545124ab5c19d",
     "gun": "c0913bb884125d69"
    }
   },
@@ -1049,7 +1049,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b1559ee1feb726d9",
+    "turret": "39fe79a95663f4ab",
     "gun": "9409a1190c570fe1"
    }
   },
@@ -1058,7 +1058,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5aa133aad2346766",
+    "turret": "6d79c9599fa6a62a",
     "gun": "b7bcd226aefc201f"
    }
   },
@@ -1067,7 +1067,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5c3ec49d9c175ebe",
+    "turret": "a1512bd41ec57e21",
     "gun": "8f548128a08a419f"
    }
   },
@@ -1076,7 +1076,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f917b0f4bc0b6b4a",
+    "turret": "11422e614c19a7c3",
     "gun": "1f04c29060254936"
    }
   },
@@ -1085,7 +1085,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "42d6a5c367f3abbd",
+    "turret": "b0a77761155cc506",
     "gun": "dba588c39de925e3"
    }
   },
@@ -1094,7 +1094,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "657c8310a3f7df31",
+    "turret": "2b58d156e1b6458c",
     "gun": "5c72e1c89f533991"
    }
   },
@@ -1103,7 +1103,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "138b62e55c0c2444",
+    "turret": "de88f88b7b8ae28c",
     "gun": "0742ee214fbbe88b"
    }
   },
@@ -1112,7 +1112,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "30fbdab3b89dad74",
+    "turret": "3b6d8373c225d9e3",
     "gun": "3ca3eb666a0c807c"
    }
   },
@@ -1121,7 +1121,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6486992093504ff8",
+    "turret": "b893d92ca1d0a67a",
     "gun": "50c39c0f4b2bafca"
    }
   },
@@ -1130,7 +1130,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d101e19a50c6d3b3",
+    "turret": "031bed8db4af2ecc",
     "gun": "cb2133009d8db37a"
    }
   },
@@ -1139,7 +1139,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "ef8431122ba4c037",
+    "turret": "96ce2a80237c6b12",
     "gun": "e2f08f017815e52d"
    }
   },
@@ -1148,7 +1148,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "320d8585ac393f4c",
+    "turret": "abb2a5203d0976cd",
     "gun": "c1f29bcedc472b62"
    }
   },
@@ -1157,7 +1157,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "fc4a60a6fe052620",
+    "turret": "4f02179d2326e484",
     "gun": "9a8d7f7f1ff1874a"
    }
   },
@@ -1166,7 +1166,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d8845488b3f27d8f",
+    "turret": "c301599c01151314",
     "gun": "7839a02cdf0464ae"
    }
   },
@@ -1175,7 +1175,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "56397cf3fcc7c080",
+    "turret": "f830b9a4e12b8a01",
     "gun": "db9c56bf1384b697"
    }
   },
@@ -1184,7 +1184,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "83236e3420469f66",
+    "turret": "254ed784121a66c7",
     "gun": "2a91b32ea38edb1a"
    }
   },
@@ -1193,7 +1193,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "83eeaa37fc00e593",
+    "turret": "acd82c13a208a259",
     "gun": "aece4b5aaba36198"
    }
   },
@@ -1202,7 +1202,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "13ae51693009cb6b",
+    "turret": "281bab785685c60b",
     "gun": "c6d66f2eaebbc1fc"
    }
   },
@@ -1220,7 +1220,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "fa28bd59ed8b434b",
+    "turret": "670f7ecb930709ad",
     "gun": "292e6624692b372f"
    }
   },
@@ -1229,7 +1229,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "79dc7e07f0a922aa",
+    "turret": "ad5584e5041d317f",
     "gun": "e0e5e81cf82dd4c5"
    }
   },
@@ -1238,7 +1238,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c982c1820cd1ebe7",
+    "turret": "540e472a612c5703",
     "gun": "bef90fd9efba6a66"
    }
   },
@@ -1247,7 +1247,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5a91bb0a6c8cc0c7",
+    "turret": "62c6c1a3869f5c22",
     "gun": "4a33afb16d5e20cf"
    }
   },
@@ -1256,7 +1256,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c8bb0b24c0945482",
+    "turret": "02ce85d6323a7a47",
     "gun": "1ed4c507882a338a"
    }
   },
@@ -1274,7 +1274,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "536a1776320e7bdc",
+    "turret": "d9749c6fa454011a",
     "gun": "8de4428541cef19c"
    }
   },
@@ -1283,7 +1283,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "46bd8e2831761ab0",
+    "turret": "aba2fa48bc570f32",
     "gun": "81f6ecf7f80ec4e9"
    }
   },
@@ -1321,7 +1321,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0764a6657c318548",
+    "turret": "94e247b64f649816",
     "gun": "cf896491fab54e22"
    }
   },
@@ -1330,7 +1330,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "23fcf574af7ff1b4",
+    "turret": "a1ef75afb387a06a",
     "gun": "2b7052591dc1544c"
    }
   },
@@ -1339,7 +1339,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "546c001884a2ed83",
+    "turret": "b973574508f746e0",
     "gun": "4281b35901b3a6f9"
    }
   },
@@ -1357,7 +1357,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "262e7cd9e39921f2",
+    "turret": "aea520541b77c0eb",
     "gun": "78b1a66720799541"
    }
   },
@@ -1366,7 +1366,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d0e3e8ae9f339237",
+    "turret": "8363bbe31834c4ae",
     "gun": "b92dc13f14b5f83a"
    }
   },
@@ -1402,7 +1402,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "536a7f4a587a3cbb",
+    "turret": "059dba6056da1687",
     "gun": "3202e78b11403ac8"
    }
   },
@@ -1411,7 +1411,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f35aed708906b7c4",
+    "turret": "561e89eba3efcbf4",
     "gun": "f77ad3942c027ac3"
    }
   },
@@ -1420,7 +1420,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d5340ffa8b044043",
+    "turret": "705defd6a8830f76",
     "gun": "19928470e2c2af86"
    }
   },
@@ -1429,7 +1429,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0543d7eb51008509",
+    "turret": "f2426d719b884d45",
     "gun": "6d8918b5861aa2c4"
    }
   },
@@ -1438,7 +1438,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c33dfb6f852ccd6f",
+    "turret": "a9f417f19ea8df2a",
     "gun": "865aebcaaf993b47"
    }
   },
@@ -1447,7 +1447,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f991192f5716ada3",
+    "turret": "42e92cbc0a436927",
     "gun": "561766cc12a7e10d"
    }
   },
@@ -1456,7 +1456,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "7e04d7df7989db3e",
+    "turret": "408e9a779a838eb8",
     "gun": "2b29d84d589d1480"
    }
   },
@@ -1465,7 +1465,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "99e7239644a4387b",
+    "turret": "6ee7da379f6d8144",
     "gun": "8571f4b65b54deec"
    }
   },
@@ -1474,7 +1474,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "900e93f9be40199b",
+    "turret": "c25e5a8900a59a64",
     "gun": "f0edf7017d742870"
    }
   },
@@ -1483,7 +1483,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "bc53b060e9709c50",
+    "turret": "b7d107edafabe01d",
     "gun": "124aca15163f3358"
    }
   },
@@ -1492,7 +1492,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "754375f8d0132015",
+    "turret": "6a4727e329b0bc2e",
     "gun": "26bbd7dc6f59ecb8"
    }
   },
@@ -1501,7 +1501,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "77098c4f2162e186",
+    "turret": "6a22b34e22587621",
     "gun": "a0cfa26e08ba6a91"
    }
   },
@@ -1510,7 +1510,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "69f5409a90cf31a1",
+    "turret": "cb7529adafe3e088",
     "gun": "900efaa6dec20de2"
    }
   },
@@ -1519,7 +1519,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "73eb0f2f53e558aa",
+    "turret": "f5d98bff1d8bd11c",
     "gun": "d3ab2b8977d09ada"
    }
   },
@@ -1528,7 +1528,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "50df76c2914e41a1",
+    "turret": "bc1ff38220b31628",
     "gun": "e6c0acd7d7f22d06"
    }
   },
@@ -1537,7 +1537,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a17441e44ecb4dbc",
+    "turret": "b65da12cd0f2ed68",
     "gun": "37adbc4478dd014e"
    }
   },
@@ -1546,7 +1546,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "f95db54881610721",
+    "turret": "71be824ea209bff0",
     "gun": "c863abeef405067a"
    }
   },
@@ -1555,7 +1555,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "17ace5155e444c2e",
+    "turret": "f9825ddbfadba018",
     "gun": "4417473fd1602371"
    }
   },
@@ -1564,7 +1564,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "366363e586d74fd7",
+    "turret": "238fcf4f0e1025b4",
     "gun": "ec5ef73acf84db84"
    }
   },
@@ -1573,7 +1573,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b175c562bd1f13a8",
+    "turret": "7846ab125910e435",
     "gun": "d55206c110b4636f"
    }
   },
@@ -1582,7 +1582,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "7b6b15323f254553",
+    "turret": "38a9f20cd6d9bcbe",
     "gun": "d89274cfd6f67d6c"
    }
   },
@@ -1591,7 +1591,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "8ac824fc4af7f870",
+    "turret": "db518a050980b16e",
     "gun": "3e09b3d512307a09"
    }
   },
@@ -1600,7 +1600,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "bd3f908d69fe2b09",
+    "turret": "605db06de7e66dcf",
     "gun": "5ff0d636c8261d71"
    }
   },
@@ -1609,7 +1609,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4dce7ed64f67fe22",
+    "turret": "80d48671a022f6ae",
     "gun": "eb3721af91cd1c6d"
    }
   },
@@ -1618,7 +1618,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0a9fd7dfcaabcbb1",
+    "turret": "4a272dc8b97ca4ba",
     "gun": "cdbeb10cfa733c60"
    }
   },
@@ -1627,7 +1627,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a16bbcec03c88695",
+    "turret": "fda0a07c1083ebf9",
     "gun": "aace79b147674b25"
    }
   },
@@ -1636,7 +1636,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "7bd899bd66ebe6ea",
+    "turret": "410859fa7c31b8c6",
     "gun": "be7d4746d0e64c14"
    }
   },
@@ -1645,7 +1645,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e24c91764084d140",
+    "turret": "2419a5da1885bc4d",
     "gun": "a3ee65410eb85e76"
    }
   },
@@ -1654,7 +1654,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "fcd39b4e3bd7a879",
+    "turret": "d019be6dc9f529cc",
     "gun": "b61fe635655510bf"
    }
   },
@@ -1663,7 +1663,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "3989cdfce3152ad9",
+    "turret": "05995a7e808976a2",
     "gun": "fba414a0d77f7ffd"
    }
   },
@@ -1690,7 +1690,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0ea8498f5e35c60c",
+    "turret": "41c0defaf693b0d7",
     "gun": "ad7f948f7c0c73a6"
    }
   },
@@ -1699,7 +1699,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2f4f70cbd9ee6bb7",
+    "turret": "3dd62aacd7d667c9",
     "gun": "64267ec5c9a386c2"
    }
   },
@@ -1708,7 +1708,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "6ed68efb5c95fd79",
+    "turret": "2472399b24eef0ee",
     "gun": "edc55e67606ef60e"
    }
   },
@@ -1717,7 +1717,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2244e6f1ef561be2",
+    "turret": "fb2e8ac6a3c41d3c",
     "gun": "6c516d8892d71f18"
    }
   },
@@ -1726,7 +1726,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "31a32300f6f19148",
+    "turret": "2f19914fba4c0070",
     "gun": "958e34e7ea67700a"
    }
   },
@@ -1735,7 +1735,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2ce8a7ab991700a3",
+    "turret": "6d796463bde60ee4",
     "gun": "114b0e61a3e938c8"
    }
   },
@@ -1744,7 +1744,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c2521336ea133fb5",
+    "turret": "2fd6810f98dc7dbb",
     "gun": "2d2c00b04abb7d41"
    }
   },
@@ -1753,7 +1753,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "93ba2ad2b419a969",
+    "turret": "1ad6620c45228b6e",
     "gun": "1406cdf892729d9a"
    }
   },
@@ -1762,7 +1762,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d39948135740ba81",
+    "turret": "ed4d48b720395132",
     "gun": "49129242ef74fedf"
    }
   },
@@ -1771,7 +1771,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "a73dacce42ea13f8",
+    "turret": "6008b9baea4f09ec",
     "gun": "c72b62c4c995fa4f"
    }
   },
@@ -1780,7 +1780,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "1da5ba4cb2da1c8e",
+    "turret": "200a5ceb645a6362",
     "gun": "5fd446183dcccd51"
    }
   },
@@ -1789,7 +1789,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e0e2f17650da1edf",
+    "turret": "c76688dcbf736cc0",
     "gun": "0fe0718954ec6e97"
    }
   },
@@ -1798,7 +1798,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b7fe1e2303a7a811",
+    "turret": "c2437fd70ec46870",
     "gun": "a929a2e6b83e3d2b"
    }
   },
@@ -1807,7 +1807,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "b3b194a1711dcf29",
+    "turret": "5ea30ebda3b88cc5",
     "gun": "1d86ebe34a53f2bb"
    }
   },
@@ -1816,7 +1816,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "53194a434ed429ad",
+    "turret": "c30d7aa6bb935c06",
     "gun": "36ab59beb1827e35"
    }
   },
@@ -1825,7 +1825,7 @@
    "kind": "none",
    "mouths": 0,
    "geometry": {
-    "turret": "670f33e9a05abbc2",
+    "turret": "913720cffbcf6771",
     "gun": "5160c9079da11997"
    }
   },
@@ -1834,7 +1834,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "89211b4c419dfe75",
+    "turret": "7fff06fd95416a8d",
     "gun": "687971a1406ef3bf"
    }
   },
@@ -1843,7 +1843,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e0a9d7c3bfa9b073",
+    "turret": "c3005fc2ff6c3c9c",
     "gun": "e7a5140839336b4c"
    }
   },
@@ -1852,7 +1852,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "d4c89e728475b98e",
+    "turret": "550b9f2300777eaf",
     "gun": "9173b3ab122d8bcf"
    }
   },
@@ -1861,7 +1861,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "755d23a89ede13b2",
+    "turret": "0f8cff9d462e1fc9",
     "gun": "355e841c78ad2dd4"
    }
   },
@@ -1870,7 +1870,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "187f52eb3277a593",
+    "turret": "7674499e1edc0cbb",
     "gun": "ac60f11326983656"
    }
   },
@@ -1888,7 +1888,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "34a88fda2b708a12",
+    "turret": "f0e338b740aa06f0",
     "gun": "ec5111a6d75f72a1"
    }
   },
@@ -1897,7 +1897,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4408e1e8e088f243",
+    "turret": "828ecfea4c058f33",
     "gun": "c8e169b36147e0b9"
    }
   },
@@ -1906,7 +1906,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "793f4e2fd033b60c",
+    "turret": "644087a004c5deb3",
     "gun": "778ed0dfb5f808c7"
    }
   },
@@ -1915,7 +1915,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "882bead915dc39ce",
+    "turret": "980123879145d272",
     "gun": "71df81b598921509"
    }
   },
@@ -1924,7 +1924,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4e3e2d820de1d6ca",
+    "turret": "f2bb7e8aad725a6f",
     "gun": "20e0417f294862af"
    }
   },
@@ -1933,7 +1933,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "c02a6b43029ef1f1",
+    "turret": "66519eb7e3a6da90",
     "gun": "0ac1d891b4eb844a"
    }
   },
@@ -1942,7 +1942,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "95d082858dee30d4",
+    "turret": "0640e2ec3c7e6f30",
     "gun": "9423e111316f8f36"
    }
   },
@@ -1951,7 +1951,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "e5aa0ae0c8289ea9",
+    "turret": "d017c1349e4f2f93",
     "gun": "1b741bdaffef8983"
    }
   },
@@ -1960,7 +1960,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "614196a4b54f593e",
+    "turret": "b8909a7d2f58c406",
     "gun": "ce8fe9e6de5b252f"
    }
   },
@@ -1969,7 +1969,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "25df65d7c9d86e71",
+    "turret": "e81fb065e776b366",
     "gun": "633f40272b66f0da"
    }
   },
@@ -1978,7 +1978,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "2aa2764a5de6f3d9",
+    "turret": "343adb8f2174ab3a",
     "gun": "1428c8678d768cf1"
    }
   },
@@ -1987,7 +1987,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "444a0417c5063895",
+    "turret": "5302fb8dfed07406",
     "gun": "6b0d0b37ca75c8d4"
    }
   },
@@ -1996,7 +1996,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "870b3c81184a9cf7",
+    "turret": "89ad1c884523acb3",
     "gun": "95e1c08e41b9a46d"
    }
   },
@@ -2005,7 +2005,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "0ccb278761aea50a",
+    "turret": "8e16e36c33d44892",
     "gun": "4ce96504b5985f9a"
    }
   },
@@ -2024,7 +2024,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5d9a16b9af5ba8fe",
+    "turret": "7bf609b4b71d2f95",
     "gun": "51286d215d5e7922"
    }
   },
@@ -2042,7 +2042,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "4e13d0b41497179f",
+    "turret": "0f7696f1f9cf3b4c",
     "gun": "69447aa46440a991"
    }
   },
@@ -2051,7 +2051,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "5809ad67d9dc8a43",
+    "turret": "a734f73519cea347",
     "gun": "283495ac1719e5c0"
    }
   },
@@ -2060,7 +2060,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "98724b45b165e578",
+    "turret": "d5f791bfec116086",
     "gun": "df234ddd933b1475"
    }
   },
@@ -2123,7 +2123,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "53d7f9f8d1b85ff1",
+    "turret": "9437b3fc7f6327bf",
     "gun": "ca5600f2c3578d4f"
    }
   },
@@ -2132,7 +2132,7 @@
    "kind": "turret",
    "mouths": 1,
    "geometry": {
-    "turret": "284804a89b2d5c11",
+    "turret": "e772f50a705db871",
     "gun": "f9f012f1579d8e6d"
    }
   }
