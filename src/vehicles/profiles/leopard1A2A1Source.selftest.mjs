@@ -88,6 +88,7 @@ assert.ok(worstMargin > 0.004, `the casting clears the deck crown at every beari
 // The kit: the PERI R12 standing over the right front roof, the 1A5's rear dischargers, the loader's MG3, two racks.
 assert.equal(turretFinish.rearDischargers, 8);
 const [periX, periZ] = turretFinish.periR12;
+assert.ok(periX < 0, `the PERI R12 and the commander stand on the hull's right, -x (${periX})`);
 const periTop = down(mesh('turretEquipment'), turretRig.position.x + periX, turretRig.position.z + periZ);
 assert.ok(periTop > turretRig.position.y + 0.79 + 0.40, `the PERI R12 head stands over the roof (${periTop})`);
 let pintleMgs = 0;

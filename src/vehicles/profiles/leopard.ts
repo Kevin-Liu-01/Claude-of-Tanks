@@ -12712,43 +12712,45 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       liftEye(P, 'turretDetail', s * 0.62, castRoofY - 0.01, -1.10, s * 2.65);
     }
 
-    // EMES 18: the tall armoured sight box on the right front roof, its twin windows behind armoured doors.
-    P.addEquipment('turret', box(0.46, 0.10, 0.44), 0.48, castRoofY + 0.04, 0.32);
-    P.addEquipment('turret', box(0.50, 0.24, 0.47), 0.48, castRoofY + 0.20, 0.32);
-    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, castRoofY + 0.3375, 0.32);
-    P.add('turretDark', box(0.38, 0.16, 0.025), 0.48, castRoofY + 0.20, 0.568);
-    for (const x of [0.39, 0.57]) {
+    // EMES 18: the tall armoured sight box on the right front roof (-x: a +Z hull's right), its twin windows behind
+    // armoured doors.
+    P.addEquipment('turret', box(0.46, 0.10, 0.44), -0.48, castRoofY + 0.04, 0.32);
+    P.addEquipment('turret', box(0.50, 0.24, 0.47), -0.48, castRoofY + 0.20, 0.32);
+    P.addEquipment('turret', box(0.54, 0.035, 0.51), -0.48, castRoofY + 0.3375, 0.32);
+    P.add('turretDark', box(0.38, 0.16, 0.025), -0.48, castRoofY + 0.20, 0.568);
+    for (const x of [-0.57, -0.39]) {
       P.add('turretGlass', box(0.115, 0.105, 0.014), x, castRoofY + 0.20, 0.584);
       P.addEquipment('turret', box(0.15, 0.14, 0.014), x, castRoofY + 0.20, 0.600);
     }
-    P.addEquipment('turret', box(0.024, 0.16, 0.018), 0.48, castRoofY + 0.20, 0.589);
+    P.addEquipment('turret', box(0.024, 0.16, 0.018), -0.48, castRoofY + 0.20, 0.589);
 
     // Structural hatches/cupolas stay hittable. Sights, MG, launchers, antennae and stowage use equipment ownership
-    // and never grow armor.
-    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), 0.48, castRoofY + 0.03, -0.62);
+    // and never grow armor. The commander's cupola and periscope on the right (-x), the loader's hatch and MG3 on the
+    // left (+x).
+    P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), -0.48, castRoofY + 0.03, -0.62);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      P.add('turretGlass', box(0.055, 0.045, 0.018), 0.48 + Math.sin(a) * 0.23, castRoofY + 0.0825, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
+      P.add('turretGlass', box(0.055, 0.045, 0.018), -0.48 + Math.sin(a) * 0.23, castRoofY + 0.0825, -0.62 + Math.cos(a) * 0.23, 0, a, 0);
     }
-    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), 0.48, castRoofY + 0.13, -0.62);
-    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), 0.48, castRoofY + 0.175, -0.62);
-    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.52, castRoofY + 0.0275, -0.46);
-    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, castRoofY + 0.0975, -0.46);
-    P.addEquipment('turret', box(0.16, 0.16, 0.18), 0.48, castRoofY + 0.08, -0.26);
-    P.add('turretGlass', box(0.10, 0.075, 0.014), 0.48, castRoofY + 0.09, -0.165);
-    for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
+    P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), -0.48, castRoofY + 0.13, -0.62);
+    P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), -0.48, castRoofY + 0.175, -0.62);
+    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), 0.52, castRoofY + 0.0275, -0.46);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), 0.52, castRoofY + 0.0975, -0.46);
+    P.addEquipment('turret', box(0.16, 0.16, 0.18), -0.48, castRoofY + 0.08, -0.26);
+    P.add('turretGlass', box(0.10, 0.075, 0.014), -0.48, castRoofY + 0.09, -0.165);
+    for (const x of [0.28, 0.10, -0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
     {
       // Low, fully seated loader's MG station: bearing, ammunition box and shield share one roof footprint.
-      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, castRoofY + 0.065, -0.30);
-      P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, castRoofY + 0.12, -0.30);
+      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), 0.45, castRoofY + 0.065, -0.30);
+      P.addEquipment('turret', box(0.24, 0.08, 0.20), 0.45, castRoofY + 0.12, -0.30);
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
         scale: 0.96, seed: 15, shield: true, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = 'leo1LoaderMg3';
-      mg.position.set(-0.45, castRoofY + 0.12, -0.30);
-      mg.rotation.y = 0.34;
+      mg.position.set(0.45, castRoofY + 0.12, -0.30);
+      mg.rotation.y = -0.34;
       P.turretG.add(mg);
     }
     // Wegmann 76 mm smoke launchers: four per side on the casting behind the side plates.
@@ -12866,7 +12868,7 @@ function* buildLeo1A5ArticulatedProfileSteps(P: TankBuilderPort): TankProfileBui
       for (const t of [0.22, 0.72]) P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), x, ...onBrow(t, 0.007));
       P.addGunExtraDark(xform(cylZ(0.020, 0.018, 8), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), x, ...onChin(0.5, 0.007));
     }
-    // the telescope's port on the left of the brow and the coaxial MG's on the right of the chin
+    // the gunner's telescope port on the right of the brow (-x), the coaxial MG's on the left of the chin (+x)
     P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
     P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.32, ...onChin(0.55, 0.014));
     // the collar around the tube where it leaves the ridge

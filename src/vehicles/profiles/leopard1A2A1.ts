@@ -412,9 +412,9 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       }
     }
 
-    // PERI R12: the commander's stabilised periscope, a tall box on its pedestal over the right front roof, its window
-    // looking forward under a hood (the Munster 1A2A1's).
-    const periX = 0.46, periZ = 0.24, periBase = coreRoofAt(periZ);
+    // PERI R12: the commander's stabilised periscope, a tall box on its pedestal over the right front roof (-x: a +Z hull's
+    // right), its window looking forward under a hood (the Munster 1A2A1's).
+    const periX = -0.46, periZ = 0.24, periBase = coreRoofAt(periZ);
     P.addEquipment('turret', box(0.30, 0.12, 0.32), periX, periBase + 0.04, periZ);
     P.addEquipment('turret', cylY(0.11, 0.12, 0.08, P.q ? 16 : 10), periX, periBase + 0.13, periZ);
     P.addEquipment('turret', box(0.44, 0.30, 0.50), periX, periBase + 0.31, periZ);
@@ -424,8 +424,9 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
     P.addEquipment('turret', box(0.36, 0.022, 0.08), periX, periBase + 0.43, periZ + 0.28, 0.20, 0, 0);
     for (const dx of [-0.16, 0.16]) P.addEquipment('turretDark', box(0.022, 0.20, 0.022), periX + dx, periBase + 0.31, periZ - 0.26);
 
-    // The commander's cupola behind it, the loader's hatch and MG3, the gunner's periscopes, the beacon and ventilator.
-    const cmdX = 0.48, cmdZ = -0.62;
+    // The commander's cupola behind it, the loader's hatch and MG3 on the left (+x), the gunner's periscopes, the beacon
+    // and ventilator.
+    const cmdX = -0.48, cmdZ = -0.62;
     P.addCupola('turret', cylY(0.26, 0.27, 0.06, P.q ? 20 : 14), cmdX, castRoofY + 0.03, cmdZ);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
@@ -433,20 +434,20 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
     }
     P.addCupola('turret', cylY(0.21, 0.22, 0.045, P.q ? 20 : 14), cmdX, castRoofY + 0.13, cmdZ);
     P.addCupola('turret', xform(sph(0.19, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.26, 1]), cmdX, castRoofY + 0.175, cmdZ);
-    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), -0.52, castRoofY + 0.0275, -0.46);
-    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), -0.52, castRoofY + 0.0975, -0.46);
-    for (const x of [-0.28, -0.10, 0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
+    P.addCupola('turret', cylY(0.23, 0.24, 0.055, P.q ? 20 : 14), 0.52, castRoofY + 0.0275, -0.46);
+    P.addCupola('turret', xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1, 0.24, 1]), 0.52, castRoofY + 0.0975, -0.46);
+    for (const x of [0.28, 0.10, -0.08]) P.add('turretGlass', box(0.09, 0.035, 0.025), x, castRoofY + 0.01, 0.28, -0.10, 0, 0);
     {
-      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), -0.45, castRoofY + 0.065, -0.30);
-      P.addEquipment('turret', box(0.24, 0.08, 0.20), -0.45, castRoofY + 0.12, -0.30);
+      P.addEquipment('turret', cylY(0.12, 0.14, 0.13, P.q ? 16 : 10), 0.45, castRoofY + 0.065, -0.30);
+      P.addEquipment('turret', box(0.24, 0.08, 0.20), 0.45, castRoofY + 0.12, -0.30);
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the loader's working MG3
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
         scale: 0.96, seed: 15, shield: true, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = 'leo1LoaderMg3';
-      mg.position.set(-0.45, castRoofY + 0.12, -0.30);
-      mg.rotation.y = 0.34;
+      mg.position.set(0.45, castRoofY + 0.12, -0.30);
+      mg.rotation.y = -0.34;
       P.turretG.add(mg);
     }
     const beaconRoof = coreRoofAt(-1.00);
@@ -509,7 +510,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       ridgeHalfWidth: Math.max(...sideRows.map((r) => r[4])),
       wedgeTipZ: wedgeRows.at(-1)![0],
       castFootOverDeckAtEveryBearing: true,
-      periR12: [0.46, 0.24],
+      periR12: [-0.46, 0.24],
       rearDischargers: 8,
       connectedBustleBasket: true,
       bustleRearZ,
@@ -558,7 +559,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       k.high - (k.high - k.ridgeHigh) * t + brow.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + brow.y * out];
     const onChin = (t: number, out: number): [number, number] => [
       k.low + (k.ridgeLow - k.low) * t - chin.x * out, k.bodyZ + (k.ridgeZ - k.bodyZ) * t + chin.y * out];
-    // the telescope's port on the left of the brow and the coaxial MG's on the right of the chin
+    // the gunner's telescope port on the right of the brow (-x), the coaxial MG's on the left of the chin (+x)
     P.addGunExtraDark(xform(cylZ(0.055, 0.05, 14), 0, 0, 0, -Math.atan2(brow.x, brow.y), 0, 0), -0.30, ...onBrow(0.5, 0.012));
     P.addGunExtraDark(xform(cylZ(0.028, 0.06, 10), 0, 0, 0, Math.atan2(chin.x, chin.y), 0, 0), 0.32, ...onChin(0.55, 0.014));
     // the collar around the tube where it leaves the line

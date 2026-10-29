@@ -96,7 +96,7 @@ for (const x of [-1.25, 1.25]) {
     new THREE.Vector3(-Math.sign(x), 0, 0), 0, 3).intersectObject(mesh('turret'), false)[0]?.point.x * Math.sign(x) > 1.18,
   'a spaced side plate stands outboard of the casting');
 }
-const emesLid = down(mesh('turretEquipment'), 0.48, turretRig.position.z + 0.32);
+const emesLid = down(mesh('turretEquipment'), -0.48, turretRig.position.z + 0.32); // the hull's right (-x)
 assert.ok(emesLid > turretRoof + 0.25 && emesLid <= 2.76, `the EMES 18 lid tops out at the published 2.71 m (${emesLid})`);
 let pintleMgs = 0;
 let stowageRacks = 0;
