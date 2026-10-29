@@ -1590,7 +1590,8 @@ function* m48TurretSteps(P: CastPort, V: M48Variant): TankProfileBuild {
   // gun: the trunnion on the model's bore axis; the sloped cast mantlet (its face leans back 25 deg), the gun's root
   // boss and bolted plate, the coax and telescope ports, the AN/VSS-1 searchlight on its posts and side rails
   P.gunG.position.set(0, M48_TRUNNION.y - T.ringY, M48_TRUNNION.z - T.ringZ);
-  P.addGunExtra(m48Mantlet(P.q), 0, 0, GUN_Z0);
+  // (the GA2's own shield replaces the A5's)
+  if (V.mark !== 'm48a2ga2') P.addGunExtra(m48Mantlet(P.q), 0, 0, GUN_Z0);
   // the boss ring on the shield's face round the bore, the gun's root sleeve through it, the coax and sight ports
   P.addGunExtra(cylZ(0.20, 0.08, P.q ? 24 : 12), 0, 0, GUN_Z0 + 0.33);
   P.addGunExtra(cylZ(0.13, 0.27, P.q ? 20 : 12), 0, 0, GUN_Z0 + 0.42);
@@ -2126,17 +2127,18 @@ function* m48MarkFittings(P: CastPort, T: TurretFrame, seat: CastSeat, V: M48Var
 
 /** The GA2's larger cast gun shield (gun frame; the Munster and Dresden tanks): a bulbous casting 1.22 m wide standing
  * 0.30 m ahead of the trunnion at its foot, its face leaning back 20 degrees and bowed 8 cm forward across its width,
- * its top rolling back into the turret's nose; a solid 0.34 m deep (its back inside the casting). */
+ * its top rolling back into the turret's nose; a solid 0.30 m deep (its back inside the casting). Its foot stays 0.17 m
+ * under the bore, clear of the turret race's collar at full elevation (the gun-depression sweep's whole-gun floor). */
 function ga2Mantlet(q: boolean | undefined): Geo {
   // h (over the bore axis), half-width
   const rows: readonly (readonly [number, number])[] = [
-    [-0.30, 0.40], [-0.27, 0.50], [-0.22, 0.56], [-0.14, 0.60], [-0.02, 0.61], [0.12, 0.61], [0.24, 0.59], [0.34, 0.54],
-    [0.42, 0.46], [0.48, 0.36], [0.52, 0.22],
+    [-0.17, 0.44], [-0.14, 0.52], [-0.08, 0.58], [0.02, 0.61], [0.12, 0.61], [0.24, 0.59], [0.34, 0.54], [0.42, 0.46],
+    [0.48, 0.36], [0.52, 0.22],
   ];
-  const t = 0.34, bow = 0.08;
+  const t = 0.30, bow = 0.08;
   const n = q ? 10 : 5;
   const sections = rows.map(([h, w]) => {
-    const f = 0.30 - (h + 0.30) * 0.36;
+    const f = 0.30 - (h + 0.17) * 0.36;
     const ring: SectionPoint[] = [];
     for (let i = 0; i <= n; i++) {
       const x = -w + (2 * w * i) / n;

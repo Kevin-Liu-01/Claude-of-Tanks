@@ -40,6 +40,14 @@ Object.assign(m48a3.dims, { hullLengthM: 6.87, overallLengthM: 8.69, widthM: 3.6
 Object.assign(m48a3, { weightTons: 48.5, topSpeedKmh: 48 });
 m48a3.gun = { ...m48a3.gun, caliberMm: 90 };
 m48a3.visual = { ...m48a3.visual, number: 'B23' };
+// measured by tools/gun-depression-sweep.mjs (26 mm from the hull) on the release-266 build: the full -9 deg over the front
+// 61 deg either side, the air cleaners and the engine deck over the rear
+m48a3.gunPitchByYawDeg = [
+  [0, -9], [61, -9], [63, -8.5], [67, -8], [71, -7.9], [111, -7.9], [115, -8.2], [118, -8.7], [119, -9], [122, -9],
+  [123, -8.7], [124, -5], [125, -3.5], [126, -2.9], [128, -2.2], [135, -0.1], [136, 0.1], [145, 0.3], [149, 0.1],
+  [150, 0], [151, -0.8], [152, -0.8], [153, -1], [154, -2.1], [155, -3.8], [157, -3.6], [158, -2.1], [159, -1.6],
+  [160, -0.1], [161, 1], [162, 1.3], [180, 1.4]
+];
 
 const magach3 = m48('magach3', 'Magach 3', 'Israel');
 Object.assign(magach3.dims, { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 2.95 });
@@ -50,6 +58,14 @@ magach3.armor.turretPlates.push(
   reactivePlate('magach3_turret_era_R', 'right', BLAZER),
 );
 magach3.visual = { ...magach3.visual, marking: 'number', number: '3' };
+// measured by tools/gun-depression-sweep.mjs on the release-266 build (the Blazer on the glacis and the deck)
+magach3.gunPitchByYawDeg = [
+  [0, -9], [28, -9], [34, -8.2], [36, -8.2], [39, -9], [40, -9], [41, -8], [43, -6.7], [44, -6.3], [47, -6.4],
+  [49, -8], [50, -9], [56, -9], [57, -8.9], [69, -7.9], [111, -7.9], [122, -8.9], [123, -7.5], [124, -4.3],
+  [125, -2.8], [126, -2.3], [129, -1.3], [133, -0.2], [138, 0.6], [140, 0.8], [147, 0.8], [150, 0.2], [151, -0.6],
+  [152, -0.6], [153, -0.8], [155, -2.8], [157, -2.9], [161, 1.2], [162, 1.5], [165, 1.6], [166, 2.3], [167, 2.5],
+  [180, 2.5]
+];
 
 const ga2 = m48('m48a2ga2', 'Kpz M48A2GA2', 'Germany');
 Object.assign(ga2.dims, { hullLengthM: 6.87, overallLengthM: 9.30, widthM: 3.63, heightM: 3.16 });
@@ -60,6 +76,15 @@ const sup = m48('m48_super', 'M48 Super', 'Germany');
 Object.assign(sup.dims, { hullLengthM: 6.87, overallLengthM: 9.30, widthM: 3.75, heightM: 3.16 });
 Object.assign(sup, { weightTons: 53, topSpeedKmh: 48 });
 sup.visual = { ...sup.visual, marking: 'number', number: '1' };
+// measured by tools/gun-depression-sweep.mjs on the release-266 build: the armour plate over the mantlet holds the gun
+// up over the front fender bins abeam
+sup.gunPitchByYawDeg = [
+  [0, -9], [21, -9], [22, -5.4], [23, -4.7], [24, -4.6], [28, -4.6], [29, -4.7], [30, -5], [33, -7.7], [36, -7.6],
+  [37, -7.9], [38, -8.4], [41, -8.3], [55, -8.3], [56, -6], [59, -4.6], [65, -4.6], [66, -4.8], [67, -7.3], [68, -8],
+  [71, -7.9], [106, -7.9], [107, -2.8], [108, -1.1], [110, -1.1], [111, -7.9], [124, -8.3], [125, -7], [127, -5.4],
+  [129, -5.4], [130, -5.7], [132, -6.8], [134, -6.3], [136, -6.2], [138, 0], [139, 0.4], [148, 0.6], [153, 1.4],
+  [157, 1.7], [160, 1.7], [161, 2.4], [163, 3.2], [164, 3.3], [180, 3.3]
+];
 
 registerFleetSpecs(registries, ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'],
   { m48a3_patton: m48a3, magach3, m48a2ga2: ga2, m48_super: sup });
