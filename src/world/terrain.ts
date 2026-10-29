@@ -6336,14 +6336,19 @@ void splatCompute() {
         float rowVis = uLandTier > 0.5 ? stripeAA(pitchR, acrossDir) : 0.0;
         float rowAA = (abs(dot(gDwX, acrossDir)) + abs(dot(gDwY, acrossDir))) / pitchR;
         float soilW = mix(soilR, 1.0 - smoothstep(soilR - rowAA, soilR + rowAA, rowF), rowVis);
+        // (round 4: plants on a ruled 0.4 × 0.75 m grid, their relief in the sun, quilted the field like a mattress into
+        // the middle distance) each plant sits off its cell's middle and spreads its own width, some barely grown; the
+        // plants show within ~15 m (a 2 cm footprint) and the rows' mounds soften to a third of themselves past ~5 cm, so
+        // the middle distance is the canopy's leaves, not a lattice
         float rowI = floor(acrossR + 0.5);
         float alongR = dot(wp.xz, rowDir) / 0.40 + fract(rowI * 0.618) * 7.0;
-        float plantVis = rowVis * stripeAA(0.40, rowDir);
+        float plantVis = rowVis * (1.0 - smoothstep(0.008, 0.02, gFootM));
         vec2 plantH = plantVis > 0.0 ? cellHash2(vec2(rowI, floor(alongR)) + vec2(jit * 53.0, 11.0)) : vec2(0.5);
-        float plantQ = fract(alongR) - 0.5;
+        float plantQ = (fract(alongR) - 0.5 - (plantH.y - 0.5) * 0.45) / (0.30 + 0.35 * plantH.x);
         float crownR = rowF * rowF * (3.0 - 2.0 * rowF);
-        float plantR = (0.55 + 0.45 * plantH.x) * (1.0 - 1.6 * plantQ * plantQ);
-        float moundR = mix(0.5, crownR, rowVis) * mix(0.67, plantR, plantVis);
+        float plantR = (0.30 + 0.70 * plantH.x * plantH.x) * max(0.0, 1.0 - plantQ * plantQ);
+        float rowNear = rowVis * mix(1.0, 0.35, smoothstep(0.01, 0.05, gFootM));
+        float moundR = mix(0.5, crownR, rowNear) * mix(0.55, plantR, plantVis);
         float leafN = uLandTier > 0.5 && gFootM < 0.04 ? nz(uv, 0.45, vec2(0.17, 0.43)).r : 0.5;
         float leafF = mix(0.5, smoothstep(0.30, 0.70, leafN), 1.0 - smoothstep(0.015, 0.04, gFootM));
         float litR = smoothstep(0.25, 0.80, n1h);
@@ -6354,7 +6359,7 @@ void splatCompute() {
         if (nrmOn) {
           float reliefW = inField * landW;
           n.xy = mix(n.xy, vec2(0.5), 0.75 * reliefW);
-          n.xy += (acrossDir * sin(acrossR * 6.2832) * 0.12 * rowVis + rowDir * sin(alongR * 6.2832) * 0.10 * plantVis
+          n.xy += (acrossDir * sin(acrossR * 6.2832) * 0.07 * rowNear - rowDir * plantQ * plantR * 0.10 * plantVis
             + (vec2(litR, leafF) - 0.5) * 0.30) * reliefW;
         }
         rows = sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);

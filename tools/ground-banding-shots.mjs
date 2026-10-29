@@ -1,12 +1,17 @@
 // tools/ground-banding-shots.mjs — the ground at battle range, staged identically on every map (item 264, the owner
 // 2026-10-28: "weird parallel lines on ground (steinburg) … on all maps").
 //
-//   node tools/ground-banding-shots.mjs --out=<dir> [--maps=a,b] [--dist=<built dist>] [--root=<checkout>]
-//        [--device=desktop|phone] [--variants=base,noland] [--poses-from=<manifest.json | run dir>] [--tag=<t>]
+//   node tools/ground-banding-shots.mjs --out=<dir> --jobs=<jobs.json> [--root=<checkout>] [--tag=v3] [--place=<key>]
+//        [--wait-hours=16]
 //
-// One page and one render-class ticket a run (tools/capture-lock.mjs): each map is staged on the page while the ticket
-// waits (acquire's prepare; its battlefield shot, __SHOTS.set, the pinned scene), and the hold is its shots alone — at
-// its poses:
+// jobs.json: [{ "name": "before-desktop", "dist": "<built dist>", "device": "desktop" | "phone",
+//               "variants": ["base", "noland"], "maps": ["urban", ...] }, ...]
+//
+// One process, one render-class ticket, one page at a time (tools/capture-lock.mjs): every (job, map) pair is booted on
+// its build and device and staged (its battlefield shot, __SHOTS.set, the pinned scene) while the ticket waits —
+// acquire's prepare, a warming ticket passed over, so the staging holds nobody up — then frozen; the hold is that pair's
+// shots alone (~20 s), and the page is closed. The next pair re-enters under the same ticket, its first place; the
+// pairs run map by map, each map's jobs together. At its poses:
 //   chase   — the battle's own chase rig (cameraRig snapArcade, the default 13 m orbit step) behind the staged hull,
 //             pitched a little down: the camera the owner's Steinburg frame was taken from;
 //   field-N — the same camera class (3.4 m over the ground, 12 m back) over the nearest worked field of the map's
@@ -15,12 +20,12 @@
 //             where a ruled period stands as bands on the screen. A map without a land use has no field poses.
 // `noland` adds the same frame with the land use's strength at 0 (the material's uLandA.x, through the renderer's own
 // uniforms of the terrain program): the A/B that names the land use as the term drawing a band, or clears it.
-// `--poses-from` re-uses a reference run's field points (a manifest, or every manifest*.json of a run's directory), so a
-// before and an after are posed on the same ground.
-// Frames land in <out>/frames/<map>-<pose>-<variant>.png; every map's receipt in <out>/manifest[-<tag>].json (a run
-// resumes; a tag per process lets several batches queue at once, each its own ticket, into one directory).
+// The field points are found again on every build (the land use's layout is the same on both sides of a pair).
+// Frames land in <out>/<job>/frames/<map>-<pose>-<variant>.png; every map's receipt in <out>/<job>/manifest-<tag>.json
+// (a run resumes). (2026-10-28, at load ~450 with 50 GB compressed: three map pages in one browser passed the guard's
+// 10 GB tree cap; staging inside a hold outran puppeteer's protocol timeout; three runs staging at once drew 0.4 fps.)
 import { launchGuardedBrowser, setBrowserGuardContext } from './browser-launch.mjs';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { freezePage, startViteChild, thawPage } from './capture-hold.mjs';
@@ -40,29 +45,30 @@ const DEVICES = Object.freeze({
 const FIELD_GROUPS = Object.freeze([[7, 4], [5, 13, 12, 11, 6, 9]]);
 
 function parse(argv) {
-  const out = { maps: null, root: process.cwd(), dist: null, out: null, device: 'desktop', variants: ['base'], posesFrom: null,
-    waitHours: 10, tag: null };
+  const out = { root: process.cwd(), out: null, jobs: null, waitHours: 16, tag: 'v3', place: null };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
     const [, key, value] = m;
     if (key === 'out') out.out = path.resolve(value);
-    else if (key === 'maps') out.maps = value.split(',').filter(Boolean);
+    else if (key === 'jobs') out.jobs = path.resolve(value);
     else if (key === 'root') out.root = path.resolve(value);
-    else if (key === 'dist') out.dist = path.resolve(value);
-    else if (key === 'device') out.device = value;
-    else if (key === 'variants') out.variants = value.split(',').filter(Boolean);
-    else if (key === 'poses-from') out.posesFrom = path.resolve(value);
     else if (key === 'wait-hours') out.waitHours = Number(value);
     else if (key === 'tag') out.tag = value;
+    else if (key === 'place') out.place = value;
     else throw new Error(`unknown flag --${key}`);
   }
-  if (!out.out) throw new Error('--out=<dir> is required');
-  if (!DEVICES[out.device]) throw new Error(`unknown device ${out.device}`);
-  for (const id of out.maps ?? []) if (!MAP_IDS.includes(id)) throw new Error(`unknown map ${id}`);
-  for (const v of out.variants) if (v !== 'base' && v !== 'noland') throw new Error(`unknown variant ${v}`);
-  out.dist ??= path.join(out.root, 'dist');
-  if (!existsSync(path.join(out.dist, 'index.html'))) throw new Error(`${out.dist} has no build: npm run build first`);
+  if (!out.out || !out.jobs) throw new Error('--out=<dir> and --jobs=<jobs.json> are required');
+  out.jobs = JSON.parse(readFileSync(out.jobs, 'utf8'));
+  for (const job of out.jobs) {
+    job.dist = path.resolve(job.dist);
+    job.variants ??= ['base'];
+    if (!DEVICES[job.device]) throw new Error(`${job.name}: unknown device ${job.device}`);
+    for (const id of job.maps) if (!MAP_IDS.includes(id)) throw new Error(`${job.name}: unknown map ${id}`);
+    for (const v of job.variants) if (v !== 'base' && v !== 'noland') throw new Error(`${job.name}: unknown variant ${v}`);
+    if (!existsSync(path.join(job.dist, 'index.html'))) throw new Error(`${job.dist} has no build: npm run build first`);
+  }
+  out.place ??= `${TOOL}:${path.basename(out.out)}:${out.tag}`;
   return out;
 }
 
@@ -232,79 +238,95 @@ async function shootMap(entry, options, frames, reference) {
   return receipt;
 }
 
-/** A reference run's receipts: one manifest, or every manifest*.json of a run's directory merged. */
-function readReference(file) {
-  const files = statSync(file).isDirectory()
-    ? readdirSync(file).filter((name) => /^manifest.*\.json$/.test(name)).map((name) => path.join(file, name)) : [file];
-  const maps = {};
-  for (const f of files) Object.assign(maps, JSON.parse(readFileSync(f, 'utf8')).maps);
-  return { maps };
-}
-
 async function main(argv) {
   const options = parse(argv);
-  const frames = path.join(options.out, 'frames');
-  mkdirSync(frames, { recursive: true });
-  const manifestFile = path.join(options.out, options.tag ? `manifest-${options.tag}.json` : 'manifest.json');
-  const manifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, 'utf8'))
-    : { tool: TOOL, device: options.device, dist: options.dist, maps: {} };
-  const reference = options.posesFrom ? readReference(options.posesFrom) : null;
-  const todo = (options.maps ?? [...MAP_IDS]).filter((id) => !manifest.maps[id]);
-  if (!todo.length) { console.log(`[${TOOL}] every requested map is already in ${manifestFile}`); return 0; }
-  // One page and one render-class ticket for the run. Each map is staged while the ticket waits (acquire's `prepare`:
-  // a warming ticket is passed over, so the staging holds nobody up), the page is frozen until the lock is held, and
-  // the hold is that map's shots alone (~20 s); the next map re-enters under the same ticket, its first place.
-  // (2026-10-28: three 1080p map pages in one browser passed the guard's 10 GB tree cap; staging inside a hold took
-  // past puppeteer's 15-minute protocol timeout at load 400 and held a render slot all the while.)
-  const label = `${TOOL} ${options.device} ${path.basename(options.out)}`;
+  for (const job of options.jobs) {
+    job.frames = path.join(options.out, job.name, 'frames');
+    mkdirSync(job.frames, { recursive: true });
+    job.manifestFile = path.join(options.out, job.name, `manifest-${options.tag}.json`);
+    job.manifest = existsSync(job.manifestFile) ? JSON.parse(readFileSync(job.manifestFile, 'utf8'))
+      : { tool: TOOL, device: job.device, dist: job.dist, maps: {} };
+  }
+  const order = [...new Set(options.jobs.flatMap((job) => job.maps))];
+  const pairs = order.flatMap((mapId) => options.jobs.filter((job) => job.maps.includes(mapId) && !job.manifest.maps[mapId])
+    .map((job) => ({ job, mapId })));
+  if (!pairs.length) { console.log(`[${TOOL}] every pair is shot`); return 0; }
+  const label = `${TOOL} ${path.basename(options.out)}`;
   setBrowserGuardContext({ hold: label });
   const lock = createCaptureLock();
-  const server = await startViteChild({ root: options.root, mode: 'preview', outDir: options.dist });
-  const d = DEVICES[options.device];
-  const browser = await launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: d.width, height: d.height, protocolTimeout: 2700000 }), timeout: 180000 });
-  let held = false;
-  const close = async () => { if (held) lock.release(); held = false; await browser.close().catch(() => {}); await server.close(); };
+  const servers = new Map();
+  for (const dist of new Set(options.jobs.map((job) => job.dist))) {
+    servers.set(dist, await startViteChild({ root: options.root, mode: 'preview', outDir: dist, port: 5600 + ((process.pid + servers.size * 7) % 300) }));
+  }
+  let browser = null, held = false, entry = null;
+  const launch = () => launchGuardedBrowser(puppeteer, { ...mapProbeLaunchOptions({ width: 1920, height: 1080, protocolTimeout: 2700000 }), timeout: 180000 });
+  const close = async () => {
+    if (held) lock.release();
+    held = false;
+    if (browser) await browser.close().catch(() => {});
+    for (const server of servers.values()) await server.close().catch(() => {});
+  };
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
     process.once(signal, async () => { console.log(`[${label}] ${signal}: releasing and closing`); await close(); process.exit(143); });
   }
+  let ticket = null, shot = 0, failed = 0, pagesSinceLaunch = 0;
   try {
-    const entry = await bootPage(browser, server.url, options.device);
-    let ticket = null, session = null;
-    for (const mapId of todo) {
+    for (const { job, mapId } of pairs) {
       const queued = Date.now();
-      await lock.acquire(options.waitHours * 3600 * 1000, {
-        ticket, place: ticket ? null : `${TOOL}:${path.basename(options.out)}:${options.device}:${options.tag ?? ''}`,
-        lockClass: 'render',
-        prepare: async () => {
-          if (session) { await thawPage(entry.page, session); session = null; }
-          await stageMap(entry, mapId);
-          session = await freezePage(entry.page);
-        },
-      });
+      let session = null;
+      try {
+        await lock.acquire(options.waitHours * 3600 * 1000, {
+          ticket, place: ticket ? null : options.place, lockClass: 'render',
+          prepare: async () => {
+            browser ??= await launch();
+            pagesSinceLaunch++;
+            entry = await bootPage(browser, servers.get(job.dist).url, job.device);
+            await stageMap(entry, mapId);
+            session = await freezePage(entry.page);
+          },
+        });
+      } catch (error) {
+        // (a prepare that throws leaves the queue: the next pair re-enters under the same ticket, at its stamp)
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} not staged: ${String(error?.message ?? error).slice(0, 200)}`);
+        failed++;
+        ticket = lock.lastTicket ?? ticket;
+        if (entry) await entry.page.close().catch(() => {});
+        entry = null;
+        continue;
+      }
       held = true;
       ticket = lock.lastTicket;
       const started = Date.now();
-      if (session) { await thawPage(entry.page, session); session = null; }
-      // (a page that lost its world while frozen is staged again, inside the hold)
-      const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
-      if (live !== mapId) await stageMap(entry, mapId);
-      const receipt = await shootMap({ ...entry, mapId }, options, frames, reference?.maps?.[mapId] ?? null);
-      receipt.ms = Date.now() - started;
-      receipt.queuedMs = started - queued;
-      session = await freezePage(entry.page);
-      lock.release();
-      held = false;
-      manifest.maps[mapId] = receipt;
-      writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
-      console.log(`[${label}] ${stamp()} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after ${(receipt.queuedMs / 60000).toFixed(1)} min `
-        + `staging and queueing (${Object.keys(receipt.poses).join(',')})`);
+      try {
+        await thawPage(entry.page, session);
+        // (a page that lost its world while frozen is staged again, inside the hold)
+        const live = await entry.page.evaluate(() => window.__DEBUG?.world?.mapId ?? null).catch(() => null);
+        if (live !== mapId) await stageMap(entry, mapId);
+        const receipt = await shootMap({ ...entry, mapId }, { variants: job.variants }, job.frames, null);
+        receipt.ms = Date.now() - started;
+        receipt.stagedMs = started - queued;
+        job.manifest.maps[mapId] = receipt;
+        writeFileSync(job.manifestFile, `${JSON.stringify(job.manifest, null, 2)}\n`);
+        shot++;
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} shot in ${(receipt.ms / 1000).toFixed(1)} s after `
+          + `${(receipt.stagedMs / 60000).toFixed(1)} min staging and queueing (${Object.keys(receipt.poses).join(',')}); ${shot}/${pairs.length}`);
+      } catch (error) {
+        failed++;
+        console.log(`[${label}] ${stamp()} ${job.name} ${mapId} failed in the hold: ${String(error?.message ?? error).slice(0, 200)}`);
+      } finally {
+        lock.release();
+        held = false;
+        await entry.page.close().catch(() => {});
+        entry = null;
+      }
+      // a fresh browser every eight pairs: nothing a closed page left behind accumulates
+      if (pagesSinceLaunch >= 8 && browser) { await browser.close().catch(() => {}); browser = null; pagesSinceLaunch = 0; }
     }
   } finally {
     await close();
   }
-  const missing = todo.filter((id) => !manifest.maps[id]);
-  if (missing.length) { console.log(`[${TOOL}] not shot (rerun to resume): ${missing.join(',')}`); return 1; }
-  return 0;
+  console.log(`[${label}] ${shot} pair(s) shot, ${failed} failed`);
+  return failed ? 1 : 0;
 }
 
 if (isMainModule(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
