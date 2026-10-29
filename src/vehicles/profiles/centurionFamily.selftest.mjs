@@ -6,7 +6,7 @@
 //   - the cast turret over a 1.88 m ring 0.47 m ahead of the hull's middle, unsquashed, its roof at 2.62-2.72 m and the
 //     casting at least 1.10 m wide 0.30 m behind its front face (the wedge nose read 0.80);
 //   - the guns: the Mk 3's 20-pdr Type A swells only at its breech-end jacket and its muzzle counterweight, the Strv 81B's Type B carries its short
-//     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along and stands shorter;
+//     fume-extractor can 42-52 % along, the Mk 5/2's L7 its bore evacuator 40-50 % along under the thermal sleeve and stands shorter;
 //   - the Mk 5 pattern's cupola machine gun (Mk 5/2, Strv 81B, Sho't Kal) and none on the Mk 3 (roofWeaponPolicy.ts);
 //   - the Sho't Kal (release 262's new IDF Centurion): the Mk 5/2's L7, its AVDS-1790 hump at 1.90 m, the commander's
 //     .50 and the loader's .30; the Mk 13 (262's other new mark): the L7A2's thermal sleeve and one cupola gun;
@@ -51,7 +51,7 @@ function gunRadii(gun, len) {
 const report = {};
 const LENGTH = { centurion5_avre: 8.00, olifant_mk2: 7.68, centurion5_1_aus: 8.02 };
 const WIDTH = { olifant_mk2: [3.40, 3.45] };
-const SLEEVED = new Set(['centurion13', 'strv105', 'olifant_mk2']);
+const SLEEVED = new Set(['centurion5_2', 'centurion13', 'strv105', 'olifant_mk2']);
 for (const id of ['centurion3', 'centurion5_2', 'strv81', 'shot_kal', 'centurion13', 'strv105', 'olifant_mk2', 'centurion5_avre', 'centurion5_1_aus']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
   try {

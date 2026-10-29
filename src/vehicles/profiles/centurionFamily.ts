@@ -55,6 +55,9 @@ interface MarkDesign {
   readonly shortNose: boolean;
 }
 
+/** The Dutch Mk 5/2: the British Mk 5 pattern with the L7 and no conversion kit. */
+const isMk52 = (m: MarkDesign): boolean => m.kit === 'none' && m.mk5 && !m.swedish && !m.idf && !m.late;
+
 const MARKS: Readonly<Record<CenturionMark, MarkDesign>> = Object.freeze({
   mk3: { gunLen: 4.95, gun: '20pdrA', mk5: false, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: true },
   mk5_2: { gunLen: 4.74, gun: 'l7', mk5: true, swedish: false, idf: false, late: false, kit: 'none', cover: true, shortNose: false },
@@ -366,8 +369,8 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
         const b: V3 = [-Math.sin(th), Math.cos(th) * up[1], Math.cos(th) * up[2]];
         for (const t of [0.22, 0.58]) {
           for (let k = 0; k < 3; k++) {
-            const c = vAdd(onPlane(s * 0.06, t, 0), a, s * (0.17 + k * 0.335));
-            faceBox(P, 'hull', 'era', c, a, b, out, 0.31, 0.26, 0.12);
+            const c = vAdd(onPlane(s * 0.06, t, 0), a, s * (0.16 + k * 0.30));
+            faceBox(P, 'hull', 'era', c, a, b, out, 0.28, 0.26, 0.12);
             faceBox(P, 'hull', 'dark', vAdd(c, out, 0.12), a, b, out, 0.035, 0.035, 0.014);
           }
         }
@@ -422,8 +425,9 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
  * photographs; the critics, 2026-10-28: the flat slab read wrong; 2026-10-29: a flat plate leaning back, no push arms):
  * a concave mouldboard the full blade height, its cutting edge 0.20 m ahead of its top and its top curled 0.12 m forward
  * into a lip, a box beam across its back under the lip, shallow end plates, deep back ribs and a cross beam; carried
- * ahead of the nose on two inner push arms pinned to the nose plate's sides and two outer arms from the end plates back
- * to the front idlers' hubs, lifted by a ram from the glacis bracket. (The Gulf War fit carries no fascine cradle: the
+ * ahead of the nose on two inner push arms pinned to the nose plate's sides, tied by a cross tube over the nose, and two
+ * outer arms just outside the track belts from the end plates back to the front idlers' hubs, lifted by a ram from the
+ * glacis bracket. (The Gulf War fit carries no fascine cradle: the
  * Fosgene photograph.) Hull frame. */
 function buildDozer(P: TankBuilderPort): void {
   const W = 1.69, y0 = 0.60, y1 = 1.60, zb = 3.93, cut = 0.20, depth = 0.18, lip = 0.12, th = 0.03;
@@ -476,12 +480,15 @@ function buildDozer(P: TankBuilderPort): void {
     P.add('hullDark', box(0.12, 0.20, 0.18), s * 0.94, 0.74, 3.20);
     P.add('hullDark', cylX(0.045, 0.16, 12), s * 0.95, 0.75, 3.20);
   }
-  // outer push arms from the end plates' lower backs to pivots on the front idlers' hubs
+  // the push frame's cross tube tying the inner arms together just behind the blade, over the nose
+  P.add('hullDetail', box(1.90, 0.10, 0.14), 0, 0.80, 3.67);
+  // outer push arms from the end plates' lower backs to pivots on the front idlers' hubs, in the 8 cm between the track
+  // belt's outer edge (x 1.60) and the skirt line (the Tankfest Mk 5 AVRE '02 BA 33')
   for (const s of [-1, 1]) {
-    const a: [number, number] = [0.96, 3.27], b: [number, number] = [0.82, faceZ(0.82) - 0.40];
+    const a: [number, number] = [0.96, 3.27], b: [number, number] = [0.82, faceZ(0.82) - 0.30];
     const len = Math.hypot(b[1] - a[1], b[0] - a[0]), ang = Math.atan2(b[0] - a[0], b[1] - a[1]);
-    P.add('hullDetail', xform(box(0.07, 0.14, len), 0, 0, 0, -ang, 0, 0), s * (W - 0.05), (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
-    P.add('hullDark', cylX(0.07, 0.10, 14), s * (W - 0.05), a[0], a[1]);
+    P.add('hullDetail', xform(box(0.05, 0.14, len), 0, 0, 0, -ang, 0, 0), s * 1.65, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    P.add('hullDark', cylX(0.07, 0.06, 14), s * 1.645, a[0], a[1]);
   }
   // the lifting ram: its cylinder from the glacis bracket to the beam's back
   const r0: [number, number] = [1.42, 3.20], r1: [number, number] = [yBeam, faceZ(yBeam) - th - 0.18];
@@ -904,6 +911,18 @@ function buildLateBustleBasket(P: TankBuilderPort): void {
   }
 }
 
+/** The Dutch Mk 5/2's tall mesh basket on the bustle's back in place of the box bin, 0.6 m deep, its top rail 0.18 m over
+ * the roof edge (the Delft Mk 5/2 head-on photograph shows its mesh over the right rear corner; its registered model's
+ * rear basket stands as tall). */
+function buildMk52BustleBasket(P: TankBuilderPort): void {
+  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.60, d: 0.60, h: 0.68, fill: 0.5, rails: 3, seed: 5260 }),
+    0, 0.34, -1.79);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.05, 0.05, 0.14), s * 0.60, 0.36, -1.48);
+    P.add('turretDark', xform(box(0.04, 0.04, 0.32), 0, 0, 0, 0.75, 0, 0), s * 0.60, 0.60, -1.57);
+  }
+}
+
 function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
   // Commander's all-round vision cupola on the right; the Mk 5 pattern carries the machine-gun mount ring.
   const cx = -0.52, cz = -0.52, roofY = 0.965;
@@ -943,7 +962,7 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
       shield: true, ammo: true, seed: 8120, feed: 'right', working: true, ridingCradle: true }), cx + 0.05, roofY + 0.24, cz + 0.10,
     [0, -0.05, 0]);
   }
-  if (m.mk5 && !m.swedish && !m.idf && !m.late && m.kit === 'none') {
+  if (isMk52(m)) {
     // the Delft Mk 5/2's searchlight: a tall box with its louvred front, standing on the left cheek just outboard of the
     // mantlet's cover, its top level with the roof, on a bracket into the casting (the Dutch Mk 5/2 head-on photograph;
     // the critics, 2026-10-29: the box on a stalk over the right front corner of the roof)
@@ -977,12 +996,13 @@ function buildRoof(P: TankBuilderPort, m: MarkDesign): void {
   for (const [lx, lz] of [[0.70, 0.40], [-0.70, 0.40], [0.42, -1.16], [-0.42, -1.16]] as const) {
     KIT.liftEye(P, 'turretDetail', lx, roofY - (lz > 0 ? 0.03 : 0.02), lz, 0);
   }
-  // Wireless aerial bases at the bustle's rear corners; the Mk 3 stands with its bases bare (the Bovington Mk 3 and its
-  // registered model carry no whips, and 2 m whips the model lacks dominate its front and station silhouettes)
+  // Wireless aerial bases at the bustle's rear corners; the Mk 3 and the Mk 5/2 stand with their bases bare (the
+  // Bovington Mk 3, the Delft Mk 5/2 and their registered models carry no whips, and 2 m whips the models lack dominate
+  // their front and station silhouettes)
   const aerials: readonly (readonly [number, number])[] = m.swedish ? [[0.62, -1.34], [-0.62, -1.34]] : [[0.58, -1.32], [-0.58, -1.32]];
   aerials.forEach(([ax, az], i) => {
     P.add('turretDetail', cylY(0.04, 0.05, 0.07, 10), ax, roofY - 0.02, az);
-    if (!m.mk5 && !m.swedish) return;
+    if ((!m.mk5 && !m.swedish) || isMk52(m)) return;
     const h = m.idf ? (i === 0 ? 2.9 : 2.6) : i === 0 ? 2.1 : 1.6;
     mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.011, rake: 0.05,
       seed: (m.swedish ? 8130 : m.idf ? 9720 : 2620) + i }), ax, roofY + 0.02, az);
@@ -1440,7 +1460,7 @@ function buildMantlet(P: TankBuilderPort, m: MarkDesign): void {
     // Sho't Kal's; the Dutch Mk 5/2, the Strv 104 and 105 and the Australian photographs show the same laced cover). The
     // Dutch Mk 5/2's is stretched flat across a riveted rectangular frame (the head-on photograph; the critic,
     // 2026-10-29: the rounded cover read as a dome).
-    const framed = m.kit === 'none' && m.mk5 && !m.swedish && !m.idf && !m.late;
+    const framed = isMk52(m);
     const drape = (z: number, hw: number, top: number, bot: number, sag: number): SolidSection => {
       const ring: SectionPoint[] = [], p = framed ? 0.18 : 0.45;
       for (let k = 0; k < 16; k++) {
@@ -1504,7 +1524,7 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
   const len = m.gunLen;
   if (m.gun === 'l7') {
     // 105 mm L7: the concentric bore evacuator a little behind mid-barrel, a plain muzzle
-    KIT.buildGun(P, { len, r: 0.074, evac: m.kit === 'olifant' ? 0.42 : 0.45, evacR: 1.55, baseR: 0.15, collar: false, sleeve: m.late || m.kit === 'strv105' || m.kit === 'olifant' });
+    KIT.buildGun(P, { len, r: 0.074, evac: m.kit === 'olifant' ? 0.42 : 0.45, evacR: 1.55, baseR: 0.15, collar: false, sleeve: m.late || m.kit === 'strv105' || m.kit === 'olifant' || isMk52(m) });
     muzzleBore(P, { len, r: 0.074 });
   } else if (m.gun === '165') {
     // 165 mm L9A1 demolition gun: a short, fat piece - a thin root out of the mantlet's boss, the bore evacuator's fat
@@ -1573,6 +1593,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     buildTurretBins(P);
     // the Mk 13 carries an open mesh basket on the bustle where the earlier marks' box bin stood (the Bovington Mk 13)
     if (m.late) buildLateBustleBasket(P);
+    else if (isMk52(m)) buildMk52BustleBasket(P);
     // (the Australian basket hangs on the bustle itself)
     else if (m.kit !== 'aus') buildBustleBin(P);
   }
