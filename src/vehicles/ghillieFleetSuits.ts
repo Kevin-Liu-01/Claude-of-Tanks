@@ -407,7 +407,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   strv121: {
     id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.45, foliageKind: 'spruce',
     light: 0x5f7148, dark: 0x2c3a28, netColor: 'rgba(36,50,30,0.82)', netTextureSeed: 1220,
-    fieldClearanceM: 0.03, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
+    fieldClearanceM: 0.045, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
     turret: {
       top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
