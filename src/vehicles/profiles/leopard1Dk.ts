@@ -89,8 +89,9 @@ function addDanishHullKit(P: TankBuilderPort, hull: Leo1HullDatums, mark: Leo1Dk
   P.addEquipment('hullDark', box(0.56, 0.018, 0.018), -0.45, periY + 0.095, 1.075, -0.10, 0, 0);
   for (const x of [-0.66, -0.45, -0.24]) P.addEquipment('hullDark', box(0.012, 0.06, 0.012), x + 0.04, periY + 0.07, 1.072, -0.10, 0, 0);
   if (mark === 'a5dk1') {
-    // the DK-1's GPS antenna on the hull roof beside the driver
-    P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), 0.95, hull.deckTopY(1.25) + 0.018, 1.25);
+    // the DK-1's GPS antenna on the hull roof at the glacis break, past the turret's footprint and the breech's swing at
+    // full elevation (gun-depression sweep, 265)
+    P.addEquipment('hullDark', KIT.cylY(0.06, 0.07, 0.035, 12), 0.95, hull.deckTopY(2.55) + 0.018, 2.55);
   }
 }
 

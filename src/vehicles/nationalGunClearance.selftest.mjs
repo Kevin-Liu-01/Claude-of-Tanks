@@ -49,6 +49,12 @@ const CURVES = {
   m48a5_patton: [],
   // 262: the Leopard 1A5 proportion rebuild (deck 1.58, cast B&V turret); its measured curve (modern2.ts)
   leo1a5: [],
+  // 265: the Danish Leopards (denmarkSpecs.ts): the welded 1A3 DK turret on the 1A5 hull without its deck tools (the
+  // breech swung through the shovel and crowbar at full elevation), the 2A5 DK's bar armour clear of the gun
+  leo1a3dk: [],
+  leo1a5dk: [],
+  leo1a5dk1: [],
+  leo2a5dk: [],
   // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
   t80u: [],
   t80uk: [],
