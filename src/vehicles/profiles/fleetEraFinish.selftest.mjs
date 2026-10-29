@@ -14,7 +14,7 @@ const ERA_VEHICLE_IDS = Object.freeze([
   'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',
   'merkava3_baz', 'merkava4b', 'amx30b2', 'm60a3',
-  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
+  't64bv_donbas', 't64bm1m', 't64bv', 't64b1v_2022', 'pt64_tur', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
   'leo2a6_ua', 't72m1_jaguar', 'pt91a_twardy',
   'bmpt_terminator2', 'm3a3_bradley', 'bmpt_t90',
   'kf51_u',
@@ -27,9 +27,14 @@ const ERA_VEHICLE_IDS = Object.freeze([
 const REBUILT_T64_ERA_SECTORS = Object.freeze([
   'glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', 'turret_era_L', 'turret_era_R',
 ]);
+// 262: the new true T-64s (t64Foundation.ts) carry the same six sectors; the T-64BM1M's Nizh adds its crown tiles' own.
 const REQUIRED_T64_ERA_SECTORS = Object.freeze({
   t64bv1: REBUILT_T64_ERA_SECTORS,
   t64bv_donbas: REBUILT_T64_ERA_SECTORS,
+  t64bv: REBUILT_T64_ERA_SECTORS,
+  t64b1v_2022: REBUILT_T64_ERA_SECTORS,
+  pt64_tur: REBUILT_T64_ERA_SECTORS,
+  t64bm1m: Object.freeze([...REBUILT_T64_ERA_SECTORS, 'turret_roof_era']),
 });
 
 const uvSpan = (mesh) => {

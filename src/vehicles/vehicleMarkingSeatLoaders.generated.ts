@@ -22,6 +22,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "challenger1X": () => import('./vehicleMarkingSeatGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./vehicleMarkingSeatGroups/chieftain10X.generated.ts'),
   "chieftain5X": () => import('./vehicleMarkingSeatGroups/chieftain5X.generated.ts'),
+  "christian2": () => import('./vehicleMarkingSeatGroups/christian2.generated.ts'),
   "cv90105TmlSourceX": () => import('./vehicleMarkingSeatGroups/cv90105TmlSourceX.generated.ts'),
   "cv9040CSourceX": () => import('./vehicleMarkingSeatGroups/cv9040CSourceX.generated.ts'),
   "cv90MkivSourceX": () => import('./vehicleMarkingSeatGroups/cv90MkivSourceX.generated.ts'),

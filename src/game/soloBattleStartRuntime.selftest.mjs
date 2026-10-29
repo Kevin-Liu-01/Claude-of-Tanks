@@ -184,7 +184,7 @@ for (const deferVisuals of [false, true]) {
     onMaskStart(borrowed) {
       assert.ok(borrowed.material === material);
       assert.equal(hookCalls, 1, 'install the disarmed hook before requesting masks');
-      assert.match(material.customProgramCacheKey(), /\|burn-r7$/);
+      assert.match(material.customProgramCacheKey(), /\|burn-r8$/);
       submittedRevision = { version: material.version, key: material.customProgramCacheKey() };
     },
   });

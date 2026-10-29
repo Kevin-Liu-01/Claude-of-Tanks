@@ -334,3 +334,148 @@ export function fixedGunHullProbe(id, { decor = true } = {}) {
     dispose: () => { twoSided.dispose(); tank.dispose(); },
   };
 }
+
+/** The clearance a turret gun's tube keeps, ahead of its port, from every turret part (262). */
+export const TURRET_GUN_PORT_KEEP_M = .01;
+
+/**
+ * 262 (owner on the Challenger 1 rebuild: "based on proper historical referrences"): a turret gun leaving its turret
+ * through a port, measured in the turret's frame over its whole published pitch range. The builder publishes
+ * rig_turret.userData.gunPort ({ faceZ, kind }: the turret-frame z of the port's face: the FV4030/5 and FV4030/6 nose
+ * plates either side of their gun slot). Build `id` (seed 4242, high
+ * quality, decorations off: they never ride the gun) and pose rig_gun at a pitch. `measure(pitchDeg)` returns, over the
+ * recoiling tube at both recoil strokes: `clearance`, its smallest distance 1.5 cm and more ahead of the face to every
+ * turret mesh (the gun's own parts excepted; `part` names the nearest, `at` the sample); `exposed`, the tube samples
+ * behind the face that are not hidden (rays up, sideways and diagonally up must meet a turret part or the gun's own
+ * mount, mantlet, shield or boot, within 3 m); and `mountClearance`, the gun mount's smallest distance, 3 cm and more ahead
+ * of the face (where a mantlet or boot seats on it), to the turret. Dispose the probe when done.
+ */
+export function turretGunPortProbe(id) {
+  const spec = getSpec(id);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor: false });
+  tank.root.updateMatrixWorld(true);
+  const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
+  const receipt = turret?.userData.gunPort;
+  if (!turret || !gun || !recoil || !receipt) { tank.dispose(); throw new Error(`${id}: no rig_turret.userData.gunPort receipt`); }
+  // a builder that scales its whole vehicle afterwards (uk.ts applyCompleteVehicleScale) authors the face unscaled
+  const port = { ...receipt, faceZ: receipt.faceZ * (receipt.scale ?? 1) };
+  const recoiling = new Set(); recoil.traverse((o) => recoiling.add(o));
+  const gunMeshes = meshesUnder(gun), tube = gunMeshes.filter((m) => recoiling.has(m)), mount = gunMeshes.filter((m) => !recoiling.has(m));
+  const turretMeshes = meshesUnder(turret, [gun]);
+  const tInv = new THREE.Matrix4(), v = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster(), twoSided = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  raycaster.far = 3;
+  const RAY_DIRS = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [1, 1, 0], [-1, 1, 0]].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
+  const pitchesDeg = [];
+  const lo = -(spec.gunDepressionDeg ?? 0), hi = spec.gunElevationDeg ?? 14;
+  for (let p = Math.ceil(lo / 5) * 5; p < hi; p += 5) if (p > lo) pitchesDeg.push(p);
+  pitchesDeg.unshift(lo); pitchesDeg.push(hi);
+  const restZ = recoil.position.z;
+  const measure = (pitchDeg) => {
+    gun.rotation.x = -pitchDeg * DEG;
+    tank.root.updateMatrixWorld(true);
+    tInv.copy(turret.matrixWorld).invert();
+    const soup = meshTriangles(turretMeshes, tInv), grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 });
+    const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
+    // the hiding parts near the port: every turret and mount mesh whose box reaches within 1.5 m of the face's centre
+    const faceCentre = new THREE.Vector3(0, gun.position.y, port.faceZ).applyMatrix4(turret.matrixWorld), reachBox = new THREE.Box3();
+    const covers = [...turretMeshes, ...mount].filter((m) => !m.isInstancedMesh && reachBox.setFromObject(m).distanceToPoint(faceCentre) < 1.5).map((m) => {
+      const o = new THREE.Mesh(m.geometry, twoSided); o.matrixAutoUpdate = false; o.matrixWorld.copy(m.matrixWorld); return o;
+    });
+    let clearance = Infinity, part = null, at = null, exposed = 0, ahead = 0, behind = 0, mountClearance = Infinity, mountPart = null;
+    const exposedAt = [];
+    for (const stroke of GUN_RECOIL_STROKES_M) {
+      recoil.position.z = restZ - stroke;
+      tank.root.updateMatrixWorld(true);
+      const samples = densePoints(meshTriangles(tube, new THREE.Matrix4()).tri, .015);
+      for (let i = 0; i < samples.length; i += 3) {
+        v.set(samples[i], samples[i + 1], samples[i + 2]);
+        const local = v.clone().applyMatrix4(tInv);
+        if (local.z > port.faceZ + .015) {
+          ahead++;
+          const d = grid.distance(local.x, local.y, local.z);
+          if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = local.toArray().map((c) => +c.toFixed(3)); }
+        } else if (local.z < port.faceZ - .005 && local.z > port.faceZ - 1.2 && (i / 3) % 6 === 0) {
+          behind++;
+          for (const dir of RAY_DIRS) {
+            raycaster.set(v, dir.clone().transformDirection(turret.matrixWorld));
+            if (!raycaster.intersectObjects(covers, false).length) { exposed++; if (exposedAt.length < 12) exposedAt.push({ at: local.toArray().map((c) => +c.toFixed(3)), stroke, dir: dir.toArray() }); break; }
+          }
+        }
+      }
+    }
+    recoil.position.z = restZ;
+    tank.root.updateMatrixWorld(true);
+    const mountSamples = densePoints(meshTriangles(mount, tInv).tri, .015);
+    for (let i = 0; i < mountSamples.length; i += 3) {
+      // a mantlet or boot seats on the face: its last 3 cm there are its seat, not a clearance
+      if (mountSamples[i + 2] <= port.faceZ + .03) continue;
+      const d = grid.distance(mountSamples[i], mountSamples[i + 1], mountSamples[i + 2]);
+      if (d < mountClearance) { mountClearance = d; mountPart = grid.nearest < 0 ? null : partOf(grid.nearest); }
+    }
+    gun.rotation.x = 0;
+    return { pitchDeg, clearance, part, at, exposed, exposedAt, ahead, behind, mountClearance, mountPart };
+  };
+  return {
+    id, port, pitchesDeg, measure,
+    /** Add a probe mesh to the turret (a negative control) and drop it again. */
+    withTurretMesh(mesh, run) { turret.add(mesh); turretMeshes.push(mesh); tank.root.updateMatrixWorld(true); try { return run(); } finally { turret.remove(mesh); turretMeshes.pop(); } },
+    dispose: () => { twoSided.dispose(); tank.dispose(); },
+  };
+}
+
+/** The clearance a gun keeps ahead of its turret's slot face from the turret's own fixed stock (262). */
+export const GUN_SLOT_KEEP_M = .015;
+/** The band ahead of the face left unmeasured: the mantlet passes through the face, so samples there only meet it. */
+const GUN_SLOT_FACE_BAND_M = .03;
+
+/**
+ * Release 262 (the Challenger 3 TD: a deep mantlet between two cheeks, profiles/challenger3Td.ts): a turret-borne gun
+ * measured against its own turret. Build `id` (seed 4242, high quality) and read the turret's slot receipt
+ * (rig_turret.userData.gunSlot: faceZ, the slot face in the turret frame). `measure(pitchDeg)` poses the whole gun (its
+ * fixed mount and the recoiling parts in battery and at 0.135 m) about its trunnion and returns the smallest distance of
+ * its samples more than 3 cm ahead of the slot face to every other visible mesh under rig_turret (cheeks, sights, dischargers, the
+ * turret's suit), `clearance`, the mesh in `part` and the sample in `at` (turret frame), and `ahead`, the samples it
+ * measured. A gun sample behind the face is inside the turret's embrasure. `withTurretMesh(mesh, fn)` adds a mesh to the
+ * turret's stock for a negative control. Dispose the probe when done.
+ */
+export function gunSlotProbe(id) {
+  const spec = getSpec(id);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+  tank.root.updateMatrixWorld(true);
+  const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
+  const slot = turret?.userData.gunSlot;
+  if (!turret || !gun || gun.parent !== turret || !slot) { tank.dispose(); throw new Error(`${id}: no turret gun slot receipt (rig_turret.userData.gunSlot)`); }
+  const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert();
+  const recoiling = new Set(); recoil?.traverse((o) => recoiling.add(o));
+  const gunMeshes = meshesUnder(gun), stock = meshesUnder(turret, [gun]);
+  const fixed = densePoints(meshTriangles(gunMeshes.filter((m) => !recoiling.has(m)), gInv).tri, .015);
+  const moving = densePoints(meshTriangles(gunMeshes.filter((m) => recoiling.has(m)), gInv).tri, .015);
+  const sources = [[fixed, 0], ...GUN_RECOIL_STROKES_M.map((back) => [moving, back])];
+  const P = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3();
+  const measureWith = (meshes, pitchDeg) => {
+    const soup = meshTriangles(meshes, tInv), grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 });
+    const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
+    P.compose(gun.position, q.setFromEuler(e.set(-pitchDeg * DEG, 0, 0)), gun.scale);
+    let clearance = Infinity, part = null, at = null, ahead = 0;
+    for (const [pts, back] of sources) for (let i = 0; i < pts.length; i += 3) {
+      v.set(pts[i], pts[i + 1], pts[i + 2] - back).applyMatrix4(P);
+      if (v.z <= slot.faceZ + GUN_SLOT_FACE_BAND_M) continue;
+      ahead++;
+      const d = grid.distance(v.x, v.y, v.z);
+      if (d < clearance) { clearance = d; part = grid.nearest < 0 ? null : partOf(grid.nearest); at = v.toArray().map((c) => +c.toFixed(3)); }
+    }
+    return { pitchDeg, clearance, part, at, ahead };
+  };
+  let extra = [];
+  return {
+    id, spec, slot,
+    pitchesDeg: Array.from({ length: (spec.gunElevationDeg ?? 14) + (spec.gunDepressionDeg ?? 0) + 1 }, (_, k) => k - (spec.gunDepressionDeg ?? 0)),
+    measure: (pitchDeg) => measureWith([...stock, ...extra], pitchDeg),
+    withTurretMesh(mesh, fn) {
+      turret.add(mesh); mesh.updateMatrixWorld(true); extra = [mesh];
+      try { return fn(); } finally { extra = []; turret.remove(mesh); }
+    },
+    dispose: () => tank.dispose(),
+  };
+}

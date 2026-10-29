@@ -18,226 +18,2132 @@
  },
  "binding": "turret and gun group digests (hull too for a gun fixed in the hull) of docs/references/fleet-geometry-ledger.json at high quality",
  "tanks": {
-  "abramsx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f4bd5327d4ab1cb5","gun":"26f2e7c2806dc3cb"}},
-  "aft10": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"2a5508f10ab6bd82","gun":"f354f19edcb8ea66"}},
-  "ajax": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9f8424ac1bf3da6c","gun":"faac6065d8f30e11"}},
-  "amx10p": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"37854d2b8828b06c","gun":"67d168ef28eb674c"}},
-  "amx10p_25": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2007488d49c8da23","gun":"9a2327d882978916"}},
-  "amx30": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"217c08ae3225ef9b","gun":"deac2eef7088824b"}},
-  "amx30b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7482e6152e71f724","gun":"669460de6fdf4739"}},
-  "amx30b2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ea1c9f9b73f2b9ba","gun":"194f8c74a7eb4a02"}},
-  "amx40": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"52338b9f40fc6d2b","gun":"3c0b2c3e0eaf0f2f"}},
-  "amx40_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6fa18fe655202d62","gun":"bb973008b0ec5041"}},
-  "amx56": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f35163c52e9cd369","gun":"a21c3573246a650f"}},
-  "ares_apc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"383de3c1e1e970af","gun":"a7614cd19fa7d69b"}},
-  "bmp2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5074e1fdc95274e8","gun":"b21d836e1f459b29"}},
-  "bmp3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2341528e6d7afa9","gun":"1a34390dcb570fc3"}},
-  "bmp3_rok": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9eedc1ed5f9b41fd","gun":"eb341da9f3fa65c4"}},
-  "bmp3m_dragun125": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c82604f9e85d2f25","gun":"f303b85b5784645f"}},
-  "bmpt_t90": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"b98f2279a5252cd5","gun":"3305478b97857a40"}},
-  "bmpt_terminator2": {"status":"closed","kind":"turret","mouths":2,"geometry":{"turret":"73a897b4e56f316a","gun":"5da7ffbf856442d7"}},
-  "borsuk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6bab7917cd29c6af","gun":"602a66dc5453dd2f"}},
-  "bwp1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"055aed5b4e5894f2","gun":"45a6f588efeaf2fb"}},
-  "c1_ariete": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6fe95dfd89f376be","gun":"a57e7c5b23acfa47"}},
-  "c1_ariete_preserie": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cb00dc341d18d424","gun":"93d3db365e5a524c"}},
-  "c1_ariete_proto_serie1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d540c4a9d0b4ac54","gun":"736d6509a3ca5ead"}},
-  "c2_ariete": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a16e15c5b63fa6d3","gun":"6b58c4e859432e62"}},
-  "c2_ariete_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e1a3884574b04549","gun":"fe1f979f643a680b"}},
-  "carro45t": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"51ec53ba82de8742","gun":"df7dbf62a7a9e2bf"}},
-  "centurion3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f7dac42fee2b3edf","gun":"d5c9e96fc4a79ed8"}},
-  "centurion5_2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2cf997e06f82aaf5","gun":"c367cc423390da0e"}},
-  "challenger1_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"863be63ff7a613b5","gun":"ec5dac90c40b0a4a"}},
-  "challenger1_mk3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4e03cb51a197d2c9","gun":"6afcb65d1dd78d5a"}},
-  "challenger2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"789b05f915883f6a","gun":"301eb6610dc6ad6a"}},
-  "challenger2e": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8ce8157c648c458d","gun":"925607bc45a3e16e"}},
-  "challenger3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e6ff25c01c6cd085","gun":"097cf074f9df4531"}},
-  "challenger3_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0d7aa0ac394aee9a","gun":"60c581e216e962c9"}},
-  "chieftain3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bdd3e1a34fc0a3e8","gun":"3a9a3f385b66c8a8"}},
-  "chieftain5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"302ec75e45255e53","gun":"b1535e564074f8e3"}},
-  "chieftain_mk10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c98fd77a742b833c","gun":"3f68eb9128176147"}},
-  "chieftain_mk9": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"abfaa19389d55002","gun":"8d1e597a90e0fe9d"}},
-  "cv90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"019383d5cb29e655","gun":"0fc9fd77fe8cc681"}},
-  "cv90105_tml": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3a04c184b755b291","gun":"c78e4ddc90605565"}},
-  "cv9040c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fb478e303747836c","gun":"194289542e0810c0"}},
-  "cv90_mk4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"31e34e9def3dfc73","gun":"b74203f4043013ba"}},
-  "cv90_mk4_concept": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"689b956a44e721a7","gun":"c41a9e7c36f5eba7"}},
-  "dardo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"03b00f88c2910383","gun":"ff9d88beec97d0a0"}},
-  "fv4034": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f02875ffde0fc36d","gun":"7e5badefa4489d1c"}},
-  "fv510": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b2829869f50166e4","gun":"1c6f8d2b3620e725"}},
-  "fv510_milan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8692c7ffc7ba22a3","gun":"30cc9c17bd9d7a42"}},
-  "griffin50mm": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d8578532e8747a37","gun":"ad2484adf1370892"}},
-  "griffin_viper": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"0fa24d34d9189248","gun":"59a67db4b0f59708"}},
-  "hayate_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"74a188a3759889af","gun":"ded333a46f6ff563"}},
-  "jpz_e100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e3b0c44298fc1c14","gun":"e36521b1fdbc66a8"}},
-  "k1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3f6e4a17e6bd254c","gun":"1969a332c744d7ee"}},
-  "k1e1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"13fe702b11c0c827","gun":"f87f812fa07e1625"}},
-  "k21": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4b9b2cb5ed92d683","gun":"a22fc474db7fb783"}},
-  "k2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f21cd082e1979147","gun":"a4599132f5db8197"}},
-  "k2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5976cd156af9ef6d","gun":"aa118c17e2454475"}},
-  "kf41_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"43311f4a54abd68c","gun":"49ba9c9013b72e2c"}},
-  "kf51_evo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b816b20866995298","gun":"f48cf461ae74a3a6"}},
-  "kf51_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5392de0c924370f9","gun":"969cbdc09b5b2bc8"}},
-  "kf51_u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21a5d620e11605dc","gun":"c7ba016a6fdc51b5"}},
-  "kurganets25": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6f20072aa5fe66fb","gun":"3f89ae065c2ed22d"}},
-  "kv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ca5046caa3ea194e","gun":"d85e7d47a8252d2e"}},
-  "leclerc_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0cdc638bd4690b23","gun":"422f590d1df206cd"}},
-  "leclerc_s2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3f855babb970f8ee","gun":"4714d5530cffa2e6"}},
-  "leclerc_sxxi": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2b0b1e99f6c4a62","gun":"31f28e9739014f86"}},
-  "leclerc_xlr": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0414bc46ca508311","gun":"feaf409009663183"}},
-  "leo1a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5a505965e787b70a","gun":"a67c922b157e9fc8"}},
-  "leo2_improved": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"93e43a1e27325e47","gun":"174ff3c32785806a"}},
-  "leo2_revolution": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bba236f8966c5f06","gun":"2dca5d3698c26f32"}},
-  "leo2_revolution_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"107c268bf768b8b5","gun":"f7780404f86c5e4d"}},
-  "leo2a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"99400802e5fe5f5d","gun":"cb55d61a21e3e3fb"}},
-  "leo2a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"80bb17fa937ac342","gun":"f1eac239d7e95795"}},
-  "leo2a4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"24451b25abd45b47","gun":"d2ad441914fa1207"}},
-  "leo2a4_otco": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"78205048fa64c3b4","gun":"e67ea65bf35d63eb"}},
-  "leo2a4_v": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4d385652a8497e67","gun":"196b21eeece32945"}},
-  "leo2a4m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"befe22622b5dc533","gun":"1bc1238064bb1412"}},
-  "leo2a4m_can": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e96cd58ba8f578c2","gun":"cc75355441259369"}},
-  "leo2a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"24712c62236130aa","gun":"5690d0ba49cd2094"}},
-  "leo2a5m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cffea1f6886dee10","gun":"095969821480d137"}},
-  "leo2a6": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f6e411b297785287","gun":"a2abe8ae7dbe365a"}},
-  "leo2a6_ua": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6159f0c21ebd8d2b","gun":"ca90da6e191b6fea"}},
-  "leo2a6m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"26723f122c02ff5b","gun":"220e56ed7b16516d"}},
-  "leo2a7v": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a2720865375595ff","gun":"6cdb19826899c78d"}},
-  "leopard2_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"88cecdcd8cd285db","gun":"232aa3c500b3e9d7"}},
-  "lrmv_lynx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0f52fd5368a3bf23","gun":"b50fcfb4e9e573ac"}},
-  "m1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2bbf61c0059e3cd0","gun":"b6b70118aaa96050"}},
-  "m1a1_abrams_aim": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e714c1112d96ea4f","gun":"61f80e58684a6b5c"}},
-  "m1a1_abrams_fep": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f81d936eef91313d","gun":"f04d49e8052503a5"}},
-  "m1a1_abrams_hc": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"86193e7873041032","gun":"81b4e5050beff788"}},
-  "m1a1_abrams_sa": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f3a5e16d40e520b7","gun":"d2a1aab795aef0a0"}},
-  "m1a1ha": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6dfdd5a7f6f26c31","gun":"f1cb6ce787c77ed8"}},
-  "m1a2_abrams": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f2dde51090eec4b4","gun":"9f64474740acaeff"}},
-  "m1a2_abrams_sepv2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"39080c40e2bd4f46","gun":"109e061ee0f81f71"}},
-  "m1a2_abrams_sepv3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2ae998f043567157","gun":"0e6ed51a166560a4"}},
-  "m1a2_abrams_tusk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"73d636bd669e7f6c","gun":"e0262515a0616178"}},
-  "m1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2d78e6bc7b37934a","gun":"f7d60d667171b8d8"}},
-  "m2a2_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2dc19353c7c7a673","gun":"87297eaa151f8ea0"}},
-  "m3a3_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e86c61303199d292","gun":"a4b16e6a4faa500e"}},
-  "m46_patton": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cedabc4612243dcb","gun":"02d798e461795dc4"}},
-  "m47_patton": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2df731b3799e3951","gun":"a76fb3f0395365e3"}},
-  "m48a5_patton": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4689b68ac4571adb","gun":"e01c9dd743a89c6d"}},
-  "m551_sheridan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e4b66b0125684239","gun":"091ededd51848d5e"}},
-  "m551a1_tts": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a15a7710cb0ffb3c","gun":"62069a7c34948111"}},
-  "m60a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"703bf592c278c385","gun":"b1808ca267c75e69"}},
-  "m60a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1515e636fc9d122d","gun":"10adf7f2474df0a3"}},
-  "m60a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8576a84269d44a93","gun":"7087cde3637e8250"}},
-  "m6_linebacker": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b107cefe82d68cc7","gun":"c0913bb884125d69"}},
-  "marder1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b1559ee1feb726d9","gun":"9409a1190c570fe1"}},
-  "marder2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5aa133aad2346766","gun":"b7bcd226aefc201f"}},
-  "mbt70": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5c3ec49d9c175ebe","gun":"8f548128a08a419f"}},
-  "merkava1b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f917b0f4bc0b6b4a","gun":"1f04c29060254936"}},
-  "merkava2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"42d6a5c367f3abbd","gun":"dba588c39de925e3"}},
-  "merkava2d": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"657c8310a3f7df31","gun":"5c72e1c89f533991"}},
-  "merkava3_baz": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"138b62e55c0c2444","gun":"0742ee214fbbe88b"}},
-  "merkava3c": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"30fbdab3b89dad74","gun":"3ca3eb666a0c807c"}},
-  "merkava3d": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6486992093504ff8","gun":"50c39c0f4b2bafca"}},
-  "merkava4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d101e19a50c6d3b3","gun":"cb2133009d8db37a"}},
-  "merkava4_barak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ef8431122ba4c037","gun":"e2f08f017815e52d"}},
-  "merkava4_trophy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"320d8585ac393f4c","gun":"c1f29bcedc472b62"}},
-  "merkava4b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fc4a60a6fe052620","gun":"9a8d7f7f1ff1874a"}},
-  "namer_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d8845488b3f27d8f","gun":"7839a02cdf0464ae"}},
-  "object148_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"56397cf3fcc7c080","gun":"db9c56bf1384b697"}},
-  "object695": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"83236e3420469f66","gun":"2a91b32ea38edb1a"}},
-  "pl01": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"83eeaa37fc00e593","gun":"aece4b5aaba36198"}},
-  "pl01_105": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"13ae51693009cb6b","gun":"c6d66f2eaebbc1fc"}},
-  "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fa28bd59ed8b434b","gun":"292e6624692b372f"}},
-  "pt91m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"24af4afbc7508418","gun":"e0e5e81cf82dd4c5"}},
-  "puma_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c982c1820cd1ebe7","gun":"bef90fd9efba6a66"}},
-  "raiju_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5a91bb0a6c8cc0c7","gun":"4a33afb16d5e20cf"}},
-  "sabra_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c8bb0b24c0945482","gun":"1ed4c507882a338a"}},
-  "spz_puma": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"984f031f9253ad71","gun":"de2a10962cee378f"}},
-  "spz_wotan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"536a1776320e7bdc","gun":"8de4428541cef19c"}},
-  "stb1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"46bd8e2831761ab0","gun":"81f6ecf7f80ec4e9"}},
-  "strv103a": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"5f760ec7cfe00a07","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
-  "strv103b": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"f33cdcde2dd64bd8","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
-  "strv121": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21357be7b2259e66","gun":"ea38084aa08dbda9"}},
-  "strv122": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0764a6657c318548","gun":"cf896491fab54e22"}},
-  "strv81": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"23fcf574af7ff1b4","gun":"2b7052591dc1544c"}},
-  "t14_armata": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"546c001884a2ed83","gun":"4281b35901b3a6f9"}},
-  "t62_1975": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"262e7cd9e39921f2","gun":"78b1a66720799541"}},
-  "t62mv1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0e443ccb5ef6a486","gun":"b92dc13f14b5f83a"}},
-  "t64bv1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"536a7f4a587a3cbb","gun":"3202e78b11403ac8"}},
-  "t64bv_donbas": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f35aed708906b7c4","gun":"f77ad3942c027ac3"}},
-  "t72_rys": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8b47906cafc90b0c","gun":"19928470e2c2af86"}},
-  "t72b3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bd287496c2065ec0","gun":"6d8918b5861aa2c4"}},
-  "t72b3_bastion_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c33dfb6f852ccd6f","gun":"865aebcaaf993b47"}},
-  "t72b3_qilin": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f991192f5716ada3","gun":"561766cc12a7e10d"}},
-  "t72b3_sich": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7e04d7df7989db3e","gun":"2b29d84d589d1480"}},
-  "t72b3_zubr": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"99e7239644a4387b","gun":"8571f4b65b54deec"}},
-  "t72b3_zubr_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"900e93f9be40199b","gun":"f0edf7017d742870"}},
-  "t72b3m_2016": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a1c860992d3ca3b1","gun":"124aca15163f3358"}},
-  "t72b3m_2022": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"754375f8d0132015","gun":"26bbd7dc6f59ecb8"}},
-  "t72b3m_bulat_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"77098c4f2162e186","gun":"a0cfa26e08ba6a91"}},
-  "t72b3m_hetman": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"69f5409a90cf31a1","gun":"900efaa6dec20de2"}},
-  "t72b3m_hetman_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"73eb0f2f53e558aa","gun":"d3ab2b8977d09ada"}},
-  "t72b3m_kunlun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"50df76c2914e41a1","gun":"e6c0acd7d7f22d06"}},
-  "t72b3m_wilk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a17441e44ecb4dbc","gun":"37adbc4478dd014e"}},
-  "t72b_1987": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"566bfb8a96e13b5f","gun":"c863abeef405067a"}},
-  "t72bu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"90f1f6e8e1c3622d","gun":"4417473fd1602371"}},
-  "t72bu_1989": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"57172e6e87626792","gun":"ec5ef73acf84db84"}},
-  "t72m1_jaguar": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"12bffcf245b60421","gun":"d55206c110b4636f"}},
-  "t80": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"88bcba4adc125965","gun":"d89274cfd6f67d6c"}},
-  "t80b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f04c567ad3d7acb8","gun":"3e09b3d512307a09"}},
-  "t80bv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d1978015b232b4f4","gun":"5ff0d636c8261d71"}},
-  "t80u": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f60d51d86849eadd","gun":"eb3721af91cd1c6d"}},
-  "t80u_bars_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0a9fd7dfcaabcbb1","gun":"cdbeb10cfa733c60"}},
-  "t80u_husarz": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a16bbcec03c88695","gun":"aace79b147674b25"}},
-  "t80u_kursk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7bd899bd66ebe6ea","gun":"be7d4746d0e64c14"}},
-  "t80u_yun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e24c91764084d140","gun":"a3ee65410eb85e76"}},
-  "t80u_zoria": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fcd39b4e3bd7a879","gun":"b61fe635655510bf"}},
-  "t80uk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fcfe9bd0bf117391","gun":"fba414a0d77f7ffd"}},
-  "t84": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b590cf9e5ea54649","gun":"d7525b0801887392"}},
-  "t84bm_oplot_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2c766479ce76c0c5","gun":"8ca66096d5beb11d"}},
-  "t90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0ea8498f5e35c60c","gun":"ad7f948f7c0c73a6"}},
-  "t90_1992": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2f4f70cbd9ee6bb7","gun":"64267ec5c9a386c2"}},
-  "t90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d44b5fdc5e7dcc8f","gun":"edc55e67606ef60e"}},
-  "t90a_2004": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2244e6f1ef561be2","gun":"6c516d8892d71f18"}},
-  "t90a_2006": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"21db07236e0b1845","gun":"958e34e7ea67700a"}},
-  "t90a_burlak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ef7be9997ac03109","gun":"114b0e61a3e938c8"}},
-  "t90a_burlak_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2521336ea133fb5","gun":"2d2c00b04abb7d41"}},
-  "t90a_vladimir": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e708bbe386eccb35","gun":"1406cdf892729d9a"}},
-  "t90am": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d39948135740ba81","gun":"49129242ef74fedf"}},
-  "t90m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"290542b67a8b8df7","gun":"c72b62c4c995fa4f"}},
-  "t90m_proryv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1da5ba4cb2da1c8e","gun":"5fd446183dcccd51"}},
-  "t90ms_2011": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e0e2f17650da1edf","gun":"0fe0718954ec6e97"}},
-  "t90ms_tagil": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"83e8b7a6674fb852","gun":"a929a2e6b83e3d2b"}},
-  "t90sm": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b3b194a1711dcf29","gun":"1d86ebe34a53f2bb"}},
-  "t90sm_2013": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"53194a434ed429ad","gun":"36ab59beb1827e35"}},
-  "tos1a_tagil": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"670f33e9a05abbc2","gun":"5160c9079da11997"}},
-  "type10": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"89211b4c419dfe75","gun":"687971a1406ef3bf"}},
-  "type100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e0a9d7c3bfa9b073","gun":"e7a5140839336b4c"}},
-  "type10_dozer": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d4c89e728475b98e","gun":"9173b3ab122d8bcf"}},
-  "type10_tk_x": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"755d23a89ede13b2","gun":"355e841c78ad2dd4"}},
-  "type10b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"789fd2f3d4617ce3","gun":"ac60f11326983656"}},
-  "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a3f525228420b7e8","gun":"3d4fb55600a68223"}},
-  "type74": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"34a88fda2b708a12","gun":"ec5111a6d75f72a1"}},
-  "type89": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4408e1e8e088f243","gun":"c8e169b36147e0b9"}},
-  "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"793f4e2fd033b60c","gun":"778ed0dfb5f808c7"}},
-  "type90_kyumaru": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"882bead915dc39ce","gun":"71df81b598921509"}},
-  "type90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4e3e2d820de1d6ca","gun":"20e0417f294862af"}},
-  "type96_72_long": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c02a6b43029ef1f1","gun":"0ac1d891b4eb844a"}},
-  "type96_72m_lei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"95d082858dee30d4","gun":"9423e111316f8f36"}},
-  "type96_80_feng": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e5aa0ae0c8289ea9","gun":"1b741bdaffef8983"}},
-  "type96b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"614196a4b54f593e","gun":"ce8fe9e6de5b252f"}},
-  "ua_challenger2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"25df65d7c9d86e71","gun":"633f40272b66f0da"}},
-  "ua_m1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2aa2764a5de6f3d9","gun":"1428c8678d768cf1"}},
-  "ua_m1a2_abrams": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"444a0417c5063895","gun":"6b0d0b37ca75c8d4"}},
-  "ua_m2a3_bradley": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"870b3c81184a9cf7","gun":"95e1c08e41b9a46d"}},
-  "ua_t80bv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0ccb278761aea50a","gun":"4ce96504b5985f9a"}},
-  "udes03": {"status":"closed","kind":"hull-fixed","mouths":1,"geometry":{"hull":"61b5372939738119","turret":"e3b0c44298fc1c14","gun":"e3b0c44298fc1c14"}},
-  "upior": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5d9a16b9af5ba8fe","gun":"51286d215d5e7922"}},
-  "vickers_mk1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d47979ba9a1957f9","gun":"88f5ede8b8d535a1"}},
-  "vt4a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4e13d0b41497179f","gun":"69447aa46440a991"}},
-  "warrior_tes_h": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5809ad67d9dc8a43","gun":"283495ac1719e5c0"}},
-  "xk2_black_panther": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"98724b45b165e578","gun":"df234ddd933b1475"}},
-  "ztz100": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6e0048c44c4849dd","gun":"795d1d2f602897e1"}},
-  "ztz100_prototype": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8bfa2e4837f824e7","gun":"51f6e4f11daba255"}},
-  "ztz85_iii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"192f326732d52d11","gun":"404d17547bf07960"}},
-  "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f054be8057e5a126","gun":"d947ca8c8269bed8"}},
-  "ztz99a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"53d7f9f8d1b85ff1","gun":"ca5600f2c3578d4f"}},
-  "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"284804a89b2d5c11","gun":"f9f012f1579d8e6d"}}
+  "abramsx": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "766be1e21d7da4e4",
+    "gun": "26f2e7c2806dc3cb"
+   }
+  },
+  "aft10": {
+   "status": "launcher",
+   "kind": "none",
+   "mouths": 0,
+   "geometry": {
+    "turret": "c2cdc3ab49d13fca",
+    "gun": "f354f19edcb8ea66"
+   }
+  },
+  "ajax": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c2a0918620f1920b",
+    "gun": "faac6065d8f30e11"
+   }
+  },
+  "amx10p": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f9b6accf77f4a133",
+    "gun": "67d168ef28eb674c"
+   }
+  },
+  "amx10p_25": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b8c751aa4f05ad93",
+    "gun": "9a2327d882978916"
+   }
+  },
+  "amx30": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "241d2b24eff22e6b",
+    "gun": "deac2eef7088824b"
+   }
+  },
+  "amx30b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "cc3ddb698720268a",
+    "gun": "669460de6fdf4739"
+   }
+  },
+  "amx30b2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "731bd08a9560119a",
+    "gun": "194f8c74a7eb4a02"
+   }
+  },
+  "amx40": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "14112130643ee1b0",
+    "gun": "3c0b2c3e0eaf0f2f"
+   }
+  },
+  "amx40_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ccdd1ba1353801ce",
+    "gun": "bb973008b0ec5041"
+   }
+  },
+  "amx56": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6a83bdc2f39dbc7f",
+    "gun": "a21c3573246a650f"
+   }
+  },
+  "ares_apc": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "383de3c1e1e970af",
+    "gun": "a7614cd19fa7d69b"
+   }
+  },
+  "bm_oplot_m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "87fabad5c6748653",
+    "gun": "a91fee59ed5a3957"
+   }
+  },
+  "bm_oplot_t": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "629146150bc38806",
+    "gun": "a55b2fbcd636bb78"
+   }
+  },
+  "bmp2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fdf72bcf38eed847",
+    "gun": "b21d836e1f459b29"
+   }
+  },
+  "bmp3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "eee65ef42dc2b9d2",
+    "gun": "1a34390dcb570fc3"
+   }
+  },
+  "bmp3_rok": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3a30c20a477596c6",
+    "gun": "eb341da9f3fa65c4"
+   }
+  },
+  "bmp3m_dragun125": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1782b1b22efd624d",
+    "gun": "f303b85b5784645f"
+   }
+  },
+  "bmpt_t90": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 2,
+   "geometry": {
+    "turret": "a52dcf76f1b677b1",
+    "gun": "3305478b97857a40"
+   }
+  },
+  "bmpt_terminator2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 2,
+   "geometry": {
+    "turret": "73a897b4e56f316a",
+    "gun": "5da7ffbf856442d7"
+   }
+  },
+  "borsuk": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "40d1a82013f93873",
+    "gun": "602a66dc5453dd2f"
+   }
+  },
+  "bwp1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9cdd88b3f2a0ecca",
+    "gun": "45a6f588efeaf2fb"
+   }
+  },
+  "c1_ariete": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0c5c82220c62efb2",
+    "gun": "a57e7c5b23acfa47"
+   }
+  },
+  "c1_ariete_preserie": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d1d607d32da0dcae",
+    "gun": "93d3db365e5a524c"
+   }
+  },
+  "c1_ariete_proto_serie1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "19e0c97cc0e4ccac",
+    "gun": "736d6509a3ca5ead"
+   }
+  },
+  "c2_ariete": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "108450f4949b20d8",
+    "gun": "6b58c4e859432e62"
+   }
+  },
+  "c2_ariete_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "816564b4241a3de6",
+    "gun": "fe1f979f643a680b"
+   }
+  },
+  "carro45t": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "451022714280d1d0",
+    "gun": "df7dbf62a7a9e2bf"
+   }
+  },
+  "centurion3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "03780f6f47298770",
+    "gun": "d5c9e96fc4a79ed8"
+   }
+  },
+  "centurion5_2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "11b0ee6d77a5a23a",
+    "gun": "c367cc423390da0e"
+   }
+  },
+  "challenger1_mk1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c6af0c9d27cb2b01",
+    "gun": "eef40ebe15d33bc7"
+   }
+  },
+  "challenger1_mk2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f043c18d332ede5d",
+    "gun": "4c593e94653da002"
+   }
+  },
+  "challenger1_mk3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "7b30dd96a288b6af",
+    "gun": "6afcb65d1dd78d5a"
+   }
+  },
+  "challenger2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ad1db6dcfeb0d857",
+    "gun": "301eb6610dc6ad6a"
+   }
+  },
+  "challenger2e": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5336eef63239ca31",
+    "gun": "925607bc45a3e16e"
+   }
+  },
+  "challenger3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "615063af4b40fa4b",
+    "gun": "097cf074f9df4531"
+   }
+  },
+  "challenger3_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0d8ffd57ba702d9d",
+    "gun": "60c581e216e962c9"
+   }
+  },
+  "challenger3_td": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fe3e8418b38546c3",
+    "gun": "52ed2d2016dca230"
+   }
+  },
+  "challenger3_td_rws": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c5e6be50be5cb5d5",
+    "gun": "e00918ab77324c17"
+   }
+  },
+  "challenger_x": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1aecf6596e073dea",
+    "gun": "ede582db845c0d6f"
+   }
+  },
+  "challenger_x_sleek": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d116b2377327899c",
+    "gun": "9676f3bc1b5db60b"
+   }
+  },
+  "chieftain3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b93d24a550b526e0",
+    "gun": "3a9a3f385b66c8a8"
+   }
+  },
+  "chieftain5": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1ccf4a1a3169c934",
+    "gun": "b1535e564074f8e3"
+   }
+  },
+  "chieftain_mk10": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "80662e6dd7d61590",
+    "gun": "3f68eb9128176147"
+   }
+  },
+  "chieftain_mk9": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "89f2edad5b49d348",
+    "gun": "8d1e597a90e0fe9d"
+   }
+  },
+  "christian2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "74905f447e33b1a3",
+    "gun": "9b15730e67afb16e"
+   }
+  },
+  "cv90": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c9c817fc9197dbfa",
+    "gun": "0fc9fd77fe8cc681"
+   }
+  },
+  "cv90105_tml": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fe4c377b96959ba9",
+    "gun": "c78e4ddc90605565"
+   }
+  },
+  "cv9040c": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "faf1e6cf729adb42",
+    "gun": "194289542e0810c0"
+   }
+  },
+  "cv90_mk4": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1ffcd5b3549f9b8a",
+    "gun": "b74203f4043013ba"
+   }
+  },
+  "cv90_mk4_concept": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b2d987cf46c0f5f5",
+    "gun": "c41a9e7c36f5eba7"
+   }
+  },
+  "dardo": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d88dfa911649d927",
+    "gun": "ff9d88beec97d0a0"
+   }
+  },
+  "fv4034": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "704f70df7fc58dda",
+    "gun": "7e5badefa4489d1c"
+   }
+  },
+  "fv510": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "53e4aa36267e9a92",
+    "gun": "1c6f8d2b3620e725"
+   }
+  },
+  "fv510_milan": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b3b3b6112394d152",
+    "gun": "30cc9c17bd9d7a42"
+   }
+  },
+  "griffin50mm": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ee9a574eaf1fcad4",
+    "gun": "ad2484adf1370892"
+   }
+  },
+  "griffin_viper": {
+   "status": "launcher",
+   "kind": "none",
+   "mouths": 0,
+   "geometry": {
+    "turret": "1c8bd73cd37b4fc1",
+    "gun": "59a67db4b0f59708"
+   }
+  },
+  "hayate_ifv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a02e86540a4b9b87",
+    "gun": "ded333a46f6ff563"
+   }
+  },
+  "jpz_e100": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e3b0c44298fc1c14",
+    "gun": "e36521b1fdbc66a8"
+   }
+  },
+  "k1a1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "dc114b7739cb0edf",
+    "gun": "1969a332c744d7ee"
+   }
+  },
+  "k1e1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "cd862578a0635e0b",
+    "gun": "f87f812fa07e1625"
+   }
+  },
+  "k21": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "57bb2a6fb96925ae",
+    "gun": "a22fc474db7fb783"
+   }
+  },
+  "k2_black_panther": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5bd6a663cc4e764d",
+    "gun": "a4599132f5db8197"
+   }
+  },
+  "k2b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6ee9e5e6b94cd4be",
+    "gun": "aa118c17e2454475"
+   }
+  },
+  "kf41_lynx": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "4c5521cbd3502edc",
+    "gun": "49ba9c9013b72e2c"
+   }
+  },
+  "kf51_evo": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5bebf9cef2bbdc8e",
+    "gun": "f48cf461ae74a3a6"
+   }
+  },
+  "kf51_panther": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "403ce0a5ba9fd699",
+    "gun": "969cbdc09b5b2bc8"
+   }
+  },
+  "kf51_u": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0b5f641f94a0c304",
+    "gun": "c7ba016a6fdc51b5"
+   }
+  },
+  "kurganets25": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d250a50dcc2130f2",
+    "gun": "3f89ae065c2ed22d"
+   }
+  },
+  "kv2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c108436e42786290",
+    "gun": "30af178f72653641"
+   }
+  },
+  "leclerc_s1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "32311d9cd05c6f3c",
+    "gun": "422f590d1df206cd"
+   }
+  },
+  "leclerc_s2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "bdaa7a104551402c",
+    "gun": "4714d5530cffa2e6"
+   }
+  },
+  "leclerc_sxxi": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b91fd8fbaab02b68",
+    "gun": "31f28e9739014f86"
+   }
+  },
+  "leclerc_xlr": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b760b958e1460a2e",
+    "gun": "feaf409009663183"
+   }
+  },
+  "leo1a5": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f176b71002dd7487",
+    "gun": "aa4dd03aa26a1dea"
+   }
+  },
+  "leo2_improved": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b0d4743ff346b8a5",
+    "gun": "174ff3c32785806a"
+   }
+  },
+  "leo2_revolution": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "780129b89561f835",
+    "gun": "2dca5d3698c26f32"
+   }
+  },
+  "leo2_revolution_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fa2d97b87b52c87d",
+    "gun": "f7780404f86c5e4d"
+   }
+  },
+  "leo2a2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "4eb45875e6e78db2",
+    "gun": "cb55d61a21e3e3fb"
+   }
+  },
+  "leo2a3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "efc918961d4aa568",
+    "gun": "f1eac239d7e95795"
+   }
+  },
+  "leo2a4": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "354397cbc8d94ee5",
+    "gun": "d2ad441914fa1207"
+   }
+  },
+  "leo2a4_otco": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "142e2e67157cb308",
+    "gun": "e67ea65bf35d63eb"
+   }
+  },
+  "leo2a4_v": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9df5e707cf0074ed",
+    "gun": "196b21eeece32945"
+   }
+  },
+  "leo2a4m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e87b4233b716c963",
+    "gun": "1bc1238064bb1412"
+   }
+  },
+  "leo2a4m_can": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "aa17b6a31abf63e8",
+    "gun": "cc75355441259369"
+   }
+  },
+  "leo2a5": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e6a816c46651b242",
+    "gun": "5690d0ba49cd2094"
+   }
+  },
+  "leo2a5m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e7b8f0c251d9cf12",
+    "gun": "095969821480d137"
+   }
+  },
+  "leo2a6": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "2c6e599eec2da6f6",
+    "gun": "a2abe8ae7dbe365a"
+   }
+  },
+  "leo2a6_ua": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "8be758db912dbb87",
+    "gun": "ca90da6e191b6fea"
+   }
+  },
+  "leo2a6m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3887d51581148625",
+    "gun": "220e56ed7b16516d"
+   }
+  },
+  "leo2a7v": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d3530cece8bd07f6",
+    "gun": "6cdb19826899c78d"
+   }
+  },
+  "leopard2_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f7d45454d451063f",
+    "gun": "232aa3c500b3e9d7"
+   }
+  },
+  "lrmv_lynx": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "78adce3b44d3ca1e",
+    "gun": "b50fcfb4e9e573ac"
+   }
+  },
+  "m1a1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3353e8eebf7e9670",
+    "gun": "b6b70118aaa96050"
+   }
+  },
+  "m1a1_abrams_aim": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5e12509e25ee3723",
+    "gun": "61f80e58684a6b5c"
+   }
+  },
+  "m1a1_abrams_fep": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "706030ad1c25184e",
+    "gun": "f04d49e8052503a5"
+   }
+  },
+  "m1a1_abrams_hc": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "eae2254395b98154",
+    "gun": "81b4e5050beff788"
+   }
+  },
+  "m1a1_abrams_sa": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "25c6b437a45477fd",
+    "gun": "d2a1aab795aef0a0"
+   }
+  },
+  "m1a1ha": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0ed8e8e7bf6056bd",
+    "gun": "f1cb6ce787c77ed8"
+   }
+  },
+  "m1a2_abrams": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "429cf7d974b2eee2",
+    "gun": "9f64474740acaeff"
+   }
+  },
+  "m1a2_abrams_sepv2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "023f80154a044a9b",
+    "gun": "109e061ee0f81f71"
+   }
+  },
+  "m1a2_abrams_sepv3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ffd0edebbafd7694",
+    "gun": "0e6ed51a166560a4"
+   }
+  },
+  "m1a2_abrams_tusk": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b8dbac7549b6e15a",
+    "gun": "e0262515a0616178"
+   }
+  },
+  "m1a3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0a571f9fcba62e7e",
+    "gun": "f7d60d667171b8d8"
+   }
+  },
+  "m2a2_bradley": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "bd8f1bfd74b5a2db",
+    "gun": "87297eaa151f8ea0"
+   }
+  },
+  "m3a3_bradley": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d53c2e1b6833cc3f",
+    "gun": "a4b16e6a4faa500e"
+   }
+  },
+  "m46_patton": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9880e0d5950c6fd1",
+    "gun": "9eda1d2aca9da029"
+   }
+  },
+  "m47_patton": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "8368119e6ce9b2fe",
+    "gun": "574352deeb8fc6db"
+   }
+  },
+  "m48a5_patton": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5d7de3e89d89cb2e",
+    "gun": "6217a7e44b30a742"
+   }
+  },
+  "m551_sheridan": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "eca9ceef550f944f",
+    "gun": "091ededd51848d5e"
+   }
+  },
+  "m551a1_tts": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "483fe64714bb5073",
+    "gun": "62069a7c34948111"
+   }
+  },
+  "m60a1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "92f5d9c41de41445",
+    "gun": "b1808ca267c75e69"
+   }
+  },
+  "m60a2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "afce7ec568754de1",
+    "gun": "10adf7f2474df0a3"
+   }
+  },
+  "m60a3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5a03cb28229873c5",
+    "gun": "7087cde3637e8250"
+   }
+  },
+  "m6_linebacker": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "191545124ab5c19d",
+    "gun": "c0913bb884125d69"
+   }
+  },
+  "marder1a3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "39fe79a95663f4ab",
+    "gun": "9409a1190c570fe1"
+   }
+  },
+  "marder2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6d79c9599fa6a62a",
+    "gun": "b7bcd226aefc201f"
+   }
+  },
+  "mbt70": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a1512bd41ec57e21",
+    "gun": "8f548128a08a419f"
+   }
+  },
+  "merkava1b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "11422e614c19a7c3",
+    "gun": "1f04c29060254936"
+   }
+  },
+  "merkava2b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b0a77761155cc506",
+    "gun": "dba588c39de925e3"
+   }
+  },
+  "merkava2d": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "2b58d156e1b6458c",
+    "gun": "5c72e1c89f533991"
+   }
+  },
+  "merkava3_baz": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "de88f88b7b8ae28c",
+    "gun": "0742ee214fbbe88b"
+   }
+  },
+  "merkava3c": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3b6d8373c225d9e3",
+    "gun": "3ca3eb666a0c807c"
+   }
+  },
+  "merkava3d": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b893d92ca1d0a67a",
+    "gun": "50c39c0f4b2bafca"
+   }
+  },
+  "merkava4": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "031bed8db4af2ecc",
+    "gun": "cb2133009d8db37a"
+   }
+  },
+  "merkava4_barak": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "96ce2a80237c6b12",
+    "gun": "e2f08f017815e52d"
+   }
+  },
+  "merkava4_trophy": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "abb2a5203d0976cd",
+    "gun": "c1f29bcedc472b62"
+   }
+  },
+  "merkava4b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "4f02179d2326e484",
+    "gun": "9a8d7f7f1ff1874a"
+   }
+  },
+  "namer_ifv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c301599c01151314",
+    "gun": "7839a02cdf0464ae"
+   }
+  },
+  "object148_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f830b9a4e12b8a01",
+    "gun": "db9c56bf1384b697"
+   }
+  },
+  "object695": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "254ed784121a66c7",
+    "gun": "2a91b32ea38edb1a"
+   }
+  },
+  "pl01": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "acd82c13a208a259",
+    "gun": "aece4b5aaba36198"
+   }
+  },
+  "pl01_105": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "281bab785685c60b",
+    "gun": "c6d66f2eaebbc1fc"
+   }
+  },
+  "pt64_tur": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a2973980611cfbe1",
+    "gun": "8074b41b2439c653"
+   }
+  },
+  "pt91a_twardy": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "670f7ecb930709ad",
+    "gun": "292e6624692b372f"
+   }
+  },
+  "pt91m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3824066d59b9c5e7",
+    "gun": "e0e5e81cf82dd4c5"
+   }
+  },
+  "puma_s1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "540e472a612c5703",
+    "gun": "bef90fd9efba6a66"
+   }
+  },
+  "raiju_ifv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "62c6c1a3869f5c22",
+    "gun": "4a33afb16d5e20cf"
+   }
+  },
+  "sabra_mk2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "02ce85d6323a7a47",
+    "gun": "1ed4c507882a338a"
+   }
+  },
+  "spz_puma": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "984f031f9253ad71",
+    "gun": "de2a10962cee378f"
+   }
+  },
+  "spz_wotan": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d9749c6fa454011a",
+    "gun": "8de4428541cef19c"
+   }
+  },
+  "stb1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "aba2fa48bc570f32",
+    "gun": "81f6ecf7f80ec4e9"
+   }
+  },
+  "strv103a": {
+   "status": "closed",
+   "kind": "hull-fixed",
+   "mouths": 1,
+   "geometry": {
+    "hull": "5f760ec7cfe00a07",
+    "turret": "e3b0c44298fc1c14",
+    "gun": "e3b0c44298fc1c14"
+   }
+  },
+  "strv103b": {
+   "status": "closed",
+   "kind": "hull-fixed",
+   "mouths": 1,
+   "geometry": {
+    "hull": "f33cdcde2dd64bd8",
+    "turret": "e3b0c44298fc1c14",
+    "gun": "e3b0c44298fc1c14"
+   }
+  },
+  "strv121": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1938cac3287aada2",
+    "gun": "ea38084aa08dbda9"
+   }
+  },
+  "strv122": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "94e247b64f649816",
+    "gun": "cf896491fab54e22"
+   }
+  },
+  "strv81": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a1ef75afb387a06a",
+    "gun": "2b7052591dc1544c"
+   }
+  },
+  "t14_armata": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b973574508f746e0",
+    "gun": "4281b35901b3a6f9"
+   }
+  },
+  "t55a": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6e998328516ff8cc",
+    "gun": "019483228585778d"
+   }
+  },
+  "t62_1975": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "aea520541b77c0eb",
+    "gun": "78b1a66720799541"
+   }
+  },
+  "t62mv1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "249ccc17cc755075",
+    "gun": "b92dc13f14b5f83a"
+   }
+  },
+  "t64b1v_2022": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ee47e1cc7d830d0d",
+    "gun": "60c96e95028afd38"
+   }
+  },
+  "t64bm1m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9cd981ce292f9a01",
+    "gun": "115fe1022b277b2d"
+   }
+  },
+  "t64bv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "80398dca7d6f9c08",
+    "gun": "434f7ac84c821bfe"
+   }
+  },
+  "t64bv1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "059dba6056da1687",
+    "gun": "3202e78b11403ac8"
+   }
+  },
+  "t64bv_donbas": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "561e89eba3efcbf4",
+    "gun": "f77ad3942c027ac3"
+   }
+  },
+  "t72_rys": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1d37a54068de024f",
+    "gun": "19928470e2c2af86"
+   }
+  },
+  "t72b3": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "41c1c4dcabb7601f",
+    "gun": "6d8918b5861aa2c4"
+   }
+  },
+  "t72b3_bastion_m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a9f417f19ea8df2a",
+    "gun": "865aebcaaf993b47"
+   }
+  },
+  "t72b3_qilin": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "42e92cbc0a436927",
+    "gun": "561766cc12a7e10d"
+   }
+  },
+  "t72b3_sich": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "408e9a779a838eb8",
+    "gun": "2b29d84d589d1480"
+   }
+  },
+  "t72b3_zubr": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6ee7da379f6d8144",
+    "gun": "8571f4b65b54deec"
+   }
+  },
+  "t72b3_zubr_ii": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c25e5a8900a59a64",
+    "gun": "f0edf7017d742870"
+   }
+  },
+  "t72b3m_2016": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "69783ecc81875075",
+    "gun": "124aca15163f3358"
+   }
+  },
+  "t72b3m_2022": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6a4727e329b0bc2e",
+    "gun": "26bbd7dc6f59ecb8"
+   }
+  },
+  "t72b3m_bulat_m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6a22b34e22587621",
+    "gun": "a0cfa26e08ba6a91"
+   }
+  },
+  "t72b3m_hetman": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "cb7529adafe3e088",
+    "gun": "900efaa6dec20de2"
+   }
+  },
+  "t72b3m_hetman_ii": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f5d98bff1d8bd11c",
+    "gun": "d3ab2b8977d09ada"
+   }
+  },
+  "t72b3m_kunlun": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "bc1ff38220b31628",
+    "gun": "e6c0acd7d7f22d06"
+   }
+  },
+  "t72b3m_wilk": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b65da12cd0f2ed68",
+    "gun": "37adbc4478dd014e"
+   }
+  },
+  "t72b_1987": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9ae0c7b6e19f49e9",
+    "gun": "c863abeef405067a"
+   }
+  },
+  "t72bu": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3b0a7ba08d846121",
+    "gun": "4417473fd1602371"
+   }
+  },
+  "t72bu_1989": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c7005f0301bfa734",
+    "gun": "ec5ef73acf84db84"
+   }
+  },
+  "t72m1_jaguar": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f4bdac6911f25676",
+    "gun": "d55206c110b4636f"
+   }
+  },
+  "t80": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "38a9f20cd6d9bcbe",
+    "gun": "d89274cfd6f67d6c"
+   }
+  },
+  "t80b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "db518a050980b16e",
+    "gun": "3e09b3d512307a09"
+   }
+  },
+  "t80bv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "605db06de7e66dcf",
+    "gun": "5ff0d636c8261d71"
+   }
+  },
+  "t80u": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b2658f8c7f5c0143",
+    "gun": "eb3721af91cd1c6d"
+   }
+  },
+  "t80u_bars_m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "4a272dc8b97ca4ba",
+    "gun": "cdbeb10cfa733c60"
+   }
+  },
+  "t80u_husarz": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fda0a07c1083ebf9",
+    "gun": "aace79b147674b25"
+   }
+  },
+  "t80u_kursk": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "410859fa7c31b8c6",
+    "gun": "be7d4746d0e64c14"
+   }
+  },
+  "t80u_yun": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "2419a5da1885bc4d",
+    "gun": "a3ee65410eb85e76"
+   }
+  },
+  "t80u_zoria": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d019be6dc9f529cc",
+    "gun": "b61fe635655510bf"
+   }
+  },
+  "t80uk": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "44a2e67d2453a8d6",
+    "gun": "fba414a0d77f7ffd"
+   }
+  },
+  "t84": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "664be80767038cad",
+    "gun": "d7525b0801887392"
+   }
+  },
+  "t84bm_oplot_m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e3274100290c16cf",
+    "gun": "f1b746bae0639ee5"
+   }
+  },
+  "t90": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "41c0defaf693b0d7",
+    "gun": "ad7f948f7c0c73a6"
+   }
+  },
+  "t90_1992": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "3dd62aacd7d667c9",
+    "gun": "64267ec5c9a386c2"
+   }
+  },
+  "t90a": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6463a223c657e900",
+    "gun": "edc55e67606ef60e"
+   }
+  },
+  "t90a_2004": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "fb2e8ac6a3c41d3c",
+    "gun": "6c516d8892d71f18"
+   }
+  },
+  "t90a_2006": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "2f19914fba4c0070",
+    "gun": "958e34e7ea67700a"
+   }
+  },
+  "t90a_burlak": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "af7cdcc92787f1aa",
+    "gun": "114b0e61a3e938c8"
+   }
+  },
+  "t90a_burlak_proto": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "2fd6810f98dc7dbb",
+    "gun": "2d2c00b04abb7d41"
+   }
+  },
+  "t90a_vladimir": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "7c8f0dd85a099f5d",
+    "gun": "1406cdf892729d9a"
+   }
+  },
+  "t90am": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ed4d48b720395132",
+    "gun": "49129242ef74fedf"
+   }
+  },
+  "t90m": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "10a862dfc150ca7c",
+    "gun": "c72b62c4c995fa4f"
+   }
+  },
+  "t90m_proryv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "200a5ceb645a6362",
+    "gun": "5fd446183dcccd51"
+   }
+  },
+  "t90ms_2011": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c76688dcbf736cc0",
+    "gun": "0fe0718954ec6e97"
+   }
+  },
+  "t90ms_tagil": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "1f39d1c36fd2dfbe",
+    "gun": "a929a2e6b83e3d2b"
+   }
+  },
+  "t90sm": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5ea30ebda3b88cc5",
+    "gun": "1d86ebe34a53f2bb"
+   }
+  },
+  "t90sm_2013": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c30d7aa6bb935c06",
+    "gun": "36ab59beb1827e35"
+   }
+  },
+  "tos1a_tagil": {
+   "status": "launcher",
+   "kind": "none",
+   "mouths": 0,
+   "geometry": {
+    "turret": "913720cffbcf6771",
+    "gun": "5160c9079da11997"
+   }
+  },
+  "type10": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "7fff06fd95416a8d",
+    "gun": "687971a1406ef3bf"
+   }
+  },
+  "type100": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "c3005fc2ff6c3c9c",
+    "gun": "e7a5140839336b4c"
+   }
+  },
+  "type10_dozer": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "550b9f2300777eaf",
+    "gun": "9173b3ab122d8bcf"
+   }
+  },
+  "type10_tk_x": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0f8cff9d462e1fc9",
+    "gun": "355e841c78ad2dd4"
+   }
+  },
+  "type10b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "7674499e1edc0cbb",
+    "gun": "ac60f11326983656"
+   }
+  },
+  "type59": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9fd5dc739d5b3abc",
+    "gun": "6dcb6418c64dfa00"
+   }
+  },
+  "type74": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f0e338b740aa06f0",
+    "gun": "ec5111a6d75f72a1"
+   }
+  },
+  "type89": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "828ecfea4c058f33",
+    "gun": "c8e169b36147e0b9"
+   }
+  },
+  "type90": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "644087a004c5deb3",
+    "gun": "778ed0dfb5f808c7"
+   }
+  },
+  "type90_kyumaru": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "980123879145d272",
+    "gun": "71df81b598921509"
+   }
+  },
+  "type90a": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "f2bb7e8aad725a6f",
+    "gun": "20e0417f294862af"
+   }
+  },
+  "type96_72_long": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "66519eb7e3a6da90",
+    "gun": "0ac1d891b4eb844a"
+   }
+  },
+  "type96_72m_lei": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0640e2ec3c7e6f30",
+    "gun": "9423e111316f8f36"
+   }
+  },
+  "type96_80_feng": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d017c1349e4f2f93",
+    "gun": "1b741bdaffef8983"
+   }
+  },
+  "type96b": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "b8909a7d2f58c406",
+    "gun": "ce8fe9e6de5b252f"
+   }
+  },
+  "ua_challenger2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e81fb065e776b366",
+    "gun": "633f40272b66f0da"
+   }
+  },
+  "ua_m1a1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "343adb8f2174ab3a",
+    "gun": "1428c8678d768cf1"
+   }
+  },
+  "ua_m1a2_abrams": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "5302fb8dfed07406",
+    "gun": "6b0d0b37ca75c8d4"
+   }
+  },
+  "ua_m2a3_bradley": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "89ad1c884523acb3",
+    "gun": "95e1c08e41b9a46d"
+   }
+  },
+  "ua_t80bv": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "8e16e36c33d44892",
+    "gun": "4ce96504b5985f9a"
+   }
+  },
+  "udes03": {
+   "status": "closed",
+   "kind": "hull-fixed",
+   "mouths": 1,
+   "geometry": {
+    "hull": "61b5372939738119",
+    "turret": "e3b0c44298fc1c14",
+    "gun": "e3b0c44298fc1c14"
+   }
+  },
+  "upior": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "7bf609b4b71d2f95",
+    "gun": "51286d215d5e7922"
+   }
+  },
+  "vickers_mk1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "676b5cc489087513",
+    "gun": "88f5ede8b8d535a1"
+   }
+  },
+  "vt4a1": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "0f7696f1f9cf3b4c",
+    "gun": "69447aa46440a991"
+   }
+  },
+  "warrior_tes_h": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "a734f73519cea347",
+    "gun": "283495ac1719e5c0"
+   }
+  },
+  "xk2_black_panther": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "d5f791bfec116086",
+    "gun": "df234ddd933b1475"
+   }
+  },
+  "ztz100": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "96c17549e9fb0dc9",
+    "gun": "af1c48c0c10a4b82"
+   }
+  },
+  "ztz100_prototype": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "23dfcf695bf1a179",
+    "gun": "51f6e4f11daba255"
+   }
+  },
+  "ztz20": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "50cbb8822134429e",
+    "gun": "6a9ab5dac0562aa3"
+   }
+  },
+  "ztz20_prototype": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "33b2459e04901214",
+    "gun": "2f15d1c1e6560e56"
+   }
+  },
+  "ztz85_iii": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "6168fdae3bbf4bae",
+    "gun": "ae87c3d93ebc2325"
+   }
+  },
+  "ztz99_longwei": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "ecf7e10eb73e28bb",
+    "gun": "037191e19cf582d3"
+   }
+  },
+  "ztz99a": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "9437b3fc7f6327bf",
+    "gun": "ca5600f2c3578d4f"
+   }
+  },
+  "ztz99a2": {
+   "status": "closed",
+   "kind": "turret",
+   "mouths": 1,
+   "geometry": {
+    "turret": "e772f50a705db871",
+    "gun": "f9f012f1579d8e6d"
+   }
+  }
  }
 }

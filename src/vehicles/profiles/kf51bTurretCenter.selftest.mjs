@@ -194,17 +194,21 @@ try {
   assert.ok(roofReceipt?.centerAboveHighestEdgeM > 0,
     'KF51B roof center stays above every perimeter station');
 
-  assert.equal(runningGear?.wheelR, 0.355,
-    'KF51B road wheels use the smaller revised Panther radius');
+  // Owner 2026-10-27 ("from the side its silhouette should look more like the leopard 2a6s"): the Leopard 2A6 X
+  // running gear, recorded here from its source packet rather than read back from the builder.
+  const leopard2Stations = [-2.239845, -1.357925, -.483615, .398305, 1.127355, 1.899555, 2.715785];
+  assert.equal(runningGear?.wheelR, 0.34531, 'KF51B road wheels are the Leopard 2 wheel');
   assert.ok(Math.abs(runningGear?.wheelY - (runningGear.botY + runningGear.trackTh / 2 + runningGear.wheelR)) < 1e-9,
-    'KF51B smaller road wheels rest on the fleet band (ground-datum seat, 2026-09-17)');
-  closeTo(runningGear?.wheelZs[0], 2.72);
-  closeTo(runningGear?.wheelZs.at(-1), -2.18);
-  assert.equal(trackSeat?.roadWheelForwardShiftM, 0.12,
-    'KF51B seven-wheel course is moved forward as one coherent cadence');
-  closeTo(proportions?.installedRoadWheelRadiusM, 0.37275);
-  assert.equal(runningGear?.idler.z, 3.40,
-    'KF51B idler is reseated forward of the glacis shoulder');
+    'KF51B road wheels rest on the fleet band (ground-datum seat, 2026-09-17)');
+  assert.deepEqual(runningGear?.wheelZs, leopard2Stations, 'KF51B rides the Leopard 2 road-wheel stations');
+  assert.equal(trackSeat?.runningGear, 'leopard-2a6-x');
+  closeTo(proportions?.installedRoadWheelRadiusM, 0.34531 * 1.05);
+  assert.deepEqual([runningGear?.sprocket.z, runningGear?.sprocket.y, runningGear?.idler.z, runningGear?.idler.y],
+    [-3.058845, .82369, 3.365775, .8399], 'KF51B rear sprocket and raised front idler sit at the Leopard 2 stations');
+  assert.ok(skirtArmor?.armorBottomY > runningGear.wheelY + runningGear.wheelR + 0.1,
+    'KF51B skirt hem rides over the road-wheel tops, as on the 2A6');
+  assert.ok(skirtArmor?.armorBottomY < runningGear.topY,
+    'KF51B skirt still covers the return run');
   assert.equal(trackSeat?.trackArcSteps, 14,
     'KF51B terminal wraps use the high-resolution closed course');
   assert.equal(trackSeat?.smoothRearTopTangent, true,
@@ -254,7 +258,7 @@ try {
     'KF51B skirt modules carry two readable protection faces');
   assert.ok(skirtArmor?.armorOuterFaceX > 1.88,
     'KF51B skirt armor is substantially thicker than the retired thin skin');
-  assert.ok(skirtArmor?.grilleY[0] > skirtArmor?.armorBottomY + 0.70,
+  assert.ok(skirtArmor?.grilleY[0] > (skirtArmor?.armorBottomY + skirtArmor?.armorTopY) / 2,
     'KF51B signature grille is reseated into the upper service band');
   assert.equal(skirtArmor?.grilleReseatedAboveArmor, true,
     'KF51B grille no longer masks the running gear and armor course');
