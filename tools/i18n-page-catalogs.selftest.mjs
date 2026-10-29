@@ -477,9 +477,11 @@ assert.deepEqual(bootChunkProblems(unaliased), ['assets/i18n-r1.js holds /p/src/
   'assets/i18n-r1.js lacks src/ui/i18nChunkImport.browser.ts: a page could not import its catalog chunk (the page catalog '
   + 'plugin aliases the registry\'s ./i18nChunkImport.ts to it)']);
 for (const id of ['/p/src/ui/i18n.ts', '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/i18nChunkImport.browser.ts', '/p/src/ui/localeRouting.ts',
-  '/p/src/ui/responsiveLayout.ts', '/p/src/presentation/staticI18n.ts', '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
+  '/p/src/ui/responsiveLayout.ts', '/p/src/presentation/staticI18n.ts', '/p/src/ui/components/reveal.ts', '/p/src/presentation/revealStills.ts',
+  '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
 for (const id of ['/p/src/ui/i18nCatalogEnUS.ts', '/p/src/ui/i18nCatalog.en-US.json', '/p/src/ui/i18nCatalogZhCN.ts',
-  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs', '/p/src/ui/i18nChunkImport.ts']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
+  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs', '/p/src/ui/i18nChunkImport.ts', '/p/src/ui/components/revealProbe.ts',
+  '/p/src/presentation/revealStills.selftest.mjs']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
 
 // The dev server serves the same subsets as virtual modules and names them on the page.
 const plugin = i18nPageCatalogs();

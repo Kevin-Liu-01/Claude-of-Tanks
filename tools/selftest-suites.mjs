@@ -925,6 +925,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // every surface the source opens registered with its owner and its place
     'src/ui/components/surfaceStack.selftest.mjs',
     'src/ui/transientSurfaceRegistry.selftest.mjs',
+    // 2026-10-27 (owner: "lets ensure we have good loadin gstates for everything"): every loading surface registered with
+    // its lane and box for tools/loading-census.mjs, and the kit's fade-on-decode
+    'src/ui/loadingSurfaceRegistry.selftest.mjs',
+    'src/ui/components/reveal.selftest.mjs',
     'src/game/garagePresentationPose.selftest.mjs',
     'src/game/garageShowroomRuntime.selftest.mjs',
     'src/game/pointerLockFeedbackRuntime.selftest.mjs',
@@ -973,6 +977,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
     'src/game/battleSeatPlan.selftest.mjs', // the load card's teams before the world are the seated battle's (2026-10-26)
+    'src/game/soloSimSession.selftest.mjs', // the solo sim Worker: the planned seats, the held count, the pause, no MP structure
+    'src/game/soloSimBattleRuntime.selftest.mjs', // a sortie's battle on the Worker: covered entry, reveal, held count, hold, boot failure, no MP structure
     'src/game/openingRouteLegs.selftest.mjs', // battle-spikes-253: the bots' opening routes a leg a step, each the eager route
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
@@ -996,6 +1002,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
+    // 261: the Field Manual printed: one print block in the overrides layer, paper inks at 4.5:1, chrome off, page breaks
+    'src/docs/docsPrint.selftest.mjs',
     'src/docs/chapters/controls.selftest.mjs',
     'src/docs/chapters/chapters.selftest.mjs',
     'src/docs/filming.selftest.mjs',
@@ -2509,6 +2517,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
     // guard heals the owner's signature (a camera without layer 0) within half a second
     'tools/black-world.browser.selftest.mjs',
+    // fx-first-use-261: a battle's first broken building (a scripted strike after the reveal) links no FX program
+    'tools/destruction-first-use.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',

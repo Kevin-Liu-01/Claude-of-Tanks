@@ -46,6 +46,13 @@
 .cot-c-picker__grid[data-more]{
   -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent);
   mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s6)),transparent)}
+/* a list's foot fades over 96 px, to half by its last 40 px, so the last row read fades wherever the foot falls (the 261
+   critics: a foot just past a row's edge spent the whole fade on the next row's blank top) */
+.cot-c-picker--list .cot-c-picker__grid[data-more]{
+  -webkit-mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s9)),
+    color-mix(in oklab,var(--ink-1) 50%,transparent) calc(100% - var(--s6) - var(--s2)),transparent);
+  mask-image:linear-gradient(transparent,var(--ink-1) var(--s2),var(--ink-1) calc(100% - var(--s9)),
+    color-mix(in oklab,var(--ink-1) 50%,transparent) calc(100% - var(--s6) - var(--s2)),transparent)}
 .cot-c-picker--swatches .cot-c-picker__grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--s2)}
 .cot-c-picker--list .cot-c-picker__grid{grid-template-columns:minmax(0,1fr);gap:var(--s1)}
 /* every cell is laid out at its real size (no content-visibility placeholder): the grid opens on its choice by measuring
@@ -61,7 +68,7 @@
 /* a list row's picture (owner 2026-10-27: every list of tanks shows each tank): a thumbnail at the row's start, the
    trigger's picture at row size; it shows once decoded (picker.ts) */
 .cot-c-picker__thumb{position:relative;flex:none;width:64px;aspect-ratio:2/1;overflow:hidden;border-radius:var(--r1)}
-.cot-c-picker__thumb img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+.cot-c-picker__thumb img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
 .cot-c-picker__thumb img[data-ready]{opacity:1}
 /* a tank's portrait (icons.ts tankThumbUrl): the fleet's 256 px thumbnails share one framing, the tank within x 16-232 and
    y 60-244, so the box is that frame and the picture stands over it, every tank as large as its row allows */
@@ -80,6 +87,11 @@
 .cot-c-menu__pop.is-squat .cot-c-picker__media{aspect-ratio:3/1}
 .cot-c-picker__mosaic{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:1px}
 .cot-c-picker__mosaic img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+/* a card's picture, and the battlefield preview's, fades in once decoded over its box's tone (picker.ts onThumb,
+   battlefieldPicker.ts); one that never arrives leaves the tone (the loading census: Deploy's tiles popped in, and
+   offline drew broken frames) */
+:is(.cot-c-picker__media,.cot-bf__hero) img{opacity:0;transition:opacity var(--dur-fast) var(--ease-enter)}
+:is(.cot-c-picker__media,.cot-bf__hero) img[data-ready]{opacity:1}
 .cot-c-picker--swatches .cot-c-picker__media{aspect-ratio:1}
 .cot-c-picker__words{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0}
 .cot-c-picker__glyph{display:flex;flex:none;color:var(--mode-ink,var(--ink-2))}
@@ -199,6 +211,11 @@
   transition:opacity var(--dur-fast) var(--ease-exit),translate var(--dur-fast) var(--ease-exit),
     display var(--dur-fast) allow-discrete,overlay var(--dur-fast) allow-discrete}
 .cot-c-menu__pop.is-above{translate:0 var(--s1)}
+/* a spanning menu's ring lies on its panel's rules: the plate's colour under it and square corners, so no picture or row
+   shows through the ring or a rounded corner (the 261 critics: the dossier's picture under the ring and in its corner);
+   a phone sheet's top edge too (the 261 critic: the page's buttons through its ring) */
+.cot-c-menu__pop.is-span{border-radius:0;box-shadow:var(--e3-span)}
+.cot-c-menu__pop.is-sheet{box-shadow:var(--e3-span)}
 .cot-c-menu__pop.is-sheet{translate:0 var(--s4)}
 .cot-c-menu__pop:popover-open{display:flex;opacity:1;translate:none;transition-timing-function:var(--ease-enter)}
 .cot-c-menu__pop:not(:popover-open){pointer-events:none}
@@ -222,5 +239,5 @@
   padding:0 0 var(--s2) var(--s3);color:var(--ink-1);font:600 var(--fs-16)/1.2 var(--font-display);}
 .cot-c-menu__pop.is-sheet::backdrop{background:var(--scrim)}
 @media (pointer:coarse){.cot-c-menu__trigger{min-height:44px}}
-@media (prefers-reduced-motion:reduce){.cot-c-menu__chev,.cot-c-menu__pop,.cot-c-menu__media,.cot-c-picker__thumb img{transition:none}}
+@media (prefers-reduced-motion:reduce){.cot-c-menu__chev,.cot-c-menu__pop,.cot-c-menu__media,.cot-c-picker__thumb img,:is(.cot-c-picker__media,.cot-bf__hero) img{transition:none}}
 }

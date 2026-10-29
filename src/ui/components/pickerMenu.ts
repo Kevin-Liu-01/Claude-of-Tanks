@@ -74,7 +74,11 @@ const BOUNDS_MIN_H = 240;
 const SPAN_MAX_W = 640;
 
 /** The room a menu stands in: a panel's (with its sides) or the window's. */
-interface MenuRoom { readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number }
+interface MenuRoom {
+  readonly top: number; readonly bottom: number; readonly left?: number; readonly right?: number;
+  /** span the panel whatever its width (a dossier that widens past a column on a large screen) */
+  readonly span?: boolean;
+}
 
 interface MenuPlace {
   readonly sheet: boolean;
@@ -110,15 +114,18 @@ export function placeMenu(
     const maxHeight = view.height < SHEET_BELOW ? view.height - SHEET_TOP_SHORT : Math.min(view.height * 0.7, view.height - MENU_EDGE * 2);
     return { sheet: true, left: 0, top: view.height - Math.min(height, maxHeight), width: view.width, maxHeight, above: false, span: false };
   }
-  const span = bounds.left !== undefined && bounds.right !== undefined && bounds.right - bounds.left <= SPAN_MAX_W;
-  // a spanning menu meets its panel's inner box (inside its rule) on its sides and its far edge: a panel scrolls its rows to
-  // its edge and a dossier's picture runs to its sides, so a gap there showed them beside the menu (the 261 critics: zh
-  // 900's 自动机枪, the Gallery hero's 7 px strips)
+  const span = bounds.left !== undefined && bounds.right !== undefined && (bounds.span ?? bounds.right - bounds.left <= SPAN_MAX_W);
+  // a spanning menu fills its panel's room (panelRoom) on its sides and its far edge: a panel scrolls its rows to its edge
+  // and a dossier's picture runs to its sides, so a gap there showed them beside the menu (the 261 critics: zh 900's
+  // 自动机枪, the Gallery hero's strips)
   const inset = span ? 0 : MENU_EDGE;
-  // (a panel's edges fall between pixels: the menu's box rounds inward, never a pixel past the panel or the window)
-  const lo = Math.ceil(Math.max(span ? 0 : MENU_EDGE, (bounds.left ?? 0) + inset));
-  const hi = Math.floor(Math.min(view.width, bounds.right ?? view.width) - inset);
-  const roomTop = Math.ceil(bounds.top), roomBottom = Math.floor(bounds.bottom);
+  // (a panel's edges fall between pixels: each rounds to the nearest, so no column of the panel shows and none of the
+  // window is passed)
+  // (a spanning menu's 1 px ring, outside its box, stays on the window: the 261 critic, a ring past the window's edge)
+  const ring = span ? 1 : 0;
+  const lo = Math.round(Math.max(span ? ring : MENU_EDGE, (bounds.left ?? 0) + inset));
+  const hi = Math.round(Math.min(view.width - ring, bounds.right ?? view.width) - inset);
+  const roomTop = Math.round(Math.max(ring, bounds.top)), roomBottom = Math.round(Math.min(view.height - ring, bounds.bottom));
   const cap = span ? Infinity : Math.min(view.height * 0.6, wide ? MENU_MAX_H_CARDS : MENU_MAX_H);
   const far = inset;
   // (a trigger wider than 480 px sets the width: a menu never stands narrower than the trigger it drops from)
@@ -131,6 +138,19 @@ export function placeMenu(
   const maxHeight = Math.max(0, Math.min(cap, above ? aboveRoom : below));
   const shown = Math.min(want, maxHeight);
   return { sheet: false, left, top: above ? anchor.top - MENU_GAP - shown : anchor.bottom + MENU_GAP, width, maxHeight, above, span };
+}
+
+/** A panel's room for a menu: its box inside its own rule, so a spanning menu's ring (the elevation's 1 px line, outside
+ *  its box) lies on that rule (the 261 critics: a ring a pixel past the readout's rule), and over its scrollbar, which
+ *  would otherwise show beside the menu; within the window. */
+export function panelRoom(node: Element): Required<Omit<MenuRoom, 'span'>> {
+  const win = node.ownerDocument.defaultView ?? window;
+  const box = node.getBoundingClientRect(), style = win.getComputedStyle(node);
+  const rule = (side: 'top' | 'right' | 'bottom' | 'left'): number => parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
+  return {
+    top: Math.max(0, box.top + rule('top')), bottom: Math.min(win.innerHeight, box.bottom - rule('bottom')),
+    left: Math.max(0, box.left + rule('left')), right: Math.min(win.innerWidth, box.right - rule('right')),
+  };
 }
 
 let nextMenu = 0;
@@ -239,12 +259,9 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
     for (let node = from.parentElement; node && node !== doc.body; node = node.parentElement) {
       const style = win.getComputedStyle(node);
       if (style.overflowY === 'visible' && !/paint|content|strict/.test(style.contain)) continue;
-      // its inner box: inside its rule and its scrollbar
-      const box = node.getBoundingClientRect();
-      const inner = { left: box.left + node.clientLeft, top: box.top + node.clientTop };
-      const top = Math.max(0, inner.top), bottom = Math.min(win.innerHeight, inner.top + node.clientHeight);
+      const room = panelRoom(node);
       // a short box (a row that clips its own text) is no panel: the one holding it is
-      if (bottom - top >= BOUNDS_MIN_H) return { top, bottom, left: Math.max(0, inner.left), right: Math.min(win.innerWidth, inner.left + node.clientWidth) };
+      if (room.bottom - room.top >= BOUNDS_MIN_H) return room;
     }
     return { top: 0, bottom: win.innerHeight };
   };
@@ -262,6 +279,7 @@ export function createPickerMenu(host: HTMLElement, options: PickerMenuOptions):
       options.bounds?.() ?? boundsOf(anchorEl));
     pop.classList.toggle('is-sheet', spot.sheet);
     pop.classList.toggle('is-above', spot.above);
+    pop.classList.toggle('is-span', spot.span);
     pop.style.left = `${spot.left}px`;
     // a sheet stands on the window's foot whatever its head adds to the measured height
     pop.style.top = spot.sheet ? 'auto' : `${spot.top}px`;
