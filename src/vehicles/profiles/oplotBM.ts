@@ -1164,6 +1164,12 @@ function buildDozerBlade(P: TankBuilderPort): void {
     P.addEquipment('hullDark', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.55), 0.80, 3.70], 0.035, 10));
     P.addEquipment('hullDetail', beamBetween([side(s, 0.45), 0.78, 3.30], [side(s, 0.50), 0.79, 3.48], 0.05, 10));
   }
+  // the push frame's web plate between the arms, in their plane from the lower plate into the moldboard's back, its edges
+  // inside the arm tubes and under the rams: from above it closes the 33 cm of open ground between the nose and the
+  // blade (B2 contiguity, 262)
+  P.addEquipment('hullEquipment', orientedSlab(
+    [-0.70, 0.64, 3.14], [0.70, 0.64, 3.14], [0.70, 0.67, 3.14], [-0.70, 0.67, 3.14],
+    [-0.80, 0.42, 3.74], [0.80, 0.42, 3.74], [0.80, 0.45, 3.74], [-0.80, 0.45, 3.74]));
 }
 
 /** The T-84U's commander's NSVT on its cupola (the standard mount: no remote stations at this stage), turning about the
