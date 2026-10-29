@@ -106,6 +106,9 @@ function createFixture({
     rig: {
       cinematicActive: false,
       update: () => calls.push('rig'),
+      // battle-camera-264: the chase's lens shift comes off in the Garage and under Watch; a paused battle previews it
+      suspendFraming: () => {},
+      previewFraming: () => {},
     },
     killcam: {
       fxTimeScale: 1,

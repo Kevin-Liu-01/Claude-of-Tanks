@@ -553,7 +553,9 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   mantlet(registry, 'm1a1', 1.5);
   mantlet(registry, 'm1a1ha', 2.0);
   spec(registry, 'm1a1ha').hp = 2500;
-  for (const id of ['m1a1_abrams_aim', 'm1a1_abrams_hc']) spec(registry, id).hp = 2450;
+  // the M1A2 and M1A2 SEPv2 studies keep their HC and AIM donors' combat (abramsSourceX: the study's hp is its donor's),
+  // so the four change together
+  for (const id of ['m1a1_abrams_aim', 'm1a1_abrams_hc', 'm1a2_abrams_sepv2', 'm1a2_abrams']) spec(registry, id).hp = 2450;
   // the Type 90 family's 3-round clip (1,500 damage) was still reloading when it died; the STC-2 rebuild keeps its
   // Kyū-maru donor's gun and hull (sourceXSecondWave), so the two change together
   for (const id of ['type90', 'type90_kyumaru']) {
