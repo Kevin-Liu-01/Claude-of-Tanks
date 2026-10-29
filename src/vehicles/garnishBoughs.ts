@@ -326,7 +326,7 @@ const NEEDLE_HABITS: Readonly<Partial<Record<SprayKind, NeedleHabit>>> = Object.
     deep: [140, 34, 13], mid: [136, 34, 19], light: [130, 30, 26], fresh: [100, 40, 36], pale: [150, 16, 62], bark: [26, 30, 28] },
 });
 
-function paintNeedleBough(ctx: CanvasRenderingContext2D, rng: Rng, h: NeedleHabit, needleWidth = 1): void {
+function paintNeedleBough(ctx: CanvasRenderingContext2D, rng: Rng, h: NeedleHabit): void {
   // the axis and its laterals in pairs, longest a third of the way up (the frond's outline), drooping at their ends
   const axis = shoot([0, -0.03], (rng() - 0.5) * 0.08, 0.95, (rng() - 0.5) * 0.12, 12);
   const shoots: Array<{ pts: Pt[]; terminal: boolean; scale: number }> = [{ pts: axis, terminal: true, scale: 1 }];
@@ -383,11 +383,11 @@ function paintNeedleBough(ctx: CanvasRenderingContext2D, rng: Rng, h: NeedleHabi
     ctx.lineWidth = width;
     ctx.stroke(path);
   };
-  draw(bins.deep, h.deep, 0.0052 * needleWidth);
-  draw(bins.mid, h.mid, 0.0048 * needleWidth);
-  if (h.pale) draw(bins.pale, h.pale, 0.0046 * needleWidth);
-  draw(bins.light, h.light, 0.0044 * needleWidth);
-  draw(bins.fresh, h.fresh, 0.0046 * needleWidth);
+  draw(bins.deep, h.deep, 0.0052);
+  draw(bins.mid, h.mid, 0.0048);
+  if (h.pale) draw(bins.pale, h.pale, 0.0046);
+  draw(bins.light, h.light, 0.0044);
+  draw(bins.fresh, h.fresh, 0.0046);
 }
 
 /** A pine's bough: a few bare shoots, each ending in a tuft of long needles. */
@@ -432,27 +432,16 @@ const TUFT_TONES: Readonly<Partial<Record<SprayKind, Hsl>>> = Object.freeze({
 
 /**
  * Paint one cut bough of `species` into the tile at the context's origin (S texels a side, transparent where nothing
- * lies; the stem's foot at the tile's bottom centre). Returns false for a species without a garnish habit. `sprig`: the
- * card is that many times shorter than a bough's (a fitted cover's tuft, ghillieSuit.ts addTufts): its leaves and
- * needles are drawn that much larger on the tile and its shoots fewer, so they keep their real size on the card.
+ * lies; the stem's foot at the tile's bottom centre). Returns false for a species without a garnish habit.
  */
-export function paintGarnishBough(ctx: CanvasRenderingContext2D, S: number, rng: Rng, species: SprayKind, sprig = 1): boolean {
+export function paintGarnishBough(ctx: CanvasRenderingContext2D, S: number, rng: Rng, species: SprayKind): boolean {
   const leaf = LEAF_HABITS[species], needle = NEEDLE_HABITS[species], tuft = TUFT_TONES[species];
   if (!leaf && !needle && !tuft) return false;
-  const fewer = (n: number): number => Math.max(2, Math.round(n / sprig));
   ctx.save();
   cardSpace(ctx, S);
-  if (leaf) {
-    paintBroadleafBough(ctx, rng, sprig === 1 ? leaf : { ...leaf, len: [leaf.len[0] * sprig, leaf.len[1] * sprig],
-      spacing: leaf.spacing * sprig, twigs: [fewer(leaf.twigs[0]), fewer(leaf.twigs[1])] });
-  } else if (needle) {
-    // a sprig's card is brightened as a cover's tuft (addTufts' fitted tint): its needles are painted a step darker and
-    // its new growth olive, so the shoot reads as the conifer's own dark blue-green, not lime
-    const darker = (c: Hsl): Hsl => [c[0], c[1], c[2] * 0.8];
-    paintNeedleBough(ctx, rng, sprig === 1 ? needle : { ...needle, len: [needle.len[0] * sprig, needle.len[1] * sprig],
-      step: needle.step * sprig, laterals: Math.max(3, fewer(needle.laterals)), deep: darker(needle.deep), mid: darker(needle.mid),
-      light: darker(needle.light), fresh: [needle.fresh[0] + 24, needle.fresh[1] * 0.75, needle.fresh[2] * 0.72] }, sprig);
-  } else if (tuft) paintTuftBough(ctx, rng, tuft);
+  if (leaf) paintBroadleafBough(ctx, rng, leaf);
+  else if (needle) paintNeedleBough(ctx, rng, needle);
+  else if (tuft) paintTuftBough(ctx, rng, tuft);
   ctx.restore();
   return true;
 }

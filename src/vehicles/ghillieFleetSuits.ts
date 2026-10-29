@@ -100,6 +100,30 @@ function profile(stations: ReadonlyArray<readonly [number, number]>): (z: number
     return stations[stations.length - 1][1];
   };
 }
+/**
+ * (264) The Strv 121's issued cover: a Swedish Barracuda-style fabric, dark woodland green over black, mid and light
+ * greens and a brown (GhillieConfig.cover), apart from the hull's splinter scheme.
+ */
+const SWEDISH_BARRACUDA = Object.freeze({
+  base: [46, 56, 38] as const,
+  patches: Object.freeze([[28, 33, 26] as const, [70, 84, 52] as const, [98, 110, 70] as const, [72, 60, 42] as const]),
+});
+/** The Strv 121 turret wedge's top along z, in the turret's frame (measured: 0.74 at its foot, 0.5 at the mantlet). */
+const STRV121_WEDGE = profile([[0.85, 0.74], [1.4, 0.66], [2.0, 0.58], [2.45, 0.5]]);
+/**
+ * The drapes down the Strv 121 wedge's sloped cheeks, both sides, between z0 and z1: from the wedge's top edge (x 1.28
+ * at its foot to 0.96 forward, y 0.57 to 0.38) out and down its slope to its lower edge (x 1.52 to 1.07).
+ */
+function wedgeCheeks(z0: number, z1: number, seed: number): SidePanel[] {
+  const k = (z: number): number => (z - z0) / (z1 - z0);
+  return [-1, 1].map((side) => ({
+    side, z0, z1,
+    topAt: (z: number) => 0.57 - 0.19 * k(z),
+    bottomAt: (z: number) => 0.27 - 0.1 * k(z) + 0.03 * Math.sin(z * 4.1 + side),
+    outAt: (z: number, t: number) => (1.52 - 0.45 * k(z)) * (1 - t) + (1.28 - 0.32 * k(z)) * t + (1 - t) * 0.02,
+    seed: seed + side,
+  }));
+}
 /** The Strv 103B's and 103A's hull deck lines (the round-5 suits' measured profiles, ghillieSuit.ts). */
 const STRV103B_DECK = profile([[-3.72, 1.57], [-2.75, 1.79], [0.75, 1.85], [1.60, 1.63], [2.61, 1.53], [3.22, 1.55]]);
 const STRV103A_DECK = profile([[-3.20, 1.89], [-2.00, 1.93], [0.62, 1.90], [1.55, 1.75], [2.36, 1.62], [2.98, 1.52], [3.45, 1.54]]);
@@ -404,14 +428,22 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // walls over the side plates forward of the slats and over the bustle; a drape off the rear basket; the engine deck,
   // the deck edges under the turret's sweep and the glacis netted; four drapes a side over the cassettes. Its earlier
   // disabled round-5 entry (ghillieSuit.ts) is retired.
+  // 264 (Main: "a ton of netting and ghillie" read as heavy cover at battle and hero range): its cover issued in a
+  // Barracuda-style fabric of its own (the scheme's splinter patches had read as bare paint), twice a cover's cut-leaf
+  // tufts and more spruce; the turret's wedge netted down its slope (the roof net, laid at 0.80 and clipped to the armour
+  // within 0.3 m, had stopped where the wedge falls away to 0.25-0.6) and draped down the wedge's sloped cheeks.
   strv121: {
-    id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.45, foliageKind: 'spruce',
+    id: 'strv121', seed: 1220, style: 'ulcans', density: 2.2, leafScale: 0.92, boughShare: 0.55, foliageKind: 'spruce',
     light: 0x5f7148, dark: 0x2c3a28, netColor: 'rgba(36,50,30,0.82)', netTextureSeed: 1220,
     fieldClearanceM: 0.03, maxHalfWidth: 1.97, hemFloorM: 0.95, clothClearsGunStops: true,
     garnishBudget: { clumpCards: 0.7, lowShare: 0.45 },
+    cover: { palette: SWEDISH_BARRACUDA, tufts: 2 },
     turret: {
-      top: [laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 2.90, nx: 40, nz: 76, y: 0.80, garnishRiseM: 0.16, seed: 11 })],
-      side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19)],
+      top: [
+        laid({ x0: -1.60, x1: 1.60, z0: -3.15, z1: 0.85, nx: 40, nz: 50, y: 0.80, garnishRiseM: 0.16, seed: 11 }),
+        laid({ x0: -1.45, x1: 1.45, z0: 0.85, z1: 2.45, nx: 36, nz: 20, yAt: (_x, z) => STRV121_WEDGE(z), garnishRiseM: 0.12, seed: 13 }),
+      ],
+      side: [...flanks(-1.30, 0.55, 0.86, 0.50, 1.60, 17), ...flanks(-2.95, -1.95, 0.72, 0.44, 1.47, 19), ...wedgeCheeks(0.6, 2.2, 29)],
       face: [face({ z: -3.24, x0: -1.25, x1: 1.25, y0: 0.26, y1: 0.66, nx: 25, ny: 6, seed: 23 })],
     },
     hull: {
