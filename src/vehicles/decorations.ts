@@ -3730,7 +3730,7 @@ const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
  * 2026-10-17 (227): such an arm first slides in along the load to where the wall is, so the load keeps its station.
  */
 function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
-  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
+  wallAt?: (x: number, y: number, under?: boolean) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
   const parts: DecorPart[] = [];
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
@@ -3743,8 +3743,11 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     const steel = (geo: THREE.BufferGeometry) => own.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
     // round 5: the wall foot lies on the wall where the slot finds it behind the arm (a leaning or curved turret side
     // tilts and moves it, a bin or a cloth cover stands it out), not on a plane at wallZ, below the arm's flange (the
-    // load rests against the wall above it); the arm runs from that foot out under the load
-    const wall = wallAt?.(x, -0.045) ?? null;
+    // load rests against the wall above it); the arm runs from that foot out under the load. 265 (accessoryContact on
+    // pt91a_twardy): the foot finds the wall where it stands out past the load's back too (a turret's swell or lower row
+    // of blocks under the load), which the cleat's probe refuses; on the plane at wallZ the plate lay buried in that
+    // swell, the strut through it its only contact (5 such plates on the 24 tanks this moves: clipping 28 -> 23)
+    const wall = wallAt?.(x, -0.045, true) ?? null;
     const z0 = wall ? wall.p.z : wallZ;
     const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
     // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over. Where
@@ -6294,13 +6297,15 @@ function* decorationSteps(
           const wallZ = -out * 0.3 - push;
           // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
           const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
-          const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
+          const wallAt = (lx: number, ly: number, under = false): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
             const f = new THREE.Vector3(lx, ly, wallZ).applyQuaternion(qr).add(pos);
             const hit = turP.side(f.y, f.z, side, W / 2 + 1);
             if (!hit || Math.abs(hit.n.x) < 0.3) return null;
             const p = hit.p.clone().sub(pos).applyQuaternion(qi);
-            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
-            return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
+            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it); an arm's
+            // foot, under the load, as far out as leaves its arm 10 cm of reach (265, sideLedgeParts)
+            const outer = under ? bb.max.z - 0.08 : bb.min.z + 0.01;
+            return p.z > wallZ - 0.12 && p.z < outer ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
           };
           const candidate = clonePartList(parts);
           const carry = (list: DecorPartList, detail: 0 | 1): boolean => {
