@@ -34,7 +34,8 @@ export const BALANCE_SCENARIOS: readonly BalanceScenario[] = Object.freeze([
   { id: 'chieftain-tier8', aId: 'chieftain_mk9', bId: 'fv4034', purpose: 'late Cold War UK Tier VIII peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-peer', aId: 'xk2_black_panther', bId: 'type96_80_feng', purpose: 'Tier VI modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'k2-tier9-mobile-peer', aId: 'xk2_black_panther', bId: 'c1_ariete', distanceM: 220, advanceToM: 105, purpose: 'Tier VI mobility and firing-on-the-move peers', minAScore: 0.2, maxAScore: 0.8 },
-  { id: 'k2b-cross-tier', aId: 'k2b', bId: 't84bm_oplot_m', purpose: 'Tier VII K2B against a modern MBT peer', minAScore: 0.2, maxAScore: 0.8 },
+  // 263: the T-84U Oplot (t84bm_oplot_m) moved to VI with the new Tier X Oplots; the T-80U Yun is its modern VII successor
+  { id: 'k2b-cross-tier', aId: 'k2b', bId: 't80u_yun', purpose: 'Tier VII K2B against a modern MBT peer', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'proryv-tier10-peer', aId: 't90m_proryv', bId: 't90m', purpose: 'Tier X modern MBT peers', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'merkava-tier7-peer', aId: 'merkava1b', bId: 't62_1975', purpose: 'Tier VII Cold War MBT ceiling', minAScore: 0.2, maxAScore: 0.8 },
   { id: 'puma-tier8-peer', aId: 'spz_puma', bId: 'bmp3_rok', purpose: 'Tier IV Puma against a Tier III IFV (no Tier IV IFV duels inside the band)', minAScore: 0.2, maxAScore: 0.8 },
