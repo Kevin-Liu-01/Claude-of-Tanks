@@ -2987,6 +2987,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 266: the M48 marks on the A5's castings author their own period equipment the same way (pattonCast.ts
   // M48_VARIANTS, docs/references/tanks/<id>.md), dischargers included where the mark carried them
   if (['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].includes(spec.id)) return [];
+  // (release 267: the Magachs on the M60A1's castings, the same way)
+  if (['magach6b', 'magach7c'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];

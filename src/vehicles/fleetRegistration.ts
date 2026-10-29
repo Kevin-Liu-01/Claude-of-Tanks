@@ -53,6 +53,7 @@ import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
 import './type10DozerSpecs.ts';
 import './m48VariantSpecs.ts';
+import './m60VariantSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';

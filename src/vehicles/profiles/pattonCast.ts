@@ -1039,7 +1039,7 @@ function bustleNumbers(P: CastPort, T: TurretFrame, z: number, frac: number, sca
 
 /** What pattonCastProportions.selftest.mjs reads back from a build: the authored datums and the running gear's counts. */
 interface PattonCastReceipt {
-  readonly mark: 'm46' | 'm47' | M48Mark | 'm60a1' | 'm60a2' | 'm60a3';
+  readonly mark: 'm46' | 'm47' | M48Mark | 'm60a1' | 'm60a2' | 'm60a3' | 'magach6b' | 'magach7c';
   readonly ring: readonly [number, number];
   readonly trunnion: readonly [number, number];
   readonly muzzleZ: number;
@@ -2085,14 +2085,14 @@ function m48Ga2Cupola(P: CastPort, T: TurretFrame, h = 0.22): void {
  * along `up` laid into the surface, `roll` turning it about that side (the shingled glacis courses); the cassette and its
  * inset lid, external armour of the open cluster. */
 function eraBox(P: CastPort, owner: 'hull' | 'turret', c: THREE.Vector3, n: THREE.Vector3, up: THREE.Vector3, w: number,
-  h: number, d: number, roll = 0, embed = 0.02): void {
+  h: number, d: number, roll = 0, embed = 0.02, ring: { readonly y: number; readonly z: number } = M48_RING): void {
   const nz = n.clone().normalize();
   const v = up.clone().addScaledVector(nz, -up.dot(nz)).normalize();
   if (roll) nz.applyAxisAngle(v, roll);
   const u = new THREE.Vector3().crossVectors(v, nz);
   const e = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, nz));
   const p = c.clone().addScaledVector(nz, d / 2 - embed);
-  if (owner === 'turret') p.sub(new THREE.Vector3(0, M48_RING.y, M48_RING.z));
+  if (owner === 'turret') p.sub(new THREE.Vector3(0, ring.y, ring.z));
   P.addExternalArmor(owner, KIT.box(w, h, d), p.x, p.y, p.z, e.x, e.y, e.z);
   const lid = KIT.box(w * 0.82, h * 0.82, 0.014);
   lid.translate(0, 0, d / 2 + 0.004);
@@ -2626,8 +2626,12 @@ const M60A2_HULL_SPEC: PershingHullSpec = {
   ...M60_HULL_SPEC, knee: [1.80, 1.757], glacisLine: [[1.86, 1.627], [2.45, 1.627]], driverHatchZ: 2.17,
 };
 
-function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
+/** The marks drawn on the A1's casting: the A3, and the IDF's Magach 6B (Blazer) and Magach 7C (passive armour). */
+type M60TurretMark = 'a1' | 'a3' | 'magach6b' | 'magach7c';
+
+function* m60TurretSteps(P: CastPort, mark: M60TurretMark): TankProfileBuild {
   const { box, cylY, cylZ } = KIT;
+  const a3 = mark === 'a3', magach = mark === 'magach6b' || mark === 'magach7c';
   const T: TurretFrame = { ringY: M60_RING.y, ringZ: M60_RING.z, stations: M60_TURRET };
   const L = tl(T);
   P.turretG.position.set(0, T.ringY, T.ringZ);
@@ -2636,8 +2640,10 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
   // the M19 commander's cupola on the right (the owner's model, measured; its ring 1.16 across at (-0.52, -0.03)): a
   // sixteen-faced casting 1.44 m across at its widest 0.12 m over the roof and a little longer than wide, its faces
   // leaning in 20 degrees above that to a flat top 0.37 m up, the domed hatch rising 0.10 m on it; vision blocks in its
-  // faces, the sight's box at the hatch's front, the M85 in its angular armoured prow out of the front
-  {
+  // faces, the sight's box at the hatch's front, the M85 in its angular armoured prow out of the front; the Magachs' low
+  // Urdan cupola in its place
+  if (magach) m60UrdanCupola(P, T, mark === 'magach7c');
+  else {
     const [cx, cz] = [-0.52, -0.03];
     const roof = frameTop(T, cx, cz);
     const b0 = roof - 0.03;
@@ -2679,7 +2685,7 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     const my = frameTop(T, 0.47, -0.70);
     P.add('turretDark', cylY(0.015, 0.015, 0.14, 8), 0.47, L.y(my + 0.07), L.z(-0.70));
     for (const side of [-1, 1]) KIT.liftEye(P, 'turretDetail', side * 0.85, L.y(frameTop(T, side * 0.85, -1.55) + 0.03), L.z(-1.55), Math.PI / 2);
-    if (!a3) {
+    if (mark === 'a1') {
       // the searchlight's cable drooping from the mantlet's top back to the roof ahead of the cupola
       const c = [[0.10, 2.58, 1.70], [0.02, 2.56, 1.30], [-0.18, frameTop(T, -0.18, 0.95) + 0.03, 0.95], [-0.38, frameTop(T, -0.38, 0.62) + 0.02, 0.62]];
       for (let k = 0; k + 1 < c.length; k++) bar(P, 'turretDark', [c[k][0], L.y(c[k][1]), L.z(c[k][2])], [c[k + 1][0], L.y(c[k + 1][1]), L.z(c[k + 1][2])], 0.01);
@@ -2692,9 +2698,12 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     // the bustle rack (the owner's model): an open rack of three rails at its floor and 0.22 and 0.45 m over it,
     // following the bustle's plan 0.15 m out round its back (its corners rounded) and 0.5 m forward along each flank, on
     // uprights about 0.30 m apart standing 0.10 m over the top rail; the boxes and the bedroll in it
-    const yf = 2.15, rails = [yf, yf + 0.22, yf + 0.45];
+    // (the Magachs' IDF basket: four rails, run on forward along the flanks, its sides closed by the wire mesh)
+    const yf = 2.15, rails = magach ? [yf, yf + 0.15, yf + 0.30, yf + 0.45] : [yf, yf + 0.22, yf + 0.45];
     const half: number[][] = [];
-    for (const z of [-1.20, -1.45, -1.70]) half.push([castSideAt(M60_TURRET, 2.42, z) + 0.06, z]);
+    for (const z of magach ? [-0.90, -1.20, -1.45, -1.70] : [-1.20, -1.45, -1.70]) {
+      half.push([castSideAt(M60_TURRET, 2.42, z) + (magach ? 0.10 : 0.06), z]);
+    }
     for (let k = 1; k <= 4; k++) {
       const a = (k / 4) * (Math.PI / 2);
       half.push([0.78 + 0.25 * Math.cos(a), -1.80 - 0.25 * Math.sin(a)]);
@@ -2703,6 +2712,13 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     for (let k = 0; k + 1 < outline.length; k++) {
       const [x0, z0] = outline[k], [x1, z1] = outline[k + 1];
       for (const y of rails) bar(P, 'turretDetail', [x0, L.y(y), L.z(z0)], [x1, L.y(y), L.z(z1)], 0.015);
+      if (magach) {
+        const len = Math.hypot(x1 - x0, z1 - z0), m = Math.max(1, Math.round(len / 0.11));
+        for (let i = 1; i < m; i++) {
+          const t = i / m;
+          P.add('turretOpenLattice', box(0.01, rails[3] - yf, 0.01), x0 + (x1 - x0) * t, L.y((yf + rails[3]) / 2), L.z(z0 + (z1 - z0) * t));
+        }
+      }
     }
     for (const [x, z] of [...outline.filter((_, i) => i % 2 === 0), [0.30, -2.05], [-0.30, -2.05], [0, -2.05]]) {
       bar(P, 'turretDetail', [x, L.y(yf), L.z(z)], [x, L.y(rails[2]), L.z(z)], 0.015);
@@ -2732,6 +2748,7 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     KIT.liftEye(P, 'turretDetail', side * (castSideAt(M60_TURRET, y, z) - 0.06), L.y(y + 0.02), L.z(z), Math.PI / 2);
     const [rz, ry] = [0.40, 2.50];
     const rx = castSideAt(M60_TURRET, ry, rz);
+    if (mark === 'magach7c') continue;
     P.add('turret', KIT.cylX(0.11, 0.12, P.q ? 20 : 12), side * (rx + 0.03), L.y(ry), L.z(rz));
     P.add('turret', KIT.xform(KIT.sph(0.11, P.q ? 20 : 12, P.q ? 8 : 5), 0, 0, 0, 0, 0, 0, [0.45, 1, 1]), side * (rx + 0.09), L.y(ry), L.z(rz));
   }
@@ -2762,6 +2779,8 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     // the small domed fitting on the roof over the gun shield
     P.add('turretDetail', KIT.xform(KIT.sph(0.07, 12, 6), 0, 0, 0, 0, 0, 0, [1, 0.6, 1]), 0, L.y(frameTop(T, 0, 1.55)), L.z(1.55));
   }
+  if (mark === 'magach6b') m60BlazerTurret(P);
+  if (mark === 'magach7c') m60Magach7Armour(P, T);
   bustleNumbers(P, T, -1.30, 0.55, 0.24);
   yield 'm60TurretFittings';
   // gun: the M60's cast mantlet on the trunnion (the owner's model's: a block 1.02 m wide from 1.74 to 2.52, its face 0.3
@@ -2779,7 +2798,7 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     P.addGunExtra(KIT.xform(cylZ(0.135, 0.04, 8), 0, 0, 0, 0, 0, Math.PI / 8), 0, 0, 0.62);
     // the coax's stub in its port; the A1's bent rod on the barrel's left down into the shield
     P.addGunExtraDark(cylZ(0.03, 0.10, 10), 0.33, 0.12, 0.55);
-    if (!a3) {
+    if (mark === 'a1') {
       bar(P, 'gunMountDark', [0.20, 0.12, 1.02], [0.20, 0.12, 0.70], 0.0125);
       bar(P, 'gunMountDark', [0.20, 0.12, 0.70], [0.20, 0.06, 0.58], 0.0125);
     }
@@ -2790,7 +2809,7 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     P.addGunExtra(cylZ(0.065, 0.02, P.q ? 16 : 10), x, 0.12, 0.495);
     P.addGunExtraDark(cylZ(0.05, 0.03, P.q ? 16 : 10), x, 0.12, 0.50);
   }
-  if (!a3) {
+  if (mark === 'a1') {
     // (on two slim tube posts down to the mantlet's top and a cross tube, its edges well rounded, the cover's rear 10 %
     // narrower; the lens set back in its bezel)
     for (const x of [-0.18, 0.18]) bar(P, 'gunMountDark', [x, 0.30, 0.50], [x, 0.22, 0.66], 0.022);
@@ -2811,14 +2830,26 @@ function* m60TurretSteps(P: CastPort, a3: boolean): TankProfileBuild {
     for (const s of [-1, 1]) P.addGunExtraDark(box(0.012, 0.012, 0.50), s * 0.326, 0.435, 0.78);
     bar(P, 'gunMountDark', [0.325, 0.50, 0.70], [0.325, 0.58, 0.88], 0.012);
     bar(P, 'gunMountDark', [-0.20, 0.60, 0.52], [-0.30, 0.62, 0.20], 0.012);
-  } else {
+  } else if (a3) {
     // the light's mounting studs on the face under its top edge, the two smaller ones below them
     // (along the boss's top edge, standing 0.10 m out of its sloped face)
     for (const x of [-0.23, 0, 0.23]) P.addGunExtraDark(KIT.xform(box(0.045, 0.10, 0.045), 0, 0, 0, -0.5, 0, 0), x, 0.20, 0.55);
     for (const x of [-0.12, 0.12]) P.addGunExtraDark(KIT.xform(box(0.04, 0.06, 0.04), 0, 0, 0, -0.5, 0, 0), x, 0.09, 0.59);
   }
-  pattonGun(P, a3 ? { ...G, r0: 0.118, r1: 0.096 } : G);
-  if (a3) {
+  if (mark === 'magach6b') {
+    // the IDF's .50 over the gun (the Latrun Magach 6 photographs): its cradle on the mantlet's crest, the receiver and
+    // the heavy barrel in its jacket along the gun's line, elevating with it
+    P.addGunExtraDark(box(0.12, 0.10, 0.20), 0, 0.45, 0.30);
+    P.addGunExtraDark(box(0.13, 0.15, 0.44), 0, 0.57, 0.40);
+    P.addGunExtraDark(box(0.10, 0.07, 0.14), 0.09, 0.57, 0.36);
+    P.addGunExtraDark(cylZ(0.032, 0.30, 10), 0, 0.57, 0.77);
+    P.addGunExtraDark(cylZ(0.017, 0.80, 8), 0, 0.57, 1.32);
+    P.addGunExtraDark(cylZ(0.024, 0.07, 8), 0, 0.57, 1.75);
+    for (const dx of [-0.04, 0.04]) P.addGunExtraDark(box(0.025, 0.08, 0.05), dx, 0.57, 0.15);
+  }
+  // (the A3's and the Magachs' thermal sleeve thickens the tube)
+  pattonGun(P, a3 || magach ? { ...G, r0: 0.118, r1: 0.096 } : G);
+  if (a3 || magach) {
     // the thermal sleeve's three clamp bands
     const len = G.muzzleZ - G.trunnionZ;
     for (const z of [1.20, 2.70, 3.70]) {
@@ -2874,6 +2905,216 @@ function m60ShieldBoss(): Geo {
   return sectionSolid([
     { z: 0.475, ring: ring(0.28, 0.19) }, { z: 0.535, ring: ring(0.235, 0.16) }, { z: 0.59, ring: ring(0.15, 0.11, 0.6) },
   ]);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The IDF's M60s (the owner, 2026-10-28: "Magach Series (Israel) ... (Magach 6 and Magach 7 families)"): the Magach 6B
+// (an M60A1 with Blazer) and the Magach 7C (passive armour) on the A1's castings, from the Latrun photographs
+// (~/cot-lanes/m60-variants-refs: docs/references/tanks/magach6b.md, magach7c.md).
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The M60 hull's deck height along the centre line (world z): the ring deck, the step to the driver's deck, the glacis. */
+function m60DeckY(z: number): number {
+  const H = M60_HULL_SPEC;
+  const pts = [H.knee, ...(H.glacisLine ?? []), H.toe];
+  if (z <= pts[0][0]) return H.deckY;
+  for (let k = 0; k + 1 < pts.length; k++) {
+    const [z0, y0] = pts[k], [z1, y1] = pts[k + 1];
+    if (z <= z1) return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+  }
+  return H.toe[1];
+}
+
+/** A box of (w, h, d) standing on point c of a surface with normal n, its height along `up` (world), into a bucket. */
+function seatedBox(P: CastPort, bucket: string, c: THREE.Vector3, n: THREE.Vector3, up: THREE.Vector3, w: number, h: number,
+  d: number, embed = 0.01): void {
+  const nz = n.clone().normalize();
+  const v = up.clone().addScaledVector(nz, -up.dot(nz)).normalize();
+  const u = new THREE.Vector3().crossVectors(v, nz);
+  const e = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(u, v, nz));
+  const p = c.clone().addScaledVector(nz, d / 2 - embed);
+  P.add(bucket, KIT.box(w, h, d), p.x, p.y, p.z, e.x, e.y, e.z);
+}
+
+/** The Magachs' low Urdan cupola where the M19 stood (the photographs): the vision-block ring under its domed hatch, the
+ * commander's gun on its pintle post up the outer flank (the 7C's a .50, the 6B's a MAG), the loader's MAG on its post
+ * beside his hatch. */
+function m60UrdanCupola(P: CastPort, T: TurretFrame, heavy: boolean): void {
+  const { box, cylY, sph, xform } = KIT;
+  const L = tl(T);
+  const [cx, cz] = [-0.52, -0.03];
+  const cupTop = visionCupola(P, T, cx, cz, 0.47, 0.22, 8);
+  P.add('turret', xform(sph(0.27, P.q ? 18 : 10, P.q ? 10 : 5), 0, 0, 0, 0, 0, 0, [1, 0.42, 1]), cx, L.y(cupTop - 0.01), L.z(cz));
+  P.add('turretDark', box(0.46, 0.025, 0.13), cx, L.y(cupTop + 0.03), L.z(cz - 0.21));
+  const [mx, mz] = [cx - 0.50, cz + 0.22], my = cupTop + 0.10;
+  P.add('turretDark', cylY(0.03, 0.035, my - (cupTop - 0.20), 10), mx, L.y((my + cupTop - 0.20) / 2), L.z(mz));
+  roofM2(P, T, mx, mz, my, heavy
+    ? { cls: 'm2', barrel: 0.95, seed: 721, ring: false, elev: 0.04 }
+    : { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 722, ring: false, elev: 0, ammo: false });
+  const lr = frameTop(T, 0.86, 0.30);
+  P.add('turretDark', box(0.11, 0.04, 0.12), 0.86, L.y(lr + 0.01), L.z(0.30));
+  P.add('turretDark', cylY(0.035, 0.045, 0.26, 10), 0.86, L.y(lr + 0.13), L.z(0.30));
+  roofM2(P, T, 0.86, 0.30, lr + 0.25, { cls: 'mag', barrel: 0.72, scale: 1.15, seed: 723, ring: false, elev: 0, ammo: false });
+}
+
+/** A point on the M60 casting's flank at height y and station z on one side, and its outward normal (world). */
+function m60Flank(side: number, y: number, z: number): [THREE.Vector3, THREE.Vector3] {
+  const e = 0.01, w = (yy: number, zz: number): number => castSideAt(M60_TURRET, yy, zz);
+  const n = new THREE.Vector3(side, -(w(y + e, z) - w(y - e, z)) / (2 * e), -(w(y, z + e) - w(y, z - e)) / (2 * e));
+  return [new THREE.Vector3(side * w(y, z), y, z), n.normalize()];
+}
+
+/** The Magach 6B's Blazer on the turret (the Latrun Magach 6 photographs): along each flank eight tall boxes on brackets
+ * standing off the casting, their tops stepping down rearward and each turned so its front edge laps outboard of the
+ * next; two courses round each cheek turned 25 degrees out from the bore; three boxes along each side of the roof's front
+ * edge. Each side one consumable cluster; the brackets stay on the casting. */
+function m60BlazerTurret(P: CastPort): void {
+  const up = new THREE.Vector3(0, 1, 0);
+  const w = (y: number, z: number): number => castSideAt(M60_TURRET, y, z);
+  for (const side of [1, -1]) {
+    for (let k = 0; k < 8; k++) {
+      const z = 0.95 - k * 0.30;
+      for (const y of [1.96, 2.30]) {
+        let ax = 0;
+        for (let yy = 1.90; yy <= 2.44 + 1e-9; yy += 0.032) ax = Math.max(ax, w(yy, z));
+        const sx = w(y, z) - 0.02, ex = ax + 0.07;
+        P.add('turretDetail', KIT.box(ex - sx, 0.04, 0.05), side * (sx + ex) / 2, y - M60_RING.y, z - M60_RING.z);
+      }
+    }
+    P.destructibleCluster(`magach6b_turret_era_${side > 0 ? 'L' : 'R'}`, () => {
+      for (let k = 0; k < 8; k++) {
+        const z = 0.95 - k * 0.30, y0 = 1.90, y1 = 2.44 - 0.03 * k;
+        let ax = 0;
+        for (let y = y0; y <= y1 + 1e-9; y += 0.032) ax = Math.max(ax, w(y, z));
+        const [, n0] = m60Flank(side, 2.10, z);
+        const plan = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, side * 0.26);
+        const n = plan.multiplyScalar(Math.cos(0.10)).add(new THREE.Vector3(0, -Math.sin(0.10), 0)).normalize();
+        eraBox(P, 'turret', new THREE.Vector3(side * (ax + 0.08), (y0 + y1) / 2, z), n, up, 0.26, y1 - y0, 0.10, 0, 0, M60_RING);
+      }
+      // the cheek courses: boxes 0.28 m wide a centimetre apart along the casting's plan contour from the nose back
+      for (const y of [2.00, 2.25]) {
+        let run = 0, next = 0.10, count = 4, pz = 1.90, px = w(y, pz);
+        for (let z = 1.895; z >= 1.00 && count > 0; z -= 0.005) {
+          const x = w(y, z);
+          run += Math.hypot(x - px, z - pz);
+          if (run >= next && x > 0.3) {
+            const [c, n0] = m60Flank(side, y, z);
+            const n = new THREE.Vector3(n0.x, 0, n0.z).normalize().applyAxisAngle(up, -side * 0.44);
+            n.multiplyScalar(Math.cos(0.12)).add(new THREE.Vector3(0, Math.sin(0.12), 0)).normalize();
+            eraBox(P, 'turret', c, n, up, 0.28, 0.22, 0.12, 0, 0.04, M60_RING);
+            next += 0.29; count--;
+          }
+          px = x; pz = z;
+        }
+      }
+      // the roof's front edge
+      for (const x of [0.25, 0.55, 0.85]) {
+        let z = 1.80;
+        while (z > 0.40 && castTopAt(M60_TURRET, x, z) < 2.45) z -= 0.02;
+        const e = 0.02, t = (xx: number, zz: number): number => castTopAt(M60_TURRET, xx, zz);
+        const n = new THREE.Vector3(-side * (t(x + e, z) - t(x - e, z)) / (2 * e), 1, -(t(x, z + e) - t(x, z - e)) / (2 * e)).normalize();
+        eraBox(P, 'turret', new THREE.Vector3(side * x, t(x, z), z), n, new THREE.Vector3(1, 0, 0), 0.32, 0.25, 0.08, 0, 0.03, M60_RING);
+      }
+    });
+  }
+}
+
+/** The Magach 6B's Blazer on the hull (the photographs): two rows of slabs up the glacis between the light groups, one
+ * either side of the driver's hatch on the front deck. */
+function m60BlazerGlacis(P: CastPort): void {
+  const fwd = new THREE.Vector3(0, 0, 1);
+  const slope = new THREE.Vector3(0, 1, (m60DeckY(2.9) - m60DeckY(3.0)) / 0.1).normalize();
+  P.destructibleCluster('magach6b_glacis_era', () => {
+    for (let i = 0; i < 7; i++) eraBox(P, 'hull', new THREE.Vector3(-0.645 + i * 0.215, m60DeckY(2.72), 2.72), slope, fwd, 0.205, 0.40, 0.11, 0.18);
+    for (let i = 0; i < 6; i++) eraBox(P, 'hull', new THREE.Vector3(-0.55 + i * 0.22, m60DeckY(3.12), 3.12), slope, fwd, 0.21, 0.36, 0.11, 0.18);
+    for (const x of [-0.58, 0.58]) eraBox(P, 'hull', new THREE.Vector3(x, m60DeckY(2.10), 2.10), new THREE.Vector3(0, 1, 0), fwd, 0.26, 0.34, 0.09);
+  });
+}
+
+/** The Magach 7C's passive armour on the turret (the Latrun photographs): each side one prism of flat plates from beside
+ * the gun's slot ahead of the mantlet, a wedge raked 55 degrees back to the cheek's corner, then the flank back to the
+ * bustle's front; its walls leaning in 0.10 m, its front faces leaning back 0.28 m to a flat top a little under the roof;
+ * the inner run inside the casting. Two rows of bolts on each face. */
+function m60Magach7Armour(P: CastPort, T: TurretFrame): void {
+  const yb = 1.84, yt = 2.64, h = yt - yb;
+  const outer: readonly (readonly [number, number])[] = [[0.56, 2.22], [1.02, 2.02], [1.44, 1.32], [1.48, 0.92],
+    [1.47, -0.40], [1.40, -0.78], [1.20, -0.88]];
+  const inner: [number, number][] = [];
+  for (let z = -0.84; z <= 1.92 + 1e-9; z += 0.12) {
+    inner.push([Math.max(0.56, Math.min(castSideAt(M60_TURRET, 2.30, z), castSideAt(M60_TURRET, yb + 0.05, z)) - 0.05), z]);
+  }
+  inner.push([0.56, 2.02]);
+  for (const side of [-1, 1]) {
+    const shape = new THREE.Shape();
+    [...outer, ...inner].forEach(([x, z], i) => (i ? shape.lineTo(side * x, -z) : shape.moveTo(side * x, -z)));
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: h, steps: 1, bevelEnabled: false, curveSegments: 1 });
+    g.rotateX(-Math.PI / 2);
+    const pos = g.getAttribute('position');
+    const isInner = (x: number, z: number): boolean => inner.some(([ix, iz]) => Math.abs(ix - Math.abs(x)) < 1e-4 && Math.abs(iz - z) < 1e-4);
+    for (let k = 0; k < pos.count; k++) {
+      const x = pos.getX(k), y = pos.getY(k), z = pos.getZ(k), top = y > h / 2;
+      let nx = x, nz = z;
+      if (top && !isInner(x, z)) {
+        nx = x - side * 0.10;
+        if (z > 1.2) nz = z - 0.28 * Math.min(1, (z - 1.2) / 0.8);
+      }
+      pos.setXYZ(k, nx, top ? yt : yb, nz);
+    }
+    g.translate(0, -T.ringY, -T.ringZ);
+    g.computeVertexNormals();
+    P.add('turret', g);
+    // the bolts: two rows along each outer face
+    for (let i = 0; i + 1 < outer.length - 1; i++) {
+      const [x0, z0] = outer[i], [x1, z1] = outer[i + 1];
+      const len = Math.hypot(x1 - x0, z1 - z0), m = Math.max(1, Math.floor(len / 0.30));
+      const ry = Math.atan2(side * (x1 - x0), z1 - z0) + side * Math.PI / 2;
+      for (let j = 1; j < m; j++) {
+        const f = j / m;
+        for (const [y, inset] of [[yb + 0.10, 0.012], [yt - 0.12, 0.085]] as const) {
+          const bx = side * (x0 + (x1 - x0) * f - inset * (z0 > 1.2 ? 0.4 : 1)), bz = z0 + (z1 - z0) * f;
+          P.add('turretDark', KIT.xform(KIT.cylZ(0.022, 0.02, 8), 0, 0, 0, 0, ry, 0), bx, L0(T).y(y), L0(T).z(bz));
+        }
+      }
+    }
+  }
+  // the flat plate over the roof's front between the two prisms
+  const L = tl(T);
+  P.add('turretDetail', KIT.box(1.10, 0.05, 0.45), 0, L.y(castTopAt(M60_TURRET, 0, 1.45) + 0.02), L.z(1.45));
+}
+const L0 = tl;
+
+/** The Magach 7C's hull armour (the photographs): deep bolted skirts of five panels a side hung on the fenders' lips,
+ * their fronts raked up over the idlers; a thick plate over the upper glacis between the light groups. */
+function m60Magach7Hull(P: CastPort): void {
+  const top = 1.53, bot = 0.86, z0 = 2.86, z1 = -3.10;
+  const shape = new THREE.Shape();
+  shape.moveTo(z1, top);
+  shape.lineTo(z0, top);
+  shape.lineTo(z0 - 0.34, bot);
+  shape.lineTo(z1, bot);
+  shape.closePath();
+  for (const side of [-1, 1]) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false, curveSegments: 1 });
+    g.rotateY(-Math.PI / 2);
+    g.translate(side * 1.86 + (side > 0 ? 0.05 : 0), 0, 0);
+    g.computeVertexNormals();
+    P.add('hullDetail', g);
+    const pitch = (z0 - 0.34 - z1) / 5;
+    for (let k = 1; k < 5; k++) P.add('hullDark', KIT.box(0.06, top - bot - 0.04, 0.02), side * 1.86, (top + bot) / 2, z1 + k * pitch);
+    for (let k = 0; k < 5; k++) {
+      for (const y of [top - 0.06, bot + 0.06]) {
+        for (const dz of [0.12, pitch - 0.12]) P.add('hullDark', KIT.cylX(0.02, 0.07, 8), side * 1.86, y, z1 + k * pitch + dz);
+      }
+    }
+    for (let zz = z0 - 0.45; zz > z1 + 0.2; zz -= 0.90) P.add('hullDark', KIT.box(0.06, 0.07, 0.08), side * 1.83, 1.50, zz);
+  }
+  const up = new THREE.Vector3(0, 0, 1);
+  const slope = new THREE.Vector3(0, 1, (m60DeckY(2.9) - m60DeckY(3.0)) / 0.1).normalize();
+  seatedBox(P, 'hull', new THREE.Vector3(0, m60DeckY(2.92), 2.92), slope, up, 1.34, 0.78, 0.11);
+  for (const x of [-0.50, 0, 0.50]) {
+    for (const z of [2.66, 3.18]) P.add('hullDark', KIT.cylY(0.025, 0.025, 0.03, 8), x, m60DeckY(z) + 0.10, z);
+  }
 }
 
 // The M60A2 "Starship" (the owner's model, registered to the A1's frame by its turret ring: .qa-dev/m60-265/a2-recipe.json):
@@ -3303,13 +3544,16 @@ function* m60a2TurretSteps(P: CastPort): TankProfileBuild {
   yield 'm60a2Gun';
 }
 
-export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3'): TankProfileBuild {
+export function* buildM60CastSteps(P: CastPort, variant: 'a1' | 'a2' | 'a3' | 'magach6b' | 'magach7c'): TankProfileBuild {
   yield* pershingHullSteps(P, M60_HULL_SPEC);
+  if (variant === 'magach6b') { m60BlazerGlacis(P); yield 'm60HullEra'; }
+  if (variant === 'magach7c') { m60Magach7Hull(P); yield 'm60HullArmour'; }
   if (variant === 'a2') yield* m60a2TurretSteps(P);
-  else yield* m60TurretSteps(P, variant === 'a3');
+  else yield* m60TurretSteps(P, variant);
   const H = variant === 'a2' ? M60A2_HULL_SPEC : M60_HULL_SPEC, G = variant === 'a2' ? M60A2_GUN : M60_GUN;
   publishReceipt(P, {
-    mark: variant === 'a3' ? 'm60a3' : variant === 'a2' ? 'm60a2' : 'm60a1', ring: [M60_RING.y, M60_RING.z], trunnion: [G.axisY, G.trunnionZ],
+    mark: variant === 'a1' || variant === 'a2' || variant === 'a3' ? `m60${variant}` : variant, ring: [M60_RING.y, M60_RING.z],
+    trunnion: [G.axisY, G.trunnionZ],
     muzzleZ: G.muzzleZ, device: G.device, evacuator: [G.evac?.z0 ?? 0, G.evac?.z1 ?? 0], roadWheels: 6, wheelR: H.gear.wheelR,
     returnRollers: H.gear.rollerN, tensionWheel: false, trackW: H.trackW, trackCentres: H.xc * 2,
     glacisFromVerticalDeg: glacisDeg(H.toe, H.glacisLine?.[H.glacisLine.length - 1] ?? H.knee),

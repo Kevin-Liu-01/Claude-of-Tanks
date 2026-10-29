@@ -348,6 +348,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   magach3: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
   m48a2ga2: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
   m48_super: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
+  magach6b: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
+  magach7c: anchor('hull', 'left', 0.52, 0.58, 0.20, 1),
   m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
   centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
   centurion5_2: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),

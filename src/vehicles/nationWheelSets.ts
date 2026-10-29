@@ -216,6 +216,8 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // release 266: the M48s of Israel and Germany ride the M48A5's cast running gear (pattonCast.ts), as the Sabra does
   m48a3_patton: { donor: 'm48a3_patton', reason: 'release 266: the M48A3 Mod B: the M48 dished disc road wheel' },
   magach3: { donor: 'm48a3_patton', reason: 'release 266: the Magach 3 is an M48 hull: the M48 dished disc road wheel' },
+  magach6b: { donor: 'm60a3', reason: 'release 267: the Magach 6B is an M60A1 hull: the M60 cast five-spoke wheel' },
+  magach7c: { donor: 'm60a3', reason: 'release 267: the Magach 7C is an M60 hull: the M60 cast five-spoke wheel' },
   m48a2ga2: { donor: 'm48a3_patton', reason: 'release 266: the Bundeswehr M48A2GA2 is an M48 hull: the M48 dished disc road wheel' },
   m48_super: { donor: 'm48a3_patton', reason: 'release 266: the M48 Super is an M48A2G hull: the M48 dished disc road wheel' },
   aft10: { donor: 'type100', reason: 'tank destroyer on a ZBD-04-family IFV chassis → China IFV wheel' },

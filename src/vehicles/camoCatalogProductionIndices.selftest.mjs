@@ -65,7 +65,7 @@ const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
 // Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's
 // summer, the Magach 3 the IDF service coat, the German M48s the Bundeswehr's).
 const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', magach3: 'service_merkava2d', m48a2ga2: 'service_leo2a6m',
-  m48_super: 'service_leo2a6m' };
+  m48_super: 'service_leo2a6m', magach6b: 'service_merkava2d', magach7c: 'service_merkava2d' };
 assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
   + Object.keys(ADDED_IN_EXISTING_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);

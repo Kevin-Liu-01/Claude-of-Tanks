@@ -199,4 +199,8 @@ export const PATTON_PROFILES = {
   // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
   // the A1's large AN/VSS-1 mantlet searchlight.
   m60a3: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a3')) },
+  // release 267 (the owner, 2026-10-28: "Magach Series (Israel) ... (Magach 6 and Magach 7 families)"): the IDF's M60s on
+  // the A1's castings (pattonCast.ts buildM60CastSteps)
+  magach6b: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach6b')) },
+  magach7c: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'magach7c')) },
 } satisfies VehicleProfileRecord;

@@ -23,7 +23,7 @@ const TIERS: Readonly<Record<string, TreeTier>> = Object.freeze({
   m1a1_abrams_sa: 8, m1a1ha: 8, m1a2_abrams: 9, m1a2_abrams_sepv2: 9, m1a2_abrams_sepv3: 10, m1a2_abrams_tusk: 9,
   m1a3: 10, m2a2_bradley: 2, m3a3_bradley: 5, m46_patton: 1, m47_patton: 1, m48_super: 2, m48a2ga2: 1, m48a3_patton: 1,
   m48a5_patton: 1, m551_sheridan: 2,
-  m551a1_tts: 4, m60a1: 1, m60a2: 2, m60a3: 1, m6_linebacker: 5, magach3: 1, marder1a3: 2, marder2: 5, mbt70: 3, merkava1b: 1,
+  m551a1_tts: 4, m60a1: 1, m60a2: 2, m60a3: 1, m6_linebacker: 5, magach3: 1, magach6b: 1, magach7c: 2, marder1a3: 2, marder2: 5, mbt70: 3, merkava1b: 1,
   merkava2b: 3, merkava2d: 3, merkava3_baz: 8, merkava3c: 8, merkava3d: 8, merkava4: 9, merkava4_barak: 9,
   merkava4_trophy: 9, merkava4b: 9, namer_ifv: 4, object148_proto: 10, object695: 10, pl01: 10, pl01_105: 10,
   pt91a_twardy: 5, pt91m: 4, puma_s1: 6, raiju_ifv: 10, sabra_mk2: 2, spz_puma: 4, spz_wotan: 6, stb1: 1, strv103a: 2,
