@@ -302,7 +302,7 @@ function sideModules(P: TankBuilderPort): void {
   for (const [sx, z0, n] of [[-1, -0.44, 3], [1, -0.17, 3]] as const) {
     const wall = (sx < 0 ? T.wallRightM : T.wallLeftM) - 0.004, broad = sx < 0 ? W.broadRight : W.broadLeft, z1 = W.rootZ;
     // the section's top: the broad face's top, the chamfer's kink (where its plane meets the roof's), the wall's
-    let lo = wall, hi = broad;
+    let lo: number = wall, hi: number = broad;
     const flat = (x: number): number => sideModuleTop(sx, wall, z1) + (sideModuleTop(sx, wall + 0.001, z1) - sideModuleTop(sx, wall, z1)) * (x - wall) / 0.001;
     for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (Math.abs(sideModuleTop(sx, m, z1) - flat(m)) < 1e-6) lo = m; else hi = m; }
     const kink = lo, topB = sideModuleTop(sx, broad, z1);
