@@ -2481,8 +2481,12 @@ const GEAR_CAVITY_INDIRECT = 0.16;
  * readability floors, so the shade under a net is not lifted back; a draw without it reads the material's default, 0.
  */
 export const VEHICLE_SUIT_OCCLUSION_ATTRIBUTE = 'suitOcc';
-const SUIT_SHADE_DIRECT = 0.62;
-const SUIT_SHADE_INDIRECT = 0.72;
+// (264 round 3; the critic r4: "weak at hero distance", "near-black blotches where the shade lands on dark paint") a
+// deeper shade, held at SUIT_SHADE_ALBEDO_FLOOR of the paint's own albedo (never more light than it had unshaded): a dark
+// coat under a net reads dark, in its own colour, not black
+const SUIT_SHADE_DIRECT = 0.8;
+const SUIT_SHADE_INDIRECT = 0.86;
+const SUIT_SHADE_ALBEDO_FLOOR = 0.3;
 type SuitShadeDefaults = { defaultAttributeValues?: Record<string, number[]> };
 /**
  * Give a material that compiles vehicleAmbientFloorHook its suit-shade default (0: unoccluded), so a draw without the
@@ -2832,11 +2836,15 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	#endif
 	{
 `
-    // (264) the camouflage suit over the armour takes its share of the light, after every lift above
-    + `		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
+    // (264) the camouflage suit over the armour takes its share of the light, after every lift above, down to a floor of
+    // the paint's own albedo
+    + `		vec3 vehSuitLit = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+		reflectedLight.directDiffuse *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.directSpecular *= 1.0 - ${SUIT_SHADE_DIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectDiffuse *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
 		reflectedLight.indirectSpecular *= 1.0 - ${SUIT_SHADE_INDIRECT.toFixed(3)} * vCotSuitShade;
+		vec3 vehSuitFloor = min( material.diffuseColor * ${SUIT_SHADE_ALBEDO_FLOOR.toFixed(3)}, vehSuitLit ) * step( 0.004, vCotSuitShade );
+		reflectedLight.indirectDiffuse += max( vehSuitFloor - reflectedLight.directDiffuse - reflectedLight.indirectDiffuse, vec3( 0.0 ) );
 	}`,
   );
 }
