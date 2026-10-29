@@ -126,12 +126,12 @@
    "low": {"meshes":52,"vertices":224017,"triangles":75484,"digest":"3514e38e65f2daa5","groups":{"hull":"a38d314fc9b1c624","turret":"d1f97fb6f4304969","gun":"8b60a0beb9ff5006","runningGear":"4cd95402d670884f","other":"e3b0c44298fc1c14"}}
   },
   "centurion5_1_aus": {
-   "high": {"meshes":69,"vertices":305899,"triangles":102906,"digest":"bdbc6a6278edc8e9","groups":{"hull":"196f45ac2d554034","turret":"ec3144a24c6dfd25","gun":"9592d44a01c9b7fa","runningGear":"eb261e013d12022a","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":67,"vertices":253099,"triangles":85178,"digest":"da22ba6e1db32b09","groups":{"hull":"3a1072c0ca269e5f","turret":"59540b61b1229092","gun":"bd660ee833363d94","runningGear":"c1e9e4448dcdf026","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":69,"vertices":305338,"triangles":102719,"digest":"9ae158f7ec672e48","groups":{"hull":"196f45ac2d554034","turret":"5de193fec2fce051","gun":"9592d44a01c9b7fa","runningGear":"eb261e013d12022a","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":67,"vertices":252538,"triangles":84991,"digest":"6cf8f806deeedf5a","groups":{"hull":"3a1072c0ca269e5f","turret":"21260745e728b237","gun":"bd660ee833363d94","runningGear":"c1e9e4448dcdf026","other":"e3b0c44298fc1c14"}}
   },
   "centurion5_2": {
-   "high": {"meshes":61,"vertices":285190,"triangles":96003,"digest":"f91da6ae2a91ad8d","groups":{"hull":"64a3a813be2ba4b4","turret":"55db714753c5ab54","gun":"d19859cb054161d2","runningGear":"1e24ad15d0a93e0c","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":59,"vertices":233086,"triangles":78507,"digest":"cf4f4f94e8f24903","groups":{"hull":"be37d821ae36152d","turret":"cb4541a82b3c3284","gun":"453c8f4428b00aba","runningGear":"c7e16924190999bc","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":61,"vertices":285226,"triangles":96015,"digest":"af8c127cd3d8f03e","groups":{"hull":"64a3a813be2ba4b4","turret":"bae8f53cebeb6fc8","gun":"d19859cb054161d2","runningGear":"1e24ad15d0a93e0c","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":59,"vertices":233122,"triangles":78519,"digest":"ed92979001090ee8","groups":{"hull":"be37d821ae36152d","turret":"3ca22e054746fde4","gun":"453c8f4428b00aba","runningGear":"c7e16924190999bc","other":"e3b0c44298fc1c14"}}
   },
   "centurion5_avre": {
    "high": {"meshes":66,"vertices":304357,"triangles":102392,"digest":"688797b0ebdecf63","groups":{"hull":"b312415b608c442a","turret":"afb58c6ccefa5248","gun":"532fca7256a569c5","runningGear":"f5ff84e1923ed3ca","other":"e3b0c44298fc1c14"}},
