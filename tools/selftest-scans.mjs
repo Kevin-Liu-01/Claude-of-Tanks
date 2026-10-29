@@ -69,6 +69,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'src/engine/shadowCascadeFade.selftest.mjs': lists('src/**/*.ts'),
   'src/fx/retiredTracers.selftest.mjs': lists('src/**/*.{ts,mjs,js,md,json,html,css}', 'tools/**/*.{ts,mjs,js,md,json,html,css}',
     'docs/**/*.{ts,mjs,js,md,json,html,css}'),
+  // (264, premiere-battle) every source module, for a function key acted on with no row or a synthetic KeyboardEvent
+  'src/game/keybindingCensus.selftest.mjs': lists('src/**/*.{ts,mjs,js}'),
   'src/mp/host/hostStandby.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollision.selftest.mjs': lists('server/world-collision-manifests/*.json'),
   'src/mp/host/worldCollisionMobileTier.selftest.mjs': lists('server/world-collision-manifests/*.json'),
