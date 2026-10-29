@@ -21,7 +21,7 @@ import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
-import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
+import { bakeSuitOcclusionSteps, seedSuitShade } from './suitOcclusion.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import {
   FAR_LOD_ENTER_M, FAR_LOD_RETURN_M, buildFarHull, claimFarLodBuild, farWheelsGeometry, noteFarLodBuild, parkDraws,
@@ -10379,6 +10379,8 @@ export function* createTankRuntimeSteps(
         stand.userData.coplanarDepthTies as number);
     }
     for (const mesh of meshes) wrapVehicleGround(mesh, root);
+    // (265) the stand-ins built here, after the suit's bake, carry its attribute too (suitOcclusion.ts seedSuitShade)
+    for (const mesh of meshes) seedSuitShade(mesh);
     root.userData.farLod = { hullTrianglesBefore: hull.trianglesBefore, hullTrianglesAfter: hull.trianglesAfter,
       hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.length };
     return { hull, gear, gearParked, meshes };

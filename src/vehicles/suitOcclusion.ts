@@ -10,11 +10,12 @@
 //
 // The amount is a Uint8 normalized vertex attribute (materials.ts VEHICLE_SUIT_OCCLUSION_ATTRIBUTE), read by every vehicle program
 // (materials.ts vehicleAmbientFloorHook darkens the received light by it after every readability floor) with a default
-// of 0 on every vehicle material (a draw without it reads unoccluded). A suited build seeds the attribute on every draw
-// of a vehicle material, zeros where no suit reaches, so the static and far-LOD merges keep one vertex layout per owner
-// and material (the armour paint's apZone rule), and writes values under the suit; a vehicle without a suit carries
-// none. A geometry drawn by more than one mesh keeps zeros (one bake cannot serve two places). The bake reads only the
-// built geometry, so it is deterministic and runs where the build runs (the Gallery, the Garage, battle, receipts).
+// of 0 on every vehicle material. Every build seeds the attribute on every draw of a vehicle material, zeros where no
+// suit reaches, so the static and far-LOD merges keep one vertex layout per owner and material (the armour paint's
+// apZone rule) and no draw reads the material's default (three's generic attribute value, which another program's
+// default can leave set); a suited build writes values under the suit. A geometry drawn by more than one mesh keeps
+// zeros (one bake cannot serve two places). The bake reads only the built geometry, so it is deterministic and runs
+// where the build runs (the Gallery, the Garage, battle, receipts).
 import * as THREE from 'three';
 import { isVehicleMaterialRegistered, VEHICLE_SUIT_OCCLUSION_ATTRIBUTE as SUIT_OCCLUSION_ATTRIBUTE } from './materials.ts';
 /** How far over a surface (along its normal) the suit still shades it, and the kernel's reach across it. */
@@ -51,6 +52,13 @@ const cellKey = (ix: number, iy: number, iz: number): number => ((ix + 512) * 10
 function familyOf(object: THREE.Object3D, turretGroups: ReadonlySet<THREE.Object3D>): Family {
   for (let node: THREE.Object3D | null = object; node; node = node.parent) if (turretGroups.has(node)) return 'turret';
   return 'hull';
+}
+
+/** Whether a material compiles the vehicle hook, which reads the attribute: registered, or given its default directly. */
+function readsSuitShade(material: THREE.Material): boolean {
+  if (isVehicleMaterialRegistered(material)) return true;
+  const defaults = (material as THREE.Material & { defaultAttributeValues?: Record<string, number[]> }).defaultAttributeValues;
+  return defaults?.[SUIT_OCCLUSION_ATTRIBUTE] !== undefined;
 }
 
 function isPlainMesh(object: THREE.Object3D): object is THREE.Mesh {
@@ -102,41 +110,54 @@ function suitSamples(suits: readonly THREE.Mesh[], toRoot: THREE.Matrix4, turret
 }
 
 /**
+ * Zeros on every draw of a vehicle material under `root` that carries none, of any kind (the running gear's instanced and
+ * batched draws, a draw of several materials, a far stand-in built after the bake), on every build: one layout per owner
+ * and material, counted by geometry. Every vehicle program reads the attribute, and three sets a material's default only
+ * when a draw's vertex array is first built, into the one generic value an attribute location keeps for every program: a
+ * draw without it read whatever another program's default last left there (264b preview, the owner: "the shadow issues
+ * were on all tanks").
+ */
+export function seedSuitShade(root: THREE.Object3D): { draws: number; vertices: number; bytes: number } {
+  const seeded = new Set<THREE.BufferGeometry>();
+  let vertices = 0;
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.material || ![mesh.material].flat().some((material) => material && readsSuitShade(material))) return;
+    const geometry = mesh.geometry, position = geometry?.getAttribute('position');
+    if (!position || seeded.has(geometry) || geometry.getAttribute(SUIT_OCCLUSION_ATTRIBUTE)) return;
+    geometry.setAttribute(SUIT_OCCLUSION_ATTRIBUTE, new THREE.BufferAttribute(new Uint8Array(position.count), 1, true));
+    seeded.add(geometry);
+    vertices += position.count;
+  });
+  return { draws: seeded.size, vertices, bytes: vertices };
+}
+
+/**
  * Seed and bake the suit's shade on a built vehicle (`root` in its own frame; `turretGroups` the turret, gun and recoil
- * groups, whose suit turns with them and shades only them). Returns null and touches nothing on a vehicle without a
- * suit. A step a slice of vertices (the build's own stepping).
+ * groups, whose suit turns with them and shades only them). A vehicle without a suit is seeded with zeros and returns
+ * null. A step a slice of vertices (the build's own stepping).
  */
 export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: readonly (THREE.Object3D | null | undefined)[]):
   Generator<void, SuitOcclusionStats | null, void> {
   const suits: THREE.Mesh[] = [];
   root.traverse((object) => { if (isPlainMesh(object) && SUIT_MESH.test(object.name)) suits.push(object); });
-  if (!suits.length) return null;
   let ms = 0, slice = performance.now();
   const pause = function* (): Generator<void, void, void> { ms += performance.now() - slice; yield; slice = performance.now(); };
-  root.updateMatrixWorld(true);
-  const turrets = new Set(turretGroups.filter((group): group is THREE.Object3D => !!group));
-  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
-  // every draw of a vehicle material: seeded (one layout per owner and material), counted by geometry
+  const seeded = seedSuitShade(root);
+  if (!suits.length) return null;
+  // the draws a suit can shade: one material's plain draws, counted by geometry (a draw of several materials keeps zeros)
   const draws: THREE.Mesh[] = [], users = new Map<THREE.BufferGeometry, number>();
   root.traverse((object) => {
-    if (!isPlainMesh(object) || Array.isArray(object.material) || !object.material) return;
-    if (!isVehicleMaterialRegistered(object.material)) return;
-    const position = object.geometry?.getAttribute('position');
-    if (!position) return;
+    if (!isPlainMesh(object) || Array.isArray(object.material) || !object.material || !readsSuitShade(object.material)) return;
+    if (!object.geometry?.getAttribute(SUIT_OCCLUSION_ATTRIBUTE)) return;
     draws.push(object);
     users.set(object.geometry, (users.get(object.geometry) ?? 0) + 1);
   });
-  let vertices = 0, bytes = 0, shaded = 0, sum = 0;
-  const seeded = new Set<THREE.BufferGeometry>();
-  for (const mesh of draws) {
-    const geometry = mesh.geometry;
-    if (seeded.has(geometry) || geometry.getAttribute(SUIT_OCCLUSION_ATTRIBUTE)) continue;
-    const count = geometry.getAttribute('position').count;
-    geometry.setAttribute(SUIT_OCCLUSION_ATTRIBUTE, new THREE.BufferAttribute(new Uint8Array(count), 1, true));
-    seeded.add(geometry);
-    vertices += count;
-    bytes += count;
-  }
+  const { vertices, bytes } = seeded;
+  let shaded = 0, sum = 0;
+  root.updateMatrixWorld(true);
+  const turrets = new Set(turretGroups.filter((group): group is THREE.Object3D => !!group));
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
   yield* pause();
   const samples = suitSamples(suits, toRoot, turrets);
   const R = SUIT_OCCLUSION_RADIUS_M, R2 = R * R, H = SUIT_OCCLUSION_REACH_M;
@@ -196,5 +217,5 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     if (touched) shade.needsUpdate = true;
   }
   ms += performance.now() - slice;
-  return { draws: seeded.size, vertices, bytes, shaded, meanShade: shaded ? sum / shaded : 0, bakeMs: Math.round(ms) };
+  return { draws: seeded.draws, vertices, bytes, shaded, meanShade: shaded ? sum / shaded : 0, bakeMs: Math.round(ms) };
 }

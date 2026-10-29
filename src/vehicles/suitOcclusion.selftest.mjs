@@ -1,7 +1,9 @@
 // The suit's shade on the armour under it (264; Main's ruling on the 263 critic's "no shadow under any laid net"):
 // suitOcclusion.ts seeds the attribute on every vehicle-material draw of a suited build (one vertex layout per owner and
 // material), shades the armour under the net and leaves it 0 past the net's soft edge, on the far side of a plate and
-// on a geometry drawn twice; a build without a suit is untouched; every vehicle material reads 0 without the attribute.
+// on a geometry drawn twice; a build without a suit is seeded with zeros on every vehicle draw, instanced and batched
+// too (a draw without the attribute reads three's generic value, which another program's default can leave set); every
+// vehicle material defaults it to 0.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { bakeSuitOcclusionSteps } from './suitOcclusion.ts';
@@ -62,13 +64,24 @@ const shadeAt = (mesh, x, z) => {
   assert.ok([...under.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE).array].every((v) => v === 0), 'a face turned away is not shaded');
 }
 
-// a build without a suit is untouched; every vehicle material defaults the attribute to 0
+// a build without a suit: zeros on every vehicle draw (plain, instanced, batched), none on another material's;
+// every vehicle material defaults the attribute to 0
 {
   const root = new THREE.Group();
   const deck = new THREE.Mesh(plate(1, 4, 1), paint);
-  root.add(deck);
+  const wheels = new THREE.InstancedMesh(plate(0.3, 2, 0), paint, 4);
+  const batch = new THREE.BatchedMesh(2, 64, 128, paint);
+  batch.addInstance(batch.addGeometry(plate(0.2, 2, 0)));
+  const glass = new THREE.Mesh(plate(0.2, 2, 1.5), new THREE.MeshStandardMaterial());
+  root.add(deck, wheels, batch, glass);
   assert.equal(drain(bakeSuitOcclusionSteps(root, [])), null, 'no suit: no bake');
-  assert.ok(deck.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE) === undefined, 'no suit: no attribute');
+  for (const [name, mesh] of [['deck', deck], ['instanced', wheels], ['batched', batch]]) {
+    const shade = mesh.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE);
+    assert.ok(shade && shade.normalized && shade.array instanceof Uint8Array, `no suit: the ${name} draw carries the attribute`);
+    assert.equal(shade.count, mesh.geometry.getAttribute('position').count, `no suit: the ${name} draw's attribute spans its vertices`);
+    assert.ok([...shade.array].every((v) => v === 0), `no suit: the ${name} draw reads 0`);
+  }
+  assert.equal(glass.geometry.getAttribute(VEHICLE_SUIT_OCCLUSION_ATTRIBUTE), undefined, 'no suit: another material\'s draw is left alone');
   assert.deepEqual(paint.defaultAttributeValues?.[VEHICLE_SUIT_OCCLUSION_ATTRIBUTE], [0], 'a registered vehicle material reads 0 without it');
   const direct = withSuitShadeDefault(new THREE.MeshStandardMaterial());
   assert.deepEqual(direct.defaultAttributeValues?.[VEHICLE_SUIT_OCCLUSION_ATTRIBUTE], [0], 'a material compiling the hook directly too');
