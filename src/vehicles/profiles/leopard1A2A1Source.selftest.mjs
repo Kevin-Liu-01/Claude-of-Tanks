@@ -60,14 +60,15 @@ assert.ok(tBox.max.x - tBox.min.x <= 2.70 && tBox.max.x - tBox.min.x >= 2.30,
   `the casting and its rangefinder drums span a Leopard 1 turret (${tBox.max.x - tBox.min.x})`);
 const sideAt = (y, z = 0.10) => new THREE.Raycaster(new THREE.Vector3(3, turretRig.position.y + y, turretRig.position.z + z),
   new THREE.Vector3(-1, 0, 0), 0, 3).intersectObject(turret, false)[0]?.point.x;
-// The chine: the side reaches furthest out at the chine and falls away both below it (the undercut) and above it (the
-// leaning upper face), so the section is a chevron at the side, not a rolled egg.
+// The chine: the side reaches furthest out at the chine. Below it the undercut falls away steeply; above it the cast cheek
+// rises nearly upright before rolling over, so the section breaks at a hard kink, not a rolled egg.
 const [chineLow, chineHigh] = turretFinish.chineYRange;
 const chineY = (chineLow + chineHigh) / 2;
 const atChine = sideAt(0.33), below = sideAt(0.20), above = sideAt(0.46);
 assert.ok([atChine, below, above].every(Number.isFinite), `the casting side is hit about the chine (${below}, ${atChine}, ${above})`);
-assert.ok(atChine > below + 0.06 && atChine > above + 0.04,
-  `the side bends outward at a hard chine ${chineY.toFixed(2)} m over the ring (${below}, ${atChine}, ${above})`);
+const lowerRun = (atChine - below) / 0.13, upperRun = (atChine - above) / 0.13;
+assert.ok(atChine >= above - 1e-6 && lowerRun > 0.6 && lowerRun - upperRun > 0.5,
+  `the side breaks at a hard chine ${chineY.toFixed(2)} m over the ring (${below}, ${atChine}, ${above})`);
 // The chevron front: either side of the mantlet the casting's upper and lower faces close on the chine's line, so a ray
 // from ahead meets the casting furthest forward at the chine's height and further back above and below it.
 const frontAt = (y, x = 0.62) => new THREE.Raycaster(new THREE.Vector3(x, turretRig.position.y + y, 6), new THREE.Vector3(0, 0, -1), 0, 6)

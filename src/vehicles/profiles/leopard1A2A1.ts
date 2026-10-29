@@ -19,22 +19,24 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // horizontal chine, then a broad upper face leaning in (slightly convex) and rolling over into a flat roof.
 interface CastStation { readonly z: number; readonly chineX: number; readonly footY: number; readonly chineY: number;
   readonly roofY: number; readonly lean: number }
+const CAST_UPPER_BULGE = 0.055;
 const castRing = ({ chineX: wc, footY: yb, chineY: yc, roofY: yt, lean }: CastStation): readonly SectionPoint[] => {
   const footX = wc - 0.75 * (yc - yb);
-  const rise = yt - 0.05 - yc;
+  const rise = yt - 0.06 - yc;
   const topX = wc - lean * rise;
+  // the upper face rises from the chine bulging outward (the cast cheek's swell) before it rolls over into the roof
+  const upper = (t: number): SectionPoint => [wc - lean * rise * t + CAST_UPPER_BULGE * Math.sin(Math.PI * t), yc + rise * t];
   const right: readonly SectionPoint[] = [
-    [footX, yb], [wc, yc], [wc - lean * rise * 0.5 + 0.02, yc + rise * 0.5], [topX, yt - 0.05], [topX - 0.05, yt - 0.012],
-    [topX - 0.13, yt],
+    [footX, yb], [wc, yc], upper(1 / 3), upper(2 / 3), [topX, yt - 0.06], [topX - 0.07, yt - 0.016], [topX - 0.19, yt],
   ];
   const left = right.map(([x, y]) => [-x, y] as const).reverse();
   return [left.at(-1)!, ...right, ...left.slice(0, -1)];
 };
 // The upper faces, shoulders and roof are one continuous casting; the floor, the lower faces and so the chine stay hard.
-const CAST_SMOOTH_EDGES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+const CAST_SMOOTH_EDGES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 /** The ring's right side x at height y (the section is convex above the foot). */
 const castRingXAt = (ring: readonly SectionPoint[], y: number): number => {
-  const right = ring.slice(1, 7);
+  const right = ring.slice(1, 8);
   if (y <= right[0][1]) return right[0][0];
   for (let i = 0; i < right.length - 1; i++) {
     const [x0, y0] = right[i], [x1, y1] = right[i + 1];
@@ -351,14 +353,14 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
   P.turretG.position.set(0, turretY, 0.50);
   const castRoofY = 0.81;
   const castStations: readonly CastStation[] = [
-    { z: -2.20, chineX: 0.74, footY: 0.20, chineY: 0.36, roofY: 0.64, lean: 0.40 },
-    { z: -2.12, chineX: 0.86, footY: 0.15, chineY: 0.35, roofY: 0.71, lean: 0.42 },
-    { z: -1.88, chineX: 0.96, footY: 0.12, chineY: 0.34, roofY: 0.76, lean: 0.44 },
-    { z: -1.45, chineX: 1.06, footY: 0.10, chineY: 0.33, roofY: 0.79, lean: 0.46 },
-    { z: -0.96, chineX: 1.15, footY: 0.07, chineY: 0.32, roofY: castRoofY, lean: 0.48 },
-    { z: -0.40, chineX: 1.20, footY: 0.05, chineY: 0.32, roofY: castRoofY, lean: 0.50 },
-    { z: 0.10, chineX: 1.21, footY: 0.05, chineY: 0.33, roofY: castRoofY, lean: 0.50 },
-    { z: 0.50, chineX: 1.17, footY: 0.05, chineY: 0.34, roofY: 0.80, lean: 0.55 },
+    { z: -2.20, chineX: 0.74, footY: 0.20, chineY: 0.36, roofY: 0.64, lean: 0.34 },
+    { z: -2.12, chineX: 0.86, footY: 0.15, chineY: 0.35, roofY: 0.71, lean: 0.34 },
+    { z: -1.88, chineX: 0.96, footY: 0.12, chineY: 0.34, roofY: 0.76, lean: 0.35 },
+    { z: -1.45, chineX: 1.06, footY: 0.10, chineY: 0.33, roofY: 0.79, lean: 0.36 },
+    { z: -0.96, chineX: 1.15, footY: 0.07, chineY: 0.32, roofY: castRoofY, lean: 0.36 },
+    { z: -0.40, chineX: 1.20, footY: 0.05, chineY: 0.32, roofY: castRoofY, lean: 0.36 },
+    { z: 0.10, chineX: 1.21, footY: 0.05, chineY: 0.33, roofY: castRoofY, lean: 0.37 },
+    { z: 0.50, chineX: 1.17, footY: 0.05, chineY: 0.34, roofY: 0.80, lean: 0.44 },
     { z: 0.78, chineX: 1.09, footY: 0.06, chineY: 0.36, roofY: 0.76, lean: 0.62 },
     { z: 0.98, chineX: 0.96, footY: 0.12, chineY: 0.37, roofY: 0.69, lean: 0.72 },
     { z: 1.10, chineX: 0.82, footY: 0.22, chineY: 0.38, roofY: 0.58, lean: 0.85 },
@@ -406,7 +408,7 @@ function* buildLeo1A2A1Steps(P: TankBuilderPort): TankProfileBuild {
       P.addEquipment('turretDark', box(0.26, 0.17, 0.035), s * (shoulderX + 0.07), dTop + 0.10, dZ - 0.11);
       for (let k = 0; k < 4; k++) {
         const col = k % 2, row = Math.floor(k / 2);
-        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.04, 0.30, P.q ? 12 : 8)), 0, 0, 0, -0.22, s * 0.22, 0),
+        P.addEquipment('turret', xform(markSmokeTube(cylZ(0.04, 0.36, P.q ? 12 : 8)), 0, 0, 0, -0.14, s * 0.17, 0),
           s * (shoulderX + 0.02 + col * 0.10), dTop + 0.07 + row * 0.085, dZ - 0.10);
       }
       liftEye(P, 'turretDetail', s * 0.66, castRoofAt(0.30) + 0.01, 0.30, s * 0.45);
