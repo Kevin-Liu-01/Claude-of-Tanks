@@ -108,8 +108,9 @@ export default {
     // (264b, Main's flag from 264's blind critics: the brownfield's turned plot beside the slag tip "near-black flat",
     // sRGB 34/32/33 against Reservoir's 50/44/38) the dirt layer's mean is a dark red-brown whose green and blue sat on
     // black earth's floor (a warm lift alone turned the plot maroon, 49/33/32): each channel lifted to a coal-dusted
-    // loam's dark brown, ~51/43/36, the works' own dirt untouched
-    ploughLift: [2.7, 3.4, 3.0],
+    // loam's dark brown, ~51/43/36, the works' own dirt untouched (264b's stills: blue 3.0 still sat on the floor, an olive
+    // 51/43/29; 6 went violet, 51/45/46)
+    ploughLift: [2.7, 3.4, 4.2],
   },
   vegetation: {
     // the map-revival lane (2026-10-05): the works' waste ground goes to birch first (the ruderal stands that colonise

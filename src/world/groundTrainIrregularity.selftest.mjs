@@ -9,7 +9,9 @@ import { MAP_IDS } from './maps/mapIds.ts';
 //     stripes") — each cell its own spacing, the crests bent by the material's own noise and broken in patches, sharp
 //     over broad troughs; sandWaves (the dune bedforms) untouched;
 // (b) a turned field's lift per channel, and Ironworks' brownfield plots a coal-dusted loam's brown over the works' dark
-//     red-brown dirt (the critics' "near-black flat" plot beside the slag tip).
+//     red-brown dirt (the critics' "near-black flat" plot beside the slag tip);
+// (c) a vegetated map's sward: the landform dapple's relief cut and faded at grazing views (Blackglass's "dark pocked
+//     dimples … rippled water", Monsoon's and Mangrove's phone smear, the pasture strip behind Steinburg's field2).
 // No GPU or art claim: the frames and the blind critics are the lane's evidence (TESTS-OWED, 264b).
 
 const source = terrainSourceText();
@@ -53,6 +55,14 @@ has('vec2 rSlope = sandRipples(uv, wind0, 22.0, 0.6, ripPh, vec2(16.5, 0.55), ve
 assert.equal((flat.match(/sandRipples\(/g) ?? []).length, 2, 'one definition and one call');
 assert.ok(/vec2 bedSlope = sandWaves\(uv, wind0, 260\.0, 0\.45,/.test(flat), 'the dune bedforms keep sandWaves');
 
+// (c) the sward's dapple: its relief cut and faded where the view grazes the flat (Blackglass's pocks, the phone smears)
+const swardRelief = /#define SWARD_DAP_RELIEF ([0-9.]+)/.exec(flat);
+assert.ok(swardRelief && Number(swardRelief[1]) >= 0.25 && Number(swardRelief[1]) <= 0.6, 'the sward keeps a share of the dapple\'s relief (0.25 left a flat meadow, 0.6 faint pocks)');
+has('float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegSward);', 'the cut applies on a vegetated map\'s sward only (fields, arid and snow maps keep theirs)');
+has('float vegGround = dapField * (1.0 - step(0.5, uReduxD.y));', 'a vegetated map\'s open ground: fields, arid and snow maps keep their dapple');
+has('max(smoothstep(0.01, 0.08, slope), vegGround));', 'the grazing fade runs on a vegetated map\'s flat open ground as on a slope');
+assert.ok(!/uDbgA/.test(flat), 'no tuning knob left in the material');
+
 // (b) the plough's lift per channel
 has('uniform vec3 uPloughLift;', 'the turned field\'s lift is a colour');
 has('cropCol = ploughSoil * vec3(0.62, 0.55, 0.47) * uPloughLift * bright;');
@@ -69,4 +79,4 @@ for (const id of MAP_IDS) {
   assert.equal(typeof lift, 'number', `${id}: its scalar lift as it was`);
 }
 
-console.log(`groundTrainIrregularity: the ripple trains each cell's spacing (±${(span * 50).toFixed(0)} %), bent ${(bendRad / (2 * Math.PI)).toFixed(2)} of a spacing and broken in patches; Ironworks' turned plots lifted ${foundryLift.join('/')} PASS; no GPU/art claim`);
+console.log(`groundTrainIrregularity: the ripple trains each cell's spacing (±${(span * 50).toFixed(0)} %), bent ${(bendRad / (2 * Math.PI)).toFixed(2)} of a spacing and broken in patches; the sward's dapple relief ×${swardRelief[1]}, graze-faded; Ironworks' turned plots lifted ${foundryLift.join('/')} PASS; no GPU/art claim`);
