@@ -234,14 +234,18 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
   // the frontal layers the old wedge-turret builds drew as separate solids: on the 2A6 look, the wedges' own faces; on the
   // square block, the spaced layer inside it behind its faces
   const innerZ = (T.blockZ + T.faceZ) / 2;
-  const layer = (name: string, sx: number, yLo: number, yHi: number): ArmorPlate => {
+  // [f0, f1]: the share of the layer's width from its inner edge (a chevron's courses tile it side by side)
+  const layer = (name: string, sx: number, yLo: number, yHi: number, f0 = 0, f1 = 1): ArmorPlate => {
+    const at = (a: number, b: number, f: number): number => a + (b - a) * f;
     if (wedge) {
-      const xi = sx > 0 ? W.innerLeft : W.innerRight, xo = sx > 0 ? W.shoulderLeft : W.shoulderRight;
+      const xa = sx > 0 ? W.innerLeft : W.innerRight, xb = sx > 0 ? W.shoulderLeft : W.shoulderRight;
+      const xi = at(xa, xb, f0), xo = at(xa, xb, f1), zi = at(W.tipZ, W.shoulderZ, f0), zo = at(W.tipZ, W.shoulderZ, f1);
       return sx > 0
-        ? chR(name, 1, xi, W.tipZ, xo, W.shoulderZ, yLo, yHi, 0.10)
-        : chL(name, 1, xi, W.tipZ, xo, W.shoulderZ, yLo, yHi, 0.10);
+        ? chR(name, 1, xi, zi, xo, zo, yLo, yHi, 0.10)
+        : chL(name, 1, xi, zi, xo, zo, yLo, yHi, 0.10);
     }
-    const xi = sx * T.slotHalfWidthM, xo = sx * (sx > 0 ? T.wallLeftM : T.wallRightM) * 0.96;
+    const xa = sx * T.slotHalfWidthM, xb = sx * (sx > 0 ? T.wallLeftM : T.wallRightM) * 0.96;
+    const xi = at(xa, xb, f0), xo = at(xa, xb, f1);
     return sx > 0
       ? plate(name, 1, [xi, yLo, innerZ], [xo, yLo, innerZ], [xi, yHi, innerZ])
       : plate(name, 1, [xo, yLo, innerZ], [xi, yLo, innerZ], [xo, yHi, innerZ]);
@@ -252,10 +256,14 @@ export function leopard2A4FamilyArmor(id: string, legacy: ArmorEnvelope, o: Leop
     if (v) turretPlates.push(carry(layer(name, sx, lo, hi), name, v));
   }
   for (const name of plates.keys()) {
-    const m = /^turret_chevron_([LR])_(upper|lower)(?:_\d+)?$/.exec(name);
+    const m = /^turret_chevron_([LR])_(upper|lower)(?:_(\d+))?$/.exec(name);
     if (!m) continue;
+    // the old builds' two courses a side tiled the chevron, the face (to 87 % of its width) then the swept wing: a
+    // frontal shot crossed one of them, never both
     const sx = m[1] === 'R' ? 1 : -1, mid = (lo + hi) / 2;
-    turretPlates.push(carry(m[2] === 'upper' ? layer(name, sx, mid, hi) : layer(name, sx, lo, mid), name, need(name)));
+    const [f0, f1] = m[3] === '1' ? [0, 0.87] : m[3] === '2' ? [0.87, 1] : [0, 1];
+    turretPlates.push(carry(m[2] === 'upper' ? layer(name, sx, mid, hi, f0, f1) : layer(name, sx, lo, mid, f0, f1), name,
+      need(name)));
   }
   // the kit's own plates (ERA fields, appliqué layers) seated on its drawn surfaces
   for (const [name, kit] of Object.entries(o.kitPlates ?? {})) {

@@ -546,26 +546,46 @@ function cheekHardware(P: TankBuilderPort, side: Side, ray: TurretRay): void {
  *  its underside 3 mm into the plate. Null samples are left out of the slab's cells. */
 function conformalSlab(at: (s: number, t: number) => { point: V3; normal: V3 } | null, nu: number, nv: number,
   thick: number): THREE.BufferGeometry {
-  const top: V3[] = [], bot: V3[] = [];
+  const top: V3[] = [], bot: V3[] = [], hits: boolean[] = [], normals: V3[] = [];
   for (let j = 0; j <= nv; j++) {
     for (let i = 0; i <= nu; i++) {
       const hit = at(i / nu, j / nv);
       const p = hit ? hit.point : v3(0, 0, 0), n = hit ? hit.normal : v3(0, 1, 0);
       top.push(p.clone().addScaledVector(n, thick - 0.003));
       bot.push(p.clone().addScaledVector(n, -0.003));
+      hits.push(!!hit);
+      normals.push(n);
     }
   }
   const pos: number[] = [], k = (i: number, j: number): number => j * (nu + 1) + i;
   const quad = (a: V3, b: V3, c: V3, d: V3): void => { pos.push(...a.toArray(), ...b.toArray(), ...c.toArray(), ...a.toArray(), ...c.toArray(), ...d.toArray()); };
+  // a cell stands only where all four of its samples found the plate; the rim closes every edge with no cell beyond it
+  const cell = (i: number, j: number): boolean => i >= 0 && j >= 0 && i < nu && j < nv
+    && hits[k(i, j)] && hits[k(i + 1, j)] && hits[k(i + 1, j + 1)] && hits[k(i, j + 1)];
+  const rim = (i0: number, j0: number, i1: number, j1: number): void => quad(top[k(i0, j0)], top[k(i1, j1)], bot[k(i1, j1)], bot[k(i0, j0)]);
   for (let j = 0; j < nv; j++) {
     for (let i = 0; i < nu; i++) {
-      quad(top[k(i, j)], top[k(i, j + 1)], top[k(i + 1, j + 1)], top[k(i + 1, j)]);
-      quad(bot[k(i, j)], bot[k(i + 1, j)], bot[k(i + 1, j + 1)], bot[k(i, j + 1)]);
+      if (!cell(i, j)) continue;
+      quad(top[k(i, j)], top[k(i + 1, j)], top[k(i + 1, j + 1)], top[k(i, j + 1)]);
+      quad(bot[k(i, j)], bot[k(i, j + 1)], bot[k(i + 1, j + 1)], bot[k(i + 1, j)]);
+      if (!cell(i, j - 1)) rim(i + 1, j, i, j);
+      if (!cell(i, j + 1)) rim(i, j + 1, i + 1, j + 1);
+      if (!cell(i - 1, j)) rim(i, j, i, j + 1);
+      if (!cell(i + 1, j)) rim(i + 1, j + 1, i + 1, j);
     }
   }
-  const rim = (i0: number, j0: number, i1: number, j1: number): void => quad(top[k(i0, j0)], top[k(i1, j1)], bot[k(i1, j1)], bot[k(i0, j0)]);
-  for (let i = 0; i < nu; i++) { rim(i + 1, 0, i, 0); rim(i, nv, i + 1, nv); }
-  for (let j = 0; j < nv; j++) { rim(0, j, 0, j + 1); rim(nu, j + 1, nu, j); }
+  // the grid's sense turns with the side it is mirrored to: wind every face so the top faces out along the plate's
+  // normal (inside out, the slab drew its underside to the eye and its rims open)
+  for (let j = 0, done = false; j < nv && !done; j++) {
+    for (let i = 0; i < nu && !done; i++) {
+      if (!cell(i, j)) continue;
+      const a = top[k(i, j)], e1 = top[k(i + 1, j)].clone().sub(a), e2 = top[k(i + 1, j + 1)].clone().sub(a);
+      if (e1.cross(e2).dot(normals[k(i, j)]) < 0) {
+        for (let t = 0; t < pos.length; t += 9) for (let c = 0; c < 3; c++) [pos[t + 3 + c], pos[t + 6 + c]] = [pos[t + 6 + c], pos[t + 3 + c]];
+      }
+      done = true;
+    }
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   const uv: number[] = [];

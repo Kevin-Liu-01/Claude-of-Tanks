@@ -2766,17 +2766,15 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'bucket', p: 1, v: {}, slot: ['hullRearHang', {}] },
     { kit: 'shackles', p: 1, v: { v: 'hook' }, slot: ['bowPair', {}] },
   ],
+  // 264: the Leopard 2A4 on the release construction. Its kit (profiles/leopard2A4Kit.ts) draws the bustle rack and its
+  // load, the whips, the bow shackles and the wall crosses, and carries the spare links on the glacis as the photographed
+  // 2A4s do, so the decor keeps only the field load the kit does not (a second basket leaned off the bustle's corner and
+  // four links on the turret wall hid the cross; no 2A4 photograph shows either)
   leo2a4: () => [
-    { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.55, h: 0.3, d: 0.4 }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
-    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   xk2_black_panther: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.38, h: 0.3 }, slot: ['turretRearFrame', {}] },
