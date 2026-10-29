@@ -72,6 +72,15 @@ Template: `docs/tank-generation/templates/run-packet.md`. Lane `item/leo2a4-fami
   trunnion to muzzle at the hull's scale.
 - Honest armour: only the vehicles' armour in the primary 'hull'/'turret' buckets; add-on armour through
   `addExternalArmor`, ERA through `P.eraCluster`; everything else equipment or detail.
+- Gun stops (`GUN_PITCH_BY_YAW_DEG`, `leopard2A4FamilySpecs.ts`): measured with `tools/gun-depression-sweep.mjs` at
+  26 mm (strv121 `--no-suit`); all seven clear at full elevation with no mount conflicts. Square turrets: -9 to the
+  front and sides (-8.3 at yaw 21-28 over the front mudguards), the rear quarters lifted by the engine deck and its
+  stowage (leo2a4/strv121 to +1.6; leo2a4_v and leo2a4m +3; the CAN's stern rack +8). The CAN's width rods ride folded
+  along the fore rail (stood up they held the gun at -1.6 over the front quarters). Wedge turrets: the 2A6 X's mantlet
+  cover rides the 2A4's deeper trunnion, so its underside holds the gun over the deck at yaw 47-61 (-5.5) and over the
+  sponsons' stowage abeam (leo2a4m -6 to -1.5 at 113-149; leo2a4_otco -3.6 to -0.4 at 59-155; leo2_improved -5 to -1.3
+  at 54-151 and +6 over the APU housings at 152-165). Owed (next release): raise the cover's underside on the deeper
+  trunnion and lower the sponson stowage to give the wedge turrets -9 abeam.
 
 ## Round log
 

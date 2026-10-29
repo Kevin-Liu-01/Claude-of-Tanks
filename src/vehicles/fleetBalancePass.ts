@@ -448,6 +448,17 @@ export function applySameTierFairness(registry: TankSpecRegistry): void {
   // 262: the fourth batch's Leopard 2A3 (leopard2a3B4Specs.ts) carries the 2A3's combat data, these trims included
   cannonReload(registry, 'leo2a3_b4', 6.4);
   turretFront(registry, 'leo2a3_b4', 0.9);
+  // 264 (a balance trim, not fidelity): the 2A4-era Leopards on the release construction (leopard2A4FamilySpecs.ts)
+  // keep their old builds' plates, but the square 2A4 front stands its wide flat mantlet where the old 2A6-look builds'
+  // spaced wedges stood ahead of a narrow one (the range's aim point lands on it), and the CAN's MEXAS cheeks stand
+  // near vertical where the old build's swept back 40 degrees. VIII round robin (balance range, 120 m): leo2a4 0.497 ->
+  // 0.167, leo2a4_v 0.724 -> 0.121, leo2a4m_can 0.493 -> 0.157; these bring each back to its old standing.
+  mantlet(registry, 'leo2a4', 2.45);
+  mantlet(registry, 'leo2a4_v', 2.2);
+  // the CAN's pair also holds both of its reviewed matchups (balanceScenarios: v m1a1 0.75, challenger1_mk2 v it 0.708):
+  // the turret front alone flips one or the other between x1.34 and x1.35
+  mantlet(registry, 'leo2a4m_can', 1.28);
+  turretFront(registry, 'leo2a4m_can', 1.33);
   primary(registry, 'c1_ariete_preserie', { pen100: 700, pen1000: 637, pen2000: 573 });
   cannonReload(registry, 'c1_ariete_preserie', 6.0);
   spec(registry, 'c1_ariete_preserie').hp = 2300;
