@@ -63,11 +63,12 @@ const coveredBy = (x0: number, y0: number, x1: number, y1: number, blocks: reado
 /**
  * The dial's and the rules panel's places (see the module's note). `top`: the bottom of the score and objective;
  * `blocks`: the panels, controls and readouts each keeps `gap` from (never the reticle: the centre line is its place);
- * `maxScale`: the largest dial (a step smaller while a mouse alert shows beside it, mouseNoticePlan.ts).
+ * `maxScale`: the largest dial (a step smaller while a mouse alert shows beside it, mouseNoticePlan.ts); `sightY`: the
+ * battle sight's y (battleSight.ts: the chase framing's lens shift raises it over the centre).
  */
 export function placeCountdown(width: number, height: number, top: number, dial: CountdownSize, rules: CountdownSize | null,
-  blocks: readonly CountdownBox[], gap: number, overSight = false, maxScale = 1): CountdownPlace {
-  const cx = noticeCentreX(width), cy = height / 2;
+  blocks: readonly CountdownBox[], gap: number, overSight = false, maxScale = 1, sightY = height / 2): CountdownPlace {
+  const cx = noticeCentreX(width), cy = sightY;
   const ceiling = Math.ceil(top + gap);
   const lowest = Math.floor(cy - SIGHT_CLEAR_PX - gap);
   const bottom = Math.min(lowest, Math.floor(cy - Math.max(SIGHT_CLEAR_PX + gap, height * LIFT)));

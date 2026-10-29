@@ -58,6 +58,30 @@ assert.deepEqual(capsCollision,
     controls.setSetting('isometricView', true);
     assert.equal(controls.getSettings().isometricView, true);
     assert.equal(createInput().getSettings().isometricView, false, 'missing saved preference retains chase view');
+    // battle-camera-264: the chase camera's settings default to the framing's own, clamp into their ranges and persist
+    const storage = new Map();
+    globalThis.localStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) };
+    const camera = createInput();
+    const cameraDefaults = { cameraHeight: 0, cameraDistance: 1, cameraShoulder: 'centre', cameraFraming: 0, cameraFov: 60 };
+    for (const [key, value] of Object.entries(cameraDefaults)) assert.equal(camera.getSettings()[key], value, `${key} defaults`);
+    camera.setSetting('cameraFov', 120);
+    assert.equal(camera.getSettings().cameraFov, 80, 'a field of view past the range clamps');
+    camera.setSetting('cameraHeight', '1.5');
+    assert.equal(camera.getSettings().cameraHeight, 1.5, 'a typed height is read as a number');
+    camera.setSetting('cameraDistance', 'far');
+    assert.equal(camera.getSettings().cameraDistance, 1, 'a value that is no number keeps the default');
+    camera.setSetting('cameraShoulder', 'up');
+    assert.equal(camera.getSettings().cameraShoulder, 'centre', 'an unknown shoulder is refused');
+    camera.setSetting('cameraShoulder', 'left');
+    assert.equal(camera.getSettings().cameraShoulder, 'left');
+    const saved = JSON.parse(storage.get('cot.settings.v1'));
+    assert.deepEqual([saved.cameraFov, saved.cameraHeight, saved.cameraShoulder], [80, 1.5, 'left'], 'they persist with the input settings');
+    const reloaded = createInput().getSettings();
+    assert.deepEqual([reloaded.cameraFov, reloaded.cameraHeight, reloaded.cameraShoulder], [80, 1.5, 'left'], 'and come back');
+    storage.set('cot.settings.v1', JSON.stringify({ cameraFraming: 9, cameraShoulder: 7, cameraDistance: 'x' }));
+    const bad = createInput().getSettings();
+    assert.deepEqual([bad.cameraFraming, bad.cameraShoulder, bad.cameraDistance], [0.2, 'centre', 1], 'stored values out of range or kind are safe');
+    globalThis.localStorage = { getItem: () => null, setItem() {} };
     assert.equal(controls.getSettings().armorAimOverlay, false, 'armor highlighting is opt-in for new profiles');
     for (const enabled of [true, false]) {
       globalThis.localStorage = {getItem:key=>key==='cot.settings.v1'?JSON.stringify({armorAimOverlay:enabled,isometricView:enabled}):null,setItem(){}};

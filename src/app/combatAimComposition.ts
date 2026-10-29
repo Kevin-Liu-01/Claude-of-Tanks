@@ -13,6 +13,7 @@ import {
 import type { AimControllerDependencies } from '../game/aimController.ts';
 import type { ShellCard } from '../game/playerBattleActions.ts';
 import type { MainEntity, MainGameState } from './mainContracts.ts';
+import { battleBands, setBattleSightShift } from '../ui/battleSight.ts';
 
 type CombatRaycast = CameraRaycast & AimControllerDependencies['worldRaycast'];
 
@@ -23,6 +24,8 @@ interface CombatAimCompositionOptions {
   worldRaycast: CombatRaycast;
   getShellCards(): ShellCard[];
   getIsometricView?(): boolean;
+  /** The player's chase camera settings (input.ts: height, distance, shoulder, framing, field of view). */
+  getCameraSettings?: CameraRigDeps['getCameraSettings'];
   /** (perf-245) a spectate handover's destination, warmed on the way (engine/cameraDestinationWarm.ts). */
   prepareDestination?: CameraRigDeps['prepareDestination'];
 }
@@ -47,6 +50,7 @@ export function createCombatAimComposition({
   worldRaycast,
   getShellCards,
   getIsometricView,
+  getCameraSettings,
   prepareDestination,
 }: CombatAimCompositionOptions): CombatAimComposition {
   let rig!: CameraRig;
@@ -78,6 +82,10 @@ export function createCombatAimComposition({
     getPlayer: activeCameraPlayer,
     getIsometricView,
     prepareDestination,
+    // (battle-camera-264) the chase framing clears the HUD's bands, and the HUD's sight bands follow its lens shift
+    getChaseBands: battleBands,
+    getCameraSettings,
+    publishSightShift: setBattleSightShift,
   });
 
   return { battleClient, rig, targetVisible };

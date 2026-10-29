@@ -79,4 +79,10 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
   battleTimes: { id: 'timeDay', tone: 'amber' },
   foliageSeeThrough: { id: 'regionWoodland', tone: 'green' }, // item 259: Graphics › See-through foliage
+  // battle-camera-264: Gameplay › Camera (the chase camera's height, distance, shoulder, framing and lens)
+  cameraHeight: { id: 'altitude', tone: 'cyan' },
+  cameraDistance: { id: 'zoomOut', tone: 'cyan' },
+  cameraShoulder: { id: 'cameraPath', tone: 'cyan' },
+  cameraFraming: { id: 'zoomFit', tone: 'cyan' },
+  cameraFov: { id: 'optics', tone: 'cyan' },
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);
