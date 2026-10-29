@@ -8,7 +8,7 @@ import { movementDispersionFactor } from '../sim/movementDispersion.ts';
 import { auditFleetBalance } from './balanceAudit.ts';
 
 assert.deepEqual(Object.keys(VEHICLE_ROLE_PROFILES).sort(), [...ALL_TANK_IDS].sort(), 'every vehicle has an explicit role profile');
-assert.equal(ALL_TANK_IDS.length, 236); // 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15)
+assert.equal(ALL_TANK_IDS.length, 240); // 264: the Longwei family's Qinglong, Baihu, Zhuque and Xuanwu. 263: the T-55A, the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots, the two Challenger 3 TDs, the Challenger 1 Mk 1 and the FV4030/5 and FV4030/6 join (221 + 15)
 const ranges = ALL_TANK_IDS.map(id => viewRangeOf(TANK_SPECS[id]));
 assert.equal(viewRangeOf(TANK_SPECS.m551a1_tts), Math.max(...ranges));
 assert.equal(viewRangeOf(TANK_SPECS.m551_sheridan), 480);
