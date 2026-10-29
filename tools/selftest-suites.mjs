@@ -1873,6 +1873,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger3HullClosure.selftest.mjs',
     'src/vehicles/profiles/challenger3RearTurret.selftest.mjs',
     'src/vehicles/profiles/challenger3RunningGear.selftest.mjs',
+    // 264: the Challenger 3 TD's Hydrogas units on the oracle's casting, the arms in the track lane's shadow
+    'src/vehicles/profiles/challenger3TdSuspension.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
     'src/vehicles/combatVisibility.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
