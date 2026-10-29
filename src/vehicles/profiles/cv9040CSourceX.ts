@@ -91,8 +91,8 @@ function turret(P: TankBuilderPort): void {
   // Fixed trunnion ears bridge the crew shell to the rocking shield's axis.
   // Keep the throat between them open so the shield can elevate freely.
   for(const side of [-1,1]) {
-    P.add('turret',box(.09,.42,.66),side*.285,.405,1.30);
-    P.add('turret',cylX(.09,.105,16),side*.285,.405,1.56);
+    P.addEquipment('turret',box(.09,.42,.66),side*.285,.405,1.30);
+    P.addEquipment('turret',cylX(.09,.105,16),side*.285,.405,1.56);
   }
   for(const side of [-1,1]) {
     // Broad separate appliqué packets frame an actual open gun throat.

@@ -1440,8 +1440,8 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   // as oversized blue optics.
   // 2026-10-19 (owner float sweep): each side roll and its bracket stood 38 mm off the casting; seated on it.
   for (const s of [-1, 1]) seatRu(P, 't62-cheek-roll', () => {
-    P.add('turret', box(0.176, 0.18, 0.26), s * 1.364, 0.47, 0.41, -0.05, 0, 0);
-    P.add('turret', cylZ(0.13, 0.09, 14), s * 1.43, 0.47, 0.57);
+    P.add('turretEquipment', box(0.176, 0.18, 0.26), s * 1.364, 0.47, 0.41, -0.05, 0, 0);
+    P.add('turretEquipment', cylZ(0.13, 0.09, 14), s * 1.43, 0.47, 0.57);
     P.add('turretDark', cylZ(0.10, 0.015, 14), s * 1.43, 0.47, 0.62);
   }, { reachM: 0.05 });
   // One DShK station only.  A previous round retained a hand-built receiver,
@@ -1471,7 +1471,7 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   ]) {
     // 2026-10-19 (owner float sweep): one pad stood 37 mm over the casting; each pad and head is seated on it.
     seatRu(P, 't62-roof-periscope', () => {
-      P.add('turret', box(0.16, 0.055, 0.14), x, y - 0.035, z, 0, ry, 0);
+      P.add('turretEquipment', box(0.16, 0.055, 0.14), x, y - 0.035, z, 0, ry, 0);
       P.add('turretGlass', box(0.12, 0.055, 0.025), x, y, z + 0.065, 0, ry, 0);
     }, { reachM: 0.05 });
   }

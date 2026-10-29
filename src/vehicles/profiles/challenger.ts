@@ -2319,11 +2319,11 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
     P.add('turretDetail', torus(0.105, 0.012, P.q ? 18 : 12),
       -1.06, 0.378, -2.48);
     P.add('turretDark', box(0.40, 0.010, 0.62), 0.66, 0.320, -2.10);
-    P.add('turret', box(0.32, 0.010, 0.52), 0.66, 0.328, -2.10);
+    P.add('turretEquipment', box(0.32, 0.010, 0.52), 0.66, 0.328, -2.10);
     for (const z of [-2.32, -1.88]) P.add('turretDetail', box(0.28, 0.018, 0.035),
       0.66, 0.338, z);
     P.add('turretDark', box(0.14, 0.014, 0.20), 0.52, 0.340, -2.36, 0, 0.12, 0);
-    P.add('turret', box(0.11, 0.018, 0.15), 0.52, 0.350, -2.36, 0, 0.12, 0);
+    P.add('turretEquipment', box(0.11, 0.018, 0.15), 0.52, 0.350, -2.36, 0, 0.12, 0);
     for (const [x, z] of [[0.55, -1.82], [0.78, -2.18], [0.60, -2.40]])
       P.add('turretDetail', cylY(0.018, 0.018, 0.016, 10), x, 0.354, z);
     P.add('turretDark', box(0.50, 0.20, 0.05), 0, 0.17, 1.98);
@@ -2563,7 +2563,7 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
         const buildChallenger2TurretStage22 = (): void => {
           for (const z of cassetteFields) {
             P.add('turretDark', box(0.002, 0.20, 0.30), outerJoinX, 0.20, z);
-            P.add('turret', box(0.002, 0.145, 0.245), outerJoinX + side * 0.002, 0.20, z);
+            P.add('turretEquipment', box(0.002, 0.145, 0.245), outerJoinX + side * 0.002, 0.20, z);
             for (const dy of [-0.085, 0.085]) P.add('turretDetail',
               box(0.002, 0.014, 0.26), outerJoinX + side * 0.001, 0.20 + dy, z);
             for (const dz of [-0.13, 0.13]) P.add('turretDetail',
@@ -2572,9 +2572,10 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
         };
         buildChallenger2TurretStage22();
         // Side-only bustle ear as a closed swept solid (source world box maps to
-        // local x .86..1.30, z -3.02..-3.36), not a rectangular rail.
+        // local x .86..1.30, z -3.02..-3.36), not a rectangular rail. It is a stowage tray (equipment), except on the
+        // UA, whose field cage (modernFieldCage.ts) takes its rear bound from the turret bucket's extent these ears set.
         const buildChallenger2TurretStage23 = (): void => {
-          cr2Course(P, 'turret', [
+          cr2Course(P, P.spec.id === 'ua_challenger2' ? 'turret' : 'turretEquipment', [
             [side * 0.86, -3.00], [side * 1.24, -3.02],
             [side * 1.24, -3.26], [side * 0.86, -3.25],
           ], 0.08, [0.15, 0.15, 0.13, 0.14]);
@@ -2596,7 +2597,7 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
     // blank stern slab without lengthening the turret.
     P.add('turretDark', box(2.12, 0.30, 0.012), 0, 0.25, -2.984);
     for (const side of [-1, 1]) {
-      P.add('turret', box(0.82, 0.20, 0.010), side * 0.53, 0.26, -2.992);
+      P.add('turretEquipment', box(0.82, 0.20, 0.010), side * 0.53, 0.26, -2.992);
       for (let k = -2; k <= 2; k++) P.add('turretDark', box(0.72, 0.014, 0.010),
         side * 0.53, 0.26 + k * 0.035, -2.999);
       P.add('turretDark', cylZ(0.105, 0.018, P.q ? 18 : 12), side * 0.98, 0.31, -3.000);
@@ -3065,11 +3066,11 @@ function* buildChallenger2Steps(P: ChallengerBuilderPort): TankProfileBuild {
       };
       buildChallenger2AssemblyStage16();
       const buildChallenger2TurretStage67 = (): void => {
-        P.snapGroup('cr2-side-lug', () => P.add('turret', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42), { reachM: 0.03 });   // 2026-10-19 (owner float sweep): seated (19 mm off)
+        P.snapGroup('cr2-side-lug', () => P.add('turretEquipment', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42), { reachM: 0.03 });   // 2026-10-19 (owner float sweep): seated (19 mm off)
       };
       buildChallenger2TurretStage67();
       const buildChallenger2TurretStage68 = (): void => {
-        P.snapGroup('cr2-side-lug', () => P.add('turret', box(0.04, 0.12, 0.20), -1.41, 0.15, -1.42), { reachM: 0.03 });
+        P.snapGroup('cr2-side-lug', () => P.add('turretEquipment', box(0.04, 0.12, 0.20), -1.41, 0.15, -1.42), { reachM: 0.03 });
       };
       buildChallenger2TurretStage68();
       const buildChallenger2TurretStage69 = (): void => {
@@ -3369,7 +3370,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // Joined true-profile wing: the source line breaks upward at z 3.60.
       // That real knee also clears the raised idler wrap instead of letting a
       // single straight plate cut through the track (§B4).
-      P.add('hull', mslab1(s,
+      P.add('hullFixedPaintedBodywork', mslab1(s,
         [0.95, 1.00, 3.97], [1.62, 1.00, 3.97], [1.62, 0.95, 3.95], [0.95, 0.95, 3.95],
         [0.95, 1.24, 3.60], [1.62, 1.24, 3.60], [1.62, 1.19, 3.58], [0.95, 1.19, 3.58]));
       P.add('hull', mslab1(s,
@@ -3380,7 +3381,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // open slot under the sloped wing from z=3.58 back to the deck knee at
       // z=2.30.  Continue the same upper/lower planes to the physical fender
       // edge so the bow is a closed shell from every oblique view.
-      P.add('hull', mslab1(s,
+      P.add('hullFixedPaintedBodywork', mslab1(s,
         [1.60, 1.19, 3.58], [1.70, 1.19, 3.58], [1.70, 1.50, 2.30], [1.60, 1.50, 2.30],
         [1.60, 1.24, 3.60], [1.70, 1.24, 3.60], [1.70, 1.55, 2.32], [1.60, 1.55, 2.32]));
     }
@@ -3395,7 +3396,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // The source's final +4.07 m column is a 160 mm fender/datum lip, not a
       // full-height flap.  Keep its proven 1.34 m top and hull-length anchor,
       // but let the joined wing one station inboard own the structural span.
-      P.add('hull', box(0.08, 0.28, 0.03), s * 1.46, 1.20, 4.045);               // narrow P95 datum lip, just deep enough to remain a body-span column
+      P.add('hullFixedPaintedBodywork', box(0.08, 0.28, 0.03), s * 1.46, 1.20, 4.045); // narrow P95 datum lip, just deep enough to remain a body-span column
       P.add('hullDetail', box(0.04, 0.10, 0.80), s * 1.65, 1.02, 3.52);          // low fender edge carries the final bow station width
       P.add('hullDetail', box(0.09, 0.11, 0.09), s * 0.60, 0.56, 3.72);          // tow eyes
     }
@@ -3510,14 +3511,14 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
   // exposing the idler, recessed dark handles, no fringe below.
   const buildChallenger3HullStage2 = (): void => {
     for (const s of [-1, 1]) {
-      P.add('hull', mslab1(s,                                                    // stepped front panel — print plan: full-width faces end z 3.01;
+      P.add('hullExternalArmor', mslab1(s,                                       // stepped front panel — print plan: full-width faces end z 3.01;
         [1.695, 1.18, 3.05], [1.755, 1.18, 3.05], [1.755, 1.18, 2.42], [1.695, 1.18, 2.42],
         [1.695, 1.32, 3.10], [1.755, 1.32, 3.10], [1.755, 1.32, 2.42], [1.695, 1.32, 2.42]));
       // Close the 110 mm plan pocket between the middle-front bay (ending
       // z=2.30) and the raised bow bridge (formerly beginning z=2.41).  This
       // stays above/outboard of the animated course and restores one backed
       // fender load path without removing or lifting any skirt geometry.
-      P.add('hull', box(0.10, 0.06, 0.82), s * 1.65, 1.31, 2.70);                // closed fender bridge: wing -> raised front skirt
+      P.add('hullFixedPaintedBodywork', box(0.10, 0.06, 0.82), s * 1.65, 1.31, 2.70); // closed fender bridge: wing -> raised front skirt
       // 3 bays ONLY — the print's skirts END at z ~-0.9 (plan row: ±1.76
       // content spans 3.16..-0.73 on the print) leaving the rear wheels +
       // sprocket run OPEN (§B8 exposure)
@@ -3529,13 +3530,13 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
       // the ref reads 1.176) and hung 0.70..0.79 per the ref's own tab line.
       // Source station widths narrow through z 1.16..2.33, then return to
       // full skirt width at the bow.  Author the three bays separately.
-      P.add('hull', box(0.04, 0.14, 1.00), s * 1.665, 1.25, 1.80);              // middle-front bay, outer 1.685
+      P.add('hullExternalArmor', box(0.04, 0.14, 1.00), s * 1.665, 1.25, 1.80); // middle-front bay, outer 1.685
       P.add('hullDark', box(0.012, 0.05, 0.28), s * 1.6855, 1.10, 1.80);
-      P.add('hull', box(0.055, 0.14, 0.12), s * 1.7125, 1.25, 2.36);            // transition to full bow width
-      P.add('hull', box(0.06, 0.14, 0.885), s * 1.725, 1.25, 0.6375);           // center bay ends 1.08 at the measured station-width knee
-      P.add('hull', box(0.10, 0.06, 0.14), s * 1.65, 1.31, 1.05);                // close the one-cell bay-knee slot
+      P.add('hullExternalArmor', box(0.055, 0.14, 0.12), s * 1.7125, 1.25, 2.36); // transition to full bow width
+      P.add('hullExternalArmor', box(0.06, 0.14, 0.885), s * 1.725, 1.25, 0.6375); // center bay ends 1.08 at the measured station-width knee
+      P.add('hullFixedPaintedBodywork', box(0.10, 0.06, 0.14), s * 1.65, 1.31, 1.05); // close the one-cell bay-knee slot
       P.add('hullDark', box(0.012, 0.05, 0.28), s * 1.7555, 1.10, 0.6375);
-      P.add('hull', box(0.06, 0.14, 1.11), s * 1.725, 1.25, -0.40);             // rear bay
+      P.add('hullExternalArmor', box(0.06, 0.14, 1.11), s * 1.725, 1.25, -0.40); // rear bay
       P.add('hullDark', box(0.012, 0.05, 0.28), s * 1.7555, 1.10, -0.40);
       for (const z of [1.30, 0.15, -0.97]) P.add('hullDark', box(0.065, 0.10, 0.018), s * 1.67, 1.23, z);
       // Hull-owned carrier plates sit behind (never in front of) the existing
@@ -3549,7 +3550,7 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
         [1.6475, -0.40, 1.11],
       ]) {
         const width = x === 1.635 ? 0.10 : 0.145;
-        P.add('hull', box(width, 0.24, depth), s * x, 1.22, z);
+        P.add('hullExternalArmor', box(width, 0.24, depth), s * x, 1.22, z);
       }
       // Short hangers tie each carrier into the sponson wall/deck.  Keeping
       // these discrete avoids recreating the conspicuous full-length line
@@ -3558,8 +3559,8 @@ function* buildChallenger3Steps(P: ChallengerBuilderPort): TankProfileBuild {
         P.add('hullDetail', box(0.12, 0.22, 0.08), s * 1.63, 1.38, z);
       }
       for (const zg of [2.10, 1.19, 0.28]) {                                     // scallop tabs between wheels (tops weld into the 0.95 bay hem, outer
-        P.add('hull', box(0.06, 0.27, 0.30), s * 1.67, 0.835, zg);               // face 1.70 overlaps the 1.695 bay inner plane — §B2 attached)
-        P.add('hull', box(0.08, 0.26, 0.18), s * 1.67, 1.07, zg);                // welded neck: scallop tab -> carrier/backplate
+        P.add('hullExternalArmor', box(0.06, 0.27, 0.30), s * 1.67, 0.835, zg);  // face 1.70 overlaps the 1.695 bay inner plane — §B2 attached)
+        P.add('hullEquipment', box(0.08, 0.26, 0.18), s * 1.67, 1.07, zg);       // welded neck: scallop tab -> carrier/backplate
       }
     }
   };

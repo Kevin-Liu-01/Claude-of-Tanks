@@ -81,15 +81,17 @@ function shellSection(d: Datum, [z, left, right, bottom, top]: ShellStation,
   ] };
 }
 
+// 264 (envelope honesty): the wedge modules are bolt-on spaced armour (turretExternalArmor) and a basket floor is
+// stowage (turretEquipment); neither may set the armour envelope the turret's plates are fitted to
 function shell(P: TankBuilderPort, d: Datum, stations: readonly ShellStation[],
-  bevelWidth=.12,upperDepth=.16): void {
-  addTurretSections(P,d,stations.map((station) => shellSection(d, station,bevelWidth,upperDepth)));
+  bevelWidth=.12,upperDepth=.16,bucket='turret'): void {
+  addTurretSections(P,d,stations.map((station) => shellSection(d, station,bevelWidth,upperDepth)),bucket);
 }
 
-function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[]):void {
-  if(d===LEOPARD_X_DATUMS.leo2a5) P.add('turret',sectionSolid(sections));
+function addTurretSections(P:TankBuilderPort,d:Datum,sections:readonly SolidSection[],bucket='turret'):void {
+  if(d===LEOPARD_X_DATUMS.leo2a5) P.add(bucket,sectionSolid(sections));
   else addLeopardTurretWithGunOpening(P,sections,
-    d.trunnion[0]-d.turretPivot[0],d.trunnion[1]-d.turretPivot[1],d.trunnion[2]-d.turretPivot[2]);
+    d.trunnion[0]-d.turretPivot[0],d.trunnion[1]-d.turretPivot[1],d.trunnion[2]-d.turretPivot[2],bucket);
 }
 
 function equip(P: TankBuilderPort, d: Datum, bucket: string, geometry: THREE.BufferGeometry,
@@ -1196,7 +1198,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   opticPocket(P,d,{back:1.65,mouth:2.51,x0:-1.025,x1:-.60,
     floor:2.352,roof:2.61,outerLeft:-1.56,outerRight:1.48,bottom:1.75,sourceA7Cheek:true});
   shell(P,d,[[2.505,-1.13,1.16,1.91,2.340],[2.82,-.72,.77,2.016,2.286],
-    [3.11,-.22,.29,2.146,2.181]]);
+    [3.11,-.22,.29,2.146,2.181]],.12,.16,'turretExternalArmor');
   roofHatch(P,d,-.61,2.675,-.35);
   roofHatch(P,d,.66,2.670,-.35);
   equip(P,d,'turretDetail',cylY(.20,.22,.16,24),-.301,2.74,-.433);
@@ -1249,7 +1251,8 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
   driver(P,1.6443,-.56,2.12,.03,Math.atan2(1.72-1.58,2.63-1.52));
   a6BowFittings(P);
   a6Stern(P);
-  shell(P,d,[[-2.70,-1.14,1.15,1.948,1.979],[-2.39,-1.14,1.15,1.93,1.979],
+  shell(P,d,[[-2.70,-1.14,1.15,1.948,1.979],[-2.39,-1.14,1.15,1.93,1.979]],.12,.16,'turretEquipment'); // the basket floor
+  shell(P,d,[[-2.39,-1.14,1.15,1.93,1.979],
     [-1.70,-1.14,1.16,1.908,2.546],
     [-.37,-1.27,1.283,1.869,2.546],[.34,-1.27,1.283,1.741,2.546],
     [.75,-1.27,1.283,1.741,2.536],[1.66,-1.27,1.283,1.741,2.459]]);
@@ -1257,7 +1260,7 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
   opticPocket(P,d,{back:1.64,mouth:2.43,x0:-1.04,x1:-.56,floor:2.15,
     roof:2.46,frontRoof:2.302,outerLeft:-1.27,outerRight:1.283,bottom:1.738});
   shell(P,d,[[2.42,-1.12,1.14,1.895,2.302],[2.95,-.60,.64,2.038,2.219],
-    [3.28,-.20,.29,2.104,2.126]]);
+    [3.28,-.20,.29,2.104,2.126]]); // 264: stays turret: its cheek ERA covers are cut from it and seat on it (allowance)
   // Turret cage extends around the bustle but never closes its stand-off air.
   for(const side of [-1,1]) {
     for(let j=0;j<9;j++) equip(P,d,'turretOpenLattice',box(.025,.017,2.60),side*1.496,1.947+j*.074,-1.45);
@@ -1325,7 +1328,7 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
   opticPocket(P,d,{back:1.355,mouth:2.28,x0:-1.10,x1:-.65,floor:2.12,
     roof:2.38,outerLeft:-1.497,outerRight:1.375,bottom:1.675});
   shell(P,d,[[2.27,-1.27,1.15,1.742,2.129],[2.70,-.76,.63,1.813,2.139],
-    [3.02,.10,.16,1.978,1.997]]);
+    [3.02,.10,.16,1.978,1.997]],.12,.16,'turretExternalArmor');
   roofHatch(P,d,-.62,2.448,-.24);
   roofHatch(P,d,.62,2.448,-.24);
   panorama(P,d,-.342,2.487,-.529);

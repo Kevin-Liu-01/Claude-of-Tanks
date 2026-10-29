@@ -24,8 +24,8 @@ export function addT90VRearGuards(P: TankBuilderPort): void {
     // A short folded mounting flange joins the retained longitudinal fender.
     P.add('hull', skin(side, [[-3.325, 1.6803, 1.2487, 0],
       [-3.203, 1.6803, 1.2487, 0], [-3.02, 1.825, 1.344, 0]], false));
-    P.addMudguard('t90a-vladimir-x-rear-roof', 'hull', skin(side, rows, false));
-    P.addMudguard('t90a-vladimir-x-rear-return', 'hull', skin(side, rows, true));
+    P.addMudguard('t90a-vladimir-x-rear-roof', 'hullFixedPaintedBodywork', skin(side, rows, false));
+    P.addMudguard('t90a-vladimir-x-rear-return', 'hullFixedPaintedBodywork', skin(side, rows, true));
     // The roof is fixed to the flange by two small, shallow lap joints.
     for (const x of [1.25, 1.58]) P.add('hull', sectionSolid([
       { z: -3.31, ring: [[side*x-.018, 1.230], [side*x+.018, 1.230], [side*x+.018, 1.25], [side*x-.018, 1.25]] },

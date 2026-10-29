@@ -52,8 +52,8 @@ function turret(z: number, half: number, roofHalf: number, low: number, high: nu
 
 function onTurret(P: TankBuilderPort, bucket: string, geometry: THREE.BufferGeometry,
   x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
-  // Armor cassettes and the carrier floor are structural surfaces. Routing
-  // them through addEquipment would silently relabel them turretEquipment.
+  // Armor cassettes are structural surfaces. Routing them through
+  // addEquipment would silently relabel them turretEquipment.
   if (bucket === 'turret') {
     P.add(bucket, geometry, x, y + GROUND - YAW_Y, z - CENTER_Z - YAW_Z, rx, ry, rz);
   } else {
@@ -64,7 +64,7 @@ function onTurret(P: TankBuilderPort, bucket: string, geometry: THREE.BufferGeom
 function hullFurniture(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     // Bow shoulder follows the glacis and stays above the single native belt.
-    P.addMudguard('k2-x-front-shoulder', 'hull', orientedSlab(
+    P.addMudguard('k2-x-front-shoulder', 'hullFixedPaintedBodywork', orientedSlab(
       [side * 1.08, 1.265, 3.73 - CENTER_Z], [side * 1.86, 1.265, 3.73 - CENTER_Z],
       [side * 1.86, 1.350, 3.29 - CENTER_Z], [side * 1.08, 1.350, 3.29 - CENTER_Z],
       [side * 1.08, 1.335, 4.05 - CENTER_Z], [side * 1.86, 1.335, 4.05 - CENTER_Z],
@@ -376,7 +376,7 @@ function armorModules(P: TankBuilderPort): void {
     for(const z of[-1.81,-1.26,-1.06,-.48,.26,.68,1.31])onTurret(P,'turretDark',cylX(.016,.020,8),side*1.530,Math.min(2.20,2.207-.104*z),z);
   }
   // Rear bustle is a carrier with discrete stores, not a full-width solid loaf.
-  onTurret(P,'turret',box(3.04,.034,1.04),0,1.813,-2.44);
+  onTurret(P,'turretEquipment',box(3.04,.034,1.04),0,1.813,-2.44); // the stores carrier's floor: stowage, not armour
   onTurret(P,'turretDetail',box(.828,.576,.828),-1.098,2.115,-2.518);   // on the carrier floor (8 mm over it before: owner 2026-10-19 float sweep)
   onTurret(P,'turretDetail',box(.901,.546,.629),1.0885,2.041,-2.2595);
   onTurret(P,'turretDetail',box(.503,.453,.457),-.1255,2.0355,-2.3185);

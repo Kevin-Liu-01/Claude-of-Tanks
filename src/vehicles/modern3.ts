@@ -345,10 +345,10 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // ±1.72). Wall face 1.80, top plate ties to the band, struts close §B2.
   const buildFrontGuards = (): void => {
   for (const s of [-1, 1]) {
-    P.add('hull', slab(                                                        // articulated raked fender transition
+    P.add('hullFixedPaintedBodywork', slab(                                    // articulated raked fender transition
       [s * 1.77, 0.72, 3.18], [s * 1.80, 0.72, 3.18], [s * 1.80, 0.90, 3.73], [s * 1.77, 0.90, 3.73],
       [s * 1.77, 1.39, 3.18], [s * 1.80, 1.39, 3.18], [s * 1.80, 1.10, 3.73], [s * 1.77, 1.10, 3.73]));
-    P.add('hull', slab(                                                        // thin guard roof follows the same descending rake
+    P.add('hullFixedPaintedBodywork', slab(                                    // thin guard roof follows the same descending rake
       [s * 1.64, 1.37, 3.18], [s * 1.77, 1.37, 3.18], [s * 1.77, 1.08, 3.73], [s * 1.64, 1.08, 3.73],
       [s * 1.64, 1.40, 3.18], [s * 1.77, 1.40, 3.18], [s * 1.77, 1.11, 3.73], [s * 1.64, 1.11, 3.73]));
     P.add('hullDetail', box(0.05, 0.05, 0.34), s * 1.70, 1.345, 3.46);
@@ -373,11 +373,11 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.add('hullDark', lampWell, s * 1.17, 1.205, 3.716);
     const lampLens = new THREE.PlaneGeometry(0.070, 0.030);
     P.add('hullGlass', lampLens, s * 1.17, 1.205, 3.717);
-    P.add('hull', box(0.03, 0.10, 0.09), s * 1.785, 0.95, 3.775);              // physical guard leading lip
+    P.add('hullFixedPaintedBodywork', box(0.03, 0.10, 0.09), s * 1.785, 0.95, 3.775); // physical guard leading lip
     P.add('hullDark', box(0.025, 0.42, 0.035), s * 1.802, 1.10, 3.47, 0.12, 0, 0); // transition seam
     hullRubberLane(s, box(0.025, 0.50, 0.35), s * 1.725, 1.05, -3.30);         // outer rear guard retucks the end wheel
   }
-  P.add('hull', box(0.22, 0.62, 0.28), 0, 1.01, 3.685);                       // one-column structural bow datum bracket (front 3.825; runs back 10 mm into the nose lip, which it stood 12 cm ahead of)
+  P.add('hullEquipment', box(0.22, 0.62, 0.28), 0, 1.01, 3.685);              // one-column structural bow datum bracket (front 3.825; runs back 10 mm into the nose lip, which it stood 12 cm ahead of)
   P.add('hull', box(0.04, 0.68, 1.76), 1.72, 1.01, 2.50);                    // asymmetric right front skirt stringer
   };
   buildFrontGuards();
@@ -1327,12 +1327,12 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
   // front guard flares — the §D WIDTH ANCHOR at ±1.80 EXACT (print: the
   // bow mudguard flares are the only ±1.80 content; skirts run ±1.75).
   for (const s of [-1, 1]) {
-    P.add('hull', slab(                                                        // sculpted flare wall follows the falling prow instead of ending as a square box
+    P.add('hullFixedPaintedBodywork', slab(                                    // sculpted flare wall follows the falling prow instead of ending as a square box
       [s * 1.77, 0.78, 3.08], [s * 1.80, 0.78, 3.08], [s * 1.80, 0.92, 3.52], [s * 1.77, 0.92, 3.52],
       [s * 1.77, 1.35, 3.08], [s * 1.80, 1.35, 3.08], [s * 1.80, 1.14, 3.52], [s * 1.77, 1.14, 3.52]));
-    P.add('hull', box(0.13, 0.025, 0.49), s * 1.7275, 1.245, 3.30, 0.445, 0, 0); // guard top plate tracks the same prow rake
+    P.add('hullFixedPaintedBodywork', box(0.13, 0.025, 0.49), s * 1.7275, 1.245, 3.30, 0.445, 0, 0); // guard top plate tracks the same prow rake
     P.add('hullDetail', box(0.135, 0.05, 0.30), s * 1.6675, 1.28, 3.28);       // tie strut into the headlight housing
-    P.add('hull', box(0.14, 0.03, 0.42), s * 1.73, 1.31, 2.90, -0.157, 0, 0);  // fender strip carries the skirt top on to the flare
+    P.add('hullFixedPaintedBodywork', box(0.14, 0.03, 0.42), s * 1.73, 1.31, 2.90, -0.157, 0, 0); // fender strip carries the skirt top on to the flare
     P.hangMudguard('k1e1-idler-guard-flap', 'hullRubber', box(0.13, 0.22, 0.024), s * 1.73, 0.93, 3.54, 0.22, 0, 0); // guard flap rises clear of the idler
     P.hangMudguard('k1e1-front-lane-flap', 'hullRubber', box(0.30, 0.26, 0.026), s * 1.30, 0.74, 3.66);         // center-lane front flaps
   }
@@ -1340,19 +1340,19 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
   // fwd / 1.61 aft third), hems — 0.54 front raked panel, 0.65 mid run,
   // 0.44 deep rear panels; 5 seams; rubber fringe.
   for (const s of [-1, 1]) {
-    P.add('hull', slab(                                                        // front raked panel (top follows the glacis edge down)
+    P.add('hullExternalArmor', slab(                                           // front raked panel (top follows the glacis edge down)
       [s * 1.70, 0.88, 2.72], [s * 1.75, 0.88, 2.72], [s * 1.75, 0.88, 1.45], [s * 1.70, 0.88, 1.45],
       [s * 1.70, 1.29, 2.72], [s * 1.75, 1.29, 2.72], [s * 1.75, 1.475, 1.45], [s * 1.70, 1.475, 1.45]));
     // main run SEGMENTED into 8 real panels (station slice-paint law —
     // the 3.65 m single box was invisible to mid-span station slabs;
     // 2.5 mm face stagger kills z-fighting, width read unchanged)
     for (let k = 0; k < 8; k++) {
-      P.add('hull', box(k % 2 ? 0.0475 : 0.05, 0.575, 0.4563),
+      P.add('hullExternalArmor', box(k % 2 ? 0.0475 : 0.05, 0.575, 0.4563),
         s * (k % 2 ? 1.72375 : 1.725), 1.1875, 1.2219 - k * 0.45625);          // shorter panels expose the enlarged compact six-wheel cadence
       P.add('hullDetail', box(0.018, 0.075, 0.105), s * 1.754, 1.405,
         1.2219 - k * 0.45625);                                                 // source hinge/fastener rhythm
     }
-    P.add('hull', slab(                                                        // rear panels rise clear of the compact sprocket course
+    P.add('hullExternalArmor', slab(                                           // rear panels rise clear of the compact sprocket course
       [s * 1.70, 0.84, -2.20], [s * 1.75, 0.84, -2.20], [s * 1.75, 0.96, -3.62], [s * 1.70, 0.96, -3.62],
       [s * 1.70, 1.61, -2.20], [s * 1.75, 1.61, -2.20], [s * 1.75, 1.61, -3.64], [s * 1.70, 1.61, -3.64]));
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.045, 0.50, 0.018), s * 1.7265, 1.19, 1.45 - k * 1.05); // panel seams stay within the raised skirt course
@@ -2020,12 +2020,12 @@ function* buildType10Native2026Steps(
     // dressing so every module reads as a fitted cassette, not a bare box
     for (const s of [-1, 1]) {
       if (s < 0) {
-        P.add('turret', box(0.143, 0.33, 1.43), s * 1.5015, 0.396 + shellLift, -0.33); // L bin module A (outer 1.573 — the print is ASYMMETRIC)
-        P.add('turret', box(0.165, 0.286, 0.99), s * 1.364, 0.374 + shellLift, -1.705);  // L aft module on the bustle taper
+        P.add('turretExternalArmor', box(0.143, 0.33, 1.43), s * 1.5015, 0.396 + shellLift, -0.33); // L bin module A (outer 1.573 — the print is ASYMMETRIC)
+        P.add('turretExternalArmor', box(0.165, 0.286, 0.99), s * 1.364, 0.374 + shellLift, -1.705);  // L aft module on the bustle taper
         P.add('turretDark', box(0.1474, 0.022, 1.386), s * 1.5015, 0.567, -0.33);  // L module lid seam
       } else {
-        P.add('turret', box(0.165, 0.286, 0.836), s * 1.5125, 0.407 + shellLift, -0.682); // R forward module (outer 1.595)
-        P.add('turret', box(0.165, 0.286, 0.792), s * 1.364, 0.396 + shellLift, -1.672);  // R aft module
+        P.add('turretExternalArmor', box(0.165, 0.286, 0.836), s * 1.5125, 0.407 + shellLift, -0.682); // R forward module (outer 1.595)
+        P.add('turretExternalArmor', box(0.165, 0.286, 0.792), s * 1.364, 0.396 + shellLift, -1.672);  // R aft module
         P.add('turretDark', box(0.1518, 0.198, 0.0198), s * 1.5037, 0.407 + shellLift, -1.21); // R module seam
         P.add('turretDark', box(0.1694, 0.022, 0.792), s * 1.5125, 0.556, -0.682); // R module lid seam
       }
@@ -3297,7 +3297,7 @@ function* buildBradleySteps(P: Modern3BuilderPort): TankProfileBuild {
                                                                                   //   (world z 0.20..0.62) — one raked
                                                                                   //   plate, §B1
     P.add('turretDark', box(0.10, 0.12, 0.06), 0.24, 0.42, 1.045);                // coax M240 slit (right of gun)
-    P.add('turret', box(0.17, 0.16, 0.28), -0.115, 0.37, 1.19);                   // slim M242 rotor housing (r4j:
+    P.add('turretEquipment', box(0.17, 0.16, 0.28), -0.115, 0.37, 1.19);          // slim M242 rotor housing (r4j:
                                                                                   //   x -0.33..-0.03 -> -0.20..-0.03 —
                                                                                   //   its z-front 0.88 crossed the
                                                                                   //   plan -0.26/-0.33 cols where the
@@ -3440,7 +3440,7 @@ function* buildBradleySteps(P: Modern3BuilderPort): TankProfileBuild {
       // -0.6..0.64 z-band into the 1.37 plan col (err 0.589). Re-cut: bin east
       // 1.325 (clear of the col bound 1.333), corner post carries the 1.35
       // front col's 2.76-2.80 tower read at the island's own z.
-      P.add('turret', box(0.03, 0.715, 0.075), 1.34, 0.5075, 0.5875);             // post: x 1.325..1.355, world y
+      P.add('turretEquipment', box(0.03, 0.715, 0.075), 1.34, 0.5075, 0.5875);    // post: x 1.325..1.355, world y
                                                                                   //   2.045..2.76, world z 0.10..0.175
                                                                                   //   (r4e: east 1.38 -> 1.355 — the
                                                                                   //   1.38 face lit the front 1.38 col
@@ -3492,7 +3492,7 @@ function* buildBradleySteps(P: Modern3BuilderPort): TankProfileBuild {
         [0.855, 0.6625, 0.1275, 0.19, 0.405, 0.575],                                // (r2 y -0.045: top 2.76 — the
                                                                                   //   front +0.76 col reads ref 2.76)
       ]);
-      P.add('turret', cylZ(0.027, 0.30, 28), 1.10, 0.875, -0.13);                 // (2026-10-19 owner float sweep: 10 mm lower, into the fill's top)                 // tower 2.807 rail: world y top
+      P.add('turretEquipment', cylZ(0.027, 0.30, 28), 1.10, 0.875, -0.13);        // (2026-10-19 owner float sweep: 10 mm lower, into the fill's top)                 // tower 2.807 rail: world y top
                                                                                   //   2.807, z -0.73..-0.43 — the ref
                                                                                   //   side patch; 28-seg so station
                                                                                   //   slices skip it (bmp2 r2 law)
@@ -4021,7 +4021,7 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // shaves ~10 mm, so author 0.345) or hullLengthM reads the ref's own
   // body-cut 6.589 (dims is sovereign to the PUBLISHED 6.72; the ~2-column
   // +0.07 top / -0.16 bottom tip residual is the r1 trade re-derived).
-  P.add('hull', slab(                                                           // (r3d: lip top SLOPES 1.42@3.13 ->
+  P.add('hullFixedPaintedBodywork', slab(                                       // (r3d: lip top SLOPES 1.42@3.13 ->
     [-1.065, 1.00, 3.365], [1.065, 1.00, 3.365], [1.065, 1.00, 3.13], [-1.065, 1.00, 3.13],  // 1.32@3.365 — the mapped
     [-1.065, 1.33, 3.365], [1.065, 1.33, 3.365], [1.065, 1.42, 3.13], [-1.065, 1.42, 3.13])); // ref knuckle falls 1.44->
                                                                                 //   1.30 toward the tip; tip band

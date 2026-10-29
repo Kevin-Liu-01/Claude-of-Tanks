@@ -46,10 +46,10 @@ function rearFender(P: TankBuilderPort, side: number): void {
                 [side * x1, 1.3729], [side * x0, 1.3729]] },
         { z: -3.5664, ring: [[side * x0, 1.1444], [side * x1, 1.1444], [side * x1, 1.1825], [side * x0, 1.1825]] },
     ].map(s => ({ ...s, ring: (side < 0 ? s.ring.reverse() : s.ring).map(([x, y]) => [x, y] as const) })));
-    P.addMudguard(`k21-rear-roof-${side}`, 'hull', strip(inner, outer, false));
-    P.addMudguard(`k21-rear-inboard-web-${side}`, 'hull', strip(inner, inner + wall, true));
-    P.addMudguard(`k21-rear-outboard-web-${side}`, 'hull', strip(outer - wall, outer, true));
-    P.addMudguard(`k21-rear-lip-${side}`, 'hull', box(outer - inner, .0273, .0117), side * (inner + outer) / 2, 1.15805, -3.93165);
+    P.addMudguard(`k21-rear-roof-${side}`, 'hullFixedPaintedBodywork', strip(inner, outer, false));
+    P.addMudguard(`k21-rear-inboard-web-${side}`, 'hullFixedPaintedBodywork', strip(inner, inner + wall, true));
+    P.addMudguard(`k21-rear-outboard-web-${side}`, 'hullFixedPaintedBodywork', strip(outer - wall, outer, true));
+    P.addMudguard(`k21-rear-lip-${side}`, 'hullFixedPaintedBodywork', box(outer - inner, .0273, .0117), side * (inner + outer) / 2, 1.15805, -3.93165);
     P.addMudguard(`k21-rear-${side}`, 'hullRubber', box(.6587, .1162, .0117), side < 0 ? -1.2320 : 1.2343, 1.0961, -3.92185);
     // The existing side wall starts forward of the actual rear corner.
     equipment(P, 'hull', 'Detail', box(.0157, .9619, .720), side < 0 ? -1.5643 : 1.5666, 1.33435, -3.3041);

@@ -8149,7 +8149,7 @@ function addLeo2PrototypeRunningGearFinish(P: TankBuilderPort): void {
 function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
   const { box } = KIT;
   for (const side of [-1, 1] as const) {
-    P.add('hull', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
+    P.add('hullFixedPaintedBodywork', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
     // The side plate's inner face (|x| 1.73) stood 5.2 cm outside the shoe
     // face (1.678); ahead of the sponson rail's front slab (z 3.64) that open
     // slot reached the front lip (B2 contiguity hole, z 3.66-3.90). The inner
@@ -8158,7 +8158,7 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
     // inside the side plate's rounded edges (y 1.07-1.255, z 3.56-3.94): a
     // square corner below them closed one voxel row of the nose's own air.
     P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
-    P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
+    P.add('hullFixedPaintedBodywork', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
     // Owner 2026-10-19 (flaps sweep): the flap hung 49 mm behind and 60 mm under the bow plate (y 1.04-1.24, z 3.91-
     // 3.95); 56 mm forward and 70 mm up it runs 7 mm into the plate's back and 10 mm into its underside.
@@ -8446,11 +8446,11 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // both ends embed (no floats); outer faces 1.2225 / 1.187 stay inside
   // the blister-cap width.
   for (const s of [-1, 1] as const) {
-    P.add('turret', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0);   // bin A (z 0.05..-0.70)
+    P.add('turretEquipment', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0); // bin A (z 0.05..-0.70)
     P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2055, 0.20, -0.555, 0, s * 0.043, 0);
-    P.add('turret', box(0.07, 0.28, 1.55), s * 1.152, 0.25, -1.79, 0, s * 0.024, 0);     // stretched bin B follows long bustle
+    P.add('turretEquipment', box(0.07, 0.28, 1.55), s * 1.152, 0.25, -1.79, 0, s * 0.024, 0); // stretched bin B follows long bustle
     P.add('turretDark', box(0.072, 0.006, 1.49), s * 1.152, 0.336, -1.79, 0, s * 0.024, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.1875, 0.19, -1.18, 0, s * 0.024, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -2.38, 0, s * 0.024, 0);
@@ -9515,7 +9515,7 @@ function addKF51ClosedShoulderMudguards(
     labels.push(shoulderLabel);
     MUDGUARDS.add(P, {
       label: shoulderLabel,
-      bucket: 'hull',
+      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
       material: 'painted-steel',
       geometry: orientedSlab(
         ...order([[shoulder.innerX, shoulder.rearBottomY, shoulder.rearZ],
@@ -9532,7 +9532,7 @@ function addKF51ClosedShoulderMudguards(
     labels.push(webLabel);
     MUDGUARDS.add(P, {
       label: webLabel,
-      bucket: 'hull',
+      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
       material: 'painted-steel',
       geometry: orientedSlab(
         ...order([[web.innerX, web.rearBottomY, web.rearZ],
@@ -10753,13 +10753,13 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
     // interior = lattice-with-depth instead of a wall.
     P.add('turretDark', pbox(1.19, 0.42, 0.421), 0.345, 1.025, -3.1225);         // dark void core (x −0.25..+0.94, z −2.912..−3.333)
     for (const cz of [-2.9245, -3.3205]) {
-      P.add('turret', pbox(0.049, 0.43, 0.049), -0.2355, 1.03, cz);              // corner posts (outer faces −0.26/−2.90 held)
-      P.add('turret', pbox(0.049, 0.43, 0.049), 0.9255, 1.03, cz);
+      P.add('turretEquipment', pbox(0.049, 0.43, 0.049), -0.2355, 1.03, cz);     // corner posts (outer faces −0.26/−2.90 held)
+      P.add('turretEquipment', pbox(0.049, 0.43, 0.049), 0.9255, 1.03, cz);
     }
-    P.add('turret', pbox(0.049, 0.05, 0.445), -0.2355, 1.220, -3.1225);          // top rim rails: 2.895..2.955w perimeter
-    P.add('turret', pbox(0.049, 0.05, 0.445), 0.9255, 1.220, -3.1225);
-    P.add('turret', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -2.9245);
-    P.add('turret', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -3.3205);
+    P.add('turretEquipment', pbox(0.049, 0.05, 0.445), -0.2355, 1.220, -3.1225); // top rim rails: 2.895..2.955w perimeter
+    P.add('turretEquipment', pbox(0.049, 0.05, 0.445), 0.9255, 1.220, -3.1225);
+    P.add('turretEquipment', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -2.9245);
+    P.add('turretEquipment', pbox(1.21, 0.05, 0.049), 0.345, 1.220, -3.3205);
     // r5 #8 + #2: the rails read as a pale metronome billboard from the front
     // (even 0.244 pitch, all camo). Irregular pitch/width + tone splits (dark
     // slats sink into the void core = broken mullion rhythm, lattice keeps
@@ -10776,23 +10776,23 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
     P.add('turret', pbox(0.578, 0.439, 0.429), 0.609, 1.0245, -3.118);           // solid tower x 0.32..0.898, y 0.805..1.244, z -2.9035..-3.3325
     {
       const fSlats = [[-0.116, 0.040, 0], [0.128, 0.024, 1]];
-      for (const [sx, sw, dk] of fSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.40, 0.012), sx, 1.005, -2.907);
+      for (const [sx, sw, dk] of fSlats) P.add(dk ? 'turretDark' : 'turretEquipment', box(sw, 0.40, 0.012), sx, 1.005, -2.907);
       const rSlats = [[-0.084, 0.030, 0], [0.180, 0.038, 1]];
-      for (const [sx, sw, dk] of rSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.40, 0.012), sx, 1.005, -3.338);
+      for (const [sx, sw, dk] of rSlats) P.add(dk ? 'turretDark' : 'turretEquipment', box(sw, 0.40, 0.012), sx, 1.005, -3.338);
     }
-    P.add('turret', box(0.50, 0.036, 0.012), 0.02, 1.10, -2.906);                // horizontal strap (left rack zone only — the tower face stays plain)
+    P.add('turretEquipment', box(0.50, 0.036, 0.012), 0.02, 1.10, -2.906);       // horizontal strap (left rack zone only — the tower face stays plain)
     for (const [rz, dk] of [[-2.97, 0], [-3.16, 1], [-3.27, 0]]) {
-      P.add(dk ? 'turretDark' : 'turret', box(0.012, 0.40, 0.030), 0.9435, 1.005, rz); // right-face verticals (jittered, one dark)
+      P.add(dk ? 'turretDark' : 'turretEquipment', box(0.012, 0.40, 0.030), 0.9435, 1.005, rz); // right-face verticals (jittered, one dark)
     }
-    P.add('turret', box(0.012, 0.034, 0.40), 0.9435, 1.10, -3.1225);             // right-face strap
+    P.add('turretEquipment', box(0.012, 0.034, 0.40), 0.9435, 1.10, -3.1225);    // right-face strap
     // r6 #6c ANTENNA FOREST 5 -> 2 mast stations, part 1: the slim post +
     // crossarm read as a fifth mast. Re-dressed as the ref's SENSOR POT — a
     // shorter neck under a wider head whose top holds 1.245 = 2.955w EXACT
     // (the side −2.06w col cap carrier; z-span byte-identical 0.08 so the
     // capped column set cannot widen; the head grows in x only, under the
     // tower rim's certified front coverage). Crossarm deleted (interior).
-    P.add('turret', box(0.08, 0.35, 0.08), 0.59, 0.98, -2.51);                   // pot neck
-    P.add('turret', box(0.11, 0.09, 0.08), 0.59, 1.20, -2.51);                   // pot head, top 1.245 EXACT
+    P.add('turretEquipment', box(0.08, 0.35, 0.08), 0.59, 0.98, -2.51);          // pot neck
+    P.add('turretEquipment', box(0.11, 0.09, 0.08), 0.59, 1.20, -2.51);          // pot head, top 1.245 EXACT
     P.add('turretDark', box(0.112, 0.022, 0.06), 0.59, 1.175, -2.51);            // head underside shadow reveal (x 1mm proud, z inset)
     zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(0.59, 0.34, a - b), -1.015, 0.66, (a + b) / 2));  // left low band −1.31..−0.72, 2.20..2.54w
     zseg(-2.47, -3.345, 2, (a, b) => P.add('turret', pbox(0.26, 0.34, a - b), 1.17, 0.66, (a + b) / 2));    // right shelf 2.20..2.54w (r5: ref +1.15..1.24 cols read 2.532, the 2.57 top was +0.03 proc-only)
@@ -10800,7 +10800,7 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
     P.add('turret', pbox(2.00, 0.245, 0.29), -0.03, 0.3675, -3.255);             // under step (1.96 bottoms −2.66..−2.95w)
     P.add('turret', box(0.24, 0.42, 0.75), -1.30, 0.39, -2.925);                 // left flank stowage course (plan −1.2..−1.4 rear −2.85w; r5 top 2.31w — the 2.43 top printed +0.2 over the ref's falling 2.22-2.32 cheek line at −1.36/−1.40)
     P.add('turret', pbox(0.68, 0.77, 0.155), 0.24, 0.845, -3.4175);
-    P.add('turret', box(0.24, 0.25, 0.28), -0.22, 1.105, -3.435);
+    P.add('turretEquipment', box(0.24, 0.25, 0.28), -0.22, 1.105, -3.435);
     // VISUAL r1 #3 — the slat bay read as an "alien louver tower": a field of
     // detail-GREY verticals (sampled hue 43, sat 12 — bare-metal grey) over
     // the dark face. Re-dressed as the ref's scheme-tone slat/stowage basket:
@@ -10809,11 +10809,11 @@ function* buildKF51Steps(P: TankBuilderPort): TankProfileBuild {
     // r5 #8: bay slats jittered + two dark (same envelope/face plane)
     {
       const bSlats = [[-0.062, 0.030, 0], [0.052, 0.022, 1], [0.150, 0.030, 0], [0.290, 0.020, 0], [0.395, 0.034, 1], [0.540, 0.026, 0]];
-      for (const [sx, sw, dk] of bSlats) P.add(dk ? 'turretDark' : 'turret', box(sw, 0.72, 0.04), sx, 0.85, -3.478);
+      for (const [sx, sw, dk] of bSlats) P.add(dk ? 'turretDark' : 'turretEquipment', box(sw, 0.72, 0.04), sx, 0.85, -3.478);
     }
-    P.add('turret', box(0.60, 0.05, 0.012), 0.24, 1.03, -3.480);                 // camo straps across the slats
-    P.add('turret', box(0.60, 0.05, 0.012), 0.24, 0.62, -3.480);
-    P.add('turret', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
+    P.add('turretEquipment', box(0.60, 0.05, 0.012), 0.24, 1.03, -3.480);        // camo straps across the slats
+    P.add('turretEquipment', box(0.60, 0.05, 0.012), 0.24, 0.62, -3.480);
+    P.add('turretEquipment', box(0.66, 0.035, 0.035), 0.24, 1.21, -3.482);
     P.add('turretDark', box(0.20, 0.21, 0.02), -0.22, 1.105, -3.564);            // tongue end face
     P.add('turretDark', box(2.20, 0.10, 0.03), -0.03, 0.55, -3.33);
   };
@@ -11797,12 +11797,12 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // outboard modules. Besides closing the structural load path, its upper
       // flange prevents the grille and panel joints from enclosing false open
       // cells in the top-down collision/contiguity silhouette.
-      P.add('hull', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
+      P.add('hullFixedPaintedBodywork', box(0.34, 0.040, z1 - z0), s * 1.65, 1.49, (z0 + z1) / 2);
       // Stop before the high idler crown; the armored leading shoulder and
       // existing mudguard take over there without entering the animated shoe
       // sweep.
-      P.add('hull', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
-      P.add('hull', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
+      P.add('hullFixedPaintedBodywork', box(0.34, 0.040, 0.46), s * 1.65, 1.31, 2.85);
+      P.add('hullFixedPaintedBodywork', box(0.34, 0.035, 0.30), s * 1.65, 1.45, 3.18);
       // Recessed load-spreading carrier stays clear of the animated outer shoe
       // face, while overlapping both the fender underside and every module.
       P.add('hullDark', box(0.10, 1.53 - skirtHemY, z1 - z0 - 0.02), s * 1.765, (1.53 + skirtHemY) / 2, (z0 + z1) / 2);
@@ -11896,15 +11896,15 @@ function* buildKF51OwnerExactSteps(P: TankBuilderPort): TankProfileBuild {
       // 0.75 at z 3.79-3.81 — flap bottom 0.80 clears; wing rides above) +
       // connector strap back to the fore-fender end (floater law; strap
       // underside 1.17 clears the wrap crest 1.07 at z 3.55)
-      P.add('hull', box(0.70, 0.16, 0.04), s * 1.40, 1.13, 3.80);
+      P.add('hullFixedPaintedBodywork', box(0.70, 0.16, 0.04), s * 1.40, 1.13, 3.80);
       P.add('hullDetail', box(0.66, 0.018, 0.024), s * 1.40, 1.045, 3.796);
       P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.32, 0.90, 3.80);
-      P.add('hull', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
+      P.add('hullFixedPaintedBodywork', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
       // mudguard well sheet over the idler (§B2: the open corridor between
       // the strap and the 1.556 wrap outer read as enclosed top-down cells;
       // the real fender sheet covers the well — underside 1.17 clears the
       // 1.14 wrap crest)
-      P.add('hull', box(0.175, 0.030, 0.50), s * 1.6675, 1.185, 3.55);
+      P.add('hullFixedPaintedBodywork', box(0.175, 0.030, 0.50), s * 1.6675, 1.185, 3.55);
       // rear outboard service faces (the leopard rear-plate read carried to
       // the sponson tails the inter-track wall cannot reach): dark panel +
       // rib ladder + guarded tail-lamp pod on each deck-band rear face

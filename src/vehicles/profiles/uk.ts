@@ -814,7 +814,7 @@ function addChieftainClosedShoulderMudguards(
     labels.push(webLabel);
     MUDGUARDS.add(P, {
       label: webLabel,
-      bucket: 'hull',
+      bucket: 'hullFixedPaintedBodywork',                                  // 264: sheet bodywork, out of the armour envelope
       material: 'painted-steel',
       geometry: slab(
         ...order([[1.735, 1.06, 2.88], [1.795, 1.06, 2.88], [1.795, 0.83, 3.76], [1.735, 0.83, 3.76]]),
@@ -885,7 +885,7 @@ function chieftain5Build(P: UKBuilderPort): void {
     P.add('hull', slab(                                    // W2b ledge
       [xw2b[0], 0.75, 3.616], [xw2b[1], 0.75, 3.616], [xw2b[1], 0.72, 3.55], [xw2b[0], 0.72, 3.55],
       [xw2b[0], 1.22, 3.616], [xw2b[1], 1.22, 3.616], [xw2b[1], 1.235, 3.55], [xw2b[0], 1.235, 3.55]));
-    P.add('hull', slab(                                    // W3 thin tip
+    P.add('hullFixedPaintedBodywork', slab(            // W3 thin tip
       [xw2b[0], 0.84, 3.755], [xw2b[1], 0.84, 3.755], [xw2b[1], 0.75, 3.616], [xw2b[0], 0.75, 3.616],
       [xw2b[0], 1.045, 3.755], [xw2b[1], 1.045, 3.755], [xw2b[1], 1.045, 3.616], [xw2b[0], 1.045, 3.616]));
   }
@@ -898,7 +898,7 @@ function chieftain5Build(P: UKBuilderPort): void {
       [xa, 1.10, 3.05], [xb, 1.10, 3.05], [xb, 1.08, 3.43], [xa, 1.08, 3.43],
       [xa, 1.34, 3.05], [xb, 1.34, 3.05], [xb, 1.25, 3.43], [xa, 1.25, 3.43]));
   }
-  P.add('hull', slab(
+  P.add('hullFixedPaintedBodywork', slab(
     [1.523, 0.82, 3.755], [1.556, 0.82, 3.755], [1.556, 0.80, 3.55], [1.523, 0.80, 3.55],
     [1.523, 1.045, 3.755], [1.556, 1.045, 3.755], [1.556, 1.13, 3.55], [1.523, 1.13, 3.55]));
   addChieftainClosedShoulderMudguards(P, 'chieftain3');
@@ -3154,7 +3154,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     // otherwise enclose a 1-cell §B2 sky pocket at the shelf/guard slot ----
     for (const s of [-1, 1]) {
       for (const [zf, zr, xf, xr] of [[3.16, 2.92, 1.37, 1.47], [2.92, 2.66, 1.47, 1.47]]) {
-        P.add('hull', sslab(s,
+        P.add('hullFixedPaintedBodywork', sslab(s,
           [0.90, 1.285, zf], [xf, 1.285, zf], [xr, 1.285, zr], [0.90, 1.285, zr],
           [0.90, 1.335, zf], [xf, 1.335, zf], [xr, 1.335, zr], [0.90, 1.335, zr]));
       }
@@ -3172,7 +3172,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     for (const s of [-1, 1]) {
       for (let k = 0; k < 6; k++) {
         const z = 2.30 - 0.41 - k * 0.82;
-        P.add('hull', sslab(s,
+        P.add('hullExternalArmor', sslab(s,
           [1.438, 0.75, z + 0.39], [1.438, 1.91, z + 0.39],
           [1.438, 1.91, z - 0.39], [1.438, 0.75, z - 0.39],
           [1.497, 0.80, z + 0.35], [1.497, 1.84, z + 0.35],
@@ -3201,7 +3201,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       // Armoured lower drops bridge the module seams and produce the toothed
       // lower edge without intruding into a wheel face or linked shoe.
       for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
-        P.add('hull', sslab(s,
+        P.add('hullExternalArmor', sslab(s,
           [1.445, 0.66, zw + 0.11], [1.497, 0.66, zw + 0.11],
           [1.497, 0.66, zw - 0.11], [1.445, 0.66, zw - 0.11],
           [1.445, 0.88, zw + 0.24], [1.497, 0.88, zw + 0.24],
@@ -3221,7 +3221,7 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       // untouched (§B9).
       for (let k = 0; k < 12; k++) {
         const z0 = 2.30 - k * 0.41;
-        P.add('hull', sslab(s,
+        P.add('hullFixedPaintedBodywork', sslab(s,
           [1.14, 1.76, z0], [1.50, 1.76, z0],
           [1.50, 1.76, z0 - 0.41], [1.14, 1.76, z0 - 0.41],
           [1.14, 1.83, z0], [1.50, 1.83, z0],
@@ -3230,15 +3230,15 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
       P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
       P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
       // front mudguard steps over the sprocket wrap (crest ~1.04)
-      P.add('hull', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
-      P.add('hull', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
+      P.add('hullFixedPaintedBodywork', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
+      P.add('hullFixedPaintedBodywork', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
       // rear guard stub over the raised idler wrap
-      P.add('hull', box(0.048, 0.40, 0.34), s * 1.28, 1.14, -2.80);
+      P.add('hullFixedPaintedBodywork', box(0.048, 0.40, 0.34), s * 1.28, 1.14, -2.80);
       // The shortened native course leaves the real rear fender shoulder
       // visible. Bridge that shoulder back into the sponson at the hull roof
       // line: this is fixed hull structure, not a track-covering skirt, and it
       // stays a centimetre above the exact instanced-shoe envelope.
-      P.add('hull', sslab(s,
+      P.add('hullFixedPaintedBodywork', sslab(s,
         [0.90, 1.335, -2.52], [1.30, 1.335, -2.52], [1.30, 1.335, -2.93], [0.90, 1.335, -2.93],
         [0.90, 1.400, -2.52], [1.30, 1.400, -2.52], [1.30, 1.400, -2.93], [0.90, 1.400, -2.93]));
     }
@@ -3710,7 +3710,8 @@ function* fv510PhotoBuildSteps(P: UKBuilderPort): TankProfileBuild {
     // 2026-10-19 (owner float sweep): the hull glass rides the same correction (the driver's periscope glasses stood
     // 456 mm over their lowered housings)
     P.scaleBuckets(
-      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth', 'hullGlass'],
+      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth', 'hullGlass',
+        'hullFixedPaintedBodywork', 'hullExternalArmor'],
       1, upperHullScaleY, 1,
     );
     P.offsetBuckets(
@@ -3779,7 +3780,7 @@ function fv510MilanBuild(P: UKBuilderPort): void {
     // turret's rear corners, sweeping 2.0 m from its pivot, clear it.
     for (let k = 0; k < 6; k++) {
       const z = 1.95 - k * 0.77;
-      P.add('hull', box(0.036, 0.28, 0.61), s * 1.515, 1.45, z);
+      P.add('hullExternalArmor', box(0.036, 0.28, 0.61), s * 1.515, 1.45, z);
       P.add('hullDark', box(0.010, 0.026, 0.47), s * 1.536, 1.58, z);
       P.add('hullDetail', box(0.045, 0.050, 0.16), s * 1.535, 1.32, z);
     }
@@ -4695,7 +4696,7 @@ function* buildChieftainUpper2026Steps(
       const basketDepth = 0.92;
       P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.52, basketZ);
       P.add('turretDetail', box(0.035, 0.035, basketDepth), s * 1.48, 0.15, basketZ);
-      P.add('turret', box(0.54, 0.028, basketDepth - 0.08), s * 1.22, 0.135, basketZ);
+      P.add('turretEquipment', box(0.54, 0.028, basketDepth - 0.08), s * 1.22, 0.135, basketZ);
       for (const dz of [-0.42, -0.14, 0.14, 0.42]) {
         P.add('turretDetail', box(0.035, 0.37, 0.035), s * 1.48, 0.335, basketZ + dz);
       }
@@ -4705,11 +4706,12 @@ function* buildChieftainUpper2026Steps(
     }
     // NBC/bustle pack and a true open rear basket with diagonal/vertical
     // returns.  Every rail lands on the pack or tray; no line ends in air.
-    P.add('turret', box(1.42, 0.42, 0.62), 0.02, 0.28, -1.72);
+    // 264 (envelope honesty): the pack is a bolted box behind the turret's armour, not armour: turretEquipment
+    P.add('turretEquipment', box(1.42, 0.42, 0.62), 0.02, 0.28, -1.72);
     P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.47);
     P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.95);
-    P.add('turret', box(1.16, 0.035, 0.40), 0.02, 0.47, -1.72);
-    P.add('turret', box(1.46, 0.10, 0.42), 0, 0.14, -2.16);
+    P.add('turretEquipment', box(1.16, 0.035, 0.40), 0.02, 0.47, -1.72);
+    P.add('turretEquipment', box(1.46, 0.10, 0.42), 0, 0.14, -2.16);
     for (const y of [0.12, 0.52]) P.add('turretDetail', box(1.52, 0.035, 0.035), 0, y, -2.37);
     for (let k = 0; k < 6; k++) {
       const x = -0.70 + k * 0.28;
@@ -4811,7 +4813,7 @@ function* buildChieftainUpper2026Steps(
       const x = stillbrew ? 1.27 : 1.33;
       const y = stillbrew ? 0.56 : 0.57;
       const z = stillbrew ? 0.61 : 0.78;
-      P.add('turret', box(0.36, 0.09, 0.30), s * (x - 0.13), y - 0.12, z, 0, s * 0.42, 0);
+      P.add('turretEquipment', box(0.36, 0.09, 0.30), s * (x - 0.13), y - 0.12, z, 0, s * 0.42, 0);
       P.add('turretDetail', box(0.30, 0.055, 0.08), s * x, y - 0.02, z, 0, s * 0.55, 0);
       smokeCluster(P, s * (x + 0.09), y + 0.08, z + 0.04, 6, s * 1.05, 0.72);
       // 2026-10-19 (owner float sweep): the six-tube fan overhung its 0.30 m pad, the outer tubes 26-61 mm over the
@@ -4836,7 +4838,7 @@ function* buildChieftainUpper2026Steps(
     // each antenna stack stands on the falling rear roof under its shoe (owner 2026-10-19 sweep: at the common 0.54
     // shoe height the outer two hovered up to 0.27 m over it)
     for (const [x, z, h] of radios) P.snapGroup('chieftain-radio-mast', () => {
-      P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
+      P.add('turretEquipment', box(0.13, 0.10, 0.15), x, radioShoeY, z);
       P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
       // 2026-10-19 (owner float sweep): the whip started 60 mm over its collar's 0.16 top; its foot is now 5 mm in it
       P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.155 + h * 0.5, z);

@@ -65,7 +65,7 @@ function hull(P:TankBuilderPort):void {
       const ring:[number,number][]=[[.867,floor],[1.57958,floor],[1.57958,roof],[.867,roof]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
     })));
-    P.add('hull',sectionSolid(rows.map(([z,roof])=>{
+    P.add('hullFixedPaintedBodywork',sectionSolid(rows.map(([z,roof])=>{
       const floor=Math.min(1.216,roof-.020);
       const ring:[number,number][]=[[1.54402,floor],[1.551345,floor],[1.551345,roof],[1.54402,roof]];
       return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
@@ -97,7 +97,7 @@ function mudguards(P:TankBuilderPort,side:number):void {
     .map(([z,y])=>new THREE.Vector2(-side*z,y)));
   const fg=new THREE.ExtrudeGeometry(front,{depth:.651709,steps:1,bevelEnabled:false});
   fg.rotateY(side*Math.PI/2);
-  P.addMudguard('type10-x-forward-fold','hull',fg,side*.92055,0,0);
+  P.addMudguard('type10-x-forward-fold','hullFixedPaintedBodywork',fg,side*.92055,0,0);
   const rear=new THREE.Shape([[-3.1989,1.1690],[-3.3216,.7600],[-3.3406,.6793],
     [-3.3551,.5088],[-3.3598,.3951],[-3.3523,.380],[-3.3476,.505],
     [-3.3330,.677],[-3.3070,.757],[-3.1850,1.1690]]

@@ -5,7 +5,7 @@ import { addT90VFrontGuard } from './t90VXFrontGuards.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const cast = (mesh, x, z) => new THREE.Raycaster(new THREE.Vector3(x, 2, z),
-  new THREE.Vector3(0, -1, 0), 0, 2).intersectObject(mesh, false);
+  new THREE.Vector3(0, -1, 0), 0, 2).intersectObjects([mesh].flat(), false);
 
 // Held-out canonical-source rays, not samples of the native section table.
 // The longitudinal witnesses enforce the nearly-flat → rounded → steep nose
@@ -44,7 +44,7 @@ function closedSkin(geometry) {
 function jointChecks(side) {
   const meshes = [], material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   addT90VFrontGuard({ addMudguard(label, bucket, geometry) {
-    assert.equal(bucket,'hull','the actual guard remains permanent hull fabrication');
+    assert.equal(bucket,'hullFixedPaintedBodywork','the actual guard remains permanent bodywork, outside the armour (264)');
     closedSkin(geometry);
     const mesh = new THREE.Mesh(geometry,material); mesh.name = label; mesh.updateMatrixWorld(true); meshes.push(mesh);
   } }, side, 'guard');
@@ -65,7 +65,8 @@ for (const quality of ['high','low']) {
   const tank = createTank('t90a_vladimir',null,{ quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false });
   try {
     tank.root.updateMatrixWorld(true);
-    const hull = tank.root.getObjectByName('hull');
+    // 264 (envelope honesty): the bow guards are bodywork (hullFixedPaintedBodywork) beside the hull's armour
+    const hull = ['hull','hullFixedPaintedBodywork'].map((name)=>tank.root.getObjectByName(name)).filter(Boolean);
     const seats = tank.root.userData.mudguardFenderSeats.filter(row=>row.label.includes('vladimir-x-bow'));
     assert.equal(seats.length,6,'bridge, upper cover and crowned nose are present on both sides');
     assert.ok(seats.every(row=>row.supported),'guard chain stays hull-supported');
@@ -81,7 +82,7 @@ for (const quality of ['high','low']) {
       for (const [x,z,y] of folds) near(cast(hull,side*x,z)[0]?.point.y,y,.010,
         `${quality}: held-out rolled transverse edge (sub-centimetre section approximation)`);
       const air = new THREE.Raycaster(new THREE.Vector3(side*1.43,.95,3.78),new THREE.Vector3(0,0,-1),0,.05)
-        .intersectObject(hull,false);
+        .intersectObjects(hull,false);
       assert.equal(air.length,0,'real air below the source crown is not filled by the removed ramp');
       assert.equal(cast(hull,side*1.78,3.85).length,0,'rounded nose plan edge does not become a rectangular leaf');
       jointChecks(side);

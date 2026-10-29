@@ -120,5 +120,5 @@ export function addAmx30XAftReturn(P: TankBuilderPort, side: -1 | 1): void {
   const crown = right ? combine(combine(envelope(RIGHT_TOP.slice(0, 2), domain, true),
     envelope(RIGHT_TOP.slice(2, 4), domain, false), true), envelope(RIGHT_TOP.slice(4), domain, true), true)
     : envelope(LEFT_TOP, domain, true);
-  P.addMudguard('amx30-x-aft-return', 'hull', closedStock(crown, underside));
+  P.addMudguard('amx30-x-aft-return', 'hullFixedPaintedBodywork', closedStock(crown, underside));
 }

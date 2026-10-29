@@ -1040,8 +1040,8 @@ function smFrontGuards(P:TankBuilderPort):void {
       [[inner,top-.014],[shoulder,top-.014],[outer,edge-.014],[outer,edge],[shoulder,top],[inner,top]]));
     const returns=rows.map(([z,inner,, ,top,,low])=>section(z,
       [[inner,low],[inner+.012,low],[inner+.012,top-.002],[inner,top-.002]]));
-    P.addMudguard('t90sm-x-rounded-bow','hull',sectionSolid(roof));
-    P.addMudguard('t90sm-x-inner-return','hull',sectionSolid(returns));
+    P.addMudguard('t90sm-x-rounded-bow','hullFixedPaintedBodywork',sectionSolid(roof));
+    P.addMudguard('t90sm-x-inner-return','hullFixedPaintedBodywork',sectionSolid(returns));
   }
 }
 

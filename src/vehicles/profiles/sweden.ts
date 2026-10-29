@@ -141,10 +141,8 @@ function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
     P.add('hullDark', box(0.10, 0.34, 0.12), side * 1.30, 1.60, 2.54);
     // Additional flank service/armor boxes overlap the intact upper hull and
     // stop well above the four-wheel smart course.
-    plate(P, 'hull', side * 1.70, 1.48, -0.62, 0.12, 0.42, 0.72,
-      [0, 0, side * 0.035], false);
-    plate(P, 'hull', side * 1.70, 1.48, -1.40, 0.12, 0.42, 0.66,
-      [0, 0, side * 0.035], false);
+    P.addEquipment('hull', box(0.12, 0.42, 0.72), side * 1.70, 1.48, -0.62, 0, 0, side * 0.035);
+    P.addEquipment('hull', box(0.12, 0.42, 0.66), side * 1.70, 1.48, -1.40, 0, 0, side * 0.035);
   }
 
   // Compact commander station, shielded Ksp 58 and optical crown echo the
@@ -317,8 +315,11 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     for (let i = 0; i < 5; i++) {
       // 2026-10-19 (owner float sweep): the left 3rd/4th plates stood 34/41 mm off the narrowing turret side; inset.
       const inset = side < 0 ? [0, 0, 0.037, 0.044, 0][i] : 0;
-      plate(P, 'turret', side * (1.50 - inset), 0.42 + (i & 1) * 0.025,
-        0.08 - i * 0.43, 0.13, 0.40, 0.36, [0, 0, side * 0.08], true);
+      // bolt-on side armour (264: turretExternalArmor, outside the turret envelope), with plate()'s dark top cap
+      const x = side * (1.50 - inset), y = 0.42 + (i & 1) * 0.025, z = 0.08 - i * 0.43;
+      P.add('turretExternalArmor', box(0.13, 0.40, 0.36), x, y, z, 0, 0, side * 0.08);
+      P.add('turretDark', box(0.13 * 0.72, 0.016, Math.max(0.025, 0.36 * 0.08)),
+        x, y + 0.40 * 0.5 + 0.009, z + 0.36 * 0.24, 0, 0, side * 0.08);
     }
     P.add('turret', slab(
       [side * 1.16, 0.10, -1.52], [side * 1.48, 0.10, -1.62],
@@ -710,10 +711,10 @@ function addStrv103ADeckVentilation(P: SwedishBuilderPort): void {
 function addStrv103ARunningGear(P: SwedishBuilderPort): void {
   const { box, frustum } = KIT;
   for (const side of [-1, 1]) {
-    P.add('hull', box(0.06, 0.20, 4.70), side * 1.71, 1.34, 0.10);
+    P.add('hullFixedPaintedBodywork', box(0.06, 0.20, 4.70), side * 1.71, 1.34, 0.10);
     for (let index = 0; index < 7; index++) {
       const z = 1.95 - index * 0.66;
-      P.add('hull', box(0.07, 0.32, 0.60), side * 1.70, 1.13, z);
+      P.add('hullFixedPaintedBodywork', box(0.07, 0.32, 0.60), side * 1.70, 1.13, z);
       P.add('hullDark', box(0.016, 0.24, 0.52), side * 1.745, 1.13, z);
     }
   }
@@ -881,10 +882,10 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // fenders: thin over-track plates (print fender band x 1.48-1.72 runs
   // z ~+3.3..-1.6 and STOPS before the stern — plan-row receipt)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.24, 0.03, 4.90), s * 1.60, 1.50, 0.85);
+    P.add('hullFixedPaintedBodywork', box(0.24, 0.03, 4.90), s * 1.60, 1.50, 0.85);
     // stern mudguard flares carry the published 3.60 width (print: short
     // ±1.777 tips at the rear corners, not long boxes)
-    P.add('hull', box(0.30, 0.26, 0.44), s * 1.65, 1.56, -3.06);
+    P.add('hullFixedPaintedBodywork', box(0.30, 0.26, 0.44), s * 1.65, 1.56, -3.06);
     P.add('hullDark', box(0.26, 0.02, 0.36), s * 1.65, 1.70, -3.06);
     P.add('hullDetail', box(0.02, 0.16, 0.30), s * 1.79, 1.54, -3.06);        // width-defining guard lips
   }
@@ -932,7 +933,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     P.add('hullDetail', cylZ(0.085, 0.15, 16), s * 0.62, 1.615, 3.29);      // lamp body
     P.add('hullDark', cylZ(0.072, 0.012, 16), s * 0.62, 1.615, 3.371);      // infrared filter
   }
-  P.add('hull', box(0.24, 0.16, 0.62), -1.46, 1.44, 1.90);                    // fixed MG box
+  P.addEquipment('hull', box(0.24, 0.16, 0.62), -1.46, 1.44, 1.90);           // fixed MG box
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.52, 1.47, 2.26);
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.42, 1.47, 2.26);
   liftEye(P, 'hullDetail', -1.50, 1.92, 0.55, 0.4); liftEye(P, 'hullDetail', 1.50, 1.906, 0.55, -0.4); // right eye was 12 mm high (2026-10-19 float sweep)

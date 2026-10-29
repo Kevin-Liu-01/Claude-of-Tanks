@@ -751,9 +751,9 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.add('turretDetail', box(0.60, 0.035, 0.032), 0, 0.59, -1.97);               // terminal recovery rail
   P.add('turretDetail', box(0.60, 0.032, 0.032), 0, 0.30, -1.92);               // inset bottom rail
   for (const vx of [-0.28, 0, 0.28]) P.add('turretDetail', box(0.028, 0.30, 0.028), vx, 0.43, -1.92); // inset posts
-  P.add('turret', slab(                                                         // tapered terminal service panel closes the source rear-side envelope
+  P.addEquipment('turret', slab(                                                       // tapered terminal service panel closes the source rear-side envelope
     [-0.20, 0.12, -1.91], [0.20, 0.12, -1.91], [0.12, 0.60, -2.16], [-0.12, 0.60, -2.16],
-    [-0.19, 0.82, -1.93], [0.19, 0.82, -1.93], [0.11, 0.61, -2.14], [-0.11, 0.61, -2.14]));
+    [-0.19, 0.82, -1.93], [0.19, 0.82, -1.93], [0.11, 0.61, -2.14], [-0.11, 0.61, -2.14]).scale(1, 1.20, 1)); // stowage: at the 1.20 datum (turretEquipment is outside the scaleBuckets below)
   for (const vx of [-0.08, 0, 0.08]) P.add('turretDetail', box(0.018, 0.015, 0.030), vx, 0.605, -2.145);
   P.add('turretCloth', box(0.50, 0.14, 0.10), 0.02, 0.68, -1.78);               // rolled tarp kept ahead of the terminal rail
   P.add('turretDark', box(0.024, 0.15, 0.11), -0.14, 0.68, -1.78);              // cinch straps

@@ -41,7 +41,8 @@ function cassette(
   cap = true,
 ): void {
   const r = rotation || [0, 0, 0];
-  const armor = owner === 'hull' ? 'hull' : 'turret';
+  // bolt-on armour modules (the K2B's modular stealth sides): external armour, never the base hull/turret envelope
+  const armor = owner === 'hull' ? 'hullExternalArmor' : 'turretExternalArmor';
   const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
   P.add(armor, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
   if (cap) P.add(detail, KIT.box(w * 0.70, 0.016, Math.max(0.024, d * 0.07)),

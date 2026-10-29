@@ -192,10 +192,10 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
     // The carrier and fender begin inside that shoulder cell. Eight doors
     // continue aft; the shoulder itself is the ninth protected station.
     P.addExternalArmor('hull', KIT.box(0.095, 0.92, 5.96), side * 1.74, 1.18, -0.74);
-    P.add('hull', KIT.box(0.25, 0.16, 5.98), side * 1.54, 1.66, -0.73);
+    P.add('hullFixedPaintedBodywork', KIT.box(0.25, 0.16, 5.98), side * 1.54, 1.66, -0.73);
     // The inner bridge overlaps the hull shoulder and the armor carrier, so
     // plan and front views no longer reveal sky between body and skirt.
-    P.add('hull', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
+    P.add('hullFixedPaintedBodywork', KIT.box(0.25, 0.22, 5.90), side * 1.39, 1.53, -0.69);
     for (let index = 0; index < 8; index++) {
       const z = 1.87 - index * 0.78;
       // Let adjacent doors share a narrow structural seam. The old 60 mm
@@ -203,7 +203,7 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
       // behind them, so the skirt read as separate floating plates.
       P.addExternalArmor('hull', KIT.box(0.085, 0.70, 0.79),
         side * 1.81, 1.14, z, 0, 0, side * (index % 2 ? 0.010 : -0.010));
-      P.add('hull', KIT.box(0.018, 0.60, 0.70), side * 1.861, 1.14, z);
+      P.addExternalArmor('hull', KIT.box(0.018, 0.60, 0.70), side * 1.861, 1.14, z);
       P.add('hullDetail', KIT.cylX(0.018, 0.11, 8), side * 1.875, 1.12, z);
     }
     // A tapered rear corner closes the carrier into the troop-ramp surround.
@@ -513,7 +513,7 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
     ));
     P.addExternalArmor('hull', KIT.box(0.12, 1.11, 6.16), side * 1.86, 1.30, -0.72);
     P.addExternalArmor('hull', KIT.box(0.24, 0.20, 6.20), side * 1.65, 1.78, -0.70);
-    P.add('hull', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
+    P.add('hullFixedPaintedBodywork', KIT.box(0.27, 0.24, 6.06), side * 1.49, 1.63, -0.64);
     for (let index = 0; index < 8; index++) {
       const z = 2.02 - index * 0.80;
       // Chamfered add-on modules, distinct from the base CV90's thin doors.
@@ -523,11 +523,11 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
         [side*1.86,1.73,z-.405], [side*1.86,1.73,z+.405],
         [side*2.06,1.60,z+.405], [side*2.06,1.60,z-.405],
       ));
-      P.add('hull', KIT.box(.026,.59,.72), side*2.073,1.30,z);
+      P.addExternalArmor('hull', KIT.box(.026,.59,.72), side*2.073,1.30,z);
       for (const y of [1.08, 1.52]) P.add('hullDetail', KIT.cylX(0.019, 0.20, 8), side * 2.09, y, z);
     }
     // (release 240: 3 cm lower, under the turret's side armour, 1.757 after the vehicle scale, which grazed it)
-    P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.84, -0.70);
+    P.addExternalArmor('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.84, -0.70);
     for (const z of [1.25, -0.15, -1.55]) {
       P.addEquipment('hull', KIT.box(0.10, 0.24, 0.30), side * 2.09, 1.68, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.014, 0.13, 0.18), side * 2.15, 1.68, z);

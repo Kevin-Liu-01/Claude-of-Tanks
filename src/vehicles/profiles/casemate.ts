@@ -394,8 +394,8 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   // trough (the 103B's flotation fit; the 103A carried none): a canvas bellows roll along each run, its folded struts
   // clipped down over it.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.07, 0.06, 4.2), s * 1.665, 1.815, -0.95);
-    P.add('hull', box(0.20, 0.03, 5.64), s * 1.53, 1.535, 0.54);               // fender plate 3.36..-2.28
+    P.addEquipment('hull', box(0.07, 0.06, 4.2), s * 1.665, 1.815, -0.95);
+    P.add('hullFixedPaintedBodywork', box(0.20, 0.03, 5.64), s * 1.53, 1.535, 0.54); // fender plate 3.36..-2.28
     // 259: the fender's edge (x 1.63) stood 8 cm inboard of the skirt backing (1.73) over z 1.16-2.02, a slot open from
     // above on both sides (the right one a fleet-audit work order, docs/geometry-gate/contig-hidden.json): a closing strip
     // on the fender's edge meets the backing
@@ -403,8 +403,8 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     P.add('hullCloth', cylZ(0.045, 4.10, 10), s * 1.665, 1.87, -0.95);         // folded screen
     for (const z of [-2.62, -1.50, -0.40, 0.70]) P.add('hullDetail', box(0.11, 0.035, 0.06), s * 1.665, 1.90, z); // strut clips
   }
-  P.add('hull', box(3.40, 0.06, 0.07), 0, 1.815, -3.02);
-  P.add('hull', box(3.40, 0.06, 0.07), 0, 1.79, 0.88);
+  P.addEquipment('hull', box(3.40, 0.06, 0.07), 0, 1.815, -3.02);
+  P.addEquipment('hull', box(3.40, 0.06, 0.07), 0, 1.79, 0.88);
   P.add('hullCloth', cylX(0.045, 3.30, 10), 0, 1.87, -3.02);
   P.add('hullCloth', cylX(0.045, 3.30, 10), 0, 1.845, 0.88);
   // engine-deck intake ribs behind the glacis break
@@ -413,7 +413,7 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), 1.15, 1.815, -1.35);
   // rear deck stowage boxes (oracle: proud line 2.04-2.10 behind z -2.1)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.52, 0.16, 0.85), s * 1.28, 1.84, -2.42);
+    P.addEquipment('hull', box(0.52, 0.16, 0.85), s * 1.28, 1.84, -2.42);
     P.add('hullDark', box(0.53, 0.12, 0.024), s * 1.28, 1.85, -2.42);
     P.add('hull', box(0.86, 0.34, 0.62), s * 0.92, 1.57, -3.67);              // tail service pod / radiator shoulder
     P.add('hullDark', box(0.76, 0.025, 0.50), s * 0.92, 1.75, -3.67);
@@ -476,7 +476,7 @@ export function buildStrv103(P: CasemateBuilderPort): void {
     P.add('hullDark', KIT.xform(KIT.cylY(0.012, 0.009, 0.98, 8), 0, 0.49, 0, -0.20, 0, 0), s * 0.96, 1.82, -1.86);
   }
   // fixed MG box on the left front fender (KsP 58 pair)
-  P.add('hull', box(0.24, 0.15, 0.60), -1.50, 1.37, 1.95);
+  P.addEquipment('hull', box(0.24, 0.15, 0.60), -1.50, 1.37, 1.95);
   P.add('hullDark', cylZ(0.020, 0.24, 6), -1.56, 1.40, 2.30);
   P.add('hullDark', cylZ(0.020, 0.24, 6), -1.46, 1.40, 2.30);
   for (const s of [-1, 1]) {
@@ -504,10 +504,10 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   // The oracle exposes the complete wheel discs below a shallow segmented
   // stowage/skirt course; the former 1.17 m blank wall buried every station.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.06, 0.22, 4.80), s * 1.76, 1.38, -0.25);               // shallow continuous upper backing
+    P.add('hullFixedPaintedBodywork', box(0.06, 0.22, 4.80), s * 1.76, 1.38, -0.25); // shallow continuous upper backing
     for (let k = 0; k < 7; k++) {
       const z = 1.68 - k * 0.65;
-      P.add('hull', box(0.08, 0.60, 0.58), s * 1.75, 1.07, z);
+      P.add('hullFixedPaintedBodywork', box(0.08, 0.60, 0.58), s * 1.75, 1.07, z);
       P.add('hullDark', box(0.018, 0.50, 0.50), s * 1.80, 1.07, z);
       P.add('hullDetail', box(0.018, 0.12, 0.54), s * 1.81, 1.07, z);
     }

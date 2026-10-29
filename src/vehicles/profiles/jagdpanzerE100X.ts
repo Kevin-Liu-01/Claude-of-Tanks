@@ -255,7 +255,7 @@ function bowTowingEyes(P:TankBuilderPort):void {
     };
     // Two separate lower-glacis anchor ribs. Do not fill the air between
     // them or extend the full-width central nose to these fixture tips.
-    P.add('hull',sectionSolid([
+    P.addEquipment('hull',sectionSolid([
       section(3.83014,1.31,1.39825),section(4.1921,.9186,1.22137),
       section(4.27207,.9895,1.22137),
     ]));

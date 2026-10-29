@@ -55,7 +55,7 @@ export function addT90VFrontGuard(P: TankBuilderPort, side: number, label: strin
     [3.00,1.080,1.805,[1.16,1.198,1.302,1.30722,1.30722,1.30722,1.30722,1.30722,1.26,1.235,1.20],.008],
     [3.158,1.09777,1.79315,[1.18629,1.23270,1.29805,1.29803,1.29800,1.29792,1.29784,1.29776,1.26223,1.23926,1.18305],.008],
   ];
-  P.addMudguard(`${label}-bridge`, 'hull', skin(side, bridge));
-  P.addMudguard(`${label}-cover`, 'hull', skin(side, COVER));
-  P.addMudguard(`${label}-nose`, 'hull', skin(side, NOSE));
+  P.addMudguard(`${label}-bridge`, 'hullFixedPaintedBodywork', skin(side, bridge));
+  P.addMudguard(`${label}-cover`, 'hullFixedPaintedBodywork', skin(side, COVER));
+  P.addMudguard(`${label}-nose`, 'hullFixedPaintedBodywork', skin(side, NOSE));
 }

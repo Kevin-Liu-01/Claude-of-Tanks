@@ -41,6 +41,9 @@ interface SideArmorOptions {
   d?: number;
   rz?: number;
   cap?: boolean;
+  /** the tiles' and backing straps' buckets (default 'hull' both) */
+  tileBucket?: string;
+  strapBucket?: string;
 }
 
 type AfvBuilderPort = TankBuilderPort;
@@ -67,9 +70,10 @@ function armorTile(
   d: number,
   rotation: Vec3Tuple | null = null,
   cap = true,
+  bucket: string | null = null,
 ): void {
   const r = rotation || [0, 0, 0];
-  const body = owner === 'hull' ? 'hull' : 'turret';
+  const body = bucket ?? (owner === 'hull' ? 'hull' : 'turret');
   const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
   P.add(body, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
   if (cap) P.add(dark, KIT.box(w * 0.72, 0.016, Math.max(0.025, d * 0.08)),
@@ -131,13 +135,13 @@ function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
     // Spaced side armour stands off the hull on brackets (owner 2026-10-19 sweep: the tiles floated up to 0.19 m
     // beside the hull side with nothing joining them): each tile hangs from the stock over or beside its top edge
     // (mudguardHangers.ts), the dark cap riding its top.
-    P.hangMudguard('afv-side-armor-tile', 'hull', KIT.box(w, h, d), x, y, z, 0, 0, rz);
+    P.hangMudguard('afv-side-armor-tile', o.tileBucket ?? 'hull', KIT.box(w, h, d), x, y, z, 0, 0, rz);
     if (o.cap !== false) P.add('hullDark', KIT.box(w * 0.72, 0.016, Math.max(0.025, d * 0.08)),
       x, y + h * 0.50 + 0.010, z + d * 0.22, 0, 0, rz);
     // a backing strap behind each joint ties the course together, so the bow tile (no stock over or beside it at the
     // falling nose) rides its neighbour; it laps 20 mm into each tile's back
     const step = o.step ?? 0.78;
-    if (i < count - 1) P.add('hull', KIT.box(0.02, h * 0.5, step - d + 0.04),
+    if (i < count - 1) P.add(o.strapBucket ?? 'hull', KIT.box(0.02, h * 0.5, step - d + 0.04),
       side * ((o.x ?? 1.68) - w / 2 + 0.006), y, z - step / 2, 0, 0, rz);
   }
 }
@@ -251,7 +255,7 @@ function buildBMP3ROK(P: AfvBuilderPort): void {
   // Oracle identity: uninterrupted buoyant sponsons, six wheels and a clean
   // low bow. Armor stays above the animated shoe envelope.
   sideArmorCourse(P, { x: 1.61, y: 1.26, h: 0.34, d: 0.58, count: 8,
-    front: 2.42, step: 0.70, cap: false });
+    front: 2.42, step: 0.70, cap: false, tileBucket: 'hullExternalArmor', strapBucket: 'hullEquipment' });
   for (const side of [-1, 1]) for (let i = 0; i < 3; i++) {
     armorTile(P, 'hull', side * (0.32 + i * 0.30), 1.46 - i * 0.025,
       2.35 - i * 0.12, 0.27, 0.085, 0.30, [-0.28, 0, 0], false);
@@ -271,7 +275,7 @@ function buildBMP3ROK(P: AfvBuilderPort): void {
 function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   const { box } = KIT;
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
-    front: 2.42, step: 0.71, rz: 0.012 });
+    front: 2.42, step: 0.71, rz: 0.012, tileBucket: 'hullExternalArmor', strapBucket: 'hullEquipment' });
   for (const side of [-1, 1]) for (let row = 0; row < 2; row++) for (let i = 0; i < 4; i++) {
     armorTile(P, 'hull', side * (0.25 + i * 0.30), 1.57 - row * 0.10,
       2.40 - row * 0.26, 0.27, 0.095, 0.28, [-0.34, 0, 0], false);
@@ -280,7 +284,7 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
   // would have met it as it elevated; the front one crossed the upper tube's mouth); the flat-fronted pod (modern3.ts)
   // now covers that flank.
   for (let i = 0; i < 4; i++) {
-    armorTile(P, 'turret', 1.17, 0.47, 0.53 - i * 0.42, 0.12, 0.30, 0.34, [0, 0, 0.05], false);
+    armorTile(P, 'turret', 1.17, 0.47, 0.53 - i * 0.42, 0.12, 0.30, 0.34, [0, 0, 0.05], false, 'turretExternalArmor');
   }
   P.add('turretDark', box(2.18, 0.24, 0.055), 0, 0.35, -1.50);
   mount(P, 'turret', FITTINGS.stowageRack({
@@ -534,7 +538,7 @@ function buildBWP1Variant(P: AfvBuilderPort): void {
   buildBMP2(P);
   addBWP1Station(P);
   sideArmorCourse(P, { x: 1.69, y: 1.14, h: 0.70, d: 0.68, count: 8,
-    front: 2.45, step: 0.73, cap: false });
+    front: 2.45, step: 0.73, cap: false, tileBucket: 'hullExternalArmor', strapBucket: 'hullEquipment' });
   for (const side of [-1, 1]) for (let i = 0; i < 5; i++) {
     armorTile(P, 'hull', side * (0.27 + i * 0.29), 1.48, 2.30 - i * 0.08,
       0.25, 0.10, 0.30, [-0.30, 0, 0], false);
@@ -565,6 +569,8 @@ function buildBWP1Variant(P: AfvBuilderPort): void {
 function addMarderCastTurret(P: AfvBuilderPort): void {
   const { box, cylY, cylZ, lathe, buildGun } = KIT;
   clearUpperStructure(P);
+  // the Bradley donor's turret fittings (its rotor housing, tower post and rail) go with its turret
+  P.clear('turretEquipment');
   // ---- LOW CAST ROUND-FRONTED turret (§5.269 rebuild: the tall two-tier
   // box is dead — one smooth casting, longer than wide, rounded front,
   // with the EXTERNAL MK20 carriage riding above it) ------------------------
@@ -655,7 +661,7 @@ function buildMarder1A3(P: AfvBuilderPort): void {
   addMarderCastTurret(P);
   // The A3's horizontal appliqué rails are passive armor, not invented ERA.
   sideArmorCourse(P, { x: 1.68, y: 1.22, h: 0.42, d: 0.72, count: 8,
-    front: 2.42, step: 0.74, cap: false });
+    front: 2.42, step: 0.74, cap: false, tileBucket: 'hullExternalArmor', strapBucket: 'hullEquipment' });
   for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
     P.add('hullDetail', KIT.box(0.032, 0.045, 5.25), side * 1.72,
       1.02 + row * 0.18, -0.18);
@@ -879,7 +885,7 @@ function addM3A3Turret(P: AfvBuilderPort): void {
 
   // Retain the full-length A3 spaced side armor as the cassette backing.
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
-    front: 2.42, step: 0.71 });
+    front: 2.42, step: 0.71, tileBucket: 'hullExternalArmor', strapBucket: 'hullEquipment' });
   P.topY = Math.max(P.topY || 0, 1.28);
 }
 
@@ -1106,7 +1112,7 @@ function buildBMP3(P: AfvBuilderPort): void {
     P.add('hullDetail', box(0.035, 0.56, 0.04), s * 0.70, 1.32, -3.570);       // hinge lines (§5.269 relief)
     P.add('hullDetail', box(0.035, 0.56, 0.04), s * 0.12, 1.32, -3.570);
     P.add('hullDetail', box(0.10, 0.05, 0.04), s * 0.40, 1.10, -3.578);        // steps
-    P.add('hull', nonUniformXform(cylX(0.10, 0.30, 12), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.545); // waterjet
+    P.add('hullEquipment', nonUniformXform(cylX(0.10, 0.30, 12), 0, 0, 0, 0, 0, 0, [1, 0.62, 1]), s * 0.62, 0.82, -3.545); // waterjet
     P.add('hullDark', cylX(0.07, 0.045, 12), s * 0.62, 0.82, -3.568);          //   outlet covers (§5.269)
     // §5.303 waterjet depth: proud cover rim ring + recessed dark bore — the
     // flat disc read paper-thin at garage angles. (z-axis rings: the first

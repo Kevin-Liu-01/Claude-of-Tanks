@@ -695,7 +695,7 @@ function buildDragunTurret(P: TankBuilderPort): void {
     P.addGunExtra(mask);
     P.addGunExtra(cylX(.145,.84,P.q?28:16),0,0,0);
     for (const side of [-1,1])
-        P.add('turret',box(.12,.31,.36),side*.40,.2585,1.50);
+        P.add('turretEquipment',box(.12,.31,.36),side*.40,.2585,1.50);
     P.addGunExtra(cylZ(.166,.125,P.q?28:16),0,0,.2025);
     for (const side of [-1,1]) for (const y of [-.095,.115])
         P.addGunExtra(cylZ(.016,.014,8),side*.228,y,.188);
