@@ -1853,6 +1853,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 263 (the GPU-still critic: "black specks and dark fringes", "the net reads flat"): the suits' cut textures keep
     // straight alpha flooded with their cloth's colour, coverage mips, and the gaps under thick garnish shaded
     'src/vehicles/alphaCutTexture.selftest.mjs',
+    // 265 (the 264b preview, the owner: box-shaped shadows beside netted tanks): every alpha-cut caster casts through
+    // its map's level 0, never the coverage mips' near-solid texels; its control finds a suit draw without it
+    'src/vehicles/alphaCutShadow.selftest.mjs',
     // 264 (Main's ruling on the 263 critic's "no shadow under any laid net"): a suit's shade baked on the armour under
     // it, one vertex layout per owner and material, 0 past its edge and on every draw without it
     'src/vehicles/suitOcclusion.selftest.mjs',
