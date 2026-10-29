@@ -62,9 +62,14 @@ assert.deepEqual(movedSelections, [], 'production selections resolve to producti
 // Tanks added since production have no production row: each is named here and wears its own stock paint (2026-10-21,
 // 2facf33e95: the Type 10 (Dozer), its stock coat the Type 10 Kaitaku paint appended after GT).
 const ADDED_SINCE_PRODUCTION = ['type10_dozer'];
-assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length,
-  'the same fleet, plus the tanks added since');
+// Added since production in an existing coat, each named with the stock it wears (release 266: the M48A3 the A5's
+// summer, the Magach 3 the IDF service coat, the German M48s the Bundeswehr's).
+const ADDED_IN_EXISTING_COAT = { m48a3_patton: 'summer', magach3: 'service_merkava2d', m48a2ga2: 'service_leo2a6m',
+  m48_super: 'service_leo2a6m' };
+assert.equal(Object.keys(now.tanks).length, Object.keys(baseline.tanks).length + ADDED_SINCE_PRODUCTION.length
+  + Object.keys(ADDED_IN_EXISTING_COAT).length, 'the same fleet, plus the tanks added since');
 for (const id of ADDED_SINCE_PRODUCTION) assert.equal(now.tanks[id]?.stock, `paint_${id}`, `${id} wears its own stock paint`);
+for (const [id, stock] of Object.entries(ADDED_IN_EXISTING_COAT)) assert.equal(now.tanks[id]?.stock, stock, `${id} wears ${stock}`);
 const nowTank = (id) => now.tanks[resolveTankId(id, baseline.tankIdSchema)];
 const movedTanks = Object.keys(baseline.tanks).filter((id) => JSON.stringify(nowTank(id)) !== JSON.stringify(baseline.tanks[id]));
 assert.deepEqual(movedTanks, [], 'every tank\'s default camouflage is production\'s');

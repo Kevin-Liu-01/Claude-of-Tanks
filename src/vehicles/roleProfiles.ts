@@ -143,6 +143,12 @@ export const VEHICLE_ROLE_PROFILES: Readonly<Record<string, VehicleRoleProfile>>
   amx30: { doctrine: 'flanker', viewM: 410, still: 0.244, moving: 0.184 },
   amx30b2: { doctrine: 'flanker', viewM: 420, still: 0.243, moving: 0.183 },
   m48a5_patton: { doctrine: 'flexible', viewM: 395, still: 0.190, moving: 0.130 },
+  // release 266: the M48s drawn on the A5's castings. The M48A3 (90 mm, the tall M1 cupola) is the easier to spot; the
+  // Magach 3's Blazer boxes and the M48 Super's added armour bulk them out; the GA2 is the A5's twin in the field
+  m48a3_patton: { doctrine: 'flexible', viewM: 385, still: 0.196, moving: 0.136 },
+  magach3: { doctrine: 'flexible', viewM: 395, still: 0.196, moving: 0.136 },
+  m48a2ga2: { doctrine: 'flexible', viewM: 405, still: 0.190, moving: 0.130 },
+  m48_super: { doctrine: 'flexible', viewM: 415, still: 0.198, moving: 0.138 },
   m60a2: { doctrine: 'flexible', viewM: 400, still: 0.188, moving: 0.128 },
   vickers_mk1: { doctrine: 'flanker', viewM: 410, still: 0.241, moving: 0.181 },
   centurion3: { doctrine: 'flexible', viewM: 385, still: 0.189, moving: 0.129 },

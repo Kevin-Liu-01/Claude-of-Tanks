@@ -548,6 +548,7 @@ const BUILDERS: Readonly<Partial<Record<WheelConstructionId, NationWheelBuilder>
       layers: sheridanWheelFaceLayers(q.high) }, q);
   },
   'm60a3-cast-spoke': (q) => standardConstruction('cast-five-spoke', .90, 'dished', q),
+  'm48-dished-disc': (q) => standardConstruction('deep-dish-eight', .88, 'dished', q),
 });
 
 /** Constructions a non-donor hull can draw; the others are donor-only (every hull of that shape is a donor). */

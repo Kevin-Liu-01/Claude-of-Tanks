@@ -126,7 +126,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [
 // (applyShownTierFloors; the Centurion 5/2's entry already existed).
 // 62 -> 70 (259): eight vehicles tuned for same-tier fairness at IV and VII (applySameTierFairness; seven more extend
 // their entries).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 70,
+// 70 -> 74 (266): the new M48A3, Magach 3, M48A2GA2 and M48 Super take the M48A5's package (fleetBalancePass).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 74,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

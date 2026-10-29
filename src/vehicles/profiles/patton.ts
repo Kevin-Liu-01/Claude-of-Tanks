@@ -48,7 +48,7 @@ import * as THREE from 'three';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { steppedBuilder } from '../tankBuildCooperation.ts';
-import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps, buildM60CastSteps } from './pattonCast.ts';
+import { buildM46CastSteps, buildM47CastSteps, buildM48A5CastSteps, buildM48VariantCastSteps, buildM60CastSteps } from './pattonCast.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type GeometryScale = number | readonly number[];
@@ -150,6 +150,9 @@ interface PattonBuilderPort {
     ...rotation: number[]
   ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+  /** A consumable ERA plate's own authored parts (the Magach 3's Blazer, pattonCast.ts): external armour inside it. */
+  destructibleCluster(plateName: string, fill: () => void): void;
+  addExternalArmor(owner: 'hull' | 'turret', geometry: THREE.BufferGeometry, ...transform: number[]): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
@@ -180,6 +183,11 @@ export const PATTON_PROFILES = {
   m46_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM46CastSteps(P, M46_M47_TRACK_FINISH)) },
   m47_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM47CastSteps(P, M46_M47_TRACK_FINISH)) },
   m48a5_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48A5CastSteps(P)) },
+  // release 266: the M48s of the USA, Israel and Germany on the A5's castings (pattonCast.ts M48_VARIANTS)
+  m48a3_patton: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a3')) },
+  magach3: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'magach3')) },
+  m48a2ga2: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48a2ga2')) },
+  m48_super: { build: steppedBuilder((P: PattonBuilderPort) => buildM48VariantCastSteps(P, 'm48super')) },
   // release 265 (the owner, 2026-10-28: "be sure to update th estartship too"): the Starship rebuilt on the A1's hull
   // off the owner's model (pattonCast.ts m60a2TurretSteps)
   m60a2: { build: steppedBuilder((P: PattonBuilderPort) => buildM60CastSteps(P, 'a2')) },

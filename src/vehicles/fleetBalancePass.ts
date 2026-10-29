@@ -177,6 +177,27 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.3, aimTimeS: 1.8 });
     primary(registry, 'm48a5_patton', { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
   }
+  // release 266: the M48s on the A5's castings (m48VariantSpecs.ts) share its package; each mark's own deltas follow
+  for (const id of ['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super']) {
+    const tank = spec(registry, id);
+    Object.assign(tank, { hp: 2050, enginePowerHp: 900, topSpeedKmh: 50, reverseSpeedKmh: 18 });
+    Object.assign(tank.gun, { reloadS: 7, baseAccuracy: 0.3, aimTimeS: 1.8 });
+    primary(registry, id, { damage: 450, pen100: 580, pen1000: 535, pen2000: 490 });
+  }
+  {
+    // the M48A3's 90 mm M41: the M47's round and cadence
+    const tank = spec(registry, 'm48a3_patton');
+    tank.gun.reloadS = 6.8;
+    primary(registry, 'm48a3_patton', { damage: 440, pen100: 570, pen1000: 530, pen2000: 480 });
+  }
+  {
+    // the M48 Super: the spaced armour over the turret and the skirts, a stabilised fire control, the MTU's 1,000 hp
+    // carrying the weight it adds
+    const tank = spec(registry, 'm48_super');
+    Object.assign(tank, { hp: 2150, enginePowerHp: 1050, topSpeedKmh: 50 });
+    Object.assign(tank.gun, { baseAccuracy: 0.29, aimTimeS: 1.75 });
+    armor(registry, 'm48_super', 1.25);
+  }
   Object.assign(spec(registry, 'm60a1'), {
     hp: 2100, enginePowerHp: 900, topSpeedKmh: 52, reverseSpeedKmh: 18,
   });

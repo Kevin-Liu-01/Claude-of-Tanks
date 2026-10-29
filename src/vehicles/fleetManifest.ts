@@ -107,7 +107,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   ]),
   patton: Object.freeze([
     'm46_patton', 'm47_patton', 'm48a5_patton', 'm60a2',
-    'm60a1', 'm60a3',
+    'm60a1', 'm60a3', 'm48a3_patton', 'magach3', 'm48a2ga2', 'm48_super',
   ]),
   merkava: Object.freeze([
     'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',

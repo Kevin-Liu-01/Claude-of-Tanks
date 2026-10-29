@@ -2984,6 +2984,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // searchlight). The era field load added a second roof M2, a third whip, a roof lamp, a turret-side tarp and cargo,
   // two of them crossing beside the flank racks. Only the functional smoke pair stays (the control inventory's apertures).
   if (spec.id === 'm48a5_patton') return [{ kit: 'smoke', p: 1, v: { v: '6' }, slot: ['turretCheekPair', {}] }];
+  // Release 266: the M48 marks on the A5's castings author their own period equipment the same way (pattonCast.ts
+  // M48_VARIANTS, docs/references/tanks/<id>.md), dischargers included where the mark carried them
+  if (['m48a3_patton', 'magach3', 'm48a2ga2', 'm48_super'].includes(spec.id)) return [];
   const decorId = decorIdentityFor(spec.id);
   // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
   const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
