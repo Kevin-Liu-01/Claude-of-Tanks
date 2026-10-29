@@ -115,13 +115,13 @@ function guardOuterFold(P:TankBuilderPort,side:number):void {
       [out,low],[knee,ky],[inner,top]];
     return {z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
   }));
-  P.addMudguard('k1a1-x-outer-return','hullFixedPaintedBodywork',g);
+  P.addMudguard('k1a1-x-outer-return','hull',g);
 }
 
 function skirtsAndGuards(P: TankBuilderPort): void {
   for (const side of [-1,1]) {
     sideSkirtPanels(P,side);
-    P.addMudguard('k1a1-x-forward-fold','hullFixedPaintedBodywork',guardSheet(side));
+    P.addMudguard('k1a1-x-forward-fold','hull',guardSheet(side));
     guardOuterFold(P,side);
     P.addEquipment('hullDetail',box(.1719,.054,.1563),side*1.75195,1.402,3.24315);
     P.addEquipment('hullDark',cylZ(.0425,.0312,20),side*1.5825,1.24,3.7002);
@@ -156,7 +156,7 @@ function sideSkirtPanels(P: TankBuilderPort,side: number): void {
     [[1.749,1.4081,.6814],[2.700,1.319,.6814],[3.4697,1.247,.9044]],
   ];
   for(const rows of panels) {
-    P.add('hullExternalArmor',sectionSolid(rows.map(([z,top,bottom])=>{
+    P.add('hull',sectionSolid(rows.map(([z,top,bottom])=>{
       const ring:[number,number][]=[[1.6934,bottom],[1.7871,bottom],
         [1.7871,top],[1.6934,top]];
       return {z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};

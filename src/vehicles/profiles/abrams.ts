@@ -3628,11 +3628,11 @@ function* tejasRoofKitSteps(
       // 2.32 front edge left a 5 cm see-through slot between the block's aft
       // face and the tray (B2 contiguity, |x| 1.85-1.89, z 2.28-2.33).
       for (const side of [-1, 1]) {
-        P.add('hullFixedPaintedBodywork', box(0.22, 0.025, 0.30), side * 1.86, 1.28, 2.39);
+        P.add('hull', box(0.22, 0.025, 0.30), side * 1.86, 1.28, 2.39);
       }
     } else if (P.spec.id === 'm1a1_abrams_fep') {
       for (const side of [-1, 1]) {
-        P.add('hullFixedPaintedBodywork', box(0.20, 0.025, 2.10), side * 1.89, 1.27, 0.05);
+        P.add('hull', box(0.20, 0.025, 2.10), side * 1.89, 1.27, 0.05);
       }
     }
   };
@@ -3784,7 +3784,7 @@ function abramsArmorHardware(
               // HA keeps its earlier two-course block grammar.
               for (let k = 0; k < 8; k++) {
                 const z = 2.22 - k * 0.58;
-                const upperOuter = skirtArmorBox(P, 'hullExternalArmor', side, 1.812,
+                const upperOuter = skirtArmorBox(P, 'hull', side, 1.812,
                   skirtDepth, 0.36, 0.51, 1.22, z);
                 skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
                   0.011, 0.29, 0.43, 1.22, z, 0);
@@ -3792,7 +3792,7 @@ function abramsArmorHardware(
                   side * (upperOuter + 0.002), 1.20, z - 0.17);
                 P.add('hullDetail', cylX(0.014, 0.012, 8),
                   side * (upperOuter + 0.002), 1.20, z + 0.17);
-                const lowerOuter = skirtArmorBox(P, 'hullExternalArmor', side, 1.812,
+                const lowerOuter = skirtArmorBox(P, 'hull', side, 1.812,
                   skirtDepth - 0.012, 0.32, 0.51, 0.89, z + 0.015);
                 skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
                   0.010, 0.25, 0.43, 0.89, z + 0.015, 0);
@@ -3800,13 +3800,13 @@ function abramsArmorHardware(
                   0.010, 0.17, 0.31, 1.22, z, 0);
                 skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
                   0.009, 0.055, 0.43, 1.22, z, 0);
-                skirtArmorBox(P, 'hullEquipment', side, lowerOuter - 0.002,
+                skirtArmorBox(P, 'hull', side, lowerOuter - 0.002,
                   0.016, 0.055, 0.46, 0.755, z + 0.015, 0);
               }
               for (let k = 0; k < 4; k++) {
                 const z = 2.60 + k * 0.29;
                 const h = 0.34 - k * 0.035;
-                const bowOuter = skirtArmorBox(P, 'hullExternalArmor', side, 1.812,
+                const bowOuter = skirtArmorBox(P, 'hull', side, 1.812,
                   skirtDepth, h, 0.25, 1.05, z);
                 skirtArmorBox(P, 'hullDetail', side, bowOuter - 0.003,
                   0.010, h - 0.065, 0.21, 1.03, z, 0);
@@ -4713,11 +4713,11 @@ function* buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): TankP
               // as the body.  It remains wedge-shaped but no longer hovers inside
               // the skirt while its face pretends to be an external cassette.
               const crownX = g.skirt.x - 0.006 - 1.715;
-              sideSlab(P, 'hullExternalArmor', side,                // wedge crown
+              sideSlab(P, 'hull', side,                             // wedge crown
                 [1.75 + crownX, 1.04, z + 0.155], [1.825 + crownX, 1.04, z + 0.155], [1.825 + crownX, 1.04, z - 0.155], [1.75 + crownX, 1.04, z - 0.155],
                 [1.715 + crownX, 1.105, z + 0.150], [1.755 + crownX, 1.105, z + 0.150], [1.755 + crownX, 1.105, z - 0.150], [1.715 + crownX, 1.105, z - 0.150]);
-              P.add('hullEquipment', cylX(0.016, 0.010, 8), side * (lowerOuter + 0.006), 0.97, z - 0.09); // armor-tone bolt
-              P.add('hullEquipment', cylX(0.016, 0.010, 8), side * (lowerOuter + 0.006), 0.97, z + 0.09);
+              P.add('hull', cylX(0.016, 0.010, 8), side * (lowerOuter + 0.006), 0.97, z - 0.09); // armor-tone bolt
+              P.add('hull', cylX(0.016, 0.010, 8), side * (lowerOuter + 0.006), 0.97, z + 0.09);
               P.add('hull', box(0.03, 0.04, 0.26), side * 1.805, 0.765, z);
             }
             // Course mount shelf tying tiles to the skirt (and closing the
