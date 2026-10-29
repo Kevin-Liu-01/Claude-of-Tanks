@@ -84,7 +84,10 @@ const GUARD_Y = 1.52, GUARD_HALF = 1.64;
 // the side plates cover the top 40 % of the road wheels (the Bovington Mk 13 right-side photograph; the critics, 2026-10-28)
 const SKIRT = { outer: 1.675, t: 0.02, top: 1.535, bot: 0.56, z0: -3.56, z1: 2.95, panels: [-3.56, -1.38, 0.79, 2.95] } as const;
 /** The rear plate's hem rises over the sprocket (the registered Strv 81 model: 0.85 m at z -1.8, 1.15 m at -2.8). */
-const SKIRT_REAR_HEM: readonly (readonly [number, number])[] = [[-3.556, 1.24], [-2.10, 0.88], [-1.386, SKIRT.bot]];
+const skirtRearHem = (bot: number): readonly (readonly [number, number])[] =>
+  [[-3.556, 1.24], [-2.10, Math.max(0.88, bot + 0.04)], [-1.386, bot]];
+/** The Strv 104/105's side plates stop at the road wheels' tops (the Strv 104 side photograph). */
+const STRV105_SKIRT_BOT = 0.80;
 const ENGINE_DECK_Y = 1.765;
 const TRACK = { xc: 1.30, w: 0.61 } as const;
 /** Three bogies a side: 0.84 m within a bogie (the wheels 4 cm apart), 0.92 m between them (the photographs). */
@@ -199,9 +202,10 @@ function buildGuardBins(P: TankBuilderPort): void {
   }
 }
 
-/** Three 6 mm side plates a side, clipped to the guard edge, hanging over the upper half of the road wheels; the rear
- * plate's hem rises over the sprocket and the front plate's leading edge rakes up to the front guard. */
-function buildSkirts(P: TankBuilderPort): void {
+/** Three 6 mm side plates a side, clipped to the guard edge, hanging over the upper half of the road wheels (`bot`, the
+ * hem's height); the rear plate's hem rises over the sprocket and the front plate's leading edge rakes up to the front
+ * guard. */
+function buildSkirts(P: TankBuilderPort, bot: number = SKIRT.bot): void {
   const xIn = SKIRT.outer - SKIRT.t;
   for (const s of [-1, 1]) {
     const x0 = s < 0 ? -SKIRT.outer : xIn, x1 = s < 0 ? -xIn : SKIRT.outer;
@@ -217,11 +221,11 @@ function buildSkirts(P: TankBuilderPort): void {
     for (let k = 0; k < 3; k++) {
       const za = SKIRT.panels[k] + 0.006, zb = SKIRT.panels[k + 1] - 0.006;
       if (k === 0) {
-        const [[, h0], [r1, h1], [, h2]] = SKIRT_REAR_HEM;
+        const [[, h0], [r1, h1], [, h2]] = skirtRearHem(bot);
         plate(za, r1, h0, h1);
         plate(r1, zb, h1, h2);
       } else {
-        plate(za, zb, SKIRT.bot, SKIRT.bot, k === 2 ? zb - 0.42 : zb);
+        plate(za, zb, bot, bot, k === 2 ? zb - 0.42 : zb);
       }
       // clip lugs on the top edge and a lifting handle
       for (const f of [0.22, 0.78]) P.add('hullDark', box(0.016, 0.06, 0.06), s * (SKIRT.outer + 0.006), SKIRT.top - 0.06, za + (zb - za) * f);
@@ -422,15 +426,16 @@ function buildGlacisKit(P: TankBuilderPort, m: MarkDesign, onGlacis: (t: number)
 }
 
 /** The AVRE's dozer (the FV4019 Centurion dozer blade, T.B. Pearson; the Duxford, "Fosgene", 02 BA 33 and 11 BA 46
- * photographs; the critics, 2026-10-28: the flat slab read wrong; 2026-10-29: a flat plate leaning back, no push arms):
- * a concave mouldboard the full blade height, its cutting edge 0.20 m ahead of its top and its top curled 0.12 m forward
- * into a lip, a box beam across its back under the lip, shallow end plates, deep back ribs and a cross beam; carried
- * ahead of the nose on two inner push arms pinned to the nose plate's sides, tied by a cross tube over the nose, and two
- * outer arms just outside the track belts from the end plates back to the front idlers' hubs, lifted by a ram from the
- * glacis bracket. (The Gulf War fit carries no fascine cradle: the
- * Fosgene photograph.) Hull frame. */
+ * photographs; the critics, 2026-10-28: the flat slab read wrong; 2026-10-29: a flat plate leaning back, no push arms;
+ * then: from the side an open fishtail, ribs on the face): a plain mouldboard in one shallow arc the full blade height,
+ * 0.17 m deep off its chord, its cutting edge 0.15 m ahead and its top rolled 0.10 m forward into a lip under a box top
+ * rail; solid end plates, their backs straight from 0.55 m deep at the foot to 0.30 m at the top; a box beam, gussets
+ * and a cross beam behind the face; carried ahead of the nose on two inner push arms pinned to the nose plate's sides,
+ * tied by a cross tube over the nose, and two outer arms just outside the track belts from the end plates back to the
+ * front idlers' hubs, lifted by a ram from the glacis bracket. (The Gulf War fit carries no fascine cradle: the Fosgene
+ * photograph.) Hull frame. */
 function buildDozer(P: TankBuilderPort): void {
-  const W = 1.69, y0 = 0.60, y1 = 1.60, zb = 3.93, cut = 0.20, depth = 0.18, lip = 0.12, th = 0.03;
+  const W = 1.69, y0 = 0.60, y1 = 1.60, zb = 3.93, cut = 0.15, depth = 0.12, lip = 0.10, th = 0.03;
   const faceZ = (y: number): number => {
     const t = Math.min(1, Math.max(0, (y - y0) / (y1 - y0)));
     return zb + cut * (1 - t) - depth * Math.sin(Math.PI * t) + lip * Math.max(0, (t - 0.82) / 0.18) ** 2;
@@ -448,23 +453,25 @@ function buildDozer(P: TankBuilderPort): void {
   // the box beam behind the lip
   const yBeam = y1 - 0.16;
   P.add('hullFixedPaintedBodywork', box(2 * W - 0.06, 0.16, 0.16), 0, yBeam, faceZ(yBeam) - th - 0.08);
-  P.add('hullDark', box(2 * W, 0.012, 0.012), 0, y1 - 0.004, faceZ(y1) - 0.01);
-  // end plates: 0.45 m deep at the edge, 0.25 m at the top, their fronts following the face
+  // the box top rail along the lip
+  P.add('hullFixedPaintedBodywork', box(2 * W, 0.08, 0.16), 0, y1 + 0.03, faceZ(y1) - 0.07);
+  // solid end plates: their fronts follow the face, their backs run straight from 0.55 m deep at the foot to 0.30 m at
+  // the top
+  const backZ = (y: number): number => faceZ(y0) - 0.55 + (faceZ(y1) - 0.30 - faceZ(y0) + 0.55) * (y - y0) / (y1 - y0);
   for (const s of [-1, 1]) {
     const x0 = s < 0 ? -W : W - 0.03, x1 = s < 0 ? -(W - 0.03) : W;
-    const ys = [y0, y0 + 0.25, y0 + 0.5, y0 + 0.75, y1];
-    for (let k = 0; k < ys.length - 1; k++) {
-      const ya = ys[k]!, yc = ys[k + 1]!, da = 0.45 - 0.20 * (ya - y0) / (y1 - y0), dc = 0.45 - 0.20 * (yc - y0) / (y1 - y0);
+    for (let k = 0; k < N; k++) {
+      const ya = y0 + (y1 - y0) * k / N, yc = y0 + (y1 - y0) * (k + 1) / N;
       P.add('hullFixedPaintedBodywork', slab(
-        [x0, ya, faceZ(ya)], [x1, ya, faceZ(ya)], [x1, ya, faceZ(ya) - da], [x0, ya, faceZ(ya) - da],
-        [x0, yc, faceZ(yc)], [x1, yc, faceZ(yc)], [x1, yc, faceZ(yc) - dc], [x0, yc, faceZ(yc) - dc]));
+        [x0, ya, faceZ(ya)], [x1, ya, faceZ(ya)], [x1, ya, backZ(ya)], [x0, ya, backZ(ya)],
+        [x0, yc, faceZ(yc)], [x1, yc, faceZ(yc)], [x1, yc, backZ(yc)], [x0, yc, backZ(yc)]));
     }
   }
-  // deep vertical ribs on the mouldboard's back, following its curve
+  // gussets on the mouldboard's back, seated 5 mm into it in eight courses (their chords stay 2 cm behind its face)
   for (const rx of [-1.40, -0.84, -0.28, 0.28, 0.84, 1.40]) {
-    for (let k = 0; k < 4; k++) {
-      const ya = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * k / 4, yc = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * (k + 1) / 4;
-      const za = faceZ(ya) - th, zc = faceZ(yc) - th;
+    for (let k = 0; k < 8; k++) {
+      const ya = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * k / 8, yc = y0 + 0.04 + (yBeam - 0.08 - y0 - 0.04) * (k + 1) / 8;
+      const za = faceZ(ya) - th + 0.005, zc = faceZ(yc) - th + 0.005;
       P.add('hullDetail', slab(
         [rx - 0.02, ya, za], [rx + 0.02, ya, za], [rx + 0.02, ya, za - 0.16], [rx - 0.02, ya, za - 0.16],
         [rx - 0.02, yc, zc], [rx + 0.02, yc, zc], [rx + 0.02, yc, zc - 0.16], [rx - 0.02, yc, zc - 0.16]));
@@ -1528,7 +1535,7 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
     muzzleBore(P, { len, r: 0.074 });
   } else if (m.gun === '165') {
     // 165 mm L9A1 demolition gun: a short, fat piece - a thin root out of the mantlet's boss, the bore evacuator's fat
-    // drum, a short chase and the double-ringed muzzle collar (the Duxford AVRE's profile scaled to its 3.0 m height:
+    // drum, a short chase and the lipped muzzle collar (the Duxford AVRE's profile scaled to its 3.0 m height:
     // about 1.4 m out of the mantlet)
     KIT.buildGun(P, { len, r: 0.105, evac: null, baseR: 0.15, collar: false, tubeInset: 0.22 });
     const seg = P.q ? 28 : 14;
@@ -1537,8 +1544,10 @@ function buildMainGun(P: TankBuilderPort, m: MarkDesign): number {
     P.add('gun', cylZ(0.210, 0.05, seg, 0.120), 0, 0, 1.005);
     P.add('gun', cylZ(0.210, 0.56, seg), 0, 0, 1.30);
     P.add('gun', cylZ(0.115, 0.05, seg, 0.210), 0, 0, 1.605);
-    P.add('gun', cylZ(0.170, 0.20, seg), 0, 0, len - 0.10);
-    for (const rz of [len - 0.17, len - 0.03]) P.add('gun', cylZ(0.200, 0.03, seg), 0, 0, rz);
+    // the muzzle collar: one plain sleeve over the tube's last 0.22 m, 0.7 of the drum across, with a lip at its face (the
+    // critics, 2026-10-29: the waisted spool 2 cm clear of the tube, then a collar nearly as wide as the drum)
+    P.add('gun', cylZ(0.145, 0.26, seg), 0, 0, len - 0.13);
+    P.add('gun', cylZ(0.160, 0.025, seg), 0, 0, len - 0.0125);
     muzzleBore(P, { z: len, r: 0.0825 });
   } else if (m.gun === '20pdrB') {
     // 20-pdr Type B: a short, nearly cylindrical fume-extractor can 47 % along (the Strv 81B photographs)
@@ -1572,7 +1581,7 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
   buildGuardBins(P);
   if (m.kit === 'olifant') buildOlifantSkirts(P);
   else if (m.kit === 'aus') buildHorstmannBogies(P);
-  else buildSkirts(P);
+  else buildSkirts(P, m.kit === 'strv105' ? STRV105_SKIRT_BOT : SKIRT.bot);
   if (m.kit === 'avre') buildAvreSkirtBolts(P);
   yield 'centurionHullSides';
   if (m.kit === 'olifant') buildOlifantRunningGear(P);
@@ -1606,10 +1615,11 @@ export function* centurionFamilySteps(P: TankBuilderPort, mark: CenturionMark): 
     buildOlifantRoof(P);
   } else {
     buildRoof(P, m);
-    // the Strv 105's and the AVRE's blocks stand on the bins behind their corner packages; the British Mk 5/2's and Mk 13's
+    // the Strv 105's and the AVRE's blocks stand on the bins behind their corner packages, below the roof line (the Strv
+    // 104 photographs; the critic, 2026-10-29: 0.25 m over it in profile); the British Mk 5/2's and Mk 13's
     // six-tube banks on the side bins' front faces, outboard, level with the mantlet (the Dutch Mk 5/2 head-on photograph,
     // the Bovington Mk 13)
-    if (m.kit === 'strv105' || m.kit === 'avre') buildSmokeDischargers(P, 0.36, 0.88);
+    if (m.kit === 'strv105' || m.kit === 'avre') buildSmokeDischargers(P, 0.36, 0.80);
     else if (m.mk5 && !m.swedish && !m.idf && m.kit === 'none') buildSmokeDischargers(P, 0.84, 0.50, 1.30);
     // (on the bare marks' shorter nose the blocks stand 12 cm further back, on the cheeks)
     else buildSmokeDischargers(P, m.shortNose ? 0.88 : 1.00, 0.56, undefined, castingOf(m));

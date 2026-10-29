@@ -5,10 +5,10 @@
 // the driver's hatch and periscopes and the front guard bins, and over the engine deck astern - the Sho't Kal's
 // AVDS-1790 hump holds its gun about level there and the Strv 81B's rear stowage box 2.3 deg up; the Strv 105's lamps
 // on its front bins hold it at -3.5 deg over the bow quarters; the Olifant's gun, at mid-height in its box turret,
-// keeps -10 deg ahead and abeam and -7.6 over the bow quarters; the AVRE's dozer gear on the bow and its 165 mm's fat
-// drum hold it at -4.9 deg ahead, -3.4 over the bow quarters and -1.5 astern; the Australian Mk 5/1's lamps on its
-// front bins' faces at -5 deg over the bow quarters (re-measured on the critics' rounds, 2026-10-28 and 10-29). No
-// mount conflicts and no blocks at +20 deg on any of the nine. profiles/centurionGunClearance.selftest.mjs holds the
+// keeps -10 deg ahead and abeam and -7.6 over the bow quarters; the AVRE's 165 mm's fat evacuator drum over the glacis
+// top's fittings holds it at -4.9 deg ahead, -3.4 over the bow quarters and -1.5 astern; the Australian Mk 5/1's lamps
+// on its front bins' faces at -5 deg over the bow quarters (re-measured on the critics' rounds, 2026-10-28 and 10-29).
+// No mount conflicts and no blocks at +20 deg on any of the nine. profiles/centurionGunClearance.selftest.mjs holds the
 // barrel (25 mm) and the mount (20 mm) to these stops.
 import type { GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import type { TankSpecRegistry } from './specContracts.ts';
