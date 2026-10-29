@@ -29,7 +29,13 @@ assert.equal(spec.networkSuite.cooperativeTargeting, true);
 assert.equal(spec.networkSuite.sensorFusion, true);
 assert.equal(spec.networkSuite.unmannedAerialSystemLink, true);
 
-assert.equal(spec.gun.caliberMm, 130);
+// Main 2026-10-29: the demonstrator's 120 mm firing the SEPv3's M829A4 (the 130 mm XM1301 is the programme's spec)
+assert.equal(spec.gun.caliberMm, 120);
+assert.equal(spec.gun.shells[0].name, 'M829A4 APFSDS');
+assert.deepEqual([spec.gun.shells[0].dmg, spec.gun.shells[0].pen100Mm, spec.gun.shells[0].pen1000Mm,
+  spec.gun.shells[0].pen2000Mm], [540, 916, 833, 750]);
+assert.ok(spec.gun.shells.every((round) => round.caliberMm === 120 && round.moduleDmg === 120),
+  'every round follows the 120 mm tube');
 assert.deepEqual(spec.gun.autoloader, {
   magazineSize: 4,
   intraClipS: 2.5,
