@@ -776,6 +776,18 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "challenger_x": {
+   "inputHash": "515299640cebed84",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
+  "challenger_x_sleek": {
+   "inputHash": "672addaaeb44879a",
+   "runs": [],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "chieftain3": {
    "inputHash": "9d93215aad075a77",
    "runs": [],
@@ -4160,18 +4172,6 @@
   },
   "ztz99a2": {
    "inputHash": "c36cf63e1d3f9015",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
-  "challenger_x": {
-   "inputHash": "515299640cebed84",
-   "runs": [],
-   "uncovered": [],
-   "hostSweep": []
-  },
-  "challenger_x_sleek": {
-   "inputHash": "672addaaeb44879a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
