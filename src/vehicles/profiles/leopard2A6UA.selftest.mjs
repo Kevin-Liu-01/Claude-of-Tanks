@@ -1,18 +1,32 @@
+// Leopard 2A6 UA (264; the owner, 2026-10-28: rebuilt "off of our new current actual leopard 2a6"): the source-measured
+// 2A6's armour, running gear and gun under the Ukrainian field kit of profiles/leopardA6Ua.ts, its combat spec unchanged.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
-import { GHILLIE_SUIT_CONFIGS } from '../ghillieSuit.ts';
+import { FLEET_GHILLIE_SUITS } from '../ghillieFleetSuits.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { tankSeedId } from '../tankIdAliases.ts'; // suit meshes keep the schema-1 spelling (ghillieSuit.ts)
+import { LEOPARD_A6_X_DATUMS } from './leopardA6X.ts';
+import { LEOPARD_A6_UA_KIT, LEOPARD_A6_UA_PIVOT } from '../leopardA6UaLayout.ts';
+import { AUXILIARY_INVENTORY } from '../auxiliaryInventory.generated.ts';
 
 const id = 'leo2a6_ua';
 const spec = getSpec(id);
 assert.equal(spec.name, 'Leopard 2A6 UA');
 assert.equal(spec.nation, 'Ukraine');
-assert.equal(spec.variantOf, 'leo2a4_otco');
+assert.equal(spec.variantOf, 'leo2a4_otco', 'the combat donor is unchanged');
 assert.equal(tankTier(id), 9, 'Leopard 2A6 UA is a Tier IX playable (258: the owner\'s 2A6 anchor)');
 assert.equal(spec.role, 'mbt');
+assert.deepEqual([spec.hp, spec.gun.reloadS, spec.weightTons, spec.topSpeedKmh], [2850, 5.8, 72.4, 64],
+  'the combat values the rebuild kept');
+assert.deepEqual({ ...spec.dims }, { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.44, heightM: 3.28 },
+  'the dimensions spotting and contact read are unchanged; the kit is sized to them');
+const D = LEOPARD_A6_X_DATUMS.leo2a6;
+assert.deepEqual([...LEOPARD_A6_UA_PIVOT], [...D.turretPivot], 'the kit\'s layout names the 2A6\'s ring');
+assert.deepEqual(spec.armor.turretPivot, [...D.turretPivot], 'the ring is the source-measured 2A6\'s');
+assert.ok(spec.armor.gunPivot.every((v, i) => Math.abs(v - (D.trunnion[i] - D.turretPivot[i])) < 1e-9),
+  'the trunnion is the source-measured 2A6\'s');
 
 const sectorNames = [
   'ua_turret_cheek_era_R', 'ua_turret_cheek_era_L',
@@ -21,174 +35,108 @@ const sectorNames = [
 ];
 const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => sectorNames.includes(plate.name));
-const eraSectorNames = [...new Set(eraSectors.map((plate) => plate.name))];
-assert.deepEqual(eraSectorNames.sort(), [...sectorNames].sort(),
-  'six named ERA banks back the complete visual package');
-for (const sectorName of sectorNames) {
-  assert.ok(eraSectors.filter((plate) => plate.name === sectorName).length > 1,
-    `${sectorName} retains its individually fitted cassette collision faces`);
-}
+assert.deepEqual([...new Set(eraSectors.map((plate) => plate.name))].sort(), [...sectorNames].sort(),
+  'six named ERA banks back the Kontakt-1 courses');
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable ERA`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} has shaped-charge protection`);
-  assert.ok(plate.era?.keReduction > 0 && plate.era.keReduction <= 0.22,
-    `${plate.name} keeps a bounded kinetic effect`);
+  assert.ok(plate.era?.keReduction > 0 && plate.era.keReduction <= 0.22, `${plate.name} keeps a bounded kinetic effect`);
 }
 
-const tank = createTank(id, null, {
-  proceduralOnly: true,
-  geometryReceipt: true,
-  quality: 'high',
-});
+const build = (tankId) => createTank(tankId, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high' });
+const tank = build(id);
 tank.root.updateMatrixWorld(true);
-const hull = tank.root.getObjectByName('rig_hull');
 const turret = tank.root.getObjectByName('rig_turret');
 const gun = tank.root.getObjectByName('rig_gun');
-const recoil = tank.root.getObjectByName('rig_recoil');
 const muzzle = tank.root.getObjectByName('rig_muzzle');
-assert.ok(hull && turret && gun && recoil && muzzle,
-  'UA package preserves the canonical 2A6M articulation hierarchy');
+assert.ok(tank.root.getObjectByName('rig_hull') && turret && gun && tank.root.getObjectByName('rig_recoil') && muzzle,
+  'the 2A6 articulation hierarchy');
 
-const receipt = turret.userData.leopard2A6UAProtectionReceipt;
-assert.ok(receipt, 'UA model publishes a protection/equipment receipt');
-assert.equal(receipt.totalTiles, 144);
-assert.equal(receipt.remoteStationCount, 2, 'two distinct roof RWS towers are authored');
-assert.equal(receipt.remoteStations.length, 2);
-for (const station of receipt.remoteStations) {
-  assert.equal(station.seatPenetrationM, 0.012,
-    'each RWS pedestal is keyed 12 mm into the actual turret roof');
-  assert.ok(station.baseBottomY < station.roofMinY,
-    'each RWS pedestal reaches below the lowest armor in its footprint');
-  assert.ok(station.baseTopY > station.roofMaxY,
-    'each RWS pedestal bridges above the highest armor in its footprint');
-  assert.ok(Math.abs(station.roofMinY - station.baseBottomY - 0.012) < 1e-9,
-    'RWS low-edge overlap remains tightly controlled');
-  assert.ok(Math.abs(station.baseTopY - station.roofMaxY - 0.030) < 1e-9,
-    'RWS adapter exposes only a compact cap above the high roof edge');
+// the armour, the running gear's hull stock and the gun are the 2A6's own, byte for byte: the kit adds, it never edits
+{
+  const base = build('leo2a6');
+  for (const name of ['hull', 'turret', 'gun', 'gunMount']) {
+    const a = tank.root.getObjectByName(name)?.geometry.getAttribute('position');
+    const b = base.root.getObjectByName(name)?.geometry.getAttribute('position');
+    assert.ok(a && b && a.count === b.count && a.array.every((v, i) => v === b.array[i]),
+      `${name}: the UA's ${name} stock is the source-measured 2A6's`);
+  }
+  base.dispose();
 }
-const forwardStation = receipt.remoteStations.find((station) => !station.heavy);
-assert.ok(forwardStation.z > -0.80,
-  'the lighter RWS is brought forward onto the main turret roof');
+
+const receipt = turret.userData.leopard2A6UAKitReceipt;
+assert.equal(receipt?.base, 'leo2a6');
 assert.equal(receipt.equipmentIsNonArmor, true);
-assert.equal(receipt.staticMergedProtection, true,
-  'protection kit is static merged geometry with no per-frame work');
-assert.equal(receipt.frontCageContourStations, 6);
-assert.equal(receipt.frontCageRows, 5);
-assert.equal(receipt.frontCageUprightsPerSide, 4);
-assert.equal(receipt.frontCageTiePointsPerSide, 6);
-assert.equal(receipt.frontCageSurfaceOffsetM, 0.095,
-  'front cage follows the cheek contour at one controlled stand-off');
-assert.equal(receipt.frontEraSeats.length, 36,
-  'every frontal ERA brick publishes its conformal armor seat');
-for (const seat of receipt.frontEraSeats) {
-  assert.equal(seat.innerFaceOverlapM, 0.012,
-    'frontal ERA inner faces overlap the cheek rather than floating');
-  const normalLength = Math.hypot(...seat.normalLocal);
-  assert.ok(Math.abs(normalLength - 1) < 1e-4, 'frontal ERA seat normals are normalized');
-  assert.ok(seat.normalLocal[1] > 0.84 && seat.normalLocal[2] > 0.13,
-    'frontal ERA follows the dominant upper return of the closed arrowhead');
-  assert.ok(seat.normalLocal[0] * seat.side > 0.20,
-    'frontal ERA turns outward with the compound cheek instead of folding inward');
+assert.deepEqual(Object.keys(receipt.cassettes).sort(), [...sectorNames].sort(), 'every ERA sector has its cassettes');
+for (const side of ['L', 'R']) {
+  // the owner, 2026-10-28: "a ton of extra era": the skirts' whole length, three flank courses, the wedges' tops
+  assert.equal(receipt.cassettes[`ua_skirt_era_${side}`], 51,
+    `the ${side} skirt carries a standing and a lying course its length (none behind a plate seam)`);
+  assert.equal(receipt.cassettes[`ua_turret_side_era_${side}`], 15, `the ${side} turret flank carries three courses`);
+  assert.ok(receipt.cassettes[`ua_turret_cheek_era_${side}`] >= 12, `the ${side} wedge carries its side courses and roof rows`);
+}
+assert.ok(receipt.turretBrackets >= 12 && receipt.hullBrackets >= 20, 'the screens are bolted to the armour');
+
+// the kit is open lattice and equipment, never the armour shell (the OTCO lesson of 2026-10-28)
+for (const name of ['turretOpenLattice', 'turretOpenLatticeDark', 'hullOpenLattice', 'hullOpenLatticeDark']) {
+  const mesh = tank.root.getObjectByName(name);
+  assert.ok(mesh?.isMesh, `${name}: the kit's lattice is drawn`);
+  assert.equal(mesh.userData.combatHitboxRole, 'nonArmor', `${name} is not armour`);
+  assert.equal(mesh.userData.continuityRole, 'open-lattice', `${name} is open lattice`);
+}
+{
+  // compared by walking up, never with assert.equal on scene objects (a failure would inspect the whole scene graph)
+  let up = tank.root.getObjectByName('turretOpenLattice');
+  while (up && up !== turret) up = up.parent;
+  assert.ok(up === turret, 'the screens and cage turn with the turret');
 }
 
-const eraMeshes = [];
-tank.root.traverse((object) => {
-  if (object.isMesh && /ExternalArmor$/.test(object.name)) eraMeshes.push(object);
-});
+// the kit's envelope is the vehicle's published one: 4.44 m wide over the hull boxes, 3.28 m over the cage's ridge
+{
+  const width = new THREE.Box3().setFromObject(tank.root.getObjectByName('hullOpenLattice'));
+  assert.ok(Math.abs(width.max.x - 2.22) < 0.005 && Math.abs(width.min.x + 2.22) < 0.005, 'the hull boxes span 4.44 m');
+  const cage = new THREE.Box3().setFromObject(tank.root.getObjectByName('turretOpenLattice'));
+  assert.ok(Math.abs(cage.max.y - 3.28) < 0.01, `the cage's ridge stands at 3.28 m (${cage.max.y.toFixed(3)})`);
+  assert.ok(cage.min.y > LEOPARD_A6_UA_KIT.chainBottomY - 0.02, 'the turret kit stays above the engine deck');
+}
+
+// one working roof gun, the 2A6's loader MG3, 7.62 mm as before
+assert.deepEqual(AUXILIARY_INVENTORY[id].guns.map((g) => [g.name, g.caliberMm]), [['leopardA6XLoaderMg', 7.62]]);
+assert.ok(turret.getObjectByName('turretMissionReceiver'), 'the roof dock receiver is seated on the cage rail');
+
 const eraFinish = tank.root.userData.eraFinishReceipt;
-assert.ok(eraFinish, 'UA model publishes the fleet layered-ERA finish receipt');
 assert.deepEqual([...eraFinish.gameplaySectors].sort(), [...sectorNames].sort(),
   'all six gameplay sectors participate in the merged visual finish');
-assert.equal(eraFinish.layeredCassettes, 144,
-  'all six gameplay sectors have matching layered visual cassettes');
-assert.equal(eraFinish.authoredParts, 288,
-  'each cassette contributes one body and one inset camouflage cover');
-assert.equal(eraMeshes.length, 2, 'hull and turret ERA use two merged draw buckets');
-assert.ok(eraMeshes.every((mesh) => mesh.userData.combatHitboxRole === 'externalArmor'),
-  'both merged ERA meshes retain explicit external-armor semantics');
+assert.equal(eraFinish.layeredCassettes, Object.values(receipt.cassettes).reduce((a, b) => a + b, 0),
+  'every cassette is a layered visual cassette');
 
-const equipment = tank.root.getObjectByName('turretEquipment');
-assert.equal(equipment?.userData.combatHitboxRole, 'equipment',
-  'RWS receiver bodies cannot inflate the armor hitbox');
-assert.ok(turret.getObjectByName('turretEquipment') === equipment,
-  'both RWS towers remain children of the rotating turret rig');
-const equipmentPositions = equipment.geometry.getAttribute('position');
-for (const station of receipt.remoteStations) {
-  let baseVertexCount = 0;
-  for (let index = 0; index < equipmentPositions.count; index++) {
-    const dx = equipmentPositions.getX(index) - station.x;
-    const dz = equipmentPositions.getZ(index) - station.z;
-    if (Math.hypot(dx, dz) <= 0.25
-        && Math.abs(equipmentPositions.getY(index) - station.baseBottomY) < 1e-6) {
-      baseVertexCount++;
-    }
-  }
-  assert.ok(baseVertexCount >= 8,
-    'merged RWS geometry retains the authored roof-contact ring');
-}
-
-// 2026-10-05 (tank-accessories lane): the suit's garnish is one spray-card 'leaves' layer on the trees lane's atlases
-// (vehicleFoliage.ts) instead of the light and dark flap layers; the net carrier is unchanged.
-for (const owner of ['hull', 'turret', 'gun']) {
+// the field net (ghillieFleetSuits.ts): laid on the turret roof under the cage and on the cage roof, down the bustle, on the
+// front deck and down the rear hull walls; the wedges bare
+const ghillie = FLEET_GHILLIE_SUITS[id];
+assert.ok(ghillie?.fieldClearanceM > 0, 'a field net, held clear of the turret traverse and the gun by the builder');
+for (const owner of ['hull', 'turret']) {
   for (const layer of ['net', 'leaves']) {
     const mesh = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`);
-    assert.ok(mesh?.isMesh, `dense ${owner} ghillie ${layer} layer exists`);
-    assert.ok(mesh.geometry.getAttribute('position').count > 120,
-      `${owner} ghillie ${layer} is detailed fitted geometry`);
+    assert.ok(mesh?.isMesh && mesh.geometry.getAttribute('position').count > 120, `${owner} ghillie ${layer} is drawn`);
   }
 }
-
-// 2026-10-08 (tank-accessories round 5; the coordinator after wave 269, 2/10 on the hero, gear and mantlet views: "a
-// box-shaped shell of bristling leaf shards encloses the turret and runs down the full gun barrel", "leaf polygons ...
-// cutting through the cage bars"; the ruling: replace the approach): the roof net is draped over the roof and its basket
-// rails (no seat gap: it rests on the armour and sags off what holds it up), the cheeks inside the front cage carry no
-// net, the only face net hangs over the bustle's rear cage, and the flank drapes stop part way down the flank cage.
-const ghillie = GHILLIE_SUIT_CONFIGS[id].turret;
-assert.equal(ghillie.top.length, 4,
-  'turret ghillie is split across bustle, main roof and both crown cheeks');
-assert.equal(ghillie.top[0].holes.length, 1,
-  'the obsolete aft cutout is closed after moving the lighter RWS forward');
-for (const panel of ghillie.top) {
-  assert.equal(panel.seatGapM, undefined, 'the roof net is draped over the roof and its rails, not seated on the plate');
-}
-assert.ok((ghillie.face ?? []).every((panel) => panel.z < -3),
-  'no net on the cheeks inside the front cage: the only face net is over the bustle');
-assert.ok(ghillie.top[0].yAt(0, -3.2) < 0.70,
-  'bustle net no longer floats at the former .98 m blanket height');
-assert.ok(ghillie.top[1].yAt(0, 0) < 0.82,
-  'main roof net hugs the wedge roof below its equipment line');
 {
   const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert();
   const net = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_turret_net`), at = net.geometry.getAttribute('position');
   const local = Array.from({ length: at.count }, (_, i) => new THREE.Vector3().fromBufferAttribute(at, i)
     .applyMatrix4(net.matrixWorld).applyMatrix4(toTurret));
-  assert.ok(local.every((v) => v.y > 0.38), 'the flank drapes stop part way down the flank cage; the lower flanks are bare');
-  assert.ok(local.every((v) => v.z < 1.36), 'the cheeks and their front cage carry no net');
-}
-
-const gunNet = tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_gun_net`);
-const gunBounds = new THREE.Box3().setFromObject(gunNet);
-const muzzleWorld = muzzle.getWorldPosition(new THREE.Vector3());
-assert.ok(gunBounds.max.z < muzzleWorld.z - 0.08,
-  'barrel ghillie stops behind the open bore and muzzle/FX anchor');
-// round 5 (wave 269: "runs down the full gun barrel"; real crews wrap only short sections): two short wraps
-{
-  const toGun = new THREE.Matrix4().copy(gun.matrixWorld).invert(), at = gunNet.geometry.getAttribute('position');
-  const covered = new Set();
-  for (let i = 0; i < at.count; i++) {
-    covered.add(Math.floor(new THREE.Vector3().fromBufferAttribute(at, i).applyMatrix4(gunNet.matrixWorld).applyMatrix4(toGun).z / 0.05));
-  }
-  assert.ok(covered.size * 0.05 <= 1.4, `the barrel carries short wraps, not a sleeve (${(covered.size * 0.05).toFixed(2)} m wrapped)`);
+  const eave = LEOPARD_A6_UA_KIT.eaveY - LEOPARD_A6_UA_PIVOT[1];
+  assert.ok(local.some((v) => v.y > eave - 0.01), 'a net lies over the cage roof');
+  assert.ok(local.some((v) => v.y < 0.45 && Math.abs(v.x) < 1.0), 'a net lies on the turret roof itself');
+  assert.ok(local.every((v) => v.z < LEOPARD_A6_UA_KIT.roofFrontZ - LEOPARD_A6_UA_PIVOT[2] + 0.08),
+    'the wedges and their Kontakt-1 carry no net');
 }
 
 const markings = [];
-tank.root.traverse((object) => {
-  if (object.userData.vehicleMarking) markings.push(object);
-});
+tank.root.traverse((object) => { if (object.userData.vehicleMarking) markings.push(object); });
 assert.ok(markings.some((object) => object.userData.markingCode?.includes(':ua-trident:')),
   'Ukrainian trident is present on a final supported surface');
-assert.ok(markings.every((object) => object.userData.surfaceSupported),
-  'every UA marking is physically seated');
+assert.ok(markings.every((object) => object.userData.surfaceSupported), 'every UA marking is physically seated');
 
 tank.dispose();
-console.log('leopard2A6UA.selftest: Tier X UA armor, cages, RWS and ghillie are playable');
+console.log('leopard2A6UA.selftest: the source-measured 2A6 with its Ukrainian kit, combat spec unchanged');

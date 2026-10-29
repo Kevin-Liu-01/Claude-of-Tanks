@@ -1791,19 +1791,27 @@
       "turretMinY": -0.4506
     },
     "leo2a6_ua": {
-      "panYM": 0.5,
+      "panYM": 0.4196,
       "bottomYM": 0,
       "hullMin": [
-        -1.875,
-        0.5,
-        -3.74
+        -1.695,
+        0.4196,
+        -3.815
       ],
       "hullMax": [
-        1.875,
-        1.815,
-        3.72
+        1.695,
+        1.8254,
+        3.662
       ],
-      "turretMinY": -0.15
+      "turretMinY": -0.4506,
+      "accepted": {
+        "reason": "release 264 the Leopard 2A6 UA rebuilt on the source-measured 2A6",
+        "by": "kevinliu",
+        "date": "2026-10-28",
+        "from": {
+          "turretFloorY": -0.4164
+        }
+      }
     },
     "leo2a6m": {
       "panYM": 0.48,

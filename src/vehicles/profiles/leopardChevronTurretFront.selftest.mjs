@@ -8,15 +8,14 @@ const modernProfiles = new Map([
   ['leo2a4m', 'leopard-2a5'],
   ['leo2a4', 'leopard-2a6'],
   ['leo2a4_otco', 'leopard-2a6m'],
-  ['leo2a6_ua', 'leopard-2a6m'],
   ['leo2_improved', 'leopard-2a7v'],
   ['strv121', 'leopard-2a5'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved',
+  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2_improved',
 ]);
 const compoundTerminalIds = new Set([
-  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved',
+  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2_improved',
 ]);
 const compoundTerminalExpectations = new Map([
   ['leo2a4_v', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
@@ -24,7 +23,6 @@ const compoundTerminalExpectations = new Map([
   ['strv121', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
   ['leo2a4', { upper: [1.05, 0.62], ridge: [1.435, 0.22], lower: [1.38, 0.02] }],
   ['leo2a4_otco', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
-  ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
   ['leo2_improved', { upper: [1.05, 0.62], ridge: [1.41, 0.22], lower: [1.38, 0.02] }],
 ]);
 const receiptsById = new Map();
@@ -190,7 +188,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.equal(rootVertexOccurrences(tank.root, [0.205, 0.8039, 1.732]), 0,
       `${id} removes the selected plateau-tail tone skin`);
   }
-  if (['leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved', 'strv121'].includes(id)) {
+  if (['leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2_improved', 'strv121'].includes(id)) {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
     assert.equal(receipt.separateUnderrideFront, false,
@@ -204,7 +202,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(covered.every((station) => station.lowerZ <= 1.91 + 1e-6),
       `${id} lower cheek returns behind the old z=1.91 underride face`);
   }
-  if (id === 'leo2a4' || id === 'leo2a4_otco' || id === 'leo2a6_ua') {
+  if (id === 'leo2a4' || id === 'leo2a4_otco') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
     assert.ok(covered.length >= 3, `${id} samples the complete owner-marked A6 inner cheek span`);
     assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
@@ -212,7 +210,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(covered.every((station) => station.lowerZ <= 1.90 + 1e-6),
       `${id} lower cheek returns behind the old z=1.90 underride face`);
   }
-  if (id === 'leo2a4_otco' || id === 'leo2a6_ua') {
+  if (id === 'leo2a4_otco') {
     assert.equal(receipt.tipPads.filter((pad) => pad.s < 0).length, 0,
       `${id} removes both owner-marked left-side tip plates`);
     assert.ok(receipt.tipPads.every((pad) => Math.abs(pad.x - 1.44) > 1e-6

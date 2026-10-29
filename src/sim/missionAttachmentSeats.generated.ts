@@ -1596,21 +1596,21 @@ export const MISSION_ATTACHMENT_SEATS: Readonly<Record<string,MissionAttachmentN
   },
   "leo2a6_ua": {
     "frame": "turret",
-    "x": -1.45,
-    "y": 1.0300000143051182,
-    "z": 0.46,
+    "x": -1.080005,
+    "y": 1.172640008926395,
+    "z": -2.247795,
     "width": 0.34,
     "depth": 0.32,
     "footX": 0.108,
     "footZ": 0.09,
     "supportY": [
-      0.9850000143051183,
-      0.9850000143051147,
-      0.9850000143051183,
-      0.9850000143051147
+      1.127640008926388,
+      1.1276400089263952,
+      1.127640008926388,
+      1.1276400089263952
     ],
-    "signature": "6c40d94f",
-    "geometryHash": "067de810e00369802e206b1c0c0bd9d91f19130da58afea8014131ee2fdf2cc1"
+    "signature": "06792ce5",
+    "geometryHash": "c82e89fcccbb0961b090b85be87890f38ee324752f0805054646167d17ae458e"
   },
   "leo2a6m": {
     "frame": "turret",

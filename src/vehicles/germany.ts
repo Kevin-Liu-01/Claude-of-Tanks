@@ -161,12 +161,18 @@ registerFleetSpecs(registries, GERMANY_IDS, GERMANY_SPECS);
 
 // Clone before adding the A6M's separate fitted frontal package. The
 // Ukrainian vehicle owns its own field-modernized sector layout.
+// 264 (the owner, 2026-10-28: rebuilt "off of our new current actual leopard 2a6"): the visual is the source-measured
+// 2A6 (profiles/leopardA6X.ts) with its field kit (profiles/leopardA6Ua.ts), so the ring, trunnion and muzzle are that
+// rig's (LEOPARD_A6_X_DATUMS.leo2a6; muzzle 7.139555). Its combat values, armour, ERA sectors and dimensions are
+// unchanged: the kit is sized to the 4.44 m width and 3.28 m height.
 const LEOPARD_2A6_UA_ID = 'leo2a6_ua';
 const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
   name: 'Leopard 2A6 UA', nation: 'Ukraine', number: 'UA 26', scheme: 'digital',
   base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'],
   camoScale: 0.46,
   dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.44, heightM: 3.28 },
+  turretPivot: [.000005, 2.14836, 1.047795], gunPivot: [0, 1.97054 - 2.14836, 1.419495 - 1.047795],
+  gunBarrel: { lengthM: 7.139555 - 1.419495 },
   stats: { hp: 2850, enginePowerHp: 1500, weightTons: 72.4, topSpeedKmh: 64,
     reverseSpeedKmh: 29, turretTraverseDegS: 38, gunPitchDegS: 32 },
   reloadS: 5.8, shellName: 'DM63A1 APFSDS', armorFactor: 1.06,
