@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FITTINGS, KIT } from './kit.ts';
-import { MG_CLASSES, addPintleBarrel, addPintleReceiver, createPintleLayout } from '../machineGunGeometry.ts';
+import { MG_CLASSES, addPintleAmmo, addPintleBarrel, addPintleReceiver, createPintleLayout, type MgClassKey } from '../machineGunGeometry.ts';
 import { faceBoxUV } from '../factoryGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -68,16 +68,23 @@ type StationSlot = 'turretDark' | 'turretDetail' | 'turretGlass' | 'turretAmmo';
 /** A station's pitch stock (sourceMachineGun's builder): parts in its authored frame. */
 interface StationStock { add(slot: StationSlot, geometry: THREE.BufferGeometry, x: number, y: number, z: number): void }
 export interface LibraryStationGunOptions {
-  cls: 'nsvt' | 'kord';
-  /** The bore: its x and height, the station pivot's z and the published muzzle's z, in the stock's authored frame. */
-  x: number; boreY: number; pivotZ: number; muzzleZ: number;
+  cls: MgClassKey;
+  /** The bore: its x and height and the station pivot's z, in the stock's authored frame. */
+  x: number; boreY: number; pivotZ: number;
+  /** The published muzzle's z: the barrel runs to it. Without one the gun keeps its class's own barrel at true scale (a
+   *  drawn gun whose stand-in was short, its station measured from the gun as drawn). */
+  muzzleZ?: number;
   /** The side the belt enters (the gunner's left is +X; a remote station's housing is built round the right). */
   feed?: 'left' | 'right';
+  /** A gun a crewman fires at the mount (a loader's or commander's pintle): its grips, sight and ammunition box, in place
+   *  of a remote station's solenoid housing. */
+  crew?: boolean;
 }
 
 /**
- * The same owner ruling for a remote station that keeps its own housing and yaw stage: the gun in its pitch stock is the
- * fleet's NSVT or Kord construction in its remote form (machineGunGeometry.ts: the receiver with its feed cover and
+ * The same owner ruling for a station that keeps its own housing or mount and yaw stage: the gun in its pitch stock is the
+ * fleet's construction of its class in its remote form, or its crew form on a crewman's mount (machineGunGeometry.ts:
+ * the receiver with its feed cover and
  * trigger housing, the barrel with its gas tube, carrying handle and muzzle device), its bore on the station's axis and
  * the device's front on the published muzzle, so no station datum moves. The national stations' gun
  * (nationalRoofWeapon.ts nationalMachineGun) is the pattern: the receiver's centre 8 cm behind the pivot.
@@ -86,11 +93,11 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   const def = MG_CLASSES[o.cls], feed = o.feed ?? 'right';
   // the Kord at 102 %: its ported brake's mouth meets a station's 30 mm muzzle-rim receipt (nationalMachineGun)
   const scale = o.cls === 'kord' ? 1.02 : 1;
-  const base = { cls: o.cls, scale, remote: true, ammo: false, mount: 'external-cradle', feed } as const;
+  const base = { cls: o.cls, scale, remote: !o.crew, ammo: Boolean(o.crew), mount: 'external-cradle', feed } as const;
   const probe = createPintleLayout(base, { add() {} });
   const dz = o.pivotZ - 0.08 - probe.recZ, dy = o.boreY - probe.trunY;
-  const barrelLength = o.muzzleZ - dz - probe.trunZ - 0.10 * probe.s - def.flashL * probe.s;
-  const layout = createPintleLayout({ ...base, barrelLength, muzzleBoreDepth: 0.07 }, {
+  const barrelLength = o.muzzleZ === undefined ? undefined : o.muzzleZ - dz - probe.trunZ - 0.10 * probe.s - def.flashL * probe.s;
+  const layout = createPintleLayout({ ...base, ...(barrelLength === undefined ? {} : { barrelLength }), muzzleBoreDepth: 0.07 }, {
     add(slot: string, geometry: THREE.BufferGeometry, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0): void {
       if (slot === 'shadow') return;
       g.add(slot === 'glass' ? 'turretGlass' : 'turretDark', KIT.xform(geometry, px, py, pz, rx, ry, rz), o.x, dy, dz);
@@ -98,4 +105,5 @@ export function libraryStationGun(g: StationStock, o: LibraryStationGunOptions):
   });
   addPintleReceiver(layout);
   addPintleBarrel(layout);
+  if (o.crew) addPintleAmmo(layout);
 }

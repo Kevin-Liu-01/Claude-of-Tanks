@@ -31,6 +31,7 @@ import { lathedWheelSection, type AxialWheelStation } from './lathedWheelStock.t
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { libraryStationGun } from './libraryRoofMg.ts';
 import { mergeAll } from '../factoryGeometry.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -794,20 +795,19 @@ function weaponStation(P: TankBuilderPort, stage: Ztz20StageDeltas): void {
     P.add('turretDark', part(new THREE.TorusGeometry(0.3054, 0.045, 8, P.q ? 20 : 12, 115 * Math.PI / 180).rotateZ(30 * Math.PI / 180), 'rws-feed-arm'), 0.18, ty(2.6846), tz(sz - 0.02));
   }
   station.mark('yaw');
-  // the pitching gun: receiver, feed tray, ammunition box with its curved feed chute over to the tray, barrel and hider
+  // the pitching gun. Owner 2026-10-28 ("... show actual machine guns that need to be actual machine guns of current
+  // dimensions"): the 12.7 mm gun is the fleet's QJC-88 construction (libraryRoofMg.ts libraryStationGun) on the
+  // trunnion's bore and published muzzle (sz + 1.16), in place of the drawn receiver block, tray, rods and hider. It
+  // feeds from its left, where the trials station's own ammunition box and the production station's feed arm stand.
   const pieces: THREE.BufferGeometry[] = [];
   const add = (g: THREE.BufferGeometry, x: number, y: number, z: number): void => { pieces.push(g.translate(x, ty(y), tz(z))); };
-  add(new THREE.BoxGeometry(0.09, 0.11, 0.55), gx, gy, sz - 0.05);
-  add(new THREE.BoxGeometry(0.11, 0.035, 0.20), gx, gy + 0.07, sz - 0.05);
+  libraryStationGun({ add: (_slot, g, x, y, z) => add(g, x, y, z) },
+    { cls: 'qjc88', x: gx, boreY: gy, pivotZ: sz, muzzleZ: sz + 1.16, feed: 'left' });
   if (stage.rws === 'plain') {
-    // the trials station's own ammunition box and its curved chute over to the tray
+    // the trials station's own ammunition box and its curved chute over to the receiver
     add(new THREE.BoxGeometry(0.08, 0.10, 0.20), gx + 0.105, gy + 0.03, sz - 0.08);
-    add(new THREE.TorusGeometry(0.05, 0.014, 6, P.q ? 12 : 8, Math.PI), gx + 0.0525, gy + 0.045, sz - 0.08); // its open ends inside the box and the tray
+    add(new THREE.TorusGeometry(0.05, 0.014, 6, P.q ? 12 : 8, Math.PI), gx + 0.0525, gy + 0.045, sz - 0.08); // its open ends inside the box and the receiver
   }
-  // 263 (fleetPassLow circularCapOverlap): the barrel ends 2 cm inside the flash hider, so their front caps no longer
-  // share the hider's face (sz + 1.16) and z-fight
-  add(cylZ(0.022, 0.90, n), gx, gy, sz + 0.69);
-  add(cylZ(0.032, 0.10, n), gx, gy, sz + 1.11);
   const geometry = mergeAll(pieces);
   const mesh = new THREE.Mesh(geometry, P.mats.dark);
   mesh.castShadow = mesh.receiveShadow = true;
