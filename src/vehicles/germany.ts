@@ -163,8 +163,8 @@ registerFleetSpecs(registries, GERMANY_IDS, GERMANY_SPECS);
 // Ukrainian vehicle owns its own field-modernized sector layout.
 // 264 (the owner, 2026-10-28: rebuilt "off of our new current actual leopard 2a6"): the visual is the source-measured
 // 2A6 (profiles/leopardA6X.ts) with its field kit (profiles/leopardA6Ua.ts), so the ring, trunnion and muzzle are that
-// rig's (LEOPARD_A6_X_DATUMS.leo2a6; muzzle 7.139555). Its combat values, armour, ERA sectors and dimensions are
-// unchanged: the kit is sized to the 4.44 m width and 3.28 m height.
+// rig's (LEOPARD_A6_X_DATUMS.leo2a6; muzzle 7.139555). Its mobility, ERA sectors and dimensions are unchanged (the kit
+// is sized to the 4.44 m width and 3.28 m height); its main plates, HP and cadence are the 2A6's (fleetBalancePass.ts).
 const LEOPARD_2A6_UA_ID = 'leo2a6_ua';
 const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
   name: 'Leopard 2A6 UA', nation: 'Ukraine', number: 'UA 26', scheme: 'digital',
@@ -177,6 +177,12 @@ const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
     reverseSpeedKmh: 29, turretTraverseDegS: 38, gunPitchDegS: 32 },
   reloadS: 5.8, shellName: 'DM63A1 APFSDS', armorFactor: 1.06,
 });
+// 264b (Main's armour-truth audit, 2026-10-29): the 2A6M donor's one-piece spaced wedge pair (turret_wedge_R/L) stood
+// at the 2A6M turret's height, up to 0.7 m over the 2A6 roof the UA is drawn on, where flank and top fire met it. The
+// 2A6's main cells own its wedges (leo2a6 carries no wedge pair: sourceXWesternAuxArmor.ts), so the UA drops it; its
+// Kontakt-1 cheek banks stay seated on the wedges' faces.
+leopard2A6UA.armor.turretPlates = leopard2A6UA.armor.turretPlates
+  .filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name));
 
 interface EraReduction {
   readonly keReduction: number;

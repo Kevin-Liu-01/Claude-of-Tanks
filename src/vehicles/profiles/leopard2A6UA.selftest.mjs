@@ -43,6 +43,9 @@ const eraSectors = [...spec.armor.hullPlates, ...spec.armor.turretPlates]
   .filter((plate) => sectorNames.includes(plate.name));
 assert.deepEqual([...new Set(eraSectors.map((plate) => plate.name))].sort(), [...sectorNames].sort(),
   'six named ERA banks back the Kontakt-1 courses');
+// 264b: no 2A6M wedge pair floats over the 2A6 roof; the turret is the 2A6's main cells under the UA's Kontakt-1
+assert.ok(spec.armor.turretPlates.every((plate) => plate.kind === 'main' || plate.kind === 'era'),
+  'the turret carries the 2A6\'s main cells and its own Kontakt-1, no donor spaced plates');
 for (const plate of eraSectors) {
   assert.equal(plate.kind, 'era', `${plate.name} is consumable ERA`);
   assert.ok(plate.era?.ceFlatMm >= 300, `${plate.name} has shaped-charge protection`);
