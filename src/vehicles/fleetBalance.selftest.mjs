@@ -137,7 +137,8 @@ assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier).fi
 // 75 -> 77 (262): the new Challenger 3 TD one step under its prototype, and its field fit (fleetBalancePass).
 // 77 -> 79 (263, Main's ruling): the C1 Ariete's gun face and the FV4030/6's gun slot (the Challenger 1 marks ride the
 // Mk 3's turret, vickers-cr1-262, and need no slot lever).
-assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 79,
+// 79 -> 81 (263): the three Challenger 1 marks' turret front on the Mk 3's turret (the Mk 2's entry extended).
+assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 81,
   'the fleet-wide pass keeps a reviewable per-vehicle revision ledger');
 for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
   assert.ok(TANK_SPECS[id], `${id}: balance revision references a saved vehicle`);

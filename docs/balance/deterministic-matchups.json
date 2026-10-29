@@ -392,8 +392,8 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger1_mk2",
-      "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile",
+      "id": "challenger1_mk1",
+      "revision": "a x0.7 turret front with the Mk 2 and Mk 3: the Mk 3's sloped gun-face cells read ~1,020 mm",
       "tier": 8,
       "era": "cold-war",
       "role": "mbt",
@@ -421,7 +421,75 @@
       },
       "armorCeilingsMm": {
         "hullKe": 442,
-        "turretKe": 682
+        "turretKe": 477
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger1_mk2",
+      "revision": "promote the protected late-Cold-War rifled-gun MBT to a complete Tier IX profile; 263: a x0.7 turret front with the Mk 1 and Mk 3 on the Mk 3's turret",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 19.35,
+      "speedKmh": [
+        56,
+        20
+      ],
+      "traverseDegS": [
+        32,
+        32.3
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          757,
+          689,
+          620
+        ],
+        "reloadS": 6.7,
+        "sustainedDpm": 4656.72,
+        "accuracy": 0.263,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 442,
+        "turretKe": 477
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger1_mk3",
+      "revision": "a x0.7 turret front with the Mk 1 and Mk 2: its sloped gun-face cells read ~1,020 mm",
+      "tier": 8,
+      "era": "cold-war",
+      "role": "mbt",
+      "hp": 2350,
+      "powerWeight": 19.35,
+      "speedKmh": [
+        56,
+        20
+      ],
+      "traverseDegS": [
+        32,
+        32.3
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          757,
+          689,
+          620
+        ],
+        "reloadS": 6.7,
+        "sustainedDpm": 4656.72,
+        "accuracy": 0.263,
+        "aimTimeS": 1.76
+      },
+      "armorCeilingsMm": {
+        "hullKe": 516,
+        "turretKe": 477
       },
       "guidedWeapons": []
     },
@@ -2930,15 +2998,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 3,
-      "bWins": 0,
-      "draws": 9,
-      "aScore": 0.625,
-      "averageDurationS": 82.62,
-      "averageAEndHp": 2087.08,
-      "averageBEndHp": 808.42,
-      "averageADamage": 1709.5,
-      "averageBDamage": 262.92
+      "aWins": 2,
+      "bWins": 3,
+      "draws": 7,
+      "aScore": 0.458,
+      "averageDurationS": 79.52,
+      "averageAEndHp": 555.33,
+      "averageBEndHp": 783.33,
+      "averageADamage": 1745.83,
+      "averageBDamage": 1884.92
     },
     {
       "id": "nextgen-challengers",
