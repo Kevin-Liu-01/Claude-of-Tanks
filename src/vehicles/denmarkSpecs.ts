@@ -41,7 +41,7 @@ leo1a3dk.gun = {
 leo1a3dk.visual = {
   ...leo1a3dk.visual,
   // the 1970s Danish Army's plain olive drab
-  scheme: 'mono', base: '#4f5538', weather: '#5c6245', patches: [], marking: 'number', number: '43', camoScale: 0.5,
+  scheme: 'solid', base: '#4f5538', weather: '#5c6245', patches: [], marking: 'number', number: '43', camoScale: 0.5,
 };
 
 // The Leopard 1A5 DK: EMES 18 thermal fire control on the welded turret, the 1990s 105 mm APFSDS at the 1A5's footing.
@@ -67,7 +67,7 @@ Object.assign(leo1a5dk1, { weightTons: 43.0 });
 leo1a5dk1.gun = { ...leo1a5dk.gun };
 leo1a5dk1.visual = {
   ...leo1a5dk1.visual,
-  scheme: 'mono', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
+  scheme: 'solid', base: '#d9d8cf', weather: '#c9c8bd', patches: [], marking: 'number', number: '22', camoScale: 0.5,
 };
 
 // ------------------------------------------------------------------------------------------------- Leopard 2 DK --

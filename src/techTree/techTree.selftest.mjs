@@ -15,7 +15,7 @@ import { TECH_TREES, childrenOf, nodeForVehicle, rootOf, validateTree, vehiclesO
 const tree = (id) => TECH_TREES.find((entry) => entry.id === id);
 
 // ------------------------------------------------------------------------------------------------ shape and layout
-assert.equal(TECH_TREES.length, 13, 'thirteen national trees');
+assert.equal(TECH_TREES.length, 14, 'fourteen national trees'); // 265: Denmark
 for (const entry of TECH_TREES) {
   assert.deepEqual(validateTree(entry), [], `${entry.id} breaks a shape rule`);
   assert.deepEqual(layoutProblems(entry), [], `${entry.id} draws a connector badly`);
@@ -108,6 +108,8 @@ const FAMILY_UPGRADES = Object.freeze({
     ['centurion3', 'centurion5_2'], ['amx30', 'amx30b'], ['amx30b', 'amx30b2'], ['m48a5_patton', 'm60a1'], ['m60a1', 'm60a3'],
     ['m60a1', 'm60a2'], ['m60a3', 'sabra_mk2'], ['t62_1975', 't62mv1'], ['t64bv1', 't64bv_donbas'], ['t64bv1', 't64bm1m'], ['t64bv1', 't64bv'], ['t64bv_donbas', 't64b1v_2022'], ['type90', 'type90a'],
     ['ztz99a', 'ztz99a2'], ['c1_ariete', 'c2_ariete']],
+  // 265: the Danish Leopards
+  denmark: [['leo1a3dk', 'leo1a5dk'], ['leo1a5dk', 'leo2a5dk'], ['leo2a5dk', 'leo2a7dk']],
 });
 const upgrades = Object.values(FAMILY_UPGRADES).flat();
 for (const id of upgrades.flat()) assert.ok(TANK_SPECS[id] && displayTier(id), `${id}: a drawn vehicle in the family map`);
@@ -163,5 +165,8 @@ const digest = createHash('sha256').update(JSON.stringify(TECH_TREES)).digest('h
 // FV4030/5 and FV4030/6 (vickers-cr1-262 @ 31d83cdcdb), the Christian II, the ZTZ-20 pair, the four true T-64s, the two Oplots and the two Challenger 3 TDs).
 // 2026-10-29 re-pin (263): vickers-cr1-262 a3b7d3f661's FV4030/5 and FV4030/6 at VIII, lanes 4 and 5, in the Challenger 1
 // Granby's place.
-assert.equal(digest, 'a7ec2d078c2cbf3c', `tree content changed: re-pin to ${digest} if deliberate`);
+// 2026-10-29 re-pin (265, Main's ruling on the Denmark line): the Denmark tree, its root the Leopard 1A3 DK (I) and the
+// Leopard line on through the 1A5 DK (I, the DK-1 its twin), the 2A5 DK (IX) and the 2A7 DK (X); the Christian II moves
+// out of the Sweden tree into Denmark's special lane, and Sweden's nations are Sweden's alone again.
+assert.equal(digest, '4074752114fe8915', `tree content changed: re-pin to ${digest} if deliberate`);
 console.log(`techTree: ${TECH_TREES.length} trees, ${drawn.length} vehicles, pin ${digest}`);

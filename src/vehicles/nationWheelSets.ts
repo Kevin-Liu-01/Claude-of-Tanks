@@ -166,6 +166,11 @@ export const NATION_WHEEL_SETS: Readonly<Record<string, readonly NationWheelRule
     { donor: 'strv121', roles: MBT_HULL_ROLES, reason: 'Sweden MBT/tank-destroyer hull → Strv 122 wheel' },
     { donor: 'cv90_mk4', reason: 'Sweden IFV/light hull → CV90 Mk IV X wheel' },
   ],
+  // release 265: Denmark fields German Leopards and Swedish CV90s, so its sets are theirs
+  denmark: [
+    { donor: 'leo2a4', roles: MBT_HULL_ROLES, reason: 'Denmark MBT hull (the Leopards) → Germany MBT donor' },
+    { donor: 'cv90_mk4', reason: 'Denmark IFV/light hull (the CV90) → CV90 Mk IV X wheel' },
+  ],
   'south korea': [
     { donor: 'k1e1', ids: ['k1e1'], reason: 'the K1A1 draws its own wheel' },
     { donor: 'xk2_black_panther', roles: MBT_HULL_ROLES, reason: 'South Korea MBT hull → K2 wheel' },
@@ -252,7 +257,6 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   // 10 or type 90 wheels") carries the turned faces and recessed hub at that size.
   type74: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the exposed Type 74 wheels take the Japanese Type 10 face (the Type 90 recess read as a drum at 0.74 m)' },
   stb1: { donor: 'type10_tk_x', reason: 'owner 2026-10-25: the STB-1 shares the Type 74 wheel and its Type 10 face' },
-  christian2: { donor: 'leo2a4', reason: 'release 262: the Danish Christian II concept rides a Leopard 2-pattern hull and seven-wheel gear (Denmark has no wheel set) → Germany MBT donor' },
   ...(T54_STARFISH_WHEELS ? {
     type59: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-54A-pattern Type 59 keeps its period starfish wheel' },
     t55a: { donor: 'type59', reason: 'owner 2026-10-28 ("Allow period wheels"): the T-55A keeps its period starfish wheel' },

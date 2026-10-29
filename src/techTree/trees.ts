@@ -3,6 +3,7 @@
 
 import type { NationTree, TreeNode } from './model.ts';
 import { CHINA_TREE } from './nations/china.ts';
+import { DENMARK_TREE } from './nations/denmark.ts';
 import { FRANCE_TREE } from './nations/france.ts';
 import { GERMANY_TREE } from './nations/germany.ts';
 import { ISRAEL_TREE } from './nations/israel.ts';
@@ -19,7 +20,7 @@ import { USA_TREE } from './nations/usa.ts';
 /** Every national tree, in the Garage's nation order. */
 export const TECH_TREES: readonly NationTree[] = Object.freeze([
   USA_TREE, GERMANY_TREE, RUSSIA_TREE, UK_TREE, FRANCE_TREE, CHINA_TREE, ITALY_TREE, JAPAN_TREE, POLAND_TREE,
-  SOUTH_KOREA_TREE, SWEDEN_TREE, ISRAEL_TREE, UKRAINE_TREE,
+  SOUTH_KOREA_TREE, SWEDEN_TREE, DENMARK_TREE, ISRAEL_TREE, UKRAINE_TREE,
 ]);
 
 interface TreePlace {

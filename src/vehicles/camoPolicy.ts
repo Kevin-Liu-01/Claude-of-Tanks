@@ -127,12 +127,16 @@ const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer', 'paint
 // it appends after GT too and no saved index moves.
 const AUTHORED_PAINT_IDS_AFTER_262 = Object.freeze(['paint_bm_oplot_m', 'paint_bm_oplot_t', 'paint_challenger3_td', 'paint_challenger3_td_rws',
   'paint_ua_t84_oplot_m'] as const);
+/** Release 265: the Danish line's own coats (denmarkSpecs.ts): the Leopard 1A5 DK-1's United Nations white, the 2A5 DK's
+ * three-tone of the 2010s and the 2A7 DK's olive under its Barracuda cover. */
+const AUTHORED_PAINT_IDS_AFTER_263 = Object.freeze(['paint_leo1a5dk1', 'paint_leo2a5dk', 'paint_leo2a7dk'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number]
-  | typeof AUTHORED_PAINT_IDS_AFTER_262[number];
+  | typeof AUTHORED_PAINT_IDS_AFTER_262[number] | typeof AUTHORED_PAINT_IDS_AFTER_263[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id)
-  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id);
+  || (AUTHORED_PAINT_IDS_AFTER_262 as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_263 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
@@ -159,6 +163,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   ...RELEASE_233_SIGNATURE_IDS,
   ...AUTHORED_PAINT_IDS_AFTER_233,
   ...AUTHORED_PAINT_IDS_AFTER_262,
+  ...AUTHORED_PAINT_IDS_AFTER_263,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -818,6 +823,11 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   // release 262: the Challenger 3 TD wears the demonstrator's green, black and sand disruptive coat (challengerSpecs.ts)
   challenger3_td: 'paint_challenger3_td',
   challenger3_td_rws: 'paint_challenger3_td_rws',
+  // release 265: the Danish line in its own coats (the 1A3 DK's olive drab and the 1A5 DK's 1990s three-tone are near a
+  // named preset, so they paint their spec's coat as Factory)
+  leo1a5dk1: 'paint_leo1a5dk1',
+  leo2a5dk: 'paint_leo2a5dk',
+  leo2a7dk: 'paint_leo2a7dk',
 });
 
 /** The stock appearance, independent of the player's saved selection. */
