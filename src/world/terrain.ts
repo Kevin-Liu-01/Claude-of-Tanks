@@ -4546,7 +4546,6 @@ uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the boundary
 uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminance (rgb) and the share it takes (w)
 uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uCliffStrata; // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata)
-uniform vec4 uDbgA; // TEMP 264b knobs
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
@@ -7050,8 +7049,11 @@ void splatCompute() {
     // roll — where a field (dapField) and an arid or snow map (the leopard spots under a low sun) keep their own
     float swardGain = 1.0 + MID_SWARD_GAIN * vegSward;
     // (264b) the sward keeps the gain in its tone and gives up most of the relief: the roll it lent the tussocks read as
-    // pits; in 264b's tuning stills 0.6 left faint pocks on Blackglass's phone frame and 0.25 left the meadow flat
-    float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegSward);
+    // pits; in 264b's tuning stills 0.6 left faint pocks on Blackglass's phone frame and 0.25 left the meadow flat. The
+    // cut spans all of a vegetated map's open ground: the graze fade spares a slope that faces the camera, and on the dry
+    // ground's lighter patch before Blackglass's crater the full relief still read as "rows of dimples … rippled water"
+    // (the critics' f4 phone frame), as on Longleaf's track ("dark leopard-spot patches on brown soil")
+    float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegGround);
     n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * swardRelief * (1.0 - fMs) * midGraze;
     float midN2 = nz(uv, 0.0089, vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
@@ -7061,12 +7063,12 @@ void splatCompute() {
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
     // terrain v2: only on rock inside the mid band (three rock-normal taps ran under every fragment at weight zero)
-    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock) * mix(1.0, uDbgA.w, step(1.5, uLandE.w));
+    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock);
     // (264b, Ironworks' slag tip beside its turned plot: "a crumpled tarp slope"; this lane's critics: "a quilted diamond
     // grid") on a paved map (Steinburg, the railyard, Ironworks) the rock layer's tile is its cobbles: this coarse tap laid
     // their joints, a few metres apart at its 24 m period, over the hillsides, tips and banks the material draws as its
     // bare ground (uPavedRock, above) — at range their relief is the bare ground's too
-    bool pavedR = uPavedRock > 0.5 && uDbgA.z > 0.5;
+    bool pavedR = uPavedRock > 0.5;
     if (rockRelW > 0.002) {
     vec2 tRa;
     if (pavedR) tRa = texture2D(uNrmD, uv * 0.041).xy; else tRa = texture2D(uNrmR, uv * 0.041).xy;
@@ -8608,7 +8610,6 @@ function* createSplatMaterialSteps(
     shader.uniforms.uSeaFoam = { value: S.seaLake ? (S.seaFoam ?? 0.8) : 0 };
     shader.uniforms.uSeaRamp = { value: new THREE.Vector2(...(S.seaRamp || [0.40, 0.78])) };
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
-    shader.uniforms.uDbgA = { value: new THREE.Vector4(0, 0, 1, 1) }; // TEMP 264b (z: a paved map's coarse rock relief from its bare ground; w: a works' coarse rock relief)
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
     shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground

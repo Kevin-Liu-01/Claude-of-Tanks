@@ -11,7 +11,9 @@ import { MAP_IDS } from './maps/mapIds.ts';
 // (b) a turned field's lift per channel, and Ironworks' brownfield plots a coal-dusted loam's brown over the works' dark
 //     red-brown dirt (the critics' "near-black flat" plot beside the slag tip);
 // (c) a vegetated map's sward: the landform dapple's relief cut and faded at grazing views (Blackglass's "dark pocked
-//     dimples … rippled water", Monsoon's and Mangrove's phone smear, the pasture strip behind Steinburg's field2).
+//     dimples … rippled water", Monsoon's and Mangrove's phone smear, the pasture strip behind Steinburg's field2);
+// (d) a turned field's clods (Ironworks' "flat untextured olive-brown fill"), the slag tip's own relief and a paved map's
+//     coarse rock relief from its bare ground (the tip's "quilted diamond grid": the cobble photo's joints at 24 m).
 // No GPU or art claim: the frames and the blind critics are the lane's evidence (TESTS-OWED, 264b).
 
 const source = terrainSourceText();
@@ -58,7 +60,7 @@ assert.ok(/vec2 bedSlope = sandWaves\(uv, wind0, 260\.0, 0\.45,/.test(flat), 'th
 // (c) the sward's dapple: its relief cut and faded where the view grazes the flat (Blackglass's pocks, the phone smears)
 const swardRelief = /#define SWARD_DAP_RELIEF ([0-9.]+)/.exec(flat);
 assert.ok(swardRelief && Number(swardRelief[1]) >= 0.25 && Number(swardRelief[1]) <= 0.6, 'the sward keeps a share of the dapple\'s relief (0.25 left a flat meadow, 0.6 faint pocks)');
-has('float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegSward);', 'the cut applies on a vegetated map\'s sward only (fields, arid and snow maps keep theirs)');
+has('float swardRelief = mix(1.0, SWARD_DAP_RELIEF, vegGround);', 'the cut applies on a vegetated map\'s open ground (fields, arid and snow maps keep theirs)');
 has('float vegGround = dapField * (1.0 - step(0.5, uReduxD.y));', 'a vegetated map\'s open ground: fields, arid and snow maps keep their dapple');
 has('max(smoothstep(0.01, 0.08, slope), vegGround));', 'the grazing fade runs on a vegetated map\'s flat open ground as on a slope');
 assert.ok(!/uDbgA/.test(flat), 'no tuning knob left in the material');
@@ -70,7 +72,8 @@ has("shader.uniforms.uPloughLift = { value: typeof ploughLift === 'number' ? new
   'a scalar lift stays grey (every map that had one) and a triple lifts each channel');
 const foundryLift = getMapConfig('foundry').splat?.ploughLift;
 assert.ok(Array.isArray(foundryLift) && foundryLift.length === 3, 'Ironworks lifts its turned plots per channel');
-assert.ok(foundryLift.every((v) => v >= 1 && v <= 4), `each channel lifted, never darker (${foundryLift.join(', ')}): a loam's brown over the works' dark red-brown dirt`);
+// (the plough's floor holds the soil's blue at black earth's: 3.0 left an olive cast, 6 a violet one)
+assert.ok(foundryLift.every((v) => v >= 1 && v <= 5), `each channel lifted, never darker (${foundryLift.join(', ')}): a loam's brown over the works' dark red-brown dirt`);
 assert.ok(foundryLift[1] >= foundryLift[0] && foundryLift[2] >= foundryLift[0], 'green and blue lifted at least as far as red: brown, not maroon');
 assert.equal(getMapConfig('foundry').splat.soilTint, undefined, 'the works\' own dirt layer (cinder verges, yards) keeps its tone');
 for (const id of MAP_IDS) {
@@ -79,4 +82,19 @@ for (const id of MAP_IDS) {
   assert.equal(typeof lift, 'number', `${id}: its scalar lift as it was`);
 }
 
-console.log(`groundTrainIrregularity: the ripple trains each cell's spacing (±${(span * 50).toFixed(0)} %), bent ${(bendRad / (2 * Math.PI)).toFixed(2)} of a spacing and broken in patches; the sward's dapple relief ×${swardRelief[1]}, graze-faded; Ironworks' turned plots lifted ${foundryLift.join('/')} PASS; no GPU/art claim`);
+// (d) the clods: Medium and High, inside a 9 cm footprint, stronger on a dark soil than a bright one (Coastal's tan field
+// turned blotchy at the dark soil's strength); their relief only where the soil shows
+has('float clodVis = uLandTier > 0.5 ? 1.0 - smoothstep(0.03, 0.09, gFootM) : 0.0;', 'the clods: Medium and High, gone past a 9 cm footprint');
+const clodK = /float clodK = mix\(([0-9.]+), ([0-9.]+), smoothstep\(0\.03, 0\.12, reduxLuma\(cropCol\)\)\);/.exec(flat);
+assert.ok(clodK && Number(clodK[1]) > Number(clodK[2]) && Number(clodK[1]) <= 0.8, 'a dark soil takes the clods\' full tone, a bright one about half');
+has('cropCol *= 1.0 + clodK * clodVis * ((smoothstep(0.30, 0.70, clodS.r) - 0.5) * clodSv + smoothstep(0.28, 0.72, clodL.g) - 0.5);', 'the clods\' tone is zero-mean about the soil');
+has('if (nrmOn && clodVis > 0.0) n.xy += ((clodS.rg - 0.5) * clodSv + (clodL.rg - 0.5) * 0.6) * 0.5 * clodVis * soilHere;', 'their relief where the soil shows');
+// the slag tip: the clinker's own relief, no photo
+const slag = /if \(uLandE\.w > 1\.5\) \{ aR\.rgb = worksSlag\(n1h, n2, 0\.5\)[^{}]*if \(nrmOn\) \{ nR = NRM_MEAN; if \(uLandTier > 0\.5 && gFootM < 0\.2\) nR\.xy \+= \(nz\(uv, 0\.53, vec2\(0\.37, 0\.19\)\)\.rg \* 0\.6 \+ nz\(uv, 1\.37, vec2\(0\.83, 0\.47\)\)\.rg \* 0\.4 - 0\.5\) \* 0\.5 \* tileVis\(0\.8\); \}/.exec(flat);
+assert.ok(slag, 'a works\' rock layer takes the slag\'s own two octaves of relief, not the cobble photo\'s');
+// a paved map's coarse relief: the bare ground's normal in all three taps (ground and both wall planes)
+has('bool pavedR = uPavedRock > 0.5;');
+has('if (pavedR) tRa = texture2D(uNrmD, uv * 0.041).xy; else tRa = texture2D(uNrmR, uv * 0.041).xy;', 'the coarse ground tap reads the bare ground on a paved map');
+has('if (pavedR) dnRb = wallNormalDelta(texture2D(uNrmD, gWallUVx * 0.041).xy, texture2D(uNrmD, gWallUVz * 0.041).xy);', 'and its wall taps');
+
+console.log(`groundTrainIrregularity: the ripple trains each cell's spacing (±${(span * 50).toFixed(0)} %), bent ${(bendRad / (2 * Math.PI)).toFixed(2)} of a spacing and broken in patches; the sward's dapple relief ×${swardRelief[1]}, graze-faded; Ironworks' turned plots lifted ${foundryLift.join('/')}; the clods ×${clodK[1]}–${clodK[2]}, the slag's own relief, a paved map's coarse relief from its bare ground PASS; no GPU/art claim`);
