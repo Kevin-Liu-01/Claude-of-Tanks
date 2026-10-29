@@ -2686,6 +2686,19 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'tracks', p: 1, v: { n: 4, linkW: 0.46 }, slot: ['turretSidePlate', { side: -1 }] },
     { kit: 'light', p: 1, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] },
   ],
+  // Release 263: the rebuilt Centurion Mk 3 and Strv 81 carry their own dischargers, whips and roof guns
+  // (profiles/centurionFamily.ts); their decor is soft stowage only. The Mk 3 a tarpaulin and packs, the Strv 81B the
+  // bundled camouflage nets of its 1950s photographs.
+  centurion3: () => [
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.1 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  strv81: () => [
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretRear', { low: true }] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', {}] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 0.9 }, slot: ['rearDeck', { corner: -1 }] },
+  ],
   m60a1: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2', shield: true }, slot: ['turretRoof', { rear: true, side: -1 }] },
     // The native M60 builder owns one compact open-lattice bustle envelope
