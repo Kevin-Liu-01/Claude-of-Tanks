@@ -1718,6 +1718,26 @@ function buildCurtain(spec: CurtainSpec, uvk: number, uvOffset: [number, number]
       lengths.push(len);
     }
   }
+  // (r7; the critic r6/r7 on the Strv 121: "panel-shaped rectangles on each skirt plate") a fitted cover bridges a short
+  // gap along its run, between two plates it lies on: a station that finds no wall, with a section within two stations
+  // either side, takes the nearer one's
+  if (spec.whole) {
+    for (let c = 1; c < cols; c++) {
+      if (raw[c]) continue;
+      for (let d = 1; d <= 2; d++) {
+        const left = c - d >= 0 ? raw[c - d] : null, right = c + d <= cols ? raw[c + d] : null;
+        const lefts = [1, 2].some((e) => c - e >= 0 && raw[c - e]), rights = [1, 2].some((e) => c + e <= cols && raw[c + e]);
+        if (!lefts || !rights) break;
+        const near = left ?? right;
+        if (!near) continue;
+        raw[c] = { pts: near.pts.map(([o, u]) => [o, u] as [number, number]), corner: near.corner };
+        let len = 0;
+        for (let k = 1; k < near.pts.length; k++) len += Math.hypot(near.pts[k][0] - near.pts[k - 1][0], near.pts[k][1] - near.pts[k - 1][1]);
+        lengths.push(len);
+        break;
+      }
+    }
+  }
   // rows for the drape's typical section (a few long ones take longer rows)
   lengths.sort((p, q) => p - q);
   const typical = lengths.length ? lengths[Math.floor(lengths.length * 0.75)] : 0.6;

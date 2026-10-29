@@ -293,9 +293,9 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
     if (!any) continue;
     // (r7; the critic r6: "shade on the bare sponson ledge, which no suit covers": two 2.75 m triangles, one with two
     // corners under the deck net and the drape's roll, the other with all three, their middles bare) a large triangle
-    // (an edge past SUIT_LARGE_TRIANGLE_M) is under the cloth only as far as its least covered corner, its middle and its
-    // edges' middles, and its corners take no more than that: a coarse panel the cloth reaches at its corners takes no
-    // shade across its bare span. A small one keeps its corners' own (the shade between them is the cloth's).
+    // (an edge past SUIT_LARGE_TRIANGLE_M) is under the cloth only as far as its middle and its edges' middles are, and
+    // its corners take no more than that: a coarse panel the cloth reaches at its corners takes no shade across its bare
+    // span. A small one keeps its corners' own (the shade between them is the cloth's).
     const index = geometry.index;
     const tris = index ? index.count : position.count;
     const least = new Float32Array(position.count).fill(Infinity);
@@ -307,21 +307,22 @@ export function* bakeSuitOcclusionSteps(root: THREE.Object3D, turretGroups: read
       tb.fromBufferAttribute(position, b).applyMatrix4(m);
       tc.fromBufferAttribute(position, c).applyMatrix4(m);
       if (Math.max(ta.distanceToSquared(tb), tb.distanceToSquared(tc), tc.distanceToSquared(ta)) <= SUIT_LARGE_TRIANGLE_M ** 2) continue;
-      let g = Math.min(gates[a], gates[b], gates[c]);
-      if (g > 0) {
-        tn.subVectors(tc, tb).cross(p.subVectors(ta, tb));
-        // the face's own normal, turned to the side its vertices face
-        n.fromBufferAttribute(normal, a).applyMatrix3(nm);
-        if (tn.lengthSq() > 1e-12) {
-          tn.normalize();
-          if (tn.dot(n) < 0) tn.negate();
-          for (const [ka, kb, kc] of TRIANGLE_MIDDLES) {
-            const sg = gateAt(grid, ta.x * ka + tb.x * kb + tc.x * kc, ta.y * ka + tb.y * kb + tc.y * kc, ta.z * ka + tb.z * kb + tc.z * kc,
-              tn.x, tn.y, tn.z);
-            if (sg < g) g = sg;
-            if (g <= 0) break;
-          }
+      // (r7, the critic r7: a netted roof's large triangles lost all their shade where one middle fell in a hatch's
+      // opening) the cover across its middles is their mean: a bare middle (the ledge) caps it near nothing, a hole
+      // in the net over one of four takes a quarter
+      let g = Infinity;
+      tn.subVectors(tc, tb).cross(p.subVectors(ta, tb));
+      // the face's own normal, turned to the side its vertices face
+      n.fromBufferAttribute(normal, a).applyMatrix3(nm);
+      if (tn.lengthSq() > 1e-12) {
+        tn.normalize();
+        if (tn.dot(n) < 0) tn.negate();
+        let mean = 0;
+        for (const [ka, kb, kc] of TRIANGLE_MIDDLES) {
+          mean += gateAt(grid, ta.x * ka + tb.x * kb + tc.x * kc, ta.y * ka + tb.y * kb + tc.y * kc, ta.z * ka + tb.z * kb + tc.z * kc,
+            tn.x, tn.y, tn.z);
         }
+        g = mean / TRIANGLE_MIDDLES.length;
       }
       if (g < least[a]) least[a] = g;
       if (g < least[b]) least[b] = g;
